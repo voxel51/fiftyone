@@ -793,7 +793,14 @@ def _import_collection_multi(json_dir):
     return docs, len(json_paths)
 
 
-def insert_documents(docs, coll, ordered=False, progress=None, num_docs=None):
+def insert_documents(
+    docs,
+    coll,
+    ordered=False,
+    batcher=None,
+    progress=None,
+    num_docs=None,
+):
     """Inserts documents into a collection.
 
     The ``_id`` field of the input documents will be populated if it is not
@@ -803,6 +810,10 @@ def insert_documents(docs, coll, ordered=False, progress=None, num_docs=None):
         docs: an iterable of BSON document dicts
         coll: a pymongo collection
         ordered (False): whether the documents must be inserted in order
+        batcher (None): an optional :class:`fiftyone.core.utils.Batcher` class
+            to use to batch the documents, or ``False`` to strictly insert the
+            documents in a single batch. By default,
+            ``fiftyone.config.default_batcher`` is used
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
@@ -814,7 +825,12 @@ def insert_documents(docs, coll, ordered=False, progress=None, num_docs=None):
         a list of IDs of the inserted documents
     """
     ids = []
-    batcher = fou.get_default_batcher(docs, progress=progress, total=num_docs)
+    batcher = fou.get_default_batcher(
+        docs,
+        batcher=batcher,
+        progress=progress,
+        total=num_docs,
+    )
 
     try:
         with batcher:
@@ -834,18 +850,22 @@ def insert_documents(docs, coll, ordered=False, progress=None, num_docs=None):
     return ids
 
 
-def bulk_write(ops, coll, ordered=False, progress=False):
+def bulk_write(ops, coll, ordered=False, batcher=None, progress=False):
     """Performs a batch of write operations on a collection.
 
     Args:
         ops: a list of pymongo operations
         coll: a pymongo collection
         ordered (False): whether the operations must be performed in order
+        batcher (None): an optional :class:`fiftyone.core.utils.Batcher` class
+            to use to batch the operations, or ``False`` to strictly perform
+            the operations in a single batch. By default,
+            ``fiftyone.config.default_batcher`` is used
         progress (False): whether to render a progress bar (True/False), use
             the default value ``fiftyone.config.show_progress_bars`` (None), or
             a progress callback function to invoke instead
     """
-    batcher = fou.get_default_batcher(ops, progress=progress)
+    batcher = fou.get_default_batcher(ops, batcher=batcher, progress=progress)
 
     try:
         with batcher:
