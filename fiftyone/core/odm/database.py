@@ -881,6 +881,7 @@ def bulk_write(ops, coll, ordered=False, batcher=None, progress=False):
             a progress callback function to invoke instead
     """
     batcher = fou.get_default_batcher(ops, batcher=batcher, progress=progress)
+    results = []
 
     try:
         with batcher:
@@ -893,10 +894,12 @@ def bulk_write(ops, coll, ordered=False, batcher=None, progress=False):
                     batcher.set_encoding_ratio(
                         res.bulk_api_result.get("nBytes")
                     )
+                results.append(res)
 
     except BulkWriteError as bwe:
         msg = bwe.details["writeErrors"][0]["errmsg"]
         raise ValueError(msg) from bwe
+    return results
 
 
 def list_datasets():
