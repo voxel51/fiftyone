@@ -46,7 +46,7 @@ class TestMapperImplementations:
     @pytest.fixture(name="mapper")
     def fixture_mapper(self, mapper_key):
         """Mapper instance"""
-        return fomm.MapperFactory.create(mapper_key, workers=WORKERS)
+        return fomm.MapperFactory.create(mapper_key, num_workers=WORKERS)
 
     class TestMapSamples:
         """test Mapper.map_samples"""

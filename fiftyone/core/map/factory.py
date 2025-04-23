@@ -43,7 +43,7 @@ class MapperFactory:
     def create(
         cls,
         mapper_key: Optional[str],
-        workers: Optional[int],
+        num_workers: Optional[int],
         batch_method: Optional[str] = None,
         batch_size: Optional[int] = None,
         **mapper_extra_kwargs,
@@ -91,7 +91,7 @@ class MapperFactory:
         return cls._MAPPER_CLASSES[mapper_key].create(
             config=config,
             batch_cls=batch_cls,
-            workers=workers,
+            num_workers=num_workers,
             batch_size=batch_size,
             **mapper_extra_kwargs,
         )

@@ -63,10 +63,10 @@ class Mapper(abc.ABC):
     def __init__(
         self,
         batch_cls: Type[fomb.SampleBatch],
-        workers: int,
+        num_workers: int,
         batch_size: Optional[int] = None,
     ):
-        self._workers = workers
+        self._num_workers = num_workers
         self._batch_cls = batch_cls
         self._batch_size = batch_size
 
@@ -79,15 +79,15 @@ class Mapper(abc.ABC):
         config: focc.FiftyOneConfig,
         batch_cls: Type[fomb.SampleBatch],
         # pylint:disable-next=unused-argument
-        workers: Optional[int] = None,
+        num_workers: Optional[int] = None,
         **__,
     ):
         """Create a new mapper instance"""
 
     @property
-    def workers(self) -> int:
+    def num_workers(self) -> int:
         """Number of workers to use"""
-        return self._workers
+        return self._num_workers
 
     @property
     def batch_size(self) -> Optional[int]:
@@ -228,7 +228,7 @@ class LocalMapper(Mapper, abc.ABC):
         skip_failures: bool = True,
     ) -> Iterator[Tuple[bson.ObjectId, R]]:
         # If workers is 1, use iter_samples to iterate over the samples
-        if self._workers <= 1:
+        if self._num_workers <= 1:
             for sample in sample_collection.iter_samples(
                 progress=progress, autosave=save
             ):

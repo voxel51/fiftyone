@@ -3911,7 +3911,7 @@ class SampleCollection(object):
         self,
         map_fcn,
         *,
-        workers=None,
+        num_workers=None,
         batch_method="id",
         batch_size=None,
         progress=None,
@@ -3925,7 +3925,7 @@ class SampleCollection(object):
 
         Args:
             map_fcn: Function to apply to each sample.
-            workers (None): Number of workers.
+            num_workers (None): Number of workers.
             batch_method: Explicit method for batching samples. Supported
               methods are 'id' and 'slice'
             batch_size (None): Number of samples per batch. If None, the batch size
@@ -3944,7 +3944,7 @@ class SampleCollection(object):
             A generator yielding processed sample results.
         """
         mapper = focm.MapperFactory.create(
-            parallelize_method, workers, batch_method, batch_size
+            parallelize_method, num_workers, batch_method, batch_size
         )
 
         yield from mapper.map_samples(
@@ -3958,8 +3958,8 @@ class SampleCollection(object):
     def update_samples(
         self,
         update_fcn,
-        *_,
-        workers=None,
+        *,
+        num_workers=None,
         batch_method=None,
         batch_size=None,
         progress=None,
@@ -3971,7 +3971,7 @@ class SampleCollection(object):
 
         Args:
             update_fcn: Function to apply to each sample.
-            workers (None): Number of workers.
+            num_workers (None): Number of workers.
             batch_method: Explicit method for batching samples. Supported
               methods are 'id' and 'slice'.
             batch_size (None): Number of samples per batch. If None, the batch size
@@ -3986,7 +3986,7 @@ class SampleCollection(object):
                 exception for a sample.
         """
         mapper = focm.MapperFactory.create(
-            parallelize_method, workers, batch_method, batch_size
+            parallelize_method, num_workers, batch_method, batch_size
         )
 
         for _ in mapper.map_samples(
