@@ -5,6 +5,7 @@ FiftyOne dataset-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import time
 from collections import Counter
 from copy import deepcopy, copy
@@ -1088,7 +1089,7 @@ class DatasetTests(unittest.TestCase):
 
         counter = Counter()
         for _, value in dataset.map_samples(
-            map_fcn, workers=2, parallelize_method="process"
+            map_fcn, num_workers=2, parallelize_method="process"
         ):
             counter[value] += 1
 
@@ -1100,7 +1101,7 @@ class DatasetTests(unittest.TestCase):
 
         counter = Counter()
         for _, value in dataset.map_samples(
-            map_fcn, workers=1, parallelize_method="process"
+            map_fcn, num_workers=1, parallelize_method="process"
         ):
             counter[value] += 1
 
