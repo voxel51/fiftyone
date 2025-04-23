@@ -5,7 +5,6 @@ Factory for mapping backends
 |
 """
 
-import functools
 import multiprocessing
 from typing import Dict, List, Optional, Type
 
@@ -41,16 +40,6 @@ class MapperFactory:
         return sorted(cls._MAPPER_CLASSES.keys())
 
     @classmethod
-    @functools.lru_cache
-    def get_config(cls) -> focc.FiftyOneConfig:
-        """Get the FiftyoneConfig"""
-
-        # Loading dynamically here as it causes actual unit tests to fail
-        # without importing the world and using the global. Adding lru cache
-        # to ensure it only happens once.
-        return focc.load_config()
-
-    @classmethod
     def create(
         cls,
         mapper_key: Optional[str] = None,
@@ -60,8 +49,9 @@ class MapperFactory:
         **mapper_extra_kwargs,
     ) -> fomm.Mapper:
         """Create a mapper instance"""
-
-        config = cls.get_config()
+        # Loading config dynamically here as it causes actual unit tests to fail
+        # without importing the world and using globals.
+        config = focc.load_config()
 
         if batch_method is None:
             batch_method = "id"
