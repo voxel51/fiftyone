@@ -232,30 +232,27 @@ class SegmentationEvaluation(BaseEvaluationMethod):
         parallelize_method=None,
     ):
         """Evaluates the predicted segmentation masks in the given samples with
-                respect to the specified ground truth masks.
+        respect to the specified ground truth masks.
 
-                Args:
-                    samples: a :class:`fiftyone.core.collections.SampleCollection`
-                    eval_key (None): an evaluation key for this evaluation
-                    mask_targets (None): a dict mapping mask values to labels. May
-                        contain a subset of the possible classes if you wish to
-                        evaluate a subset of the semantic classes. By default, the
-                        observed pixel values are used as labels
-                    progress (None): whether to render a progress bar (True/False), use
-                        the default value ``fiftyone.config.show_progress_bars``
-                        (None), or a progress callback function to invoke instead
-        <<<<<<< HEAD
-                    num_workers (1): the number of processes to use for parallel
-        =======
-                    workers (1): the number of processes to use for parallel
-        >>>>>>> project/map-samples
-                        processing. Set to a value greater than 1 to enable parallel
-                        processing
-                    batch_method ("id"): the method to use to shard the dataset
-                    parallelize_method (None): the parallelize_method to use for multiprocessing
+        Args:
+            samples: a :class:`fiftyone.core.collections.SampleCollection`
+            eval_key (None): an evaluation key for this evaluation
+            mask_targets (None): a dict mapping mask values to labels. May
+                contain a subset of the possible classes if you wish to
+                evaluate a subset of the semantic classes. By default, the
+                observed pixel values are used as labels
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
+            num_workers (1): the number of processes to use for parallel
 
-                Returns:
-                    a :class:`SegmentationResults` instance
+                processing. Set to a value greater than 1 to enable parallel
+                processing
+            batch_method ("id"): the method to use to shard the dataset
+            parallelize_method (None): the parallelize_method to use for multiprocessing
+
+        Returns:
+            a :class:`SegmentationResults` instance
         """
         pass
 
