@@ -185,7 +185,7 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
 
     def _forward_pass(self, imgs):
         self._model.predictor.setup_source(imgs)
-        self._model.predictor.batch = [""]
+        self._model.predictor.batch = next(iter(self._model.predictor.dataset))
         preds = self._model.predictor.inference(imgs)
         return {"preds": preds, "imgs": imgs, "orig_imgs": imgs}
 
@@ -387,17 +387,26 @@ class UltralyticsDetectionOutputProcessor(
     def __call__(self, output, frame_size, confidence_thresh=None):
         if isinstance(output, dict):
             results = self.post_process(output)
-            preds = [
-                {
+            print(isinstance(results, list), type(results))
+            preds = self._to_dict(results)
+        else:
+            preds = output
+        return super().__call__(preds, frame_size, confidence_thresh)
+
+    def _to_dict(self, results):
+        batch = []
+        for result in results:
+            if not result.boxes:
+                continue
+            else:
+                pred = {
                     "boxes": result.boxes.xyxy,
                     "labels": result.boxes.cls.int(),
                     "scores": result.boxes.conf,
                 }
-                for result in results
-            ]
-        else:
-            preds = output
-        return super().__call__(preds, frame_size, confidence_thresh)
+                batch.append(pred)
+
+        return batch
 
 
 class UltralyticsSegmentationOutputProcessor(
@@ -416,18 +425,25 @@ class UltralyticsSegmentationOutputProcessor(
     def __call__(self, output, frame_size, confidence_thresh=None):
         if isinstance(output, dict):
             results = self.post_process(output)
-            preds = [
-                {
-                    "boxes": result.boxes.xyxy,
-                    "labels": result.boxes.cls.int(),
-                    "scores": result.boxes.conf,
-                    "masks": result.masks.data,
-                }
-                for result in results
-            ]
+            preds = self._to_dict(results)
         else:
             preds = output
         return super().__call__(preds, frame_size, confidence_thresh)
+
+    def _to_dict(self, results):
+        batch = []
+        for result in results:
+            if not result.masks:
+                continue
+            else:
+                pred = {
+                    "boxes": result.boxes.xyxy,
+                    "labels": result.boxes.cls.int(),
+                    "scores": result.boxes.conf,
+                    "masks": result.masks.data.unsqueeze(1),
+                }
+                batch.append(pred)
+        return batch
 
 
 class UltralyticsPoseOutputProcessor(
@@ -446,19 +462,26 @@ class UltralyticsPoseOutputProcessor(
     def __call__(self, output, frame_size, confidence_thresh=None):
         if isinstance(output, dict):
             results = self.post_process(output)
-            preds = [
-                {
+            preds = self._to_dict(results)
+        else:
+            preds = output
+        return super().__call__(preds, frame_size, confidence_thresh)
+
+    def _to_dict(self, results):
+        batch = []
+        for result in results:
+            if not result.keypoints:
+                continue
+            else:
+                pred = {
                     "boxes": result.boxes.xyxy,
                     "labels": result.boxes.cls.int(),
                     "scores": result.boxes.conf,
                     "keypoints": result.keypoints.xyn,
                     "keypoints_scores": result.keypoints.conf,
                 }
-                for result in results
-            ]
-        else:
-            preds = output
-        return super().__call__(preds, frame_size, confidence_thresh)
+                batch.append(pred)
+        return batch
 
 
 class UltralyticsOBBOutputProcessor(
