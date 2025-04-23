@@ -20,6 +20,7 @@ import { datasetId, datasetName } from "./selectors";
 import { State } from "./types";
 import { view } from "./view";
 
+const DEFAULT_MAX_SEARCH = 10000;
 const EXCLUDE_FIELDS = "fiftyone.core.stages.ExcludeFields";
 const SELECT_FIELDS = "fiftyone.core.stages.SelectFields";
 const SELECT_GROUP_SLICES = "fiftyone.core.stages.SelectGroupSlices";
@@ -286,20 +287,6 @@ export const pathHasActiveIndex = selectorFamily({
     },
 });
 
-const indexMap = selector({
-  key: "indexMap",
-  get: ({ get }) => {
-    const map: { [key: string]: Set<string> } = {};
-    for (const index of get(indexInfo).sampleIndexes) {
-      map[index.name] = new Set(
-        index.key.map(({ field }) => get(schemaAtoms.fieldPath(field)))
-      );
-    }
-
-    return map;
-  },
-});
-
 export const pathHasIndexes = selectorFamily({
   key: "pathHasIndexes",
   get:
@@ -312,7 +299,7 @@ export const pathHasIndexes = selectorFamily({
 const filterKeys = selector({
   key: "filterKeys",
   get: ({ get }) => {
-    return new Set(Object.keys(get(filters)));
+    return new Set(Object.keys(get(filters) ?? {}));
   },
 });
 
@@ -420,7 +407,7 @@ const queryPerformanceStore = atomFamily<boolean, string>({
 
 const queryPerformanceMaxSearchStore = atomFamily<number, string>({
   key: "queryPerformanceMaxSearchStore",
-  default: 10000,
+  default: DEFAULT_MAX_SEARCH,
   effects: (datasetId) => [
     getBrowserStorageEffectForKey(
       `queryPerformanceMaxSearchResults-${datasetId}`,
@@ -438,7 +425,7 @@ export const queryPerformanceMaxSearch = selector({
   set: ({ get, set }, value) => {
     set(
       queryPerformanceMaxSearchStore(get(datasetId)),
-      value instanceof DefaultValue ? 100000 : value
+      value instanceof DefaultValue ? DEFAULT_MAX_SEARCH : value
     );
   },
 });

@@ -6,13 +6,14 @@ FiftyOne Server lightning queries
 |
 """
 
-from bson import ObjectId
 from dataclasses import asdict, dataclass
 from datetime import date, datetime
 import math
+import re
 import typing as t
 
 import asyncio
+from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorCollection
 import strawberry as gql
 
@@ -489,7 +490,7 @@ def _add_search(query: DistinctQuery):
             # search is not valid
             value = {"$lt": ObjectId("0" * _TWENTY_FOUR)}
     else:
-        value = {"$regex": f"^{query.search}"}
+        value = {"$regex": f"^{re.escape(query.search)}"}
     return {"$match": {"_id": value}}
 
 
@@ -612,7 +613,7 @@ def _match(path: str, value: t.Union[str, float, int, bool], limit=None):
     pipeline = []
     if limit:
         pipeline.append(
-            {"$limit": 1},
+            {"$limit": limit},
         )
 
     return pipeline + [
