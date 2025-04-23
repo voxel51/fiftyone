@@ -1485,7 +1485,7 @@ def delete_runs(name, dry_run=False):
 
 
 def get_indexed_values(
-    dataset, field_or_index, pipeline=None, convert_to_list=False
+    dataset, field_or_index, pipeline=None, values_only=False
 ):
     """Returns the values of the field for all samples in the given collection that are covered by the index.
     Raises an error if the field is not indexed.
@@ -1495,8 +1495,9 @@ def get_indexed_values(
         field_or_index: the name of the indexed field to query or the index key for a compound index
         pipeline: an optional pipeline to apply to the collection. For performance,
             this should not include any fields not covered by the index.
-        convert_to_list (False): whether to convert the values to a list. If False, the field names are removed
-            and only the values will be returned as a list for each sample.
+        values_only (False): whether to remove field names from the resulting list.
+            If True, the field names are removed and only the values will be returned as a list for each sample.
+            If False, the field names are preserved and the values will be returned as a dict for each sample.
     Returns:
         a list of values for the specified field or index keys for each sample sorted in the same order as the index
     """
@@ -1505,9 +1506,18 @@ def get_indexed_values(
             str(doc["_id"])
             for doc in _iter_indexed_values(dataset, field_or_index, pipeline)
         ]
-    if convert_to_list:
+    if values_only:
+        # If values_only is True, we need to extract the values from the dict
+        if "_1_" not in field_or_index:
+            # Single field index
+            return [
+                doc[field_or_index]
+                for doc in _iter_indexed_values(
+                    dataset, field_or_index, pipeline
+                )
+            ]
         return [
-            list(doc.values()) if len(doc) > 1 else doc[field_or_index]
+            list(doc.values())
             for doc in _iter_indexed_values(dataset, field_or_index, pipeline)
         ]
     return _iter_indexed_values(dataset, field_or_index, pipeline).to_list()
@@ -1526,7 +1536,7 @@ def _iter_indexed_values(dataset, field_or_index, pipeline=None):
         )
     ):
         raise ValueError(
-            "Field '%s' is not indexed. Please create an index first or use `values(%s)` instead"
+            "Field '%s' is not indexed. Please create an index first or call `values()` instead"
             % field_or_index
         )
     if field_or_index == "id" or field_or_index == "_id":

@@ -8937,6 +8937,7 @@ class SampleCollection(object):
         _big_result=True,
         _raw=False,
         _field=None,
+        _enforce_natural_order=True,
     ):
         """Extracts the values of a field from all samples in the collection.
 
@@ -9044,33 +9045,22 @@ class SampleCollection(object):
         Returns:
             the list of values
         """
-        # if the field is `_id`, `id`, or `filepath`, we can use a covered index
-        # query to get the values directly from the collection
+        # If we do not need to follow insertion order, we can potentially use a covered index query
+        # to get the values directly from the index and avoid a collscan.
+        # In the future, we might not want to specify full_collection,
+        # but that needs further investigation as a complex view might require an aggregation
         if (
-            field_or_expr in ["_id", "id", "filepath"]
+            not _enforce_natural_order
+            and isinstance(field_or_expr, str)
             and self._is_full_collection()
         ):
-            if field_or_expr == "id":
-                field_or_expr = "_id"
-            proj = {field_or_expr: 1}
-            if field_or_expr != "_id":
-                # strip off the id if we are not asking for it so that a
-                # single field index can cover the query
-                proj["_id"] = 0
             try:
-                return [
-                    doc[field_or_expr]
-                    for doc in self._dataset._sample_collection.find(
-                        {}, proj, hint={field_or_expr: 1}
-                    )
-                ]
-            except Exception as e:
-                # Since _id is always indexed and filepath should be indexed,
-                # there should be no issues, but just in case
-                logging.warning(
-                    f"Covered index query for {field_or_expr} failed: {e}. "
-                    f"Falling back to aggregation."
+                return foo.get_indexed_values(
+                    self._dataset, field_or_expr, values_only=True
                 )
+            except Exception as e:
+                # Fallback to values, but log the error to surface the recommendation to create an index
+                logging.debug(e)
 
         make = lambda field_or_expr: foa.Values(
             field_or_expr,
