@@ -7379,8 +7379,41 @@ class GetIdsTests(unittest.TestCase):
         obj_ids = [ObjectId(_id) for _id in ids]
         self.assertEqual(sorted(obj_ids), sorted(dataset.values("_id")))
 
-        # Verify the IDs are unique
-        self.assertEqual(len(set(ids)), num_samples)
+    @drop_datasets
+    def test_get_filepaths(self):
+        # Test empty dataset
+        dataset = fo.Dataset()
+        self.assertEqual(dataset.get_filepaths(), [])
+        self.assertEqual(dataset.values("filepath"), [])
+
+        # Create a dataset with samples having specific filepaths
+        num_samples = 100
+        expected_filepaths = [f"image{i}.jpg" for i in range(num_samples)]
+        samples = [fo.Sample(filepath=path) for path in expected_filepaths]
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
+
+        # Get all filepaths
+        filepaths = dataset.get_filepaths()
+
+        # Verify we got the correct number of filepaths
+        self.assertEqual(len(filepaths), num_samples)
+
+        # Verify each filepath is a string
+        for filepath in filepaths:
+            self.assertIsInstance(filepath, str)
+
+        # Extract the basenames for comparison
+        filepath_basenames = [os.path.basename(fp) for fp in filepaths]
+
+        # Verify the filepaths match what we expect (comparing basenames)
+        self.assertEqual(
+            sorted(filepath_basenames), sorted(expected_filepaths)
+        )
+
+        # Verify values() returns the same filepaths
+        self.assertEqual(sorted(filepaths), sorted(dataset.values("filepath")))
 
 
 if __name__ == "__main__":
