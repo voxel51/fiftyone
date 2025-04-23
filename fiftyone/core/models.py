@@ -745,7 +745,11 @@ def _make_data_loader(samples, model, batch_size, num_workers, skip_failures):
                 return error
 
             try:
-                return tud.dataloader.default_collate(batch)
+                return (
+                    tud.dataloader.default_collate(batch)
+                    if not hasattr(model, "collate_fn")
+                    else model.collate_fn(batch)
+                )
             except Exception as e:
                 if not skip_failures:
                     raise e
