@@ -1,4 +1,5 @@
 import unittest
+from collections import Counter
 
 import fiftyone as fo
 
@@ -42,7 +43,9 @@ class TestGetItem(unittest.TestCase):
         gi.add_required_fields("baz")
 
         gi.add_required_fields("baz")
-        self.assertEqual(set(gi.required_fields), set(["foo", "bar", "baz"]))
+        self.assertEqual(
+            Counter(gi.required_fields), Counter(["foo", "bar", "baz"])
+        )
 
     def test_default_field_mapping(self):
         gi = DummyGetItem()
