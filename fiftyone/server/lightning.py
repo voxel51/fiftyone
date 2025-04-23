@@ -414,7 +414,12 @@ async def _do_list_distinct_query(
             match = match[:_TWENTY_FOUR]
             matcher = lambda v: v < match
 
-    result = await collection.distinct(query.path)
+    try:
+        result = await collection.distinct(query.path)
+    except:
+        # too many results
+        return None
+
     values = []
     exclude = set(query.exclude or [])
 

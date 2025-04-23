@@ -1,5 +1,9 @@
 import { Selector } from "@fiftyone/components";
-import { gridSortBy, gridSortFields } from "@fiftyone/state";
+import {
+  gridSortBy,
+  gridSortFields,
+  similarityParameters,
+} from "@fiftyone/state";
 import { ArrowDownward, ArrowUpward } from "@mui/icons-material";
 import React from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
@@ -12,7 +16,8 @@ const Field = ({ value }: { className?: string; value: string }) => {
 export default function Sort() {
   const fields = useRecoilValue(gridSortFields);
   const [value, select] = useRecoilState(gridSortBy);
-  if (!fields.length) {
+  const similarity = useRecoilValue(similarityParameters);
+  if (!fields.length || similarity) {
     return null;
   }
 

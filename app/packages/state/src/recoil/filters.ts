@@ -151,7 +151,7 @@ export const pathCanBeOptimized = selectorFamily({
       if (path === "_label_tags") {
         return false;
       }
-      const indexed = get(pathHasIndexes({ path, withFilters: true }));
+      const indexed = get(pathHasIndexes({ path, withFilters: false }));
       const frameField = get(isFrameField(path));
       if (indexed && !frameField) {
         return false;
@@ -162,7 +162,7 @@ export const pathCanBeOptimized = selectorFamily({
           continue;
         }
         if (
-          get(pathHasIndexes({ path, withFilters: true })) &&
+          get(pathHasIndexes({ path, withFilters: false })) &&
           !get(isFrameField(path))
         ) {
           return false;

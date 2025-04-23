@@ -92,7 +92,10 @@ function Results<T>({
   }, [cy, ref]);
 
   const hasFooter =
-    footer || (!!total && !!results?.length) || (!!results && !results.length);
+    footer ||
+    (!!total && !!results?.length) ||
+    (!!results && !results.length) ||
+    !results;
 
   return (
     <div
@@ -147,6 +150,10 @@ function Footer<T>({
 
   if (!!results && !results.length) {
     return <>No results</>;
+  }
+
+  if (!results) {
+    return <div>Too many results</div>;
   }
 
   return null;
