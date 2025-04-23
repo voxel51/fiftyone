@@ -120,7 +120,7 @@ class SampleSingleton(DocumentSingleton):
 
     def _reload_instance(cls, obj):
         # pylint: disable=no-value-for-parameter
-        cls._reload_doc(obj._doc.collection_name, obj.id)
+        cls._reload_doc(obj._doc.collection_name, obj.id, include_frames=True)
 
     def _rename_fields(cls, collection_name, field_names, new_field_names):
         """Renames the field on all in-memory samples in the collection."""
@@ -154,7 +154,9 @@ class SampleSingleton(DocumentSingleton):
             for field_name in field_names:
                 sample._doc._data.pop(field_name, None)
 
-    def _reload_doc(cls, collection_name, sample_id, hard=False):
+    def _reload_doc(
+        cls, collection_name, sample_id, hard=False, include_frames=False
+    ):
         """Reloads the backing document for the given sample if it is
         in-memory.
         """
@@ -163,9 +165,11 @@ class SampleSingleton(DocumentSingleton):
 
         sample = cls._instances[collection_name].get(str(sample_id), None)
         if sample is not None:
-            sample.reload(hard=hard)
+            sample.reload(hard=hard, include_frames=include_frames)
 
-    def _reload_docs(cls, collection_name, sample_ids=None, hard=False):
+    def _reload_docs(
+        cls, collection_name, sample_ids=None, hard=False, include_frames=False
+    ):
         """Reloads the backing documents for in-memory samples in the
         collection.
 
@@ -180,12 +184,14 @@ class SampleSingleton(DocumentSingleton):
             sample_ids = set(str(_id) for _id in sample_ids)
             for sample in samples.values():
                 if sample.id in sample_ids:
-                    sample.reload(hard=hard)
+                    sample.reload(hard=hard, include_frames=include_frames)
         else:
             for sample in samples.values():
-                sample.reload(hard=hard)
+                sample.reload(hard=hard, include_frames=include_frames)
 
-    def _sync_docs(cls, collection_name, sample_ids, hard=False):
+    def _sync_docs(
+        cls, collection_name, sample_ids, hard=False, include_frames=False
+    ):
         """Syncs the backing documents for all in-memory samples in the
         collection according to the following rules:
 
@@ -201,7 +207,7 @@ class SampleSingleton(DocumentSingleton):
         reset_ids = set()
         for sample in samples.values():
             if sample.id in sample_ids:
-                sample.reload(hard=hard)
+                sample.reload(hard=hard, include_frames=include_frames)
             else:
                 reset_ids.add(sample.id)
                 sample._reset_backing_doc()
