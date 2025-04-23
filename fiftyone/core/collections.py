@@ -97,8 +97,6 @@ class SaveContext(object):
             -   ``"latency"``: a target latency, in seconds, between saves
 
             By default, ``fo.config.default_batcher`` is used
-        max_batch_size (100000): the maximum number of operations for one batch.
-            Default is 100000 because that's the max mongo can support.
     """
 
     def __init__(
@@ -106,7 +104,6 @@ class SaveContext(object):
         sample_collection,
         batch_size=None,
         batching_strategy=None,
-        max_batch_size=100000,
     ):
         batch_size, batching_strategy = fou.parse_batching_strategy(
             batch_size=batch_size, batching_strategy=batching_strategy
@@ -130,13 +127,11 @@ class SaveContext(object):
         self._curr_batch_size_bytes = None
         self._encoding_ratio = 1.0
         self._last_time = None
-        self._max_batch_size = max_batch_size
 
     def __enter__(self):
         if self._batching_strategy == "static":
             self._curr_batch_size = 0
         elif self._batching_strategy == "size":
-            self._curr_batch_size = 0
             self._curr_batch_size_bytes = 0
         elif self._batching_strategy == "latency":
             self._last_time = timeit.default_timer()
@@ -176,21 +171,16 @@ class SaveContext(object):
 
         if self._batching_strategy == "static":
             self._curr_batch_size += 1
-            if (self._curr_batch_size >= self.batch_size) or (
-                self._max_batch_size
-                and self._curr_batch_size >= self._max_batch_size
-            ):
+            if self._curr_batch_size >= self.batch_size:
                 self._save_batch()
                 self._curr_batch_size = 0
         elif self._batching_strategy == "size":
             if sample_ops:
-                self._curr_batch_size += len(sample_ops)
                 self._curr_batch_size_bytes += sum(
                     len(str(op)) for op in sample_ops
                 )
 
             if frame_ops:
-                self._curr_batch_size += len(sample_ops)
                 self._curr_batch_size_bytes += sum(
                     len(str(op)) for op in frame_ops
                 )
@@ -198,13 +188,9 @@ class SaveContext(object):
             if (
                 self._curr_batch_size_bytes
                 >= self.batch_size * self._encoding_ratio
-            ) or (
-                self._max_batch_size
-                and self._curr_batch_size >= self._max_batch_size
             ):
                 self._save_batch()
                 self._curr_batch_size_bytes = 0
-                self._curr_batch_size = 0
         elif self._batching_strategy == "latency":
             if timeit.default_timer() - self._last_time >= self.batch_size:
                 self._save_batch()

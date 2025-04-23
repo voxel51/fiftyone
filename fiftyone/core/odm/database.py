@@ -879,6 +879,9 @@ def bulk_write(ops, coll, ordered=False, batcher=None, progress=False):
         progress (False): whether to render a progress bar (True/False), use
             the default value ``fiftyone.config.show_progress_bars`` (None), or
             a progress callback function to invoke instead
+
+    Returns:
+        A list of :class:`pymongo.results.BulkWriteResult` objects
     """
     batcher = fou.get_default_batcher(ops, batcher=batcher, progress=progress)
     results = []
