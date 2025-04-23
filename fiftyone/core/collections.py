@@ -204,6 +204,7 @@ class SaveContext(object):
             ):
                 self._save_batch()
                 self._curr_batch_size_bytes = 0
+                self._curr_batch_size = 0
         elif self._batching_strategy == "latency":
             if timeit.default_timer() - self._last_time >= self.batch_size:
                 self._save_batch()
