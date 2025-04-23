@@ -177,7 +177,7 @@ def get_extended_view(
     sort_by_stage = None
     if extended_stages:
         # extend view with similarity search, etc. first
-        # omit sort_by, which is happens last
+        # omit sort_by, which happens last
         sort_by_stage = extended_stages.pop(
             "fiftyone.core.stages.SortBy", None
         )

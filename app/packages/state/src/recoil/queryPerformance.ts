@@ -29,6 +29,10 @@ const VALID_QP_STAGES = new Set([
   SELECT_GROUP_SLICES,
 ]);
 
+/**
+ * Given a field path, return a set a field filters and index name that would
+ * result in a optimized IXSCAN, if possible
+ */
 export const filterSearch = selectorFamily({
   key: "filterSearch",
   get:
@@ -154,8 +158,16 @@ export const validIndexes = selectorFamily({
       }
 
       return {
+        // indexes whose have a field available, e.g. a compound index of
+        // 'ground_truth.label' and 'created_at' where 'ground_truth.label' is
+        // filtered on, then 'created_at' is available
         available,
+
+        // an active index
         active: (matched ? [matched, matchedKeys] : []) as [string, string[]],
+
+        // trailing indexes, which can be sorted on, e.g. filtering by
+        // 'created_at' and then sorting by it
         trailing,
       };
     },
