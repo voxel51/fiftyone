@@ -1371,7 +1371,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
     def get_ids(self):
-        return self._get_ids_or_filepaths("_id")
+        """Returns the IDs of all samples in the collection.
+
+        Returns:
+            a list of string IDs
+        """
+        ids = self._get_ids_or_filepaths("_id")
+        return [str(id) for id in ids]
 
     def get_filepaths(self):
         return self._get_ids_or_filepaths("filepath")

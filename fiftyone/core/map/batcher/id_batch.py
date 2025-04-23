@@ -15,7 +15,9 @@ import fiftyone.core.utils as fou
 import fiftyone.core.map.batcher.batch as fomb
 import fiftyone.core.map.batcher.slice_batch as foms
 from fiftyone.core.map.typing import SampleCollection
+import fiftyone.core.media as fom
 
+fod = fou.lazy_import("fiftyone.core.dataset")
 fov = fou.lazy_import("fiftyone.core.view")
 
 T = TypeVar("T")
@@ -41,7 +43,13 @@ class SampleIdBatch(fomb.SampleBatch):
     ) -> List["SampleIdBatch"]:
         num_workers = max(num_workers, 1)
 
-        ids = sample_collection.values("id")
+        if (
+            isinstance(sample_collection, fod.Dataset)
+            and sample_collection.media_type != fom.GROUP
+        ):
+            ids = sample_collection.get_ids()
+        else:
+            ids = sample_collection.values("id")
 
         # Must cap size of select(ids) stages
         max_batch_size = cls.get_max_batch_size()

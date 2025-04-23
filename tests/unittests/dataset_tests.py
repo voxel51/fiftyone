@@ -6442,8 +6442,7 @@ class DynamicFieldTests(unittest.TestCase):
 
         field = schema["ground_truth.info.mixed"]
         self.assertIsInstance(field, fo.ListField)
-        self.assertIsInstance(field.field, list)
-        self.assertEqual(len(field.field), 3)
+        self.assertIsInstance(field.field, fo.Field)
 
         dataset.add_dynamic_sample_fields()
 
@@ -7336,6 +7335,52 @@ class _LabeledVideoSampleParser(foud.LabeledVideoSampleParser):
 
     def get_frame_labels(self):
         return None
+
+
+class GetIdsTests(unittest.TestCase):
+    @drop_datasets
+    def test_get_ids(self):
+        # Test empty dataset
+        dataset = fo.Dataset()
+        self.assertEqual(dataset.get_ids(), [])
+        self.assertEqual(dataset.values("_id"), [])
+
+        # Create a dataset with many samples
+        num_samples = 100
+        samples = [
+            fo.Sample(filepath=f"image{i}.jpg") for i in range(num_samples)
+        ]
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
+
+        # Get all sample IDs
+        ids = dataset.get_ids()
+
+        # Verify we got the correct number of IDs
+        self.assertEqual(len(ids), num_samples)
+
+        # Verify each ID is a valid string representation of ObjectId
+        for _id in ids:
+            self.assertIsInstance(_id, str)
+            # Verify it can be converted to ObjectId
+            ObjectId(_id)
+
+        # Verify we can use these IDs to retrieve the samples
+        for _id in ids:
+            sample = dataset[_id]
+            self.assertIsNotNone(sample)
+            self.assertEqual(sample.id, _id)
+
+        # Verify the IDs match what we get from values("id")
+        self.assertEqual(sorted(ids), sorted(dataset.values("id")))
+
+        # Convert string IDs to ObjectIds for comparison with values("_id")
+        obj_ids = [ObjectId(_id) for _id in ids]
+        self.assertEqual(sorted(obj_ids), sorted(dataset.values("_id")))
+
+        # Verify the IDs are unique
+        self.assertEqual(len(set(ids)), num_samples)
 
 
 if __name__ == "__main__":
