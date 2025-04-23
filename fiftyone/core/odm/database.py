@@ -1502,8 +1502,15 @@ def get_indexed_values(
         a list of values for the specified field or index keys for each sample sorted in the same order as the index
     """
     if field_or_index == "id":
+        if values_only:
+            return [
+                str(doc["_id"])
+                for doc in _iter_indexed_values(
+                    dataset, field_or_index, pipeline
+                )
+            ]
         return [
-            str(doc["_id"])
+            {"id": str(doc["_id"])}
             for doc in _iter_indexed_values(dataset, field_or_index, pipeline)
         ]
     if values_only:
