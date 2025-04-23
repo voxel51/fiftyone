@@ -1484,6 +1484,81 @@ def delete_runs(name, dry_run=False):
     )
 
 
+def get_indexed_values(
+    dataset, field_or_index, pipeline=None, convert_to_list=False
+):
+    """Returns the values of the field for all samples in the given collection that are covered by the index.
+    Raises an error if the field is not indexed.
+
+    Args:
+        dataset: the dataset to query
+        field_or_index: the name of the indexed field to query or the index key for a compound index
+        pipeline: an optional pipeline to apply to the collection. For performance,
+            this should not include any fields not covered by the index.
+        convert_to_list (False): whether to convert the values to a list. If False, the field names are removed
+            and only the values will be returned as a list for each sample.
+    Returns:
+        a list of values for the specified field or index keys for each sample sorted in the same order as the index
+    """
+    if field_or_index == "id":
+        return [
+            str(doc["_id"])
+            for doc in _iter_indexed_values(dataset, field_or_index, pipeline)
+        ]
+    if convert_to_list:
+        return [
+            list(doc.values()) if len(doc) > 1 else doc[field_or_index]
+            for doc in _iter_indexed_values(dataset, field_or_index, pipeline)
+        ]
+    return _iter_indexed_values(dataset, field_or_index, pipeline).to_list()
+
+
+def _iter_indexed_values(dataset, field_or_index, pipeline=None):
+    collection = dataset._sample_collection
+    if (
+        (field_or_index != "_id")
+        and (
+            field_or_index
+            not in (default_indexes := dataset._get_default_indexes())
+        )
+        and (
+            field_or_index not in (indexes := dataset.get_index_information())
+        )
+    ):
+        raise ValueError(
+            "Field '%s' is not indexed. Please create an index first or use `values(%s)` instead"
+            % field_or_index
+        )
+    if field_or_index == "id" or field_or_index == "_id":
+        proj = {"_id": 1}
+        hint = {"_id": 1}
+    elif field_or_index in default_indexes:
+        if "_1" not in field_or_index:
+            proj = {field_or_index: 1, "_id": 0}
+            hint = {field_or_index: 1}
+        else:
+            proj = {f: 1 for f in field_or_index.strip("_1").split("_1_") if f}
+            hint = {k: v for k, v in proj.items()}
+            proj["_id"] = 0
+
+    elif field_or_index in indexes:
+        idx = indexes[field_or_index]["key"]
+        proj = {field: int(direction) for field, direction in idx}
+        hint = {k: v for k, v in proj.items()}
+    else:
+        raise ValueError(
+            "Field '%s' is not indexed. Please create an index first or use `values(%s)` instead"
+            % field_or_index
+        )
+
+    if not proj.get("_id"):
+        # strip off the id if we are not asking for it so that a
+        # single field index can cover the query
+        proj["_id"] = 0
+
+    return collection.find(pipeline or {}, proj, hint=hint)
+
+
 def _get_logger(dry_run=False):
     if dry_run:
         return _DryRunLoggerAdapter(logger, {})
