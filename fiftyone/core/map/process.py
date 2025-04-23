@@ -45,31 +45,31 @@ class ProcessMapper(fomm.LocalMapper):
     @classmethod
     def create(
         cls,
-        *_,
+        *,
         config: focc.FiftyOneConfig,
         batch_cls: Type[fomb.SampleBatch],
-        workers: Optional[int] = None,
+        num_workers: Optional[int] = None,
         batch_size: Optional[int] = None,
         **__,
     ):
         if multiprocessing.current_process().daemon:
-            workers = 1
-        elif workers is None:
-            workers = (
+            num_workers = 1
+        elif num_workers is None:
+            num_workers = (
                 config.default_process_pool_workers
                 or fou.recommend_process_pool_workers()
             )
 
         if config.max_process_pool_workers is not None:
-            workers = min(workers, config.max_process_pool_workers)
+            num_workers = min(num_workers, config.max_process_pool_workers)
 
-        return cls(batch_cls, workers, batch_size)
+        return cls(batch_cls, num_workers, batch_size)
 
     def _map_samples_multiple_workers(
         self,
         sample_collection: SampleCollection[T],
         map_fcn: Callable[[T], R],
-        *_,
+        *,
         progress: Union[bool, Literal["workers"], None],
         save: bool,
         skip_failures: bool,
@@ -106,11 +106,11 @@ class ProcessMapper(fomm.LocalMapper):
             view_stages = None
 
         sample_batches = self._batch_cls.split(
-            sample_collection, self.workers, self.batch_size
+            sample_collection, self.num_workers, self.batch_size
         )
 
         pool = ctx.Pool(
-            processes=self.workers,
+            processes=self.num_workers,
             initializer=_init_worker,
             initargs=(
                 dataset_name,

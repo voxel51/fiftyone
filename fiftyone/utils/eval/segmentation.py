@@ -5,6 +5,7 @@ Segmentation evaluation.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from copy import deepcopy
 import logging
 import inspect
@@ -42,7 +43,7 @@ def evaluate_segmentations(
     method=None,
     custom_metrics=None,
     progress=None,
-    workers=1,
+    num_workers=1,
     batch_method="id",
     parallelize_method=None,
     **kwargs,
@@ -100,7 +101,7 @@ def evaluate_segmentations(
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
-        workers (1): the number of processes to use for parallel
+        num_workers (1): the number of processes to use for parallel
             processing. Set to a value greater than 1 to enable parallel
             processing
         batch_method ("id"): the method to use to shard the dataset
@@ -134,7 +135,7 @@ def evaluate_segmentations(
         eval_key=eval_key,
         mask_targets=mask_targets,
         progress=progress,
-        workers=workers,
+        num_workers=num_workers,
         batch_method=batch_method,
         parallelize_method=parallelize_method,
     )
@@ -226,7 +227,7 @@ class SegmentationEvaluation(BaseEvaluationMethod):
         eval_key=None,
         mask_targets=None,
         progress=None,
-        workers=1,
+        num_workers=1,
         batch_method="id",
         parallelize_method=None,
     ):
@@ -243,7 +244,8 @@ class SegmentationEvaluation(BaseEvaluationMethod):
             progress (None): whether to render a progress bar (True/False), use
                 the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
-            workers (1): the number of processes to use for parallel
+            num_workers (1): the number of processes to use for parallel
+
                 processing. Set to a value greater than 1 to enable parallel
                 processing
             batch_method ("id"): the method to use to shard the dataset
@@ -390,7 +392,7 @@ class SimpleEvaluation(SegmentationEvaluation):
         eval_key=None,
         mask_targets=None,
         progress=None,
-        workers=1,
+        num_workers=1,
         batch_method="id",
         parallelize_method=None,
     ):
@@ -407,7 +409,7 @@ class SimpleEvaluation(SegmentationEvaluation):
             progress (None): whether to render a progress bar (True/False), use
                 the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
-            workers (1): the number of processes to use for parallel
+            num_workers (1): the number of processes to use for parallel
                 processing. Set to a value greater than 1 to enable parallel
                 processing
             batch_method ("id"): the method to use to shard the dataset
@@ -433,7 +435,7 @@ class SimpleEvaluation(SegmentationEvaluation):
                 pred_field,
                 gt_field,
                 progress=progress,
-                workers=workers,
+                num_workers=num_workers,
                 batch_method=batch_method,
                 parallelize_method=parallelize_method,
             )
@@ -522,7 +524,7 @@ class SimpleEvaluation(SegmentationEvaluation):
         eval_data = []
         for _, result in samples.map_samples(
             _eval_sample,
-            workers=workers,
+            num_workers=num_workers,
             batch_method=batch_method,
             progress=progress,
             save=save,
@@ -772,7 +774,7 @@ def _get_mask_values(
     pred_field,
     gt_field,
     progress=None,
-    workers=1,
+    num_workers=1,
     batch_method="id",
     parallelize_method=None,
 ):
@@ -808,7 +810,7 @@ def _get_mask_values(
 
     for _, (sample_values, sample_is_rgb) in samples.map_samples(
         _get_sample_values,
-        workers=workers,
+        num_workers=num_workers,
         batch_method=batch_method,
         progress=progress,
         parallelize_method=parallelize_method,

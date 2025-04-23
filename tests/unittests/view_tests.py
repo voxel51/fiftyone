@@ -5,6 +5,7 @@ FiftyOne view-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from collections import Counter
 from copy import deepcopy
 from datetime import date, datetime, timedelta
@@ -165,7 +166,7 @@ class DatasetViewTests(unittest.TestCase):
 
         counter = Counter()
         for _, value in view.map_samples(
-            map_fcn, workers=2, batch_method="slice"
+            map_fcn, num_workers=2, batch_method="slice"
         ):
             assert value == "BAR"
             counter[value] += 1
@@ -174,7 +175,7 @@ class DatasetViewTests(unittest.TestCase):
 
         counter = Counter()
         for _, value in view.map_samples(
-            map_fcn, workers=2, batch_method="id"
+            map_fcn, num_workers=2, batch_method="id"
         ):
             assert value == "BAR"
             counter[value] += 1
@@ -186,7 +187,7 @@ class DatasetViewTests(unittest.TestCase):
         #
 
         counter = Counter()
-        for _, value in view.map_samples(map_fcn, workers=1):
+        for _, value in view.map_samples(map_fcn, num_workers=1):
             counter[value] += 1
 
         self.assertDictEqual(dict(counter), {"BAR": 50})
@@ -1436,9 +1437,11 @@ class SetValuesTests(unittest.TestCase):
         dataset = _make_labels_dataset()
 
         values = [
-            [fo.Classification(label=v) for v in vv]
-            if vv is not None
-            else None
+            (
+                [fo.Classification(label=v) for v in vv]
+                if vv is not None
+                else None
+            )
             for vv in dataset.values("labels.classifications.label")
         ]
 
@@ -1449,9 +1452,11 @@ class SetValuesTests(unittest.TestCase):
 
         # Since this field is not in the schema, the values are loaded as dicts
         also_values = [
-            [fo.Classification.from_dict(d) for d in dd]
-            if dd is not None
-            else None
+            (
+                [fo.Classification.from_dict(d) for d in dd]
+                if dd is not None
+                else None
+            )
             for dd in dataset.values("labels.classifications.also_label")
         ]
         self.assertEqual(values, also_values)
@@ -1543,9 +1548,11 @@ class SetValuesTests(unittest.TestCase):
 
         values = [
             [
-                [fo.Classification(label=v) for v in vv]
-                if vv is not None
-                else None
+                (
+                    [fo.Classification(label=v) for v in vv]
+                    if vv is not None
+                    else None
+                )
                 for vv in ff
             ]
             for ff in dataset.values("frames.labels.classifications.label")
@@ -1559,9 +1566,11 @@ class SetValuesTests(unittest.TestCase):
         # Since this field is not in the schema, the values are loaded as dicts
         also_values = [
             [
-                [fo.Classification.from_dict(d) for d in dd]
-                if dd is not None
-                else None
+                (
+                    [fo.Classification.from_dict(d) for d in dd]
+                    if dd is not None
+                    else None
+                )
                 for dd in ff
             ]
             for ff in dataset.values(

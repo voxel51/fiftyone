@@ -5,17 +5,8 @@ FiftyOne dataset-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-<<<<<<< HEAD
 
-<<<<<<< HEAD
 from collections import Counter
-=======
-import time
->>>>>>> 27e82bbb93 (Removed map_samples from collections)
-=======
-import time
-from collections import Counter
->>>>>>> 54e8d07916 (Expose map_samples to dataset collection and dataset view (#5643))
 from copy import deepcopy, copy
 from datetime import date, datetime, timedelta
 import gc
@@ -1137,7 +1128,7 @@ class DatasetTests(unittest.TestCase):
 
         counter = Counter()
         for _, value in dataset.map_samples(
-            map_fcn, workers=2, parallelize_method="process"
+            map_fcn, num_workers=2, parallelize_method="process"
         ):
             counter[value] += 1
 
@@ -1149,7 +1140,7 @@ class DatasetTests(unittest.TestCase):
 
         counter = Counter()
         for _, value in dataset.map_samples(
-            map_fcn, workers=1, parallelize_method="process"
+            map_fcn, num_workers=1, parallelize_method="process"
         ):
             counter[value] += 1
 

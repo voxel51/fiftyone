@@ -24,6 +24,7 @@ from typing import (
 import bson
 from tqdm import tqdm
 
+
 import fiftyone.core.config as focc
 import fiftyone.core.map.batcher as fomb
 import fiftyone.core.map.mapper as fomm
@@ -44,27 +45,27 @@ class ThreadMapper(fomm.LocalMapper):
     @classmethod
     def create(
         cls,
-        *_,
+        *,
         config: focc.FiftyOneConfig,
         batch_cls: Type[fomb.SampleBatch],
-        workers: Optional[int] = None,
+        num_workers: Optional[int] = None,
         batch_size: Optional[int] = None,
         **__,
     ):
-        if workers is None:
-            workers = (
+        if num_workers is None:
+            num_workers = (
                 config.default_thread_pool_workers
                 or fou.recommend_thread_pool_workers()
             )
 
         if config.max_thread_pool_workers is not None:
-            workers = min(workers, config.max_thread_pool_workers)
+            num_workers = min(num_workers, config.max_thread_pool_workers)
 
-        return cls(batch_cls, workers, batch_size)
+        return cls(batch_cls, num_workers, batch_size)
 
     @staticmethod
     def __worker(
-        *_,
+        *,
         cancel_event: threading.Event,
         result_queue: ResultQueue[R],
         map_fcn: Callable[[T], R],
@@ -100,7 +101,7 @@ class ThreadMapper(fomm.LocalMapper):
         self,
         sample_collection: SampleCollection[T],
         map_fcn: Callable[[T], R],
-        *_,
+        *,
         progress: Union[bool, Literal["workers"], Callable],
         save: bool,
         skip_failures: bool,
@@ -111,13 +112,13 @@ class ThreadMapper(fomm.LocalMapper):
         cancel_event = threading.Event()
 
         sample_batches = self._batch_cls.split(
-            sample_collection, self.workers, self.batch_size
+            sample_collection, self.num_workers, self.batch_size
         )
 
         batch_count = len(sample_batches)
 
         with concurrent.futures.ThreadPoolExecutor(
-            max_workers=self.workers
+            max_workers=self.num_workers
         ) as executor:
             for idx, batch in enumerate(sample_batches):
                 # Batch number (index starting at 1)
@@ -204,6 +205,7 @@ class ThreadMapper(fomm.LocalMapper):
 
                 # It is possible to aggregate one error per worker. There
                 # might be a better way to handle this in the future but for
+
                 # now, return the first error seen
                 if sample_errors:
                     yield sample_errors[0]

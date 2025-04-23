@@ -5,6 +5,7 @@ FiftyOne evaluation-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import os
 import random
 import string
@@ -13,7 +14,6 @@ import unittest
 import warnings
 import tempfile
 import shutil
-import time
 
 import numpy as np
 
@@ -3259,7 +3259,7 @@ class EvaluateSegmentationMultiWorkerTests(unittest.TestCase):
                 gt_field="ground_truth",
                 eval_key=eval_key,
                 method="simple",
-                workers=workers,
+                num_workers=workers,
                 parallelize_method=parallelize_method,
                 batch_method=batch_method,
             )
@@ -3305,7 +3305,7 @@ class EvaluateSegmentationMultiWorkerTests(unittest.TestCase):
             gt_field="ground_truth",
             eval_key="eval_consistency1",
             method="simple",
-            workers=2,
+            num_workers=2,
         )
 
         # Second evaluation
@@ -3314,7 +3314,7 @@ class EvaluateSegmentationMultiWorkerTests(unittest.TestCase):
             gt_field="ground_truth",
             eval_key="eval_consistency2",
             method="simple",
-            workers=2,
+            num_workers=2,
         )
 
         # Get metrics from both results
@@ -3359,13 +3359,13 @@ class EvaluateSegmentationMultiWorkerTests(unittest.TestCase):
                         gt_field="ground_truth",
                         eval_key=f"eval_validate_workers_{worker_count}",
                         method="simple",
-                        workers=worker_count,
+                        num_workers=worker_count,
                     )
 
                     # Verify that map_samples was called
                     self.assertTrue(
                         len(map_samples_calls) > 0,
-                        f"map_samples was not called when workers={worker_count}",
+                        f"map_samples was not called when num_workers={worker_count}",
                     )
 
                     # Verify workers parameter was correctly passed
@@ -3386,7 +3386,7 @@ class EvaluateSegmentationMultiWorkerTests(unittest.TestCase):
                         gt_field="ground_truth",
                         eval_key=f"eval_validate_method_{method}",
                         method="simple",
-                        workers=2,
+                        num_workers=2,
                         parallelize_method=method,
                     )
 
@@ -3414,7 +3414,7 @@ class EvaluateSegmentationMultiWorkerTests(unittest.TestCase):
                         gt_field="ground_truth",
                         eval_key=f"eval_validate_batch_{batch_method}",
                         method="simple",
-                        workers=2,
+                        num_workers=2,
                         batch_method=batch_method,
                     )
 
@@ -3444,7 +3444,7 @@ class EvaluateSegmentationMultiWorkerTests(unittest.TestCase):
                     gt_field="ground_truth",
                     eval_key="eval_validate_all",
                     method="simple",
-                    workers=test_workers,
+                    num_workers=test_workers,
                     parallelize_method=test_parallelize,
                     batch_method=test_batch,
                 )
