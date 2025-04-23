@@ -1771,7 +1771,7 @@ def get_default_batcher(
         a :class:`Batcher` instance
     """
     if batcher is False:
-        batcher = partial(StaticBatcher, batch_size=-1)
+        batcher = partial(StaticBatcher, batch_size=100000)
 
     if batcher is not None:
         return batcher(
