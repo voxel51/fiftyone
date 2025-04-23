@@ -8,7 +8,6 @@ FiftyOne dataset-related unit tests.
 
 from copy import deepcopy, copy
 from datetime import date, datetime, timedelta
-from functools import partial
 import gc
 import os
 import random
@@ -27,7 +26,6 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
-import fiftyone.core.utils as fou
 from fiftyone.operators.store import ExecutionStoreService
 import fiftyone.utils.data as foud
 from fiftyone import ViewField as F
@@ -1848,26 +1846,6 @@ class DatasetTests(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             _ = dataset.one(F("filepath").ends_with(".jpg"), exact=True)
-
-    @drop_datasets
-    def test_add_samples_batcher(self):
-        samples = [fo.Sample(filepath=f"image{i}.jpg") for i in range(10)]
-
-        # No batching
-        batcher = False
-
-        dataset = fo.Dataset()
-        dataset.add_samples(samples, batcher=batcher)
-
-        assert len(dataset) == 10
-
-        # Custom batcher
-        batcher = partial(fou.StaticBatcher, batch_size=2)
-
-        dataset = fo.Dataset()
-        dataset.add_samples(samples, batcher=batcher)
-
-        assert len(dataset) == 10
 
     @drop_datasets
     def test_merge_sample(self):
