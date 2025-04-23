@@ -65,7 +65,7 @@ class ConfigureScenario(foo.Operator):
 
         inputs.str(
             "scenario_name",
-            label="Scenario Name",
+            label="Scenario name",
             default=scenario_name,
             required=True,
             view=types.TextFieldView(
@@ -153,10 +153,7 @@ class ConfigureScenario(foo.Operator):
 
         return key
 
-    # NOTE: TTL is 7 days - subject to fine-tuning
-    @execution_cache(
-        key_fn=get_subset_def_data_for_eval_key, ttl=7 * 24 * 60 * 60
-    )
+    @execution_cache(key_fn=get_subset_def_data_for_eval_key)
     def get_subset_def_data_for_eval(
         self, ctx, _, eval_result, name, subset_def
     ):
@@ -809,7 +806,7 @@ class ConfigureScenario(foo.Operator):
         inputs.enum(
             "scenario_label_attribute",
             label_choices.values(),
-            default=label_attr,
+            default=label_attr if label_attr in valid_options else None,
             label="Label attribute",
             description="Select a label attribute",
             view=label_choices,
@@ -1133,6 +1130,16 @@ class ConfigureScenario(foo.Operator):
 
         scenarios[eval_id_a] = scenarios_for_eval
         store.set("scenarios", scenarios)
+
+        ctx.ops.track_event(
+            "scenario_created",
+            {
+                "id": scenario_id_str,
+                "name": scenario_name,
+                "type": scenario_type,
+                "subsets": scenario_subsets,
+            },
+        )
 
         return {
             "scenario_type": ctx.params.get("radio_choices", ""),

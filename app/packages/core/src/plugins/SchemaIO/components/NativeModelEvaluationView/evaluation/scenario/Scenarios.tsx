@@ -369,6 +369,7 @@ export default function Scenarios(props) {
           onDelete={onDelete}
           onEdit={onEdit}
           readOnly={readOnly}
+          trackEvent={trackEvent}
         />
       )}
     </Stack>
@@ -388,6 +389,7 @@ function Scenario(props) {
     onDelete,
     onEdit,
     readOnly,
+    trackEvent,
   } = props;
   const { key, compareKey } = data?.view;
   let scenario = data?.[`scenario_${id}_${key}`];
@@ -491,6 +493,7 @@ function Scenario(props) {
           evaluation={props.evaluation}
           compareEvaluation={props.compareEvaluation}
           loadView={loadView}
+          trackEvent={trackEvent}
         />
       ) : (
         <ScenarioTables
@@ -947,7 +950,7 @@ const MODEL_PERFORMANCE_METRICS = [
 ];
 
 function PredictionStatisticsChart(props) {
-  const { scenario, compareScenario, loadView } = props;
+  const { scenario, compareScenario, loadView, trackEvent } = props;
   const { subsets, subsets_data } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
   const [metric, setMetric] = useState("all");
@@ -1107,6 +1110,11 @@ function PredictionStatisticsChart(props) {
           const { id, isCompare } = firstPoint.data;
           const subset = firstPoint.x;
           const subsetDef = getSubsetDef(scenario, subset);
+          trackEvent("evaluation_plot_click", {
+            id,
+            subsetDef,
+            plotName: "prediction_statistics",
+          });
           loadView("field", { field: id, subset_def: subsetDef });
         }}
       />
@@ -1191,7 +1199,7 @@ function ScenarioModelPerformanceChart(props) {
 }
 
 function ConfusionMatrixChart(props) {
-  const { scenario, compareScenario, loadView } = props;
+  const { scenario, compareScenario, loadView, trackEvent } = props;
   const { subsets } = scenario;
   const [subset, setSubset] = useState(subsets[0]);
   const subsetData = scenario.subsets_data[subset];
@@ -1249,6 +1257,11 @@ function ConfusionMatrixChart(props) {
             onClick={({ points }) => {
               const firstPoint = points[0];
               const subsetDef = getSubsetDef(scenario, subset);
+              trackEvent("evaluation_plot_click", {
+                id: scenario.id,
+                subsetDef,
+                plotName: "confusion_matrix",
+              });
               loadView("matrix", {
                 x: firstPoint.x,
                 y: firstPoint.y,
@@ -1379,7 +1392,7 @@ function ConfidenceDistributionChart(props) {
 }
 
 function MetricPerformanceChart(props) {
-  const { scenario, compareScenario, loadView } = props;
+  const { scenario, compareScenario, loadView, trackEvent } = props;
   const { subsets, subsets_data } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
   const [metric, setMetric] = useState("average_confidence");
@@ -1434,6 +1447,11 @@ function MetricPerformanceChart(props) {
           const subset = points[0]?.x;
           const subsetDef = getSubsetDef(scenario, subset);
           if (!subsetDef) return;
+          trackEvent("evaluation_plot_click", {
+            id: scenario.id,
+            subsetDef,
+            plotName: "metric_performance",
+          });
           return loadView("subset", { subset_def: subsetDef });
         }}
       />
@@ -1443,7 +1461,7 @@ function MetricPerformanceChart(props) {
 }
 
 function SubsetDistributionChart(props) {
-  const { scenario, compareScenario, loadView } = props;
+  const { scenario, compareScenario, loadView, trackEvent } = props;
   const { subsets, subsets_data } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
   const { key, compareKey } = props.data?.view;
@@ -1479,6 +1497,11 @@ function SubsetDistributionChart(props) {
           const subset = points[0]?.x;
           const subsetDef = getSubsetDef(scenario, subset);
           if (!subsetDef) return;
+          trackEvent("evaluation_plot_click", {
+            id: scenario.id,
+            subsetDef,
+            plotName: "subset_distribution",
+          });
           return loadView("subset", { subset_def: subsetDef });
         }}
       />
