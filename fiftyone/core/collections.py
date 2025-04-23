@@ -9051,12 +9051,21 @@ class SampleCollection(object):
         # but that needs further investigation as a complex view might require an aggregation
         if (
             not _enforce_natural_order
-            and isinstance(field_or_expr, str)
+            and (
+                isinstance(field_or_expr, str)
+                or (
+                    isinstance(field_or_expr, list) and len(field_or_expr) == 1
+                )
+            )
             and self._is_full_collection()
         ):
             try:
+                if isinstance(field_or_expr, list):
+                    field = field_or_expr[0]
+                else:
+                    field = field_or_expr
                 return foo.get_indexed_values(
-                    self._dataset, field_or_expr, values_only=True
+                    self._dataset, field, values_only=True
                 )
             except Exception as e:
                 # Fallback to values, but log the error to surface the recommendation to create an index
