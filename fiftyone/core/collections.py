@@ -4008,7 +4008,7 @@ class SampleCollection(object):
             num_workers (None): Number of workers.
             batch_size (None): Number of samples per batch. If None, the batch size
                 is automatically calculated to be the number of samples per worker.
-            batch_method: Explicit method for batching samples. Supported
+            batch_method (None): Explicit method for batching samples. Supported
               methods are 'id' and 'slice'.
             progress (None): Whether to show progress bar. If None, uses the
                 default value ``fiftyone.config.show_progress_bars``. If "workers",
