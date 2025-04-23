@@ -49,6 +49,7 @@ fov = fou.lazy_import("fiftyone.core.view")
 foua = fou.lazy_import("fiftyone.utils.annotations")
 foud = fou.lazy_import("fiftyone.utils.data")
 foue = fou.lazy_import("fiftyone.utils.eval")
+foum = fou.lazy_import("fiftyone.utils.multiprocessing")
 foos = fou.lazy_import("fiftyone.operators.store")
 
 
@@ -3245,6 +3246,167 @@ class SampleCollection(object):
 
     def _delete_labels(self, ids, fields=None):
         self._dataset.delete_labels(ids=ids, fields=fields)
+
+    def update_samples(
+        self,
+        update_fcn,
+        num_workers=None,
+        shard_size=None,
+        shard_method="id",
+        progress=None,
+    ):
+        """Applies the given function to each sample in the collection and
+        saves the resulting sample edits.
+
+        By default, a multiprocessing pool is used to parallelize the work,
+        unless this method is called in a daemon process (subprocess), in which
+        case no workers are used.
+
+        This function effectively performs the following map operation with the
+        outer loop in parallel::
+
+            for batch_view in fou.iter_slices(sample_collection, shard_size):
+                for sample in batch_view.iter_samples(autosave=True):
+                    map_fcn(sample)
+
+        Example::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("cifar10", split="train")
+            view = dataset.select_fields("ground_truth")
+
+            def update_fcn(sample):
+                sample.ground_truth.label = sample.ground_truth.label.upper()
+
+            view.update_samples(update_fcn)
+
+            print(dataset.count_values("ground_truth.label"))
+
+        Args:
+            update_fcn: a function to apply to each sample in the collection
+            num_workers (None): the number of workers to use. By default,
+                ``fiftyone.config.default_map_workers`` workers are used if
+                this value is set, else
+                :meth:`fiftyone.core.utils.recommend_process_pool_workers`
+                workers are used. If this value is <= 1, all work is done in
+                the main process
+            shard_size (None): an optional number of samples to distribute to
+                each worker at a time. By default, samples are evenly
+                distributed to workers with one shard per worker
+            shard_method ("id"): whether to use IDs (``"id"``) or slices
+                (``"slice"``) to assign samples to workers
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead, or
+                "workers" to render per-worker progress bars
+        """
+        return self._map_samples(
+            update_fcn,
+            return_outputs=False,
+            save=True,
+            num_workers=num_workers,
+            shard_size=shard_size,
+            shard_method=shard_method,
+            progress=progress,
+        )
+
+    def map_samples(
+        self,
+        map_fcn,
+        save=False,
+        num_workers=None,
+        shard_size=None,
+        shard_method="id",
+        progress=None,
+    ):
+        """Applies the given function to each sample in the collection and
+        returns the results as a generator.
+
+        By default, a multiprocessing pool is used to parallelize the work,
+        unless this method is called in a daemon process (subprocess), in which
+        case no workers are used.
+
+        This function effectively performs the following map operation with the
+        outer loop in parallel::
+
+            for batch_view in fou.iter_slices(sample_collection, shard_size):
+                for sample in batch_view.iter_samples(autosave=save):
+                    sample_output = map_fcn(sample)
+                    yield sample.id, sample_output
+
+        Example::
+
+            from collections import Counter
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("cifar10", split="train")
+            view = dataset.select_fields("ground_truth")
+
+            def map_fcn(sample):
+                return sample.ground_truth.label.upper()
+
+            counter = Counter()
+            for _, label in view.map_samples(map_fcn):
+                counter[label] += 1
+
+            print(dict(counter))
+
+        Args:
+            map_fcn: a function to apply to each sample in the collection
+            save (False): whether to save any sample edits applied by
+                ``map_fcn``
+            num_workers (None): the number of workers to use. By default,
+                ``fiftyone.config.default_map_workers`` workers are used if
+                this value is set, else
+                :meth:`fiftyone.core.utils.recommend_process_pool_workers`
+                workers are used. If this value is <= 1, all work is done in
+                the main process
+            shard_size (None): an optional number of samples to distribute to
+                each worker at a time. By default, samples are evenly
+                distributed to workers with one shard per worker
+            shard_method ("id"): whether to use IDs (``"id"``) or slices
+                (``"slice"``) to assign samples to workers
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead, or
+                "workers" to render per-worker progress bars
+
+        Returns:
+            a generator that emits ``(sample_id, map_output)`` tuples
+        """
+        return self._map_samples(
+            map_fcn,
+            save=save,
+            num_workers=num_workers,
+            shard_size=shard_size,
+            shard_method=shard_method,
+            progress=progress,
+        )
+
+    def _map_samples(
+        self,
+        map_fcn,
+        return_outputs=True,
+        save=False,
+        num_workers=None,
+        shard_size=None,
+        shard_method="id",
+        progress=None,
+    ):
+        return foum.map_samples(
+            self,
+            map_fcn,
+            return_outputs=return_outputs,
+            save=save,
+            num_workers=num_workers,
+            shard_size=shard_size,
+            shard_method=shard_method,
+            progress=progress,
+        )
 
     def compute_metadata(
         self,
