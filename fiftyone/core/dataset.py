@@ -180,9 +180,7 @@ def get_default_dataset_name():
         a dataset name
     """
     now = datetime.now()
-    name = now.strftime("%Y.%m.%d.%H.%M.%S")
-    if name in _list_datasets(include_private=True):
-        name = now.strftime("%Y.%m.%d.%H.%M.%S.%f")
+    name = now.strftime("%Y.%m.%d.%H.%M.%S.%f")
 
     return name
 
