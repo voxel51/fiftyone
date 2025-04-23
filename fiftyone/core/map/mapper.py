@@ -227,7 +227,8 @@ class LocalMapper(Mapper, abc.ABC):
         save: bool = False,
         skip_failures: bool = True,
     ) -> Iterator[Tuple[bson.ObjectId, R]]:
-        # If workers is 1, use iter_samples to iterate over the samples
+        # If the number of workers is 1, no need for the overhead of trying to
+        # parallelize.
         if self._num_workers <= 1:
             for sample in sample_collection.iter_samples(
                 progress=progress, autosave=save
