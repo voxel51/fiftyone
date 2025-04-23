@@ -3910,14 +3910,13 @@ class SampleCollection(object):
     def map_samples(
         self,
         map_fcn,
-        *,
+        save=False,
         num_workers=None,
-        batch_method="id",
         batch_size=None,
+        batch_method="id",
         progress=None,
         parallelize_method="process",
         skip_failures=False,
-        save=False,
     ):
         """
         Applies `map_fcn` to each sample using the specified backend strategy
@@ -3925,11 +3924,12 @@ class SampleCollection(object):
 
         Args:
             map_fcn: Function to apply to each sample.
+            save (False): Whether to save any modified samples.
             num_workers (None): Number of workers.
-            batch_method: Explicit method for batching samples. Supported
-              methods are 'id' and 'slice'
             batch_size (None): Number of samples per batch. If None, the batch size
                 is automatically calculated to be the number of samples per worker.
+            batch_method: Explicit method for batching samples. Supported
+              methods are 'id' and 'slice'
             progress (None): Whether to show progress bar. If None, uses the
                 default value ``fiftyone.config.show_progress_bars``. If "workers",
                 shows a progress bar for each worker.
@@ -3938,7 +3938,6 @@ class SampleCollection(object):
             skip_failures (False): whether to gracefully continue without
                 raising an error if the update function raises an
                 exception for a sample.
-            save (False): Whether to save any modified samples.
 
         Returns:
             A generator yielding processed sample results.
@@ -3958,12 +3957,11 @@ class SampleCollection(object):
     def update_samples(
         self,
         update_fcn,
-        *,
         num_workers=None,
-        batch_method=None,
         batch_size=None,
+        batch_method=None,
         progress=None,
-        parallelize_method=None,
+        parallelize_method="process",
         skip_failures=True,
     ):
         """
@@ -3972,10 +3970,10 @@ class SampleCollection(object):
         Args:
             update_fcn: Function to apply to each sample.
             num_workers (None): Number of workers.
-            batch_method: Explicit method for batching samples. Supported
-              methods are 'id' and 'slice'.
             batch_size (None): Number of samples per batch. If None, the batch size
                 is automatically calculated to be the number of samples per worker.
+            batch_method: Explicit method for batching samples. Supported
+              methods are 'id' and 'slice'.
             progress (None): Whether to show progress bar. If None, uses the
                 default value ``fiftyone.config.show_progress_bars``. If "workers",
                 shows a progress bar for each worker.
