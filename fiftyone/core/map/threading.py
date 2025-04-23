@@ -22,6 +22,8 @@ from typing import (
 )
 
 import bson
+from tqdm import tqdm
+
 import fiftyone.core.config as focc
 import fiftyone.core.map.batcher as fomb
 import fiftyone.core.map.mapper as fomm
@@ -185,7 +187,7 @@ class ThreadMapper(fomm.LocalMapper):
                         if not (evts := [e for e in evts if not e.is_set()]):
                             break
                     else:
-                        # An error was raised in the map_fcn for a sample.
+                        # An error was raised in the map_fcn for a sample
                         if err is not None:
                             # When skipping failures, simply yield the
                             # sample ID and the error.
@@ -202,13 +204,10 @@ class ThreadMapper(fomm.LocalMapper):
 
                 # It is possible to aggregate one error per worker. There
                 # might be a better way to handle this in the future but for
-                # now, return the first error seen.
+                # now, return the first error seen
                 if sample_errors:
                     yield sample_errors[0]
 
-            results = get_results(result_queue, worker_done_events)
-
-            # This is for the global progress bar.
             if progress is True:
                 with fou.ProgressBar(
                     total=sum(batch.total for batch in sample_batches),
@@ -220,4 +219,4 @@ class ThreadMapper(fomm.LocalMapper):
                         pb.update()
                         yield result
             else:
-                yield from results
+                yield from get_results(result_queue, worker_done_events)

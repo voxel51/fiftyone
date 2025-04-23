@@ -1395,11 +1395,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self,
         ftype=None,
         embedded_doc_type=None,
+        subfield=None,
         read_only=None,
         info_keys=None,
         created_after=None,
         include_private=False,
         flat=False,
+        unwind=True,
         mode=None,
     ):
         """Returns a schema dictionary describing the fields of the samples in
@@ -1413,6 +1415,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 iterable of types to which to restrict the returned schema.
                 Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            subfield (None): an optional subfield type or iterable of subfield
+                types to which to restrict the returned schema. Must be
+                subclass(es) of :class:`fiftyone.core.fields.Field`
             read_only (None): whether to restrict to (True) or exclude (False)
                 read-only fields. By default, all fields are included
             info_keys (None): an optional key or list of keys that must be in
@@ -1423,10 +1428,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
                 embedded document fields are included as top-level keys
+            unwind (True): whether to traverse into list fields. Only
+                applicable when ``flat=True``
             mode (None): whether to apply the above constraints before and/or
-                after flattening the schema. Only applicable when ``flat`` is
-                True. Supported values are ``("before", "after", "both")``.
-                The default is ``"after"``
+                after flattening the schema. Only applicable when ``flat=True``.
+                Supported values are ``("before", "after", "both")``. The
+                default is ``"after"``
 
         Returns:
             a dict mapping field names to :class:`fiftyone.core.fields.Field`
@@ -1435,11 +1442,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._sample_doc_cls.get_field_schema(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
+            subfield=subfield,
             read_only=read_only,
             info_keys=info_keys,
             created_after=created_after,
             include_private=include_private,
             flat=flat,
+            unwind=unwind,
             mode=mode,
         )
 
@@ -1447,11 +1456,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self,
         ftype=None,
         embedded_doc_type=None,
+        subfield=None,
         read_only=None,
         info_keys=None,
         created_after=None,
         include_private=False,
         flat=False,
+        unwind=True,
         mode=None,
     ):
         """Returns a schema dictionary describing the fields of the frames of
@@ -1467,6 +1478,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 iterable of types to which to restrict the returned schema.
                 Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            subfield (None): an optional subfield type or iterable of subfield
+                types to which to restrict the returned schema. Must be
+                subclass(es) of :class:`fiftyone.core.fields.Field`
             read_only (None): whether to restrict to (True) or exclude (False)
                 read-only fields. By default, all fields are included
             info_keys (None): an optional key or list of keys that must be in
@@ -1477,10 +1491,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
                 embedded document fields are included as top-level keys
+            unwind (True): whether to traverse into list fields. Only
+                applicable when ``flat=True``
             mode (None): whether to apply the above constraints before and/or
-                after flattening the schema. Only applicable when ``flat`` is
-                True. Supported values are ``("before", "after", "both")``.
-                The default is ``"after"``
+                after flattening the schema. Only applicable when ``flat=True``.
+                Supported values are ``("before", "after", "both")``. The
+                default is ``"after"``
 
         Returns:
             a dict mapping field names to :class:`fiftyone.core.fields.Field`
@@ -1492,11 +1508,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._frame_doc_cls.get_field_schema(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
+            subfield=subfield,
             read_only=read_only,
             info_keys=info_keys,
             created_after=created_after,
             include_private=include_private,
             flat=flat,
+            unwind=unwind,
             mode=mode,
         )
 
@@ -3279,7 +3297,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             copy=True,
         )
 
-        ids = self._add_samples_batch([sample])
+        _, ids = self._add_samples_batch([sample])
         return ids[0]
 
     def add_samples(
@@ -3340,8 +3358,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         sample_ids = []
         with batcher:
             for batch in batcher:
-                _ids = self._add_samples_batch(batch)
+                res, _ids = self._add_samples_batch(batch)
                 sample_ids.extend(_ids)
+                if hasattr(res, "nBytes") and hasattr(
+                    batcher, "set_encoding_ratio"
+                ):
+                    batcher.set_encoding_ratio(res.nBytes)
 
         return sample_ids
 
@@ -3404,12 +3426,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             samples_and_docs: a list of tuples of the form (sample, dict) where the dict
                 is the sample's backing document
         Returns:
-            a list of IDs of the samples that were added to this dataset
+            a tuple of pymongo.results.InsertManyResult and a list of IDs of the samples
+            that were added to this dataset
         """
         dicts = [doc for _, doc in samples_and_docs]
         try:
             # adds `_id` to each dict
-            self._sample_collection.insert_many(dicts)
+            res = self._sample_collection.insert_many(dicts)
         except BulkWriteError as bwe:
             msg = bwe.details["writeErrors"][0]["errmsg"]
             raise ValueError(msg) from bwe
@@ -3420,7 +3443,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             if sample.media_type == fom.VIDEO:
                 sample.frames.save()
 
-        return [str(d["_id"]) for d in dicts]
+        return (res, [str(d["_id"]) for d in dicts])
 
     def _upsert_samples(
         self,
@@ -5001,6 +5024,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._clear()
 
     def _clear(self, view=None, sample_ids=None):
+        now = datetime.utcnow()
+
         if view is not None:
             contains_videos = view._contains_videos(any_slice=True)
 
@@ -5018,15 +5043,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
             for _ids in fou.iter_batches(sample_ids, batch_size):
-                ops.append(
-                    DeleteMany(
-                        {"_id": {"$in": [ObjectId(_id) for _id in _ids]}}
-                    )
-                )
+                _oids = [ObjectId(_id) for _id in _ids]
+                ops.append(DeleteMany({"_id": {"$in": _oids}}))
         else:
             ops.append(DeleteMany({}))
 
         foo.bulk_write(ops, self._sample_collection)
+        self._update_last_modified_at(now)
+
         fos.Sample._reset_docs(
             self._sample_collection_name, sample_ids=sample_ids
         )
@@ -5102,6 +5126,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if not sample_collection._contains_videos(any_slice=True):
             return
 
+        now = datetime.utcnow()
+
         if self._is_clips:
             if sample_ids is not None:
                 view = self.select(sample_ids)
@@ -5112,22 +5138,41 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 frame_ids = view.values("frames.id", unwind=True)
 
         if frame_ids is not None:
-            ops = []
+            sample_ids = []
+            sample_ops = []
+            frame_ops = []
+
             batch_size = fou.recommend_batch_size_for_value(
                 ObjectId(), max_size=100000
             )
 
             for _ids in fou.iter_batches(frame_ids, batch_size):
-                ops.append(
-                    DeleteMany(
-                        {"_id": {"$in": [ObjectId(_id) for _id in _ids]}}
-                    )
+                _frame_ids = [ObjectId(_id) for _id in _ids]
+                _sample_ids = list(
+                    self._frame_collection.find(
+                        {"_id": {"$in": _frame_ids}}
+                    ).distinct("_sample_id")
                 )
 
-            foo.bulk_write(ops, self._frame_collection)
+                sample_ids.extend(_sample_ids)
+                sample_ops.append(
+                    UpdateMany(
+                        {"_id": {"$in": _sample_ids}},
+                        {"$set": {"last_modified_at": now}},
+                    )
+                )
+                frame_ops.append(DeleteMany({"_id": {"$in": _frame_ids}}))
+
+            foo.bulk_write(frame_ops, self._frame_collection)
+            foo.bulk_write(sample_ops, self._sample_collection)
+
+            fos.Sample._reload_docs(
+                self._sample_collection_name, sample_ids=sample_ids
+            )
             fofr.Frame._reset_docs_by_frame_id(
                 self._frame_collection_name, frame_ids
             )
+
             return
 
         if view is not None:
@@ -5136,26 +5181,34 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             sample_ids = view.values("id")
 
-        ops = []
+        sample_ops = []
+        frame_ops = []
         if sample_ids is not None:
             batch_size = fou.recommend_batch_size_for_value(
                 ObjectId(), max_size=100000
             )
 
             for _ids in fou.iter_batches(sample_ids, batch_size):
-                ops.append(
-                    DeleteMany(
-                        {
-                            "_sample_id": {
-                                "$in": [ObjectId(_id) for _id in _ids]
-                            }
-                        }
+                _oids = [ObjectId(_id) for _id in _ids]
+                sample_ops.append(
+                    UpdateMany(
+                        {"_id": {"$in": _oids}},
+                        {"$set": {"last_modified_at": now}},
                     )
                 )
+                frame_ops.append(DeleteMany({"_sample_id": {"$in": _oids}}))
         else:
-            ops.append(DeleteMany({}))
+            sample_ops.append(
+                UpdateMany({}, {"$set": {"last_modified_at": now}})
+            )
+            frame_ops.append(DeleteMany({}))
 
-        foo.bulk_write(ops, self._frame_collection)
+        foo.bulk_write(frame_ops, self._frame_collection)
+        foo.bulk_write(sample_ops, self._sample_collection)
+
+        fos.Sample._reload_docs(
+            self._sample_collection_name, sample_ids=sample_ids
+        )
         fofr.Frame._reset_docs(
             self._frame_collection_name, sample_ids=sample_ids
         )
@@ -5170,6 +5223,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if view is None:
             return
+
+        now = datetime.utcnow()
 
         if view.media_type == fom.GROUP:
             view = view.select_group_slices(media_type=fom.VIDEO)
@@ -5192,13 +5247,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 ["id", "frames.frame_number"]
             )
 
-        ops = []
+        sample_ops = []
+        frame_ops = []
         for sample_id, fns in zip(sample_ids, frame_numbers):
             # Note: this may fail if `fns` is too large (eg >100k frames), but
             # to address this we'd need to do something like lookup all frame
             # numbers on the dataset and reverse the $not in-memory, which
             # would be quite expensive...
-            ops.append(
+            frame_ops.append(
                 DeleteMany(
                     {
                         "_sample_id": ObjectId(sample_id),
@@ -5207,10 +5263,22 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 )
             )
 
-        if not ops:
+        if not frame_ops:
             return
 
-        foo.bulk_write(ops, self._frame_collection)
+        sample_ops.append(
+            UpdateMany(
+                {"_id": {"$in": [ObjectId(_id) for _id in set(sample_ids)]}},
+                {"$set": {"last_modified_at": now}},
+            )
+        )
+
+        foo.bulk_write(frame_ops, self._frame_collection)
+        foo.bulk_write(sample_ops, self._sample_collection)
+
+        fos.Sample._reload_docs(
+            self._sample_collection_name, sample_ids=sample_ids
+        )
         for sample_id, fns in zip(sample_ids, frame_numbers):
             fofr.Frame._reset_docs_for_sample(
                 self._frame_collection_name, sample_id, fns, keep=True
@@ -8144,6 +8212,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             return
 
         self._doc._update_last_loaded_at()
+
+    def _update_last_modified_at(self, last_modified_at=None):
+        self._doc._update_last_modified_at(last_modified_at=last_modified_at)
 
 
 def _get_random_characters(n):

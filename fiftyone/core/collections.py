@@ -1338,6 +1338,7 @@ class SampleCollection(object):
         path,
         ftype=None,
         embedded_doc_type=None,
+        subfield=None,
         read_only=None,
         include_private=False,
         leaf=False,
@@ -1347,11 +1348,15 @@ class SampleCollection(object):
 
         Args:
             path: a field path
-            ftype (None): an optional field type to enforce. Must be a subclass
-                of :class:`fiftyone.core.fields.Field`
-            embedded_doc_type (None): an optional embedded document type to
-                enforce. Must be a subclass of
+            ftype (None): an optional field type or iterable of types to
+                enforce. Must be subclass(es) of
+                :class:`fiftyone.core.fields.Field`
+            embedded_doc_type (None): an optional embedded document type or
+                iterable of types to enforce. Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            subfield (None): an optional subfield type or iterable of subfield
+                types to enforce. Must be subclass(es) of
+                :class:`fiftyone.core.fields.Field`
             read_only (None): whether to optionally enforce that the field is
                 read-only (True) or not read-only (False)
             include_private (False): whether to include fields that start with
@@ -1367,6 +1372,7 @@ class SampleCollection(object):
         fof.validate_constraints(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
+            subfield=subfield,
             read_only=read_only,
         )
 
@@ -1379,6 +1385,7 @@ class SampleCollection(object):
             path=path,
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
+            subfield=subfield,
             read_only=read_only,
         )
 
@@ -1445,11 +1452,13 @@ class SampleCollection(object):
         self,
         ftype=None,
         embedded_doc_type=None,
+        subfield=None,
         read_only=None,
         info_keys=None,
         created_after=None,
         include_private=False,
         flat=False,
+        unwind=True,
         mode=None,
     ):
         """Returns a schema dictionary describing the fields of the samples in
@@ -1463,6 +1472,9 @@ class SampleCollection(object):
                 iterable of types to which to restrict the returned schema.
                 Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            subfield (None): an optional subfield type or iterable of subfield
+                types to which to restrict the returned schema. Must be
+                subclass(es) of :class:`fiftyone.core.fields.Field`
             read_only (None): whether to restrict to (True) or exclude (False)
                 read-only fields. By default, all fields are included
             info_keys (None): an optional key or list of keys that must be in
@@ -1473,10 +1485,12 @@ class SampleCollection(object):
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
                 embedded document fields are included as top-level keys
+            unwind (True): whether to traverse into list fields. Only
+                applicable when ``flat=True``
             mode (None): whether to apply the above constraints before and/or
-                after flattening the schema. Only applicable when ``flat`` is
-                True. Supported values are ``("before", "after", "both")``.
-                The default is ``"after"``
+                after flattening the schema. Only applicable when ``flat=True``.
+                Supported values are ``("before", "after", "both")``. The
+                default is ``"after"``
 
         Returns:
             a dict mapping field names to :class:`fiftyone.core.fields.Field`
@@ -1488,11 +1502,13 @@ class SampleCollection(object):
         self,
         ftype=None,
         embedded_doc_type=None,
+        subfield=None,
         read_only=None,
         info_keys=None,
         created_after=None,
         include_private=False,
         flat=False,
+        unwind=True,
         mode=None,
     ):
         """Returns a schema dictionary describing the fields of the frames in
@@ -1507,6 +1523,9 @@ class SampleCollection(object):
             embedded_doc_type (None): an optional embedded document type to
                 which to restrict the returned schema. Must be a subclass of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            subfield (None): an optional subfield type or iterable of subfield
+                types to which to restrict the returned schema. Must be
+                subclass(es) of :class:`fiftyone.core.fields.Field`
             read_only (None): whether to restrict to (True) or exclude (False)
                 read-only fields. By default, all fields are included
             info_keys (None): an optional key or list of keys that must be in
@@ -1517,10 +1536,12 @@ class SampleCollection(object):
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
                 embedded document fields are included as top-level keys
+            unwind (True): whether to traverse into list fields. Only
+                applicable when ``flat=True``
             mode (None): whether to apply the above constraints before and/or
-                after flattening the schema. Only applicable when ``flat`` is
-                True. Supported values are ``("before", "after", "both")``.
-                The default is ``"after"``
+                after flattening the schema. Only applicable when ``flat=True``.
+                Supported values are ``("before", "after", "both")``. The
+                default is ``"after"``
 
         Returns:
             a dict mapping field names to :class:`fiftyone.core.fields.Field`
@@ -1820,23 +1841,36 @@ class SampleCollection(object):
                         "Frame field '%s' does not exist" % field_name
                     )
 
-    def validate_field_type(self, path, ftype=None, embedded_doc_type=None):
+    def validate_field_type(
+        self,
+        path,
+        ftype=None,
+        embedded_doc_type=None,
+        subfield=None,
+    ):
         """Validates that the collection has a field of the given type.
 
         Args:
             path: a field name or ``embedded.field.name``
-            ftype (None): an optional field type to enforce. Must be a subclass
-                of :class:`fiftyone.core.fields.Field`
+            ftype (None): an optional field type or iterable of types to
+                enforce. Must be subclass(es) of
+                :class:`fiftyone.core.fields.Field`
             embedded_doc_type (None): an optional embedded document type or
-                iterable of types to enforce. Must be a subclass(es) of
+                iterable of types to enforce. Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            subfield (None): an optional subfield type or iterable of subfield
+                types to enforce. Must be subclass(es) of
+                :class:`fiftyone.core.fields.Field`
 
         Raises:
             ValueError: if the field does not exist or does not have the
                 expected type
         """
         field = self.get_field(
-            path, ftype=ftype, embedded_doc_type=embedded_doc_type
+            path,
+            ftype=ftype,
+            embedded_doc_type=embedded_doc_type,
+            subfield=subfield,
         )
 
         if field is None:
@@ -10310,7 +10344,7 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement _add_view_stage()")
 
-    def aggregate(self, aggregations):
+    def aggregate(self, aggregations, _mongo=False):
         """Aggregates one or more
         :class:`fiftyone.core.aggregations.Aggregation` instances.
 
@@ -10362,6 +10396,9 @@ class SampleCollection(object):
         for idx, pipeline in facet_pipelines.items():
             idx_map[idx] = len(pipelines)
             pipelines.append(pipeline)
+
+        if _mongo:
+            return pipelines[0] if scalar_result else pipelines
 
         # Run all aggregations
         _results = foo.aggregate(self._dataset._sample_collection, pipelines)

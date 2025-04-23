@@ -22,7 +22,6 @@ from PIL import Image
 import eta.core.geometry as etag
 import eta.core.learning as etal
 import eta.core.utils as etau
-from torchvision.models.feature_extraction import create_feature_extractor
 
 import fiftyone.core.config as foc
 import fiftyone.core.labels as fol
@@ -36,11 +35,14 @@ import fiftyone.core.sample as fos
 import fiftyone.core.view as fov
 
 fou.ensure_torch()
+
 import torch
-import torchvision
-from torchvision.transforms import functional as F
 from torch.utils.data import Dataset
 import torch.distributed as dist
+
+import torchvision
+from torchvision.models.feature_extraction import create_feature_extractor
+from torchvision.transforms import functional as F
 
 
 logger = logging.getLogger(__name__)
@@ -1491,6 +1493,10 @@ class FiftyOneTorchDataset(Dataset):
         local_process_group (None) - only pass if running Distributed Data Parallel (DDP).
             The process group with each of the processes running the main train script
             on the machine this object is on.
+        skip_failures (False): whether to skip failures when loading samples.
+            If True, the dataset will return the exception that occurred in place of the
+            resulting get_item value.
+            If False, the code will fail normally.
 
     Notes:
         General:
@@ -1540,6 +1546,7 @@ class FiftyOneTorchDataset(Dataset):
         get_item: Callable[fos.SampleView, Any],
         cache_field_names: list[str] = None,
         local_process_group=None,
+        skip_failures=False,
     ):
         super().__init__()
 
@@ -1567,6 +1574,7 @@ class FiftyOneTorchDataset(Dataset):
             else None
         )
         self.get_item = get_item
+        self.skip_failures = skip_failures
 
         self.ids = self._load_field(samples, "id", local_process_group)
 
@@ -1671,6 +1679,14 @@ class FiftyOneTorchDataset(Dataset):
         else:
             self._samples = self._dataset
 
+    def _get_item(self, sample):
+        try:
+            return self.get_item(sample)
+        except Exception as e:
+            if not self.skip_failures:
+                raise e
+            return e
+
     def __getitem__(self, index):
 
         # if self._samples is None at this point then
@@ -1684,15 +1700,17 @@ class FiftyOneTorchDataset(Dataset):
 
         if self.cached_fields is None:
             # pylint: disable=unsubscriptable-object
-            sample = self._dataset[self.ids[index]]
-            return self.get_item(sample)
+            sample = fov.make_optimized_select_view(
+                self._samples, self.ids[index]
+            ).first()
+            return self._get_item(sample)
 
         else:
             sample_dict = {
                 fn: self.cached_fields[fn][index]
                 for fn in self.cache_field_names
             }
-            return self.get_item(sample_dict)
+            return self._get_item(sample_dict)
 
     def __getitems__(self, indices):
         if self._samples is None:
@@ -1701,8 +1719,10 @@ class FiftyOneTorchDataset(Dataset):
         if self.cached_fields is None:
             ids = [self.ids[i] for i in indices]
             # pylint: disable=unsubscriptable-object
-            samples = self._dataset.select(ids, ordered=True)
-            return [self.get_item(s) for s in samples]
+            samples = fov.make_optimized_select_view(
+                self._samples, ids, ordered=True
+            )
+            return [self._get_item(s) for s in samples]
 
         else:
             return [self.__getitem__(i) for i in indices]

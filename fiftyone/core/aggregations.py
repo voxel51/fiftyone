@@ -3114,6 +3114,10 @@ def _parse_field_and_expr(
         elif not context and not optimize:
             pipeline.append({"$project": {path: True}})
     elif unwind_list_fields:
+        if is_frame_field and unwind_list_fields[0] == "frames":
+            unwind_list_fields.pop(0)
+            pipeline.append({"$unwind": "$frames"})
+
         pipeline.append({"$project": {path: True}})
 
     (
