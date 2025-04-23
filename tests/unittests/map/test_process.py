@@ -108,7 +108,6 @@ class TestCreate:
         else:
             assert not recommend_process_pool_workers.called
 
-        # pylint:disable-next=protected-access
         assert mapper.num_workers == (
             max_workers if max_workers is not None else expected_workers
         )

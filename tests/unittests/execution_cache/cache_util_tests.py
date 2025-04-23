@@ -87,10 +87,8 @@ class TestCacheUtils(unittest.TestCase):
 
         func.link_to_dataset = True
 
-        self.assertEqual(
-            utils._get_function_id(func),
-            "util_tests.TestCacheUtils.test_get_store_for_func_with_dataset.<locals>.func",
-        )
+        expected = f"{func.__module__}.{func.__qualname__}"
+        self.assertEqual(utils._get_function_id(func), expected)
 
         utils._get_store_for_func(func, "mock-dataset-id")
         mock_create.assert_called_once_with(

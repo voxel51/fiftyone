@@ -78,8 +78,8 @@ class Mapper(abc.ABC):
         # pylint:disable-next=unused-argument
         config: focc.FiftyOneConfig,
         batch_cls: Type[fomb.SampleBatch],
-        # pylint:disable-next=unused-argument
         num_workers: Optional[int] = None,
+        # pylint:disable-next=unused-argument
         **__,
     ):
         """Create a new mapper instance"""

@@ -14,7 +14,6 @@ import unittest
 import warnings
 import tempfile
 import shutil
-import time
 
 import numpy as np
 

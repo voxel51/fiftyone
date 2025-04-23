@@ -49,6 +49,7 @@ class MapperFactory:
         **mapper_extra_kwargs,
     ) -> fomm.Mapper:
         """Create a mapper instance"""
+
         # Loading config dynamically here as it causes actual unit tests to fail
         # without importing the world and using globals.
         config = focc.load_config()

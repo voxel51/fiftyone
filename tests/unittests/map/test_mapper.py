@@ -115,6 +115,7 @@ class TestMapSamples:
     def mapper(self, batcher, num_workers):
         """Mapper instance"""
         mapper = Mapper(batcher, num_workers)
+
         # pylint:disable-next=protected-access
         mapper._map_samples_multiple_workers = mock.MagicMock()
         return mapper
@@ -176,6 +177,7 @@ class TestMapSamples:
 
         for idx, err in errors.items():
             if num_workers == 1:
+
                 map_fcn_side_effect[idx] = err
             else:
                 map_samples_multi_worker_val[idx][1] = err
