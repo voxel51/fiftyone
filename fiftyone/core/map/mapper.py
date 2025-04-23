@@ -114,7 +114,7 @@ class Mapper(abc.ABC):
               map.
             map_fcn (Callable[[T], R]): The map function to apply to each
               sample.
-            progress (Union[bool, Literal[&quot;workers&quot;]]): Whether or
+            progress (Union[bool, Literal[""workers""]]): Whether or
               not and how to render progress.
             save (bool, optional): Whether to save mutated samples mutated in
               the map function. Defaults to False.
@@ -156,7 +156,7 @@ class Mapper(abc.ABC):
               map.
             map_fcn (Callable[[T], R]): The map function to apply to each
               sample.
-            progress (Union[bool, Literal[&quot;workers&quot;]]): Whether or
+            progress (Union[bool, Literal[""workers""]]): Whether or
               not and how to render progress.
             save (bool, optional): Whether to save mutated samples mutated in
               the map function. Defaults to False.
@@ -204,7 +204,7 @@ class LocalMapper(Mapper, abc.ABC):
               map.
             map_fcn (Callable[[T], R]): The map function to apply to each
               sample.
-            progress (Union[bool, Literal[&quot;workers&quot;]]): Whether or
+            progress (Union[bool, Literal[""workers""]]): Whether or
               not and how to render progress.
             save (bool, optional): Whether to save mutated samples mutated in
               the map function. Defaults to False.
