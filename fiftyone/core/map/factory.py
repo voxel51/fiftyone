@@ -67,9 +67,7 @@ class MapperFactory:
         # matter what.
         if mapper_key is None:
             # If the default parallelization method is set in the config, use
-            # it no matter what for now . There was talk about how this
-            # behavior could change, (log a warning, explicitly forbid, etc).
-            # Once a determination has been made make the changes here.
+            # it no matter what.
             mapper_key = config.default_parallelization_method
 
             # If no the parallelization method is not explicitly provided and
