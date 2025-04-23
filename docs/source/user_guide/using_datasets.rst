@@ -5644,10 +5644,10 @@ to manipulate the fields or subfields of embedded documents in your dataset:
     # Delete an embedded field
     dataset.delete_sample_field("predictions.detections.still_label")
 
-.. _efficient-batch-edits:
+.. _save-contexts:
 
-Efficient batch edits
----------------------
+Save contexts
+-------------
 
 You are always free to perform arbitrary edits to a |Dataset| by iterating over
 its contents and editing the samples directly:
@@ -5774,6 +5774,11 @@ You can configure the number of workers that
 :meth:`update_samples() <fiftyone.core.collections.SampleCollection.update_samples>`
 uses in a variety of ways:
 
+-   Configure the default number of workers used by all
+    :meth:`update_samples() <fiftyone.core.collections.SampleCollection.update_samples>`
+    calls by setting the ``default_map_workers`` value in your
+    :ref:`FiftyOne config <configuring-fiftyone>`
+
 -   Manually configure the number of workers for a particular
     :meth:`update_samples() <fiftyone.core.collections.SampleCollection.update_samples>`
     call by passing the ``workers`` parameter
@@ -5787,8 +5792,8 @@ uses in a variety of ways:
 
 .. note::
 
-    You can set ``workers<=1`` to disable the
-    use of multithreading and multiprocessing pools in
+    You can set ``default_map_workers<=1`` or ``num_workers<=1`` to disable the
+    use of multiprocessing pools in
     :meth:`update_samples() <fiftyone.core.collections.SampleCollection.update_samples>`.
 
 -   The ``batch_method`` parameter controls how samples are grouped into batches for processing. When set to "slice",
@@ -5800,6 +5805,17 @@ uses in a variety of ways:
     will utilize a multiprocessing pool to parallelize the work across a number of workers. When set to "thread", the backend
     will utilize a multithreading pool instead.
 
+-   By default,
+    :meth:`update_samples() <fiftyone.core.collections.SampleCollection.update_samples>`
+    evenly distributes samples to all workers in a single shard per worker.
+    However, you can pass the ``shard_size`` parameter to customize the number of
+    samples sent to each worker at a time:
+
+.. code-block:: python
+    :linenos:
+
+    view.update_samples(update_fcn, shard_size=50, num_workers=4)
+
 You can also pass `progress="workers"` to
 :meth:`update_samples() <fiftyone.core.collections.SampleCollection.update_samples>`
 to render progress bar(s) for each worker:
@@ -5807,7 +5823,7 @@ to render progress bar(s) for each worker:
 .. code-block:: python
     :linenos:
 
-    view.update_samples(update_fcn, workers=16, progress="workers")
+    view.update_samples(update_fcn, num_workers=16, progress="workers")
 
 .. code-block:: text
 
@@ -5897,9 +5913,14 @@ You can configure the number of workers that
 :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
 uses in a variety of ways:
 
+-   Configure the default number of workers used by all
+    :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
+    calls by setting the ``default_map_workers`` value in your
+    :ref:`FiftyOne config <configuring-fiftyone>`.
+
 -   Manually configure the number of workers for a particular
     :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
-    call by passing the ``workers`` parameter.
+    call by passing the ``num_workers`` parameter.
 
 -   If neither of the above settings are applied,
     :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
@@ -5910,8 +5931,8 @@ uses in a variety of ways:
 
 .. note::
 
-    You can set ``workers<=1`` to disable the
-    use of multithreading and multiprocessing pools in
+    You can set ``default_map_workers<=1`` or ``num_workers<=1`` to disable the
+    use of multiprocessing pools in
     :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`.
 
 -   The ``batch_method`` parameter controls how samples are grouped into batches for processing. When set to "slice",
@@ -5922,6 +5943,17 @@ uses in a variety of ways:
 -   The ``parallelize_method`` parameter determines how the operation is parallelized. When set to "process", backend
     will utilize multiprocessing pool to parallelize the work across a number of workers. When set to "thread", backend
     will utilize multithreading pool instead.
+
+-   By default,
+    :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
+    evenly distributes samples to all workers in a single shard per worker.
+    However, you can pass the ``shard_size`` parameter to customize the number of
+    samples sent to each worker at a time:
+
+.. code-block:: python
+    :linenos:
+
+    view.map_samples(map_fcn, shard_size=50, num_workers=4)
 
 You can also pass `progress="workers"` to
 :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
