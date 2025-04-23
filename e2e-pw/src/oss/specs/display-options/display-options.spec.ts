@@ -47,7 +47,6 @@ test.describe.serial("Display Options", () => {
     await panel.bringPanelToForeground("Samples");
     await actionsRow.toggleDisplayOptions();
     await actionsRow.displayActions.setSidebarStatisticsMode("group");
-    await actionsRow.toggleDisplayOptions();
     await panel.bringPanelToForeground("Histograms");
 
     await histogram.assert.isLoaded();
