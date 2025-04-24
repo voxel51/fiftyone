@@ -13,6 +13,7 @@ import { TooltipInfo } from "./TooltipInfo";
 import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
 import { modalContext } from "./modal-context";
 import { useModalSidebarRenderEntry } from "./use-sidebar-render-entry";
+import { selectiveRenderingEventBus } from "@fiftyone/looker";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -108,6 +109,8 @@ const Modal = () => {
           "close",
           modalCloseHandler
         );
+
+        selectiveRenderingEventBus.removeAllListeners();
       },
     [clearModal, jsonPanel, helpPanel]
   );
