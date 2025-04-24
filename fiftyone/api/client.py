@@ -292,16 +292,11 @@ class Client:
         timeout = timeout or self._timeout
         url = posixpath.join(self.__base_url, url_path)
 
-        # Use data generator factory to get a data generator.
-        #   Need this so that we get a fresh generator if we retry via backoff.
-        if data_generator_factory is not None:
-            data_generator = data_generator_factory()
-            request_kwargs["data"] = data_generator
-
         # If the request is not idempotent, don't automatically retry on read timeouts
         # as the operation may have already been applied
         max_tries = 5 if is_idempotent else 1
-        max_time = timeout * max_tries
+        connect_timeout = timeout[0] if isinstance(timeout, tuple) else timeout
+        max_time = connect_timeout * max_tries
 
         # Using nested function to pass variables to the decorator
         @backoff.on_exception(
@@ -322,20 +317,28 @@ class Client:
             max_tries=max_tries,
         )
         def _request_with_backoff(_method, _url, _timeout, **_request_kwargs):
-            return self._session.request(
+            # Use data generator factory to get a data generator.
+            #   Need this so that we get a fresh generator if we retry via backoff.
+            if data_generator_factory is not None:
+                data_generator = data_generator_factory()
+                _request_kwargs["data"] = data_generator
+
+            response = self._session.request(
                 _method, url=_url, timeout=_timeout, **_request_kwargs
             )
+
+            if response.status_code == 401:
+                raise errors.APIAuthenticationError(response.text)
+
+            if response.status_code == 403:
+                raise errors.APIForbiddenError(response.text)
+
+            response.raise_for_status()
+            return response
 
         response = _request_with_backoff(
             method, url, timeout, **request_kwargs
         )
-        if response.status_code == 401:
-            raise errors.APIAuthenticationError(response.text)
-
-        if response.status_code == 403:
-            raise errors.APIForbiddenError(response.text)
-
-        response.raise_for_status()
 
         return response
 
