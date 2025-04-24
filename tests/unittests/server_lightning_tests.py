@@ -535,7 +535,6 @@ class TestFloatLightningQueries(unittest.IsolatedAsyncioTestCase):
         """
 
         result = await _execute(query, dataset, fo.FloatField, keys)
-
         self.assertListEqual(
             result.data["lightning"],
             [
@@ -1173,7 +1172,7 @@ class TestGroupDatasetLightningQueries(unittest.IsolatedAsyncioTestCase):
                 },
                 {
                     "path": "classifications.classifications.label",
-                    "values": ["one", "two"],
+                    "values": ["one"],
                 },
                 {"path": "numeric", "min": 1.0, "max": 1.0},
                 {"path": "string", "values": ["one"]},
@@ -1205,7 +1204,7 @@ class TestGroupDatasetLightningQueries(unittest.IsolatedAsyncioTestCase):
                 },
                 {
                     "path": "classifications.classifications.label",
-                    "values": ["one", "two"],
+                    "values": ["two"],
                 },
                 {"path": "numeric", "min": 2.0, "max": 2.0},
                 {"path": "string", "values": ["two"]},

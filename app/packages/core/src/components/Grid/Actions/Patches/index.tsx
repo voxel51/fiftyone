@@ -1,8 +1,9 @@
-import { Loading, PillButton } from "@fiftyone/components";
+import { PillButton } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { FlipToBack } from "@mui/icons-material";
 import React, { useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
+import Loading from "../../../Actions/Loading";
 import type { ActionProps } from "../../../Actions/types";
 import { ActionDiv, getStringAndNumberProps } from "../../../Actions/utils";
 import Patches, { patchesFields } from "./Patches";

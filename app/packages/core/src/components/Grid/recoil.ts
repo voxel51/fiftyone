@@ -13,6 +13,42 @@ const convertDefault = (defaultRange) => {
   return -(14 - (defaultRange / 10) * 14 + 1);
 };
 
+const sortFieldsMap = selector({
+  key: "sortFieldsMap",
+  get: ({ get }) => {
+    const f = Object.keys(get(fos.filters) ?? {});
+    const valid = get(fos.validIndexes(new Set(f)));
+
+    const map = {};
+    for (const [name, dbField] of [...valid.available, ...valid.trailing]) {
+      const field = get(fos.fieldPath(dbField));
+      if (!map[field]) {
+        map[field] = [];
+      }
+
+      map[field].push(name);
+    }
+
+    return map;
+  },
+});
+
+const gridIndex = selector({
+  key: "gridIndex",
+  get: ({ get }) => {
+    if (!get(fos.queryPerformance)) {
+      return undefined;
+    }
+
+    const field = get(fos.gridSortBy)?.field;
+    if (!field) return get(fos.activeIndex);
+
+    const map = get(sortFieldsMap);
+    if (!map[field]) return get(fos.activeIndex);
+    return map[field][0];
+  },
+});
+
 export const defaultGridZoom = selector<number>({
   key: "defaultGridZoom",
   get: ({ get }) => get(fos.config)?.gridZoom,
@@ -143,12 +179,29 @@ export const maxGridItemsSizeBytes = atom({
 export const pageParameters = selector({
   key: "paginateGridVariables",
   get: ({ get }) => {
-    const slice = get(fos.groupSlice);
     const dataset = get(fos.datasetName);
 
     if (!dataset) {
       throw new Error("dataset is not defined");
     }
+
+    const slice = get(fos.groupSlice);
+    const queryPerformance = get(fos.queryPerformance);
+
+    const extendedStages = queryPerformance
+      ? get(fos.extendedStagesNoSort)
+      : get(fos.extendedStages);
+
+    const extra =
+      queryPerformance &&
+      !extendedStages["fiftyone.core.stages.SortBySimilarity"]
+        ? {
+            sortBy: get(fos.gridSortBy)?.field,
+            desc: get(fos.gridSortBy)?.descending,
+            hint: get(gridIndex),
+          }
+        : {};
+
     const params = {
       dataset,
       view: get(fos.view),
@@ -161,8 +214,10 @@ export const pageParameters = selector({
             }
           : null,
       },
-      extendedStages: get(fos.extendedStages),
+      extendedStages,
+      ...extra,
     };
+
     return (page: number, pageSize: number) => {
       return {
         ...params,
