@@ -99,6 +99,7 @@ class Mapper(abc.ABC):
         self,
         sample_collection: SampleCollection[T],
         map_fcn: Callable[[T], R],
+        *,
         progress: Optional[Union[bool, Literal["workers"]]],
         save: bool,
         skip_failures: bool,

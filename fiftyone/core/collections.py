@@ -3839,9 +3839,6 @@ class SampleCollection(object):
         mask_targets=None,
         method=None,
         progress=None,
-        workers=1,
-        batch_method="id",
-        parallelize_method=None,
         **kwargs,
     ):
         """Evaluates the specified semantic segmentation masks in this
@@ -3898,11 +3895,6 @@ class SampleCollection(object):
             progress (None): whether to render a progress bar (True/False), use
                 the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
-            workers (1): the number of processes to use for parallel
-                processing. Set to a value greater than 1 to enable parallel
-                processing
-            batch_method ("id"): the method to use to shard the dataset
-            parallelize_method (None): the parallelize_method to use for multiprocessing
             **kwargs: optional keyword arguments for the constructor of the
                 :class:`fiftyone.utils.eval.segmentation.SegmentationEvaluationConfig`
                 being used
@@ -3918,9 +3910,6 @@ class SampleCollection(object):
             mask_targets=mask_targets,
             method=method,
             progress=progress,
-            workers=workers,
-            batch_method=batch_method,
-            parallelize_method=parallelize_method,
             **kwargs,
         )
 
@@ -3986,6 +3975,7 @@ class SampleCollection(object):
                 is automatically calculated to be the number of samples per worker.
             batch_method ("id"): Explicit method for batching samples. Supported
               methods are 'id' and 'slice'
+
             progress (None): Whether to show progress bar. If None, uses the
                 default value ``fiftyone.config.show_progress_bars``. If "workers",
                 shows a progress bar for each worker.
@@ -3994,6 +3984,7 @@ class SampleCollection(object):
             skip_failures (False): whether to gracefully continue without
                 raising an error if the update function raises an
                 exception for a sample.
+
 
         Returns:
             A generator yielding processed sample results.
