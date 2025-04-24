@@ -54,8 +54,6 @@ foos = fou.lazy_import("fiftyone.operators.store")
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_INDEXED_FIELDS = ["id", "created_at", "last_modified_at"]
-
 
 def _make_registrar():
     registry = {}
@@ -9999,15 +9997,21 @@ class SampleCollection(object):
     def _get_default_indexes(self, frames=False):
         if frames:
             if self._has_frame_fields():
-                return _DEFAULT_INDEXED_FIELDS + [
+                return [
+                    "id",
+                    "created_at",
+                    "last_modified_at",
                     "_sample_id_1_frame_number_1",
                 ]
 
             return []
 
         if self._is_patches:
-            names = _DEFAULT_INDEXED_FIELDS + [
+            names = [
+                "id",
                 "filepath",
+                "created_at",
+                "last_modified_at",
                 "sample_id",
             ]
             if self._is_frames:
@@ -10016,28 +10020,40 @@ class SampleCollection(object):
             return names
 
         if self._is_frames:
-            return _DEFAULT_INDEXED_FIELDS + [
+            return [
+                "id",
                 "filepath",
+                "created_at",
+                "last_modified_at",
                 "sample_id",
                 "_sample_id_1_frame_number_1",
             ]
 
         if self._is_clips:
-            return _DEFAULT_INDEXED_FIELDS + [
+            return [
+                "id",
                 "filepath",
+                "created_at",
+                "last_modified_at",
                 "sample_id",
             ]
 
         if self.media_type == fom.GROUP:
             gf = self.group_field
-            return _DEFAULT_INDEXED_FIELDS + [
+            return [
+                "id",
                 "filepath",
+                "created_at",
+                "last_modified_at",
                 gf + ".id",
                 gf + ".name",
             ]
 
-        return _DEFAULT_INDEXED_FIELDS + [
+        return [
+            "id",
             "filepath",
+            "created_at",
+            "last_modified_at",
         ]
 
     def reload(self):
