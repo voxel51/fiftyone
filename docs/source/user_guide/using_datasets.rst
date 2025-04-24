@@ -5808,13 +5808,13 @@ uses in a variety of ways:
 -   By default,
     :meth:`update_samples() <fiftyone.core.collections.SampleCollection.update_samples>`
     evenly distributes samples to all workers in a single shard per worker.
-    However, you can pass the ``shard_size`` parameter to customize the number of
+    However, you can pass the ``batch_size`` parameter to customize the number of
     samples sent to each worker at a time:
 
 .. code-block:: python
     :linenos:
 
-    view.update_samples(update_fcn, shard_size=50, num_workers=4)
+    view.update_samples(update_fcn, batch_size=50, num_workers=4)
 
 You can also pass `progress="workers"` to
 :meth:`update_samples() <fiftyone.core.collections.SampleCollection.update_samples>`
@@ -5947,13 +5947,13 @@ uses in a variety of ways:
 -   By default,
     :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
     evenly distributes samples to all workers in a single shard per worker.
-    However, you can pass the ``shard_size`` parameter to customize the number of
+    However, you can pass the ``batch_size`` parameter to customize the number of
     samples sent to each worker at a time:
 
 .. code-block:: python
     :linenos:
 
-    view.map_samples(map_fcn, shard_size=50, num_workers=4)
+    view.map_samples(map_fcn, batch_size=50, num_workers=4)
 
 You can also pass `progress="workers"` to
 :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
@@ -5962,7 +5962,7 @@ to render progress bar(s) for each worker:
 .. code-block:: python
     :linenos:
 
-    view.map_samples(map_fcn, workers=16, progress="workers")
+    view.map_samples(map_fcn, num_workers=16, progress="workers")
 
 .. code-block:: text
 
