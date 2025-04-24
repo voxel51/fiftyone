@@ -199,27 +199,6 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
     settings,
   ]);
 
-  const allLabels = useMemo(() => {
-    const allLabels = [];
-
-    for (const overlay of rawOverlays) {
-      if (
-        overlay._cls === "Detection" ||
-        overlay._cls === "Detections" ||
-        overlay._cls === "Polyline"
-      ) {
-        allLabels.push({
-          labelId: overlay._id,
-          field: overlay.path,
-          sampleId: overlay.sampleId,
-          instanceId: overlay.instance?._id,
-        } as LabelData);
-      }
-    }
-
-    return allLabels;
-  }, [rawOverlays]);
-
   const getOnShiftClickLabelCallback = useOnShiftClickLabel();
 
   useEffect(() => {
