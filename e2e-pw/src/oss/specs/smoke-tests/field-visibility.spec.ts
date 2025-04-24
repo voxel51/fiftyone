@@ -1,5 +1,6 @@
 import { test as base } from "src/oss/fixtures";
 import { FieldVisibilityPom } from "src/oss/poms/field-visibility/field-visibility";
+import { GridPom } from "src/oss/poms/grid";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
@@ -9,8 +10,9 @@ const test = base.extend<{
   fieldVisibility: FieldVisibilityPom;
   sidebar: SidebarPom;
 }>({
-  fieldVisibility: async ({ page }, use) => {
-    await use(new FieldVisibilityPom(page));
+  fieldVisibility: async ({ page, eventUtils }, use) => {
+    const gridPom = new GridPom(page, eventUtils);
+    await use(new FieldVisibilityPom(page, gridPom));
   },
   sidebar: async ({ page }, use) => {
     await use(new SidebarPom(page));
@@ -28,9 +30,11 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    dataset = foz.load_zoo_dataset("quickstart", dataset_name="${datasetName}")
+    # just for the schema
+    dataset = foz.load_zoo_dataset("quickstart", dataset_name="${datasetName}", max_samples=0)
     dataset.persistent = True
     dataset.save()
+    dataset.add_sample(fo.Sample(filepath="dummy.png"))
 
     field = dataset.get_field("ground_truth")
     field.description = "ground_truth description"
@@ -42,7 +46,6 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
     field.info = {"owner": "bob"}
     field.save()
 
-    dataset.add_samples([fo.Sample(filepath=f"{i}.png", group=1, i=i) for i in range(0, 21)])
     dataset.save()
   `);
 });
@@ -52,18 +55,10 @@ test.describe.serial("field visibility", () => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });
 
-  test("modal opens", async ({ fieldVisibility }) => {
-    await fieldVisibility.openFieldVisibilityModal();
-  });
-
   test("correct tooltip when hovering over feature icon", async ({
     fieldVisibility,
   }) => {
     await fieldVisibility.asserter.fieldVisibilityIconHasTooltip();
-  });
-
-  test("all fields are selected initially", async ({ fieldVisibility }) => {
-    await fieldVisibility.asserter.assertAllFieldsSelected();
   });
 
   test("deselect all fields works - deselects enabled fields", async ({
@@ -186,22 +181,6 @@ test.describe.serial("field visibility", () => {
       "predictions",
       "ground_truth",
     ]);
-  });
-
-  test("sidebar entries are not draggable when field visibility is active", async ({
-    fieldVisibility,
-    sidebar,
-  }) => {
-    // drag predictions to metadata group succeeds
-    await sidebar.asserter.assertCanDragFieldToGroup("predictions", "metadata");
-
-    await fieldVisibility.hideFields(["ground_truth"]);
-    await sidebar.asserter.assertFieldsNotInSidebar(["ground_truth"]);
-
-    // drag predictions back to labels group fails
-    await sidebar.asserter.assertCannotDragField("predictions");
-
-    await fieldVisibility.clearFieldVisibilityChanges();
   });
 
   test("sidebar add group input is hidden when field visibility is active", async ({

@@ -6,25 +6,24 @@ Labels stored in dataset samples.
 |
 """
 
-from functools import partial
 import itertools
 import warnings
+from functools import partial
 
-from bson import ObjectId
 import cv2
+import eta.core.frameutils as etaf
+import eta.core.image as etai
+import eta.core.utils as etau
 import numpy as np
 import scipy.ndimage as spn
 import skimage.measure as skm
 import skimage.segmentation as sks
+from bson import ObjectId
 
-import eta.core.frameutils as etaf
-import eta.core.image as etai
-import eta.core.utils as etau
-
-from fiftyone.core.odm import DynamicEmbeddedDocument
 import fiftyone.core.fields as fof
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
+from fiftyone.core.odm import DynamicEmbeddedDocument, EmbeddedDocument
 
 foue = fou.lazy_import("fiftyone.utils.eta")
 foug = fou.lazy_import("fiftyone.utils.geojson")
@@ -344,6 +343,64 @@ class _HasID(Label):
         self.id = str(value)
 
 
+class Instance(EmbeddedDocument):
+    """A label instance.
+
+    Args:
+        id (None): the label instance ID
+    """
+
+    id = fof.ObjectIdField(default=lambda: str(ObjectId()), db_field="_id")
+
+    @property
+    def _id(self):
+        return ObjectId(self.id)
+
+    @_id.setter
+    def _id(self, value):
+        if not isinstance(value, ObjectId) and etau.is_str(value):
+            value = ObjectId(value)
+
+        self.id = value
+
+
+class _HasInstance(Label):
+    """Mixin for :class:`Label` classes that contain an instance configuration
+    via an ``instance`` attribute.
+
+    Contrary to the ``id`` field, which is unique to each label, the
+    ``instance`` field is unique to each label instance either temporally or
+    across different modalities, allowing you to identify the same logical label
+    across different samples.
+    """
+
+    instance = fof.EagerValidatingEmbeddedDocumentField(Instance)
+
+    @property
+    def instance_id(self):
+        """The ID of the label instance."""
+        if self.instance is None:
+            return None
+
+        return self.instance.id
+
+    @instance_id.setter
+    def instance_id(self, value):
+        if self.instance is None:
+            self.instance = Instance()
+
+        if not isinstance(value, ObjectId):
+            if etau.is_str(value):
+                value = ObjectId(value)
+            else:
+                raise ValueError(
+                    "Invalid instance ID '%s'; must be an ObjectId or string "
+                    "representation thereof" % value
+                )
+
+        self.instance.id = value
+
+
 class _HasLabelList(object):
     """Mixin for :class:`Label` classes that contain a list of :class:`Label`
     instances.
@@ -395,7 +452,7 @@ class Classifications(_HasLabelList, Label):
     logits = fof.VectorField()
 
 
-class Detection(_HasAttributesDict, _HasID, _HasMedia, Label):
+class Detection(_HasAttributesDict, _HasID, _HasMedia, _HasInstance, Label):
     """An object detection.
 
     Args:
@@ -413,6 +470,8 @@ class Detection(_HasAttributesDict, _HasID, _HasMedia, Label):
             non-zero values represent the instance's extent
         confidence (None): a confidence in ``[0, 1]`` for the detection
         index (None): an index for the object
+        instance (None): an instance of :class:`Instance` to link this
+            detection label to other similar labels
         attributes ({}): a dict mapping attribute names to :class:`Attribute`
             instances
     """
@@ -667,7 +726,7 @@ class Detections(_HasLabelList, Label):
         return Segmentation(mask=mask)
 
 
-class Polyline(_HasAttributesDict, _HasID, Label):
+class Polyline(_HasAttributesDict, _HasID, _HasInstance, Label):
     """A set of semantically related polylines or polygons.
 
     Args:
@@ -677,6 +736,8 @@ class Polyline(_HasAttributesDict, _HasID, Label):
             polyline
         confidence (None): a confidence in ``[0, 1]`` for the polyline
         index (None): an index for the polyline
+        instance (None): an instance of :class:`Instance` to link this
+            polyline label to other similar labels
         closed (False): whether the shapes are closed, i.e., and edge should
             be drawn from the last vertex to the first vertex of each shape
         filled (False): whether the polyline represents polygons, i.e., shapes
@@ -1012,7 +1073,7 @@ class Polylines(_HasLabelList, Label):
         return Segmentation(mask=mask)
 
 
-class Keypoint(_HasAttributesDict, _HasID, Label):
+class Keypoint(_HasAttributesDict, _HasID, _HasInstance, Label):
     """A list of keypoints in an image.
 
     Args:
@@ -1020,6 +1081,8 @@ class Keypoint(_HasAttributesDict, _HasID, Label):
         points (None): a list of ``(x, y)`` keypoints in ``[0, 1] x [0, 1]``
         confidence (None): a list of confidences in ``[0, 1]`` for each point
         index (None): an index for the keypoints
+        instance (None): an instance of :class:`Instance` to link this
+            keypoint label to other similar labels
         attributes ({}): a dict mapping attribute names to :class:`Attribute`
             instances
     """

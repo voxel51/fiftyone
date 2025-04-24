@@ -3,7 +3,8 @@
  */
 import { NONFINITES } from "@fiftyone/utilities";
 
-import { INFO_COLOR } from "../constants";
+import { isHoveringParticularLabelWithInstanceConfig } from "@fiftyone/state/src/jotai";
+import { INFO_COLOR, SELECTED_AND_HOVERED_COLOR } from "../constants";
 import { BaseState, BoundingBox, Coordinates, NONFINITE } from "../state";
 import { distanceFromLineSegment } from "../util";
 import { RENDER_STATUS_PAINTED, RENDER_STATUS_PENDING } from "../worker/shared";
@@ -33,16 +34,6 @@ export default class DetectionOverlay<
 > extends CoordinateOverlay<State, DetectionLabel> {
   private is3D: boolean;
   private labelBoundingBox: BoundingBox;
-
-  constructor(field, label) {
-    super(field, label);
-
-    if (this.label.location && this.label.dimensions) {
-      this.is3D = true;
-    } else {
-      this.is3D = false;
-    }
-  }
 
   containsPoint(state: Readonly<State>): CONTAINS {
     if ((this.label.mask || this.label.mask_path) && !this.label.mask?.data) {
@@ -79,6 +70,19 @@ export default class DetectionOverlay<
       return;
     }
 
+    let doesInstanceMatch = false;
+
+    if (
+      this.label.instance?._id &&
+      isHoveringParticularLabelWithInstanceConfig(this.label.instance._id)
+    ) {
+      doesInstanceMatch = true;
+      ctx.strokeStyle = INFO_COLOR;
+      ctx.lineWidth = 2;
+    }
+
+    const isSelected = this.isSelected(state);
+
     if (
       this.label.mask?.bitmap?.width &&
       this.label._renderStatus === RENDER_STATUS_PAINTED
@@ -88,13 +92,18 @@ export default class DetectionOverlay<
 
     !state.config.thumbnail && this.drawLabelText(ctx, state);
 
+    const strokeColor =
+      !isSelected && doesInstanceMatch ? INFO_COLOR : this.getColor(state);
+
     if (this.is3D && this.label.dimensions && this.label.location) {
-      this.fillRectFor3d(ctx, state, this.getColor(state));
+      this.fillRectFor3d(ctx, state, strokeColor);
     } else {
-      this.strokeRect(ctx, state, this.getColor(state));
+      this.strokeRect(ctx, state, strokeColor);
     }
 
-    if (this.isSelected(state)) {
+    if (doesInstanceMatch && isSelected) {
+      this.strokeRect(ctx, state, SELECTED_AND_HOVERED_COLOR, state.dashLength);
+    } else if (isSelected) {
       this.strokeRect(ctx, state, INFO_COLOR, state.dashLength);
     }
   }
