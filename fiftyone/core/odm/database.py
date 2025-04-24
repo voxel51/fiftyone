@@ -886,8 +886,12 @@ def bulk_write(ops, coll, ordered=False, batcher=None, progress=False):
         progress (False): whether to render a progress bar (True/False), use
             the default value ``fiftyone.config.show_progress_bars`` (None), or
             a progress callback function to invoke instead
+
+    Returns:
+        A list of :class:`pymongo.results.BulkWriteResult` objects
     """
     batcher = fou.get_default_batcher(ops, batcher=batcher, progress=progress)
+    results = []
 
     try:
         with batcher:
@@ -900,10 +904,12 @@ def bulk_write(ops, coll, ordered=False, batcher=None, progress=False):
                     batcher.set_encoding_ratio(
                         res.bulk_api_result.get("nBytes")
                     )
+                results.append(res)
 
     except BulkWriteError as bwe:
         msg = bwe.details["writeErrors"][0]["errmsg"]
         raise ValueError(msg) from bwe
+    return results
 
 
 def list_datasets():

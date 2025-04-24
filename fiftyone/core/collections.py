@@ -123,6 +123,7 @@ class SaveContext(object):
         self._batching_strategy = batching_strategy
         self._curr_batch_size = None
         self._curr_batch_size_bytes = None
+        self._encoding_ratio = 1.0
         self._last_time = None
 
     def __enter__(self):
@@ -182,7 +183,10 @@ class SaveContext(object):
                     len(str(op)) for op in frame_ops
                 )
 
-            if self._curr_batch_size_bytes >= self.batch_size:
+            if (
+                self._curr_batch_size_bytes
+                >= self.batch_size * self._encoding_ratio
+            ):
                 self._save_batch()
                 self._curr_batch_size_bytes = 0
         elif self._batching_strategy == "latency":
@@ -191,13 +195,29 @@ class SaveContext(object):
                 self._last_time = timeit.default_timer()
 
     def _save_batch(self):
+        encoded_size = -1
         if self._sample_ops:
-            foo.bulk_write(self._sample_ops, self._sample_coll, ordered=False)
+            res = foo.bulk_write(
+                self._sample_ops,
+                self._sample_coll,
+                ordered=False,
+                batcher=False,
+            )[0]
+            encoded_size += res.bulk_api_result.get("nBytes", 0)
             self._sample_ops.clear()
 
         if self._frame_ops:
-            foo.bulk_write(self._frame_ops, self._frame_coll, ordered=False)
+            res = foo.bulk_write(
+                self._frame_ops, self._frame_coll, ordered=False, batcher=False
+            )[0]
+            encoded_size += res.bulk_api_result.get("nBytes", 0)
             self._frame_ops.clear()
+
+        self._encoding_ratio = (
+            self._curr_batch_size_bytes / encoded_size
+            if encoded_size > 0 and self._curr_batch_size_bytes
+            else 1.0
+        )
 
         if self._batch_ids and self._is_generated:
             self.sample_collection._sync_source(ids=self._batch_ids)
