@@ -11,6 +11,7 @@ import { graphQLSelectorFamily } from "recoil-relay";
 import type { ResponseFrom } from "../utils";
 import { config } from "./config";
 import { getBrowserStorageEffectForKey } from "./customEffects";
+import { filters } from "./filters";
 import { groupSlice } from "./groups";
 import { isLabelPath } from "./labels";
 import { RelayEnvironmentKey } from "./relay";
@@ -19,6 +20,7 @@ import { datasetId, datasetName } from "./selectors";
 import { State } from "./types";
 import { view } from "./view";
 
+const DEFAULT_MAX_SEARCH = 10000;
 const EXCLUDE_FIELDS = "fiftyone.core.stages.ExcludeFields";
 const SELECT_FIELDS = "fiftyone.core.stages.SelectFields";
 const SELECT_GROUP_SLICES = "fiftyone.core.stages.SelectGroupSlices";
@@ -27,6 +29,66 @@ const VALID_QP_STAGES = new Set([
   SELECT_FIELDS,
   SELECT_GROUP_SLICES,
 ]);
+
+/**
+ * Given a field path, return a set a field filters and index name that would
+ * result in a optimized IXSCAN, if possible
+ */
+export const filterSearch = selectorFamily({
+  key: "filterSearch",
+  get:
+    (path: string) =>
+    ({ get }) => {
+      const allIndexes = get(indexInfo)?.sampleIndexes ?? [];
+      const f = get(filters) ?? {};
+      const pathMap: { [key: string]: string } = {};
+      for (const key in f) {
+        pathMap[get(schemaAtoms.dbPath(key))] = key;
+      }
+
+      let result: typeof f | undefined = undefined;
+      let resultName: string | undefined = undefined;
+
+      for (const index of allIndexes) {
+        if (index.key[0].field === get(schemaAtoms.dbPath(path))) {
+          return { filters: {}, index: index.name };
+        }
+      }
+
+      for (const index of allIndexes) {
+        const current: typeof f = {};
+        for (const key of index.key) {
+          if (key.field === get(schemaAtoms.dbPath(path))) {
+            if (
+              !result ||
+              Object.keys(current).length > Object.keys(result).length
+            ) {
+              result = current;
+              resultName = index.name;
+            }
+            break;
+          }
+
+          if (pathMap[key.field]) {
+            current[pathMap[key.field]] = f[pathMap[key.field]];
+          }
+        }
+      }
+
+      if (!result) {
+        const active = get(validIndexes(get(filterKeys))).active;
+        if (active.length) {
+          result = {};
+          for (const key of active[1]) {
+            result[pathMap[key]] = f[pathMap[key]];
+          }
+          resultName = active[0];
+        }
+      }
+
+      return { filters: result, index: resultName };
+    },
+});
 
 export const lightningQuery = graphQLSelectorFamily<
   foq.lightningQuery$variables,
@@ -50,22 +112,79 @@ export const lightningQuery = graphQLSelectorFamily<
     },
 });
 
-const indexes = foq.graphQLSyncFragmentAtom<foq.indexesFragment$key>(
+export const indexInfo = foq.graphQLSyncFragmentAtom<foq.indexesFragment$key>(
   {
     keys: ["dataset"],
     fragments: [foq.datasetFragment, foq.indexesFragment],
   },
   {
-    key: "indexes",
+    key: "indexInfo",
   }
 );
+
+const indexKeysMatch = (one: string[], two: Set<string>) =>
+  one.length <= two.size && [...one].every((o) => two.has(o));
+
+export const validIndexes = selectorFamily({
+  key: "validIndexes",
+  get:
+    (keys: Set<string>) =>
+    ({ get }) => {
+      const allIndexes = get(indexInfo)?.sampleIndexes ?? [];
+      const keyList = [...keys].map((k) => get(schemaAtoms.dbPath(k)));
+
+      let matched: string | undefined;
+      let matchedKeys = [];
+      const trailing: [string, string][] = [];
+      const available: [string, string][] = [];
+      for (const index of allIndexes) {
+        const indexKeys = index.key
+          .slice(0, keys.size)
+          .map(({ field }) => field);
+        if (indexKeysMatch(indexKeys, new Set(keyList))) {
+          if (indexKeys.length && indexKeys.length > matchedKeys.length) {
+            matched = index.name;
+            matchedKeys = indexKeys.map((field) =>
+              get(schemaAtoms.fieldPath(field))
+            );
+          }
+
+          index.key[keys.size]?.field &&
+            available.push([index.name, index.key[keys.size].field]);
+
+          if (index.key[keys.size - 1]) {
+            trailing.push([index.name, index.key[keys.size - 1].field]);
+          }
+        }
+      }
+
+      return {
+        // indexes whose have a field available, e.g. a compound index of
+        // 'ground_truth.label' and 'created_at' where 'ground_truth.label' is
+        // filtered on, then 'created_at' is available
+        available,
+
+        // an active index
+        active: (matched ? [matched, matchedKeys] : []) as [string, string[]],
+
+        // trailing indexes, which can be sorted on, e.g. filtering by
+        // 'created_at' and then sorting by it
+        trailing,
+      };
+    },
+});
+
+export const activeIndex = selector({
+  key: "activeIndex",
+  get: ({ get }) => get(validIndexes(get(filterKeys))).active[0],
+});
 
 const firstKeyMap = selectorFamily({
   key: "firstKeyMap",
   get:
     (frames: boolean) =>
     ({ get }) => {
-      const data = get(indexes);
+      const data = get(indexInfo);
 
       const list = frames ? data.frameIndexes : data.sampleIndexes;
 
@@ -81,93 +200,120 @@ const wildcardProjection = selectorFamily({
       get(firstKeyMap(frames))["$**"]?.wildcardProjection,
 });
 
-const indexesByPath = selector({
+export const indexesByPath = selectorFamily<
+  Set<string>,
+  Set<string> | undefined
+>({
   key: "indexesByPath",
-  get: ({ get }) => {
-    const gatherPaths = (space: State.SPACE) =>
-      get(
-        schemaAtoms.fieldPaths({
-          ftype: [BOOLEAN_FIELD, OBJECT_ID_FIELD, STRING_FIELD],
-          space,
-        })
-      );
+  get:
+    (keys) =>
+    ({ get }) => {
+      const gatherPaths = (space: State.SPACE) =>
+        get(
+          schemaAtoms.fieldPaths({
+            ftype: [BOOLEAN_FIELD, OBJECT_ID_FIELD, STRING_FIELD],
+            space,
+          })
+        );
 
-    const { sampleIndexes: samples, frameIndexes: frames } = get(indexes);
+      const schema = gatherPaths(State.SPACE.SAMPLE);
+      const samplesProjection = get(wildcardProjection(false));
+      const framesProjection = get(wildcardProjection(true));
 
-    const schema = gatherPaths(State.SPACE.SAMPLE);
-    const frameSchema = gatherPaths(State.SPACE.FRAME).map((p) =>
-      p.slice("frames.".length)
-    );
-    const samplesProjection = get(wildcardProjection(false));
-    const framesProjection = get(wildcardProjection(true));
+      const convertWildcards = (
+        field: string,
+        fields: string[],
+        frames: boolean
+      ) => {
+        const projection = frames ? framesProjection : samplesProjection;
 
-    const convertWildcards = (
-      field: string,
-      fields: string[],
-      frames: boolean
-    ) => {
-      const projection = frames ? framesProjection : samplesProjection;
+        const filtered = fields.map((field) => get(schemaAtoms.dbPath(field)));
 
-      const filtered = fields.map((field) => get(schemaAtoms.dbPath(field)));
+        if (field === "$**") {
+          if (!projection) {
+            return filtered;
+          }
+          const set = new Set(projection.fields);
+          const filter = projection.inclusion
+            ? (f: string) => set.has(f)
+            : (f: string) => !set.has(f);
 
-      if (field === "$**") {
-        if (!projection) {
-          return filtered;
+          return filtered.filter(filter);
         }
-        const set = new Set(projection.fields);
-        const filter = projection.inclusion
-          ? (f: string) => set.has(f)
-          : (f: string) => !set.has(f);
 
-        return filtered.filter(filter);
+        if (!field.endsWith(".$**")) {
+          return [field];
+        }
+
+        const parent = field.split(".").slice(0, -1).join(".");
+        return filtered.filter((field) => field.startsWith(parent));
+      };
+
+      const current = get(validIndexes(keys || new Set()));
+      const result = current.active.length ? [...current.active[1]] : [];
+      for (const index of current.available) {
+        result.push(...convertWildcards(index[1], schema, false));
       }
 
-      if (!field.endsWith(".$**")) {
-        return field;
-      }
-
-      const parent = field.split(".").slice(0, -1).join(".");
-      return filtered.filter((field) => field.startsWith(parent));
-    };
-
-    return new Set([
-      ...samples.flatMap(({ key: [{ field }] }) =>
-        convertWildcards(field, schema, false)
-      ),
-      ...frames
-        .flatMap(({ key: [{ field }] }) =>
-          convertWildcards(field, frameSchema, true)
-        )
-        .map((field) => `frames.${field}`),
-    ]);
-  },
+      return new Set<string>(result);
+    },
 });
 
 export const pathIndex = selectorFamily({
   key: "pathIndex",
   get:
+    ({ path, withFilters }: { path: string; withFilters?: boolean }) =>
+    ({ get }) => {
+      const indexes = get(
+        indexesByPath(withFilters ? get(filterKeys) : undefined)
+      );
+      return indexes.has(get(schemaAtoms.dbPath(path)));
+    },
+});
+
+export const pathHasActiveIndex = selectorFamily({
+  key: "pathHasActiveIndex",
+  get:
     (path: string) =>
     ({ get }) => {
-      const indexes = get(indexesByPath);
-      return indexes.has(get(schemaAtoms.dbPath(path)));
+      const keys = get(filterKeys);
+      const db = get(schemaAtoms.dbPath(path));
+      return (
+        keys.has(path) &&
+        get(validIndexes(keys))
+          .active.map(([_, p]) => p?.includes(db))
+          .some((t) => t)
+      );
     },
 });
 
 export const pathHasIndexes = selectorFamily({
   key: "pathHasIndexes",
   get:
-    (path: string) =>
-    ({ get }) =>
-      !!get(indexedPaths(path)).size,
+    ({ path, withFilters }: { path: string; withFilters?: boolean }) =>
+    ({ get }) => {
+      return !!get(indexedPaths({ path, withFilters })).size;
+    },
 });
 
-export const indexedPaths = selectorFamily<Set<string>, string>({
+const filterKeys = selector({
+  key: "filterKeys",
+  get: ({ get }) => {
+    return new Set(Object.keys(get(filters) ?? {}));
+  },
+});
+
+export const indexedPaths = selectorFamily<
+  Set<string>,
+  { path: string; withFilters?: boolean }
+>({
   key: "indexedPaths",
   get:
-    (path: string) =>
+    ({ path, withFilters }) =>
     ({ get }) => {
+      const filters = withFilters ? get(filterKeys) : undefined;
       if (path === "") {
-        return get(indexesByPath);
+        return get(indexesByPath(filters));
       }
 
       if (
@@ -176,7 +322,7 @@ export const indexedPaths = selectorFamily<Set<string>, string>({
           DYNAMIC_EMBEDDED_DOCUMENT_PATH
       ) {
         const expanded = get(schemaAtoms.expandPath(path));
-        const indexes = get(indexesByPath);
+        const indexes = get(indexesByPath(filters));
         return new Set(
           get(
             schemaAtoms.fieldPaths({
@@ -189,7 +335,7 @@ export const indexedPaths = selectorFamily<Set<string>, string>({
         );
       }
 
-      if (get(pathIndex(path))) {
+      if (get(pathIndex({ path, withFilters }))) {
         return new Set([path]);
       }
 
@@ -257,4 +403,29 @@ const queryPerformanceStore = atomFamily<boolean, string>({
       valueClass: "boolean",
     }),
   ],
+});
+
+const queryPerformanceMaxSearchStore = atomFamily<number, string>({
+  key: "queryPerformanceMaxSearchStore",
+  default: DEFAULT_MAX_SEARCH,
+  effects: (datasetId) => [
+    getBrowserStorageEffectForKey(
+      `queryPerformanceMaxSearchResults-${datasetId}`,
+      {
+        sessionStorage: true,
+        valueClass: "number",
+      }
+    ),
+  ],
+});
+
+export const queryPerformanceMaxSearch = selector({
+  key: "queryPerformanceMaxSearch",
+  get: ({ get }) => get(queryPerformanceMaxSearchStore(get(datasetId))),
+  set: ({ get, set }, value) => {
+    set(
+      queryPerformanceMaxSearchStore(get(datasetId)),
+      value instanceof DefaultValue ? DEFAULT_MAX_SEARCH : value
+    );
+  },
 });

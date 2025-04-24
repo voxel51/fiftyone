@@ -4,6 +4,7 @@ import React from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import CommonRangeSlider from "../../Common/RangeSlider";
+import useIncompleteResults from "../use-incomplete-results";
 import Box from "./Box";
 import FilterOption from "./FilterOption";
 import Nonfinites from "./Nonfinites";
@@ -36,19 +37,26 @@ const RangeSlider = ({
   const timeZone = useRecoilValue(fos.timeZone);
   const hasBounds = useRecoilValue(state.hasBounds({ path, modal }));
   const nonfinitesText = useRecoilValue(state.nonfinitesText({ path, modal }));
-
+  const footer = useIncompleteResults(path);
   if (!hasBounds) {
     return (
-      <Box text={nonfinitesText ? `${nonfinitesText} present` : "No results"} />
+      <Box>
+        <div>{nonfinitesText ? `${nonfinitesText} present` : "No results"}</div>
+        {footer}
+      </Box>
     );
   }
 
   const showSlider = hasBounds && !(excluded && defaultRange);
+
   if (showSlider && one !== null) {
     return (
-      <Box
-        text={formatPrimitive({ ftype, timeZone, value: one })?.toString()}
-      />
+      <Box>
+        <div>
+          {formatPrimitive({ ftype, timeZone, value: one })?.toString()}
+        </div>
+        {footer}
+      </Box>
     );
   }
 
@@ -77,6 +85,7 @@ const RangeSlider = ({
       {defaultRange && <Nonfinites modal={modal} path={path} />}
       <FilterOption color={color} modal={modal} path={path} />
       <Reset color={color} modal={modal} path={path} />
+      {!modal && footer}
     </Container>
   );
 };

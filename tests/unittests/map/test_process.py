@@ -42,28 +42,31 @@ class TestCreate:
             yield m
 
     @pytest.mark.parametrize(
-        "workers",
+        "num_workers",
         (
             pytest.param(None, id="worker-is-unset"),
             pytest.param(5, id="worker-is-set"),
         ),
     )
     def test_force_one_worker(
-        self, config, workers, current_process, recommend_process_pool_workers
+        self,
+        config,
+        num_workers,
+        current_process,
+        recommend_process_pool_workers,
     ):
         """test worker value"""
         current_process.daemon = True
 
         #####
         mapper = fomp.ProcessMapper.create(
-            config=config, batch_cls=mock.Mock(), workers=workers
+            config=config, batch_cls=mock.Mock(), num_workers=num_workers
         )
         #####
 
         assert not recommend_process_pool_workers.called
 
-        # pylint:disable-next=protected-access
-        assert mapper._workers == 1
+        assert mapper.num_workers == 1
 
     @pytest.mark.parametrize(
         "max_workers",
@@ -76,16 +79,16 @@ class TestCreate:
         "value_from",
         ("explicit", "config", "default"),
     )
-    def test_workers(
+    def num_test_workers(
         self, value_from, max_workers, config, recommend_process_pool_workers
     ):
         """test worker value"""
 
         expected_workers = 5
 
-        workers = None
+        num_workers = None
         if value_from == "explicit":
-            workers = expected_workers
+            num_workers = expected_workers
         elif value_from == "config":
             config.default_process_pool_workers = expected_workers
         elif value_from == "default":
@@ -96,7 +99,7 @@ class TestCreate:
 
         #####
         mapper = fomp.ProcessMapper.create(
-            config=config, batch_cls=mock.Mock(), workers=workers
+            config=config, batch_cls=mock.Mock(), num_workers=num_workers
         )
         #####
 
@@ -105,7 +108,6 @@ class TestCreate:
         else:
             assert not recommend_process_pool_workers.called
 
-        # pylint:disable-next=protected-access
-        assert mapper._workers == (
+        assert mapper.num_workers == (
             max_workers if max_workers is not None else expected_workers
         )

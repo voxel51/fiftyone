@@ -447,7 +447,11 @@ class Query(fosa.AggregateQuery):
         filters: t.Optional[BSON] = None,
         extended_stages: t.Optional[BSON] = None,
         pagination_data: t.Optional[bool] = True,
+        sort_by: t.Optional[str] = None,
+        desc: t.Optional[bool] = False,
+        hint: t.Optional[str] = None,
     ) -> Connection[SampleItem, str]:
+
         return await paginate_samples(
             dataset,
             view,
@@ -457,6 +461,9 @@ class Query(fosa.AggregateQuery):
             sample_filter=filter,
             extended_stages=extended_stages,
             pagination_data=pagination_data,
+            sort_by=sort_by,
+            desc=desc,
+            hint=hint,
         )
 
     @gql.field
@@ -705,5 +712,7 @@ def _assign_estimated_counts(dataset: Dataset, fo_dataset: fo.Dataset):
 
 def _assign_lightning_info(dataset: Dataset, fo_dataset: fo.Dataset):
     dataset.sample_indexes, dataset.frame_indexes = indexes_from_dict(
-        fo_dataset.get_index_information(include_stats=True)
+        fo_dataset.get_index_information(
+            include_stats=True, _keep_index_names=True
+        )
     )

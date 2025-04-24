@@ -16,13 +16,9 @@ export default function useShow(
       shouldCalculate: !queryPerformance || modal,
     })
   );
-  const indexed = useRecoilValue(fos.pathHasIndexes(path));
-  const frameField = useRecoilValue(fos.isFrameField(path));
 
   return {
     show: hasBounds || (queryPerformance && !modal) || !named,
     showLoadButton: named && queryPerformance && !showRange && !modal,
-    showQueryPerformanceIcon:
-      named && queryPerformance && indexed && !frameField && !modal,
   };
 }

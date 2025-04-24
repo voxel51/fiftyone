@@ -92,7 +92,7 @@ class TestCreate:
                 #####
                 fomf.MapperFactory.create(
                     mapper_key=mock.Mock(),
-                    workers=mock.Mock(),
+                    num_workers=mock.Mock(),
                     batch_method="unknown",
                     **mock.create_autospec(dict),
                 )
@@ -121,7 +121,7 @@ class TestCreate:
             #####
             result = fomf.MapperFactory.create(
                 key,
-                workers := 1,
+                num_workers := 1,
                 batch_method=batch_method,
                 batch_size=(batch_size := mock.Mock()),
                 **(kwargs := mock.create_autospec(dict)),
@@ -132,7 +132,7 @@ class TestCreate:
                 config=config,
                 batch_cls=expected_batch_cls,
                 batch_size=batch_size,
-                workers=workers,
+                num_workers=num_workers,
                 **kwargs,
             )
 
@@ -148,7 +148,7 @@ class TestCreate:
                 #####
                 fomf.MapperFactory.create(
                     mapper_key="unknown",
-                    workers=mock.Mock(),
+                    num_workers=mock.Mock(),
                     batch_method=mock.Mock(),
                     **mock.create_autospec(dict),
                 )
@@ -186,7 +186,7 @@ class TestCreate:
             #####
             result = fomf.MapperFactory.create(
                 key if not from_config else None,
-                workers := mock.Mock(),
+                num_workers := mock.Mock(),
                 batch_size=(batch_size := mock.Mock()),
                 **(kwargs := mock.create_autospec(dict)),
             )
@@ -200,7 +200,7 @@ class TestCreate:
                 config=config,
                 batch_cls=default_batcher,
                 batch_size=batch_size,
-                workers=workers,
+                num_workers=num_workers,
                 **kwargs,
             )
 
@@ -231,7 +231,7 @@ class TestCreate:
                 #####
                 result = fomf.MapperFactory.create(
                     None,
-                    workers := mock.Mock(),
+                    num_workers := mock.Mock(),
                     batch_size=(batch_size := mock.Mock()),
                     **(kwargs := mock.create_autospec(dict)),
                 )
@@ -242,7 +242,7 @@ class TestCreate:
                     config=config,
                     batch_cls=default_batcher,
                     batch_size=batch_size,
-                    workers=workers,
+                    num_workers=num_workers,
                     **kwargs,
                 )
 
@@ -262,7 +262,7 @@ class TestCreate:
                 #####
                 result = fomf.MapperFactory.create(
                     None,
-                    workers := mock.Mock(),
+                    num_workers := mock.Mock(),
                     batch_size=(batch_size := mock.Mock()),
                     **(kwargs := mock.create_autospec(dict)),
                 )
@@ -273,7 +273,7 @@ class TestCreate:
                     config=config,
                     batch_cls=default_batcher,
                     batch_size=batch_size,
-                    workers=workers,
+                    num_workers=num_workers,
                     **kwargs,
                 )
 

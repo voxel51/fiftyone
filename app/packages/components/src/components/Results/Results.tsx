@@ -66,7 +66,7 @@ export interface ResultsProps<T> {
   active?: number;
   component: React.FC<{ value: T; className?: string }>;
   cy?: string;
-  noResults?: string;
+  footer?: React.JSX.Element;
   onSelect: (value: T) => void;
   results?: T[];
   toKey?: (value: T) => string;
@@ -77,7 +77,7 @@ function Results<T>({
   active,
   cy,
   component,
-  noResults,
+  footer,
   onSelect,
   results,
   toKey = (value: T) => String(value),
@@ -91,12 +91,20 @@ function Results<T>({
     );
   }, [cy, ref]);
 
+  const hasFooter =
+    footer ||
+    (!!total && !!results?.length) ||
+    (!!results && !results.length) ||
+    !results;
+
   return (
-    <div className={style.container}>
+    <div
+      className={style.container}
+      style={hasFooter ? { paddingBottom: 26.5 } : {}}
+    >
       <div
         className={style.scrollContainer}
-        style={{ paddingBottom: total || !results?.length ? 26.5 : undefined }}
-        data-cy={`selector-results-container${cy ? "-" + cy : ""}`}
+        data-cy={`selector-results-container${cy ? `-${cy}` : ""}`}
         ref={ref}
       >
         {!!results &&
@@ -113,16 +121,42 @@ function Results<T>({
           })}
       </div>
       <div className={style.footer}>
-        {!results && !!noResults && <>{noResults}</>}
-        {!!total && !!results?.length && (
-          <>
-            {results.length} of {total.toLocaleString()}
-          </>
-        )}
-        {!!results && !results.length && <>No results</>}
+        <Footer footer={footer} results={results} total={total} />
       </div>
     </div>
   );
+}
+
+function Footer<T>({
+  footer,
+  results,
+  total,
+}: {
+  footer?: React.JSX.Element;
+  results?: T[];
+  total?: number;
+}) {
+  if (footer) {
+    return footer;
+  }
+
+  if (!!total && !!results?.length) {
+    return (
+      <>
+        {results.length} of {total.toLocaleString()}
+      </>
+    );
+  }
+
+  if (!!results && !results.length) {
+    return <>No results</>;
+  }
+
+  if (!results) {
+    return <div>Too many results</div>;
+  }
+
+  return null;
 }
 
 export default Results;

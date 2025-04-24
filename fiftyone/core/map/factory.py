@@ -42,14 +42,16 @@ class MapperFactory:
     @classmethod
     def create(
         cls,
-        mapper_key: Optional[str],
-        workers: Optional[int],
+        mapper_key: Optional[str] = None,
+        num_workers: Optional[int] = None,
         batch_method: Optional[str] = None,
         batch_size: Optional[int] = None,
         **mapper_extra_kwargs,
     ) -> fomm.Mapper:
         """Create a mapper instance"""
 
+        # Loading config dynamically here as it causes actual unit tests to fail
+        # without importing the world and using globals.
         config = focc.load_config()
 
         if batch_method is None:
@@ -67,9 +69,7 @@ class MapperFactory:
         # matter what.
         if mapper_key is None:
             # If the default parallelization method is set in the config, use
-            # it no matter what for now . There was talk about how this
-            # behavior could change, (log a warning, explicitly forbid, etc).
-            # Once a determination has been made make the changes here.
+            # it no matter what.
             mapper_key = config.default_parallelization_method
 
             # If no the parallelization method is not explicitly provided and
@@ -91,7 +91,7 @@ class MapperFactory:
         return cls._MAPPER_CLASSES[mapper_key].create(
             config=config,
             batch_cls=batch_cls,
-            workers=workers,
+            num_workers=num_workers,
             batch_size=batch_size,
             **mapper_extra_kwargs,
         )

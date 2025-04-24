@@ -49,9 +49,9 @@ class TestCreate:
 
         expected_workers = 5
 
-        workers = None
+        num_workers = None
         if value_from == "explicit":
-            workers = expected_workers
+            num_workers = expected_workers
         elif value_from == "config":
             config.default_thread_pool_workers = expected_workers
         elif value_from == "default":
@@ -62,7 +62,7 @@ class TestCreate:
 
         #####
         mapper = fomt.ThreadMapper.create(
-            config=config, batch_cls=mock.Mock(), workers=workers
+            config=config, batch_cls=mock.Mock(), num_workers=num_workers
         )
         #####
 
@@ -71,8 +71,7 @@ class TestCreate:
         else:
             assert not recommend_thread_pool_workers.called
 
-        # pylint:disable-next=protected-access
-        assert mapper._workers == (
+        assert mapper.num_workers == (
             max_workers if max_workers is not None else expected_workers
         )
 
@@ -117,11 +116,12 @@ class TestCreate:
             config.max_thread_pool_workers = 4
 
             mapper = fomt.ThreadMapper.create(
-                config=config, batch_cls=batch_cls, workers=2
+                config=config, batch_cls=batch_cls, num_workers=2
             )
 
             # Call and consume
             list(
+                # pylint:disable-next=protected-access
                 mapper._map_samples_multiple_workers(
                     sample_collection=sample_collection,
                     map_fcn=map_fcn,

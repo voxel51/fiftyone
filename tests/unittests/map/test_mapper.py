@@ -102,7 +102,7 @@ def test_check_if_return_is_sample(expected, map_fcn_return_value):
 
 
 @pytest.mark.parametrize(
-    "workers",
+    "num_workers",
     (
         pytest.param(1, id="workers[one]"),
         pytest.param(8, id="workers[multiple]"),
@@ -112,9 +112,10 @@ class TestMapSamples:
     """Test map samples"""
 
     @pytest.fixture(name="mapper")
-    def mapper(self, batcher, workers):
+    def mapper(self, batcher, num_workers):
         """Mapper instance"""
-        mapper = Mapper(batcher, workers)
+        mapper = Mapper(batcher, num_workers)
+
         # pylint:disable-next=protected-access
         mapper._map_samples_multiple_workers = mock.MagicMock()
         return mapper
@@ -161,7 +162,7 @@ class TestMapSamples:
     )
     def test_map_err(
         self,
-        workers,
+        num_workers,
         skip_failures,
         errors,
         mapper,
@@ -175,7 +176,7 @@ class TestMapSamples:
         """Test map function error"""
 
         for idx, err in errors.items():
-            if workers == 1:
+            if num_workers == 1:
                 map_fcn_side_effect[idx] = err
             else:
                 map_samples_multi_worker_val[idx][1] = err
@@ -212,7 +213,7 @@ class TestMapSamples:
             assert err_ctx.excinfo.value == expected_err
             assert len(returned_sample_ids) == expected_err_idx
 
-        if workers == 1:
+        if num_workers == 1:
             assert not map_samples_multiple_workers.called
 
             sample_collection.iter_samples.assert_called_once_with(
@@ -249,7 +250,7 @@ class TestMapSamples:
 
     def test_ok(
         self,
-        workers,
+        num_workers,
         mapper,
         sample_collection,
         samples,
@@ -273,7 +274,7 @@ class TestMapSamples:
         )
         #####
 
-        if workers == 1:
+        if num_workers == 1:
             assert not map_samples_multiple_workers.called
 
             sample_collection.iter_samples.assert_called_once_with(

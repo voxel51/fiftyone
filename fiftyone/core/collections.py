@@ -123,6 +123,7 @@ class SaveContext(object):
         self._batching_strategy = batching_strategy
         self._curr_batch_size = None
         self._curr_batch_size_bytes = None
+        self._encoding_ratio = 1.0
         self._last_time = None
 
     def __enter__(self):
@@ -182,7 +183,10 @@ class SaveContext(object):
                     len(str(op)) for op in frame_ops
                 )
 
-            if self._curr_batch_size_bytes >= self.batch_size:
+            if (
+                self._curr_batch_size_bytes
+                >= self.batch_size * self._encoding_ratio
+            ):
                 self._save_batch()
                 self._curr_batch_size_bytes = 0
         elif self._batching_strategy == "latency":
@@ -191,13 +195,29 @@ class SaveContext(object):
                 self._last_time = timeit.default_timer()
 
     def _save_batch(self):
+        encoded_size = -1
         if self._sample_ops:
-            foo.bulk_write(self._sample_ops, self._sample_coll, ordered=False)
+            res = foo.bulk_write(
+                self._sample_ops,
+                self._sample_coll,
+                ordered=False,
+                batcher=False,
+            )[0]
+            encoded_size += res.bulk_api_result.get("nBytes", 0)
             self._sample_ops.clear()
 
         if self._frame_ops:
-            foo.bulk_write(self._frame_ops, self._frame_coll, ordered=False)
+            res = foo.bulk_write(
+                self._frame_ops, self._frame_coll, ordered=False, batcher=False
+            )[0]
+            encoded_size += res.bulk_api_result.get("nBytes", 0)
             self._frame_ops.clear()
+
+        self._encoding_ratio = (
+            self._curr_batch_size_bytes / encoded_size
+            if encoded_size > 0 and self._curr_batch_size_bytes
+            else 1.0
+        )
 
         if self._batch_ids and self._is_generated:
             self.sample_collection._sync_source(ids=self._batch_ids)
@@ -1338,6 +1358,7 @@ class SampleCollection(object):
         path,
         ftype=None,
         embedded_doc_type=None,
+        subfield=None,
         read_only=None,
         include_private=False,
         leaf=False,
@@ -1347,11 +1368,15 @@ class SampleCollection(object):
 
         Args:
             path: a field path
-            ftype (None): an optional field type to enforce. Must be a subclass
-                of :class:`fiftyone.core.fields.Field`
-            embedded_doc_type (None): an optional embedded document type to
-                enforce. Must be a subclass of
+            ftype (None): an optional field type or iterable of types to
+                enforce. Must be subclass(es) of
+                :class:`fiftyone.core.fields.Field`
+            embedded_doc_type (None): an optional embedded document type or
+                iterable of types to enforce. Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            subfield (None): an optional subfield type or iterable of subfield
+                types to enforce. Must be subclass(es) of
+                :class:`fiftyone.core.fields.Field`
             read_only (None): whether to optionally enforce that the field is
                 read-only (True) or not read-only (False)
             include_private (False): whether to include fields that start with
@@ -1367,6 +1392,7 @@ class SampleCollection(object):
         fof.validate_constraints(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
+            subfield=subfield,
             read_only=read_only,
         )
 
@@ -1379,6 +1405,7 @@ class SampleCollection(object):
             path=path,
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
+            subfield=subfield,
             read_only=read_only,
         )
 
@@ -1445,11 +1472,13 @@ class SampleCollection(object):
         self,
         ftype=None,
         embedded_doc_type=None,
+        subfield=None,
         read_only=None,
         info_keys=None,
         created_after=None,
         include_private=False,
         flat=False,
+        unwind=True,
         mode=None,
     ):
         """Returns a schema dictionary describing the fields of the samples in
@@ -1463,6 +1492,9 @@ class SampleCollection(object):
                 iterable of types to which to restrict the returned schema.
                 Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            subfield (None): an optional subfield type or iterable of subfield
+                types to which to restrict the returned schema. Must be
+                subclass(es) of :class:`fiftyone.core.fields.Field`
             read_only (None): whether to restrict to (True) or exclude (False)
                 read-only fields. By default, all fields are included
             info_keys (None): an optional key or list of keys that must be in
@@ -1473,10 +1505,12 @@ class SampleCollection(object):
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
                 embedded document fields are included as top-level keys
+            unwind (True): whether to traverse into list fields. Only
+                applicable when ``flat=True``
             mode (None): whether to apply the above constraints before and/or
-                after flattening the schema. Only applicable when ``flat`` is
-                True. Supported values are ``("before", "after", "both")``.
-                The default is ``"after"``
+                after flattening the schema. Only applicable when ``flat=True``.
+                Supported values are ``("before", "after", "both")``. The
+                default is ``"after"``
 
         Returns:
             a dict mapping field names to :class:`fiftyone.core.fields.Field`
@@ -1488,11 +1522,13 @@ class SampleCollection(object):
         self,
         ftype=None,
         embedded_doc_type=None,
+        subfield=None,
         read_only=None,
         info_keys=None,
         created_after=None,
         include_private=False,
         flat=False,
+        unwind=True,
         mode=None,
     ):
         """Returns a schema dictionary describing the fields of the frames in
@@ -1507,6 +1543,9 @@ class SampleCollection(object):
             embedded_doc_type (None): an optional embedded document type to
                 which to restrict the returned schema. Must be a subclass of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            subfield (None): an optional subfield type or iterable of subfield
+                types to which to restrict the returned schema. Must be
+                subclass(es) of :class:`fiftyone.core.fields.Field`
             read_only (None): whether to restrict to (True) or exclude (False)
                 read-only fields. By default, all fields are included
             info_keys (None): an optional key or list of keys that must be in
@@ -1517,10 +1556,12 @@ class SampleCollection(object):
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
                 embedded document fields are included as top-level keys
+            unwind (True): whether to traverse into list fields. Only
+                applicable when ``flat=True``
             mode (None): whether to apply the above constraints before and/or
-                after flattening the schema. Only applicable when ``flat`` is
-                True. Supported values are ``("before", "after", "both")``.
-                The default is ``"after"``
+                after flattening the schema. Only applicable when ``flat=True``.
+                Supported values are ``("before", "after", "both")``. The
+                default is ``"after"``
 
         Returns:
             a dict mapping field names to :class:`fiftyone.core.fields.Field`
@@ -1820,23 +1861,36 @@ class SampleCollection(object):
                         "Frame field '%s' does not exist" % field_name
                     )
 
-    def validate_field_type(self, path, ftype=None, embedded_doc_type=None):
+    def validate_field_type(
+        self,
+        path,
+        ftype=None,
+        embedded_doc_type=None,
+        subfield=None,
+    ):
         """Validates that the collection has a field of the given type.
 
         Args:
             path: a field name or ``embedded.field.name``
-            ftype (None): an optional field type to enforce. Must be a subclass
-                of :class:`fiftyone.core.fields.Field`
+            ftype (None): an optional field type or iterable of types to
+                enforce. Must be subclass(es) of
+                :class:`fiftyone.core.fields.Field`
             embedded_doc_type (None): an optional embedded document type or
-                iterable of types to enforce. Must be a subclass(es) of
+                iterable of types to enforce. Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            subfield (None): an optional subfield type or iterable of subfield
+                types to enforce. Must be subclass(es) of
+                :class:`fiftyone.core.fields.Field`
 
         Raises:
             ValueError: if the field does not exist or does not have the
                 expected type
         """
         field = self.get_field(
-            path, ftype=ftype, embedded_doc_type=embedded_doc_type
+            path,
+            ftype=ftype,
+            embedded_doc_type=embedded_doc_type,
+            subfield=subfield,
         )
 
         if field is None:
@@ -2258,9 +2312,7 @@ class SampleCollection(object):
                 created if necessary
         """
         if not isinstance(self, fod.Dataset):
-            # The label IDs that we'll need to delete from `in_field`
-            _, id_path = self._get_label_field_path(in_field, "id")
-            del_ids = self.values(id_path, unwind=True)
+            labels = self._get_selected_labels(fields=in_field)
 
         dataset = self._dataset
         dataset.merge_samples(
@@ -2276,9 +2328,13 @@ class SampleCollection(object):
         )
 
         if isinstance(self, fod.Dataset):
-            dataset.delete_sample_field(in_field)
+            field_name, is_frame_field = self._handle_frame_field(in_field)
+            if is_frame_field:
+                dataset.delete_frame_field(field_name)
+            else:
+                dataset.delete_sample_field(field_name)
         else:
-            dataset.delete_labels(ids=del_ids, fields=in_field)
+            dataset.delete_labels(labels=labels)
 
     def set_values(
         self,
@@ -3910,14 +3966,13 @@ class SampleCollection(object):
     def map_samples(
         self,
         map_fcn,
-        *_,
-        workers=None,
-        batch_method="id",
+        save=False,
+        num_workers=None,
         batch_size=None,
+        batch_method="id",
         progress=None,
         parallelize_method="process",
         skip_failures=False,
-        save=False,
     ):
         """
         Applies `map_fcn` to each sample using the specified backend strategy
@@ -3925,11 +3980,12 @@ class SampleCollection(object):
 
         Args:
             map_fcn: Function to apply to each sample.
-            workers (None): Number of workers.
-            batch_method: Explicit method for batching samples. Supported
-              methods are 'id' and 'slice'
+            save (False): Whether to save any modified samples.
+            num_workers (None): Number of workers.
             batch_size (None): Number of samples per batch. If None, the batch size
                 is automatically calculated to be the number of samples per worker.
+            batch_method ("id"): Explicit method for batching samples. Supported
+              methods are 'id' and 'slice'
             progress (None): Whether to show progress bar. If None, uses the
                 default value ``fiftyone.config.show_progress_bars``. If "workers",
                 shows a progress bar for each worker.
@@ -3938,13 +3994,12 @@ class SampleCollection(object):
             skip_failures (False): whether to gracefully continue without
                 raising an error if the update function raises an
                 exception for a sample.
-            save (False): Whether to save any modified samples.
 
         Returns:
             A generator yielding processed sample results.
         """
         mapper = focm.MapperFactory.create(
-            parallelize_method, workers, batch_method, batch_size
+            parallelize_method, num_workers, batch_method, batch_size
         )
 
         yield from mapper.map_samples(
@@ -3958,12 +4013,11 @@ class SampleCollection(object):
     def update_samples(
         self,
         update_fcn,
-        *_,
-        workers=None,
-        batch_method=None,
+        num_workers=None,
         batch_size=None,
+        batch_method=None,
         progress=None,
-        parallelize_method=None,
+        parallelize_method="process",
         skip_failures=True,
     ):
         """
@@ -3971,11 +4025,11 @@ class SampleCollection(object):
 
         Args:
             update_fcn: Function to apply to each sample.
-            workers (None): Number of workers.
-            batch_method: Explicit method for batching samples. Supported
-              methods are 'id' and 'slice'.
+            num_workers (None): Number of workers.
             batch_size (None): Number of samples per batch. If None, the batch size
                 is automatically calculated to be the number of samples per worker.
+            batch_method (None): Explicit method for batching samples. Supported
+              methods are 'id' and 'slice'.
             progress (None): Whether to show progress bar. If None, uses the
                 default value ``fiftyone.config.show_progress_bars``. If "workers",
                 shows a progress bar for each worker.
@@ -3986,7 +4040,7 @@ class SampleCollection(object):
                 exception for a sample.
         """
         mapper = focm.MapperFactory.create(
-            parallelize_method, workers, batch_method, batch_size
+            parallelize_method, num_workers, batch_method, batch_size
         )
 
         for _ in mapper.map_samples(
@@ -9784,7 +9838,9 @@ class SampleCollection(object):
         """
         return list(self.get_index_information().keys())
 
-    def get_index_information(self, include_stats=False):
+    def get_index_information(
+        self, include_stats=False, _keep_index_names=False
+    ):
         """Returns a dictionary of information about the indexes on this
         collection.
 
@@ -9822,7 +9878,7 @@ class SampleCollection(object):
                     sample_info[key]["accesses"] = d["accesses"]
 
         for key, info in sample_info.items():
-            if len(info["key"]) == 1:
+            if len(info["key"]) == 1 and not _keep_index_names:
                 field = info["key"][0][0]
                 key = fields_map.get(field, field)
 
@@ -9851,7 +9907,7 @@ class SampleCollection(object):
                         frame_info[key]["accesses"] = d["accesses"]
 
             for key, info in frame_info.items():
-                if len(info["key"]) == 1:
+                if len(info["key"]) == 1 and not _keep_index_names:
                     field = info["key"][0][0]
                     key = fields_map.get(field, field)
 
@@ -10310,7 +10366,7 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement _add_view_stage()")
 
-    def aggregate(self, aggregations):
+    def aggregate(self, aggregations, _mongo=False):
         """Aggregates one or more
         :class:`fiftyone.core.aggregations.Aggregation` instances.
 
@@ -10358,10 +10414,15 @@ class SampleCollection(object):
             pipelines.append(pipeline)
 
         # Build facet-able pipelines
-        compiled_facet_aggs, facet_pipelines = self._build_facets(facet_aggs)
+        compiled_facet_aggs, facet_pipelines, _ = self._build_facets(
+            facet_aggs
+        )
         for idx, pipeline in facet_pipelines.items():
             idx_map[idx] = len(pipelines)
             pipelines.append(pipeline)
+
+        if _mongo:
+            return pipelines[0] if scalar_result else pipelines
 
         # Run all aggregations
         _results = foo.aggregate(self._dataset._sample_collection, pipelines)
@@ -10392,7 +10453,7 @@ class SampleCollection(object):
 
         return results[0] if scalar_result else results
 
-    async def _async_aggregate(self, aggregations):
+    async def _async_aggregate(self, aggregations, debug=True):
         if not aggregations:
             return []
 
@@ -10413,7 +10474,7 @@ class SampleCollection(object):
 
         if facet_aggs:
             # Build facet-able pipelines
-            compiled_facet_aggs, facet_pipelines = self._build_facets(
+            compiled_facet_aggs, facet_pipelines, hints = self._build_facets(
                 facet_aggs
             )
             for idx, pipeline in facet_pipelines.items():
@@ -10423,7 +10484,7 @@ class SampleCollection(object):
             # Run all aggregations
             coll_name = self._dataset._sample_collection_name
             collection = foo.get_async_db_conn()[coll_name]
-            _results = await foo.aggregate(collection, pipelines)
+            _results = await foo.aggregate(collection, pipelines, hints)
 
             # Parse facet-able results
             for idx, aggregation in compiled_facet_aggs.items():
@@ -10539,14 +10600,16 @@ class SampleCollection(object):
                 compiled[idx] = aggregation
 
         pipelines = {}
+        hints = []
         for idx, aggregation in compiled.items():
             pipelines[idx] = self._pipeline(
                 pipeline=aggregation.to_mongo(self),
                 attach_frames=aggregation._needs_frames(self),
                 group_slices=aggregation._needs_group_slices(self),
             )
+            hints.append(getattr(aggregation, "_hint", None))
 
-        return compiled, pipelines
+        return compiled, pipelines, hints
 
     def _parse_big_result(self, aggregation, result):
         if result:

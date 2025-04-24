@@ -14,6 +14,7 @@ from collections import defaultdict
 from contextlib import contextmanager, suppress
 from copy import deepcopy
 from datetime import date, datetime
+from functools import partial
 import glob
 import hashlib
 import importlib
@@ -1073,14 +1074,31 @@ def _report_progress_dt(progress, dt):
     return progress_dt
 
 
-class BaseBatcher(abc.ABC):
+class Batcher(abc.ABC):
+    """Base class for iterating over the elements of an iterable in batches.
+
+    Args:
+        iterable: an iterable to batch over
+        transform_fn (None): a transform function to apply to each item
+        return_views (False): whether to return each batch as a
+            :class:`fiftyone.core.view.DatasetView`. Only applicable when the
+            iterable is a :class:`fiftyone.core.collections.SampleCollection`
+        progress (False): whether to render a progress bar tracking the
+            consumption of the batches (True/False), use the default value
+            ``fiftyone.config.show_progress_bars`` (None), or a progress
+            callback function to invoke instead
+        total (None): the length of ``iterable``. Only applicable when
+            ``progress=True``. If not provided, it is computed via
+            ``len(iterable)``, if possible
+    """
+
     def __init__(
         self,
         iterable,
+        transform_fn=None,
         return_views=False,
         progress=False,
         total=None,
-        transform_fn=None,
     ):
         import fiftyone.core.collections as foc
 
@@ -1091,6 +1109,7 @@ class BaseBatcher(abc.ABC):
             progress = fo.config.show_progress_bars
 
         self.iterable = iterable
+        self.transform_fn = transform_fn
         self.return_views = return_views
         self.progress = progress
         self.total = total
@@ -1102,7 +1121,6 @@ class BaseBatcher(abc.ABC):
         self._render_progress = bool(progress)  # callback function: True
         self._last_offset = None
         self._num_samples = None
-        self._transform_fn = transform_fn
 
     def __enter__(self):
         self._in_context = True
@@ -1140,8 +1158,8 @@ class BaseBatcher(abc.ABC):
                 )
                 self._render_progress = False
 
-        if self._transform_fn is not None:
-            self._iter = map(self._transform_fn, self._iter)
+        if self.transform_fn is not None and self._iter is not None:
+            self._iter = map(self.transform_fn, self._iter)
 
         return self
 
@@ -1150,8 +1168,9 @@ class BaseBatcher(abc.ABC):
         pass
 
 
-class BaseChunkyBatcher(BaseBatcher):
-    """Base class for iterating over the elements of an iterable in batches.
+class BaseChunkyBatcher(Batcher):
+    """Base class for iterating over the elements of an iterable in chunks.
+
     Batch sizes are determined per chunk using ``_compute_batch_size``.
     """
 
@@ -1160,7 +1179,6 @@ class BaseChunkyBatcher(BaseBatcher):
             self._pb.update(count=self._last_batch_size)
 
         batch_size = self._compute_batch_size()
-        self._last_batch_size = batch_size
 
         if self.iterable is None:
             return batch_size
@@ -1170,26 +1188,35 @@ class BaseChunkyBatcher(BaseBatcher):
                 raise StopIteration
 
             offset = self._last_offset
-            self._last_offset += batch_size
+            if batch_size >= 0:
+                self._last_offset += batch_size
+                self._last_batch_size = batch_size
+                batch = self.iterable[offset : (offset + batch_size)]
+            else:
+                self._last_offset = self._num_samples
+                self._last_batch_size = self._num_samples - offset
+                if offset > 0:
+                    batch = self.iterable[offset:]
+                else:
+                    batch = self.iterable
 
-            batch = self.iterable[offset : (offset + batch_size)]
-            if self._transform_fn is not None:
-                batch = [self._transform_fn(item) for item in batch]
+            if self.transform_fn is not None:
+                batch = [self.transform_fn(item) for item in batch]
+
             return batch
 
         batch = []
         idx = 0
 
         try:
-            while idx < batch_size:
+            while idx < batch_size or batch_size < 0:
                 batch.append(next(self._iter))
                 idx += 1
-
         except StopIteration:
-            self._last_batch_size = len(batch)
-
             if not batch:
                 raise StopIteration
+
+        self._last_batch_size = len(batch)
 
         return batch
 
@@ -1218,17 +1245,17 @@ class BaseDynamicBatcher(BaseChunkyBatcher):
         min_batch_size=1,
         max_batch_size=None,
         max_batch_beta=None,
+        transform_fn=None,
         return_views=False,
         progress=False,
         total=None,
-        transform_fn=None,
     ):
         super().__init__(
             iterable,
+            transform_fn=transform_fn,
             return_views=return_views,
             progress=progress,
             total=total,
-            transform_fn=transform_fn,
         )
 
         self.target_measurement = target_measurement
@@ -1310,7 +1337,7 @@ class LatencyDynamicBatcher(BaseDynamicBatcher):
     Args:
         iterable: an iterable to batch over. If ``None``, the result of
             ``next()`` will be a batch size instead of a batch, and is an
-            infinite iterator.
+            infinite iterator
         target_latency (0.2): the target latency between ``next()``
             calls, in seconds
         init_batch_size (1): the initial batch size to use
@@ -1318,6 +1345,7 @@ class LatencyDynamicBatcher(BaseDynamicBatcher):
         max_batch_size (None): an optional maximum allowed batch size
         max_batch_beta (None): an optional lower/upper bound on the ratio
             between successive batch sizes
+        transform_fn (None): a transform function to apply to each item
         return_views (False): whether to return each batch as a
             :class:`fiftyone.core.view.DatasetView`. Only applicable when the
             iterable is a :class:`fiftyone.core.collections.SampleCollection`
@@ -1328,7 +1356,6 @@ class LatencyDynamicBatcher(BaseDynamicBatcher):
         total (None): the length of ``iterable``. Only applicable when
             ``progress=True``. If not provided, it is computed via
             ``len(iterable)``, if possible
-        transform_fn (None): a transform function to apply to each item of the batch
     """
 
     def __init__(
@@ -1339,10 +1366,10 @@ class LatencyDynamicBatcher(BaseDynamicBatcher):
         min_batch_size=1,
         max_batch_size=None,
         max_batch_beta=None,
+        transform_fn=None,
         return_views=False,
         progress=False,
         total=None,
-        transform_fn=None,
     ):
         super().__init__(
             iterable,
@@ -1351,10 +1378,10 @@ class LatencyDynamicBatcher(BaseDynamicBatcher):
             min_batch_size=min_batch_size,
             max_batch_size=max_batch_size,
             max_batch_beta=max_batch_beta,
+            transform_fn=transform_fn,
             return_views=return_views,
             progress=progress,
             total=total,
-            transform_fn=transform_fn,
         )
 
         self._last_time = None
@@ -1423,13 +1450,14 @@ class ContentSizeDynamicBatcher(BaseDynamicBatcher):
     Args:
         iterable: an iterable to batch over. If ``None``, the result of
             ``next()`` will be a batch size instead of a batch, and is an
-            infinite iterator.
+            infinite iterator
         target_size (1048576): the target batch bson content size, in bytes
         init_batch_size (1): the initial batch size to use
         min_batch_size (1): the minimum allowed batch size
         max_batch_size (None): an optional maximum allowed batch size
         max_batch_beta (None): an optional lower/upper bound on the ratio
             between successive batch sizes
+        transform_fn (None): a transform function to apply to each item
         return_views (False): whether to return each batch as a
             :class:`fiftyone.core.view.DatasetView`. Only applicable when the
             iterable is a :class:`fiftyone.core.collections.SampleCollection`
@@ -1440,7 +1468,6 @@ class ContentSizeDynamicBatcher(BaseDynamicBatcher):
         total (None): the length of ``iterable``. Only applicable when
             ``progress=True``. If not provided, it is computed via
             ``len(iterable)``, if possible
-        transform_fn (None): a transform function to apply to each item of the batch
     """
 
     def __init__(
@@ -1451,14 +1478,15 @@ class ContentSizeDynamicBatcher(BaseDynamicBatcher):
         min_batch_size=1,
         max_batch_size=None,
         max_batch_beta=None,
+        transform_fn=None,
         return_views=False,
         progress=False,
         total=None,
-        transform_fn=None,
     ):
         # If unset or larger, max batch size must be 1 byte per object
         if max_batch_size is None or max_batch_size > target_size:
             max_batch_size = target_size
+
         super().__init__(
             iterable,
             target_size,
@@ -1466,11 +1494,12 @@ class ContentSizeDynamicBatcher(BaseDynamicBatcher):
             min_batch_size=min_batch_size,
             max_batch_size=max_batch_size,
             max_batch_beta=max_batch_beta,
+            transform_fn=transform_fn,
             return_views=return_views,
             progress=progress,
             total=total,
-            transform_fn=transform_fn,
         )
+
         self._last_batch_content_size = 0
         self._manually_applied_backpressure = True
 
@@ -1525,8 +1554,9 @@ class StaticBatcher(BaseChunkyBatcher):
     Args:
         iterable: an iterable to batch over. If ``None``, the result of
             ``next()`` will be a batch size instead of a batch, and is an
-            infinite iterator.
+            infinite iterator
         batch_size: size of batches to generate
+        transform_fn (None): a transform function to apply to each item
         return_views (False): whether to return each batch as a
             :class:`fiftyone.core.view.DatasetView`. Only applicable when the
             iterable is a :class:`fiftyone.core.collections.SampleCollection`
@@ -1537,24 +1567,23 @@ class StaticBatcher(BaseChunkyBatcher):
         total (None): the length of ``iterable``. Only applicable when
             ``progress=True``. If not provided, it is computed via
             ``len(iterable)``, if possible
-        transform_fn (None): a transform function to apply to each item of the batch
     """
 
     def __init__(
         self,
         iterable,
         batch_size,
+        transform_fn=None,
         return_views=False,
         progress=False,
         total=None,
-        transform_fn=None,
     ):
         super().__init__(
             iterable,
+            transform_fn=transform_fn,
             return_views=return_views,
             progress=progress,
             total=total,
-            transform_fn=transform_fn,
         )
 
         self.batch_size = batch_size
@@ -1563,7 +1592,7 @@ class StaticBatcher(BaseChunkyBatcher):
         return self.batch_size
 
 
-class ContentSizeBatcher(BaseBatcher):
+class ContentSizeBatcher(Batcher):
     """Class for iterating over the elements of an iterable with a dynamic
     batch size to achieve a desired content size.
 
@@ -1596,8 +1625,11 @@ class ContentSizeBatcher(BaseBatcher):
     Args:
         iterable: an iterable to batch over. If ``None``, the result of
             ``next()`` will be a batch size instead of a batch, and is an
-            infinite iterator.
-        target_size (1048576): the target batch bson content size, in bytes
+            infinite iterator
+        target_size (1048576): the target batch BSON content size, in bytes
+        transform_fn (None): a transform function to apply to each item
+        size_calc_fn (None): a function that calculates the size of each item.
+            This is applied after ``transform_fn`` if both are provided
         progress (False): whether to render a progress bar tracking the
             consumption of the batches (True/False), use the default value
             ``fiftyone.config.show_progress_bars`` (None), or a progress
@@ -1605,34 +1637,35 @@ class ContentSizeBatcher(BaseBatcher):
         total (None): the length of ``iterable``. Only applicable when
             ``progress=True``. If not provided, it is computed via
             ``len(iterable)``, if possible
-        transform_fn (None): a transform function to apply to each item of the batch
     """
 
     def __init__(
         self,
         iterable,
-        size_calculation_fn=None,
         target_size=2**20,
         max_batch_size=None,
+        transform_fn=None,
+        size_calc_fn=None,
         progress=False,
         total=None,
-        transform_fn=None,
     ):
+        if size_calc_fn is None:
+            size_calc_fn = default_calc_size
+
         super().__init__(
             iterable,
+            transform_fn=transform_fn,
             return_views=False,
             progress=progress,
             total=total,
-            transform_fn=transform_fn,
         )
-        self.max_batch_size = max_batch_size
+
         self.target_size = target_size
+        self.max_batch_size = max_batch_size
+        self.size_calc_fn = size_calc_fn
         self._next_element = None
-        self._size_calculation_fn = (
-            size_calculation_fn
-            if size_calculation_fn
-            else default_calculate_size
-        )
+        self._last_batch_content_size = None
+        self._encoding_ratio = 1.0
 
     def __iter__(self):
         super().__iter__()
@@ -1649,19 +1682,17 @@ class ContentSizeBatcher(BaseBatcher):
             self._pb.update(count=self._last_batch_size)
 
         if self._next_element is None:
-            raise StopIteration()
+            raise StopIteration
 
         # Must have at least 1 element in a batch
-        batch_content_size = self._size_calculation_fn(self._next_element)
+        batch_content_size = self.size_calc_fn(self._next_element)
         curr_batch = [self._next_element]
 
         while True:
             try:
                 # Peek at next element and get its size
                 self._next_element = next(self._iter)
-                next_element_size = self._size_calculation_fn(
-                    self._next_element
-                )
+                next_element_size = self.size_calc_fn(self._next_element)
 
                 # If adding next element would put this batch over the limit,
                 #   stop here
@@ -1669,7 +1700,8 @@ class ContentSizeBatcher(BaseBatcher):
                     self.max_batch_size
                     and len(curr_batch) >= self.max_batch_size
                 ) or (
-                    batch_content_size + next_element_size > self.target_size
+                    batch_content_size + next_element_size
+                    > self.target_size * self._encoding_ratio
                 ):
                     break
 
@@ -1685,10 +1717,17 @@ class ContentSizeBatcher(BaseBatcher):
                 break
 
         self._last_batch_size = len(curr_batch)
+        self._last_batch_content_size = batch_content_size
         return curr_batch
 
+    def set_encoding_ratio(self, encoded_batch_size):
+        if self._last_batch_content_size and encoded_batch_size > 0:
+            self._encoding_ratio = (
+                self._last_batch_content_size / encoded_batch_size
+            )
 
-def default_calculate_size(obj):
+
+def default_calc_size(obj):
     try:
         obj = (
             obj.to_mongo_dict(include_id=True)
@@ -1702,21 +1741,29 @@ def default_calculate_size(obj):
 
 def get_default_batcher(
     iterable,
+    batcher=None,
+    transform_fn=None,
+    size_calc_fn=None,
     progress=False,
     total=None,
-    size_calc_fn=None,
-    transform_fn=None,
 ):
     """Returns a :class:`Batcher` over ``iterable`` using defaults from your
     FiftyOne config.
 
-    Uses ``fiftyone.config.default_batcher`` to determine the implementation
-    to use, and related configuration values as needed for each.
+    If no ``batcher`` is provided, this method uses
+    ``fiftyone.config.default_batcher`` to determine the implementation to use
+    and related configuration values as needed for each.
 
     Args:
         iterable: an iterable to batch over. If ``None``, the result of
             ``next()`` will be a batch size instead of a batch, and is an
-            infinite iterator.
+            infinite iterator
+        batcher (None): a specific :class:`Batcher` subclass to use, or
+            ``False`` to disable batching
+        transform_fn (None): a transform function to apply to each item
+        size_calc_fn (None): a function that calculates the size of each item.
+            This is applied after ``transform_fn`` if both are provided.
+            Only applicable when ``fiftyone.config.default_batcher="size"``
         progress (False): whether to render a progress bar tracking the
             consumption of the batches (True/False), use the default value
             ``fiftyone.config.show_progress_bars`` (None), or a progress
@@ -1724,14 +1771,21 @@ def get_default_batcher(
         total (None): the length of ``iterable``. Only applicable when
             ``progress=True``. If not provided, it is computed via
             ``len(iterable)``, if possible
-        size_calc_fn (None): a function used to calculate the size of each item
-            before adding them to the batch to ensure we are under max batch size.
-            This is applied after transform_fn if both are provided.
-        transform_fn (None): a transform function to apply to each item of the batch
 
     Returns:
-        a :class:`Batcher`
+        a :class:`Batcher` instance
     """
+    if batcher is False:
+        batcher = partial(StaticBatcher, batch_size=100000)
+
+    if batcher is not None:
+        return batcher(
+            iterable,
+            transform_fn=transform_fn,
+            progress=progress,
+            total=total,
+        )
+
     default_batcher = fo.config.default_batcher
     if default_batcher == "latency":
         target_latency = fo.config.batcher_target_latency
@@ -1741,29 +1795,29 @@ def get_default_batcher(
             init_batch_size=1,
             max_batch_beta=8.0,
             max_batch_size=100000,
+            transform_fn=transform_fn,
             progress=progress,
             total=total,
-            transform_fn=transform_fn,
         )
     elif default_batcher == "size":
         target_content_size = fo.config.batcher_target_size_bytes
         return ContentSizeBatcher(
-            iterable=iterable,
+            iterable,
             target_size=target_content_size,
             max_batch_size=100000,
-            progress=progress,
-            size_calculation_fn=size_calc_fn,
-            total=total,
             transform_fn=transform_fn,
+            size_calc_fn=size_calc_fn,
+            progress=progress,
+            total=total,
         )
     elif default_batcher == "static":
         batch_size = fo.config.batcher_static_size
         return StaticBatcher(
             iterable,
             batch_size=batch_size,
+            transform_fn=transform_fn,
             progress=progress,
             total=total,
-            transform_fn=transform_fn,
         )
     else:
         raise ValueError(

@@ -32,6 +32,9 @@ export default function NativeModelEvaluationView(props) {
     load_view,
     rename_evaluation,
     delete_evaluation,
+    load_scenarios,
+    load_scenario,
+    delete_scenario,
   } = view;
   const {
     evaluations = [],
@@ -151,6 +154,20 @@ export default function NativeModelEvaluationView(props) {
           }}
           onChangeCompareKey={(compareKey) => {
             onChange("view.compareKey", compareKey);
+          }}
+          loadScenarios={(callback) => {
+            triggerEvent(load_scenarios, undefined, false, callback);
+          }}
+          loadScenario={(id: string, key?: string, callback?: () => void) => {
+            triggerEvent(load_scenario, { id, key }, false, callback);
+          }}
+          deleteScenario={(scenarioId: string, callback?: () => void) => {
+            triggerEvent(
+              delete_scenario,
+              { id: scenarioId, eval_id: id },
+              false,
+              callback
+            );
           }}
           compareKey={compareKey}
           setStatusEvent={set_status}

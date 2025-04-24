@@ -8,6 +8,7 @@ export * from "./dataset";
 export * from "./distributions";
 export * from "./dynamicGroups";
 export * from "./filters";
+export * from "./grid";
 export * from "./groupEntries";
 export * from "./groups";
 export * from "./internal";
