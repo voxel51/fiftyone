@@ -19,6 +19,7 @@ import asyncio
 from bson import json_util, ObjectId
 from bson.codec_options import CodecOptions
 import mongoengine
+import mongoengine
 import motor.motor_asyncio as mtr
 
 from packaging.version import Version
@@ -296,6 +297,13 @@ def _connect():
         establish_db_conn(fo.config)
 
 
+def _disconnect():
+    global _client, _async_client
+    _client = None
+    _async_client = None
+    mongoengine.disconnect_all()
+
+
 def _async_connect(use_global=False):
     # Regular connect here first, to ensure connection kwargs are established
     #   for below.
@@ -380,7 +388,7 @@ def _validate_db_version(config, client):
         )
 
 
-def aggregate(collection, pipelines):
+def aggregate(collection, pipelines, hints=None):
     """Executes one or more aggregations on a collection.
 
     Multiple aggregations are executed using multiple threads, and their
@@ -400,17 +408,23 @@ def aggregate(collection, pipelines):
             a list and the list of lists is returned
     """
     pipelines = list(pipelines)
-
     is_list = pipelines and not isinstance(pipelines[0], dict)
     if not is_list:
         pipelines = [pipelines]
+        hints = [hints]
 
     num_pipelines = len(pipelines)
+    if hints is None:
+        hints = [None] * num_pipelines
+
     if isinstance(collection, mtr.AsyncIOMotorCollection):
         if num_pipelines == 1 and not is_list:
-            return collection.aggregate(pipelines[0], allowDiskUse=True)
+            kwargs = {"hint": hints[0]} if hints[0] is not None else {}
+            return collection.aggregate(
+                pipelines[0], allowDiskUse=True, **kwargs
+            )
 
-        return _do_async_pooled_aggregate(collection, pipelines)
+        return _do_async_pooled_aggregate(collection, pipelines, hints)
 
     if num_pipelines == 1:
         result = collection.aggregate(pipelines[0], allowDiskUse=True)
@@ -434,14 +448,23 @@ def _do_pooled_aggregate(collection, pipelines):
         )
 
 
-async def _do_async_pooled_aggregate(collection, pipelines):
+async def _do_async_pooled_aggregate(collection, pipelines, hints):
     return await asyncio.gather(
-        *[_do_async_aggregate(collection, pipeline) for pipeline in pipelines]
+        *[
+            _do_async_aggregate(collection, pipeline, hint)
+            for pipeline, hint in zip(pipelines, hints)
+        ]
     )
 
 
-async def _do_async_aggregate(collection, pipeline):
-    return [i async for i in collection.aggregate(pipeline, allowDiskUse=True)]
+async def _do_async_aggregate(collection, pipeline, hint):
+    kwargs = {"hint": hint} if hint is not None else {}
+    return [
+        i
+        async for i in collection.aggregate(
+            pipeline, allowDiskUse=True, **kwargs
+        )
+    ]
 
 
 def ensure_connection():
@@ -947,8 +970,12 @@ def bulk_write(ops, coll, ordered=False, batcher=None, progress=False):
         progress (False): whether to render a progress bar (True/False), use
             the default value ``fiftyone.config.show_progress_bars`` (None), or
             a progress callback function to invoke instead
+
+    Returns:
+        A list of :class:`pymongo.results.BulkWriteResult` objects
     """
     batcher = fou.get_default_batcher(ops, batcher=batcher, progress=progress)
+    results = []
 
     try:
         with batcher:
@@ -961,10 +988,12 @@ def bulk_write(ops, coll, ordered=False, batcher=None, progress=False):
                     batcher.set_encoding_ratio(
                         res.bulk_api_result.get("nBytes")
                     )
+                results.append(res)
 
     except BulkWriteError as bwe:
         msg = bwe.details["writeErrors"][0]["errmsg"]
         raise ValueError(msg) from bwe
+    return results
 
 
 def list_datasets():

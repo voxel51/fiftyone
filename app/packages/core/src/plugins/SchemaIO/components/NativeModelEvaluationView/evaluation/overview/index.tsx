@@ -23,6 +23,7 @@ import ClassPerformance from "./ClassPerformance";
 import ConfusionMatrices from "./ConfusionMatrices";
 import MetricPerformance from "./MetricPerformance";
 import Summary from "./Summary";
+import { useTrackEvent } from "@fiftyone/analytics";
 
 export default function Overview(props) {
   const {
@@ -75,7 +76,7 @@ export default function Overview(props) {
   const triggerEvent = useTriggerEvent();
   const setEditingField = useSetRecoilState(editingFieldAtom);
 
-  const trackEvent = useTriggerEvent();
+  const trackEvent = useTrackEvent();
 
   const closeNoteDialog = () => {
     setEditNoteState((note) => ({ ...note, open: false }));

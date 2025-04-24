@@ -38,6 +38,7 @@ input AggregationForm {
   view: BSONArray!
   viewName: String = null
   queryPerformance: Boolean = false
+  hint: String = null
 }
 
 union AggregationResponses =
@@ -464,9 +465,11 @@ input LightningPathInput {
   exclude these values from results
   """
   exclude: [String!] = null
-  first: Int = 200
-  search: String = null
   filters: BSON = null
+  first: Int = 100
+  index: String = null
+  maxDocumentsSearch: Int = null
+  search: String = null
 }
 
 interface LightningResult {
@@ -610,7 +613,7 @@ type Query {
   ): [AggregationResponses!]!
   datasets(
     search: String
-    first: Int = 200
+    first: Int = 100
     after: String = null
   ): DatasetStrConnection!
   aggregations(form: AggregationForm!): [AggregateResult!]!
@@ -631,6 +634,9 @@ type Query {
     filters: BSON = null
     extendedStages: BSON = null
     paginationData: Boolean = true
+    sortBy: String = null
+    desc: Boolean = false
+    hint: String = null
   ): SampleItemStrConnection!
   sample(
     dataset: String!

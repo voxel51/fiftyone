@@ -1370,6 +1370,7 @@ class MediaExporter(object):
             manifest_path = self.export_path
             manifest = {}
 
+        # Not multi-process safe when user chunk size
         self._filename_maker = fou.UniqueFilenameMaker(
             output_dir=output_dir,
             rel_dir=self.rel_dir,
