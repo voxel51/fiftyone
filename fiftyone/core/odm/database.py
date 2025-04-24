@@ -1523,9 +1523,9 @@ def get_indexed_values(
             return [{"id": str(doc["_id"])} for doc in cursor]
 
         if values_only:
-            # If values_only is True, we need to extract the values from the dict
+            # If `values_only` is True, we need to extract the values from the dict
             if isinstance(field_or_fields, str):
-                # Single field index
+                # Flatten single field values for consistency with `values()`
                 return [doc[field_or_fields] for doc in cursor]
             return [list(doc.values()) for doc in cursor]
 
