@@ -1484,14 +1484,17 @@ def delete_runs(name, dry_run=False):
     )
 
 
-def get_indexed_values(dataset, field_or_index, query=None, values_only=False):
-    """Returns the values of the field for all samples in the given collection
+def get_indexed_values(
+    dataset, field_or_fields, *, index_key=None, query=None, values_only=False
+):
+    """Returns the values of the field(s) for all samples in the given collection
     that are covered by the index. Raises an error if the field is not indexed.
 
     Args:
         dataset: the FiftyOne dataset to query
-        field_or_index: the name of a singled indexed field or the
-            index key for a compound index
+        field_or_fields (str or list): the field name(s) to retrieve.
+        index_key (None): the name of the index to use. If None, the default
+            index name will be constructed from the field name(s).
         query (dict, optional): a selection filter to apply when querying.
             For performance, this should only include fields that are in
             the specified index.
@@ -1503,67 +1506,60 @@ def get_indexed_values(dataset, field_or_index, query=None, values_only=False):
         a list of values for the specified field or index keys for each sample
         sorted in the same order as the index
     """
+    try:
+        cursor = _iter_indexed_values(
+            dataset, field_or_fields, index_key=index_key, query=query
+        )
 
-    cursor = _iter_indexed_values(dataset, field_or_index, query)
+        if field_or_fields == "id":
+            if values_only:
+                return [str(doc["_id"]) for doc in cursor]
+            return [{"id": str(doc["_id"])} for doc in cursor]
 
-    if field_or_index == "id":
         if values_only:
-            return [str(doc["_id"]) for doc in cursor]
-        return [{"id": str(doc["_id"])} for doc in cursor]
+            # If values_only is True, we need to extract the values from the dict
+            if isinstance(field_or_fields, str):
+                # Single field index
+                return [doc[field_or_fields] for doc in cursor]
+            return [list(doc.values()) for doc in cursor]
 
-    if values_only:
-        # If values_only is True, we need to extract the values from the dict
-        if "_1_" not in field_or_index:
-            # Single field index
-            return [doc[field_or_index] for doc in cursor]
-        return [list(doc.values()) for doc in cursor]
+        return cursor.to_list()
+    except Exception as e:
+        # Error may contain some extra info that may be useful for debugging
+        logger.debug("Error getting indexed values: %s", e)
 
-    return cursor.to_list()
+        if "hint provided does not correspond to an existing index" in str(e):
+            raise ValueError(
+                "The field '%s' is not indexed. Please ensure that the field is "
+                "indexed before calling this function or use values() instead."
+                % field_or_fields
+            ) from e
+        raise e
 
 
-def _iter_indexed_values(dataset, field_or_index, pipeline=None):
-    collection = dataset._sample_collection
-    if (
-        (field_or_index != "_id")
-        and (
-            field_or_index
-            not in (default_indexes := dataset._get_default_indexes())
-        )
-        and (
-            field_or_index not in (indexes := dataset.get_index_information())
-        )
-    ):
-        raise ValueError(
-            "Field '%s' is not indexed. Please create an index first or call `values()` instead"
-            % field_or_index
-        )
-    if field_or_index == "id" or field_or_index == "_id":
+def _iter_indexed_values(
+    dataset, field_or_fields, *, index_key=None, query=None
+):
+    if not field_or_fields:
+        raise ValueError("You must specify which fields to return.")
+
+    hint = index_key
+    proj = {"_id": 0}
+
+    if field_or_fields == "id" or field_or_fields == "_id":
         proj = {"_id": 1}
-        hint = {"_id": 1}
-    elif field_or_index in default_indexes:
-        if "_1" not in field_or_index:
-            proj = {field_or_index: 1, "_id": 0}
-            hint = {field_or_index: 1}
-        else:
-            proj = {f: 1 for f in field_or_index.strip("_1").split("_1_") if f}
-            hint = {k: v for k, v in proj.items()}
-
-    elif field_or_index in indexes:
-        idx = indexes[field_or_index]["key"]
-        hint = {field: int(direction) for field, direction in idx}
-        proj = {k: v for k, v in hint.items()}
+        hint = "_id_"  # special case for _id
     else:
-        raise ValueError(
-            "Field '%s' is not indexed. Please create an index first or use `values(%s)` instead"
-            % field_or_index
-        )
+        if isinstance(field_or_fields, str):
+            proj[field_or_fields] = 1
+            if not hint:
+                hint = field_or_fields + "_1"
+        else:
+            proj.update({f: 1 for f in field_or_fields})
+            if not hint:
+                hint = "_".join([f + "_1" for f in field_or_fields])
 
-    if not proj.get("_id"):
-        # strip off the id if we are not asking for it so that a
-        # single field index can cover the query
-        proj["_id"] = 0
-
-    return collection.find(pipeline or {}, proj, hint=hint)
+    return dataset._sample_collection.find(query or {}, proj, hint=hint)
 
 
 def _get_logger(dry_run=False):
