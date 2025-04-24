@@ -1485,13 +1485,19 @@ def delete_runs(name, dry_run=False):
 
 
 def get_indexed_values(
-    dataset, field_or_fields, *, index_key=None, query=None, values_only=False
+    collection,
+    field_or_fields,
+    *,
+    index_key=None,
+    query=None,
+    values_only=False,
 ):
     """Returns the values of the field(s) for all samples in the given collection
     that are covered by the index. Raises an error if the field is not indexed.
 
     Args:
-        dataset: the FiftyOne dataset to query
+        collection: a ``pymongo.collection.Collection`` or
+            ``motor.motor_asyncio.AsyncIOMotorCollection``
         field_or_fields (str or list): the field name(s) to retrieve.
         index_key (None): the name of the index to use. If None, the default
             index name will be constructed from the field name(s).
@@ -1508,7 +1514,7 @@ def get_indexed_values(
     """
     try:
         cursor = _iter_indexed_values(
-            dataset, field_or_fields, index_key=index_key, query=query
+            collection, field_or_fields, index_key=index_key, query=query
         )
 
         if field_or_fields == "id":
@@ -1526,7 +1532,7 @@ def get_indexed_values(
         return cursor.to_list()
     except Exception as e:
         # Error may contain some extra info that may be useful for debugging
-        logger.debug("Error getting indexed values: %s", e)
+        logger.debug("Error getting indexed values using hint:\n %s", e)
 
         if "hint provided does not correspond to an existing index" in str(e):
             raise ValueError(
@@ -1538,7 +1544,7 @@ def get_indexed_values(
 
 
 def _iter_indexed_values(
-    dataset, field_or_fields, *, index_key=None, query=None
+    collection, field_or_fields, *, index_key=None, query=None
 ):
     if not field_or_fields:
         raise ValueError("You must specify which fields to return.")
@@ -1559,7 +1565,7 @@ def _iter_indexed_values(
             if not hint:
                 hint = "_".join([f + "_1" for f in field_or_fields])
 
-    return dataset._sample_collection.find(query or {}, proj, hint=hint)
+    return collection.find(query or {}, proj, hint=hint)
 
 
 def _get_logger(dry_run=False):

@@ -9068,7 +9068,9 @@ class SampleCollection(object):
             ):
                 try:
                     return foo.get_indexed_values(
-                        self._dataset, field, values_only=True
+                        self._dataset._sample_collection,
+                        field,
+                        values_only=True,
                     )
                 except Exception as e:
                     # Fallback to values, but log the error to surface the
