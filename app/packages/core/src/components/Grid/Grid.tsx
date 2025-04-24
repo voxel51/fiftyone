@@ -1,63 +1,75 @@
 import styles from "./Grid.module.css";
 
-import { freeVideos } from "@fiftyone/looker";
 import Spotlight from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
-import React, {
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import React, { useState } from "react";
+import { useRecoilValue } from "recoil";
+import { useMemoOne } from "use-memo-one";
 import { v4 as uuid } from "uuid";
-import { QP_WAIT, QueryPerformanceToastEvent } from "../QueryPerformanceToast";
-import { gridActivePathsLUT } from "../Sidebar/useDetectNewActiveLabelFields";
-import { gridCrop, gridSpacing, pageParameters } from "./recoil";
-import useAt from "./useAt";
+import { useSyncLabelsRenderingStatus } from "../../hooks";
+import {
+  gridAutosizing,
+  gridCrop,
+  gridSpacing,
+  maxGridItemsSizeBytes,
+  pageParameters,
+} from "./recoil";
 import useEscape from "./useEscape";
-import useFontSize from "./useFontSize";
+import useEvents from "./useEvents";
+import useLabelVisibility from "./useLabelVisibility";
+import useLookerCache from "./useLookerCache";
 import useRecords from "./useRecords";
 import useRefreshers from "./useRefreshers";
-import useSelect from "./useSelect";
-import useSelectSample from "./useSelectSample";
+import useRenderer from "./useRenderer";
+import useResize from "./useResize";
+import useScrollLocation from "./useScrollLocation";
 import useSpotlightPager from "./useSpotlightPager";
-import useThreshold from "./useThreshold";
+import useUpdates from "./useUpdates";
+import useZoomSetting from "./useZoomSetting";
+
+const MAX_INSTANCES = 5151;
+const MAX_ROWS = 5151;
 
 function Grid() {
-  const id = useMemo(() => uuid(), []);
+  const id = useMemoOne(() => uuid(), []);
+  const pixels = useMemoOne(() => uuid(), []);
   const spacing = useRecoilValue(gridSpacing);
-  const selectSample = useRef<ReturnType<typeof useSelectSample>>();
-  const { lookerStore, pageReset, reset } = useRefreshers();
+  const { pageReset, reset } = useRefreshers();
   const [resizing, setResizing] = useState(false);
-  const threshold = useThreshold();
+  const zoom = useZoomSetting();
+
+  useSyncLabelsRenderingStatus();
 
   const records = useRecords(pageReset);
+
+  // divide by two, half for the hidden cache and half for max shown
+  const maxBytes = useRecoilValue(maxGridItemsSizeBytes) / 2;
+  const cache = useLookerCache({
+    maxHiddenItems: MAX_INSTANCES,
+    maxHiddenItemsSizeBytes: maxBytes,
+    reset,
+    ...useLabelVisibility(),
+  });
+
   const { page, store } = useSpotlightPager({
-    clearRecords: pageReset,
+    clearRecords: reset,
     pageSelector: pageParameters,
     records,
     zoomSelector: gridCrop,
   });
-  const { get, set } = useAt(pageReset);
 
-  const lookerOptions = fos.useLookerOptions(false);
-  const createLooker = fos.useCreateLooker(false, true, lookerOptions);
+  const { getFontSize, lookerOptions, renderer } = useRenderer({
+    cache,
+    id,
+    records,
+    store,
+  });
+  const { get, set } = useScrollLocation(pageReset);
+
   const setSample = fos.useExpandSample(store);
-  const getFontSize = useFontSize(id);
+  const autosizing = useRecoilValue(gridAutosizing);
 
-  const getCurrentActiveLabelFields = useRecoilCallback(
-    ({ snapshot }) =>
-      () => {
-        return snapshot
-          .getLoadable(fos.activeLabelFields({ modal: false }))
-          .getValue();
-      },
-    []
-  );
-
-  const spotlight = useMemo(() => {
+  const spotlight = useMemoOne(() => {
     /** SPOTLIGHT REFRESHER */
     reset;
     /** SPOTLIGHT REFRESHER */
@@ -66,158 +78,46 @@ function Grid() {
       return undefined;
     }
 
+    cache.freeze();
+
     return new Spotlight<number, fos.Sample>({
       ...get(),
-      destroy: (id) => {
-        const looker = lookerStore.get(id.description);
-        looker?.destroy();
-        lookerStore.delete(id.description);
-        gridActivePathsLUT.delete(id.description);
-      },
-      detach: (id) => {
-        const looker = lookerStore.get(id.description);
-        looker?.detach();
-      },
-      onItemClick: setSample,
-      retainItems: true,
-      rowAspectRatioThreshold: threshold,
-      get: (next) => page(next),
-      render: (id, element, dimensions, zooming) => {
-        if (lookerStore.has(id.description)) {
-          lookerStore
-            .get(id.description)
-            ?.attach(element, dimensions, getFontSize());
+      ...renderer,
 
-          return;
-        }
-
-        const result = store.get(id);
-
-        if (!createLooker.current || !result) {
-          throw new Error("bad data");
-        }
-
-        if (zooming) {
-          // we are scrolling fast, skip creation
-          return;
-        }
-
-        const looker = createLooker.current?.(
-          { ...result, symbol: id },
-          {
-            fontSize: getFontSize(),
-          }
-        );
-        looker.addEventListener("selectthumbnail", ({ detail }) =>
-          selectSample.current?.(detail)
-        );
-        lookerStore.set(id.description, looker);
-        looker.attach(element, dimensions);
-
-        // initialize active paths tracker
-        const currentActiveLabelFields = getCurrentActiveLabelFields();
-        if (
-          currentActiveLabelFields &&
-          !gridActivePathsLUT.has(id.description)
-        ) {
-          gridActivePathsLUT.set(
-            id.description,
-            new Set(currentActiveLabelFields)
-          );
-        }
-      },
+      maxRows: MAX_ROWS,
+      maxItemsSizeBytes: autosizing ? maxBytes : undefined,
       scrollbar: true,
       spacing,
+
+      get: (next) => page(next),
+      onItemClick: setSample,
+      rowAspectRatioThreshold: zoom,
     });
   }, [
-    createLooker,
+    cache,
+    autosizing,
     get,
-    getFontSize,
-    lookerStore,
+    maxBytes,
     page,
+    renderer,
     reset,
     resizing,
     setSample,
     spacing,
-    store,
-    threshold,
+    zoom,
   ]);
-  selectSample.current = useSelectSample(records);
-  useSelect(getFontSize, lookerOptions, lookerStore, spotlight);
-
-  useLayoutEffect(() => {
-    if (resizing || !spotlight) {
-      return undefined;
-    }
-
-    const element = document.getElementById(id);
-
-    const info = fos.getQueryPerformancePath();
-    const timeout = setTimeout(() => {
-      if (info) {
-        window.dispatchEvent(
-          new QueryPerformanceToastEvent(info.path, info.isFrameField)
-        );
-      }
-    }, QP_WAIT);
-    const mount = () => {
-      clearTimeout(timeout);
-      document.dispatchEvent(new CustomEvent("grid-mount"));
-    };
-
-    element && spotlight.attach(element);
-    spotlight.addEventListener("load", mount);
-    spotlight.addEventListener("rowchange", set);
-
-    return () => {
-      clearTimeout(timeout);
-      freeVideos();
-      spotlight.removeEventListener("load", mount);
-      spotlight.removeEventListener("rowchange", set);
-      spotlight.destroy();
-      document.dispatchEvent(new CustomEvent("grid-unmount"));
-    };
-  }, [id, resizing, set, spotlight]);
-
-  useEffect(() => {
-    let width: number;
-    let timeout: ReturnType<typeof setTimeout> | undefined;
-    const el = () => document.getElementById(id)?.parentElement;
-    const observer = new ResizeObserver(() => {
-      const element = el();
-      if (element && width === undefined) {
-        width = element.getBoundingClientRect().width;
-        return;
-      }
-
-      const newWidth = el()?.getBoundingClientRect().width;
-      if (newWidth === width) {
-        return;
-      }
-
-      setResizing(true);
-      timeout && clearTimeout(timeout);
-      timeout = setTimeout(() => {
-        timeout = undefined;
-        if (element) {
-          width = element?.getBoundingClientRect().width;
-        }
-
-        setResizing(false);
-      }, 500);
-    });
-
-    const element = el();
-    element && observer.observe(element);
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [id]);
 
   useEscape();
+  useEvents({ id, cache, pixels, resizing, set, spotlight });
+  useUpdates({ cache, getFontSize, options: lookerOptions, spotlight });
+  useResize(id, setResizing);
 
-  return <div id={id} className={styles.spotlightGrid} data-cy="fo-grid" />;
+  return (
+    <div className={styles.gridContainer}>
+      <div id={id} className={styles.spotlightGrid} data-cy="fo-grid" />
+      <div id={pixels} className={styles.fallingPixels} />
+    </div>
+  );
 }
 
 export default React.memo(Grid);

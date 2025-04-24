@@ -7,7 +7,6 @@ import {
   getFrameNumberAtom,
   getPlayheadStateAtom,
   getTimelineConfigAtom,
-  PlayheadState,
   SequenceTimelineSubscription,
   setFrameNumberAtom,
   TimelineName,
@@ -15,6 +14,7 @@ import {
   updateTimelineConfigAtom,
 } from "../lib/state";
 import { useDefaultTimelineNameImperative } from "./use-default-timeline-name";
+import { PlayheadState } from "./constants";
 
 /**
  * This hook provides access to the timeline with the given name.
@@ -97,6 +97,15 @@ export const useTimeline = (name?: TimelineName) => {
     );
   }, [timelineName]);
 
+  const getPlayHeadState = useAtomCallback(
+    useCallback(
+      (get) => {
+        return get(getPlayheadStateAtom(timelineName));
+      },
+      [timelineName]
+    )
+  );
+
   const setPlayHeadState = useCallback(
     (newState: PlayheadState) => {
       setPlayheadStateWrapper({ name: timelineName, state: newState });
@@ -132,6 +141,10 @@ export const useTimeline = (name?: TimelineName) => {
      * use the `useFrameNumber` hook.
      */
     getFrameNumber,
+    /**
+     * Imperative way to get the current playhead state of the timeline.
+     */
+    getPlayHeadState,
     /**
      * Dispatch a play event to the timeline.
      */

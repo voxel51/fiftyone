@@ -3,18 +3,19 @@ import _ from "lodash";
 import mime from "mime";
 import { Field } from "./schema";
 
+export * from "./Resource";
 export * from "./buffer-manager";
 export * from "./color";
+export * as constants from "./constants";
 export * from "./errors";
 export * from "./fetch";
+export * from "./media";
 export * from "./order";
 export * from "./paths";
-export * from "./Resource";
 export * from "./schema";
 export { default as sizeBytesEstimate } from "./size-bytes-estimate";
 export * as styles from "./styles";
 export * from "./type-check";
-export * as constants from "./constants";
 
 interface O {
   [key: string]: O | any;
@@ -568,14 +569,10 @@ export const prettify = (
   return null;
 };
 
-export const formatDateTime = (timeStamp: number, timeZone: string): string => {
+const buildDateTimeOpts = (timeZone: string): Intl.DateTimeFormatOptions => {
   const twoDigit = "2-digit";
-  const MS = 1000;
-  const S = 60 * MS;
-  const M = 60 * S;
-  const H = 24 * M;
 
-  const options: Intl.DateTimeFormatOptions = {
+  return {
     timeZone:
       timeZone === "local"
         ? Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -587,6 +584,18 @@ export const formatDateTime = (timeStamp: number, timeZone: string): string => {
     minute: twoDigit,
     second: twoDigit,
   };
+};
+
+export const formatDateTime = (
+  timeStamp: number,
+  timeZone: string = "local"
+): string => {
+  const MS = 1000;
+  const S = 60 * MS;
+  const M = 60 * S;
+  const H = 24 * M;
+
+  const options = buildDateTimeOpts(timeZone);
 
   if (!(timeStamp % S)) {
     delete options.second;
@@ -599,6 +608,20 @@ export const formatDateTime = (timeStamp: number, timeZone: string): string => {
   if (!(timeStamp % H)) {
     delete options.hour;
   }
+
+  return new Intl.DateTimeFormat("en-ZA", options)
+    .format(timeStamp)
+    .replaceAll("/", "-");
+};
+
+export const formatLongDateTime = (
+  timeStamp: number,
+  timeZone: string = "local"
+): string => {
+  const options = buildDateTimeOpts(timeZone);
+
+  options.month = "long";
+  options.timeZoneName = "short";
 
   return new Intl.DateTimeFormat("en-ZA", options)
     .format(timeStamp)

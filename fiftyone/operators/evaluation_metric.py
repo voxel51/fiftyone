@@ -45,15 +45,17 @@ class EvaluationMetricConfig(OperatorConfig):
 class EvaluationMetric(Operator):
     """Base class for evaluation metric operators."""
 
-    def get_parameters(self, ctx, inputs):
+    def resolve_input(self, ctx):
         """Defines any necessary properties to collect this evaluation metric's
         parameters from a user during prompting.
 
         Args:
             ctx: an :class:`fiftyone.operators.ExecutionContext`
-            inputs: a :class:`fiftyone.operators.types.Property`
+
+        Returns:
+            a :class:`fiftyone.operators.types.Property`, or None
         """
-        pass
+        return None
 
     def parse_parameters(self, ctx, params):
         """Performs any necessary execution-time formatting to this evaluation

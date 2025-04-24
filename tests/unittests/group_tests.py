@@ -9,8 +9,10 @@ FiftyOne group-related unit tests.
 from itertools import groupby
 import json
 import os
+from pathlib import Path
 import random
 import string
+import tempfile
 import unittest
 
 from bson import ObjectId
@@ -52,15 +54,15 @@ class GroupTests(unittest.TestCase):
         group = fo.Group()
         samples = [
             fo.Sample(
-                filepath="left-image.jpg",
+                filepath=_anchor_test_file("left-image.jpg"),
                 group_field=group.element("left"),
             ),
             fo.Sample(
-                filepath="ego-video.mp4",
+                filepath=_anchor_test_file("ego-video.mp4"),
                 group_field=group.element("ego"),
             ),
             fo.Sample(
-                filepath="right-image.jpg",
+                filepath=_anchor_test_file("right-image.jpg"),
                 group_field=group.element("right"),
             ),
         ]
@@ -110,11 +112,11 @@ class GroupTests(unittest.TestCase):
         dataset.add_samples(
             [
                 fo.Sample(
-                    filepath="left-image.jpg",
+                    filepath=_anchor_test_file("left-image.jpg"),
                     group_field=group.element("left"),
                 ),
                 fo.Sample(
-                    filepath="right-image.jpg",
+                    filepath=_anchor_test_file("right-image.jpg"),
                     group_field=group.element("right"),
                 ),
             ]
@@ -588,6 +590,18 @@ class GroupTests(unittest.TestCase):
 
         view = dataset.select_fields()
 
+        # Selecting active slice maintains schema changes
+        video_view = view.select_group_slices("ego")
+
+        self.assertEqual(view.group_slice, "ego")
+        self.assertEqual(video_view.media_type, "video")
+        self.assertNotIn("field", video_view.get_field_schema())
+        self.assertNotIn("field", video_view.get_frame_field_schema())
+        for sample in video_view:
+            self.assertFalse(sample.has_field("field"))
+            for frame in sample.frames.values():
+                self.assertFalse(frame.has_field("field"))
+
         # Cloning a grouped dataset maintains schema changes
         group_dataset = view.clone()
 
@@ -611,7 +625,6 @@ class GroupTests(unittest.TestCase):
         for sample in image_dataset:
             self.assertFalse(sample.has_field("field"))
 
-        # @note(SelectGroupSlices)
         # Selecting group slices maintains frame schema changes
         video_view = view.select_group_slices(media_type="video")
 
@@ -630,6 +643,126 @@ class GroupTests(unittest.TestCase):
             self.assertFalse(sample.has_field("field"))
             for frame in sample.frames.values():
                 self.assertFalse(frame.has_field("field"))
+
+    @drop_datasets
+    def test_select_exclude_slices(self):
+        dataset = _make_group_dataset()
+
+        # Select slices by name
+        view = dataset.select_group_slices(["left", "right"], flat=False)
+
+        self.assertEqual(len(view), 2)
+        self.assertEqual(view.media_type, "group")
+        self.assertSetEqual(set(view.group_slices), {"left", "right"})
+        self.assertDictEqual(
+            view.group_media_types, {"left": "image", "right": "image"}
+        )
+        self.assertIn(view.group_slice, ["left", "right"])
+        self.assertIn(view.default_group_slice, ["left", "right"])
+
+        # Select slices by media type
+        view = dataset.select_group_slices(media_type="image", flat=False)
+
+        self.assertEqual(len(view), 2)
+        self.assertEqual(view.media_type, "group")
+        self.assertSetEqual(set(view.group_slices), {"left", "right"})
+        self.assertDictEqual(
+            view.group_media_types, {"left": "image", "right": "image"}
+        )
+        self.assertIn(view.group_slice, ["left", "right"])
+        self.assertIn(view.default_group_slice, ["left", "right"])
+
+        # Exclude slices by name
+        view = dataset.exclude_group_slices("ego")
+
+        self.assertEqual(len(view), 2)
+        self.assertEqual(view.media_type, "group")
+        self.assertSetEqual(set(view.group_slices), {"left", "right"})
+        self.assertDictEqual(
+            view.group_media_types, {"left": "image", "right": "image"}
+        )
+        self.assertIn(view.group_slice, ["left", "right"])
+        self.assertIn(view.default_group_slice, ["left", "right"])
+
+        # Exclude slices by media type
+        view = dataset.exclude_group_slices(media_type="video")
+
+        self.assertEqual(len(view), 2)
+        self.assertEqual(view.media_type, "group")
+        self.assertSetEqual(set(view.group_slices), {"left", "right"})
+        self.assertDictEqual(
+            view.group_media_types, {"left": "image", "right": "image"}
+        )
+        self.assertIn(view.group_slice, ["left", "right"])
+        self.assertIn(view.default_group_slice, ["left", "right"])
+
+        # Empty grouped view
+        view = dataset.select_group_slices(
+            ["left", "right"], flat=False
+        ).exclude_group_slices(media_type="image")
+
+        self.assertEqual(len(view), 0)
+        self.assertEqual(view.media_type, "group")
+        self.assertListEqual(view.group_slices, [])
+        self.assertDictEqual(view.group_media_types, {})
+        self.assertIsNone(view.group_slice)
+        self.assertIsNone(view.default_group_slice)
+
+        # Empty grouped view clone
+        dataset2 = view.clone()
+
+        self.assertEqual(len(dataset2), 0)
+        self.assertEqual(dataset2.media_type, "group")
+        self.assertListEqual(dataset2.group_slices, [])
+        self.assertDictEqual(dataset2.group_media_types, {})
+        self.assertIsNone(dataset2.group_slice)
+        self.assertIsNone(dataset2.default_group_slice)
+
+        # Select group slices with filtered schema
+        view = dataset.select_fields().select_group_slices(
+            media_type="video", flat=False
+        )
+
+        self.assertEqual(len(view), 2)
+        self.assertEqual(view.media_type, "group")
+        self.assertListEqual(view.group_slices, ["ego"])
+        self.assertDictEqual(view.group_media_types, {"ego": "video"})
+        self.assertEqual(view.group_slice, "ego")
+        self.assertEqual(view.default_group_slice, "ego")
+
+        schema = view.get_field_schema()
+        frame_schema = view.get_frame_field_schema()
+
+        self.assertNotIn("field", schema)
+        self.assertNotIn("field", frame_schema)
+
+        sample_view = view.first()
+        frame_view = sample_view.frames.first()
+
+        self.assertFalse(sample_view.has_field("field"))
+        self.assertFalse(frame_view.has_field("field"))
+
+        # Clone selected group slices with filtered schema
+        dataset2 = view.clone()
+
+        self.assertEqual(len(dataset2), 2)
+        self.assertEqual(dataset2.media_type, "group")
+        self.assertListEqual(dataset2.group_slices, ["ego"])
+        self.assertDictEqual(dataset2.group_media_types, {"ego": "video"})
+        self.assertEqual(dataset2.group_slice, "ego")
+        self.assertEqual(dataset2.default_group_slice, "ego")
+
+        schema = dataset2.get_field_schema()
+        frame_schema = dataset2.get_frame_field_schema()
+
+        self.assertNotIn("field", schema)
+        self.assertNotIn("field", frame_schema)
+
+        sample2 = dataset2.first()
+        frame2 = sample2.frames.first()
+
+        self.assertFalse(sample2.has_field("field"))
+        self.assertFalse(frame2.has_field("field"))
 
     @drop_datasets
     def test_attached_groups(self):
@@ -1622,32 +1755,32 @@ def _make_group_dataset():
 
     samples = [
         fo.Sample(
-            filepath="left-image1.jpg",
+            filepath=_anchor_test_file("left-image1.jpg"),
             group_field=group1.element("left"),
             field=1,
         ),
         fo.Sample(
-            filepath="ego-video1.mp4",
+            filepath=_anchor_test_file("ego-video1.mp4"),
             group_field=group1.element("ego"),
             field=2,
         ),
         fo.Sample(
-            filepath="right-image1.jpg",
+            filepath=_anchor_test_file("right-image1.jpg"),
             group_field=group1.element("right"),
             field=3,
         ),
         fo.Sample(
-            filepath="left-image2.jpg",
+            filepath=_anchor_test_file("left-image2.jpg"),
             group_field=group2.element("left"),
             field=4,
         ),
         fo.Sample(
-            filepath="ego-video2.mp4",
+            filepath=_anchor_test_file("ego-video2.mp4"),
             group_field=group2.element("ego"),
             field=5,
         ),
         fo.Sample(
-            filepath="right-image2.jpg",
+            filepath=_anchor_test_file("right-image2.jpg"),
             group_field=group2.element("right"),
             field=6,
         ),
@@ -2215,8 +2348,14 @@ class DynamicGroupTests(unittest.TestCase):
 
         group = fo.Group()
         samples = [
-            fo.Sample(filepath="video.mp4", group=group.element("video")),
-            fo.Sample(filepath="image.png", group=group.element("image")),
+            fo.Sample(
+                filepath=_anchor_test_file("video.mp4"),
+                group=group.element("video"),
+            ),
+            fo.Sample(
+                filepath=_anchor_test_file("image.png"),
+                group=group.element("image"),
+            ),
         ]
         dataset.add_samples(samples)
 
@@ -2252,27 +2391,27 @@ def _make_group_by_dataset():
 
     samples = [
         fo.Sample(
-            filepath="frame11.jpg",
+            filepath=_anchor_test_file("frame11.jpg"),
             sample_id=sample_id1,
             frame_number=1,
         ),
         fo.Sample(
-            filepath="frame22.jpg",
+            filepath=_anchor_test_file("frame22.jpg"),
             sample_id=sample_id2,
             frame_number=2,
         ),
         fo.Sample(
-            filepath="frame13.jpg",
+            filepath=_anchor_test_file("frame13.jpg"),
             sample_id=sample_id1,
             frame_number=3,
         ),
         fo.Sample(
-            filepath="frame21.jpg",
+            filepath=_anchor_test_file("frame21.jpg"),
             sample_id=sample_id2,
             frame_number=1,
         ),
         fo.Sample(
-            filepath="frame12.jpg",
+            filepath=_anchor_test_file("frame12.jpg"),
             sample_id=sample_id1,
             frame_number=2,
         ),
@@ -2295,32 +2434,32 @@ def _make_group_by_group_dataset():
 
     samples = [
         fo.Sample(
-            filepath="left-image1.jpg",
+            filepath=_anchor_test_file("left-image1.jpg"),
             group_field=group1.element("left"),
             scene="foo",
         ),
         fo.Sample(
-            filepath="right-image1.jpg",
+            filepath=_anchor_test_file("right-image1.jpg"),
             group_field=group1.element("right"),
             scene="foo",
         ),
         fo.Sample(
-            filepath="left-image2.jpg",
+            filepath=_anchor_test_file("left-image2.jpg"),
             group_field=group2.element("left"),
             scene="foo",
         ),
         fo.Sample(
-            filepath="right-image2.jpg",
+            filepath=_anchor_test_file("right-image2.jpg"),
             group_field=group2.element("right"),
             scene="foo",
         ),
         fo.Sample(
-            filepath="left-image3.jpg",
+            filepath=_anchor_test_file("left-image3.jpg"),
             group_field=group3.element("left"),
             scene="bar",
         ),
         fo.Sample(
-            filepath="right-image3.jpg",
+            filepath=_anchor_test_file("right-image3.jpg"),
             group_field=group3.element("right"),
             scene="bar",
         ),
@@ -2333,6 +2472,11 @@ def _make_group_by_group_dataset():
 
 def _rle(values):
     return dict((k, len(list(group))) for k, group in groupby(values))
+
+
+def _anchor_test_file(file: str) -> str:
+    td = tempfile.gettempdir()
+    return str(Path(Path(td).anchor, file))
 
 
 if __name__ == "__main__":

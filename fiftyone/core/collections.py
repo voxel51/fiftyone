@@ -6,34 +6,29 @@ Interface for sample collections.
 |
 """
 
-from collections import defaultdict
-from copy import copy
-from datetime import datetime
 import fnmatch
 import itertools
 import logging
-import numbers
 import os
 import random
 import string
 import timeit
 import warnings
-
-from bson import ObjectId
-from pymongo import InsertOne, UpdateOne, UpdateMany, WriteConcern
+from collections import defaultdict
+from copy import copy
+from datetime import datetime
 
 import eta.core.serial as etas
 import eta.core.utils as etau
-
 import fiftyone.core.aggregations as foa
 import fiftyone.core.annotation as foan
 import fiftyone.core.brain as fob
-import fiftyone.core.expressions as foe
-from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.evaluation as foev
+import fiftyone.core.expressions as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
+import fiftyone.core.map as focm
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fomt
 import fiftyone.core.models as fomo
@@ -42,6 +37,9 @@ import fiftyone.core.runs as fors
 import fiftyone.core.sample as fosa
 import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
+from bson import ObjectId
+from fiftyone.core.expressions import ViewField as F
+from pymongo import InsertOne, UpdateMany, UpdateOne, WriteConcern
 
 fod = fou.lazy_import("fiftyone.core.dataset")
 fos = fou.lazy_import("fiftyone.core.stages")
@@ -1341,6 +1339,7 @@ class SampleCollection(object):
         path,
         ftype=None,
         embedded_doc_type=None,
+        subfield=None,
         read_only=None,
         include_private=False,
         leaf=False,
@@ -1350,11 +1349,15 @@ class SampleCollection(object):
 
         Args:
             path: a field path
-            ftype (None): an optional field type to enforce. Must be a subclass
-                of :class:`fiftyone.core.fields.Field`
-            embedded_doc_type (None): an optional embedded document type to
-                enforce. Must be a subclass of
+            ftype (None): an optional field type or iterable of types to
+                enforce. Must be subclass(es) of
+                :class:`fiftyone.core.fields.Field`
+            embedded_doc_type (None): an optional embedded document type or
+                iterable of types to enforce. Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            subfield (None): an optional subfield type or iterable of subfield
+                types to enforce. Must be subclass(es) of
+                :class:`fiftyone.core.fields.Field`
             read_only (None): whether to optionally enforce that the field is
                 read-only (True) or not read-only (False)
             include_private (False): whether to include fields that start with
@@ -1370,6 +1373,7 @@ class SampleCollection(object):
         fof.validate_constraints(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
+            subfield=subfield,
             read_only=read_only,
         )
 
@@ -1382,6 +1386,7 @@ class SampleCollection(object):
             path=path,
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
+            subfield=subfield,
             read_only=read_only,
         )
 
@@ -1426,7 +1431,7 @@ class SampleCollection(object):
                 return None, None, read_only
 
             resolved_keys.append(field.db_field or field.name)
-            read_only = field.read_only
+            read_only = getattr(field, "read_only", False)
             last_key = idx == len(keys) - 1
 
             if last_key and not leaf:
@@ -1448,11 +1453,13 @@ class SampleCollection(object):
         self,
         ftype=None,
         embedded_doc_type=None,
+        subfield=None,
         read_only=None,
         info_keys=None,
         created_after=None,
         include_private=False,
         flat=False,
+        unwind=True,
         mode=None,
     ):
         """Returns a schema dictionary describing the fields of the samples in
@@ -1466,6 +1473,9 @@ class SampleCollection(object):
                 iterable of types to which to restrict the returned schema.
                 Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            subfield (None): an optional subfield type or iterable of subfield
+                types to which to restrict the returned schema. Must be
+                subclass(es) of :class:`fiftyone.core.fields.Field`
             read_only (None): whether to restrict to (True) or exclude (False)
                 read-only fields. By default, all fields are included
             info_keys (None): an optional key or list of keys that must be in
@@ -1476,10 +1486,12 @@ class SampleCollection(object):
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
                 embedded document fields are included as top-level keys
+            unwind (True): whether to traverse into list fields. Only
+                applicable when ``flat=True``
             mode (None): whether to apply the above constraints before and/or
-                after flattening the schema. Only applicable when ``flat`` is
-                True. Supported values are ``("before", "after", "both")``.
-                The default is ``"after"``
+                after flattening the schema. Only applicable when ``flat=True``.
+                Supported values are ``("before", "after", "both")``. The
+                default is ``"after"``
 
         Returns:
             a dict mapping field names to :class:`fiftyone.core.fields.Field`
@@ -1491,11 +1503,13 @@ class SampleCollection(object):
         self,
         ftype=None,
         embedded_doc_type=None,
+        subfield=None,
         read_only=None,
         info_keys=None,
         created_after=None,
         include_private=False,
         flat=False,
+        unwind=True,
         mode=None,
     ):
         """Returns a schema dictionary describing the fields of the frames in
@@ -1510,6 +1524,9 @@ class SampleCollection(object):
             embedded_doc_type (None): an optional embedded document type to
                 which to restrict the returned schema. Must be a subclass of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            subfield (None): an optional subfield type or iterable of subfield
+                types to which to restrict the returned schema. Must be
+                subclass(es) of :class:`fiftyone.core.fields.Field`
             read_only (None): whether to restrict to (True) or exclude (False)
                 read-only fields. By default, all fields are included
             info_keys (None): an optional key or list of keys that must be in
@@ -1520,10 +1537,12 @@ class SampleCollection(object):
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
                 embedded document fields are included as top-level keys
+            unwind (True): whether to traverse into list fields. Only
+                applicable when ``flat=True``
             mode (None): whether to apply the above constraints before and/or
-                after flattening the schema. Only applicable when ``flat`` is
-                True. Supported values are ``("before", "after", "both")``.
-                The default is ``"after"``
+                after flattening the schema. Only applicable when ``flat=True``.
+                Supported values are ``("before", "after", "both")``. The
+                default is ``"after"``
 
         Returns:
             a dict mapping field names to :class:`fiftyone.core.fields.Field`
@@ -1823,23 +1842,36 @@ class SampleCollection(object):
                         "Frame field '%s' does not exist" % field_name
                     )
 
-    def validate_field_type(self, path, ftype=None, embedded_doc_type=None):
+    def validate_field_type(
+        self,
+        path,
+        ftype=None,
+        embedded_doc_type=None,
+        subfield=None,
+    ):
         """Validates that the collection has a field of the given type.
 
         Args:
             path: a field name or ``embedded.field.name``
-            ftype (None): an optional field type to enforce. Must be a subclass
-                of :class:`fiftyone.core.fields.Field`
+            ftype (None): an optional field type or iterable of types to
+                enforce. Must be subclass(es) of
+                :class:`fiftyone.core.fields.Field`
             embedded_doc_type (None): an optional embedded document type or
-                iterable of types to enforce. Must be a subclass(es) of
+                iterable of types to enforce. Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            subfield (None): an optional subfield type or iterable of subfield
+                types to enforce. Must be subclass(es) of
+                :class:`fiftyone.core.fields.Field`
 
         Raises:
             ValueError: if the field does not exist or does not have the
                 expected type
         """
         field = self.get_field(
-            path, ftype=ftype, embedded_doc_type=embedded_doc_type
+            path,
+            ftype=ftype,
+            embedded_doc_type=embedded_doc_type,
+            subfield=subfield,
         )
 
         if field is None:
@@ -3213,243 +3245,6 @@ class SampleCollection(object):
     def _delete_labels(self, ids, fields=None):
         self._dataset.delete_labels(ids=ids, fields=fields)
 
-    def update_samples(
-        self,
-        update_fcn,
-        num_workers=None,
-        shard_size=None,
-        shard_method="id",
-        progress=None,
-    ):
-        """Applies the given function to each sample in the collection and
-        saves the resulting sample edits.
-
-        By default, a multiprocessing pool is used to parallelize the work,
-        unless this method is called in a daemon process (subprocess), in which
-        case no workers are used.
-
-        This function effectively performs the following map operation with the
-        outer loop in parallel::
-
-            for batch_view in fou.iter_slices(sample_collection, shard_size):
-                for sample in batch_view.iter_samples(autosave=True):
-                    map_fcn(sample)
-
-        Example::
-
-            import fiftyone as fo
-            import fiftyone.zoo as foz
-
-            dataset = foz.load_zoo_dataset("cifar10", split="train")
-            view = dataset.select_fields("ground_truth")
-
-            def update_fcn(sample):
-                sample.ground_truth.label = sample.ground_truth.label.upper()
-
-            view.update_samples(update_fcn)
-
-            print(dataset.count_values("ground_truth.label"))
-
-        Args:
-            update_fcn: a function to apply to each sample in the collection
-            num_workers (None): the number of workers to use. By default,
-                ``fiftyone.config.default_map_workers`` workers are used if
-                this value is set, else
-                :meth:`fiftyone.core.utils.recommend_process_pool_workers`
-                workers are used. If this value is <= 1, all work is done in
-                the main process
-            shard_size (None): an optional number of samples to distribute to
-                each worker at a time. By default, samples are evenly
-                distributed to workers with one shard per worker
-            shard_method ("id"): whether to use IDs (``"id"``) or slices
-                (``"slice"``) to assign samples to workers
-            progress (None): whether to render a progress bar (True/False), use
-                the default value ``fiftyone.config.show_progress_bars``
-                (None), or a progress callback function to invoke instead, or
-                "workers" to render per-worker progress bars
-        """
-        return self._map_samples(
-            update_fcn,
-            return_outputs=False,
-            save=True,
-            num_workers=num_workers,
-            shard_size=shard_size,
-            shard_method=shard_method,
-            progress=progress,
-        )
-
-    def map_samples(
-        self,
-        map_fcn,
-        reduce_fcn=None,
-        aggregate_fcn=None,
-        save=False,
-        num_workers=None,
-        shard_size=None,
-        shard_method="id",
-        progress=None,
-    ):
-        """Applies the given function to each sample in the collection and
-        optionally reduces/aggregates the results.
-
-        By default, a multiprocessing pool is used to parallelize the work,
-        unless this method is called in a daemon process (subprocess), in which
-        case no workers are used.
-
-        When only a ``map_fcn`` is provided, this function effectively performs
-        the following map operation with the outer loop in parallel::
-
-            for batch_view in fou.iter_slices(sample_collection, shard_size):
-                for sample in batch_view.iter_samples(autosave=save):
-                    sample_output = map_fcn(sample)
-                    yield sample.id, sample_output
-
-        When a ``reduce_fcn`` is provided, this function effectively performs
-        the following map-reduce operation with the outer loop in parallel::
-
-            reducer = reduce_fcn(sample_collection)
-            reducer.init()
-
-            for batch_view in fou.iter_slices(sample_collection, shard_size):
-                for sample in batch_view.iter_samples(autosave=save):
-                    sample_output = map_fcn(sample)
-                    reducer.add(sample.id, sample_output)
-
-            output = reducer.finalize()
-
-        When an ``aggregate_fcn`` is provided, this function effectively
-        performs the following map-aggregate operation with the outer loop in
-        parallel::
-
-            outputs = {}
-
-            for batch_view in fou.iter_slices(sample_collection, shard_size):
-                for sample in batch_view.iter_samples(autosave=save):
-                    outputs[sample.id] = map_fcn(sample)
-
-            output = aggregate_fcn(sample_collection, outputs)
-
-        Example::
-
-            from collections import Counter
-
-            import fiftyone as fo
-            import fiftyone.zoo as foz
-
-            dataset = foz.load_zoo_dataset("cifar10", split="train")
-            view = dataset.select_fields("ground_truth")
-
-            #
-            # Example 1: map
-            #
-
-            def map_fcn(sample):
-                return sample.ground_truth.label.upper()
-
-            counter = Counter()
-            for _, label in view.map_samples(map_fcn):
-                counter[label] += 1
-
-            print(dict(counter))
-
-            #
-            # Example 2: map-reduce
-            #
-
-            def map_fcn(sample):
-                return sample.ground_truth.label.upper()
-
-            class ReduceFcn(fo.ReduceFcn):
-                def init(self):
-                    self.accumulator = Counter()
-
-                def add(self, sample_id, output):
-                    self.accumulator[output] += 1
-
-                def finalize(self):
-                    return dict(self.accumulator)
-
-            counts = view.map_samples(map_fcn, reduce_fcn=ReduceFcn)
-            print(counts)
-
-            #
-            # Example 3: map-aggregate
-            #
-
-            def map_fcn(sample):
-                return sample.ground_truth.label.upper()
-
-            def aggregate_fcn(sample_collection, outputs):
-                return dict(Counter(outputs.values()))
-
-            counts = view.map_samples(map_fcn, aggregate_fcn=aggregate_fcn)
-            print(counts)
-
-        Args:
-            map_fcn: a function to apply to each sample in the collection
-            reduce_fcn (None): an optional
-                :class:`fiftyone.utils.multiprocessing.ReduceFcn` subclass to
-                reduce the map outputs. See above for usage information
-            aggregate_fcn (None): an optional function to aggregate the map
-                outputs. See above for usage information
-            save (False): whether to save any sample edits applied by
-                ``map_fcn``
-            num_workers (None): the number of workers to use. By default,
-                ``fiftyone.config.default_map_workers`` workers are used if
-                this value is set, else
-                :meth:`fiftyone.core.utils.recommend_process_pool_workers`
-                workers are used. If this value is <= 1, all work is done in
-                the main process
-            shard_size (None): an optional number of samples to distribute to
-                each worker at a time. By default, samples are evenly
-                distributed to workers with one shard per worker
-            shard_method ("id"): whether to use IDs (``"id"``) or slices
-                (``"slice"``) to assign samples to workers
-            progress (None): whether to render a progress bar (True/False), use
-                the default value ``fiftyone.config.show_progress_bars``
-                (None), or a progress callback function to invoke instead, or
-                "workers" to render per-worker progress bars
-
-        Returns:
-            the output of ``reduce_fcn`` or ``aggregate_fcn``, if provided,
-            otherwise a generator that emits ``(sample_id, map_output)`` tuples
-        """
-        return self._map_samples(
-            map_fcn,
-            reduce_fcn=reduce_fcn,
-            aggregate_fcn=aggregate_fcn,
-            save=save,
-            num_workers=num_workers,
-            shard_size=shard_size,
-            shard_method=shard_method,
-            progress=progress,
-        )
-
-    def _map_samples(
-        self,
-        map_fcn,
-        reduce_fcn=None,
-        aggregate_fcn=None,
-        return_outputs=True,
-        save=False,
-        num_workers=None,
-        shard_size=None,
-        shard_method="id",
-        progress=None,
-    ):
-        return foum.map_samples(
-            self,
-            map_fcn,
-            reduce_fcn=reduce_fcn,
-            aggregate_fcn=aggregate_fcn,
-            return_outputs=return_outputs,
-            save=save,
-            num_workers=num_workers,
-            shard_size=shard_size,
-            shard_method=shard_method,
-            progress=progress,
-        )
-
     def compute_metadata(
         self,
         overwrite=False,
@@ -4023,6 +3818,9 @@ class SampleCollection(object):
         mask_targets=None,
         method=None,
         progress=None,
+        workers=1,
+        batch_method="id",
+        parallelize_method=None,
         **kwargs,
     ):
         """Evaluates the specified semantic segmentation masks in this
@@ -4079,6 +3877,11 @@ class SampleCollection(object):
             progress (None): whether to render a progress bar (True/False), use
                 the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
+            workers (1): the number of processes to use for parallel
+                processing. Set to a value greater than 1 to enable parallel
+                processing
+            batch_method ("id"): the method to use to shard the dataset
+            parallelize_method (None): the parallelize_method to use for multiprocessing
             **kwargs: optional keyword arguments for the constructor of the
                 :class:`fiftyone.utils.eval.segmentation.SegmentationEvaluationConfig`
                 being used
@@ -4094,6 +3897,9 @@ class SampleCollection(object):
             mask_targets=mask_targets,
             method=method,
             progress=progress,
+            workers=workers,
+            batch_method=batch_method,
+            parallelize_method=parallelize_method,
             **kwargs,
         )
 
@@ -4135,6 +3941,97 @@ class SampleCollection(object):
         return foev.EvaluationMethod.list_runs(
             self, type=type, method=method, **kwargs
         )
+
+    def map_samples(
+        self,
+        map_fcn,
+        save=False,
+        num_workers=None,
+        batch_size=None,
+        batch_method="id",
+        progress=None,
+        parallelize_method="process",
+        skip_failures=False,
+    ):
+        """
+        Applies `map_fcn` to each sample using the specified backend strategy
+        and returns an iterator.
+
+        Args:
+            map_fcn: Function to apply to each sample.
+            save (False): Whether to save any modified samples.
+            num_workers (None): Number of workers.
+            batch_size (None): Number of samples per batch. If None, the batch size
+                is automatically calculated to be the number of samples per worker.
+            batch_method ("id"): Explicit method for batching samples. Supported
+              methods are 'id' and 'slice'
+
+            progress (None): Whether to show progress bar. If None, uses the
+                default value ``fiftyone.config.show_progress_bars``. If "workers",
+                shows a progress bar for each worker.
+            parallelize_method: Explicit method to use for parallelization.
+              Supported methods are 'process' and 'thread'.
+            skip_failures (False): whether to gracefully continue without
+                raising an error if the update function raises an
+                exception for a sample.
+
+
+        Returns:
+            A generator yielding processed sample results.
+        """
+        mapper = focm.MapperFactory.create(
+            parallelize_method, num_workers, batch_method, batch_size
+        )
+
+        yield from mapper.map_samples(
+            self,
+            map_fcn,
+            progress=progress,
+            save=save,
+            skip_failures=skip_failures,
+        )
+
+    def update_samples(
+        self,
+        update_fcn,
+        num_workers=None,
+        batch_size=None,
+        batch_method=None,
+        progress=None,
+        parallelize_method="process",
+        skip_failures=True,
+    ):
+        """
+        Applies `map_fcn` to each sample using the specified backend strategy.
+
+        Args:
+            update_fcn: Function to apply to each sample.
+            num_workers (None): Number of workers.
+            batch_size (None): Number of samples per batch. If None, the batch size
+                is automatically calculated to be the number of samples per worker.
+            batch_method (None): Explicit method for batching samples. Supported
+              methods are 'id' and 'slice'.
+            progress (None): Whether to show progress bar. If None, uses the
+                default value ``fiftyone.config.show_progress_bars``. If "workers",
+                shows a progress bar for each worker.
+            parallelize_method: Explicit method to use for parallelization.
+              Supported methods are 'process' and 'thread'.
+            skip_failures (False): whether to gracefully continue without
+                raising an error if the update function raises an
+                exception for a sample.
+        """
+        mapper = focm.MapperFactory.create(
+            parallelize_method, num_workers, batch_method, batch_size
+        )
+
+        for _ in mapper.map_samples(
+            self,
+            update_fcn,
+            progress=progress,
+            save=True,
+            skip_failures=skip_failures,
+        ):
+            ...
 
     def rename_evaluation(self, eval_key, new_eval_key):
         """Replaces the key for the given evaluation with a new key.
@@ -4855,6 +4752,80 @@ class SampleCollection(object):
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.ExcludeGroups(group_ids))
+
+    @view_stage
+    def exclude_group_slices(self, slices=None, media_type=None):
+        """Excludes the specified group slice(s) from the grouped collection.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+            dataset.add_group_field("group", default="ego")
+
+            group1 = fo.Group()
+            group2 = fo.Group()
+
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/path/to/left-image1.jpg",
+                        group=group1.element("left"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/video1.mp4",
+                        group=group1.element("ego"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/right-image1.jpg",
+                        group=group1.element("right"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/left-image2.jpg",
+                        group=group2.element("left"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/video2.mp4",
+                        group=group2.element("ego"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/right-image2.jpg",
+                        group=group2.element("right"),
+                    ),
+                ]
+            )
+
+            #
+            # Exclude the samples from the "ego" group slice
+            #
+
+            view = dataset.exclude_group_slices("ego")
+
+            #
+            # Exclude the samples from the "left" or "right" group slices
+            #
+
+            view = dataset.exclude_group_slices(["left", "right"])
+
+            #
+            # Exclude all image slices
+            #
+
+            view = dataset.exclude_group_slices(media_type="image")
+
+        Args:
+            slices (None): a group slice or iterable of group slices to
+                exclude
+            media_type (None): a media type or iterable of media types whose
+                slice(s) to exclude
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(
+            fos.ExcludeGroupSlices(slices=slices, media_type=media_type)
+        )
 
     @view_stage
     def exclude_labels(
@@ -5980,6 +5951,72 @@ class SampleCollection(object):
         return self._add_view_stage(fos.MapLabels(field, map))
 
     @view_stage
+    def map_values(self, field, map):
+        """Maps the values in the given field to new values for each sample in
+        the collection.
+
+        Examples::
+
+            import random
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            ANIMALS = [
+                "bear", "bird", "cat", "cow", "dog", "elephant", "giraffe",
+                "horse", "sheep", "zebra"
+            ]
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            values = [random.choice(ANIMALS) for _ in range(len(dataset))]
+            dataset.set_values("str_field", values)
+            dataset.set_values("list_field", [[v] for v in values])
+
+            dataset.set_field("ground_truth.detections.tags", [F("label")]).save()
+
+            # Map all animals to string "animal"
+            mapping = {a: "animal" for a in ANIMALS}
+
+            #
+            # Map values in top-level fields
+            #
+
+            view = dataset.map_values("str_field", mapping)
+
+            print(view.count_values("str_field"))
+            # {"animal": 200}
+
+            view = dataset.map_values("list_field", mapping)
+
+            print(view.count_values("list_field"))
+            # {"animal": 200}
+
+            #
+            # Map values in nested fields
+            #
+
+            view = dataset.map_values("ground_truth.detections.label", mapping)
+
+            print(view.count_values("ground_truth.detections.label"))
+            # {"animal": 183, ...}
+
+            view = dataset.map_values("ground_truth.detections.tags", mapping)
+
+            print(view.count_values("ground_truth.detections.tags"))
+            # {"animal": 183, ...}
+
+        Args:
+            field: the field or ``embedded.field.name`` to map
+            map: a dict mapping values to new values
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(fos.MapValues(field, map))
+
+    @view_stage
     def set_field(self, field, expr, _allow_missing=False):
         """Sets a field or embedded field on each sample in a collection by
         evaluating the given expression.
@@ -6847,19 +6884,24 @@ class SampleCollection(object):
         self,
         slices=None,
         media_type=None,
+        flat=True,
         _allow_mixed=False,
         _force_mixed=False,
     ):
-        """Selects the samples in the group collection from the given slice(s).
+        """Selects the specified group slice(s) from the grouped collection.
 
-        The returned view is a flattened non-grouped view containing only the
-        slice(s) of interest.
+        When ``flat==True``, the returned view is a flattened non-grouped view
+        containing the samples from the slice(s) of interest.
+
+        When ``flat=False``, the returned view is a grouped collection
+        containing only the slice(s) of interest.
 
         .. note::
 
-            This stage performs a ``$lookup`` that pulls the requested slice(s)
-            for each sample in the input collection from the source dataset.
-            As a result, this stage always emits *unfiltered samples*.
+            When ``flat=True``, this stage performs a ``$lookup`` that pulls
+            the requested slice(s) for each sample in the input collection from
+            the source dataset. As a result, the stage emits
+            *unfiltered samples*.
 
         Examples::
 
@@ -6913,6 +6955,12 @@ class SampleCollection(object):
             view = dataset.select_group_slices(["left", "right"])
 
             #
+            # Select only the "left" and "right" group slices
+            #
+
+            view = dataset.select_group_slices(["left", "right"], flat=False)
+
+            #
             # Retrieve all image samples
             #
 
@@ -6922,7 +6970,10 @@ class SampleCollection(object):
             slices (None): a group slice or iterable of group slices to select.
                 If neither argument is provided, a flattened list of all
                 samples is returned
-            media_type (None): a media type whose slice(s) to select
+            media_type (None): a media type or iterable of media types whose
+                slice(s) to select
+            flat (True): whether to return a flattened collection (True) or a
+                grouped collection (False)
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -6931,6 +6982,7 @@ class SampleCollection(object):
             fos.SelectGroupSlices(
                 slices=slices,
                 media_type=media_type,
+                flat=flat,
                 _allow_mixed=_allow_mixed,
                 _force_mixed=_force_mixed,
             )
@@ -10293,7 +10345,7 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement _add_view_stage()")
 
-    def aggregate(self, aggregations):
+    def aggregate(self, aggregations, _mongo=False):
         """Aggregates one or more
         :class:`fiftyone.core.aggregations.Aggregation` instances.
 
@@ -10345,6 +10397,9 @@ class SampleCollection(object):
         for idx, pipeline in facet_pipelines.items():
             idx_map[idx] = len(pipelines)
             pipelines.append(pipeline)
+
+        if _mongo:
+            return pipelines[0] if scalar_result else pipelines
 
         # Run all aggregations
         _results = foo.aggregate(self._dataset._sample_collection, pipelines)
@@ -10825,24 +10880,23 @@ class SampleCollection(object):
             return True
 
         if self.media_type == fom.GROUP:
-            if self.group_media_types is None:
+            group_media_types = self.group_media_types
+            if group_media_types is None:
                 return self._dataset.media_type == media_type
 
             if any_slice:
                 return any(
                     slice_media_type == media_type
-                    for slice_media_type in self.group_media_types.values()
+                    for slice_media_type in group_media_types.values()
                 )
 
-            return (
-                self.group_media_types.get(self.group_slice, None)
-                == media_type
-            )
+            return group_media_types.get(self.group_slice, None) == media_type
 
         if self.media_type == fom.MIXED:
+            group_media_types = self._get_group_media_types()
             return any(
                 slice_media_type == media_type
-                for slice_media_type in self._get_group_media_types().values()
+                for slice_media_type in group_media_types.values()
             )
 
         return False
@@ -11288,6 +11342,12 @@ class SampleCollection(object):
             raise ValueError(f"Dataset has no store '{store_name}'")
 
         return foos.ExecutionStore(store_name, svc)
+
+    def to_torch(self, get_item, **kwargs):
+        """See fo.utils.torch.FiftyOneTorchDataset for documentation."""
+        from fiftyone.utils.torch import FiftyOneTorchDataset
+
+        return FiftyOneTorchDataset(self, get_item, **kwargs)
 
 
 def _iter_label_fields(sample_collection):

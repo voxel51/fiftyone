@@ -16,7 +16,6 @@ import numpy as np
 
 import fiftyone as fo
 from fiftyone import ViewField as F, VALUE
-import fiftyone.core.media as fom
 import fiftyone.core.sample as fos
 import fiftyone.core.stages as fosg
 import fiftyone.core.view as fov
@@ -127,29 +126,21 @@ class DatasetViewTests(unittest.TestCase):
         # Multiple workers
         #
 
-        view.update_samples(update_fcn, num_workers=2)
+        view.update_samples(update_fcn, workers=2, batch_method="id")
 
         self.assertTupleEqual(view.bounds("int"), (1, 50))
 
-        view.update_samples(
-            update_fcn, num_workers=2, shard_size=10, shard_method="id"
-        )
+        view.update_samples(update_fcn, workers=2, batch_method="slice")
 
         self.assertTupleEqual(view.bounds("int"), (2, 51))
-
-        view.update_samples(
-            update_fcn, num_workers=2, shard_size=10, shard_method="slice"
-        )
-
-        self.assertTupleEqual(view.bounds("int"), (3, 52))
 
         #
         # Main process
         #
 
-        view.update_samples(update_fcn, num_workers=1)
+        view.update_samples(update_fcn, workers=1)
 
-        self.assertTupleEqual(view.bounds("int"), (4, 53))
+        self.assertTupleEqual(view.bounds("int"), (3, 52))
 
     @drop_datasets
     def test_map_samples(self):
@@ -168,50 +159,27 @@ class DatasetViewTests(unittest.TestCase):
         def map_fcn(sample):
             return sample.foo.upper()
 
-        class ReduceFcn(fo.ReduceFcn):
-            def init(self):
-                self.accumulator = Counter()
-
-            def add(self, sample_id, output):
-                self.accumulator[output] += 1
-
-            def finalize(self):
-                return dict(self.accumulator)
-
-        def aggregate_fcn(view, outputs):
-            return dict(Counter(outputs.values()))
-
         #
         # Multiple workers
         #
 
         counter = Counter()
-        for _, value in view.map_samples(map_fcn, num_workers=2):
+        for _, value in view.map_samples(
+            map_fcn, num_workers=2, batch_method="slice"
+        ):
+            assert value == "BAR"
             counter[value] += 1
 
-        counts = dict(counter)
+        self.assertDictEqual(dict(counter), {"BAR": 50})
 
-        self.assertDictEqual(counts, {"BAR": 50})
+        counter = Counter()
+        for _, value in view.map_samples(
+            map_fcn, num_workers=2, batch_method="id"
+        ):
+            assert value == "BAR"
+            counter[value] += 1
 
-        counts = view.map_samples(
-            map_fcn,
-            reduce_fcn=ReduceFcn,
-            num_workers=2,
-            shard_size=10,
-            shard_method="id",
-        )
-
-        self.assertDictEqual(counts, {"BAR": 50})
-
-        counts = view.map_samples(
-            map_fcn,
-            aggregate_fcn=aggregate_fcn,
-            num_workers=2,
-            shard_size=10,
-            shard_method="slice",
-        )
-
-        self.assertDictEqual(counts, {"BAR": 50})
+        self.assertDictEqual(dict(counter), {"BAR": 50})
 
         #
         # Main process
@@ -221,19 +189,7 @@ class DatasetViewTests(unittest.TestCase):
         for _, value in view.map_samples(map_fcn, num_workers=1):
             counter[value] += 1
 
-        counts = dict(counter)
-
-        self.assertDictEqual(counts, {"BAR": 50})
-
-        counts = view.map_samples(map_fcn, reduce_fcn=ReduceFcn, num_workers=1)
-
-        self.assertDictEqual(counts, {"BAR": 50})
-
-        counts = view.map_samples(
-            map_fcn, aggregate_fcn=aggregate_fcn, num_workers=1
-        )
-
-        self.assertDictEqual(counts, {"BAR": 50})
+        self.assertDictEqual(dict(counter), {"BAR": 50})
 
     @drop_datasets
     def test_set_unknown_attribute(self):
@@ -1480,9 +1436,11 @@ class SetValuesTests(unittest.TestCase):
         dataset = _make_labels_dataset()
 
         values = [
-            [fo.Classification(label=v) for v in vv]
-            if vv is not None
-            else None
+            (
+                [fo.Classification(label=v) for v in vv]
+                if vv is not None
+                else None
+            )
             for vv in dataset.values("labels.classifications.label")
         ]
 
@@ -1493,9 +1451,11 @@ class SetValuesTests(unittest.TestCase):
 
         # Since this field is not in the schema, the values are loaded as dicts
         also_values = [
-            [fo.Classification.from_dict(d) for d in dd]
-            if dd is not None
-            else None
+            (
+                [fo.Classification.from_dict(d) for d in dd]
+                if dd is not None
+                else None
+            )
             for dd in dataset.values("labels.classifications.also_label")
         ]
         self.assertEqual(values, also_values)
@@ -1587,9 +1547,11 @@ class SetValuesTests(unittest.TestCase):
 
         values = [
             [
-                [fo.Classification(label=v) for v in vv]
-                if vv is not None
-                else None
+                (
+                    [fo.Classification(label=v) for v in vv]
+                    if vv is not None
+                    else None
+                )
                 for vv in ff
             ]
             for ff in dataset.values("frames.labels.classifications.label")
@@ -1603,9 +1565,11 @@ class SetValuesTests(unittest.TestCase):
         # Since this field is not in the schema, the values are loaded as dicts
         also_values = [
             [
-                [fo.Classification.from_dict(d) for d in dd]
-                if dd is not None
-                else None
+                (
+                    [fo.Classification.from_dict(d) for d in dd]
+                    if dd is not None
+                    else None
+                )
                 for dd in ff
             ]
             for ff in dataset.values(
@@ -3464,6 +3428,68 @@ class ViewStageTests(unittest.TestCase):
                         self.assertEqual(lv.label, mapping[l.label])
                     else:
                         self.assertEqual(lv.label, l.label)
+
+    def test_map_values(self):
+        self._setUp_classification()
+        self._setUp_detection()
+
+        mapping = {"friend": "enemy", "hex": "curse", "enemy": "friend"}
+
+        view = self.dataset.map_values("test_clf.label", mapping).map_values(
+            "test_det.label", mapping
+        )
+        it = zip(view, self.dataset)
+        for sv, s in it:
+            self.assertEqual(sv.test_clf.label, mapping[s.test_clf.label])
+            self.assertEqual(sv.test_det.label, mapping[s.test_det.label])
+
+        self._setUp_classifications()
+        self._setUp_detections()
+        view = self.dataset.map_values(
+            "test_clfs.classifications.label", mapping
+        ).map_values("test_dets.detections.label", mapping)
+        it = zip(view, self.dataset)
+        for sv, s in it:
+            clfs = zip(
+                sv.test_clfs.classifications, s.test_clfs.classifications
+            )
+            dets = zip(sv.test_dets.detections, s.test_dets.detections)
+            for f in (clfs, dets):
+                for lv, l in f:
+                    if l.label in mapping:
+                        self.assertEqual(lv.label, mapping[l.label])
+                    else:
+                        self.assertEqual(lv.label, l.label)
+
+    def test_map_values_none(self):
+        self._setUp_detection()
+        self._setUp_detections()
+
+        counts = self.dataset.count_values("test_det.index")
+        self.assertDictEqual(counts, {None: 2})
+
+        counts = self.dataset.count_values("test_dets.detections.index")
+        self.assertDictEqual(counts, {None: 7})
+
+        self.dataset.map_values("test_det.index", {None: 1}).map_values(
+            "test_dets.detections.index", {None: 1}
+        ).save()
+
+        counts = self.dataset.count_values("test_det.index")
+        self.assertDictEqual(counts, {1: 2})
+
+        counts = self.dataset.count_values("test_dets.detections.index")
+        self.assertDictEqual(counts, {1: 7})
+
+        self.dataset.map_values("test_det.index", {1: None}).map_values(
+            "test_dets.detections.index", {1: None}
+        ).save()
+
+        counts = self.dataset.count_values("test_det.index")
+        self.assertDictEqual(counts, {None: 2})
+
+        counts = self.dataset.count_values("test_dets.detections.index")
+        self.assertDictEqual(counts, {None: 7})
 
     def test_set_field(self):
         self._setUp_numeric()

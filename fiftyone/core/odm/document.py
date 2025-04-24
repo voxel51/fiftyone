@@ -17,6 +17,7 @@ from pymongo import InsertOne, UpdateOne
 
 import eta.core.serial as etas
 
+import fiftyone.core.fields as fof
 import fiftyone.core.utils as fou
 
 from .database import ensure_connection
@@ -352,6 +353,12 @@ class MongoEngineBaseDocument(SerializableDocument):
 
         if len(chunks) > 1:
             doc = self.get_field(chunks[0])
+
+            # handle sytnax: sample["field.0.attr"] = value
+            if isinstance(doc, (mongoengine.base.BaseList, fof.ListField)):
+                chunks = chunks[1].split(".", 1)
+                doc = doc[int(chunks[0])]
+
             return doc.set_field(chunks[1], value, create=create)
 
         if not create and not self.has_field(field_name):
@@ -791,6 +798,13 @@ class Document(BaseDocument, mongoengine.Document):
 
     def _update_last_loaded_at(self):
         self.last_loaded_at = datetime.utcnow()
+        self.save(virtual=True)
+
+    def _update_last_modified_at(self, last_modified_at=None):
+        if last_modified_at is None:
+            last_modified_at = datetime.utcnow()
+
+        self.last_modified_at = last_modified_at
         self.save(virtual=True)
 
     def _do_updates(self, _id, updates, upsert):

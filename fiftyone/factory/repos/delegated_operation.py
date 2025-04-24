@@ -126,6 +126,12 @@ class DelegatedOperationRepo(object):
             "subclass must implement set_log_upload_error()"
         )
 
+    def set_log_size(
+        self, _id: ObjectId, log_size: int
+    ) -> DelegatedOperationDocument:
+        """Sets the log size for the delegated operation."""
+        raise NotImplementedError("subclass must implement set_log_size()")
+
     def get(self, _id: ObjectId) -> DelegatedOperationDocument:
         """Get an operation by id."""
         raise NotImplementedError("subclass must implement get()")
@@ -265,6 +271,16 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         )
         return DelegatedOperationDocument().from_pymongo(doc)
 
+    def set_log_size(
+        self, _id: ObjectId, log_size: int
+    ) -> DelegatedOperationDocument:
+        doc = self._collection.find_one_and_update(
+            filter={"_id": _id},
+            update={"$set": {"log_size": log_size}},
+            return_document=pymongo.ReturnDocument.AFTER,
+        )
+        return DelegatedOperationDocument().from_pymongo(doc)
+
     def update_run_state(
         self,
         _id: ObjectId,
@@ -331,6 +347,10 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                 }
             }
         elif run_state == ExecutionRunState.QUEUED:
+            if self.is_remote:
+                raise PermissionError(
+                    "Cannot set queued run_state in remote context"
+                )
             update = {
                 "$set": {
                     "run_state": run_state,

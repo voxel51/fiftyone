@@ -3,8 +3,334 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
-FiftyOne Teams 2.5.0
---------------------
+FiftyOne Enterprise 2.7.2
+-------------------------
+*Released April 4, 2025*
+
+Includes all updates from :ref:`FiftyOne 1.4.1 <release-notes-v1.4.1>`
+
+.. _release-notes-v1.4.1:
+
+FiftyOne 1.4.1
+--------------
+*Released April 4, 2025*
+
+App
+
+- Fixed rendering of samples in the App that are missing a label tags list
+  `#5686 <https://github.com/voxel51/fiftyone/pull/5686>`_
+- Fixed built-in sort by similarity for patches views
+  `#5685 <https://github.com/voxel51/fiftyone/pull/5685>`_
+- Enabled sample tagging in the modal when a selection is present regardless of
+  sidebar filters `#5684 <https://github.com/voxel51/fiftyone/pull/5684>`_
+- Fixed tagging in the modal for video samples
+  `#5683 <https://github.com/voxel51/fiftyone/pull/5683>`_
+- Fixed label tags filtering in the
+  :ref:`Query Performance <app-optimizing-query-performance>` sidebar
+  `#5675 <https://github.com/voxel51/fiftyone/pull/5675>`_
+- Fixed bug when entering invalid id into sidebar id filter
+  `#5655 <https://github.com/voxel51/fiftyone/pull/5655>`_
+
+
+FiftyOne Enterprise 2.7.1
+-------------------------
+*Released March 24, 2025*
+
+- Fixed the 
+  `CVE-2025-29927 <https://github.com/advisories/GHSA-f82v-jwr5-mffw>`_
+  vulnerability related to next.js
+
+FiftyOne Enterprise 2.7.0
+-------------------------
+*Released March 21, 2025*
+
+Includes all updates from :ref:`FiftyOne 1.4.0 <release-notes-v1.4.0>`, plus:
+
+- Renamed FiftyOne Teams to FiftyOne Enterprise
+- Expanded functionality of the :ref:`Runs page <enterprise-runs-page>`,
+  including providing Admins a view of
+  :ref:`delegated operations <enterprise-delegated-operations>` 
+  across all datasets and users, and adding support for viewing and downloading
+  logs in a new :ref:`Logs tab <enterprise-run-page-logs>`
+- Added support for adding
+  :ref:`spatial indexes <brain-optimizing-lassoing-performance>` when creating
+  visualizations via the :ref:`Embeddings panel <app-embeddings-panel>` to
+  optimize lasso performance
+- Added a new builtin ``manage_visualization_indexes`` operator for
+  adding/removing
+  :ref:`spatial indexes <brain-optimizing-lassoing-performance>` to existing
+  visualization results from the App
+- Added support for selecting embedded fields in the
+  :ref:`Embeddings panel <app-embeddings-panel>` and
+  :ref:`Model Evaluation panel <app-model-evaluation-panel>`
+- Added a new ``cloud_storage_id`` argument to the
+  :ref:`CVAT integration <cvat-integration>` to specify the ID of the cloud
+  storage to use for the CVAT tasks that are created
+- Added configurable connect and read timeouts for the API client
+- Added support for filepath aliases/prefixes when using per-user
+  cloud credentials
+- Added support for 3D media to per-user cloud credentials
+- Optimized the :ref:`Data Quality Panel <data-quality>` when loading
+  large datasets
+- Optimized streaming API responses
+- Improved error messages related to license files and compliance
+- Security fixes for vitest, nanoid, dompurify, setuptools, and axios
+- Fixed a bug where using the :ref:`Query Performance Panel <query-performance>`
+  to create an index could result in an error message
+- Fixed a bug that allowed users to accidentally exceed license limits
+  when auto-join was enabled
+- Fixed a bug where, in certain cases, the system would incorrectly
+  retry ``insert_many`` operations
+
+.. _release-notes-v1.4.0:
+
+FiftyOne 1.4.0
+--------------
+*Released March 21, 2025*
+
+App
+
+- Improved grid performance by only rendering labels when they are actually
+  visible and hiding dense label fields like :ref:`heatmaps <heatmaps>` and
+  :ref:`semantic segmentations <semantic-segmentation>` by default
+  `#5356 <https://github.com/voxel51/fiftyone/pull/5356>`_
+- Added support for configuring the
+  :ref:`default visibility <app-fields-sidebar>` of fields
+  `#5356 <https://github.com/voxel51/fiftyone/pull/5356>`_
+- Improved performance and stability of the grid by explicitly
+  managing memory usage of the grid cache and allowing users to
+  set the memory limit of that cache
+  `#5214 <https://github.com/voxel51/fiftyone/pull/5214>`_,
+  `#5548 <https://github.com/voxel51/fiftyone/pull/5548>`_
+- Improved buffering behavior, particularly for longer videos
+  `#5515 <https://github.com/voxel51/fiftyone/pull/5515>`_
+- :ref:`Query Performance <app-optimizing-query-performance>` mode now supports
+  views that select/exclude slices of group datasets
+  `#5428 <https://github.com/voxel51/fiftyone/pull/5428>`_,
+  `#5460 <https://github.com/voxel51/fiftyone/pull/5460>`_
+- Improved performance of sample field filtering on large video
+  samples in the grid
+  `#5450 <https://github.com/voxel51/fiftyone/pull/5450>`_
+- Optimized sidebar counts when
+  :ref:`Query Performance <app-optimizing-query-performance>` is enabled
+  `#5538 <https://github.com/voxel51/fiftyone/pull/5538>`_
+- Removed an inapplicable sidebar sorting option from the settings menu when
+  :ref:`Query Performance <app-optimizing-query-performance>` is enabled
+  `#5531 <https://github.com/voxel51/fiftyone/pull/5531>`_
+- Fixed hard errors related to invalid ID searches in the sidebar
+  `#5415 <https://github.com/voxel51/fiftyone/pull/5415>`_
+- Fixed a mask rendering bug related to missing MIME type
+  `#5419 <https://github.com/voxel51/fiftyone/pull/5419>`_
+- Fixed a bug where :meth:`session.wait() <fiftyone.core.session.Session.wait>`
+  would prematurely exit while App windows remained open
+  `#5437 <https://github.com/voxel51/fiftyone/pull/5437>`_
+- Fixed a bug when animating frame sequences with 0 or 1 frames
+  `#5442 <https://github.com/voxel51/fiftyone/pull/5442>`_
+- Fixed a bug where color schemes may not correctly reset when switching datasets
+  `#5485 <https://github.com/voxel51/fiftyone/pull/5485>`_
+- Fixed sample updates after tagging in the modal
+  `#5514 <https://github.com/voxel51/fiftyone/pull/5514>`_
+- Fixed a data formatting bug in
+  :attr:`Session.selected_labels <fiftyone.core.session.Session.selected_labels>`
+  `#5533 <https://github.com/voxel51/fiftyone/pull/5533>`_
+- Fixed a bug when deleting :ref:`custom workspaces <app-workspaces>`
+  `#5590 <https://github.com/voxel51/fiftyone/pull/5590>`_
+
+Embeddings Panel
+
+- Added support for adding
+  :ref:`spatial indexes <brain-optimizing-lassoing-performance>` to embeddings
+  visualizations to optimize lasso performance when using the
+  :ref:`Embeddings panel <app-embeddings-panel>`
+  `#5500 <https://github.com/voxel51/fiftyone/pull/5500>`_,
+  `#5534 <https://github.com/voxel51/fiftyone/pull/5534>`_,
+  `#5539 <https://github.com/voxel51/fiftyone/pull/5539>`_
+
+Model Evaluation Panel
+
+- Users can now rename and delete evaluations from the
+  :ref:`Model Evaluation panel <app-model-evaluation-panel>`
+  `#5553 <https://github.com/voxel51/fiftyone/pull/5553>`_,
+  `#5559 <https://github.com/voxel51/fiftyone/pull/5559>`_
+- Evaluation types are now clearly indicated
+  `#5509 <https://github.com/voxel51/fiftyone/pull/5509>`_
+- Model comparisons are now restricted to evaluation runs of compatible types
+  `#5541 <https://github.com/voxel51/fiftyone/pull/5541>`_
+- Custom metrics can now be added to existing evaluations via a new
+  :meth:`results.add_custom_metrics() <fiftyone.utils.eval.base.BaseEvaluationResults.add_custom_metrics>`
+  method
+  `#5436 <https://github.com/voxel51/fiftyone/pull/5436>`_
+- Fixed a bug when rendering performance charts for semantic segmentations with
+  no provided mask targets
+  `#5504 <https://github.com/voxel51/fiftyone/pull/5504>`_
+
+Core
+
+- Relaxed SDK <> database compatibility to allow connections when both are
+  within the same major version, starting from this release
+  `#5581 <https://github.com/voxel51/fiftyone/pull/5581>`_
+- Added a
+  :meth:`map_values() <fiftyone.core.collections.SampleCollection.map_values>`
+  view stage that generalizes
+  :meth:`map_labels() <fiftyone.core.collections.SampleCollection.map_labels>`
+  to any field or embedded field
+- Added a builtin `edit_field_values` operator that allows for bulk editing
+  field values from the App
+- :meth:`ViewExpression.map_values(mapping) <fiftyone.core.expressions.ViewExpression.map_values>`
+  now supports mapping dicts with None keys
+  `#5561 <https://github.com/voxel51/fiftyone/pull/5561>`_
+- Added a :meth:`to_torch() <fiftyone.core.collections.SampleCollection.to_torch>`
+  method for converting FiftyOne datasets into Torch Datasets
+  `#5321 <https://github.com/voxel51/fiftyone/pull/5321>`_
+- Added a
+  :meth:`select_group_slices(..., flat=False) <fiftyone.core.collections.SampleCollection.select_group_slices>`
+  syntax for selecting group slices without flattening
+  `#5198 <https://github.com/voxel51/fiftyone/pull/5198>`_
+- Added an
+  :meth:`exclude_group_slices() <fiftyone.core.collections.SampleCollection.exclude_group_slices>`
+  method for excluding group slices
+  `#5198 <https://github.com/voxel51/fiftyone/pull/5198>`_
+- Optimized
+  :meth:`compute_metadata() <fiftyone.core.collections.SampleCollection.compute_metadata>`
+  for PNGs
+  `#5564 <https://github.com/voxel51/fiftyone/pull/5564>`_
+- Added a :func:`binarize_instances() <fiftyone.utils.labels.binarize_instances>`
+  utility for converting instance segmentation masks in ``[0, 255]`` into
+  binary instance masks
+  `#5516 <https://github.com/voxel51/fiftyone/pull/5516>`_
+- Updated the runs interface to correctly record when runs are performed on
+  full datasets
+  `#5519 <https://github.com/voxel51/fiftyone/pull/5519>`_
+- Added support for list values to
+  :meth:`deserialize_value() <fiftyone.core.odm.deserialize_value>`
+- Added support for setting nested list attributes directly via
+  `Sample.__setitem__`
+  `#5582 <https://github.com/voxel51/fiftyone/pull/5582>`_
+- Fixed a bug that prevented importing data in
+  :ref:`FiftyOneDataset <FiftyOneDataset-import>` format to non-empty datasets
+  `#5586 <https://github.com/voxel51/fiftyone/pull/5586>`_
+- Fixed recomputing frames on a video dataset
+  `#5554 <https://github.com/voxel51/fiftyone/pull/5554>`_
+- Fixed installation on Windows from source
+  `#5481 <https://github.com/voxel51/fiftyone/pull/5481>`_
+
+Annotation
+
+- Added support for :ref:`3D cuboid annotation <cvat-3d>` on point clouds with
+  CVAT
+  `#5458 <https://github.com/voxel51/fiftyone/pull/5458>`_
+- Added support for annotating rotated bounding boxes with CVAT
+  `#5457 <https://github.com/voxel51/fiftyone/pull/5457>`_
+- Annotation label schema attributes now support custom attributes
+  for annotation backends
+  `#5502 <https://github.com/voxel51/fiftyone/pull/5502>`_
+
+Brain
+
+- Added a new :ref:`Pgvector vector search <pgvector-integration>` integration
+  `#234 <https://github.com/voxel51/fiftyone-brain/pull/234>`_,
+  `#222 <https://github.com/voxel51/fiftyone-brain/pull/222>`_
+- Added a new :ref:`Mosaic AI vector search <mosaic-integration>` integration
+  `#233 <https://github.com/voxel51/fiftyone-brain/pull/233>`_
+- Added optional ``create_index=True`` and ``points_field`` arguments to
+  :func:`compute_visualization() <fiftyone.brain.compute_visualization>`
+  to allow users to add
+  :ref:`spatial indexes <brain-optimizing-lassoing-performance>` when creating
+  visualizations to optimize lasso performance in the
+  :ref:`Embeddings panel <app-embeddings-panel>`
+  `#236 <https://github.com/voxel51/fiftyone-brain/pull/236>`_
+- Optimized usage of :ref:`similarity indexes <brain-similarity>` initially
+  defined on views by registering the full dataset
+  `#238 <https://github.com/voxel51/fiftyone-brain/pull/238>`_
+- The :ref:`Redis vector search <redis-integration>` backend now supports
+  similarity queries with more than 10 results
+  `#240 <https://github.com/voxel51/fiftyone-brain/pull/240>`_
+
+Zoo
+
+- Populated author and license information for all zoo models/datasets
+  `#5438 <https://github.com/voxel51/fiftyone/pull/5438>`_
+- Adds support for filtering zoo models by license via
+  :func:`list_zoo_models(..., license="MIT") <fiftyone.zoo.models.list_zoo_models>`
+  `#5438 <https://github.com/voxel51/fiftyone/pull/5438>`_
+- Adds support for filtering zoo datasets by license via
+  :func:`list_zoo_datasets(..., license="CC-BY-4.0") <fiftyone.zoo.datasets.list_zoo_datasets>`
+  `#5438 <https://github.com/voxel51/fiftyone/pull/5438>`_
+- Added support for
+  :ref:`declaring custom parameters <model-zoo-remote-creation>` when defining
+  remote zoo models
+  `#5439 <https://github.com/voxel51/fiftyone/pull/5439>`_
+
+CLI
+
+- Added support for glob patterns when listing operators via the CLI
+  `#5587 <https://github.com/voxel51/fiftyone/pull/5587>`_
+
+Docs
+
+- Fixed some documentation typos/broken links
+  `#5558 <https://github.com/voxel51/fiftyone/pull/5558>`_,
+  `#235 <https://github.com/voxel51/fiftyone-brain/pull/235>`_
+
+FiftyOne Enterprise 2.6.2
+-------------------------
+*Released March 12, 2025*
+
+Includes all updates from :ref:`FiftyOne 1.3.2 <release-notes-v1.3.2>`
+
+.. _release-notes-v1.3.2:
+
+FiftyOne 1.3.2
+--------------
+*Released March 12, 2025*
+
+SDK
+
+- Fixed a bug
+  `#5486 <https://github.com/voxel51/fiftyone/issues/5486>`_
+  that caused model evaluation to fail in certain cases
+  `#5472 <https://github.com/voxel51/fiftyone/pull/5472>`_
+
+FiftyOne Enterprise 2.6.1
+-------------------------
+*Released February 28, 2025*
+
+Includes all updates from :ref:`FiftyOne 1.3.1 <release-notes-v1.3.1>`, plus:
+
+- Per-user cloud credentials now support masks and 3D media
+- Security fixes for nextjs, cookie, cross-spawn, and lodash
+- Bump node version to 22
+
+.. _release-notes-v1.3.1:
+
+FiftyOne 1.3.1
+--------------
+*Released February 28, 2025*
+
+App
+
+- Optimized modal tagger to support massive datasets
+  `#5417 <https://github.com/voxel51/fiftyone/pull/5417>`_
+- Fixed a bug with sample updates after tagging in the modal
+  `#5514 <https://github.com/voxel51/fiftyone/pull/5514>`_
+
+FiftyOne Enterprise 2.6.0
+-------------------------
+*Released February 10, 2025*
+
+- Improved backwards compatibility between an older SDK and newer deployment.
+- Added a configurable banner which appears at top and bottom of every page,
+  often used for compliance reasons.
+- Fixed a bug where invite email smtp configuration was not saving correctly.
+
+FiftyOne Enterprise 2.5.1
+-------------------------
+*Released February 3, 2025*
+
+- Fixed a bug where we displayed a session error before initial user login
+
+FiftyOne Enterprise 2.5.0
+-------------------------
 *Released January 24, 2025*
 
 Includes all updates from :ref:`FiftyOne 1.3.0 <release-notes-v1.3.0>`, plus:
@@ -163,20 +489,20 @@ CLI
   :ref:`fiftyone plugins list <cli-fiftyone-plugins-list>` command
   `#5333 <https://github.com/voxel51/fiftyone/pull/5333>`_
 
-FiftyOne Teams 2.4.0
---------------------
+FiftyOne Enterprise 2.4.0
+-------------------------
 *Released January 10, 2025*
 
 - Added ability to set a user-specific auth header when making media queries.
 
-FiftyOne Teams 2.3.0
---------------------
+FiftyOne Enterprise 2.3.0
+-------------------------
 *Released December 20, 2024*
 
 Includes all updates from :ref:`FiftyOne 1.2.0 <release-notes-v1.2.0>`, plus:
 
 - Added an example :ref:`Databricks connector <data-lens-databricks>` showing
-  how to connect FiftyOne Teams to your lakehouse via
+  how to connect FiftyOne Enterprise to your lakehouse via
   :ref:`Data Lens <data-lens>`
 - Added a :ref:`Data Lens connector <data-lens-snippet-remap-fields>`
   that demonstrates how to allow users to dynamically configure the field(s)
@@ -188,10 +514,10 @@ Includes all updates from :ref:`FiftyOne 1.2.0 <release-notes-v1.2.0>`, plus:
 - Prevented unnecessary scrollbars from appearing when using the
   :ref:`Data Quality Panel <data-quality>`
 - AWS session tokens are now supported when configuring
-  :ref:`cloud credentials <teams-cloud-credentials>`
+  :ref:`cloud credentials <enterprise-cloud-credentials>`
 - Fixed a bug that could cause `StopIteration` errors when performing
   long-running operations like computing embeddings when using
-  :ref:`API connections <teams-api-connection>`
+  :ref:`API connections <enterprise-api-connection>`
 
 .. _release-notes-v1.2.0:
 
@@ -264,14 +590,14 @@ Zoo
   :ref:`rtdetr-x-coco-torch <model-zoo-rtdetr-x-coco-torch>` zoo models
   `#5220 <https://github.com/voxel51/fiftyone/pull/5220>`_
 
-FiftyOne Teams 2.2.0
---------------------
+FiftyOne Enterprise 2.2.0
+-------------------------
 *Released December 6, 2024*
 
 Includes all updates from :ref:`FiftyOne 1.1.0 <release-notes-v1.1.0>`, plus:
 
-- All Teams deployments now have builtin compute capacity for
-  executing :ref:`delegated operations <teams-delegated-operations>` in the
+- All Enterprise deployments now have builtin compute capacity for
+  executing :ref:`delegated operations <enterprise-delegated-operations>` in the
   background while you work in the App
 - Introduced :ref:`Data Lens <data-lens>`, which allows you to explore and
   import samples from external data sources into FiftyOne
@@ -401,8 +727,8 @@ Plugins
   `#5181 <https://github.com/voxel51/fiftyone/pull/5181>`_
 
 
-FiftyOne Teams 2.1.3
---------------------
+FiftyOne Enterprise 2.1.3
+-------------------------
 *Released November 8, 2024*
 
 Includes all updates from :ref:`FiftyOne 1.0.2 <release-notes-v1.0.2>`.
@@ -451,15 +777,15 @@ App
   `#5046 <https://github.com/voxel51/fiftyone/pull/5046>`_
 
 
-FiftyOne Teams 2.1.2
---------------------
+FiftyOne Enterprise 2.1.2
+-------------------------
 *Released October 31, 2024*
 
 - Fixed an issue that prevented `delegation_target` from being properly set when
   running delegated operations with orchestrator registration enabled
 
-FiftyOne Teams 2.1.1
---------------------
+FiftyOne Enterprise 2.1.1
+-------------------------
 *Released October 14, 2024*
 
 Includes all updates from :ref:`FiftyOne 1.0.1 <release-notes-v1.0.1>`, plus:
@@ -493,8 +819,8 @@ Core
   :ref:`COCO format <COCODetectionDataset-import>`
   `#4884 <https://github.com/voxel51/fiftyone/pull/4884>`_
 
-FiftyOne Teams 2.1.0
---------------------
+FiftyOne Enterprise 2.1.0
+-------------------------
 *Released October 1, 2024*
 
 Includes all updates from :ref:`FiftyOne 1.0.0 <release-notes-v1.0.0>`, plus:
@@ -504,9 +830,9 @@ Includes all updates from :ref:`FiftyOne 1.0.0 <release-notes-v1.0.0>`, plus:
   :ref:`Super Admin UI <super-admin-ui>`
 - Added support for sending user invitations in
   :ref:`Internal Mode <internal-mode>`
-- Optimized performance of the :ref:`dataset page <teams-homepage>`
+- Optimized performance of the :ref:`dataset page <enterprise-homepage>`
 - Fixed a BSON serialization bug that could cause errors when cloning or
-  exporting certain dataset views from the Teams UI
+  exporting certain dataset views from the Enterprise UI
 
 .. _release-notes-v1.0.0:
 
@@ -613,8 +939,8 @@ FiftyOne 0.25.2
 - Require `pymongo<4.9` to fix database connections
 - Require `pydicom<3` for :ref:`DICOM datasets <DICOMDataset-import>`
 
-FiftyOne Teams 2.0.1
---------------------
+FiftyOne Enterprise 2.0.1
+-------------------------
 *Released September 6, 2024*
 
 Includes all updates from :ref:`FiftyOne 0.25.1 <release-notes-v0.25.1>`, plus:
@@ -623,7 +949,7 @@ Includes all updates from :ref:`FiftyOne 0.25.1 <release-notes-v0.25.1>`, plus:
 - Added support for configuring a deployment to allow Guests to run custom
   plugins
 - Fixed a bug where dataset permissions assigned to
-  :ref:`groups <teams-groups>` were not correctly applied to users that do not
+  :ref:`groups <enterprise-groups>` were not correctly applied to users that do not
   otherwise have access to the dataset
 - Fixed a bug where a deployment's default user role as configured on the
   `Security > Config` page would not be respected
@@ -679,19 +1005,19 @@ Plugins
   don't return outputs
   `#4715 <https://github.com/voxel51/fiftyone/pull/4715>`_
 
-FiftyOne Teams 2.0.0
---------------------
+FiftyOne Enterprise 2.0.0
+-------------------------
 *Released August 20, 2024*
 
 Includes all updates from :ref:`FiftyOne 0.25.0 <release-notes-v0.25.0>`, plus:
 
 What's New
 
-- Added a :ref:`Can tag <teams-can-tag>` permission to allow users to tag
+- Added a :ref:`Can tag <enterprise-can-tag>` permission to allow users to tag
   samples/labels but not otherwise perform edits
 - Added support for authorized user credentials and external account
-  credentials when configuring :ref:`GCP credentials <teams-google-cloud>`
-- All :ref:`plugin execution <teams-plugins>` is now user-aware and will
+  credentials when configuring :ref:`GCP credentials <enterprise-google-cloud>`
+- All :ref:`plugin execution <enterprise-plugins>` is now user-aware and will
   respect the executing user’s role and dataset permissions
 - All deployments now include a LICENSE file that enforces user quotas
 - Guests can no longer access operators/panels in custom plugins
@@ -720,8 +1046,8 @@ SDK
 
 - Added a :mod:`user_groups <fiftyone.management.user_groups>` module to the
   Management SDK for programmatically managing user groups
-- The `fiftyone delegated` CLI command is now available to Teams users
-- Upgraded the :ref:`upload_media() <teams-cloud-media-python>` function to
+- The `fiftyone delegated` CLI command is now available to Enterprise users
+- Upgraded the :ref:`upload_media() <enterprise-cloud-media-python>` function to
   gracefully support fields with missing media paths
 - Added an `overwrite` parameter to
   :meth:`add_cloud_credentials() <fiftyone.management.cloud_credentials.add_cloud_credentials>`
@@ -865,8 +1191,8 @@ Zoo
   `#4509 <https://github.com/voxel51/fiftyone/pull/4509>`_,
   `#4512 <https://github.com/voxel51/fiftyone/pull/4512>`_
 
-FiftyOne Teams 1.7.1
---------------------
+FiftyOne Enterprise 1.7.1
+-------------------------
 *Released June 11, 2024*
 
 Includes all updates from :ref:`FiftyOne 0.24.1 <release-notes-v0.24.1>`, plus:
@@ -915,19 +1241,19 @@ Annotation
 - Added support loading annotations for large CVAT tasks with many jobs
   `#4392 <https://github.com/voxel51/fiftyone/pull/4392>`_
 
-FiftyOne Teams 1.7.0
---------------------
+FiftyOne Enterprise 1.7.0
+-------------------------
 *Released May 29, 2024*
 
 Includes all updates from :ref:`FiftyOne 0.24.0 <release-notes-v0.24.0>`, plus:
 
-- Added a :ref:`Roles page <teams-roles-page>` that summarizes the actions and
+- Added a :ref:`Roles page <enterprise-roles-page>` that summarizes the actions and
   permissions available to each user role
 - Added support for customizing the role that a user will have when sending an
   invitation for a new user to access a specific dataset
 - Added the ability to configure the expiration time for signed URLs used by
-  your FiftyOne Teams deployment
-- Fixed a regression from FiftyOne Teams 1.6 that could cause login errors when
+  your FiftyOne Enterprise deployment
+- Fixed a regression from FiftyOne Enterprise 1.6 that could cause login errors when
   accepting invites
 
 .. _release-notes-v0.24.0:
@@ -1028,57 +1354,57 @@ Zoo
 - Fixed a bug with :ref:`YOLO-NAS inference <super-gradients-integration>`
   `#4429 <https://github.com/voxel51/fiftyone/pull/4429>`_
 
-FiftyOne Teams 1.6.1
---------------------
+FiftyOne Enterprise 1.6.1
+-------------------------
 *Released May 10, 2024*
 
 Bugs
 
-- Fixed an issue with logging into FiftyOne Teams in Enterprise Proxy
-  enviornments
+- Fixed an issue with logging into FiftyOne Enterprise in Enterprise Proxy
+  environments
 
-FiftyOne Teams 1.6.0
---------------------
+FiftyOne Enterprise 1.6.0
+-------------------------
 *Released April 30, 2024*
 
 What's New
 
-- Added :ref:`Groups <teams-groups>` for managing and dataset access for groups
+- Added :ref:`Groups <enterprise-groups>` for managing and dataset access for groups
   of users
 - Introduced a new :ref:`Pluggable Authentication <pluggable-auth>` system for
-  customizing FiftyOne Teams authentication
-- Removed Auth0 as a hard dependency for Teams deployments with the
+  customizing FiftyOne Enterprise authentication
+- Removed Auth0 as a hard dependency for Enterprise deployments with the
   introduction of :ref:`Internal Mode <internal-mode>`
 - Added support for directly authenticating with
   :ref:`Identity Providers <identity-providers>`
 - Added a :ref:`Super Admin UI <super-admin-ui>` for administering FiftyOne
-  Teams deployments
+  Enterprise deployments
 - Added the ability to search for users on the Users page
 
-FiftyOne Teams 1.5.10
----------------------
+FiftyOne Enterprise 1.5.10
+--------------------------
 *Released April 18, 2024*
 
 - Fixed an issue where video datasets were not loading due to ffmpeg dependency
 
-FiftyOne Teams 1.5.9
---------------------
+FiftyOne Enterprise 1.5.9
+-------------------------
 *Released April 15, 2024*
 
 Includes all updates from :ref:`FiftyOne 0.23.8 <release-notes-v0.23.8>`, plus:
 
-- :ref:`Download contexts <teams-cloud-media-python>` now support batching
+- :ref:`Download contexts <enterprise-cloud-media-python>` now support batching
   based on content size
 - All builtin methods that require access to cloud media now use
-  :ref:`download contexts <teams-cloud-media-python>` to download media in
+  :ref:`download contexts <enterprise-cloud-media-python>` to download media in
   batches during execution rather than downloading media in a single batch
   up-front
 - The :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
   method no longer caches all cloud media involved in the export
 - Optimized the localhost App experience when using
-  :ref:`API connections <teams-api-connection>`
+  :ref:`API connections <enterprise-api-connection>`
 - Optimized performance of data-intensive API calls when using
-  :ref:`API connections <teams-api-connection>`
+  :ref:`API connections <enterprise-api-connection>`
 
 .. _release-notes-v0.23.8:
 
@@ -1192,8 +1518,8 @@ Zoo
   frames of video datasets
   `#4229 <https://github.com/voxel51/fiftyone/pull/4229>`_
 
-FiftyOne Teams 1.5.8
---------------------
+FiftyOne Enterprise 1.5.8
+-------------------------
 *Released March 21, 2024*
 
 Includes all updates from :ref:`FiftyOne 0.23.7 <release-notes-v0.23.7>`.
@@ -1224,7 +1550,7 @@ Docs
 - Added a
   :doc:`zero-shot image classification tutorial </tutorials/zero_shot_classification>`
   `#4133 <https://github.com/voxel51/fiftyone/pull/4133>`_
-- :ref:`Improved documentation <teams-cloud-credentials>` for configuring AWS
+- :ref:`Improved documentation <enterprise-cloud-credentials>` for configuring AWS
   and GCP cloud credentials
   `#4151 <https://github.com/voxel51/fiftyone/pull/4151>`_
 - Added :ref:`YOLOv8, YOLOv9, and YOLO-World <ultralytics-integration>` to the
@@ -1299,19 +1625,19 @@ Core
 - Cloning a dataset or view now includes any custom MongoDB indexes
   `#4115 <https://github.com/voxel51/fiftyone/pull/4115>`_
 
-FiftyOne Teams 1.5.7
---------------------
+FiftyOne Enterprise 1.5.7
+-------------------------
 *Released March 6, 2024*
 
 Includes all updates from :ref:`FiftyOne 0.23.6 <release-notes-v0.23.6>`, plus:
 
 - Improved performance of
   :meth:`values() <fiftyone.core.collections.SampleCollection.values>` when
-  using :ref:`API connections <teams-api-connection>`
+  using :ref:`API connections <enterprise-api-connection>`
 - Improved stability of long-running operations when using
-  :ref:`API connections <teams-api-connection>`
+  :ref:`API connections <enterprise-api-connection>`
 - Added support for including prefixes when providing
-  :ref:`bucket-specific credentials <teams-cloud-storage-page>`
+  :ref:`bucket-specific credentials <enterprise-cloud-storage-page>`
 
 .. _release-notes-v0.23.6:
 
@@ -1357,8 +1683,8 @@ Bugs
   selection is present
   `#4113 <https://github.com/voxel51/fiftyone/pull/4113>`_
 
-FiftyOne Teams 1.5.6
---------------------
+FiftyOne Enterprise 1.5.6
+-------------------------
 *Released February 14, 2024*
 
 Includes all updates from :ref:`FiftyOne 0.23.5 <release-notes-v0.23.5>`, plus:
@@ -1404,8 +1730,8 @@ Bugs
   `#4048 <https://github.com/voxel51/fiftyone/pull/4048>`_
 
 
-FiftyOne Teams 1.5.5
---------------------
+FiftyOne Enterprise 1.5.5
+-------------------------
 *Released January 25, 2024*
 
 Includes all updates from :ref:`FiftyOne 0.23.4 <release-notes-v0.23.4>`, plus:
@@ -1431,8 +1757,8 @@ Brain
   :ref:`custom visualization methods <brain-visualization-api>`
   `#4038 <https://github.com/voxel51/fiftyone/pull/4038>`_
 
-FiftyOne Teams 1.5.4
---------------------
+FiftyOne Enterprise 1.5.4
+-------------------------
 *Released January 19, 2024*
 
 Includes all updates from :ref:`FiftyOne 0.23.3 <release-notes-v0.23.3>`, plus:
@@ -1443,7 +1769,7 @@ General
   :meth:`export() <fiftyone.core.collections.SampleCollection.export>` calls
   involving cloud-backed media
 - Deployments with their `FIFTYONE_API_URI` environment variable set will now
-  display the API URI to users in the Teams App
+  display the API URI to users in the Enterprise App
 - Improved debug logs by adding the head and tail of large results
 - Updated `motor` dependency to 3.3.0
 
@@ -1548,10 +1874,10 @@ Tutorials
   tutorial
   `#3991 <https://github.com/voxel51/fiftyone/pull/3991>`_
 
-.. _release-notes-teams-v1.5.3:
+.. _release-notes-enterprise-v1.5.3:
 
-FiftyOne Teams 1.5.3
---------------------
+FiftyOne Enterprise 1.5.3
+-------------------------
 *Released December 21, 2023*
 
 Includes all updates from :ref:`FiftyOne 0.23.2 <release-notes-v0.23.2>`, plus:
@@ -1563,7 +1889,7 @@ General
   :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`,
   :meth:`compute_metadata() <fiftyone.core.collections.SampleCollection.compute_metadata>`,
   and other large batched computations when using
-  :ref:`API connections <teams-api-connection>`
+  :ref:`API connections <enterprise-api-connection>`
 - Added `label` as a searchable field for delegated operations
 - Fixed issue where invalid tokens were not causing redirects
 - Re-running a delegated operation now uses dataset ID instead of name
@@ -1644,10 +1970,10 @@ Plugins
 - Fixed issue with JS plugin App configs
   `#3924 <https://github.com/voxel51/fiftyone/pull/3924>`_
 
-.. _release-notes-teams-v1.5.2:
+.. _release-notes-enterprise-v1.5.2:
 
-FiftyOne Teams 1.5.2
---------------------
+FiftyOne Enterprise 1.5.2
+-------------------------
 *Released December 11, 2023*
 
 Bugs
@@ -1655,10 +1981,10 @@ Bugs
 - Avoid creating non-existent database indexes on API startup
 - Avoid errors when archiving snapshots with corrupted run results
 
-.. _release-notes-teams-v1.5.1:
+.. _release-notes-enterprise-v1.5.1:
 
-FiftyOne Teams 1.5.1
---------------------
+FiftyOne Enterprise 1.5.1
+-------------------------
 *Released December 8, 2023*
 
 Includes all updates from :ref:`FiftyOne 0.23.1 <release-notes-v0.23.1>`
@@ -1690,10 +2016,10 @@ Core
   :ref:`FiftyOneDataset <FiftyOneDataset-import>`
   `#3894 <https://github.com/voxel51/fiftyone/pull/3894>`_
 
-.. _release-notes-teams-v1.5.0:
+.. _release-notes-enterprise-v1.5.0:
 
-FiftyOne Teams 1.5.0
---------------------
+FiftyOne Enterprise 1.5.0
+-------------------------
 *Released December 6, 2023*
 
 Includes all updates from :ref:`FiftyOne 0.23.0 <release-notes-v0.23.0>`, plus:
@@ -1706,20 +2032,20 @@ Features
 - Added support for executing operators on
   :ref:`dataset snapshots <dataset_versioning>`
 - Added support for uploading
-  :ref:`multiple sets of cloud credentials <teams-cloud-storage-page>`, some of
+  :ref:`multiple sets of cloud credentials <enterprise-cloud-storage-page>`, some of
   which may only apply to data in certain bucket(s)
 - Added support for uploading media :ref:`to Labelbox <labelbox-integration>`
   directly from S3 buckets
 - Added support for executing the builtin ``open_dataset`` operator in the
-  Teams UI
+  Enterprise UI
 - Added support for executing operators when viewing datasets with no samples,
   for example to add media/labels to the dataset from within the App
-- Added support for :ref:`editing the label <teams-runs-renaming>` of a
+- Added support for :ref:`editing the label <enterprise-runs-renaming>` of a
   delegated operation
 - Added support for manually marking delegated operations
-  :ref:`as failed <teams-runs-mark-as-failed>`
+  :ref:`as failed <enterprise-runs-mark-as-failed>`
 - Added support for
-  :ref:`monitoring the progress <teams-runs-monitoring-progress>`
+  :ref:`monitoring the progress <enterprise-runs-monitoring-progress>`
   of delegated operations
 - Improved handling of plugin secrets
 - Added the ability to attach authorization tokens to media/asset requests
@@ -1732,11 +2058,11 @@ Features
 
 Bugs
 
-- Fixed an issue with the :ref:`Runs page <teams-runs-page>` when viewing
+- Fixed an issue with the :ref:`Runs page <enterprise-runs-page>` when viewing
   delegated operations that were scheduled via the SDK
 - Users with special access to a dataset are now displayed properly
 - Fixed an issue when loading certain datasets with saved
-  :ref:`color schemes <app-color-schemes>` in the Teams UI
+  :ref:`color schemes <app-color-schemes>` in the Enterprise UI
 - Fixed an issue on the dataset listing page where the page size menu would
   sometimes stay open after making a selection
 - Fixed an issue when downloading plugins via the API that contain bytes data
@@ -1915,20 +2241,20 @@ Bugs
 - Fixed an error when pressing the esc key in the App
   `#3662 <https://github.com/voxel51/fiftyone/pull/3662>`_
 
-.. _release-notes-teams-v1.4.5:
+.. _release-notes-enterprise-v1.4.5:
 
-FiftyOne Teams 1.4.5
---------------------
+FiftyOne Enterprise 1.4.5
+-------------------------
 *Released November 21, 2023*
 
 General
 
 - Added debug log events to API server startup
 
-.. _release-notes-teams-v1.4.4:
+.. _release-notes-enterprise-v1.4.4:
 
-FiftyOne Teams 1.4.4
---------------------
+FiftyOne Enterprise 1.4.4
+-------------------------
 *Released November 3, 2023*
 
 Includes all updates from :ref:`FiftyOne 0.22.3 <release-notes-v0.22.3>`, plus:
@@ -2007,10 +2333,10 @@ CLI
   :ref:`fiftyone delegated delete <cli-fiftyone-delegated-delete>` commands
   `#3721 <https://github.com/voxel51/fiftyone/pull/3721>`_
 
-.. _release-notes-teams-v1.4.3:
+.. _release-notes-enterprise-v1.4.3:
 
-FiftyOne Teams 1.4.3
---------------------
+FiftyOne Enterprise 1.4.3
+-------------------------
 *Released October 20, 2023*
 
 Includes all updates from :ref:`FiftyOne 0.22.2 <release-notes-v0.22.2>`, plus:
@@ -2096,10 +2422,10 @@ Zoo
   loaded
   `#3660 <https://github.com/voxel51/fiftyone/pull/3690>`_
 
-.. _release-notes-teams-v1.4.2:
+.. _release-notes-enterprise-v1.4.2:
 
-FiftyOne Teams 1.4.2
---------------------
+FiftyOne Enterprise 1.4.2
+-------------------------
 *Released October 6, 2023*
 
 Includes all updates from :ref:`FiftyOne 0.22.1 <release-notes-v0.22.1>`, plus:
@@ -2176,20 +2502,20 @@ Plugins
   :meth:`resolve_output() <fiftyone.operators.operator.Operator.resolve_output>`
   `#3575 <https://github.com/voxel51/fiftyone/pull/3574>`_
 
-.. _release-notes-teams-v1.4.1:
+.. _release-notes-enterprise-v1.4.1:
 
-FiftyOne Teams 1.4.1
---------------------
+FiftyOne Enterprise 1.4.1
+-------------------------
 *Released September 21, 2023*
 
 Bugs
 
-- Patched a regression that prevented the Teams App from working behind proxies
+- Patched a regression that prevented the Enterprise App from working behind proxies
 
-.. _release-notes-teams-v1.4.0:
+.. _release-notes-enterprise-v1.4.0:
 
-FiftyOne Teams 1.4.0
---------------------
+FiftyOne Enterprise 1.4.0
+-------------------------
 *Released September 20, 2023*
 
 Includes all updates from :ref:`FiftyOne 0.22.0 <release-notes-v0.22.0>`, plus:
@@ -2198,11 +2524,11 @@ News
 
 - Added support for :ref:`dataset versioning <dataset_versioning>`!
 - Added support for scheduling
-  :ref:`delegated operations <teams-delegated-operations>` via the App
+  :ref:`delegated operations <enterprise-delegated-operations>` via the App
 
 App
 
-- Admins can now :ref:`upload secrets <teams-secrets>` via the UI which are
+- Admins can now :ref:`upload secrets <enterprise-secrets>` via the UI which are
   made available to all plugins and delegated operations at runtime
 - Optimized page load times when accessing the Team Settings page
 - Optimized page load times when opening a dataset for the first time in a new
@@ -2322,10 +2648,10 @@ Zoo
   were not loaded and auto-inference would only return one set of masks
   `#3465 <https://github.com/voxel51/fiftyone/pull/3465>`_
 
-.. _release-notes-teams-v1.3.6:
+.. _release-notes-enterprise-v1.3.6:
 
-FiftyOne Teams 1.3.6
---------------------
+FiftyOne Enterprise 1.3.6
+-------------------------
 *Released August 8, 2023*
 
 Includes all updates from :ref:`FiftyOne 0.21.6 <release-notes-v0.21.6>`.
@@ -2343,19 +2669,19 @@ App
 - Fixed a bug when using the sidebar to filter views that have selected fields
   `#3405 <https://github.com/voxel51/fiftyone/pull/3405>`_
 
-.. _release-notes-teams-v1.3.5:
+.. _release-notes-enterprise-v1.3.5:
 
-FiftyOne Teams 1.3.5
---------------------
+FiftyOne Enterprise 1.3.5
+-------------------------
 *Released August 7, 2023*
 
 Includes all updates from :ref:`FiftyOne 0.21.5 <release-notes-v0.21.5>`, plus:
 
 App
 
-- Fixed a bug with :ref:`dataset search <teams-homepage>` where suggestions may
+- Fixed a bug with :ref:`dataset search <enterprise-homepage>` where suggestions may
   not appear when matches across multiple types collide
-- Upgraded the :ref:`Plugin configuration UI <teams-plugins>` to better explain
+- Upgraded the :ref:`Plugin configuration UI <enterprise-plugins>` to better explain
   the available Operator permission configuration options
 
 SDK
@@ -2505,10 +2831,10 @@ FiftyOne 0.21.4
 - Fixed :class:`Session <fiftyone.core.session.Session>` event emission
   `#3301 <https://github.com/voxel51/fiftyone/pull/3301>`_
 
-.. _release-notes-teams-v1.3.3:
+.. _release-notes-enterprise-v1.3.3:
 
-FiftyOne Teams 1.3.3
---------------------
+FiftyOne Enterprise 1.3.3
+-------------------------
 *Released July 12, 2023*
 
 Includes all updates from :ref:`FiftyOne 0.21.3 <release-notes-v0.21.3>`, plus:
@@ -2516,7 +2842,7 @@ Includes all updates from :ref:`FiftyOne 0.21.3 <release-notes-v0.21.3>`, plus:
 SDK
 
 - Added a `cache=True` option to the
-  :ref:`upload_media() <teams-cloud-api-reference>` utility that allows for
+  :ref:`upload_media() <enterprise-cloud-api-reference>` utility that allows for
   automatically adding any uploaded files to your local cache
 - Fixed a bug when launching the App locally via API connections
 
@@ -2559,10 +2885,10 @@ Core
 - Fixed a bug when filtering keypoints stored in embedded documents
   `#3279 <https://github.com/voxel51/fiftyone/pull/3279>`_
 
-.. _release-notes-teams-v1.3.2:
+.. _release-notes-enterprise-v1.3.2:
 
-FiftyOne Teams 1.3.2
---------------------
+FiftyOne Enterprise 1.3.2
+-------------------------
 *Released July 5, 2023*
 
 Includes all updates from :ref:`FiftyOne 0.21.2 <release-notes-v0.21.2>`.
@@ -2580,10 +2906,10 @@ App
 - Fixes redundant sidebar groups for custom schemas
   `#3250 <https://github.com/voxel51/fiftyone/pull/3250>`_
 
-.. _release-notes-teams-v1.3.1:
+.. _release-notes-enterprise-v1.3.1:
 
-FiftyOne Teams 1.3.1
---------------------
+FiftyOne Enterprise 1.3.1
+-------------------------
 *Released June 30, 2023*
 
 Includes all features from :ref:`FiftyOne 0.21.1 <release-notes-v0.21.1>`,
@@ -2592,17 +2918,17 @@ plus:
 General
 
 - App containers no longer need to be restarted in order for Azure/MinIO
-  credentials uploaded via the Teams UI to be properly recognized
+  credentials uploaded via the Enterprise UI to be properly recognized
 - Fixed an intermittent bug when computing metadata for remote filepaths
-- Reverted a change from Teams 1.3.0 so that the SDK again supports the
+- Reverted a change from Enterprise 1.3.0 so that the SDK again supports the
   declared minimum version requirement of `pymongo==3.12`
 
 SDK
 
 - Updated the order of precedence for SDK connections so that
-  :ref:`API connections <teams-api-connection>` take precedence over
+  :ref:`API connections <enterprise-api-connection>` take precedence over
   :ref:`direct database connections <configuring-mongodb-connection>`
-- Fixed a bug when connecting to Teams deployments with non-standard database
+- Fixed a bug when connecting to Enterprise deployments with non-standard database
   names via API connections
 - Fixed a bug when saving run results using API connections
 - Fixed a bug when deleting datasets using API connections
@@ -2610,10 +2936,10 @@ SDK
 Management SDK
 
 - Added support for
-  :ref:`deleting user invitations <teams-sdk-user-management>` by email in
+  :ref:`deleting user invitations <enterprise-sdk-user-management>` by email in
   addition to invitation ID
 - Added support for
-  :ref:`configuring permissions <teams-sdk-dataset-permissions>` for invited
+  :ref:`configuring permissions <enterprise-sdk-dataset-permissions>` for invited
   users that have not yet logged in
 
 .. _release-notes-v0.21.1:
@@ -2689,10 +3015,10 @@ Annotation
   options when creating annotation tasks
   `#3181 <https://github.com/voxel51/fiftyone/pull/3181>`_
 
-.. _release-notes-teams-v1.3.0:
+.. _release-notes-enterprise-v1.3.0:
 
-FiftyOne Teams 1.3.0
---------------------
+FiftyOne Enterprise 1.3.0
+-------------------------
 *Released May 31, 2023*
 
 Includes all features from :ref:`FiftyOne 0.21.0 <release-notes-v0.21.0>`,
@@ -2700,24 +3026,24 @@ plus:
 
 General
 
-- Added a :ref:`Management SDK <teams-management-sdk>` subpackage for
+- Added a :ref:`Management SDK <enterprise-management-sdk>` subpackage for
   programmatically configuring user roles, dataset permissions, plugins, and
   more
-- Added support for authenticated :ref:`API connections <teams-api-connection>`
+- Added support for authenticated :ref:`API connections <enterprise-api-connection>`
   when using the Python SDK that respect user roles, dataset permissions, etc
 - Logins now automatically redirect back to the page you were trying to access
 - Improved non-persistent dataset cleanup behavior
 - Fixed a bug that could cause the media cache to erroneously garbage collect
   large files while they are downloading
-- Fixed a bug when cloning views into new datasets via the Teams UI
+- Fixed a bug when cloning views into new datasets via the Enterprise UI
 
 Admin
 
-- Added support for :ref:`uploading and managing plugins <teams-plugins>` via
-  the Teams UI
+- Added support for :ref:`uploading and managing plugins <enterprise-plugins>` via
+  the Enterprise UI
 - Added support for cross account IAM roles when configuring cloud storage
   credentials
-- Fixed a bug that prevented Azure/MinIO credentials uploaded via the Teams UI
+- Fixed a bug that prevented Azure/MinIO credentials uploaded via the Enterprise UI
   from being properly recognized by the App
 
 .. _release-notes-v0.21.0:
@@ -2828,10 +3154,10 @@ Tutorials
 - Updated detection mistakes tutorial to avoid unnecessarily resetting the App
   `#3034 <https://github.com/voxel51/fiftyone/pull/3034>`_
 
-.. _release-notes-teams-v1.2.1:
+.. _release-notes-enterprise-v1.2.1:
 
-FiftyOne Teams 1.2.1
---------------------
+FiftyOne Enterprise 1.2.1
+-------------------------
 *Released April 5, 2023*
 
 Includes all features from :ref:`FiftyOne 0.20.1 <release-notes-v0.20.1>`,
@@ -2842,7 +3168,7 @@ General
 - When your session expires, you are now automatically logged out rather than
   being presented with a cryptic server error
 - Improved the accuracy of size estimates when exporting filepaths and/or tags
-  from the Teams UI
+  from the Enterprise UI
 
 Admin
 
@@ -2852,7 +3178,7 @@ Admin
 SDK
 
 - Added support for working with media in Azure cloud storage. Refer to
-  :ref:`this section <teams-azure>` to see how to provide your storage
+  :ref:`this section <enterprise-azure>` to see how to provide your storage
   credentials
 
 Deployment
@@ -2924,10 +3250,10 @@ Documentation
 - Fixed a typo in the :ref:`Caltech-256 <dataset-zoo-caltech256>` dataset
   documentation `#2842 <https://github.com/voxel51/fiftyone/pull/2842>`_
 
-.. _release-notes-teams-v1.2:
+.. _release-notes-enterprise-v1.2:
 
-FiftyOne Teams 1.2
-------------------
+FiftyOne Enterprise 1.2
+-----------------------
 *Released March 22, 2023*
 
 Includes all features from :ref:`FiftyOne 0.20.0 <release-notes-v0.20.0>`,
@@ -2935,11 +3261,11 @@ plus:
 
 Admin settings
 
-- Admins who use SSO to authorize new users to auto-join their FiftyOne Teams
-  deployment can now configure the :ref:`default role <teams-roles>` for those
+- Admins who use SSO to authorize new users to auto-join their FiftyOne Enterprise
+  deployment can now configure the :ref:`default role <enterprise-roles>` for those
   users
 - Admins can now configure the
-  :ref:`default access level <teams-default-access>` that Members receive on
+  :ref:`default access level <enterprise-default-access>` that Members receive on
   newly created datasets Dataset page
 
 Dataset page
@@ -2947,7 +3273,7 @@ Dataset page
 - Added support for viewing :ref:`Segmentation <semantic-segmentation>` and
   :ref:`Heatmap <heatmaps>` data stored as images in the cloud in the App
 - Added support for exporting one or more fields of a dataset in CSV format
-  through the Teams UI
+  through the Enterprise UI
 - Stack traces for unhandled errors are now presented directly in the App so
   that users can self-diagnose issues
 
@@ -3169,10 +3495,10 @@ Tutorials
 - Updated the media in the :doc:`Open Images tutorial </tutorials/open_images>`
   `#2665 <https://github.com/voxel51/fiftyone/pull/2665>`_
 
-.. _release-notes-teams-v1.1.1:
+.. _release-notes-enterprise-v1.1.1:
 
-FiftyOne Teams 1.1.1
---------------------
+FiftyOne Enterprise 1.1.1
+-------------------------
 *Released February 14, 2023*
 
 Includes all features from :ref:`FiftyOne 0.19.1 <release-notes-v0.19.1>`,
@@ -3180,7 +3506,7 @@ plus:
 
 Plugins
 
-- Resolved a bug that prevented Teams deployments from recognizing installed
+- Resolved a bug that prevented Enterprise deployments from recognizing installed
   plugins
 
 .. _release-notes-v0.19.1:
@@ -3202,10 +3528,10 @@ Core
   rendering correctly
   `#2647 <https://github.com/voxel51/fiftyone/pull/2647>`_
 
-.. _release-notes-teams-v1.1:
+.. _release-notes-enterprise-v1.1:
 
-FiftyOne Teams 1.1
-------------------
+FiftyOne Enterprise 1.1
+-----------------------
 *Released February 9, 2023*
 
 Includes all features from :ref:`FiftyOne 0.19.0 <release-notes-v0.19.0>`,
@@ -3214,16 +3540,16 @@ plus:
 User roles
 
 - Renamed the existing Guest role to
-  `Collaborator <https://docs.voxel51.com/teams/roles_and_permissions.html#collaborator>`_
+  `Collaborator <https://docs.voxel51.com/enterprise/roles_and_permissions.html#collaborator>`_
 - Added a new
-  `Guest <https://docs.voxel51.com/teams/roles_and_permissions.html#guest>`_
+  `Guest <https://docs.voxel51.com/enterprise/roles_and_permissions.html#guest>`_
   role. Note that Guest is a view-only role and does not contribute to your
   license count. You can add unlimited Guest users to your deployment!
 
 Homepage
 
 - Added a Recent views widget to the homepage that shows the most recent saved
-  views that you have viewed in the Teams UI
+  views that you have viewed in the Enterprise UI
 
 Dataset page
 
@@ -3235,7 +3561,7 @@ Dataset page
 
 Deployment
 
-- Added support for deploying Teams into environments with proxy networks
+- Added support for deploying Enterprise into environments with proxy networks
 
 .. _release-notes-v0.19.0:
 
@@ -3245,7 +3571,7 @@ FiftyOne 0.19.0
 
 News
 
-- :ref:`FiftyOne Teams <fiftyone-teams>` documentation is now publicly
+- :ref:`FiftyOne Enterprise <fiftyone-enterprise>` documentation is now publicly
   available! `#2388 <https://github.com/voxel51/fiftyone/pull/2388>`_
 
 App
@@ -3441,10 +3767,10 @@ Docs
 - Added a :ref:`filtering <filtering-cheat-sheet>` cheat sheet
   `#2447 <https://github.com/voxel51/fiftyone/pull/2447>`_
 
-.. _release-notes-teams-v1.0:
+.. _release-notes-enterprise-v1.0:
 
-FiftyOne Teams 1.0
-------------------
+FiftyOne Enterprise 1.0
+-----------------------
 *Released November 8, 2022*
 
 Includes all features from :ref:`FiftyOne 0.18.0 <release-notes-v0.18.0>`,
@@ -3452,8 +3778,8 @@ plus:
 
 News
 
-- FiftyOne Teams is now generally available,
-  :ref:`read more here <fiftyone-teams>`!
+- FiftyOne Enterprise is now generally available,
+  :ref:`read more here <fiftyone-enterprise>`!
 
 .. _release-notes-v0.18.0:
 
@@ -5862,7 +6188,7 @@ Core
 - Added support for :ref:`importing <VideoClassificationDirectoryTree-import>`
   and :ref:`exporting <VideoClassificationDirectoryTree-export>` video
   classification datasets organized as directory trees on disk
-- Added `BDD100K <https://bdd-data.berkeley.edu>`_,
+- Added `BDD100K <http://bdd-data.berkeley.edu>`_,
   `HMDB51 <https://serre-lab.clps.brown.edu/resource/hmdb-a-large-human-motion-database>`_,
   and `UCF101 <https://www.crcv.ucf.edu/research/data-sets/ucf101>`_ to
   the :ref:`Dataset Zoo <dataset-zoo>`

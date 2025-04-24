@@ -13,7 +13,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "1.4.0"
+VERSION = "1.5.0"
 
 
 def get_version():
@@ -69,14 +69,14 @@ INSTALL_REQUIRES = [
     "sseclient-py>=1.7.2,<2",
     "sse-starlette>=0.10.3,<1",
     "starlette>=0.24.0",
-    "strawberry-graphql",
+    "strawberry-graphql~=0.257.0",
     "tabulate",
     "tqdm",
     "xmltodict",
     "universal-analytics-python3>=1.0.1,<2",
     "pydash",
     # internal packages
-    "fiftyone-brain>=0.19.0,<0.20",
+    "fiftyone-brain>=0.20.1,<0.21",
     "fiftyone-db>=0.4,<2.0",
     "voxel51-eta>=0.14.0,<0.15",
 ]
@@ -115,7 +115,7 @@ def get_install_requirements(install_requires, choose_install_requires):
     return install_requires
 
 
-with open("README.md", "r") as fh:
+with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 
@@ -140,7 +140,7 @@ setup(
     ),
     include_package_data=True,
     classifiers=[
-        "Development Status :: 4 - Beta",
+        "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
         "Intended Audience :: Science/Research",
         "License :: OSI Approved :: Apache Software License",
@@ -156,6 +156,7 @@ setup(
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
     ],
     entry_points={"console_scripts": ["fiftyone=fiftyone.core.cli:main"]},
     python_requires=">=3.9",

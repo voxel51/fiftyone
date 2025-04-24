@@ -10,6 +10,7 @@ from typing import List, Optional, Tuple
 
 from bson import ObjectId
 import strawberry as gql
+from bson.errors import InvalidId
 
 import fiftyone.core.collections as foc
 import fiftyone.core.dataset as fod
@@ -249,16 +250,18 @@ def handle_group_filter(
     stages = view._stages
     group_field = dataset.group_field
 
-    unselected = not any(
-        isinstance(stage, fosg.SelectGroupSlices) for stage in stages
-    )
+    selected = False
+    for stage in stages:
+        if isinstance(stage, fosg.SelectGroupSlices) and stage.flat:
+            selected = True
+
     group_by = any(isinstance(stage, fosg.GroupBy) for stage in stages)
 
     view = dataset.view()
     if filter.slice:
         view.group_slice = filter.slice
 
-    if unselected and filter.slices:
+    if not selected and filter.slices:
         # flatten the collection if the view has no slice(s) selected
         view = dataset.select_group_slices(_force_mixed=True)
 
@@ -274,6 +277,11 @@ def handle_group_filter(
                 view = view.match(
                     {group_field + ".name": {"$in": filter.slices}}
                 )
+
+            if isinstance(
+                stage, (fosg.SelectGroupSlices, fosg.ExcludeGroupSlices)
+            ):
+                continue
 
             # if selecting a group, filter out select/reorder stages
             if (
@@ -519,8 +527,12 @@ def _make_query(path: str, field: fof.Field, args):
         return _make_range_query(path, field, args)
 
     values = args.get("values", None)
-    if isinstance(field, fof.ObjectIdField):
-        values = list(map(lambda v: ObjectId(v), args["values"]))
+    if isinstance(field, fof.ObjectIdField) and values:
+        for i, v in enumerate(values):
+            try:
+                values[i] = ObjectId(v)
+            except InvalidId:
+                values[i] = v
 
     if isinstance(field, (fof.ObjectIdField, fof.StringField)):
         return {path: {"$nin" if args["exclude"] else "$in": values}}
@@ -784,15 +796,19 @@ def _add_frame_labels_tags(path, field, view):
         items = "%s.%s" % (path, field.document_type._LABEL_LIST_FIELD)
 
     reduce = F(items).reduce(VALUE.extend(F("tags")), [])
-    view = view.set_field(
-        _LABEL_TAGS,
-        F(_LABEL_TAGS).extend(
-            F("frames").reduce(
-                VALUE.extend(F(items).exists().if_else(reduce, [])),
-                [],
-            )
-        ),
-        _allow_missing=True,
+    view = view.add_stage(
+        fosg.SetField(
+            _LABEL_TAGS,
+            F(_LABEL_TAGS).extend(
+                F("frames").reduce(
+                    VALUE.extend(F(items).exists().if_else(reduce, [])),
+                    [],
+                )
+            ),
+            # we are only counting "first frame" labels tags, frame limit is ok
+            _allow_limit=True,
+            _allow_missing=True,
+        )
     )
     return view
 
@@ -800,14 +816,18 @@ def _add_frame_labels_tags(path, field, view):
 def _add_frame_label_tags(path, field, view):
     path = path[len("frames.") :]
     tags = "%s.tags" % path
-    view = view.set_field(
-        _LABEL_TAGS,
-        F(_LABEL_TAGS).extend(
-            F("frames").reduce(
-                VALUE.extend((F(tags) != None).if_else(F(tags), [])), []
-            )
-        ),
-        _allow_missing=True,
+    view = view.add_stage(
+        fosg.SetField(
+            _LABEL_TAGS,
+            F(_LABEL_TAGS).extend(
+                F("frames").reduce(
+                    VALUE.extend((F(tags) != None).if_else(F(tags), [])), []
+                )
+            ),
+            # we are only counting "first frame" label tags, frame limit is ok
+            _allow_limit=True,
+            _allow_missing=True,
+        )
     )
     return view
 

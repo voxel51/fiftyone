@@ -5,6 +5,7 @@ FiftyOne video-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from copy import deepcopy
 from datetime import date, datetime
 
@@ -740,6 +741,120 @@ class VideoTests(unittest.TestCase):
         self.assertEqual(len(sample3.frames), 1)
         self.assertNotEqual(sample3.id, sample_id)
         self.assertNotEqual(frame3.id, frame_id)
+
+    @drop_datasets
+    def test_last_modified_at_deletions(self):
+        samples = [
+            fo.Sample(
+                filepath=f"video{i}.mp4",
+                metadata=fo.VideoMetadata(total_frame_count=5),
+            )
+            for i in range(4)
+        ]
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
+
+        dataset.ensure_frames()
+        last_modified_at1 = dataset.last_modified_at
+        last_modified_at2 = dataset.max("last_modified_at")
+
+        self.assertEqual(dataset.count("frames"), 20)
+
+        frame_ids = dataset.match_frames(F("frame_number") == 5).values(
+            "frames.id", unwind=True
+        )
+        dataset.delete_frames(frame_ids)
+        last_modified_at3 = dataset.max("last_modified_at")
+
+        self.assertEqual(dataset.count("frames"), 16)
+        self.assertTrue(last_modified_at3 > last_modified_at2)
+
+        dataset.match_frames(F("frame_number") <= 2).keep_frames()
+        last_modified_at4 = dataset.max("last_modified_at")
+
+        self.assertEqual(dataset.count("frames"), 8)
+        self.assertTrue(last_modified_at4 > last_modified_at3)
+
+        dataset[:2].clear_frames()
+        last_modified_at5 = dataset.max("last_modified_at")
+
+        self.assertEqual(dataset.count("frames"), 4)
+        self.assertTrue(last_modified_at5 > last_modified_at4)
+
+        dataset.clear_frames()
+        last_modified_at6 = dataset.max("last_modified_at")
+
+        self.assertEqual(dataset.count("frames"), 0)
+        self.assertTrue(last_modified_at6 > last_modified_at5)
+
+        dataset.reload()
+        last_modified_at7 = dataset.last_modified_at
+
+        self.assertEqual(last_modified_at1, last_modified_at7)
+
+        dataset.sync_last_modified_at()
+        last_modified_at8 = dataset.last_modified_at
+
+        self.assertTrue(last_modified_at8 > last_modified_at7)
+
+    @drop_datasets
+    def test_last_modified_at_deletions_frames(self):
+        samples = [
+            fo.Sample(
+                filepath=f"video{i}.mp4",
+                metadata=fo.VideoMetadata(total_frame_count=5),
+            )
+            for i in range(2)
+        ]
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
+
+        dataset.ensure_frames()
+        last_modified_at1 = dataset.last_modified_at
+
+        self.assertEqual(dataset.count("frames"), 10)
+
+        sample = dataset.first()
+        last_modified_at2 = sample.last_modified_at
+
+        del sample.frames[1]
+        del sample.frames[3]
+        del sample.frames[5]
+
+        sample.save()
+        last_modified_at3 = sample.last_modified_at
+
+        self.assertEqual(dataset.count("frames"), 7)
+        self.assertTrue(last_modified_at3 > last_modified_at2)
+
+        sample.reload()
+        last_modified_at4 = sample.last_modified_at
+
+        self.assertEqual(last_modified_at4, last_modified_at3)
+
+        sample.frames.clear()
+        sample.save()
+        last_modified_at5 = sample.last_modified_at
+
+        self.assertEqual(dataset.count("frames"), 5)
+        self.assertTrue(last_modified_at5 > last_modified_at4)
+
+        sample.reload()
+        last_modified_at6 = sample.last_modified_at
+
+        self.assertEqual(last_modified_at6, last_modified_at5)
+
+        dataset.reload()
+        last_modified_at7 = dataset.last_modified_at
+
+        self.assertEqual(last_modified_at7, last_modified_at1)
+
+        dataset.sync_last_modified_at()
+        last_modified_at8 = dataset.last_modified_at
+
+        self.assertTrue(last_modified_at8 > last_modified_at7)
 
     @drop_datasets
     def test_save_frame_view(self):
@@ -2397,7 +2512,13 @@ class VideoTests(unittest.TestCase):
         sample.frames[1] = fo.Frame(filepath="image.jpg")
 
         dataset = fo.Dataset()
+
         dataset.add_sample(sample)
+        dataset.add_frame_field(
+            "metadata",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.ImageMetadata,
+        )
 
         frames = dataset.to_frames()
         view = frames.select_fields()

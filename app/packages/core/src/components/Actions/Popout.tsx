@@ -1,11 +1,6 @@
 import { useSpring } from "@react-spring/web";
-import React, {
-  MutableRefObject,
-  RefObject,
-  useLayoutEffect,
-  useState,
-} from "react";
-
+import type { MutableRefObject, RefObject } from "react";
+import React, { useLayoutEffect, useState } from "react";
 import { PopoutDiv } from "../utils";
 
 const useAlign = (
@@ -71,6 +66,6 @@ type PopoutPropsType = {
   style?: React.CSSProperties;
   modal?: boolean;
   fixed?: boolean;
-  anchorRef?: RefObject<HTMLElement>;
+  anchorRef?: RefObject<HTMLElement> | null;
   testId?: string;
 };

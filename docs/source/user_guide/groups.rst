@@ -815,8 +815,8 @@ Selecting slices
 
 You can use
 :meth:`select_group_slices() <fiftyone.core.collections.SampleCollection.select_group_slices>`
-to create *non-grouped views* that contain one or more slices of data from a
-grouped dataset.
+to select one or more slices of data from a grouped dataset, either as a
+grouped view or as a flattened *non-grouped* view.
 
 For example, you can create an image view that contains only the left camera
 images from the grouped dataset:
@@ -843,7 +843,7 @@ images from the grouped dataset:
     View stages:
         1. SelectGroupSlices(slices='left')
 
-or you could create an image collection containing the left and right camera
+or you can create an image collection containing the left and right camera
 images:
 
 .. code-block:: python
@@ -882,30 +882,59 @@ the fact that their data is sourced from a grouped dataset!
 
     # Add fields/tags, run evaluation, export, etc
 
-Also note that any filtering that you apply prior to a
+.. note::
+
+    Any filtering that you apply prior to a
+    :meth:`select_group_slices() <fiftyone.core.collections.SampleCollection.select_group_slices>`
+    stage in a view is **not** automatically reflected by the output view, as
+    the stage looks up unfiltered slice data from the source collection:
+
+    .. code-block:: python
+
+        # Filter the active slice to locate groups of interest
+        match_view = dataset.filter_labels(...).match(...)
+
+        # Lookup all image slices for the matching groups
+        # This view contains *unfiltered* image slices
+        images_view = match_view.select_group_slices(media_type="image")
+
+    Instead, you can apply the same (or different) filtering *after* the
+    :meth:`select_group_slices() <fiftyone.core.collections.SampleCollection.select_group_slices>`
+    stage:
+
+    .. code-block:: python
+
+        # Now apply filters to the flattened collection
+        match_images_view = images_view.filter_labels(...).match(...)
+
+Alternatively, you can pass `flat=False` to
 :meth:`select_group_slices() <fiftyone.core.collections.SampleCollection.select_group_slices>`
-stage in a view is **not** automatically reflected by the output view, as the
-stage looks up unfiltered slice data from the source collection:
+to create a grouped view that only contains certain group slices:
 
 .. code-block:: python
     :linenos:
 
-    # Filter the active slice to locate groups of interest
-    match_view = dataset.filter_labels(...).match(...)
+    no_center_view = dataset.select_group_slices(["left", "right"], flat=False)
 
-    # Lookup all image slices for the matching groups
-    # This view contains *unfiltered* image slices
-    images_view = match_view.select_group_slices(media_type="image")
+    assert no_center_view.media_type == "group"
+    assert no_center_view.group_slices == ["left", "right"]
 
-Instead, you can apply the same (or different) filtering *after* the
-:meth:`select_group_slices() <fiftyone.core.collections.SampleCollection.select_group_slices>`
-stage:
+.. _groups-excluding-slices:
+
+Excluding slices
+----------------
+
+You can use
+:meth:`exclude_group_slices() <fiftyone.core.collections.SampleCollection.exclude_group_slices>`
+to create a grouped view that excludes certain slice(s) of a grouped dataset:
 
 .. code-block:: python
     :linenos:
 
-    # Now apply filters to the flattened collection
-    match_images_view = images_view.filter_labels(...).match(...)
+    no_center_view = dataset.exclude_group_slices("center")
+
+    assert no_center_view.media_type == "group"
+    assert no_center_view.group_slices == ["left", "right"]
 
 .. _groups-aggregations:
 

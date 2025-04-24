@@ -5,6 +5,7 @@ Dataset views.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from collections import defaultdict, OrderedDict
 import contextlib
 from copy import copy, deepcopy
@@ -162,7 +163,7 @@ class DatasetView(foc.SampleCollection):
             return False
 
         for stage in self._stages:
-            if isinstance(stage, fost.SelectGroupSlices):
+            if stage.flattens_groups:
                 return False
 
         return True
@@ -244,7 +245,7 @@ class DatasetView(foc.SampleCollection):
             return None
 
         if self.__group_slice is not None:
-            return self.__group_slice
+            return self.__group_slice or None
 
         return self._dataset.group_slice
 
@@ -271,7 +272,7 @@ class DatasetView(foc.SampleCollection):
         if not self._has_slices:
             return None
 
-        return self._dataset.group_slices
+        return list(self._get_group_media_types().keys())
 
     @property
     def group_media_types(self):
@@ -281,7 +282,7 @@ class DatasetView(foc.SampleCollection):
         if not self._has_slices:
             return None
 
-        return self._dataset.group_media_types
+        return self._get_group_media_types()
 
     @property
     def default_group_slice(self):
@@ -290,6 +291,9 @@ class DatasetView(foc.SampleCollection):
         """
         if not self._has_slices:
             return None
+
+        if self._dataset.default_group_slice not in self.group_slices:
+            return self.group_slice
 
         return self._dataset.default_group_slice
 
@@ -924,11 +928,13 @@ class DatasetView(foc.SampleCollection):
         self,
         ftype=None,
         embedded_doc_type=None,
+        subfield=None,
         read_only=None,
         info_keys=None,
         created_after=None,
         include_private=False,
         flat=False,
+        unwind=True,
         mode=None,
     ):
         """Returns a schema dictionary describing the fields of the samples in
@@ -942,6 +948,9 @@ class DatasetView(foc.SampleCollection):
                 iterable of types to which to restrict the returned schema.
                 Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            subfield (None): an optional subfield type or iterable of subfield
+                types to which to restrict the returned schema. Must be
+                subclass(es) of :class:`fiftyone.core.fields.Field`
             read_only (None): whether to restrict to (True) or exclude (False)
                 read-only fields. By default, all fields are included
             info_keys (None): an optional key or list of keys that must be in
@@ -952,9 +961,11 @@ class DatasetView(foc.SampleCollection):
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
                 embedded document fields are included as top-level keys
+            unwind (True): whether to traverse into list fields. Only
+                applicable when ``flat=True``
             mode (None): whether to apply the above constraints before and/or
-                after flattening the schema. Only applicable when ``flat`` is
-                True. Supported values are ``("before", "after", "both")``. The
+                after flattening the schema. Only applicable when ``flat=True``.
+                Supported values are ``("before", "after", "both")``. The
                 default is ``"after"``
 
         Returns:
@@ -971,11 +982,13 @@ class DatasetView(foc.SampleCollection):
             schema,
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
+            subfield=subfield,
             read_only=read_only,
             info_keys=info_keys,
             created_after=created_after,
             include_private=include_private,
             flat=flat,
+            unwind=unwind,
             mode=mode,
         )
 
@@ -983,11 +996,13 @@ class DatasetView(foc.SampleCollection):
         self,
         ftype=None,
         embedded_doc_type=None,
+        subfield=None,
         read_only=None,
         info_keys=None,
         created_after=None,
         include_private=False,
         flat=False,
+        unwind=True,
         mode=None,
     ):
         """Returns a schema dictionary describing the fields of the frames of
@@ -1003,6 +1018,9 @@ class DatasetView(foc.SampleCollection):
                 iterable of types to which to restrict the returned schema.
                 Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            subfield (None): an optional subfield type or iterable of subfield
+                types to which to restrict the returned schema. Must be
+                subclass(es) of :class:`fiftyone.core.fields.Field`
             read_only (None): whether to restrict to (True) or exclude (False)
                 read-only fields. By default, all fields are included
             info_keys (None): an optional key or list of keys that must be in
@@ -1013,10 +1031,12 @@ class DatasetView(foc.SampleCollection):
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
                 embedded document fields are included as top-level keys
+            unwind (True): whether to traverse into list fields. Only
+                applicable when ``flat=True``
             mode (None): whether to apply the above constraints before and/or
-                after flattening the schema. Only applicable when ``flat`` is
-                True. Supported values are ``("before", "after", "both")``.
-                The default is ``"after"``
+                after flattening the schema. Only applicable when ``flat=True``.
+                Supported values are ``("before", "after", "both")``. The
+                default is ``"after"``
 
         Returns:
             a dict mapping field names to :class:`fiftyone.core.fields.Field`
@@ -1035,11 +1055,13 @@ class DatasetView(foc.SampleCollection):
             schema,
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
+            subfield=subfield,
             read_only=read_only,
             info_keys=info_keys,
             created_after=created_after,
             include_private=include_private,
             flat=flat,
+            unwind=unwind,
             mode=mode,
         )
 
@@ -1544,6 +1566,7 @@ class DatasetView(foc.SampleCollection):
         media_type=None,
         attach_frames=False,
         detach_frames=False,
+        limit_frames=None,
         frames_only=False,
         support=None,
         group_slice=None,
@@ -1557,7 +1580,7 @@ class DatasetView(foc.SampleCollection):
         _view = self._base_view
 
         _contains_videos = self._dataset._contains_videos(any_slice=True)
-        _found_select_group_slice = False
+        _found_flattened_videos = False
         _attach_frames_idx = None
         _attach_frames_idx0 = None
         _attach_frames_idx1 = None
@@ -1573,10 +1596,12 @@ class DatasetView(foc.SampleCollection):
 
         idx = 0
         for stage in self._stages:
-            if isinstance(stage, fost.SelectGroupSlices):
-                # We might need to reattach frames after `SelectGroupSlices`,
-                # since it involves a `$lookup` that resets the samples
-                _found_select_group_slice = True
+            _pipeline = stage.to_mongo(_view)
+
+            if stage.flattens_groups and _contains_videos and _pipeline:
+                # We might need to reattach frames after flattening groups
+                # since this involves a `$lookup` that resets the samples
+                _found_flattened_videos = True
                 _attach_frames_idx0 = _attach_frames_idx
                 _attach_frames_idx = None
 
@@ -1604,15 +1629,12 @@ class DatasetView(foc.SampleCollection):
 
                     _group_slices.update(_stage_group_slices)
 
-            _pipeline = stage.to_mongo(_view)
-
-            # @note(SelectGroupSlices)
-            # Special case: when selecting group slices of a video dataset that
+            # Special case: when flattening group slices of a video dataset that
             # modifies the dataset's schema, frame lookups must be injected in
             # the middle of the stage's pipeline, after the group slice $lookup
             # but *before* the $project stage(s) that reapply schema changes
             if (
-                isinstance(stage, fost.SelectGroupSlices)
+                stage.flattens_groups
                 and _contains_videos
                 and _pipeline
                 and "$project" in _pipeline[-1]
@@ -1633,62 +1655,39 @@ class DatasetView(foc.SampleCollection):
         if _attach_frames_idx is None and (attach_frames or frames_only):
             _attach_frames_idx = len(_pipelines)
 
-        #######################################################################
-        # Insert frame lookup pipeline(s) if needed
-        #######################################################################
-
         if _attach_frames_idx1 is not None and _attach_frames_idx is not None:
             _attach_frames_idx = _attach_frames_idx1
 
-        if _attach_frames_idx0 is not None and _attach_frames_idx is not None:
-            # Two lookups are required; manually do the **last** one and rely
-            # on dataset._pipeline() to do the first one
-            attach_frames = True
-            _pipeline = self._dataset._attach_frames_pipeline(support=support)
-            _pipelines.insert(_attach_frames_idx, _pipeline)
-        elif _found_select_group_slice and _attach_frames_idx is not None:
-            # Must manually attach frames after the group selection
-            attach_frames = None  # special syntax: frames already attached
-            _pipeline = self._dataset._attach_frames_pipeline(support=support)
-            _pipelines.insert(_attach_frames_idx, _pipeline)
-        elif _attach_frames_idx0 is not None or _attach_frames_idx is not None:
-            # Exactly one lookup is required; rely on dataset._pipeline() to
-            # do it
-            attach_frames = True
+        _inserts = []
 
-        # @todo use the optimization below instead, which injects frames as
-        # late as possible in the pipeline. We can't currently use it because
-        # there's some issue with poster frames in the App if the frames are
-        # not attached first...
+        # Handles incrementing idx values in case of multiple inserts
+        def _adjust(idx):
+            idx += sum(i < idx for i in _inserts)
+            _inserts.append(idx)
+            return idx
 
-        """
+        # Insert frame lookup pipeline(s) if needed
         if _attach_frames_idx0 is not None or _attach_frames_idx is not None:
             attach_frames = None  # special syntax: frames already attached
 
             if _attach_frames_idx0 is not None:
                 _pipeline = self._dataset._attach_frames_pipeline(
-                    support=support
+                    limit=limit_frames, support=support
                 )
-                _pipelines.insert(_attach_frames_idx0, _pipeline)
+                _pipelines.insert(_adjust(_attach_frames_idx0), _pipeline)
 
             if _attach_frames_idx is not None:
-                if _attach_frames_idx0 is not None:
-                    _attach_frames_idx += 1
-
                 _pipeline = self._dataset._attach_frames_pipeline(
-                    support=support
+                    limit=limit_frames, support=support
                 )
-                _pipelines.insert(_attach_frames_idx, _pipeline)
-        """
-
-        #######################################################################
+                _pipelines.insert(_adjust(_attach_frames_idx), _pipeline)
 
         # Insert group lookup pipeline if needed
         if _attach_groups_idx is not None:
             _pipeline = self._dataset._attach_groups_pipeline(
                 group_slices=_group_slices
             )
-            _pipelines.insert(_attach_groups_idx, _pipeline)
+            _pipelines.insert(_adjust(_attach_groups_idx), _pipeline)
 
         if pipeline is not None:
             _pipelines.append(pipeline)
@@ -1699,13 +1698,14 @@ class DatasetView(foc.SampleCollection):
             media_type = self.media_type
 
         if group_slice is None and self._dataset.media_type == fom.GROUP:
-            group_slice = self.__group_slice or self._dataset.group_slice
+            group_slice = self.__group_slice
 
         return self._dataset._pipeline(
             pipeline=_pipeline,
             media_type=media_type,
             attach_frames=attach_frames,
             detach_frames=detach_frames,
+            limit_frames=limit_frames,
             frames_only=frames_only,
             support=support,
             group_slice=group_slice,
@@ -1812,12 +1812,24 @@ class DatasetView(foc.SampleCollection):
             if media_type is not None:
                 view._set_media_type(media_type)
 
+            group_media_types = stage.get_group_media_types(self)
+            if (
+                group_media_types is not None
+                and view.media_type == fom.GROUP
+                and view.group_slice not in group_media_types
+            ):
+                group_slice = next(iter(group_media_types.keys()), "")
+                view._set_group_slice(group_slice)
+
         view._set_name(None)
 
         return view
 
     def _set_media_type(self, media_type):
         self.__media_type = media_type
+
+    def _set_group_slice(self, slice_name):
+        self.__group_slice = slice_name
 
     def _set_name(self, name):
         self.__name = name
@@ -1922,11 +1934,17 @@ class DatasetView(foc.SampleCollection):
         return missing_fields
 
     def _get_group_media_types(self):
-        for stage in reversed(self._stages):
-            if isinstance(stage, fost.SelectGroupSlices):
-                return stage._get_group_media_types(self._dataset)
+        group_media_types = self._dataset.group_media_types
 
-        return self._dataset.group_media_types
+        _view = self._base_view
+        for stage in self._stages:
+            gmt = stage.get_group_media_types(_view)
+            if gmt is not None:
+                group_media_types = gmt
+
+            _view = _view._add_view_stage(stage, validate=False)
+
+        return group_media_types
 
 
 def make_optimized_select_view(
@@ -1953,7 +1971,7 @@ def make_optimized_select_view(
             match the order of the provided IDs
         groups (False): whether the IDs are group IDs, not sample IDs
         flatten (False): whether to flatten group datasets before selecting
-            sample ids
+            sample IDs
 
     Returns:
         a :class:`DatasetView`

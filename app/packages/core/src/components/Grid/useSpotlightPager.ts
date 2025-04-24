@@ -3,20 +3,19 @@ import * as foq from "@fiftyone/relay";
 import type { ID, Response } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import type { Schema } from "@fiftyone/utilities";
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import type { VariablesOf } from "react-relay";
-import {
-  commitLocalUpdate,
-  fetchQuery,
-  useRelayEnvironment,
-} from "react-relay";
+import { fetchQuery, useRelayEnvironment } from "react-relay";
 import type { RecoilValueReadOnly } from "recoil";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import type { Subscription } from "relay-runtime";
 import type { Records } from "./useRecords";
+import { handleNode } from "./utils";
 
 export const PAGE_SIZE = 20;
+
+export type SampleStore = WeakMap<ID, { sample: fos.Sample; index: number }>;
 
 const processSamplePageData = (
   page: number,
@@ -27,21 +26,19 @@ const processSamplePageData = (
   records: Map<string, number>
 ) => {
   return data.samples.edges.map((edge, i) => {
-    if (edge.node.__typename === "%other") {
-      throw new Error("unexpected sample type");
-    }
+    const node = handleNode(edge.node);
+    const id = { description: node.id };
 
-    const id = { description: edge.node.id };
-    store.set(id, edge.node);
-    records.set(edge.node.id, page * PAGE_SIZE + i);
+    store.set(id, node);
+    records.set(node.id, page * PAGE_SIZE + i);
 
     return {
       key: page,
       aspectRatio: zoom
-        ? zoomAspectRatio(edge.node.sample, schema, edge.node.aspectRatio)
-        : edge.node.aspectRatio,
+        ? zoomAspectRatio(node.sample, schema, node.aspectRatio)
+        : node.aspectRatio,
       id,
-      data: edge.node as fos.Sample,
+      data: node as fos.Sample,
     };
   });
 };
@@ -63,12 +60,15 @@ const useSpotlightPager = ({
   const pager = useRecoilValue(pageSelector);
   const zoom = useRecoilValue(zoomSelector);
   const handleError = useErrorHandler();
-  const store = useMemo(
-    () => new WeakMap<ID, { sample: fos.Sample; index: number }>(),
-    []
-  );
+  const store: SampleStore = useMemo(() => new WeakMap(), []);
 
   const keys = useRef(new Set<string>());
+
+  const pages = useMemo(() => {
+    /** Track already request pages */
+    clearRecords;
+    return new Set();
+  }, [clearRecords]);
 
   const page = useRecoilCallback(
     ({ snapshot }) => {
@@ -78,6 +78,14 @@ const useSpotlightPager = ({
         const schema = await snapshot.getPromise(
           fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
         );
+
+        // if a page has not been requested by this callback, require a network
+        // request
+        const fetchPolicy = pages.has(pageNumber)
+          ? "store-or-network"
+          : "network-only";
+        pages.add(pageNumber);
+
         return new Promise<Response<number, fos.Sample>>((resolve) => {
           subscription = fetchQuery<foq.paginateSamplesQuery>(
             environment,
@@ -85,7 +93,7 @@ const useSpotlightPager = ({
             variables,
             {
               networkCacheConfig: { metadata: {} },
-              fetchPolicy: "store-or-network",
+              fetchPolicy,
             }
           ).subscribe({
             next: (data) => {
@@ -115,30 +123,6 @@ const useSpotlightPager = ({
     },
     [environment, handleError, pager, store, zoom]
   );
-
-  const refresher = useRecoilValue(fos.refresher);
-
-  useEffect(() => {
-    clearRecords;
-    refresher;
-    const clear = () => {
-      commitLocalUpdate(fos.getCurrentEnvironment(), (store) => {
-        for (const id of keys.current) {
-          store.get(id)?.invalidateRecord();
-        }
-      });
-      keys.current.clear();
-    };
-
-    const unsubscribe = foq.subscribe(
-      ({ event }) => event === "fieldVisibility" && clear()
-    );
-
-    return () => {
-      clear();
-      unsubscribe();
-    };
-  }, [clearRecords, refresher]);
 
   return { page, records, store };
 };

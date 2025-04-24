@@ -119,6 +119,13 @@ The following media types are available:
     | `group`       | Datasets that contain                             |
     |               | :ref:`grouped data slices <groups>`               |
     +---------------+---------------------------------------------------+
+    | `unknown`     | Fallback value for Datasets that contain          |
+    |               | samples which are not one of the other listed     |
+    |               | media types                                       |
+    +---------------+---------------------------------------------------+
+    | custom type   | Datasets that contain samples with a custom media |
+    |               | type will inherit that type                       |
+    +---------------+---------------------------------------------------+
 
 .. _dataset-persistence:
 
@@ -445,6 +452,32 @@ You can configure the organization and default expansion state of the
 
     # Modify the dataset's App config
     dataset.app_config.sidebar_groups = sidebar_groups
+    dataset.save()  # must save after edits
+
+    session.refresh()
+
+.. _dataset-app-config-active-fields:
+
+Active fields
+~~~~~~~~~~~~~
+
+You can configure the default state of the
+:ref:`sidebar's checkboxes <app-fields-sidebar>`:
+
+.. code-block:: python
+    :linenos:
+
+    # By default all label fields excluding Heatmap and Segmentation are active
+    active_fields = fo.DatasetAppConfig.default_active_fields(dataset)
+
+    # Add filepath and id fields
+    active_fields.paths.extend(["id", "filepath"])
+
+    # Active fields can be inverted setting exclude to True
+    # active_fields.exclude = True
+
+    # Modify the dataset's App config
+    dataset.app_config.active_fields = active_fields
     dataset.save()  # must save after edits
 
     session.refresh()
@@ -1830,7 +1863,10 @@ When a |Sample| is created, its media type is inferred from the `filepath` to
 the source media and available via the `media_type` attribute of the sample,
 which is read-only.
 
-Media type is inferred from the
+Optionally, the `media_type` keyword argument can be provided to the |Sample|
+constructor to provide an explicit media type.
+
+If `media_type` is not provided explicitly, it is inferred from the
 `MIME type <https://en.wikipedia.org/wiki/Media_type>`__ of the file on disk,
 as per the table below:
 
@@ -1848,7 +1884,7 @@ as per the table below:
     +---------------------+----------------+----------------------------------+
     | `*.pcd`             | `point-cloud`  | Point cloud sample               |
     +---------------------+----------------+----------------------------------+
-    | other               | `-`            | Generic sample                   |
+    | other               | `unknown`      | Generic sample                   |
     +---------------------+----------------+----------------------------------+
 
 .. note::
@@ -2556,7 +2592,7 @@ For masks stored on disk, the
 :attr:`mask_path <fiftyone.core.labels.Detection.mask_path>` attribute should
 contain the file path to the mask image. We recommend storing masks as
 single-channel PNG images, where a pixel value of 0 indicates the
-background (rendered as transparent in the App), and any other 
+background (rendered as transparent in the App), and any other
 value indicates the object.
 
 Masks can be of any size; they are stretched as necessary to fill the
@@ -4826,8 +4862,8 @@ samples have media type `3d`.
 
 An FO3D file encapsulates a 3D scene constructed using the
 :class:`Scene <fiftyone.core.threed.Scene>` class, which provides methods
-to add, remove, and manipulate 3D objects in the scene. A scene is 
-internally represented as a n-ary tree of 3D objects, where each 
+to add, remove, and manipulate 3D objects in the scene. A scene is
+internally represented as a n-ary tree of 3D objects, where each
 object is a node in the tree. A 3D object is either a
 :ref:`3D mesh <3d-meshes>`, :ref:`point cloud <3d-point-clouds>`,
 or a :ref:`3D shape geometry <3d-shapes>`.
@@ -5253,6 +5289,75 @@ Point cloud samples may contain any type and number of custom fields, including
 :ref:`3D detections <3d-detections>` and :ref:`3D polylines <3d-polylines>`,
 which are natively visualizable by the App's
 :ref:`3D visualizer <app-3d-visualizer>`.
+
+.. generic-datasets:
+
+Generic datasets
+________________
+
+Any |Sample| whose `filepath` does not infer a known media type will be
+assigned a media type of `unknown`. Adding these samples to a |Dataset| will
+result in a generic dataset with a media type of `unknown`.
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(filepath="/path/to/file.json")
+
+    dataset = fo.Dataset()
+    dataset.add_sample(sample)
+
+    print(dataset.media_type)  # unknown
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': '8414ce63c3410c42bc8f6a94',
+        'media_type': 'unknown',
+        'filepath': '/path/to/file.json',
+        'tags': [],
+        'metadata': None,
+        'created_at': datetime.datetime(2025, 3, 1, 2, 33, 11, 414002),
+        'last_modified_at': datetime.datetime(2025, 3, 1, 2, 33, 11, 414002),
+    }>
+
+.. custom-datasets:
+
+Custom datasets
+________________
+
+When a |Sample| is created, a custom value can be provided as the `media_type`
+keyword argument. Adding the sample to a |Dataset| will result in a dataset
+with `media_type` inherited from the sample. Custom media types can be used
+to extend functionality for sample types that are not natively supported.
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(filepath="/path/to/file.aac", media_type="audio")
+
+    dataset = fo.Dataset()
+    dataset.add_sample(sample)
+
+    print(dataset.media_type)  # audio
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': '6641fe61a3991e67aa1e5f49',
+        'media_type': 'audio',
+        'filepath': '/path/to/file.aac',
+        'tags': [],
+        'metadata': None,
+        'created_at': datetime.datetime(2025, 3, 1, 2, 34, 31, 776414),
+        'last_modified_at': datetime.datetime(2025, 3, 1, 2, 34, 31, 776414),
+    }>
 
 DatasetViews
 ____________

@@ -15,6 +15,7 @@ import {
   getCls,
   getFetchFunction,
   setFetchFunction,
+  is3d,
 } from "@fiftyone/utilities";
 import { CHUNK_SIZE } from "../constants";
 import {
@@ -67,12 +68,12 @@ const shouldProcessLabel = ({
 }) => {
   // check if it has a valid render status, in which case it takes precendence over activePaths
   // it means this label was processed before and we should re-render it
-  const currentLabelRenderStatus = label?.renderStatus;
+  const currentLabel_renderStatus = label?._renderStatus;
 
   if (
-    currentLabelRenderStatus === RENDER_STATUS_PAINTED ||
-    currentLabelRenderStatus === RENDER_STATUS_DECODED ||
-    currentLabelRenderStatus === RENDER_STATUS_PENDING
+    currentLabel_renderStatus === RENDER_STATUS_PAINTED ||
+    currentLabel_renderStatus === RENDER_STATUS_DECODED ||
+    currentLabel_renderStatus === RENDER_STATUS_PENDING
   ) {
     return true;
   }
@@ -150,11 +151,10 @@ const processLabels = async (
 
           if (cls in DeserializerFactory) {
             DeserializerFactory[cls](label, maskTargetsBuffers);
-            label.renderStatus = RENDER_STATUS_DECODED;
           }
         } else {
           // we'll process this label asynchronously later
-          label.renderStatus = null;
+          label._renderStatus = null;
         }
       }
 
@@ -251,7 +251,7 @@ const processLabels = async (
     }
 
     for (const label of labels) {
-      if (label?.renderStatus !== "painted") {
+      if (label?._renderStatus !== "painted") {
         continue;
       }
 
@@ -317,7 +317,7 @@ interface ReaderMethod {
 
 export interface ProcessSample {
   uuid: string;
-  sample: Sample & FrameSample;
+  sample: Sample | FrameSample;
   coloring: Coloring;
   customizeColorSetting: CustomizeColor[];
   labelTagColors: LabelTagColor;
@@ -359,7 +359,7 @@ const processSample = async ({
   const imageBitmapPromises: Promise<ImageBitmap[]>[] = [];
   let maskTargetsBuffers: ArrayBuffer[] = [];
 
-  if (sample?._media_type === "point-cloud" || sample?._media_type === "3d") {
+  if (is3d(sample?._media_type)) {
     // we process all 3d labels regardless of active paths
     process3DLabels(schema, sample);
   } else {
@@ -386,25 +386,24 @@ const processSample = async ({
   }
 
   // this usually only applies to thumbnail frame
+  // sample.frames, if defined, should have only one frame
   // other frames are processed in the stream (see `getSendChunk`)
-  if (sample.frames?.length) {
+  if (sample.frames?.length > 0) {
     const allFramePromises: ReturnType<typeof processLabels>[] = [];
-    for (const frame of sample.frames) {
-      allFramePromises.push(
-        processLabels(
-          frame,
-          coloring,
-          "frames.",
-          sources,
-          customizeColorSetting,
-          colorscale,
-          labelTagColors,
-          selectedLabelTags,
-          schema,
-          activePaths
-        )
-      );
-    }
+    allFramePromises.push(
+      processLabels(
+        sample.frames[0],
+        coloring,
+        "frames.",
+        sources,
+        customizeColorSetting,
+        colorscale,
+        labelTagColors,
+        selectedLabelTags,
+        schema,
+        activePaths
+      )
+    );
     const framePromisesResolved = await Promise.all(allFramePromises);
     for (const [bitmapPromises, buffers] of framePromisesResolved) {
       if (bitmapPromises.length !== 0) {

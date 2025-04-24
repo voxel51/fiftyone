@@ -9,7 +9,7 @@ import types
 
 from .service import ExecutionStoreService
 from .store import ExecutionStore
-from .models import StoreDocument, KeyDocument
+from .models import StoreDocument, KeyDocument, KeyPolicy
 
 # This tells Sphinx to allow refs to imported objects in this module
 # https://stackoverflow.com/a/31594545/16823653

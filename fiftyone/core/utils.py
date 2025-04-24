@@ -5,12 +5,13 @@ Core utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import abc
 import atexit
 from bson import json_util
 from base64 import b64encode, b64decode
 from collections import defaultdict
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from copy import deepcopy
 from datetime import date, datetime
 import glob
@@ -24,6 +25,7 @@ import multiprocessing
 import numbers
 import os
 from packaging.version import Version
+import psutil
 import platform
 import re
 import signal
@@ -31,8 +33,10 @@ import string
 import struct
 import subprocess
 import sys
+import shutil
 import timeit
 import types
+import uuid
 from xml.parsers.expat import ExpatError
 import zlib
 
@@ -1069,17 +1073,14 @@ def _report_progress_dt(progress, dt):
     return progress_dt
 
 
-class Batcher(abc.ABC):
-    """Base class for iterating over the elements of an iterable in batches."""
-
-    manual_backpressure = False
-
+class BaseBatcher(abc.ABC):
     def __init__(
         self,
         iterable,
         return_views=False,
         progress=False,
         total=None,
+        transform_fn=None,
     ):
         import fiftyone.core.collections as foc
 
@@ -1101,7 +1102,7 @@ class Batcher(abc.ABC):
         self._render_progress = bool(progress)  # callback function: True
         self._last_offset = None
         self._num_samples = None
-        self._manually_applied_backpressure = True
+        self._transform_fn = transform_fn
 
     def __enter__(self):
         self._in_context = True
@@ -1139,19 +1140,22 @@ class Batcher(abc.ABC):
                 )
                 self._render_progress = False
 
+        if self._transform_fn is not None:
+            self._iter = map(self._transform_fn, self._iter)
+
         return self
 
+    @abc.abstractmethod
     def __next__(self):
-        if (
-            self.manual_backpressure
-            and not self._manually_applied_backpressure
-        ):
-            raise ValueError(
-                "Backpressure value not registered for this batcher"
-            )
+        pass
 
-        self._manually_applied_backpressure = False
 
+class BaseChunkyBatcher(BaseBatcher):
+    """Base class for iterating over the elements of an iterable in batches.
+    Batch sizes are determined per chunk using ``_compute_batch_size``.
+    """
+
+    def __next__(self):
         if self._render_progress and self._last_batch_size is not None:
             self._pb.update(count=self._last_batch_size)
 
@@ -1168,7 +1172,10 @@ class Batcher(abc.ABC):
             offset = self._last_offset
             self._last_offset += batch_size
 
-            return self.iterable[offset : (offset + batch_size)]
+            batch = self.iterable[offset : (offset + batch_size)]
+            if self._transform_fn is not None:
+                batch = [self._transform_fn(item) for item in batch]
+            return batch
 
         batch = []
         idx = 0
@@ -1186,21 +1193,12 @@ class Batcher(abc.ABC):
 
         return batch
 
-    def apply_backpressure(self, *args, **kwargs):
-        """Apply backpressure needed to rightsize the next batch.
-
-        Required to be implemented and called every iteration, if
-        ``self.manual_backpressure == True``.
-
-        Subclass defines arguments and behavior of this method.
-        """
-
     @abc.abstractmethod
     def _compute_batch_size(self):
         """Return next batch size. Concrete classes must implement."""
 
 
-class BaseDynamicBatcher(Batcher):
+class BaseDynamicBatcher(BaseChunkyBatcher):
     """Class for iterating over the elements of an iterable with a dynamic
     batch size to achieve a desired target measurement.
 
@@ -1223,9 +1221,14 @@ class BaseDynamicBatcher(Batcher):
         return_views=False,
         progress=False,
         total=None,
+        transform_fn=None,
     ):
         super().__init__(
-            iterable, return_views=return_views, progress=progress, total=total
+            iterable,
+            return_views=return_views,
+            progress=progress,
+            total=total,
+            transform_fn=transform_fn,
         )
 
         self.target_measurement = target_measurement
@@ -1325,6 +1328,7 @@ class LatencyDynamicBatcher(BaseDynamicBatcher):
         total (None): the length of ``iterable``. Only applicable when
             ``progress=True``. If not provided, it is computed via
             ``len(iterable)``, if possible
+        transform_fn (None): a transform function to apply to each item of the batch
     """
 
     def __init__(
@@ -1338,6 +1342,7 @@ class LatencyDynamicBatcher(BaseDynamicBatcher):
         return_views=False,
         progress=False,
         total=None,
+        transform_fn=None,
     ):
         super().__init__(
             iterable,
@@ -1349,6 +1354,7 @@ class LatencyDynamicBatcher(BaseDynamicBatcher):
             return_views=return_views,
             progress=progress,
             total=total,
+            transform_fn=transform_fn,
         )
 
         self._last_time = None
@@ -1434,9 +1440,8 @@ class ContentSizeDynamicBatcher(BaseDynamicBatcher):
         total (None): the length of ``iterable``. Only applicable when
             ``progress=True``. If not provided, it is computed via
             ``len(iterable)``, if possible
+        transform_fn (None): a transform function to apply to each item of the batch
     """
-
-    manual_backpressure = True
 
     def __init__(
         self,
@@ -1449,6 +1454,7 @@ class ContentSizeDynamicBatcher(BaseDynamicBatcher):
         return_views=False,
         progress=False,
         total=None,
+        transform_fn=None,
     ):
         # If unset or larger, max batch size must be 1 byte per object
         if max_batch_size is None or max_batch_size > target_size:
@@ -1463,8 +1469,19 @@ class ContentSizeDynamicBatcher(BaseDynamicBatcher):
             return_views=return_views,
             progress=progress,
             total=total,
+            transform_fn=transform_fn,
         )
         self._last_batch_content_size = 0
+        self._manually_applied_backpressure = True
+
+    def __next__(self):
+        if not self._manually_applied_backpressure:
+            raise ValueError(
+                "Backpressure value not registered for this batcher"
+            )
+        self._manually_applied_backpressure = False
+
+        return super().__next__()
 
     def apply_backpressure(self, batch_or_size):
         if isinstance(batch_or_size, numbers.Number):
@@ -1481,7 +1498,7 @@ class ContentSizeDynamicBatcher(BaseDynamicBatcher):
         return self._last_batch_content_size
 
 
-class StaticBatcher(Batcher):
+class StaticBatcher(BaseChunkyBatcher):
     """Class for iterating over the elements of an iterable with a static
     batch size.
 
@@ -1520,6 +1537,7 @@ class StaticBatcher(Batcher):
         total (None): the length of ``iterable``. Only applicable when
             ``progress=True``. If not provided, it is computed via
             ``len(iterable)``, if possible
+        transform_fn (None): a transform function to apply to each item of the batch
     """
 
     def __init__(
@@ -1529,9 +1547,14 @@ class StaticBatcher(Batcher):
         return_views=False,
         progress=False,
         total=None,
+        transform_fn=None,
     ):
         super().__init__(
-            iterable, return_views=return_views, progress=progress, total=total
+            iterable,
+            return_views=return_views,
+            progress=progress,
+            total=total,
+            transform_fn=transform_fn,
         )
 
         self.batch_size = batch_size
@@ -1540,7 +1563,160 @@ class StaticBatcher(Batcher):
         return self.batch_size
 
 
-def get_default_batcher(iterable, progress=False, total=None):
+class ContentSizeBatcher(BaseBatcher):
+    """Class for iterating over the elements of an iterable with a dynamic
+    batch size to achieve a desired content size.
+
+    The batch sizes emitted when iterating over this object are dynamically
+    scaled such that the total content size of the batch is as close as
+    possible to a specified target size.
+
+    This batcher does not require backpressure feedback because it calculates
+    the total size of the iterable object before batching.
+
+    This class is often used in conjunction with a :class:`ProgressBar` to keep
+    the user appraised on the status of a long-running task.
+
+    Example usage::
+
+        import fiftyone.core.utils as fou
+
+        elements = range(int(1e7))
+
+        batcher = fou.ContentSizeBatcher(
+            elements,
+            target_size=2**20,
+            progress=True
+        )
+
+        with batcher:
+            for batch in batcher:
+                print("batch size: %d" % len(batch))
+
+    Args:
+        iterable: an iterable to batch over. If ``None``, the result of
+            ``next()`` will be a batch size instead of a batch, and is an
+            infinite iterator.
+        target_size (1048576): the target batch bson content size, in bytes
+        progress (False): whether to render a progress bar tracking the
+            consumption of the batches (True/False), use the default value
+            ``fiftyone.config.show_progress_bars`` (None), or a progress
+            callback function to invoke instead
+        total (None): the length of ``iterable``. Only applicable when
+            ``progress=True``. If not provided, it is computed via
+            ``len(iterable)``, if possible
+        transform_fn (None): a transform function to apply to each item of the batch
+    """
+
+    def __init__(
+        self,
+        iterable,
+        size_calculation_fn=None,
+        target_size=2**20,
+        max_batch_size=None,
+        progress=False,
+        total=None,
+        transform_fn=None,
+    ):
+        super().__init__(
+            iterable,
+            return_views=False,
+            progress=progress,
+            total=total,
+            transform_fn=transform_fn,
+        )
+        self.max_batch_size = max_batch_size
+        self.target_size = target_size
+        self._next_element = None
+        self._size_calculation_fn = (
+            size_calculation_fn
+            if size_calculation_fn
+            else default_calculate_size
+        )
+        self._last_batch_content_size = None
+        self._encoding_ratio = 1.0
+
+    def __iter__(self):
+        super().__iter__()
+        try:
+            self._next_element = next(self._iter)
+        except StopIteration:
+            # If iterable is empty, we want to throw StopIteration at the first
+            #   call to next(), not here.
+            self._next_element = None
+        return self
+
+    def __next__(self):
+        if self._render_progress and self._last_batch_size:
+            self._pb.update(count=self._last_batch_size)
+
+        if self._next_element is None:
+            raise StopIteration()
+
+        # Must have at least 1 element in a batch
+        batch_content_size = self._size_calculation_fn(self._next_element)
+        curr_batch = [self._next_element]
+
+        while True:
+            try:
+                # Peek at next element and get its size
+                self._next_element = next(self._iter)
+                next_element_size = self._size_calculation_fn(
+                    self._next_element
+                )
+
+                # If adding next element would put this batch over the limit,
+                #   stop here
+                if (
+                    self.max_batch_size
+                    and len(curr_batch) >= self.max_batch_size
+                ) or (
+                    batch_content_size + next_element_size
+                    > self.target_size * self._encoding_ratio
+                ):
+                    break
+
+                # Otherwise, add next element to curr batch and keep truckin'
+                batch_content_size += next_element_size
+                curr_batch.append(self._next_element)
+
+            except StopIteration:
+                # If we get StopIteration, it just means we are done and can
+                #   end this batch. On the following call to __next__(), we'll
+                #   raise our StopIteration
+                self._next_element = None
+                break
+
+        self._last_batch_size = len(curr_batch)
+        self._last_batch_content_size = batch_content_size
+        return curr_batch
+
+    def set_encoding_ratio(self, encoded_batch_size):
+        if self._last_batch_content_size and encoded_batch_size > 0:
+            self._encoding_ratio = (
+                self._last_batch_content_size / encoded_batch_size
+            )
+
+
+def default_calculate_size(obj):
+    try:
+        obj = (
+            obj.to_mongo_dict(include_id=True)
+            if hasattr(obj, "to_mongo_dict")
+            else obj
+        )
+        return len(json_util.dumps(obj))
+    except Exception:
+        return len(str(obj))
+
+
+def get_default_batcher(
+    iterable,
+    progress=False,
+    total=None,
+    size_calc_fn=None,
+    transform_fn=None,
+):
     """Returns a :class:`Batcher` over ``iterable`` using defaults from your
     FiftyOne config.
 
@@ -1558,6 +1734,10 @@ def get_default_batcher(iterable, progress=False, total=None):
         total (None): the length of ``iterable``. Only applicable when
             ``progress=True``. If not provided, it is computed via
             ``len(iterable)``, if possible
+        size_calc_fn (None): a function used to calculate the size of each item
+            before adding them to the batch to ensure we are under max batch size.
+            This is applied after transform_fn if both are provided.
+        transform_fn (None): a transform function to apply to each item of the batch
 
     Returns:
         a :class:`Batcher`
@@ -1573,22 +1753,27 @@ def get_default_batcher(iterable, progress=False, total=None):
             max_batch_size=100000,
             progress=progress,
             total=total,
+            transform_fn=transform_fn,
         )
     elif default_batcher == "size":
         target_content_size = fo.config.batcher_target_size_bytes
-        return ContentSizeDynamicBatcher(
-            iterable,
+        return ContentSizeBatcher(
+            iterable=iterable,
             target_size=target_content_size,
-            init_batch_size=1,
-            max_batch_beta=8.0,
             max_batch_size=100000,
             progress=progress,
+            size_calculation_fn=size_calc_fn,
             total=total,
+            transform_fn=transform_fn,
         )
     elif default_batcher == "static":
         batch_size = fo.config.batcher_static_size
         return StaticBatcher(
-            iterable, batch_size=batch_size, progress=progress, total=total
+            iterable,
+            batch_size=batch_size,
+            progress=progress,
+            total=total,
+            transform_fn=transform_fn,
         )
     else:
         raise ValueError(
@@ -1741,6 +1926,40 @@ class UniqueFilenameMaker(object):
             output paths (False)
     """
 
+    def __new__(
+        cls,
+        output_dir=None,
+        rel_dir=None,
+        alt_dir=None,
+        chunk_size=None,
+        default_ext=None,
+        ignore_exts=False,
+        ignore_existing=False,
+        idempotent=True,
+    ):
+        ppid = None
+        try:
+            ppid = psutil.Process(os.getpid()).ppid()
+            parent_process = psutil.Process(ppid)
+            if "python" not in parent_process.name().lower():
+                ppid = None
+        except psutil.NoSuchProcess:
+            pass  # Proceed with ppid as None if parent process doesn't exist
+
+        if ppid is None or chunk_size is not None:
+            return super().__new__(cls)
+
+        return MultiProcessUniqueFilenameMaker(
+            ppid,
+            output_dir,
+            rel_dir,
+            alt_dir,
+            default_ext,
+            ignore_exts,
+            ignore_existing,
+            idempotent,
+        )
+
     def __init__(
         self,
         output_dir=None,
@@ -1799,7 +2018,13 @@ class UniqueFilenameMaker(object):
 
         self._idx = len(filenames)
         for filename in filenames:
-            self._filename_counts[filename] += 1
+            key = filename
+
+            # Adding ignore extension to filename counts
+            if self.ignore_exts:
+                key, _ = os.path.splitext(filename)
+
+            self._filename_counts[key] += 1
 
     def seen_input_path(self, input_path):
         """Checks whether we've already seen the given input path.
@@ -1827,8 +2052,28 @@ class UniqueFilenameMaker(object):
         if found_input:
             input_path = fos.normalize_path(input_path)
 
-            if self.idempotent and input_path in self._filepath_map:
-                return self._filepath_map[input_path]
+            if self.idempotent:
+                # Adding ignore extension to idempotent check
+                if self.ignore_exts:
+                    input_path_sans_ext, input_path_ext = os.path.splitext(
+                        input_path
+                    )
+
+                    matched_output_path = next(
+                        (
+                            o
+                            for i, o in self._filepath_map.items()
+                            if os.path.splitext(i)[0] == input_path_sans_ext
+                        ),
+                        None,
+                    )
+
+                    if matched_output_path is not None:
+                        return_path, _ = os.path.splitext(matched_output_path)
+                        return return_path + input_path_ext
+
+                elif input_path in self._filepath_map:
+                    return self._filepath_map[input_path]
 
         self._idx += 1
 
@@ -1874,6 +2119,280 @@ class UniqueFilenameMaker(object):
 
         if found_input:
             self._filepath_map[input_path] = output_path
+
+        return output_path
+
+    def get_alt_path(self, output_path, alt_dir=None):
+        """Returns the alternate path for the given output path generated by
+        :meth:`get_output_path`.
+
+        Args:
+            output_path: an output path
+            alt_dir (None): a directory in which to return the alternate path.
+                If not provided, :attr:`alt_dir` is used
+
+        Returns:
+            the corresponding alternate path
+        """
+        root_dir = alt_dir or self.alt_dir or self.output_dir
+        rel_path = os.path.relpath(output_path, self.output_dir)
+        return os.path.join(root_dir, rel_path)
+
+
+def __rm_unique_filename_tmpdir():
+    with suppress(Exception):
+        shutil.rmtree(f"/tmp/fo-unq/{os.getpid()}")
+
+
+atexit.register(__rm_unique_filename_tmpdir)
+
+
+class MultiProcessUniqueFilenameMaker(object):
+    """A class that generates unique output paths in a directory. This is
+    multiprocess safe and uses a shared temporary directory structure organized
+    by parent process ID and configuration hash. The approach is robust and
+    handles edge cases like idempotency and file extensions.
+
+    This class provides a :meth:`get_output_path` method that generates unique
+    filenames in the specified output directory.
+
+    If an input path is provided, its filename is maintained, unless a name
+    conflict in ``output_dir`` would occur, in which case an index of the form
+    ``"-%d" % count`` is appended to the filename.
+
+    If no input filename is provided, an output filename of the form
+    ``<output_dir>/<count><default_ext>`` is generated, where ``count`` is the
+    number of files in ``output_dir``.
+
+    If no ``output_dir`` is provided, then unique filenames with no base
+    directory are generated.
+
+    If a ``rel_dir`` is provided, then this path will be stripped from each
+    input path to generate the identifier of each file (rather than just its
+    basename). This argument allows for populating nested subdirectories in
+    ``output_dir`` that match the shape of the input paths.
+
+    If ``alt_dir`` is provided, you can use :meth:`get_alt_path` to retrieve
+    the equivalent path rooted in this directory rather than ``output_dir``.
+
+    Args:
+        output_dir (None): a directory in which to generate output paths
+        rel_dir (None): an optional relative directory to strip from each path.
+            The path is converted to an absolute path (if necessary) via
+            :func:`fiftyone.core.storage.normalize_path`
+        alt_dir (None): an optional alternate directory in which to generate
+            paths when :meth:`get_alt_path` is called
+        default_ext (None): the file extension to use when generating default
+            output paths
+        ignore_exts (False): whether to omit file extensions when checking for
+            duplicate filenames
+        ignore_existing (False): whether to ignore existing files in
+            ``output_dir`` for output filename generation purposes
+        idempotent (True): whether to return the same output path when the same
+            input path is provided multiple times (True) or to generate new
+            output paths (False)
+    """
+
+    def __init__(
+        self,
+        ppid,
+        output_dir=None,
+        rel_dir=None,
+        alt_dir=None,
+        default_ext=None,
+        ignore_exts=False,
+        ignore_existing=False,
+        idempotent=True,
+    ):
+        if rel_dir is not None:
+            rel_dir = fos.normalize_path(rel_dir)
+
+        self.output_dir = output_dir
+        self.rel_dir = rel_dir
+        self.alt_dir = alt_dir
+        self.default_ext = default_ext or ""
+        self.ignore_exts = ignore_exts
+        self.ignore_existing = ignore_existing
+        self.idempotent = idempotent
+
+        self.starting_filepaths = set()
+        self.starting_filepath_counts = defaultdict(int)
+
+        if self.output_dir:
+            etau.ensure_dir(self.output_dir)
+
+            if not self.ignore_existing:
+                recursive = self.rel_dir is not None
+
+                self.starting_filepaths = {
+                    os.path.join(self.output_dir, filename)
+                    for filename in etau.list_files(
+                        self.output_dir, recursive=recursive
+                    )
+                }
+
+                # self._idx = len(filenames)
+                for filepath in self.starting_filepaths:
+                    key = filepath
+                    if self.ignore_exts:
+                        key, _ = os.path.splitext(filepath)
+
+                    self.starting_filepath_counts[key] += 1
+
+        # Get a string representation fo the constructor parameters
+        hashed_params = hashlib.md5(
+            "|".join(
+                str(value)
+                for value in (
+                    output_dir,
+                    rel_dir,
+                    alt_dir,
+                    default_ext,
+                    ignore_exts,
+                    ignore_existing,
+                    idempotent,
+                )
+            ).encode("utf-8")
+        ).hexdigest()
+
+        # Create a temporary directory in main process directory for touched
+        # files based on constructor parameters
+        self.tmp_dir = os.path.join(f"/tmp/fo-unq/{ppid}", hashed_params)
+
+        etau.ensure_dir(self.tmp_dir)
+
+    def seen_input_path(self, input_path):
+        """Checks whether we've already seen the given input path.
+
+        Args:
+            input_path: an input path
+
+        Returns:
+            True/False
+        """
+        raise NotImplementedError()
+
+    def get_output_path(self, input_path=None, output_ext=None):
+        """Returns a unique output path.
+
+        Args:
+            input_path (None): an input path
+            output_ext (None): an optional output extension to use
+
+        Returns:
+            the output path
+        """
+        if input_path:
+            input_path = fos.normalize_path(input_path)
+
+            if self.rel_dir is not None:
+                input_path = safe_relpath(input_path, self.rel_dir)
+            else:
+                input_path = os.path.basename(input_path)
+
+            input_path_sans_ext, input_ext = os.path.splitext(input_path)
+
+            # URL handling
+            # @todo improve this, while still maintaining Unix/Windows path
+            # support
+            input_path_sans_ext = input_path_sans_ext.replace("%", "-")
+            input_ext = (
+                output_ext
+                if output_ext is not None
+                else input_ext.split("?")[0]
+            )
+
+            input_path = input_path_sans_ext + input_ext
+        else:
+            input_path = str(uuid.uuid4()) + self.default_ext
+
+        output_path = (
+            os.path.join(self.output_dir, input_path)
+            if self.output_dir
+            else input_path
+        )
+
+        output_dir = os.path.dirname(output_path)
+        output_name = os.path.basename(output_path)
+        output_name_sans_ext, output_ext = os.path.splitext(output_name)
+
+        last_attempted_output_number = None
+        output_number = (
+            self.starting_filepath_counts.get(
+                (
+                    os.path.splitext(output_path)[0]
+                    if self.ignore_exts
+                    else output_path
+                ),
+                0,
+            )
+            + 1
+        )
+        while True:
+            # Add  file number to the output path with if necessary
+            if output_number > 1:
+                output_path = os.path.join(
+                    output_dir,
+                    output_name_sans_ext + f"-{output_number}" + output_ext,
+                )
+
+            try:
+                # Attempt to create a placeholder file to show  the output
+                # path has been claimed
+                touch_filename = os.path.basename(output_path)
+
+                if self.ignore_exts:
+                    touch_filename, _ = os.path.splitext(touch_filename)
+
+                touch_path = os.path.join(self.tmp_dir, touch_filename)
+                with open(touch_path, "x", encoding="utf-8"):
+                    ...
+
+            except FileExistsError:
+                # The output path has already been claimed with a placeholder
+
+                if self.idempotent:
+                    break
+
+            else:
+                # The output path was successfully claimed with a placeholder.
+                break
+
+            last_attempted_output_number = output_number
+
+            touch_prefix = os.path.join(self.tmp_dir, output_name_sans_ext)
+            touch_glob_pattern = glob.glob(glob.escape(touch_prefix) + "*")
+            touch_re_pattern = re.escape(touch_prefix) + r"-(\d+).*"
+
+            touch_paths = [
+                f
+                for f in touch_glob_pattern
+                if self.ignore_exts or os.path.splitext(f)[0] == output_ext
+            ]
+
+            touched_number = None
+            for touch_path in touch_paths:
+                if m := re.match(touch_re_pattern, touch_path):
+                    n = int(m.group(1))
+                    if touched_number is None or n > touched_number:
+                        touched_number = n
+
+            if touched_number is None:
+                touched_number = len(touch_paths)
+
+            touched_number += 1
+
+            output_number = (
+                touched_number
+                if touched_number > last_attempted_output_number
+                else last_attempted_output_number + 1
+            )
+
+            logger.debug(
+                "Temporary file already used: %s. Attempting to append -%s.",
+                touch_path,
+                output_number,
+            )
 
         return output_path
 
@@ -2265,6 +2784,9 @@ def get_multiprocessing_context():
         # subsequent usage of things like `multiprocessing.Queue()` will not
         # cause the default start method to switch to 'spawn'
         multiprocessing.set_start_method("fork", force=True)
+    elif sys.platform == "win32":
+        # Windows typically does not support 'fork'
+        multiprocessing.set_start_method("spawn", force=True)
 
     return multiprocessing.get_context()
 
@@ -2305,11 +2827,7 @@ def recommend_process_pool_workers(num_workers=None):
         a number of workers
     """
     if num_workers is None:
-        if sys.platform.startswith("win"):
-            # Windows tends to have multiprocessing issues
-            num_workers = 1
-        else:
-            num_workers = multiprocessing.cpu_count()
+        num_workers = multiprocessing.cpu_count()
 
     if fo.config.max_process_pool_workers is not None:
         num_workers = min(num_workers, fo.config.max_process_pool_workers)

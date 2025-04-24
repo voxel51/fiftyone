@@ -127,6 +127,11 @@ learn how:
     :image_title: Elasticsearch
 
 .. customimagelink::
+    :image_link: integrations/postgres.html
+    :image_src: https://voxel51.com/images/integrations/postgres-128.png
+    :image_title: PostgreSQL
+
+.. customimagelink::
     :image_link: integrations/mosaic.html
     :image_src: https://voxel51.com/images/integrations/mosaic-128.png
     :image_title: Mosaic
@@ -202,17 +207,17 @@ learn how:
     :image_title: Scale AI
 
 .. customimagelink::
-    :image_link: teams/installation.html#google-cloud-storage
+    :image_link: enterprise/installation.html#google-cloud-storage
     :image_src: https://voxel51.com/images/integrations/google-cloud-128.png
     :image_title: Google Cloud
 
 .. customimagelink::
-    :image_link: teams/installation.html#amazon-s3
+    :image_link: enterprise/installation.html#amazon-s3
     :image_src: https://voxel51.com/images/integrations/aws-128.png
     :image_title: Amazon Web Services
 
 .. customimagelink::
-    :image_link: teams/installation.html#microsoft-azure
+    :image_link: enterprise/installation.html#microsoft-azure
     :image_src: https://voxel51.com/images/integrations/azure-128.png
     :image_title: Azure
 
@@ -381,7 +386,7 @@ With plugins, you can add new functionality to the FiftyOne App, create
 integrations with other tools and APIs, render custom panels, and add custom
 buttons to menus.
 
-With :ref:`FiftyOne Teams <teams-delegated-operations>`, you can even write
+With :ref:`FiftyOne Enterprise <enterprise-delegated-operations>`, you can even write
 plugins that allow users to execute long-running tasks from within the App that
 run on a connected compute cluster.
 
@@ -485,7 +490,7 @@ us at support@voxel51.com.
    :hidden:
 
    Overview <self>
-   FiftyOne Teams 🚀 <teams/index>
+   FiftyOne Enterprise 🚀 <enterprise/index>
    Installation <getting_started/install>
    Environments <environments/index>
    Tutorials <tutorials/index>

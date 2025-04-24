@@ -76,6 +76,7 @@ class OnPlotLoad(HTTPEndpoint):
 
         patches_field = results.config.patches_field
         is_patches_plot = patches_field is not None
+        points_field = results.config.points_field
 
         # Determines which points from `results` are in `view`, which are the
         # only points we want to display in the embeddings plot
@@ -151,6 +152,7 @@ class OnPlotLoad(HTTPEndpoint):
             "available_count": available_count,
             "missing_count": missing_count,
             "patches_field": patches_field,
+            "points_field": points_field,
         }
 
 
@@ -240,6 +242,8 @@ class EmbeddingsExtendedStage(HTTPEndpoint):
         patches_field = data["patchesField"]  # patches field of plot, or None
         selected_ids = data["selection"]  # selected IDs in plot
         slices = data["slices"]
+        lasso_points = data.get("lassoPoints", None)
+        points_field = data.get("pointsField", None)
 
         view = fosv.get_view(
             dataset_name,
@@ -249,8 +253,41 @@ class EmbeddingsExtendedStage(HTTPEndpoint):
 
         is_patches_view = view._is_patches
         is_patches_plot = patches_field is not None
+        view_and_plot_source_are_equal = is_patches_view == is_patches_plot
 
-        if not is_patches_view and not is_patches_plot:
+        if (
+            lasso_points is not None
+            and points_field is not None
+            and view_and_plot_source_are_equal
+        ):
+            # Lasso points via spatial index
+            # Unfortunately we can't use $geoWithin to filter nested arrays.
+            # The user must have switched to a patches view for this
+            if patches_field is not None:
+                _, points_field = view._get_label_field_path(
+                    patches_field, points_field
+                )
+
+            stage = fos.Mongo(
+                [
+                    {
+                        "$match": {
+                            points_field: {
+                                "$geoWithin": {
+                                    "$polygon": [
+                                        [x, y]
+                                        for x, y in zip(
+                                            lasso_points["x"],
+                                            lasso_points["y"],
+                                        )
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                ]
+            )
+        elif not is_patches_view and not is_patches_plot:
             # Samples plot and samples view
             stage = fos.Select(selected_ids)
         elif is_patches_view and is_patches_plot:

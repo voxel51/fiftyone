@@ -111,12 +111,12 @@ export const getHashLabel = (label: RegularLabel): string => {
 };
 
 export const shouldShowLabelTag = (
-  selectedLabelTags: string[], // labelTags that are active
-  labelTags: string[] // current label's tags
+  selectedLabelTags?: null | string[], // labelTags that are active
+  labelTags?: null | string[] // current label's tags
 ) => {
-  return (
-    (selectedLabelTags?.length == 0 && labelTags.length > 0) ||
-    selectedLabelTags?.some((tag) => labelTags.includes(tag))
+  return Boolean(
+    (selectedLabelTags?.length === 0 && labelTags?.length > 0) ||
+      selectedLabelTags?.some((tag) => labelTags?.includes(tag))
   );
 };
 

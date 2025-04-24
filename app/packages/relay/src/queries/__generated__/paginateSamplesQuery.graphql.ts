@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<16e258f69da15142510bfea6ee94b095>>
+ * @generated SignedSource<<cb138027021cf8bee2e220d6038c5d91>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -52,6 +52,15 @@ export type paginateSamplesQuery$data = {
         }>;
       } | {
         readonly __typename: "ThreeDSample";
+        readonly aspectRatio: number;
+        readonly id: string;
+        readonly sample: object;
+        readonly urls: ReadonlyArray<{
+          readonly field: string;
+          readonly url: string | null;
+        }>;
+      } | {
+        readonly __typename: "UnknownSample";
         readonly aspectRatio: number;
         readonly id: string;
         readonly sample: object;
@@ -324,6 +333,12 @@ v13 = [
                 "selections": (v12/*: any*/),
                 "type": "ThreeDSample",
                 "abstractKey": null
+              },
+              {
+                "kind": "InlineFragment",
+                "selections": (v12/*: any*/),
+                "type": "UnknownSample",
+                "abstractKey": null
               }
             ],
             "storageKey": null
@@ -371,16 +386,16 @@ return {
     "selections": (v13/*: any*/)
   },
   "params": {
-    "cacheID": "88aa7b7634dd7f43ec795ff8a6fdf065",
+    "cacheID": "5340d552e4d81bc56a25a80536b269bc",
     "id": null,
     "metadata": {},
     "name": "paginateSamplesQuery",
     "operationKind": "query",
-    "text": "query paginateSamplesQuery(\n  $count: Int = 20\n  $after: String = null\n  $dataset: String!\n  $view: BSONArray!\n  $filter: SampleFilter!\n  $filters: BSON = null\n  $extendedStages: BSON\n  $paginationData: Boolean = true\n) {\n  samples(dataset: $dataset, view: $view, first: $count, after: $after, filter: $filter, filters: $filters, extendedStages: $extendedStages, paginationData: $paginationData) {\n    pageInfo {\n      hasNextPage\n    }\n    edges {\n      cursor\n      node {\n        __typename\n        ... on ImageSample {\n          id\n          aspectRatio\n          sample\n          urls {\n            field\n            url\n          }\n        }\n        ... on PointCloudSample {\n          aspectRatio\n          id\n          sample\n          urls {\n            field\n            url\n          }\n        }\n        ... on VideoSample {\n          id\n          aspectRatio\n          frameRate\n          frameNumber\n          sample\n          urls {\n            field\n            url\n          }\n        }\n        ... on ThreeDSample {\n          id\n          aspectRatio\n          sample\n          urls {\n            field\n            url\n          }\n        }\n      }\n    }\n  }\n}\n"
+    "text": "query paginateSamplesQuery(\n  $count: Int = 20\n  $after: String = null\n  $dataset: String!\n  $view: BSONArray!\n  $filter: SampleFilter!\n  $filters: BSON = null\n  $extendedStages: BSON\n  $paginationData: Boolean = true\n) {\n  samples(dataset: $dataset, view: $view, first: $count, after: $after, filter: $filter, filters: $filters, extendedStages: $extendedStages, paginationData: $paginationData) {\n    pageInfo {\n      hasNextPage\n    }\n    edges {\n      cursor\n      node {\n        __typename\n        ... on ImageSample {\n          id\n          aspectRatio\n          sample\n          urls {\n            field\n            url\n          }\n        }\n        ... on PointCloudSample {\n          aspectRatio\n          id\n          sample\n          urls {\n            field\n            url\n          }\n        }\n        ... on VideoSample {\n          id\n          aspectRatio\n          frameRate\n          frameNumber\n          sample\n          urls {\n            field\n            url\n          }\n        }\n        ... on ThreeDSample {\n          id\n          aspectRatio\n          sample\n          urls {\n            field\n            url\n          }\n        }\n        ... on UnknownSample {\n          id\n          aspectRatio\n          sample\n          urls {\n            field\n            url\n          }\n        }\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "d96f089bb6c652aa1057d19e5c23c8cd";
+(node as any).hash = "17d55623964a688192a48bfd8eb9d987";
 
 export default node;

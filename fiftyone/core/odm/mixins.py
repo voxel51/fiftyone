@@ -5,11 +5,13 @@ Mixins and helpers for dataset backing documents.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from collections import OrderedDict
 from datetime import datetime
 import itertools
 
 from bson import ObjectId
+import mongoengine
 from pymongo import UpdateOne
 
 import fiftyone.core.fields as fof
@@ -140,6 +142,12 @@ class DatasetMixin(object):
 
         if len(chunks) > 1:
             doc = self.get_field(chunks[0])
+
+            # handle sytnax: sample["field.0.attr"] = value
+            if isinstance(doc, (mongoengine.base.BaseList, fof.ListField)):
+                chunks = chunks[1].split(".", 1)
+                doc = doc[int(chunks[0])]
+
             return doc.set_field(chunks[1], value, create=create)
 
         if not self.has_field(field_name):
@@ -178,11 +186,13 @@ class DatasetMixin(object):
         cls,
         ftype=None,
         embedded_doc_type=None,
+        subfield=None,
         read_only=None,
         info_keys=None,
         created_after=None,
         include_private=False,
         flat=False,
+        unwind=True,
         mode=None,
     ):
         """Returns a schema dictionary describing the fields of this document.
@@ -198,6 +208,9 @@ class DatasetMixin(object):
                 iterable of types to which to restrict the returned schema.
                 Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            subfield (None): an optional subfield type or iterable of subfield
+                types to which to restrict the returned schema. Must be
+                subclass(es) of :class:`fiftyone.core.fields.Field`
             read_only (None): whether to restrict to (True) or exclude (False)
                 read-only fields. By default, all fields are included
             info_keys (None): an optional key or list of keys that must be in
@@ -208,10 +221,12 @@ class DatasetMixin(object):
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
                 embedded document fields are included as top-level keys
-            mode (None): whether to apply the `above constraints before and/or
-                after flattening the schema. Only applicable when ``flat`` is
-                True. Supported values are ``("before", "after", "both")``.
-                The default is ``"after"``
+            unwind (True): whether to traverse into list fields. Only
+                applicable when ``flat=True``
+            mode (None): whether to apply the above constraints before and/or
+                after flattening the schema. Only applicable when ``flat=True``.
+                Supported values are ``("before", "after", "both")``. The
+                default is ``"after"``
 
         Returns:
             a dict mapping field names to :class:`fiftyone.core.fields.Field`
@@ -226,11 +241,13 @@ class DatasetMixin(object):
             schema,
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
+            subfield=subfield,
             read_only=read_only,
             info_keys=info_keys,
             created_after=created_after,
             include_private=include_private,
             flat=flat,
+            unwind=unwind,
             mode=mode,
         )
 
@@ -305,7 +322,7 @@ class DatasetMixin(object):
 
         for path in new_schema.keys():
             _, _, _, root_doc = cls._parse_path(path)
-            if root_doc is not None and root_doc.read_only:
+            if root_doc is not None and getattr(root_doc, "read_only", False):
                 root = path.rsplit(".", 1)[0]
                 raise ValueError("Cannot edit read-only field '%s'" % root)
 
@@ -318,7 +335,10 @@ class DatasetMixin(object):
         # Silently skip updating metadata of any read-only fields
         for path in list(new_metadata.keys()):
             field = cls._get_field(path, allow_missing=True)
-            if field is not None and field.read_only:
+            if field is not None and (
+                not isinstance(field, fof.Field)
+                or getattr(field, "read_only", False)
+            ):
                 del new_metadata[path]
 
         for path, field in new_schema.items():
@@ -517,7 +537,7 @@ class DatasetMixin(object):
                     % (cls._doc_name().lower(), path)
                 )
 
-            if field is not None and field.read_only:
+            if field is not None and getattr(field, "read_only", False):
                 raise ValueError(
                     "Cannot rename read-only %s field '%s'"
                     % (cls._doc_name().lower(), path)
@@ -684,7 +704,7 @@ class DatasetMixin(object):
                     "%s field '%s' does not exist" % (cls._doc_name(), path)
                 )
 
-            if field is not None and field.read_only:
+            if field is not None and getattr(field, "read_only", False):
                 raise ValueError(
                     "Cannot rename read-only %s field '%s'"
                     % (cls._doc_name().lower(), path)
@@ -753,7 +773,7 @@ class DatasetMixin(object):
                 )
                 continue
 
-            if field is not None and field.read_only:
+            if field is not None and getattr(field, "read_only", False):
                 raise ValueError(
                     "Cannot delete read-only %s field '%s'"
                     % (cls._doc_name().lower(), path)
@@ -862,7 +882,7 @@ class DatasetMixin(object):
                 )
                 continue
 
-            if field is not None and field.read_only:
+            if field is not None and getattr(field, "read_only", False):
                 fou.handle_error(
                     ValueError(
                         "Cannot remove read-only %s field '%s'"
@@ -1125,9 +1145,6 @@ class DatasetMixin(object):
                         fof.EmbeddedDocumentField,
                     )
                 )
-
-        if isinstance(field, fof.ObjectIdField) and field_name.startswith("_"):
-            field_name = field_name[1:]
 
         if field_name in doc._fields:
             existing_field = doc._fields[field_name]

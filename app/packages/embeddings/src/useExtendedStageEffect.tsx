@@ -3,6 +3,9 @@ import { useRecoilCallback, useRecoilValue, useSetRecoilState } from "recoil";
 import * as fos from "@fiftyone/state";
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import { fetchExtendedStage } from "./fetch";
+import { atoms as selectionAtoms } from "./usePlotSelection";
+import { usePointsField } from "./useBrainResult";
+import { shouldResolveSelection } from "./utils";
 
 export default function useExtendedStageEffect() {
   const datasetName = useRecoilValue(fos.datasetName);
@@ -16,15 +19,25 @@ export default function useExtendedStageEffect() {
     return snapshot.getPromise(fos.datasetName);
   });
   const slices = useRecoilValue(fos.currentSlices(false));
+  const lassoPoints = useRecoilValue(selectionAtoms.lassoPoints);
+  const [pointsField] = usePointsField();
 
   useEffect(() => {
     if (loadedPlot && Array.isArray(selection)) {
+      const shouldIncludeSelection = shouldResolveSelection(
+        view,
+        null,
+        loadedPlot.patches_field,
+        pointsField
+      );
       fetchExtendedStage({
         datasetName,
         view,
         patchesField: loadedPlot.patches_field,
-        selection,
+        selection: shouldIncludeSelection ? selection : null,
         slices,
+        lassoPoints,
+        pointsField,
       }).then(async (res) => {
         const currentDataset = await getCurrentDataset();
         if (currentDataset !== datasetName) return;
@@ -33,5 +46,12 @@ export default function useExtendedStageEffect() {
         });
       });
     }
-  }, [datasetName, loadedPlot?.patches_field, view, selection]);
+  }, [
+    datasetName,
+    loadedPlot?.patches_field,
+    view,
+    selection,
+    pointsField,
+    lassoPoints,
+  ]);
 }

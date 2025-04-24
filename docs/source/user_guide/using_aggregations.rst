@@ -799,13 +799,15 @@ Transforming data before aggregating
 ------------------------------------
 
 You can use view stages like
+:meth:`map_values() <fiftyone.core.collections.SampleCollection.map_values>`
+and
 :meth:`map_labels() <fiftyone.core.collections.SampleCollection.map_labels>`
 in concert with aggregations to efficiently compute statistics on your
 datasets.
 
 For example, suppose you would like to compute the histogram of the labels in
 a dataset with certain labels grouped into a single category. You can use
-:meth:`map_labels() <fiftyone.core.collections.SampleCollection.map_labels>` +
+:meth:`map_values() <fiftyone.core.collections.SampleCollection.map_values>` +
 :meth:`count_values() <fiftyone.core.collections.SampleCollection.count_values>`
 to succinctly express this:
 
@@ -822,7 +824,7 @@ to succinctly express this:
 
     counts = (
         dataset
-        .map_labels("ground_truth", labels_map)
+        .map_values("ground_truth.detections.label", labels_map)
         .count_values("ground_truth.detections.label")
     )
 

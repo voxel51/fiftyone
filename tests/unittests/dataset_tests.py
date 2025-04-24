@@ -18,6 +18,7 @@ import unittest
 from unittest.mock import patch
 
 from bson import ObjectId
+from freezegun import freeze_time
 from mongoengine import ValidationError
 import numpy as np
 import pytz
@@ -617,6 +618,46 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(last_modified_at2, last_modified_at1)
 
     @drop_datasets
+    def test_last_modified_at_deletions(self):
+        samples = [
+            fo.Sample(filepath="image1.jpg"),
+            fo.Sample(filepath="image2.png"),
+            fo.Sample(filepath="image3.jpg"),
+            fo.Sample(filepath="image4.jpg"),
+            fo.Sample(filepath="image5.jpg"),
+            fo.Sample(filepath="image6.jpg"),
+        ]
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
+
+        last_modified_at1 = dataset.last_modified_at
+
+        dataset[:5].keep()
+        last_modified_at2 = dataset.last_modified_at
+
+        self.assertEqual(len(dataset), 5)
+        self.assertTrue(last_modified_at2 > last_modified_at1)
+
+        dataset[-1:].clear()
+        last_modified_at3 = dataset.last_modified_at
+
+        self.assertEqual(len(dataset), 4)
+        self.assertTrue(last_modified_at3 > last_modified_at2)
+
+        dataset.delete_samples(dataset[:2])
+        last_modified_at4 = dataset.last_modified_at
+
+        self.assertEqual(len(dataset), 2)
+        self.assertTrue(last_modified_at4 > last_modified_at3)
+
+        dataset.clear()
+        last_modified_at5 = dataset.last_modified_at
+
+        self.assertEqual(len(dataset), 0)
+        self.assertTrue(last_modified_at5 > last_modified_at4)
+
+    @drop_datasets
     def test_indexes(self):
         dataset = fo.Dataset()
 
@@ -1039,29 +1080,33 @@ class DatasetTests(unittest.TestCase):
         # Multiple workers
         #
 
-        dataset.update_samples(update_fcn, num_workers=2)
+        dataset.update_samples(
+            update_fcn,
+            workers=2,
+            batch_method="id",
+            parallelize_method="process",
+        )
 
         self.assertTupleEqual(dataset.bounds("int"), (1, 50))
 
         dataset.update_samples(
-            update_fcn, num_workers=2, shard_size=10, shard_method="id"
+            update_fcn,
+            workers=2,
+            batch_method="slice",
+            parallelize_method="process",
         )
 
         self.assertTupleEqual(dataset.bounds("int"), (2, 51))
-
-        dataset.update_samples(
-            update_fcn, num_workers=2, shard_size=10, shard_method="slice"
-        )
-
-        self.assertTupleEqual(dataset.bounds("int"), (3, 52))
 
         #
         # Main process
         #
 
-        dataset.update_samples(update_fcn, num_workers=1)
+        dataset.update_samples(
+            update_fcn, workers=1, parallelize_method="process"
+        )
 
-        self.assertTupleEqual(dataset.bounds("int"), (4, 53))
+        self.assertTupleEqual(dataset.bounds("int"), (3, 52))
 
     @drop_datasets
     def test_map_samples(self):
@@ -1078,74 +1123,29 @@ class DatasetTests(unittest.TestCase):
         def map_fcn(sample):
             return sample.foo.upper()
 
-        class ReduceFcn(fo.ReduceFcn):
-            def init(self):
-                self.accumulator = Counter()
-
-            def add(self, sample_id, output):
-                self.accumulator[output] += 1
-
-            def finalize(self):
-                return dict(self.accumulator)
-
-        def aggregate_fcn(dataset, outputs):
-            return dict(Counter(outputs.values()))
-
         #
         # Multiple workers
         #
 
         counter = Counter()
-        for _, value in dataset.map_samples(map_fcn, num_workers=2):
+        for _, value in dataset.map_samples(
+            map_fcn, num_workers=2, parallelize_method="process"
+        ):
             counter[value] += 1
 
-        counts = dict(counter)
-
-        self.assertDictEqual(counts, {"BAR": 50})
-
-        counts = dataset.map_samples(
-            map_fcn,
-            reduce_fcn=ReduceFcn,
-            num_workers=2,
-            shard_size=10,
-            shard_method="id",
-        )
-
-        self.assertDictEqual(counts, {"BAR": 50})
-
-        counts = dataset.map_samples(
-            map_fcn,
-            aggregate_fcn=aggregate_fcn,
-            num_workers=2,
-            shard_size=10,
-            shard_method="slice",
-        )
-
-        self.assertDictEqual(counts, {"BAR": 50})
+        self.assertDictEqual(dict(counter), {"BAR": 50})
 
         #
         # Main process
         #
 
         counter = Counter()
-        for _, value in dataset.map_samples(map_fcn, num_workers=1):
+        for _, value in dataset.map_samples(
+            map_fcn, num_workers=1, parallelize_method="process"
+        ):
             counter[value] += 1
 
-        counts = dict(counter)
-
-        self.assertDictEqual(counts, {"BAR": 50})
-
-        counts = dataset.map_samples(
-            map_fcn, reduce_fcn=ReduceFcn, num_workers=1
-        )
-
-        self.assertDictEqual(counts, {"BAR": 50})
-
-        counts = dataset.map_samples(
-            map_fcn, aggregate_fcn=aggregate_fcn, num_workers=1
-        )
-
-        self.assertDictEqual(counts, {"BAR": 50})
+        self.assertDictEqual(dict(counter), {"BAR": 50})
 
     @drop_datasets
     def test_date_fields(self):
@@ -1177,17 +1177,9 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(int((sample.date - date1).total_seconds()), 0)
 
         # Now change system time to something GMT+
-        system_timezone = os.environ.get("TZ")
-        try:
-            os.environ["TZ"] = "Europe/Madrid"
-            time.tzset()
+        now = datetime.now()
+        with freeze_time(now, tz_offset=1):
             dataset.reload()
-        finally:
-            if system_timezone is None:
-                del os.environ["TZ"]
-            else:
-                os.environ["TZ"] = system_timezone
-            time.tzset()
 
         self.assertEqual(type(sample.date), date)
         self.assertEqual(int((sample.date - date1).total_seconds()), 0)
@@ -1605,6 +1597,13 @@ class DatasetTests(unittest.TestCase):
             "spam", embedded_doc_type=[fo.Label, fo.Detections]
         )
         dataset.validate_field_type("eggs", embedded_doc_type=fo.Detections)
+        dataset.validate_field_type("tags", subfield=fo.StringField)
+        dataset.validate_field_type(
+            "eggs.detections", subfield=fo.EmbeddedDocumentField
+        )
+        dataset.validate_field_type(
+            "eggs.detections.tags", subfield=fo.StringField
+        )
 
         with self.assertRaises(ValueError):
             dataset.validate_field_type("missing")
@@ -1622,6 +1621,116 @@ class DatasetTests(unittest.TestCase):
             dataset.validate_field_type(
                 "spam", embedded_doc_type=fo.Detections
             )
+
+        with self.assertRaises(ValueError):
+            dataset.validate_field_type(
+                "eggs.detections", subfield=fo.StringField
+            )
+
+        # Top-level label fields
+        schema = dataset.get_field_schema(embedded_doc_type=fo.Label)
+        self.assertSetEqual(set(schema.keys()), {"spam", "eggs"})
+
+        # All list(string) fields
+        schema = dataset.get_field_schema(flat=True, subfield=fo.StringField)
+        self.assertSetEqual(
+            set(schema.keys()),
+            {"tags", "spam.tags", "eggs.detections.tags"},
+        )
+
+        # All fields
+        schema = dataset.get_field_schema(flat=True)
+        self.assertSetEqual(
+            set(schema.keys()),
+            {
+                "id",
+                "filepath",
+                "tags",
+                "metadata",
+                "metadata.size_bytes",
+                "metadata.mime_type",
+                "created_at",
+                "last_modified_at",
+                "foo",
+                "bar",
+                "spam",
+                "spam.id",
+                "spam.tags",
+                "spam.label",
+                "spam.confidence",
+                "spam.logits",
+                "eggs",
+                "eggs.detections",
+                "eggs.detections.id",
+                "eggs.detections.tags",
+                "eggs.detections.attributes",
+                "eggs.detections.attributes.value",
+                "eggs.detections.label",
+                "eggs.detections.bounding_box",
+                "eggs.detections.mask",
+                "eggs.detections.mask_path",
+                "eggs.detections.confidence",
+                "eggs.detections.index",
+            },
+        )
+
+        # All fields that aren't embedded within lists
+        schema = dataset.get_field_schema(flat=True, unwind=False)
+        self.assertSetEqual(
+            set(schema.keys()),
+            {
+                "id",
+                "filepath",
+                "tags",
+                "metadata",
+                "metadata.size_bytes",
+                "metadata.mime_type",
+                "created_at",
+                "last_modified_at",
+                "foo",
+                "bar",
+                "spam",
+                "spam.id",
+                "spam.tags",
+                "spam.label",
+                "spam.confidence",
+                "spam.logits",
+                "eggs",
+                "eggs.detections",
+            },
+        )
+
+        # All string or list(string) fields that aren't embedded within lists
+        schema = dataset.get_field_schema(
+            ftype=(fo.StringField, fo.ListField),
+            subfield=fo.StringField,
+            flat=True,
+            unwind=False,
+        )
+        self.assertSetEqual(
+            set(schema.keys()),
+            {
+                "filepath",
+                "tags",
+                "metadata.mime_type",
+                "foo",
+                "spam.tags",
+                "spam.label",
+            },
+        )
+
+        # All string or list(string) fields that aren't embedded within lists
+        view = dataset.exclude_fields("spam")
+        schema = view.get_field_schema(
+            ftype=(fo.StringField, fo.ListField),
+            subfield=fo.StringField,
+            flat=True,
+            unwind=False,
+        )
+        self.assertSetEqual(
+            set(schema.keys()),
+            {"filepath", "tags", "metadata.mime_type", "foo"},
+        )
 
     @drop_datasets
     def test_validate_sample_fields(self):

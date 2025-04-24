@@ -19,6 +19,7 @@ import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls"
 import { useFo3dContext } from "../context";
 import { usePcdMaterial } from "../point-cloud/use-pcd-material";
 import { getBasePathForTextures, getResolvedUrlForFo3dAsset } from "../utils";
+import { useFoLoader } from "../../hooks/use-fo-loaders";
 
 interface PlyProps {
   name: string;
@@ -150,7 +151,7 @@ export const Ply = ({
     [fo3dRoot, plyUrl]
   );
 
-  const geometry = useLoader(PLYLoader, plyUrl, (loader) => {
+  const geometry = useFoLoader(PLYLoader, plyUrl, (loader) => {
     loader.resourcePath = resourcePath;
   });
 

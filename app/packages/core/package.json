@@ -5,7 +5,8 @@
     "private": true,
     "main": "./src/index.ts",
     "scripts": {
-        "dev": "vite"
+        "dev": "vite",
+        "test": "vitest"
     },
     "dependencies": {
         "@fiftyone/components": "*",
@@ -51,6 +52,7 @@
         "remark-gfm": "^3.0.1",
         "resize-observer-polyfill": "^1.5.1",
         "styled-components": "^6.1.8",
+        "use-memo-one": "^1.1.3",
         "uuid": "^8.3.2",
         "xstate": "^4.14.0"
     },
@@ -71,7 +73,7 @@
         "rollup-plugin-polyfill-node": "^0.6.2",
         "typescript": "^5.4.5",
         "typescript-plugin-css-modules": "^5.1.0",
-        "vite": "^5.4.12",
+        "vite": "^5.4.18",
         "vite-plugin-relay": "^1.0.7"
     },
     "peerDependencies": {

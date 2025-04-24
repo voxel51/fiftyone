@@ -126,6 +126,13 @@ on the cards below to see how!
     :tags: Brain,Embeddings,Vector-Search
 
 .. customcarditem::
+    :header: PostgreSQL Pgvector
+    :description: Use our PostgreSQL Pgvector integration to enable vector search and query your FiftyOne datasets at scale.
+    :link: pgvector.html
+    :image: ../_static/images/integrations/postgres.png
+    :tags: Brain,Embeddings,Vector-Search
+
+.. customcarditem::
     :header: Milvus
     :description: Use our Milvus integration to index your FiftyOne datasets and perform embeddings queries at scale.
     :link: milvus.html
@@ -218,6 +225,7 @@ on the cards below to see how!
     Pinecone <pinecone.rst>
     MongoDB <mongodb.rst>
     Elasticsearch <elasticsearch.rst>
+    PostgreSQL Pgvector <pgvector.rst>
     Databricks Mosaic AI <mosaic.rst>
     Milvus <milvus.rst>
     LanceDB <lancedb.rst>

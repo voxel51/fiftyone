@@ -1,6 +1,5 @@
 import { Sample } from "@fiftyone/looker/src/state";
 import {
-  MediaType,
   datasetFragment,
   datasetFragment$key,
   frameFieldsFragment,
@@ -13,7 +12,7 @@ import {
   sampleFieldsFragment$data,
   sampleFieldsFragment$key,
 } from "@fiftyone/relay";
-import { StrictField } from "@fiftyone/utilities";
+import { setContains3d, StrictField } from "@fiftyone/utilities";
 import { DefaultValue, atom, atomFamily, selector } from "recoil";
 import { ModalSample } from "..";
 import { GRID_SPACES_DEFAULT, sessionAtom } from "../session";
@@ -111,6 +110,11 @@ export const snackbarErrors = atom<string[]>({
   default: [],
 });
 
+export const snackbarLink = atom<{ link: string; message: string } | null>({
+  key: "snackbarLink",
+  default: null,
+});
+
 // labels: whether label tag or sample tag
 export const tagging = atomFamily<boolean, { modal: boolean; labels: boolean }>(
   {
@@ -121,7 +125,7 @@ export const tagging = atomFamily<boolean, { modal: boolean; labels: boolean }>(
 
 export const mediaType = graphQLSyncFragmentAtom<
   mediaTypeFragment$key,
-  MediaType | null
+  string | null
 >(
   {
     fragments: [datasetFragment, mediaTypeFragment],
@@ -288,7 +292,7 @@ export const similarityParameters = (() => {
 
   return graphQLSyncFragmentAtom<
     datasetFragment$key,
-    State.SortBySimilarityParameters | null
+    State.SortBySimilarityParameters
   >(
     {
       fragments: [datasetFragment],
@@ -341,7 +345,7 @@ export const only3d = selector<boolean>({
   key: "only3d",
   get: ({ get }) => {
     const set = get(groupMediaTypesSet);
-    const has3d = set.has("point_cloud") || set.has("three_d");
+    const has3d = setContains3d(set);
     return set.size === 1 && has3d;
   },
 });
