@@ -2899,7 +2899,7 @@ class Values(Aggregation):
         )
 
         # Optimization: call str() in memory rather than $toString in database
-        if id_to_str:
+        if id_to_str and not self._raw:
             field = fof.ObjectIdField()
             id_to_str = False
 
