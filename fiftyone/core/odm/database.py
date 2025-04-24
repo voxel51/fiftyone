@@ -19,7 +19,6 @@ import asyncio
 from bson import json_util, ObjectId
 from bson.codec_options import CodecOptions
 import mongoengine
-import mongoengine
 import motor.motor_asyncio as mtr
 
 from packaging.version import Version
