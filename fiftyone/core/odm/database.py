@@ -1484,50 +1484,41 @@ def delete_runs(name, dry_run=False):
     )
 
 
-def get_indexed_values(
-    dataset, field_or_index, pipeline=None, values_only=False
-):
-    """Returns the values of the field for all samples in the given collection that are covered by the index.
-    Raises an error if the field is not indexed.
+def get_indexed_values(dataset, field_or_index, query=None, values_only=False):
+    """Returns the values of the field for all samples in the given collection
+    that are covered by the index. Raises an error if the field is not indexed.
 
     Args:
-        dataset: the dataset to query
-        field_or_index: the name of the indexed field to query or the index key for a compound index
-        pipeline: an optional pipeline to apply to the collection. For performance,
-            this should not include any fields not covered by the index.
+        dataset: the FiftyOne dataset to query
+        field_or_index: the name of a singled indexed field or the
+            index key for a compound index
+        query (dict, optional): a selection filter to apply when querying.
+            For performance, this should only include fields that are in
+            the specified index.
         values_only (False): whether to remove field names from the resulting list.
-            If True, the field names are removed and only the values will be returned as a list for each sample.
-            If False, the field names are preserved and the values will be returned as a dict for each sample.
+            If True, the field names are removed and only the values will be
+            returned as a list for each sample. If False, the field names are
+            preserved and the values will be returned as a dict for each sample.
     Returns:
-        a list of values for the specified field or index keys for each sample sorted in the same order as the index
+        a list of values for the specified field or index keys for each sample
+        sorted in the same order as the index
     """
+
+    cursor = _iter_indexed_values(dataset, field_or_index, query)
+
     if field_or_index == "id":
         if values_only:
-            return [
-                str(doc["_id"])
-                for doc in _iter_indexed_values(
-                    dataset, field_or_index, pipeline
-                )
-            ]
-        return [
-            {"id": str(doc["_id"])}
-            for doc in _iter_indexed_values(dataset, field_or_index, pipeline)
-        ]
+            return [str(doc["_id"]) for doc in cursor]
+        return [{"id": str(doc["_id"])} for doc in cursor]
+
     if values_only:
         # If values_only is True, we need to extract the values from the dict
         if "_1_" not in field_or_index:
             # Single field index
-            return [
-                doc[field_or_index]
-                for doc in _iter_indexed_values(
-                    dataset, field_or_index, pipeline
-                )
-            ]
-        return [
-            list(doc.values())
-            for doc in _iter_indexed_values(dataset, field_or_index, pipeline)
-        ]
-    return _iter_indexed_values(dataset, field_or_index, pipeline).to_list()
+            return [doc[field_or_index] for doc in cursor]
+        return [list(doc.values()) for doc in cursor]
+
+    return cursor.to_list()
 
 
 def _iter_indexed_values(dataset, field_or_index, pipeline=None):
@@ -1556,12 +1547,11 @@ def _iter_indexed_values(dataset, field_or_index, pipeline=None):
         else:
             proj = {f: 1 for f in field_or_index.strip("_1").split("_1_") if f}
             hint = {k: v for k, v in proj.items()}
-            proj["_id"] = 0
 
     elif field_or_index in indexes:
         idx = indexes[field_or_index]["key"]
-        proj = {field: int(direction) for field, direction in idx}
-        hint = {k: v for k, v in proj.items()}
+        hint = {field: int(direction) for field, direction in idx}
+        proj = {k: v for k, v in hint.items()}
     else:
         raise ValueError(
             "Field '%s' is not indexed. Please create an index first or use `values(%s)` instead"

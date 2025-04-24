@@ -54,6 +54,8 @@ foos = fou.lazy_import("fiftyone.operators.store")
 
 logger = logging.getLogger(__name__)
 
+_DEFAULT_INDEXED_FIELDS = ["id", "created_at", "last_modified_at"]
+
 
 def _make_registrar():
     registry = {}
@@ -9045,31 +9047,33 @@ class SampleCollection(object):
         Returns:
             the list of values
         """
-        # If we do not need to follow insertion order, we can potentially use a covered index query
-        # to get the values directly from the index and avoid a collscan.
-        # In the future, we might not want to require _is_full_collection,
-        # but that needs further investigation as a complex view might require an aggregation
-        if (
-            not _enforce_natural_order
-            and (
-                isinstance(field_or_expr, str)
-                or (
-                    isinstance(field_or_expr, list) and len(field_or_expr) == 1
-                )
-            )
-            and self._is_full_collection()
-        ):
-            try:
-                if isinstance(field_or_expr, list):
-                    field = field_or_expr[0]
-                else:
-                    field = field_or_expr
-                return foo.get_indexed_values(
-                    self._dataset, field, values_only=True
-                )
-            except Exception as e:
-                # Fallback to values, but log the error to surface the recommendation to create an index
-                logging.error(e)
+
+        # If we do not need to follow insertion order, we can potentially use a
+        # covered index query to get the values directly from the index and
+        # avoid a COLLSCAN.
+        if not _enforce_natural_order:
+            field = None
+            if isinstance(field_or_expr, str):
+                field = field_or_expr
+            elif isinstance(field_or_expr, list):
+                field = field_or_expr[0]
+
+            # Checking _is_full_collection last as it could potentially be expensive.
+            # In the future, we might be less restrictive, but that needs
+            # further investigation.
+            if (
+                field in ["id", "_id", "filepath"]
+                and self._dataset.media_type != fom.GROUP
+                and self._is_full_collection()
+            ):
+                try:
+                    return foo.get_indexed_values(
+                        self._dataset, field, values_only=True
+                    )
+                except Exception as e:
+                    # Fallback to values, but log the error to surface the
+                    # recommendation to create an index
+                    logger.warning(e)
 
         make = lambda field_or_expr: foa.Values(
             field_or_expr,
@@ -9993,21 +9997,15 @@ class SampleCollection(object):
     def _get_default_indexes(self, frames=False):
         if frames:
             if self._has_frame_fields():
-                return [
-                    "id",
-                    "created_at",
-                    "last_modified_at",
+                return _DEFAULT_INDEXED_FIELDS + [
                     "_sample_id_1_frame_number_1",
                 ]
 
             return []
 
         if self._is_patches:
-            names = [
-                "id",
+            names = _DEFAULT_INDEXED_FIELDS + [
                 "filepath",
-                "created_at",
-                "last_modified_at",
                 "sample_id",
             ]
             if self._is_frames:
@@ -10016,40 +10014,28 @@ class SampleCollection(object):
             return names
 
         if self._is_frames:
-            return [
-                "id",
+            return _DEFAULT_INDEXED_FIELDS + [
                 "filepath",
-                "created_at",
-                "last_modified_at",
                 "sample_id",
                 "_sample_id_1_frame_number_1",
             ]
 
         if self._is_clips:
-            return [
-                "id",
+            return _DEFAULT_INDEXED_FIELDS + [
                 "filepath",
-                "created_at",
-                "last_modified_at",
                 "sample_id",
             ]
 
         if self.media_type == fom.GROUP:
             gf = self.group_field
-            return [
-                "id",
+            return _DEFAULT_INDEXED_FIELDS + [
                 "filepath",
-                "created_at",
-                "last_modified_at",
                 gf + ".id",
                 gf + ".name",
             ]
 
-        return [
-            "id",
+        return _DEFAULT_INDEXED_FIELDS + [
             "filepath",
-            "created_at",
-            "last_modified_at",
         ]
 
     def reload(self):
