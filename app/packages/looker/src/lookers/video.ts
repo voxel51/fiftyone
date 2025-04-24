@@ -84,7 +84,6 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
             labelId: label.id,
             sampleId: this.sample.id,
             instanceId: label.instanceId,
-            instanceName: label.instanceName,
           });
         }
       } else {

@@ -724,7 +724,6 @@ export abstract class AbstractLooker<
             labelId: label.id,
             sampleId: this.sample.id,
             instanceId: label.instanceId,
-            instanceName: label.instanceName,
           });
         }
       } else {
@@ -732,13 +731,11 @@ export abstract class AbstractLooker<
           id: labelId,
           field,
           instanceId,
-          instanceName,
         } = overlay.getSelectData(this.state);
         labels.push({
           labelId,
           field,
           instanceId,
-          instanceName,
           sampleId: this.sample.id,
         });
       }

@@ -12,7 +12,6 @@ export interface SelectEvent {
     frameNumber?: number;
     sampleId: string;
     instanceId?: string;
-    instanceName?: string;
     isShiftPressed?: boolean;
   };
 }
@@ -43,10 +42,8 @@ export function useOnSelectLabel() {
 
         const labels = { ...(await snapshot.getPromise(fos.selectedLabelMap)) };
 
-        let isLabelRemoved = false;
         if (labels[id]) {
           delete labels[id];
-          isLabelRemoved = true;
         } else {
           labels[id] = {
             field,

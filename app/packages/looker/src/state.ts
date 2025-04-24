@@ -106,7 +106,6 @@ export interface LabelData {
    * It is commonly used to cross-link labels between samples.
    */
   instanceId?: string;
-  instanceName?: string;
 }
 
 type MaskLabel = string;

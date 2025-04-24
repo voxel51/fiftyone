@@ -59,7 +59,6 @@ export interface SelectData {
    * It is commonly used to cross-link labels between samples.
    */
   instanceId?: string;
-  instanceName?: string;
 }
 
 export type LabelMask = {
@@ -163,7 +162,6 @@ export abstract class CoordinateOverlay<
       // @ts-ignore
       frameNumber: state.frameNumber,
       instanceId: this.label.instance?._id,
-      // instanceName: this.label.instance_config?.name,
     };
   }
 
