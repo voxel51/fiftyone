@@ -9047,7 +9047,7 @@ class SampleCollection(object):
         """
         # If we do not need to follow insertion order, we can potentially use a covered index query
         # to get the values directly from the index and avoid a collscan.
-        # In the future, we might not want to specify full_collection,
+        # In the future, we might not want to require _is_full_collection,
         # but that needs further investigation as a complex view might require an aggregation
         if (
             not _enforce_natural_order
