@@ -6,34 +6,29 @@ Interface for sample collections.
 |
 """
 
-from collections import defaultdict
-from copy import copy
-from datetime import datetime
 import fnmatch
 import itertools
 import logging
-import numbers
 import os
 import random
 import string
 import timeit
 import warnings
-
-from bson import ObjectId
-from pymongo import InsertOne, UpdateOne, UpdateMany, WriteConcern
+from collections import defaultdict
+from copy import copy
+from datetime import datetime
 
 import eta.core.serial as etas
 import eta.core.utils as etau
-
 import fiftyone.core.aggregations as foa
 import fiftyone.core.annotation as foan
 import fiftyone.core.brain as fob
-import fiftyone.core.expressions as foe
-from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.evaluation as foev
+import fiftyone.core.expressions as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
+import fiftyone.core.map as focm
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fomt
 import fiftyone.core.models as fomo
@@ -42,6 +37,9 @@ import fiftyone.core.runs as fors
 import fiftyone.core.sample as fosa
 import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
+from bson import ObjectId
+from fiftyone.core.expressions import ViewField as F
+from pymongo import InsertOne, UpdateMany, UpdateOne, WriteConcern
 
 fod = fou.lazy_import("fiftyone.core.dataset")
 fos = fou.lazy_import("fiftyone.core.stages")
@@ -3933,6 +3931,97 @@ class SampleCollection(object):
         return foev.EvaluationMethod.list_runs(
             self, type=type, method=method, **kwargs
         )
+
+    def map_samples(
+        self,
+        map_fcn,
+        save=False,
+        num_workers=None,
+        batch_size=None,
+        batch_method="id",
+        progress=None,
+        parallelize_method="process",
+        skip_failures=False,
+    ):
+        """
+        Applies `map_fcn` to each sample using the specified backend strategy
+        and returns an iterator.
+
+        Args:
+            map_fcn: Function to apply to each sample.
+            save (False): Whether to save any modified samples.
+            num_workers (None): Number of workers.
+            batch_size (None): Number of samples per batch. If None, the batch size
+                is automatically calculated to be the number of samples per worker.
+            batch_method ("id"): Explicit method for batching samples. Supported
+              methods are 'id' and 'slice'
+
+            progress (None): Whether to show progress bar. If None, uses the
+                default value ``fiftyone.config.show_progress_bars``. If "workers",
+                shows a progress bar for each worker.
+            parallelize_method: Explicit method to use for parallelization.
+              Supported methods are 'process' and 'thread'.
+            skip_failures (False): whether to gracefully continue without
+                raising an error if the update function raises an
+                exception for a sample.
+
+
+        Returns:
+            A generator yielding processed sample results.
+        """
+        mapper = focm.MapperFactory.create(
+            parallelize_method, num_workers, batch_method, batch_size
+        )
+
+        yield from mapper.map_samples(
+            self,
+            map_fcn,
+            progress=progress,
+            save=save,
+            skip_failures=skip_failures,
+        )
+
+    def update_samples(
+        self,
+        update_fcn,
+        num_workers=None,
+        batch_size=None,
+        batch_method=None,
+        progress=None,
+        parallelize_method="process",
+        skip_failures=True,
+    ):
+        """
+        Applies `map_fcn` to each sample using the specified backend strategy.
+
+        Args:
+            update_fcn: Function to apply to each sample.
+            num_workers (None): Number of workers.
+            batch_size (None): Number of samples per batch. If None, the batch size
+                is automatically calculated to be the number of samples per worker.
+            batch_method (None): Explicit method for batching samples. Supported
+              methods are 'id' and 'slice'.
+            progress (None): Whether to show progress bar. If None, uses the
+                default value ``fiftyone.config.show_progress_bars``. If "workers",
+                shows a progress bar for each worker.
+            parallelize_method: Explicit method to use for parallelization.
+              Supported methods are 'process' and 'thread'.
+            skip_failures (False): whether to gracefully continue without
+                raising an error if the update function raises an
+                exception for a sample.
+        """
+        mapper = focm.MapperFactory.create(
+            parallelize_method, num_workers, batch_method, batch_size
+        )
+
+        for _ in mapper.map_samples(
+            self,
+            update_fcn,
+            progress=progress,
+            save=True,
+            skip_failures=skip_failures,
+        ):
+            ...
 
     def rename_evaluation(self, eval_key, new_eval_key):
         """Replaces the key for the given evaluation with a new key.

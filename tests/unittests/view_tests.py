@@ -5,6 +5,8 @@ FiftyOne view-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
+from collections import Counter
 from copy import deepcopy
 from datetime import date, datetime, timedelta
 import math
@@ -15,7 +17,6 @@ import numpy as np
 
 import fiftyone as fo
 from fiftyone import ViewField as F, VALUE
-import fiftyone.core.media as fom
 import fiftyone.core.sample as fos
 import fiftyone.core.stages as fosg
 import fiftyone.core.view as fov
@@ -107,6 +108,89 @@ class DatasetViewTests(unittest.TestCase):
                 m3 < m4 for m3, m4 in zip(last_modified_at3, last_modified_at4)
             )
         )
+
+    @drop_datasets
+    def test_update_samples(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [fo.Sample(filepath="image%d.jpg" % i, int=i) for i in range(50)]
+        )
+
+        view = dataset.select_fields("int")
+
+        self.assertTupleEqual(view.bounds("int"), (0, 49))
+
+        def update_fcn(sample):
+            sample.int += 1
+
+        #
+        # Multiple workers
+        #
+
+        view.update_samples(update_fcn, num_workers=2, batch_method="id")
+
+        self.assertTupleEqual(view.bounds("int"), (1, 50))
+
+        view.update_samples(update_fcn, num_workers=2, batch_method="slice")
+
+        self.assertTupleEqual(view.bounds("int"), (2, 51))
+
+        #
+        # Main process
+        #
+
+        view.update_samples(update_fcn, num_workers=1)
+
+        self.assertTupleEqual(view.bounds("int"), (3, 52))
+
+    @drop_datasets
+    def test_map_samples(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="image%d.jpg" % i, foo="bar")
+                for i in range(50)
+            ]
+        )
+
+        view = dataset.select_fields("foo")
+
+        self.assertDictEqual(view.count_values("foo"), {"bar": 50})
+
+        def map_fcn(sample):
+            return sample.foo.upper()
+
+        #
+        # Multiple workers
+        #
+
+        counter = Counter()
+        for _, value in view.map_samples(
+            map_fcn, num_workers=2, batch_method="slice"
+        ):
+            assert value == "BAR"
+            counter[value] += 1
+
+        self.assertDictEqual(dict(counter), {"BAR": 50})
+
+        counter = Counter()
+        for _, value in view.map_samples(
+            map_fcn, num_workers=2, batch_method="id"
+        ):
+            assert value == "BAR"
+            counter[value] += 1
+
+        self.assertDictEqual(dict(counter), {"BAR": 50})
+
+        #
+        # Main process
+        #
+
+        counter = Counter()
+        for _, value in view.map_samples(map_fcn, num_workers=1):
+            counter[value] += 1
+
+        self.assertDictEqual(dict(counter), {"BAR": 50})
 
     @drop_datasets
     def test_set_unknown_attribute(self):
@@ -1544,9 +1628,11 @@ class SetValuesTests(unittest.TestCase):
         dataset = _make_labels_dataset()
 
         values = [
-            [fo.Classification(label=v) for v in vv]
-            if vv is not None
-            else None
+            (
+                [fo.Classification(label=v) for v in vv]
+                if vv is not None
+                else None
+            )
             for vv in dataset.values("labels.classifications.label")
         ]
 
@@ -1557,9 +1643,11 @@ class SetValuesTests(unittest.TestCase):
 
         # Since this field is not in the schema, the values are loaded as dicts
         also_values = [
-            [fo.Classification.from_dict(d) for d in dd]
-            if dd is not None
-            else None
+            (
+                [fo.Classification.from_dict(d) for d in dd]
+                if dd is not None
+                else None
+            )
             for dd in dataset.values("labels.classifications.also_label")
         ]
         self.assertEqual(values, also_values)
@@ -1651,9 +1739,11 @@ class SetValuesTests(unittest.TestCase):
 
         values = [
             [
-                [fo.Classification(label=v) for v in vv]
-                if vv is not None
-                else None
+                (
+                    [fo.Classification(label=v) for v in vv]
+                    if vv is not None
+                    else None
+                )
                 for vv in ff
             ]
             for ff in dataset.values("frames.labels.classifications.label")
@@ -1667,9 +1757,11 @@ class SetValuesTests(unittest.TestCase):
         # Since this field is not in the schema, the values are loaded as dicts
         also_values = [
             [
-                [fo.Classification.from_dict(d) for d in dd]
-                if dd is not None
-                else None
+                (
+                    [fo.Classification.from_dict(d) for d in dd]
+                    if dd is not None
+                    else None
+                )
                 for dd in ff
             ]
             for ff in dataset.values(

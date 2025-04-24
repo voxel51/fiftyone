@@ -2592,7 +2592,7 @@ For masks stored on disk, the
 :attr:`mask_path <fiftyone.core.labels.Detection.mask_path>` attribute should
 contain the file path to the mask image. We recommend storing masks as
 single-channel PNG images, where a pixel value of 0 indicates the
-background (rendered as transparent in the App), and any other 
+background (rendered as transparent in the App), and any other
 value indicates the object.
 
 Masks can be of any size; they are stretched as necessary to fill the
@@ -4862,8 +4862,8 @@ samples have media type `3d`.
 
 An FO3D file encapsulates a 3D scene constructed using the
 :class:`Scene <fiftyone.core.threed.Scene>` class, which provides methods
-to add, remove, and manipulate 3D objects in the scene. A scene is 
-internally represented as a n-ary tree of 3D objects, where each 
+to add, remove, and manipulate 3D objects in the scene. A scene is
+internally represented as a n-ary tree of 3D objects, where each
 object is a node in the tree. A 3D object is either a
 :ref:`3D mesh <3d-meshes>`, :ref:`point cloud <3d-point-clouds>`,
 or a :ref:`3D shape geometry <3d-shapes>`.
