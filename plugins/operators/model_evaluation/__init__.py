@@ -119,10 +119,7 @@ class ConfigureScenario(foo.Operator):
     ):
         """
         Builds and returns an execution cache key for each type of scenario.
-        - custom code: we use the expression
-        - label attribute: selected field and value
-        - sample field: selected field and vlue
-        - saved view: selected view
+        - eval key + name + type + subset definition
         """
         scenario_type = self.get_scenario_type(ctx.params)
 
@@ -131,6 +128,7 @@ class ConfigureScenario(foo.Operator):
                 "sample-distribution-data",
                 eval_key,
                 name,
+                scenario_type,
                 str(subset_def),
             ]
         elif scenario_type == ScenarioType.VIEW:
@@ -142,13 +140,15 @@ class ConfigureScenario(foo.Operator):
                 subset_def.get("view", ""),
             ]
         else:
+            if isinstance(subset_def, list):
+                subset_def = subset_def[0]
+
             key = [
                 "sample-distribution-data",
                 eval_key,
                 name,
                 scenario_type,
-                subset_def.get("field", ""),
-                subset_def.get("value", ""),
+                str(subset_def),
             ]
 
         return key
@@ -1020,7 +1020,6 @@ class ConfigureScenario(foo.Operator):
                 componentsProps={
                     "container": {
                         "sx": {
-                            "border": "1px solid #333",
                             "padding": "0 2rem 0 1rem",
                         }
                     },
