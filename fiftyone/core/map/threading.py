@@ -73,7 +73,7 @@ class ThreadMapper(fomm.LocalMapper):
         skip_failures: bool,
         worker_done_event: threading.Event,
         progress_bar: Optional[tqdm] = None,
-    ) -> Iterator[Tuple[bson.ObjectId, Union[Exception, None], R]]:
+    ) -> None:
 
         try:
             while not cancel_event.is_set() and (
@@ -137,7 +137,6 @@ class ThreadMapper(fomm.LocalMapper):
                 if progress == "workers":
                     desc = f"Batch {i:0{len(str(batch_count))}}/{batch_count}"
                     worker_progress_bar = tqdm(
-                        sample_iter,
                         total=batch.total,
                         desc=desc,
                         position=i,
