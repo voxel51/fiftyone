@@ -459,10 +459,6 @@ class FiftyOneTransformer(fout.TorchImageModel):
 
     @staticmethod
     def collate_fn(batch):
-        print(batch)
-        print([type(b) for b in batch])
-        print(type(batch[0]["pixel_values"][0].shape))
-        print(batch[0]["pixel_values"])
         keys = batch[0].keys()
         res = {}
         for k in keys:
