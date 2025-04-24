@@ -9069,7 +9069,7 @@ class SampleCollection(object):
                 )
             except Exception as e:
                 # Fallback to values, but log the error to surface the recommendation to create an index
-                logging.debug(e)
+                logging.error(e)
 
         make = lambda field_or_expr: foa.Values(
             field_or_expr,
