@@ -803,17 +803,19 @@ class ConfigureScenario(foo.Operator):
             # NOTE: we show the last part of the path as the label attribute
             label_choices.add_choice(option, label=option.split(".")[-1])
 
+        label_attr_exists = True if label_attr in valid_options else False
+
         inputs.enum(
             "scenario_label_attribute",
             label_choices.values(),
-            default=label_attr if label_attr in valid_options else None,
+            default=label_attr if label_attr_exists else None,
             label="Label attribute",
             description="Select a label attribute",
             view=label_choices,
             required=True,
         )
 
-        if label_attr:
+        if label_attr and label_attr_exists:
             self.render_scenario_picker_view(ctx, label_attr, inputs)
         else:
             self.render_empty_sample_distribution(
@@ -863,9 +865,11 @@ class ConfigureScenario(foo.Operator):
         for option in valid_options:
             field_choices.add_choice(option, label=option)
 
+        label_attr_exists = True if field_name in valid_options else False
+
         inputs.str(
             "scenario_field",
-            default=None,
+            default=field_name if label_attr_exists else None,
             label="Field",
             description=("Choose applicable sample field values."),
             view=field_choices,
