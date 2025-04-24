@@ -2464,6 +2464,9 @@ def safe_relpath(path, start=None, default=None):
     default value if the given path if it does not lie within the given
     relative start.
 
+    When dealing with cloud paths, the provided paths may be any mix of cloud
+    paths and corresponding local cache paths.
+
     Args:
         path: a path
         start (None): the relative prefix to strip from ``path``
@@ -2473,7 +2476,14 @@ def safe_relpath(path, start=None, default=None):
     Returns:
         the relative path
     """
-    relpath = os.path.relpath(path, start)
+    _path = foca.media_cache.get_local_path(path, download=False)
+
+    if start:
+        _start = foca.media_cache.get_local_path(start, download=False)
+    else:
+        _start = start
+
+    relpath = os.path.relpath(_path, _start)
     if relpath.startswith(".."):
         if default is not None:
             return default
@@ -2503,14 +2513,14 @@ def compute_filehash(filepath, method=None, chunk_size=None):
         the hash
     """
     if method is None:
-        with open(filepath, "rb") as f:
+        with fos.open_file(filepath, "rb") as f:
             return hash(f.read())
 
     if chunk_size is None:
         chunk_size = 65536
 
     hasher = getattr(hashlib, method)()
-    with open(filepath, "rb") as f:
+    with fos.open_file(filepath, "rb") as f:
         while True:
             data = f.read(chunk_size)
             if not data:
