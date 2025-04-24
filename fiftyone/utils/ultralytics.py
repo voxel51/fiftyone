@@ -7,14 +7,10 @@ Utilities for working with
 |
 """
 
-import itertools
-
+from typing import Callable
 import numpy as np
-from PIL import Image
 
-from fiftyone.core.config import Config
 import fiftyone.core.labels as fol
-from fiftyone.core.models import Model
 import fiftyone.utils.torch as fout
 import fiftyone.core.utils as fou
 import fiftyone.zoo.models as fozm
@@ -195,14 +191,28 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         else:
             ragged_batches = True
 
-        transforms = [self.preprocess_im]
+        transforms = [self._preprocess_im]
         transforms = torchvision.transforms.Compose(transforms)
 
         return transforms, ragged_batches
 
-    def preprocess_im(self, im):
-        out_im = self._model.predictor.preprocess([np.asarray(im)])
-        return torch.squeeze(out_im, axis=0)
+    def _preprocess_im(self, im):
+        return self._ultralytics_preprocess([np.asarray(im)])
+
+    def _ultralytics_preprocess(self, im):
+        not_tensor = not isinstance(im, torch.Tensor)
+        if not_tensor:
+            im = np.stack(self._model.predictor.pre_transform(im))
+            if im.shape[-1] == 3:
+                im = im[..., ::-1]
+            im = im.transpose((0, 3, 1, 2))
+            im = np.ascontiguousarray(im)
+            im = torch.from_numpy(im)
+
+        im = im.half() if self._model.predictor.model.fp16 else im.float()
+        if not_tensor:
+            im /= 255
+        return torch.squeeze(im, axis=0)
 
     def _build_output_processor(self, config):
         if config.output_processor is not None:
@@ -219,7 +229,7 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         kwargs = config.output_processor_args or {}
         return output_processor_cls(
             classes=self._classes,
-            post_processor=self._model.predictor,
+            post_processor=self._model.predictor.postprocess,
             **kwargs,
         )
 
@@ -338,13 +348,13 @@ class UltralyticsPostProcessor(object):
         orig_imgs = output.get("orig_imgs", None)
         preds = output["preds"]
         if self.post_processor is None:
-            raise ValueError("Ultralytics post processor is set to")
+            raise ValueError("Ultralytics post processor is set to None")
 
         if imgs is None or orig_imgs is None:
             raise ValueError(
                 "Ultralytics post processor needs transformed and original images."
             )
-        out = self.post_processor.postprocess(preds, imgs, orig_imgs)
+        out = self.post_processor(preds, imgs, orig_imgs)
         return out
 
 
@@ -387,7 +397,6 @@ class UltralyticsDetectionOutputProcessor(
     def __call__(self, output, frame_size, confidence_thresh=None):
         if isinstance(output, dict):
             results = self.post_process(output)
-            print(isinstance(results, list), type(results))
             preds = self._to_dict(results)
         else:
             preds = output
