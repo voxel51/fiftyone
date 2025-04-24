@@ -78,9 +78,11 @@ class Mapper(fomm.LocalMapper):
     """Test implementation for abstract class"""
 
     @classmethod
-    def create(cls, *_, **__): ...
+    def create(cls, *_, **__):
+        ...
 
-    def _map_samples_multiple_workers(self, *_, **__): ...
+    def _map_samples_multiple_workers(self, *_, **__):
+        ...
 
 
 @pytest.mark.parametrize(
@@ -177,6 +179,7 @@ class TestMapSamples:
 
         for idx, err in errors.items():
             if num_workers == 1:
+
                 map_fcn_side_effect[idx] = err
             else:
                 map_samples_multi_worker_val[idx][1] = err

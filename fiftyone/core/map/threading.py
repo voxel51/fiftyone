@@ -204,6 +204,7 @@ class ThreadMapper(fomm.LocalMapper):
 
                 # It is possible to aggregate one error per worker. There
                 # might be a better way to handle this in the future but for
+
                 # now, return the first error seen
                 if sample_errors:
                     yield sample_errors[0]

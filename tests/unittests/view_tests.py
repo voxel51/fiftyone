@@ -5,6 +5,7 @@ FiftyOne view-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from collections import Counter
 from copy import deepcopy
 from datetime import date, datetime, timedelta
