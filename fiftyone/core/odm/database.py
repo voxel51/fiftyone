@@ -1546,9 +1546,9 @@ def get_indexed_values(
 def _iter_indexed_values(
     collection, field_or_fields, *, index_key=None, query=None
 ):
-    if not field_or_fields:
-        raise ValueError("You must specify which fields to return.")
-
+    # It's possible to create an index with a custom name. However, if not specified,
+    # the hint will use the default index name, which is constructed from the field name(s)
+    # joined with "_1".
     hint = index_key
     proj = {"_id": 0}
 

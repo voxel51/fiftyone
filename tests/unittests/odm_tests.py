@@ -106,5 +106,6 @@ class GetIndexedValuesTests(unittest.TestCase):
             dataset.set_values("new_field2", [i for i in range(10)])
             with self.assertRaises(ValueError):
                 foo.get_indexed_values(collection, "new_field2")
+
         finally:
             dataset.delete()
