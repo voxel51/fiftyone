@@ -127,11 +127,11 @@ class DatasetViewTests(unittest.TestCase):
         # Multiple workers
         #
 
-        view.update_samples(update_fcn, workers=2, batch_method="id")
+        view.update_samples(update_fcn, num_workers=2, batch_method="id")
 
         self.assertTupleEqual(view.bounds("int"), (1, 50))
 
-        view.update_samples(update_fcn, workers=2, batch_method="slice")
+        view.update_samples(update_fcn, num_workers=2, batch_method="slice")
 
         self.assertTupleEqual(view.bounds("int"), (2, 51))
 
@@ -139,7 +139,7 @@ class DatasetViewTests(unittest.TestCase):
         # Main process
         #
 
-        view.update_samples(update_fcn, workers=1)
+        view.update_samples(update_fcn, num_workers=1)
 
         self.assertTupleEqual(view.bounds("int"), (3, 52))
 

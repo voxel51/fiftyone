@@ -1081,7 +1081,7 @@ class DatasetTests(unittest.TestCase):
 
         dataset.update_samples(
             update_fcn,
-            workers=2,
+            num_workers=2,
             batch_method="id",
             parallelize_method="process",
         )
@@ -1090,7 +1090,7 @@ class DatasetTests(unittest.TestCase):
 
         dataset.update_samples(
             update_fcn,
-            workers=2,
+            num_workers=2,
             batch_method="slice",
             parallelize_method="process",
         )
@@ -1102,7 +1102,7 @@ class DatasetTests(unittest.TestCase):
         #
 
         dataset.update_samples(
-            update_fcn, workers=1, parallelize_method="process"
+            update_fcn, num_workers=1, parallelize_method="process"
         )
 
         self.assertTupleEqual(dataset.bounds("int"), (3, 52))
