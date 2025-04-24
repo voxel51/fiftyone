@@ -428,13 +428,11 @@ class FiftyOneTransformer(fout.TorchImageModel):
 
     def _predict_all(self, args):
         if self.preprocess:
-            if isinstance(args, list):
-                # list of images
-                args = self.transforms(args)
-            elif isinstance(args, dict):
-                # dict of various inputs
-                args = self.transforms(**args)
+            args = self.transforms(args)
 
+        # this line is the only difference between this and the base class
+        # we should consolidate this function once post processing is properly
+        # removed out of torchimagemodel
         height, width = args["pixel_values"].shape[-2:]
 
         for k, v in args.items():
