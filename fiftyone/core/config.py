@@ -150,7 +150,7 @@ class FiftyOneConfig(EnvConfig):
             d,
             "plugins_cache_enabled",
             env_var="FIFTYONE_PLUGINS_CACHE_ENABLED",
-            default=False,
+            default=True,
         )
         self.operator_timeout = self.parse_int(
             d,
