@@ -73,8 +73,9 @@ FROM python:${PYTHON_VERSION} AS published
 ARG PIP_INDEX_URL
 ARG SDK_VERSION
 
-RUN --mount=type=secret,id=PIP_EXTRA_INDEX_URL,env=PIP_EXTRA_INDEX_URL \
-    pip --no-cache-dir install -q -U pip setuptools wheel \
+RUN --mount=type=secret,id=PIP_EXTRA_INDEX_URL \
+    export PIP_EXTRA_INDEX_URL=$(cat /run/secrets/PIP_EXTRA_INDEX_URL) \
+    && pip --no-cache-dir install -q -U pip setuptools wheel \
     && pip wheel --wheel-dir=/tmp/wheels \
          fiftyone==${SDK_VERSION} \
          fiftyone-teams-app==${SDK_VERSION} \
