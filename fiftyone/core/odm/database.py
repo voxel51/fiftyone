@@ -1556,7 +1556,7 @@ def get_indexed_values(
     Args:
         collection: a ``pymongo.collection.Collection`` or
             ``motor.motor_asyncio.AsyncIOMotorCollection``
-        field_or_fields (str or list): the field name(s) to retrieve.
+        field_or_fields: the field name or list of field names to retrieve.
         index_key (None): the name of the index to use. If None, the default
             index name will be constructed from the field name(s).
         query (None): a dict selection filter to apply when querying.
@@ -1566,9 +1566,13 @@ def get_indexed_values(
             If True, the field names are removed and only the values will be
             returned as a list for each sample. If False, the field names are
             preserved and the values will be returned as a dict for each sample.
+
     Returns:
         a list of values for the specified field or index keys for each sample
         sorted in the same order as the index
+
+    Raises:
+        ValueError: if the field is not indexed
     """
     try:
         cursor = _iter_indexed_values(
