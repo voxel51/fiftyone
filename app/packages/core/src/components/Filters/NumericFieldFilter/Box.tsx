@@ -14,13 +14,11 @@ const BoxDiv = styled.div`
 export default function Box({
   children,
   text,
-  height = 30,
 }: React.PropsWithChildren<{ text?: string; height?: number }>) {
   const value = text === "Loading" ? <LoadingDots text="Loading" /> : text;
   return (
     <BoxDiv
       style={{
-        height: height,
         display: "flex",
         justifyContent: "center",
         flexDirection: "column",

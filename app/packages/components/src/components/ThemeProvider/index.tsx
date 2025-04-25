@@ -204,6 +204,12 @@ let theme = extendMuiTheme({
           props: { variant: "contained" },
           style: { color: "#ffffff" },
         },
+        {
+          props: { variant: "outlined", color: "secondary" },
+          style: {
+            borderColor: dynamicTheme("palette.divider"),
+          },
+        },
       ],
     },
     MuiModal: {
@@ -271,6 +277,22 @@ let theme = extendMuiTheme({
       styleOverrides: {
         root: {
           borderBottom: `1px solid ${dynamicTheme("palette.divider")}`,
+        },
+      },
+    },
+    MuiSelect: {
+      styleOverrides: {
+        root: {
+          "fieldset.MuiOutlinedInput-notchedOutline": {
+            borderColor: dynamicTheme("palette.divider"),
+          },
+        },
+      },
+    },
+    MuiDialog: {
+      styleOverrides: {
+        paper: {
+          backgroundImage: "none",
         },
       },
     },

@@ -31,7 +31,7 @@ export interface SelectorProps<T> {
   overflowContainer?: boolean;
   onMouseEnter?: React.MouseEventHandler;
   cy?: string;
-  noResults?: string;
+  footer?: React.JSX.Element;
   DuringSuspense?: (props: React.PropsWithChildren) => React.JSX.Element;
 }
 
@@ -52,7 +52,7 @@ function Selector<T>(props: SelectorProps<T>) {
     overflowContainer = false,
     onMouseEnter,
     cy,
-    noResults,
+    footer,
     DuringSuspense = ({ children }) => <>{children}</>,
     ...otherProps
   } = props;
@@ -214,7 +214,7 @@ function Selector<T>(props: SelectorProps<T>) {
                 >
                   <SearchResults
                     active={active}
-                    noResults={noResults}
+                    footer={footer}
                     search={search}
                     useSearch={useSearch}
                     onSelect={(value) => onSelectWrapper(toKey(value), true)}

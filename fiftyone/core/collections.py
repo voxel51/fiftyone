@@ -6,34 +6,29 @@ Interface for sample collections.
 |
 """
 
-from collections import defaultdict
-from copy import copy
-from datetime import datetime
 import fnmatch
 import itertools
 import logging
-import numbers
 import os
 import random
 import string
 import timeit
 import warnings
-
-from bson import ObjectId
-from pymongo import InsertOne, UpdateOne, UpdateMany, WriteConcern
+from collections import defaultdict
+from copy import copy
+from datetime import datetime
 
 import eta.core.serial as etas
 import eta.core.utils as etau
-
 import fiftyone.core.aggregations as foa
 import fiftyone.core.annotation as foan
 import fiftyone.core.brain as fob
-import fiftyone.core.expressions as foe
-from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.evaluation as foev
+import fiftyone.core.expressions as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
+import fiftyone.core.map as focm
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fomt
 import fiftyone.core.models as fomo
@@ -42,6 +37,9 @@ import fiftyone.core.runs as fors
 import fiftyone.core.sample as fosa
 import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
+from bson import ObjectId
+from fiftyone.core.expressions import ViewField as F
+from pymongo import InsertOne, UpdateMany, UpdateOne, WriteConcern
 
 fod = fou.lazy_import("fiftyone.core.dataset")
 fos = fou.lazy_import("fiftyone.core.stages")
@@ -125,6 +123,7 @@ class SaveContext(object):
         self._batching_strategy = batching_strategy
         self._curr_batch_size = None
         self._curr_batch_size_bytes = None
+        self._encoding_ratio = 1.0
         self._last_time = None
 
     def __enter__(self):
@@ -184,7 +183,10 @@ class SaveContext(object):
                     len(str(op)) for op in frame_ops
                 )
 
-            if self._curr_batch_size_bytes >= self.batch_size:
+            if (
+                self._curr_batch_size_bytes
+                >= self.batch_size * self._encoding_ratio
+            ):
                 self._save_batch()
                 self._curr_batch_size_bytes = 0
         elif self._batching_strategy == "latency":
@@ -193,13 +195,29 @@ class SaveContext(object):
                 self._last_time = timeit.default_timer()
 
     def _save_batch(self):
+        encoded_size = -1
         if self._sample_ops:
-            foo.bulk_write(self._sample_ops, self._sample_coll, ordered=False)
+            res = foo.bulk_write(
+                self._sample_ops,
+                self._sample_coll,
+                ordered=False,
+                batcher=False,
+            )[0]
+            encoded_size += res.bulk_api_result.get("nBytes", 0)
             self._sample_ops.clear()
 
         if self._frame_ops:
-            foo.bulk_write(self._frame_ops, self._frame_coll, ordered=False)
+            res = foo.bulk_write(
+                self._frame_ops, self._frame_coll, ordered=False, batcher=False
+            )[0]
+            encoded_size += res.bulk_api_result.get("nBytes", 0)
             self._frame_ops.clear()
+
+        self._encoding_ratio = (
+            self._curr_batch_size_bytes / encoded_size
+            if encoded_size > 0 and self._curr_batch_size_bytes
+            else 1.0
+        )
 
         if self._batch_ids and self._is_generated:
             self.sample_collection._sync_source(ids=self._batch_ids)
@@ -2294,9 +2312,7 @@ class SampleCollection(object):
                 created if necessary
         """
         if not isinstance(self, fod.Dataset):
-            # The label IDs that we'll need to delete from `in_field`
-            _, id_path = self._get_label_field_path(in_field, "id")
-            del_ids = self.values(id_path, unwind=True)
+            labels = self._get_selected_labels(fields=in_field)
 
         dataset = self._dataset
         dataset.merge_samples(
@@ -2312,9 +2328,13 @@ class SampleCollection(object):
         )
 
         if isinstance(self, fod.Dataset):
-            dataset.delete_sample_field(in_field)
+            field_name, is_frame_field = self._handle_frame_field(in_field)
+            if is_frame_field:
+                dataset.delete_frame_field(field_name)
+            else:
+                dataset.delete_sample_field(field_name)
         else:
-            dataset.delete_labels(ids=del_ids, fields=in_field)
+            dataset.delete_labels(labels=labels)
 
     def set_values(
         self,
@@ -3931,6 +3951,97 @@ class SampleCollection(object):
         return foev.EvaluationMethod.list_runs(
             self, type=type, method=method, **kwargs
         )
+
+    def map_samples(
+        self,
+        map_fcn,
+        save=False,
+        num_workers=None,
+        batch_size=None,
+        batch_method="id",
+        progress=None,
+        parallelize_method="process",
+        skip_failures=False,
+    ):
+        """
+        Applies `map_fcn` to each sample using the specified backend strategy
+        and returns an iterator.
+
+        Args:
+            map_fcn: Function to apply to each sample.
+            save (False): Whether to save any modified samples.
+            num_workers (None): Number of workers.
+            batch_size (None): Number of samples per batch. If None, the batch size
+                is automatically calculated to be the number of samples per worker.
+            batch_method ("id"): Explicit method for batching samples. Supported
+              methods are 'id' and 'slice'
+
+            progress (None): Whether to show progress bar. If None, uses the
+                default value ``fiftyone.config.show_progress_bars``. If "workers",
+                shows a progress bar for each worker.
+            parallelize_method: Explicit method to use for parallelization.
+              Supported methods are 'process' and 'thread'.
+            skip_failures (False): whether to gracefully continue without
+                raising an error if the update function raises an
+                exception for a sample.
+
+
+        Returns:
+            A generator yielding processed sample results.
+        """
+        mapper = focm.MapperFactory.create(
+            parallelize_method, num_workers, batch_method, batch_size
+        )
+
+        yield from mapper.map_samples(
+            self,
+            map_fcn,
+            progress=progress,
+            save=save,
+            skip_failures=skip_failures,
+        )
+
+    def update_samples(
+        self,
+        update_fcn,
+        num_workers=None,
+        batch_size=None,
+        batch_method=None,
+        progress=None,
+        parallelize_method="process",
+        skip_failures=True,
+    ):
+        """
+        Applies `map_fcn` to each sample using the specified backend strategy.
+
+        Args:
+            update_fcn: Function to apply to each sample.
+            num_workers (None): Number of workers.
+            batch_size (None): Number of samples per batch. If None, the batch size
+                is automatically calculated to be the number of samples per worker.
+            batch_method (None): Explicit method for batching samples. Supported
+              methods are 'id' and 'slice'.
+            progress (None): Whether to show progress bar. If None, uses the
+                default value ``fiftyone.config.show_progress_bars``. If "workers",
+                shows a progress bar for each worker.
+            parallelize_method: Explicit method to use for parallelization.
+              Supported methods are 'process' and 'thread'.
+            skip_failures (False): whether to gracefully continue without
+                raising an error if the update function raises an
+                exception for a sample.
+        """
+        mapper = focm.MapperFactory.create(
+            parallelize_method, num_workers, batch_method, batch_size
+        )
+
+        for _ in mapper.map_samples(
+            self,
+            update_fcn,
+            progress=progress,
+            save=True,
+            skip_failures=skip_failures,
+        ):
+            ...
 
     def rename_evaluation(self, eval_key, new_eval_key):
         """Replaces the key for the given evaluation with a new key.
@@ -9748,7 +9859,9 @@ class SampleCollection(object):
         """
         return list(self.get_index_information().keys())
 
-    def get_index_information(self, include_stats=False):
+    def get_index_information(
+        self, include_stats=False, _keep_index_names=False
+    ):
         """Returns a dictionary of information about the indexes on this
         collection.
 
@@ -9786,7 +9899,7 @@ class SampleCollection(object):
                     sample_info[key]["accesses"] = d["accesses"]
 
         for key, info in sample_info.items():
-            if len(info["key"]) == 1:
+            if len(info["key"]) == 1 and not _keep_index_names:
                 field = info["key"][0][0]
                 key = fields_map.get(field, field)
 
@@ -9815,7 +9928,7 @@ class SampleCollection(object):
                         frame_info[key]["accesses"] = d["accesses"]
 
             for key, info in frame_info.items():
-                if len(info["key"]) == 1:
+                if len(info["key"]) == 1 and not _keep_index_names:
                     field = info["key"][0][0]
                     key = fields_map.get(field, field)
 
@@ -10274,7 +10387,7 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement _add_view_stage()")
 
-    def aggregate(self, aggregations):
+    def aggregate(self, aggregations, _mongo=False):
         """Aggregates one or more
         :class:`fiftyone.core.aggregations.Aggregation` instances.
 
@@ -10322,10 +10435,15 @@ class SampleCollection(object):
             pipelines.append(pipeline)
 
         # Build facet-able pipelines
-        compiled_facet_aggs, facet_pipelines = self._build_facets(facet_aggs)
+        compiled_facet_aggs, facet_pipelines, _ = self._build_facets(
+            facet_aggs
+        )
         for idx, pipeline in facet_pipelines.items():
             idx_map[idx] = len(pipelines)
             pipelines.append(pipeline)
+
+        if _mongo:
+            return pipelines[0] if scalar_result else pipelines
 
         # Run all aggregations
         _results = foo.aggregate(self._dataset._sample_collection, pipelines)
@@ -10356,7 +10474,7 @@ class SampleCollection(object):
 
         return results[0] if scalar_result else results
 
-    async def _async_aggregate(self, aggregations):
+    async def _async_aggregate(self, aggregations, debug=True):
         if not aggregations:
             return []
 
@@ -10377,7 +10495,7 @@ class SampleCollection(object):
 
         if facet_aggs:
             # Build facet-able pipelines
-            compiled_facet_aggs, facet_pipelines = self._build_facets(
+            compiled_facet_aggs, facet_pipelines, hints = self._build_facets(
                 facet_aggs
             )
             for idx, pipeline in facet_pipelines.items():
@@ -10387,7 +10505,7 @@ class SampleCollection(object):
             # Run all aggregations
             coll_name = self._dataset._sample_collection_name
             collection = foo.get_async_db_conn()[coll_name]
-            _results = await foo.aggregate(collection, pipelines)
+            _results = await foo.aggregate(collection, pipelines, hints)
 
             # Parse facet-able results
             for idx, aggregation in compiled_facet_aggs.items():
@@ -10503,14 +10621,16 @@ class SampleCollection(object):
                 compiled[idx] = aggregation
 
         pipelines = {}
+        hints = []
         for idx, aggregation in compiled.items():
             pipelines[idx] = self._pipeline(
                 pipeline=aggregation.to_mongo(self),
                 attach_frames=aggregation._needs_frames(self),
                 group_slices=aggregation._needs_group_slices(self),
             )
+            hints.append(getattr(aggregation, "_hint", None))
 
-        return compiled, pipelines
+        return compiled, pipelines, hints
 
     def _parse_big_result(self, aggregation, result):
         if result:

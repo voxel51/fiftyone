@@ -6,6 +6,7 @@ FiftyOne dataset-related unit tests.
 |
 """
 
+from collections import Counter
 from copy import deepcopy, copy
 from datetime import date, datetime, timedelta
 import gc
@@ -616,6 +617,46 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(last_modified_at2, last_modified_at1)
 
     @drop_datasets
+    def test_last_modified_at_deletions(self):
+        samples = [
+            fo.Sample(filepath="image1.jpg"),
+            fo.Sample(filepath="image2.png"),
+            fo.Sample(filepath="image3.jpg"),
+            fo.Sample(filepath="image4.jpg"),
+            fo.Sample(filepath="image5.jpg"),
+            fo.Sample(filepath="image6.jpg"),
+        ]
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
+
+        last_modified_at1 = dataset.last_modified_at
+
+        dataset[:5].keep()
+        last_modified_at2 = dataset.last_modified_at
+
+        self.assertEqual(len(dataset), 5)
+        self.assertTrue(last_modified_at2 > last_modified_at1)
+
+        dataset[-1:].clear()
+        last_modified_at3 = dataset.last_modified_at
+
+        self.assertEqual(len(dataset), 4)
+        self.assertTrue(last_modified_at3 > last_modified_at2)
+
+        dataset.delete_samples(dataset[:2])
+        last_modified_at4 = dataset.last_modified_at
+
+        self.assertEqual(len(dataset), 2)
+        self.assertTrue(last_modified_at4 > last_modified_at3)
+
+        dataset.clear()
+        last_modified_at5 = dataset.last_modified_at
+
+        self.assertEqual(len(dataset), 0)
+        self.assertTrue(last_modified_at5 > last_modified_at4)
+
+    @drop_datasets
     def test_indexes(self):
         dataset = fo.Dataset()
 
@@ -1021,6 +1062,89 @@ class DatasetTests(unittest.TestCase):
                 m3 < m4 for m3, m4 in zip(last_modified_at3, last_modified_at4)
             )
         )
+
+    @drop_datasets
+    def test_update_samples(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [fo.Sample(filepath="image%d.jpg" % i, int=i) for i in range(50)]
+        )
+
+        self.assertTupleEqual(dataset.bounds("int"), (0, 49))
+
+        def update_fcn(sample):
+            sample.int += 1
+
+        #
+        # Multiple workers
+        #
+
+        dataset.update_samples(
+            update_fcn,
+            num_workers=2,
+            batch_method="id",
+            parallelize_method="process",
+        )
+
+        self.assertTupleEqual(dataset.bounds("int"), (1, 50))
+
+        dataset.update_samples(
+            update_fcn,
+            num_workers=2,
+            batch_method="slice",
+            parallelize_method="process",
+        )
+
+        self.assertTupleEqual(dataset.bounds("int"), (2, 51))
+
+        #
+        # Main process
+        #
+
+        dataset.update_samples(
+            update_fcn, num_workers=1, parallelize_method="process"
+        )
+
+        self.assertTupleEqual(dataset.bounds("int"), (3, 52))
+
+    @drop_datasets
+    def test_map_samples(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="image%d.jpg" % i, foo="bar")
+                for i in range(50)
+            ]
+        )
+
+        self.assertDictEqual(dataset.count_values("foo"), {"bar": 50})
+
+        def map_fcn(sample):
+            return sample.foo.upper()
+
+        #
+        # Multiple workers
+        #
+
+        counter = Counter()
+        for _, value in dataset.map_samples(
+            map_fcn, num_workers=2, parallelize_method="process"
+        ):
+            counter[value] += 1
+
+        self.assertDictEqual(dict(counter), {"BAR": 50})
+
+        #
+        # Main process
+        #
+
+        counter = Counter()
+        for _, value in dataset.map_samples(
+            map_fcn, num_workers=1, parallelize_method="process"
+        ):
+            counter[value] += 1
+
+        self.assertDictEqual(dict(counter), {"BAR": 50})
 
     @drop_datasets
     def test_date_fields(self):
@@ -1546,6 +1670,8 @@ class DatasetTests(unittest.TestCase):
                 "eggs.detections.mask_path",
                 "eggs.detections.confidence",
                 "eggs.detections.index",
+                "eggs.detections.instance",
+                "eggs.detections.instance.id",
             },
         )
 

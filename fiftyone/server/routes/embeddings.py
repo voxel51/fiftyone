@@ -5,6 +5,7 @@ FiftyOne Server ``/embeddings`` route.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import itertools
 
 from starlette.endpoints import HTTPEndpoint

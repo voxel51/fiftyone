@@ -16,7 +16,7 @@ const ConfirmationDialog = ({
   handleDelete,
   evaluations,
 }) => {
-  const dialogTitle = "Delete Model Evaluation";
+  const dialogTitle = "Delete model evaluation?";
   const [selectedEvaluation, setSelectedEvaluation] = useRecoilState(
     selectedModelEvaluation
   );
@@ -43,12 +43,18 @@ const ConfirmationDialog = ({
       <DialogActions
         sx={{ display: "flex", justifyContent: "space-between", width: "100%" }}
       >
-        <Button onClick={handleClose} variant="outlined" sx={{ width: "50%" }}>
+        <Button
+          onClick={handleClose}
+          variant="outlined"
+          color="secondary"
+          sx={{ width: "50%" }}
+        >
           Cancel
         </Button>
         <Button
           onClick={handleConfirm}
           variant="contained"
+          color="error"
           autoFocus
           sx={{ width: "50%" }}
         >

@@ -1655,66 +1655,39 @@ class DatasetView(foc.SampleCollection):
         if _attach_frames_idx is None and (attach_frames or frames_only):
             _attach_frames_idx = len(_pipelines)
 
-        #######################################################################
-        # Insert frame lookup pipeline(s) if needed
-        #######################################################################
-
         if _attach_frames_idx1 is not None and _attach_frames_idx is not None:
             _attach_frames_idx = _attach_frames_idx1
 
-        if _attach_frames_idx0 is not None and _attach_frames_idx is not None:
-            # Two lookups are required; manually do the **last** one and rely
-            # on dataset._pipeline() to do the first one
-            attach_frames = True
-            _pipeline = self._dataset._attach_frames_pipeline(
-                limit=limit_frames, support=support
-            )
-            _pipelines.insert(_attach_frames_idx, _pipeline)
-        elif _found_flattened_videos and _attach_frames_idx is not None:
-            # Must manually attach frames after the group $lookup
-            attach_frames = None  # special syntax: frames already attached
-            _pipeline = self._dataset._attach_frames_pipeline(
-                limit=limit_frames, support=support
-            )
-            _pipelines.insert(_attach_frames_idx, _pipeline)
-        elif _attach_frames_idx0 is not None or _attach_frames_idx is not None:
-            # Exactly one lookup is required; rely on dataset._pipeline() to
-            # do it
-            attach_frames = True
+        _inserts = []
 
-        # @todo use the optimization below instead, which injects frames as
-        # late as possible in the pipeline. We can't currently use it because
-        # there's some issue with poster frames in the App if the frames are
-        # not attached first...
+        # Handles incrementing idx values in case of multiple inserts
+        def _adjust(idx):
+            idx += sum(i < idx for i in _inserts)
+            _inserts.append(idx)
+            return idx
 
-        """
+        # Insert frame lookup pipeline(s) if needed
         if _attach_frames_idx0 is not None or _attach_frames_idx is not None:
             attach_frames = None  # special syntax: frames already attached
 
             if _attach_frames_idx0 is not None:
                 _pipeline = self._dataset._attach_frames_pipeline(
-                    support=support
+                    limit=limit_frames, support=support
                 )
-                _pipelines.insert(_attach_frames_idx0, _pipeline)
+                _pipelines.insert(_adjust(_attach_frames_idx0), _pipeline)
 
             if _attach_frames_idx is not None:
-                if _attach_frames_idx0 is not None:
-                    _attach_frames_idx += 1
-
                 _pipeline = self._dataset._attach_frames_pipeline(
-                    support=support
+                    limit=limit_frames, support=support
                 )
-                _pipelines.insert(_attach_frames_idx, _pipeline)
-        """
-
-        #######################################################################
+                _pipelines.insert(_adjust(_attach_frames_idx), _pipeline)
 
         # Insert group lookup pipeline if needed
         if _attach_groups_idx is not None:
             _pipeline = self._dataset._attach_groups_pipeline(
                 group_slices=_group_slices
             )
-            _pipelines.insert(_attach_groups_idx, _pipeline)
+            _pipelines.insert(_adjust(_attach_groups_idx), _pipeline)
 
         if pipeline is not None:
             _pipelines.append(pipeline)
