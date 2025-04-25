@@ -1501,7 +1501,7 @@ def get_indexed_values(
         field_or_fields (str or list): the field name(s) to retrieve.
         index_key (None): the name of the index to use. If None, the default
             index name will be constructed from the field name(s).
-        query (dict, optional): a selection filter to apply when querying.
+        query (None): a dict selection filter to apply when querying.
             For performance, this should only include fields that are in
             the specified index.
         values_only (False): whether to remove field names from the resulting list.
