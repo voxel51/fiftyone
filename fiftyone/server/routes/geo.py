@@ -69,12 +69,11 @@ class GeoPoints(HTTPEndpoint):
             view._dataset._sample_collection_name
         ]
 
-        agg_results = foo.aggregate(
-            collection,
-            pipeline,
-        )
+        # hinting by id leads to 100% IXSCAN and 0% COLLSCAN
+        agg_results = foo.aggregate(collection, pipeline, hints={"_id": 1})
 
         results = {}
+
         async for result in agg_results:
             results[result["sampleId"]] = result["coordinates"]
 
