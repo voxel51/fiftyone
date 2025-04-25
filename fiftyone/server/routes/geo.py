@@ -64,14 +64,13 @@ class GeoPoints(HTTPEndpoint):
             view._dataset._sample_collection_name
         ]
 
-        results = await foo.aggregate(
+        agg_results = foo.aggregate(
             collection,
             pipeline,
-        ).to_list(None)
+        )
 
-        # turn the list of { sampleId, coordinates } into a dict map
-        transformed_results = {
-            r["sampleId"]: r.get("coordinates") for r in results
-        }
+        results = {}
+        async for result in agg_results:
+            results[result["sampleId"]] = result["coordinates"]
 
-        return JSONResponse(transformed_results)
+        return JSONResponse(results)
