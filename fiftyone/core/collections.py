@@ -9061,7 +9061,6 @@ class SampleCollection(object):
             # further investigation.
             if (
                 field in ["id", "_id", "filepath"]
-                and self._dataset.media_type != fom.GROUP
                 and self._is_full_collection()
             ):
                 try:
