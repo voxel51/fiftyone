@@ -489,25 +489,9 @@ class ZeroShotTransformerPromptMixin(PromptMixin):
         return _has_text_and_image_features(self._model)
 
     def embed_prompt(self, prompt):
-        """Generates an embedding for the given text prompt.
-
-        Args:
-            prompt: a text string
-
-        Returns:
-            a numpy vector
-        """
         return self.embed_prompts([prompt])[0]
 
     def embed_prompts(self, prompts):
-        """Generates an embedding for the given text prompts.
-
-        Args:
-            prompts: an iterable of text strings
-
-        Returns:
-            a ``num_prompts x num_dims`` array of prompt embeddings
-        """
         return self._embed_prompts(prompts).detach().cpu().numpy()
 
     def _embed_prompts(self, prompts):
