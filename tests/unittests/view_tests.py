@@ -143,7 +143,7 @@ class DatasetViewTests(unittest.TestCase):
 
         self.assertTupleEqual(view.bounds("int"), (3, 52))
 
-    @skip_windows
+    @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
     def test_map_samples(self):
         dataset = fo.Dataset()
