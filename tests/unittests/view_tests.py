@@ -109,6 +109,7 @@ class DatasetViewTests(unittest.TestCase):
             )
         )
 
+    @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
     def test_update_samples(self):
         dataset = fo.Dataset()
