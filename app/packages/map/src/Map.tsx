@@ -155,10 +155,7 @@ const Panel: React.FC<{}> = () => {
     [data, setExtendedSelection]
   );
 
-  const bounds = React.useMemo(
-    () => data && computeBounds(data),
-    [sampleLocationMap]
-  );
+  const bounds = React.useMemo(() => data && computeBounds(data), [data]);
 
   const [draw] = React.useState(
     () =>
