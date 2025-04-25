@@ -1672,6 +1672,8 @@ class DatasetTests(unittest.TestCase):
                 "eggs.detections.mask_path",
                 "eggs.detections.confidence",
                 "eggs.detections.index",
+                "eggs.detections.instance",
+                "eggs.detections.instance.id",
             },
         )
 
