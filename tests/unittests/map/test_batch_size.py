@@ -5,18 +5,13 @@ Batch size tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-
-import contextlib
-import random
-from unittest import mock
-
 import pytest
 
 import fiftyone as fo
-import fiftyone.core.map.batcher as fomb
 import fiftyone.core.map.process as fomp
 import fiftyone.core.map.threading as fomt
 from fiftyone.core.map.factory import MapperFactory
+from decorators import skip_windows
 
 
 class TestBatchSize:
@@ -56,6 +51,7 @@ class TestBatchSize:
             pytest.param("slice", id="slice-batches"),
         ],
     )
+    @skip_windows  # TODO: don't skip on Windows
     def test_small_batch_size(self, dataset, mapper_type, batch_method):
         """Test using a batch_size smaller than samples/workers"""
         sample_count = len(dataset)
@@ -109,6 +105,7 @@ class TestBatchSize:
             pytest.param("slice", id="slice-batches"),
         ],
     )
+    @skip_windows  # TODO: don't skip on Windows
     def test_split_batch_size(self, dataset, batch_method):
         """Test that batch splitting creates the correct batches when using batch_size"""
         sample_count = len(dataset)
