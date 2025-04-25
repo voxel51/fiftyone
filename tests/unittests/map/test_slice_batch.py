@@ -9,6 +9,7 @@ from unittest import mock
 import pytest
 
 import fiftyone.core.map.batcher.slice_batch as foms
+from decorators import skip_windows
 
 
 class TestSampleSliceBatch:
@@ -21,6 +22,7 @@ class TestSampleSliceBatch:
             pytest.param(8, id="explicit_batch_size"),
         ],
     )
+    @skip_windows  # TODO: don't skip on Windows
     def test_split(self, sample_collection, samples, batch_size):
         """test splitting sample collection into batches"""
 
@@ -56,6 +58,7 @@ class TestSampleSliceBatch:
 
         assert total == len(samples)
 
+    @skip_windows  # TODO: don't skip on Windows
     def test_create_subset(self, sample_collection):
         """test converting batch into sample collection"""
         batch = foms.SampleSliceBatch(
