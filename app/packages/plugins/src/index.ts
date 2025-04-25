@@ -373,6 +373,14 @@ type PanelOptions = {
   category?: CategoryID;
 
   /**
+   * Whether the plugin is in alpha.
+   * This is used to highlight alpha plugins.
+   *
+   * Defaults to `false`.
+   */
+  alpha?: boolean;
+
+  /**
    * Whether the plugin is in beta.
    * This is used to highlight beta plugins.
    *
