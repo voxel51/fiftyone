@@ -9167,11 +9167,11 @@ class SampleCollection(object):
             elif isinstance(field_or_expr, list) and len(field_or_expr) == 1:
                 field = field_or_expr[0]
 
-            # Checking _is_full_collection last as it could potentially be expensive.
             # In the future, we might be less restrictive, but that needs
             # further investigation.
             if (
                 field in ["id", "_id", "filepath"]
+                and expr is None
                 and self._is_full_collection()
             ):
                 try:
