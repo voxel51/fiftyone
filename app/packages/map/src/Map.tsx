@@ -15,23 +15,23 @@ import Map, { Layer, MapRef, Source } from "react-map-gl";
 import { useRecoilState, useRecoilValue } from "recoil";
 import useResizeObserver from "use-resize-observer";
 
-import useGeoLocations from "./useGeoLocations";
 import DrawControl from "./Draw";
+import useGeoLocations, { SampleLocationMap } from "./useGeoLocations";
 
-import {
-  activeField,
-  defaultSettings,
-  mapStyle,
-  MAP_STYLES,
-  Settings,
-} from "./state";
-import Options from "./Options";
+import { useSetPanelCloseEffect } from "@fiftyone/spaces";
 import {
   useBeforeScreenshot,
   useResetExtendedSelection,
 } from "@fiftyone/state";
 import { SELECTION_SCOPE } from "./constants";
-import { useSetPanelCloseEffect } from "@fiftyone/spaces";
+import Options from "./Options";
+import {
+  activeField,
+  defaultSettings,
+  MAP_STYLES,
+  mapStyle,
+  Settings,
+} from "./state";
 
 const fitBoundsOptions = { animate: false, padding: 30 };
 
@@ -52,9 +52,9 @@ const fitBounds = (
   map.fitBounds(computeBounds(data), fitBoundsOptions);
 };
 
-const createSourceData = (sampleLocationMap: {
-  [key: string]: [number, number];
-}): GeoJSON.FeatureCollection<GeoJSON.Point, { id: string }> => {
+const createSourceData = (
+  sampleLocationMap: SampleLocationMap
+): GeoJSON.FeatureCollection<GeoJSON.Point, { id: string }> => {
   const entries = Object.entries(sampleLocationMap);
   if (entries.length === 0) return null;
 
@@ -237,7 +237,7 @@ const Panel: React.FC<{}> = () => {
     );
   }
 
-  const noData = !Object.keys(sampleLocationMap).length || !data;
+  const noData = !length || !data;
 
   if (noData && !loading) {
     return <foc.Loading>No data</foc.Loading>;
