@@ -1529,7 +1529,7 @@ def get_indexed_values(
                 return [doc[field_or_fields] for doc in cursor]
             return [list(doc.values()) for doc in cursor]
 
-        return cursor.to_list()
+        return list(cursor)
     except Exception as e:
         # Error may contain some extra info that may be useful for debugging
         logger.debug("Error getting indexed values using hint:\n %s", e)

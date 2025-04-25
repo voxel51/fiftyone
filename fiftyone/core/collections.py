@@ -9053,7 +9053,7 @@ class SampleCollection(object):
             field = None
             if isinstance(field_or_expr, str):
                 field = field_or_expr
-            elif isinstance(field_or_expr, list):
+            elif isinstance(field_or_expr, list) and len(field_or_expr) == 1:
                 field = field_or_expr[0]
 
             # Checking _is_full_collection last as it could potentially be expensive.
