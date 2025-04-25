@@ -16,7 +16,7 @@ import pytest
 import fiftyone.core.sample as focs
 import fiftyone.core.map.batcher as fomb
 import fiftyone.core.map.mapper as fomm
-from unittests.decorators import skip_windows
+from decorators import skip_windows
 
 T = TypeVar("T")
 R = TypeVar("R")
