@@ -24,6 +24,7 @@ class GeoPoints(HTTPEndpoint):
         filters = data.get("filters", None)
         sample_ids = data.get("sample_ids", None)
         stages = data.get("view", None)
+        extended = data.get("extended", None)
 
         if not path:
             return JSONResponse({"error": "path is required"}, status_code=400)
@@ -34,7 +35,11 @@ class GeoPoints(HTTPEndpoint):
             )
 
         view = await fosv.get_view(
-            dataset, stages=stages, filters=filters, awaitable=True
+            dataset,
+            stages=stages,
+            filters=filters,
+            extended_stages=extended,
+            awaitable=True,
         )
 
         # if sample ids are provided, restrict to those samples

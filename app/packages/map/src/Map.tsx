@@ -73,11 +73,13 @@ const Panel: React.FC<{}> = () => {
   const dataset = useRecoilValue(fos.dataset);
   const view = useRecoilValue(fos.view);
   const filters = useRecoilValue(fos.filters);
+  const extended = useRecoilValue(fos.extendedStages);
 
   const { loading, sampleLocationMap } = useGeoLocations({
     dataset,
     filters,
     view,
+    extended,
     path: useRecoilValue(activeField),
   });
 
