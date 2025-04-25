@@ -917,10 +917,7 @@ class EvaluationPanel(Panel):
             scenario_subsets,
         ]
 
-    # NOTE: TTL is 7 days - subject to fine-tuning
-    @execution_cache(
-        key_fn=get_subset_def_data_for_eval_key, ttl=7 * 24 * 60 * 60
-    )
+    @execution_cache(key_fn=get_subset_def_data_for_eval_key)
     def get_scenario_data(self, ctx, scenario):
         view_state = ctx.panel.get_state("view") or {}
         eval_key = view_state.get("key")
