@@ -15,6 +15,7 @@ import fiftyone.utils.torch as fout
 import fiftyone.core.utils as fou
 import fiftyone.zoo.models as fozm
 import eta.core.utils as etau
+from PIL import Image
 
 ultralytics = fou.lazy_import("ultralytics")
 torch = fou.lazy_import("torch")
@@ -197,21 +198,20 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         return transforms, ragged_batches
 
     def _preprocess_im(self, im):
-        return self._ultralytics_preprocess([np.asarray(im)])
+        if not isinstance(im, torch.Tensor):
+            if isinstance(im, Image.Image):
+                im = im.convert("RGB")
+            im = [np.asarray(im)]
+            return self._ultralytics_preprocess(im)
+        return im
 
     def _ultralytics_preprocess(self, im):
-        not_tensor = not isinstance(im, torch.Tensor)
-        if not_tensor:
-            im = np.stack(self._model.predictor.pre_transform(im))
-            if im.shape[-1] == 3:
-                im = im[..., ::-1]
-            im = im.transpose((0, 3, 1, 2))
-            im = np.ascontiguousarray(im)
-            im = torch.from_numpy(im)
-
+        im = np.stack(self._model.predictor.pre_transform(im))
+        im = im.transpose((0, 3, 1, 2))
+        im = np.ascontiguousarray(im)
+        im = torch.from_numpy(im)
         im = im.half() if self._model.predictor.model.fp16 else im.float()
-        if not_tensor:
-            im /= 255
+        im /= 255
         return torch.squeeze(im, axis=0)
 
     def _build_output_processor(self, config):
@@ -348,7 +348,13 @@ class UltralyticsPostProcessor(object):
         imgs = output.get("imgs", None)
         orig_imgs = output.get("orig_imgs", None)
         if isinstance(orig_imgs, torch.Tensor):
-            orig_imgs = [i.numpy() for i in orig_imgs]
+            orig_imgs = [i.permute(1, 2, 0).numpy() for i in orig_imgs]
+        elif isinstance(orig_imgs, list) and len(orig_imgs):
+            if isinstance(orig_imgs[0], torch.Tensor):
+                orig_imgs = [i.permute(1, 2, 0).numpy() for i in orig_imgs]
+            elif isinstance(orig_imgs[0], Image.Image):
+                orig_imgs = [np.asarray(i.convert("RGB")) for i in orig_imgs]
+
         preds = output["preds"]
         if self.post_processor is None:
             raise ValueError("Ultralytics post processor is set to None")
@@ -357,6 +363,7 @@ class UltralyticsPostProcessor(object):
             raise ValueError(
                 "Ultralytics post processor needs transformed and original images."
             )
+
         out = self.post_processor(preds, imgs, orig_imgs)
         return out
 
