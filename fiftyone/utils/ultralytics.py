@@ -183,7 +183,7 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         self._model.predictor.setup_source(imgs)
         self._model.predictor.batch = next(iter(self._model.predictor.dataset))
         preds = self._model.predictor.inference(imgs)
-        return {"preds": preds, "imgs": imgs, "orig_imgs": imgs}
+        return {"preds": preds}
 
     def _build_transforms(self, config):
         if config.ragged_batches is not None:
@@ -341,11 +341,14 @@ class UltralyticsOutputProcessor(fout.OutputProcessor):
 
 
 class UltralyticsPostProcessor(object):
+    # pylint: disable=not-callable
     post_processor = None
 
     def post_process(self, output):
         imgs = output.get("imgs", None)
         orig_imgs = output.get("orig_imgs", None)
+        if isinstance(orig_imgs, torch.Tensor):
+            orig_imgs = [i.numpy() for i in orig_imgs]
         preds = output["preds"]
         if self.post_processor is None:
             raise ValueError("Ultralytics post processor is set to None")
@@ -414,7 +417,6 @@ class UltralyticsDetectionOutputProcessor(
                     "scores": result.boxes.conf,
                 }
                 batch.append(pred)
-
         return batch
 
 
