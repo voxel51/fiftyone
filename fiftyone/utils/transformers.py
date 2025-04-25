@@ -345,6 +345,12 @@ class TransformerEmbeddingsMixin(EmbeddingsMixin):
     the model passed.
     """
 
+    _embeddings_output_key_defaults = [
+        "pooler_output",
+        "last_hidden_state",
+        "hidden_states",
+    ]
+
     @property
     def has_embeddings(self):
         return True
@@ -420,12 +426,11 @@ class TransformerEmbeddingsMixin(EmbeddingsMixin):
                 "The specified embeddings output key %s is not in the model output"
                 % config_value
             )
-        elif "pooler_output" in keys:
-            return "pooler_output"
-        elif "last_hidden_state" in keys:
-            return "last_hidden_state"
-        elif "hidden_states" in keys:
-            return "hidden_states"
+
+        for key in self._embeddings_output_key_defaults:
+            if key in keys:
+                return key
+
         else:
             # have to set this to true to get the hidden states
             self._output_hidden_states = True
