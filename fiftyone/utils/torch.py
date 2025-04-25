@@ -708,7 +708,7 @@ class TorchImageModel(
             orig_images = [img.get("orig_img") for img in imgs]
             images = [img.get("img") for img in imgs]
         else:
-            orig_images = None
+            orig_images = imgs
             images = imgs
 
         if self._preprocess and self._transforms is not None:
@@ -720,12 +720,7 @@ class TorchImageModel(
             # Feed images as list
             if self._output_processor is not None:
                 img = images[0]
-                if isinstance(img, torch.Tensor):
-                    height, width = img.size()[-2:]
-                elif isinstance(img, Image.Image):
-                    width, height = img.size
-                elif isinstance(img, np.ndarray):
-                    height, width = img.shape[:2]
+                height, width = _get_image_dims(img)
         else:
             # Feed images as stacked Tensor
             if isinstance(images, (list, tuple)):
@@ -739,8 +734,10 @@ class TorchImageModel(
 
         output = self._forward_pass(images)
 
-        if isinstance(output, dict) and orig_images:
+        if isinstance(output, dict):
+            # This is required for Ultralytics post-processing.
             output["orig_imgs"] = orig_images
+            height, width = _get_image_dims(orig_images[0])
             output["imgs"] = images
 
         if self._output_processor is None:
@@ -1809,8 +1806,8 @@ class TorchImageDataset(Dataset):
             img = _load_image(image_path, self.use_numpy, self.force_rgb)
             if self.transform is not None:
                 orig_img = img
-                img = self.transform(orig_img)
-                img = {"img": img, "orig_img": np.asarray(orig_img)}
+                img = self.transform(img)
+                img = {"img": img, "orig_img": orig_img}
 
         except Exception as e:
             if not self.skip_failures:
@@ -2317,6 +2314,19 @@ def _load_image(image_path, use_numpy, force_rgb):
         img = img.convert("RGB")
 
     return img
+
+
+def _get_image_dims(img):
+    if isinstance(img, torch.Tensor):
+        height, width = img.size()[-2:]
+    elif isinstance(img, Image.Image):
+        width, height = img.size
+    elif isinstance(img, np.ndarray):
+        height, width = img.shape[:2]
+    else:
+        height, width = None, None
+
+    return height, width
 
 
 # taken from https://github.com/ppwwyyxx/RAM-multiprocess-dataloader/blob/795868a37446d61412b9a58dbb1b7c76e75d39c4/serialize.py#L19
