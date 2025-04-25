@@ -14,7 +14,6 @@ import os
 import random
 import string
 import unittest
-import sys
 from unittest.mock import patch
 
 from bson import ObjectId
@@ -1108,7 +1107,7 @@ class DatasetTests(unittest.TestCase):
 
         self.assertTupleEqual(dataset.bounds("int"), (3, 52))
 
-    @unittest.skipIf(sys.platform.startswith("win"), "hangs on Windows")
+    @skip_windows
     @drop_datasets
     def test_map_samples(self):
         dataset = fo.Dataset()

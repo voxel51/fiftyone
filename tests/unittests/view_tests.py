@@ -14,7 +14,6 @@ import math
 from bson import ObjectId
 import unittest
 import numpy as np
-import sys
 
 import fiftyone as fo
 from fiftyone import ViewField as F, VALUE
@@ -144,7 +143,7 @@ class DatasetViewTests(unittest.TestCase):
 
         self.assertTupleEqual(view.bounds("int"), (3, 52))
 
-    @unittest.skipIf(sys.platform.startswith("win"), "hangs on Windows")
+    @skip_windows
     @drop_datasets
     def test_map_samples(self):
         dataset = fo.Dataset()
