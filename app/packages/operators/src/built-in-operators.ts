@@ -1004,6 +1004,7 @@ class RegisterPanel extends Operator {
     inputs.str("icon", { label: "Icon" });
     inputs.str("help_markdown", { label: "Help markdown" });
     inputs.str("category", { label: "Category" });
+    inputs.bool("alpha", { label: "Alpha", default: false });
     inputs.bool("beta", { label: "Beta", default: false });
     inputs.bool("is_new", { label: "NEW", default: false });
     inputs.str("dark_icon", { label: "Icon for dark mode" });
