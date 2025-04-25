@@ -534,6 +534,10 @@ function formatSelectedLabels(selectedLabels) {
         field: label.field,
         label_id: label.labelId,
         sample_id: label.sampleId,
+        instance: {
+          _cls: "Instance",
+          _id: label.instanceId,
+        },
       };
       if (!isNullish(label.frameNumber)) {
         formattedLabel.frame_number = label.frameNumber;

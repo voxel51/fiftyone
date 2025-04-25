@@ -90,6 +90,7 @@ INSTALL_REQUIRES = [
     "websocket-client>=1.5.0",
     "yarl",
     "wcmatch",
+    "tqdm",
     # internal packages
     "fiftyone-brain>=0.20.1,<0.21",
     "fiftyone-db~=0.4",  # pinned to legacy db, do not remove
