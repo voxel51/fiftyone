@@ -9184,10 +9184,6 @@ class SampleCollection(object):
                     # Fallback to values, but log the error to surface the
                     # recommendation to create an index
                     logger.debug(e)
-                except Exception as e:
-                    # Unexpected error, so we should surface it in the logs
-                    # but still fallback to values
-                    logger.error(e)
 
         make = lambda field_or_expr: foa.Values(
             field_or_expr,
