@@ -56,6 +56,7 @@ export default function PanelTab({ node, active, spaceId }: PanelTabProps) {
       {panel && !loading && <PanelIcon name={panelName as string} />}
       {panel && <Typography>{title || panel.label || panel.name}</Typography>}
       <PanelTabMeta
+        showAlpha={panel?.panelOptions?.alpha ?? false}
         showBeta={panel?.panelOptions?.beta ?? false}
         showNew={panel?.panelOptions?.isNew ?? false}
       />
@@ -91,9 +92,11 @@ export default function PanelTab({ node, active, spaceId }: PanelTabProps) {
 }
 
 function PanelTabMeta({
+  showAlpha,
   showBeta,
   showNew,
 }: {
+  showAlpha: boolean;
   showBeta: boolean;
   showNew: boolean;
 }) {
@@ -108,6 +111,17 @@ function PanelTabMeta({
           }}
         >
           NEW
+        </Grid>
+      )}
+      {showAlpha && (
+        <Grid
+          item
+          style={{
+            color: "var(--fo-palette-custom-primarySoft)",
+            fontSize: 11,
+          }}
+        >
+          ALPHA
         </Grid>
       )}
       {showBeta && (
