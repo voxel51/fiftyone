@@ -10,6 +10,8 @@ import pytest
 
 import fiftyone.core.utils as focu
 
+from ..decorators import skip_windows
+
 
 INPUT_PATHS = [
     "alpha",
@@ -49,6 +51,7 @@ def cleanup():
         shutil.rmtree(f"/tmp/fo-unq/{os.getpid()}")
 
 
+@skip_windows
 @pytest.mark.parametrize(
     "is_main_process",
     (
@@ -79,6 +82,7 @@ def test_implementation_switch(is_main_process):
                     assert pool.apply(process_instance_check)
 
 
+@skip_windows
 @pytest.mark.parametrize(
     "existing_filepaths",
     (
@@ -179,6 +183,7 @@ def test_existing_input_paths(
         assert sorted(expected) == sorted(actual)
 
 
+@skip_windows
 @pytest.mark.parametrize(
     "default_ext",
     (
