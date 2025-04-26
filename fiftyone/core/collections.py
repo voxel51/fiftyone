@@ -6,6 +6,9 @@ Interface for sample collections.
 |
 """
 
+from collections import defaultdict
+from copy import copy
+from datetime import datetime
 import fnmatch
 import itertools
 import logging
@@ -14,17 +17,19 @@ import random
 import string
 import timeit
 import warnings
-from collections import defaultdict
-from copy import copy
-from datetime import datetime
+
+from bson import ObjectId
+from pymongo import InsertOne, UpdateMany, UpdateOne, WriteConcern
 
 import eta.core.serial as etas
 import eta.core.utils as etau
+
 import fiftyone.core.aggregations as foa
 import fiftyone.core.annotation as foan
 import fiftyone.core.brain as fob
 import fiftyone.core.evaluation as foev
 import fiftyone.core.expressions as foe
+from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
@@ -37,9 +42,6 @@ import fiftyone.core.runs as fors
 import fiftyone.core.sample as fosa
 import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
-from bson import ObjectId
-from fiftyone.core.expressions import ViewField as F
-from pymongo import InsertOne, UpdateMany, UpdateOne, WriteConcern
 
 fod = fou.lazy_import("fiftyone.core.dataset")
 fos = fou.lazy_import("fiftyone.core.stages")
