@@ -1443,56 +1443,6 @@ class GroupImportExportTests(unittest.TestCase):
     def _new_dir(self):
         return os.path.join(self._tmp_dir, self._new_name())
 
-    def _make_absolute_group_dataset(self):
-        td = tempfile.gettempdir()
-        dataset = fo.Dataset()
-        dataset.add_group_field("group_field", default="ego")
-
-        group1 = fo.Group()
-        group2 = fo.Group()
-
-        samples = [
-            fo.Sample(
-                filepath=str(Path(Path(td).anchor, "left-image1.jpg")),
-                group_field=group1.element("left"),
-                field=1,
-            ),
-            fo.Sample(
-                filepath=str(Path(Path(td).anchor, "ego-video1.mp4")),
-                group_field=group1.element("ego"),
-                field=2,
-            ),
-            fo.Sample(
-                filepath=str(Path(Path(td).anchor, "right-image1.jpg")),
-                group_field=group1.element("right"),
-                field=3,
-            ),
-            fo.Sample(
-                filepath=str(Path(Path(td).anchor, "left-image2.jpg")),
-                group_field=group2.element("left"),
-                field=4,
-            ),
-            fo.Sample(
-                filepath=str(Path(Path(td).anchor, "ego-video2.mp4")),
-                group_field=group2.element("ego"),
-                field=5,
-            ),
-            fo.Sample(
-                filepath=str(Path(Path(td).anchor, "right-image2.jpg")),
-                group_field=group2.element("right"),
-                field=6,
-            ),
-        ]
-
-        dataset.add_samples(samples)
-
-        sample = dataset.first()
-        sample.frames[1] = fo.Frame(field=1)
-        sample.frames[2] = fo.Frame(field=2)
-        sample.save()
-
-        return dataset
-
     @drop_datasets
     def test_fiftyone_dataset(self):
         dataset = _make_group_dataset()
@@ -1533,8 +1483,7 @@ class GroupImportExportTests(unittest.TestCase):
 
     @drop_datasets
     def test_legacy_fiftyone_dataset(self):
-        # Use absolute dataset for cross-platform exports to tempdir
-        dataset = self._make_absolute_group_dataset()
+        dataset = _make_group_dataset()
 
         export_dir = self._new_dir()
 
@@ -1600,8 +1549,7 @@ class GroupImportExportTests(unittest.TestCase):
 
     @drop_datasets
     def test_fiftyone_dataset_group_indexes(self):
-        # Use absolute dataset for cross-platform exports to tempdir
-        dataset = self._make_absolute_group_dataset()
+        dataset = _make_group_dataset()
 
         group_indexes = {
             "id",
