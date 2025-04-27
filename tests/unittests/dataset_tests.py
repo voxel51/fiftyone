@@ -7197,6 +7197,32 @@ class DynamicFieldTests(unittest.TestCase):
         self.assertFalse(frame.has_field("field"))
         self.assertFalse(frame.predictions.detections[0].has_field("field"))
 
+    @drop_datasets
+    def test_set_new_embedded_document_field(self):
+        dataset = fo.Dataset()
+
+        sample = fo.Sample(filepath="image.jpg")
+        dataset.add_sample(sample)
+
+        dataset.add_sample_field(
+            "data",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.DynamicEmbeddedDocument,
+        )
+
+        self.assertTrue(dataset.has_field("data"))
+        self.assertIsNone(sample["data"])
+
+        sample["data.foo"] = "bar"
+        sample.save()
+
+        self.assertTrue(dataset.has_field("data.foo"))
+
+        dataset.reload()
+
+        self.assertEqual(sample["data.foo"], "bar")
+        self.assertListEqual(dataset.values("data.foo"), ["bar"])
+
 
 class CustomEmbeddedDocumentTests(unittest.TestCase):
     @drop_datasets

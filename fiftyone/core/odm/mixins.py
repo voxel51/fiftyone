@@ -20,6 +20,7 @@ import fiftyone.core.utils as fou
 
 from .database import get_db_conn
 from .dataset import SampleFieldDocument
+from .embedded_document import DynamicEmbeddedDocument
 from .utils import (
     deserialize_value,
     serialize_value,
@@ -141,16 +142,26 @@ class DatasetMixin(object):
         chunks = field_name.split(".", 1)
 
         if len(chunks) > 1:
-            doc = self.get_field(chunks[0])
+            root = chunks[0]
+            doc = self.get_field(root)
+
+            if doc is None:
+                doc = DynamicEmbeddedDocument()
+                self[root] = doc
+                self._changed_fields.remove(root)
 
             # handle sytnax: sample["field.0.attr"] = value
             if isinstance(doc, (mongoengine.base.BaseList, fof.ListField)):
                 chunks = chunks[1].split(".", 1)
                 doc = doc[int(chunks[0])]
+                field_name = root + "." + chunks[1]
 
-            return doc.set_field(chunks[1], value, create=create)
+            doc.set_field(chunks[1], value, create=create)
 
-        if not self.has_field(field_name):
+            if type(doc) != DynamicEmbeddedDocument:
+                return
+
+        if field is None:
             if create:
                 self.add_implied_field(
                     field_name,
@@ -164,7 +175,7 @@ class DatasetMixin(object):
                     "%s has no field '%s'" % (self._doc_name(), field_name)
                 )
         elif value is not None:
-            if validate:
+            if validate and field is not None:
                 field.validate(value)
 
             if dynamic:
@@ -175,6 +186,9 @@ class DatasetMixin(object):
                     validate=validate,
                     dynamic=dynamic,
                 )
+
+        if len(chunks) > 1:
+            return
 
         super().__setattr__(field_name, value)
 
