@@ -207,7 +207,7 @@ class SaveContext(object):
                 frames=True,
                 ordered=False,
                 batcher=False,
-            )
+            )[0]
             encoded_size += res.bulk_api_result.get("nBytes", 0)
             self._frame_ops.clear()
 
