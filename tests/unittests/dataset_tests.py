@@ -1243,11 +1243,7 @@ class DatasetTests(unittest.TestCase):
         self.assertIsInstance(id_field1, fo.ObjectIdField)
         self.assertEqual(id_field1.name, "id")
         self.assertEqual(id_field1.db_field, "_id")
-        self.assertIsNone(dataset.get_field("_id"))
-        self.assertIsInstance(
-            dataset.get_field("_id", include_private=True),
-            fo.ObjectIdField,
-        )
+        self.assertIsInstance(dataset.get_field("_id"), fo.ObjectIdField)
 
         self.assertIsInstance(dataset.get_field("int_field"), fo.IntField)
 
@@ -1309,14 +1305,8 @@ class DatasetTests(unittest.TestCase):
         self.assertIsInstance(id_field3, fo.ObjectIdField)
         self.assertEqual(id_field3.name, "id")
         self.assertEqual(id_field3.db_field, "_id")
-        self.assertIsNone(
-            dataset.get_field("classifications_field.classifications._id")
-        )
         self.assertIsInstance(
-            dataset.get_field(
-                "classifications_field.classifications._id",
-                include_private=True,
-            ),
+            dataset.get_field("classifications_field.classifications._id"),
             fo.ObjectIdField,
         )
         self.assertIsNone(
@@ -1347,9 +1337,8 @@ class DatasetTests(unittest.TestCase):
         self.assertIsInstance(id_field1, fo.ObjectIdField)
         self.assertEqual(id_field1.name, "id")
         self.assertEqual(id_field1.db_field, "_id")
-        self.assertIsNone(dataset.get_field("frames._id"))
         self.assertIsInstance(
-            dataset.get_field("frames._id", include_private=True),
+            dataset.get_field("frames._id"),
             fo.ObjectIdField,
         )
 
@@ -1423,15 +1412,9 @@ class DatasetTests(unittest.TestCase):
         self.assertIsInstance(id_field3, fo.ObjectIdField)
         self.assertEqual(id_field3.name, "id")
         self.assertEqual(id_field3.db_field, "_id")
-        self.assertIsNone(
-            dataset.get_field(
-                "frames.classifications_field.classifications._id"
-            )
-        )
         self.assertIsInstance(
             dataset.get_field(
                 "frames.classifications_field.classifications._id",
-                include_private=True,
             ),
             fo.ObjectIdField,
         )
@@ -7235,6 +7218,504 @@ class DynamicFieldTests(unittest.TestCase):
 
         self.assertEqual(sample["data.foo"], "bar")
         self.assertListEqual(dataset.values("data.foo"), ["bar"])
+
+
+class PrivateFieldTests(unittest.TestCase):
+    @drop_datasets
+    def test_private_fields(self):
+        dataset = fo.Dataset()
+
+        dataset.add_sample_field("_private", fo.IntField, allow_private=True)
+
+        sample = fo.Sample(filepath="image1.jpg", _private=1)
+        dataset.add_samples([sample])
+
+        self.assertTrue(dataset.has_field("_private"))
+        self.assertFalse("_private" in dataset.get_field_schema())
+        self.assertTrue(
+            "_private" in dataset.get_field_schema(include_private=True)
+        )
+
+        self.assertFalse("_private" in sample.to_dict())
+        self.assertTrue("_private" in sample.to_dict(include_private=True))
+
+        self.assertEqual(sample._private, 1)
+        self.assertListEqual(dataset.values("_private"), [1])
+
+        sample._private = 2
+        sample.save()
+        sample.reload()
+
+        self.assertEqual(sample._private, 2)
+        self.assertListEqual(dataset.values("_private"), [2])
+
+        with self.assertRaises(ValueError):
+            dataset.rename_sample_field("_private", "_still_private")
+
+        with self.assertRaises(ValueError):
+            dataset.clone_sample_field("_private", "_also_private")
+
+        dataset.rename_sample_field(
+            "_private", "_still_private", allow_private=True
+        )
+        dataset.clone_sample_field(
+            "_still_private", "_also_private", allow_private=True
+        )
+
+        self.assertEqual(sample._still_private, 2)
+        self.assertEqual(sample._also_private, 2)
+        self.assertListEqual(dataset.values("_still_private"), [2])
+        self.assertListEqual(dataset.values("_also_private"), [2])
+
+        dataset.delete_sample_field("_also_private")
+
+        self.assertFalse(dataset.has_field("_also_private"))
+
+        dataset.set_values("_still_private", [3])
+
+        self.assertEqual(sample._still_private, 3)
+        self.assertListEqual(dataset.values("_still_private"), [3])
+
+        dataset.set_values("_yep_private", [4], allow_private=True)
+
+        self.assertTrue(dataset.has_field("_yep_private"))
+        self.assertEqual(sample._yep_private, 4)
+        self.assertListEqual(dataset.values("_yep_private"), [4])
+
+        with self.assertRaises(ValueError):
+            sample._not_allowed = 5
+
+        sample.reload()
+
+        sample.set_field("_private2", 6, allow_private=True)
+        sample.save()
+        sample.reload()
+
+        self.assertTrue(dataset.has_field("_private2"))
+        self.assertEqual(sample._private2, 6)
+        self.assertListEqual(dataset.values("_private2"), [6])
+
+        sample1a = fo.Sample(filepath="image1.jpg", _still_private=7)
+        dataset.merge_sample(sample1a)
+
+        self.assertEqual(sample._still_private, 7)
+        self.assertListEqual(dataset.values("_still_private"), [7])
+
+        sample1b = fo.Sample(filepath="image1.jpg", _private3=8)
+
+        with self.assertRaises(ValueError):
+            dataset.merge_sample(sample1b)
+
+        sample1c = fo.Sample(filepath="image1.jpg", _private3=9)
+        dataset.merge_sample(sample1c, allow_private=True)
+
+        self.assertTrue(dataset.has_field("_private3"))
+        self.assertEqual(sample._private3, 9)
+        self.assertListEqual(dataset.values("_private3"), [9])
+
+        sample1d = fo.Sample(filepath="image1.jpg", _still_private=10)
+        dataset.merge_samples(
+            [sample1d],
+            key_fcn=lambda sample: os.path.basename(sample.filepath),
+        )
+
+        self.assertTrue(dataset.has_field("_still_private"))
+        self.assertEqual(sample._still_private, 10)
+        self.assertListEqual(dataset.values("_still_private"), [10])
+
+        sample1e = fo.Sample(filepath="image1.jpg", _private4=11)
+        dataset.merge_samples(
+            [sample1e],
+            key_fcn=lambda sample: os.path.basename(sample.filepath),
+            allow_private=True,
+        )
+
+        self.assertTrue(dataset.has_field("_private4"))
+        self.assertEqual(sample._private4, 11)
+        self.assertListEqual(dataset.values("_private4"), [11])
+
+        sample1f = fo.Sample(filepath="image1.jpg", _still_private=12)
+
+        dataset2 = fo.Dataset()
+        dataset2.add_sample(sample1f, allow_private=True)
+
+        dataset.merge_samples(dataset2)
+
+        self.assertEqual(sample._still_private, 12)
+        self.assertListEqual(dataset.values("_still_private"), [12])
+
+        sample1g = fo.Sample(filepath="image1.jpg", _private5=13)
+
+        dataset3 = fo.Dataset()
+        dataset3.add_sample(sample1g, allow_private=True)
+
+        with self.assertRaises(ValueError):
+            dataset.add_samples(dataset3)
+
+        dataset.merge_samples(dataset3, allow_private=True)
+
+        self.assertTrue(dataset.has_field("_private5"))
+        self.assertEqual(sample._private5, 13)
+        self.assertListEqual(dataset.values("_private5"), [13])
+
+        sample2a = fo.Sample(filepath="image2.jpg", _not_allowed2=14)
+
+        with self.assertRaises(ValueError):
+            dataset.add_samples([sample2a])
+
+        sample2b = fo.Sample(filepath="image2.jpg", _private6=15)
+        dataset.add_samples([sample2b], allow_private=True)
+
+        self.assertTrue(dataset.has_field("_private6"))
+        self.assertListEqual(dataset.values("_private6"), [None, 15])
+
+    @drop_datasets
+    def test_private_attributes(self):
+        dataset = fo.Dataset()
+
+        sample = fo.Sample(
+            filepath="image1.jpg",
+            ground_truth=fo.Detections(
+                detections=[fo.Detection(label="cat", _private=1)],
+            ),
+        )
+        dataset.add_sample(sample, dynamic=True, allow_private=True)
+
+        self.assertTrue(dataset.has_field("ground_truth.detections._private"))
+        self.assertFalse(
+            "ground_truth.detections._private"
+            in dataset.get_field_schema(flat=True)
+        )
+        self.assertTrue(
+            "ground_truth.detections._private"
+            in dataset.get_field_schema(flat=True, include_private=True)
+        )
+
+        detection = sample.ground_truth.detections[0]
+
+        self.assertEqual(detection._private, 1)
+        self.assertTrue("_private" in detection.to_dict())
+
+        detection._private = 2
+
+        sample.save()
+        sample.reload()
+
+        self.assertEqual(sample.ground_truth.detections[0]._private, 2)
+        self.assertListEqual(
+            dataset.values("ground_truth.detections._private"), [[2]]
+        )
+
+        with self.assertRaises(ValueError):
+            dataset.rename_sample_field(
+                "ground_truth.detections._private",
+                "ground_truth.detections._still_private",
+            )
+
+        with self.assertRaises(ValueError):
+            dataset.clone_sample_field(
+                "ground_truth.detections._private",
+                "ground_truth.detections._also_private",
+            )
+
+        dataset.rename_sample_field(
+            "ground_truth.detections._private",
+            "ground_truth.detections._still_private",
+            allow_private=True,
+        )
+        dataset.clone_sample_field(
+            "ground_truth.detections._still_private",
+            "ground_truth.detections._also_private",
+            allow_private=True,
+        )
+
+        detection = sample.ground_truth.detections[0]
+
+        self.assertEqual(detection._still_private, 2)
+        self.assertEqual(detection._also_private, 2)
+        self.assertListEqual(
+            dataset.values("ground_truth.detections._still_private"), [[2]]
+        )
+        self.assertListEqual(
+            dataset.values("ground_truth.detections._also_private"), [[2]]
+        )
+
+        dataset.delete_sample_field("ground_truth.detections._also_private")
+
+        self.assertFalse(
+            dataset.has_field("ground_truth.detections._also_private")
+        )
+
+        dataset.set_values("ground_truth.detections._still_private", [[3]])
+
+        detection = sample.ground_truth.detections[0]
+
+        self.assertEqual(detection._still_private, 3)
+        self.assertListEqual(
+            dataset.values("ground_truth.detections._still_private"), [[3]]
+        )
+
+        dataset.set_values(
+            "ground_truth.detections._yep_private",
+            [[4]],
+            dynamic=True,
+            allow_private=True,
+        )
+
+        self.assertTrue(
+            dataset.has_field("ground_truth.detections._yep_private")
+        )
+        self.assertListEqual(
+            dataset.values("ground_truth.detections._yep_private"), [[4]]
+        )
+
+        detection = sample.ground_truth.detections[0]
+        detection._private2 = 5
+
+        sample.save()
+        sample.reload()
+
+        self.assertListEqual(
+            dataset.values("ground_truth.detections._private2"), [[5]]
+        )
+
+        schema = dataset.get_dynamic_field_schema(include_private=True)
+
+        self.assertFalse(
+            dataset.has_field("ground_truth.detections._private2")
+        )
+        self.assertIn("ground_truth.detections._private2", schema)
+
+        dataset.add_dynamic_sample_fields(include_private=True)
+
+        self.assertTrue(dataset.has_field("ground_truth.detections._private2"))
+
+        dataset.add_sample_field(
+            "ground_truth.detections._private3",
+            fo.IntField,
+            allow_private=True,
+        )
+
+        sample1a = fo.Sample(
+            filepath="image1.jpg",
+            ground_truth=fo.Detections(
+                detections=[fo.Detection(label="dog", _private3=6)],
+            ),
+        )
+
+        dataset.merge_sample(sample1a, dynamic=True, allow_private=True)
+
+        self.assertTrue(dataset.has_field("ground_truth.detections._private3"))
+        self.assertListEqual(
+            dataset.values("ground_truth.detections._private3"), [[None, 6]]
+        )
+
+        sample1b = fo.Sample(
+            filepath="image1.jpg",
+            ground_truth=fo.Detections(
+                detections=[fo.Detection(label="rabbit", _private4=7)],
+            ),
+        )
+
+        dataset2 = fo.Dataset()
+        dataset2.add_sample(sample1b)
+
+        dataset2.add_sample_field(
+            "ground_truth.detections._private4",
+            fo.IntField,
+            allow_private=True,
+        )
+
+        dataset.merge_samples(dataset2, dynamic=True, allow_private=True)
+
+        self.assertTrue(dataset.has_field("ground_truth.detections._private4"))
+        self.assertListEqual(
+            dataset.values("ground_truth.detections._private4"),
+            [[None, None, 7]],
+        )
+
+        dataset.add_sample_field(
+            "ground_truth.detections._private5",
+            fo.IntField,
+            allow_private=True,
+        )
+
+        sample2 = fo.Sample(
+            filepath="image2.jpg",
+            ground_truth=fo.Detections(
+                detections=[fo.Detection(label="dog", _private5=8)],
+            ),
+        )
+
+        dataset.add_samples([sample2])
+
+        self.assertTrue(dataset.has_field("ground_truth.detections._private5"))
+        self.assertListEqual(
+            dataset.values("ground_truth.detections._private5"),
+            [[None, None, None], [8]],
+        )
+
+    @drop_datasets
+    def test_private_frame_fields(self):
+        dataset = fo.Dataset()
+        dataset.media_type = "video"
+
+        dataset.add_frame_field("_private", fo.IntField, allow_private=True)
+
+        sample = fo.Sample(filepath="video1.mp4")
+        frame = fo.Frame(_private=1)
+        sample.frames[1] = frame
+        dataset.add_samples([sample])
+
+        self.assertTrue(dataset.has_field("frames._private"))
+        self.assertFalse("_private" in dataset.get_frame_field_schema())
+        self.assertTrue(
+            "_private" in dataset.get_frame_field_schema(include_private=True)
+        )
+
+        self.assertFalse("_private" in frame.to_dict())
+        self.assertTrue("_private" in frame.to_dict(include_private=True))
+
+        self.assertEqual(frame._private, 1)
+        self.assertListEqual(dataset.values("frames._private"), [[1]])
+
+        frame._private = 2
+        sample.save()
+        sample.reload()
+
+        self.assertEqual(frame._private, 2)
+        self.assertListEqual(dataset.values("frames._private"), [[2]])
+
+        with self.assertRaises(ValueError):
+            dataset.rename_frame_field("_private", "_still_private")
+
+        with self.assertRaises(ValueError):
+            dataset.clone_frame_field("_private", "_also_private")
+
+        dataset.rename_frame_field(
+            "_private", "_still_private", allow_private=True
+        )
+        dataset.clone_frame_field(
+            "_still_private", "_also_private", allow_private=True
+        )
+
+        self.assertEqual(frame._still_private, 2)
+        self.assertEqual(frame._also_private, 2)
+        self.assertListEqual(dataset.values("frames._still_private"), [[2]])
+        self.assertListEqual(dataset.values("frames._also_private"), [[2]])
+
+        dataset.delete_frame_field("_also_private")
+
+        self.assertFalse(dataset.has_field("frames._also_private"))
+
+        dataset.set_values("frames._still_private", [[3]])
+
+        self.assertEqual(frame._still_private, 3)
+        self.assertListEqual(dataset.values("frames._still_private"), [[3]])
+
+        dataset.set_values("frames._yep_private", [[4]], allow_private=True)
+
+        self.assertTrue(dataset.has_field("frames._yep_private"))
+        self.assertEqual(frame._yep_private, 4)
+        self.assertListEqual(dataset.values("frames._yep_private"), [[4]])
+
+        with self.assertRaises(ValueError):
+            frame._not_allowed = 5
+
+        frame.reload()
+
+        frame.set_field("_private2", 6, allow_private=True)
+        frame.save()
+        frame.reload()
+
+        self.assertTrue(dataset.has_field("frames._private2"))
+        self.assertEqual(frame._private2, 6)
+        self.assertListEqual(dataset.values("frames._private2"), [[6]])
+
+        sample1a = fo.Sample(filepath="video1.mp4")
+        sample1a.frames[1] = fo.Frame(_still_private=7)
+        dataset.merge_sample(sample1a)
+
+        self.assertEqual(frame._still_private, 7)
+        self.assertListEqual(dataset.values("frames._still_private"), [[7]])
+
+        sample1b = fo.Sample(filepath="video1.mp4")
+        sample1b.frames[1] = fo.Frame(_private3=8)
+
+        with self.assertRaises(ValueError):
+            dataset.merge_sample(sample1b)
+
+        sample1c = fo.Sample(filepath="video1.mp4")
+        sample1c.frames[1] = fo.Frame(_private3=9)
+        dataset.merge_sample(sample1c, allow_private=True)
+
+        self.assertTrue(dataset.has_field("frames._private3"))
+        self.assertEqual(frame._private3, 9)
+        self.assertListEqual(dataset.values("frames._private3"), [[9]])
+
+        sample1d = fo.Sample(filepath="video1.mp4")
+        sample1d.frames[1] = fo.Frame(_still_private=10)
+        dataset.merge_samples(
+            [sample1d],
+            key_fcn=lambda sample: os.path.basename(sample.filepath),
+        )
+
+        self.assertTrue(dataset.has_field("frames._still_private"))
+        self.assertEqual(frame._still_private, 10)
+        self.assertListEqual(dataset.values("frames._still_private"), [[10]])
+
+        sample1e = fo.Sample(filepath="video1.mp4")
+        sample1e.frames[1] = fo.Frame(_private4=11)
+        dataset.merge_samples(
+            [sample1e],
+            key_fcn=lambda sample: os.path.basename(sample.filepath),
+            allow_private=True,
+        )
+
+        self.assertTrue(dataset.has_field("frames._private4"))
+        self.assertEqual(frame._private4, 11)
+        self.assertListEqual(dataset.values("frames._private4"), [[11]])
+
+        sample1f = fo.Sample(filepath="video1.mp4")
+        sample1f.frames[1] = fo.Frame(_still_private=12)
+
+        dataset2 = fo.Dataset()
+        dataset2.add_sample(sample1f, allow_private=True)
+
+        dataset.merge_samples(dataset2)
+
+        self.assertEqual(frame._still_private, 12)
+        self.assertListEqual(dataset.values("frames._still_private"), [[12]])
+
+        sample1g = fo.Sample(filepath="video1.mp4")
+        sample1g.frames[1] = fo.Frame(_private5=13)
+
+        dataset3 = fo.Dataset()
+        dataset3.add_sample(sample1g, allow_private=True)
+
+        with self.assertRaises(ValueError):
+            dataset.add_samples(dataset3)
+
+        dataset.merge_samples(dataset3, allow_private=True)
+
+        self.assertTrue(dataset.has_field("frames._private5"))
+        self.assertEqual(frame._private5, 13)
+        self.assertListEqual(dataset.values("frames._private5"), [[13]])
+
+        sample2a = fo.Sample(filepath="video2.mp4")
+        sample2a.frames[1] = fo.Frame(_not_allowed2=14)
+
+        with self.assertRaises(ValueError):
+            dataset.add_samples([sample2a])
+
+        sample2b = fo.Sample(filepath="video2.mp4")
+        sample2b.frames[1] = fo.Frame(_private6=15)
+        dataset.add_samples([sample2b], allow_private=True)
+
+        self.assertTrue(dataset.has_field("frames._private6"))
+        self.assertListEqual(
+            dataset.values("frames._private6"), [[None], [15]]
+        )
 
 
 class CustomEmbeddedDocumentTests(unittest.TestCase):

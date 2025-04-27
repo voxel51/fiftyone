@@ -1333,7 +1333,7 @@ class SampleCollection(object):
         return path in default_fields
 
     def _is_read_only_field(self, path):
-        _, _, read_only = self._parse_field(path, include_private=True)
+        _, _, read_only = self._parse_field(path)
         return read_only
 
     def _get_default_field(self, path):
@@ -1362,7 +1362,7 @@ class SampleCollection(object):
         embedded_doc_type=None,
         subfield=None,
         read_only=None,
-        include_private=False,
+        include_private=True,
         leaf=False,
     ):
         """Returns the field instance of the provided path, or ``None`` if one
@@ -1381,7 +1381,7 @@ class SampleCollection(object):
                 :class:`fiftyone.core.fields.Field`
             read_only (None): whether to optionally enforce that the field is
                 read-only (True) or not read-only (False)
-            include_private (False): whether to include fields that start with
+            include_private (True): whether to include fields that start with
                 ``_`` in the returned schema
             leaf (False): whether to return the subfield of list fields
 
@@ -1413,7 +1413,7 @@ class SampleCollection(object):
 
         return field
 
-    def _parse_field(self, path, include_private=False, leaf=False):
+    def _parse_field(self, path, include_private=True, leaf=False):
         keys = path.split(".")
 
         if not keys:
@@ -1573,7 +1573,12 @@ class SampleCollection(object):
             "Subclass must implement get_frame_field_schema()"
         )
 
-    def get_dynamic_field_schema(self, fields=None, recursive=True):
+    def get_dynamic_field_schema(
+        self,
+        fields=None,
+        recursive=True,
+        include_private=False,
+    ):
         """Returns a schema dictionary describing the dynamic fields of the
         samples in the collection.
 
@@ -1585,16 +1590,24 @@ class SampleCollection(object):
                 return dynamic fields. By default, all fields are considered
             recursive (True): whether to recursively inspect nested lists and
                 embedded documents
+            include_private (False): whether to include private fields
 
         Returns:
             a dict mapping field paths to :class:`fiftyone.core.fields.Field`
             instances or lists of them
         """
         return self._get_dynamic_field_schema(
-            fields=fields, recursive=recursive
+            fields=fields,
+            recursive=recursive,
+            include_private=include_private,
         )
 
-    def get_dynamic_frame_field_schema(self, fields=None, recursive=True):
+    def get_dynamic_frame_field_schema(
+        self,
+        fields=None,
+        recursive=True,
+        include_private=False,
+    ):
         """Returns a schema dictionary describing the dynamic fields of the
         frames in the collection.
 
@@ -1606,6 +1619,7 @@ class SampleCollection(object):
                 return dynamic fields. By default, all fields are considered
             recursive (True): whether to recursively inspect nested lists and
                 embedded documents
+            include_private (False): whether to include private fields
 
         Returns:
             a dict mapping field paths to :class:`fiftyone.core.fields.Field`
@@ -1616,11 +1630,18 @@ class SampleCollection(object):
             return None
 
         return self._get_dynamic_field_schema(
-            frames=True, fields=fields, recursive=recursive
+            frames=True,
+            fields=fields,
+            recursive=recursive,
+            include_private=include_private,
         )
 
     def _get_dynamic_field_schema(
-        self, frames=False, fields=None, recursive=True
+        self,
+        frames=False,
+        fields=None,
+        recursive=True,
+        include_private=False,
     ):
         if frames:
             schema = self.get_frame_field_schema()
@@ -1635,7 +1656,11 @@ class SampleCollection(object):
 
         unwind_cache = []
         dynamic_schema = self._do_get_dynamic_field_schema(
-            schema, unwind_cache, frames=frames, fields=fields
+            schema,
+            unwind_cache,
+            frames=frames,
+            fields=fields,
+            include_private=include_private,
         )
 
         # Recurse into new dynamic fields
@@ -1643,7 +1668,11 @@ class SampleCollection(object):
             s = dynamic_schema
             while True:
                 s = self._do_get_dynamic_field_schema(
-                    s, unwind_cache, frames=frames, new=True
+                    s,
+                    unwind_cache,
+                    frames=frames,
+                    new=True,
+                    include_private=include_private,
                 )
                 if s:
                     dynamic_schema.update(s)
@@ -1677,7 +1706,13 @@ class SampleCollection(object):
         return dynamic_schema
 
     def _do_get_dynamic_field_schema(
-        self, schema, unwind_cache, frames=False, fields=None, new=False
+        self,
+        schema,
+        unwind_cache,
+        frames=False,
+        fields=None,
+        new=False,
+        include_private=False,
     ):
         if frames:
             prefix = self._FRAMES_PREFIX
@@ -1729,7 +1764,12 @@ class SampleCollection(object):
                 else:
                     _doc_type = None
 
-                agg = foa.Schema(_path, dynamic_only=True, _doc_type=_doc_type)
+                agg = foa.Schema(
+                    _path,
+                    dynamic_only=True,
+                    _doc_type=_doc_type,
+                    _include_private=include_private,
+                )
             elif is_list_field:
                 _clean_path = _path.replace("[]", "")
                 if field is None and not self._is_default_field(_clean_path):
@@ -1820,14 +1860,14 @@ class SampleCollection(object):
 
         return self.get_field(self._FRAMES_PREFIX + path) is not None
 
-    def validate_fields_exist(self, fields, include_private=False):
+    def validate_fields_exist(self, fields, include_private=True):
         """Validates that the collection has field(s) with the given name(s).
 
         If embedded field names are provided, only the root field is checked.
 
         Args:
             fields: a field name or iterable of field names
-            include_private (False): whether to include private fields when
+            include_private (True): whether to include private fields when
                 checking for existence
 
         Raises:
@@ -2103,8 +2143,8 @@ class SampleCollection(object):
             if ids is None or label_ids is None:
                 if is_frame_field:
                     ids, label_ids = self.values(["frames._id", id_path])
-                    ids = itertools.chain.from_iterable(ids)
-                    label_ids = itertools.chain.from_iterable(label_ids)
+                    ids = list(itertools.chain.from_iterable(ids))
+                    label_ids = list(itertools.chain.from_iterable(label_ids))
                 else:
                     ids, label_ids = self.values(["_id", id_path])
 
@@ -2346,11 +2386,11 @@ class SampleCollection(object):
         skip_none=False,
         expand_schema=True,
         dynamic=False,
-        validate=True,
         progress=False,
         _allow_missing=False,
         _sample_ids=None,
         _frame_ids=None,
+        **kwargs,
     ):
         """Sets the field or embedded field on each sample or frame in the
         collection to the given values.
@@ -2486,8 +2526,6 @@ class SampleCollection(object):
                 raised if the root ``field_name`` does not exist
             dynamic (False): whether to declare dynamic attributes of embedded
                 document fields that are encountered
-            validate (True): whether to validate that the values are compliant
-                with the dataset schema before adding them
             progress (False): whether to render a progress bar (True/False),
                 use the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
@@ -2499,11 +2537,11 @@ class SampleCollection(object):
             skip_none=skip_none,
             expand_schema=expand_schema,
             dynamic=dynamic,
-            validate=validate,
             progress=progress,
             _allow_missing=_allow_missing,
             _sample_ids=_sample_ids,
             _frame_ids=_frame_ids,
+            **kwargs,
         )
 
     def _set_values(
@@ -2515,6 +2553,7 @@ class SampleCollection(object):
         expand_schema=True,
         dynamic=False,
         validate=True,
+        allow_private=False,
         progress=False,
         _allow_missing=False,
         _sample_ids=None,
@@ -2547,6 +2586,7 @@ class SampleCollection(object):
                 values,
                 dynamic=dynamic,
                 allow_missing=_allow_missing,
+                allow_private=allow_private,
             )
         else:
             field = None
@@ -2597,6 +2637,7 @@ class SampleCollection(object):
                     expand_schema=expand_schema,
                     dynamic=dynamic,
                     validate=validate,
+                    allow_private=allow_private,
                     progress=progress,
                     _allow_missing=_allow_missing,
                     _sample_ids=_sample_ids,
@@ -2659,8 +2700,8 @@ class SampleCollection(object):
         values,
         dynamic=False,
         skip_none=False,
-        validate=True,
         progress=False,
+        **kwargs,
     ):
         """Sets the fields of the specified labels in the collection to the
         given values.
@@ -2701,14 +2742,19 @@ class SampleCollection(object):
                 missing data that should not be set
             dynamic (False): whether to declare dynamic attributes of embedded
                 document fields that are encountered
-            validate (True): whether to validate that the values are compliant
-                with the dataset schema before adding them
             progress (False): whether to render a progress bar (True/False),
                 use the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
         """
+        validate = kwargs.get("validate", True)
+        allow_private = kwargs.get("allow_private", False)
+
         field, _ = self._expand_schema_from_values(
-            field_name, values.values(), dynamic=dynamic, flat=True
+            field_name,
+            values.values(),
+            dynamic=dynamic,
+            allow_private=allow_private,
+            flat=True,
         )
 
         if field is None:
@@ -2800,6 +2846,7 @@ class SampleCollection(object):
         values,
         dynamic=False,
         allow_missing=False,
+        allow_private=False,
         flat=False,
     ):
         field_name, _ = self._handle_group_field(field_name)
@@ -2849,11 +2896,18 @@ class SampleCollection(object):
                 for _value in _values:
                     if _value is not None:
                         self._dataset._add_implied_frame_field(
-                            field_name, _value, dynamic=dynamic, validate=False
+                            field_name,
+                            _value,
+                            dynamic=dynamic,
+                            validate=False,
+                            allow_private=allow_private,
                         )
             elif new_root_field:
                 self._dataset._add_implied_frame_field(
-                    field_name, value, dynamic=dynamic
+                    field_name,
+                    value,
+                    dynamic=dynamic,
+                    allow_private=allow_private,
                 )
             else:
                 # User didn't request new dynamic attributes to be declared,
@@ -2891,7 +2945,9 @@ class SampleCollection(object):
                     )
 
                 media_type = self.media_type
-                self._dataset._add_group_field(field_name)
+                self._dataset._add_group_field(
+                    field_name, allow_private=allow_private
+                )
 
                 if not new_root_field:
                     return field, new_group_field
@@ -2919,11 +2975,18 @@ class SampleCollection(object):
                 for _value in _values:
                     if _value is not None:
                         self._dataset._add_implied_sample_field(
-                            field_name, _value, dynamic=dynamic, validate=False
+                            field_name,
+                            _value,
+                            dynamic=dynamic,
+                            validate=False,
+                            allow_private=allow_private,
                         )
             elif new_root_field:
                 self._dataset._add_implied_sample_field(
-                    field_name, value, dynamic=dynamic
+                    field_name,
+                    value,
+                    dynamic=dynamic,
+                    allow_private=allow_private,
                 )
             else:
                 # User didn't request new dynamic attributes to be declared,
@@ -3021,9 +3084,9 @@ class SampleCollection(object):
             else:
                 elem_ids = view.values(elem_id_field)
 
-            frame_ids = itertools.chain.from_iterable(frame_ids)
-            elem_ids = itertools.chain.from_iterable(elem_ids)
-            values = itertools.chain.from_iterable(values)
+            frame_ids = list(itertools.chain.from_iterable(frame_ids))
+            elem_ids = list(itertools.chain.from_iterable(elem_ids))
+            values = list(itertools.chain.from_iterable(values))
 
             self._set_list_values_by_id(
                 field_name,
@@ -3041,8 +3104,8 @@ class SampleCollection(object):
             if frame_ids is None:
                 frame_ids = view.values("frames._id")
 
-            frame_ids = itertools.chain.from_iterable(frame_ids)
-            values = itertools.chain.from_iterable(values)
+            frame_ids = list(itertools.chain.from_iterable(frame_ids))
+            values = list(itertools.chain.from_iterable(values))
 
             self._set_doc_values(
                 field_name,
@@ -10095,7 +10158,7 @@ class SampleCollection(object):
             if field != "$**" and (
                 not has_frames or field != "frames.$**"
             ):  # global wildcard indexes
-                self._validate_root_field(field, include_private=True)
+                self._validate_root_field(field)
 
             _field, _, _ = self._handle_id_fields(field)
             _field, is_frame_field = self._handle_frame_field(_field)
@@ -11093,7 +11156,7 @@ class SampleCollection(object):
         )
 
     def _get_db_fields_map(
-        self, include_private=False, frames=False, reverse=False
+        self, include_private=True, frames=False, reverse=False
     ):
         if frames:
             schema = self.get_frame_field_schema(
@@ -11244,12 +11307,12 @@ class SampleCollection(object):
 
         return list(root_fields)
 
-    def _validate_root_field(self, field_name, include_private=False):
+    def _validate_root_field(self, field_name, include_private=True):
         _ = self._get_root_field_type(
             field_name, include_private=include_private
         )
 
-    def _get_root_field_type(self, field_name, include_private=False):
+    def _get_root_field_type(self, field_name, include_private=True):
         field_name, _ = self._handle_group_field(field_name)
         field_name, is_frame_field = self._handle_frame_field(field_name)
 
@@ -12042,7 +12105,7 @@ def _parse_field_name(
     )
 
 
-def _handle_id_field(schema, field_name, include_private=False):
+def _handle_id_field(schema, field_name, include_private=True):
     if not include_private and field_name.startswith("_"):
         return None
 
@@ -12085,12 +12148,8 @@ def _handle_id_fields(sample_collection, field_name):
         if root is not None:
             private_field = root + "." + private_field
 
-    public_type = sample_collection.get_field(
-        public_field, include_private=True
-    )
-    private_type = sample_collection.get_field(
-        private_field, include_private=True
-    )
+    public_type = sample_collection.get_field(public_field)
+    private_type = sample_collection.get_field(private_field)
 
     if isinstance(public_type, fof.ObjectIdField):
         id_to_str = not is_private

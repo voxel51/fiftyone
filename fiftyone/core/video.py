@@ -49,6 +49,8 @@ class FrameView(fos.SampleView):
             filtered in this view
     """
 
+    __slots__ = ()
+
     @property
     def _sample_id(self):
         return ObjectId(self._doc.sample_id)
@@ -174,7 +176,7 @@ class FramesView(fov.DatasetView):
         self.__media_type = media_type
 
     def _get_sample_only_fields(
-        self, include_private=False, use_db_fields=False
+        self, include_private=True, use_db_fields=False
     ):
         sample_only_fields = set(
             self._get_default_sample_fields(
@@ -331,9 +333,7 @@ class FramesView(fov.DatasetView):
         self._sync_source_schema()
 
         dst_dataset = self._source_collection._root_dataset
-        sample_only_fields = self._get_sample_only_fields(
-            include_private=True, use_db_fields=True
-        )
+        sample_only_fields = self._get_sample_only_fields(use_db_fields=True)
 
         updates = {
             k: v
@@ -353,9 +353,7 @@ class FramesView(fov.DatasetView):
 
     def _sync_source(self, fields=None, ids=None, update=True, delete=False):
         dst_dataset = self._source_collection._root_dataset
-        sample_only_fields = self._get_sample_only_fields(
-            include_private=True, use_db_fields=True
-        )
+        sample_only_fields = self._get_sample_only_fields(use_db_fields=True)
 
         if fields is not None:
             fields = [f for f in fields if f not in sample_only_fields]
@@ -443,9 +441,7 @@ class FramesView(fov.DatasetView):
             # collection and, if requested, delete any source fields that
             # aren't in this view
 
-            default_fields = set(
-                self._get_default_sample_fields(include_private=True)
-            )
+            default_fields = set(self._get_default_sample_fields())
 
             for field_name in schema.keys():
                 if (

@@ -133,14 +133,23 @@ class SerializableDocument(object):
         """
         raise NotImplementedError("Subclass must implement clear_field()")
 
-    def iter_fields(self):
+    def iter_fields(self, include_id=False, include_private=False):
         """Returns an iterator over the ``(name, value)`` pairs of the
-        public fields of the document.
+        fields of the document.
+
+        Args:
+            include_id (False): whether to include ID fields
+            include_private (False): whether to include private fields
 
         Returns:
             an iterator that emits ``(name, value)`` tuples
         """
-        for field_name in self.field_names:
+        for field_name in self._get_field_names(
+            include_private=include_private
+        ):
+            if not include_id and field_name in ("id", "_id"):
+                continue
+
             yield field_name, self.get_field(field_name)
 
     def _get_field_names(self, include_private=False, use_db_fields=False):
@@ -191,9 +200,11 @@ class SerializableDocument(object):
             )
 
         if not overwrite:
-            existing_field_names = set(self.field_names)
+            existing_field_names = set(
+                self._get_field_names(include_private=True)
+            )
 
-        for field, value in doc.iter_fields():
+        for field, value in doc.iter_fields(include_private=True):
             try:
                 curr_value = self.get_field(field)
             except AttributeError:

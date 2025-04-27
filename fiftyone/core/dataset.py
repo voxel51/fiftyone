@@ -1511,6 +1511,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 description=description,
                 info=info,
                 read_only=read_only,
+                **kwargs,
             )
         else:
             expanded = self._sample_doc_cls.add_field(
@@ -1529,13 +1530,26 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._reload()
 
     def _add_implied_sample_field(
-        self, field_name, value, dynamic=False, validate=True
+        self,
+        field_name,
+        value,
+        dynamic=False,
+        validate=True,
+        allow_private=False,
     ):
         if isinstance(value, fog.Group):
-            expanded = self._add_group_field(field_name, default=value.name)
+            expanded = self._add_group_field(
+                field_name,
+                default=value.name,
+                allow_private=allow_private,
+            )
         else:
             expanded = self._sample_doc_cls.add_implied_field(
-                field_name, value, dynamic=dynamic, validate=validate
+                field_name,
+                value,
+                dynamic=dynamic,
+                validate=validate,
+                allow_private=allow_private,
             )
 
         if expanded:
@@ -1547,19 +1561,25 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         expand_schema=True,
         recursive=True,
         validate=True,
+        allow_private=False,
     ):
         expanded = self._sample_doc_cls.merge_field_schema(
             schema,
             expand_schema=expand_schema,
             recursive=recursive,
             validate=validate,
+            allow_private=allow_private,
         )
 
         if expanded:
             self._reload()
 
     def add_dynamic_sample_fields(
-        self, fields=None, recursive=True, add_mixed=False
+        self,
+        fields=None,
+        recursive=True,
+        add_mixed=False,
+        include_private=False,
     ):
         """Adds all dynamic sample fields to the dataset's schema.
 
@@ -1574,9 +1594,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             add_mixed (False): whether to declare fields that contain values
                 of mixed types as generic :class:`fiftyone.core.fields.Field`
                 instances (True) or to skip such fields (False)
+            include_private (False): whether to include private fields
         """
         dynamic_schema = self.get_dynamic_field_schema(
-            fields=fields, recursive=recursive
+            fields=fields,
+            recursive=recursive,
+            include_private=include_private,
         )
 
         schema = {}
@@ -1608,7 +1631,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 schema[path] = field
 
         for _schema in _handle_nested_fields(schema):
-            self._merge_sample_field_schema(_schema)
+            self._merge_sample_field_schema(
+                _schema, allow_private=include_private
+            )
 
     def add_frame_field(
         self,
@@ -2197,7 +2222,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._delete_sample_fields(_field_names, error_level)
 
     def _add_implied_frame_field(
-        self, field_name, value, dynamic=False, validate=True
+        self,
+        field_name,
+        value,
+        dynamic=False,
+        validate=True,
+        allow_private=False,
     ):
         if not self._has_frame_fields():
             raise ValueError(
@@ -2205,7 +2235,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
         expanded = self._frame_doc_cls.add_implied_field(
-            field_name, value, dynamic=dynamic, validate=validate
+            field_name,
+            value,
+            dynamic=dynamic,
+            validate=validate,
+            allow_private=allow_private,
         )
 
         if expanded:
@@ -2217,12 +2251,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         expand_schema=True,
         recursive=True,
         validate=True,
+        allow_private=False,
     ):
         expanded = self._frame_doc_cls.merge_field_schema(
             schema,
             expand_schema=expand_schema,
             recursive=recursive,
             validate=validate,
+            allow_private=allow_private,
         )
 
         if expanded:
@@ -2293,6 +2329,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         description=None,
         info=None,
         read_only=False,
+        **kwargs,
     ):
         """Adds a group field to the dataset, if necessary.
 
@@ -2312,6 +2349,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             description=description,
             info=info,
             read_only=read_only,
+            **kwargs,
         )
 
         if expanded:
@@ -2345,7 +2383,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return True
 
-    def rename_sample_field(self, field_name, new_field_name):
+    def rename_sample_field(self, field_name, new_field_name, **kwargs):
         """Renames the sample field to the given new name.
 
         You can use dot notation (``embedded.field.name``) to rename embedded
@@ -2355,9 +2393,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             field_name: the field name or ``embedded.field.name``
             new_field_name: the new field name or ``embedded.field.name``
         """
-        self._rename_sample_fields({field_name: new_field_name})
+        self._rename_sample_fields({field_name: new_field_name}, **kwargs)
 
-    def rename_sample_fields(self, field_mapping):
+    def rename_sample_fields(self, field_mapping, **kwargs):
         """Renames the sample fields to the given new names.
 
         You can use dot notation (``embedded.field.name``) to rename embedded
@@ -2366,9 +2404,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             field_mapping: a dict mapping field names to new field names
         """
-        self._rename_sample_fields(field_mapping)
+        self._rename_sample_fields(field_mapping, **kwargs)
 
-    def rename_frame_field(self, field_name, new_field_name):
+    def rename_frame_field(self, field_name, new_field_name, **kwargs):
         """Renames the frame-level field to the given new name.
 
         You can use dot notation (``embedded.field.name``) to rename embedded
@@ -2380,9 +2418,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             field_name: the field name or ``embedded.field.name``
             new_field_name: the new field name or ``embedded.field.name``
         """
-        self._rename_frame_fields({field_name: new_field_name})
+        self._rename_frame_fields({field_name: new_field_name}, **kwargs)
 
-    def rename_frame_fields(self, field_mapping):
+    def rename_frame_fields(self, field_mapping, **kwargs):
         """Renames the frame-level fields to the given new names.
 
         You can use dot notation (``embedded.field.name``) to rename embedded
@@ -2393,12 +2431,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._rename_frame_fields(field_mapping)
 
-    def _rename_sample_fields(self, field_mapping, view=None):
+    def _rename_sample_fields(self, field_mapping, view=None, **kwargs):
         sample_collection = self if view is None else view
 
         paths, new_paths = zip(*field_mapping.items())
         self._sample_doc_cls._rename_fields(
-            sample_collection, paths, new_paths
+            sample_collection, paths, new_paths, **kwargs
         )
 
         fields, _, _, _ = _parse_field_mapping(field_mapping)
@@ -2409,7 +2447,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fos.Sample._reload_docs(self._sample_collection_name)
         self._reload()
 
-    def _rename_frame_fields(self, field_mapping, view=None):
+    def _rename_frame_fields(self, field_mapping, view=None, **kwargs):
         sample_collection = self if view is None else view
         if not sample_collection._has_frame_fields():
             raise ValueError(
@@ -2417,7 +2455,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
         paths, new_paths = zip(*field_mapping.items())
-        self._frame_doc_cls._rename_fields(sample_collection, paths, new_paths)
+        self._frame_doc_cls._rename_fields(
+            sample_collection, paths, new_paths, **kwargs
+        )
 
         fields, _, _, _ = _parse_field_mapping(field_mapping)
 
@@ -2427,7 +2467,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fofr.Frame._reload_docs(self._frame_collection_name)
         self._reload()
 
-    def clone_sample_field(self, field_name, new_field_name):
+    def clone_sample_field(self, field_name, new_field_name, **kwargs):
         """Clones the given sample field into a new field of the dataset.
 
         You can use dot notation (``embedded.field.name``) to clone embedded
@@ -2437,9 +2477,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             field_name: the field name or ``embedded.field.name``
             new_field_name: the new field name or ``embedded.field.name``
         """
-        self._clone_sample_fields({field_name: new_field_name})
+        self._clone_sample_fields({field_name: new_field_name}, **kwargs)
 
-    def clone_sample_fields(self, field_mapping):
+    def clone_sample_fields(self, field_mapping, **kwargs):
         """Clones the given sample fields into new fields of the dataset.
 
         You can use dot notation (``embedded.field.name``) to clone embedded
@@ -2449,9 +2489,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             field_mapping: a dict mapping field names to new field names into
                 which to clone each field
         """
-        self._clone_sample_fields(field_mapping)
+        self._clone_sample_fields(field_mapping, **kwargs)
 
-    def clone_frame_field(self, field_name, new_field_name):
+    def clone_frame_field(self, field_name, new_field_name, **kwargs):
         """Clones the frame-level field into a new field.
 
         You can use dot notation (``embedded.field.name``) to clone embedded
@@ -2463,9 +2503,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             field_name: the field name or ``embedded.field.name``
             new_field_name: the new field name or ``embedded.field.name``
         """
-        self._clone_frame_fields({field_name: new_field_name})
+        self._clone_frame_fields({field_name: new_field_name}, **kwargs)
 
-    def clone_frame_fields(self, field_mapping):
+    def clone_frame_fields(self, field_mapping, **kwargs):
         """Clones the frame-level fields into new fields.
 
         You can use dot notation (``embedded.field.name``) to clone embedded
@@ -2477,18 +2517,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             field_mapping: a dict mapping field names to new field names into
                 which to clone each field
         """
-        self._clone_frame_fields(field_mapping)
+        self._clone_frame_fields(field_mapping, **kwargs)
 
-    def _clone_sample_fields(self, field_mapping, view=None):
+    def _clone_sample_fields(self, field_mapping, view=None, **kwargs):
         sample_collection = self if view is None else view
 
         paths, new_paths = zip(*field_mapping.items())
-        self._sample_doc_cls._clone_fields(sample_collection, paths, new_paths)
+        self._sample_doc_cls._clone_fields(
+            sample_collection, paths, new_paths, **kwargs
+        )
 
         fos.Sample._reload_docs(self._sample_collection_name)
         self._reload()
 
-    def _clone_frame_fields(self, field_mapping, view=None):
+    def _clone_frame_fields(self, field_mapping, view=None, **kwargs):
         sample_collection = self if view is None else view
         if not sample_collection._has_frame_fields():
             raise ValueError(
@@ -2496,7 +2538,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
         paths, new_paths = zip(*field_mapping.items())
-        self._frame_doc_cls._clone_fields(sample_collection, paths, new_paths)
+        self._frame_doc_cls._clone_fields(
+            sample_collection, paths, new_paths, **kwargs
+        )
 
         fofr.Frame._reload_docs(self._frame_collection_name)
         self._reload()
@@ -3213,7 +3257,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         sample,
         expand_schema=True,
         dynamic=False,
-        validate=True,
+        **kwargs,
     ):
         """Adds the given sample to the dataset.
 
@@ -3228,8 +3272,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if the sample's schema is not a subset of the dataset schema
             dynamic (False): whether to declare dynamic attributes of embedded
                 document fields that are encountered
-            validate (True): whether to validate that the fields of the sample
-                are compliant with the dataset schema before adding it
 
         Returns:
             the ID of the sample in the dataset
@@ -3238,8 +3280,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample,
             expand_schema=expand_schema,
             dynamic=dynamic,
-            validate=validate,
             copy=True,
+            **kwargs,
         )
 
         _, ids = self._add_samples_batch([sample])
@@ -3250,10 +3292,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         samples,
         expand_schema=True,
         dynamic=False,
-        validate=True,
         generator=False,
         progress=None,
         num_samples=None,
+        **kwargs,
     ):
         """Adds the given samples to the dataset.
 
@@ -3270,8 +3312,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if a sample's schema is not a subset of the dataset schema
             dynamic (False): whether to declare dynamic attributes of embedded
                 document fields that are encountered
-            validate (True): whether to validate that the fields of each sample
-                are compliant with the dataset schema before adding it
             generator (False): whether to yield ID batches as a generator as
                 samples are added to the dataset
             progress (None): whether to render a progress bar (True/False), use
@@ -3291,8 +3331,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._transform_sample,
             expand_schema=expand_schema,
             dynamic=dynamic,
-            validate=validate,
             copy=True,
+            **kwargs,
         )
 
         batcher = fou.get_default_batcher(
@@ -3412,6 +3452,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         dynamic=False,
         validate=True,
         generator=False,
+        allow_private=False,
         progress=None,
         num_samples=None,
     ):
@@ -3420,6 +3461,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema=expand_schema,
             dynamic=dynamic,
             validate=validate,
+            allow_private=allow_private,
             copy=False,
             include_id=True,
         )
@@ -3449,6 +3491,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         expand_schema=True,
         dynamic=False,
         validate=True,
+        allow_private=False,
         copy=False,
         include_id=False,
     ):
@@ -3484,7 +3527,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self.media_type = _get_media_type(sample)
 
         if expand_schema:
-            self._expand_schema(sample, dynamic)
+            self._expand_schema(sample, dynamic, allow_private=allow_private)
 
         if validate:
             self._validate_sample(sample)
@@ -3582,6 +3625,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fields=None,
         omit_fields=None,
         expand_schema=True,
+        allow_private=False,
         merge_info=True,
         overwrite_info=False,
     ):
@@ -3603,6 +3647,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             fields=fields,
             omit_fields=omit_fields,
             expand_schema=expand_schema,
+            allow_private=allow_private,
             merge_info=merge_info,
             overwrite_info=overwrite_info,
         )
@@ -3618,8 +3663,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         merge_lists=True,
         overwrite=True,
         expand_schema=True,
-        validate=True,
         dynamic=False,
+        **kwargs,
     ):
         """Merges the fields of the given sample into this dataset.
 
@@ -3678,7 +3723,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema (True): whether to dynamically add new fields
                 encountered to the dataset schema. If False, an error is raised
                 if any fields are not in the dataset schema
-            validate (True): whether to validate values for existing fields
             dynamic (False): whether to declare dynamic embedded document
                 fields
         """
@@ -3695,7 +3739,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     sample,
                     expand_schema=expand_schema,
                     dynamic=dynamic,
-                    validate=validate,
+                    **kwargs,
                 )
 
             return
@@ -3708,8 +3752,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 merge_lists=merge_lists,
                 overwrite=overwrite,
                 expand_schema=expand_schema,
-                validate=validate,
                 dynamic=dynamic,
+                **kwargs,
             )
             existing_sample.save()
 
@@ -3730,6 +3774,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         overwrite_info=False,
         progress=None,
         num_samples=None,
+        **kwargs,
     ):
         """Merges the given samples into this dataset.
 
@@ -3849,6 +3894,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 expand_schema=expand_schema,
                 merge_info=include_info,
                 overwrite_info=overwrite_info,
+                **kwargs,
             )
 
             expand_schema = False
@@ -3897,6 +3943,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     overwrite=overwrite,
                     expand_schema=expand_schema,
                     include_info=False,
+                    **kwargs,
                 )
             finally:
                 tmp.delete()
@@ -3918,6 +3965,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dynamic=dynamic,
             progress=progress,
             num_samples=num_samples,
+            **kwargs,
         )
 
     def delete_samples(self, samples_or_ids):
@@ -8020,7 +8068,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 embedded_doc_type=label_cls,
             )
 
-    def _expand_schema(self, sample, dynamic):
+    def _expand_schema(self, sample, dynamic, allow_private=False):
         expanded = False
 
         if not dynamic:
@@ -8050,6 +8098,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                         )
                     },
                     validate=False,
+                    allow_private=allow_private,
                 )
 
             if not dynamic and field_name in schema:
@@ -8057,18 +8106,26 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             if isinstance(value, fog.Group):
                 expanded |= self._add_group_field(
-                    field_name, default=value.name
+                    field_name,
+                    default=value.name,
+                    allow_private=allow_private,
                 )
             else:
                 expanded |= self._sample_doc_cls.add_implied_field(
-                    field_name, value, dynamic=dynamic, validate=False
+                    field_name,
+                    value,
+                    dynamic=dynamic,
+                    validate=False,
+                    allow_private=allow_private,
                 )
 
             if not dynamic:
                 schema = self.get_field_schema(include_private=True)
 
         if sample.media_type == fom.VIDEO:
-            expanded |= self._expand_frame_schema(sample.frames, dynamic)
+            expanded |= self._expand_frame_schema(
+                sample.frames, dynamic, allow_private=allow_private
+            )
 
         if expanded:
             self._reload()
@@ -8079,7 +8136,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self.add_group_slice(slice_name, media_type)
 
-    def _expand_frame_schema(self, frames, dynamic):
+    def _expand_frame_schema(self, frames, dynamic, allow_private=False):
         if not dynamic:
             schema = self.get_frame_field_schema(include_private=True)
 
@@ -8098,7 +8155,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     continue
 
                 expanded |= self._frame_doc_cls.add_implied_field(
-                    field_name, value, dynamic=dynamic, validate=False
+                    field_name,
+                    value,
+                    dynamic=dynamic,
+                    validate=False,
+                    allow_private=allow_private,
                 )
 
                 if not dynamic:
@@ -8767,14 +8828,16 @@ def _clone_collection(sample_collection, name, persistent):
 
     if view is not None:
         # Respect filtered sample fields, if any
-        keep_fields = set(view.get_field_schema().keys())
+        keep_fields = set(view.get_field_schema(include_private=True).keys())
         dataset_doc.sample_fields = [
             f for f in dataset_doc.sample_fields if f.name in keep_fields
         ]
 
         # Respect filtered frame fields, if any
         if contains_videos:
-            keep_fields = set(view.get_frame_field_schema().keys())
+            keep_fields = set(
+                view.get_frame_field_schema(include_private=True).keys()
+            )
             dataset_doc.frame_fields = [
                 f for f in dataset_doc.frame_fields if f.name in keep_fields
             ]
@@ -9009,6 +9072,7 @@ def _merge_dataset_doc(
     fields=None,
     omit_fields=None,
     expand_schema=True,
+    allow_private=False,
     merge_info=True,
     overwrite_info=False,
 ):
@@ -9029,8 +9093,11 @@ def _merge_dataset_doc(
     if isinstance(collection_or_doc, foc.SampleCollection):
         # Respects filtered schemas, if any
         doc = collection_or_doc._root_dataset._doc
-        schema = collection_or_doc.get_field_schema()
-        frame_schema = collection_or_doc.get_frame_field_schema() or {}
+        schema = collection_or_doc.get_field_schema(include_private=True)
+        frame_schema = (
+            collection_or_doc.get_frame_field_schema(include_private=True)
+            or {}
+        )
     else:
         doc = collection_or_doc
         schema = {f.name: f.to_field() for f in doc.sample_fields}
@@ -9130,12 +9197,16 @@ def _merge_dataset_doc(
         schema = {fields[k]: v for k, v in schema.items() if k in fields}
 
     dataset._sample_doc_cls.merge_field_schema(
-        schema, expand_schema=expand_schema
+        schema,
+        expand_schema=expand_schema,
+        allow_private=allow_private,
     )
 
     if has_frame_fields and frame_schema:
         dataset._frame_doc_cls.merge_field_schema(
-            frame_schema, expand_schema=expand_schema
+            frame_schema,
+            expand_schema=expand_schema,
+            allow_private=allow_private,
         )
 
     if not merge_info:
@@ -9466,6 +9537,7 @@ def _merge_samples_python(
     merge_lists=True,
     overwrite=True,
     expand_schema=True,
+    allow_private=False,
     dynamic=False,
     progress=None,
     num_samples=None,
@@ -9505,12 +9577,14 @@ def _merge_samples_python(
         merge_lists=merge_lists,
         overwrite=overwrite,
         expand_schema=expand_schema,
+        allow_private=allow_private,
     )
 
     logger.info("Merging samples...")
     dataset._upsert_samples(
         _samples,
         expand_schema=expand_schema,
+        allow_private=allow_private,
         dynamic=dynamic,
         progress=progress,
         num_samples=num_samples,
@@ -9529,6 +9603,7 @@ def _make_merge_samples_generator(
     merge_lists=True,
     overwrite=True,
     expand_schema=True,
+    allow_private=False,
 ):
     # When inserting new samples, `filepath` cannot be excluded
     if insert_new:
@@ -9560,6 +9635,7 @@ def _make_merge_samples_generator(
                     merge_lists=merge_lists,
                     overwrite=overwrite,
                     expand_schema=expand_schema,
+                    allow_private=allow_private,
                 )
 
                 yield existing_sample
@@ -9931,9 +10007,9 @@ def _merge_docs(
     frames=False,
 ):
     if frames:
-        schema = sample_collection.get_frame_field_schema()
+        schema = sample_collection.get_frame_field_schema(include_private=True)
     else:
-        schema = sample_collection.get_field_schema()
+        schema = sample_collection.get_field_schema(include_private=True)
 
     if merge_lists:
         list_fields = []
