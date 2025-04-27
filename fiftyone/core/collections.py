@@ -9157,20 +9157,20 @@ class SampleCollection(object):
             the list of values
         """
 
-        # If we do not need to follow insertion order, we can potentially use a
-        # covered index query to get the values directly from the index and
-        # avoid a COLLSCAN.
+        # Optimization: if we do not need to follow insertion order, we can
+        # potentially use a covered index query to get the values directly from
+        # the index and avoid a COLLSCAN
         if not _enforce_natural_order:
             field = None
             if isinstance(field_or_expr, str):
                 field = field_or_expr
-            elif isinstance(field_or_expr, list) and len(field_or_expr) == 1:
+            elif etau.is_container(field_or_expr) and len(field_or_expr) == 1:
                 field = field_or_expr[0]
 
-            # In the future, we might be less restrictive, but that needs
-            # further investigation.
+            # @todo consider supporting non-default fields that are indexed
+            # @todo can we support some non-full collections?
             if (
-                field in ["id", "_id", "filepath"]
+                field in ("id", "_id", "filepath")
                 and expr is None
                 and self._is_full_collection()
             ):
@@ -9181,8 +9181,8 @@ class SampleCollection(object):
                         values_only=True,
                     )
                 except ValueError as e:
-                    # Fallback to values, but log the error to surface the
-                    # recommendation to create an index
+                    # When get_indexed_values() raises a ValueError, it is a
+                    # recommendation of an index to create
                     logger.debug(e)
 
         make = lambda field_or_expr: foa.Values(
