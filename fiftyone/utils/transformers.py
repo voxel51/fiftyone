@@ -9,6 +9,7 @@ Utilities for working with
 
 from copy import deepcopy
 import logging
+import warnings
 
 import eta.core.utils as etau
 import numpy as np
@@ -36,7 +37,7 @@ DEFAULT_ZERO_SHOT_CLASSIFICATION_PATH = "openai/clip-vit-large-patch14"
 DEFAULT_ZERO_SHOT_DETECTION_PATH = "google/owlvit-base-patch32"
 
 
-def convert_transformers_model(model, task=None):
+def convert_transformers_model(model, task=None, **kwargs):
     """Converts the given Hugging Face transformers model into a FiftyOne
     model.
 
@@ -260,6 +261,10 @@ class FiftyOneTransformerConfig(fout.TorchImageModelConfig, HasZooModel):
             will be used see
             https://huggingface.co/docs/transformers/en/main_classes/output
             for more details on model outputs.
+        hidden_state_position (None): the layer to use for embeddings. If this is set,
+            `embeddings_output_key` is ignored, and will be set to `hidden_states`.
+            In this case, embeddings will be taken from
+            `output['hidden_states'][hidden_state_position]`.
         embeddings_aggregation ("token"): the method to use for aggregating token
             embeddings. This is only used if `embeddings_output_key` is set to
             `last_hidden_state` or `hidden_states`. Supported values are
@@ -271,6 +276,11 @@ class FiftyOneTransformerConfig(fout.TorchImageModelConfig, HasZooModel):
             2. ``"mean"``: pointwise mean of all token embeddings
             3. ``"max"``: pointwise max of all token embeddings
             4. ``"no_agg"``: no aggregation
+        channels_last (True): Whether the model outputs are in channels last format.
+            If set to False, the model outputs are assumed to be in channels first format.
+            The default is True because transformers models typically output in channels last format.
+            Note that CNNs are typically channels first. Make sure to check model documentation
+            to see if this is the case.
         embeddings_token_position (0): the token position to use when
             ``embeddings_aggregation`` is set to ``"token"``. This is only used
             if `embeddings_output_key` is set to ``last_hidden_state`` or
@@ -297,12 +307,16 @@ class FiftyOneTransformerConfig(fout.TorchImageModelConfig, HasZooModel):
         self.output_hidden_states = self.parse_bool(
             d, "output_hidden_states", default=False
         )
+        self.hidden_state_position = self.parse_int(
+            d, "hidden_state_position", default=None
+        )
         self.embeddings_output_key = self.parse_string(
             d, "embeddings_output_key", default=None
         )
         self.embeddings_aggregation = self.parse_string(
             d, "embeddings_aggregation", default="token"
         )
+        self.channels_last = self.parse_bool(d, "channels_last", default=True)
         self.embeddings_token_position = self.parse_int(
             d, "embeddings_token_position", default=0
         )
@@ -371,8 +385,8 @@ class TransformerEmbeddingsMixin(EmbeddingsMixin):
             return embeddings
 
         if self.embeddings_output_key == "hidden_states":
-            # we only want the last hidden state
-            embeddings = embeddings[-1]
+            # we only want the hidden state at the specified layer
+            embeddings = embeddings[self._hidden_state_position]
 
         # there could potentially be dims other than batch or embedding
         # have to send this through the aggregation function
@@ -393,7 +407,12 @@ class TransformerEmbeddingsMixin(EmbeddingsMixin):
         agg_fcn = (
             np.mean if self.config.embeddings_aggregation == "mean" else np.max
         )
-        # aggregate all but first and last dims
+        agg_dims = (
+            tuple(range(1, num_dims - 1))
+            if self.config.channels_last
+            else tuple(range(2, num_dims))
+        )
+        # aggregate all but batch and channel dims
         return agg_fcn(embeddings, axis=tuple(range(1, num_dims - 1)))
 
     @property
@@ -536,6 +555,24 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
         super().__init__(config)
 
         self._output_hidden_states = False
+        self._hidden_state_position = config.hidden_state_position
+
+        if self._hidden_state_position is None:
+            self._hidden_state_position = -1  # default to last hidden state
+        else:
+            self._embeddings_output_key = "hidden_states"
+            self._output_hidden_states = True
+            if (
+                self.config.embeddings_output_key is not None
+                and self.config.embeddings_output_key != "hidden_states"
+            ):
+                warnings.warn(
+                    "The `embeddings_output_key` has been set to `hidden_states` "
+                    "because `hidden_state_position` is set. "
+                    "Please set `embeddings_output_key` to `None` if you want to use "
+                    "a different value."
+                )
+
         self._last_output = None
 
     @property
