@@ -123,6 +123,7 @@ class SaveContext(object):
         self._batching_strategy = batching_strategy
         self._curr_batch_size = None
         self._curr_batch_size_bytes = None
+        self._encoding_ratio = 1.0
         self._last_time = None
 
     def __enter__(self):
@@ -182,7 +183,10 @@ class SaveContext(object):
                     len(str(op)) for op in frame_ops
                 )
 
-            if self._curr_batch_size_bytes >= self.batch_size:
+            if (
+                self._curr_batch_size_bytes
+                >= self.batch_size * self._encoding_ratio
+            ):
                 self._save_batch()
                 self._curr_batch_size_bytes = 0
         elif self._batching_strategy == "latency":
@@ -191,13 +195,29 @@ class SaveContext(object):
                 self._last_time = timeit.default_timer()
 
     def _save_batch(self):
+        encoded_size = -1
         if self._sample_ops:
-            foo.bulk_write(self._sample_ops, self._sample_coll, ordered=False)
+            res = foo.bulk_write(
+                self._sample_ops,
+                self._sample_coll,
+                ordered=False,
+                batcher=False,
+            )[0]
+            encoded_size += res.bulk_api_result.get("nBytes", 0)
             self._sample_ops.clear()
 
         if self._frame_ops:
-            foo.bulk_write(self._frame_ops, self._frame_coll, ordered=False)
+            res = foo.bulk_write(
+                self._frame_ops, self._frame_coll, ordered=False, batcher=False
+            )[0]
+            encoded_size += res.bulk_api_result.get("nBytes", 0)
             self._frame_ops.clear()
+
+        self._encoding_ratio = (
+            self._curr_batch_size_bytes / encoded_size
+            if encoded_size > 0 and self._curr_batch_size_bytes
+            else 1.0
+        )
 
         if self._batch_ids and self._is_generated:
             self.sample_collection._sync_source(ids=self._batch_ids)
@@ -9028,6 +9048,7 @@ class SampleCollection(object):
         _big_result=True,
         _raw=False,
         _field=None,
+        _enforce_natural_order=True,
     ):
         """Extracts the values of a field from all samples in the collection.
 
@@ -9135,6 +9156,35 @@ class SampleCollection(object):
         Returns:
             the list of values
         """
+
+        # Optimization: if we do not need to follow insertion order, we can
+        # potentially use a covered index query to get the values directly from
+        # the index and avoid a COLLSCAN
+        if not _enforce_natural_order:
+            field = None
+            if isinstance(field_or_expr, str):
+                field = field_or_expr
+            elif etau.is_container(field_or_expr) and len(field_or_expr) == 1:
+                field = field_or_expr[0]
+
+            # @todo consider supporting non-default fields that are indexed
+            # @todo can we support some non-full collections?
+            if (
+                field in ("id", "_id", "filepath")
+                and expr is None
+                and self._is_full_collection()
+            ):
+                try:
+                    return foo.get_indexed_values(
+                        self._dataset._sample_collection,
+                        field,
+                        values_only=True,
+                    )
+                except ValueError as e:
+                    # When get_indexed_values() raises a ValueError, it is a
+                    # recommendation of an index to create
+                    logger.debug(e)
+
         make = lambda field_or_expr: foa.Values(
             field_or_expr,
             expr=expr,

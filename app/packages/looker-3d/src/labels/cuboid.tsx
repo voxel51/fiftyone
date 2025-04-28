@@ -6,9 +6,10 @@ import * as THREE from "three";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry";
+import { use3dLabelColor } from "../hooks/use-3d-label-color";
+import { useSimilarLabels3d } from "../hooks/use-similar-labels-3d";
 import { cuboidLabelLineWidthAtom } from "../state";
 import type { OverlayProps } from "./shared";
-
 extend({ LineSegments2, LineMaterial, LineSegmentsGeometry });
 
 export interface CuboidProps extends OverlayProps {
@@ -69,40 +70,73 @@ export const Cuboid = ({
     [edgesGeo]
   );
 
+  const isSimilarLabelHovered = useSimilarLabels3d(label);
+
+  const strokeAndFillColor = use3dLabelColor({
+    isSelected: selected,
+    isHovered: isCuboidHovered,
+    isSimilarLabelHovered,
+    defaultColor: color,
+  });
+
   const material = useMemo(
     () =>
       new LineMaterial({
         opacity: opacity,
         transparent: false,
-        color: selected ? "orange" : color,
+        color: strokeAndFillColor,
         linewidth: lineWidth,
       }),
-    [selected, lineWidth, color, opacity]
+    [
+      selected,
+      lineWidth,
+      opacity,
+      isCuboidHovered,
+      isSimilarLabelHovered,
+      strokeAndFillColor,
+    ]
   );
+
+  const { onPointerOver, onPointerOut, ...restEventHandlers } = useMemo(() => {
+    return {
+      ...tooltip.getMeshProps(label),
+    };
+  }, [tooltip, label]);
 
   if (!location || !dimensions) return null;
 
+  /**
+   * note: it's important to not set event handlers on the group,
+   * because raycasting for line2 is unstable.
+   * so we skip the border and only use the volume instead, which is more stable.
+   *
+   * we're using line2 over core line because line2 allows configurable line width
+   */
+
   return (
-    <group
-      onPointerOver={() => setIsCuboidHovered(true)}
-      onPointerOut={() => {
-        setIsCuboidHovered(false);
-      }}
-    >
+    <group>
       <mesh position={loc} rotation={actualRotation}>
         <lineSegments2 geometry={geometry} material={material} />
       </mesh>
       <mesh
-        onClick={onClick}
-        {...tooltip.getMeshProps(label)}
         position={loc}
         rotation={actualRotation}
+        onClick={onClick}
+        onPointerOver={() => {
+          setIsCuboidHovered(true);
+          onPointerOver();
+        }}
+        onPointerOut={() => {
+          setIsCuboidHovered(false);
+          onPointerOut();
+        }}
+        {...restEventHandlers}
       >
         <boxGeometry args={dimensions} />
         <meshBasicMaterial
-          transparent={true}
-          opacity={opacity * 0.5}
-          color={selected ? "orange" : color}
+          transparent={isSimilarLabelHovered ? false : true}
+          opacity={isSimilarLabelHovered ? 0.95 : opacity * 0.5}
+          color={strokeAndFillColor}
         />
       </mesh>
     </group>

@@ -1,13 +1,22 @@
 import {
+  FO_LABEL_TOGGLED_EVENT,
+  LabelData,
+  LabelToggledEvent,
+  Sample,
+  selectiveRenderingEventBus,
+} from "@fiftyone/looker";
+import {
   getLabelColor,
   shouldShowLabelTag,
 } from "@fiftyone/looker/src/overlays/util";
 import * as fop from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { fieldSchema } from "@fiftyone/state";
+import { useOnShiftClickLabel } from "@fiftyone/state/src/hooks/useOnShiftClickLabel";
+import { ThreeEvent } from "@react-three/fiber";
 import { folder, useControls } from "leva";
 import { get as _get } from "lodash";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { PANEL_ORDER_LABELS } from "../constants";
 import { usePathFilter } from "../hooks";
@@ -19,7 +28,7 @@ import { type OverlayLabel, load3dOverlays } from "./loader";
 import { type PolyLineProps, Polyline } from "./polyline";
 
 export interface ThreeDLabelsProps {
-  sampleMap: Record<string, any>;
+  sampleMap: { [sliceOrFilename: string]: Sample } | fos.Sample[];
 }
 
 export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
@@ -78,12 +87,14 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
   );
 
   const handleSelect = useCallback(
-    (label: OverlayLabel) => {
+    (label: OverlayLabel, e: ThreeEvent<MouseEvent>) => {
       onSelectLabel({
         detail: {
           id: label._id,
           field: label.path,
           sampleId: label.sampleId,
+          instanceId: label.instance?._id,
+          isShiftPressed: e.shiftKey,
         },
       });
     },
@@ -99,6 +110,13 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
     ],
     [settings]
   );
+
+  const canonicalSampleId = useMemo(() => {
+    const samples = Array.isArray(sampleMap)
+      ? sampleMap
+      : Object.values(sampleMap);
+    return samples[0].id ?? samples[0].sample?._id;
+  }, [sampleMap]);
 
   const rawOverlays = useMemo(
     () =>
@@ -147,7 +165,7 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
             itemRotation={itemRotation}
             opacity={labelAlpha}
             {...(overlay as unknown as CuboidProps)}
-            onClick={() => handleSelect(overlay)}
+            onClick={(e) => handleSelect(overlay, e)}
             label={overlay}
             tooltip={tooltip}
             useLegacyCoordinates={settings.useLegacyCoordinates}
@@ -164,7 +182,7 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
             opacity={labelAlpha}
             {...(overlay as unknown as PolyLineProps)}
             label={overlay}
-            onClick={() => handleSelect(overlay)}
+            onClick={(e) => handleSelect(overlay, e)}
             tooltip={tooltip}
           />
         );
@@ -180,6 +198,21 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
     tooltip,
     settings,
   ]);
+
+  const getOnShiftClickLabelCallback = useOnShiftClickLabel();
+
+  useEffect(() => {
+    const unsub = selectiveRenderingEventBus.on(
+      FO_LABEL_TOGGLED_EVENT,
+      (e: LabelToggledEvent) => {
+        getOnShiftClickLabelCallback(e);
+      }
+    );
+
+    return () => {
+      unsub();
+    };
+  }, [getOnShiftClickLabelCallback]);
 
   return (
     <group>
