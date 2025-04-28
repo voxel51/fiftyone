@@ -30,8 +30,7 @@ App
   new "shift + click" UX modality to select "similar" instances.
   `#5577 <https://github.com/voxel51/fiftyone/pull/5577>`_
 - Optimized map performance with a new asynchronous `/geo` API route, with
-  frontend caching for geolocation data, with 5-minute TTL caching, and
-  introducing polygon-based sample selection.
+  frontend caching for geolocation data.
   `#5775 <https://github.com/voxel51/fiftyone/pull/5775>`_
 - Fixed `#5327 <https://github.com/voxel51/fiftyone/issues/5327>`_
   improving user experience when tagging
