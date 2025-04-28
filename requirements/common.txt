@@ -30,4 +30,5 @@ sse-starlette>=0.10.3
 starlette==0.40.0
 strawberry-graphql==0.257.0
 tabulate==0.8.10
+tqdm
 xmltodict==0.12.0
