@@ -635,11 +635,10 @@ When single field index subsets are too large, e.g. 5 million samples,
 efficiently refining further is possible with a
 `compound indexes <https://www.mongodb.com/docs/manual/core/indexes/index-types/index-compound/>`_.
 
-In the example below, a compound index on `ground_truth.label`,
-`clip_pred.label`, and `created_at` exists on a 30 million sample dataset.
-Since `created_at` is the last field in the compound index, we are able to sort
-the results after filtering, as well.
-
+In the example below, a compound index on `timeofday.label`, `clip_pred.label`,
+and `created_at` exists on a 30 million sample dataset. Since `created_at` is
+the last field in the compound index, we are able to sort the results after
+filtering, as well.
 
 .. code-block:: python
     :linenos:
@@ -651,14 +650,13 @@ the results after filtering, as well.
         [("timeofday.label", 1), ("clip_pred.label", 1), ("created_at", 1)]
     )
 
-
 .. image:: /images/app/app-compound-indexes-for-query-performance.gif
     :alt: app-compound-indexes-for-query-performance
     :align: center
 
 Note that as the filters are applied, any fields that can take advantage of a 
 compound index have there lightning bolt icon highlighted. `clip_pred.label`
-after applying the `ground_truth.label` filter, and then `created_at` after
+after applying the `timeofday.label` filter, and then `created_at` after
 applying the `clip_pred.label` filter.
 
 Indexes, and especially compound indexes, add extra overhead to datasets but
