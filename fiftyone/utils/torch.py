@@ -1805,9 +1805,7 @@ class TorchImageDataset(Dataset):
 
             img = _load_image(image_path, self.use_numpy, self.force_rgb)
             if self.transform is not None:
-                orig_img = img
                 img = self.transform(img)
-                img = {"img": img, "orig_img": orig_img}
 
         except Exception as e:
             if not self.skip_failures:
