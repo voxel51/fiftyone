@@ -101,7 +101,7 @@ describe("tests query performance selectors", () => {
 
     const twoId = <
       TestSelectorFamily<typeof queryPerformance.isCompoundIndexed>
-    >(<unknown>queryPerformance.isCompoundIndexed("one.id"));
+    >(<unknown>queryPerformance.isCompoundIndexed("two.id"));
     expect(twoId()).toEqual(true);
   });
 });
