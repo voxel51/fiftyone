@@ -72,9 +72,9 @@ class MapperFactory:
             # it no matter what.
             mapper_key = config.default_parallelization_method
 
-            # If no the parallelization method is not explicitly provided and
+            # If a parallelization method is not explicitly provided and
             # no default was set, try to use multiprocessing as default, if it
-            # looks like multiprocessing won’t work,  then use threading.
+            # looks like multiprocessing won’t work, then use threading.
             if mapper_key is None:
                 mapper_key = (
                     "process"

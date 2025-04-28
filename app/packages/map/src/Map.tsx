@@ -73,11 +73,26 @@ const Panel: React.FC<{}> = () => {
   const dataset = useRecoilValue(fos.dataset);
   const view = useRecoilValue(fos.view);
   const filters = useRecoilValue(fos.filters);
+  const unFilteredExtended = useRecoilValue(fos.extendedStages);
+
+  const extended = React.useMemo(() => {
+    return Object.fromEntries(
+      Object.entries(unFilteredExtended).filter(([stageName]) => {
+        // we remove select stage because we id-match client side
+        // we could do it in the server but with large number of samples,
+        // we'll hit mongo aggregation limits.
+        // We still want to pass in other extended stages
+        // like similarity search, etc.
+        return stageName !== "fiftyone.core.stages.Select";
+      })
+    ) as unknown as typeof fos.extendedStages;
+  }, [unFilteredExtended]);
 
   const { loading, sampleLocationMap } = useGeoLocations({
     dataset,
     filters,
     view,
+    extended,
     path: useRecoilValue(activeField),
   });
 
