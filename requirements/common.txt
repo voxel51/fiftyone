@@ -1,6 +1,7 @@
 aiofiles==0.7.0
 aiohttp
 argcomplete==1.11.0
+async_lru>=2.0.4
 backoff==1.11.1
 boto3==1.36.2
 cachetools==5.2.0
