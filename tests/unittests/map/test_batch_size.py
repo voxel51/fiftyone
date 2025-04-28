@@ -5,13 +5,13 @@ Batch size tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import pytest
 
 import fiftyone as fo
 import fiftyone.core.map.process as fomp
 import fiftyone.core.map.threading as fomt
 from fiftyone.core.map.factory import MapperFactory
-from decorators import skip_windows
 
 
 class TestBatchSize:
@@ -51,7 +51,6 @@ class TestBatchSize:
             pytest.param("slice", id="slice-batches"),
         ],
     )
-    @skip_windows  # TODO: don't skip on Windows
     def test_small_batch_size(self, dataset, mapper_type, batch_method):
         """Test using a batch_size smaller than samples/workers"""
         sample_count = len(dataset)
@@ -59,6 +58,7 @@ class TestBatchSize:
         batch_size = 10  # Intentionally smaller than sample_count / workers
 
         # Get the mapper and batch classes
+        # pylint:disable-next=protected-access
         batch_cls = MapperFactory._BATCH_CLASSES[batch_method]
 
         # Create the mapper directly
@@ -105,9 +105,9 @@ class TestBatchSize:
             pytest.param("slice", id="slice-batches"),
         ],
     )
-    @skip_windows  # TODO: don't skip on Windows
     def test_split_batch_size(self, dataset, batch_method):
-        """Test that batch splitting creates the correct batches when using batch_size"""
+        """Test that batch splitting creates the correct batches when using
+        batch_size"""
         sample_count = len(dataset)
 
         test_cases = [
@@ -127,6 +127,7 @@ class TestBatchSize:
             description = f"workers={workers}, batch_size={batch_size}"
 
             # Get the batch class and create batches
+            # pylint:disable-next=protected-access
             batch_cls = MapperFactory._BATCH_CLASSES[batch_method]
             batches = batch_cls.split(dataset, workers, batch_size)
 
@@ -141,7 +142,8 @@ class TestBatchSize:
                 # For the None case, explicitly verify the default behavior
                 if batch_size is None:
                     if i < expected_num_batches - 1:
-                        # In default mode, all batches except possibly the last should have size = sample_count // workers
+                        # In default mode, all batches except possibly the last
+                        # should have size = sample_count // workers
                         assert (
                             batch.total == sample_count // workers
                         ), f"Wrong batch size for batch {i} in {description}"
