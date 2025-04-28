@@ -15,6 +15,8 @@ import fiftyone.utils.torch as fout
 import fiftyone.core.utils as fou
 import fiftyone.zoo.models as fozm
 import eta.core.utils as etau
+import itertools
+
 from PIL import Image
 
 ultralytics = fou.lazy_import("ultralytics")
@@ -383,11 +385,8 @@ class UltralyticsClassificationOutputProcessor(
         self.post_processor = post_processor
 
     def __call__(self, output, frame_size, confidence_thresh=None):
-        if isinstance(output, dict):
-            results = self.post_process(output)
-            preds = [{"logits": result.probs} for result in results]
-        else:
-            preds = output
+        results = self.post_process(output)
+        preds = [{"logits": result.probs} for result in results]
         return super().__call__(preds, frame_size, confidence_thresh)
 
 
@@ -405,11 +404,8 @@ class UltralyticsDetectionOutputProcessor(
         self.post_processor = post_processor
 
     def __call__(self, output, frame_size, confidence_thresh=None):
-        if isinstance(output, dict):
-            results = self.post_process(output)
-            preds = self._to_dict(results)
-        else:
-            preds = output
+        results = self.post_process(output)
+        preds = self._to_dict(results)
         return super().__call__(preds, frame_size, confidence_thresh)
 
     def _to_dict(self, results):
@@ -441,11 +437,8 @@ class UltralyticsSegmentationOutputProcessor(
         self.post_processor = post_processor
 
     def __call__(self, output, frame_size, confidence_thresh=None):
-        if isinstance(output, dict):
-            results = self.post_process(output)
-            preds = self._to_dict(results)
-        else:
-            preds = output
+        results = self.post_process(output)
+        preds = self._to_dict(results)
         return super().__call__(preds, frame_size, confidence_thresh)
 
     def _to_dict(self, results):
@@ -456,12 +449,59 @@ class UltralyticsSegmentationOutputProcessor(
             else:
                 pred = {
                     "boxes": result.boxes.xyxy,
+                    "boxes_xywhn": result.boxes.xywhn,
                     "labels": result.boxes.cls.int(),
                     "scores": result.boxes.conf,
-                    "masks": result.masks.data.unsqueeze(1),
+                    "masks": result.masks.data,
                 }
                 batch.append(pred)
         return batch
+
+    def _parse_output(self, output, frame_size, confidence_thresh):
+        boxes = output["boxes_xywhn"].detach().cpu().numpy().astype(float)
+        labels = output["labels"].detach().cpu().numpy()
+        masks = output["masks"].detach().cpu().numpy() > self.mask_thresh
+
+        boxes[:, 0] -= boxes[:, 2] / 2.0
+        boxes[:, 1] -= boxes[:, 3] / 2.0
+
+        if "scores" in output:
+            scores = output["scores"].detach().cpu().numpy()
+        else:
+            scores = itertools.repeat(None)
+
+        detections = []
+        for box, label, mask, score in zip(boxes, labels, masks, scores):
+            if (
+                confidence_thresh is not None
+                and score is not None
+                and score < confidence_thresh
+            ):
+                continue
+
+            # Process masks.
+            w, h = mask.shape
+            tmp = np.copy(box)
+            tmp[2] += tmp[0]
+            tmp[3] += tmp[1]
+            tmp[0] *= h
+            tmp[2] *= h
+            tmp[1] *= w
+            tmp[3] *= w
+            tmp = [int(b) for b in tmp]
+            y0, x0, y1, x1 = tmp
+            sub_mask = mask[x0:x1, y0:y1]
+
+            detections.append(
+                fol.Detection(
+                    label=self.classes[label],
+                    bounding_box=list(box),
+                    mask=sub_mask.astype(bool),
+                    confidence=score,
+                )
+            )
+
+        return fol.Detections(detections=detections)
 
 
 class UltralyticsPoseOutputProcessor(
@@ -478,11 +518,8 @@ class UltralyticsPoseOutputProcessor(
         self.post_processor = post_processor
 
     def __call__(self, output, frame_size, confidence_thresh=None):
-        if isinstance(output, dict):
-            results = self.post_process(output)
-            preds = self._to_dict(results)
-        else:
-            preds = output
+        results = self.post_process(output)
+        preds = self._to_dict(results)
         return super().__call__(preds, frame_size, confidence_thresh)
 
     def _to_dict(self, results):
@@ -516,8 +553,5 @@ class UltralyticsOBBOutputProcessor(
         self.post_processor = post_processor
 
     def __call__(self, output, _, confidence_thresh=None):
-        if isinstance(output, dict):
-            preds = self.post_process(output)
-        else:
-            preds = output
+        preds = self.post_process(output)
         return obb_to_polylines(preds, confidence_thresh=confidence_thresh)
