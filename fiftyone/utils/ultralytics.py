@@ -199,13 +199,15 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
 
         return transforms, ragged_batches
 
-    def _preprocess_im(self, im):
-        if not isinstance(im, torch.Tensor):
-            if isinstance(im, Image.Image):
-                im = im.convert("RGB")
-            im = [np.asarray(im)]
-            return self._ultralytics_preprocess(im)
-        return im
+    def _preprocess_im(self, img):
+        orig_img = img
+        if not isinstance(img, torch.Tensor):
+            if isinstance(img, Image.Image):
+                img = img.convert("RGB")
+            img = [np.asarray(img)]
+            img = self._ultralytics_preprocess(img)
+        output = {"img": img, "orig_img": orig_img}
+        return output
 
     def _ultralytics_preprocess(self, im):
         im = np.stack(self._model.predictor.pre_transform(im))
@@ -234,6 +236,68 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
             post_processor=self._model.predictor.postprocess,
             **kwargs,
         )
+
+    def _predict_all(self, imgs):
+        if isinstance(imgs, list) and len(imgs) and isinstance(imgs[0], dict):
+            orig_images = [img.get("orig_img") for img in imgs]
+            images = [img.get("img") for img in imgs]
+        else:
+            orig_images = imgs
+            images = imgs
+
+        if self._preprocess and self._transforms is not None:
+            images = [self._transforms(img) for img in images]
+
+        height, width = None, None
+
+        # Feed images as stacked Tensor
+        if isinstance(images, (list, tuple)):
+            images = torch.stack(images)
+
+        height, width = images.size()[-2:]
+
+        images = images.to(self._device)
+        if self._using_half_precision:
+            images = images.half()
+
+        output = self._forward_pass(images)
+
+        if isinstance(output, dict):
+            # This is required for Ultralytics post-processing.
+            output["orig_imgs"] = orig_images
+            height, width = _get_image_dims(orig_images[0])
+            output["imgs"] = images
+
+        if self._output_processor is None:
+            _output = (
+                output.get("preds") if isinstance(output, dict) else output
+            )
+            if isinstance(_output, torch.Tensor):
+                _output = _output.detach().cpu().numpy()
+
+            return _output
+
+        if self.has_logits:
+            self._output_processor.store_logits = self.store_logits
+
+        return self._output_processor(
+            output,
+            (width, height),
+            confidence_thresh=self.config.confidence_thresh,
+        )
+
+
+def _get_image_dims(img):
+    if isinstance(img, torch.Tensor):
+        height, width = img.size()[-2:]
+    elif isinstance(img, Image.Image):
+        width, height = img.size
+    elif isinstance(img, np.ndarray):
+        height, width = img.shape[:2]
+    else:
+        height, width = None, None
+
+    return height, width
 
 
 class FiftyOneRTDETRModelConfig(FiftyOneYOLOModelConfig):
