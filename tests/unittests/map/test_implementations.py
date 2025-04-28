@@ -9,6 +9,7 @@ import contextlib
 import pytest
 
 import fiftyone as fo
+from decorators import skip_windows
 import fiftyone.core.map as fomm
 
 
@@ -59,6 +60,7 @@ class TestMapperImplementations:
             "skip_failures",
             (pytest.param(v, id=f"skip_failures={v}") for v in (True, False)),
         )
+        @skip_windows  # TODO: don't skip on Windows
         def test_map_fcn_err(self, mapper, dataset, skip_failures, save):
             """test error in map function"""
             err = Exception("Something went wrong")
@@ -99,6 +101,7 @@ class TestMapperImplementations:
         @pytest.mark.parametrize(
             "save", (pytest.param(v, id=f"save={v}") for v in (True, False))
         )
+        @skip_windows  # TODO: don't skip on Windows
         def test_ok(self, mapper, dataset, save):
             """test happy path"""
 

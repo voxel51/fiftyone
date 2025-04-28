@@ -1542,6 +1542,94 @@ def delete_runs(name, dry_run=False):
     )
 
 
+def get_indexed_values(
+    collection,
+    field_or_fields,
+    *,
+    index_key=None,
+    query=None,
+    values_only=False,
+):
+    """Returns the values of the field(s) for all samples in the given collection
+    that are covered by the index. Raises an error if the field is not indexed.
+
+    Args:
+        collection: a ``pymongo.collection.Collection`` or
+            ``motor.motor_asyncio.AsyncIOMotorCollection``
+        field_or_fields: the field name or list of field names to retrieve.
+        index_key (None): the name of the index to use. If None, the default
+            index name will be constructed from the field name(s).
+        query (None): a dict selection filter to apply when querying.
+            For performance, this should only include fields that are in
+            the specified index.
+        values_only (False): whether to remove field names from the resulting list.
+            If True, the field names are removed and only the values will be
+            returned as a list for each sample. If False, the field names are
+            preserved and the values will be returned as a dict for each sample.
+
+    Returns:
+        a list of values for the specified field or index keys for each sample
+        sorted in the same order as the index
+
+    Raises:
+        ValueError: if the field is not indexed
+    """
+    try:
+        cursor = _iter_indexed_values(
+            collection, field_or_fields, index_key=index_key, query=query
+        )
+
+        if field_or_fields == "id":
+            if values_only:
+                return [str(doc["_id"]) for doc in cursor]
+            return [{"id": str(doc["_id"])} for doc in cursor]
+
+        if values_only:
+            # If `values_only` is True, we need to extract the values from the dict
+            if isinstance(field_or_fields, str):
+                # Flatten single field values for consistency with `values()`
+                return [doc[field_or_fields] for doc in cursor]
+            return [list(doc.values()) for doc in cursor]
+
+        return list(cursor)
+    except Exception as e:
+        # Error may contain some extra info that may be useful for debugging
+        logger.debug("Error getting indexed values using hint:\n %s", e)
+
+        if "hint provided does not correspond to an existing index" in str(e):
+            raise ValueError(
+                "The field '%s' is not indexed. Please ensure that the field is "
+                "indexed before calling this function or use values() instead."
+                % field_or_fields
+            ) from e
+        raise e
+
+
+def _iter_indexed_values(
+    collection, field_or_fields, *, index_key=None, query=None
+):
+    # It's possible to create an index with a custom name. However, if not specified,
+    # the hint will use the default index name, which is constructed from the field name(s)
+    # joined with "_1".
+    hint = index_key
+    proj = {"_id": 0}
+
+    if field_or_fields == "id" or field_or_fields == "_id":
+        proj = {"_id": 1}
+        hint = "_id_"  # special case for _id
+    else:
+        if isinstance(field_or_fields, str):
+            proj[field_or_fields] = 1
+            if not hint:
+                hint = field_or_fields + "_1"
+        else:
+            proj.update({f: 1 for f in field_or_fields})
+            if not hint:
+                hint = "_".join([f + "_1" for f in field_or_fields])
+
+    return collection.find(query or {}, proj, hint=hint)
+
+
 def _get_logger(dry_run=False):
     if dry_run:
         return _DryRunLoggerAdapter(logger, {})
