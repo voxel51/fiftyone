@@ -388,7 +388,7 @@ def _do_pooled_aggregate(collection, pipelines, hints):
         pipeline, hint = args
         kwargs = {"hint": hint} if hint is not None else {}
         return list(
-            collection.aggregate(pipeline[0], allowDiskUse=True, **kwargs)
+            collection.aggregate(pipeline, allowDiskUse=True, **kwargs)
         )
 
     with ThreadPool(processes=len(pipelines)) as pool:
