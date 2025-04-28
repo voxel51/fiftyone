@@ -296,7 +296,7 @@ export default function Evaluation(props: EvaluationProps) {
           sx={tabStyles.tabs}
         >
           <Tab label="Overview" value="overview" />
-          <Tab label="Scenario Analysis" value="scenario" />
+          {/* <Tab label="Scenario Analysis" value="scenario" /> */}
           <Tab label="Execution Info" value="info" />
         </Tabs>
       </Box>
