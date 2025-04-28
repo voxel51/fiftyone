@@ -44,6 +44,8 @@ class OperatorConfig(object):
         resolve_execution_options_on_change (None): whether to resolve
             execution options dynamically when inputs change. By default, this
             behavior will match the ``dynamic`` setting
+        required (False): whether the operator must always be enabled.
+            Builtin operators may set this to True to prevent disabling them.
     """
 
     def __init__(
@@ -65,6 +67,8 @@ class OperatorConfig(object):
         allow_delegated_execution=False,
         default_choice_to_delegated=False,
         resolve_execution_options_on_change=None,
+        required=False,
+        is_read_only=None,
         **kwargs
     ):
         self.name = name
@@ -83,6 +87,8 @@ class OperatorConfig(object):
         self.allow_immediate_execution = allow_immediate_execution
         self.allow_delegated_execution = allow_delegated_execution
         self.default_choice_to_delegated = default_choice_to_delegated
+        self.required = required
+        self.is_read_only = is_read_only
         if resolve_execution_options_on_change is None:
             self.resolve_execution_options_on_change = dynamic
         else:
@@ -110,6 +116,8 @@ class OperatorConfig(object):
             "allow_delegated_execution": self.allow_delegated_execution,
             "default_choice_to_delegated": self.default_choice_to_delegated,
             "resolve_execution_options_on_change": self.resolve_execution_options_on_change,
+            "required": self.required,
+            "is_read_only": self.is_read_only,
         }
 
 

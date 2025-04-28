@@ -218,6 +218,8 @@ export type OperatorConfigOptions = {
   resolveExecutionOptionsOnChange?: boolean;
   skipInput?: boolean;
   skipOutput?: boolean;
+  required?: boolean;
+  isReadOnly?: boolean;
 };
 export class OperatorConfig {
   public name: string;
@@ -236,6 +238,8 @@ export class OperatorConfig {
   public resolveExecutionOptionsOnChange = false;
   public skipInput: boolean;
   public skipOutput: boolean;
+  public required: boolean;
+  public isReadOnly: boolean;
 
   constructor(options: OperatorConfigOptions) {
     this.name = options.name;
@@ -256,6 +260,8 @@ export class OperatorConfig {
       options.resolveExecutionOptionsOnChange || false;
     this.skipInput = options.skipInput || false;
     this.skipOutput = options.skipOutput || false;
+    this.required = options.required;
+    this.isReadOnly = options.isReadOnly;
   }
   static fromJSON(json) {
     return new OperatorConfig({
@@ -275,6 +281,8 @@ export class OperatorConfig {
       resolveExecutionOptionsOnChange: json.resolve_execution_options_on_change,
       skipInput: json.skip_input,
       skipOutput: json.skip_output,
+      required: json.required,
+      isReadOnly: json.is_read_only,
     });
   }
 }
