@@ -153,7 +153,7 @@ async def aggregate_resolver(
     counts = [len(a) for a in aggregations]
     flattened = [item for sublist in aggregations for item in sublist]
 
-    result = await view._async_aggregate(flattened, debug=True)
+    result = await view._async_aggregate(flattened)
 
     results = []
     offset = 0
