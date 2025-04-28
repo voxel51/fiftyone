@@ -38,7 +38,8 @@ ENABLE_CACHING = (
 CACHE_TTL = 30 * 24 * 60 * 60  # 30 days in seconds
 SUPPORTED_EVALUATION_TYPES = ["classification", "detection", "segmentation"]
 
-ENABLE_CACHING = False
+ENABLE_CACHING = True
+CACHE_VERSION = 1
 
 
 class EvaluationPanel(Panel):
@@ -466,7 +467,7 @@ class EvaluationPanel(Panel):
         evaluation_data = (
             store.get(computed_eval_id) if ENABLE_CACHING else None
         )
-        if evaluation_data is None:
+        if not is_cache_valid(evaluation_data):
             info = ctx.dataset.get_evaluation_info(computed_eval_key)
             evaluation_type = info.config.type
             serialized_info = info.serialize()
@@ -506,8 +507,6 @@ class EvaluationPanel(Panel):
                     metrics["num_incorrect"],
                 ) = self.get_correct_incorrect(results)
 
-            scenarios = self.get_scenarios(ctx, computed_eval_id)
-
             evaluation_data = {
                 "metrics": metrics,
                 "custom_metrics": self.get_custom_metrics(results),
@@ -515,7 +514,7 @@ class EvaluationPanel(Panel):
                 "confusion_matrices": self.get_confusion_matrices(results),
                 "per_class_metrics": per_class_metrics,
                 "mask_targets": mask_targets,
-                "scenarios": scenarios,
+                "version": CACHE_VERSION,
             }
             ctx.panel.set_state("missing", results.missing)
 
@@ -525,6 +524,11 @@ class EvaluationPanel(Panel):
                     store.set(computed_eval_id, evaluation_data, ttl=CACHE_TTL)
                 except Exception:
                     traceback.print_exc()
+
+        # Skip caching scenarios as they are updated frequently
+        evaluation_data["scenarios"] = self.get_scenarios(
+            ctx, computed_eval_id
+        )
 
         ctx.panel.set_data(f"evaluation_{computed_eval_key}", evaluation_data)
 
@@ -1281,3 +1285,12 @@ def _get_segmentation_tp_fp_fn_ids(results, field):
 
 def _to_object_ids(ids):
     return [ObjectId(_id) for _id in ids]
+
+
+def is_cache_valid(cached_data):
+    if cached_data is None:
+        return False
+
+    cached_data_version = cached_data.get("version", None)
+
+    return cached_data_version == CACHE_VERSION
