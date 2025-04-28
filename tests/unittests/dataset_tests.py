@@ -1065,6 +1065,7 @@ class DatasetTests(unittest.TestCase):
             )
         )
 
+    @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
     def test_update_samples(self):
         dataset = fo.Dataset()
@@ -1109,6 +1110,7 @@ class DatasetTests(unittest.TestCase):
 
         self.assertTupleEqual(dataset.bounds("int"), (3, 52))
 
+    @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
     def test_map_samples(self):
         dataset = fo.Dataset()

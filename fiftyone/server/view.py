@@ -183,10 +183,6 @@ def get_extended_view(
         )
         view = extend_view(view, extended_stages)
 
-    if pagination_data:
-        # omit all dict field values for performance, not needed by grid
-        view = _project_pagination_paths(view, media_types)
-
     if filters:
         if "tags" in filters:
             tags = filters.get("tags")
@@ -225,8 +221,6 @@ def get_extended_view(
     if pagination_data:
         # omit all dict field values for performance, not needed by grid
         view = _project_pagination_paths(view, media_types)
-
-    if pagination_data:
         view = _add_labels_tags_counts(view)
 
     return view

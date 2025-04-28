@@ -9762,6 +9762,7 @@ class SampleCollection(object):
         _big_result=True,
         _raw=False,
         _field=None,
+        _enforce_natural_order=True,
     ):
         """Extracts the values of a field from all samples in the collection.
 
@@ -9869,6 +9870,35 @@ class SampleCollection(object):
         Returns:
             the list of values
         """
+
+        # Optimization: if we do not need to follow insertion order, we can
+        # potentially use a covered index query to get the values directly from
+        # the index and avoid a COLLSCAN
+        if not _enforce_natural_order:
+            field = None
+            if isinstance(field_or_expr, str):
+                field = field_or_expr
+            elif etau.is_container(field_or_expr) and len(field_or_expr) == 1:
+                field = field_or_expr[0]
+
+            # @todo consider supporting non-default fields that are indexed
+            # @todo can we support some non-full collections?
+            if (
+                field in ("id", "_id", "filepath")
+                and expr is None
+                and self._is_full_collection()
+            ):
+                try:
+                    return foo.get_indexed_values(
+                        self._dataset._sample_collection,
+                        field,
+                        values_only=True,
+                    )
+                except ValueError as e:
+                    # When get_indexed_values() raises a ValueError, it is a
+                    # recommendation of an index to create
+                    logger.debug(e)
+
         make = lambda field_or_expr: foa.Values(
             field_or_expr,
             expr=expr,
