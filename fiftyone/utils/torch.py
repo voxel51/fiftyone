@@ -5,7 +5,6 @@ PyTorch utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-
 import logging
 import itertools
 import multiprocessing
@@ -704,50 +703,39 @@ class TorchImageModel(
         return self._predict_all(imgs)
 
     def _predict_all(self, imgs):
-        if isinstance(imgs, list) and len(imgs) and isinstance(imgs[0], dict):
-            orig_images = [img.get("orig_img") for img in imgs]
-            images = [img.get("img") for img in imgs]
-        else:
-            orig_images = imgs
-            images = imgs
-
         if self._preprocess and self._transforms is not None:
-            images = [self._transforms(img) for img in images]
+            imgs = [self._transforms(img) for img in imgs]
 
         height, width = None, None
 
         if self.config.raw_inputs:
             # Feed images as list
             if self._output_processor is not None:
-                img = images[0]
-                height, width = _get_image_dims(img)
+                img = imgs[0]
+                if isinstance(img, torch.Tensor):
+                    height, width = img.size()[-2:]
+                elif isinstance(img, Image.Image):
+                    width, height = img.size
+                elif isinstance(img, np.ndarray):
+                    height, width = img.shape[:2]
         else:
             # Feed images as stacked Tensor
-            if isinstance(images, (list, tuple)):
-                images = torch.stack(images)
+            if isinstance(imgs, (list, tuple)):
+                imgs = torch.stack(imgs)
 
-            height, width = images.size()[-2:]
+            height, width = imgs.size()[-2:]
 
-            images = images.to(self._device)
+            imgs = imgs.to(self._device)
             if self._using_half_precision:
-                images = images.half()
+                imgs = imgs.half()
 
-        output = self._forward_pass(images)
-
-        if isinstance(output, dict):
-            # This is required for Ultralytics post-processing.
-            output["orig_imgs"] = orig_images
-            height, width = _get_image_dims(orig_images[0])
-            output["imgs"] = images
+        output = self._forward_pass(imgs)
 
         if self._output_processor is None:
-            _output = (
-                output.get("preds") if isinstance(output, dict) else output
-            )
-            if isinstance(_output, torch.Tensor):
-                _output = _output.detach().cpu().numpy()
+            if isinstance(output, torch.Tensor):
+                output = output.detach().cpu().numpy()
 
-            return _output
+            return output
 
         if self.has_logits:
             self._output_processor.store_logits = self.store_logits
@@ -1700,6 +1688,7 @@ class FiftyOneTorchDataset(Dataset):
             return e
 
     def __getitem__(self, index):
+
         # if self._samples is None at this point then
         # worker_init was probably never called
         # meaning we are working on main process
@@ -1804,9 +1793,9 @@ class TorchImageDataset(Dataset):
             image_path = self.image_paths[idx].decode()
 
             img = _load_image(image_path, self.use_numpy, self.force_rgb)
+
             if self.transform is not None:
                 img = self.transform(img)
-
         except Exception as e:
             if not self.skip_failures:
                 raise e
@@ -2312,19 +2301,6 @@ def _load_image(image_path, use_numpy, force_rgb):
         img = img.convert("RGB")
 
     return img
-
-
-def _get_image_dims(img):
-    if isinstance(img, torch.Tensor):
-        height, width = img.size()[-2:]
-    elif isinstance(img, Image.Image):
-        width, height = img.size
-    elif isinstance(img, np.ndarray):
-        height, width = img.shape[:2]
-    else:
-        height, width = None, None
-
-    return height, width
 
 
 # taken from https://github.com/ppwwyyxx/RAM-multiprocess-dataloader/blob/795868a37446d61412b9a58dbb1b7c76e75d39c4/serialize.py#L19
