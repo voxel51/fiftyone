@@ -36,7 +36,7 @@ jobs:
       - name: Install requirements
         if: steps.pip-cache.outputs.cache-hit != true
         run: |
-          pip install -U pip wheel setuptools
+          pip install -U pip==25.0.1 wheel setuptools
           pip install -r requirements/github.txt
       - name: Install fiftyone
         run: |
