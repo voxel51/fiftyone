@@ -64,9 +64,7 @@ async def _fetch_geo_points(
 
     collection = foo.get_async_db_conn()[view._dataset._sample_collection_name]
 
-    # todo: figure out why hinting by id leads to 100% IXSCAN
-    # because...it should not...
-    agg_results = foo.aggregate(collection, pipeline, hints={"_id": 1})
+    agg_results = foo.aggregate(collection, pipeline)
 
     results = {}
 
@@ -95,7 +93,6 @@ class GeoPoints(HTTPEndpoint):
             )
 
         try:
-            # Load dataset to get last_modified_at
             dataset = fo.load_dataset(dataset_name)
             if not dataset:
                 return JSONResponse(
