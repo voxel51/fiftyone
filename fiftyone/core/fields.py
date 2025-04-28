@@ -5,6 +5,7 @@ Dataset sample fields.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from copy import deepcopy
 from datetime import date, datetime
 import numbers
@@ -2086,6 +2087,19 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
 
         if prev is not None:
             prev._set_dataset(None, None)
+
+
+class EagerValidatingEmbeddedDocumentField(EmbeddedDocumentField):
+    """An embedded document field that validates its value when setting it."""
+
+    def __set__(self, instance, value):
+        # let None values pass
+        if value is None:
+            super().__set__(instance, value)
+            return
+
+        self.validate(value)
+        super().__set__(instance, value)
 
 
 class EmbeddedDocumentListField(

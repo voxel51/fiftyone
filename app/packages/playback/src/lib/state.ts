@@ -385,9 +385,7 @@ export const updateTimelineConfigAtom = atom(
       configDelta,
     }: {
       name: TimelineName;
-      configDelta: Partial<
-        Omit<FoTimelineConfig, "totalFrames" | "defaultFrameNumber">
-      >;
+      configDelta: Partial<Omit<FoTimelineConfig, "defaultFrameNumber">>;
     }
   ) => {
     const oldConfig = get(_timelineConfigs(name));

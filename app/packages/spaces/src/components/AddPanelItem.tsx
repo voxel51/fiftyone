@@ -13,6 +13,7 @@ export default function AddPanelItem({
   label,
   onClick,
   spaceId,
+  showAlpha,
   showBeta,
   showNew,
 }: AddPanelItemProps) {
@@ -65,6 +66,17 @@ export default function AddPanelItem({
           }}
         >
           NEW
+        </span>
+      )}
+      {showAlpha && (
+        <span
+          style={{
+            color: theme.custom.primarySoft,
+            fontSize: "11px",
+            marginLeft: "5px",
+          }}
+        >
+          ALPHA
         </span>
       )}
       {showBeta && (

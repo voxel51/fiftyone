@@ -15,23 +15,23 @@ import Map, { Layer, MapRef, Source } from "react-map-gl";
 import { useRecoilState, useRecoilValue } from "recoil";
 import useResizeObserver from "use-resize-observer";
 
-import useGeoLocations from "./useGeoLocations";
 import DrawControl from "./Draw";
+import useGeoLocations, { SampleLocationMap } from "./useGeoLocations";
 
-import {
-  activeField,
-  defaultSettings,
-  mapStyle,
-  MAP_STYLES,
-  Settings,
-} from "./state";
-import Options from "./Options";
+import { useSetPanelCloseEffect } from "@fiftyone/spaces";
 import {
   useBeforeScreenshot,
   useResetExtendedSelection,
 } from "@fiftyone/state";
 import { SELECTION_SCOPE } from "./constants";
-import { useSetPanelCloseEffect } from "@fiftyone/spaces";
+import Options from "./Options";
+import {
+  activeField,
+  defaultSettings,
+  MAP_STYLES,
+  mapStyle,
+  Settings,
+} from "./state";
 
 const fitBoundsOptions = { animate: false, padding: 30 };
 
@@ -52,10 +52,10 @@ const fitBounds = (
   map.fitBounds(computeBounds(data), fitBoundsOptions);
 };
 
-const createSourceData = (samples: {
-  [key: string]: [number, number];
-}): GeoJSON.FeatureCollection<GeoJSON.Point, { id: string }> => {
-  const entries = Object.entries(samples);
+const createSourceData = (
+  sampleLocationMap: SampleLocationMap
+): GeoJSON.FeatureCollection<GeoJSON.Point, { id: string }> => {
+  const entries = Object.entries(sampleLocationMap);
   if (entries.length === 0) return null;
 
   return {
@@ -74,12 +74,13 @@ const Panel: React.FC<{}> = () => {
   const view = useRecoilValue(fos.view);
   const filters = useRecoilValue(fos.filters);
 
-  let { loading, samples } = useGeoLocations({
+  const { loading, sampleLocationMap } = useGeoLocations({
     dataset,
     filters,
     view,
     path: useRecoilValue(activeField),
   });
+
   const settings = usePluginSettings<Required<Settings>>(
     "map",
     defaultSettings
@@ -98,32 +99,63 @@ const Panel: React.FC<{}> = () => {
         () => {
           mapRef.current && mapRef.current.resize();
         },
-        0,
+        10,
         {
           trailing: true,
         }
       ),
     []
   );
+
   const { ref } = useResizeObserver<HTMLDivElement>({
     onResize,
   });
 
   const data = React.useMemo(() => {
-    let source = samples;
+    let source = sampleLocationMap;
 
     if (selection) {
       source = {};
       for (const id of selection) {
-        if (samples[id]) {
-          source[id] = samples[id];
+        if (sampleLocationMap[id]) {
+          source[id] = sampleLocationMap[id];
         }
       }
     }
     return createSourceData(source);
-  }, [samples, selection]);
+  }, [sampleLocationMap, selection]);
 
-  const bounds = React.useMemo(() => data && computeBounds(data), [samples]);
+  const onCreate = React.useCallback(
+    (event) => {
+      const {
+        features: [polygon],
+      } = event;
+      const selected = new Set<string>();
+
+      for (let index = 0; index < data.features.length; index++) {
+        if (
+          contains(
+            polygon as GeoJSON.Feature<GeoJSON.Polygon>,
+            data.features[index]
+          )
+        ) {
+          selected.add(data.features[index].properties.id);
+        }
+      }
+
+      if (!selected.size) {
+        return;
+      }
+
+      setExtendedSelection({
+        selection: Array.from(selected),
+        scope: SELECTION_SCOPE,
+      });
+    },
+    [data, setExtendedSelection]
+  );
+
+  const bounds = React.useMemo(() => data && computeBounds(data), [data]);
 
   const [draw] = React.useState(
     () =>
@@ -168,7 +200,10 @@ const Panel: React.FC<{}> = () => {
     map.on("dragend", crosshair);
   }, []);
 
-  const length = React.useMemo(() => Object.keys(samples).length, [samples]);
+  const length = React.useMemo(
+    () => Object.keys(sampleLocationMap).length,
+    [sampleLocationMap]
+  );
 
   React.useEffect(() => {
     mapRef.current && data && fitBounds(mapRef.current, data);
@@ -202,7 +237,7 @@ const Panel: React.FC<{}> = () => {
     );
   }
 
-  const noData = !Object.keys(samples).length || !data;
+  const noData = !length || !data;
 
   if (noData && !loading) {
     return <foc.Loading>No data</foc.Loading>;
@@ -297,35 +332,7 @@ const Panel: React.FC<{}> = () => {
               type={"circle"}
             />
           </Source>
-          <DrawControl
-            draw={draw}
-            onCreate={(event) => {
-              const {
-                features: [polygon],
-              } = event;
-              const selected = new Set<string>();
-
-              for (let index = 0; index < data.features.length; index++) {
-                if (
-                  contains(
-                    polygon as GeoJSON.Feature<GeoJSON.Polygon>,
-                    data.features[index]
-                  )
-                ) {
-                  selected.add(data.features[index].properties.id);
-                }
-              }
-
-              if (!selected.size) {
-                return;
-              }
-
-              setExtendedSelection({
-                selection: Array.from(selected),
-                scope: SELECTION_SCOPE,
-              });
-            }}
-          />
+          <DrawControl draw={draw} onCreate={onCreate} />
         </Map>
       )}
 

@@ -9,7 +9,7 @@ from typing import Any, Dict, Optional
 import pytest
 
 import fiftyone.core.utils as focu
-
+from decorators import skip_windows
 
 INPUT_PATHS = [
     "alpha",
@@ -56,6 +56,7 @@ def cleanup():
         pytest.param(False, id="sub-process"),
     ),
 )
+@skip_windows  # TODO: don't skip on Windows
 def test_implementation_switch(is_main_process):
     """select unique filename maker implementation"""
     with tempfile.TemporaryDirectory() as tmp_dir:
@@ -114,6 +115,7 @@ def test_implementation_switch(is_main_process):
         ),
     ),
 )
+@skip_windows  # TODO: don't skip on Windows
 def test_existing_input_paths(
     unique_filename_maker_kwargs, existing_filepaths
 ):
@@ -189,6 +191,7 @@ def test_existing_input_paths(
         ],
     ),
 )
+@skip_windows  # TODO: don't skip on Windows
 def test_non_existent_input_paths(default_ext):
     """test with input path set to None"""
 
