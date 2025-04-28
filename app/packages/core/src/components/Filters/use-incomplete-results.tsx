@@ -13,12 +13,13 @@ import { QUERY_PERFORMANCE_RESULTS } from "../../utils/links";
 const IncompleteResults = () => {
   const theme = useTheme();
   return (
-    <div style={{ textDecoration: "underline", textAlign: "right" }}>
+    <div style={{ textAlign: "right" }}>
+      Incomplete results.{" "}
       <ExternalLink
-        style={{ color: theme.text.primary }}
+        style={{ color: theme.text.primary, textDecoration: "underline" }}
         href={QUERY_PERFORMANCE_RESULTS}
       >
-        incomplete results, create an index
+        create an index
         <Launch style={{ height: "1rem", marginTop: 4.5, marginLeft: 1 }} />
       </ExternalLink>
     </div>
