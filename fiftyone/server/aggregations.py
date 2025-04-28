@@ -220,7 +220,7 @@ def _resolve_path_aggregation(
         foa.Count(
             path if path and path != "" else None,
             _optimize=query_performance,
-            _hint=hint,
+            _hint=hint if query_performance else None,
         )
     ]
     field = view.get_field(path)
