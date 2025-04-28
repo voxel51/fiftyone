@@ -2471,8 +2471,13 @@ def safe_relpath(path, start=None, default=None):
     Returns:
         the relative path
     """
-    relpath = os.path.relpath(path, start)
-    if relpath.startswith(".."):
+    try:
+        relpath = os.path.relpath(path, start)
+    except ValueError:
+        # Different drives on Windows
+        relpath = None
+
+    if relpath is None or relpath.startswith(".."):
         if default is not None:
             return default
 
