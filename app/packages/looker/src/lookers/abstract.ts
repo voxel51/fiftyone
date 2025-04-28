@@ -1,18 +1,24 @@
 import { Lookers } from "@fiftyone/state";
 import {
+  jotaiStore,
+  removeAllHoveredInstances,
+  updateHoveredInstances,
+} from "@fiftyone/state/src/jotai";
+import {
   AppError,
   DATE_FIELD,
   DATE_TIME_FIELD,
-  LABELS,
-  LABELS_PATH,
   LABEL_LISTS,
   LABEL_LISTS_MAP,
+  LABELS,
+  LABELS_PATH,
   LIST_FIELD,
   Schema,
   withPath,
 } from "@fiftyone/utilities";
 import { isEmpty } from "lodash";
 import { v4 as uuid } from "uuid";
+import { VideoLooker } from "..";
 import {
   BASE_ALPHA,
   DASH_LENGTH,
@@ -26,6 +32,12 @@ import { COMMON_SHORTCUTS, LookerElement } from "../elements/common";
 import { ClassificationsOverlay, loadOverlays } from "../overlays";
 import { CONTAINS, Overlay } from "../overlays/base";
 import processOverlays from "../processOverlays";
+import {
+  FO_LABEL_HOVERED_EVENT,
+  FO_LABEL_UNHOVERED_EVENT,
+  LabelHoveredEvent,
+  selectiveRenderingEventBus,
+} from "../selective-rendering-events";
 import {
   BaseState,
   Coordinates,
@@ -183,7 +195,56 @@ export abstract class AbstractLooker<
     return state.overlaysPrepared && state.dimensions && state.loaded;
   }
 
-  protected init() {}
+  private labelHoveredListener = (e: LabelHoveredEvent) => {
+    const {
+      instanceId,
+      sampleId: _sourceSampleId,
+      labelId: _sourceLabelId,
+    } = e.detail;
+
+    // .find() instead of .filter() because label "instance" is unique per looker
+    const label = this.currentOverlays.find(
+      (o) => o.label.instance?._id === instanceId
+    );
+
+    if (!label) {
+      return;
+    }
+
+    jotaiStore.set(updateHoveredInstances, {
+      sampleId: this.state.config.sampleId,
+      instanceId,
+      labelId: label.label.id,
+      field: label.field,
+      frameNumber: this instanceof VideoLooker ? this.frameNumber : undefined,
+    });
+
+    this.updater({
+      mouseIsOnOverlay: true,
+    });
+  };
+
+  private labelUnhoveredListener = () => {
+    jotaiStore.set(removeAllHoveredInstances);
+
+    this.updater({
+      mouseIsOnOverlay: false,
+    });
+  };
+
+  protected init() {
+    selectiveRenderingEventBus.on(
+      FO_LABEL_HOVERED_EVENT,
+      this.labelHoveredListener,
+      this.abortController.signal
+    );
+
+    selectiveRenderingEventBus.on(
+      FO_LABEL_UNHOVERED_EVENT,
+      this.labelUnhoveredListener,
+      this.abortController.signal
+    );
+  }
 
   public subscribeToState(
     field: string,
@@ -662,11 +723,21 @@ export abstract class AbstractLooker<
             field: field,
             labelId: label.id,
             sampleId: this.sample.id,
+            instanceId: label.instanceId,
           });
         }
       } else {
-        const { id: labelId, field } = overlay.getSelectData(this.state);
-        labels.push({ labelId, field, sampleId: this.sample.id });
+        const {
+          id: labelId,
+          field,
+          instanceId,
+        } = overlay.getSelectData(this.state);
+        labels.push({
+          labelId,
+          field,
+          instanceId,
+          sampleId: this.sample.id,
+        });
       }
     }
 

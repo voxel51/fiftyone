@@ -72,3 +72,9 @@ export const PCD_SHADING_GRADIENTS: Gradients = [
   [0.888, "rgb(69,117,180)"],
   [1.0, "rgb(49,54,149)"],
 ];
+
+// peach color, a mix of orange and white
+export const LABEL_3D_HOVERED_AND_SELECTED_COLOR = "#de7e5d";
+export const LABEL_3D_HOVERED_COLOR = "#f2f0ef";
+export const LABEL_3D_INSTANCE_HOVERED_COLOR = "#ffffff";
+export const LABEL_3D_SIMILAR_SELECTED_COLOR = "#ffa500";

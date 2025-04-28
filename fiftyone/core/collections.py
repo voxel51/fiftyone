@@ -6,34 +6,29 @@ Interface for sample collections.
 |
 """
 
-from collections import defaultdict
-from copy import copy
-from datetime import datetime
 import fnmatch
 import itertools
 import logging
-import numbers
 import os
 import random
 import string
 import timeit
 import warnings
-
-from bson import ObjectId
-from pymongo import InsertOne, UpdateOne, UpdateMany, WriteConcern
+from collections import defaultdict
+from copy import copy
+from datetime import datetime
 
 import eta.core.serial as etas
 import eta.core.utils as etau
-
 import fiftyone.core.aggregations as foa
 import fiftyone.core.annotation as foan
 import fiftyone.core.brain as fob
-import fiftyone.core.expressions as foe
-from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.evaluation as foev
+import fiftyone.core.expressions as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
+import fiftyone.core.map as focm
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fomt
 import fiftyone.core.models as fomo
@@ -42,6 +37,9 @@ import fiftyone.core.runs as fors
 import fiftyone.core.sample as fosa
 import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
+from bson import ObjectId
+from fiftyone.core.expressions import ViewField as F
+from pymongo import InsertOne, UpdateMany, UpdateOne, WriteConcern
 
 fod = fou.lazy_import("fiftyone.core.dataset")
 fos = fou.lazy_import("fiftyone.core.stages")
@@ -125,6 +123,7 @@ class SaveContext(object):
         self._batching_strategy = batching_strategy
         self._curr_batch_size = None
         self._curr_batch_size_bytes = None
+        self._encoding_ratio = 1.0
         self._last_time = None
 
     def __enter__(self):
@@ -184,7 +183,10 @@ class SaveContext(object):
                     len(str(op)) for op in frame_ops
                 )
 
-            if self._curr_batch_size_bytes >= self.batch_size:
+            if (
+                self._curr_batch_size_bytes
+                >= self.batch_size * self._encoding_ratio
+            ):
                 self._save_batch()
                 self._curr_batch_size_bytes = 0
         elif self._batching_strategy == "latency":
@@ -193,13 +195,29 @@ class SaveContext(object):
                 self._last_time = timeit.default_timer()
 
     def _save_batch(self):
+        encoded_size = -1
         if self._sample_ops:
-            foo.bulk_write(self._sample_ops, self._sample_coll, ordered=False)
+            res = foo.bulk_write(
+                self._sample_ops,
+                self._sample_coll,
+                ordered=False,
+                batcher=False,
+            )[0]
+            encoded_size += res.bulk_api_result.get("nBytes", 0)
             self._sample_ops.clear()
 
         if self._frame_ops:
-            foo.bulk_write(self._frame_ops, self._frame_coll, ordered=False)
+            res = foo.bulk_write(
+                self._frame_ops, self._frame_coll, ordered=False, batcher=False
+            )[0]
+            encoded_size += res.bulk_api_result.get("nBytes", 0)
             self._frame_ops.clear()
+
+        self._encoding_ratio = (
+            self._curr_batch_size_bytes / encoded_size
+            if encoded_size > 0 and self._curr_batch_size_bytes
+            else 1.0
+        )
 
         if self._batch_ids and self._is_generated:
             self.sample_collection._sync_source(ids=self._batch_ids)
@@ -3933,6 +3951,97 @@ class SampleCollection(object):
         return foev.EvaluationMethod.list_runs(
             self, type=type, method=method, **kwargs
         )
+
+    def map_samples(
+        self,
+        map_fcn,
+        save=False,
+        num_workers=None,
+        batch_size=None,
+        batch_method="id",
+        progress=None,
+        parallelize_method="process",
+        skip_failures=False,
+    ):
+        """
+        Applies `map_fcn` to each sample using the specified backend strategy
+        and returns an iterator.
+
+        Args:
+            map_fcn: Function to apply to each sample.
+            save (False): Whether to save any modified samples.
+            num_workers (None): Number of workers.
+            batch_size (None): Number of samples per batch. If None, the batch size
+                is automatically calculated to be the number of samples per worker.
+            batch_method ("id"): Explicit method for batching samples. Supported
+              methods are 'id' and 'slice'
+
+            progress (None): Whether to show progress bar. If None, uses the
+                default value ``fiftyone.config.show_progress_bars``. If "workers",
+                shows a progress bar for each worker.
+            parallelize_method: Explicit method to use for parallelization.
+              Supported methods are 'process' and 'thread'.
+            skip_failures (False): whether to gracefully continue without
+                raising an error if the update function raises an
+                exception for a sample.
+
+
+        Returns:
+            A generator yielding processed sample results.
+        """
+        mapper = focm.MapperFactory.create(
+            parallelize_method, num_workers, batch_method, batch_size
+        )
+
+        yield from mapper.map_samples(
+            self,
+            map_fcn,
+            progress=progress,
+            save=save,
+            skip_failures=skip_failures,
+        )
+
+    def update_samples(
+        self,
+        update_fcn,
+        num_workers=None,
+        batch_size=None,
+        batch_method=None,
+        progress=None,
+        parallelize_method="process",
+        skip_failures=True,
+    ):
+        """
+        Applies `map_fcn` to each sample using the specified backend strategy.
+
+        Args:
+            update_fcn: Function to apply to each sample.
+            num_workers (None): Number of workers.
+            batch_size (None): Number of samples per batch. If None, the batch size
+                is automatically calculated to be the number of samples per worker.
+            batch_method (None): Explicit method for batching samples. Supported
+              methods are 'id' and 'slice'.
+            progress (None): Whether to show progress bar. If None, uses the
+                default value ``fiftyone.config.show_progress_bars``. If "workers",
+                shows a progress bar for each worker.
+            parallelize_method: Explicit method to use for parallelization.
+              Supported methods are 'process' and 'thread'.
+            skip_failures (False): whether to gracefully continue without
+                raising an error if the update function raises an
+                exception for a sample.
+        """
+        mapper = focm.MapperFactory.create(
+            parallelize_method, num_workers, batch_method, batch_size
+        )
+
+        for _ in mapper.map_samples(
+            self,
+            update_fcn,
+            progress=progress,
+            save=True,
+            skip_failures=skip_failures,
+        ):
+            ...
 
     def rename_evaluation(self, eval_key, new_eval_key):
         """Replaces the key for the given evaluation with a new key.
@@ -8939,6 +9048,7 @@ class SampleCollection(object):
         _big_result=True,
         _raw=False,
         _field=None,
+        _enforce_natural_order=True,
     ):
         """Extracts the values of a field from all samples in the collection.
 
@@ -9046,6 +9156,35 @@ class SampleCollection(object):
         Returns:
             the list of values
         """
+
+        # Optimization: if we do not need to follow insertion order, we can
+        # potentially use a covered index query to get the values directly from
+        # the index and avoid a COLLSCAN
+        if not _enforce_natural_order:
+            field = None
+            if isinstance(field_or_expr, str):
+                field = field_or_expr
+            elif etau.is_container(field_or_expr) and len(field_or_expr) == 1:
+                field = field_or_expr[0]
+
+            # @todo consider supporting non-default fields that are indexed
+            # @todo can we support some non-full collections?
+            if (
+                field in ("id", "_id", "filepath")
+                and expr is None
+                and self._is_full_collection()
+            ):
+                try:
+                    return foo.get_indexed_values(
+                        self._dataset._sample_collection,
+                        field,
+                        values_only=True,
+                    )
+                except ValueError as e:
+                    # When get_indexed_values() raises a ValueError, it is a
+                    # recommendation of an index to create
+                    logger.debug(e)
+
         make = lambda field_or_expr: foa.Values(
             field_or_expr,
             expr=expr,

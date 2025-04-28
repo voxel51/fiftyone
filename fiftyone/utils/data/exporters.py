@@ -1262,6 +1262,7 @@ class MediaExporter(object):
             manifest_path = self.export_path
             manifest = {}
 
+        # Not multi-process safe when user chunk size
         self._filename_maker = fou.UniqueFilenameMaker(
             output_dir=output_dir,
             rel_dir=self.rel_dir,
@@ -1882,9 +1883,9 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         self._metadata["name"] = sample_collection._dataset.name
         self._metadata["media_type"] = sample_collection.media_type
         if sample_collection.media_type == fomm.GROUP:
-            self._metadata[
-                "group_media_types"
-            ] = sample_collection.group_media_types
+            self._metadata["group_media_types"] = (
+                sample_collection.group_media_types
+            )
 
         schema = sample_collection._serialize_field_schema()
         self._metadata["sample_fields"] = schema
@@ -1918,17 +1919,17 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
             info["mask_targets"] = sample_collection._serialize_mask_targets()
 
         if sample_collection.default_mask_targets:
-            info[
-                "default_mask_targets"
-            ] = sample_collection._serialize_default_mask_targets()
+            info["default_mask_targets"] = (
+                sample_collection._serialize_default_mask_targets()
+            )
 
         if sample_collection.skeletons:
             info["skeletons"] = sample_collection._serialize_skeletons()
 
         if sample_collection.default_skeleton:
-            info[
-                "default_skeleton"
-            ] = sample_collection._serialize_default_skeleton()
+            info["default_skeleton"] = (
+                sample_collection._serialize_default_skeleton()
+            )
 
         if sample_collection.app_config.is_custom():
             info["app_config"] = sample_collection.app_config.to_dict(

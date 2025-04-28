@@ -13,7 +13,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "1.5.0"
+VERSION = "1.6.0"
 
 
 def get_version():
@@ -73,6 +73,7 @@ INSTALL_REQUIRES = [
     "xmltodict",
     "universal-analytics-python3>=1.0.1,<2",
     "pydash",
+    "tqdm",
     # internal packages
     "fiftyone-brain>=0.20.1,<0.21",
     "fiftyone-db>=0.4,<2.0",
