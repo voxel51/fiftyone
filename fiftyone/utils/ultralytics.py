@@ -189,8 +189,31 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
     def _download_model(self, config):
         config.download_model_if_necessary()
 
+    def _set_predictor(self, config, model):
+        custom = {
+            "conf": config.confidence_thresh,
+            "batch": 1,
+            "save": False,
+            "mode": "predict",
+            "rect": True,
+            "verbose": False,
+            "device": self._device,
+        }
+        args = {**custom, **model.overrides}
+        model.predictor = model.task_map[model.task]["predictor"](
+            overrides=args,
+            _callbacks=model.callbacks,
+        )
+        model.predictor.imgsz = (
+            config.image_size if config.image_size else (640, 640)
+        )
+        model.predictor.setup_model(model=model.model, verbose=False)
+        return model
+
     def _load_model(self, config):
         if config.model is not None:
+            if config.model.predictor is None:
+                config.model = self._set_predictor(config, config.model)
             return config.model
         else:
             entrypoint_fcn = config.entrypoint_fcn
@@ -217,23 +240,7 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
                 model.set_classes(config.classes)
 
         if not model.predictor:
-            custom = {
-                "conf": config.confidence_thresh,
-                "batch": 1,
-                "save": False,
-                "mode": "predict",
-                "rect": True,
-                "verbose": False,
-            }
-            args = {**model.overrides, **custom}
-            model.predictor = model.task_map[model.task]["predictor"](
-                overrides=args,
-                _callbacks=model.callbacks,
-            )
-            model.predictor.imgsz = (
-                config.image_size if config.image_size else (640, 640)
-            )
-            model.predictor.setup_model(model=model.model, verbose=False)
+            model = self._set_predictor(config, model)
         return model
 
     def _parse_classes(self, config):
@@ -381,6 +388,21 @@ class FiftyOneRTDETRModel(FiftyOneYOLOModel):
     pass
 
 
+class FiftyOneYOLOClassificationModel(FiftyOneYOLOModel):
+    """FiftyOne wrapper around an ``ultralytics.RTDETR`` model.
+
+    Args:
+        config: a :class:`FiftyOneYOLOModelConfig`
+    """
+
+    def _preprocess_im(self, img):
+        orig_img = img
+        return {
+            "img": self._model.predictor.preprocess(img),
+            "orig_img": orig_img,
+        }
+
+
 def _convert_yolo_classification_model(model):
     config = FiftyOneYOLOModelConfig(
         {
@@ -504,19 +526,29 @@ class UltralyticsClassificationOutputProcessor(
 ):
     """Converts Ultralytics Classification model outputs to FiftyOne format."""
 
-    def __init__(
-        self,
-        classes=None,
-        store_logits=False,
-        post_processor=None,
-    ):
+    def __init__(self, classes=None, store_logits=False, post_processor=None):
         super().__init__(classes=classes, store_logits=store_logits)
         self.post_processor = post_processor
 
     def __call__(self, output, frame_size, confidence_thresh=None):
         results = self.post_process(output)
-        preds = [{"logits": result.probs} for result in results]
-        return super().__call__(preds, frame_size, confidence_thresh)
+        classifications = []
+        for result in results:
+            logits = result.probs.data.detach().cpu().numpy()
+            score = result.probs.top1conf.detach().cpu().numpy()
+            label = self.classes[result.probs.top1]
+
+            if confidence_thresh is not None and score < confidence_thresh:
+                classification = None
+            else:
+                classification = fol.Classification(
+                    label=label,
+                    confidence=score,
+                )
+                if self.store_logits:
+                    classification.logits = logits
+            classifications.append(classification)
+        return classifications
 
 
 class UltralyticsDetectionOutputProcessor(
