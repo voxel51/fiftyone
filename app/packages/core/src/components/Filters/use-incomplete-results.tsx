@@ -18,7 +18,7 @@ const IncompleteResults = () => {
         style={{ color: theme.text.primary }}
         href={QUERY_PERFORMANCE_RESULTS}
       >
-        incomplete results, create an index
+        incomplete search, create an index
         <Launch style={{ height: "1rem", marginTop: 4.5, marginLeft: 1 }} />
       </ExternalLink>
     </div>
