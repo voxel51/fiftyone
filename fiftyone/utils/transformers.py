@@ -691,7 +691,7 @@ class FiftyOneZeroShotTransformer(
             return self._input_ids
         self._input_ids = self.transforms.processor(
             text=self.text_prompts,
-            **self.config.transformers_processor_kwargs,
+            **(self.transforms.kwargs),
         )["input_ids"]
         return self._input_ids
 
