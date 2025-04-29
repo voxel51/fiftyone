@@ -1,5 +1,5 @@
 import * as fos from "@fiftyone/state";
-import { getFetchFunction, Stage } from "@fiftyone/utilities";
+import { getFetchFunction } from "@fiftyone/utilities";
 import { LRUCache } from "lru-cache";
 import React from "react";
 
@@ -20,7 +20,8 @@ const geoLocationsCache = new LRUCache<string, SampleLocationMap>({
 
 const fetchGeoLocations = async (params: {
   filters: fos.State.Filters;
-  view: Stage[];
+  view: fos.State.Stage[];
+  extended: typeof fos.extendedStages;
   dataset: string;
   path: string;
 }): Promise<SampleLocationMap> => {
@@ -37,11 +38,13 @@ const useGeoLocations = ({
   path,
   dataset,
   filters,
+  extended,
   view,
 }: {
   path: string;
   dataset: fos.State.Dataset;
-  view: Stage[];
+  view: fos.State.Stage[];
+  extended: typeof fos.extendedStages;
   filters: fos.State.Filters;
 }): {
   loading: boolean;
@@ -56,9 +59,10 @@ const useGeoLocations = ({
       dataset.name,
       JSON.stringify(filters),
       JSON.stringify(view),
+      JSON.stringify(extended),
       path,
     ].join("-");
-  }, [dataset, filters, view, path]);
+  }, [dataset, filters, view, path, extended]);
 
   React.useEffect(() => {
     setLoading(true);
@@ -77,6 +81,7 @@ const useGeoLocations = ({
     fetchGeoLocations({
       filters,
       view,
+      extended,
       dataset: dataset.name,
       path,
     }).then((res) => {
@@ -84,7 +89,7 @@ const useGeoLocations = ({
       setSampleLocationMap(res);
       setLoading(false);
     });
-  }, [key, dataset, filters, view, path]);
+  }, [key, dataset, filters, view, path, extended]);
 
   return {
     loading,
