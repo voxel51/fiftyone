@@ -258,7 +258,7 @@ class BaseEvaluationMethod(foe.EvaluationMethod):
             try:
                 operator = foo.get_operator(metric)
                 fields.extend(
-                    operator.get_fields(samples, self.config.eval_key)
+                    operator.get_fields(samples, self.config, eval_key)
                 )
             except Exception as e:
                 logger.warning(
@@ -296,6 +296,9 @@ class BaseEvaluationMethod(foe.EvaluationMethod):
                     metric,
                     e,
                 )
+
+    def get_fields(self, samples, eval_key, include_custom_metrics=True):
+        return []
 
 
 class BaseEvaluationResults(foe.EvaluationResults):
