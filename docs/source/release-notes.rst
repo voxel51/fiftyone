@@ -14,6 +14,8 @@ Includes all updates from :ref:`FiftyOne 1.5.0 <release-notes-v1.5.0>`, plus:
 - Optimized plugin state using the Management API as the source of truth
   instead of the filesystem. This will prevent calling os.walk() on slow
   filesystems (nfs).
+- Added support for local log file streaming for
+  :ref:`delegated operations <enterprise-delegated-operations>`
 - Added a warning dialog about role re-upgrade limitations before admin
   downgrades a user
 - Fixed a misleading message during snapshot creation. Message now makes clear
@@ -23,6 +25,13 @@ Includes all updates from :ref:`FiftyOne 1.5.0 <release-notes-v1.5.0>`, plus:
 - Enabled use of a local filepath when setting the `logPath` for runs
 - Fixed a bug where certain transient 5xx errors were not being correctly
   retried
+- Fixed a bug where users with read-only access were unable to load a saved
+  view from a snapshot
+- Fixed a bug where the dataset access page UI displayed NO_ACCESS instead of
+  the accurate value.
+- Introduced FiftyOne versions for Sanic configuration variables, and increased
+  default values for: keep-alive, request-timeout, response-timeout,
+  websocket-max-size, and websocket-ping-timeout.
 
 .. _release-notes-v1.5.0:
 
