@@ -1088,7 +1088,7 @@ class ClassifierOutputProcessor(OutputProcessor):
         store_logits (False): whether to store logits in the model outputs
     """
 
-    def __init__(self, classes=None, store_logits=False):
+    def __init__(self, classes=None, store_logits=False, logits_key="logits"):
         if classes is None:
             raise ValueError(
                 "This model requires class labels, but none were available"
@@ -1096,6 +1096,7 @@ class ClassifierOutputProcessor(OutputProcessor):
 
         self.classes = classes
         self.store_logits = store_logits
+        self.logits_key = logits_key
 
     def __call__(self, output, _, confidence_thresh=None):
         """Parses the model output.
@@ -1112,7 +1113,7 @@ class ClassifierOutputProcessor(OutputProcessor):
             a list of :class:`fiftyone.core.labels.Classification` instances
         """
         if isinstance(output, dict):
-            output = output["logits"]
+            output = output[self.logits_key]
 
         logits = output.detach().cpu().numpy()
 

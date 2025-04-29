@@ -252,6 +252,8 @@ class FiftyOneTransformerConfig(fout.TorchImageModelConfig, HasZooModel):
     Args:
         model (None): a ``transformers`` model
         name_or_path (None): the name or path to a checkpoint file to load
+        transformer_processor_kwargs (None): a dict of kwargs to pass to the
+            ``transformers`` processor during input processing.
         embeddings_output_key (None): The key in the model output to access for embeddings.
             if set to `None`, the default value will be picked based on what is
             avaliable in the model's output with the following priority:
@@ -298,10 +300,27 @@ class FiftyOneTransformerConfig(fout.TorchImageModelConfig, HasZooModel):
 
         # load classes if they exist
         if self.hf_config.id2label is not None:
-            self.classes = [
-                self.hf_config.id2label[i]
-                for i in range(len(self.hf_config.id2label))
-            ]
+            if self.classes is None:
+                # only load classes if they are not already set
+                self.classes = [
+                    self.hf_config.id2label[i]
+                    for i in range(len(self.hf_config.id2label))
+                ]
+            else:
+                # if they are, this is either a zero shot model
+                # and the AutoConfig set some strange classes
+                # or the user is trying to override the classes
+                # in the latter case, strange things can happen
+                # not sure how to warn the user about this
+                logger.warning(
+                    "The classes passed to the FiftyOne model are different from the "
+                    "classes in the HugginFace Transformers model configuration. "
+                    "The classes passed to the FiftyOne model will be used."
+                )
+
+        self.transformers_processor_kwargs = self.parse_dict(
+            d, "transformers_processor_kwargs", default={}
+        )
 
         # embeddings config
         self.output_hidden_states = self.parse_bool(
@@ -331,7 +350,8 @@ class FiftyOneZeroShotTransformerConfig(FiftyOneTransformerConfig):
         text_prompt: the text prompt to use, e.g., ``"A photo of"``
         classes (None): a list of custom classes for zero-shot prediction
         class_prompts (None): a dict of class names to custom prompts for zero-shot.
-            If not specified, class prompts take the form of ``"{text_prompt} {class}"``.
+            If not specified, class prompts take the form of ``"{text_prompt} {class_name}"``,
+            otherwise, prompts take the form of ``"{text_prompt} {class_prompts[class_name]}"``.
     """
 
     def __init__(self, d):
@@ -481,12 +501,16 @@ class ZeroShotTransformerEmbeddingsMixin(EmbeddingsMixin):
         return self._embed(args)
 
     def _embed(self, args):
-        inputs = self.processor(images=args, return_tensors="pt")
+        # don't use the regular TransformerEmbeddingsMixin
+        # because doing the whole forward pass is slow
+        # and because HFT offer a cleaner way to do this
+        # via get_image_features
+        if self.preprocess:
+            inputs = self.processor(images=args, return_tensors="pt")
         with torch.no_grad():
-            image_features = self._model.base_model.get_image_features(
+            image_features = self._model.get_image_features(
                 **inputs.to(self._device)
             )
-
         return image_features.cpu().numpy()
 
 
@@ -504,7 +528,10 @@ class ZeroShotTransformerPromptMixin(PromptMixin):
         return self._embed_prompts(prompts).detach().cpu().numpy()
 
     def _embed_prompts(self, prompts):
-        inputs = self.processor(text=prompts, return_tensors="pt")
+        # I don't think this is ever called with preprocess = False
+        # but just in case
+        if self.preprocess:
+            inputs = self.processor(text=prompts, return_tensors="pt")
         with torch.no_grad():
             text_features = self._model.base_model.get_text_features(
                 **inputs.to(self._device)
@@ -629,7 +656,9 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
 
     def _load_transforms(self, config):
         processor = super()._load_transforms(config)
-        return _HFTransformsHandler(processor)
+        return _HFTransformsHandler(
+            processor, **(config.transformers_processor_kwargs)
+        )
 
     @staticmethod
     def collate_fn(batch):
@@ -643,7 +672,7 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
 class FiftyOneZeroShotTransformer(
     ZeroShotTransformerEmbeddingsMixin,
     ZeroShotTransformerPromptMixin,
-    fout.TorchImageModel,
+    FiftyOneTransformer,
 ):
     """FiftyOne wrapper around a ``transformers`` model.
 
@@ -654,53 +683,74 @@ class FiftyOneZeroShotTransformer(
     def __init__(self, config):
         super().__init__(config)
         self._text_prompts = None
+        self._input_ids = None
 
-    def _load_model(self, config):
-        if config.model is not None:
-            return config.model
+    @property
+    def input_ids(self):
+        if self._input_ids is not None:
+            return self._input_ids
+        self._input_ids = self.transforms.processor(
+            text=self.text_prompts,
+            **self.config.transformers_processor_kwargs,
+        )["input_ids"]
+        return self._input_ids
 
-        return transformers.AutoModel.from_pretrained(config.name_or_path)
+    @property
+    def text_prompts(self):
+        if self._text_prompts is None:
+            return self._get_text_prompts()
+        return self._text_prompts
 
     def _get_text_prompts(self):
-        if self._text_prompts is not None:
-            return self._text_prompts
-
         if self.classes is None and self.config.classes is None:
             return None
 
         if self.classes is None:
             self.classes = self.config.classes
 
-        if self.config.text_prompt is None:
-            self._text_prompts = self.classes
-        else:
-            self._text_prompts = [
-                "%s %s" % (self.config.text_prompt, c) for c in self.classes
-            ]
+        text_prompt = (
+            self.config.text_prompt if self.config.text_prompt else ""
+        )
+        class_prompts = (
+            self.config.class_prompts
+            if self.config.class_prompts
+            else {c: c for c in self.classes}
+        )
+
+        self._text_prompts = [
+            f"{text_prompt} {class_prompts[c]}" for c in self.classes
+        ]
 
         return self._text_prompts
 
-    def predict(self, arg):
-        raise NotImplementedError("Subclass must implement predict()")
+    def _predict_all(self, args):
+        # this solutions is awful
+        # it means that text embeddings are recomputed every time
+        # I haven't been able to find a way of caching the text embeddings
+        # without entirely ripping apart abstraction barriers
+        # between FiftyOne and HuggingFace Transformers
+        # This is especially painful because the text models
+        # are usually much slower than the image models
+        if self.preprocess:
+            args = {
+                "images": args,
+                "text": self.text_prompts,  # inject text prompts
+            }
+        else:
+            args.update({"input_ids": self.input_ids})
+        return super()._predict_all(args)
 
 
 class FiftyOneZeroShotTransformerForImageClassificationConfig(
     FiftyOneZeroShotTransformerConfig
 ):
-    """Configuration for a
-    :class:`FiftyOneZeroShotTransformerForImageClassification`.
-
-    Args:
-        model (None): a ``transformers`` model
-        name_or_path (None): the name or path to a checkpoint file to load
-        text_prompt: the text prompt to use, e.g., ``"A photo of"``
-        classes (None): a list of custom classes for zero-shot prediction
-    """
-
     def __init__(self, d):
+        if (
+            d.get("name_or_path", None) is None
+            and d.get("model", None) is None
+        ):
+            d["name_or_path"] = DEFAULT_ZERO_SHOT_CLASSIFICATION_PATH
         super().__init__(d)
-        if self.model is None and self.name_or_path is None:
-            self.name_or_path = DEFAULT_ZERO_SHOT_CLASSIFICATION_PATH
 
 
 class FiftyOneZeroShotTransformerForImageClassification(
@@ -713,60 +763,29 @@ class FiftyOneZeroShotTransformerForImageClassification(
         config: a `FiftyOneZeroShotTransformerConfig`
     """
 
-    def _load_model(self, config):
-        if config.model is not None:
-            return config.model
+    def __init__(self, config):
+        # override entry point
+        if config.entrypoint_fcn is None:
+            config.entrypoint_fcn = "transformers.AutoModelForZeroShotImageClassification.from_pretrained"
 
-        device = torch.device(self._device)
-        model = transformers.AutoModel.from_pretrained(config.name_or_path).to(
-            device
-        )
-        if _has_image_text_retrieval(model):
-            model = _get_model_for_image_text_retrieval(
-                model, config.name_or_path
+        # override output processor
+        if config.output_processor_cls is None:
+            config.output_processor_cls = (
+                "fiftyone.utils.torch.ClassifierOutputProcessor"
             )
+        if config.output_processor_args is None:
+            config.output_processor_args = {
+                "store_logits": True,
+                "logits_key": "logits_per_image",
+            }
 
-        return model
+        # ensure padding for variable sized prompts
+        if config.transformers_processor_kwargs is None:
+            config.transformers_processor_kwargs = {}
+        if config.transformers_processor_kwargs.get("padding", None) is None:
+            config.transformers_processor_kwargs["padding"] = "max_length"
 
-    def _predict_all_from_features(self, args):
-        text_prompts = self._get_text_prompts()
-        # TODO: remember to remove this
-        # pylint: disable=no-member
-        inputs = self.processor(
-            images=args, text=text_prompts, return_tensors="pt", padding=True
-        )
-
-        with torch.no_grad():
-            outputs = self._model(**inputs.to(self.device))
-
-        logits_per_image = (
-            outputs.logits_per_image.detach().cpu()
-        )  # this is the image-text similarity score
-
-        return logits_per_image
-
-    def _predict_all_from_retrieval(self, args):
-        return [self._predict_from_retrieval(arg) for arg in args]
-
-    def _predict_from_retrieval(self, arg):
-        text_prompts = self._get_text_prompts()
-        logits = []
-
-        with torch.no_grad():
-            for text_prompt in text_prompts:
-                # TODO: remember to remove this
-                # pylint: disable=no-member
-                inputs = self.processor(arg, text_prompt, return_tensors="pt")
-                outputs = self._model(**(inputs.to(self.device)))
-                logits.append(outputs.logits[0, :].item())
-
-        return logits
-
-    def _forward_pass(self, imgs):
-        if _has_text_and_image_features(self._model):
-            return self._predict_all_from_features(imgs)
-        else:
-            return self._predict_all_from_retrieval(imgs)
+        super().__init__(config)
 
 
 class FiftyOneTransformerForImageClassificationConfig(
@@ -1186,16 +1205,19 @@ def _get_detector_from_processor(processor, model_name_or_path):
 
 # rather than using partial to avoid pickling issues
 class _HFTransformsHandler:
-    def __init__(self, processor):
+    def __init__(self, processor, **kwargs):
         self.processor = processor
+        self.kwargs = kwargs
+        if "return_tensors" not in kwargs:
+            self.kwargs["return_tensors"] = "pt"
 
     def __call__(self, args):
         if isinstance(args, dict):
             # multiple inputs
-            return self.processor(**args, return_tensors="pt")
+            return self.processor(**args, **self.kwargs)
         else:
             # single input, most likely either a list of images or a single image
-            return self.processor(args, return_tensors="pt")
+            return self.processor(images=args, **self.kwargs)
 
 
 MODEL_TYPE_TO_CONFIG_CLASS = {
