@@ -38,7 +38,7 @@ export default function CreateScenario(props) {
           promptOperator(panelId, {
             params: {
               gt_field,
-              scenario_type: "custom_code",
+              scenario_type: "sample_field",
               scenario_name: "",
               key: evalKey,
               compare_key: compareKey,
