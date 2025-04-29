@@ -252,7 +252,7 @@ class FiftyOneTransformerConfig(fout.TorchImageModelConfig, HasZooModel):
     Args:
         model (None): a ``transformers`` model
         name_or_path (None): the name or path to a checkpoint file to load
-        transformer_processor_kwargs (None): a dict of kwargs to pass to the
+        transformers_processor_kwargs (None): a dict of kwargs to pass to the
             ``transformers`` processor during input processing.
         embeddings_output_key (None): The key in the model output to access for embeddings.
             if set to `None`, the default value will be picked based on what is
