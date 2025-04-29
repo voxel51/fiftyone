@@ -32,6 +32,8 @@ STORE_NAME = "model_evaluation_panel_builtin"
 class ConfigureScenario(foo.Operator):
     # tracks the last view type opened
     last_view_type_used = None
+    # latest sample distribution plot
+    latest_plot_data = None
 
     @property
     def config(self):
@@ -114,48 +116,6 @@ class ConfigureScenario(foo.Operator):
     def extract_evaluation_id(self, ctx):
         return ctx.params.get("eval_id")
 
-    def get_subset_def_data_for_eval_key(
-        self, ctx, eval_key, _, name, subset_def
-    ):
-        """
-        Builds and returns an execution cache key for each type of scenario.
-        - eval key + name + type + subset definition
-        """
-        scenario_type = self.get_scenario_type(ctx.params)
-
-        if scenario_type == ScenarioType.CUSTOM_CODE:
-            key = [
-                "sample-distribution-data",
-                eval_key,
-                name,
-                scenario_type,
-                str(subset_def),
-            ]
-        elif scenario_type == ScenarioType.VIEW:
-            key = [
-                "sample-distribution-data",
-                eval_key,
-                name,
-                scenario_type,
-                subset_def.get("view", ""),
-            ]
-        else:
-            key = [
-                "sample-distribution-data",
-                eval_key,
-                name,
-                scenario_type,
-                str(subset_def),
-            ]
-
-        return key
-
-    # NOTE: BMoore prefers not to have TTL, Mani kept ttl but at 30 days to ensure
-    # cache doesn't get filled up with old data.
-    # NOTE: This operation takes 6s to run on 25K samples without a cache for detection dataset.
-    @execution_cache(
-        key_fn=get_subset_def_data_for_eval_key, ttl=30 * 24 * 60 * 60
-    )
     def get_subset_def_data_for_eval(
         self, ctx, _, eval_result, name, subset_def
     ):
@@ -210,6 +170,8 @@ class ConfigureScenario(foo.Operator):
                         "marker": {"color": COMPARE_KEY_COLOR},
                     }
                 )
+
+            self.latest_plot_data = plot_data
 
             return plot_data
         except Exception as e:
@@ -1066,6 +1028,25 @@ class ConfigureScenario(foo.Operator):
 
         return stack
 
+    def get_sample_distribution_cache_key(
+        self, ctx, scenario_type, scenario_subsets, _
+    ):
+        eval_key, eval_key_b = self.extract_evaluation_keys(ctx)
+
+        return [
+            "sample-distribution-data",
+            eval_key,
+            eval_key_b or "",
+            scenario_type,
+            str(scenario_subsets),
+        ]
+
+    @execution_cache(
+        key_fn=get_sample_distribution_cache_key, residency="ephemeral"
+    )
+    def cache_plot_data(self, _, __, ___, plot_data):
+        return plot_data
+
     def execute(self, ctx):
         scenario_type = self.get_scenario_type(ctx.params)
         if scenario_type is None:
@@ -1128,6 +1109,11 @@ class ConfigureScenario(foo.Operator):
             scenario_id = existing_scenario_id
         else:
             scenario_id = ObjectId()
+
+        if self.latest_plot_data:
+            self.cache_plot_data(
+                ctx, scenario_type, scenario_subsets, self.latest_plot_data
+            )
 
         scenario_id_str = str(scenario_id)
         scenarios_for_eval[scenario_id_str] = {
