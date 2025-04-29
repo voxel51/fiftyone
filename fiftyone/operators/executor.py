@@ -149,7 +149,7 @@ def execute_operator(
             -   ``delegation_target`` (None): an optional orchestrator on which
                 to schedule the operation, if it is delegated
         exhaust (True): whether to immediately exhaust generator operators
-        request_token (None): the optional authentication token to authenticate this invocation request
+        request_token (None): the optional token to authenticate this invocation request
         **kwargs: you can optionally provide any of the supported ``ctx`` keys
             as keyword arguments rather than including them in ``ctx``
 

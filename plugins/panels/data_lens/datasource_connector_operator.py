@@ -26,7 +26,6 @@ from fiftyone.operators.data_lens.models import (
 )
 from fiftyone.operators.data_lens.utils import filter_fields_for_type
 from fiftyone.operators.executor import ExecutionResult
-import fiftyone.internal.context_vars as ficv
 
 
 class DatasourceConnectorOperator(foo.Operator):
