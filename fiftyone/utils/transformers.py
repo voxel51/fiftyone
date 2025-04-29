@@ -13,6 +13,7 @@ import warnings
 
 import eta.core.utils as etau
 import numpy as np
+from PIL import Image
 
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
@@ -627,7 +628,7 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
         # this line is the only difference between this and the base class
         # we should consolidate this function once post processing is properly
         # removed out of torchimagemodel
-        height, width = args["pixel_values"].shape[-2:]
+        image_sizes = args.pop("fo_image_size", [(None, None)])
 
         for k, v in args.items():
             args[k] = v.to(self.device)
@@ -642,7 +643,7 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
         if self._output_processor is not None:
             return self._output_processor(
                 output,
-                (width, height),
+                image_sizes,
                 confidence_thresh=self.config.confidence_thresh,
             )
 
@@ -665,7 +666,26 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
         keys = batch[0].keys()
         res = {}
         for k in keys:
-            res[k] = torch.cat([b[k] for b in batch], dim=0)
+            # Gather shapes for dimension analysis
+            shapes = [b[k].shape for b in batch]
+            # Find the max size in each dimension
+            max_dims = [
+                max(s[d] for s in shapes) for d in range(len(shapes[0]))
+            ]
+
+            # Pad each tensor to match the max dimensions
+            padded_tensors = []
+            for bdict in batch:
+                t = bdict[k]
+                pad_amounts = []
+                for d in reversed(range(len(t.shape))):
+                    diff = max_dims[d] - t.shape[d]
+                    pad_amounts.extend([0, diff])  # (left_pad, right_pad)
+                padded_tensors.append(torch.nn.functional.pad(t, pad_amounts))
+
+            # Concatenate along the first dimension
+            res[k] = torch.cat(padded_tensors, dim=0)
+
         return res
 
 
@@ -848,11 +868,12 @@ class FiftyOneZeroShotTransformerForObjectDetectionConfig(
     """
 
     def __init__(self, d):
+        if (
+            d.get("name_or_path", None) is None
+            and d.get("model", None) is None
+        ):
+            d["name_or_path"] = DEFAULT_ZERO_SHOT_DETECTION_PATH
         super().__init__(d)
-        if self.model is None and self.name_or_path is None:
-            self.name_or_path = DEFAULT_ZERO_SHOT_DETECTION_PATH
-        elif self.model is not None:
-            self.name_or_path = self.model.name_or_path
 
 
 class FiftyOneZeroShotTransformerForObjectDetection(
@@ -923,9 +944,12 @@ class FiftyOneTransformerForObjectDetectionConfig(FiftyOneTransformerConfig):
     """
 
     def __init__(self, d):
+        if (
+            d.get("name_or_path", None) is None
+            and d.get("model", None) is None
+        ):
+            d["name_or_path"] = DEFAULT_DETECTION_PATH
         super().__init__(d)
-        if self.model is None and self.name_or_path is None:
-            self.name_or_path = DEFAULT_DETECTION_PATH
 
 
 class FiftyOneTransformerForObjectDetection(FiftyOneTransformer):
@@ -935,34 +959,21 @@ class FiftyOneTransformerForObjectDetection(FiftyOneTransformer):
         config: a `FiftyOneTransformerConfig`
     """
 
-    def _load_model(self, config):
-        if config.model is not None:
-            return config.model
-        return transformers.AutoModelForObjectDetection.from_pretrained(
-            config.name_or_path
-        ).to(config.device)
+    def __init__(self, config):
+        # override entry point
+        if config.entrypoint_fcn is None:
+            config.entrypoint_fcn = (
+                "transformers.AutoModelForObjectDetection.from_pretrained"
+            )
 
-    def _predict(self, inputs, target_sizes):
-        with torch.no_grad():
-            outputs = self._model(**inputs.to(self.device))
-
-        results = self.transforms.post_process_object_detection(
-            outputs, target_sizes=target_sizes
-        )
-        image_shapes = [i[::-1] for i in target_sizes]
-        return to_detections(
-            results, self._model.config.id2label, image_shapes
-        )
-
-    def predict(self, arg):
-        target_sizes = [arg.shape[:-1][::-1]]
-        inputs = self.transforms(arg, return_tensors="pt")
-        return self._predict(inputs, target_sizes)
-
-    def predict_all(self, args):
-        target_sizes = [i.shape[:-1][::-1] for i in args]
-        inputs = self.transforms(args, return_tensors="pt")
-        return self._predict(inputs, target_sizes)
+        # override output processor
+        if config.output_processor_cls is None:
+            config.output_processor_cls = "fiftyone.utils.transformers.TransformersDetectorOutputProcessor"
+        super().__init__(config)
+        # have to do this after init so processor is loaded
+        # I think this is better than instantiating a second one
+        # or passing the entire model to the output processor
+        self._output_processor.processor = self.transforms.processor
 
 
 class FiftyOneTransformerForSemanticSegmentationConfig(
@@ -1214,10 +1225,80 @@ class _HFTransformsHandler:
     def __call__(self, args):
         if isinstance(args, dict):
             # multiple inputs
-            return self.processor(**args, **self.kwargs)
+            if args.get("images", None) is not None:
+                image_size = (
+                    [_get_image_size(img) for img in args["images"]]
+                    if isinstance(args["images"], list)
+                    else [_get_image_size(args["images"])]
+                )
+            res = self.processor(**args, **self.kwargs)
         else:
             # single input, most likely either a list of images or a single image
-            return self.processor(images=args, **self.kwargs)
+            image_size = (
+                [_get_image_size(img) for img in args]
+                if isinstance(args, list)
+                else [_get_image_size(args)]
+            )
+            res = self.processor(images=args, **self.kwargs)
+
+        res.update(
+            {
+                "fo_image_size": torch.tensor(image_size),
+            }
+        )
+
+        return res
+
+
+class TransformersDetectorOutputProcessor(fout.DetectorOutputProcessor):
+    """Output processor for HuggingFace Transformers object detection models.
+
+    Args:
+        store_logits (False): whether to store the logits in the output
+        logits_key ("logits"): the key to use for the logits in the output
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._processor = None
+
+    @property
+    def processor(self):
+        if self._processor is None:
+            raise ValueError(
+                "Processor not set. Please make sure the processor is set."
+            )
+        return self._processor
+
+    @processor.setter
+    def processor(self, processor):
+        self._processor = processor
+
+    def __call__(self, output, image_sizes, confidence_thresh=None):
+        output = self.processor.post_process_object_detection(
+            output, target_sizes=image_sizes, threshold=confidence_thresh or 0
+        )
+        res = []
+        for o, img_sz in zip(output, image_sizes):
+            res.append(
+                self._parse_output(
+                    o,
+                    (img_sz[1], img_sz[0]),
+                    confidence_thresh=confidence_thresh,
+                )
+            )
+        return res
+
+
+def _get_image_size(img):
+    if isinstance(img, torch.Tensor):
+        height, width = img.size()[-2:]
+    elif isinstance(img, Image.Image):
+        width, height = img.size
+    elif isinstance(img, np.ndarray):
+        height, width = img.shape[:2]
+
+    return height, width
 
 
 MODEL_TYPE_TO_CONFIG_CLASS = {
