@@ -404,6 +404,12 @@ class AppConfig(EnvConfig):
             env_var="FIFTYONE_APP_LOOP_VIDEOS",
             default=False,
         )
+        self.max_query_timeout = self.parse_int(
+            d,
+            "max_query_timeout",
+            env_var="FIFTYONE_APP_MAX_QUERY_TIMEOUT",
+            default=30,
+        )
         self.media_fallback = self.parse_bool(
             d,
             "media_fallback",

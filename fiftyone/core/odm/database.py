@@ -330,7 +330,7 @@ def _validate_db_version(config, client):
         )
 
 
-def aggregate(collection, pipelines, hints=None):
+def aggregate(collection, pipelines, hints=None, maxTimeMS=None):
     """Executes one or more aggregations on a collection.
 
     Multiple aggregations are executed using multiple threads, and their
@@ -340,6 +340,9 @@ def aggregate(collection, pipelines, hints=None):
         collection: a ``pymongo.collection.Collection`` or
             ``motor.motor_asyncio.AsyncIOMotorCollection``
         pipelines: a MongoDB aggregation pipeline or a list of pipelines
+        hints (None): a hint or correnponding list of hints with respect to
+            each pipeline
+        maxTimeMS (None): max timeout for the request
 
     Returns:
         -   If a single pipeline is provided, a
@@ -359,23 +362,33 @@ def aggregate(collection, pipelines, hints=None):
     if hints is None:
         hints = [None] * num_pipelines
 
+    kwargs = dict(allowDiskUse=True)
+    if maxTimeMS:
+        kwargs["maxTimeMS"] = maxTimeMS
+
     if isinstance(collection, mtr.AsyncIOMotorCollection):
         if num_pipelines == 1 and not is_list:
-            kwargs = {"hint": hints[0]} if hints[0] is not None else {}
+            if hints[0]:
+                kwargs["hint"] = hints
+
             return collection.aggregate(
                 pipelines[0], allowDiskUse=True, **kwargs
             )
 
-        return _do_async_pooled_aggregate(collection, pipelines, hints)
+        return _do_async_pooled_aggregate(
+            collection,
+            pipelines,
+            hints,
+        )
 
     if num_pipelines == 1:
-        result = collection.aggregate(pipelines[0], allowDiskUse=True)
+        result = collection.aggregate(pipelines[0], **kwargs)
         return [result] if is_list else result
 
-    return _do_pooled_aggregate(collection, pipelines)
+    return _do_pooled_aggregate(collection, pipelines, **kwargs)
 
 
-def _do_pooled_aggregate(collection, pipelines):
+def _do_pooled_aggregate(collection, pipelines, **kwargs):
     # @todo: MongoDB 5.0 supports snapshots which can be used to make the
     # results consistent, i.e. read from the same point in time
     with ThreadPool(processes=len(pipelines)) as pool:
@@ -386,21 +399,25 @@ def _do_pooled_aggregate(collection, pipelines):
         )
 
 
-async def _do_async_pooled_aggregate(collection, pipelines, hints):
+async def _do_async_pooled_aggregate(
+    collection, pipelines, hints, maxTimeMS=None
+):
     return await asyncio.gather(
         *[
-            _do_async_aggregate(collection, pipeline, hint)
+            _do_async_aggregate(
+                collection, pipeline, hint, maxTimeMS=maxTimeMS
+            )
             for pipeline, hint in zip(pipelines, hints)
         ]
     )
 
 
-async def _do_async_aggregate(collection, pipeline, hint):
+async def _do_async_aggregate(collection, pipeline, hint, maxTimeMS=None):
     kwargs = {"hint": hint} if hint is not None else {}
     return [
         i
         async for i in collection.aggregate(
-            pipeline, allowDiskUse=True, **kwargs
+            pipeline, allowDiskUse=True, maxTimeMS=maxTimeMS, **kwargs
         )
     ]
 
