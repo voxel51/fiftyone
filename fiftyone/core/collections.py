@@ -11293,7 +11293,7 @@ class SampleCollection(object):
 
         return results[0] if scalar_result else results
 
-    async def _async_aggregate(self, aggregations, debug=True):
+    async def _async_aggregate(self, aggregations):
         if not aggregations:
             return []
 
