@@ -35,6 +35,17 @@ SHIFT
 GOTO parse
 :endparse
 
+:: Do this first so pip installs with a built app
+if %BUILD_APP%==true (
+  echo ***** INSTALLING FIFTYONE-APP *****
+  :: TODO - Add nvm and yarn installs
+  cd app
+  echo "Building the App. This will take a minute or two..."
+  call yarn install > /dev/null 2>&1
+  call yarn build:win32
+  cd ..
+)
+
 IF %USE_FIFTY_ONE_DB%==true (
   echo ***** INSTALLING FIFTYONE-DB *****
   pip install fiftyone-db
@@ -83,15 +94,7 @@ IF %SOURCE_ETA_INSTALL%==true (
   cd ..
 )
 
-if %BUILD_APP%==true (
-  echo ***** INSTALLING FIFTYONE-APP *****
-  :: TODO - Add nvm and yarn installs
-  cd app
-  echo "Building the App. This will take a minute or two..."
-  call yarn install > /dev/null 2>&1
-  call yarn build:win32
-  cd ..
-)
+
 
 echo ***** INSTALLATION COMPLETE *****
 exit /b
