@@ -21,6 +21,7 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
 import fiftyone.core.odm.utils as focu
 import fiftyone.core.utils as fou
+import fiftyone.internal.util as foiu
 import fiftyone.core.view as fov
 from fiftyone.internal.api_requests import resolve_operation_user
 import fiftyone.internal.context_vars as ficv
@@ -120,7 +121,9 @@ class Executor(object):
         }
 
 
-def execute_operator(operator_uri, ctx=None, exhaust=True, **kwargs):
+def execute_operator(
+    operator_uri, ctx=None, exhaust=True, request_token=None, **kwargs
+):
     """Executes the operator with the given name.
 
     Args:
@@ -146,6 +149,7 @@ def execute_operator(operator_uri, ctx=None, exhaust=True, **kwargs):
             -   ``delegation_target`` (None): an optional orchestrator on which
                 to schedule the operation, if it is delegated
         exhaust (True): whether to immediately exhaust generator operators
+        request_token (None): the optional authentication token to authenticate this invocation request
         **kwargs: you can optionally provide any of the supported ``ctx`` keys
             as keyword arguments rather than including them in ``ctx``
 
@@ -158,10 +162,17 @@ def execute_operator(operator_uri, ctx=None, exhaust=True, **kwargs):
             operation or scheduling a delegated operation
     """
     request_params = _parse_ctx(ctx=ctx, **kwargs)
+
+    if foiu.is_internal_service() and not request_token:
+        raise ValueError(
+            "Must provide request_token when executing an operator from an internal service"
+        )
+
     coroutine = execute_or_delegate_operator(
         operator_uri,
         request_params,
         exhaust=exhaust,
+        request_token=request_token,
     )
 
     try:
