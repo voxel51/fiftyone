@@ -92,11 +92,12 @@ jobs:
 
   all-tests:
     runs-on: ubuntu-latest
-    needs: [build, lint, test, e2e]
+    needs: [build, lint, test, test-windows, e2e]
     if: always()
     steps:
       - run: sh -c ${{
           (needs.build.result == 'success' || needs.build.result == 'skipped') &&
           (needs.lint.result == 'success' || needs.lint.result == 'skipped') &&
           (needs.test.result == 'success' || needs.test.result == 'skipped') &&
+          (needs.test-windows.result == 'success' || needs.test-windows.result == 'skipped') &&
           (needs.e2e.result == 'success' || needs.e2e.result == 'skipped') }}
