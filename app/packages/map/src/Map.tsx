@@ -16,7 +16,10 @@ import { useRecoilState, useRecoilValue } from "recoil";
 import useResizeObserver from "use-resize-observer";
 
 import DrawControl from "./Draw";
-import useGeoLocations, { SampleLocationMap } from "./useGeoLocations";
+import useFetchGeoLocations, {
+  SampleLocationMap,
+  sampleLocationMapAtom,
+} from "./useFetchGeoLocations";
 
 import { useSetPanelCloseEffect } from "@fiftyone/spaces";
 import {
@@ -88,13 +91,14 @@ const Panel: React.FC<{}> = () => {
     ) as unknown as typeof fos.extendedStages;
   }, [unFilteredExtended]);
 
-  const { loading, sampleLocationMap } = useGeoLocations({
+  const { loading } = useFetchGeoLocations({
     dataset,
     filters,
     view,
     extended,
     path: useRecoilValue(activeField),
   });
+  const sampleLocationMap = useRecoilValue(sampleLocationMapAtom);
 
   const settings = usePluginSettings<Required<Settings>>(
     "map",
