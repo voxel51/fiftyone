@@ -17,11 +17,13 @@ from tabulate import tabulate
 
 import fiftyone.core.collections as foc
 import fiftyone.core.evaluation as foe
+from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.plots as fop
 import fiftyone.core.utils as fou
 
 foo = fou.lazy_import("fiftyone.operators")
+foue = fou.lazy_import("fiftyone.utils.eval")
 
 
 logger = logging.getLogger(__name__)
@@ -570,10 +572,21 @@ class BaseClassificationResults(BaseEvaluationResults):
         self._ytrue_ids_orig = self.ytrue_ids
         self._ypred_ids_orig = self.ypred_ids
 
+        # Locate all ground truth in subset
         _, gt_id_path = subset_view._get_label_field_path(gt_field, "id")
-        gt_ids = subset_view.values(gt_id_path, unwind=True)
+        gt_ids = set(subset_view.values(gt_id_path, unwind=True))
+        inds = np.array([_id in gt_ids for _id in self.ytrue_ids])
 
-        inds = np.isin(self.ytrue_ids, gt_ids)
+        # Detection evaluations can contain unmatched predictions, which must
+        # also be partitioned into subsets
+        if isinstance(self, foue.DetectionResults):
+            pred_field = self.config.pred_field
+            fp_view = subset_view.filter_labels(
+                pred_field, F(self.key) == "fp"
+            )
+            _, pred_id_path = fp_view._get_label_field_path(pred_field, "id")
+            pred_ids = set(fp_view.values(pred_id_path, unwind=True))
+            inds |= np.array([_id in pred_ids for _id in self.ypred_ids])
 
         self._has_subset = True
         self._samples = subset_view
