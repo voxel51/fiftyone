@@ -13,7 +13,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "1.5.0"
+VERSION = "1.6.0"
 
 
 def get_version():
@@ -33,10 +33,12 @@ INSTALL_REQUIRES = [
     # third-party packages
     "aiofiles",
     "argcomplete",
+    "async_lru>=2",
     "beautifulsoup4",
     "boto3",
     "cachetools",
     "dacite>=1.6.0,<1.8.0",
+    "dill",
     "Deprecated",
     "ftfy",
     "humanize",
@@ -68,8 +70,9 @@ INSTALL_REQUIRES = [
     "sseclient-py>=1.7.2,<2",
     "sse-starlette>=0.10.3,<1",
     "starlette>=0.24.0",
-    "strawberry-graphql",
+    "strawberry-graphql~=0.257.0",
     "tabulate",
+    "tqdm",
     "xmltodict",
     "universal-analytics-python3>=1.0.1,<2",
     "pydash",

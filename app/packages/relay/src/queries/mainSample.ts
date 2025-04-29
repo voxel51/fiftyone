@@ -49,6 +49,15 @@ export default r(graphql`
           url
         }
       }
+      ... on UnknownSample {
+        aspectRatio
+        id
+        sample
+        urls {
+          field
+          url
+        }
+      }
     }
   }
 `);

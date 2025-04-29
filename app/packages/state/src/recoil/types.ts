@@ -6,8 +6,11 @@ export namespace State {
     | "image"
     | "group"
     | "point_cloud"
+    | "point-cloud"
     | "three_d"
-    | "video";
+    | "3d"
+    | "video"
+    | "unknown";
 
   export enum SPACE {
     FRAME = "FRAME",
@@ -191,6 +194,7 @@ export namespace State {
     sampleId: string;
     field: string;
     frameNumber?: number;
+    instanceId?: string;
   }
 
   export interface SelectedLabelMap {

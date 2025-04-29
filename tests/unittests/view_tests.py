@@ -108,6 +108,91 @@ class DatasetViewTests(unittest.TestCase):
             )
         )
 
+    @skip_windows  # TODO: don't skip on Windows
+    @drop_datasets
+    def test_update_samples(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [fo.Sample(filepath="image%d.jpg" % i, int=i) for i in range(50)]
+        )
+
+        view = dataset.select_fields("int")
+
+        self.assertTupleEqual(view.bounds("int"), (0, 49))
+
+        def update_fcn(sample):
+            sample.int += 1
+
+        #
+        # Multiple workers
+        #
+
+        view.update_samples(update_fcn, num_workers=2, batch_method="id")
+
+        self.assertTupleEqual(view.bounds("int"), (1, 50))
+
+        view.update_samples(update_fcn, num_workers=2, batch_method="slice")
+
+        self.assertTupleEqual(view.bounds("int"), (2, 51))
+
+        #
+        # Main process
+        #
+
+        view.update_samples(update_fcn, num_workers=1)
+
+        self.assertTupleEqual(view.bounds("int"), (3, 52))
+
+    @skip_windows  # TODO: don't skip on Windows
+    @drop_datasets
+    def test_map_samples(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="image%d.jpg" % i, foo="bar")
+                for i in range(50)
+            ]
+        )
+
+        view = dataset.select_fields("foo")
+
+        self.assertDictEqual(view.count_values("foo"), {"bar": 50})
+
+        def map_fcn(sample):
+            return sample.foo.upper()
+
+        #
+        # Multiple workers
+        #
+
+        counter = Counter()
+        for _, value in view.map_samples(
+            map_fcn, num_workers=2, batch_method="slice"
+        ):
+            assert value == "BAR"
+            counter[value] += 1
+
+        self.assertDictEqual(dict(counter), {"BAR": 50})
+
+        counter = Counter()
+        for _, value in view.map_samples(
+            map_fcn, num_workers=2, batch_method="id"
+        ):
+            assert value == "BAR"
+            counter[value] += 1
+
+        self.assertDictEqual(dict(counter), {"BAR": 50})
+
+        #
+        # Main process
+        #
+
+        counter = Counter()
+        for _, value in view.map_samples(map_fcn, num_workers=1):
+            counter[value] += 1
+
+        self.assertDictEqual(dict(counter), {"BAR": 50})
+
     @drop_datasets
     def test_update_samples(self):
         dataset = fo.Dataset()
@@ -961,6 +1046,197 @@ class SliceTests(unittest.TestCase):
         self.assertEqual(len(view), 0)
 
 
+class SplitLabelsTests(unittest.TestCase):
+    @drop_datasets
+    def test_split_labels(self):
+        samples = [
+            fo.Sample(
+                filepath="image1.jpg",
+                test=fo.Detections(
+                    detections=[
+                        fo.Detection(label="friend"),
+                        fo.Detection(label="enemy"),
+                        fo.Detection(label="friend"),
+                    ]
+                ),
+            ),
+            fo.Sample(filepath="image2.jpg"),
+            fo.Sample(
+                filepath="image3.jpg",
+                test=fo.Detections(
+                    detections=[
+                        fo.Detection(label="friend"),
+                        fo.Detection(label="enemy"),
+                    ]
+                ),
+            ),
+        ]
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
+
+        view = dataset.filter_labels("test", F("label") == "friend")
+        view.split_labels("test", "friend")
+
+        self.assertTrue(dataset.has_field("friend"))
+        self.assertDictEqual(
+            dataset.count_values("test.detections.label"),
+            {"enemy": 2},
+        )
+        self.assertDictEqual(
+            dataset.count_values("friend.detections.label"),
+            {"friend": 3},
+        )
+
+        dataset.split_labels("test", "friend")
+
+        self.assertFalse(dataset.has_field("test"))
+        self.assertDictEqual(
+            dataset.count_values("friend.detections.label"),
+            {"friend": 3, "enemy": 2},
+        )
+
+    @drop_datasets
+    def test_split_labels_frames(self):
+        sample1 = fo.Sample(filepath="video1.mp4")
+        sample1.frames[1] = fo.Frame()
+        sample1.frames[2] = fo.Frame(
+            test=fo.Detections(
+                detections=[
+                    fo.Detection(label="friend"),
+                    fo.Detection(label="enemy"),
+                    fo.Detection(label="friend"),
+                ]
+            )
+        )
+
+        sample2 = fo.Sample(filepath="video2.mp4")
+
+        sample3 = fo.Sample(filepath="video3.mp4")
+        sample3.frames[1] = fo.Frame(
+            test=fo.Detections(
+                detections=[
+                    fo.Detection(label="friend"),
+                    fo.Detection(label="enemy"),
+                ]
+            ),
+        )
+        sample3.frames[2] = fo.Frame()
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2, sample3])
+
+        view = dataset.filter_labels("frames.test", F("label") == "friend")
+        view.split_labels("frames.test", "frames.friend")
+
+        self.assertTrue(dataset.has_field("frames.friend"))
+        self.assertDictEqual(
+            dataset.count_values("frames.test.detections.label"),
+            {"enemy": 2},
+        )
+        self.assertDictEqual(
+            dataset.count_values("frames.friend.detections.label"),
+            {"friend": 3},
+        )
+
+        dataset.split_labels("frames.test", "frames.friend")
+
+        self.assertFalse(dataset.has_field("frames.test"))
+        self.assertDictEqual(
+            dataset.count_values("frames.friend.detections.label"),
+            {"friend": 3, "enemy": 2},
+        )
+
+
+class DeleteLabelsTests(unittest.TestCase):
+    @drop_datasets
+    def test_delete_labels(self):
+        samples = [
+            fo.Sample(
+                filepath="image1.jpg",
+                test=fo.Detections(
+                    detections=[
+                        fo.Detection(label="friend"),
+                        fo.Detection(label="enemy"),
+                        fo.Detection(label="friend"),
+                    ]
+                ),
+            ),
+            fo.Sample(filepath="image2.jpg"),
+            fo.Sample(
+                filepath="image3.jpg",
+                test=fo.Detections(
+                    detections=[
+                        fo.Detection(label="friend"),
+                        fo.Detection(label="enemy"),
+                    ]
+                ),
+            ),
+        ]
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
+
+        view = dataset.filter_labels("test", F("label") == "friend")
+        dataset.delete_labels(view=view, fields="test")
+
+        self.assertDictEqual(
+            dataset.count_values("test.detections.label"),
+            {"enemy": 2},
+        )
+
+        label_ids = dataset.values("test.detections.id", unwind=True)
+        dataset.delete_labels(ids=label_ids, fields="test")
+
+        self.assertDictEqual(dataset.count_values("test.detections.label"), {})
+
+    @drop_datasets
+    def test_delete_labels_frames(self):
+        sample1 = fo.Sample(filepath="video1.mp4")
+        sample1.frames[1] = fo.Frame()
+        sample1.frames[2] = fo.Frame(
+            test=fo.Detections(
+                detections=[
+                    fo.Detection(label="friend"),
+                    fo.Detection(label="enemy"),
+                    fo.Detection(label="friend"),
+                ]
+            )
+        )
+
+        sample2 = fo.Sample(filepath="video2.mp4")
+
+        sample3 = fo.Sample(filepath="video3.mp4")
+        sample3.frames[1] = fo.Frame(
+            test=fo.Detections(
+                detections=[
+                    fo.Detection(label="friend"),
+                    fo.Detection(label="enemy"),
+                ]
+            ),
+        )
+        sample3.frames[2] = fo.Frame()
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2, sample3])
+
+        view = dataset.filter_labels("frames.test", F("label") == "friend")
+        dataset.delete_labels(view=view, fields="frames.test")
+
+        self.assertDictEqual(
+            dataset.count_values("frames.test.detections.label"),
+            {"enemy": 2},
+        )
+
+        label_ids = dataset.values("frames.test.detections.id", unwind=True)
+        dataset.delete_labels(ids=label_ids, fields="frames.test")
+
+        self.assertDictEqual(
+            dataset.count_values("frames.test.detections.label"),
+            {},
+        )
+
+
 class SetValuesTests(unittest.TestCase):
     @drop_datasets
     def setUp(self):
@@ -1436,9 +1712,11 @@ class SetValuesTests(unittest.TestCase):
         dataset = _make_labels_dataset()
 
         values = [
-            [fo.Classification(label=v) for v in vv]
-            if vv is not None
-            else None
+            (
+                [fo.Classification(label=v) for v in vv]
+                if vv is not None
+                else None
+            )
             for vv in dataset.values("labels.classifications.label")
         ]
 
@@ -1449,9 +1727,11 @@ class SetValuesTests(unittest.TestCase):
 
         # Since this field is not in the schema, the values are loaded as dicts
         also_values = [
-            [fo.Classification.from_dict(d) for d in dd]
-            if dd is not None
-            else None
+            (
+                [fo.Classification.from_dict(d) for d in dd]
+                if dd is not None
+                else None
+            )
             for dd in dataset.values("labels.classifications.also_label")
         ]
         self.assertEqual(values, also_values)
@@ -1543,9 +1823,11 @@ class SetValuesTests(unittest.TestCase):
 
         values = [
             [
-                [fo.Classification(label=v) for v in vv]
-                if vv is not None
-                else None
+                (
+                    [fo.Classification(label=v) for v in vv]
+                    if vv is not None
+                    else None
+                )
                 for vv in ff
             ]
             for ff in dataset.values("frames.labels.classifications.label")
@@ -1559,9 +1841,11 @@ class SetValuesTests(unittest.TestCase):
         # Since this field is not in the schema, the values are loaded as dicts
         also_values = [
             [
-                [fo.Classification.from_dict(d) for d in dd]
-                if dd is not None
-                else None
+                (
+                    [fo.Classification.from_dict(d) for d in dd]
+                    if dd is not None
+                    else None
+                )
                 for dd in ff
             ]
             for ff in dataset.values(

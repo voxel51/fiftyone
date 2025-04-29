@@ -5,6 +5,7 @@
 """
 
 import contextlib
+import sys
 
 import pytest
 
@@ -40,13 +41,17 @@ def fixture_dataset():
 
 
 @pytest.mark.parametrize("mapper_key", fomm.MapperFactory.mapper_keys())
+@pytest.mark.skipif(
+    sys.platform.startswith("win"),
+    reason="Multiprocessing hangs when running the mapper in pytest",
+)
 class TestMapperImplementations:
     """test mapper implementations"""
 
     @pytest.fixture(name="mapper")
     def fixture_mapper(self, mapper_key):
         """Mapper instance"""
-        return fomm.MapperFactory.create(mapper_key, workers=WORKERS)
+        return fomm.MapperFactory.create(mapper_key, num_workers=WORKERS)
 
     class TestMapSamples:
         """test Mapper.map_samples"""

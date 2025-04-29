@@ -119,6 +119,13 @@ The following media types are available:
     | `group`       | Datasets that contain                             |
     |               | :ref:`grouped data slices <groups>`               |
     +---------------+---------------------------------------------------+
+    | `unknown`     | Fallback value for Datasets that contain          |
+    |               | samples which are not one of the other listed     |
+    |               | media types                                       |
+    +---------------+---------------------------------------------------+
+    | custom type   | Datasets that contain samples with a custom media |
+    |               | type will inherit that type                       |
+    +---------------+---------------------------------------------------+
 
 .. _dataset-persistence:
 
@@ -1856,7 +1863,10 @@ When a |Sample| is created, its media type is inferred from the `filepath` to
 the source media and available via the `media_type` attribute of the sample,
 which is read-only.
 
-Media type is inferred from the
+Optionally, the `media_type` keyword argument can be provided to the |Sample|
+constructor to provide an explicit media type.
+
+If `media_type` is not provided explicitly, it is inferred from the
 `MIME type <https://en.wikipedia.org/wiki/Media_type>`__ of the file on disk,
 as per the table below:
 
@@ -1874,7 +1884,7 @@ as per the table below:
     +---------------------+----------------+----------------------------------+
     | `*.pcd`             | `point-cloud`  | Point cloud sample               |
     +---------------------+----------------+----------------------------------+
-    | other               | `-`            | Generic sample                   |
+    | other               | `unknown`      | Generic sample                   |
     +---------------------+----------------+----------------------------------+
 
 .. note::
@@ -5280,6 +5290,75 @@ Point cloud samples may contain any type and number of custom fields, including
 which are natively visualizable by the App's
 :ref:`3D visualizer <app-3d-visualizer>`.
 
+.. generic-datasets:
+
+Generic datasets
+________________
+
+Any |Sample| whose `filepath` does not infer a known media type will be
+assigned a media type of `unknown`. Adding these samples to a |Dataset| will
+result in a generic dataset with a media type of `unknown`.
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(filepath="/path/to/file.json")
+
+    dataset = fo.Dataset()
+    dataset.add_sample(sample)
+
+    print(dataset.media_type)  # unknown
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': '8414ce63c3410c42bc8f6a94',
+        'media_type': 'unknown',
+        'filepath': '/path/to/file.json',
+        'tags': [],
+        'metadata': None,
+        'created_at': datetime.datetime(2025, 3, 1, 2, 33, 11, 414002),
+        'last_modified_at': datetime.datetime(2025, 3, 1, 2, 33, 11, 414002),
+    }>
+
+.. custom-datasets:
+
+Custom datasets
+________________
+
+When a |Sample| is created, a custom value can be provided as the `media_type`
+keyword argument. Adding the sample to a |Dataset| will result in a dataset
+with `media_type` inherited from the sample. Custom media types can be used
+to extend functionality for sample types that are not natively supported.
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(filepath="/path/to/file.aac", media_type="audio")
+
+    dataset = fo.Dataset()
+    dataset.add_sample(sample)
+
+    print(dataset.media_type)  # audio
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': '6641fe61a3991e67aa1e5f49',
+        'media_type': 'audio',
+        'filepath': '/path/to/file.aac',
+        'tags': [],
+        'metadata': None,
+        'created_at': datetime.datetime(2025, 3, 1, 2, 34, 31, 776414),
+        'last_modified_at': datetime.datetime(2025, 3, 1, 2, 34, 31, 776414),
+    }>
+
 DatasetViews
 ____________
 
@@ -5565,10 +5644,10 @@ to manipulate the fields or subfields of embedded documents in your dataset:
     # Delete an embedded field
     dataset.delete_sample_field("predictions.detections.still_label")
 
-.. _efficient-batch-edits:
+.. _save-contexts:
 
-Efficient batch edits
----------------------
+Save contexts
+-------------
 
 You are always free to perform arbitrary edits to a |Dataset| by iterating over
 its contents and editing the samples directly:
@@ -5661,7 +5740,6 @@ in a collection and saving the sample edits:
         sample.ground_truth.label = sample.ground_truth.label.upper()
 
     view.update_samples(update_fcn)
-
     print(dataset.count_values("ground_truth.label"))
     # {'DEER': 5000, 'HORSE': 5000, 'AIRPLANE': 5000, ..., 'DOG': 5000}
 
@@ -5695,9 +5773,14 @@ You can configure the number of workers that
 :meth:`update_samples() <fiftyone.core.collections.SampleCollection.update_samples>`
 uses in a variety of ways:
 
+-   Configure the default number of workers used by all
+    :meth:`update_samples() <fiftyone.core.collections.SampleCollection.update_samples>`
+    calls by setting the ``default_process_pool_workers`` value in your
+    :ref:`FiftyOne config <configuring-fiftyone>`
+
 -   Manually configure the number of workers for a particular
     :meth:`update_samples() <fiftyone.core.collections.SampleCollection.update_samples>`
-    call by passing the ``workers`` parameter
+    call by passing the ``num_workers`` parameter
 
 -   If neither of the above settings are applied,
     :meth:`update_samples() <fiftyone.core.collections.SampleCollection.update_samples>`
@@ -5708,16 +5791,20 @@ uses in a variety of ways:
 
 .. note::
 
-    You can set ``workers<=1`` to disable the
-    use of multithreading and multiprocessing pools in
+    You can set ``default_process_pool_workers<=1`` or ``num_workers<=1`` to
+    disable the use of multiprocessing pools in
     :meth:`update_samples() <fiftyone.core.collections.SampleCollection.update_samples>`.
 
--   The ``batch_method`` parameter controls how samples are grouped into batches for processing. When set to "slice",
-    samples are grouped sequentially, while "id" groups them by their unique IDs.
+By default,
+:meth:`update_samples() <fiftyone.core.collections.SampleCollection.update_samples>`
+evenly distributes samples to all workers in a single batch per worker.
+However, you can pass the ``batch_size`` parameter to customize the number of
+samples sent to each worker at a time:
 
--   The ``parallelize_method`` parameter determines how the operation is parallelized. When set to "process", backend
-    will utilize multiprocessing pool to parallelize the work across a number of workers. When set to "thread", backend
-    will utilize multithreading pool instead.
+.. code-block:: python
+    :linenos:
+
+    view.update_samples(update_fcn, batch_size=50, num_workers=4)
 
 You can also pass `progress="workers"` to
 :meth:`update_samples() <fiftyone.core.collections.SampleCollection.update_samples>`
@@ -5726,7 +5813,7 @@ to render progress bar(s) for each worker:
 .. code-block:: python
     :linenos:
 
-    view.update_samples(update_fcn, workers=16, progress="workers")
+    view.update_samples(update_fcn, num_workers=16, progress="workers")
 
 .. code-block:: text
 
@@ -5747,15 +5834,15 @@ to render progress bar(s) for each worker:
     Batch 15/16: 100%|█████████████████████████████████████████████████| 3125/3125 [905.06it/s]
     Batch 16/16: 100%|█████████████████████████████████████████████████| 3125/3125 [911.72it/s]
 
-.. _map-reduce-operations:
+.. _map-operations:
 
-Mapping samples operations
---------------------------
+Map operations
+--------------
 
 The
 :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
 method provides a powerful and efficient interface for iterating over samples,
-applying a function to each sample, and yielding the results as an iterator:
+applying a function to each sample, and returning the results as a generator.
 
 .. code-block:: python
     :linenos:
@@ -5786,7 +5873,7 @@ applying a function to each sample, and yielding the results as an iterator:
 By default,
 :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
 leverages a multiprocessing pool to parallelize the work across a number of
-workers, resulting in a significant performance improvements over the equivalent
+workers, resulting in signficant performance improvements over the equivalent
 :meth:`iter_samples() <fiftyone.core.dataset.Dataset.iter_samples>` syntax:
 
 .. code-block:: python
@@ -5808,16 +5895,25 @@ Keep the following points in mind while using
 -   If your ``map_fcn`` modifies samples in-place, you must pass ``save=True``
     to save these edits
 
--   Your ``map_fcn`` should not return any samples as the document objects are
-    not able to serialize and deserialize.
+.. note::
+
+    Your ``map_fcn`` cannot return |Sample| objects directly. If you are
+    tempted to do this, then chances are good that you can express the
+    operation more efficiently and idiomatically via
+    :ref:`dataset views <using-views>`.
 
 You can configure the number of workers that
 :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
 uses in a variety of ways:
 
+-   Configure the default number of workers used by all
+    :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
+    calls by setting the ``default_process_pool_workers`` value in your
+    :ref:`FiftyOne config <configuring-fiftyone>`
+
 -   Manually configure the number of workers for a particular
     :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
-    call by passing the ``workers`` parameter
+    call by passing the ``num_workers`` parameter
 
 -   If neither of the above settings are applied,
     :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
@@ -5828,16 +5924,22 @@ uses in a variety of ways:
 
 .. note::
 
-    You can set ``workers<=1`` to disable the
-    use of multithreading and multiprocessing pools in
+    You can set ``default_process_pool_workers<=1`` or ``num_workers<=1`` to
+    disable the use of multiprocessing pools in
     :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`.
 
--   The ``batch_method`` parameter controls how samples are grouped into batches for processing. When set to "slice",
-    samples are grouped sequentially, while "id" groups them by their unique IDs.
+By default,
+:meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
+evenly distributes samples to all workers in a single shard per worker.
+However, you can pass the ``batch_size`` parameter to customize the number of
+samples sent to each worker at a time:
 
--   The ``parallelize_method`` parameter determines how the operation is parallelized. When set to "process", backend
-    will utilize multiprocessing pool to parallelize the work across a number of workers. When set to "thread", backend
-    will utilize multithreading pool instead.
+.. code-block:: python
+    :linenos:
+
+    counter = Counter()
+    for _, label in view.map_samples(map_fcn, batch_size=50, num_workers=4):
+        counter[label] += 1
 
 You can also pass `progress="workers"` to
 :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
@@ -5846,7 +5948,9 @@ to render progress bar(s) for each worker:
 .. code-block:: python
     :linenos:
 
-    view.map_samples(map_fcn, reduce_fcn=ReduceFcn, num_workers=16, progress="workers")
+    counter = Counter()
+    for _, label in view.map_samples(map_fcn, num_workers=16, progress="workers"):
+        counter[label] += 1
 
 .. code-block:: text
 

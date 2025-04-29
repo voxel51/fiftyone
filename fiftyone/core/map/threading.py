@@ -24,13 +24,12 @@ from typing import (
 import bson
 from tqdm import tqdm
 
+
 import fiftyone.core.config as focc
-import fiftyone.core.utils as fou
 import fiftyone.core.map.batcher as fomb
 import fiftyone.core.map.mapper as fomm
-
+import fiftyone.core.utils as fou
 from fiftyone.core.map.typing import SampleCollection
-
 
 T = TypeVar("T")
 R = TypeVar("R")
@@ -46,50 +45,51 @@ class ThreadMapper(fomm.LocalMapper):
     @classmethod
     def create(
         cls,
-        *_,
+        *,
         config: focc.FiftyOneConfig,
         batch_cls: Type[fomb.SampleBatch],
-        workers: Optional[int] = None,
+        num_workers: Optional[int] = None,
         batch_size: Optional[int] = None,
         **__,
     ):
-        if workers is None:
-            workers = (
+        if num_workers is None:
+            num_workers = (
                 config.default_thread_pool_workers
                 or fou.recommend_thread_pool_workers()
             )
 
         if config.max_thread_pool_workers is not None:
-            workers = min(workers, config.max_thread_pool_workers)
+            num_workers = min(num_workers, config.max_thread_pool_workers)
 
-        return cls(batch_cls, workers, batch_size)
+        return cls(batch_cls, num_workers, batch_size)
 
     @staticmethod
     def __worker(
-        *_,
+        *,
         cancel_event: threading.Event,
         result_queue: ResultQueue[R],
         map_fcn: Callable[[T], R],
         sample_iter: Iterator[T],
         skip_failures: bool,
         worker_done_event: threading.Event,
-    ) -> Iterator[Tuple[bson.ObjectId, Union[Exception, None], R]]:
+        progress_bar: Optional[tqdm] = None,
+    ) -> None:
 
         try:
             while not cancel_event.is_set() and (
                 sample := next(sample_iter, None)
             ):
                 try:
+                    if progress_bar:
+                        progress_bar.update(1)
                     result = map_fcn(sample)
                 except Exception as err:
-                    if skip_failures:
-                        # Cancel other workers as soon as possible.
-                        cancel_event.set()
-
                     # Add sample ID and error to the queue.
                     result_queue.put((sample.id, err, None))
 
-                    if skip_failures:
+                    if not skip_failures:
+                        # Cancel other workers as soon as possible.
+                        cancel_event.set()
                         break
                 else:
                     # Add sample ID and result to the queue.
@@ -101,8 +101,8 @@ class ThreadMapper(fomm.LocalMapper):
         self,
         sample_collection: SampleCollection[T],
         map_fcn: Callable[[T], R],
-        *_,
-        progress: Union[bool, Literal["workers"]],
+        *,
+        progress: Union[bool, Literal["workers"], Callable],
         save: bool,
         skip_failures: bool,
     ) -> Iterator[Tuple[bson.ObjectId, Union[Exception, None], R]]:
@@ -112,13 +112,13 @@ class ThreadMapper(fomm.LocalMapper):
         cancel_event = threading.Event()
 
         sample_batches = self._batch_cls.split(
-            sample_collection, self.workers, self.batch_size
+            sample_collection, self.num_workers, self.batch_size
         )
 
         batch_count = len(sample_batches)
 
         with concurrent.futures.ThreadPoolExecutor(
-            max_workers=self.workers
+            max_workers=self.num_workers
         ) as executor:
             for idx, batch in enumerate(sample_batches):
                 # Batch number (index starting at 1)
@@ -133,11 +133,13 @@ class ThreadMapper(fomm.LocalMapper):
                 sample_iter = batch_collection.iter_samples(autosave=save)
 
                 # This is for a per-worker progress bar.
+                worker_progress_bar = None
                 if progress == "workers":
                     desc = f"Batch {i:0{len(str(batch_count))}}/{batch_count}"
-
-                    sample_iter = tqdm(
-                        sample_iter, total=batch.total, desc=desc, position=i
+                    worker_progress_bar = tqdm(
+                        total=batch.total,
+                        desc=desc,
+                        position=i,
                     )
 
                 executor.submit(
@@ -148,6 +150,7 @@ class ThreadMapper(fomm.LocalMapper):
                     sample_iter=sample_iter,
                     skip_failures=skip_failures,
                     worker_done_event=worker_done_event,
+                    progress_bar=worker_progress_bar,
                 )
 
             # Iterate over queue until an error occurs of all threads are
@@ -183,15 +186,16 @@ class ThreadMapper(fomm.LocalMapper):
                         if not (evts := [e for e in evts if not e.is_set()]):
                             break
                     else:
-                        # An error was raised in the map_fcn for a sample.
+                        # An error was raised in the map_fcn for a sample
                         if err is not None:
-                            # When skipping failures, simply yield the the
+
+                            # When skipping failures, simply yield the
                             # sample ID and the error.
                             if skip_failures:
                                 yield sample_id, err, None
                             # When NOT skipping failures, aggregate any errors
                             # to allow for all successfully mapped samples from
-                            # the various workers to be yielded first.
+                            # the various workers to be yielded first
                             else:
                                 sample_errors.append((sample_id, err, None))
                         else:
@@ -200,16 +204,19 @@ class ThreadMapper(fomm.LocalMapper):
 
                 # It is possible to aggregate one error per worker. There
                 # might be a better way to handle this in the future but for
-                # now, return the first error seen.
+                # now, return the first error seen
                 if sample_errors:
                     yield sample_errors[0]
 
-            results = get_results(result_queue, worker_done_events)
-
-            # This is for the global progress bar.
             if progress is True:
-                results = tqdm(
-                    results, total=sum(batch.total for batch in sample_batches)
-                )
-
-            yield from results
+                with fou.ProgressBar(
+                    total=sum(batch.total for batch in sample_batches),
+                    progress=progress,
+                ) as pb:
+                    for result in get_results(
+                        result_queue, worker_done_events
+                    ):
+                        pb.update()
+                        yield result
+            else:
+                yield from get_results(result_queue, worker_done_events)

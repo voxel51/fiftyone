@@ -928,11 +928,13 @@ class DatasetView(foc.SampleCollection):
         self,
         ftype=None,
         embedded_doc_type=None,
+        subfield=None,
         read_only=None,
         info_keys=None,
         created_after=None,
         include_private=False,
         flat=False,
+        unwind=True,
         mode=None,
     ):
         """Returns a schema dictionary describing the fields of the samples in
@@ -946,6 +948,9 @@ class DatasetView(foc.SampleCollection):
                 iterable of types to which to restrict the returned schema.
                 Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            subfield (None): an optional subfield type or iterable of subfield
+                types to which to restrict the returned schema. Must be
+                subclass(es) of :class:`fiftyone.core.fields.Field`
             read_only (None): whether to restrict to (True) or exclude (False)
                 read-only fields. By default, all fields are included
             info_keys (None): an optional key or list of keys that must be in
@@ -956,9 +961,11 @@ class DatasetView(foc.SampleCollection):
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
                 embedded document fields are included as top-level keys
+            unwind (True): whether to traverse into list fields. Only
+                applicable when ``flat=True``
             mode (None): whether to apply the above constraints before and/or
-                after flattening the schema. Only applicable when ``flat`` is
-                True. Supported values are ``("before", "after", "both")``. The
+                after flattening the schema. Only applicable when ``flat=True``.
+                Supported values are ``("before", "after", "both")``. The
                 default is ``"after"``
 
         Returns:
@@ -975,11 +982,13 @@ class DatasetView(foc.SampleCollection):
             schema,
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
+            subfield=subfield,
             read_only=read_only,
             info_keys=info_keys,
             created_after=created_after,
             include_private=include_private,
             flat=flat,
+            unwind=unwind,
             mode=mode,
         )
 
@@ -987,11 +996,13 @@ class DatasetView(foc.SampleCollection):
         self,
         ftype=None,
         embedded_doc_type=None,
+        subfield=None,
         read_only=None,
         info_keys=None,
         created_after=None,
         include_private=False,
         flat=False,
+        unwind=True,
         mode=None,
     ):
         """Returns a schema dictionary describing the fields of the frames of
@@ -1007,6 +1018,9 @@ class DatasetView(foc.SampleCollection):
                 iterable of types to which to restrict the returned schema.
                 Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            subfield (None): an optional subfield type or iterable of subfield
+                types to which to restrict the returned schema. Must be
+                subclass(es) of :class:`fiftyone.core.fields.Field`
             read_only (None): whether to restrict to (True) or exclude (False)
                 read-only fields. By default, all fields are included
             info_keys (None): an optional key or list of keys that must be in
@@ -1017,10 +1031,12 @@ class DatasetView(foc.SampleCollection):
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
                 embedded document fields are included as top-level keys
+            unwind (True): whether to traverse into list fields. Only
+                applicable when ``flat=True``
             mode (None): whether to apply the above constraints before and/or
-                after flattening the schema. Only applicable when ``flat`` is
-                True. Supported values are ``("before", "after", "both")``.
-                The default is ``"after"``
+                after flattening the schema. Only applicable when ``flat=True``.
+                Supported values are ``("before", "after", "both")``. The
+                default is ``"after"``
 
         Returns:
             a dict mapping field names to :class:`fiftyone.core.fields.Field`
@@ -1039,11 +1055,13 @@ class DatasetView(foc.SampleCollection):
             schema,
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
+            subfield=subfield,
             read_only=read_only,
             info_keys=info_keys,
             created_after=created_after,
             include_private=include_private,
             flat=flat,
+            unwind=unwind,
             mode=mode,
         )
 
@@ -1637,66 +1655,39 @@ class DatasetView(foc.SampleCollection):
         if _attach_frames_idx is None and (attach_frames or frames_only):
             _attach_frames_idx = len(_pipelines)
 
-        #######################################################################
-        # Insert frame lookup pipeline(s) if needed
-        #######################################################################
-
         if _attach_frames_idx1 is not None and _attach_frames_idx is not None:
             _attach_frames_idx = _attach_frames_idx1
 
-        if _attach_frames_idx0 is not None and _attach_frames_idx is not None:
-            # Two lookups are required; manually do the **last** one and rely
-            # on dataset._pipeline() to do the first one
-            attach_frames = True
-            _pipeline = self._dataset._attach_frames_pipeline(
-                limit=limit_frames, support=support
-            )
-            _pipelines.insert(_attach_frames_idx, _pipeline)
-        elif _found_flattened_videos and _attach_frames_idx is not None:
-            # Must manually attach frames after the group $lookup
-            attach_frames = None  # special syntax: frames already attached
-            _pipeline = self._dataset._attach_frames_pipeline(
-                limit=limit_frames, support=support
-            )
-            _pipelines.insert(_attach_frames_idx, _pipeline)
-        elif _attach_frames_idx0 is not None or _attach_frames_idx is not None:
-            # Exactly one lookup is required; rely on dataset._pipeline() to
-            # do it
-            attach_frames = True
+        _inserts = []
 
-        # @todo use the optimization below instead, which injects frames as
-        # late as possible in the pipeline. We can't currently use it because
-        # there's some issue with poster frames in the App if the frames are
-        # not attached first...
+        # Handles incrementing idx values in case of multiple inserts
+        def _adjust(idx):
+            idx += sum(i < idx for i in _inserts)
+            _inserts.append(idx)
+            return idx
 
-        """
+        # Insert frame lookup pipeline(s) if needed
         if _attach_frames_idx0 is not None or _attach_frames_idx is not None:
             attach_frames = None  # special syntax: frames already attached
 
             if _attach_frames_idx0 is not None:
                 _pipeline = self._dataset._attach_frames_pipeline(
-                    support=support
+                    limit=limit_frames, support=support
                 )
-                _pipelines.insert(_attach_frames_idx0, _pipeline)
+                _pipelines.insert(_adjust(_attach_frames_idx0), _pipeline)
 
             if _attach_frames_idx is not None:
-                if _attach_frames_idx0 is not None:
-                    _attach_frames_idx += 1
-
                 _pipeline = self._dataset._attach_frames_pipeline(
-                    support=support
+                    limit=limit_frames, support=support
                 )
-                _pipelines.insert(_attach_frames_idx, _pipeline)
-        """
-
-        #######################################################################
+                _pipelines.insert(_adjust(_attach_frames_idx), _pipeline)
 
         # Insert group lookup pipeline if needed
         if _attach_groups_idx is not None:
             _pipeline = self._dataset._attach_groups_pipeline(
                 group_slices=_group_slices
             )
-            _pipelines.insert(_attach_groups_idx, _pipeline)
+            _pipelines.insert(_adjust(_attach_groups_idx), _pipeline)
 
         if pipeline is not None:
             _pipelines.append(pipeline)

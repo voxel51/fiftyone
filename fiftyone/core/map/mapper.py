@@ -39,7 +39,7 @@ def check_if_return_is_sample(
     map_fcn: Callable[[T], R],
 ) -> bool:
     """
-    Check if the map function returns a sample and raise if it does not
+    Check if the map function returns a sample
     """
 
     first_sample = sample_collection.first()
@@ -63,10 +63,10 @@ class Mapper(abc.ABC):
     def __init__(
         self,
         batch_cls: Type[fomb.SampleBatch],
-        workers: int,
+        num_workers: int,
         batch_size: Optional[int] = None,
     ):
-        self._workers = workers
+        self._num_workers = num_workers
         self._batch_cls = batch_cls
         self._batch_size = batch_size
 
@@ -74,20 +74,20 @@ class Mapper(abc.ABC):
     @abc.abstractmethod
     def create(
         cls,
-        *_,
+        *,
         # pylint:disable-next=unused-argument
         config: focc.FiftyOneConfig,
         batch_cls: Type[fomb.SampleBatch],
+        num_workers: Optional[int] = None,
         # pylint:disable-next=unused-argument
-        workers: Optional[int] = None,
         **__,
     ):
         """Create a new mapper instance"""
 
     @property
-    def workers(self) -> int:
+    def num_workers(self) -> int:
         """Number of workers to use"""
-        return self._workers
+        return self._num_workers
 
     @property
     def batch_size(self) -> Optional[int]:
@@ -99,7 +99,6 @@ class Mapper(abc.ABC):
         self,
         sample_collection: SampleCollection[T],
         map_fcn: Callable[[T], R],
-        *_,
         progress: Optional[Union[bool, Literal["workers"]]],
         save: bool,
         skip_failures: bool,
@@ -114,7 +113,7 @@ class Mapper(abc.ABC):
               map.
             map_fcn (Callable[[T], R]): The map function to apply to each
               sample.
-            progress (Union[bool, Literal[&quot;workers&quot;]]): Whether or
+            progress (Union[bool, Literal["workers"]]): Whether or
               not and how to render progress.
             save (bool, optional): Whether to save mutated samples mutated in
               the map function. Defaults to False.
@@ -143,7 +142,7 @@ class Mapper(abc.ABC):
         self,
         sample_collection: SampleCollection[T],
         map_fcn: Callable[[T], R],
-        *_,
+        *,
         progress: Optional[Union[bool, Literal["workers"]]] = None,
         save: bool = False,
         skip_failures: bool = True,
@@ -156,7 +155,7 @@ class Mapper(abc.ABC):
               map.
             map_fcn (Callable[[T], R]): The map function to apply to each
               sample.
-            progress (Union[bool, Literal[&quot;workers&quot;]]): Whether or
+            progress (Union[bool, Literal["workers"]]): Whether or
               not and how to render progress.
             save (bool, optional): Whether to save mutated samples mutated in
               the map function. Defaults to False.
@@ -189,7 +188,7 @@ class LocalMapper(Mapper, abc.ABC):
         self,
         sample_collection: SampleCollection[T],
         map_fcn: Callable[[T], R],
-        *_,
+        *,
         progress: Optional[Union[bool, Literal["workers"]]],
         save: bool,
         skip_failures: bool,
@@ -204,7 +203,7 @@ class LocalMapper(Mapper, abc.ABC):
               map.
             map_fcn (Callable[[T], R]): The map function to apply to each
               sample.
-            progress (Union[bool, Literal[&quot;workers&quot;]]): Whether or
+            progress (Union[bool, Literal["workers"]]): Whether or
               not and how to render progress.
             save (bool, optional): Whether to save mutated samples mutated in
               the map function. Defaults to False.
@@ -222,14 +221,14 @@ class LocalMapper(Mapper, abc.ABC):
         self,
         sample_collection: SampleCollection[T],
         map_fcn: Callable[[T], R],
-        *_,
+        *,
         progress: Optional[Union[bool, Literal["workers"]]] = None,
         save: bool = False,
         skip_failures: bool = True,
     ) -> Iterator[Tuple[bson.ObjectId, R]]:
-        # If workers is <=1 on the same local machine, no need for the
-        # overhead of trying to parallelize.
-        if self._workers <= 1:
+        # If the number of workers is 1, no need for the overhead of trying to
+        # parallelize.
+        if self._num_workers <= 1:
             for sample in sample_collection.iter_samples(
                 progress=progress, autosave=save
             ):

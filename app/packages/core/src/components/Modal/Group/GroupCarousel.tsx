@@ -10,6 +10,7 @@ import { selector, useRecoilValue, useRecoilValueLoadable } from "recoil";
 import { v4 as uuid } from "uuid";
 import useFlashlightPager from "../../../useFlashlightPager";
 import useSetGroupSample from "./useSetGroupSample";
+import { is3d, setContains3d } from "@fiftyone/utilities";
 
 const groupCarouselSlices = selector<string[]>({
   key: "groupCarouselSlices",
@@ -17,10 +18,7 @@ const groupCarouselSlices = selector<string[]>({
     const mediaTypesSet = get(fos.groupMediaTypesSet);
     const slices = get(fos.groupSlices);
 
-    if (
-      mediaTypesSet.size === 1 &&
-      (mediaTypesSet.has("point-cloud") || mediaTypesSet.has("three_d"))
-    ) {
+    if (mediaTypesSet.size === 1 && setContains3d(mediaTypesSet)) {
       return slices;
     }
 
@@ -28,10 +26,7 @@ const groupCarouselSlices = selector<string[]>({
       get(fos.groupMediaTypes).map(({ name, mediaType }) => [name, mediaType])
     );
 
-    return slices.filter(
-      (slice) =>
-        mediaTypes[slice] !== "point_cloud" && mediaTypes[slice] !== "three_d"
-    );
+    return slices.filter((slice) => !is3d(mediaTypes[slice]));
   },
 });
 
