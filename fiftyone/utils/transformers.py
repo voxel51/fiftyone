@@ -974,6 +974,8 @@ class FiftyOneTransformerForObjectDetection(FiftyOneTransformer):
         # I think this is better than instantiating a second one
         # or passing the entire model to the output processor
         self._output_processor.processor = self.transforms.processor
+        # ew
+        self.transforms.return_image_sizes = True
 
 
 class FiftyOneTransformerForSemanticSegmentationConfig(
@@ -1216,8 +1218,9 @@ def _get_detector_from_processor(processor, model_name_or_path):
 
 # rather than using partial to avoid pickling issues
 class _HFTransformsHandler:
-    def __init__(self, processor, **kwargs):
+    def __init__(self, processor, return_image_sizes=False, **kwargs):
         self.processor = processor
+        self.return_image_sizes = return_image_sizes
         self.kwargs = kwargs
         if "return_tensors" not in kwargs:
             self.kwargs["return_tensors"] = "pt"
@@ -1225,27 +1228,26 @@ class _HFTransformsHandler:
     def __call__(self, args):
         if isinstance(args, dict):
             # multiple inputs
-            if args.get("images", None) is not None:
-                image_size = (
-                    [_get_image_size(img) for img in args["images"]]
-                    if isinstance(args["images"], list)
-                    else [_get_image_size(args["images"])]
-                )
+            if self.return_image_sizes:
+                if args.get("images", None) is not None:
+                    image_size = (
+                        [_get_image_size(img) for img in args["images"]]
+                        if isinstance(args["images"], list)
+                        else [_get_image_size(args["images"])]
+                    )
             res = self.processor(**args, **self.kwargs)
         else:
             # single input, most likely either a list of images or a single image
-            image_size = (
-                [_get_image_size(img) for img in args]
-                if isinstance(args, list)
-                else [_get_image_size(args)]
-            )
+            if self.return_image_sizes:
+                image_size = (
+                    [_get_image_size(img) for img in args]
+                    if isinstance(args, list)
+                    else [_get_image_size(args)]
+                )
             res = self.processor(images=args, **self.kwargs)
 
-        res.update(
-            {
-                "fo_image_size": torch.tensor(image_size),
-            }
-        )
+        if self.return_image_sizes:
+            res.update({"fo_image_size": torch.tensor(image_size)})
 
         return res
 
