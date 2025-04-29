@@ -7,7 +7,6 @@ Model evaluation panel.
 """
 
 import os
-import traceback
 import fiftyone.utils.eval as foue
 import numpy as np
 import fiftyone.operators.types as types
@@ -37,9 +36,8 @@ ENABLE_CACHING = (
     os.environ.get("FIFTYONE_DISABLE_EVALUATION_CACHING") not in TRUTHY_VALUES
 )
 CACHE_TTL = 30 * 24 * 60 * 60  # 30 days in seconds
+CACHE_VERSION = "v1.5.0"
 SUPPORTED_EVALUATION_TYPES = ["classification", "detection", "segmentation"]
-
-ENABLE_CACHING = False
 
 
 def _has_edit_permission(ctx):
@@ -465,76 +463,87 @@ class EvaluationPanel(Panel):
             f"evaluation_{computed_eval_key}.scenarios", scenarios
         )
 
+    def get_evaluation_data(self, ctx):
+        view_state = ctx.panel.get_state("view") or {}
+        eval_key = view_state.get("key")
+        computed_eval_key = ctx.params.get("key", eval_key)
+        info = ctx.dataset.get_evaluation_info(computed_eval_key)
+        evaluation_type = info.config.type
+        serialized_info = info.serialize()
+        if evaluation_type not in SUPPORTED_EVALUATION_TYPES:
+            ctx.panel.set_data(
+                f"evaluation_{computed_eval_key}_error",
+                {"error": "unsupported", "info": serialized_info},
+            )
+            return
+
+        results = ctx.dataset.load_evaluation_results(computed_eval_key)
+        gt_field = info.config.gt_field
+        mask_targets = None
+
+        if evaluation_type == "segmentation":
+            mask_targets = _get_mask_targets(ctx.dataset, gt_field)
+            _init_segmentation_results(ctx.dataset, results, gt_field)
+
+        metrics = results.metrics()
+        per_class_metrics = self.get_per_class_metrics(info, results)
+        confidences = self.get_confidences(per_class_metrics)
+        metrics["average_confidence"] = self.get_avg_confidence(confidences)
+        metrics["tp"], metrics["fp"], metrics["fn"] = self.get_tp_fp_fn(
+            info, results
+        )
+        metrics["mAP"] = self.get_map(results)
+        metrics["mAR"] = self.get_mar(results)
+
+        if (
+            info.config.type == "classification"
+            and info.config.method != "binary"
+        ):
+            (
+                metrics["num_correct"],
+                metrics["num_incorrect"],
+            ) = self.get_correct_incorrect(results)
+
+        return {
+            "metrics": metrics,
+            "custom_metrics": self.get_custom_metrics(results),
+            "info": serialized_info,
+            "confusion_matrices": self.get_confusion_matrices(results),
+            "per_class_metrics": per_class_metrics,
+            "mask_targets": mask_targets,
+            "missing": results.missing,
+        }
+
+    def get_evaluation_data_cache_key_fn(self, ctx):
+        view_state = ctx.panel.get_state("view") or {}
+        eval_id = view_state.get("id")
+        computed_eval_id = ctx.params.get("id", eval_id)
+        return [computed_eval_id, CACHE_VERSION]
+
+    @execution_cache(
+        store_name=STORE_NAME,
+        key_fn=get_evaluation_data_cache_key_fn,
+        ttl=CACHE_TTL,
+    )
+    def get_evaluation_data_cacheable(self, ctx):
+        return self.get_evaluation_data(ctx)
+
     def load_evaluation(self, ctx):
         view_state = ctx.panel.get_state("view") or {}
         eval_key = view_state.get("key")
         computed_eval_key = ctx.params.get("key", eval_key)
         eval_id = view_state.get("id")
         computed_eval_id = ctx.params.get("id", eval_id)
-        store = self.get_store(ctx)
         evaluation_data = (
-            store.get(computed_eval_id) if ENABLE_CACHING else None
+            self.get_evaluation_data_cacheable(ctx)
+            if ENABLE_CACHING
+            else self.get_evaluation_data(ctx)
         )
-        if evaluation_data is None:
-            info = ctx.dataset.get_evaluation_info(computed_eval_key)
-            evaluation_type = info.config.type
-            serialized_info = info.serialize()
-            if evaluation_type not in SUPPORTED_EVALUATION_TYPES:
-                ctx.panel.set_data(
-                    f"evaluation_{computed_eval_key}_error",
-                    {"error": "unsupported", "info": serialized_info},
-                )
-                return
-
-            results = ctx.dataset.load_evaluation_results(computed_eval_key)
-            gt_field = info.config.gt_field
-            mask_targets = None
-
-            if evaluation_type == "segmentation":
-                mask_targets = _get_mask_targets(ctx.dataset, gt_field)
-                _init_segmentation_results(ctx.dataset, results, gt_field)
-
-            metrics = results.metrics()
-            per_class_metrics = self.get_per_class_metrics(info, results)
-            confidences = self.get_confidences(per_class_metrics)
-            metrics["average_confidence"] = self.get_avg_confidence(
-                confidences
-            )
-            metrics["tp"], metrics["fp"], metrics["fn"] = self.get_tp_fp_fn(
-                info, results
-            )
-            metrics["mAP"] = self.get_map(results)
-            metrics["mAR"] = self.get_mar(results)
-
-            if (
-                info.config.type == "classification"
-                and info.config.method != "binary"
-            ):
-                (
-                    metrics["num_correct"],
-                    metrics["num_incorrect"],
-                ) = self.get_correct_incorrect(results)
-
-            scenarios = self.get_scenarios(ctx, computed_eval_id)
-
-            evaluation_data = {
-                "metrics": metrics,
-                "custom_metrics": self.get_custom_metrics(results),
-                "info": serialized_info,
-                "confusion_matrices": self.get_confusion_matrices(results),
-                "per_class_metrics": per_class_metrics,
-                "mask_targets": mask_targets,
-                "scenarios": scenarios,
-            }
-            ctx.panel.set_state("missing", results.missing)
-
-            if ENABLE_CACHING:
-                # Cache the evaluation data
-                try:
-                    store.set(computed_eval_id, evaluation_data, ttl=CACHE_TTL)
-                except Exception:
-                    traceback.print_exc()
-
+        # Skip caching scenarios as they are updated frequently
+        evaluation_data["scenarios"] = self.get_scenarios(
+            ctx, computed_eval_id
+        )
+        ctx.panel.set_state("missing", evaluation_data["missing"])
         ctx.panel.set_data(f"evaluation_{computed_eval_key}", evaluation_data)
 
     def on_change_view(self, ctx):

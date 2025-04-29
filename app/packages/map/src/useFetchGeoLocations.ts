@@ -2,6 +2,7 @@ import * as fos from "@fiftyone/state";
 import { getFetchFunction } from "@fiftyone/utilities";
 import { LRUCache } from "lru-cache";
 import React from "react";
+import { atom, useSetRecoilState } from "recoil";
 
 export type SampleLocationMap = {
   [key: string]: [number, number];
@@ -16,6 +17,11 @@ const MAX_GEO_LOCATIONS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes TTL
 const geoLocationsCache = new LRUCache<string, SampleLocationMap>({
   max: MAX_GEO_LOCATIONS_CACHE_SIZE,
   ttl: MAX_GEO_LOCATIONS_CACHE_TTL,
+});
+
+export const sampleLocationMapAtom = atom<SampleLocationMap | null>({
+  key: "sampleLocationMap",
+  default: {},
 });
 
 const fetchGeoLocations = async (params: {
@@ -34,7 +40,7 @@ const fetchGeoLocations = async (params: {
   }
 };
 
-const useGeoLocations = ({
+const useFetchGeoLocations = ({
   path,
   dataset,
   filters,
@@ -48,11 +54,9 @@ const useGeoLocations = ({
   filters: fos.State.Filters;
 }): {
   loading: boolean;
-  sampleLocationMap: SampleLocationMap;
 } => {
   const [loading, setLoading] = React.useState(false);
-  const [sampleLocationMap, setSampleLocationMap] =
-    React.useState<SampleLocationMap>({});
+  const setSampleLocationMap = useSetRecoilState(sampleLocationMapAtom);
 
   const key = React.useMemo(() => {
     return [
@@ -70,12 +74,18 @@ const useGeoLocations = ({
     // Check if response is already in cache
     if (geoLocationsCache.has(key)) {
       const cachedResponse = geoLocationsCache.get(key);
+
       if (cachedResponse) {
         setSampleLocationMap(cachedResponse);
         setLoading(false);
         return;
       }
+
+      return;
     }
+
+    // preemptively set key to null to avoid race condition
+    geoLocationsCache.set(key, null);
 
     // Otherwise fetch from server
     fetchGeoLocations({
@@ -84,17 +94,22 @@ const useGeoLocations = ({
       extended,
       dataset: dataset.name,
       path,
-    }).then((res) => {
-      geoLocationsCache.set(key, res);
-      setSampleLocationMap(res);
-      setLoading(false);
-    });
+    })
+      .then((res) => {
+        geoLocationsCache.set(key, res);
+        setSampleLocationMap(res);
+        setLoading(false);
+      })
+      .catch((e) => {
+        console.error(e);
+        geoLocationsCache.delete(key);
+        setLoading(false);
+      });
   }, [key, dataset, filters, view, path, extended]);
 
   return {
     loading,
-    sampleLocationMap,
   };
 };
 
-export default useGeoLocations;
+export default useFetchGeoLocations;

@@ -1,7 +1,7 @@
 import { Tooltip } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { Bolt } from "@mui/icons-material";
-import React from "react";
+import React, { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Arrow from "./Arrow";
@@ -34,21 +34,35 @@ const Lightning = ({
   path: string;
   frameFilteringDisabled: boolean;
 }) => {
+  const color = useRecoilValue(fos.pathColor(path));
+  const compound = useRecoilValue(fos.isCompoundIndexed(path));
   const expandedPath = useRecoilValue(fos.expandPath(path));
-  const filteredIndex = useRecoilValue(
+  const gridOptimized = useRecoilValue(
     fos.pathHasIndexes({ path, withFilters: true })
   );
-  const hasFilters = useRecoilValue(fos.hasFilters(false));
-  const color = useRecoilValue(fos.pathColor(path));
-  const isFiltered = useRecoilValue(
-    fos.fieldIsFiltered({ path, modal: false })
+  const sidebarOptimized = useRecoilValue(
+    fos.pathHasIndexes({ path, withFilters: false })
   );
+
+  const tooltip = useMemo(() => {
+    const tooltip = compound ? "Compound indexed" : "Indexed";
+
+    if (gridOptimized && sidebarOptimized) {
+      return `${tooltip}. Sidebar and grid are optimized`;
+    }
+
+    if (gridOptimized) {
+      return `${tooltip}. Grid is optimized`;
+    }
+
+    return `${tooltip}. Sidebar is optimized`;
+  }, [compound, gridOptimized, sidebarOptimized]);
 
   return (
     <>
       <LightningBolt
-        color={filteredIndex || isFiltered ? color : undefined}
-        tooltip={filteredIndex && hasFilters ? "Compound index" : "Indexed"}
+        color={gridOptimized ? color : undefined}
+        tooltip={tooltip}
       />
       <Arrow
         expanded={fos.sidebarExpanded({ modal: false, path: expandedPath })}

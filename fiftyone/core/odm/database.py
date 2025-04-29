@@ -397,6 +397,8 @@ def aggregate(collection, pipelines, hints=None):
         collection: a ``pymongo.collection.Collection`` or
             ``motor.motor_asyncio.AsyncIOMotorCollection``
         pipelines: a MongoDB aggregation pipeline or a list of pipelines
+        hints (None): a corresponding index hint or list of index hints for
+            each pipeline
 
     Returns:
         -   If a single pipeline is provided, a
@@ -426,23 +428,30 @@ def aggregate(collection, pipelines, hints=None):
         return _do_async_pooled_aggregate(collection, pipelines, hints)
 
     if num_pipelines == 1:
-        result = collection.aggregate(pipelines[0], allowDiskUse=True)
+        kwargs = {"hint": hints[0]} if hints[0] is not None else {}
+        result = collection.aggregate(
+            pipelines[0], allowDiskUse=True, **kwargs
+        )
         return [result] if is_list else result
 
-    return _do_pooled_aggregate(collection, pipelines)
+    return _do_pooled_aggregate(collection, pipelines, hints)
 
 
-async def _do_aggregate(collection, pipeline):
-    return [i for i in collection.aggregate(pipeline, allowDiskUse=True)]
-
-
-def _do_pooled_aggregate(collection, pipelines):
+def _do_pooled_aggregate(collection, pipelines, hints):
     # @todo: MongoDB 5.0 supports snapshots which can be used to make the
     # results consistent, i.e. read from the same point in time
+
+    def _aggregate(args):
+        pipeline, hint = args
+        kwargs = {"hint": hint} if hint is not None else {}
+        return list(
+            collection.aggregate(pipeline, allowDiskUse=True, **kwargs)
+        )
+
     with ThreadPool(processes=len(pipelines)) as pool:
         return pool.map(
-            lambda p: list(collection.aggregate(p, allowDiskUse=True)),
-            pipelines,
+            _aggregate,
+            zip(pipelines, hints),
             chunksize=1,
         )
 
