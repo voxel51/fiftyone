@@ -701,6 +701,11 @@ class FiftyOneZeroShotTransformer(
     """
 
     def __init__(self, config):
+        # ensure padding for variable sized prompts
+        if config.transformers_processor_kwargs is None:
+            config.transformers_processor_kwargs = {}
+        if config.transformers_processor_kwargs.get("padding", None) is None:
+            config.transformers_processor_kwargs["padding"] = True
         super().__init__(config)
         self._text_prompts = None
         self._input_ids = None
@@ -729,7 +734,7 @@ class FiftyOneZeroShotTransformer(
             self.classes = self.config.classes
 
         text_prompt = (
-            self.config.text_prompt if self.config.text_prompt else ""
+            self.config.text_prompt if self.config.text_prompt else None
         )
         class_prompts = (
             self.config.class_prompts
@@ -737,9 +742,13 @@ class FiftyOneZeroShotTransformer(
             else {c: c for c in self.classes}
         )
 
-        self._text_prompts = [
-            f"{text_prompt} {class_prompts[c]}" for c in self.classes
-        ]
+        if text_prompt is None:
+            # if no text prompt is provided, use the class names as prompts
+            self._text_prompts = [f"{class_prompts[c]}" for c in self.classes]
+        else:
+            self._text_prompts = [
+                f"{text_prompt} {class_prompts[c]}" for c in self.classes
+            ]
 
         return self._text_prompts
 
@@ -798,12 +807,6 @@ class FiftyOneZeroShotTransformerForImageClassification(
                 "store_logits": True,
                 "logits_key": "logits_per_image",
             }
-
-        # ensure padding for variable sized prompts
-        if config.transformers_processor_kwargs is None:
-            config.transformers_processor_kwargs = {}
-        if config.transformers_processor_kwargs.get("padding", None) is None:
-            config.transformers_processor_kwargs["padding"] = True
 
         super().__init__(config)
 
@@ -887,52 +890,40 @@ class FiftyOneZeroShotTransformerForObjectDetection(
     """
 
     def __init__(self, config):
-        self.processor = self._load_processor(config)
+        # override entry point
+        if config.entrypoint_fcn is None:
+            config.entrypoint_fcn = "transformers.AutoModelForZeroShotObjectDetection.from_pretrained"
+
+        # override output processor
+        if config.output_processor_cls is None:
+            config.output_processor_cls = "fiftyone.utils.transformers.TransformersDetectorOutputProcessor"
         super().__init__(config)
+        # have to do this after init so processor is loaded
+        # I think this is better than instantiating a second one
+        # or passing the entire model to the output processor
+        self._output_processor.processor = self.transforms.processor
+        # ew
+        self.transforms.return_image_sizes = True
 
-    def _load_processor(self, config):
-        name_or_path = config.name_or_path
-        if not name_or_path:
-            if config.model is not None:
-                name_or_path = config.model.name_or_path
-
-        kwargs = {"do_rescale": not isinstance(self, fout.TorchImageModel)}
-        return transformers.AutoProcessor.from_pretrained(
-            name_or_path, **kwargs
-        )
-
-    def _load_model(self, config):
-        name_or_path = config.name_or_path
-        if not name_or_path:
-            if config.model is not None:
-                name_or_path = config.model.name_or_path
-
-        if config.model is not None:
-            return config.model
+    def _predict_all(self, args):
+        # now this is even worse.
+        # zero shot models in HFT need to have prompts passed
+        # for each image
+        # why
+        # I ask again
+        # why
+        if self.preprocess:
+            args = {
+                "images": args,
+                "text": [
+                    self.text_prompts for _ in range(len(args))
+                ],  # inject text prompts
+            }
         else:
-            return _get_detector_from_processor(
-                self.processor, name_or_path
-            ).to(self._device)
-
-    def _process_inputs(self, args):
-        text_prompts = self._get_text_prompts()
-        inputs = self.processor(
-            images=args, text=text_prompts, return_tensors="pt", padding=True
-        )
-        return inputs
-
-    def _predict(self, inputs, target_sizes):
-        with torch.no_grad():
-            outputs = self._model(**(inputs.to(self.device)))
-        results = self.processor.image_processor.post_process_object_detection(
-            outputs, target_sizes=target_sizes
-        )
-        return results
-
-    def _forward_pass(self, args):
-        target_sizes = [args.shape[-2:]]
-        inputs = self._process_inputs(args)
-        return self._predict(inputs, target_sizes)
+            args.update(
+                {"input_ids": torch.stack([self.input_ids] * len(args))}
+            )
+        return super()._predict_all(args)
 
 
 class FiftyOneTransformerForObjectDetectionConfig(FiftyOneTransformerConfig):

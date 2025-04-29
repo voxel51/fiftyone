@@ -2789,9 +2789,7 @@
             "size_bytes": null,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForObjectDetection",
-                "config": {
-                    "output_processor_cls": "fiftyone.utils.torch.DetectorOutputProcessor"
-                }
+                "config": {}
             },
             "requirements": {
                 "packages": ["torch", "torchvision", "transformers"],
