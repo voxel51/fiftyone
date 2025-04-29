@@ -9,7 +9,20 @@ FiftyOne Enterprise 2.8.0
 
 Includes all updates from :ref:`FiftyOne 1.5.0 <release-notes-v1.5.0>`, plus:
 
-
+- Optimized API performance by enabling compression and byte-encoding. This can
+  be configured using FIFTYONE_API_COMPRESSOR and FIFTYONE_API_TRANSFER_METHOD.
+- Optimized plugin state using the Management API as the source of truth
+  instead of the filesystem. This will prevent calling os.walk() on slow
+  filesystems (nfs).
+- Added a warning dialog about role re-upgrade limitations before admin
+  downgrades a user
+- Fixed a misleading message during snapshot creation. Message now makes clear
+  the snapshot may still be in progress of being created.
+- Enabled override of API batcher by setting
+  `fo.config.override_api_dynamic_batching`
+- Enabled use of a local filepath when setting the `logPath` for runs
+- Fixed a bug where certain transient 5xx errors were not being correctly
+  retried
 
 .. _release-notes-v1.5.0:
 
@@ -30,8 +43,10 @@ App
   new "shift + click" UX modality to select "similar" instances.
   `#5577 <https://github.com/voxel51/fiftyone/pull/5577>`_
 - Optimized map performance with a new asynchronous `/geo` API route, with
-  frontend caching for geolocation data.
+  frontend and backend caching for geolocation data, and with support for
+  extended stages in geo queries.
   `#5775 <https://github.com/voxel51/fiftyone/pull/5775>`_
+  `#5794 <https://github.com/voxel51/fiftyone/pull/5794>`_
 - Fixed `#5327 <https://github.com/voxel51/fiftyone/issues/5327>`_
   improving user experience when tagging
   `#5638 <https://github.com/voxel51/fiftyone/pull/5638>`_
@@ -78,6 +93,11 @@ Database
 
 Core
 
+- Introduced `map_samples` and `update_samples` methods, enabling efficient,
+  parallelized sample iteration and modification. These methods provide
+  significant performance improvements for large datasets and include flexible
+  options for batching, parallelization, and progress monitoring.
+  `#5642 <https://github.com/voxel51/fiftyone/pull/5642>`_
 - Added support for creating samples with arbitrary `media_type`
   `#5506 <https://github.com/voxel51/fiftyone/pull/5506>`_
 - Added support for configuring MongoDB Network Compression. Defaults to None,
@@ -89,8 +109,12 @@ Core
 - Optimized the content size batcher to account for compressed
   or encoded payload sizes
   `#5740 <https://github.com/voxel51/fiftyone/pull/5740>`_
+- Optimized `FiftyOneTorchDataset` to speed up model inference
+  `#5703 <https://github.com/voxel51/fiftyone/pull/5703>`_
 - Optimized frame lookups to be as late as possible in aggregation pipelines
   `#5705 <https://github.com/voxel51/fiftyone/pull/5705>`_
+- Optimized `values()` when retrieving an indexed field value in specific cases
+  `#5743 <https://github.com/voxel51/fiftyone/pull/5743>`_
 - `Dataset.last_modified_at` is now automatically updated when samples are deleted
   `#5723 <https://github.com/voxel51/fiftyone/pull/5723>`_
 - `Sample.last_modified_at` is now automatically updated when frames are deleted
@@ -117,7 +141,7 @@ Core
   fields by introducing `subfield` and `unwind` parameters to
   `get_field_schema()`.
   `#5663 <https://github.com/voxel51/fiftyone/pull/5663>`_
-- Fix vulnerabilities in: setuptools and strawberry-graphql
+- Fix vulnerabilities in: `setuptools` and cve-2025-22151 in `strawberry-graphql`
   `#5719 <https://github.com/voxel51/fiftyone/pull/5719>`_,
   `#5735 <https://github.com/voxel51/fiftyone/pull/5735>`_
 
@@ -131,27 +155,6 @@ Zoo
 
 - Added YOLOE instance segmentation models to FiftyOne model zoo.
   `#5712 <https://github.com/voxel51/fiftyone/pull/5712>`_
-
-
-Not Sure Which Category
-
-- Optimizations for `FiftyOneTorchDataset` to speed up model inference
-  `#5703 <https://github.com/voxel51/fiftyone/pull/5703>`_
-
-May not make it in by release deadline
-
-- Added a new flow to the
-  :ref:`Model Evaluation panel <app-model-evaluation-panel>`
-  enabling scenario analysis. Users can now create evaluation subsets using
-  views, labels, or custom code, and visualize evaluation of subsets using
-  interactive graphs and tables.
-  `#5626 <https://github.com/voxel51/fiftyone/pull/5626>`_
-
-- Introduced `map_samples` and `update_samples` methods, enabling efficient,
-  parallelized sample iteration and modification. These methods provide
-  significant performance improvements for large datasets and include flexible
-  options for batching, parallelization, and progress monitoring.
-  `#5642 <https://github.com/voxel51/fiftyone/pull/5642>`_
 
 
 FiftyOne Enterprise 2.7.2
