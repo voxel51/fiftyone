@@ -140,9 +140,6 @@ class ConfigureScenario(foo.Operator):
                 subset_def.get("view", ""),
             ]
         else:
-            if isinstance(subset_def, list):
-                subset_def = subset_def[0]
-
             key = [
                 "sample-distribution-data",
                 eval_key,
@@ -153,7 +150,12 @@ class ConfigureScenario(foo.Operator):
 
         return key
 
-    @execution_cache(key_fn=get_subset_def_data_for_eval_key)
+    # NOTE: BMoore prefers not to have TTL, Mani kept ttl but at 30 days to ensure
+    # cache doesn't get filled up with old data.
+    # NOTE: This operation takes 6s to run on 25K samples without a cache for detection dataset.
+    @execution_cache(
+        key_fn=get_subset_def_data_for_eval_key, ttl=30 * 24 * 60 * 60
+    )
     def get_subset_def_data_for_eval(
         self, ctx, _, eval_result, name, subset_def
     ):
@@ -171,9 +173,7 @@ class ConfigureScenario(foo.Operator):
             if eval_key_b:
                 eval_result_b = ctx.dataset.load_evaluation_results(eval_key_b)
 
-            plot_data = []
-            x = []
-            y = []
+            plot_data, x, y = [], [], []
             for name, subset_def in subset_expressions.items():
                 more_x, more_y = self.get_subset_def_data_for_eval(
                     ctx, eval_key_a, eval_result_a, name, subset_def
@@ -192,8 +192,7 @@ class ConfigureScenario(foo.Operator):
             )
 
             if eval_key_b and eval_result_b:
-                compare_x = []
-                compare_y = []
+                compare_x, compare_y = [], []
 
                 for name, subset_def in subset_expressions.items():
                     more_x, more_y = self.get_subset_def_data_for_eval(
@@ -241,11 +240,12 @@ class ConfigureScenario(foo.Operator):
 
     def is_sample_distribution_enabled_for_custom_code(self, params):
         # NOTE: performance might lack if it is on by default.
-        return (
-            params.get("custom_code_stack", {})
-            .get("control_stack", {})
-            .get("view_sample_distribution", False)
-        )
+        return True
+        # return (
+        #     params.get("custom_code_stack", {})
+        #     .get("control_stack", {})
+        #     .get("view_sample_distribution", False)
+        # )
 
     def render_empty_sample_distribution(
         self, inputs, params, description=None
@@ -322,7 +322,7 @@ class ConfigureScenario(foo.Operator):
 
         if scenario_type == ScenarioType.VIEW:
             for v in values:
-                subsets[v] = dict(type=ScenarioType.VIEW, view=v)
+                subsets[v] = dict(type="view", view=v)
             self.render_sample_distribution_graph(ctx, inputs, subsets)
 
         if scenario_type == ScenarioType.CUSTOM_CODE:
@@ -682,10 +682,19 @@ class ConfigureScenario(foo.Operator):
 
         # NOTE: may be slow for large datasets
         values = ctx.dataset.count_values(field_name)
+        sorted_values = dict(
+            sorted(
+                values.items(),
+                key=lambda item: (
+                    float("inf") if item[0] is None else item[0]
+                ),
+            )
+        )
+
         return (
             (ShowOptionsMethod.EMPTY, None)
-            if not values
-            else (ShowOptionsMethod.CHECKBOX, dict(sorted(values.items())))
+            if not sorted_values
+            else (ShowOptionsMethod.CHECKBOX, sorted_values)
         )
 
     def render_auto_complete_view(self, ctx, values, inputs):
@@ -1015,21 +1024,21 @@ class ConfigureScenario(foo.Operator):
             ),
         )
 
-        custom_code_controls.bool(
-            "view_sample_distribution",
-            required=True,
-            default=False,
-            label="View sample distribution",
-            view=types.CheckboxView(
-                componentsProps={
-                    "container": {
-                        "sx": {
-                            "padding": "0 2rem 0 1rem",
-                        }
-                    },
-                }
-            ),
-        )
+        # custom_code_controls.bool(
+        #     "view_sample_distribution",
+        #     required=True,
+        #     default=False,
+        #     label="View sample distribution",
+        #     view=types.CheckboxView(
+        #         componentsProps={
+        #             "container": {
+        #                 "sx": {
+        #                     "padding": "0 2rem 0 1rem",
+        #                 }
+        #             },
+        #         }
+        #     ),
+        # )
 
         body_stack.view(
             code_key,
