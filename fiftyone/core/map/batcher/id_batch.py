@@ -41,7 +41,7 @@ class SampleIdBatch(fomb.SampleBatch):
     ) -> List["SampleIdBatch"]:
         num_workers = max(num_workers, 1)
 
-        ids = sample_collection.values("id")
+        ids = sample_collection.values("id", _enforce_natural_order=False)
 
         # Must cap size of select(ids) stages
         max_batch_size = cls.get_max_batch_size()
