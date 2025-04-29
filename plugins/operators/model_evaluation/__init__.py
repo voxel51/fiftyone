@@ -201,13 +201,7 @@ class ConfigureScenario(foo.Operator):
         return plot_data
 
     def is_sample_distribution_enabled_for_custom_code(self, params):
-        # NOTE: performance might lack if it is on by default.
         return True
-        # return (
-        #     params.get("custom_code_stack", {})
-        #     .get("control_stack", {})
-        #     .get("view_sample_distribution", False)
-        # )
 
     def render_empty_sample_distribution(
         self, inputs, params, description=None
@@ -985,22 +979,6 @@ class ConfigureScenario(foo.Operator):
                 divider=False,
             ),
         )
-
-        # custom_code_controls.bool(
-        #     "view_sample_distribution",
-        #     required=True,
-        #     default=False,
-        #     label="View sample distribution",
-        #     view=types.CheckboxView(
-        #         componentsProps={
-        #             "container": {
-        #                 "sx": {
-        #                     "padding": "0 2rem 0 1rem",
-        #                 }
-        #             },
-        #         }
-        #     ),
-        # )
 
         body_stack.view(
             code_key,
