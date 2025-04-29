@@ -604,12 +604,6 @@ stage to any dataset or view. The query can be any of the following:
     :ref:`constructing views <using-views>` that contain the images of
     interest.
 
-.. note::
-
-    Currently, when performing a similarity search on a view with the MongoDB backend,
-    the full index is queried and the resulting samples are restricted to the desired view. 
-    This may result in fewer samples than requested being returned by the search.
-
 .. _mongodb-index-ready:
 
 Checking if an index is ready
