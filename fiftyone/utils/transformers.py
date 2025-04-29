@@ -783,7 +783,7 @@ class FiftyOneZeroShotTransformerForImageClassification(
         if config.transformers_processor_kwargs is None:
             config.transformers_processor_kwargs = {}
         if config.transformers_processor_kwargs.get("padding", None) is None:
-            config.transformers_processor_kwargs["padding"] = "max_length"
+            config.transformers_processor_kwargs["padding"] = True
 
         super().__init__(config)
 
