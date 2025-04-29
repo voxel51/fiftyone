@@ -6,6 +6,9 @@ Interface for sample collections.
 |
 """
 
+from collections import defaultdict
+from copy import copy
+from datetime import datetime
 import fnmatch
 import itertools
 import logging
@@ -14,17 +17,19 @@ import random
 import string
 import timeit
 import warnings
-from collections import defaultdict
-from copy import copy
-from datetime import datetime
+
+from bson import ObjectId
+from pymongo import InsertOne, UpdateMany, UpdateOne, WriteConcern
 
 import eta.core.serial as etas
 import eta.core.utils as etau
+
 import fiftyone.core.aggregations as foa
 import fiftyone.core.annotation as foan
 import fiftyone.core.brain as fob
 import fiftyone.core.evaluation as foev
 import fiftyone.core.expressions as foe
+from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
@@ -37,9 +42,6 @@ import fiftyone.core.runs as fors
 import fiftyone.core.sample as fosa
 import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
-from bson import ObjectId
-from fiftyone.core.expressions import ViewField as F
-from pymongo import InsertOne, UpdateMany, UpdateOne, WriteConcern
 
 fod = fou.lazy_import("fiftyone.core.dataset")
 fos = fou.lazy_import("fiftyone.core.stages")
@@ -3956,38 +3958,76 @@ class SampleCollection(object):
         self,
         map_fcn,
         save=False,
-        num_workers=None,
-        batch_size=None,
-        batch_method="id",
-        progress=None,
-        parallelize_method="process",
         skip_failures=False,
+        parallelize_method=None,
+        num_workers=None,
+        batch_method=None,
+        batch_size=None,
+        progress=None,
     ):
-        """
-        Applies `map_fcn` to each sample using the specified backend strategy
-        and returns an iterator.
+        """Applies the given function to each sample in the collection and
+        returns the results as a generator.
+
+        By default, a multiprocessing pool is used to parallelize the work,
+        unless this method is called in a daemon process (subprocess), in which
+        case no workers are used.
+
+        This function effectively performs the following map operation with the
+        outer loop in parallel::
+
+            for batch_view in fou.iter_slices(sample_collection, shard_size):
+                for sample in batch_view.iter_samples(autosave=save):
+                    sample_output = map_fcn(sample)
+                    yield sample.id, sample_output
+
+        Example::
+
+            from collections import Counter
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("cifar10", split="train")
+            view = dataset.select_fields("ground_truth")
+
+            def map_fcn(sample):
+                return sample.ground_truth.label.upper()
+
+            counter = Counter()
+            for _, label in view.map_samples(map_fcn):
+                counter[label] += 1
+
+            print(dict(counter))
 
         Args:
-            map_fcn: Function to apply to each sample.
-            save (False): Whether to save any modified samples.
-            num_workers (None): Number of workers.
-            batch_size (None): Number of samples per batch. If None, the batch size
-                is automatically calculated to be the number of samples per worker.
-            batch_method ("id"): Explicit method for batching samples. Supported
-              methods are 'id' and 'slice'
-
-            progress (None): Whether to show progress bar. If None, uses the
-                default value ``fiftyone.config.show_progress_bars``. If "workers",
-                shows a progress bar for each worker.
-            parallelize_method: Explicit method to use for parallelization.
-              Supported methods are 'process' and 'thread'.
+            map_fcn: a function to apply to each sample in the collection
+            save (False): whether to save any sample edits applied by
+                ``map_fcn``
             skip_failures (False): whether to gracefully continue without
-                raising an error if the update function raises an
-                exception for a sample.
-
+                raising an error if the update function raises an exception for
+                a sample
+            parallelize_method (None): the parallelization method to use.
+                Supported values are ``{"process", "thread"}``. The default is
+                ``fiftyone.config.default_parallelization_method``
+            num_workers (None): the number of workers to use. When using
+                process parallelism, this defaults to
+                ``fiftyone.config.default_process_pool_workers`` if the value
+                is set, else
+                :meth:`fiftyone.core.utils.recommend_process_pool_workers`
+                workers are used. If this value is <= 1, all work is done in
+                the main process
+            batch_method (None): whether to use IDs (``"id"``) or slices
+                (``"slice"``) to assign samples to workers
+            batch_size (None): an optional number of samples to distribute to
+                each worker at a time. By default, samples are evenly
+                distributed to workers with one batch per worker
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead, or
+                "workers" to render per-worker progress bars
 
         Returns:
-            A generator yielding processed sample results.
+            a generator that emits ``(sample_id, map_output)`` tuples
         """
         mapper = focm.MapperFactory.create(
             parallelize_method, num_workers, batch_method, batch_size
@@ -4004,31 +4044,66 @@ class SampleCollection(object):
     def update_samples(
         self,
         update_fcn,
-        num_workers=None,
-        batch_size=None,
-        batch_method=None,
-        progress=None,
-        parallelize_method="process",
         skip_failures=True,
+        parallelize_method=None,
+        num_workers=None,
+        batch_method=None,
+        batch_size=None,
+        progress=None,
     ):
-        """
-        Applies `map_fcn` to each sample using the specified backend strategy.
+        """Applies the given function to each sample in the collection and
+        saves the resulting sample edits.
+
+        By default, a multiprocessing pool is used to parallelize the work,
+        unless this method is called in a daemon process (subprocess), in which
+        case no workers are used.
+
+        This function effectively performs the following map operation with the
+        outer loop in parallel::
+
+            for batch_view in fou.iter_slices(sample_collection, shard_size):
+                for sample in batch_view.iter_samples(autosave=True):
+                    map_fcn(sample)
+
+        Example::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("cifar10", split="train")
+            view = dataset.select_fields("ground_truth")
+
+            def update_fcn(sample):
+                sample.ground_truth.label = sample.ground_truth.label.upper()
+
+            view.update_samples(update_fcn)
+
+            print(dataset.count_values("ground_truth.label"))
 
         Args:
-            update_fcn: Function to apply to each sample.
-            num_workers (None): Number of workers.
-            batch_size (None): Number of samples per batch. If None, the batch size
-                is automatically calculated to be the number of samples per worker.
-            batch_method (None): Explicit method for batching samples. Supported
-              methods are 'id' and 'slice'.
-            progress (None): Whether to show progress bar. If None, uses the
-                default value ``fiftyone.config.show_progress_bars``. If "workers",
-                shows a progress bar for each worker.
-            parallelize_method: Explicit method to use for parallelization.
-              Supported methods are 'process' and 'thread'.
-            skip_failures (False): whether to gracefully continue without
-                raising an error if the update function raises an
-                exception for a sample.
+            update_fcn: a function to apply to each sample in the collection
+            skip_failures (True): whether to gracefully continue without
+                raising an error if the update function raises an exception for
+                a sample
+            parallelize_method (None): the parallelization method to use.
+                Supported values are ``{"process", "thread"}``. The default is
+                ``fiftyone.config.default_parallelization_method``
+            num_workers (None): the number of workers to use. When using
+                process parallelism, this defaults to
+                ``fiftyone.config.default_process_pool_workers`` if the value
+                is set, else
+                :meth:`fiftyone.core.utils.recommend_process_pool_workers`
+                workers are used. If this value is <= 1, all work is done in
+                the main process
+            batch_method (None): whether to use IDs (``"id"``) or slices
+                (``"slice"``) to assign samples to workers
+            batch_size (None): an optional number of samples to distribute to
+                each worker at a time. By default, samples are evenly
+                distributed to workers with one batch per worker
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead, or
+                "workers" to render per-worker progress bars
         """
         mapper = focm.MapperFactory.create(
             parallelize_method, num_workers, batch_method, batch_size
@@ -9048,6 +9123,7 @@ class SampleCollection(object):
         _big_result=True,
         _raw=False,
         _field=None,
+        _enforce_natural_order=True,
     ):
         """Extracts the values of a field from all samples in the collection.
 
@@ -9155,6 +9231,35 @@ class SampleCollection(object):
         Returns:
             the list of values
         """
+
+        # Optimization: if we do not need to follow insertion order, we can
+        # potentially use a covered index query to get the values directly from
+        # the index and avoid a COLLSCAN
+        if not _enforce_natural_order:
+            field = None
+            if isinstance(field_or_expr, str):
+                field = field_or_expr
+            elif etau.is_container(field_or_expr) and len(field_or_expr) == 1:
+                field = field_or_expr[0]
+
+            # @todo consider supporting non-default fields that are indexed
+            # @todo can we support some non-full collections?
+            if (
+                field in ("id", "_id", "filepath")
+                and expr is None
+                and self._is_full_collection()
+            ):
+                try:
+                    return foo.get_indexed_values(
+                        self._dataset._sample_collection,
+                        field,
+                        values_only=True,
+                    )
+                except ValueError as e:
+                    # When get_indexed_values() raises a ValueError, it is a
+                    # recommendation of an index to create
+                    logger.debug(e)
+
         make = lambda field_or_expr: foa.Values(
             field_or_expr,
             expr=expr,
@@ -10444,7 +10549,7 @@ class SampleCollection(object):
 
         return results[0] if scalar_result else results
 
-    async def _async_aggregate(self, aggregations, debug=True):
+    async def _async_aggregate(self, aggregations):
         if not aggregations:
             return []
 

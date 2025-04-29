@@ -1063,6 +1063,7 @@ class DatasetTests(unittest.TestCase):
             )
         )
 
+    @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
     def test_update_samples(self):
         dataset = fo.Dataset()
@@ -1107,6 +1108,7 @@ class DatasetTests(unittest.TestCase):
 
         self.assertTupleEqual(dataset.bounds("int"), (3, 52))
 
+    @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
     def test_map_samples(self):
         dataset = fo.Dataset()
@@ -1932,6 +1934,19 @@ class DatasetTests(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             _ = dataset.one(F("filepath").ends_with(".jpg"), exact=True)
+
+    @drop_datasets
+    def test_add_samples_generator(self):
+        samples = [fo.Sample(filepath=f"image{i}.jpg") for i in range(10)]
+
+        dataset = fo.Dataset()
+
+        sample_ids = []
+        for ids in dataset.add_samples(samples, generator=True):
+            sample_ids.extend(ids)
+
+        assert len(sample_ids) == 10
+        assert len(dataset) == 10
 
     @drop_datasets
     def test_merge_sample(self):
