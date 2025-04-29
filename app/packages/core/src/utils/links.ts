@@ -25,7 +25,7 @@ export const OPTIMIZING_QUERY_PERFORMANCE =
   "https://docs.voxel51.com/user_guide/app.html#app-optimizing-query-performance";
 
 export const QUERY_PERFORMANCE_RESULTS =
-  "https://docs.voxel51.com/user_guide/app.html#app-query-performance-results";
+  "https://docs.voxel51.com/user_guide/app.html#app-unindexed-sidebar-results";
 
 export const SIDEBAR_MODE =
   "https://docs.voxel51.com/user_guide/app.html#sidebar-mode";

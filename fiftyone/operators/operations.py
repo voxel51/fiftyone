@@ -303,6 +303,7 @@ class Operations(object):
         label,
         help_markdown=None,
         category=Categories.CUSTOM,
+        alpha=False,
         beta=False,
         is_new=False,
         icon=None,
@@ -340,6 +341,7 @@ class Operations(object):
                 is in dark mode
             surfaces ('grid'): surfaces in which to show the panel. Must be
                 one of 'grid', 'modal', or 'grid modal'
+            alpha (False): whether the panel is in alpha
             beta (False): whether the panel is in beta
             is_new (False): whether the panel is new
             category (Categories.CUSTOM): the category of the panel
@@ -377,6 +379,7 @@ class Operations(object):
             "panel_label": label,
             "help_markdown": help_markdown,
             "category": category.value if category is not None else None,
+            "alpha": alpha,
             "beta": beta,
             "is_new": is_new,
             "icon": icon,
