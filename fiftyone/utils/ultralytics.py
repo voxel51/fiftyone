@@ -8,6 +8,7 @@ Utilities for working with
 """
 
 import numpy as np
+from PIL import Image
 
 import fiftyone.core.labels as fol
 import fiftyone.utils.torch as fout
@@ -16,7 +17,6 @@ import fiftyone.zoo.models as fozm
 import eta.core.utils as etau
 import itertools
 
-from PIL import Image
 
 ultralytics = fou.lazy_import("ultralytics")
 torch = fou.lazy_import("torch")
@@ -239,6 +239,10 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
             else:
                 model.set_classes(config.classes)
 
+        model = model.to(self._device)
+        if self.using_half_precision:
+            model = model.half()
+
         if not model.predictor:
             model = self._set_predictor(config, model)
         return model
@@ -262,12 +266,12 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         else:
             ragged_batches = True
 
-        transforms = [self._preprocess_im]
+        transforms = [self._preprocess_img]
         transforms = torchvision.transforms.Compose(transforms)
 
         return transforms, ragged_batches
 
-    def _preprocess_im(self, img):
+    def _preprocess_img(self, img):
         if not isinstance(img, torch.Tensor):
             if isinstance(img, Image.Image):
                 img = img.convert("RGB")
@@ -278,14 +282,15 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
             }
         return {"img": img, "orig_img": img}
 
-    def _ultralytics_preprocess(self, im):
-        im = np.stack(self._model.predictor.pre_transform(im))
-        im = im.transpose((0, 3, 1, 2))
-        im = np.ascontiguousarray(im)
-        im = torch.from_numpy(im)
-        im = im.half() if self._model.predictor.model.fp16 else im.float()
-        im /= 255
-        return torch.squeeze(im, axis=0)
+    def _ultralytics_preprocess(self, img):
+        # Taken from ultralytics.engine.predictor.preprocess.
+        img = np.stack(self._model.predictor.pre_transform(img))
+        img = img.transpose((0, 3, 1, 2))
+        img = np.ascontiguousarray(img)
+        img = torch.from_numpy(img)
+        img = img.half() if self._model.predictor.model.fp16 else img.float()
+        img /= 255
+        return torch.squeeze(img, axis=0)
 
     def _build_output_processor(self, config):
         if config.output_processor is not None:
@@ -389,7 +394,7 @@ class FiftyOneRTDETRModel(FiftyOneYOLOModel):
 
 
 class FiftyOneYOLOClassificationModel(FiftyOneYOLOModel):
-    """FiftyOne wrapper around an ``ultralytics.RTDETR`` model.
+    """FiftyOne wrapper around Ultralytics YOLO Classification model.
 
     Args:
         config: a :class:`FiftyOneYOLOModelConfig`
@@ -409,7 +414,6 @@ def _convert_yolo_classification_model(model):
             "model": model,
             "output_processor_cls": UltralyticsClassificationOutputProcessor,
             "model_path": model.model_name,
-            "image_size": [640, 640],
         }
     )
     return FiftyOneYOLOModel(config)
@@ -421,7 +425,6 @@ def _convert_yolo_detection_model(model):
             "model": model,
             "output_processor_cls": UltralyticsDetectionOutputProcessor,
             "model_path": model.model_name,
-            "image_size": [640, 640],
         }
     )
     return FiftyOneYOLOModel(config)
@@ -433,7 +436,6 @@ def _convert_yolo_obb_model(model):
             "model": model,
             "output_processor_cls": UltralyticsOBBOutputProcessor,
             "model_path": model.model_name,
-            "image_size": [640, 640],
         }
     )
     return FiftyOneYOLOModel(config)
@@ -445,7 +447,6 @@ def _convert_yolo_segmentation_model(model):
             "model": model,
             "output_processor_cls": UltralyticsSegmentationOutputProcessor,
             "model_path": model.model_name,
-            "image_size": [640, 640],
         }
     )
     return FiftyOneYOLOModel(config)
