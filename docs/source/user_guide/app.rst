@@ -2854,3 +2854,58 @@ you can use to customize the behavior of the App for that particular dataset:
     :meth:`app_config <fiftyone.core.dataset.Dataset.app_config>` will override
     the corresponding settings from your
     :ref:`global App config <configuring-fiftyone-app>`.
+
+.. _app-labels-correspondence:
+
+Labels Correspondence
+_____________________
+
+FiftyOne provides a mechanism to link related labels together, such as the same
+object instance observed across multiple frames of a video or across different
+views (group slices) in a grouped dataset. This linking is achieved by
+assigning the same :class:`fiftyone.core.labels.Instance` to the ``instance``
+field of the relevant :class:`~fiftyone.core.labels.Detection`,
+:class:`~fiftyone.core.labels.Keypoint`, or
+:class:`~fiftyone.core.labels.Polyline` labels.
+
+See the :ref:`video <linking-labels-across-frames>` and
+:ref:`group <linking-labels-across-group-slices>` dataset sections for API
+details.
+
+When labels are linked via their ``instance`` field, the App provides enhanced
+visualizations and interactions:
+
+*   **Visual Linking (Hover):** When you hover over a label that is part of an
+    instance group, all other labels belonging to the same instance (across
+    frames or group slices) will be highlighted with a white border.
+
+*   **Bulk Selection/Deselection (Shift+Click):** When you hold the ``Shift``
+    key and click on a label that is part of an instance group, you can
+    select or deselect all labels belonging to that same instance in bulk.
+    This is particularly useful for tasks like reviewing or tagging all
+    occurrences of a specific object instance quickly.
+
+In Video Datasets
+-----------------
+
+In video datasets, label correspondence helps track objects over time. Hovering
+over a detection in one frame can highlight the same detected object in other
+frames. Shift-clicking allows for selecting/deselecting all instances of that
+object throughout the relevant frames of the video.
+
+.. image:: /images/app/labels-correspondence-video.gif
+   :alt: labels-correspondence-video
+   :align: center
+
+In Grouped Datasets
+-------------------
+
+In grouped datasets, label correspondence links the same object viewed from
+different perspectives (slices). Hovering over an object in one camera view can
+highlight its corresponding detection in another camera view within the same
+group. Shift-clicking enables bulk selection/deselection of these corresponding
+objects across the group slices.
+
+.. image:: /images/app/labels-correspondence-groups.gif
+   :alt: labels-correspondence-groups
+   :align: center

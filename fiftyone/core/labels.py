@@ -374,7 +374,7 @@ class _HasInstance(Label):
     across different samples.
     """
 
-    instance = fof.EagerValidatingEmbeddedDocumentField(Instance)
+    instance = fof.EmbeddedDocumentField(Instance)
 
     @property
     def instance_id(self):

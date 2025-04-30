@@ -54,7 +54,9 @@ def test_split(sample_collection, samples, batch_size, max_batch_size):
 
     samples_ids = [sample.id for sample in samples]
 
-    sample_collection.values.assert_called_once_with("id")
+    sample_collection.values.assert_called_once_with(
+        "id", _enforce_natural_order=False
+    )
 
     assert len(result) == expected_batch_count
 
