@@ -169,11 +169,16 @@ def _to_keypoints(result, confidence_thresh=None):
 
 
 class FiftyOneYOLOModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
-    """Configuration for a :class:`FiftyOneYOLOModel`."""
+    """Configuration for a :class:`FiftyOneYOLOModel`.
+
+    Args:
+        overrides (None): a dictionary of overrides for Ultralytics model.
+    """
 
     def __init__(self, d):
         d = self.init(d)
         super().__init__(d)
+        self.overrides = self.parse_dict(d, "overrides", default=None)
 
 
 class FiftyOneYOLOModel(fout.TorchImageModel):
@@ -190,6 +195,10 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         config.download_model_if_necessary()
 
     def _set_predictor(self, config, model):
+        if config.overrides:
+            for k, v in config.overrides.items():
+                model.overrides[k] = v
+
         custom = {
             "conf": config.confidence_thresh,
             "batch": 1,
