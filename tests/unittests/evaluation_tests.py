@@ -18,6 +18,7 @@ import numpy as np
 import eta.core.utils as etau
 
 import fiftyone as fo
+import fiftyone.core.collections
 import fiftyone.utils.eval.classification as fouc
 import fiftyone.utils.eval.coco as coco
 import fiftyone.utils.eval.detection as foud
@@ -2185,7 +2186,9 @@ class DetectionsTests(unittest.TestCase):
         try:
             # Patch the map_samples method
             with mock.patch.object(
-                fo.Dataset, "map_samples", new=mock_map_samples
+                fiftyone.core.collections.SampleCollection,
+                "map_samples",
+                new=mock_map_samples,
             ):
                 # Test with different worker counts
                 for worker_count in [1, 2, 4]:
@@ -2200,6 +2203,7 @@ class DetectionsTests(unittest.TestCase):
                         method="coco",
                         num_workers=worker_count,
                     )
+                    # from pdb import set_trace; set_trace()
 
                     # Verify that map_samples was called
                     self.assertTrue(
@@ -2209,9 +2213,9 @@ class DetectionsTests(unittest.TestCase):
 
                     # Verify workers parameter was correctly passed
                     self.assertEqual(
-                        map_samples_calls[0].get("workers"),
+                        map_samples_calls[0].get("num_workers"),
                         worker_count,
-                        f"map_samples was called with incorrect workers value. Expected {worker_count}, got {map_samples_calls[0].get('workers')}",
+                        f"map_samples was called with incorrect workers value. Expected {worker_count}, got {map_samples_calls[0].get('num_workers')}",
                     )
 
                 # Test different parallelize methods
@@ -2298,7 +2302,7 @@ class DetectionsTests(unittest.TestCase):
                 self.assertEqual(
                     map_samples_calls[0].get("num_workers"),
                     test_workers,
-                    f"workers parameter not passed correctly. Expected {test_workers}, got {map_samples_calls[0].get('workers')}",
+                    f"workers parameter not passed correctly. Expected {test_workers}, got {map_samples_calls[0].get('num_workers')}",
                 )
                 self.assertEqual(
                     map_samples_calls[0].get("parallelize_method"),
