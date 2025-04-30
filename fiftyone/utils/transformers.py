@@ -1164,67 +1164,6 @@ def _get_base_model_name(model):
     return str(type(model)).split(".")[-1][:-2].split("For")[0]
 
 
-def _get_model_for_image_text_retrieval(base_model, model_name_or_path):
-    model_name = _get_base_model_name(base_model)
-    module_name = "transformers"
-    itr_class_name = f"{model_name}ForImageAndTextRetrieval"
-    itr_class = getattr(
-        __import__(module_name, fromlist=[itr_class_name]),
-        itr_class_name,
-    )
-
-    return itr_class.from_pretrained(model_name_or_path).to(base_model.device)
-
-
-def _get_image_processor_fallback(model):
-    model_name = _get_base_model_name(model)
-    module_name = "transformers"
-    processor_class_name = f"{model_name}ImageProcessor"
-    processor_class = getattr(
-        __import__(module_name, fromlist=[processor_class_name]),
-        processor_class_name,
-    )
-    return processor_class.from_pretrained(model.config.model_name_or_path)
-
-
-def _get_image_processor(model):
-    try:
-        image_processor = transformers.AutoImageProcessor.from_pretrained(
-            model.config._name_or_path
-        )
-    except:
-        image_processor = _get_image_processor_fallback(model)
-
-    return image_processor
-
-
-def _get_processor(model, **kwargs):
-    try:
-        processor = transformers.AutoProcessor.from_pretrained(
-            model.config._name_or_path, **kwargs
-        )
-    except:
-        raise ValueError(
-            "Could not find a processor for model %s"
-            % model.config._name_or_path
-        )
-
-    return processor
-
-
-def _get_detector_from_processor(processor, model_name_or_path):
-    module_name = "transformers"
-    processor_class_name = f"{processor.__class__.__name__}"
-    detector_class_name = (
-        f"{processor_class_name.split('Processor')[0]}ForObjectDetection"
-    )
-    detector_class = getattr(
-        __import__(module_name, fromlist=[detector_class_name]),
-        detector_class_name,
-    )
-    return detector_class.from_pretrained(model_name_or_path)
-
-
 # rather than using partial to avoid pickling issues
 class _HFTransformsHandler:
     def __init__(self, processor, return_image_sizes=False, **kwargs):
