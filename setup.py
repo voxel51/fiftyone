@@ -92,7 +92,7 @@ INSTALL_REQUIRES = [
     "yarl",
     "wcmatch",
     # internal packages
-    "fiftyone-brain>=0.20.1,<0.21",
+    "fiftyone-brain>=0.21.0,<0.22",
     "fiftyone-db~=0.4",  # pinned to legacy db, do not remove
     "voxel51-eta>=0.14.0,<0.15",
 ]
