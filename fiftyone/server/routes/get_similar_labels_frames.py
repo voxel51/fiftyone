@@ -272,7 +272,7 @@ class GetSimilarLabelsFrameCollection(HTTPEndpoint):
         view = fov.make_optimized_select_view(view, sample_id, flatten=True)
 
         filtered_schema = view.get_frame_field_schema(
-            flat=True, embedded_doc_type=fol.Instance
+            flat=True, embedded_doc_type=fol.Label
         )
 
         field_names_with_instance = list(
