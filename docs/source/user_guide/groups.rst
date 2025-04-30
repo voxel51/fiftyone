@@ -1201,8 +1201,8 @@ group, you establish a link between them.
     import fiftyone as fo
 
     group = fo.Group()
-    left_sample = fo.Sample(group=group.element("left"))
-    right_sample = group["right"]
+    left_sample = fo.Sample(filepath="/path/to/left.jpg", group=group.element("left"))
+    right_sample = fo.Sample(filepath="/path/to/right.jpg", group=group.element("right"))
 
     # Create an instance ID for a logical object
     car_instance = fo.Instance()
