@@ -6071,3 +6071,63 @@ to conveniently perform the updates:
 
     print(dataset.count_values("predictions.detections.random"))
     # {True: 111, None: 5509}
+
+.. _linking-labels-across-frames:
+
+Linking labels across frames
+----------------------------
+
+When working with video datasets, you often want to represent the fact that
+multiple frame-level labels correspond to the same logical object instance
+moving through the video.
+
+You can achieve this using the :class:`fiftyone.core.labels.Instance` class.
+By assigning the same :class:`~fiftyone.core.labels.Instance` to the
+``instance`` field of multiple labels (e.g., :class:`Detection
+<fiftyone.core.labels.Detection>`, :class:`Keypoint
+<fiftyone.core.labels.Keypoint>`, or :class:`Polyline
+<fiftyone.core.labels.Polyline>`) across different frames of a video, you
+establish a link between them.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(filepath="/path/to/video.mp4")
+
+    # Create an instance ID for a logical object
+    person_instance = fo.Instance()
+
+    # Add labels for the person in frame 1
+    sample.frames[1]["objects"] = fo.Detections(
+        detections=[
+            fo.Detection(
+                label="person",
+                bounding_box=[0.1, 0.1, 0.2, 0.2],
+                instance=person_instance,  # Link this detection
+            )
+        ]
+    )
+
+    # Add labels for the same person in frame 2
+    sample.frames[2]["objects"] = fo.Detections(
+        detections=[
+            fo.Detection(
+                label="person",
+                bounding_box=[0.12, 0.11, 0.2, 0.2],
+                instance=person_instance,  # Link this detection
+            )
+        ]
+    )
+
+    sample.save()
+
+Linking labels in this way enables helpful interactions in the FiftyOne App.
+See :ref:`this section <app-labels-correspondence>` for more details.
+
+.. note::
+
+    You must call :meth:`sample.save() <fiftyone.core.sample.Sample.save>` in
+    order to persist changes to the database when editing video samples and/or
+    their frames that are in datasets.
