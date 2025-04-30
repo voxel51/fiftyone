@@ -83,7 +83,7 @@ const StringFilter = ({
   const theme = useTheme();
 
   const footer = useIncompleteResults(path);
-  const icon = useQueryPerformanceIcon(modal, named, path);
+  const icon = useQueryPerformanceIcon(modal, named, path, color);
   const queryPerformance = useRecoilValue(fos.queryPerformance);
   if (named && (!queryPerformance || modal) && !results?.count) {
     return null;
