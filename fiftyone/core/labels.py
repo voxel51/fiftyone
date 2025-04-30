@@ -374,7 +374,9 @@ class _HasInstance(Label):
     across different samples.
     """
 
-    instance = fof.EmbeddedDocumentField(Instance)
+    # note: decided to not make `instance` a default field
+    # to maintain backwards compatibility
+    # instance = fof.EmbeddedDocumentField(Instance)
 
     @property
     def instance_id(self):
