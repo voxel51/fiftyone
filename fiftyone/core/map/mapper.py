@@ -172,6 +172,9 @@ class Mapper(abc.ABC):
             result = check_if_return_is_sample(sample_collection, map_fcn)
         except ValueError as e:
             if "is empty" in str(e):
+                logger.warning(
+                    "Sample collection is empty. No samples to map."
+                )
                 return
             else:
                 raise e
