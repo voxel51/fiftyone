@@ -1177,3 +1177,60 @@ export grouped datasets in your custom format using the syntax below:
     exporter = CustomGroupDatasetExporter(...)
 
     dataset_or_view.export(dataset_exporter=exporter, ...)
+
+.. _linking-labels-across-group-slices:
+
+Linking labels across group slices
+----------------------------------
+
+When working with grouped datasets representing multiview data, you often want to
+represent the fact that multiple labels across different slices correspond to
+the same logical object instance observed from different perspectives.
+
+You can achieve this using the :class:`fiftyone.core.labels.Instance` class.
+By assigning the same :class:`~fiftyone.core.labels.Instance` to the
+``instance`` field of multiple labels (e.g., :class:`Detections
+<fiftyone.core.labels.Detection>`, :class:`Keypoints
+<fiftyone.core.labels.Keypoint>`, or :class:`Polylines
+<fiftyone.core.labels.Polyline>`) across different samples within the same
+group, you establish a link between them.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    group = fo.Group()
+    left_sample = fo.Sample(group=group.element("left"))
+    right_sample = group["right"]
+
+    # Create an instance ID for a logical object
+    car_instance = fo.Instance()
+
+    # Add label for the car in the left view
+    left_sample["objects"] = fo.Detections(
+        detections=[
+            fo.Detection(
+                label="car",
+                bounding_box=[0.5, 0.5, 0.3, 0.3],
+                instance=car_instance,  # Link this detection
+            )
+        ]
+    )
+
+    # Add label for the same car in the right view
+    right_sample["objects"] = fo.Detections(
+        detections=[
+            fo.Detection(
+                label="car",
+                bounding_box=[0.4, 0.5, 0.3, 0.3],
+                instance=car_instance,  # Link this detection
+            )
+        ]
+    )
+
+    left_sample.save()
+    right_sample.save()
+
+Linking labels in this way enables helpful interactions in the FiftyOne App.
+See :ref:`this section <app-labels-correspondence>` for more details.
