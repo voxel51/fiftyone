@@ -370,35 +370,17 @@ class _HasInstance(Label):
 
     Contrary to the ``id`` field, which is unique to each label, the
     ``instance`` field is unique to each label instance either temporally or
-    across different modalities, allowing you to identify the same logical label
-    across different samples.
+    across different modalities, allowing you to identify the same logical
+    label across different samples.
     """
-
-    instance = fof.EmbeddedDocumentField(Instance)
 
     @property
     def instance_id(self):
-        """The ID of the label instance."""
-        if self.instance is None:
+        """The label's instance ID, or None if it does not have one."""
+        try:
+            return self.instance.id
+        except AttributeError:
             return None
-
-        return self.instance.id
-
-    @instance_id.setter
-    def instance_id(self, value):
-        if self.instance is None:
-            self.instance = Instance()
-
-        if not isinstance(value, ObjectId):
-            if etau.is_str(value):
-                value = ObjectId(value)
-            else:
-                raise ValueError(
-                    "Invalid instance ID '%s'; must be an ObjectId or string "
-                    "representation thereof" % value
-                )
-
-        self.instance.id = value
 
 
 class _HasLabelList(object):
@@ -1582,6 +1564,8 @@ _INDEX_FIEDS = (
     Keypoint,
     Keypoints,
 )
+
+_INSTANCE_FIELDS = (Detection, Polyline, Keypoint)
 
 _SINGLE_LABEL_TO_LIST_MAP = {
     Classification: Classifications,
