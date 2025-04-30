@@ -35,7 +35,6 @@ jobs:
             requirements/test.txt
       - name: Install requirements
         if: steps.pip-cache.outputs.cache-hit != true
-        # Pinning pip version as the latest throws an error
         run: |
           pip install -U wheel setuptools
           pip install -r requirements/github.txt
