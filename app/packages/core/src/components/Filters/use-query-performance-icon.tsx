@@ -3,16 +3,16 @@ import React from "react";
 import { useRecoilValue } from "recoil";
 import { LightningBolt } from "../Sidebar/Entries/FilterablePathEntry/Icon";
 
-const Icon = ({ path }: { path: string }) => {
+const Icon = ({ color, path }: { color?: string; path: string }) => {
   const hasFilters = useRecoilValue(fos.hasFilters(false));
   const filteredIndex = useRecoilValue(
     fos.pathHasIndexes({ path, withFilters: true })
   );
-  const color = useRecoilValue(fos.pathColor(path));
+  const pathColor = useRecoilValue(fos.pathColor(path));
 
   return (
     <LightningBolt
-      color={filteredIndex ? color : undefined}
+      color={filteredIndex ? color ?? pathColor : undefined}
       tooltip={filteredIndex && hasFilters ? "Compound index" : "Indexed"}
     />
   );
@@ -21,7 +21,8 @@ const Icon = ({ path }: { path: string }) => {
 export default function useQueryPerformanceIcon(
   modal: boolean,
   named: boolean,
-  path: string
+  path: string,
+  color?: string
 ) {
   const filteredIndex = useRecoilValue(
     fos.pathHasIndexes({ path, withFilters: true })
@@ -41,5 +42,5 @@ export default function useQueryPerformanceIcon(
     return null;
   }
 
-  return <Icon path={path} />;
+  return <Icon path={path} color={color} />;
 }
