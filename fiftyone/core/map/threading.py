@@ -22,14 +22,13 @@ from typing import (
 )
 
 import bson
-from tqdm import tqdm
-
-
 import fiftyone.core.config as focc
 import fiftyone.core.map.batcher as fomb
 import fiftyone.core.map.mapper as fomm
 import fiftyone.core.utils as fou
 from fiftyone.core.map.typing import SampleCollection
+import backoff
+from tqdm import tqdm
 
 T = TypeVar("T")
 R = TypeVar("R")
@@ -160,29 +159,28 @@ class ThreadMapper(fomm.LocalMapper):
             ) -> Iterator[R]:
                 sample_errors: List[Tuple[bson.ObjectId, Exception, None]] = []
 
-                # Initialize backoff parameters
-                initial_timeout = 0.1
-                max_timeout = 5.0
-                backoff_factor = 2
-                current_timeout = initial_timeout
+                # Define a backoff handler for queue retrieval with reset at max timeout
+                @backoff.on_exception(
+                    backoff.expo,  # Use exponential backoff
+                    queue.Empty,  # The exception to trigger backoff
+                    max_time=None,  # No overall time limit
+                    max_value=5.0,  # Maximum wait time between retries
+                    factor=2,  # Multiplication factor for backoff
+                    jitter=None,  # No jitter in backoff time
+                    on_backoff=lambda details: None,
+                    on_success=lambda details: None,
+                )
+                def get_from_queue_with_backoff(q):
+                    """Get an item from the queue with exponential backoff."""
+                    return q.get(timeout=0.1)  # Initial timeout of 0.1 seconds
 
                 while True:
                     try:
-                        sample_id, err, result = q.get(timeout=current_timeout)
-                        # Reset backoff on successful get
-                        current_timeout = initial_timeout
-                    except queue.Empty:
-                        # Apply exponential backoff, but cap at max_timeout
-                        current_timeout = min(
-                            current_timeout * backoff_factor, max_timeout
-                        )
+                        # Use our backoff-wrapped function to get from queue
+                        sample_id, err, result = get_from_queue_with_backoff(q)
 
-                        # Reset backoff if we've hit too many consecutive
-                        # timeouts This prevents getting stuck with very
-                        # long timeouts
-                        if current_timeout == max_timeout:
-                            current_timeout = initial_timeout
-
+                    except Exception as e:
+                        # Check if all events are set and exit if so
                         if not (evts := [e for e in evts if not e.is_set()]):
                             break
                     else:
@@ -209,6 +207,9 @@ class ThreadMapper(fomm.LocalMapper):
                 if sample_errors:
                     yield sample_errors[0]
 
+            results = get_results(result_queue, worker_done_events)
+
+            # This is for the global progress bar.
             if progress is True:
                 with fou.ProgressBar(
                     total=sum(batch.total for batch in sample_batches),
@@ -220,4 +221,4 @@ class ThreadMapper(fomm.LocalMapper):
                         pb.update()
                         yield result
             else:
-                yield from get_results(result_queue, worker_done_events)
+                yield from results

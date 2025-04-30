@@ -23,6 +23,7 @@ from typing import (
 
 import dill as pickle
 import bson
+import backoff
 from tqdm.auto import tqdm
 
 import fiftyone as fo
@@ -144,49 +145,45 @@ class ProcessMapper(fomm.LocalMapper):
 
             sample_errors: List[Tuple[bson.ObjectId, Exception, None]] = []
 
-            # Initialize backoff parameters
-            initial_timeout = 0.1
-            max_timeout = 5.0
-            backoff_factor = 2
-            current_timeout = initial_timeout
+            # Define a backoff handler
+            @backoff.on_exception(
+                backoff.expo,  # Use exponential backoff
+                Empty,  # The exception to trigger backoff
+                max_time=None,  # No overall time limit
+                max_value=5.0,  # Maximum wait time between retries (5 seconds)
+                factor=2,  # Multiplication factor for backoff
+                jitter=None,  # No jitter (randomization) of backoff time
+                on_backoff=lambda details: None,
+                on_success=lambda details: None,
+            )
+            def get_from_queue_with_backoff(queue):
+                # Attempt to get from queue with a timeout
+                return queue.get(timeout=0.1)  # Initial timeout of 0.1 seconds
 
             while True:
-                try:
-                    sample_id, err, result = queue.get(timeout=current_timeout)
-                    # Reset backoff on successful get
-                    current_timeout = initial_timeout
-                except Empty:
-                    # Apply exponential backoff, but cap at max_timeout
-                    current_timeout = min(
-                        current_timeout * backoff_factor, max_timeout
-                    )
+                # Use our backoff-wrapped function to get from queue
+                sample_id, err, result = get_from_queue_with_backoff(queue)
 
-                    # Reset backoff if we've hit too many consecutive timeouts
-                    # This prevents getting stuck with very long timeouts
-                    if current_timeout == max_timeout:
-                        current_timeout = initial_timeout
+                # Update progress bar
+                pb.update()
 
-                    # Check if done after applying backoff
-                    if batch_count.value >= num_batches:
-                        break
-                else:
-                    # Update progress bar
-                    pb.update()
-
-                    if err is not None:
-                        # When skipping failures, simply yield the
-                        # sample ID and the error.
-                        if skip_failures:
-                            yield sample_id, err, None
-                        # When NOT skipping failures, aggregate any errors
-                        # to allow for all successfully mapped samples from
-                        # the various workers to be yielded first.
-                        else:
-                            sample_errors.append((sample_id, err, None))
-
+                if err is not None:
+                    # When skipping failures, simply yield the
+                    # sample ID and the error.
+                    if skip_failures:
+                        yield sample_id, err, None
+                    # When NOT skipping failures, aggregate any errors
+                    # to allow for all successfully mapped samples from
+                    # the various workers to be yielded first.
                     else:
-                        # Yield successfully mapped sample
-                        yield sample_id, None, result
+                        sample_errors.append((sample_id, err, None))
+                else:
+                    # Yield successfully mapped sample
+                    yield sample_id, None, result
+
+                # Check if done after processing item
+                if batch_count.value >= num_batches:
+                    break
 
             queue.close()
             queue.join_thread()
