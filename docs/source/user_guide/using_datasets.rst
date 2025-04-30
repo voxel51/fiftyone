@@ -6083,9 +6083,9 @@ moving through the video.
 
 You can achieve this using the :class:`fiftyone.core.labels.Instance` class.
 By assigning the same :class:`~fiftyone.core.labels.Instance` to the
-``instance`` field of multiple labels (e.g., :class:`Detections
-<fiftyone.core.labels.Detection>`, :class:`Keypoints
-<fiftyone.core.labels.Keypoint>`, or :class:`Polylines
+``instance`` field of multiple labels (e.g., :class:`Detection
+<fiftyone.core.labels.Detection>`, :class:`Keypoint
+<fiftyone.core.labels.Keypoint>`, or :class:`Polyline
 <fiftyone.core.labels.Polyline>`) across different frames of a video, you
 establish a link between them.
 
