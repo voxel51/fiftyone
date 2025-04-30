@@ -477,6 +477,8 @@ class TransformerEmbeddingsMixin(EmbeddingsMixin):
         # the alternative is to do this in the constructor with dummy input
         # however, that opens up strange MRO issues as well as potential
         # errors from badly constructed dummy input
+        if not self._save_last_output:
+            self._save_last_output = True
         if self.embeddings_output_key is None:
             args_copy = deepcopy(args)
             _ = self.predict_all(args_copy)
@@ -485,6 +487,7 @@ class TransformerEmbeddingsMixin(EmbeddingsMixin):
             )
 
         self._predict_all(args)
+        self._save_last_output = False
         return self.get_embeddings()
 
 
@@ -601,6 +604,7 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
                     "a different value."
                 )
 
+        self._save_last_output = False
         self._last_output = None
 
     @property
@@ -609,6 +613,9 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
 
     @last_output.setter
     def last_output(self, value):
+        if not self._save_last_output:
+            self._last_output = None
+            return
         self._last_output = {}
         for k, v in value.items():
             self._last_output[k] = v
@@ -620,6 +627,13 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
                 self._last_output[k] = tuple(
                     [i.detach().cpu().numpy() for i in self._last_output[k]]
                 )
+            elif isinstance(
+                self._last_output[k], transformers.utils.ModelOutput
+            ):
+                self._last_output[k] = {
+                    _k: _v.detach().cpu().numpy()
+                    for _k, _v in self._last_output[k].items()
+                }
 
     def _predict_all(self, args):
         if self.preprocess:
