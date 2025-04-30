@@ -145,7 +145,7 @@ class DatasetMixin(object):
             root = chunks[0]
             doc = self.get_field(root)
 
-            if doc is None:
+            if doc is None and create:
                 doc = DynamicEmbeddedDocument()
                 self[root] = doc
                 self._changed_fields.remove(root)
@@ -158,6 +158,15 @@ class DatasetMixin(object):
 
             doc.set_field(chunks[1], value, create=create)
 
+            #
+            # We treat attributes of `DynamicEmbeddedDocument` fields like
+            # top-level fields and automatically declare new attributes on the
+            # datasets's schema
+            #
+            # If the user is setting attributes of other embedded documents
+            # such as `Label` fields, then by convention we don't automatically
+            # declare new attributes on the dataset's schema
+            #
             if type(doc) != DynamicEmbeddedDocument:
                 return
 
