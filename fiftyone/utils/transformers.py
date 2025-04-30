@@ -920,7 +920,13 @@ class FiftyOneZeroShotTransformerForObjectDetection(
                 ],  # inject text prompts
             }
         else:
-            args.update({"input_ids": torch.cat([self.input_ids] * len(args))})
+            args.update(
+                {
+                    "input_ids": torch.cat(
+                        [self.input_ids] * len(args["pixel_values"])
+                    )
+                }
+            )
         return FiftyOneTransformer._predict_all(self, args)
 
 
