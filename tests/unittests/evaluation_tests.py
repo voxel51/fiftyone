@@ -40,7 +40,7 @@ import fiftyone.utils.eval.segmentation as fous
 import fiftyone.utils.labels as foul
 import fiftyone.utils.iou as foui
 
-from decorators import drop_datasets
+from decorators import drop_datasets, use_local_plugins
 
 
 basedir = None
@@ -175,6 +175,7 @@ class RegressionTests(unittest.TestCase):
 
         results.print_metrics()
 
+    @drop_datasets
     def test_custom_regression_evaluation(self):
         dataset = self._make_regression_dataset()
 
@@ -203,6 +204,62 @@ class RegressionTests(unittest.TestCase):
 
         results = dataset.load_evaluation_results("custom")
         self.assertEqual(type(results), four.RegressionResults)
+
+    @drop_datasets
+    @use_local_plugins
+    def test_regression_custom_metric(self):
+        dataset = self._make_regression_dataset()
+
+        metric_uri = "@voxel51/evaluation-tests/custom_evaluation_metric"
+
+        eval_key = "eval"
+        metric_field = f"{eval_key}_custom_evaluation_metric"
+
+        results = dataset.evaluate_regressions(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key=eval_key,
+            custom_metrics={metric_uri: dict(value="spam")},
+        )
+
+        self.assertTrue(metric_uri in results.config.custom_metrics)
+        self.assertTrue(dataset.has_field(metric_field))
+        self.assertListEqual(dataset.distinct(metric_field), ["spam"])
+
+        metrics = results.metrics()
+
+        self.assertTrue("example" in metrics)
+        self.assertEqual(metrics["example"], "spam")
+
+        results.add_custom_metrics(
+            custom_metrics={metric_uri: dict(value="eggs")},
+            overwrite=True,
+        )
+
+        self.assertListEqual(dataset.distinct(metric_field), ["eggs"])
+
+        metrics = results.metrics()
+
+        self.assertEqual(metrics["example"], "eggs")
+
+        new_eval_key = "still_eval"
+        new_metric_field = f"{new_eval_key}_custom_evaluation_metric"
+
+        dataset.rename_evaluation(eval_key, new_eval_key)
+
+        self.assertTrue(metric_uri in results.config.custom_metrics)
+        self.assertFalse(dataset.has_field(metric_field))
+        self.assertTrue(dataset.has_field(new_metric_field))
+        self.assertListEqual(dataset.distinct(new_metric_field), ["eggs"])
+
+        new_metrics = results.metrics()
+
+        self.assertTrue("example" in new_metrics)
+        self.assertEqual(new_metrics["example"], "eggs")
+
+        dataset.delete_evaluation(new_eval_key)
+
+        self.assertFalse(dataset.has_field(new_metric_field))
 
 
 class VideoRegressionTests(unittest.TestCase):
@@ -666,6 +723,7 @@ class ClassificationTests(unittest.TestCase):
         results.report()
         results.print_report()
 
+    @drop_datasets
     def test_custom_classification_evaluation(self):
         dataset = self._make_classification_dataset()
 
@@ -698,6 +756,62 @@ class ClassificationTests(unittest.TestCase):
 
         results = dataset.load_evaluation_results("custom")
         self.assertEqual(type(results), fouc.ClassificationResults)
+
+    @drop_datasets
+    @use_local_plugins
+    def test_classification_custom_metric(self):
+        dataset = self._make_classification_dataset()
+
+        metric_uri = "@voxel51/evaluation-tests/custom_evaluation_metric"
+
+        eval_key = "eval"
+        metric_field = f"{eval_key}_custom_evaluation_metric"
+
+        results = dataset.evaluate_classifications(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key=eval_key,
+            custom_metrics={metric_uri: dict(value="spam")},
+        )
+
+        self.assertTrue(metric_uri in results.config.custom_metrics)
+        self.assertTrue(dataset.has_field(metric_field))
+        self.assertListEqual(dataset.distinct(metric_field), ["spam"])
+
+        metrics = results.metrics()
+
+        self.assertTrue("example" in metrics)
+        self.assertEqual(metrics["example"], "spam")
+
+        results.add_custom_metrics(
+            custom_metrics={metric_uri: dict(value="eggs")},
+            overwrite=True,
+        )
+
+        self.assertListEqual(dataset.distinct(metric_field), ["eggs"])
+
+        metrics = results.metrics()
+
+        self.assertEqual(metrics["example"], "eggs")
+
+        new_eval_key = "still_eval"
+        new_metric_field = f"{new_eval_key}_custom_evaluation_metric"
+
+        dataset.rename_evaluation(eval_key, new_eval_key)
+
+        self.assertTrue(metric_uri in results.config.custom_metrics)
+        self.assertFalse(dataset.has_field(metric_field))
+        self.assertTrue(dataset.has_field(new_metric_field))
+        self.assertListEqual(dataset.distinct(new_metric_field), ["eggs"])
+
+        new_metrics = results.metrics()
+
+        self.assertTrue("example" in new_metrics)
+        self.assertEqual(new_metrics["example"], "eggs")
+
+        dataset.delete_evaluation(new_eval_key)
+
+        self.assertFalse(dataset.has_field(new_metric_field))
 
 
 class VideoClassificationTests(unittest.TestCase):
@@ -1852,6 +1966,7 @@ class DetectionsTests(unittest.TestCase):
         self.assertIn(pred_eval_field + "_id", schema)
         self.assertIn(pred_eval_field + "_iou", schema)
 
+    @drop_datasets
     def test_custom_detection_evaluation(self):
         dataset = self._make_detections_dataset()
 
@@ -1880,6 +1995,62 @@ class DetectionsTests(unittest.TestCase):
 
         results = dataset.load_evaluation_results("custom")
         self.assertEqual(type(results), foud.DetectionResults)
+
+    @drop_datasets
+    @use_local_plugins
+    def test_detection_custom_metric(self):
+        dataset = self._make_detections_dataset()
+
+        metric_uri = "@voxel51/evaluation-tests/custom_evaluation_metric"
+
+        eval_key = "eval"
+        metric_field = f"{eval_key}_custom_evaluation_metric"
+
+        results = dataset.evaluate_detections(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key=eval_key,
+            custom_metrics={metric_uri: dict(value="spam")},
+        )
+
+        self.assertTrue(metric_uri in results.config.custom_metrics)
+        self.assertTrue(dataset.has_field(metric_field))
+        self.assertListEqual(dataset.distinct(metric_field), ["spam"])
+
+        metrics = results.metrics()
+
+        self.assertTrue("example" in metrics)
+        self.assertEqual(metrics["example"], "spam")
+
+        results.add_custom_metrics(
+            custom_metrics={metric_uri: dict(value="eggs")},
+            overwrite=True,
+        )
+
+        self.assertListEqual(dataset.distinct(metric_field), ["eggs"])
+
+        metrics = results.metrics()
+
+        self.assertEqual(metrics["example"], "eggs")
+
+        new_eval_key = "still_eval"
+        new_metric_field = f"{new_eval_key}_custom_evaluation_metric"
+
+        dataset.rename_evaluation(eval_key, new_eval_key)
+
+        self.assertTrue(metric_uri in results.config.custom_metrics)
+        self.assertFalse(dataset.has_field(metric_field))
+        self.assertTrue(dataset.has_field(new_metric_field))
+        self.assertListEqual(dataset.distinct(new_metric_field), ["eggs"])
+
+        new_metrics = results.metrics()
+
+        self.assertTrue("example" in new_metrics)
+        self.assertEqual(new_metrics["example"], "eggs")
+
+        dataset.delete_evaluation(new_eval_key)
+
+        self.assertFalse(dataset.has_field(new_metric_field))
 
 
 class BoxesTests(unittest.TestCase):
@@ -3006,6 +3177,7 @@ class SegmentationTests(unittest.TestCase):
         results.report()
         results.print_report()
 
+    @drop_datasets
     def test_custom_segmentation_evaluation(self):
         dataset = self._make_segmentation_dataset()
 
@@ -3034,6 +3206,62 @@ class SegmentationTests(unittest.TestCase):
 
         results = dataset.load_evaluation_results("custom")
         self.assertEqual(type(results), fous.SegmentationResults)
+
+    @drop_datasets
+    @use_local_plugins
+    def test_segmentation_custom_metric(self):
+        dataset = self._make_segmentation_dataset()
+
+        metric_uri = "@voxel51/evaluation-tests/custom_evaluation_metric"
+
+        eval_key = "eval"
+        metric_field = f"{eval_key}_custom_evaluation_metric"
+
+        results = dataset.evaluate_segmentations(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key=eval_key,
+            custom_metrics={metric_uri: dict(value="spam")},
+        )
+
+        self.assertTrue(metric_uri in results.config.custom_metrics)
+        self.assertTrue(dataset.has_field(metric_field))
+        self.assertListEqual(dataset.distinct(metric_field), ["spam"])
+
+        metrics = results.metrics()
+
+        self.assertTrue("example" in metrics)
+        self.assertEqual(metrics["example"], "spam")
+
+        results.add_custom_metrics(
+            custom_metrics={metric_uri: dict(value="eggs")},
+            overwrite=True,
+        )
+
+        self.assertListEqual(dataset.distinct(metric_field), ["eggs"])
+
+        metrics = results.metrics()
+
+        self.assertEqual(metrics["example"], "eggs")
+
+        new_eval_key = "still_eval"
+        new_metric_field = f"{new_eval_key}_custom_evaluation_metric"
+
+        dataset.rename_evaluation(eval_key, new_eval_key)
+
+        self.assertTrue(metric_uri in results.config.custom_metrics)
+        self.assertFalse(dataset.has_field(metric_field))
+        self.assertTrue(dataset.has_field(new_metric_field))
+        self.assertListEqual(dataset.distinct(new_metric_field), ["eggs"])
+
+        new_metrics = results.metrics()
+
+        self.assertTrue("example" in new_metrics)
+        self.assertEqual(new_metrics["example"], "eggs")
+
+        dataset.delete_evaluation(new_eval_key)
+
+        self.assertFalse(dataset.has_field(new_metric_field))
 
 
 class VideoSegmentationTests(unittest.TestCase):
