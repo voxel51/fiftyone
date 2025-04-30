@@ -1,0 +1,7 @@
+name: "@voxel51/evaluation-tests"
+description: Evaluation tests
+version: 1.0.0
+fiftyone:
+  version: "*"
+panels:
+  - custom_evaluation_metric
