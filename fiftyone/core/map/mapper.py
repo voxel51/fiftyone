@@ -168,10 +168,15 @@ class Mapper(abc.ABC):
             Iterator[Tuple[bson.ObjectId, R]]: The sample ID and the result of
               the map function for the sample.
         """
-        if len(sample_collection) == 0:
-            return
+        try:
+            result = check_if_return_is_sample(sample_collection, map_fcn)
+        except ValueError as e:
+            if "is empty" in str(e):
+                return
+            else:
+                raise e
 
-        if check_if_return_is_sample(sample_collection, map_fcn):
+        if result:
             raise ValueError("`map_fcn` should not return Samples objects.")
 
         yield from self._map_samples(
