@@ -230,9 +230,9 @@ const QueryPerformance = () => {
         <>
           <ActionOption
             id="qp-results"
-            text="Query Performance results"
+            text="Unindexed sidebar results"
             href={QUERY_PERFORMANCE_RESULTS}
-            title={"More on Query Performance results"}
+            title={"More on unindexed sidebar results"}
             style={{
               background: "unset",
               color: theme.text.primary,
@@ -249,7 +249,7 @@ const QueryPerformance = () => {
             }}
           >
             <Selector
-              placeholder="max search"
+              placeholder=""
               onSelect={async (text) => {
                 if (text === "") {
                   resetMaxSearch();
@@ -277,7 +277,7 @@ const QueryPerformance = () => {
                 flex: 1,
               }}
             />
-            <div>max search</div>
+            <div>doc limit</div>
           </div>
         </>
       )}
