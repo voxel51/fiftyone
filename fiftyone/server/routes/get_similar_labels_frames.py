@@ -11,6 +11,7 @@ from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
+import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.odm as foo
 import fiftyone.core.view as fov
@@ -18,7 +19,7 @@ import fiftyone.server.view as fosv
 from fiftyone.server.decorators import route
 
 
-def build_similar_labels_pipeline(instance_id, field_names_with_instance):
+def _build_similar_labels_pipeline(instance_id, field_names_with_instance):
     """
     Builds the aggregation pipeline for finding similar labels across frames.
 
@@ -195,6 +196,21 @@ def build_similar_labels_pipeline(instance_id, field_names_with_instance):
     ]
 
 
+def _get_filtered_schema(view):
+    filtered_schema = {}
+    for key, value in view.get_frame_field_schema(flat=True).items():
+        while isinstance(value, fof.ListField):
+            value = value.field
+
+        if not isinstance(value, fof.EmbeddedDocumentField):
+            continue
+
+        if value.document_type in fol._INSTANCE_FIELDS:
+            filtered_schema[key] = value
+
+    return filtered_schema
+
+
 class GetSimilarLabelsFrameCollection(HTTPEndpoint):
     """
     This route scans the frame collection for a given video sample and returns
@@ -271,15 +287,11 @@ class GetSimilarLabelsFrameCollection(HTTPEndpoint):
 
         view = fov.make_optimized_select_view(view, sample_id, flatten=True)
 
-        filtered_schema = view.get_frame_field_schema(
-            flat=True, embedded_doc_type=fol.Instance
-        )
-
         field_names_with_instance = list(
-            map(lambda f: f.split(".")[0], filtered_schema)
+            map(lambda f: f.split(".")[0], _get_filtered_schema(view))
         )
 
-        post_pipeline = build_similar_labels_pipeline(
+        post_pipeline = _build_similar_labels_pipeline(
             instance_id, field_names_with_instance
         )
 
