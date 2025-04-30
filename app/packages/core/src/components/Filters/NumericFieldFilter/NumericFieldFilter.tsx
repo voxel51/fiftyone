@@ -35,7 +35,7 @@ const NumericFieldFilter = ({ color, modal, named = true, path }: Props) => {
   const field = fos.useAssertedRecoilValue(fos.field(path));
 
   const { show, showLoadButton } = useShow(modal, named, path, showRange);
-  const icon = useQueryPerformanceIcon(modal, named, path);
+  const icon = useQueryPerformanceIcon(modal, named, path, color);
   if (!show) {
     return null;
   }
