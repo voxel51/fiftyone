@@ -59,7 +59,7 @@ async def _fetch_geo_points(
         pipeline = []
 
     # only return the minimum amount of data needed to minimize network overhead
-    # if there is a regular index on the coordinates, querying this will be relatively fast
+    # if there is a regular index on the coordinates, querying this will be faster
     pipeline += [
         {
             "$project": {
@@ -69,11 +69,11 @@ async def _fetch_geo_points(
         },
     ]
 
-    collection = foo.get_async_db_conn()[collection_name]
+    collection = foo.get_db_conn()[collection_name]
 
     results = {}
 
-    async for doc in collection.aggregate(pipeline):
+    for doc in collection.aggregate(pipeline):
         results[str(doc["_id"])] = doc["coordinates"]
 
     return results
