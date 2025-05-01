@@ -302,10 +302,11 @@ def execution_cache(
 
         wrapper.set_cache = set_cache
 
-        def clear_all_caches(dataset_id=None):
+        def clear_all_caches(dataset_id=None, ctx=None):
+            dataset_id = dataset_id or (ctx.dataset._doc.id if ctx else None)
             if dataset_id is None and func.link_to_dataset:
                 raise ValueError(
-                    "dataset_id must be provided when link_to_dataset=True"
+                    "dataset_id or ctx must be provided when link_to_dataset=True"
                 )
             if residency == "ephemeral" or residency == "hybrid":
                 func_id = _get_function_id(func)

@@ -196,3 +196,28 @@ class TestExecutionCacheWithSamples(unittest.TestCase):
             @execution_cache(residency="wat")
             def bad(ctx, tag):
                 return f"nope-{tag}"
+
+    @drop_datasets
+    @drop_collection(TEST_COLLECTION_NAME)
+    def test_clear_all_caches(self):
+        calls = []
+
+        @execution_cache(collection_name=TEST_COLLECTION_NAME)
+        def cached(ctx, tag):
+            calls.append(tag)
+            return f"tag-{tag}"
+
+        dataset = create_test_dataset()
+        ctx = setup_ctx(dataset)
+
+        # Cache miss
+        self.assertEqual(cached(ctx, "a"), "tag-a")
+
+        # Clear all caches
+        cached.clear_all_caches(ctx=ctx)
+
+        # Cache miss again after clearing
+        self.assertEqual(cached(ctx, "a"), "tag-a")
+
+        # Two calls should have been made
+        self.assertEqual(calls, ["a", "a"])
