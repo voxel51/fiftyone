@@ -531,6 +531,11 @@ class TorchImageModel(
     """
 
     def __init__(self, config):
+        """
+        Initializes a TorchImageModel instance with the specified configuration.
+        
+        Loads the model, sets device and precision, builds preprocessing transforms, parses model metadata (classes, mask targets, skeleton), and constructs the output processor. Also initializes mixins for logits and embeddings extraction. Raises a ValueError if a custom collate function is defined while ragged batches are enabled.
+        """
         self.config = config
 
         device = self.config.device
@@ -617,8 +622,8 @@ class TorchImageModel(
 
     @property
     def transforms(self):
-        """A ``torchvision.transforms`` function that will be applied to each
-        input before prediction, if any.
+        """
+        Returns the torchvision transforms function applied to each input before prediction, if defined.
         """
         return self._transforms
 
@@ -645,7 +650,12 @@ class TorchImageModel(
 
     @property
     def preprocess(self):
-        """Whether to apply preprocessing transforms for inference, if any."""
+        """
+        Indicates whether preprocessing transforms should be applied during inference.
+        
+        Returns:
+            bool: True if preprocessing transforms are enabled; otherwise, False.
+        """
         return self._preprocess
 
     @preprocess.setter
@@ -733,6 +743,15 @@ class TorchImageModel(
         return self._predict_all(imgs)
 
     def _predict_all(self, imgs):
+        """
+        Performs batch prediction on a list of images, applying preprocessing, optional collation, and output processing.
+        
+        Args:
+            imgs: A list of images as PIL Images, numpy arrays, or torch Tensors.
+        
+        Returns:
+            Model outputs or processed labels, depending on the configured output processor.
+        """
         if self._preprocess and self._transforms is not None:
             imgs = [self._transforms(img) for img in imgs]
             if hasattr(self, "collate_fn"):

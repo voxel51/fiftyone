@@ -689,6 +689,21 @@ def _make_data_loader(samples, model, batch_size, num_workers, skip_failures):
     # This function supports DataLoaders that emit numpy arrays that can
     # therefore be used for non-Torch models; but we do not currently use this
     # functionality
+    """
+    Creates a PyTorch DataLoader for image samples with appropriate batching and error handling.
+    
+    Handles different batching strategies based on the model type, including support for ragged batches, numpy stacking, and model-specific collate functions. Errors encountered during data loading or collation are either raised or returned, depending on the `skip_failures` flag.
+    
+    Args:
+        samples: An iterable of image samples to load.
+        model: The model instance, which determines batching and collation behavior.
+        batch_size: The number of samples per batch. Defaults to 1 if not specified.
+        num_workers: The number of worker processes for data loading. If None, a recommended value is used.
+        skip_failures: If True, errors during loading or collation are returned instead of raised.
+    
+    Returns:
+        A PyTorch DataLoader configured for the given samples and model.
+    """
     use_numpy = not isinstance(model, TorchModelMixin)
 
     if num_workers is None:
@@ -740,6 +755,11 @@ def _make_data_loader(samples, model, batch_size, num_workers, skip_failures):
     else:
 
         def collate_fn(batch):
+            """
+            Collates a batch of samples for a Torch DataLoader, using a model-specific collate function if available.
+            
+            If the model defines a `collate_fn` attribute, it is used to collate the batch; otherwise, the default PyTorch collate function is applied. Returns any error encountered during batch handling if `skip_failures` is enabled.
+            """
             error = handle_errors(batch)
             if error is not None:
                 return error
