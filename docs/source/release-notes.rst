@@ -37,7 +37,7 @@ Includes all updates from :ref:`FiftyOne 1.5.0 <release-notes-v1.5.0>`, plus:
 
 FiftyOne 1.5.0
 --------------
-*Released May 1, 2025*
+*Released May 2, 2025*
 
 App
 
