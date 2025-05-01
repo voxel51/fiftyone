@@ -265,6 +265,8 @@ def execution_cache(
                 jwt_scoped=jwt_scoped,
                 collection_name=collection_name,
             )
+            print("store", store)
+            print("memory_cache", memory_cache)
             if store:
                 store.delete(cache_key)
             if memory_cache is not None and cache_key in memory_cache:

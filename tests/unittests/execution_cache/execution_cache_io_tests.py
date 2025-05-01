@@ -6,12 +6,10 @@ Integration tests for execution_cache.
 |
 """
 import unittest
-import fiftyone as fo
 
+import fiftyone as fo
 from fiftyone.operators.cache import execution_cache
 from fiftyone.operators.executor import ExecutionContext
-from fiftyone.operators.store import ExecutionStore
-from fiftyone.operators.cache.utils import _build_cache_key
 from decorators import drop_datasets, drop_collection
 
 TEST_COLLECTION_NAME = "test-execution-cache"
@@ -50,8 +48,7 @@ def get_first_sample(ctx):
     return ctx.dataset.first()
 
 
-def create_test_dataset():
-    dataset_name = "execution_cache_samples_ds"
+def create_test_dataset(dataset_name="execution_cache_samples_ds"):
     dataset = fo.Dataset(dataset_name)
 
     dataset.add_samples(
@@ -197,27 +194,45 @@ class TestExecutionCacheWithSamples(unittest.TestCase):
             def bad(ctx, tag):
                 return f"nope-{tag}"
 
-    @drop_datasets
     @drop_collection(TEST_COLLECTION_NAME)
-    def test_clear_all_caches(self):
+    @drop_datasets
+    def test_clear_cache_ephemeral(self):
+        self._run_clear_cache_test("ephemeral", clear_fn="per_key")
+
+    @drop_collection(TEST_COLLECTION_NAME)
+    @drop_datasets
+    def test_clear_cache_hybrid(self):
+        self._run_clear_cache_test("hybrid", clear_fn="per_key")
+
+    @drop_collection(TEST_COLLECTION_NAME)
+    @drop_datasets
+    def test_clear_cache_transient(self):
+        self._run_clear_cache_test("transient", clear_fn="per_key")
+
+    def _run_clear_cache_test(self, residency, clear_fn):
+        dataset_name = f"execution_cache_samples_ds_{residency}"
         calls = []
 
-        @execution_cache(collection_name=TEST_COLLECTION_NAME)
+        @execution_cache(
+            collection_name=TEST_COLLECTION_NAME, residency=residency
+        )
         def cached(ctx, tag):
             calls.append(tag)
             return f"tag-{tag}"
 
-        dataset = create_test_dataset()
+        dataset = create_test_dataset(dataset_name=dataset_name)
         ctx = setup_ctx(dataset)
 
-        # Cache miss
-        self.assertEqual(cached(ctx, "a"), "tag-a")
+        self.assertEqual(cached(ctx, residency), f"tag-{residency}")
 
-        # Clear all caches
-        cached.clear_all_caches(ctx=ctx)
+        if clear_fn == "per_key":
+            cached.clear_cache(ctx, residency)
+        elif clear_fn == "all":
+            cached.clear_all_caches(ctx=ctx)
+        else:
+            raise ValueError(f"Unknown clear_fn mode: {clear_fn}")
 
-        # Cache miss again after clearing
-        self.assertEqual(cached(ctx, "a"), "tag-a")
+        self.assertEqual(cached(ctx, residency), f"tag-{residency}")
+        self.assertEqual(calls, [residency, residency])
 
-        # Two calls should have been made
-        self.assertEqual(calls, ["a", "a"])
+        fo.delete_dataset(dataset_name)
