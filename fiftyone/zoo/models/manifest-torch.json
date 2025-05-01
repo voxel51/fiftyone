@@ -2664,6 +2664,37 @@
             "date_added": "2024-01-17 14:25:51"
         },
         {
+            "base_name": "vit-base-patch16-224-imagenet-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Hugging Face Transformers model for image classification",
+            "source": "https://huggingface.co/docs/transformers/tasks/image_classification",
+            "author": "Thomas Wolf, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {}
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "logits",
+                "embeddings",
+                "torch",
+                "transformers"
+            ],
+            "date_added": "2024-01-17 14:25:51"
+        },
+        {
             "base_name": "detection-transformer-torch",
             "base_filename": null,
             "version": null,
