@@ -5,7 +5,9 @@
 /deployment @voxel51/aloha-shirts
 
 # Aloha Shirts care about versioning
-/setup.py               @voxel51/aloha-shirts
+setup.py                @voxel51/aloha-shirts
+requirements.txt        @voxel51/aloha-shirts
+requirements/           @voxel51/aloha-shirts
 /package/teams/setup.py @voxel51/aloha-shirts
 /teams-app/Dockerfile   @voxel51/aloha-shirts
 /teams-app/package.json @voxel51/aloha-shirts

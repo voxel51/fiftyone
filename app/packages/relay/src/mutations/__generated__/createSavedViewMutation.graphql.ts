@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<a5785624632e0cc9d66374e1894c550c>>
+ * @generated SignedSource<<f8346f627e276994bc8a3f060df74c74>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -20,6 +20,7 @@ export type StateForm = {
 export type SelectedLabel = {
   field: string;
   frameNumber?: number | null;
+  instanceId?: string | null;
   labelId: string;
   sampleId: string;
 };

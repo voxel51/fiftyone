@@ -150,7 +150,7 @@ class FiftyOneConfig(EnvConfig):
             d,
             "plugins_cache_enabled",
             env_var="FIFTYONE_PLUGINS_CACHE_ENABLED",
-            default=False,
+            default=True,
         )
         self.operator_timeout = self.parse_int(
             d,
@@ -294,14 +294,12 @@ class FiftyOneConfig(EnvConfig):
         self.timezone = self.parse_string(
             d, "timezone", env_var="FIFTYONE_TIMEZONE", default=None
         )
-
         self.default_parallelization_method = self.parse_string(
             d,
             "default_parallelization_method",
             env_var="FIFTYONE_DEFAULT_PARALLELIZATION_METHOD",
             default=None,
         )
-
         self.default_thread_pool_workers = self.parse_int(
             d,
             "default_thread_pool_workers",
@@ -314,7 +312,6 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_DEFAULT_PROCESS_POOL_WORKERS",
             default=None,
         )
-
         self.max_thread_pool_workers = self.parse_int(
             d,
             "max_thread_pool_workers",
