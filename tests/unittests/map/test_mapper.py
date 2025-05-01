@@ -13,6 +13,7 @@ from unittest import mock
 import bson
 import pytest
 
+import fiftyone as fo
 import fiftyone.core.sample as focs
 import fiftyone.core.map.batcher as fomb
 import fiftyone.core.map.mapper as fomm
@@ -77,9 +78,11 @@ class Mapper(fomm.LocalMapper):
     """Test implementation for abstract class"""
 
     @classmethod
-    def create(cls, *_, **__): ...
+    def create(cls, *_, **__):
+        ...
 
-    def _map_samples_multiple_workers(self, *_, **__): ...
+    def _map_samples_multiple_workers(self, *_, **__):
+        ...
 
 
 @pytest.mark.parametrize(
@@ -298,3 +301,22 @@ class TestMapSamples:
         assert {sample_id for sample_id, _ in results} == {
             sample.id for sample in samples
         }
+
+    def test_empty_dataset(self, num_workers):
+        dataset = fo.Dataset()
+        for _, result in dataset.map_samples(
+            lambda s: 1, num_workers=num_workers
+        ):
+            pass
+        assert len(dataset) == 0
+
+    def test_empty_view(self, num_workers):
+        dataset = fo.Dataset()
+        dataset.add_sample(focs.Sample(filepath="sample.jpg"))
+        empty_view = dataset.limit(0)
+        for _, result in empty_view.map_samples(
+            lambda s: 1, num_workers=num_workers
+        ):
+            pass
+        assert len(dataset) == 1
+        assert len(empty_view) == 0
