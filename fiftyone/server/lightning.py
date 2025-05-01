@@ -470,7 +470,12 @@ async def _do_distinct_grouped_pipeline(
     query: DistinctQuery,
     is_frames: bool,
 ):
-    pipeline = [{"$group": {"_id": f"${query.path}"}}, {"$sort": {"_id": 1}}]
+    # sort first, we are using an index so order should be correct even after
+    # grouping
+    pipeline = [
+        {"$sort": {query.path: 1}},
+        {"$group": {"_id": f"${query.path}"}},
+    ]
 
     return await _handle_pipeline(
         pipeline, dataset, collection, query, is_frames, disable_limit=True

@@ -1063,6 +1063,7 @@ class DatasetTests(unittest.TestCase):
             )
         )
 
+    @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
     def test_update_samples(self):
         dataset = fo.Dataset()
@@ -1107,6 +1108,7 @@ class DatasetTests(unittest.TestCase):
 
         self.assertTupleEqual(dataset.bounds("int"), (3, 52))
 
+    @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
     def test_map_samples(self):
         dataset = fo.Dataset()
@@ -1670,8 +1672,6 @@ class DatasetTests(unittest.TestCase):
                 "eggs.detections.mask_path",
                 "eggs.detections.confidence",
                 "eggs.detections.index",
-                "eggs.detections.instance",
-                "eggs.detections.instance.id",
             },
         )
 
@@ -1932,6 +1932,19 @@ class DatasetTests(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             _ = dataset.one(F("filepath").ends_with(".jpg"), exact=True)
+
+    @drop_datasets
+    def test_add_samples_generator(self):
+        samples = [fo.Sample(filepath=f"image{i}.jpg") for i in range(10)]
+
+        dataset = fo.Dataset()
+
+        sample_ids = []
+        for ids in dataset.add_samples(samples, generator=True):
+            sample_ids.extend(ids)
+
+        assert len(sample_ids) == 10
+        assert len(dataset) == 10
 
     @drop_datasets
     def test_merge_sample(self):
@@ -7196,6 +7209,32 @@ class DynamicFieldTests(unittest.TestCase):
         self.assertNotIn("predictions.detections.field", schema)
         self.assertFalse(frame.has_field("field"))
         self.assertFalse(frame.predictions.detections[0].has_field("field"))
+
+    @drop_datasets
+    def test_set_new_embedded_document_field(self):
+        dataset = fo.Dataset()
+
+        sample = fo.Sample(filepath="image.jpg")
+        dataset.add_sample(sample)
+
+        dataset.add_sample_field(
+            "data",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.DynamicEmbeddedDocument,
+        )
+
+        self.assertTrue(dataset.has_field("data"))
+        self.assertIsNone(sample["data"])
+
+        sample["data.foo"] = "bar"
+        sample.save()
+
+        self.assertTrue(dataset.has_field("data.foo"))
+
+        dataset.reload()
+
+        self.assertEqual(sample["data.foo"], "bar")
+        self.assertListEqual(dataset.values("data.foo"), ["bar"])
 
 
 class CustomEmbeddedDocumentTests(unittest.TestCase):

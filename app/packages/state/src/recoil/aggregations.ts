@@ -4,6 +4,7 @@ import { selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 import type { ResponseFrom } from "../utils";
 import { refresher } from "./atoms";
+import { config } from "./config";
 import * as filterAtoms from "./filters";
 import {
   currentSlices,
@@ -96,6 +97,7 @@ export const aggregationQuery = graphQLSelectorFamily<
             ? get(queryPerformance) && !modal
             : isQueryPerformance,
         hint: get(activeIndex),
+        maxQueryTimeout: get(config).maxQueryTimeout,
       };
 
       return {

@@ -40,6 +40,7 @@ class PanelConfig(OperatorConfig):
         name,
         label,
         help_markdown=None,
+        alpha=False,
         beta=False,
         is_new=False,
         category=None,
@@ -63,6 +64,7 @@ class PanelConfig(OperatorConfig):
         self.on_startup = True
         self.surfaces = surfaces
         self.category = category
+        self.alpha = alpha
         self.beta = beta
         self.is_new = is_new
         self.priority = priority
@@ -74,6 +76,7 @@ class PanelConfig(OperatorConfig):
             "label": self.label,
             "help_markdown": self.help_markdown,
             "category": str(self.category) if self.category else None,
+            "alpha": self.alpha,
             "beta": self.beta,
             "is_new": self.is_new,
             "icon": self.icon,
@@ -123,6 +126,7 @@ class Panel(Operator):
             "light_icon": self.config.light_icon,
             "surfaces": self.config.surfaces,
             "category": self.config.category,
+            "alpha": self.config.alpha,
             "beta": self.config.beta,
             "is_new": self.config.is_new,
             "priority": self.config.priority,

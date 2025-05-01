@@ -74,10 +74,10 @@ export const gridSortFields = selector({
     }
 
     const f = Object.keys(get(filters) ?? {});
-    const valid = get(validIndexes(new Set(f)));
+    const valid = get(validIndexes(f));
     const all = new Set([
-      ...valid.available.map(([_, i]) => i),
-      ...valid.trailing.map(([_, i]) => i),
+      ...valid.available.map(({ key }) => key),
+      ...valid.trailing.map(({ key }) => key),
     ]);
 
     return [...all]

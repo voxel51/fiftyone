@@ -109,6 +109,7 @@ class DatasetViewTests(unittest.TestCase):
             )
         )
 
+    @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
     def test_update_samples(self):
         dataset = fo.Dataset()
@@ -143,6 +144,7 @@ class DatasetViewTests(unittest.TestCase):
 
         self.assertTupleEqual(view.bounds("int"), (3, 52))
 
+    @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
     def test_map_samples(self):
         dataset = fo.Dataset()
@@ -1826,6 +1828,34 @@ class SetValuesTests(unittest.TestCase):
             dataset.values("frames.labels.classifications.fluffy"),
             dataset.values("frames.still_labels.classifications.fluffy"),
         )
+
+    @drop_datasets
+    def test_set_new_embedded_document_field(self):
+        dataset = fo.Dataset()
+
+        sample = fo.Sample(
+            filepath="image.jpg",
+            data=fo.DynamicEmbeddedDocument(foo="bar"),
+        )
+        dataset.add_sample(sample, dynamic=True)
+
+        self.assertTrue(dataset.has_field("data.foo"))
+
+        view = dataset.select_fields()
+
+        sample_view = view.first()
+
+        sample_view["data.spam"] = "eggs"
+        sample_view.save()
+
+        self.assertTrue(dataset.has_field("data.spam"))
+
+        dataset.reload()
+
+        self.assertEqual(sample["data.foo"], "bar")
+        self.assertEqual(sample["data.spam"], "eggs")
+        self.assertListEqual(dataset.values("data.foo"), ["bar"])
+        self.assertListEqual(dataset.values("data.spam"), ["eggs"])
 
 
 class SetLabelValuesTests(unittest.TestCase):

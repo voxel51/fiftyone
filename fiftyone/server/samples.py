@@ -128,7 +128,7 @@ async def paginate_samples(
         foo.get_async_db_conn()[view._dataset._sample_collection_name],
         pipeline,
         hint,
-        maxTimeMS=max_query_timeout,
+        maxTimeMS=max_query_timeout * 1000,
     ).to_list(first + 1)
 
     more = False

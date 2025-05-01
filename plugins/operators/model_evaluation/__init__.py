@@ -65,7 +65,7 @@ class ConfigureScenario(foo.Operator):
 
         inputs.str(
             "scenario_name",
-            label="Scenario Name",
+            label="Scenario name",
             default=scenario_name,
             required=True,
             view=types.TextFieldView(
@@ -119,10 +119,7 @@ class ConfigureScenario(foo.Operator):
     ):
         """
         Builds and returns an execution cache key for each type of scenario.
-        - custom code: we use the expression
-        - label attribute: selected field and value
-        - sample field: selected field and vlue
-        - saved view: selected view
+        - eval key + name + type + subset definition
         """
         scenario_type = self.get_scenario_type(ctx.params)
 
@@ -131,6 +128,7 @@ class ConfigureScenario(foo.Operator):
                 "sample-distribution-data",
                 eval_key,
                 name,
+                scenario_type,
                 str(subset_def),
             ]
         elif scenario_type == ScenarioType.VIEW:
@@ -142,21 +140,20 @@ class ConfigureScenario(foo.Operator):
                 subset_def.get("view", ""),
             ]
         else:
+            if isinstance(subset_def, list):
+                subset_def = subset_def[0]
+
             key = [
                 "sample-distribution-data",
                 eval_key,
                 name,
                 scenario_type,
-                subset_def.get("field", ""),
-                subset_def.get("value", ""),
+                str(subset_def),
             ]
 
         return key
 
-    # NOTE: TTL is 7 days - subject to fine-tuning
-    @execution_cache(
-        key_fn=get_subset_def_data_for_eval_key, ttl=7 * 24 * 60 * 60
-    )
+    @execution_cache(key_fn=get_subset_def_data_for_eval_key)
     def get_subset_def_data_for_eval(
         self, ctx, _, eval_result, name, subset_def
     ):
@@ -451,7 +448,7 @@ class ConfigureScenario(foo.Operator):
                 + "Please use the custom code to define the scenario."
             )
         if reason == CustomCodeViewReason.FLOAT_TYPE:
-            label = "Float type."
+            label = ""
             description = f"To create scenarios based on float fields, please use the custom code mode. "
         if reason == CustomCodeViewReason.SLOW:
             severity = "info"
@@ -702,11 +699,16 @@ class ConfigureScenario(foo.Operator):
         values = values or []
 
         scenario_type = self.get_scenario_type(ctx.params)
-        component_key, selected_values = self.get_selected_values(ctx.params)
-
-        self.render_use_custom_code_warning(
-            inputs, reason=CustomCodeViewReason.SLOW
+        scenario_type_display = (
+            "saved views"
+            if scenario_type == "view"
+            else (
+                "label attributes"
+                if scenario_type == "label_attribute"
+                else "sample fields"
+            )
         )
+        component_key, selected_values = self.get_selected_values(ctx.params)
 
         inputs.list(
             component_key,
@@ -715,7 +717,7 @@ class ConfigureScenario(foo.Operator):
             required=True,
             label="",
             description=(
-                f"Select saved views to get started. {len(selected_values)} selected"
+                f"Select {scenario_type_display} to get started. {len(selected_values)} selected"
             ),
             view=types.AutocompleteView(
                 multiple=True,
@@ -806,17 +808,19 @@ class ConfigureScenario(foo.Operator):
             # NOTE: we show the last part of the path as the label attribute
             label_choices.add_choice(option, label=option.split(".")[-1])
 
+        label_attr_exists = True if label_attr in valid_options else False
+
         inputs.enum(
             "scenario_label_attribute",
             label_choices.values(),
-            default=label_attr,
+            default=label_attr if label_attr_exists else None,
             label="Label attribute",
             description="Select a label attribute",
             view=label_choices,
             required=True,
         )
 
-        if label_attr:
+        if label_attr and label_attr_exists:
             self.render_scenario_picker_view(ctx, label_attr, inputs)
         else:
             self.render_empty_sample_distribution(
@@ -866,9 +870,11 @@ class ConfigureScenario(foo.Operator):
         for option in valid_options:
             field_choices.add_choice(option, label=option)
 
+        label_attr_exists = True if field_name in valid_options else False
+
         inputs.str(
             "scenario_field",
-            default=None,
+            default=field_name if label_attr_exists else None,
             label="Field",
             description=("Choose applicable sample field values."),
             view=field_choices,
@@ -1023,7 +1029,6 @@ class ConfigureScenario(foo.Operator):
                 componentsProps={
                     "container": {
                         "sx": {
-                            "border": "1px solid #333",
                             "padding": "0 2rem 0 1rem",
                         }
                     },
@@ -1133,6 +1138,16 @@ class ConfigureScenario(foo.Operator):
 
         scenarios[eval_id_a] = scenarios_for_eval
         store.set("scenarios", scenarios)
+
+        ctx.ops.track_event(
+            "scenario_created",
+            {
+                "id": scenario_id_str,
+                "name": scenario_name,
+                "type": scenario_type,
+                "subsets": scenario_subsets,
+            },
+        )
 
         return {
             "scenario_type": ctx.params.get("radio_choices", ""),
