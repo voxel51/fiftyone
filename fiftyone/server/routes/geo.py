@@ -62,14 +62,6 @@ async def _fetch_geo_points(
     # if there is a regular index on the coordinates, querying this will be relatively fast
     pipeline += [
         {
-            "$match": {
-                f"{field_path}.coordinates": {
-                    "$exists": True,
-                    "$ne": None,
-                }
-            }
-        },
-        {
             "$project": {
                 "_id": 1,
                 "coordinates": f"${field_path}.coordinates",
