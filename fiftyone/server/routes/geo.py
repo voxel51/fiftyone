@@ -60,13 +60,6 @@ async def _fetch_geo_points(
 
     # only return the minimum amount of data needed to minimize network overhead
     # if there is a regular index on the coordinates, querying this will be relatively fast
-    project = {
-        "$project": {
-            "_id": 1,
-            "coordinates": f"${field_path}.coordinates",
-        }
-    }
-
     pipeline += [
         {
             "$match": {
