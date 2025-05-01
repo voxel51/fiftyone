@@ -553,6 +553,15 @@ class TorchImageModel(
         self._transforms = transforms
         self._ragged_batches = ragged_batches
         self._preprocess = True
+        if hasattr(self, "collate_fn"):
+            if self._ragged_batches:
+                raise ValueError(
+                    "Cannot use collate_fn while ragged_batches is True. "
+                    "Set `ragged_batches=False` to use collate_fn. "
+                    "While the inputs to collate_fn may be ragged, "
+                    "the model has to flag itself as ragged_batches=False "
+                    "to enable proper dataloader support in apply_model."
+                )
 
         # Parse model details
         self._classes = self._parse_classes(config)
