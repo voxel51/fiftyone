@@ -1,7 +1,7 @@
 *   @voxel51/developers
 
 # Shared GraphQL schema requires notification of both frontend and backend
-/package/graphql @voxel51/backend-devs @voxel51/frontend-devs
+/package/graphql/ @voxel51/backend-devs @voxel51/frontend-devs
 
 # Frontend
 .prettierignore   @voxel51/frontend-devs
