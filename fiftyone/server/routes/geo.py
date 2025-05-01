@@ -58,8 +58,8 @@ async def _fetch_geo_points(
     else:
         pipeline = []
 
-    # only return the minimum amount of data needed to minimize network overhead
-    # if there is a regular index on the coordinates, querying this will be faster
+    # only return the minimum amount of data needed to minimize network
+    # overhead
     pipeline += [
         {
             "$project": {
@@ -69,11 +69,11 @@ async def _fetch_geo_points(
         },
     ]
 
-    collection = foo.get_db_conn()[collection_name]
+    collection = foo.get_async_db_conn()[collection_name]
 
     results = {}
 
-    for doc in collection.aggregate(pipeline):
+    async for doc in collection.aggregate(pipeline):
         results[str(doc["_id"])] = doc["coordinates"]
 
     return results
@@ -97,12 +97,8 @@ class GeoPoints(HTTPEndpoint):
             )
 
         try:
-            dataset = fo.load_dataset(dataset_name)
-            if not dataset:
-                return JSONResponse(
-                    {"error": f"Dataset '{dataset_name}' not found"},
-                    status_code=404,
-                )
+            dataset = await fosv.load_view(dataset_name, [])
+            dataset = dataset._dataset
 
             last_modified_at = str(dataset.last_modified_at)
 
