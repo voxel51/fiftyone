@@ -169,8 +169,11 @@ class Mapper(abc.ABC):
               the map function for the sample.
         """
 
-        if check_if_return_is_sample(sample_collection, map_fcn):
-            raise ValueError("`map_fcn` should not return Samples objects.")
+        # TODO: consider adding this check back in lazily, so that we do not
+        #  have to create a full view iterator up front just to validate the
+        #  function return type.
+        # if check_if_return_is_sample(sample_collection, map_fcn):
+        #     raise ValueError("`map_fcn` should not return Samples objects.")
 
         yield from self._map_samples(
             sample_collection,
