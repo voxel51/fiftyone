@@ -6,11 +6,11 @@ FiftyOne Server /geo route
 |
 """
 
-import json
 import logging
 import os
 
 from async_lru import alru_cache
+from bson import json_util
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -41,9 +41,9 @@ async def _fetch_geo_points(
 ):
 
     # deserialize keys back to Python objects for use
-    filters = json.loads(filters_key) if filters_key else None
-    stages = json.loads(stages_key) if stages_key else None
-    extended = json.loads(extended_key) if extended_key else None
+    filters = json_util.loads(filters_key) if filters_key else None
+    stages = json_util.loads(stages_key) if stages_key else None
+    extended = json_util.loads(extended_key) if extended_key else None
 
     if filters or stages or extended:
         view = await fosv.get_view(
@@ -106,11 +106,13 @@ class GeoPoints(HTTPEndpoint):
             last_modified_at = str(dataset.last_modified_at)
 
             filters_key = (
-                json.dumps(filters, sort_keys=True) if filters else None
+                json_util.dumps(filters, sort_keys=True) if filters else None
             )
-            stages_key = json.dumps(stages, sort_keys=True) if stages else None
+            stages_key = (
+                json_util.dumps(stages, sort_keys=True) if stages else None
+            )
             extended_key = (
-                json.dumps(extended, sort_keys=True) if extended else None
+                json_util.dumps(extended, sort_keys=True) if extended else None
             )
 
             # validate path is in schema
@@ -132,7 +134,7 @@ class GeoPoints(HTTPEndpoint):
                 last_modified_at,
             )
 
-            return JSONResponse(results)
+            return results
         except ValueError as e:
             logger.warning(f"Geo points request failed: {str(e)}")
             return JSONResponse({"error": str(e)}, status_code=400)
