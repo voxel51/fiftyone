@@ -613,24 +613,26 @@ class TorchImageModel(
         """
         return self._transforms
 
-    @staticmethod
-    def collate_fn(batch):
-        """The collate function to use when creating a dataloader
-        for this model. By default, this is the default collate function for
-        :class:`torch:torch.utils.data.DataLoader`.
+    # optional, leaving commented out to avoid hasattr issues
+    # but want to have it here for reference
+    # @staticmethod
+    # def collate_fn(batch):
+    #     """The collate function to use when creating a dataloader
+    #     for this model. By default, this is the default collate function for
+    #     :class:`torch:torch.utils.data.DataLoader`.
 
-        If the user wants to use a custom collate function,
-        they can override this method with a collate function of their choosing.
-        Please make sure this collate function is serializable so it is compatible
-        with multiprocessing for dataloaders.
+    #     If the user wants to use a custom collate function,
+    #     they can override this method with a collate function of their choosing.
+    #     Please make sure this collate function is serializable so it is compatible
+    #     with multiprocessing for dataloaders.
 
-        Args:
-            batch: a list of items to collate
+    #     Args:
+    #         batch: a list of items to collate
 
-        Returns:
-            the collated batch, this will be fed directly to the model
-        """
-        return torch.utils.data.dataloader.default_collate(batch)
+    #     Returns:
+    #         the collated batch, this will be fed directly to the model
+    #     """
+    #     return torch.utils.data.dataloader.default_collate(batch)
 
     @property
     def preprocess(self):
@@ -724,6 +726,11 @@ class TorchImageModel(
     def _predict_all(self, imgs):
         if self._preprocess and self._transforms is not None:
             imgs = [self._transforms(img) for img in imgs]
+            if hasattr(self, "collate_fn"):
+                # models that have collate_fn defined
+                # will want to use it when doing _predict_all
+                # without a dataloader
+                imgs = self.collate_fn(imgs)
 
         height, width = None, None
 
