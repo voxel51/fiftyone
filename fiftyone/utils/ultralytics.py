@@ -220,23 +220,11 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         return model
 
     def _load_model(self, config):
-        if config.model is not None:
-            if config.model.predictor is None:
-                config.model = self._set_predictor(config, config.model)
-            return config.model
-        else:
-            entrypoint_fcn = config.entrypoint_fcn
+        if config.entrypoint_args:
+            if config.model_path:
+                config.entrypoint_args["model"] = config.model_path
 
-            if etau.is_str(entrypoint_fcn):
-                entrypoint_fcn = etau.get_function(entrypoint_fcn)
-
-            kwargs = config.entrypoint_args
-            if kwargs:
-                if config.model_path:
-                    kwargs["model"] = config.model_path
-                model = entrypoint_fcn(**kwargs)
-            else:
-                model = entrypoint_fcn()
+        model = super()._load_model(config)
 
         if config.classes:
             if hasattr(ultralytics, "YOLOE") and isinstance(
@@ -248,12 +236,9 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
             else:
                 model.set_classes(config.classes)
 
-        model = model.to(self._device)
-        if self.using_half_precision:
-            model = model.half()
-
         if not model.predictor:
             model = self._set_predictor(config, model)
+
         return model
 
     def _parse_classes(self, config):
@@ -302,23 +287,12 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         return torch.squeeze(img, axis=0)
 
     def _build_output_processor(self, config):
-        if config.output_processor is not None:
-            return config.output_processor
-
-        output_processor_cls = config.output_processor_cls
-
-        if output_processor_cls is None:
-            return None
-
-        if etau.is_str(output_processor_cls):
-            output_processor_cls = etau.get_class(output_processor_cls)
-
-        kwargs = config.output_processor_args or {}
-        return output_processor_cls(
-            classes=self._classes,
-            post_processor=self._model.predictor.postprocess,
-            **kwargs,
-        )
+        if not config.output_processor_args:
+            config.output_processor_args = {}
+        config.output_processor_args[
+            "post_processor"
+        ] = self._model.predictor.postprocess
+        return super()._build_output_processor(config)
 
     def _predict_all(self, imgs):
         if self._preprocess and self._transforms is not None:
@@ -595,36 +569,14 @@ class UltralyticsDetectionOutputProcessor(
         return batch
 
     def _parse_output(self, output, frame_size, confidence_thresh):
-        width, height = frame_size
-
-        boxes = output["boxes"].detach().cpu().numpy()
-        labels = output["labels"].detach().cpu().numpy()
-        scores = output["scores"].detach().cpu().numpy()
+        detections = super()._parse_output(
+            output, frame_size, confidence_thresh
+        )
         track_ids = output["track_ids"]
+        for det, track_id in zip(detections["detections"], track_ids):
+            det.index = track_id
 
-        detections = []
-        for box, label, score, idx in zip(boxes, labels, scores, track_ids):
-            if confidence_thresh is not None and score < confidence_thresh:
-                continue
-
-            x1, y1, x2, y2 = box
-            bounding_box = [
-                x1 / width,
-                y1 / height,
-                (x2 - x1) / width,
-                (y2 - y1) / height,
-            ]
-
-            detections.append(
-                fol.Detection(
-                    label=self.classes[label],
-                    bounding_box=bounding_box,
-                    confidence=score,
-                    index=idx,
-                )
-            )
-
-        return fol.Detections(detections=detections)
+        return detections
 
 
 class UltralyticsSegmentationOutputProcessor(
