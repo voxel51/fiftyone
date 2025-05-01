@@ -54,8 +54,7 @@ async def _fetch_geo_points(
 
     project_stage = {
         "$project": {
-            "_id": 0,
-            "sampleId": {"$toString": "$_id"},
+            "_id": 1,
             "coordinates": f"${field_path}.coordinates",
         }
     }
@@ -69,8 +68,8 @@ async def _fetch_geo_points(
     results = {}
 
     async for result in agg_results:
-        if result and "sampleId" in result and "coordinates" in result:
-            results[result["sampleId"]] = result["coordinates"]
+        if result and "_id" in result and "coordinates" in result:
+            results[str(result["_id"])] = result["coordinates"]
 
     return results
 
