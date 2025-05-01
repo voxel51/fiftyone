@@ -135,6 +135,10 @@ Core
   optimized per-sample update operations that can leverage the `_id` index
   rather than requiring full collection scans
   `#5730 <https://github.com/voxel51/fiftyone/pull/5730>`_
+- Optimized performance of sort by similarity, and added support for similarity
+  queries on filtered views.
+  `#5757 <https://github.com/voxel51/fiftyone/pull/5757>`_
+  `#248 <https://github.com/voxel51/fiftyone-brain/pull/248>`_
 - Fixed a "BSON too large" error that would previously occur when deleting a
   sufficiently long list of IDs via `delete_labels(ids=ids)`
   `#5730 <https://github.com/voxel51/fiftyone/pull/5730>`_
