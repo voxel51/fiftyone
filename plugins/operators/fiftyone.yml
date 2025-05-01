@@ -41,5 +41,6 @@ operators:
   - list_files
   - compute_visualization
   - manage_visualization_indexes
+  - model_evaluation_configure_scenario
 secrets:
   - FIFTYONE_ZOO_ALLOWED_MODEL_LICENSES

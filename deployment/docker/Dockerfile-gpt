@@ -12,7 +12,9 @@ ARG PIP_INDEX_URL=https://pypi.org/simple
 # We should unpin these and test during a non-release cycle
 # Pydantic 2.11 seems to be broken with strawberry at the moment, ignore anything greater than it.
 # Revisit this if we update strawberry!
-RUN pip wheel --wheel-dir=/tmp/wheels \
+# If you update these dependencies update the dependencies for the internal image too
+RUN pip install -U pip wheel setuptools && \
+    pip wheel --wheel-dir=/tmp/wheels \
       "langchain-community==0.3.5" \
       "langchain-core==0.3.15" \
       "langchain-openai==0.2.6" \
@@ -46,10 +48,10 @@ RUN --mount=type=cache,from=wheelhouse,target=/wheelhouse,ro \
 USER 1000:1000
 
 # Default hypercorn settings.
-ENV HYPERCORN_WORKERS=4 
+ENV HYPERCORN_WORKERS=4
 
 #
-# Serve the app. Kept as a CMD and not an 
+# Serve the app. Kept as a CMD and not an
 # ENTRYPOINT so existing customers not impacted
 # if they override these
 #

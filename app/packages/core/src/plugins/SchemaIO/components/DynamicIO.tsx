@@ -80,10 +80,15 @@ function useStateInitializer(props: ViewPropsType) {
       return data;
     }
   }, [shouldInitialize, data]);
-  const unboundState = useUnboundState({ computedSchema, props });
+  const unboundState = useUnboundState({
+    computedSchema,
+    props,
+    shouldInitialize,
+    onChange,
+  });
 
   useEffect(() => {
-    const { computedSchema, props } = unboundState;
+    const { computedSchema, props, shouldInitialize, onChange } = unboundState;
     const { data, path, root_id } = props || {};
     if (
       shouldInitialize &&
@@ -94,7 +99,7 @@ function useStateInitializer(props: ViewPropsType) {
     ) {
       onChange(path, defaultValue, computedSchema);
     }
-  }, [defaultValue, onChange, unboundState]);
+  }, [defaultValue]);
 
   useEffect(() => {
     if (basicData) {

@@ -70,7 +70,8 @@ class Values(HTTPEndpoint):
                 _sort_by=sort_by,
                 _search=regex_safe_search,
                 _selected=selected,
-            )
+            ),
+            debug=True,
         )
 
         return {

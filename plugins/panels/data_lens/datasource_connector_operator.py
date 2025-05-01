@@ -218,7 +218,10 @@ class DatasourceConnectorOperator(foo.Operator):
     ) -> ExecutionResult:
         operator_ctx = self._build_ctx(base_ctx, ctx_overrides)
         operator_result = foo.execute_operator(
-            operator_uri, operator_ctx, exhaust=False
+            operator_uri,
+            operator_ctx,
+            exhaust=False,
+            request_token=base_ctx.user_request_token,
         )
         operator_result.raise_exceptions()
 

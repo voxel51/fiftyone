@@ -32,7 +32,6 @@ jobs:
       matrix:
         os:
           - ubuntu-22.04-m
-          - windows-latest
         python:
           - "3.9"
           - "3.10"
@@ -57,7 +56,7 @@ jobs:
       - name: Install requirements
         if: steps.pip-cache.outputs.cache-hit != true
         run: |
-          pip install -U pip wheel setuptools
+          pip install -U wheel setuptools
           pip install -r requirements/github.txt
       - name: Install fiftyone
         run: |

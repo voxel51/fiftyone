@@ -6,7 +6,7 @@ Unit tests for Teams operators concepts.
 |
 """
 import pytest
-from unittest import mock
+from unittest import mock, TestCase
 
 import fiftyone.internal.context_vars as ficv
 from fiftyone.operators import executor
@@ -159,7 +159,10 @@ class TestUserCodeWithPermissions:
         #####
 
         prepare_operator_executor_mock.assert_called_once_with(
-            "operator", "params", request_token=ctx.user_request_token
+            "operator",
+            "params",
+            request_token=ctx.user_request_token,
+            registry_override=None,
         )
         do_execute_operator_mock.assert_called_once_with(
             operator, ctx, exhaust=False
@@ -279,3 +282,63 @@ class TestUserCodeWithPermissions:
             id="userid", dataset="dataset", token=ctx_user._request_token
         )
         operator.resolve_placement.assert_called_once()
+
+
+class TestExecuteOperatorInTeams(TestCase):
+    @pytest.mark.asyncio
+    @mock.patch(
+        "fiftyone.internal.util.is_internal_service", return_value=True
+    )
+    async def test_execute_operator_requires_auth(
+        self, is_internal_service_mock
+    ):
+        with pytest.raises(ValueError, match="Must provide request_token"):
+            await executor.execute_operator(
+                "@voxel51/operators/open_sample", ctx={}
+            )
+
+        is_internal_service_mock.assert_called_once()
+
+    @pytest.mark.asyncio
+    @mock.patch.object(executor, "OperatorRegistry")
+    @mock.patch.object(executor, "_parse_ctx")
+    @mock.patch(
+        "fiftyone.internal.util.is_internal_service", return_value=True
+    )
+    async def test_simple_execute_operator(
+        self,
+        is_internal_service_mock,
+        _parse_ctx_mock,
+        OperatorRegistryMock,
+        ctx_user,
+    ):
+        # Setup a mock operator
+        operator = mock.Mock()
+        operator.execute = mock.AsyncMock()  # only this needs to be async
+        operator.resolve_input.return_value = None
+        operator.resolve_execution_options.return_value = (
+            executor.ExecutionOptions(
+                allow_immediate_execution=True, allow_delegated_execution=False
+            )
+        )
+        operator.resolve_delegation.return_value = False
+        operator._plugin_secrets = None
+
+        registry_instance = OperatorRegistryMock.return_value
+        registry_instance.operator_exists.return_value = True
+        registry_instance.get_operator.return_value = operator
+
+        # Do not create a real context
+        _parse_ctx_mock.return_value = {}
+
+        #####
+        result = await executor.execute_operator(
+            "@voxel51/operators/open_sample",
+            ctx={"dataset": "dataset"},
+            request_token=ctx_user._request_token,
+        )
+        #####
+
+        operator.execute.assert_called_once()
+        ctx_arg = operator.execute.call_args[0][0]
+        self.assertEqual(ctx_arg.user_request_token, ctx_user._request_token)

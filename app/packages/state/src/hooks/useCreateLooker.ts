@@ -1,15 +1,19 @@
 import {
   AbstractLooker,
+  FO_LABEL_TOGGLED_EVENT,
   FrameLooker,
   ImaVidLooker,
   ImageLooker,
+  MetadataLooker,
   Sample,
   ThreeDLooker,
   VideoLooker,
+  selectiveRenderingEventBus,
 } from "@fiftyone/looker";
 import { ImaVidFramesController } from "@fiftyone/looker/src/lookers/imavid/controller";
 import { ImaVidFramesControllerStore } from "@fiftyone/looker/src/lookers/imavid/store";
 import type { BaseState, ImaVidConfig } from "@fiftyone/looker/src/state";
+import { isNativeMediaType } from "@fiftyone/looker/src/util";
 import {
   EMBEDDED_DOCUMENT_FIELD,
   LIST_FIELD,
@@ -32,6 +36,7 @@ import { State } from "../recoil/types";
 import { getSampleSrc } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
 import { getStandardizedUrls } from "../utils";
+import { useOnShiftClickLabel } from "./useOnShiftClickLabel";
 
 export default <T extends AbstractLooker<BaseState>>(
   isModal: boolean,
@@ -83,8 +88,10 @@ export default <T extends AbstractLooker<BaseState>>(
     };
   }, []);
 
+  const getOnShiftClickLabelCallback = useOnShiftClickLabel();
+
   const create = useRecoilCallback(
-    ({ snapshot }) =>
+    ({ snapshot, set }) =>
       (
         { frameNumber, frameRate, sample, urls: rawUrls, symbol },
         extra: Partial<Omit<Parameters<T["updateOptions"]>[0], "selected">> = {}
@@ -94,7 +101,8 @@ export default <T extends AbstractLooker<BaseState>>(
           | typeof ImageLooker
           | typeof ImaVidLooker
           | typeof ThreeDLooker
-          | typeof VideoLooker = ImageLooker;
+          | typeof VideoLooker
+          | typeof MetadataLooker = ImageLooker;
 
         const mimeType = getMimeType(sample);
 
@@ -107,24 +115,28 @@ export default <T extends AbstractLooker<BaseState>>(
         const filePath =
           urls.filepath?.split("?")[0] ?? (sample.filepath as string);
 
-        if (filePath.endsWith(".pcd") || filePath.endsWith(".fo3d")) {
-          create = ThreeDLooker;
-        } else if (mimeType !== null) {
-          const isVideo = mimeType.startsWith("video/");
-
-          if (isVideo && (isFrame || isPatch)) {
-            create = FrameLooker;
-          }
-
-          if (isVideo) {
-            create = VideoLooker;
-          }
-
-          if (!isVideo && shouldRenderImaVidLooker) {
-            create = ImaVidLooker;
-          }
+        if (!isNativeMediaType(sample.media_type ?? sample._media_type)) {
+          create = MetadataLooker;
         } else {
-          create = ImageLooker;
+          if (filePath.endsWith(".pcd") || filePath.endsWith(".fo3d")) {
+            create = ThreeDLooker;
+          } else if (mimeType !== null) {
+            const isVideo = mimeType.startsWith("video/");
+
+            if (isVideo && (isFrame || isPatch)) {
+              create = FrameLooker;
+            }
+
+            if (isVideo) {
+              create = VideoLooker;
+            }
+
+            if (!isVideo && shouldRenderImaVidLooker) {
+              create = ImaVidLooker;
+            }
+          } else {
+            create = ImageLooker;
+          }
         }
 
         let config: ConstructorParameters<T>[1] = {
@@ -275,6 +287,12 @@ export default <T extends AbstractLooker<BaseState>>(
           { signal: abortControllerRef.current.signal }
         );
 
+        selectiveRenderingEventBus.on(
+          FO_LABEL_TOGGLED_EVENT,
+          (e) => getOnShiftClickLabelCallback(e),
+          abortControllerRef.current.signal
+        );
+
         return looker;
       },
     [
@@ -293,8 +311,10 @@ export default <T extends AbstractLooker<BaseState>>(
       selected,
       thumbnail,
       view,
+      getOnShiftClickLabelCallback,
     ]
   );
+
   const createLookerRef = useRef(create);
 
   createLookerRef.current = create;

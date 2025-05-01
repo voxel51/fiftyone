@@ -59,6 +59,7 @@ def import_samples(
     expand_schema=True,
     dynamic=False,
     add_info=True,
+    generator=False,
     progress=None,
 ):
     """Adds the samples from the given :class:`DatasetImporter` to the dataset.
@@ -90,6 +91,8 @@ def import_samples(
             document fields that are encountered
         add_info (True): whether to add dataset info from the importer (if
             any) to the dataset
+        generator (False): whether to yield ID batches as a generator as
+            samples are added to the dataset
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
@@ -128,36 +131,48 @@ def import_samples(
     # Non-batch imports
     #
 
-    with dataset_importer:
-        parse_sample, expand_schema, dynamic = _build_parse_sample_fcn(
-            dataset,
-            dataset_importer,
-            label_field,
-            tags,
-            expand_schema,
-            dynamic,
-        )
+    def _do_import_samples():
+        with dataset_importer:
+            parse_sample, _expand_schema, _dynamic = _build_parse_sample_fcn(
+                dataset,
+                dataset_importer,
+                label_field,
+                tags,
+                expand_schema,
+                dynamic,
+            )
 
-        if isinstance(dataset_importer, GroupDatasetImporter):
-            samples = _generate_group_samples(dataset_importer, parse_sample)
-        else:
-            samples = map(parse_sample, iter(dataset_importer))
+            if isinstance(dataset_importer, GroupDatasetImporter):
+                samples = _generate_group_samples(
+                    dataset_importer, parse_sample
+                )
+            else:
+                samples = map(parse_sample, iter(dataset_importer))
 
-        sample_ids = dataset.add_samples(
-            samples,
-            expand_schema=expand_schema,
-            dynamic=dynamic,
-            progress=progress,
-            num_samples=dataset_importer,
-        )
+            for ids in dataset.add_samples(
+                samples,
+                expand_schema=_expand_schema,
+                dynamic=_dynamic,
+                generator=True,
+                progress=progress,
+                num_samples=dataset_importer,
+            ):
+                yield ids
 
-        if add_info and dataset_importer.has_dataset_info:
-            info = dataset_importer.get_dataset_info()
-            if info:
-                parse_dataset_info(dataset, info)
+            if add_info and dataset_importer.has_dataset_info:
+                info = dataset_importer.get_dataset_info()
+                if info:
+                    parse_dataset_info(dataset, info)
 
-        if isinstance(dataset_importer, LegacyFiftyOneDatasetImporter):
-            dataset_importer.import_extras(dataset)
+            if isinstance(dataset_importer, LegacyFiftyOneDatasetImporter):
+                dataset_importer.import_extras(dataset)
+
+    if generator:
+        return _do_import_samples()
+
+    sample_ids = []
+    for ids in _do_import_samples():
+        sample_ids.extend(ids)
 
     return sample_ids
 

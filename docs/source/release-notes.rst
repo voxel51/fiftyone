@@ -28,6 +28,8 @@ App
 - Fixed label tags filtering in the
   :ref:`Query Performance <app-optimizing-query-performance>` sidebar
   `#5675 <https://github.com/voxel51/fiftyone/pull/5675>`_
+- Fixed bug when entering invalid id into sidebar id filter
+  `#5655 <https://github.com/voxel51/fiftyone/pull/5655>`_
 
 
 FiftyOne Enterprise 2.7.1
@@ -1118,7 +1120,7 @@ Annotation
 
 Core
 
-- Added support for :ref:`save contexts <efficient-batch-edits>` to generated
+- Added support for :ref:`save contexts <save-contexts>` to generated
   views (patches, frames, and clips)
   `#4636 <https://github.com/voxel51/fiftyone/pull/4636>`_
 - Added support for downloading plugins from branches that contain slashes `/`
@@ -1445,11 +1447,11 @@ App
 
 Core
 
-- All :ref:`autosave contexts <efficient-batch-edits>` now respect the
+- All :ref:`save contexts <save-contexts>` now respect the
   :ref:`default batching strategy <configuring-fiftyone>` and can be configured
   to use content size-based batching
   `#4243 <https://github.com/voxel51/fiftyone/pull/4243>`_
-- All SDK methods now use :ref:`autosave contexts <efficient-batch-edits>`
+- All SDK methods now use :ref:`save contexts <save-contexts>`
   rather than calling :meth:`sample.save() <fiftyone.core.sample.Sample.save>`
   in a loop
   `#4243 <https://github.com/voxel51/fiftyone/pull/4243>`_
@@ -4012,8 +4014,8 @@ App
 
 Core
 
-- Added a save context that enables
-  :ref:`efficient batch edits <efficient-batch-edits>` of datasets and views
+- Added :ref:`save contexts <save-contexts>`, which enable efficient batch
+  edits of datasets and views
   `#1727 <https://github.com/voxel51/fiftyone/pull/1727>`_
 - Added Plotly v5 support
   `#1981 <https://github.com/voxel51/fiftyone/pull/1981>`_

@@ -7,22 +7,22 @@ ARG PYTHON_VERSION=3.11
 FROM python:${PYTHON_VERSION} AS wheelhouse
 ARG PIP_INDEX_URL=https://pypi.org/simple
 
-RUN pip wheel --wheel-dir=/tmp/wheels \
-    "pathos==0.2.8" \
-    "pydantic>=2.0,<2.11" \
-    "segments-ai==1.12.0" \
-    "tqdm>=4.66.1"
-
+RUN pip install -U pip wheel setuptools && \
+    pip wheel --wheel-dir=/tmp/wheels \
+      "pathos==0.2.8" \
+      "pydantic>=2.0,<2.11" \
+      "segments-ai==1.12.0" \
+      "tqdm>=4.66.1"
 
 FROM ${CV_BASE_IMAGE_NAME} AS scytheplugins
 
 RUN --mount=type=cache,from=wheelhouse,target=/wheelhouse,ro \
     pip --no-cache-dir install -q --no-index \
     --find-links=/wheelhouse/tmp/wheels \
-      "pathos==0.2.8" \
-      "pydantic>=2.0,<2.11" \
-      "segments-ai==1.12.0" \
-      "tqdm>=4.66.1"
+    "pathos==0.2.8" \
+    "pydantic>=2.0,<2.11" \
+    "segments-ai==1.12.0" \
+    "tqdm>=4.66.1"
 
 # run as the voxel51 user
 USER 1000:1000

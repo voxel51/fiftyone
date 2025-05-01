@@ -5,6 +5,7 @@ Dataset sample fields.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from copy import deepcopy
 from datetime import date, datetime
 import numbers
@@ -26,6 +27,7 @@ import fiftyone.core.utils as fou
 def validate_constraints(
     ftype=None,
     embedded_doc_type=None,
+    subfield=None,
     read_only=None,
     info_keys=None,
     created_after=None,
@@ -38,6 +40,8 @@ def validate_constraints(
         embedded_doc_type (None): an optional embedded document type or
             iterable of types to enforce. Must be subclass(es) of
             :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+        subfield (None): an optional subfield type or iterable of subfield
+            types to enforce. Must be subclass(es) of :class:`Field`
         read_only (None): whether to optionally enforce that the field is
             read-only (True) or not read-only (False)
         info_keys (None): an optional key or list of keys that must be in the
@@ -67,14 +71,6 @@ def validate_constraints(
                     "Field type %s is not a subclass of %s" % (_ftype, Field)
                 )
 
-            if embedded_doc_type is not None and not issubclass(
-                _ftype, EmbeddedDocumentField
-            ):
-                raise ValueError(
-                    "embedded_doc_type can only be specified if ftype is a "
-                    "subclass of %s" % EmbeddedDocumentField
-                )
-
     if embedded_doc_type is not None:
         has_contraints = True
 
@@ -88,6 +84,21 @@ def validate_constraints(
                 raise ValueError(
                     "Embedded doc type %s is not a subclass of %s"
                     % (_embedded_doc_type, foo.BaseEmbeddedDocument)
+                )
+
+    if subfield is not None:
+        has_contraints = True
+
+        if etau.is_container(subfield):
+            subfield = tuple(subfield)
+        else:
+            subfield = (subfield,)
+
+        for _subfield in subfield:
+            if not issubclass(_subfield, Field):
+                raise ValueError(
+                    "Subfield type %s is not a subclass of %s"
+                    % (_subfield, Field)
                 )
 
     if read_only is not None:
@@ -113,6 +124,7 @@ def matches_constraints(
     field,
     ftype=None,
     embedded_doc_type=None,
+    subfield=None,
     read_only=None,
     info_keys=None,
     created_after=None,
@@ -126,6 +138,8 @@ def matches_constraints(
         embedded_doc_type (None): an optional embedded document type or
             iterable of types to enforce. Must be subclass(es) of
             :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+        subfield (None): an optional subfield type or iterable of subfield
+            types to enforce. Must be subclass(es) of :class:`Field`
         read_only (None): whether to optionally enforce that the field is
             read-only (True) or not read-only (False)
         info_keys (None): an optional key or list of keys that must be in the
@@ -136,6 +150,13 @@ def matches_constraints(
     Returns:
         True/False
     """
+    if ftype is None:
+        if embedded_doc_type is not None:
+            ftype = EmbeddedDocumentField
+
+        if subfield is not None:
+            ftype = (ListField, DictField)
+
     if ftype is not None:
         if etau.is_container(ftype):
             ftype = tuple(ftype)
@@ -147,8 +168,17 @@ def matches_constraints(
         if etau.is_container(embedded_doc_type):
             embedded_doc_type = tuple(embedded_doc_type)
 
-        if not isinstance(field, EmbeddedDocumentField) or not issubclass(
+        if isinstance(field, EmbeddedDocumentField) and not issubclass(
             field.document_type, embedded_doc_type
+        ):
+            return False
+
+    if subfield is not None:
+        if etau.is_container(subfield):
+            subfield = tuple(subfield)
+
+        if isinstance(field, (ListField, DictField)) and not isinstance(
+            field.field, subfield
         ):
             return False
 
@@ -175,6 +205,7 @@ def validate_field(
     path=None,
     ftype=None,
     embedded_doc_type=None,
+    subfield=None,
     read_only=None,
 ):
     """Validates that the field matches the given constraints.
@@ -188,13 +219,15 @@ def validate_field(
         embedded_doc_type (None): an optional embedded document type or
             iterable of types to enforce. Must be subclass(es) of
             :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+        subfield (None): an optional subfield type or iterable of subfield
+            types to enforce. Must be subclass(es) of :class:`Field`
         read_only (None): whether to optionally enforce that the field is
             read-only (True) or not read-only (False)
 
     Raises:
         ValueError: if the constraints are not valid
     """
-    if ftype is None and embedded_doc_type is None:
+    if ftype is None and embedded_doc_type is None and subfield is None:
         return
 
     if field is None:
@@ -224,6 +257,22 @@ def validate_field(
             raise ValueError(
                 "%s has document type %s, not %s"
                 % (_make_prefix(path), field.document_type, embedded_doc_type)
+            )
+
+    if subfield is not None:
+        if etau.is_container(subfield):
+            subfield = tuple(subfield)
+
+        if not isinstance(field, (ListField, DictField)):
+            raise ValueError(
+                "%s has type %s, not %s"
+                % (_make_prefix(path), type(field), (ListField, DictField))
+            )
+
+        if not isinstance(field.field, subfield):
+            raise ValueError(
+                "%s has subfield type %s, not %s"
+                % (_make_prefix(path), type(field.field), subfield)
             )
 
     if read_only is not None:
@@ -266,11 +315,13 @@ def filter_schema(
     schema,
     ftype=None,
     embedded_doc_type=None,
+    subfield=None,
     read_only=None,
     info_keys=None,
     created_after=None,
     include_private=False,
     flat=False,
+    unwind=True,
     mode=None,
 ):
     """Filters the schema according to the given constraints.
@@ -284,6 +335,9 @@ def filter_schema(
             iterable of types to which to restrict the returned schema.
             Must be subclass(es) of
             :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+        subfield (None): an optional subfield type or iterable of subfield
+            types to which to restrict the returned schema. Must be
+            subclass(es) of :class:`Field`
         read_only (None): whether to restrict to (True) or exclude (False)
             read-only fields. By default, all fields are included
         info_keys (None): an optional key or list of keys that must be in the
@@ -294,8 +348,10 @@ def filter_schema(
             ``_`` in the returned schema
         flat (False): whether to return a flattened schema where all
             embedded document fields are included as top-level keys
+        unwind (True): whether to traverse into list fields. Only applicable
+            when ``flat=True``
         mode (None): whether to apply the above constraints before and/or after
-            flattening the schema. Only applicable when ``flat`` is True.
+            flattening the schema. Only applicable when ``flat=True``.
             Supported values are ``("before", "after", "both")``. The default
             is ``"after"``
 
@@ -305,6 +361,7 @@ def filter_schema(
     has_contraints = validate_constraints(
         ftype=ftype,
         embedded_doc_type=embedded_doc_type,
+        subfield=subfield,
         read_only=read_only,
         info_keys=info_keys,
         created_after=created_after,
@@ -314,6 +371,7 @@ def filter_schema(
         kwargs = dict(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
+            subfield=subfield,
             read_only=read_only,
             info_keys=info_keys,
             created_after=created_after,
@@ -354,7 +412,10 @@ def filter_schema(
 
     if flat:
         schema = flatten_schema(
-            schema, **after_kwargs, include_private=include_private
+            schema,
+            **after_kwargs,
+            unwind=unwind,
+            include_private=include_private,
         )
 
     return schema
@@ -364,6 +425,8 @@ def flatten_schema(
     schema,
     ftype=None,
     embedded_doc_type=None,
+    subfield=None,
+    unwind=True,
     read_only=None,
     info_keys=None,
     created_after=None,
@@ -380,6 +443,10 @@ def flatten_schema(
         embedded_doc_type (None): an optional embedded document type or
             iterable of types to which to restrict the returned schema. Must be
             subclass(es) of :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+        subfield (None): an optional subfield type or iterable of subfield
+            types to which to restrict the returned schema. Must be
+            subclass(es) of :class:`Field`
+        unwind (True): whether to traverse into list fields
         read_only (None): whether to restrict to (True) or exclude (False)
             read-only fields. By default, all fields are included
         info_keys (None): an optional key or list of keys that must be in the
@@ -395,6 +462,7 @@ def flatten_schema(
     validate_constraints(
         ftype=ftype,
         embedded_doc_type=embedded_doc_type,
+        subfield=subfield,
         read_only=read_only,
         info_keys=info_keys,
         created_after=created_after,
@@ -409,6 +477,8 @@ def flatten_schema(
             field,
             ftype,
             embedded_doc_type,
+            subfield,
+            unwind,
             read_only,
             info_keys,
             created_after,
@@ -425,6 +495,8 @@ def _flatten(
     field,
     ftype,
     embedded_doc_type,
+    subfield,
+    unwind,
     read_only,
     info_keys,
     created_after,
@@ -442,6 +514,7 @@ def _flatten(
         field,
         ftype=ftype,
         embedded_doc_type=embedded_doc_type,
+        subfield=subfield,
         read_only=read_only,
         info_keys=info_keys,
         created_after=created_after,
@@ -449,6 +522,9 @@ def _flatten(
         schema[prefix] = field
 
     while isinstance(field, (ListField, DictField)):
+        if not unwind:
+            return
+
         field = field.field
 
     if isinstance(field, EmbeddedDocumentField):
@@ -460,6 +536,8 @@ def _flatten(
                 _field,
                 ftype,
                 embedded_doc_type,
+                subfield,
+                unwind,
                 read_only,
                 info_keys,
                 created_after,
@@ -1838,9 +1916,11 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
         self,
         ftype=None,
         embedded_doc_type=None,
+        subfield=None,
         read_only=None,
         include_private=False,
         flat=False,
+        unwind=True,
         mode=None,
     ):
         """Returns a schema dictionary describing the fields of the embedded
@@ -1854,16 +1934,21 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
                 iterable of types to which to restrict the returned schema.
                 Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            subfield (None): an optional subfield type or iterable of subfield
+                types to which to restrict the returned schema. Must be
+                subclass(es) of :class:`Field`
             read_only (None): whether to restrict to (True) or exclude (False)
                 read-only fields. By default, all fields are included
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
                 embedded document fields are included as top-level keys
+            unwind (True): whether to traverse into list fields. Only
+                applicable when ``flat=True``
             mode (None): whether to apply the above constraints before and/or
-                after flattening the schema. Only applicable when ``flat`` is
-                True. Supported values are ``("before", "after", "both")``.
-                The default is ``"after"``
+                after flattening the schema. Only applicable when ``flat=True``.
+                Supported values are ``("before", "after", "both")``. The
+                default is ``"after"``
 
         Returns:
             a dict mapping field names to :class:`Field` instances
@@ -1879,9 +1964,11 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
             schema,
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
+            subfield=subfield,
             read_only=read_only,
             include_private=include_private,
             flat=flat,
+            unwind=unwind,
             mode=mode,
         )
 

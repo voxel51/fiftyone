@@ -40,6 +40,7 @@ import { OperatorPromptType, Places } from "./types";
 import { OperatorExecutorOptions } from "./types-internal";
 import { ValidationContext } from "./validation";
 import { Markdown } from "@fiftyone/components";
+import { generateOperatorSessionId } from "./utils";
 
 export const promptingOperatorState = atom({
   key: "promptingOperator",
@@ -84,6 +85,7 @@ export const usePromptOperatorInput = () => {
       params,
       options,
       initialParams: params,
+      id: generateOperatorSessionId(),
     });
   };
 
@@ -171,6 +173,8 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     workspaceName,
   } = curCtx;
   const [analyticsInfo] = useAnalyticsInfo();
+  const promptingOperator = useRecoilValue(promptingOperatorState);
+  const promptId = promptingOperator?.id || null;
   const ctx = useMemo(() => {
     return new ExecutionContext(
       params,
@@ -191,6 +195,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
         queryPerformance,
         spaces,
         workspaceName,
+        promptId,
       },
       hooks
     );
@@ -209,6 +214,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     queryPerformance,
     spaces,
     workspaceName,
+    promptId,
   ]);
 
   return ctx;

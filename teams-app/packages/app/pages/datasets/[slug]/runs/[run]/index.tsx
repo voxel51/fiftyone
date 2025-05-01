@@ -27,7 +27,7 @@ import * as fou from "@fiftyone/utilities";
 import { Link, Stack, Tab, TabProps, Tabs, Typography } from "@mui/material";
 import withRelay from "lib/withRelay";
 import { capitalize, get, omit } from "lodash";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePreloadedQuery } from "react-relay";
 import DatasetNavigation from "../../components/navigation";
 import Logs, { DefaultLog } from "../components/Logs";
@@ -74,6 +74,7 @@ function Run(props) {
     pinned,
     runLink,
     logUrl,
+    logPath,
     logSize,
     metadata,
   } = runData;
@@ -124,6 +125,21 @@ function Run(props) {
   }, []);
 
   const runByName = runBy?.name;
+
+  // when user sets logPath to be a local path
+  // and the file size is larger than 1M
+  // we do not support preview logs or download
+  const largeLogLocalPath = useMemo(
+    () => !logUrl && logPath && logSize && logSize >= 1 * 1024 * 1024,
+    [logUrl, logPath, logSize]
+  );
+  // when user logPath is a cloud storage path
+  // and the file size is larger than 1M
+  // we support download logs but not preview
+  const largeLogRemotepath = useMemo(
+    () => logUrl && logSize && logSize >= 1 * 1024 * 1024,
+    [logUrl, logSize]
+  );
 
   return (
     <Box>
@@ -246,7 +262,10 @@ function Run(props) {
         {tab === "logs" && !(logSize && logSize >= 1 * 1024 * 1024) && (
           <Logs runData={runData} />
         )}
-        {tab === "logs" && logSize && logSize >= 1 * 1024 * 1024 && (
+        {tab === "logs" && largeLogLocalPath && (
+          <DefaultLog title="Logs size too large to preview" />
+        )}
+        {tab === "logs" && largeLogRemotepath && (
           <DefaultLog
             title="Logs size too large"
             button={{

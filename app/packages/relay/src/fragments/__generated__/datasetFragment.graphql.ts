@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<d03cac0dcd2c4d8e25f92fd6a1286e20>>
+ * @generated SignedSource<<07db4bca0811114125f2b07bad33efc5>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,7 +10,6 @@
 
 import { Fragment, ReaderFragment } from 'relay-runtime';
 export type BrainRunType = "similarity" | "visualization" | "%future added value";
-export type MediaType = "group" | "image" | "point_cloud" | "three_d" | "video" | "%future added value";
 import { FragmentRefs } from "relay-runtime";
 export type datasetFragment$data = {
   readonly appConfig: {
@@ -55,7 +54,7 @@ export type datasetFragment$data = {
   }> | null;
   readonly groupField: string | null;
   readonly groupMediaTypes: ReadonlyArray<{
-    readonly mediaType: MediaType;
+    readonly mediaType: string;
     readonly name: string;
   }> | null;
   readonly id: string;
@@ -68,9 +67,9 @@ export type datasetFragment$data = {
       readonly value: string;
     }>;
   }>;
-  readonly mediaType: MediaType | null;
+  readonly mediaType: string | null;
   readonly name: string;
-  readonly parentMediaType: MediaType | null;
+  readonly parentMediaType: string | null;
   readonly skeletons: ReadonlyArray<{
     readonly edges: ReadonlyArray<ReadonlyArray<number>>;
     readonly labels: ReadonlyArray<string> | null;

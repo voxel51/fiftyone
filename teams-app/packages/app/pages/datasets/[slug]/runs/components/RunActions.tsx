@@ -35,6 +35,9 @@ export default function RunActions(props: RunActionsPropsType) {
     runLink,
     logUploadError,
     logUrl,
+    logPath,
+
+    logSize,
     result,
     hideViewInOrchestrator,
   } = props;
@@ -56,7 +59,9 @@ export default function RunActions(props: RunActionsPropsType) {
   const canViewInOrchestrator =
     runLink && isUrl(runLink) && !hideViewInOrchestrator;
   const isExpired = result?.error?.includes("expired");
-  const hasLogSetup = Boolean(logUrl);
+
+  const hasLocalPath = Boolean(logPath) && logSize && !Boolean(logUrl);
+  const hasLogSetup = Boolean(logUrl) || hasLocalPath;
 
   const logDocUrl = RUNS_LOG_DOCUMENTATION;
 

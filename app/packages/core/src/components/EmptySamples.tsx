@@ -1,13 +1,13 @@
+import { Button, useTheme } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
+import ClearAll from "@mui/icons-material/ClearAll";
+import { Typography } from "@mui/material";
 import React, { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
-import * as fos from "@fiftyone/state";
-import { SamplesHeader } from "./ImageContainerHeader";
-import { Typography } from "@mui/material";
-import ClearAll from "@mui/icons-material/ClearAll";
-import { Button, useTheme } from "@fiftyone/components";
 import ErrorImg from "../images/error.svg";
 import { ExternalLink } from "../utils/generic";
+import { SamplesHeader } from "./Grid/Header/Containers";
 
 const BaseContainer = styled.div`
   display: flex;
@@ -39,7 +39,7 @@ const ActionContainer = styled(TextContainer)`
 `;
 
 export default function EmptySamples() {
-  const loadedView = useRecoilValue<fos.State.Stage[]>(fos.view);
+  const loadedView = useRecoilValue(fos.view);
   const totalSamples = useRecoilValue(
     fos.count({ path: "", extended: true, modal: false })
   );

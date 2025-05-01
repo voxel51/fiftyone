@@ -16,6 +16,8 @@ jobs:
     with:
       deployer-branch: ${{ inputs.deployer-branch || 'main' }}
     secrets:
-      ORG_GOOGLE_WORKLOAD_IDP: ${{ secrets.ORG_GOOGLE_WORKLOAD_IDP }}
-      RO_CBAD_FG_PAT: ${{ secrets.RO_CBAD_FG_PAT }}
       FIFTYONE_SEGMENT_WRITE_KEY: ${{ secrets.FIFTYONE_SEGMENT_WRITE_KEY }}
+      ORG_GITHUB_ACTIONS_SLACK_BOT_TOKEN: ${{ secrets.ORG_GITHUB_ACTIONS_SLACK_BOT_TOKEN }}
+      ORG_GOOGLE_WORKLOAD_IDP: ${{ secrets.ORG_GOOGLE_WORKLOAD_IDP }}
+      ORG_UPPTIME_SLACK_CHANNEL_ID: ${{ secrets.ORG_UPPTIME_SLACK_CHANNEL_ID }}
+      RO_CBAD_FG_PAT: ${{ secrets.RO_CBAD_FG_PAT }}

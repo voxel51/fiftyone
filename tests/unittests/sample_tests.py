@@ -5,6 +5,7 @@ FiftyOne sample-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import os
 import tempfile
 import unittest
@@ -197,7 +198,10 @@ class SampleTests(unittest.TestCase):
         self.assertEqual(img.width, width)
         self.assertEqual(img.height, height)
 
-        with tempfile.NamedTemporaryFile("w") as image_file:
+        # Use temp dirs instead of temp files for windows file locking
+        with tempfile.TemporaryDirectory() as tmpdir:
+            image_path = os.path.join(tmpdir, "test.jpg")
+
             # Test all possible orientations. width/height only flipped with
             #   5, 6, 7, 8
             for orientation in range(1, 10):
@@ -207,9 +211,9 @@ class SampleTests(unittest.TestCase):
                 expected_width, expected_height = width, height
                 if orientation in {5, 6, 7, 8}:
                     expected_width, expected_height = height, width
-                img.save(image_file.name, "jpeg", exif=exif)
+                img.save(image_path, "jpeg", exif=exif)
 
-                sample = fo.Sample(image_file.name)
+                sample = fo.Sample(image_path, media_type="image")
                 sample.compute_metadata()
 
                 self.assertEqual(sample.metadata.width, expected_width)
@@ -217,8 +221,8 @@ class SampleTests(unittest.TestCase):
                 self.assertEqual(sample.metadata.num_channels, 3)
 
             # Finally a normal non-exif file
-            img.save(image_file.name, "jpeg")
-            sample = fo.Sample(image_file.name)
+            img.save(image_path, "jpeg")
+            sample = fo.Sample(image_path, media_type="image")
             sample.compute_metadata()
             self.assertEqual(sample.metadata.width, width)
             self.assertEqual(sample.metadata.height, height)

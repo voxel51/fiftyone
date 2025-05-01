@@ -1197,6 +1197,142 @@ class DatasetTests(unittest.TestCase):
         self.assertListEqual(values, [False, False])
 
     @drop_datasets
+    def test_frames_unwind(self):
+        #
+        # These tests ensure that:
+        # 1. $lookup + $unwind are adjacent when possible
+        # 2. $lookup occurs as late as possible in pipelines
+        #
+
+        sample1 = fo.Sample(filepath="video1.mp4", int=1)
+        sample1.frames[1] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(label="rabbit"),
+                    fo.Detection(label="squirrel"),
+                ]
+            )
+        )
+        sample1.frames[7] = fo.Frame()
+
+        sample2 = fo.Sample(filepath="video2.mp4", int=2)
+        sample2.frames[1] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                ]
+            )
+        )
+        sample2.frames[3] = fo.Frame()
+        sample2.frames[5] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(label="dog"),
+                    fo.Detection(label="fox"),
+                ]
+            )
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2])
+
+        # Full dataset
+
+        agg = fo.Count("frames")
+        value = dataset.aggregate(agg)
+        pipeline = dataset.aggregate(agg, _mongo=True)
+
+        self.assertEqual(value, 5)
+        self.assertTrue("$lookup" in pipeline[0])
+        self.assertTrue("$unwind" in pipeline[1])
+
+        agg = fo.Max("frames.frame_number")
+        value = dataset.aggregate(agg)
+        pipeline = dataset.aggregate(agg, _mongo=True)
+
+        self.assertEqual(value, 7)
+        self.assertTrue("$lookup" in pipeline[0])
+        self.assertTrue("$unwind" in pipeline[1])
+
+        agg = fo.Distinct("frames.detections.detections.label")
+        value = dataset.aggregate(agg)
+        pipeline = dataset.aggregate(agg, _mongo=True)
+
+        self.assertSetEqual(
+            set(value), {"cat", "dog", "fox", "rabbit", "squirrel"}
+        )
+        self.assertTrue("$lookup" in pipeline[0])
+        self.assertTrue("$unwind" in pipeline[1])
+
+        agg = fo.Values("frames[].detections")
+        value = dataset.aggregate(agg)
+        pipeline = dataset.aggregate(agg, _mongo=True)
+
+        self.assertEqual(len(value), 5)
+        self.assertTrue("$lookup" in pipeline[0])
+        self.assertTrue("$unwind" in pipeline[1])
+
+        agg = fo.Values("frames.detections.detections.label", unwind=True)
+        value = dataset.aggregate(agg)
+        pipeline = dataset.aggregate(agg, _mongo=True)
+
+        self.assertListEqual(
+            value, ["rabbit", "squirrel", "cat", "dog", "dog", "fox"]
+        )
+        self.assertTrue("$lookup" in pipeline[0])
+        self.assertTrue("$unwind" in pipeline[1])
+
+        # View that only involves sample-level filtering
+
+        view = dataset.match(F("int") > 1)
+
+        agg = fo.Count("frames")
+        value = view.aggregate(agg)
+        pipeline = view.aggregate(agg, _mongo=True)
+
+        self.assertEqual(value, 3)
+        self.assertTrue("$match" in pipeline[0])
+        self.assertTrue("$lookup" in pipeline[1])
+        self.assertTrue("$unwind" in pipeline[2])
+
+        agg = fo.Max("frames.frame_number")
+        value = view.aggregate(agg)
+        pipeline = view.aggregate(agg, _mongo=True)
+
+        self.assertEqual(value, 5)
+        self.assertTrue("$match" in pipeline[0])
+        self.assertTrue("$lookup" in pipeline[1])
+        self.assertTrue("$unwind" in pipeline[2])
+
+        agg = fo.Distinct("frames.detections.detections.label")
+        value = view.aggregate(agg)
+        pipeline = view.aggregate(agg, _mongo=True)
+
+        self.assertSetEqual(set(value), {"cat", "dog", "fox"})
+        self.assertTrue("$match" in pipeline[0])
+        self.assertTrue("$lookup" in pipeline[1])
+        self.assertTrue("$unwind" in pipeline[2])
+
+        agg = fo.Values("frames[].detections")
+        value = view.aggregate(agg)
+        pipeline = view.aggregate(agg, _mongo=True)
+
+        self.assertEqual(len(value), 3)
+        self.assertTrue("$match" in pipeline[0])
+        self.assertTrue("$lookup" in pipeline[1])
+        self.assertTrue("$unwind" in pipeline[2])
+
+        agg = fo.Values("frames.detections.detections.label", unwind=True)
+        value = view.aggregate(agg)
+        pipeline = view.aggregate(agg, _mongo=True)
+
+        self.assertListEqual(value, ["cat", "dog", "dog", "fox"])
+        self.assertTrue("$match" in pipeline[0])
+        self.assertTrue("$lookup" in pipeline[1])
+        self.assertTrue("$unwind" in pipeline[2])
+
+    @drop_datasets
     def test_serialize(self):
         bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
 

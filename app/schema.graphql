@@ -38,6 +38,7 @@ input AggregationForm {
   view: BSONArray!
   viewName: String = null
   queryPerformance: Boolean = false
+  hint: String = null
 }
 
 union AggregationResponses =
@@ -226,8 +227,8 @@ type Dataset {
   groupMediaTypes: [Group!]
   groupField: String
   defaultGroupSlice: String
-  mediaType: MediaType
-  parentMediaType: MediaType
+  mediaType: String
+  parentMediaType: String
   maskTargets: [NamedTargets!]!
   defaultMaskTargets: [Target!]
   sampleFields: [SampleField!]!
@@ -367,7 +368,7 @@ type FloatLightningResult implements LightningResult {
 
 type Group {
   name: String!
-  mediaType: MediaType!
+  mediaType: String!
 }
 
 input GroupElementFilter {
@@ -464,9 +465,11 @@ input LightningPathInput {
   exclude these values from results
   """
   exclude: [String!] = null
-  first: Int = 200
-  search: String = null
   filters: BSON = null
+  first: Int = 100
+  index: String = null
+  maxDocumentsSearch: Int = null
+  search: String = null
 }
 
 interface LightningResult {
@@ -490,14 +493,6 @@ type MaskColor {
 input MaskColorInput {
   color: String!
   intTarget: Int!
-}
-
-enum MediaType {
-  image
-  group
-  point_cloud
-  three_d
-  video
 }
 
 type MediaURL {
@@ -618,7 +613,7 @@ type Query {
   ): [AggregationResponses!]!
   datasets(
     search: String
-    first: Int = 200
+    first: Int = 100
     after: String = null
   ): DatasetStrConnection!
   aggregations(form: AggregationForm!): [AggregateResult!]!
@@ -639,6 +634,9 @@ type Query {
     filters: BSON = null
     extendedStages: BSON = null
     paginationData: Boolean = true
+    sortBy: String = null
+    desc: Boolean = false
+    hint: String = null
   ): SampleItemStrConnection!
   sample(
     dataset: String!
@@ -699,7 +697,12 @@ input SampleFilter {
   group: GroupElementFilter = null
 }
 
-union SampleItem = ImageSample | PointCloudSample | ThreeDSample | VideoSample
+union SampleItem =
+    ImageSample
+  | PointCloudSample
+  | ThreeDSample
+  | VideoSample
+  | UnknownSample
 
 type SampleItemStrConnection {
   pageInfo: SampleItemStrPageInfo!
@@ -750,6 +753,7 @@ input SelectedLabel {
   field: String!
   sampleId: ID!
   frameNumber: Int = null
+  instanceId: ID = null
 }
 
 type SidebarGroup {
@@ -823,6 +827,13 @@ enum Theme {
 }
 
 type ThreeDSample implements Sample {
+  id: ID!
+  sample: JSON!
+  urls: [MediaURL!]!
+  aspectRatio: Float!
+}
+
+type UnknownSample implements Sample {
   id: ID!
   sample: JSON!
   urls: [MediaURL!]!

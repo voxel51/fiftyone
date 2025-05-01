@@ -101,6 +101,7 @@ export type RawContext = {
   queryPerformance?: boolean;
   spaces: SpaceNodeJSON;
   workspaceName: string;
+  promptId: string | null;
 };
 
 export class ExecutionContext {
@@ -155,7 +156,9 @@ export class ExecutionContext {
   public get workspaceName(): string {
     return this._currentContext.workspaceName;
   }
-
+  public get promptId(): string | null {
+    return this._currentContext.promptId;
+  }
   getCurrentPanelId(): string | null {
     return this.params.panel_id || this.currentPanel?.id || null;
   }
@@ -531,6 +534,10 @@ function formatSelectedLabels(selectedLabels) {
         field: label.field,
         label_id: label.labelId,
         sample_id: label.sampleId,
+        instance: {
+          _cls: "Instance",
+          _id: label.instanceId,
+        },
       };
       if (!isNullish(label.frameNumber)) {
         formattedLabel.frame_number = label.frameNumber;
@@ -570,6 +577,8 @@ async function executeOperatorAsGenerator(
       query_performance: currentContext.queryPerformance,
       spaces: currentContext.spaces,
       workspace_name: currentContext.workspaceName,
+      prompt_id: ctx.promptId,
+
       // Teams only
       dataset_head_name: currentContext.datasetHeadName,
     },
@@ -738,6 +747,7 @@ export async function executeOperatorWithContext(
           query_performance: currentContext.queryPerformance,
           spaces: currentContext.spaces,
           workspace_name: currentContext.workspaceName,
+          prompt_id: ctx.promptId,
 
           // Teams only
           dataset_head_name: currentContext.datasetHeadName,
@@ -847,6 +857,7 @@ export async function resolveRemoteType(
       query_performance: currentContext.queryPerformance,
       spaces: currentContext.spaces,
       workspace_name: currentContext.workspaceName,
+      prompt_id: ctx.promptId,
 
       // Teams only
       dataset_head_name: currentContext.datasetHeadName,

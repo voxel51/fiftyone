@@ -3,6 +3,7 @@ import { usePanelId } from "@fiftyone/spaces";
 import { capitalize } from "lodash";
 import { useCallback } from "react";
 import { atom } from "recoil";
+import { NONE_CLASS } from "./constants";
 
 export function useTriggerEvent() {
   const panelId = usePanelId();
@@ -46,6 +47,90 @@ export function formatValue(value: string | number, fractionDigits = 3) {
     return parseFloat(numericValue.toFixed(fractionDigits));
   }
   return value;
+}
+
+export function getMatrix(
+  matrices,
+  config,
+  maskTargets?,
+  compareMaskTargets?,
+  plot?
+) {
+  if (!matrices) return;
+  const { sortBy = "az", limit } = config;
+  const parsedLimit = typeof limit === "number" ? limit : undefined;
+  const originalClasses = matrices[`${sortBy}_classes`];
+  const originalMatrix = matrices[`${sortBy}_matrix`];
+  const originalColorscale = matrices[`${sortBy}_colorscale`];
+  const chosenClasses = config?.classes;
+  const hasChosenClasses =
+    Array.isArray(chosenClasses) && chosenClasses?.length;
+  let classes = originalClasses;
+  let matrix = originalMatrix;
+  let colorscale = originalColorscale;
+  if (hasChosenClasses) {
+    const classIndices = chosenClasses.map((c) => originalClasses.indexOf(c));
+    classes = chosenClasses;
+    matrix = classIndices.map((i) => {
+      return classIndices.map((j) => {
+        return originalMatrix[i][j];
+      });
+    });
+    if (Array.isArray(colorscale)) {
+      colorscale = classIndices.map((i) => originalColorscale[i]);
+    }
+  } else if (parsedLimit) {
+    classes = originalClasses.slice(0, parsedLimit);
+    matrix = originalMatrix.slice(0, parsedLimit);
+    if (Array.isArray(colorscale)) {
+      colorscale = colorscale.slice(0, parsedLimit);
+    }
+  }
+  const labels = classes.map((c) => {
+    return compareMaskTargets?.[c] || maskTargets?.[c] || c;
+  });
+  if (!hasChosenClasses) {
+    const noneIndex = originalClasses.indexOf(NONE_CLASS);
+    if (parsedLimit && parsedLimit < originalClasses.length && noneIndex > -1) {
+      labels.push(
+        compareMaskTargets?.[NONE_CLASS] ||
+          maskTargets?.[NONE_CLASS] ||
+          NONE_CLASS
+      );
+      matrix.push(originalMatrix[noneIndex]);
+    }
+  }
+
+  const baseMatrix = { labels, matrix, colorscale };
+
+  if (plot) {
+    return {
+      ...baseMatrix,
+      plot: {
+        z: matrix,
+        x: labels,
+        y: labels,
+        type: "heatmap",
+        colorscale: config?.log ? colorscale || "viridis" : "viridis",
+        hovertemplate:
+          [
+            "<b>count: %{z:d}</b>",
+            `${config?.gt_field || "truth"}: %{y}`,
+            `${config?.pred_field || "predicted"}: %{x}`,
+          ].join(" <br>") + "<extra></extra>",
+      },
+    };
+  }
+
+  return baseMatrix;
+}
+
+export function getClasses(matrices, maskTargets?) {
+  const sortBy = "az";
+  const classes = matrices[`${sortBy}_classes`];
+  return classes.map((c) => {
+    return maskTargets?.[c] || c;
+  });
 }
 
 export interface CompareKey {

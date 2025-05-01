@@ -13,8 +13,7 @@ from importlib import metadata
 
 from setuptools import find_packages, setup
 
-
-VERSION = "2.7.2"
+VERSION = "2.8.0"
 
 
 def get_version():
@@ -34,6 +33,7 @@ INSTALL_REQUIRES = [
     # third-party packages
     "aiofiles",
     "argcomplete",
+    "async_lru>=2",
     "beautifulsoup4",
     "boto3",
     "cachetools",
@@ -48,6 +48,7 @@ INSTALL_REQUIRES = [
     # kaleido indirectly required by plotly for image export
     # https://plotly.com/python/static-image-export/
     "kaleido!=0.2.1.post1",
+    "lz4",
     "matplotlib",
     "mongoengine~=0.29.1",
     "motor~=3.6.0",
@@ -71,8 +72,9 @@ INSTALL_REQUIRES = [
     "sseclient-py>=1.7.2,<2",
     "sse-starlette>=0.10.3,<1",
     "starlette>=0.24.0",
-    "strawberry-graphql",
+    "strawberry-graphql~=0.257.0",
     "tabulate",
+    "tqdm",
     "xmltodict",
     "universal-analytics-python3>=1.0.1,<2",
     "pydash",
@@ -90,7 +92,7 @@ INSTALL_REQUIRES = [
     "yarl",
     "wcmatch",
     # internal packages
-    "fiftyone-brain>=0.20.1,<0.21",
+    "fiftyone-brain>=0.21.1,<0.22",
     "fiftyone-db~=0.4",  # pinned to legacy db, do not remove
     "voxel51-eta>=0.14.0,<0.15",
 ]
@@ -135,7 +137,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="fiftyone",
-    version="2.7.2",
+    version="2.8.0rc13",
     description=(
         "FiftyOne Teams: the tool for teams building high-quality datasets "
         "and computer vision models"

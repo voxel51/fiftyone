@@ -4,8 +4,15 @@ import isUrl from "./isUrl";
 
 type RunData = runsItemQuery$dataT["delegatedOperation"];
 export const getLogStatus = (runData: RunData) => {
-  const { logUrl, logUploadError, runState, result, runLink, logSize } =
-    runData;
+  const {
+    logUrl,
+    logPath,
+    logUploadError,
+    runState,
+    result,
+    runLink,
+    logSize,
+  } = runData;
 
   const runHasFinished = [
     OPERATOR_RUN_STATES.COMPLETED,
@@ -18,7 +25,8 @@ export const getLogStatus = (runData: RunData) => {
   }
 
   // when log url is never configured, there is no logUrl
-  if (!logUrl && !runLink && runHasFinished) {
+  // new: user can set a local path through logPath, also allow that
+  if (!(logUrl || (logPath && logSize)) && !runLink && runHasFinished) {
     return LOG_STATUS.UNSET;
   }
   // when run has finished and user sets up airflow, show the run link
@@ -26,15 +34,15 @@ export const getLogStatus = (runData: RunData) => {
     return LOG_STATUS.URL_LINK;
   }
   // when the run has finished and log is uploaded successfully
-  if (logSize && logUrl && !logUploadError && runHasFinished) {
+  if (logSize && !logUploadError && runHasFinished) {
     const logSizeInMB = logSize / 1024 / 1024;
     const largeFile = logSizeInMB > 1;
     return largeFile
       ? LOG_STATUS.UPLOAD_SUCCESS_LARGE_FILE
       : LOG_STATUS.UPLOAD_SUCCESS;
   }
-
-  if (logUrl && !logUploadError && runHasFinished) {
+  // when log preview is available (could be either cloud storage or local path)
+  if ((logUrl || (logPath && logSize)) && !logUploadError && runHasFinished) {
     return LOG_STATUS.UPLOAD_SUCCESS;
   }
 

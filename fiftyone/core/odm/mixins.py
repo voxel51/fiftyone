@@ -20,6 +20,7 @@ import fiftyone.core.utils as fou
 
 from .database import get_db_conn
 from .dataset import SampleFieldDocument
+from .embedded_document import DynamicEmbeddedDocument
 from .utils import (
     deserialize_value,
     serialize_value,
@@ -141,16 +142,35 @@ class DatasetMixin(object):
         chunks = field_name.split(".", 1)
 
         if len(chunks) > 1:
-            doc = self.get_field(chunks[0])
+            root = chunks[0]
+            doc = self.get_field(root)
+
+            if doc is None and create:
+                doc = DynamicEmbeddedDocument()
+                self[root] = doc
+                self._changed_fields.remove(root)
 
             # handle sytnax: sample["field.0.attr"] = value
             if isinstance(doc, (mongoengine.base.BaseList, fof.ListField)):
                 chunks = chunks[1].split(".", 1)
                 doc = doc[int(chunks[0])]
+                field_name = root + "." + chunks[1]
 
-            return doc.set_field(chunks[1], value, create=create)
+            doc.set_field(chunks[1], value, create=create)
 
-        if not self.has_field(field_name):
+            #
+            # We treat attributes of `DynamicEmbeddedDocument` fields like
+            # top-level fields and automatically declare new attributes on the
+            # datasets's schema
+            #
+            # If the user is setting attributes of other embedded documents
+            # such as `Label` fields, then by convention we don't automatically
+            # declare new attributes on the dataset's schema
+            #
+            if type(doc) != DynamicEmbeddedDocument:
+                return
+
+        if field is None:
             if create:
                 self.add_implied_field(
                     field_name,
@@ -164,7 +184,7 @@ class DatasetMixin(object):
                     "%s has no field '%s'" % (self._doc_name(), field_name)
                 )
         elif value is not None:
-            if validate:
+            if validate and field is not None:
                 field.validate(value)
 
             if dynamic:
@@ -176,6 +196,9 @@ class DatasetMixin(object):
                     dynamic=dynamic,
                 )
 
+        if len(chunks) > 1:
+            return
+
         super().__setattr__(field_name, value)
 
     def clear_field(self, field_name):
@@ -186,11 +209,13 @@ class DatasetMixin(object):
         cls,
         ftype=None,
         embedded_doc_type=None,
+        subfield=None,
         read_only=None,
         info_keys=None,
         created_after=None,
         include_private=False,
         flat=False,
+        unwind=True,
         mode=None,
     ):
         """Returns a schema dictionary describing the fields of this document.
@@ -206,6 +231,9 @@ class DatasetMixin(object):
                 iterable of types to which to restrict the returned schema.
                 Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            subfield (None): an optional subfield type or iterable of subfield
+                types to which to restrict the returned schema. Must be
+                subclass(es) of :class:`fiftyone.core.fields.Field`
             read_only (None): whether to restrict to (True) or exclude (False)
                 read-only fields. By default, all fields are included
             info_keys (None): an optional key or list of keys that must be in
@@ -216,10 +244,12 @@ class DatasetMixin(object):
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
                 embedded document fields are included as top-level keys
-            mode (None): whether to apply the `above constraints before and/or
-                after flattening the schema. Only applicable when ``flat`` is
-                True. Supported values are ``("before", "after", "both")``.
-                The default is ``"after"``
+            unwind (True): whether to traverse into list fields. Only
+                applicable when ``flat=True``
+            mode (None): whether to apply the above constraints before and/or
+                after flattening the schema. Only applicable when ``flat=True``.
+                Supported values are ``("before", "after", "both")``. The
+                default is ``"after"``
 
         Returns:
             a dict mapping field names to :class:`fiftyone.core.fields.Field`
@@ -234,11 +264,13 @@ class DatasetMixin(object):
             schema,
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
+            subfield=subfield,
             read_only=read_only,
             info_keys=info_keys,
             created_after=created_after,
             include_private=include_private,
             flat=flat,
+            unwind=unwind,
             mode=mode,
         )
 

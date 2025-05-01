@@ -1,11 +1,6 @@
 import { useSpring } from "@react-spring/web";
-import React, {
-  MutableRefObject,
-  RefObject,
-  useLayoutEffect,
-  useState,
-} from "react";
-
+import type { MutableRefObject, RefObject } from "react";
+import React, { useLayoutEffect, useState } from "react";
 import { PopoutDiv } from "../utils";
 
 const useAlign = (

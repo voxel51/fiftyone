@@ -29,7 +29,12 @@ class ExecutionStoreService(object):
     Args:
         repo (None): a
             :class:`fiftyone.factory.repos.execution_store.ExecutionStoreRepo`
+            If not provided, a new
+            :class:`fiftyone.factory.repos.execution_store.MongoExecutionStoreRepo`
+            will be created
         dataset_id (None): a dataset ID to scope operations to
+        collection_name (None): a collection name to use for the execution
+            store. If `repo` is provided, this argument is ignored
     """
 
     def __init__(
@@ -53,7 +58,10 @@ class ExecutionStoreService(object):
         self._repo: ExecutionStoreRepo = repo
 
     def create_store(
-        self, store_name: str, metadata: Optional[dict[str, Any]] = None
+        self,
+        store_name: str,
+        metadata: Optional[dict[str, Any]] = None,
+        policy: str = "persist",
     ) -> StoreDocument:
         """Creates a new store with the specified name.
 
@@ -63,7 +71,13 @@ class ExecutionStoreService(object):
         Returns:
             a :class:`fiftyone.store.models.StoreDocument`
         """
-        return self._repo.create_store(store_name, metadata=metadata)
+        return self._repo.create_store(
+            store_name, metadata=metadata, policy=policy
+        )
+
+    def clear_cache(self, store_name=None) -> None:
+        """Clears all cache entries in the execution stores."""
+        self._repo.clear_cache(store_name=store_name)
 
     def get_store(self, store_name: str) -> StoreDocument:
         """Gets the specified store for the current context.
@@ -116,20 +130,55 @@ class ExecutionStoreService(object):
         return self._repo.delete_store(store_name)
 
     def set_key(
-        self, store_name: str, key: str, value: Any, ttl: Optional[int] = None
+        self,
+        store_name: str,
+        key: str,
+        value: Any,
+        ttl: Optional[int] = None,
+        policy: str = "persist",
     ) -> KeyDocument:
         """Sets the value of a key in the specified store.
+
+        Keys can be either **persistent** or **cacheable**, depending on the provided
+        ``policy`` or whether a TTL (time-to-live) is set.
+
+        - If ``policy="persist"`` (default), the key will remain in the store until
+          explicitly deleted.
+        - If ``policy="evict"``, the key may be evicted by the system or manually
+          removed using :meth:`~clear_cache`.
+        - If a TTL is provided, the key is **always** treated as ``policy="evict"``.
 
         Args:
             store_name: the name of the store
             key: the key to set
             value: the value to set
             ttl (None): an optional TTL in seconds
+            policy (persist): the eviction policy for the key. Can be "persist" or "evict".
+                If "persist", the key will never be automatically removed.
+                If "evict", the key may be removed automatically if a TTL is set,
+                or manually via :meth:`clear_cache`.
 
         Returns:
-            a :class:`fiftyone.store.models.KeyDocument`
+            KeyDocument: The created or updated key document.
         """
-        return self._repo.set_key(store_name, key, value, ttl=ttl)
+        return self._repo.set_key(
+            store_name, key, value, ttl=ttl, policy=policy
+        )
+
+    def set_cache_key(
+        self, store_name: str, key: str, value: Any, ttl: Optional[int] = None
+    ) -> KeyDocument:
+        """Sets the value of a cache key in the specified store.
+
+        Args:
+            store_name: the name of the store
+            key: the key to set
+            value: the value to set
+            ttl (None): an optional TTL in seconds
+        """
+        return self._repo.set_key(
+            store_name, key, value, ttl=ttl, policy="evict"
+        )
 
     def has_key(self, store_name: str, key: str) -> bool:
         """Determines whether the specified key exists in the specified store.

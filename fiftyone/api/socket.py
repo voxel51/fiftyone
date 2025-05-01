@@ -7,12 +7,12 @@ import logging
 import posixpath
 import queue
 import threading
-from typing import Optional, Union
+from typing import Optional, Union, Tuple
 
 
 import websocket
 
-from fiftyone.api import constants
+from fiftyone.api import constants, encodings
 
 
 class SocketDisconnectException(Exception):
@@ -32,6 +32,7 @@ class Socket:
         headers: Union[list, dict],
         timeout: Optional[int] = constants.DEFAULT_TIMEOUT,
         disable_websocket_info_logs: bool = True,
+        content_encoding: list[str] = None,
     ):
         self._timeout = timeout
         self._sent = []
@@ -39,6 +40,7 @@ class Socket:
         self._ready = threading.Event()
         self._queue = queue.Queue()
         self._err = None
+        self._content_encoding = content_encoding
 
         # Disable chatty websocket logger if told to
         if disable_websocket_info_logs:
@@ -71,14 +73,17 @@ class Socket:
     def __iter__(self):
         return self
 
-    def __next__(self) -> str:
-        """Get a message from the server"""
+    def __next__(self) -> Tuple[int, str]:
+        """Get a message from the server returns tuple of (message length, message)"""
         while True:
             # Attempt to read any messages from queue.
             try:
                 msg = self._queue.get(timeout=_SOCKET_QUEUE_TIMEOUT)
                 if msg:
-                    return msg
+                    return (
+                        len(msg),
+                        encodings.apply_decoding(msg, self._content_encoding),
+                    )
 
                 break
             except queue.Empty:
@@ -109,6 +114,7 @@ class Socket:
             raise self._err
 
         self._ready.wait()
-
-        self._ws.send(msg)
+        self._ws.send_bytes(
+            encodings.apply_encoding(msg, self._content_encoding)
+        )
         self._sent.append(msg)

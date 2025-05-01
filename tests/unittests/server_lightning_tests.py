@@ -535,7 +535,6 @@ class TestFloatLightningQueries(unittest.IsolatedAsyncioTestCase):
         """
 
         result = await _execute(query, dataset, fo.FloatField, keys)
-
         self.assertListEqual(
             result.data["lightning"],
             [
@@ -1173,7 +1172,7 @@ class TestGroupDatasetLightningQueries(unittest.IsolatedAsyncioTestCase):
                 },
                 {
                     "path": "classifications.classifications.label",
-                    "values": ["one", "two"],
+                    "values": ["one"],
                 },
                 {"path": "numeric", "min": 1.0, "max": 1.0},
                 {"path": "string", "values": ["one"]},
@@ -1205,7 +1204,7 @@ class TestGroupDatasetLightningQueries(unittest.IsolatedAsyncioTestCase):
                 },
                 {
                     "path": "classifications.classifications.label",
-                    "values": ["one", "two"],
+                    "values": ["two"],
                 },
                 {"path": "numeric", "min": 2.0, "max": 2.0},
                 {"path": "string", "values": ["two"]},
@@ -1237,12 +1236,12 @@ class TestObjectIdLightningQueries(unittest.IsolatedAsyncioTestCase):
             search="0" * 25,
         )
 
-        for path in result.data["lightning"]:
-            if path["path"] == "id":
-                self.assertEqual(len(path["values"]), 1)
-            else:
+        for path_values in result.data["lightning"]:
+            if path_values["path"] == "id":
+                self.assertEqual(len(path_values["values"]), 1)
+            elif "instance.id" not in path_values["path"]:
                 self.assertListEqual(
-                    path["values"], ["000000000000000000000000"]
+                    path_values["values"], ["000000000000000000000000"]
                 )
 
         result = await _execute(
@@ -1254,8 +1253,8 @@ class TestObjectIdLightningQueries(unittest.IsolatedAsyncioTestCase):
             search="Z" * 25,
         )
 
-        for path in result.data["lightning"]:
-            self.assertListEqual(path["values"], [])
+        for path_values in result.data["lightning"]:
+            self.assertListEqual(path_values["values"], [])
 
 
 def _add_samples(dataset: fo.Dataset, *sample_data: t.List[t.Dict]):

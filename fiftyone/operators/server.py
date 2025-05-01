@@ -169,6 +169,7 @@ class ExecuteOperator(HTTPEndpoint):
             operator_uri,
             data,
             request_token=request_token,
+            registry_override=registry,
         )
         return result.to_json()
 

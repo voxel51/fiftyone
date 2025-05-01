@@ -1,11 +1,10 @@
+import { useTheme } from "@fiftyone/components";
+import { useKeydownHandler } from "@fiftyone/state";
 import { Checkbox } from "@mui/material";
 import { animated } from "@react-spring/web";
 import numeral from "numeral";
 import React, { useRef } from "react";
 import styled from "styled-components";
-
-import { useTheme } from "@fiftyone/components";
-import { useKeydownHandler } from "@fiftyone/state";
 import { ItemAction } from "./ItemAction";
 import { useHighlightHover } from "./utils";
 

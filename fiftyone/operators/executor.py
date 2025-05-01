@@ -21,6 +21,7 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
 import fiftyone.core.odm.utils as focu
 import fiftyone.core.utils as fou
+import fiftyone.internal.util as foiu
 import fiftyone.core.view as fov
 from fiftyone.internal.api_requests import resolve_operation_user
 import fiftyone.internal.context_vars as ficv
@@ -120,7 +121,9 @@ class Executor(object):
         }
 
 
-def execute_operator(operator_uri, ctx=None, exhaust=True, **kwargs):
+def execute_operator(
+    operator_uri, ctx=None, exhaust=True, request_token=None, **kwargs
+):
     """Executes the operator with the given name.
 
     Args:
@@ -146,6 +149,7 @@ def execute_operator(operator_uri, ctx=None, exhaust=True, **kwargs):
             -   ``delegation_target`` (None): an optional orchestrator on which
                 to schedule the operation, if it is delegated
         exhaust (True): whether to immediately exhaust generator operators
+        request_token (None): the optional token to authenticate this invocation request
         **kwargs: you can optionally provide any of the supported ``ctx`` keys
             as keyword arguments rather than including them in ``ctx``
 
@@ -158,10 +162,17 @@ def execute_operator(operator_uri, ctx=None, exhaust=True, **kwargs):
             operation or scheduling a delegated operation
     """
     request_params = _parse_ctx(ctx=ctx, **kwargs)
+
+    if foiu.is_internal_service() and not request_token:
+        raise ValueError(
+            "Must provide request_token when executing an operator from an internal service"
+        )
+
     coroutine = execute_or_delegate_operator(
         operator_uri,
         request_params,
         exhaust=exhaust,
+        request_token=request_token,
     )
 
     try:
@@ -218,6 +229,7 @@ async def execute_or_delegate_operator(
     request_params,
     exhaust=False,
     request_token=None,  # teams-only
+    registry_override=None,  # teams-only
 ):
     """Executes the operator with the given name.
 
@@ -234,6 +246,7 @@ async def execute_or_delegate_operator(
         operator_uri,
         request_params,
         request_token=request_token,  # teams-only
+        registry_override=registry_override,  # teams-only
     )
 
     if isinstance(prepared, ExecutionResult):
@@ -335,8 +348,9 @@ async def prepare_operator_executor(
     api_key=None,  # teams-only
     user=None,  # teams-only
     allow_null_user=False,  # teams-only
+    registry_override=None,  # teams-only
 ):
-    registry = OperatorRegistry()
+    registry = registry_override or OperatorRegistry()
     if registry.operator_exists(operator_uri) is False:
         raise ValueError("Operator '%s' does not exist" % operator_uri)
 
@@ -660,7 +674,9 @@ class ExecutionContext(contextlib.AbstractContextManager):
         required_secrets=None,
         user=None,
     ):
-        self.request_params = request_params or {}
+        if request_params is None:
+            request_params = {}
+        self.request_params = request_params
         self.params = self.request_params.get("params", {})
         self.executor = executor
         self.user = user
@@ -675,6 +691,9 @@ class ExecutionContext(contextlib.AbstractContextManager):
         self._secrets = {}
         self._secrets_client = PluginSecretsResolver()
         self._required_secret_keys = required_secrets
+
+        self._prompt_id = request_params.get("prompt_id", None)
+
         if self._required_secret_keys:
             self._secrets_client.register_operator(
                 operator_uri=self._operator_uri,
@@ -957,6 +976,18 @@ class ExecutionContext(contextlib.AbstractContextManager):
     def query_performance(self):
         """Whether query performance is enabled."""
         return self.request_params.get("query_performance", None)
+
+    @property
+    def prompt_id(self):
+        """An identifier for the prompt, unique to each instance of a user
+        opening a prompt in the FiftyOne App.
+        """
+        return self._prompt_id
+
+    @property
+    def operator_uri(self):
+        """The URI of the target operator."""
+        return self._operator_uri
 
     def prompt(
         self,
