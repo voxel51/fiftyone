@@ -745,7 +745,17 @@ def _make_data_loader(samples, model, batch_size, num_workers, skip_failures):
                 return error
 
             try:
-                return tud.dataloader.default_collate(batch)
+                # collate_fn is just for TorchImageModels
+                # this means that it's fine to only assign
+                # collate_fn here, because other models
+                # use the other branches e.g. use_numpy==True
+                # or if a model has ragged_batches==True
+                # then it shouldn't have a collate_fn
+                return (
+                    tud.dataloader.default_collate(batch)
+                    if not hasattr(model, "collate_fn")
+                    else model.collate_fn(batch)
+                )
             except Exception as e:
                 if not skip_failures:
                     raise e

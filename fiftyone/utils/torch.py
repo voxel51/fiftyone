@@ -613,6 +613,25 @@ class TorchImageModel(
         """
         return self._transforms
 
+    @staticmethod
+    def collate_fn(batch):
+        """The collate function to use when creating a dataloader
+        for this model. By default, this is the default collate function for
+        :class:`torch:torch.utils.data.DataLoader`.
+
+        If the user wants to use a custom collate function,
+        they can override this method with a collate function of their choosing.
+        Please make sure this collate function is serializable so it is compatible
+        with multiprocessing for dataloaders.
+
+        Args:
+            batch: a list of items to collate
+
+        Returns:
+            the collated batch, this will be fed directly to the model
+        """
+        return torch.utils.data.dataloader.default_collate(batch)
+
     @property
     def preprocess(self):
         """Whether to apply preprocessing transforms for inference, if any."""
