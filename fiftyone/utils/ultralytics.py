@@ -7,6 +7,7 @@ Utilities for working with
 |
 """
 
+import itertools
 import numpy as np
 from PIL import Image
 
@@ -14,8 +15,6 @@ import fiftyone.core.labels as fol
 import fiftyone.utils.torch as fout
 import fiftyone.core.utils as fou
 import fiftyone.zoo.models as fozm
-import eta.core.utils as etau
-import itertools
 
 
 ultralytics = fou.lazy_import("ultralytics")
@@ -213,10 +212,10 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
             overrides=args,
             _callbacks=model.callbacks,
         )
-        model.predictor.imgsz = (
-            config.image_size if config.image_size else (640, 640)
-        )
+
         model.predictor.setup_model(model=model.model, verbose=False)
+        model.predictor.setup_source([np.zeros((10, 10))])
+        model.predictor.batch = next(iter(model.predictor.dataset))
         return model
 
     def _load_model(self, config):
@@ -249,8 +248,6 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         return None
 
     def _forward_pass(self, imgs):
-        self._model.predictor.setup_source(imgs)
-        self._model.predictor.batch = next(iter(self._model.predictor.dataset))
         preds = self._model.predictor.inference(imgs)
         return {"preds": preds}
 
@@ -306,7 +303,6 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
             images = imgs
 
         height, width = None, None
-
         if self.config.raw_inputs:
             # Feed images as list
             if self._output_processor is not None:
@@ -383,12 +379,28 @@ class FiftyOneYOLOClassificationModel(FiftyOneYOLOModel):
         config: a :class:`FiftyOneYOLOModelConfig`
     """
 
-    def _preprocess_im(self, img):
-        orig_img = img
-        return {
-            "img": self._model.predictor.preprocess(img),
-            "orig_img": orig_img,
-        }
+    def _ultralytics_preprocess(self, img):
+        # Taken from ultralytics.models.yolo.classify.predict.
+
+        is_legacy_transform = any(
+            self._model.predictor._legacy_transform_name in str(transform)
+            for transform in self.transforms.transforms
+        )
+        if is_legacy_transform:
+            img = torch.stack(
+                [self._model.predictor.transforms(im) for im in img], dim=0
+            )
+        else:
+            img = torch.stack(
+                [
+                    self._model.predictor.transforms(Image.fromarray(im))
+                    for im in img
+                ],
+                dim=0,
+            )
+        img = img if isinstance(img, torch.Tensor) else torch.from_numpy(img)
+        img = img.half() if self._model.predictor.model.fp16 else img.float()
+        return torch.squeeze(img, axis=0)
 
 
 def _convert_yolo_classification_model(model):
@@ -399,7 +411,7 @@ def _convert_yolo_classification_model(model):
             "model_path": model.model_name,
         }
     )
-    return FiftyOneYOLOModel(config)
+    return FiftyOneYOLOClassificationModel(config)
 
 
 def _convert_yolo_detection_model(model):
