@@ -2203,7 +2203,6 @@ class DetectionsTests(unittest.TestCase):
                         method="coco",
                         num_workers=worker_count,
                     )
-                    # from pdb import set_trace; set_trace()
 
                     # Verify that map_samples was called
                     self.assertTrue(
@@ -2925,6 +2924,7 @@ class VideoDetectionsTests(unittest.TestCase):
         self.assertIn("eval_fn", schema)
 
         schema = dataset.get_frame_field_schema(flat=True)
+
         self.assertIn("eval_tp", schema)
         self.assertIn("eval_fp", schema)
         self.assertIn("eval_fn", schema)

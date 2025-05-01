@@ -140,6 +140,7 @@ class ActivityNetEvaluation(DetectionEvaluation):
         progress=None,
         num_workers=1,
         batch_method=None,
+        batch_size=None,
         parallelize_method=None,
     ):
         """Generates aggregate evaluation results for the samples.
@@ -171,6 +172,9 @@ class ActivityNetEvaluation(DetectionEvaluation):
             batch_method (None): the method to use to batch the dataset for
                 parallel processing. The supported values are ``"id"`` and
                 ``"slice"``.
+            batch_size (None): the size of the samples per batch to process in
+                parallel. If not provided, the samples are distributed evenly
+                across the workers.
             parallelize_method (None): the backend to use for multiprocessing.
                 The supported values are ``"thread"`` and ``"process"``.
 
@@ -215,6 +219,7 @@ class ActivityNetEvaluation(DetectionEvaluation):
             map_func,
             workers=num_workers,
             batch_method=batch_method,
+            batch_size=batch_size,
             parallelize_method=parallelize_method,
             progress=progress,
         ):
