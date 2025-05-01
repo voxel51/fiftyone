@@ -32,8 +32,9 @@ export function getNumericDifference(
 ) {
   if (typeof value === "number" && typeof compareValue === "number") {
     const difference = value - compareValue;
+    const sanitizedCompareValue = compareValue === 0 ? 1 : compareValue;
     if (percentage) {
-      const percentageDifference = (difference / compareValue) * 100;
+      const percentageDifference = (difference / sanitizedCompareValue) * 100;
       return formatValue(percentageDifference, fractionDigits);
     }
     return formatValue(difference, fractionDigits);

@@ -345,6 +345,15 @@ class ConfigureScenario(foo.Operator):
 
         preview_container = inputs.grid("grid", height="400px", width="100%")
         preview_height = "300px"
+        scenario_type = ctx.params.get("scenario_type", None)
+        x_axis_title = "Scenarios"
+        if scenario_type == ScenarioType.LABEL_ATTRIBUTE:
+            x_axis_title = "Label Attributes"
+        elif scenario_type == ScenarioType.SAMPLE_FIELD:
+            x_axis_title = "Sample Fields"
+        elif scenario_type == ScenarioType.VIEW:
+            x_axis_title = "Saved Views"
+
         preview_container.plot(
             "plot_preview",
             label="Sample distribution preview",
@@ -354,6 +363,10 @@ class ConfigureScenario(foo.Operator):
             data=plot_data,
             height=preview_height,
             width="100%",
+            layout={
+                "xaxis": {"title": {"text": x_axis_title}},
+                "yaxis": {"title": {"text": "Samople Instances"}},
+            },
         )
 
     def get_custom_code_key(self, params):

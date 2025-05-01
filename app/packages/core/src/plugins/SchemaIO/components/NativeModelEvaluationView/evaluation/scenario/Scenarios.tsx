@@ -250,11 +250,11 @@ export default function Scenarios(props) {
                 );
               }}
             >
-              <MenuItem value="ratio" key="ratio">
+              <MenuItem value="numeric" key="numeric">
                 <ListItemIcon>
                   <DragHandle />
                 </ListItemIcon>
-                <Typography>Ratio</Typography>
+                <Typography>Count</Typography>
               </MenuItem>
               <MenuItem value="percentage" key="percentage">
                 <ListItemIcon>
@@ -1289,7 +1289,7 @@ function ConfidenceDistributionChart(props) {
   const [mode, setMode] = useState("overview");
   const isOverview = mode === "overview";
 
-  const plotData = [];
+  const plotData: any = [];
 
   if (!isOverview) {
     const y = [];
@@ -1311,48 +1311,89 @@ function ConfidenceDistributionChart(props) {
   } else {
     if (compareSubsetsData) {
       const x = [];
-      const y = [];
-      const compareX = [];
-      const compareY = [];
+      const q1 = [];
+      const median = [];
+      const q3 = [];
+      const lowerfence = [];
+      const upperfence = [];
+      const compareQ1 = [];
+      const compareMedian = [];
+      const compareQ3 = [];
+      const compareLowerfence = [];
+      const compareUpperfence = [];
+
       for (const subset in subsets_data) {
         const subsetData = subsets_data[subset];
         const compareSubsetData = compareSubsetsData[subset];
-        const { confidences } = subsetData;
-        const compareConfidences = compareSubsetData.confidences;
-        const subsetX = new Array(confidences.length).fill(subset);
-        const compareSubsetX = new Array(compareConfidences.length).fill(
-          subset
+        const { confidence_distribution } = subsetData;
+        const compareConfidenceDistribution =
+          compareSubsetData.confidence_distribution;
+        x.push(subset);
+        lowerfence.push(confidence_distribution.min);
+        q1.push(confidence_distribution.avg - confidence_distribution.std);
+        median.push(confidence_distribution.avg);
+        q3.push(confidence_distribution.avg + confidence_distribution.std);
+        upperfence.push(confidence_distribution.max);
+
+        compareLowerfence.push(compareConfidenceDistribution.min);
+        compareQ1.push(
+          compareConfidenceDistribution.avg - compareConfidenceDistribution.std
         );
-        x.push(...subsetX);
-        y.push(...confidences);
-        compareX.push(...compareSubsetX);
-        compareY.push(...compareConfidences);
+        compareMedian.push(compareConfidenceDistribution.avg);
+        compareQ3.push(
+          compareConfidenceDistribution.avg + compareConfidenceDistribution.std
+        );
+        compareUpperfence.push(compareConfidenceDistribution.max);
       }
-      const subsetA = {
-        y,
+      plotData.push({
+        type: "box",
         x,
-        name: key,
+        q1,
+        median,
+        q3,
+        lowerfence,
+        upperfence,
         marker: { color: KEY_COLOR },
+      });
+      plotData.push({
         type: "box",
-      };
-      const subsetB = {
-        y: compareY,
-        x: compareX,
-        name: compareKey,
+        x,
+        q1: compareQ1,
+        median: compareMedian,
+        q3: compareQ3,
+        lowerfence: compareLowerfence,
+        upperfence: compareUpperfence,
         marker: { color: COMPARE_KEY_COLOR },
-        type: "box",
-      };
-      plotData.push(subsetA, subsetB);
+      });
     } else {
+      const x = [];
+      const q1 = [];
+      const median = [];
+      const q3 = [];
+      const lowerfence = [];
+      const upperfence = [];
+
       for (const subset in subsets_data) {
         const subsetData = subsets_data[subset];
-        plotData.push({
-          y: subsetData.confidences,
-          name: subset,
-          type: "box",
-          marker: { color: KEY_COLOR },
-        });
+        const { confidence_distribution } = subsetData;
+        x.push(subset);
+        lowerfence.push(confidence_distribution.min);
+        q1.push(confidence_distribution.avg - confidence_distribution.std);
+        median.push(confidence_distribution.avg);
+        q3.push(confidence_distribution.avg + confidence_distribution.std);
+        upperfence.push(confidence_distribution.max);
       }
+
+      plotData.push({
+        type: "box",
+        x,
+        q1,
+        median,
+        q3,
+        lowerfence,
+        upperfence,
+        marker: { color: KEY_COLOR },
+      });
     }
   }
 
@@ -1462,7 +1503,7 @@ function MetricPerformanceChart(props) {
 
 function SubsetDistributionChart(props) {
   const { scenario, compareScenario, loadView, trackEvent } = props;
-  const { subsets, subsets_data } = scenario;
+  const { subsets, subsets_data, type } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
   const { key, compareKey } = props.data?.view;
 
@@ -1504,6 +1545,10 @@ function SubsetDistributionChart(props) {
           });
           return loadView("subset", { subset_def: subsetDef });
         }}
+        layout={{
+          xaxis: { title: { text: X_AXIS_TITLES[type] } },
+          yaxis: { title: { text: "Sample Instances" } },
+        }}
       />
       <Legends {...getLegendProps(props)} />
     </Stack>
@@ -1521,3 +1566,10 @@ function getLegendProps(props) {
   const { key, compareKey } = props.data?.view || {};
   return { primaryKey: key, compareKey };
 }
+
+const X_AXIS_TITLES = {
+  view: "Saved Views",
+  label_attribute: "Label Attributes",
+  sample_field: "Sample Fields",
+  custom_code: "Scenarios",
+};
