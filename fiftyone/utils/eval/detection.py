@@ -428,7 +428,7 @@ class DetectionEvaluation(BaseEvaluationMethod):
             backend=self,
         )
 
-    def get_fields(self, samples, eval_key):
+    def get_fields(self, samples, eval_key, include_custom_metrics=True):
         pred_field = self.config.pred_field
         pred_type = samples._get_label_field_type(pred_field)
         pred_key = "%s.%s.%s" % (
@@ -459,15 +459,20 @@ class DetectionEvaluation(BaseEvaluationMethod):
                 ["%s_tp" % prefix, "%s_fp" % prefix, "%s_fn" % prefix]
             )
 
-        fields.extend(self.get_custom_metric_fields(samples, eval_key))
+        if include_custom_metrics:
+            fields.extend(self.get_custom_metric_fields(samples, eval_key))
 
         return fields
 
     def rename(self, samples, eval_key, new_eval_key):
         dataset = samples._dataset
 
-        in_fields = self.get_fields(dataset, eval_key)
-        out_fields = self.get_fields(dataset, new_eval_key)
+        in_fields = self.get_fields(
+            dataset, eval_key, include_custom_metrics=False
+        )
+        out_fields = self.get_fields(
+            dataset, new_eval_key, include_custom_metrics=False
+        )
 
         in_sample_fields, in_frame_fields = fou.split_frame_fields(in_fields)
         out_sample_fields, out_frame_fields = fou.split_frame_fields(
