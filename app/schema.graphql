@@ -36,9 +36,10 @@ input AggregationForm {
   slice: String
   slices: [String!]
   view: BSONArray!
+  hint: String = null
+  maxQueryTimeout: Int = null
   viewName: String = null
   queryPerformance: Boolean = false
-  hint: String = null
 }
 
 union AggregationResponses =
@@ -71,6 +72,7 @@ type AppConfig {
   useFrameNumber: Boolean!
   spaces: JSON
   disableFrameFiltering: Boolean!
+  maxQueryTimeout: Int
   mediaFallback: Boolean!
 }
 
@@ -635,6 +637,7 @@ type Query {
     sortBy: String = null
     desc: Boolean = false
     hint: String = null
+    maxQueryTimeout: Int = null
   ): SampleItemStrConnection!
   sample(
     dataset: String!

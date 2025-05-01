@@ -385,6 +385,7 @@ class AppConfig:
     use_frame_number: bool
     spaces: t.Optional[JSON]
     disable_frame_filtering: bool = False
+    max_query_timeout: t.Optional[int] = None
     media_fallback: bool = False
 
 
@@ -450,6 +451,7 @@ class Query(fosa.AggregateQuery):
         sort_by: t.Optional[str] = None,
         desc: t.Optional[bool] = False,
         hint: t.Optional[str] = None,
+        max_query_timeout: t.Optional[int] = None,
     ) -> Connection[SampleItem, str]:
 
         return await paginate_samples(
@@ -464,6 +466,7 @@ class Query(fosa.AggregateQuery):
             sort_by=sort_by,
             desc=desc,
             hint=hint,
+            max_query_timeout=max_query_timeout,
         )
 
     @gql.field

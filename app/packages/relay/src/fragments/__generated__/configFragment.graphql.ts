@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<8948f8dd72ac5718c73fbe2a21d573df>>
+ * @generated SignedSource<<fe3c7fe0b2f20741cbbcf8c5323034a6>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -23,6 +23,7 @@ export type configFragment$data = {
     readonly enableQueryPerformance: boolean;
     readonly gridZoom: number;
     readonly loopVideos: boolean;
+    readonly maxQueryTimeout: number | null;
     readonly mediaFallback: boolean;
     readonly multicolorKeypoints: boolean;
     readonly notebookHeight: number;
@@ -126,6 +127,13 @@ return {
           "alias": null,
           "args": null,
           "kind": "ScalarField",
+          "name": "maxQueryTimeout",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
           "name": "multicolorKeypoints",
           "storageKey": null
         },
@@ -209,6 +217,6 @@ return {
 };
 })();
 
-(node as any).hash = "4e3c420ab0b75831727c079a3e1f940d";
+(node as any).hash = "09ef774d456801e5f9f3e4ee209c8b85";
 
 export default node;

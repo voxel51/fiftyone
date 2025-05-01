@@ -41,9 +41,10 @@ class AggregationForm:
     slice: t.Optional[str]
     slices: t.Optional[t.List[str]]
     view: BSONArray
+    hint: t.Optional[str] = None
+    max_query_timeout: t.Optional[int] = None
     view_name: t.Optional[str] = None
     query_performance: t.Optional[bool] = False
-    hint: t.Optional[str] = None
 
 
 @gql.interface
@@ -153,7 +154,9 @@ async def aggregate_resolver(
     counts = [len(a) for a in aggregations]
     flattened = [item for sublist in aggregations for item in sublist]
 
-    result = await view._async_aggregate(flattened, debug=True)
+    result = await view._async_aggregate(
+        flattened, maxTimeMs=form.max_query_timeout
+    )
 
     results = []
     offset = 0
