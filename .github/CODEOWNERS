@@ -1,3 +1,8 @@
 # Shared GraphQL schema requires approval from both frontend and backend
 
 /package/graphql @voxel51/backend-devs @voxel51/frontend-devs
+
+# Aloha should keep their eyes on setup.py and requirements files
+setup.py @voxel51/aloha-shirts
+requirements.txt @voxel51/aloha-shirts
+requirements/ @voxel51/aloha-shirts
