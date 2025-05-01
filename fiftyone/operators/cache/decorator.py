@@ -10,6 +10,8 @@ from fiftyone.operators.cache.utils import (
     _get_ctx_from_args,
     resolve_cache_info,
     _get_store_for_func,
+    _get_function_id,
+    get_ephemeral_cache,
 )
 from fiftyone.operators.cache.serialization import (
     auto_deserialize,
@@ -305,6 +307,11 @@ def execution_cache(
                 raise ValueError(
                     "dataset_id must be provided when link_to_dataset=True"
                 )
+            if residency == "ephemeral" or residency == "hybrid":
+                func_id = _get_function_id(func)
+                memory_cache = get_ephemeral_cache(func_id, max_size=max_size)
+                if memory_cache is not None:
+                    memory_cache.clear()
             store = _get_store_for_func(
                 func, dataset_id=dataset_id, collection_name=collection_name
             )
