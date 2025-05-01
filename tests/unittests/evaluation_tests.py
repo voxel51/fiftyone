@@ -1193,8 +1193,14 @@ class DetectionsTests(unittest.TestCase):
                 detections=[
                     fo.Detection(
                         label="cat",
+                        bounding_box=[0.6, 0.6, 0.4, 0.4],
+                        confidence=0.9,
+                    ),
+                    fo.Detection(
+                        label="dog",
                         bounding_box=[0.1, 0.1, 0.4, 0.4],
-                    )
+                        confidence=0.9,
+                    ),
                 ]
             ),
             predictions=fo.Detections(
@@ -1371,10 +1377,19 @@ class DetectionsTests(unittest.TestCase):
                     fo.Polyline(
                         label="cat",
                         points=[
+                            [(0.6, 0.6), (0.6, 1.0), (1.0, 1.0), (1.0, 0.6)]
+                        ],
+                        filled=True,
+                        confidence=0.9,
+                    ),
+                    fo.Polyline(
+                        label="dog",
+                        points=[
                             [(0.1, 0.1), (0.1, 0.4), (0.4, 0.4), (0.4, 0.1)]
                         ],
                         filled=True,
-                    )
+                        confidence=0.9,
+                    ),
                 ]
             ),
             predictions=fo.Polylines(
@@ -3048,12 +3063,14 @@ class VideoDetectionsTests(unittest.TestCase):
         self.assertIn("eval2_tp", schema)
         self.assertIn("eval2_fp", schema)
         self.assertIn("eval2_fn", schema)
-        self.assertIn("ground_truth.detections.eval2", schema)
-        self.assertIn("ground_truth.detections.eval2_id", schema)
-        self.assertIn("ground_truth.detections.eval2_iou", schema)
-        self.assertIn("predictions.detections.eval2", schema)
-        self.assertIn("predictions.detections.eval2_id", schema)
-        self.assertIn("predictions.detections.eval2_iou", schema)
+
+        frame_schema = dataset.get_frame_field_schema(flat=True)
+        self.assertIn("ground_truth.detections.eval2", frame_schema)
+        self.assertIn("ground_truth.detections.eval2_id", frame_schema)
+        self.assertIn("ground_truth.detections.eval2_iou", frame_schema)
+        self.assertIn("predictions.detections.eval2", frame_schema)
+        self.assertIn("predictions.detections.eval2_id", frame_schema)
+        self.assertIn("predictions.detections.eval2_iou", frame_schema)
 
         # Test deletion
 
