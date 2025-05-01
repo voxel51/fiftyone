@@ -6,12 +6,16 @@ FiftyOne Server routes
 |
 """
 
+from fiftyone.operators.server import OperatorRoutes
+
 from .aggregate import Aggregate
 from .embeddings import EmbeddingsRoutes
 from .event import Event
 from .events import Events
 from .fiftyone import FiftyOne
 from .frames import Frames
+from .geo import GeoPoints
+from .get_similar_labels_frames import GetSimilarLabelsFrameCollection
 from .media import Media
 from .plugins import Plugins
 from .fo3d_resolver import ResolveFo3d
@@ -21,7 +25,6 @@ from .sort import Sort
 from .tag import Tag
 from .tagging import Tagging
 from .values import Values
-from fiftyone.operators.server import OperatorRoutes
 
 # Starlette routes should not be created here. Please leave as tuple definitions
 routes = (
@@ -33,6 +36,7 @@ routes = (
         ("/events", Events),
         ("/fiftyone", FiftyOne),
         ("/frames", Frames),
+        ("/geo", GeoPoints),
         ("/media", Media),
         ("/plugins", Plugins),
         ("/resolve-fo3d", ResolveFo3d),
@@ -42,5 +46,6 @@ routes = (
         ("/tag", Tag),
         ("/tagging", Tagging),
         ("/values", Values),
+        ("/get-similar-labels-frames", GetSimilarLabelsFrameCollection),
     ]
 )

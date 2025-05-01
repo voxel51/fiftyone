@@ -17,10 +17,13 @@ const sortFieldsMap = selector({
   key: "sortFieldsMap",
   get: ({ get }) => {
     const f = Object.keys(get(fos.filters) ?? {});
-    const valid = get(fos.validIndexes(new Set(f)));
+    const valid = get(fos.validIndexes(f));
 
     const map = {};
-    for (const [name, dbField] of [...valid.available, ...valid.trailing]) {
+    for (const { name, key: dbField } of [
+      ...valid.available,
+      ...valid.trailing,
+    ]) {
       const field = get(fos.fieldPath(dbField));
       if (!map[field]) {
         map[field] = [];

@@ -10,6 +10,7 @@ from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
 from fiftyone.core.session.events import StateUpdate
+import fiftyone.core.stages as fos
 
 from fiftyone.server.decorators import route
 import fiftyone.server.events as fose
@@ -26,7 +27,7 @@ class Sort(HTTPEndpoint):
         subscription = data.get("subscription", None)
         slice = data.get("slice", None)
 
-        await fosv.get_view(
+        view = await fosv.get_view(
             dataset_name,
             stages=stages,
             filters=filters,
@@ -47,7 +48,9 @@ class Sort(HTTPEndpoint):
 
         await fose.dispatch_event(subscription, StateUpdate(state))
 
-        # empty response
-        #
-        # /sort is only used to populate a dist_field, if provided
-        return {}
+        # return the new sort by stage
+        for stage in reversed(view._stages):
+            if isinstance(stage, fos.SortBySimilarity):
+                return stage._serialize(include_uuid=False)
+
+        raise ValueError("sorting not found")

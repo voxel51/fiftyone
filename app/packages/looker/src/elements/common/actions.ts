@@ -17,6 +17,7 @@ import {
 import { clampScale } from "../../util";
 import { getFrameNumber } from "../util";
 
+import { isHoveringAnyLabelWithInstanceConfig } from "@fiftyone/state/src/jotai";
 import { dispatchTooltipEvent } from "./util";
 
 const readActions = <State extends BaseState>(
@@ -115,10 +116,25 @@ export const toggleOverlays: Control = {
   detail: "Toggles visibility of all overlays",
   action: (update, dispatchEvent) => {
     update(
-      ({ config: { thumbnail } }) =>
-        thumbnail ? {} : { options: { showOverlays: false } },
+      ({ config: { thumbnail } }) => {
+        if (thumbnail) {
+          return {};
+        }
+
+        // don't hide overlays if we're hovering over a label with an instance config
+        if (isHoveringAnyLabelWithInstanceConfig()) {
+          return {};
+        }
+
+        return { options: { showOverlays: false } };
+      },
       ({ config: { thumbnail }, options: { showOverlays } }) => {
-        if (!thumbnail) {
+        if (thumbnail) {
+          return;
+        }
+
+        // don't hide overlays if we're hovering over a label with an instance config
+        if (!isHoveringAnyLabelWithInstanceConfig()) {
           dispatchEvent("showOverlays", false);
           dispatchEvent("tooltip", null);
         }

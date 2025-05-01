@@ -196,6 +196,7 @@ export namespace State {
     sampleId: string;
     field: string;
     frameNumber?: number;
+    instanceId?: string;
   }
 
   export interface SelectedLabelMap {

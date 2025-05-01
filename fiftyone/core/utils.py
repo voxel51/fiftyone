@@ -2483,8 +2483,13 @@ def safe_relpath(path, start=None, default=None):
     else:
         _start = start
 
-    relpath = os.path.relpath(_path, _start)
-    if relpath.startswith(".."):
+    try:
+        relpath = os.path.relpath(_path, _start)
+    except ValueError:
+        # Different drives on Windows
+        relpath = None
+
+    if relpath is None or relpath.startswith(".."):
         if default is not None:
             return default
 
@@ -2840,9 +2845,6 @@ def get_multiprocessing_context():
         # subsequent usage of things like `multiprocessing.Queue()` will not
         # cause the default start method to switch to 'spawn'
         multiprocessing.set_start_method("fork", force=True)
-    elif sys.platform == "win32":
-        # Windows typically does not support 'fork'
-        multiprocessing.set_start_method("spawn", force=True)
 
     return multiprocessing.get_context()
 

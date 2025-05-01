@@ -17,7 +17,6 @@ import fiftyone.core.sample as focs
 import fiftyone.core.map.batcher as fomb
 import fiftyone.core.map.mapper as fomm
 
-
 T = TypeVar("T")
 R = TypeVar("R")
 

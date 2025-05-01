@@ -153,7 +153,7 @@ async def aggregate_resolver(
     counts = [len(a) for a in aggregations]
     flattened = [item for sublist in aggregations for item in sublist]
 
-    result = await view._async_aggregate(flattened, debug=True)
+    result = await view._async_aggregate(flattened)
 
     results = []
     offset = 0
@@ -220,7 +220,7 @@ def _resolve_path_aggregation(
         foa.Count(
             path if path and path != "" else None,
             _optimize=query_performance,
-            _hint=hint,
+            _hint=hint if query_performance else None,
         )
     ]
     field = view.get_field(path)

@@ -1,6 +1,11 @@
+import {
+  LabelHoveredEvent,
+  LabelUnhoveredEvent,
+  selectiveRenderingEventBus,
+} from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { useCallback } from "react";
-import { useRecoilState, useSetRecoilState } from "recoil";
+import { useRecoilCallback, useRecoilState, useSetRecoilState } from "recoil";
 
 export default function useTooltip() {
   const [isTooltipLocked, setIsTooltipLocked] = useRecoilState(
@@ -15,36 +20,63 @@ export default function useTooltip() {
   }, []);
 
   // only relevant for looker-3d
-  const getMeshProps = useCallback(
-    (label) => {
-      return {
-        onPointerOver: () => {
-          setTooltipDetail(getDetailsFromLabel(label));
-        },
-        onPointerOut: () => {
-          if (!isTooltipLocked) {
-            setTooltipDetail(null);
-          }
-        },
-        onPointerMissed: () => {
-          if (!isTooltipLocked) {
-            setTooltipDetail(null);
-            setIsTooltipLocked(false);
-          }
-        },
-        onPointerMove: (e: MouseEvent) => {
-          if (isTooltipLocked) {
-            return;
-          }
+  const getMeshProps = useRecoilCallback(
+    ({ snapshot }) =>
+      (label) => {
+        return {
+          onPointerOver: () => {
+            setTooltipDetail(getDetailsFromLabel(label));
 
-          if (e.ctrlKey) {
-            setIsTooltipLocked(true);
-          } else {
-            setCoords([e.clientX, e.clientY]);
-          }
-        },
-      };
-    },
+            if (!label.instance) {
+              return;
+            }
+
+            const sampleId = snapshot.getLoadable(fos.pinned3DSample).getValue()
+              .sample._id;
+
+            console.log(">>>sample id in 3d ", sampleId);
+
+            selectiveRenderingEventBus.emit(
+              new LabelHoveredEvent({
+                sampleId,
+                labelId: label.id,
+                instanceId: label.instance._id,
+                field: label.path,
+                frameNumber: label.frame_number,
+              })
+            );
+          },
+
+          onPointerOut: () => {
+            if (!isTooltipLocked) {
+              setTooltipDetail(null);
+            }
+
+            if (!label.instance) {
+              return;
+            }
+
+            selectiveRenderingEventBus.emit(new LabelUnhoveredEvent());
+          },
+          onPointerMissed: () => {
+            if (!isTooltipLocked) {
+              setTooltipDetail(null);
+              setIsTooltipLocked(false);
+            }
+          },
+          onPointerMove: (e: MouseEvent) => {
+            if (isTooltipLocked) {
+              return;
+            }
+
+            if (e.ctrlKey) {
+              setIsTooltipLocked(true);
+            } else {
+              setCoords([e.clientX, e.clientY]);
+            }
+          },
+        };
+      },
     [setCoords, isTooltipLocked]
   );
 
@@ -86,6 +118,7 @@ const getDetailsFromLabel = (label) => {
     label,
     type: label.type,
     color: label.color,
+    sampleId: label.sampleId,
   };
 };
 

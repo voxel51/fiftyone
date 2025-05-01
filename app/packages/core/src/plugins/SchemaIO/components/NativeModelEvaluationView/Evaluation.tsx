@@ -27,6 +27,9 @@ import { ConcreteEvaluationType } from "./Types";
 import { computeSortedCompareKeys } from "./utils";
 import { useTrackEvent } from "@fiftyone/analytics";
 
+const ENABLE_SCENARIO_ANALYSIS =
+  window?.localStorage?.getItem("enable_scenario_analysis") === "true";
+
 export default function Evaluation(props: EvaluationProps) {
   const {
     name,
@@ -296,7 +299,9 @@ export default function Evaluation(props: EvaluationProps) {
           sx={tabStyles.tabs}
         >
           <Tab label="Overview" value="overview" />
-          <Tab label="Scenario Analysis" value="scenario" />
+          {ENABLE_SCENARIO_ANALYSIS && (
+            <Tab label="Scenario Analysis" value="scenario" />
+          )}
           <Tab label="Execution Info" value="info" />
         </Tabs>
       </Box>

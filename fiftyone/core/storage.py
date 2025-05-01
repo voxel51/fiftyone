@@ -46,12 +46,11 @@ logger = logging.getLogger(__name__)
 creds_manager = None
 available_file_systems = None
 default_clients = {}
-bucket_regions = {}
-region_clients = {}
-bucket_clients = {}
-path_clients = {}
-client_lock = threading.Lock()
-init_lock = threading.Lock()
+bucket_regions = defaultdict(dict)
+region_clients = defaultdict(dict)
+bucket_clients = defaultdict(dict)
+path_clients = defaultdict(dict)
+storage_lock = threading.RLock()
 minio_prefixes = []
 azure_prefixes = []
 
@@ -66,29 +65,35 @@ def init_storage():
 
     This method may be called at any time to reinitialize storage client usage.
     """
-    with init_lock:
-        global creds_manager
-        if fi.has_encryption_key():
-            from fiftyone.internal.credentials import CloudCredentialsManager
+    # All methods that edit this module's globals share a single lock to
+    # prevent concurrency issues
+    with storage_lock:
+        _init_storage()
 
-            encryption_key = os.environ.get(fic.ENCRYPTION_KEY_ENV_VAR)
-            creds_manager = CloudCredentialsManager(encryption_key)
-        else:
-            creds_manager = None
 
-        global available_file_systems
-        available_file_systems = None
+def _init_storage():
+    global creds_manager
+    if fi.has_encryption_key():
+        from fiftyone.internal.credentials import CloudCredentialsManager
 
-        default_clients.clear()
-        bucket_regions.clear()
-        region_clients.clear()
-        bucket_clients.clear()
-        path_clients.clear()
-        minio_prefixes.clear()
-        azure_prefixes.clear()
+        encryption_key = os.environ.get(fic.ENCRYPTION_KEY_ENV_VAR)
+        creds_manager = CloudCredentialsManager(encryption_key)
+    else:
+        creds_manager = None
 
-        _load_minio_prefixes()
-        _load_azure_prefixes()
+    global available_file_systems
+    available_file_systems = None
+
+    default_clients.clear()
+    bucket_regions.clear()
+    region_clients.clear()
+    bucket_clients.clear()
+    path_clients.clear()
+    minio_prefixes.clear()
+    azure_prefixes.clear()
+
+    _load_minio_prefixes()
+    _load_azure_prefixes()
 
 
 def _load_minio_prefixes():
@@ -2528,17 +2533,22 @@ def run(fcn, tasks, return_results=True, num_workers=None, progress=None):
 
 
 def _get_client(fs=None, path=None, credentials_path=None):
-    # Client creation may not be thread-safe, so we lock for safety
+    _refresh_managed_credentials_if_necessary()
+
+    #
+    # All methods that edit this module's globals share a single lock to
+    # prevent concurrency issues
+    #
+    # Additionally, client creation may not be thread-safe
     # https://stackoverflow.com/a/61943955/16823653
-    with client_lock:
+    #
+    with storage_lock:
         return _do_get_client(
             fs=fs, path=path, credentials_path=credentials_path
         )
 
 
 def _do_get_client(fs=None, path=None, credentials_path=None):
-    _refresh_managed_credentials_if_necessary()
-
     if path is not None:
         fs = get_file_system(path)
     elif fs is None:
@@ -2565,9 +2575,6 @@ def _do_get_client(fs=None, path=None, credentials_path=None):
 
 
 def _get_bucket_client(fs, bucket):
-    if fs not in bucket_clients:
-        bucket_clients[fs] = {}
-
     client = bucket_clients[fs].get(bucket, None)
     if client is None:
         if fs in _FILE_SYSTEMS_WITH_REGIONAL_CLIENTS:
@@ -2598,9 +2605,6 @@ def _get_regional_client(fs, bucket):
     if region == _UNKNOWN_REGION:
         return _get_default_client(fs)
 
-    if fs not in region_clients:
-        region_clients[fs] = {}
-
     client = region_clients[fs].get(region, None)
     if client is None:
         try:
@@ -2617,9 +2621,6 @@ def _get_regional_client(fs, bucket):
 
 
 def _get_path_client(fs, credentials_path):
-    if fs not in path_clients:
-        path_clients[fs] = {}
-
     client = path_clients[fs].get(credentials_path, None)
     if client is None:
         try:
@@ -2652,9 +2653,6 @@ def _get_default_client(fs):
 
 
 def _get_region(fs, bucket):
-    if fs not in bucket_regions:
-        bucket_regions[fs] = {}
-
     region = bucket_regions[fs].get(bucket, None)
     if region is None:
         region = _do_get_region(fs, bucket)
