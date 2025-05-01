@@ -15,7 +15,6 @@ from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-import fiftyone as fo
 import fiftyone.core.odm as foo
 import fiftyone.server.view as fosv
 from fiftyone.server.decorators import route
@@ -58,8 +57,8 @@ async def _fetch_geo_points(
     else:
         pipeline = []
 
-    # only return the minimum amount of data needed to minimize network overhead
-    # if there is a regular index on the coordinates, querying this will be faster
+    # only return the minimum amount of data needed to minimize network
+    # overhead
     pipeline += [
         {
             "$project": {
@@ -69,12 +68,16 @@ async def _fetch_geo_points(
         },
     ]
 
-    collection = foo.get_db_conn()[collection_name]
+    collection = foo.get_async_db_conn()[collection_name]
 
     results = {}
 
-    for doc in collection.aggregate(pipeline):
-        results[str(doc["_id"])] = doc["coordinates"]
+    async for doc in collection.aggregate(pipeline):
+        try:
+            results[str(doc["_id"])] = doc["coordinates"]
+        except:
+            # invalid/missing entry
+            pass
 
     return results
 
@@ -97,12 +100,8 @@ class GeoPoints(HTTPEndpoint):
             )
 
         try:
-            dataset = fo.load_dataset(dataset_name)
-            if not dataset:
-                return JSONResponse(
-                    {"error": f"Dataset '{dataset_name}' not found"},
-                    status_code=404,
-                )
+            dataset = await fosv.load_view(dataset_name, [])
+            dataset = dataset._dataset
 
             last_modified_at = str(dataset.last_modified_at)
 
@@ -121,7 +120,8 @@ class GeoPoints(HTTPEndpoint):
                     f"Path {field_path} not found in schema for dataset {dataset_name}"
                 )
 
-            # pass the collection name to avoid loading the dataset again if no filters:
+            # pass the collection name to avoid loading the dataset again if no
+            # filters
             results = await _fetch_geo_points(
                 dataset_name,
                 dataset._sample_collection_name,

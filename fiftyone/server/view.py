@@ -40,9 +40,12 @@ class ExtendedViewForm:
 async def load_view(
     dataset_name: str,
     serialized_view: BSONArray,
-    form: ExtendedViewForm,
+    form: Optional[ExtendedViewForm] = None,
     view_name: Optional[str] = None,
 ) -> foc.SampleCollection:
+
+    form = form if form else ExtendedViewForm()
+
     def run() -> foc.SampleCollection:
         dataset = fod.load_dataset(dataset_name)
         if view_name:
