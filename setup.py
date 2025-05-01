@@ -33,7 +33,6 @@ INSTALL_REQUIRES = [
     # third-party packages
     "aiofiles",
     "argcomplete",
-    "async_lru>=2",
     "beautifulsoup4",
     "boto3",
     "cachetools",
