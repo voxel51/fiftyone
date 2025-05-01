@@ -119,13 +119,16 @@ The following media types are available:
     | `group`       | Datasets that contain                             |
     |               | :ref:`grouped data slices <groups>`               |
     +---------------+---------------------------------------------------+
-    | `unknown`     | Fallback value for Datasets that contain          |
+    | `unknown` †   | Fallback value for Datasets that contain          |
     |               | samples which are not one of the other listed     |
     |               | media types                                       |
     +---------------+---------------------------------------------------+
-    | custom type   | Datasets that contain samples with a custom media |
+    | custom type † | Datasets that contain samples with a custom media |
     |               | type will inherit that type                       |
     +---------------+---------------------------------------------------+
+
+† Warning for Enterprise users: Your deployment must be upgraded to version
+  `>=2.8.0` in order to use the `unknown` or "custom type" options.
 
 .. _dataset-persistence:
 
