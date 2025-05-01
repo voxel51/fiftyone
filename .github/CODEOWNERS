@@ -1,8 +1,26 @@
-# Shared GraphQL schema requires approval from both frontend and backend
+*   @voxel51/developers
 
-/package/graphql @voxel51/backend-devs @voxel51/frontend-devs
+# Shared GraphQL schema requires notification of both frontend and backend
+/package/graphql/ @voxel51/backend-devs @voxel51/frontend-devs
 
-# Aloha should keep their eyes on setup.py and requirements files
-setup.py @voxel51/aloha-shirts
+# Frontend
+.prettierignore   @voxel51/frontend-devs
+.prettierrc.js    @voxel51/frontend-devs
+/app/             @voxel51/frontend-devs
+/e2e-pw/          @voxel51/frontend-devs
+/fiftyone/server/ @voxel51/frontend-devs
+
+# Backend
+/fiftyone/api/         @voxel51/backend-devs
+/fiftyone/core/        @voxel51/backend-devs
+/fiftyone/factory/     @voxel51/backend-devs
+/fiftyone/internal/    @voxel51/backend-devs
+/fiftyone/management/  @voxel51/backend-devs
+/fiftyone/migrations/  @voxel51/backend-devs
+
+# Aloha!
+
+Dockerfile             @voxel51/aloha-shirts
 requirements.txt @voxel51/aloha-shirts
-requirements/ @voxel51/aloha-shirts
+setup.py               @voxel51/aloha-shirts
+/requirements/         @voxel51/aloha-shirts
