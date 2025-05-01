@@ -333,8 +333,8 @@ def _validate_db_version(config, client):
 def aggregate(collection, pipelines, hints=None, maxTimeMS=None):
     """Executes one or more aggregations on a collection.
 
-    Multiple aggregations are executed using multiple threads, and their
-    results are returned as lists rather than cursors.
+        Multiple aggregations are executed using multiple threads, and their
+        results are returned as lists rather than cursors.
 
     Args:
         collection: a ``pymongo.collection.Collection`` or
@@ -342,15 +342,15 @@ def aggregate(collection, pipelines, hints=None, maxTimeMS=None):
         pipelines: a MongoDB aggregation pipeline or a list of pipelines
         hints (None): a corresponding index hint or list of index hints for
             each pipeline
-        maxTimeMS (None): max timeout for the requests
+        maxTimeMS (None): max timeout for the request(s)
 
-    Returns:
-        -   If a single pipeline is provided, a
-            ``pymongo.command_cursor.CommandCursor`` or
-            ``motor.motor_asyncio.AsyncIOMotorCommandCursor`` is returned
+        Returns:
+            -   If a single pipeline is provided, a
+                ``pymongo.command_cursor.CommandCursor`` or
+                ``motor.motor_asyncio.AsyncIOMotorCommandCursor`` is returned
 
-        -   If multiple pipelines are provided, each cursor is extracted into
-            a list and the list of lists is returned
+            -   If multiple pipelines are provided, each cursor is extracted into
+                a list and the list of lists is returned
     """
     pipelines = list(pipelines)
     is_list = pipelines and not isinstance(pipelines[0], dict)

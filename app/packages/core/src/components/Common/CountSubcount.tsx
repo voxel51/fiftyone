@@ -1,7 +1,9 @@
 import { LoadingDots } from "@fiftyone/components";
 import React, { Suspense } from "react";
+import { ErrorBoundary } from "react-error-boundary";
 import type { RecoilValue } from "recoil";
 import { constSelector, useRecoilValue } from "recoil";
+import { TimedOut } from "../Grid/Header/Header";
 
 const CONST_SELECTOR = constSelector(null);
 
@@ -56,10 +58,12 @@ export const SuspenseEntryCounts = ({
   subcountAtom?: RecoilValue<number>;
 }) => {
   return (
-    <Suspense fallback={<EntryCounts />}>
-      <Suspense fallback={<EntryCounts countAtom={countAtom} />}>
-        <EntryCounts countAtom={countAtom} subcountAtom={subcountAtom} />
+    <ErrorBoundary fallback={<TimedOut />}>
+      <Suspense fallback={<EntryCounts />}>
+        <Suspense fallback={<EntryCounts countAtom={countAtom} />}>
+          <EntryCounts countAtom={countAtom} subcountAtom={subcountAtom} />
+        </Suspense>
       </Suspense>
-    </Suspense>
+    </ErrorBoundary>
   );
 };
