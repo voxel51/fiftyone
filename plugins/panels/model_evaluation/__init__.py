@@ -1111,6 +1111,13 @@ class EvaluationPanel(Panel):
                         None,
                     )
 
+                # refresh clicked
+                should_refresh_cache = ctx.params.get("refresh_cache", False)
+                if should_refresh_cache:
+                    self.get_scenario_data.clear_cache(
+                        self, ctx, validated_scenario
+                    )
+
                 scenario_data = self.get_scenario_data(ctx, validated_scenario)
 
                 ctx.panel.set_state("scenario_load_error", None)
@@ -1119,7 +1126,8 @@ class EvaluationPanel(Panel):
                     scenario_data,
                 )
                 ctx.panel.set_state("scenario_loading", False)
-        except Exception:
+        except Exception as e:
+            print("error", e)
             ctx.panel.set_state("scenario_loading", False)
             msg = f"We couldn't load this scenario because the underlying data has changed or been removed. To continue your analysis you can,"
             ctx.panel.set_state(
