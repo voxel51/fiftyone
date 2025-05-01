@@ -153,7 +153,9 @@ class ConfigureScenario(foo.Operator):
 
         return key
 
-    @execution_cache(key_fn=get_subset_def_data_for_eval_key)
+    @execution_cache(
+        key_fn=get_subset_def_data_for_eval_key, prompt_scoped=True
+    )
     def get_subset_def_data_for_eval(
         self, ctx, _, eval_result, name, subset_def
     ):

@@ -158,8 +158,18 @@ export default function NativeModelEvaluationView(props) {
           loadScenarios={(callback) => {
             triggerEvent(load_scenarios, undefined, false, callback);
           }}
-          loadScenario={(id: string, key?: string, callback?: () => void) => {
-            triggerEvent(load_scenario, { id, key }, false, callback);
+          loadScenario={(
+            id: string,
+            key?: string,
+            callback?: () => void,
+            refresh_cache?: false
+          ) => {
+            triggerEvent(
+              load_scenario,
+              { id, key, refresh_cache },
+              false,
+              callback
+            );
           }}
           deleteScenario={(scenarioId: string, callback?: () => void) => {
             triggerEvent(

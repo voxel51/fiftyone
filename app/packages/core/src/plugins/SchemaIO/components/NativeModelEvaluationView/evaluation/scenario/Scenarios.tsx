@@ -332,9 +332,14 @@ export default function Scenarios(props) {
             color="secondary"
             onClick={() => {
               setLoadingScenario(true);
-              loadScenario(scenario, undefined, () => {
-                setLoadingScenario(false);
-              });
+              loadScenario(
+                scenario,
+                undefined,
+                () => {
+                  setLoadingScenario(false);
+                },
+                true
+              );
             }}
           >
             <Autorenew />
