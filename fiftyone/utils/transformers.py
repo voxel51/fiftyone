@@ -434,7 +434,7 @@ class TransformerEmbeddingsMixin(EmbeddingsMixin):
             else tuple(range(2, num_dims))
         )
         # aggregate all but batch and channel dims
-        return agg_fcn(embeddings, axis=tuple(range(1, num_dims - 1)))
+        return agg_fcn(embeddings, axis=tuple(range(agg_dims)))
 
     @property
     def embeddings_output_key(self):
@@ -918,6 +918,8 @@ class FiftyOneZeroShotTransformerForObjectDetection(
         self._output_processor.processor = self.transforms.processor
         # ew
         self.transforms.return_image_sizes = True
+        self.transforms.text = self.text_prompts
+        self.transforms.text_per_image = True
 
     def _predict_all(self, args):
         # now this is even worse.
@@ -926,21 +928,21 @@ class FiftyOneZeroShotTransformerForObjectDetection(
         # why
         # I ask again
         # why
-        if self.preprocess:
-            args = {
-                "images": args,
-                "text": [
-                    self.text_prompts for _ in range(len(args))
-                ],  # inject text prompts
-            }
-        else:
-            args.update(
-                {
-                    "input_ids": torch.cat(
-                        [self.input_ids] * len(args["pixel_values"])
-                    )
-                }
-            )
+        # if self.preprocess:
+        #     args = {
+        #         "images": args,
+        #         "text": [
+        #             self.text_prompts for _ in range(len(args))
+        #         ],  # inject text prompts
+        #     }
+        # else:
+        #     args.update(
+        #         {
+        #             "input_ids": torch.cat(
+        #                 [self.input_ids] * len(args["pixel_values"])
+        #             )
+        #         }
+        #     )
         return FiftyOneTransformer._predict_all(self, args)
 
 
@@ -1172,6 +1174,8 @@ class _HFTransformsHandler:
         self.kwargs = kwargs
         if "return_tensors" not in kwargs:
             self.kwargs["return_tensors"] = "pt"
+        self.text = None  # passed in by model after init
+        self.text_per_image = False  # passed in by model after init
 
     def __call__(self, args):
         if isinstance(args, dict):
@@ -1186,18 +1190,43 @@ class _HFTransformsHandler:
             res = self.processor(**args, **self.kwargs)
         else:
             # single input, most likely either a list of images or a single image
+            num_images = len(args) if isinstance(args, list) else 1
             if self.return_image_sizes:
                 image_size = (
                     [_get_image_size(img) for img in args]
                     if isinstance(args, list)
                     else [_get_image_size(args)]
                 )
-            res = self.processor(images=args, **self.kwargs)
+            if self.text:
+                res = self.processor(
+                    images=args,
+                    text=self.text
+                    if not self.text_per_image
+                    else [self.text for _ in range(num_images)],
+                    **self.kwargs,
+                )
+            else:
+                res = self.processor(images=args, **self.kwargs)
 
         if self.return_image_sizes:
             res.update({"fo_image_size": torch.tensor(image_size)})
 
         return res
+
+
+class TransformersZeroShotClassifierOutputProcessor(
+    fout.ClassifierOutputProcessor
+):
+    """Output processor for HuggingFace Transformers zero-shot image
+    classification models.
+
+    Args:
+        store_logits (False): whether to store the logits in the output
+        logits_key ("logits"): the key to use for the logits in the output
+    """
+
+    def __call__(self, output, _, confidence_thresh=None):
+        return super().__call__(output.logits_per_image, _, confidence_thresh)
 
 
 class TransformersDetectorOutputProcessor(fout.DetectorOutputProcessor):
@@ -1211,6 +1240,7 @@ class TransformersDetectorOutputProcessor(fout.DetectorOutputProcessor):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._processor = None
+        self._objection_detection_processor = None
 
     @property
     def processor(self):
@@ -1223,13 +1253,35 @@ class TransformersDetectorOutputProcessor(fout.DetectorOutputProcessor):
     @processor.setter
     def processor(self, processor):
         self._processor = processor
+        if self._processor is not None:
+            if hasattr(self._processor, "post_process_object_detection"):
+                self._objection_detection_processor = (
+                    self._processor.post_process_object_detection
+                )
+            elif hasattr(
+                self._processor, "post_process_grounded_object_detection"
+            ):
+                self._objection_detection_processor = (
+                    self._processor.post_process_grounded_object_detection
+                )
+            else:
+                raise ValueError(
+                    "Processor does not have a post_process_object_detection "
+                    "or post_process_grounded_object_detection method."
+                )
 
     def __call__(self, output, image_sizes, confidence_thresh=None):
-        output = self.processor.post_process_object_detection(
+        output = self._objection_detection_processor(
             output, target_sizes=image_sizes, threshold=confidence_thresh or 0
         )
         res = []
         for o, img_sz in zip(output, image_sizes):
+            # print(o)
+            # if 'text_labels' in o:
+            #     # this is a grounded object detection model
+            #     o["labels"] = torch.tensor([
+            #         label for label in o["text_labels"]
+            #     ])
             res.append(
                 self._parse_output(
                     o,
