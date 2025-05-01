@@ -74,7 +74,8 @@ export const useSortBySimilarity = (close) => {
             [dataset.datasetId]: combinedParameters.brainKey,
           })
         );
-        await getFetchFunction()("POST", "/sort", {
+
+        const stage = await getFetchFunction()("POST", "/sort", {
           dataset: dataset.name,
           view,
           subscription,
@@ -82,7 +83,7 @@ export const useSortBySimilarity = (close) => {
           extended: toSnakeCase(combinedParameters),
           slice,
         });
-        set(fos.similarityParameters, combinedParameters);
+        set(fos.similarityParameters, Object.fromEntries(stage.kwargs));
         close();
       },
     []
