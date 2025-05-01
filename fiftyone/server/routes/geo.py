@@ -15,7 +15,6 @@ from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-import fiftyone as fo
 import fiftyone.core.odm as foo
 import fiftyone.server.view as fosv
 from fiftyone.server.decorators import route
@@ -74,7 +73,11 @@ async def _fetch_geo_points(
     results = {}
 
     async for doc in collection.aggregate(pipeline):
-        results[str(doc["_id"])] = doc["coordinates"]
+        try:
+            results[str(doc["_id"])] = doc["coordinates"]
+        except:
+            # invalid/missing entry
+            pass
 
     return results
 
@@ -117,7 +120,8 @@ class GeoPoints(HTTPEndpoint):
                     f"Path {field_path} not found in schema for dataset {dataset_name}"
                 )
 
-            # pass the collection name to avoid loading the dataset again if no filters:
+            # pass the collection name to avoid loading the dataset again if no
+            # filters
             results = await _fetch_geo_points(
                 dataset_name,
                 dataset._sample_collection_name,
