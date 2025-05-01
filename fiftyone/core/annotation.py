@@ -13,7 +13,7 @@ from fiftyone.core.runs import (
 )
 from fiftyone.core.odm import patch_annotation_runs
 
-# touch
+
 class AnnotationInfo(BaseRunInfo):
     """Information about an annotation run on a dataset.
 
