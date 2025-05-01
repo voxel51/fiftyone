@@ -68,7 +68,7 @@ async def _fetch_geo_points(
     results = {}
 
     async for result in agg_results:
-        if result and "_id" in result and "coordinates" in result:
+        if result:
             results[str(result["_id"])] = result["coordinates"]
 
     return results
