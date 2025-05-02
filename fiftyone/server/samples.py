@@ -68,16 +68,13 @@ class VideoSample(Sample):
     frame_rate: float
 
 
-SampleItem = gql.union(
-    "SampleItem",
-    types=(
-        ImageSample,
-        PointCloudSample,
-        ThreeDSample,
-        VideoSample,
-        UnknownSample,
-    ),
-)
+SampleItem = t.Annotated[
+    t.Union[
+        ImageSample, PointCloudSample, ThreeDSample, VideoSample, UnknownSample
+    ],
+    gql.union("SampleItem"),
+]
+
 
 MEDIA_TYPES = collections.defaultdict(lambda: UnknownSample)
 MEDIA_TYPES.update(
@@ -99,6 +96,9 @@ async def paginate_samples(
     extended_stages: t.Optional[BSON] = None,
     sample_filter: t.Optional[SampleFilter] = None,
     pagination_data: t.Optional[bool] = False,
+    sort_by: t.Optional[str] = None,
+    desc: t.Optional[bool] = False,
+    hint: t.Optional[str] = None,
 ) -> Connection[t.Union[ImageSample, VideoSample], str]:
     run = lambda reload: fosv.get_view(
         dataset,
@@ -108,6 +108,8 @@ async def paginate_samples(
         extended_stages=extended_stages,
         sample_filter=sample_filter,
         reload=reload,
+        sort_by=sort_by,
+        desc=desc,
     )
     try:
         view = await run_sync_task(run, False)
@@ -124,6 +126,7 @@ async def paginate_samples(
     samples = await foo.aggregate(
         foo.get_async_db_conn()[view._dataset._sample_collection_name],
         pipeline,
+        hint,
     ).to_list(first + 1)
 
     more = False

@@ -31,7 +31,8 @@ export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
       isExtendedSelectionOn ||
         hasFiltersValue ||
         selectedSampleSet.size > 0 ||
-        isAttributeVisibilityOn
+        isAttributeVisibilityOn ||
+        get(fos.gridSortBy)
     );
   },
 });
@@ -45,6 +46,7 @@ export default ({ adaptiveMenuItemProps }: ActionProps) => {
         const loading = await snapshot.getPromise(fos.savingFilters);
         const selected = await snapshot.getPromise(fos.selectedSamples);
         const fvStage = await snapshot.getPromise(fos.fieldVisibilityStage);
+        const datasetId = (await snapshot.getPromise(fos.datasetId)) || "";
 
         if (loading) {
           return;
@@ -54,6 +56,8 @@ export default ({ adaptiveMenuItemProps }: ActionProps) => {
           set(fos.savingFilters, false);
           reset(fos.extendedSelection);
           reset(fos.viewStateForm_INTERNAL);
+          reset(fos.gridSortByStore(datasetId));
+          reset(fos.gridSortDescendingStore(datasetId));
           unsubscribe();
         });
 

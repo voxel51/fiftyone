@@ -8,8 +8,13 @@ import {
   datasetFragment$key,
   graphQLSyncFragmentAtom,
 } from "@fiftyone/relay";
-import { currentSlice, fieldVisibilityStage, isGroup } from "@fiftyone/state";
-import { is3d, toSnakeCase } from "@fiftyone/utilities";
+import {
+  currentSlice,
+  fieldVisibilityStage,
+  gridSortBy,
+  isGroup,
+} from "@fiftyone/state";
+import { is3d } from "@fiftyone/utilities";
 import { DefaultValue, atomFamily, selector, selectorFamily } from "recoil";
 import { v4 as uuid } from "uuid";
 import * as atoms from "./atoms";
@@ -487,9 +492,10 @@ export const extendedStagesUnsorted = selector({
 export const extendedStages = selector({
   key: "extendedStages",
   get: ({ get }) => {
+    const sort = get(gridSortBy);
     const similarity = get(atoms.similarityParameters);
     const fvStage = get(fieldVisibilityStage);
-    const rest = fvStage?.cls
+    const rest: object = fvStage?.cls
       ? {
           [fvStage.cls]: {
             field_names: fvStage.kwargs.field_names,
@@ -498,11 +504,47 @@ export const extendedStages = selector({
         }
       : {};
 
+    if (similarity) {
+      rest["fiftyone.core.stages.SortBySimilarity"] = similarity
+        ? similarity
+        : undefined;
+    } else if (sort) {
+      rest["fiftyone.core.stages.SortBy"] = {
+        field_or_expr: sort.field,
+        reverse: sort.descending,
+        create_index: false,
+      };
+    }
+
     return {
       ...get(extendedStagesUnsorted),
-      "fiftyone.core.stages.SortBySimilarity": similarity
-        ? toSnakeCase(similarity)
-        : undefined,
+      ...rest,
+    };
+  },
+});
+
+export const extendedStagesNoSort = selector({
+  key: "extendedStagesNoSort",
+  get: ({ get }) => {
+    const similarity = get(atoms.similarityParameters);
+    const fvStage = get(fieldVisibilityStage);
+    const rest: object = fvStage?.cls
+      ? {
+          [fvStage.cls]: {
+            field_names: fvStage.kwargs.field_names,
+            _allow_missing: true,
+          },
+        }
+      : {};
+
+    if (similarity) {
+      rest["fiftyone.core.stages.SortBySimilarity"] = similarity
+        ? similarity
+        : undefined;
+    }
+
+    return {
+      ...get(extendedStagesUnsorted),
       ...rest,
     };
   },

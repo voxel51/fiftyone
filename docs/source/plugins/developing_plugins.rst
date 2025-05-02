@@ -2511,6 +2511,11 @@ To cache a function's result scoped to the current ``ctx.dataset``, use the
     def user_specific_query(ctx, path):
         return ctx.dataset.match(F("creator_id") == ctx.user_id).count_values(path)
 
+    @execution_cache(residency="ephemeral")
+    def example_custom_residency(ctx, path):
+        # this value will only be cached in memory
+        return ctx.dataset.count_values(path)
+
     # Bypass the cache
     result = expensive_query.uncached(ctx, path)
 
@@ -2552,6 +2557,10 @@ to the decorator:
 - ``prompt_scoped``: Cache is tied to the current prompt ID
 - ``jwt_scoped``: Cache is tied to the current user's JWT
 - ``serialize`` / ``deserialize``: Custom (de)serialization functions
+- ``residency``: Cache residency policy (default is ``hybrid``)
+
+See the :func:`execution_cache <fiftyone.operators.cache.execution_cache>`
+documentation for more details.
 
 For example, caching a sample using custom serialization:
 

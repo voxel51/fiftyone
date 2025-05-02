@@ -22,8 +22,6 @@ from PIL import Image
 import eta.core.geometry as etag
 import eta.core.learning as etal
 import eta.core.utils as etau
-from torchvision.models.feature_extraction import create_feature_extractor
-import torchvision.transforms.functional
 
 import fiftyone.core.config as foc
 import fiftyone.core.labels as fol
@@ -38,11 +36,14 @@ import fiftyone.core.view as fov
 import fiftyone.core.validation as foval
 
 fou.ensure_torch()
+
 import torch
-import torchvision
-from torchvision.transforms import functional as F
 from torch.utils.data import Dataset
 import torch.distributed as dist
+
+import torchvision
+from torchvision.models.feature_extraction import create_feature_extractor
+from torchvision.transforms import functional as F
 
 
 logger = logging.getLogger(__name__)
@@ -1876,7 +1877,9 @@ class FiftyOneTorchDataset(Dataset):
 
         if self.cached_fields is None:
             # pylint: disable=unsubscriptable-object
-            sample = self._dataset[self.ids[index]]
+            sample = fov.make_optimized_select_view(
+                self._samples, self.ids[index]
+            ).first()
             return self._get_item(sample)
 
         else:
@@ -1893,7 +1896,9 @@ class FiftyOneTorchDataset(Dataset):
         if self.cached_fields is None:
             ids = [self.ids[i] for i in indices]
             # pylint: disable=unsubscriptable-object
-            samples = self._dataset.select(ids, ordered=True)
+            samples = fov.make_optimized_select_view(
+                self._samples, ids, ordered=True
+            )
             return [self._get_item(s) for s in samples]
 
         else:

@@ -1,7 +1,7 @@
 import { Tooltip } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { Bolt } from "@mui/icons-material";
-import React from "react";
+import React, { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Arrow from "./Arrow";
@@ -10,12 +10,18 @@ const LightningIcon = styled(Bolt)`
   color: ${({ theme }) => theme.text.secondary};
 `;
 
-export const LightningBolt: React.FC = (_) => {
+export const LightningBolt = ({
+  color,
+  tooltip,
+}: {
+  color?: string;
+  tooltip?: string;
+}) => {
   return (
-    <Tooltip placement="top-center" text={"Indexed"}>
+    <Tooltip placement="top-center" text={tooltip}>
       <LightningIcon
         data-cy={"query-performance"}
-        style={{ height: 16, marginRight: 2, width: 16 }}
+        style={{ height: 16, marginRight: 2, width: 16, color }}
       />
     </Tooltip>
   );
@@ -28,11 +34,36 @@ const Lightning = ({
   path: string;
   frameFilteringDisabled: boolean;
 }) => {
+  const color = useRecoilValue(fos.pathColor(path));
+  const compound = useRecoilValue(fos.isCompoundIndexed(path));
   const expandedPath = useRecoilValue(fos.expandPath(path));
+  const gridOptimized = useRecoilValue(
+    fos.pathHasIndexes({ path, withFilters: true })
+  );
+  const sidebarOptimized = useRecoilValue(
+    fos.pathHasIndexes({ path, withFilters: false })
+  );
+
+  const tooltip = useMemo(() => {
+    const tooltip = compound ? "Compound indexed" : "Indexed";
+
+    if (gridOptimized && sidebarOptimized) {
+      return `${tooltip}. Sidebar and grid are optimized`;
+    }
+
+    if (gridOptimized) {
+      return `${tooltip}. Grid is optimized`;
+    }
+
+    return `${tooltip}. Sidebar is optimized`;
+  }, [compound, gridOptimized, sidebarOptimized]);
 
   return (
     <>
-      <LightningBolt />
+      <LightningBolt
+        color={gridOptimized ? color : undefined}
+        tooltip={tooltip}
+      />
       <Arrow
         expanded={fos.sidebarExpanded({ modal: false, path: expandedPath })}
         id={path}
@@ -47,11 +78,14 @@ const IconWrapper = ({ modal, path }: { modal: boolean; path: string }) => {
   const expandedPath = useRecoilValue(fos.expandPath(path));
   const frameFilteringDisabled =
     useRecoilValue(fos.isDisabledFrameFilterPath(path)) && !modal;
-  const indexed = useRecoilValue(fos.pathHasIndexes(path));
+  const indexed = useRecoilValue(fos.pathHasIndexes({ path }));
+  const filteredIndex = useRecoilValue(
+    fos.pathHasIndexes({ path, withFilters: true })
+  );
   const queryPerformance = useRecoilValue(fos.queryPerformance);
   const frameField = useRecoilValue(fos.isFrameField(path));
 
-  if (queryPerformance && indexed && !modal && !frameField) {
+  if (queryPerformance && (indexed || filteredIndex) && !modal && !frameField) {
     return (
       <Lightning path={path} frameFilteringDisabled={frameFilteringDisabled} />
     );

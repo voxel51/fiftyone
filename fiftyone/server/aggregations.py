@@ -43,6 +43,7 @@ class AggregationForm:
     view: BSONArray
     view_name: t.Optional[str] = None
     query_performance: t.Optional[bool] = False
+    hint: t.Optional[str] = None
 
 
 @gql.interface
@@ -96,17 +97,17 @@ class StringAggregation(Aggregation):
     values: t.Optional[t.List[StringAggregationValue]] = None
 
 
-AggregateResult = gql.union(
-    "AggregateResult",
-    (
+AggregateResult = t.Annotated[
+    t.Union[
         BooleanAggregation,
         DataAggregation,
         IntAggregation,
         FloatAggregation,
         RootAggregation,
         StringAggregation,
-    ),
-)
+    ],
+    gql.union("AggregateResult"),
+]
 
 
 async def aggregate_resolver(
@@ -143,19 +144,16 @@ async def aggregate_resolver(
 
     aggregations, deserializers = zip(
         *[
-            _resolve_path_aggregation(path, view, form.query_performance)
+            _resolve_path_aggregation(
+                path, view, form.query_performance, form.hint
+            )
             for path in form.paths
         ]
     )
     counts = [len(a) for a in aggregations]
     flattened = [item for sublist in aggregations for item in sublist]
 
-    # TODO: stop aggregate resolver from being called for non-existent fields,
-    #  but fail silently for now by just returning empty results
-    try:
-        result = await view._async_aggregate(flattened)
-    except:
-        return []
+    result = await view._async_aggregate(flattened)
 
     results = []
     offset = 0
@@ -213,11 +211,16 @@ async def _load_view(form: AggregationForm, slices: t.List[str]):
 
 
 def _resolve_path_aggregation(
-    path: str, view: foc.SampleCollection, query_performance: bool
+    path: str,
+    view: foc.SampleCollection,
+    query_performance: bool,
+    hint: t.Optional[str] = None,
 ) -> AggregateResult:
     aggregations: t.List[foa.Aggregation] = [
         foa.Count(
-            path if path and path != "" else None, _optimize=query_performance
+            path if path and path != "" else None,
+            _optimize=query_performance,
+            _hint=hint if query_performance else None,
         )
     ]
     field = view.get_field(path)

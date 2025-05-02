@@ -18,6 +18,7 @@ import fiftyone.core.odm as foo
 from fiftyone.core.singletons import FrameSingleton
 import fiftyone.core.utils as fou
 
+fos = fou.lazy_import("fiftyone.core.sample")
 fov = fou.lazy_import("fiftyone.core.view")
 
 
@@ -142,6 +143,10 @@ class Frames(object):
     @property
     def _frame_collection(self):
         return self._dataset._frame_collection
+
+    @property
+    def _sample_collection_name(self):
+        return self._dataset._sample_collection_name
 
     @property
     def _frame_collection_name(self):
@@ -488,9 +493,15 @@ class Frames(object):
                 "a dataset"
             )
 
-        delete_ops = self._save_deletions(deferred=deferred)
+        sample_ops, delete_ops = self._save_deletions(deferred=deferred)
         replace_ops = self._save_replacements(deferred=deferred)
-        return delete_ops + replace_ops
+
+        if deferred:
+            frame_ops = delete_ops + replace_ops
+        else:
+            frame_ops = None
+
+        return sample_ops, frame_ops
 
     def reload(self, hard=False):
         """Reloads all frames for the sample from the database.
@@ -677,37 +688,57 @@ class Frames(object):
         }
 
     def _save_deletions(self, deferred=False):
-        ops = []
+        now = datetime.utcnow()
+
+        sample_ops = []
+        frame_ops = []
 
         if self._delete_all:
-            if deferred:
-                ops.append(DeleteMany({"_sample_id": self._sample_id}))
-            else:
-                self._frame_collection.delete_many(
-                    {"_sample_id": self._sample_id}
+            sample_ops.append(
+                UpdateOne(
+                    {"_id": self._sample_id},
+                    {"$set": {"last_modified_at": now}},
                 )
+            )
+            frame_ops.append(DeleteMany({"_sample_id": self._sample_id}))
 
+            if not deferred:
+                foo.bulk_write(frame_ops, self._frame_collection)
+                foo.bulk_write(sample_ops, self._sample_collection)
+
+                fos.Sample._reload_doc(
+                    self._sample_collection_name, self._sample.id
+                )
                 Frame._reset_docs(
                     self._frame_collection_name, sample_ids=[self._sample.id]
                 )
 
             self._delete_all = False
             self._delete_frames.clear()
-
-        if self._delete_frames:
-            ops = [
-                DeleteOne(
-                    {
-                        "_sample_id": self._sample_id,
-                        "frame_number": frame_number,
-                    }
+        elif self._delete_frames:
+            sample_ops.append(
+                UpdateOne(
+                    {"_id": self._sample_id},
+                    {"$set": {"last_modified_at": now}},
                 )
-                for frame_number in self._delete_frames
-            ]
+            )
+            for frame_number in self._delete_frames:
+                frame_ops.append(
+                    DeleteOne(
+                        {
+                            "_sample_id": self._sample_id,
+                            "frame_number": frame_number,
+                        }
+                    )
+                )
 
             if not deferred:
-                self._frame_collection.bulk_write(ops, ordered=False)
+                foo.bulk_write(frame_ops, self._frame_collection)
+                foo.bulk_write(sample_ops, self._sample_collection)
 
+                fos.Sample._reload_doc(
+                    self._sample_collection_name, self._sample.id
+                )
                 Frame._reset_docs_for_sample(
                     self._frame_collection_name,
                     self._sample.id,
@@ -716,7 +747,10 @@ class Frames(object):
 
             self._delete_frames.clear()
 
-        return ops
+        if deferred:
+            return sample_ops, frame_ops
+
+        return None, None
 
     def _save_replacements(
         self, include_singletons=True, validate=True, deferred=False, **kwargs
@@ -742,7 +776,10 @@ class Frames(object):
             replacements = self._replacements
 
         if not replacements:
-            return []
+            if deferred:
+                return []
+
+            return None
 
         if validate:
             schema = self._dataset.get_frame_field_schema(include_private=True)
@@ -775,12 +812,12 @@ class Frames(object):
                 _ops = frame._doc._save(
                     deferred=True, validate=validate, **kwargs
                 )
-                if _ops is not None:
+                if _ops:
                     ops.extend(_ops)
 
         if not deferred:
             if ops:
-                self._frame_collection.bulk_write(ops, ordered=False)
+                foo.bulk_write(ops, self._frame_collection)
 
             if new_dicts:
                 ids_map = self._get_ids_map()
@@ -793,7 +830,10 @@ class Frames(object):
 
         self._replacements.clear()
 
-        return ops
+        if deferred:
+            return ops
+
+        return None
 
     def _validate_frame(self, frame, schema):
         non_existent_fields = None

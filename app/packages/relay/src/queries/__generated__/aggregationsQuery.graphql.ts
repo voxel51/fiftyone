@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<881e44ed7a20e117c89dd22661bc1a0d>>
+ * @generated SignedSource<<6cdb13f3ab3a33af4425c230a1bb0a8d>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,6 +15,7 @@ export type AggregationForm = {
   filters?: object | null;
   groupId?: string | null;
   hiddenLabels: ReadonlyArray<SelectedLabel>;
+  hint?: string | null;
   index?: number | null;
   mixed: boolean;
   paths: ReadonlyArray<string>;
@@ -28,6 +29,7 @@ export type AggregationForm = {
 export type SelectedLabel = {
   field: string;
   frameNumber?: number | null;
+  instanceId?: string | null;
   labelId: string;
   sampleId: string;
 };

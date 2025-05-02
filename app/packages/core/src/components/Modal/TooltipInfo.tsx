@@ -1,5 +1,6 @@
 import { IconButton, Tooltip } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import { isHoveringAnyLabelWithInstanceConfig } from "@fiftyone/state/src/jotai";
 import CloseIcon from "@mui/icons-material/Close";
 import ArrowDropDownIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
 import ArrowUpIcon from "@mui/icons-material/KeyboardArrowUpOutlined";
@@ -30,7 +31,7 @@ const TooltipDiv = animated(styled(ContentDiv)<{ $isTooltipLocked: boolean }>`
   left: -1000;
   top: -1000;
   z-index: 20000;
-  min-width: 13rem;
+  min-width: 15rem;
   pointer-events: ${(props) => (props.$isTooltipLocked ? "auto" : "none")};
 `);
 
@@ -116,9 +117,46 @@ const ContentName = styled.div`
 
 const CtrlToLockContainer = styled.div`
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: end;
-  width: 5em;
+  justify-content: center;
+  margin-top: 0.5em;
+`;
+
+const ShortcutRow = styled.div`
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  align-items: center;
+  margin: 2px 0;
+`;
+
+const ShortcutAction = styled(Typography)`
+  text-align: left;
+  flex: 1;
+`;
+
+const ShortcutKey = styled.div`
+  display: flex;
+  align-items: center;
+  margin-left: 7px;
+`;
+
+const KeyboardKey = styled.span`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f0f0f0;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  padding: 1px 4px;
+  margin-left: 3px;
+  font-size: 0.4em;
+  font-weight: 600;
+  color: #333;
+  min-width: 12px;
+  height: 12px;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
 `;
 
 const getHiddenLabelsKey = (datasetName: string, labelName: string) => {
@@ -479,7 +517,7 @@ const Header = ({ title }: { title: string }) => {
       key="header"
       id={TOOLTIP_HEADER_ID}
     >
-      <span>{title}</span>
+      <span style={{ fontSize: "0.8rem" }}>{title}</span>
       {isTooltipLocked ? (
         <IconButton
           size="small"
@@ -498,11 +536,29 @@ const Header = ({ title }: { title: string }) => {
 };
 
 const CtrlToLock = () => {
+  const shouldShowSimilar = isHoveringAnyLabelWithInstanceConfig();
+
   return (
     <CtrlToLockContainer>
-      <Typography variant="caption" color="gray" fontSize={"0.43em"}>
-        Press Ctrl to modify tooltip
-      </Typography>
+      <ShortcutRow>
+        <ShortcutAction variant="caption" color="gray" fontSize={"0.5rem"}>
+          Lock tooltip
+        </ShortcutAction>
+        <ShortcutKey>
+          <KeyboardKey>Ctrl</KeyboardKey>
+        </ShortcutKey>
+      </ShortcutRow>
+      {shouldShowSimilar && (
+        <ShortcutRow>
+          <ShortcutAction variant="caption" color="gray" fontSize={"0.5rem"}>
+            Select similar
+          </ShortcutAction>
+          <ShortcutKey>
+            <KeyboardKey>Shift</KeyboardKey>
+            <KeyboardKey>Click</KeyboardKey>
+          </ShortcutKey>
+        </ShortcutRow>
+      )}
     </CtrlToLockContainer>
   );
 };
@@ -567,12 +623,25 @@ const AttrInfo = ({ label, field, labelType, children = null }) => {
         ])
       : null;
 
+  // we're prettifying the instance config attributes here
+  const instanceAttributes = label.instance
+    ? Object.entries(label.instance)
+        .filter(
+          ([k, v]) =>
+            typeof v === "string" &&
+            v.length > 0 &&
+            (k === "_id" || !k.startsWith("_"))
+        )
+        .map(([k, v]) => ["instance " + (k === "_id" ? "id" : k), v])
+    : null;
+
   return (
     <>
       {defaults.map(mapper)}
       {children}
       {other.map(mapper)}
       {attributes && attributes.map(mapper)}
+      {instanceAttributes && instanceAttributes.map(mapper)}
     </>
   );
 };
