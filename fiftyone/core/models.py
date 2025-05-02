@@ -745,12 +745,6 @@ def _make_data_loader(samples, model, batch_size, num_workers, skip_failures):
                 return error
 
             try:
-                # collate_fn is just for TorchImageModels
-                # this means that it's fine to only assign
-                # collate_fn here, because other models
-                # use the other branches e.g. use_numpy==True
-                # or if a model has ragged_batches==True
-                # then it shouldn't have a collate_fn
                 if model.has_collate_fn:
                     return model.collate_fn(batch)
                 else:
@@ -2293,7 +2287,33 @@ class TorchModelMixin(object):
     applied to each input before prediction.
     """
 
-    pass
+    @property
+    def has_collate_fn(self):
+        """Whether this model has a custom collate function.
+        Set this to True if you want the method `collate_fn` to
+        be used instead of the default.
+        """
+        return False
+
+    @staticmethod
+    def collate_fn(batch):
+        """The collate function to use when creating a dataloader
+        for this model. By default, this is the identity function.
+
+        In order to enable this functionality, the model must set
+        the `has_collate_fn` property to True.
+
+        The user can override this method with a collate function of their choosing.
+        Please make sure this collate function is serializable so it is compatible
+        with multiprocessing for dataloaders.
+
+        Args:
+            batch: a list of items to collate
+
+        Returns:
+            the collated batch, this will be fed directly to the model
+        """
+        return batch
 
 
 class ModelManagerConfig(etam.ModelManagerConfig):
