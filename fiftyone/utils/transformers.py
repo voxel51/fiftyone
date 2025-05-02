@@ -11,13 +11,12 @@ from copy import deepcopy
 import logging
 import warnings
 
-import eta.core.utils as etau
 import numpy as np
 from PIL import Image
 
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
-from fiftyone.core.models import EmbeddingsMixin, Model, PromptMixin
+from fiftyone.core.models import EmbeddingsMixin, PromptMixin
 from fiftyone.zoo.models import HasZooModel
 import fiftyone.utils.torch as fout
 
@@ -922,27 +921,11 @@ class FiftyOneZeroShotTransformerForObjectDetection(
         self.transforms.text_per_image = True
 
     def _predict_all(self, args):
-        # now this is even worse.
-        # zero shot models in HFT need to have prompts passed
-        # for each image
-        # why
-        # I ask again
-        # why
-        # if self.preprocess:
-        #     args = {
-        #         "images": args,
-        #         "text": [
-        #             self.text_prompts for _ in range(len(args))
-        #         ],  # inject text prompts
-        #     }
-        # else:
-        #     args.update(
-        #         {
-        #             "input_ids": torch.cat(
-        #                 [self.input_ids] * len(args["pixel_values"])
-        #             )
-        #         }
-        #     )
+        # we can skip injecting the text prompts here
+        # it's done in the transforms
+        # we can get away with it here because unlike
+        # zero shot classification, we have to pass
+        # the text query for each image
         return FiftyOneTransformer._predict_all(self, args)
 
 
