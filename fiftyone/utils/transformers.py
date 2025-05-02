@@ -433,7 +433,8 @@ class TransformerEmbeddingsMixin(EmbeddingsMixin):
             else tuple(range(2, num_dims))
         )
         # aggregate all but batch and channel dims
-        return agg_fcn(embeddings, axis=tuple(range(agg_dims)))
+        res = agg_fcn(embeddings, axis=agg_dims)
+        return res
 
     @property
     def embeddings_output_key(self):
