@@ -23,7 +23,6 @@ import fiftyone.utils.torch as fout
 fou.ensure_torch()
 import torch
 
-fou.ensure_package("transformers")
 import transformers
 
 
