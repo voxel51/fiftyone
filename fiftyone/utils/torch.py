@@ -743,7 +743,7 @@ class TorchImageModel(
     def _predict_all(self, imgs):
         if self._preprocess and self._transforms is not None:
             imgs = [self._transforms(img) for img in imgs]
-            if hasattr(self, "collate_fn"):
+            if self.has_collate_fn:
                 # models that have collate_fn defined
                 # will want to use it when doing _predict_all
                 # without a dataloader
