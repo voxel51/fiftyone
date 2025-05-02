@@ -44,7 +44,7 @@ class AggregationForm:
     slices: t.Optional[t.List[str]]
     view: BSONArray
     hint: t.Optional[str] = None
-    max_query_timeout: t.Optional[int] = None
+    max_query_time: t.Optional[int] = None
     view_name: t.Optional[str] = None
     query_performance: t.Optional[bool] = False
 
@@ -161,16 +161,12 @@ async def aggregate_resolver(
     counts = [len(a) for a in aggregations]
     flattened = [item for sublist in aggregations for item in sublist]
 
-    maxTimeMS = (
-        form.max_query_timeout * 1000 if form.max_query_timeout else None
-    )
+    maxTimeMS = form.max_query_time * 1000 if form.max_query_time else None
     try:
         result = await view._async_aggregate(flattened, maxTimeMS=maxTimeMS)
     except ExecutionTimeout:
         return [
-            AggregationQueryTimeout(
-                path=path, query_time=form.max_query_timeout
-            )
+            AggregationQueryTimeout(path=path, query_time=form.max_query_time)
             for path in form.paths
         ]
 

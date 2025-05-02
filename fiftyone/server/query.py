@@ -387,7 +387,7 @@ class AppConfig:
     use_frame_number: bool
     spaces: t.Optional[JSON]
     disable_frame_filtering: bool = False
-    max_query_timeout: t.Optional[int] = None
+    max_query_time: t.Optional[int] = None
     media_fallback: bool = False
 
 
@@ -453,7 +453,7 @@ class Query(fosa.AggregateQuery):
         sort_by: t.Optional[str] = None,
         desc: t.Optional[bool] = False,
         hint: t.Optional[str] = None,
-        max_query_timeout: t.Optional[int] = None,
+        max_query_time: t.Optional[int] = None,
     ) -> t.Annotated[
         t.Union[Connection[SampleItem, str], QueryTimeout],
         gql.union("PaginateSamplesResponse"),
@@ -472,10 +472,10 @@ class Query(fosa.AggregateQuery):
                 sort_by=sort_by,
                 desc=desc,
                 hint=hint,
-                max_query_timeout=max_query_timeout,
+                max_query_time=max_query_time,
             )
         except ExecutionTimeout:
-            return QueryTimeout(query_time=max_query_timeout)
+            return QueryTimeout(query_time=max_query_time)
 
     @gql.field
     async def sample(

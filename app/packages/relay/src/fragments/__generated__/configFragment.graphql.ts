@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<fe3c7fe0b2f20741cbbcf8c5323034a6>>
+ * @generated SignedSource<<ef5889b53febd6a04edda592f5ef3b86>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -23,7 +23,7 @@ export type configFragment$data = {
     readonly enableQueryPerformance: boolean;
     readonly gridZoom: number;
     readonly loopVideos: boolean;
-    readonly maxQueryTimeout: number | null;
+    readonly maxQueryTime: number | null;
     readonly mediaFallback: boolean;
     readonly multicolorKeypoints: boolean;
     readonly notebookHeight: number;
@@ -127,7 +127,7 @@ return {
           "alias": null,
           "args": null,
           "kind": "ScalarField",
-          "name": "maxQueryTimeout",
+          "name": "maxQueryTime",
           "storageKey": null
         },
         {
@@ -217,6 +217,6 @@ return {
 };
 })();
 
-(node as any).hash = "09ef774d456801e5f9f3e4ee209c8b85";
+(node as any).hash = "4f870401f70cf2ffe311e044193912b1";
 
 export default node;

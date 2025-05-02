@@ -103,9 +103,7 @@ export const aggregationQuery = graphQLSelectorFamily<
             ? get(queryPerformance) && !modal
             : isQueryPerformance,
         hint: get(activeIndex),
-        maxQueryTimeout: get(queryPerformance)
-          ? get(config).maxQueryTimeout
-          : null,
+        maxQueryTime: get(queryPerformance) ? get(config).maxQueryTime : null,
       };
 
       return {

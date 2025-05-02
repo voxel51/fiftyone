@@ -29,7 +29,7 @@ input AggregationForm {
   slices: [String!]
   view: BSONArray!
   hint: String = null
-  maxQueryTimeout: Int = null
+  maxQueryTime: Int = null
   viewName: String = null
   queryPerformance: Boolean = false
 }
@@ -78,7 +78,7 @@ type AppConfig {
   useFrameNumber: Boolean!
   spaces: JSON
   disableFrameFiltering: Boolean!
-  maxQueryTimeout: Int
+  maxQueryTime: Int
   mediaFallback: Boolean!
 }
 
@@ -645,7 +645,7 @@ type Query {
     sortBy: String = null
     desc: Boolean = false
     hint: String = null
-    maxQueryTimeout: Int = null
+    maxQueryTime: Int = null
   ): PaginateSamplesResponse!
   sample(
     dataset: String!

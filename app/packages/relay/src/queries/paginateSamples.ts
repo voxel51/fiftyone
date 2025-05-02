@@ -14,7 +14,7 @@ export default r(graphql`
     $sortBy: String
     $desc: Boolean
     $hint: String
-    $maxQueryTimeout: Int
+    $maxQueryTime: Int
   ) {
     samples(
       dataset: $dataset
@@ -28,7 +28,7 @@ export default r(graphql`
       sortBy: $sortBy
       desc: $desc
       hint: $hint
-      maxQueryTimeout: $maxQueryTimeout
+      maxQueryTime: $maxQueryTime
     ) {
       __typename
       ... on QueryTimeout {

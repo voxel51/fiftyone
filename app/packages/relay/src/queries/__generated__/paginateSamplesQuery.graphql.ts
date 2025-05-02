@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<046c49899359c24a91b9c35c3ca9febc>>
+ * @generated SignedSource<<26801ef9d4428914c01297e95489ccbc>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -27,7 +27,7 @@ export type paginateSamplesQuery$variables = {
   filter: SampleFilter;
   filters?: object | null;
   hint?: string | null;
-  maxQueryTimeout?: number | null;
+  maxQueryTime?: number | null;
   paginationData?: boolean | null;
   sortBy?: string | null;
   view: Array;
@@ -151,7 +151,7 @@ v7 = {
 v8 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "maxQueryTimeout"
+  "name": "maxQueryTime"
 },
 v9 = {
   "defaultValue": true,
@@ -273,8 +273,8 @@ v18 = [
       },
       {
         "kind": "Variable",
-        "name": "maxQueryTimeout",
-        "variableName": "maxQueryTimeout"
+        "name": "maxQueryTime",
+        "variableName": "maxQueryTime"
       },
       {
         "kind": "Variable",
@@ -469,16 +469,16 @@ return {
     "selections": (v18/*: any*/)
   },
   "params": {
-    "cacheID": "a1b88aa8dac5011fbae45701decbd30e",
+    "cacheID": "e445ddb6fb74ca39739be1b5f5792757",
     "id": null,
     "metadata": {},
     "name": "paginateSamplesQuery",
     "operationKind": "query",
-    "text": "query paginateSamplesQuery(\n  $count: Int = 20\n  $after: String = null\n  $dataset: String!\n  $view: BSONArray!\n  $filter: SampleFilter!\n  $filters: BSON = null\n  $extendedStages: BSON\n  $paginationData: Boolean = true\n  $sortBy: String\n  $desc: Boolean\n  $hint: String\n  $maxQueryTimeout: Int\n) {\n  samples(dataset: $dataset, view: $view, first: $count, after: $after, filter: $filter, filters: $filters, extendedStages: $extendedStages, paginationData: $paginationData, sortBy: $sortBy, desc: $desc, hint: $hint, maxQueryTimeout: $maxQueryTimeout) {\n    __typename\n    ... on QueryTimeout {\n      queryTime\n    }\n    ... on SampleItemStrConnection {\n      pageInfo {\n        hasNextPage\n      }\n      edges {\n        cursor\n        node {\n          __typename\n          ... on ImageSample {\n            id\n            aspectRatio\n            sample\n            urls {\n              field\n              url\n            }\n          }\n          ... on PointCloudSample {\n            aspectRatio\n            id\n            sample\n            urls {\n              field\n              url\n            }\n          }\n          ... on VideoSample {\n            id\n            aspectRatio\n            frameRate\n            frameNumber\n            sample\n            urls {\n              field\n              url\n            }\n          }\n          ... on ThreeDSample {\n            id\n            aspectRatio\n            sample\n            urls {\n              field\n              url\n            }\n          }\n          ... on UnknownSample {\n            id\n            aspectRatio\n            sample\n            urls {\n              field\n              url\n            }\n          }\n        }\n      }\n    }\n  }\n}\n"
+    "text": "query paginateSamplesQuery(\n  $count: Int = 20\n  $after: String = null\n  $dataset: String!\n  $view: BSONArray!\n  $filter: SampleFilter!\n  $filters: BSON = null\n  $extendedStages: BSON\n  $paginationData: Boolean = true\n  $sortBy: String\n  $desc: Boolean\n  $hint: String\n  $maxQueryTime: Int\n) {\n  samples(dataset: $dataset, view: $view, first: $count, after: $after, filter: $filter, filters: $filters, extendedStages: $extendedStages, paginationData: $paginationData, sortBy: $sortBy, desc: $desc, hint: $hint, maxQueryTime: $maxQueryTime) {\n    __typename\n    ... on QueryTimeout {\n      queryTime\n    }\n    ... on SampleItemStrConnection {\n      pageInfo {\n        hasNextPage\n      }\n      edges {\n        cursor\n        node {\n          __typename\n          ... on ImageSample {\n            id\n            aspectRatio\n            sample\n            urls {\n              field\n              url\n            }\n          }\n          ... on PointCloudSample {\n            aspectRatio\n            id\n            sample\n            urls {\n              field\n              url\n            }\n          }\n          ... on VideoSample {\n            id\n            aspectRatio\n            frameRate\n            frameNumber\n            sample\n            urls {\n              field\n              url\n            }\n          }\n          ... on ThreeDSample {\n            id\n            aspectRatio\n            sample\n            urls {\n              field\n              url\n            }\n          }\n          ... on UnknownSample {\n            id\n            aspectRatio\n            sample\n            urls {\n              field\n              url\n            }\n          }\n        }\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "581a54f8d761fa31cf6c08ec6355c0ee";
+(node as any).hash = "9484e5b1847117bf2b4d12353b911b6a";
 
 export default node;
