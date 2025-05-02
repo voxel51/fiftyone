@@ -1068,7 +1068,7 @@ class FiftyOneTransformerForDepthEstimation(FiftyOneTransformer):
 
         # override output processor
         if config.output_processor_cls is None:
-            config.output_processor_cls = "fiftyone.utils.transformers.TransformersSemanticSegmentatorOutputProcessor"
+            config.output_processor_cls = "fiftyone.utils.transformers.TransformersDepthEstimatorOutputProcessor"
         super().__init__(config)
         # have to do this after init so processor is loaded
         # I think this is better than instantiating a second one
@@ -1076,38 +1076,6 @@ class FiftyOneTransformerForDepthEstimation(FiftyOneTransformer):
         self._output_processor.processor = self.transforms.processor
         # ew
         self.transforms.return_image_sizes = True
-
-    def _load_model(self, config):
-        if config.model is not None:
-            return config.model
-        return transformers.AutoModelForDepthEstimation.from_pretrained(
-            config.name_or_path
-        ).to(config.device)
-
-    def _predict(self, inputs, target_sizes):
-        with torch.no_grad():
-            outputs = self._model(**inputs.to(self.device))
-
-        predicted_depth = outputs.predicted_depth
-        prediction = torch.nn.functional.interpolate(
-            predicted_depth.unsqueeze(1),
-            size=target_sizes[0],
-            mode="bicubic",
-            align_corners=False,
-        )
-        prediction = prediction.squeeze(1).cpu().numpy()
-
-        return to_heatmap(prediction)
-
-    def predict(self, arg):
-        target_sizes = [arg.shape[:2]]
-        inputs = self.transforms(arg, return_tensors="pt")
-        return self._predict(inputs, target_sizes)
-
-    def predict_all(self, args):
-        target_sizes = [i.shape[:2] for i in args]
-        inputs = self.transforms(args, return_tensors="pt")
-        return self._predict(inputs, target_sizes)
 
 
 def _has_text_and_image_features(model):
@@ -1293,6 +1261,44 @@ class TransformersSemanticSegmentatorOutputProcessor(
             image_sizes,
             confidence_thresh=confidence_thresh,
         )
+
+
+class TransformersDepthEstimatorOutputProcessor(fout.OutputProcessor):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._processor = None
+        self._depth_estimation_post_processor = None
+
+    @property
+    def processor(self):
+        if self._processor is None:
+            raise ValueError(
+                "Processor not set. Please make sure the processor is set."
+            )
+        return self._processor
+
+    @processor.setter
+    def processor(self, processor):
+        self._processor = processor
+        if self._processor is not None:
+            if hasattr(self._processor, "post_process_depth_estimation"):
+                self._depth_estimation_post_processor = (
+                    self._processor.post_process_depth_estimation
+                )
+            else:
+                raise ValueError(
+                    "Processor does not have a post_process_object_detection "
+                    "or post_process_grounded_object_detection method."
+                )
+
+    def __call__(self, output, image_sizes, confidence_thresh=None):
+
+        output = self._depth_estimation_post_processor(output)
+        output = np.array(
+            [o["predicted_depth"].detach().cpu().numpy() for o in output]
+        )
+        output = output / np.max(output, axis=(1, 2), keepdims=True)
+        return [fol.Heatmap(map=o) for o in output]
 
 
 def _get_image_size(img):
