@@ -124,11 +124,12 @@ async def paginate_samples(
         view = view.skip(int(after) + 1)
 
     pipeline = await get_samples_pipeline(view, sample_filter)
+    maxTimeMS = max_query_timeout * 1000 if max_query_timeout else None
     samples = await foo.aggregate(
         foo.get_async_db_conn()[view._dataset._sample_collection_name],
         pipeline,
         hint,
-        maxTimeMS=max_query_timeout * 1000,
+        maxTimeMS=maxTimeMS,
     ).to_list(first + 1)
 
     more = False

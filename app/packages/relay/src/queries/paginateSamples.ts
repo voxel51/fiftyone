@@ -30,58 +30,64 @@ export default r(graphql`
       hint: $hint
       maxQueryTimeout: $maxQueryTimeout
     ) {
-      pageInfo {
-        hasNextPage
+      __typename
+      ... on QueryTimeout {
+        queryTime
       }
-      edges {
-        cursor
-        node {
-          __typename
-          ... on ImageSample {
-            id
-            aspectRatio
-            sample
-            urls {
-              field
-              url
+      ... on SampleItemStrConnection {
+        pageInfo {
+          hasNextPage
+        }
+        edges {
+          cursor
+          node {
+            __typename
+            ... on ImageSample {
+              id
+              aspectRatio
+              sample
+              urls {
+                field
+                url
+              }
             }
-          }
-          ... on PointCloudSample {
-            aspectRatio
-            id
-            sample
-            urls {
-              field
-              url
+            ... on PointCloudSample {
+              aspectRatio
+              id
+              sample
+              urls {
+                field
+                url
+              }
             }
-          }
-          ... on VideoSample {
-            id
-            aspectRatio
-            frameRate
-            frameNumber
-            sample
-            urls {
-              field
-              url
+            ... on VideoSample {
+              id
+              aspectRatio
+              frameRate
+              frameNumber
+              sample
+              urls {
+                field
+                url
+              }
             }
-          }
-          ... on ThreeDSample {
-            id
-            aspectRatio
-            sample
-            urls {
-              field
-              url
+            ... on ThreeDSample {
+              id
+              aspectRatio
+              sample
+              urls {
+                field
+                url
+              }
             }
-          }
-          ... on UnknownSample {
-            id
-            aspectRatio
-            sample
-            urls {
-              field
-              url
+            ... on UnknownSample {
+              id
+              aspectRatio
+              sample
+              urls {
+                field
+                url
+              }
             }
           }
         }

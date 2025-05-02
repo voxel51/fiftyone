@@ -13,6 +13,7 @@ import logging
 import typing as t
 
 import eta.core.utils as etau
+from pymongo.errors import ExecutionTimeout
 import strawberry as gql
 from bson import ObjectId, json_util
 
@@ -45,6 +46,7 @@ from fiftyone.server.samples import (
 )
 from fiftyone.server.scalars import BSON, BSONArray, JSON
 from fiftyone.server.stage_definitions import stage_definitions
+from fiftyone.server.exceptions import QueryTimeout
 from fiftyone.server.utils import from_dict
 from fiftyone.server.workspace import Workspace
 
@@ -452,22 +454,28 @@ class Query(fosa.AggregateQuery):
         desc: t.Optional[bool] = False,
         hint: t.Optional[str] = None,
         max_query_timeout: t.Optional[int] = None,
-    ) -> Connection[SampleItem, str]:
+    ) -> t.Annotated[
+        t.Union[Connection[SampleItem, str], QueryTimeout],
+        gql.union("PaginateSamplesResponse"),
+    ]:
 
-        return await paginate_samples(
-            dataset,
-            view,
-            filters,
-            first,
-            after,
-            sample_filter=filter,
-            extended_stages=extended_stages,
-            pagination_data=pagination_data,
-            sort_by=sort_by,
-            desc=desc,
-            hint=hint,
-            max_query_timeout=max_query_timeout,
-        )
+        try:
+            return await paginate_samples(
+                dataset,
+                view,
+                filters,
+                first,
+                after,
+                sample_filter=filter,
+                extended_stages=extended_stages,
+                pagination_data=pagination_data,
+                sort_by=sort_by,
+                desc=desc,
+                hint=hint,
+                max_query_timeout=max_query_timeout,
+            )
+        except ExecutionTimeout:
+            return QueryTimeout(query_time=max_query_timeout)
 
     @gql.field
     async def sample(

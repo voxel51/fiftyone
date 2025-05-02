@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<add6a609cc61f53b2a9c314cdad4ce7b>>
+ * @generated SignedSource<<046c49899359c24a91b9c35c3ca9febc>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -34,6 +34,10 @@ export type paginateSamplesQuery$variables = {
 };
 export type paginateSamplesQuery$data = {
   readonly samples: {
+    readonly __typename: "QueryTimeout";
+    readonly queryTime: number;
+  } | {
+    readonly __typename: "SampleItemStrConnection";
     readonly edges: ReadonlyArray<{
       readonly cursor: string;
       readonly node: {
@@ -92,6 +96,10 @@ export type paginateSamplesQuery$data = {
     readonly pageInfo: {
       readonly hasNextPage: boolean;
     };
+  } | {
+    // This will never be '%other', but we need some
+    // value in case none of the concrete values match.
+    readonly __typename: "%other";
   };
 };
 export type paginateSamplesQuery = {
@@ -164,24 +172,31 @@ v12 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "id",
+  "name": "__typename",
   "storageKey": null
 },
 v13 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "aspectRatio",
+  "name": "id",
   "storageKey": null
 },
 v14 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "sample",
+  "name": "aspectRatio",
   "storageKey": null
 },
 v15 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "sample",
+  "storageKey": null
+},
+v16 = {
   "alias": null,
   "args": null,
   "concreteType": "MediaURL",
@@ -206,13 +221,13 @@ v15 = {
   ],
   "storageKey": null
 },
-v16 = [
-  (v12/*: any*/),
+v17 = [
   (v13/*: any*/),
   (v14/*: any*/),
-  (v15/*: any*/)
+  (v15/*: any*/),
+  (v16/*: any*/)
 ],
-v17 = [
+v18 = [
   {
     "alias": null,
     "args": [
@@ -277,118 +292,134 @@ v17 = [
         "variableName": "view"
       }
     ],
-    "concreteType": "SampleItemStrConnection",
+    "concreteType": null,
     "kind": "LinkedField",
     "name": "samples",
     "plural": false,
     "selections": [
+      (v12/*: any*/),
       {
-        "alias": null,
-        "args": null,
-        "concreteType": "SampleItemStrPageInfo",
-        "kind": "LinkedField",
-        "name": "pageInfo",
-        "plural": false,
+        "kind": "InlineFragment",
         "selections": [
           {
             "alias": null,
             "args": null,
             "kind": "ScalarField",
-            "name": "hasNextPage",
+            "name": "queryTime",
             "storageKey": null
           }
         ],
-        "storageKey": null
+        "type": "QueryTimeout",
+        "abstractKey": null
       },
       {
-        "alias": null,
-        "args": null,
-        "concreteType": "SampleItemStrEdge",
-        "kind": "LinkedField",
-        "name": "edges",
-        "plural": true,
+        "kind": "InlineFragment",
         "selections": [
           {
             "alias": null,
             "args": null,
-            "kind": "ScalarField",
-            "name": "cursor",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "concreteType": null,
+            "concreteType": "SampleItemStrPageInfo",
             "kind": "LinkedField",
-            "name": "node",
+            "name": "pageInfo",
             "plural": false,
             "selections": [
               {
                 "alias": null,
                 "args": null,
                 "kind": "ScalarField",
-                "name": "__typename",
+                "name": "hasNextPage",
+                "storageKey": null
+              }
+            ],
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "SampleItemStrEdge",
+            "kind": "LinkedField",
+            "name": "edges",
+            "plural": true,
+            "selections": [
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "cursor",
                 "storageKey": null
               },
               {
-                "kind": "InlineFragment",
-                "selections": (v16/*: any*/),
-                "type": "ImageSample",
-                "abstractKey": null
-              },
-              {
-                "kind": "InlineFragment",
-                "selections": [
-                  (v13/*: any*/),
-                  (v12/*: any*/),
-                  (v14/*: any*/),
-                  (v15/*: any*/)
-                ],
-                "type": "PointCloudSample",
-                "abstractKey": null
-              },
-              {
-                "kind": "InlineFragment",
+                "alias": null,
+                "args": null,
+                "concreteType": null,
+                "kind": "LinkedField",
+                "name": "node",
+                "plural": false,
                 "selections": [
                   (v12/*: any*/),
-                  (v13/*: any*/),
                   {
-                    "alias": null,
-                    "args": null,
-                    "kind": "ScalarField",
-                    "name": "frameRate",
-                    "storageKey": null
+                    "kind": "InlineFragment",
+                    "selections": (v17/*: any*/),
+                    "type": "ImageSample",
+                    "abstractKey": null
                   },
                   {
-                    "alias": null,
-                    "args": null,
-                    "kind": "ScalarField",
-                    "name": "frameNumber",
-                    "storageKey": null
+                    "kind": "InlineFragment",
+                    "selections": [
+                      (v14/*: any*/),
+                      (v13/*: any*/),
+                      (v15/*: any*/),
+                      (v16/*: any*/)
+                    ],
+                    "type": "PointCloudSample",
+                    "abstractKey": null
                   },
-                  (v14/*: any*/),
-                  (v15/*: any*/)
+                  {
+                    "kind": "InlineFragment",
+                    "selections": [
+                      (v13/*: any*/),
+                      (v14/*: any*/),
+                      {
+                        "alias": null,
+                        "args": null,
+                        "kind": "ScalarField",
+                        "name": "frameRate",
+                        "storageKey": null
+                      },
+                      {
+                        "alias": null,
+                        "args": null,
+                        "kind": "ScalarField",
+                        "name": "frameNumber",
+                        "storageKey": null
+                      },
+                      (v15/*: any*/),
+                      (v16/*: any*/)
+                    ],
+                    "type": "VideoSample",
+                    "abstractKey": null
+                  },
+                  {
+                    "kind": "InlineFragment",
+                    "selections": (v17/*: any*/),
+                    "type": "ThreeDSample",
+                    "abstractKey": null
+                  },
+                  {
+                    "kind": "InlineFragment",
+                    "selections": (v17/*: any*/),
+                    "type": "UnknownSample",
+                    "abstractKey": null
+                  }
                 ],
-                "type": "VideoSample",
-                "abstractKey": null
-              },
-              {
-                "kind": "InlineFragment",
-                "selections": (v16/*: any*/),
-                "type": "ThreeDSample",
-                "abstractKey": null
-              },
-              {
-                "kind": "InlineFragment",
-                "selections": (v16/*: any*/),
-                "type": "UnknownSample",
-                "abstractKey": null
+                "storageKey": null
               }
             ],
             "storageKey": null
           }
         ],
-        "storageKey": null
+        "type": "SampleItemStrConnection",
+        "abstractKey": null
       }
     ],
     "storageKey": null
@@ -413,7 +444,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "paginateSamplesQuery",
-    "selections": (v17/*: any*/),
+    "selections": (v18/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -435,19 +466,19 @@ return {
     ],
     "kind": "Operation",
     "name": "paginateSamplesQuery",
-    "selections": (v17/*: any*/)
+    "selections": (v18/*: any*/)
   },
   "params": {
-    "cacheID": "01372cb896ccaf72a406239f31bab3b0",
+    "cacheID": "a1b88aa8dac5011fbae45701decbd30e",
     "id": null,
     "metadata": {},
     "name": "paginateSamplesQuery",
     "operationKind": "query",
-    "text": "query paginateSamplesQuery(\n  $count: Int = 20\n  $after: String = null\n  $dataset: String!\n  $view: BSONArray!\n  $filter: SampleFilter!\n  $filters: BSON = null\n  $extendedStages: BSON\n  $paginationData: Boolean = true\n  $sortBy: String\n  $desc: Boolean\n  $hint: String\n  $maxQueryTimeout: Int\n) {\n  samples(dataset: $dataset, view: $view, first: $count, after: $after, filter: $filter, filters: $filters, extendedStages: $extendedStages, paginationData: $paginationData, sortBy: $sortBy, desc: $desc, hint: $hint, maxQueryTimeout: $maxQueryTimeout) {\n    pageInfo {\n      hasNextPage\n    }\n    edges {\n      cursor\n      node {\n        __typename\n        ... on ImageSample {\n          id\n          aspectRatio\n          sample\n          urls {\n            field\n            url\n          }\n        }\n        ... on PointCloudSample {\n          aspectRatio\n          id\n          sample\n          urls {\n            field\n            url\n          }\n        }\n        ... on VideoSample {\n          id\n          aspectRatio\n          frameRate\n          frameNumber\n          sample\n          urls {\n            field\n            url\n          }\n        }\n        ... on ThreeDSample {\n          id\n          aspectRatio\n          sample\n          urls {\n            field\n            url\n          }\n        }\n        ... on UnknownSample {\n          id\n          aspectRatio\n          sample\n          urls {\n            field\n            url\n          }\n        }\n      }\n    }\n  }\n}\n"
+    "text": "query paginateSamplesQuery(\n  $count: Int = 20\n  $after: String = null\n  $dataset: String!\n  $view: BSONArray!\n  $filter: SampleFilter!\n  $filters: BSON = null\n  $extendedStages: BSON\n  $paginationData: Boolean = true\n  $sortBy: String\n  $desc: Boolean\n  $hint: String\n  $maxQueryTimeout: Int\n) {\n  samples(dataset: $dataset, view: $view, first: $count, after: $after, filter: $filter, filters: $filters, extendedStages: $extendedStages, paginationData: $paginationData, sortBy: $sortBy, desc: $desc, hint: $hint, maxQueryTimeout: $maxQueryTimeout) {\n    __typename\n    ... on QueryTimeout {\n      queryTime\n    }\n    ... on SampleItemStrConnection {\n      pageInfo {\n        hasNextPage\n      }\n      edges {\n        cursor\n        node {\n          __typename\n          ... on ImageSample {\n            id\n            aspectRatio\n            sample\n            urls {\n              field\n              url\n            }\n          }\n          ... on PointCloudSample {\n            aspectRatio\n            id\n            sample\n            urls {\n              field\n              url\n            }\n          }\n          ... on VideoSample {\n            id\n            aspectRatio\n            frameRate\n            frameNumber\n            sample\n            urls {\n              field\n              url\n            }\n          }\n          ... on ThreeDSample {\n            id\n            aspectRatio\n            sample\n            urls {\n              field\n              url\n            }\n          }\n          ... on UnknownSample {\n            id\n            aspectRatio\n            sample\n            urls {\n              field\n              url\n            }\n          }\n        }\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "179003a4a443b7fb9f0086d8532cbab3";
+(node as any).hash = "581a54f8d761fa31cf6c08ec6355c0ee";
 
 export default node;

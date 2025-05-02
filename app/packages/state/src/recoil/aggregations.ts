@@ -28,6 +28,12 @@ type Aggregation = Exclude<
   }
 >;
 
+export class AggregationQueryTimeout extends Error {
+  constructor(readonly queryTime: number) {
+    super();
+  }
+}
+
 /**
  * GraphQL Selector Family for Aggregations.
  * @param extended - Whether to use extended aggregations.
@@ -97,7 +103,9 @@ export const aggregationQuery = graphQLSelectorFamily<
             ? get(queryPerformance) && !modal
             : isQueryPerformance,
         hint: get(activeIndex),
-        maxQueryTimeout: get(config).maxQueryTimeout,
+        maxQueryTimeout: get(queryPerformance)
+          ? get(config).maxQueryTimeout
+          : null,
       };
 
       return {
@@ -147,12 +155,18 @@ export const aggregation = selectorFamily({
         ? get(modalAggregationPaths({ path, mixed: params.mixed }))
         : get(schemaAtoms.filterFields(path));
 
-      return get(
+      const result = get(
         aggregations({
           ...params,
           paths,
         })
       ).find((data) => data.path === path);
+
+      if (result.__typename === "AggregationQueryTimeout") {
+        throw new AggregationQueryTimeout(result.queryTime);
+      }
+
+      return result;
     },
 });
 

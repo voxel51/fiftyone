@@ -1,9 +1,8 @@
-import { LoadingDots, Tooltip, useTheme } from "@fiftyone/components";
+import { LoadingDots, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { isGroup as isGroupAtom } from "@fiftyone/state";
-import { Apps, ImageAspectRatio, QuestionMark } from "@mui/icons-material";
+import { Apps, ImageAspectRatio } from "@mui/icons-material";
 import React, { Suspense, useMemo } from "react";
-import { ErrorBoundary } from "react-error-boundary";
 import { constSelector, useRecoilValue, useResetRecoilState } from "recoil";
 import { Slider } from "../../Common/RangeSlider";
 import ResourceCount from "../../ResourceCount";
@@ -95,9 +94,7 @@ const Header = () => {
             </RightDiv>
           }
         >
-          <ErrorBoundary fallback={<TimedOut />}>
-            <ResourceCount />
-          </ErrorBoundary>
+          <ResourceCount />
         </Suspense>
         {shouldShowSliceSelector && (
           <RightDiv>
@@ -109,30 +106,6 @@ const Header = () => {
         <Zoom />
       </RightContainer>
     </SamplesHeader>
-  );
-};
-
-export const TimedOut = () => {
-  const theme = useTheme();
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-      }}
-    >
-      <Tooltip placement="top-center" text="Query timed out at 10 seconds">
-        <QuestionMark
-          style={{
-            marginRight: 2,
-            color: theme.text.secondary,
-            height: 14,
-            width: 14,
-          }}
-        />
-      </Tooltip>
-    </div>
   );
 };
 
