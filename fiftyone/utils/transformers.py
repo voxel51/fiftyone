@@ -1044,9 +1044,12 @@ class FiftyOneTransformerForDepthEstimationConfig(FiftyOneTransformerConfig):
     """
 
     def __init__(self, d):
+        if (
+            d.get("name_or_path", None) is None
+            and d.get("model", None) is None
+        ):
+            d["name_or_path"] = DEFAULT_DEPTH_ESTIMATION_PATH
         super().__init__(d)
-        if self.model is None and self.name_or_path is None:
-            self.name_or_path = DEFAULT_DEPTH_ESTIMATION_PATH
 
 
 class FiftyOneTransformerForDepthEstimation(FiftyOneTransformer):
@@ -1055,6 +1058,24 @@ class FiftyOneTransformerForDepthEstimation(FiftyOneTransformer):
     Args:
         config: a `FiftyOneTransformerConfig`
     """
+
+    def __init__(self, config):
+        # override entry point
+        if config.entrypoint_fcn is None:
+            config.entrypoint_fcn = (
+                "transformers.AutoModelForDepthEstimation.from_pretrained"
+            )
+
+        # override output processor
+        if config.output_processor_cls is None:
+            config.output_processor_cls = "fiftyone.utils.transformers.TransformersSemanticSegmentatorOutputProcessor"
+        super().__init__(config)
+        # have to do this after init so processor is loaded
+        # I think this is better than instantiating a second one
+        # or passing the entire model to the output processor
+        self._output_processor.processor = self.transforms.processor
+        # ew
+        self.transforms.return_image_sizes = True
 
     def _load_model(self, config):
         if config.model is not None:
@@ -1265,8 +1286,6 @@ class TransformersSemanticSegmentatorOutputProcessor(
 ):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._processor = None
-        self._objection_detection_processor = None
 
     def __call__(self, output, image_sizes, confidence_thresh=None):
         return super().__call__(
@@ -1274,18 +1293,6 @@ class TransformersSemanticSegmentatorOutputProcessor(
             image_sizes,
             confidence_thresh=confidence_thresh,
         )
-
-    @property
-    def processor(self):
-        if self._processor is None:
-            raise ValueError(
-                "Processor not set. Please make sure the processor is set."
-            )
-        return self._processor
-
-    @processor.setter
-    def processor(self, processor):
-        self._processor = processor
 
 
 def _get_image_size(img):
