@@ -6,7 +6,11 @@ export default function useTimeout() {
   const setErrors = useSetRecoilState(snackbarErrors);
   return useCallback(
     (queryTime: number) => {
-      setErrors([`Grid request timed out at ${queryTime}`]);
+      setErrors([
+        `Grid request timed out at ${queryTime} second${
+          queryTime > 1 ? "s" : ""
+        }`,
+      ]);
     },
     [setErrors]
   );
