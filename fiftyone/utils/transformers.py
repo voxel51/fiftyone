@@ -1000,9 +1000,12 @@ class FiftyOneTransformerForSemanticSegmentationConfig(
     """
 
     def __init__(self, d):
+        if (
+            d.get("name_or_path", None) is None
+            and d.get("model", None) is None
+        ):
+            d["name_or_path"] = DEFAULT_SEGMENTATION_PATH
         super().__init__(d)
-        if self.model is None and self.name_or_path is None:
-            self.name_or_path = DEFAULT_SEGMENTATION_PATH
 
 
 class FiftyOneTransformerForSemanticSegmentation(FiftyOneTransformer):
@@ -1013,37 +1016,23 @@ class FiftyOneTransformerForSemanticSegmentation(FiftyOneTransformer):
         config: a `FiftyOneTransformerConfig`
     """
 
-    def _load_model(self, config):
-        if config.model is not None:
-            model = config.model
-        else:
-            model = (
-                transformers.AutoModelForSemanticSegmentation.from_pretrained(
-                    config.name_or_path
-                ).to(config.device)
+    def __init__(self, config):
+        # override entry point
+        if config.entrypoint_fcn is None:
+            config.entrypoint_fcn = (
+                "transformers.AutoModelForSemanticSegmentation.from_pretrained"
             )
 
-        self.mask_targets = model.config.id2label
-        return model
-
-    def _predict(self, inputs, target_sizes):
-        with torch.no_grad():
-            outputs = self._model(**inputs.to(self.device))
-
-        results = self.transforms.post_process_semantic_segmentation(
-            outputs, target_sizes=target_sizes
-        )
-        return to_segmentation(results)
-
-    def predict(self, arg):
-        target_sizes = [arg.shape[:-1][::-1]]
-        inputs = self.transforms(arg, return_tensors="pt")
-        return self._predict(inputs, target_sizes)
-
-    def predict_all(self, args):
-        target_sizes = [i.shape[:-1][::-1] for i in args]
-        inputs = self.transforms(args, return_tensors="pt")
-        return self._predict(inputs, target_sizes)
+        # override output processor
+        if config.output_processor_cls is None:
+            config.output_processor_cls = "fiftyone.utils.transformers.TransformersSemanticSegmentatorOutputProcessor"
+        super().__init__(config)
+        # have to do this after init so processor is loaded
+        # I think this is better than instantiating a second one
+        # or passing the entire model to the output processor
+        self._output_processor.processor = self.transforms.processor
+        # ew
+        self.transforms.return_image_sizes = True
 
 
 class FiftyOneTransformerForDepthEstimationConfig(FiftyOneTransformerConfig):
@@ -1214,21 +1203,6 @@ class _HFTransformsHandler:
         return res
 
 
-class TransformersZeroShotClassifierOutputProcessor(
-    fout.ClassifierOutputProcessor
-):
-    """Output processor for HuggingFace Transformers zero-shot image
-    classification models.
-
-    Args:
-        store_logits (False): whether to store the logits in the output
-        logits_key ("logits"): the key to use for the logits in the output
-    """
-
-    def __call__(self, output, _, confidence_thresh=None):
-        return super().__call__(output.logits_per_image, _, confidence_thresh)
-
-
 class TransformersDetectorOutputProcessor(fout.DetectorOutputProcessor):
     """Output processor for HuggingFace Transformers object detection models.
 
@@ -1276,12 +1250,6 @@ class TransformersDetectorOutputProcessor(fout.DetectorOutputProcessor):
         )
         res = []
         for o, img_sz in zip(output, image_sizes):
-            # print(o)
-            # if 'text_labels' in o:
-            #     # this is a grounded object detection model
-            #     o["labels"] = torch.tensor([
-            #         label for label in o["text_labels"]
-            #     ])
             res.append(
                 self._parse_output(
                     o,
@@ -1290,6 +1258,34 @@ class TransformersDetectorOutputProcessor(fout.DetectorOutputProcessor):
                 )
             )
         return res
+
+
+class TransformersSemanticSegmentatorOutputProcessor(
+    fout.SemanticSegmenterOutputProcessor
+):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._processor = None
+        self._objection_detection_processor = None
+
+    def __call__(self, output, image_sizes, confidence_thresh=None):
+        return super().__call__(
+            {"out": output.logits},  # to be compatible with the base class
+            image_sizes,
+            confidence_thresh=confidence_thresh,
+        )
+
+    @property
+    def processor(self):
+        if self._processor is None:
+            raise ValueError(
+                "Processor not set. Please make sure the processor is set."
+            )
+        return self._processor
+
+    @processor.setter
+    def processor(self, processor):
+        self._processor = processor
 
 
 def _get_image_size(img):
