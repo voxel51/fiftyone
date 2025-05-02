@@ -98,14 +98,14 @@ jobs:
         with:
           build-args: |
             BUILD_TYPE=released
-            FO_VERSION=${fo_version}
-            PYTHON_VERSION=${pyver}
+            FO_VERSION=${{ env.fo_version }}
+            PYTHON_VERSION=${{ env.pyver }}
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            voxel51/fiftyone:${fo_version}-python${pyver}
-            voxel51/fiftyone:${fo_version}-python${pyver}-${today}
+            voxel51/fiftyone:${{ env.fo_version }}-python${{ env.pyver }}
+            voxel51/fiftyone:${{ env.fo_version }}-python${{ env.pyver }}-${{ env.today }}
 
       - name: Build and push (latest)
         if: matrix.python == '3.11'
@@ -119,6 +119,6 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            voxel51/fiftyone:${fo_version}-python${pyver}
-            voxel51/fiftyone:${fo_version}-python${pyver}-${today}
+            voxel51/fiftyone:${{ env.fo_version }}-python${{ env.pyver }}
+            voxel51/fiftyone:${{ env.fo_version }}-python${{ env.pyver }}-${{ env.today }}
             latest
