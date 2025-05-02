@@ -1321,5 +1321,3 @@ MODEL_TYPE_TO_MODEL_CLASS = {
     "zero-shot-image-classification": FiftyOneZeroShotTransformerForImageClassification,
     "zero-shot-object-detection": FiftyOneZeroShotTransformerForObjectDetection,
 }
-
-# foo
