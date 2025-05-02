@@ -61,7 +61,6 @@ def apply_model(
     output_dir=None,
     rel_dir=None,
     progress=None,
-    field_mapping=None,
     **kwargs,
 ):
     """Applies the model to the samples in the collection.
@@ -105,8 +104,6 @@ def apply_model(
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
-        field_mapping (None): the field_mapping to use if using a
-            :class:`fiftyone.utils.torch.GetItem` compatible model
         **kwargs: optional model-specific keyword arguments passed through
             to the underlying inference implementation
     """
@@ -253,7 +250,7 @@ def apply_model(
                 skip_failures,
                 filename_maker,
                 progress,
-                field_mapping=field_mapping,
+                field_mapping=kwargs.get("field_mapping", None),
             )
 
         if batch_size is not None:
@@ -829,7 +826,6 @@ def compute_embeddings(
     num_workers=None,
     skip_failures=True,
     progress=None,
-    field_mapping=None,
     **kwargs,
 ):
     """Computes embeddings for the samples in the collection using the given
@@ -864,8 +860,6 @@ def compute_embeddings(
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
-        field_mapping (None): the field_mapping to use if using a
-            :class:`fiftyone.utils.torch.GetItem` compatible model
         **kwargs: optional model-specific keyword arguments passed through
             to the underlying inference implementation
 
@@ -996,7 +990,7 @@ def compute_embeddings(
                 num_workers,
                 skip_failures,
                 progress,
-                field_mapping=field_mapping,
+                field_mapping=kwargs.get("field_mapping", None),
             )
 
         if batch_size is not None:
