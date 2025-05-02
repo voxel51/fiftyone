@@ -12,6 +12,8 @@ import itertools
 import numpy as np
 from PIL import Image
 
+import eta.core.utils as etau
+
 import fiftyone.core.labels as fol
 import fiftyone.utils.torch as fout
 import fiftyone.core.utils as fou
@@ -183,6 +185,50 @@ def _to_instances(result, confidence_thresh=None):
     return fol.Detections(detections=detections)
 
 
+def to_classifications(results, confidence_thresh=None, store_logits=False):
+    """Converts ``ultralytics.YOLO`` classifications to FiftyOne format.
+
+    Args:
+        results: a single or list of ``ultralytics.engine.results.Results``
+        confidence_thresh (None): a confidence threshold to filter clasifications
+
+    Returns:
+        a single or list of :class:`fiftyone.core.labels.Classification`
+    """
+    single = not isinstance(results, list)
+    if single:
+        results = [results]
+
+    batch = [
+        _to_classifications(
+            r, confidence_thresh=confidence_thresh, store_logits=store_logits
+        )
+        for r in results
+    ]
+
+    if single:
+        return batch[0]
+
+    return batch
+
+
+def _to_classifications(result, confidence_thresh=None, store_logits=False):
+    logits = result.probs.data.detach().cpu().numpy()
+    score = result.probs.top1conf.detach().cpu().numpy()
+    label = result.names[result.probs.top1]
+
+    if confidence_thresh is not None and score < confidence_thresh:
+        classification = None
+    else:
+        classification = fol.Classification(
+            label=label,
+            confidence=score,
+        )
+        if store_logits:
+            classification.logits = logits
+    return classification
+
+
 def obb_to_polylines(results, confidence_thresh=None, filled=False):
     """Converts ``ultralytics.YOLO`` instance segmentations to FiftyOne format.
 
@@ -310,9 +356,11 @@ def _to_polylines(result, tolerance, filled, confidence_thresh=None):
 
 def to_keypoints(results, confidence_thresh=None):
     """Converts ``ultralytics.YOLO`` keypoints to FiftyOne format.
+
     Args:
         results: a single or list of ``ultralytics.engine.results.Results``
         confidence_thresh (None): a confidence threshold to filter keypoints
+
     Returns:
         a single or list of :class:`fiftyone.core.labels.Keypoints`
     """
@@ -417,7 +465,20 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
             if config.model_path:
                 config.entrypoint_args["model"] = config.model_path
 
-        model = super()._load_model(config)
+        if config.model is not None:
+            model = config.model
+        else:
+            entrypoint_fcn = config.entrypoint_fcn
+
+            if etau.is_str(entrypoint_fcn):
+                entrypoint_fcn = etau.get_function(entrypoint_fcn)
+
+            kwargs = config.entrypoint_args or {}
+            model = entrypoint_fcn(**kwargs)
+
+        model = model.to(self._device)
+        if self.using_half_precision:
+            model = model.half()
 
         if config.classes:
             if hasattr(ultralytics, "YOLOE") and isinstance(
@@ -528,7 +589,7 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
             return _output
 
         if self.has_logits:
-            self._output_processor.store_logits = self.store_logits
+            self._output_processor.store_logits = self.has_logits
 
         return self._output_processor(
             output,
@@ -719,25 +780,11 @@ class UltralyticsClassificationOutputProcessor(
         super().__init__(classes=classes, store_logits=store_logits)
         self.post_processor = post_processor
 
-    def __call__(self, output, frame_size, confidence_thresh=None):
+    def __call__(self, output, _, confidence_thresh=None):
         results = self.post_process(output)
-        classifications = []
-        for result in results:
-            logits = result.probs.data.detach().cpu().numpy()
-            score = result.probs.top1conf.detach().cpu().numpy()
-            label = self.classes[result.probs.top1]
-
-            if confidence_thresh is not None and score < confidence_thresh:
-                classification = None
-            else:
-                classification = fol.Classification(
-                    label=label,
-                    confidence=score,
-                )
-                if self.store_logits:
-                    classification.logits = logits
-            classifications.append(classification)
-        return classifications
+        return to_classifications(
+            results, confidence_thresh, self.store_logits
+        )
 
 
 class UltralyticsDetectionOutputProcessor(
