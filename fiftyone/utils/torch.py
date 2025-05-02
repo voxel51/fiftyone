@@ -553,15 +553,14 @@ class TorchImageModel(
         self._transforms = transforms
         self._ragged_batches = ragged_batches
         self._preprocess = True
-        if hasattr(self, "collate_fn"):
-            if self._ragged_batches:
-                raise ValueError(
-                    "Cannot use collate_fn while ragged_batches is True. "
-                    "Set `ragged_batches=False` to use collate_fn. "
-                    "While the inputs to collate_fn may be ragged, "
-                    "the model has to flag itself as ragged_batches=False "
-                    "to enable proper dataloader support in apply_model."
-                )
+        if self.has_collate_fn and self.ragged_batches:
+            raise ValueError(
+                "Cannot use collate_fn while ragged_batches is True. "
+                "Set `ragged_batches=False` to use collate_fn. "
+                "While the inputs to collate_fn may be ragged, "
+                "the model has to flag itself as ragged_batches=False "
+                "to enable proper dataloader support in apply_model."
+            )
 
         # Parse model details
         self._classes = self._parse_classes(config)
@@ -622,26 +621,35 @@ class TorchImageModel(
         """
         return self._transforms
 
-    # optional, leaving commented out to avoid hasattr issues
-    # but want to have it here for reference
-    # @staticmethod
-    # def collate_fn(batch):
-    #     """The collate function to use when creating a dataloader
-    #     for this model. By default, this is the default collate function for
-    #     :class:`torch:torch.utils.data.DataLoader`.
+    @property
+    def has_collate_fn(self):
+        """Whether this model has a custom collate function.
+        Set this to True if you want the method `collate_fn` to
+        be used instead of the default
+        `torch.utils.data.dataloader.default_collate`.
+        """
+        return False
 
-    #     If the user wants to use a custom collate function,
-    #     they can override this method with a collate function of their choosing.
-    #     Please make sure this collate function is serializable so it is compatible
-    #     with multiprocessing for dataloaders.
+    @staticmethod
+    def collate_fn(batch):
+        """The collate function to use when creating a dataloader
+        for this model. By default, this is the default collate
+        function for :class:`torch:torch.utils.data.DataLoader`.
 
-    #     Args:
-    #         batch: a list of items to collate
+        In order to enable this functionality, the model must set
+        the `has_collate_fn` property to True.
 
-    #     Returns:
-    #         the collated batch, this will be fed directly to the model
-    #     """
-    #     return torch.utils.data.dataloader.default_collate(batch)
+        The user can override this method with a collate function of their choosing.
+        Please make sure this collate function is serializable so it is compatible
+        with multiprocessing for dataloaders.
+
+        Args:
+            batch: a list of items to collate
+
+        Returns:
+            the collated batch, this will be fed directly to the model
+        """
+        return torch.utils.data.dataloader.default_collate(batch)
 
     @property
     def preprocess(self):

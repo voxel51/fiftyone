@@ -751,11 +751,10 @@ def _make_data_loader(samples, model, batch_size, num_workers, skip_failures):
                 # use the other branches e.g. use_numpy==True
                 # or if a model has ragged_batches==True
                 # then it shouldn't have a collate_fn
-                return (
-                    tud.dataloader.default_collate(batch)
-                    if not hasattr(model, "collate_fn")
-                    else model.collate_fn(batch)
-                )
+                if model.has_collate_fn:
+                    return model.collate_fn(batch)
+                else:
+                    return tud.dataloader.default_collate(batch)
             except Exception as e:
                 if not skip_failures:
                     raise e
