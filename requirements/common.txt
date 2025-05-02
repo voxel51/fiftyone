@@ -9,12 +9,12 @@ ftfy==6.1.1
 httpx==0.23.0
 hypercorn==0.13.2
 kaleido==0.2.1
-matplotlib==3.8.4
+matplotlib
 mongoengine~=0.29.1
 motor~=3.6.0
-packaging==20.3
+packaging
 pandas>=1.3
-plotly==5.17.0
+plotly
 pprintpp==0.4.0
 psutil>=5.7.0
 pymongo~=4.9.2
