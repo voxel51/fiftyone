@@ -709,7 +709,7 @@ def _compute_matches(
                             pred.id,
                         )
                     )
-            elif pred.label == cat:
+            else:
                 pred[eval_key] = "fp"
                 matches.append(
                     (None, pred.label, None, pred_conf, None, pred.id)

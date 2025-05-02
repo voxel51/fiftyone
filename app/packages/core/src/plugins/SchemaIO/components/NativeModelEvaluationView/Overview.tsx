@@ -143,7 +143,7 @@ function EvaluationCard(props: EvaluationCardProps) {
               />
             )}
             {status && <Status status={status} readOnly />}
-            <ActionMenu evaluationName={eval_key} />
+            {!pending && <ActionMenu evaluationName={eval_key} />}
           </Stack>
         </Stack>
         {note && <EvaluationNotes notes={note} variant="overview" />}

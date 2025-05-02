@@ -65,7 +65,7 @@ const useSpotlightPager = ({
   const keys = useRef(new Set<string>());
 
   const pages = useMemo(() => {
-    /** Track already request pages */
+    /** Track already requested pages */
     clearRecords;
     return new Set();
   }, [clearRecords]);

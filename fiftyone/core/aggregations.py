@@ -542,10 +542,12 @@ class Count(Aggregation):
         field_or_expr=None,
         expr=None,
         safe=False,
+        _hint=None,
         _optimize=False,
         _unwind=True,
     ):
         super().__init__(field_or_expr, expr=expr, safe=safe)
+        self._hint = _hint
         self._optimize = _optimize
         self._unwind = _unwind
 
@@ -3114,6 +3116,10 @@ def _parse_field_and_expr(
         elif not context and not optimize:
             pipeline.append({"$project": {path: True}})
     elif unwind_list_fields:
+        if is_frame_field and unwind_list_fields[0] == "frames":
+            unwind_list_fields.pop(0)
+            pipeline.append({"$unwind": "$frames"})
+
         pipeline.append({"$project": {path: True}})
 
     (

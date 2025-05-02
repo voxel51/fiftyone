@@ -9,8 +9,10 @@ FiftyOne group-related unit tests.
 from itertools import groupby
 import json
 import os
+from pathlib import Path
 import random
 import string
+import tempfile
 import unittest
 
 from bson import ObjectId
@@ -2346,8 +2348,14 @@ class DynamicGroupTests(unittest.TestCase):
 
         group = fo.Group()
         samples = [
-            fo.Sample(filepath="video.mp4", group=group.element("video")),
-            fo.Sample(filepath="image.png", group=group.element("image")),
+            fo.Sample(
+                filepath="video.mp4",
+                group=group.element("video"),
+            ),
+            fo.Sample(
+                filepath="image.png",
+                group=group.element("image"),
+            ),
         ]
         dataset.add_samples(samples)
 

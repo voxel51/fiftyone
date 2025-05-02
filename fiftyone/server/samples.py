@@ -7,6 +7,8 @@ FiftyOne Server samples pagination
 """
 
 import asyncio
+import collections
+
 import strawberry as gql
 import typing as t
 
@@ -56,22 +58,33 @@ class ThreeDSample(Sample):
 
 
 @gql.type
+class UnknownSample(Sample):
+    pass
+
+
+@gql.type
 class VideoSample(Sample):
     frame_number: int
     frame_rate: float
 
 
-SampleItem = gql.union(
-    "SampleItem",
-    types=(ImageSample, PointCloudSample, ThreeDSample, VideoSample),
-)
+SampleItem = t.Annotated[
+    t.Union[
+        ImageSample, PointCloudSample, ThreeDSample, VideoSample, UnknownSample
+    ],
+    gql.union("SampleItem"),
+]
 
-MEDIA_TYPES = {
-    fom.IMAGE: ImageSample,
-    fom.POINT_CLOUD: PointCloudSample,
-    fom.VIDEO: VideoSample,
-    fom.THREE_D: ThreeDSample,
-}
+
+MEDIA_TYPES = collections.defaultdict(lambda: UnknownSample)
+MEDIA_TYPES.update(
+    {
+        fom.IMAGE: ImageSample,
+        fom.POINT_CLOUD: PointCloudSample,
+        fom.VIDEO: VideoSample,
+        fom.THREE_D: ThreeDSample,
+    }
+)
 
 
 async def paginate_samples(
@@ -83,6 +96,9 @@ async def paginate_samples(
     extended_stages: t.Optional[BSON] = None,
     sample_filter: t.Optional[SampleFilter] = None,
     pagination_data: t.Optional[bool] = False,
+    sort_by: t.Optional[str] = None,
+    desc: t.Optional[bool] = False,
+    hint: t.Optional[str] = None,
 ) -> Connection[t.Union[ImageSample, VideoSample], str]:
     run = lambda reload: fosv.get_view(
         dataset,
@@ -92,6 +108,8 @@ async def paginate_samples(
         extended_stages=extended_stages,
         sample_filter=sample_filter,
         reload=reload,
+        sort_by=sort_by,
+        desc=desc,
     )
     try:
         view = await run_sync_task(run, False)
@@ -108,6 +126,7 @@ async def paginate_samples(
     samples = await foo.aggregate(
         foo.get_async_db_conn()[view._dataset._sample_collection_name],
         pipeline,
+        hint,
     ).to_list(first + 1)
 
     more = False
@@ -154,17 +173,7 @@ async def _create_sample_item(
     pagination_data: bool,
 ) -> SampleItem:
     media_type = fom.get_media_type(sample["filepath"])
-
-    if media_type == fom.IMAGE:
-        cls = ImageSample
-    elif media_type == fom.VIDEO:
-        cls = VideoSample
-    elif media_type == fom.POINT_CLOUD:
-        cls = PointCloudSample
-    elif media_type == fom.THREE_D:
-        cls = ThreeDSample
-    else:
-        raise ValueError(f"unknown media type '{media_type}'")
+    cls = MEDIA_TYPES[media_type]
 
     metadata = await fosm.get_metadata(
         dataset, sample, media_type, metadata_cache, url_cache

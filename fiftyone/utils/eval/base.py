@@ -6,6 +6,7 @@ Base evaluation methods.
 |
 """
 
+from copy import deepcopy
 import itertools
 import logging
 import numbers
@@ -14,14 +15,172 @@ import numpy as np
 import sklearn.metrics as skm
 from tabulate import tabulate
 
+import fiftyone.core.collections as foc
 import fiftyone.core.evaluation as foe
+from fiftyone.core.expressions import ViewField as F
+import fiftyone.core.fields as fof
 import fiftyone.core.plots as fop
 import fiftyone.core.utils as fou
 
 foo = fou.lazy_import("fiftyone.operators")
+foue = fou.lazy_import("fiftyone.utils.eval")
 
 
 logger = logging.getLogger(__name__)
+
+
+def get_subset_view(sample_collection, gt_field, subset_def):
+    """Returns the view into the given collection specified by the subset
+    definition.
+
+    Example subset definitions::
+
+        # Subset defined by a saved view
+        subset_def = {
+            "type": "view",
+            "view": "night_view",
+        }
+
+        # Subset defined by a sample field value
+        subset_def = {
+            "type": "sample",
+            "field": "timeofday",
+            "value": "night",
+        }
+
+        # Subset defined by a sample field expression
+        subset_def = {
+            "type": "field",
+            "expr": F("uniqueness") > 0.75,
+        }
+
+        # Subset defined by a label attribute value
+        subset_def = {
+            "type": "attribute",
+            "field": "type",
+            "value": "sedan",
+        }
+
+        # Subset defined by a label expression
+        bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
+        subset_def = {
+            "type": "attribute",
+            "expr": (0.05 <= bbox_area) & (bbox_area <= 0.5),
+        }
+
+        # Compound subset defined by a sample field value + sample expression
+        subset_def = [
+            {
+                "type": "field",
+                "field": "timeofday",
+                "value": "night",
+            },
+            {
+                "type": "field",
+                "expr": F("uniqueness") > 0.75,
+            },
+        ]
+
+        # Compound subset defined by a sample field value + label expression
+        bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
+        subset_def = [
+            {
+                "type": "field",
+                "field": "timeofday",
+                "value": "night",
+            },
+            {
+                "type": "attribute",
+                "expr": (0.05 <= bbox_area) & (bbox_area <= 0.5),
+            },
+        ]
+
+        # Compound subset defined by a saved view + label attribute value
+        subset_def = [
+            {
+                "type": "view",
+                "view": "night_view",
+            },
+            {
+                "type": "attribute",
+                "field": "type",
+                "value": "sedan",
+            }
+        ]
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        gt_field: the ground truth field
+        subset_def: a dict or list of dicts defining the subset. See above for
+            syntax and examples
+
+    Returns:
+        a :class:`fiftyone.core.view.DatasetView`
+    """
+    from fiftyone import ViewField as F
+
+    if isinstance(subset_def, dict):
+        subset_def = [subset_def]
+    else:
+        subset_def = list(subset_def)
+
+    subset_view = None
+
+    # Always apply saved view first
+    for d in subset_def:
+        type = d["type"]
+        view = d.get("view", None)
+
+        if type == "view":
+            subset_view = sample_collection._root_dataset.load_saved_view(view)
+
+    if subset_view is None:
+        subset_view = sample_collection
+
+    for d in subset_def:
+        type = d["type"]
+        field = d.get("field", None)
+        value = d.get("value", None)
+        expr = d.get("expr", None)
+
+        if type == "field":
+            if value is not None:
+                # Field value
+                if field == "tags":
+                    subset_view = subset_view.match_tags(value)
+                elif isinstance(subset_view.get_field(field), fof.ListField):
+                    subset_view = subset_view.match(F(field).contains(value))
+                else:
+                    subset_view = subset_view.match(F(field) == value)
+            elif expr is not None:
+                # Field expression
+                expr = deepcopy(expr)  # don't modify caller's expression
+                subset_view = subset_view.match(expr)
+        elif type == "attribute":
+            gt_root, is_list_field = sample_collection._get_label_field_root(
+                gt_field
+            )
+
+            if value is not None:
+                # Label attribute value
+                if isinstance(
+                    subset_view.get_field(gt_root + "." + field),
+                    fof.ListField,
+                ):
+                    expr = F(field).contains(value)
+                else:
+                    expr = F(field) == value
+            else:
+                # Label attribute expression
+                expr = deepcopy(expr)  # don't modify caller's expression
+
+            if is_list_field:
+                subset_view = subset_view.filter_labels(gt_field, expr)
+            else:
+                subset_view = subset_view.match(F(gt_field).apply(expr))
+
+    return subset_view
 
 
 class BaseEvaluationMethodConfig(foe.EvaluationMethodConfig):
@@ -99,7 +258,7 @@ class BaseEvaluationMethod(foe.EvaluationMethod):
             try:
                 operator = foo.get_operator(metric)
                 fields.extend(
-                    operator.get_fields(samples, self.config.eval_key)
+                    operator.get_fields(samples, self.config, eval_key)
                 )
             except Exception as e:
                 logger.warning(
@@ -137,6 +296,9 @@ class BaseEvaluationMethod(foe.EvaluationMethod):
                     metric,
                     e,
                 )
+
+    def get_fields(self, samples, eval_key, include_custom_metrics=True):
+        return []
 
 
 class BaseEvaluationResults(foe.EvaluationResults):
@@ -313,6 +475,157 @@ class BaseClassificationResults(BaseEvaluationResults):
         )
         self.classes = np.asarray(classes)
         self.missing = missing
+
+        self._has_subset = False
+        self._samples_orig = None
+        self._ytrue_orig = None
+        self._ypred_orig = None
+        self._confs_orig = None
+        self._weights_orig = None
+        self._ytrue_ids_orig = None
+        self._ypred_ids_orig = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        if self.has_subset:
+            self.clear_subset()
+
+    @property
+    def has_subset(self):
+        """Whether these results are currently restricted to a subset via
+        :meth:`use_subset`.
+        """
+        return self._has_subset
+
+    def use_subset(self, subset_def):
+        """Restricts the evaluation results to the specified subset.
+
+        Subsequent calls to supported methods on this instance will only
+        contain results from the specified subset rather than the full results.
+
+        Use :meth:`clear_subset` to reset to the full results. Or,
+        equivalently, use the context manager interface as demonstrated below
+        to automatically reset the results when the context exits.
+
+        Example usage::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            import fiftyone.utils.random as four
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+            four.random_split(dataset, {"sunny": 0.7, "cloudy": 0.2, "rainy": 0.1})
+
+            results = dataset.evaluate_detections(
+                "predictions",
+                gt_field="ground_truth",
+                eval_key="eval",
+            )
+
+            counts = dataset.count_values("ground_truth.detections.label")
+            classes = sorted(counts, key=counts.get, reverse=True)[:5]
+
+            # Full results
+            results.print_report(classes=classes)
+
+            # Sunny samples
+            subset_def = dict(type="field", field="tags", value="sunny")
+            with results.use_subset(subset_def):
+                results.print_report(classes=classes)
+
+            # Small objects
+            bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
+            small_objects = bbox_area <= 0.05
+            subset_def = dict(type="attribute", expr=small_objects)
+            with results.use_subset(subset_def):
+                results.print_report(classes=classes)
+
+        Args:
+            subset_def: the subset definition, which can be:
+
+                -   a dict or list of dicts defining the subset. See above
+                    for examples and see :func:`get_subset_view` for full
+                    syntax
+                -   a :class:`fiftyone.core.view.DatasetView` defining the
+                    subset
+
+        Returns:
+            self
+        """
+        if self.ytrue_ids is None:
+            raise ValueError(
+                "Cannot load subsets for evaluation runs that don't store "
+                "label IDs"
+            )
+
+        gt_field = self.config.gt_field
+        if isinstance(subset_def, foc.SampleCollection):
+            subset_view = subset_def
+        else:
+            subset_view = get_subset_view(self.samples, gt_field, subset_def)
+
+        self._samples_orig = self.samples
+        self._ytrue_orig = self.ytrue
+        self._ypred_orig = self.ypred
+        self._confs_orig = self.confs
+        self._weights_orig = self.weights
+        self._ytrue_ids_orig = self.ytrue_ids
+        self._ypred_ids_orig = self.ypred_ids
+
+        # Locate all ground truth in subset
+        _, gt_id_path = subset_view._get_label_field_path(gt_field, "id")
+        gt_ids = set(subset_view.values(gt_id_path, unwind=True))
+        inds = np.array([_id in gt_ids for _id in self.ytrue_ids])
+
+        # Detection evaluations can contain unmatched predictions, which must
+        # also be partitioned into subsets
+        if isinstance(self, foue.DetectionResults):
+            pred_field = self.config.pred_field
+            fp_view = subset_view.filter_labels(
+                pred_field, F(self.key) == "fp"
+            )
+            _, pred_id_path = fp_view._get_label_field_path(pred_field, "id")
+            pred_ids = set(fp_view.values(pred_id_path, unwind=True))
+            inds |= np.array([_id in pred_ids for _id in self.ypred_ids])
+
+        self._has_subset = True
+        self._samples = subset_view
+        self.ytrue = self.ytrue[inds]
+        self.ypred = self.ypred[inds]
+        self.confs = self.confs[inds] if self.confs is not None else None
+        self.weights = self.weights[inds] if self.weights is not None else None
+        self.ytrue_ids = self.ytrue_ids[inds]
+        self.ypred_ids = self.ypred_ids[inds]
+
+        return self
+
+    def clear_subset(self):
+        """Clears the subset set by :meth:`use_subset`, if any.
+
+        Subsequent operations will be performed on the full results.
+        """
+        if not self.has_subset:
+            return
+
+        self._samples = self._samples_orig
+        self.ytrue = self._ytrue_orig
+        self.ypred = self._ypred_orig
+        self.confs = self._confs_orig
+        self.weights = self._weights_orig
+        self.ytrue_ids = self._ytrue_ids_orig
+        self.ypred_ids = self._ypred_ids_orig
+
+        self._has_subset = False
+        self._samples_orig = None
+        self._ytrue_orig = None
+        self._ypred_orig = None
+        self._confs_orig = None
+        self._weights_orig = None
+        self._ytrue_ids_orig = None
+        self._ypred_ids_orig = None
 
     def report(self, classes=None):
         """Generates a classification report for the results via

@@ -800,6 +800,13 @@ class Document(BaseDocument, mongoengine.Document):
         self.last_loaded_at = datetime.utcnow()
         self.save(virtual=True)
 
+    def _update_last_modified_at(self, last_modified_at=None):
+        if last_modified_at is None:
+            last_modified_at = datetime.utcnow()
+
+        self.last_modified_at = last_modified_at
+        self.save(virtual=True)
+
     def _do_updates(self, _id, updates, upsert):
         updated_existing = True
 

@@ -25,7 +25,7 @@ import fiftyone.utils.eval.segmentation as fous
 import fiftyone.utils.labels as foul
 import fiftyone.utils.iou as foui
 
-from decorators import drop_datasets
+from decorators import drop_datasets, use_local_plugins
 
 
 class CustomRegressionEvaluationConfig(four.SimpleEvaluationConfig):
@@ -157,6 +157,7 @@ class RegressionTests(unittest.TestCase):
 
         results.print_metrics()
 
+    @drop_datasets
     def test_custom_regression_evaluation(self):
         dataset = self._make_regression_dataset()
 
@@ -185,6 +186,62 @@ class RegressionTests(unittest.TestCase):
 
         results = dataset.load_evaluation_results("custom")
         self.assertEqual(type(results), four.RegressionResults)
+
+    @drop_datasets
+    @use_local_plugins
+    def test_regression_custom_metric(self):
+        dataset = self._make_regression_dataset()
+
+        metric_uri = "@voxel51/evaluation-tests/custom_evaluation_metric"
+
+        eval_key = "eval"
+        metric_field = f"{eval_key}_custom_evaluation_metric"
+
+        results = dataset.evaluate_regressions(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key=eval_key,
+            custom_metrics={metric_uri: dict(value="spam")},
+        )
+
+        self.assertTrue(metric_uri in results.config.custom_metrics)
+        self.assertTrue(dataset.has_field(metric_field))
+        self.assertListEqual(dataset.distinct(metric_field), ["spam"])
+
+        metrics = results.metrics()
+
+        self.assertTrue("example" in metrics)
+        self.assertEqual(metrics["example"], "spam")
+
+        results.add_custom_metrics(
+            custom_metrics={metric_uri: dict(value="eggs")},
+            overwrite=True,
+        )
+
+        self.assertListEqual(dataset.distinct(metric_field), ["eggs"])
+
+        metrics = results.metrics()
+
+        self.assertEqual(metrics["example"], "eggs")
+
+        new_eval_key = "still_eval"
+        new_metric_field = f"{new_eval_key}_custom_evaluation_metric"
+
+        dataset.rename_evaluation(eval_key, new_eval_key)
+
+        self.assertTrue(metric_uri in results.config.custom_metrics)
+        self.assertFalse(dataset.has_field(metric_field))
+        self.assertTrue(dataset.has_field(new_metric_field))
+        self.assertListEqual(dataset.distinct(new_metric_field), ["eggs"])
+
+        new_metrics = results.metrics()
+
+        self.assertTrue("example" in new_metrics)
+        self.assertEqual(new_metrics["example"], "eggs")
+
+        dataset.delete_evaluation(new_eval_key)
+
+        self.assertFalse(dataset.has_field(new_metric_field))
 
 
 class VideoRegressionTests(unittest.TestCase):
@@ -648,6 +705,7 @@ class ClassificationTests(unittest.TestCase):
         results.report()
         results.print_report()
 
+    @drop_datasets
     def test_custom_classification_evaluation(self):
         dataset = self._make_classification_dataset()
 
@@ -680,6 +738,62 @@ class ClassificationTests(unittest.TestCase):
 
         results = dataset.load_evaluation_results("custom")
         self.assertEqual(type(results), fouc.ClassificationResults)
+
+    @drop_datasets
+    @use_local_plugins
+    def test_classification_custom_metric(self):
+        dataset = self._make_classification_dataset()
+
+        metric_uri = "@voxel51/evaluation-tests/custom_evaluation_metric"
+
+        eval_key = "eval"
+        metric_field = f"{eval_key}_custom_evaluation_metric"
+
+        results = dataset.evaluate_classifications(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key=eval_key,
+            custom_metrics={metric_uri: dict(value="spam")},
+        )
+
+        self.assertTrue(metric_uri in results.config.custom_metrics)
+        self.assertTrue(dataset.has_field(metric_field))
+        self.assertListEqual(dataset.distinct(metric_field), ["spam"])
+
+        metrics = results.metrics()
+
+        self.assertTrue("example" in metrics)
+        self.assertEqual(metrics["example"], "spam")
+
+        results.add_custom_metrics(
+            custom_metrics={metric_uri: dict(value="eggs")},
+            overwrite=True,
+        )
+
+        self.assertListEqual(dataset.distinct(metric_field), ["eggs"])
+
+        metrics = results.metrics()
+
+        self.assertEqual(metrics["example"], "eggs")
+
+        new_eval_key = "still_eval"
+        new_metric_field = f"{new_eval_key}_custom_evaluation_metric"
+
+        dataset.rename_evaluation(eval_key, new_eval_key)
+
+        self.assertTrue(metric_uri in results.config.custom_metrics)
+        self.assertFalse(dataset.has_field(metric_field))
+        self.assertTrue(dataset.has_field(new_metric_field))
+        self.assertListEqual(dataset.distinct(new_metric_field), ["eggs"])
+
+        new_metrics = results.metrics()
+
+        self.assertTrue("example" in new_metrics)
+        self.assertEqual(new_metrics["example"], "eggs")
+
+        dataset.delete_evaluation(new_eval_key)
+
+        self.assertFalse(dataset.has_field(new_metric_field))
 
 
 class VideoClassificationTests(unittest.TestCase):
@@ -1084,10 +1198,15 @@ class DetectionsTests(unittest.TestCase):
             predictions=fo.Detections(
                 detections=[
                     fo.Detection(
+                        label="cat",
+                        bounding_box=[0.6, 0.6, 0.4, 0.4],
+                        confidence=0.9,
+                    ),
+                    fo.Detection(
                         label="dog",
                         bounding_box=[0.1, 0.1, 0.4, 0.4],
                         confidence=0.9,
-                    )
+                    ),
                 ]
             ),
         )
@@ -1163,11 +1282,17 @@ class DetectionsTests(unittest.TestCase):
             predictions=fo.Detections(
                 detections=[
                     fo.Detection(
+                        label="cat",
+                        bounding_box=[0.6, 0.6, 0.4, 0.4],
+                        confidence=0.9,
+                        mask=np.full((8, 8), True),
+                    ),
+                    fo.Detection(
                         label="dog",
                         bounding_box=[0.1, 0.1, 0.4, 0.4],
                         confidence=0.9,
                         mask=np.full((8, 8), True),
-                    )
+                    ),
                 ]
             ),
         )
@@ -1253,13 +1378,21 @@ class DetectionsTests(unittest.TestCase):
             predictions=fo.Polylines(
                 polylines=[
                     fo.Polyline(
+                        label="cat",
+                        points=[
+                            [(0.6, 0.6), (0.6, 1.0), (1.0, 1.0), (1.0, 0.6)]
+                        ],
+                        filled=True,
+                        confidence=0.9,
+                    ),
+                    fo.Polyline(
                         label="dog",
                         points=[
                             [(0.1, 0.1), (0.1, 0.4), (0.4, 0.4), (0.4, 0.1)]
                         ],
                         filled=True,
                         confidence=0.9,
-                    )
+                    ),
                 ]
             ),
         )
@@ -1345,7 +1478,7 @@ class DetectionsTests(unittest.TestCase):
         # rows = GT, cols = predicted, labels = [cat, dog, None]
         classes = list(results.classes) + [results.missing]
         actual = results.confusion_matrix(classes=classes)
-        expected = np.array([[1, 0, 2], [0, 0, 0], [1, 1, 0]], dtype=int)
+        expected = np.array([[1, 0, 2], [0, 0, 0], [2, 1, 0]], dtype=int)
         self.assertEqual(actual.shape, expected.shape)
         self.assertTrue((actual == expected).all())
 
@@ -1356,12 +1489,12 @@ class DetectionsTests(unittest.TestCase):
         )
         self.assertListEqual(
             dataset.values(pred_eval_field),
-            [None, None, ["fp"], ["tp"], ["fp"]],
+            [None, None, ["fp"], ["tp"], ["fp", "fp"]],
         )
         self.assertIn("eval_tp", dataset.get_field_schema())
         self.assertListEqual(dataset.values("eval_tp"), [0, 0, 0, 1, 0])
         self.assertIn("eval_fp", dataset.get_field_schema())
-        self.assertListEqual(dataset.values("eval_fp"), [0, 0, 1, 0, 1])
+        self.assertListEqual(dataset.values("eval_fp"), [0, 0, 1, 0, 2])
         self.assertIn("eval_fn", dataset.get_field_schema())
         self.assertListEqual(dataset.values("eval_fn"), [0, 1, 0, 0, 1])
 
@@ -1383,7 +1516,7 @@ class DetectionsTests(unittest.TestCase):
         )
         self.assertListEqual(
             dataset.values(pred_eval_field),
-            [None, None, [None], [None], [None]],
+            [None, None, [None], [None], [None, None]],
         )
 
         schema = dataset.get_field_schema(flat=True)
@@ -1404,7 +1537,7 @@ class DetectionsTests(unittest.TestCase):
         )
         self.assertListEqual(
             dataset.values(pred_eval_field2),
-            [None, None, ["fp"], ["tp"], ["fp"]],
+            [None, None, ["fp"], ["tp"], ["fp", "fp"]],
         )
 
         schema = dataset.get_field_schema(flat=True)
@@ -1429,7 +1562,7 @@ class DetectionsTests(unittest.TestCase):
         )
         self.assertListEqual(
             dataset.values(pred_eval_field2),
-            [None, None, [None], [None], [None]],
+            [None, None, [None], [None], [None, None]],
         )
 
         schema = dataset.get_field_schema(flat=True)
@@ -1464,7 +1597,7 @@ class DetectionsTests(unittest.TestCase):
         # rows = GT, cols = predicted, labels = [cat, dog, None]
         classes = list(results.classes) + [results.missing]
         actual = results.confusion_matrix(classes=classes)
-        expected = np.array([[1, 1, 1], [0, 0, 0], [1, 0, 0]], dtype=int)
+        expected = np.array([[1, 1, 1], [0, 0, 0], [2, 0, 0]], dtype=int)
         self.assertEqual(actual.shape, expected.shape)
         self.assertTrue((actual == expected).all())
 
@@ -1474,10 +1607,10 @@ class DetectionsTests(unittest.TestCase):
         )
         self.assertListEqual(
             dataset.values(pred_eval_field),
-            [None, None, ["fp"], ["tp"], ["fp"]],
+            [None, None, ["fp"], ["tp"], ["fp", "fp"]],
         )
         self.assertListEqual(dataset.values("eval_tp"), [0, 0, 0, 1, 0])
-        self.assertListEqual(dataset.values("eval_fp"), [0, 0, 1, 0, 1])
+        self.assertListEqual(dataset.values("eval_fp"), [0, 0, 1, 0, 2])
         self.assertListEqual(dataset.values("eval_fn"), [0, 1, 0, 0, 1])
 
     def _evaluate_open_images(self, dataset, kwargs):
@@ -1555,7 +1688,7 @@ class DetectionsTests(unittest.TestCase):
         # rows = GT, cols = predicted, labels = [cat, dog, None]
         classes = list(results.classes) + [results.missing]
         actual = results.confusion_matrix(classes=classes)
-        expected = np.array([[1, 0, 2], [0, 0, 0], [1, 1, 0]], dtype=int)
+        expected = np.array([[1, 0, 2], [0, 0, 0], [2, 1, 0]], dtype=int)
         self.assertEqual(actual.shape, expected.shape)
         self.assertTrue((actual == expected).all())
 
@@ -1566,12 +1699,12 @@ class DetectionsTests(unittest.TestCase):
         )
         self.assertListEqual(
             dataset.values(pred_eval_field),
-            [None, None, ["fp"], ["tp"], ["fp"]],
+            [None, None, ["fp"], ["tp"], ["fp", "fp"]],
         )
         self.assertIn("eval_tp", dataset.get_field_schema())
         self.assertListEqual(dataset.values("eval_tp"), [0, 0, 0, 1, 0])
         self.assertIn("eval_fp", dataset.get_field_schema())
-        self.assertListEqual(dataset.values("eval_fp"), [0, 0, 1, 0, 1])
+        self.assertListEqual(dataset.values("eval_fp"), [0, 0, 1, 0, 2])
         self.assertIn("eval_fn", dataset.get_field_schema())
         self.assertListEqual(dataset.values("eval_fn"), [0, 1, 0, 0, 1])
 
@@ -1593,7 +1726,7 @@ class DetectionsTests(unittest.TestCase):
         )
         self.assertListEqual(
             dataset.values(pred_eval_field),
-            [None, None, [None], [None], [None]],
+            [None, None, [None], [None], [None, None]],
         )
 
         schema = dataset.get_field_schema(flat=True)
@@ -1614,7 +1747,7 @@ class DetectionsTests(unittest.TestCase):
         )
         self.assertListEqual(
             dataset.values(pred_eval_field2),
-            [None, None, ["fp"], ["tp"], ["fp"]],
+            [None, None, ["fp"], ["tp"], ["fp", "fp"]],
         )
 
         schema = dataset.get_field_schema(flat=True)
@@ -1639,7 +1772,7 @@ class DetectionsTests(unittest.TestCase):
         )
         self.assertListEqual(
             dataset.values(pred_eval_field2),
-            [None, None, [None], [None], [None]],
+            [None, None, [None], [None], [None, None]],
         )
 
         schema = dataset.get_field_schema(flat=True)
@@ -1673,7 +1806,7 @@ class DetectionsTests(unittest.TestCase):
         # rows = GT, cols = predicted, labels = [cat, dog, None]
         classes = list(results.classes) + [results.missing]
         actual = results.confusion_matrix(classes=classes)
-        expected = np.array([[1, 1, 1], [0, 0, 0], [1, 0, 0]], dtype=int)
+        expected = np.array([[1, 1, 1], [0, 0, 0], [2, 0, 0]], dtype=int)
         self.assertEqual(actual.shape, expected.shape)
         self.assertTrue((actual == expected).all())
 
@@ -1683,10 +1816,10 @@ class DetectionsTests(unittest.TestCase):
         )
         self.assertListEqual(
             dataset.values(pred_eval_field),
-            [None, None, ["fp"], ["tp"], ["fp"]],
+            [None, None, ["fp"], ["tp"], ["fp", "fp"]],
         )
         self.assertListEqual(dataset.values("eval_tp"), [0, 0, 0, 1, 0])
-        self.assertListEqual(dataset.values("eval_fp"), [0, 0, 1, 0, 1])
+        self.assertListEqual(dataset.values("eval_fp"), [0, 0, 1, 0, 2])
         self.assertListEqual(dataset.values("eval_fn"), [0, 1, 0, 0, 1])
 
     @drop_datasets
@@ -1815,6 +1948,7 @@ class DetectionsTests(unittest.TestCase):
         self.assertIn(pred_eval_field + "_id", schema)
         self.assertIn(pred_eval_field + "_iou", schema)
 
+    @drop_datasets
     def test_custom_detection_evaluation(self):
         dataset = self._make_detections_dataset()
 
@@ -1843,6 +1977,62 @@ class DetectionsTests(unittest.TestCase):
 
         results = dataset.load_evaluation_results("custom")
         self.assertEqual(type(results), foud.DetectionResults)
+
+    @drop_datasets
+    @use_local_plugins
+    def test_detection_custom_metric(self):
+        dataset = self._make_detections_dataset()
+
+        metric_uri = "@voxel51/evaluation-tests/custom_evaluation_metric"
+
+        eval_key = "eval"
+        metric_field = f"{eval_key}_custom_evaluation_metric"
+
+        results = dataset.evaluate_detections(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key=eval_key,
+            custom_metrics={metric_uri: dict(value="spam")},
+        )
+
+        self.assertTrue(metric_uri in results.config.custom_metrics)
+        self.assertTrue(dataset.has_field(metric_field))
+        self.assertListEqual(dataset.distinct(metric_field), ["spam"])
+
+        metrics = results.metrics()
+
+        self.assertTrue("example" in metrics)
+        self.assertEqual(metrics["example"], "spam")
+
+        results.add_custom_metrics(
+            custom_metrics={metric_uri: dict(value="eggs")},
+            overwrite=True,
+        )
+
+        self.assertListEqual(dataset.distinct(metric_field), ["eggs"])
+
+        metrics = results.metrics()
+
+        self.assertEqual(metrics["example"], "eggs")
+
+        new_eval_key = "still_eval"
+        new_metric_field = f"{new_eval_key}_custom_evaluation_metric"
+
+        dataset.rename_evaluation(eval_key, new_eval_key)
+
+        self.assertTrue(metric_uri in results.config.custom_metrics)
+        self.assertFalse(dataset.has_field(metric_field))
+        self.assertTrue(dataset.has_field(new_metric_field))
+        self.assertListEqual(dataset.distinct(new_metric_field), ["eggs"])
+
+        new_metrics = results.metrics()
+
+        self.assertTrue("example" in new_metrics)
+        self.assertEqual(new_metrics["example"], "eggs")
+
+        dataset.delete_evaluation(new_eval_key)
+
+        self.assertFalse(dataset.has_field(new_metric_field))
 
 
 class BoxesTests(unittest.TestCase):
@@ -2969,6 +3159,7 @@ class SegmentationTests(unittest.TestCase):
         results.report()
         results.print_report()
 
+    @drop_datasets
     def test_custom_segmentation_evaluation(self):
         dataset = self._make_segmentation_dataset()
 
@@ -2997,6 +3188,62 @@ class SegmentationTests(unittest.TestCase):
 
         results = dataset.load_evaluation_results("custom")
         self.assertEqual(type(results), fous.SegmentationResults)
+
+    @drop_datasets
+    @use_local_plugins
+    def test_segmentation_custom_metric(self):
+        dataset = self._make_segmentation_dataset()
+
+        metric_uri = "@voxel51/evaluation-tests/custom_evaluation_metric"
+
+        eval_key = "eval"
+        metric_field = f"{eval_key}_custom_evaluation_metric"
+
+        results = dataset.evaluate_segmentations(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key=eval_key,
+            custom_metrics={metric_uri: dict(value="spam")},
+        )
+
+        self.assertTrue(metric_uri in results.config.custom_metrics)
+        self.assertTrue(dataset.has_field(metric_field))
+        self.assertListEqual(dataset.distinct(metric_field), ["spam"])
+
+        metrics = results.metrics()
+
+        self.assertTrue("example" in metrics)
+        self.assertEqual(metrics["example"], "spam")
+
+        results.add_custom_metrics(
+            custom_metrics={metric_uri: dict(value="eggs")},
+            overwrite=True,
+        )
+
+        self.assertListEqual(dataset.distinct(metric_field), ["eggs"])
+
+        metrics = results.metrics()
+
+        self.assertEqual(metrics["example"], "eggs")
+
+        new_eval_key = "still_eval"
+        new_metric_field = f"{new_eval_key}_custom_evaluation_metric"
+
+        dataset.rename_evaluation(eval_key, new_eval_key)
+
+        self.assertTrue(metric_uri in results.config.custom_metrics)
+        self.assertFalse(dataset.has_field(metric_field))
+        self.assertTrue(dataset.has_field(new_metric_field))
+        self.assertListEqual(dataset.distinct(new_metric_field), ["eggs"])
+
+        new_metrics = results.metrics()
+
+        self.assertTrue("example" in new_metrics)
+        self.assertEqual(new_metrics["example"], "eggs")
+
+        dataset.delete_evaluation(new_eval_key)
+
+        self.assertFalse(dataset.has_field(new_metric_field))
 
 
 class VideoSegmentationTests(unittest.TestCase):

@@ -15,6 +15,7 @@ import {
   getCls,
   getFetchFunction,
   setFetchFunction,
+  is3d,
 } from "@fiftyone/utilities";
 import { CHUNK_SIZE } from "../constants";
 import {
@@ -358,7 +359,7 @@ const processSample = async ({
   const imageBitmapPromises: Promise<ImageBitmap[]>[] = [];
   let maskTargetsBuffers: ArrayBuffer[] = [];
 
-  if (sample?._media_type === "point-cloud" || sample?._media_type === "3d") {
+  if (is3d(sample?._media_type)) {
     // we process all 3d labels regardless of active paths
     process3DLabels(schema, sample);
   } else {

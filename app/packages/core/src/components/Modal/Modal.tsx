@@ -5,14 +5,15 @@ import React, { useCallback, useMemo, useRef } from "react";
 import ReactDOM from "react-dom";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import styled from "styled-components";
-import { ModalActionsRow } from "../Actions";
 import Sidebar from "../Sidebar";
+import Actions from "./Actions";
 import ModalNavigation from "./ModalNavigation";
 import { ModalSpace } from "./ModalSpace";
 import { TooltipInfo } from "./TooltipInfo";
 import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
 import { modalContext } from "./modal-context";
 import { useModalSidebarRenderEntry } from "./use-sidebar-render-entry";
+import { selectiveRenderingEventBus } from "@fiftyone/looker";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -108,6 +109,8 @@ const Modal = () => {
           "close",
           modalCloseHandler
         );
+
+        selectiveRenderingEventBus.removeAllListeners();
       },
     [clearModal, jsonPanel, helpPanel]
   );
@@ -214,7 +217,7 @@ const Modal = () => {
         onClick={onClickModalWrapper}
         data-cy="modal"
       >
-        <ModalActionsRow />
+        <Actions />
         <TooltipInfo />
         <ModalContainer style={{ ...screenParams }}>
           <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />

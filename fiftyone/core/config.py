@@ -63,6 +63,12 @@ class FiftyOneConfig(EnvConfig):
         if d is None:
             d = {}
 
+        self.database_compressor = self.parse_string(
+            d,
+            "database_compressor",
+            env_var="FIFTYONE_DATABASE_COMPRESSOR",
+            default=None,
+        )
         self.database_uri = self.parse_string(
             d, "database_uri", env_var="FIFTYONE_DATABASE_URI", default=None
         )
@@ -238,6 +244,24 @@ class FiftyOneConfig(EnvConfig):
         self.timezone = self.parse_string(
             d, "timezone", env_var="FIFTYONE_TIMEZONE", default=None
         )
+        self.default_parallelization_method = self.parse_string(
+            d,
+            "default_parallelization_method",
+            env_var="FIFTYONE_DEFAULT_PARALLELIZATION_METHOD",
+            default=None,
+        )
+        self.default_thread_pool_workers = self.parse_int(
+            d,
+            "default_thread_pool_workers",
+            env_var="FIFTYONE_DEFAULT_THREAD_POOL_WORKERS",
+            default=None,
+        )
+        self.default_process_pool_workers = self.parse_int(
+            d,
+            "default_process_pool_workers",
+            env_var="FIFTYONE_DEFAULT_PROCESS_POOL_WORKERS",
+            default=None,
+        )
         self.max_thread_pool_workers = self.parse_int(
             d,
             "max_thread_pool_workers",
@@ -250,7 +274,12 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_MAX_PROCESS_POOL_WORKERS",
             default=None,
         )
-
+        self.execution_cache_enabled = self.parse_bool(
+            d,
+            "execution_cache_enabled",
+            env_var="FIFTYONE_EXECUTION_CACHE_ENABLED",
+            default=True,
+        )
         self._init()
 
     @property

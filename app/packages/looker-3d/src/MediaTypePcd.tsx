@@ -32,6 +32,7 @@ import {
   shadeByAtom,
 } from "./state";
 import { toEulerFromDegreesArray } from "./utils";
+import { isPointCloud } from "@fiftyone/utilities";
 
 type View = "pov" | "top";
 
@@ -70,7 +71,7 @@ export const MediaTypePcdComponent = () => {
     useRecoilState(customColorMapAtom);
   const pointSize = useRecoilValue(currentPointSizeAtom);
   const isPointSizeAttenuated = useRecoilValue(isPointSizeAttenuatedAtom);
-  const isPointcloudDataset = useRecoilValue(fos.mediaType) === "point_cloud";
+  const isPointcloudDataset = isPointCloud(useRecoilValue(fos.mediaType));
 
   const upVectorNormalized = useMemo(
     () =>

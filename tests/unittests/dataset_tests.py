@@ -6,7 +6,7 @@ FiftyOne dataset-related unit tests.
 |
 """
 
-import time
+from collections import Counter
 from copy import deepcopy, copy
 from datetime import date, datetime, timedelta
 import gc
@@ -17,6 +17,7 @@ import unittest
 from unittest.mock import patch
 
 from bson import ObjectId
+from freezegun import freeze_time
 from mongoengine import ValidationError
 import numpy as np
 import pytz
@@ -616,6 +617,46 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(last_modified_at2, last_modified_at1)
 
     @drop_datasets
+    def test_last_modified_at_deletions(self):
+        samples = [
+            fo.Sample(filepath="image1.jpg"),
+            fo.Sample(filepath="image2.png"),
+            fo.Sample(filepath="image3.jpg"),
+            fo.Sample(filepath="image4.jpg"),
+            fo.Sample(filepath="image5.jpg"),
+            fo.Sample(filepath="image6.jpg"),
+        ]
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
+
+        last_modified_at1 = dataset.last_modified_at
+
+        dataset[:5].keep()
+        last_modified_at2 = dataset.last_modified_at
+
+        self.assertEqual(len(dataset), 5)
+        self.assertTrue(last_modified_at2 > last_modified_at1)
+
+        dataset[-1:].clear()
+        last_modified_at3 = dataset.last_modified_at
+
+        self.assertEqual(len(dataset), 4)
+        self.assertTrue(last_modified_at3 > last_modified_at2)
+
+        dataset.delete_samples(dataset[:2])
+        last_modified_at4 = dataset.last_modified_at
+
+        self.assertEqual(len(dataset), 2)
+        self.assertTrue(last_modified_at4 > last_modified_at3)
+
+        dataset.clear()
+        last_modified_at5 = dataset.last_modified_at
+
+        self.assertEqual(len(dataset), 0)
+        self.assertTrue(last_modified_at5 > last_modified_at4)
+
+    @drop_datasets
     def test_indexes(self):
         dataset = fo.Dataset()
 
@@ -1022,6 +1063,91 @@ class DatasetTests(unittest.TestCase):
             )
         )
 
+    @skip_windows  # TODO: don't skip on Windows
+    @drop_datasets
+    def test_update_samples(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [fo.Sample(filepath="image%d.jpg" % i, int=i) for i in range(50)]
+        )
+
+        self.assertTupleEqual(dataset.bounds("int"), (0, 49))
+
+        def update_fcn(sample):
+            sample.int += 1
+
+        #
+        # Multiple workers
+        #
+
+        dataset.update_samples(
+            update_fcn,
+            num_workers=2,
+            batch_method="id",
+            parallelize_method="process",
+        )
+
+        self.assertTupleEqual(dataset.bounds("int"), (1, 50))
+
+        dataset.update_samples(
+            update_fcn,
+            num_workers=2,
+            batch_method="slice",
+            parallelize_method="process",
+        )
+
+        self.assertTupleEqual(dataset.bounds("int"), (2, 51))
+
+        #
+        # Main process
+        #
+
+        dataset.update_samples(
+            update_fcn, num_workers=1, parallelize_method="process"
+        )
+
+        self.assertTupleEqual(dataset.bounds("int"), (3, 52))
+
+    @skip_windows  # TODO: don't skip on Windows
+    @drop_datasets
+    def test_map_samples(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="image%d.jpg" % i, foo="bar")
+                for i in range(50)
+            ]
+        )
+
+        self.assertDictEqual(dataset.count_values("foo"), {"bar": 50})
+
+        def map_fcn(sample):
+            return sample.foo.upper()
+
+        #
+        # Multiple workers
+        #
+
+        counter = Counter()
+        for _, value in dataset.map_samples(
+            map_fcn, num_workers=2, parallelize_method="process"
+        ):
+            counter[value] += 1
+
+        self.assertDictEqual(dict(counter), {"BAR": 50})
+
+        #
+        # Main process
+        #
+
+        counter = Counter()
+        for _, value in dataset.map_samples(
+            map_fcn, num_workers=1, parallelize_method="process"
+        ):
+            counter[value] += 1
+
+        self.assertDictEqual(dict(counter), {"BAR": 50})
+
     @drop_datasets
     def test_date_fields(self):
         dataset = fo.Dataset()
@@ -1052,17 +1178,9 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(int((sample.date - date1).total_seconds()), 0)
 
         # Now change system time to something GMT+
-        system_timezone = os.environ.get("TZ")
-        try:
-            os.environ["TZ"] = "Europe/Madrid"
-            time.tzset()
+        now = datetime.now()
+        with freeze_time(now, tz_offset=1):
             dataset.reload()
-        finally:
-            if system_timezone is None:
-                del os.environ["TZ"]
-            else:
-                os.environ["TZ"] = system_timezone
-            time.tzset()
 
         self.assertEqual(type(sample.date), date)
         self.assertEqual(int((sample.date - date1).total_seconds()), 0)
@@ -1480,6 +1598,13 @@ class DatasetTests(unittest.TestCase):
             "spam", embedded_doc_type=[fo.Label, fo.Detections]
         )
         dataset.validate_field_type("eggs", embedded_doc_type=fo.Detections)
+        dataset.validate_field_type("tags", subfield=fo.StringField)
+        dataset.validate_field_type(
+            "eggs.detections", subfield=fo.EmbeddedDocumentField
+        )
+        dataset.validate_field_type(
+            "eggs.detections.tags", subfield=fo.StringField
+        )
 
         with self.assertRaises(ValueError):
             dataset.validate_field_type("missing")
@@ -1497,6 +1622,116 @@ class DatasetTests(unittest.TestCase):
             dataset.validate_field_type(
                 "spam", embedded_doc_type=fo.Detections
             )
+
+        with self.assertRaises(ValueError):
+            dataset.validate_field_type(
+                "eggs.detections", subfield=fo.StringField
+            )
+
+        # Top-level label fields
+        schema = dataset.get_field_schema(embedded_doc_type=fo.Label)
+        self.assertSetEqual(set(schema.keys()), {"spam", "eggs"})
+
+        # All list(string) fields
+        schema = dataset.get_field_schema(flat=True, subfield=fo.StringField)
+        self.assertSetEqual(
+            set(schema.keys()),
+            {"tags", "spam.tags", "eggs.detections.tags"},
+        )
+
+        # All fields
+        schema = dataset.get_field_schema(flat=True)
+        self.assertSetEqual(
+            set(schema.keys()),
+            {
+                "id",
+                "filepath",
+                "tags",
+                "metadata",
+                "metadata.size_bytes",
+                "metadata.mime_type",
+                "created_at",
+                "last_modified_at",
+                "foo",
+                "bar",
+                "spam",
+                "spam.id",
+                "spam.tags",
+                "spam.label",
+                "spam.confidence",
+                "spam.logits",
+                "eggs",
+                "eggs.detections",
+                "eggs.detections.id",
+                "eggs.detections.tags",
+                "eggs.detections.attributes",
+                "eggs.detections.attributes.value",
+                "eggs.detections.label",
+                "eggs.detections.bounding_box",
+                "eggs.detections.mask",
+                "eggs.detections.mask_path",
+                "eggs.detections.confidence",
+                "eggs.detections.index",
+            },
+        )
+
+        # All fields that aren't embedded within lists
+        schema = dataset.get_field_schema(flat=True, unwind=False)
+        self.assertSetEqual(
+            set(schema.keys()),
+            {
+                "id",
+                "filepath",
+                "tags",
+                "metadata",
+                "metadata.size_bytes",
+                "metadata.mime_type",
+                "created_at",
+                "last_modified_at",
+                "foo",
+                "bar",
+                "spam",
+                "spam.id",
+                "spam.tags",
+                "spam.label",
+                "spam.confidence",
+                "spam.logits",
+                "eggs",
+                "eggs.detections",
+            },
+        )
+
+        # All string or list(string) fields that aren't embedded within lists
+        schema = dataset.get_field_schema(
+            ftype=(fo.StringField, fo.ListField),
+            subfield=fo.StringField,
+            flat=True,
+            unwind=False,
+        )
+        self.assertSetEqual(
+            set(schema.keys()),
+            {
+                "filepath",
+                "tags",
+                "metadata.mime_type",
+                "foo",
+                "spam.tags",
+                "spam.label",
+            },
+        )
+
+        # All string or list(string) fields that aren't embedded within lists
+        view = dataset.exclude_fields("spam")
+        schema = view.get_field_schema(
+            ftype=(fo.StringField, fo.ListField),
+            subfield=fo.StringField,
+            flat=True,
+            unwind=False,
+        )
+        self.assertSetEqual(
+            set(schema.keys()),
+            {"filepath", "tags", "metadata.mime_type", "foo"},
+        )
 
     @drop_datasets
     def test_validate_sample_fields(self):
@@ -1697,6 +1932,19 @@ class DatasetTests(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             _ = dataset.one(F("filepath").ends_with(".jpg"), exact=True)
+
+    @drop_datasets
+    def test_add_samples_generator(self):
+        samples = [fo.Sample(filepath=f"image{i}.jpg") for i in range(10)]
+
+        dataset = fo.Dataset()
+
+        sample_ids = []
+        for ids in dataset.add_samples(samples, generator=True):
+            sample_ids.extend(ids)
+
+        assert len(sample_ids) == 10
+        assert len(dataset) == 10
 
     @drop_datasets
     def test_merge_sample(self):
@@ -6961,6 +7209,32 @@ class DynamicFieldTests(unittest.TestCase):
         self.assertNotIn("predictions.detections.field", schema)
         self.assertFalse(frame.has_field("field"))
         self.assertFalse(frame.predictions.detections[0].has_field("field"))
+
+    @drop_datasets
+    def test_set_new_embedded_document_field(self):
+        dataset = fo.Dataset()
+
+        sample = fo.Sample(filepath="image.jpg")
+        dataset.add_sample(sample)
+
+        dataset.add_sample_field(
+            "data",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.DynamicEmbeddedDocument,
+        )
+
+        self.assertTrue(dataset.has_field("data"))
+        self.assertIsNone(sample["data"])
+
+        sample["data.foo"] = "bar"
+        sample.save()
+
+        self.assertTrue(dataset.has_field("data.foo"))
+
+        dataset.reload()
+
+        self.assertEqual(sample["data.foo"], "bar")
+        self.assertListEqual(dataset.values("data.foo"), ["bar"])
 
 
 class CustomEmbeddedDocumentTests(unittest.TestCase):

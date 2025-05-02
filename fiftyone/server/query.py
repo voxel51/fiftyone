@@ -37,7 +37,6 @@ from fiftyone.server.dataloader import get_dataloader_resolver
 from fiftyone.server.events import get_state
 from fiftyone.server.indexes import Index, from_dict as indexes_from_dict
 from fiftyone.server.lightning import lightning_resolver
-from fiftyone.server.metadata import MediaType
 from fiftyone.server.paginator import Connection, get_paginator_resolver
 from fiftyone.server.samples import (
     SampleFilter,
@@ -68,7 +67,7 @@ class ActiveFields:
 @gql.type
 class Group:
     name: str
-    media_type: MediaType
+    media_type: str
 
 
 @gql.type
@@ -239,8 +238,8 @@ class Dataset:
     group_media_types: t.Optional[t.List[Group]]
     group_field: t.Optional[str]
     default_group_slice: t.Optional[str]
-    media_type: t.Optional[MediaType]
-    parent_media_type: t.Optional[MediaType]
+    media_type: t.Optional[str]
+    parent_media_type: t.Optional[str]
     mask_targets: t.List[NamedTargets]
     default_mask_targets: t.Optional[t.List[Target]]
     sample_fields: t.List[SampleField]
@@ -448,7 +447,11 @@ class Query(fosa.AggregateQuery):
         filters: t.Optional[BSON] = None,
         extended_stages: t.Optional[BSON] = None,
         pagination_data: t.Optional[bool] = True,
+        sort_by: t.Optional[str] = None,
+        desc: t.Optional[bool] = False,
+        hint: t.Optional[str] = None,
     ) -> Connection[SampleItem, str]:
+
         return await paginate_samples(
             dataset,
             view,
@@ -458,6 +461,9 @@ class Query(fosa.AggregateQuery):
             sample_filter=filter,
             extended_stages=extended_stages,
             pagination_data=pagination_data,
+            sort_by=sort_by,
+            desc=desc,
+            hint=hint,
         )
 
     @gql.field
@@ -706,5 +712,7 @@ def _assign_estimated_counts(dataset: Dataset, fo_dataset: fo.Dataset):
 
 def _assign_lightning_info(dataset: Dataset, fo_dataset: fo.Dataset):
     dataset.sample_indexes, dataset.frame_indexes = indexes_from_dict(
-        fo_dataset.get_index_information(include_stats=True)
+        fo_dataset.get_index_information(
+            include_stats=True, _keep_index_names=True
+        )
     )

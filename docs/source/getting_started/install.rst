@@ -20,8 +20,7 @@ Prerequisites
 -------------
 
 You will need a working Python installation. FiftyOne currently requires
-**Python 3.9 - 3.11**
-
+**Python 3.9 - 3.12**.
 
 On Linux, we recommend installing Python through your system package manager
 (APT, YUM, etc.) if it is available. On other platforms, Python can be
@@ -194,25 +193,34 @@ option to ``pip install``:
 
    pip install --upgrade fiftyone
 
+New versions of FiftyOne occasionally introduce data model changes that
+require database migrations after you upgrade. Rest assured, these migrations
+will be **automatically** performed on a per-dataset basis whenever you load
+a dataset for the first time in a newer version of FiftyOne.
+
 .. note::
 
-  New versions of FiftyOne occasionally introduce data model changes that
-  require database migrations after you upgrade. Rest assured, these migrations
-  will be **automatically** performed on a per-dataset basis whenever you load
-  a dataset for the first time in a newer version of FiftyOne.
+  Starting in FiftyOne 1.5.0, if you are connected to the default MongoDB
+  provisioned by FiftyOne, the software will automatically manage the
+  `feature compatibility version <https://www.mongodb.com/docs/manual/reference/command/setFeatureCompatibilityVersion>`_
+  of your database.
+
+  Note that you can configure your own
+  :ref:`MongoDB connection <configuring-mongodb-connection>` if you do not wish
+  for FiftyOne to manage this for you.
 
 .. note::
 
   If you are working with a
-  :ref:`custom/shared MongoDB database <configuring-mongodb-connection>`, you
-  can use :ref:`database admin privileges <database-migrations>` to control
-  which clients are allowed to upgrade your FiftyOne deployment.
+  :ref:`custom MongoDB database <configuring-mongodb-connection>`, you can use
+  :ref:`database admin privileges <database-migrations>` to control which
+  clients are allowed to upgrade your FiftyOne deployment.
 
 .. note::
 
-  If you are a FiftyOne 1.2.0 or lower user with an Ubuntu 24 operating system, 
-  you will need to 
-  :ref:`upgrade your mongodb binaries <mongodb-7-to-8>`.
+  If you are a FiftyOne 1.2.0 or lower user with an Ubuntu 24 operating system,
+  you will need to
+  :ref:`upgrade your MongoDB binaries <mongodb-7-to-8>`.
 
 .. _downgrading-fiftyone:
 
@@ -254,7 +262,7 @@ FiftyOne v0.7.3 or earlier.
 .. note::
 
   If you are working with a
-  :ref:`custom/shared MongoDB database <configuring-mongodb-connection>`, you
+  :ref:`custom MongoDB database <configuring-mongodb-connection>`, you
   can use :ref:`database admin privileges <database-migrations>` to control
   which clients are allowed to downgrade your FiftyOne deployment.
 

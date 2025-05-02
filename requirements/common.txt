@@ -1,5 +1,6 @@
 aiofiles==0.7.0
 argcomplete==1.11.0
+async_lru>=2.0.4
 boto3==1.36.2
 cachetools==5.2.0
 dacite==1.6.0
@@ -8,7 +9,7 @@ ftfy==6.1.1
 httpx==0.23.0
 hypercorn==0.13.2
 kaleido==0.2.1
-matplotlib==3.5.2
+matplotlib==3.8.4
 mongoengine~=0.29.1
 motor~=3.6.0
 packaging==20.3

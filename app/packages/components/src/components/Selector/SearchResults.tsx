@@ -8,7 +8,7 @@ export type UseSearch<T> = {
 type Props<T> = {
   active?: number;
   cy?: string;
-  noResults?: string;
+  footer?: React.JSX.Element;
   search: string;
   useSearch: UseSearch<T>;
   onSelect: (value: T) => void;
@@ -24,7 +24,7 @@ export default function SearchResults<T>({
   onResults,
   onSelect,
   search,
-  noResults,
+  footer,
   toKey = (value) => String(value),
   useSearch,
 }: Props<T>) {
@@ -38,7 +38,7 @@ export default function SearchResults<T>({
     <Results
       toKey={toKey}
       active={active}
-      noResults={noResults}
+      footer={footer}
       component={component}
       results={values}
       onSelect={onSelect}

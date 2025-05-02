@@ -17,6 +17,7 @@ import fiftyone.core.storage as fos
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
 from fiftyone.core.odm.workspace import default_workspace_factory
+from .model_evaluation import ConfigureScenario
 
 
 class EditFieldInfo(foo.Operator):
@@ -313,8 +314,11 @@ def _build_map_values_entry(ctx, target_view, path):
         view=current_choices,
     )
 
+    # Need to gracefully handle None values
+    _sort = lambda l: sorted(l, key=lambda x: (x is None, x))
+
     new_choices = types.AutocompleteView(space=6)
-    for value in sorted(all_values):
+    for value in _sort(all_values):
         new_choices.add_choice(str(value), label=str(value))
 
     map_schema.str(
@@ -2628,3 +2632,4 @@ def register(p):
     p.register(DeleteWorkspace)
     p.register(SyncLastModifiedAt)
     p.register(ListFiles)
+    p.register(ConfigureScenario)

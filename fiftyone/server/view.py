@@ -40,9 +40,12 @@ class ExtendedViewForm:
 async def load_view(
     dataset_name: str,
     serialized_view: BSONArray,
-    form: ExtendedViewForm,
+    form: Optional[ExtendedViewForm] = None,
     view_name: Optional[str] = None,
 ) -> foc.SampleCollection:
+
+    form = form if form else ExtendedViewForm()
+
     def run() -> foc.SampleCollection:
         dataset = fod.load_dataset(dataset_name)
         if view_name:
@@ -82,6 +85,8 @@ def get_view(
     sample_filter=None,
     reload=True,
     awaitable=False,
+    sort_by=None,
+    desc=None,
 ):
     """Gets the view defined by the given request parameters.
 
@@ -137,6 +142,8 @@ def get_view(
                 pagination_data=pagination_data,
                 extended_stages=extended_stages,
                 media_types=media_types,
+                sort_by=sort_by,
+                desc=desc,
             )
 
         return view
@@ -153,6 +160,8 @@ def get_extended_view(
     extended_stages=None,
     pagination_data=False,
     media_types=None,
+    sort_by=None,
+    desc=None,
 ):
     """Create an extended view with the provided filters.
 
@@ -168,13 +177,14 @@ def get_extended_view(
     """
     label_tags = None
 
+    sort_by_stage = None
     if extended_stages:
         # extend view with similarity search, etc. first
+        # omit sort_by, which happens last
+        sort_by_stage = extended_stages.pop(
+            "fiftyone.core.stages.SortBy", None
+        )
         view = extend_view(view, extended_stages)
-
-    if pagination_data:
-        # omit all dict field values for performance, not needed by grid
-        view = _project_pagination_paths(view, media_types)
 
     if filters:
         if "tags" in filters:
@@ -203,7 +213,17 @@ def get_extended_view(
         for stage in stages:
             view = view.add_stage(stage)
 
+    if sort_by_stage:
+        view = extend_view(
+            view, {"fiftyone.core.stages.SortBy": sort_by_stage}
+        )
+
+    if sort_by:
+        view = view.sort_by(sort_by, reverse=bool(desc))
+
     if pagination_data:
+        # omit all dict field values for performance, not needed by grid
+        view = _project_pagination_paths(view, media_types)
         view = _add_labels_tags_counts(view)
 
     return view
@@ -347,13 +367,27 @@ def _project_pagination_paths(
         if isinstance(field, fof.DictField)
     ]
 
+    selected_fields = []
+    for path in schema:
+        if any(path.startswith(exclude) for exclude in excluded):
+            continue
+
+        selected_fields.append(path)
+
+        field = view.get_field(path)
+        while isinstance(field, fof.ListField):
+            field = field.field
+
+        if not isinstance(field, fof.EmbeddedDocumentField):
+            continue
+
+        # include instance, even it is missing from schema
+        if field.document_type in fol._INSTANCE_FIELDS:
+            selected_fields.append(f"{path}.instance")
+
     return view.add_stage(
         fosg.SelectFields(
-            [
-                path
-                for path in schema
-                if all(not path.startswith(exclude) for exclude in excluded)
-            ],
+            selected_fields,
             _media_types=media_types,
         )
     )
