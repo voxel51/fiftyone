@@ -203,7 +203,7 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
             "batch": 1,
             "save": False,
             "mode": "predict",
-            "rect": True,
+            "rect": False,
             "verbose": False,
             "device": self._device,
         }
@@ -216,6 +216,7 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         model.predictor.setup_model(model=model.model, verbose=False)
         model.predictor.setup_source([np.zeros((10, 10))])
         model.predictor.batch = next(iter(model.predictor.dataset))
+
         return model
 
     def _load_model(self, config):
@@ -240,6 +241,10 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
 
         return model
 
+    @staticmethod
+    def collate_fn(batch):
+        return batch
+
     def _parse_classes(self, config):
         if config.classes is not None:
             return config.classes
@@ -255,7 +260,7 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         if config.ragged_batches is not None:
             ragged_batches = config.ragged_batches
         else:
-            ragged_batches = True
+            ragged_batches = False
 
         transforms = [self._preprocess_img]
         transforms = torchvision.transforms.Compose(transforms)
@@ -266,22 +271,41 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         if not isinstance(img, torch.Tensor):
             if isinstance(img, Image.Image):
                 img = img.convert("RGB")
-            orig_img = img
+            orig_img = np.array(img)
             return {
-                "img": self._ultralytics_preprocess([np.asarray(img)]),
+                "img": self._ultralytics_preprocess([orig_img]),
                 "orig_img": orig_img,
             }
         return {"img": img, "orig_img": img}
 
     def _ultralytics_preprocess(self, img):
         # Taken from ultralytics.engine.predictor.preprocess.
-        img = np.stack(self._model.predictor.pre_transform(img))
+        img = np.stack(self._pre_transform(img))
         img = img.transpose((0, 3, 1, 2))
         img = np.ascontiguousarray(img)
         img = torch.from_numpy(img)
         img = img.half() if self._model.predictor.model.fp16 else img.float()
         img /= 255
         return torch.squeeze(img, axis=0)
+
+    def _pre_transform(self, im):
+        from ultralytics.data.augment import LetterBox
+
+        same_shapes = len({x.shape for x in im}) == 1
+        letterbox = LetterBox(
+            self._model.predictor.args.imgsz,
+            auto=same_shapes
+            and self._model.predictor.args.rect
+            and (
+                self._model.predictor.model.pt
+                or (
+                    getattr(self._model.predictor.model, "dynamic", False)
+                    and not self._model.predictor.model.imx
+                )
+            ),
+            stride=self._model.predictor.model.stride,
+        )
+        return [letterbox(image=x) for x in im]
 
     def _build_output_processor(self, config):
         if not config.output_processor_args:
@@ -294,6 +318,8 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
     def _predict_all(self, imgs):
         if self._preprocess and self._transforms is not None:
             imgs = [self._transforms(img) for img in imgs]
+            if hasattr(self, "collate_fn"):
+                imgs = self.collate_fn(imgs)
 
         if isinstance(imgs, list) and len(imgs) and isinstance(imgs[0], dict):
             orig_images = [img.get("orig_img") for img in imgs]
