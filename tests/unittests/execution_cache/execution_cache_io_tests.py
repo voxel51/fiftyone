@@ -209,21 +209,38 @@ class TestExecutionCacheWithSamples(unittest.TestCase):
     def test_clear_cache_transient(self):
         self._run_clear_cache_test("transient", clear_fn="per_key")
 
+    @drop_collection(TEST_COLLECTION_NAME)
+    @drop_datasets
+    def test_clear_all_caches_ephemeral(self):
+        self._run_clear_cache_test("ephemeral", clear_fn="all")
+
+    @drop_collection(TEST_COLLECTION_NAME)
+    @drop_datasets
+    def test_clear_all_caches_hybrid(self):
+        self._run_clear_cache_test("hybrid", clear_fn="all")
+
+    @drop_collection(TEST_COLLECTION_NAME)
+    @drop_datasets
+    def test_clear_all_caches_transient(self):
+        self._run_clear_cache_test("transient", clear_fn="all")
+
     def _run_clear_cache_test(self, residency, clear_fn):
         dataset_name = f"execution_cache_samples_ds_{residency}"
         calls = []
+        test_tag = f"{residency}-{clear_fn}"
 
         @execution_cache(
             collection_name=TEST_COLLECTION_NAME, residency=residency
         )
-        def cached(ctx, tag):
-            calls.append(tag)
-            return f"tag-{tag}"
+        def cached(ctx, r, fn):
+            result = f"{r}-{fn}"
+            calls.append(result)
+            return result
 
         dataset = create_test_dataset(dataset_name=dataset_name)
         ctx = setup_ctx(dataset)
 
-        self.assertEqual(cached(ctx, residency), f"tag-{residency}")
+        self.assertEqual(cached(ctx, residency, clear_fn), test_tag)
 
         if clear_fn == "per_key":
             cached.clear_cache(ctx, residency)
@@ -232,7 +249,7 @@ class TestExecutionCacheWithSamples(unittest.TestCase):
         else:
             raise ValueError(f"Unknown clear_fn mode: {clear_fn}")
 
-        self.assertEqual(cached(ctx, residency), f"tag-{residency}")
-        self.assertEqual(calls, [residency, residency])
+        self.assertEqual(cached(ctx, residency, clear_fn), test_tag)
+        self.assertEqual(calls, [test_tag, test_tag])
 
         fo.delete_dataset(dataset_name)
