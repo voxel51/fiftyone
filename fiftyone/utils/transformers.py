@@ -312,9 +312,11 @@ class FiftyOneTransformerConfig(fout.TorchImageModelConfig, HasZooModel):
                 # in the latter case, strange things can happen
                 # not sure how to warn the user about this
                 logger.warning(
-                    "The classes passed to the FiftyOne model are different from the "
-                    "classes in the HugginFace Transformers model configuration. "
-                    "The classes passed to the FiftyOne model will be used."
+                    "Classes were passed in to the FiftyOne model, but the "
+                    "HugginFace Transformers model configuration already has classes. "
+                    "Either set the classes argument to `None` to inherit the classes "
+                    "from the HFT model, or change the classes in the HFT model "
+                    "configuration to match the classes you want to use."
                 )
 
         self.transformers_processor_kwargs = self.parse_dict(
