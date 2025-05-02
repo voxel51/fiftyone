@@ -441,6 +441,7 @@ class TransformerEmbeddingsMixin(EmbeddingsMixin):
         if hasattr(self, "_embeddings_output_key"):
             return self._embeddings_output_key
         self._embeddings_output_key = self.config.embeddings_output_key
+        return self._embeddings_output_key
 
     @embeddings_output_key.setter
     def embeddings_output_key(self, value):
