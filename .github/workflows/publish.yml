@@ -113,8 +113,8 @@ jobs:
         with:
           build-args: |
             BUILD_TYPE=released
-            FO_VERSION=${fo_version}
-            PYTHON_VERSION=${pyver}
+            FO_VERSION=${{ env.fo_version }}
+            PYTHON_VERSION=${{ env.pyver }}
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
