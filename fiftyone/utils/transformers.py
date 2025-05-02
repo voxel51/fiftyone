@@ -1271,8 +1271,7 @@ class TransformersDepthEstimatorOutputProcessor(fout.OutputProcessor):
                 )
             else:
                 raise ValueError(
-                    "Processor does not have a post_process_object_detection "
-                    "or post_process_grounded_object_detection method."
+                    "Processor does not have a post_process_depth_estimation."
                 )
 
     def __call__(self, output, image_sizes, confidence_thresh=None):
