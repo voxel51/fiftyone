@@ -536,7 +536,10 @@ class ZeroShotTransformerPromptMixin(PromptMixin):
         # I don't think this is ever called with preprocess = False
         # but just in case
         if self.preprocess:
-            inputs = self.processor(text=prompts, return_tensors="pt")
+            inputs = self.transforms.processor(
+                text=prompts,
+                **self.transforms.kwargs,
+            )
         with torch.no_grad():
             text_features = self._model.base_model.get_text_features(
                 **inputs.to(self._device)
