@@ -26,6 +26,12 @@ const processSamplePageData = (
   zoom: boolean,
   records: Map<string, number>
 ) => {
+  if (data.samples.__typename !== "SampleItemStrConnection") {
+    throw new Error(
+      `unexepcted typename ${data.samples.__typename}, expected 'SampleItemStrConnection'`
+    );
+  }
+
   return data.samples.edges.map((edge, i) => {
     const node = handleNode(edge.node);
     const id = { description: node.id };
@@ -133,7 +139,7 @@ const useSpotlightPager = ({
         });
       };
     },
-    [environment, handleError, pager, store, zoom]
+    [environment, handleError, handleTimeout, pager, store, zoom]
   );
 
   return { page, records, store };
