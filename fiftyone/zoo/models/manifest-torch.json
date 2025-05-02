@@ -2917,7 +2917,7 @@
             "base_name": "omdet-turbo-swin-tiny-torch",
             "base_filename": null,
             "version": null,
-            "description": "Hugging Face Transformers OWL-ViT",
+            "description": "Hugging Face Transformers OmDet-Turbo",
             "source": "https://huggingface.co/docs/transformers/tasks/zero_shot_object_detection",
             "author": "Thomas Wolf, et al.",
             "license": "Apache 2.0",
