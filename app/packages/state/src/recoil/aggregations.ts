@@ -160,7 +160,7 @@ export const aggregation = selectorFamily({
         })
       ).find((data) => data.path === path);
 
-      if (result.__typename === "AggregationQueryTimeout") {
+      if (result?.__typename === "AggregationQueryTimeout") {
         throw new AggregationQueryTimeout(result.queryTime);
       }
 

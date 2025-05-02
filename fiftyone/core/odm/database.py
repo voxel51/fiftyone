@@ -344,13 +344,13 @@ def aggregate(collection, pipelines, hints=None, maxTimeMS=None):
             each pipeline
         maxTimeMS (None): max timeout for the request(s)
 
-        Returns:
-            -   If a single pipeline is provided, a
-                ``pymongo.command_cursor.CommandCursor`` or
-                ``motor.motor_asyncio.AsyncIOMotorCommandCursor`` is returned
+    Returns:
+        -   If a single pipeline is provided, a
+            ``pymongo.command_cursor.CommandCursor`` or
+            ``motor.motor_asyncio.AsyncIOMotorCommandCursor`` is returned
 
-            -   If multiple pipelines are provided, each cursor is extracted into
-                a list and the list of lists is returned
+        -   If multiple pipelines are provided, each cursor is extracted into
+            a list and the list of lists is returned
     """
     pipelines = list(pipelines)
     is_list = pipelines and not isinstance(pipelines[0], dict)
