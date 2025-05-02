@@ -397,7 +397,9 @@ class TransformerEmbeddingsMixin(EmbeddingsMixin):
             )
 
         if self.embeddings_output_key is None:
-            self.resolve_embeddings_output_key(self.last_output)
+            self.embeddings_output_key = self.resolve_embeddings_output_key(
+                self.last_output
+            )
 
         embeddings = self.last_output[self.embeddings_output_key]
 
