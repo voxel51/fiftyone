@@ -405,7 +405,7 @@ class AppConfig(EnvConfig):
             d,
             "max_query_time",
             env_var="FIFTYONE_APP_MAX_QUERY_TIME",
-            default=10,
+            default=60,
         )
         self.media_fallback = self.parse_bool(
             d,
