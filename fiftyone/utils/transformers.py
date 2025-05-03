@@ -644,7 +644,7 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
 
     def _predict_all(self, args):
         if self.preprocess:
-            args = self.transforms(args)
+            args = self.collate_fn(self.transforms(args))
 
         # this line is the only difference between this and the base class
         # we should consolidate this function once post processing is properly
@@ -684,6 +684,12 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
 
     @staticmethod
     def collate_fn(batch):
+        if isinstance(batch, transformers.BatchFeature) or isinstance(
+            batch, transformers.BatchEncoding
+        ):
+            # the transforms batch processed the input
+            # no need to collate
+            return batch
         keys = batch[0].keys()
         res = {}
         for k in keys:
