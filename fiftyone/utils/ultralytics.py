@@ -190,6 +190,14 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
     def __init__(self, config):
         super().__init__(config)
 
+    @property
+    def has_collate_fn(self):
+        return True
+
+    @staticmethod
+    def collate_fn(batch):
+        return batch
+
     def _download_model(self, config):
         config.download_model_if_necessary()
 
@@ -200,7 +208,6 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
 
         custom = {
             "conf": config.confidence_thresh,
-            "batch": 1,
             "save": False,
             "mode": "predict",
             "rect": False,
@@ -240,10 +247,6 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
             model = self._set_predictor(config, model)
 
         return model
-
-    @staticmethod
-    def collate_fn(batch):
-        return batch
 
     def _parse_classes(self, config):
         if config.classes is not None:
@@ -289,10 +292,8 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         return torch.squeeze(img, axis=0)
 
     def _pre_transform(self, im):
-        from ultralytics.data.augment import LetterBox
-
         same_shapes = len({x.shape for x in im}) == 1
-        letterbox = LetterBox(
+        letterbox = ultralytics.data.augment.LetterBox(
             self._model.predictor.args.imgsz,
             auto=same_shapes
             and self._model.predictor.args.rect
@@ -318,7 +319,7 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
     def _predict_all(self, imgs):
         if self._preprocess and self._transforms is not None:
             imgs = [self._transforms(img) for img in imgs]
-            if hasattr(self, "collate_fn"):
+            if self.has_collate_fn:
                 imgs = self.collate_fn(imgs)
 
         if isinstance(imgs, list) and len(imgs) and isinstance(imgs[0], dict):
@@ -328,22 +329,15 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
             orig_images = imgs
             images = imgs
 
-        height, width = None, None
-        if self.config.raw_inputs:
-            # Feed images as list
-            if self._output_processor is not None:
-                image = imgs[0]
-                height, width = _get_image_dims(image)
-        else:
-            # Feed images as stacked Tensor
-            if isinstance(images, (list, tuple)):
-                images = torch.stack(images)
+        # Feed images as stacked Tensor
+        if isinstance(images, (list, tuple)):
+            images = torch.stack(images)
 
-            height, width = images.size()[-2:]
+        height, width = images.size()[-2:]
 
-            images = images.to(self._device)
-            if self._using_half_precision:
-                images = images.half()
+        images = images.to(self._device)
+        if self._using_half_precision:
+            images = images.half()
 
         output = self._forward_pass(images)
 
