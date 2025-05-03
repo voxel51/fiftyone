@@ -390,7 +390,11 @@ def compute_metadata(
         )
 
     _compute_metadata_map_samples(
-        sample_collection, num_workers, overwrite, progress=progress
+        sample_collection,
+        num_workers,
+        overwrite,
+        progress=progress,
+        skip_failures=skip_failures,
     )
 
     if skip_failures and not warn_failures:
@@ -466,6 +470,7 @@ def _compute_metadata_map_samples(
     overwrite=False,
     batch_size=None,
     progress=None,
+    skip_failures=False,
 ):
     if len(sample_collection) == 0:
         return
@@ -473,10 +478,15 @@ def _compute_metadata_map_samples(
     if not overwrite:
         sample_collection = sample_collection.exists("metadata", False)
 
-    def _map_fnc(sample, cache={}):
+    def _map_fnc(sample, cached={}):
+        if not overwrite and sample.metadata is not None:
+            return
+
         filepath = sample.filepath
         media_type = sample.media_type
-        metadata = _get_metadata(filepath, media_type, cache=cache)
+        metadata = _get_metadata(filepath, media_type, cache=cached)
+        if filepath not in cached:
+            cached[filepath] = metadata
         sample.metadata = metadata
 
     for _, result in sample_collection.update_samples(
@@ -484,6 +494,7 @@ def _compute_metadata_map_samples(
         num_workers=num_workers,
         batch_size=batch_size,
         progress=progress,
+        skip_failures=skip_failures,
     ):
         pass
 
