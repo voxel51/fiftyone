@@ -624,30 +624,32 @@ class TorchImageModel(
     @property
     def has_collate_fn(self):
         """Whether this model has a custom collate function.
-        Set this to True if you want the method `collate_fn` to
-        be used instead of the default
-        `torch.utils.data.dataloader.default_collate`.
+
+        Set this to ``True`` if you want :meth:`collate_fn` to be used during
+        inference.
         """
         return False
 
     @staticmethod
     def collate_fn(batch):
-        """The collate function to use when creating a dataloader
-        for this model. By default, this is the default collate
-        function for :class:`torch:torch.utils.data.DataLoader`.
+        """The collate function to use when creating dataloaders for this
+        model.
 
-        In order to enable this functionality, the model must set
-        the `has_collate_fn` property to True.
+        In order to enable this functionality, the model's
+        :meth:`has_collate_fn` property must return ``True``.
 
-        The user can override this method with a collate function of their choosing.
-        Please make sure this collate function is serializable so it is compatible
+        By default, this is the default collate function for
+        :class:`torch:torch.utils.data.DataLoader`, but subclasses can override
+        this method as necessary.
+
+        Note that this function must be serializable so it is compatible
         with multiprocessing for dataloaders.
 
         Args:
             batch: a list of items to collate
 
         Returns:
-            the collated batch, this will be fed directly to the model
+            the collated batch, which will be fed directly to the model
         """
         return torch.utils.data.dataloader.default_collate(batch)
 
