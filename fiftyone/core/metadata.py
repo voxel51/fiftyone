@@ -363,6 +363,9 @@ def compute_metadata(
     skip_failures=True,
     warn_failures=False,
     progress=None,
+    batch_size=1000,
+    batch_method=None,
+    parallelize_method=None,
 ):
     """Populates the ``metadata`` field of all samples in the collection.
 
@@ -373,7 +376,13 @@ def compute_metadata(
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
         overwrite (False): whether to overwrite existing metadata
-        num_workers (None): a suggested number of threads to use
+        num_workers (None): the number of workers to use. When using
+            process parallelism, this defaults to
+            ``fiftyone.config.default_process_pool_workers`` if the value
+            is set, else
+            :meth:`fiftyone.core.utils.recommend_process_pool_workers`
+            workers are used. If this value is <= 1, all work is done in
+            the main process
         skip_failures (True): whether to gracefully continue without raising an
             error if metadata cannot be computed for a sample
         warn_failures (False): whether to log a warning if metadata cannot
@@ -381,6 +390,15 @@ def compute_metadata(
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
+        parallelize_method (None): the parallelization method to use.
+            Supported values are ``{"process", "thread"}``. The default is
+            ``fiftyone.config.default_parallelization_method``
+        batch_method (None): whether to use IDs (``"id"``) or slices
+            (``"slice"``) to assign samples to workers
+        batch_size (1000): an optional number of samples to distribute to
+            each worker at a time. If set to None, samples are evenly
+            distributed to workers with one batch per worker
+
     """
     num_workers = fou.recommend_thread_pool_workers(num_workers)
 
@@ -391,8 +409,11 @@ def compute_metadata(
 
     _compute_metadata_map_samples(
         sample_collection,
-        num_workers,
-        overwrite,
+        num_workers=num_workers,
+        overwrite=overwrite,
+        batch_size=batch_size,
+        batch_method=batch_method,
+        parallelize_method=parallelize_method,
         progress=progress,
         skip_failures=skip_failures,
     )
@@ -468,7 +489,9 @@ def _compute_metadata_map_samples(
     sample_collection,
     num_workers=1,
     overwrite=False,
-    batch_size=None,
+    batch_size=1000,
+    batch_method=None,
+    parallelize_method=None,
     progress=None,
     skip_failures=False,
 ):
@@ -489,14 +512,15 @@ def _compute_metadata_map_samples(
             cached[filepath] = metadata
         sample.metadata = metadata
 
-    for _, result in sample_collection.update_samples(
+    sample_collection.update_samples(
         _map_fnc,
         num_workers=num_workers,
         batch_size=batch_size,
+        batch_method=batch_method,
+        parallelize_method=parallelize_method,
         progress=progress,
         skip_failures=skip_failures,
-    ):
-        pass
+    )
 
 
 def _do_compute_metadata(args):
