@@ -493,7 +493,7 @@ def _compute_metadata_map_samples(
     batch_method=None,
     parallelize_method=None,
     progress=None,
-    skip_failures=False,
+    skip_failures=True,
 ):
     if len(sample_collection) == 0:
         return
