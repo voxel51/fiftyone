@@ -898,6 +898,7 @@ class DatasetDocument(Document):
     version = StringField(required=True, null=True)
     created_at = DateTimeField()
     last_modified_at = DateTimeField()
+    last_deletion_at = DateTimeField()
     last_loaded_at = DateTimeField()
     sample_collection_name = StringField(unique=True, required=True)
     frame_collection_name = StringField()

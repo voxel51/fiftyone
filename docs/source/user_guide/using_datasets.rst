@@ -990,6 +990,16 @@ a |Sample| that has not been added to a |Dataset|:
     print(sample.id)
     # None
 
+The :meth:`last_deletion_at <fiftyone.core.dataset.Dataset.last_deletion_at>`
+property of a |Dataset| tracks the datetime that a sample was last deleted
+from the dataset:
+
+.. code-block:: python
+    :linenos:
+
+    print(dataset.last_deletion_at)
+    # datetime.datetime(2025, 5, 4, 21, 0, 52, 942511)
+
 .. _using-fields:
 
 Fields
@@ -2109,6 +2119,186 @@ some workflows when it is available.
 
 Dates and datetimes
 ___________________
+
+.. _builtin-datetime-fields:
+
+Builtin datetime fields
+-----------------------
+
+Datasets and samples have various builtin datetime fields that are
+automatically updated when certain events occur.
+
+The
+:attr:`Dataset.last_loaded_at <fiftyone.core.dataset.Dataset.last_loaded_at>`
+property tracks the datetime that the dataset was last loaded:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    print(dataset.last_loaded_at)
+    # 2025-05-04 21:00:45.559520
+
+The
+:attr:`Dataset.last_modified_at <fiftyone.core.dataset.Dataset.last_modified_at>`
+property tracks the datetime that dataset-level metadata was last modified,
+including:
+
+-   when properties such as
+    :attr:`name <fiftyone.core.dataset.Dataset.name>`,
+    :attr:`persistent <fiftyone.core.dataset.Dataset.persistent>`,
+    :attr:`tags <fiftyone.core.dataset.Dataset.tags>`,
+    :attr:`description <fiftyone.core.dataset.Dataset.description>`,
+    :attr:`info <fiftyone.core.dataset.Dataset.info>`, and
+    :attr:`app_config <fiftyone.core.dataset.Dataset.app_config>` are edited
+-   when fields are added or deleted from the dataset's schema
+-   when group slices are added or deleted from the dataset's schema
+
+.. code-block:: python
+    :linenos:
+
+    last_modified_at1 = dataset.last_modified_at
+
+    dataset.name = "still-quickstart"
+
+    last_modified_at2 = dataset.last_modified_at
+    assert last_modified_at2 > last_modified_at1
+
+    dataset.app_config.sidebar_groups = ...
+    dataset.save()
+
+    last_modified_at3 = dataset.last_modified_at
+    assert last_modified_at3 > last_modified_at2
+
+    dataset.add_sample_field("foo", fo.StringField)
+
+    last_modified_at4 = dataset.last_modified_at
+    assert last_modified_at4 > last_modified_at3
+
+.. note::
+
+    The
+    :attr:`Dataset.last_modified_at <fiftyone.core.dataset.Dataset.last_modified_at>`
+    property is **not** updated when samples are added, edited, or deleted from
+    a dataset.
+
+    Use the methods described below to ascertain this information.
+
+All samples have a builtin ``last_modified_at`` field that automatically tracks
+the datetime that each sample was last modified:
+
+.. code-block:: python
+    :linenos:
+
+    sample = dataset.first()
+    last_modified_at1 = sample.last_modified_at
+
+    sample.foo = "bar"
+    sample.save()
+
+    last_modified_at2 = sample.last_modified_at
+    assert last_modified_at2 > last_modified_at1
+
+The ``last_modified_at`` field is indexed by default, which means you can
+efficiently check when a dataset's samples were last modified via
+:meth:`max() <fiftyone.core.collections.SampleCollection.max>`:
+
+.. code-block:: python
+    :linenos:
+
+    last_modified_at1 = dataset.max("last_modified_at")
+
+    dataset.add_samples(...)
+
+    last_modified_at2 = dataset.max("last_modified_at")
+    assert last_modified_at2 > last_modified_at1
+
+    dataset.set_field("foo", "spam").save()
+
+    last_modified_at3 = dataset.max("last_modified_at")
+    assert last_modified_at3 > last_modified_at2
+
+The
+:attr:`Dataset.last_deletion_at <fiftyone.core.dataset.Dataset.last_deletion_at>`
+property tracks the datetime that a sample was last deleted
+from the dataset:
+
+.. code-block:: python
+    :linenos:
+
+    last_deletion_at1 = dataset.last_deletion_at
+
+    dataset.delete_samples(...)
+
+    last_deletion_a2 = dataset.last_deletion_at
+    assert last_deletion_a2 > last_deletion_at1
+
+**Video datasets**
+
+The frames of :ref:`video datasets <video-datasets>` also have a builtin
+``last_modified_at`` field that automatically tracks the datetime that each
+frame was last modified:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-video")
+
+    sample = dataset.first()
+    frame = sample.frames.first()
+    last_modified_at1 = frame.last_modified_at
+
+    frame["foo"] = "bar"
+    frame.save()
+
+    last_modified_at2 = frame.last_modified_at
+    assert last_modified_at2 > last_modified_at1
+
+The ``last_modified_at`` frame field is indexed by default, which means you can
+efficiently check when a dataset's frames were last modified via
+:meth:`max() <fiftyone.core.collections.SampleCollection.max>`:
+
+.. code-block:: python
+    :linenos:
+
+    last_modified_at1 = dataset.max("frames.last_modified_at")
+
+    dataset.add_samples(...)
+
+    last_modified_at2 = dataset.max("frames.last_modified_at")
+    assert last_modified_at2 > last_modified_at1
+
+    dataset.set_field("frames.foo", "spam").save()
+
+    last_modified_at3 = dataset.max("last_modified_at")
+    assert last_modified_at3 > last_modified_at2
+
+When frames are deleted from a dataset, the ``last_modified_at`` field of the
+parent samples are automatically updated:
+
+.. code-block:: python
+    :linenos:
+
+    sample = dataset.first()
+    last_modified_at1 = sample.last_modified_at
+
+    del sample.frames[1]
+    sample.save()
+
+    last_modified_at2 = sample.last_modified_at
+    assert last_modified_at2 > last_modified_at1
+
+.. _custom-datetime-fields:
+
+Custom datetime fields
+----------------------
 
 You can store date information in FiftyOne datasets by populating fields with
 `date` or `datetime` values:

@@ -617,7 +617,7 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(last_modified_at2, last_modified_at1)
 
     @drop_datasets
-    def test_last_modified_at_deletions(self):
+    def test_last_deletion_at(self):
         samples = [
             fo.Sample(filepath="image1.jpg"),
             fo.Sample(filepath="image2.png"),
@@ -630,31 +630,33 @@ class DatasetTests(unittest.TestCase):
         dataset = fo.Dataset()
         dataset.add_samples(samples)
 
-        last_modified_at1 = dataset.last_modified_at
+        last_deletion_at1 = dataset.last_deletion_at
+        self.assertIsNone(last_deletion_at1)
 
         dataset[:5].keep()
-        last_modified_at2 = dataset.last_modified_at
+        last_deletion_at2 = dataset.last_deletion_at
 
         self.assertEqual(len(dataset), 5)
-        self.assertTrue(last_modified_at2 > last_modified_at1)
+        self.assertIsNotNone(last_deletion_at2)
+        self.assertTrue(last_deletion_at2 > dataset.created_at)
 
         dataset[-1:].clear()
-        last_modified_at3 = dataset.last_modified_at
+        last_deletion_at3 = dataset.last_deletion_at
 
         self.assertEqual(len(dataset), 4)
-        self.assertTrue(last_modified_at3 > last_modified_at2)
+        self.assertTrue(last_deletion_at3 > last_deletion_at2)
 
         dataset.delete_samples(dataset[:2])
-        last_modified_at4 = dataset.last_modified_at
+        last_deletion_at4 = dataset.last_deletion_at
 
         self.assertEqual(len(dataset), 2)
-        self.assertTrue(last_modified_at4 > last_modified_at3)
+        self.assertTrue(last_deletion_at4 > last_deletion_at3)
 
         dataset.clear()
-        last_modified_at5 = dataset.last_modified_at
+        last_deletion_at5 = dataset.last_deletion_at
 
         self.assertEqual(len(dataset), 0)
-        self.assertTrue(last_modified_at5 > last_modified_at4)
+        self.assertTrue(last_deletion_at5 > last_deletion_at4)
 
     @drop_datasets
     def test_indexes(self):

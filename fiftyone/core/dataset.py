@@ -716,8 +716,30 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def last_modified_at(self):
-        """The datetime that the dataset was last modified."""
+        """The datetime that dataset-level metadata was last modified.
+
+        This property is incremented in the following cases:
+
+        -   when properties such as :attr:`name`, :attr:`persistent`,
+            :attr:`tags`, :attr:`description`, :attr:`info`, and
+            :attr:`app_config` are edited
+        -   when fields are added or deleted from the dataset's schema
+        -   when group slices are added or deleted from the dataset's schema
+
+        This property is **not** updated when samples are added, edited, or
+        deleted. Use
+        :meth:`max("last_modified_at") <fiftyone.core.collections.SampleCollection.max>`
+        to determine when samples were last added or edited, and use
+        :attr:`last_deletion_at` to determine when samples were last deleted.
+        """
         return self._doc.last_modified_at
+
+    @property
+    def last_deletion_at(self):
+        """The datetime that a sample was last deleted from the dataset, or
+        ``None`` if no samples have been deleted.
+        """
+        return self._doc.last_deletion_at
 
     @property
     def last_loaded_at(self):
@@ -5013,7 +5035,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ops.append(DeleteMany({}))
 
         foo.bulk_write(ops, self._sample_collection)
-        self._update_last_modified_at(now)
+        self._update_last_deletion_at(now)
 
         fos.Sample._reset_docs(
             self._sample_collection_name, sample_ids=sample_ids
@@ -8274,6 +8296,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _update_last_modified_at(self, last_modified_at=None):
         self._doc._update_last_modified_at(last_modified_at=last_modified_at)
 
+    def _update_last_deletion_at(self, last_deletion_at=None):
+        self._doc._update_last_deletion_at(last_deletion_at=last_deletion_at)
+
 
 def _get_random_characters(n):
     return "".join(
@@ -8742,6 +8767,7 @@ def _clone_collection(sample_collection, name, persistent):
     dataset_doc.slug = slug
     dataset_doc.created_at = now
     dataset_doc.last_modified_at = now
+    dataset_doc.last_deletion_at = None
     dataset_doc.last_loaded_at = None
     dataset_doc.persistent = persistent
     dataset_doc.sample_collection_name = sample_collection_name
