@@ -14,12 +14,12 @@ const IncompleteResults = () => {
   const theme = useTheme();
   return (
     <div style={{ textAlign: "right" }}>
-      Incomplete results.{" "}
+      Incomplete search.{" "}
       <ExternalLink
         style={{ color: theme.text.primary, textDecoration: "underline" }}
         href={QUERY_PERFORMANCE_RESULTS}
       >
-        incomplete search, create an index
+        create an index
         <Launch style={{ height: "1rem", marginTop: 4.5, marginLeft: 1 }} />
       </ExternalLink>
     </div>

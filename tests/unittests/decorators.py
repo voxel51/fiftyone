@@ -6,8 +6,10 @@ Decorator utils for unit tests.
 |
 """
 from functools import wraps
+import os
 import platform
 import unittest
+from unittest import mock
 
 import fiftyone as fo
 import fiftyone.core.odm as foo
@@ -45,7 +47,9 @@ def drop_async_dataset(func):
 
 
 def drop_collection(collection_name):
-    """Decorator that drops a collection from the database before and after running a test."""
+    """Decorator that drops a collection from the database before and after
+    running a test.
+    """
 
     def decorator(func):
         @wraps(func)
@@ -75,3 +79,30 @@ def skip_windows(func):
         return func(*args, **kwargs)
 
     return wrapper
+
+
+def use_local_plugins(func_=None, plugins_dir=None):
+    """Decorator that temporarily sets ``fiftyone.config.plugins_dir`` to a
+    value of your choice for the lifetime of the function's execution.
+
+    By default, the ``tests/unittests`` directory is used, which means that any
+    plugins defined in subdirectories therein will be registered.
+    """
+
+    if plugins_dir is None:
+        plugins_dir = os.path.dirname(os.path.abspath(__file__))
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            with mock.patch("fiftyone.config.plugins_dir", plugins_dir):
+                return func(*args, **kwargs)
+
+        return wrapper
+
+    if func_ is not None:
+        # decorator called without parentheses
+        return decorator(func_)
+    else:
+        # decorator called with parentheses (possibly with kwargs)
+        return decorator

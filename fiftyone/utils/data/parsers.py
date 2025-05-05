@@ -24,7 +24,14 @@ import fiftyone.utils.image as foui
 import fiftyone.utils.video as fouv
 
 
-def add_images(dataset, samples, sample_parser, tags=None, progress=None):
+def add_images(
+    dataset,
+    samples,
+    sample_parser,
+    tags=None,
+    generator=False,
+    progress=None,
+):
     """Adds the given images to the dataset.
 
     This operation does not read the images.
@@ -40,6 +47,8 @@ def add_images(dataset, samples, sample_parser, tags=None, progress=None):
             parse the samples
         tags (None): an optional tag or iterable of tags to attach to each
             sample
+        generator (False): whether to yield ID batches as a generator as
+            samples are added to the dataset
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
@@ -83,6 +92,7 @@ def add_images(dataset, samples, sample_parser, tags=None, progress=None):
     return dataset.add_samples(
         _samples,
         expand_schema=False,
+        generator=generator,
         progress=progress,
         num_samples=samples,
     )
@@ -96,6 +106,7 @@ def add_labeled_images(
     tags=None,
     expand_schema=True,
     dynamic=False,
+    generator=False,
     progress=None,
 ):
     """Adds the given labeled images to the dataset.
@@ -129,6 +140,8 @@ def add_labeled_images(
             if a sample's schema is not a subset of the dataset schema
         dynamic (False): whether to declare dynamic attributes of embedded
             document fields that are encountered
+        generator (False): whether to yield ID batches as a generator as
+            samples are added to the dataset
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
@@ -201,12 +214,20 @@ def add_labeled_images(
         _samples,
         expand_schema=expand_schema,
         dynamic=dynamic,
+        generator=generator,
         progress=progress,
         num_samples=samples,
     )
 
 
-def add_videos(dataset, samples, sample_parser, tags=None, progress=None):
+def add_videos(
+    dataset,
+    samples,
+    sample_parser,
+    tags=None,
+    generator=False,
+    progress=None,
+):
     """Adds the given videos to the dataset.
 
     This operation does not read the videos.
@@ -222,6 +243,8 @@ def add_videos(dataset, samples, sample_parser, tags=None, progress=None):
             parse the samples
         tags (None): an optional tag or iterable of tags to attach to each
             sample
+        generator (False): whether to yield ID batches as a generator as
+            samples are added to the dataset
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
@@ -260,6 +283,7 @@ def add_videos(dataset, samples, sample_parser, tags=None, progress=None):
     return dataset.add_samples(
         _samples,
         expand_schema=True,
+        generator=generator,
         progress=progress,
         num_samples=samples,
     )
@@ -273,6 +297,7 @@ def add_labeled_videos(
     tags=None,
     expand_schema=True,
     dynamic=False,
+    generator=False,
     progress=None,
 ):
     """Adds the given labeled videos to the dataset.
@@ -305,6 +330,8 @@ def add_labeled_videos(
             if a sample's schema is not a subset of the dataset schema
         dynamic (False): whether to declare dynamic attributes of embedded
             document fields that are encountered
+        generator (False): whether to yield ID batches as a generator as
+            samples are added to the dataset
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
@@ -375,6 +402,7 @@ def add_labeled_videos(
         _samples,
         expand_schema=expand_schema,
         dynamic=dynamic,
+        generator=generator,
         progress=progress,
         num_samples=samples,
     )

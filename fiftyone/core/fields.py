@@ -2089,19 +2089,6 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
             prev._set_dataset(None, None)
 
 
-class EagerValidatingEmbeddedDocumentField(EmbeddedDocumentField):
-    """An embedded document field that validates its value when setting it."""
-
-    def __set__(self, instance, value):
-        # let None values pass
-        if value is None:
-            super().__set__(instance, value)
-            return
-
-        self.validate(value)
-        super().__set__(instance, value)
-
-
 class EmbeddedDocumentListField(
     mongoengine.fields.EmbeddedDocumentListField, Field
 ):

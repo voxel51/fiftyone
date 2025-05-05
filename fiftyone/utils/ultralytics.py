@@ -11,6 +11,8 @@ import itertools
 import numpy as np
 from PIL import Image
 
+import eta.core.utils as etau
+
 import fiftyone.core.labels as fol
 import fiftyone.utils.torch as fout
 import fiftyone.core.utils as fou
@@ -59,6 +61,172 @@ def _extract_track_ids(result):
         if result.boxes.is_track
         else [None] * result.boxes.conf.size(0)
     )
+
+
+def to_detections(results, confidence_thresh=None):
+    """Converts ``ultralytics.YOLO`` boxes to FiftyOne format.
+
+    Args:
+        results: a single or list of ``ultralytics.engine.results.Results``
+        confidence_thresh (None): a confidence threshold to filter boxes
+
+    Returns:
+        a single or list of :class:`fiftyone.core.labels.Detections`
+    """
+    single = not isinstance(results, list)
+    if single:
+        results = [results]
+
+    batch = [
+        _to_detections(r, confidence_thresh=confidence_thresh) for r in results
+    ]
+
+    if single:
+        return batch[0]
+
+    return batch
+
+
+def _to_detections(result, confidence_thresh=None):
+    if result.boxes is None:
+        return None
+
+    classes = np.rint(result.boxes.cls.detach().cpu().numpy()).astype(int)
+    boxes = result.boxes.xywhn.detach().cpu().numpy().astype(float)
+    confs = result.boxes.conf.detach().cpu().numpy().astype(float)
+    track_ids = _extract_track_ids(result)
+
+    detections = []
+    for cls, box, conf, idx in zip(classes, boxes, confs, track_ids):
+        if confidence_thresh is not None and conf < confidence_thresh:
+            continue
+
+        label = result.names[cls]
+        xc, yc, w, h = box
+
+        detection = fol.Detection(
+            label=label,
+            bounding_box=[xc - 0.5 * w, yc - 0.5 * h, w, h],
+            confidence=conf,
+            index=idx,
+        )
+        detections.append(detection)
+
+    return fol.Detections(detections=detections)
+
+
+def to_instances(results, confidence_thresh=None):
+    """Converts ``ultralytics.YOLO`` instance segmentations to FiftyOne format.
+
+    Args:
+        results: a single or list of ``ultralytics.engine.results.Results``
+        confidence_thresh (None): a confidence threshold to filter boxes
+
+    Returns:
+        a single or list of :class:`fiftyone.core.labels.Detections`
+    """
+    single = not isinstance(results, list)
+    if single:
+        results = [results]
+
+    batch = [
+        _to_instances(r, confidence_thresh=confidence_thresh) for r in results
+    ]
+
+    if single:
+        return batch[0]
+
+    return batch
+
+
+def _to_instances(result, confidence_thresh=None):
+    if result.masks is None:
+        return None
+
+    classes = np.rint(result.boxes.cls.detach().cpu().numpy()).astype(int)
+    boxes = result.boxes.xywhn.detach().cpu().numpy().astype(float)
+    masks = result.masks.data.detach().cpu().numpy() > 0.5
+    confs = result.boxes.conf.detach().cpu().numpy().astype(float)
+    track_ids = _extract_track_ids(result)
+
+    # convert from center coords to corner coords
+    boxes[:, 0] -= boxes[:, 2] / 2.0
+    boxes[:, 1] -= boxes[:, 3] / 2.0
+
+    detections = []
+    for cls, box, mask, conf, idx in zip(
+        classes, boxes, masks, confs, track_ids
+    ):
+        if confidence_thresh is not None and conf < confidence_thresh:
+            continue
+
+        label = result.names[cls]
+        w, h = mask.shape
+        tmp = np.copy(box)
+        tmp[2] += tmp[0]
+        tmp[3] += tmp[1]
+        tmp[0] *= h
+        tmp[2] *= h
+        tmp[1] *= w
+        tmp[3] *= w
+        tmp = [int(b) for b in tmp]
+        y0, x0, y1, x1 = tmp
+        sub_mask = mask[x0:x1, y0:y1]
+
+        detection = fol.Detection(
+            label=label,
+            bounding_box=list(box),
+            mask=sub_mask.astype(bool),
+            confidence=conf,
+            index=idx,
+        )
+        detections.append(detection)
+
+    return fol.Detections(detections=detections)
+
+
+def to_classifications(results, confidence_thresh=None, store_logits=False):
+    """Converts ``ultralytics.YOLO`` classifications to FiftyOne format.
+
+    Args:
+        results: a single or list of ``ultralytics.engine.results.Results``
+        confidence_thresh (None): a confidence threshold to filter clasifications
+
+    Returns:
+        a single or list of :class:`fiftyone.core.labels.Classification`
+    """
+    single = not isinstance(results, list)
+    if single:
+        results = [results]
+
+    batch = [
+        _to_classifications(
+            r, confidence_thresh=confidence_thresh, store_logits=store_logits
+        )
+        for r in results
+    ]
+
+    if single:
+        return batch[0]
+
+    return batch
+
+
+def _to_classifications(result, confidence_thresh=None, store_logits=False):
+    logits = result.probs.data.detach().cpu().numpy()
+    score = result.probs.top1conf.detach().cpu().numpy()
+    label = result.names[result.probs.top1]
+
+    if confidence_thresh is not None and score < confidence_thresh:
+        classification = None
+    else:
+        classification = fol.Classification(
+            label=label,
+            confidence=score,
+        )
+        if store_logits:
+            classification.logits = logits
+    return classification
 
 
 def obb_to_polylines(results, confidence_thresh=None, filled=False):
@@ -190,14 +358,6 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
     def __init__(self, config):
         super().__init__(config)
 
-    @property
-    def has_collate_fn(self):
-        return True
-
-    @staticmethod
-    def collate_fn(batch):
-        return batch
-
     def _download_model(self, config):
         config.download_model_if_necessary()
 
@@ -223,7 +383,6 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         model.predictor.setup_model(model=model.model, verbose=False)
         model.predictor.setup_source([np.zeros((10, 10))])
         model.predictor.batch = next(iter(model.predictor.dataset))
-
         return model
 
     def _load_model(self, config):
@@ -231,7 +390,20 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
             if config.model_path:
                 config.entrypoint_args["model"] = config.model_path
 
-        model = super()._load_model(config)
+        if config.model is not None:
+            model = config.model
+        else:
+            entrypoint_fcn = config.entrypoint_fcn
+
+            if etau.is_str(entrypoint_fcn):
+                entrypoint_fcn = etau.get_function(entrypoint_fcn)
+
+            kwargs = config.entrypoint_args or {}
+            model = entrypoint_fcn(**kwargs)
+
+        model = model.to(self._device)
+        if self.using_half_precision:
+            model = model.half()
 
         if config.classes:
             if hasattr(ultralytics, "YOLOE") and isinstance(
@@ -354,7 +526,7 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
             return _output
 
         if self.has_logits:
-            self._output_processor.store_logits = self.store_logits
+            self._output_processor.store_logits = self.has_logits
 
         return self._output_processor(
             output,
@@ -401,7 +573,6 @@ class FiftyOneYOLOClassificationModel(FiftyOneYOLOModel):
 
     def _ultralytics_preprocess(self, img):
         # Taken from ultralytics.models.yolo.classify.predict.
-
         is_legacy_transform = any(
             self._model.predictor._legacy_transform_name in str(transform)
             for transform in self.transforms.transforms
@@ -546,25 +717,11 @@ class UltralyticsClassificationOutputProcessor(
         super().__init__(classes=classes, store_logits=store_logits)
         self.post_processor = post_processor
 
-    def __call__(self, output, frame_size, confidence_thresh=None):
+    def __call__(self, output, _, confidence_thresh=None):
         results = self.post_process(output)
-        classifications = []
-        for result in results:
-            logits = result.probs.data.detach().cpu().numpy()
-            score = result.probs.top1conf.detach().cpu().numpy()
-            label = self.classes[result.probs.top1]
-
-            if confidence_thresh is not None and score < confidence_thresh:
-                classification = None
-            else:
-                classification = fol.Classification(
-                    label=label,
-                    confidence=score,
-                )
-                if self.store_logits:
-                    classification.logits = logits
-            classifications.append(classification)
-        return classifications
+        return to_classifications(
+            results, confidence_thresh, self.store_logits
+        )
 
 
 class UltralyticsDetectionOutputProcessor(
@@ -626,74 +783,10 @@ class UltralyticsSegmentationOutputProcessor(
 
     def __call__(self, output, frame_size, confidence_thresh=None):
         results = self.post_process(output)
-        preds = self._to_dict(results)
-        return super().__call__(preds, frame_size, confidence_thresh)
+        return super().__call__(results, frame_size, confidence_thresh)
 
-    def _to_dict(self, results):
-        batch = []
-        for result in results:
-            if not result.masks:
-                continue
-            else:
-                pred = {
-                    "boxes": result.boxes.xywhn,
-                    "labels": result.boxes.cls.int(),
-                    "scores": result.boxes.conf,
-                    "masks": result.masks.data,
-                    "track_ids": _extract_track_ids(result),
-                }
-                batch.append(pred)
-        return batch
-
-    def _parse_output(self, output, _, confidence_thresh):
-        boxes = output["boxes"].detach().cpu().numpy().astype(float)
-        labels = output["labels"].detach().cpu().numpy()
-        masks = output["masks"].detach().cpu().numpy() > self.mask_thresh
-        track_ids = output["track_ids"]
-
-        boxes[:, 0] -= boxes[:, 2] / 2.0
-        boxes[:, 1] -= boxes[:, 3] / 2.0
-
-        if "scores" in output:
-            scores = output["scores"].detach().cpu().numpy()
-        else:
-            scores = itertools.repeat(None)
-
-        detections = []
-        for box, label, mask, score, idx in zip(
-            boxes, labels, masks, scores, track_ids
-        ):
-            if (
-                confidence_thresh is not None
-                and score is not None
-                and score < confidence_thresh
-            ):
-                continue
-
-            # Process masks.
-            w, h = mask.shape
-            tmp = np.copy(box)
-            tmp[2] += tmp[0]
-            tmp[3] += tmp[1]
-            tmp[0] *= h
-            tmp[2] *= h
-            tmp[1] *= w
-            tmp[3] *= w
-            tmp = [int(b) for b in tmp]
-            y0, x0, y1, x1 = tmp
-            sub_mask = mask[x0:x1, y0:y1]
-
-            detections.append(
-                fol.Detection(
-                    label=self.classes[label],
-                    bounding_box=list(box),
-                    mask=sub_mask.astype(bool),
-                    confidence=score,
-                    index=idx,
-                )
-            )
-
-        return fol.Detections(detections=detections)
+    def _parse_output(self, results, _, confidence_thresh):
+        return to_instances(results, confidence_thresh)
 
 
 class UltralyticsPoseOutputProcessor(
