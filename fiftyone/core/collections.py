@@ -11070,9 +11070,20 @@ class SampleCollection(object):
         return _handle_id_fields(self, field_name)
 
     def _is_full_collection(self):
+        # Full dataset
         if isinstance(self, fod.Dataset) and self.media_type != fom.GROUP:
             return True
 
+        # Full view (possibly generated)
+        # pylint:disable=no-member
+        if (
+            isinstance(self, fov.DatasetView)
+            and self._dataset.media_type != fom.GROUP
+            and not self._stages
+        ):
+            return True
+
+        # Full group slices view
         # pylint:disable=no-member
         if (
             isinstance(self, fov.DatasetView)
