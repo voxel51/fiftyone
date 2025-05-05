@@ -3815,8 +3815,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         if self._server_version > Version("2.30"):
             raise RuntimeError(
-                "CVAT server version '%s' is not currently supported. Supported CVAT range is <=v2.30.0. https://github.com/voxel51/fiftyone/issues/5771"
-                % self._server_version
+                f"CVAT server version '{self._server_version}' is not "
+                "currently supported. Please use CVAT <= 2.30.\n\n"
+                "See https://github.com/voxel51/fiftyone/issues/5771 for "
+                "details"
             )
 
     def _add_referer(self):
