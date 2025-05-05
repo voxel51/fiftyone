@@ -448,7 +448,7 @@ class ConfigureScenario(foo.Operator):
                 + "Please use the custom code to define the scenario."
             )
         if reason == CustomCodeViewReason.FLOAT_TYPE:
-            label = "Float type."
+            label = ""
             description = f"To create scenarios based on float fields, please use the custom code mode. "
         if reason == CustomCodeViewReason.SLOW:
             severity = "info"
@@ -699,11 +699,16 @@ class ConfigureScenario(foo.Operator):
         values = values or []
 
         scenario_type = self.get_scenario_type(ctx.params)
-        component_key, selected_values = self.get_selected_values(ctx.params)
-
-        self.render_use_custom_code_warning(
-            inputs, reason=CustomCodeViewReason.SLOW
+        scenario_type_display = (
+            "saved views"
+            if scenario_type == "view"
+            else (
+                "label attributes"
+                if scenario_type == "label_attribute"
+                else "sample fields"
+            )
         )
+        component_key, selected_values = self.get_selected_values(ctx.params)
 
         inputs.list(
             component_key,
@@ -712,7 +717,7 @@ class ConfigureScenario(foo.Operator):
             required=True,
             label="",
             description=(
-                f"Select saved views to get started. {len(selected_values)} selected"
+                f"Select {scenario_type_display} to get started. {len(selected_values)} selected"
             ),
             view=types.AutocompleteView(
                 multiple=True,
