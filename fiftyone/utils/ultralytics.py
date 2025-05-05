@@ -357,9 +357,11 @@ def _to_polylines(result, tolerance, filled, confidence_thresh=None):
 
 def to_keypoints(results, confidence_thresh=None):
     """Converts ``ultralytics.YOLO`` keypoints to FiftyOne format.
+
     Args:
         results: a single or list of ``ultralytics.engine.results.Results``
         confidence_thresh (None): a confidence threshold to filter keypoints
+
     Returns:
         a single or list of :class:`fiftyone.core.labels.Keypoints`
     """
