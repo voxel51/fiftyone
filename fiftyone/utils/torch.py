@@ -618,7 +618,7 @@ class ImageGetItem(GetItem):
             return img
 
         else:
-            if self.using_half_precision:
+            if self.using_half_precision and torch.is_tensor(img):
                 img = img.half()
 
         return img
