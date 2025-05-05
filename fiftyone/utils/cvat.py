@@ -3813,6 +3813,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         logger.debug("CVAT server version: %s", self._server_version)
 
+        if self._server_version > Version("2.30"):
+            raise RuntimeError(
+                "CVAT server version '%s' is not currently supported. Supported CVAT range is <=v2.30.0. https://github.com/voxel51/fiftyone/issues/5771"
+                % self._server_version
+            )
+
     def _add_referer(self):
         if "Referer" not in self._session.headers:
             self._session.headers["Referer"] = self.login_url
