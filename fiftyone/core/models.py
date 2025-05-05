@@ -694,7 +694,9 @@ def _iter_batches(video_reader, batch_size):
 
 # throw the collate stuff here so it's serializable
 class ErrorHandlingCollate:
-    def __init__(self, skip_failures, ragged_batches, use_numpy):
+    def __init__(
+        self, skip_failures, ragged_batches, use_numpy, user_collate_fn=None
+    ):
         self.skip_failures = skip_failures
 
         if ragged_batches:
@@ -703,6 +705,10 @@ class ErrorHandlingCollate:
             self._collate_fn = self._use_numpy
         else:
             self._collate_fn = self._default
+
+        self.user_collate_fn = user_collate_fn
+        if self.user_collate_fn is None:
+            self.user_collate_fn = user_collate_fn
 
     def __call__(self, batch):
         return self._collate_fn(batch)
@@ -745,7 +751,7 @@ class ErrorHandlingCollate:
             return error
 
         try:
-            return tud.dataloader.default_collate(batch)
+            return self.user_collate_fn(batch)
         except Exception as e:
             if not self.skip_failures:
                 raise e
@@ -765,8 +771,16 @@ def _make_data_loader(
     if num_workers is None:
         num_workers = fout.recommend_num_workers()
 
+    if model.has_collate_fn:
+        user_collate_fn = model.collate_fn
+    else:
+        user_collate_fn = None
+
     collate_fn = ErrorHandlingCollate(
-        skip_failures, ragged_batches=model.ragged_batches, use_numpy=use_numpy
+        skip_failures,
+        ragged_batches=model.ragged_batches,
+        use_numpy=use_numpy,
+        user_collate_fn=user_collate_fn,
     )
 
     if batch_size is None:
@@ -2346,7 +2360,36 @@ class TorchModelMixin(object):
     applied to each input before prediction.
     """
 
-    pass
+    @property
+    def has_collate_fn(self):
+        """Whether this model has a custom collate function.
+
+        Set this to ``True`` if you want :meth:`collate_fn` to be used during
+        inference.
+        """
+        return False
+
+    @staticmethod
+    def collate_fn(batch):
+        """The collate function to use when creating dataloaders for this
+        model.
+
+        In order to enable this functionality, the model's
+        :meth:`has_collate_fn` property must return ``True``.
+
+        By default, this is the identity function, but subclasses can override
+        this method as necessary.
+
+        Note that this function must be serializable so it is compatible
+        with multiprocessing for dataloaders.
+
+        Args:
+            batch: a list of items to collate
+
+        Returns:
+            the collated batch, which will be fed directly to the model
+        """
+        return batch
 
 
 class SupportsGetItem(object):
