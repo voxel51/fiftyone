@@ -745,11 +745,10 @@ def _make_data_loader(samples, model, batch_size, num_workers, skip_failures):
                 return error
 
             try:
-                return (
-                    tud.dataloader.default_collate(batch)
-                    if not hasattr(model, "collate_fn")
-                    else model.collate_fn(batch)
-                )
+                if model.has_collate_fn:
+                    return model.collate_fn(batch)
+                else:
+                    return tud.dataloader.default_collate(batch)
             except Exception as e:
                 if not skip_failures:
                     raise e
@@ -2288,7 +2287,36 @@ class TorchModelMixin(object):
     applied to each input before prediction.
     """
 
-    pass
+    @property
+    def has_collate_fn(self):
+        """Whether this model has a custom collate function.
+
+        Set this to ``True`` if you want :meth:`collate_fn` to be used during
+        inference.
+        """
+        return False
+
+    @staticmethod
+    def collate_fn(batch):
+        """The collate function to use when creating dataloaders for this
+        model.
+
+        In order to enable this functionality, the model's
+        :meth:`has_collate_fn` property must return ``True``.
+
+        By default, this is the identity function, but subclasses can override
+        this method as necessary.
+
+        Note that this function must be serializable so it is compatible
+        with multiprocessing for dataloaders.
+
+        Args:
+            batch: a list of items to collate
+
+        Returns:
+            the collated batch, which will be fed directly to the model
+        """
+        return batch
 
 
 class ModelManagerConfig(etam.ModelManagerConfig):

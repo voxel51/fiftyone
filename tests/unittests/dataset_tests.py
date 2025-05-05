@@ -6,6 +6,7 @@ FiftyOne dataset-related unit tests.
 |
 """
 
+from collections import Counter
 from copy import deepcopy, copy
 from datetime import date, datetime, timedelta
 import gc
@@ -616,6 +617,46 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(last_modified_at2, last_modified_at1)
 
     @drop_datasets
+    def test_last_modified_at_deletions(self):
+        samples = [
+            fo.Sample(filepath="image1.jpg"),
+            fo.Sample(filepath="image2.png"),
+            fo.Sample(filepath="image3.jpg"),
+            fo.Sample(filepath="image4.jpg"),
+            fo.Sample(filepath="image5.jpg"),
+            fo.Sample(filepath="image6.jpg"),
+        ]
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
+
+        last_modified_at1 = dataset.last_modified_at
+
+        dataset[:5].keep()
+        last_modified_at2 = dataset.last_modified_at
+
+        self.assertEqual(len(dataset), 5)
+        self.assertTrue(last_modified_at2 > last_modified_at1)
+
+        dataset[-1:].clear()
+        last_modified_at3 = dataset.last_modified_at
+
+        self.assertEqual(len(dataset), 4)
+        self.assertTrue(last_modified_at3 > last_modified_at2)
+
+        dataset.delete_samples(dataset[:2])
+        last_modified_at4 = dataset.last_modified_at
+
+        self.assertEqual(len(dataset), 2)
+        self.assertTrue(last_modified_at4 > last_modified_at3)
+
+        dataset.clear()
+        last_modified_at5 = dataset.last_modified_at
+
+        self.assertEqual(len(dataset), 0)
+        self.assertTrue(last_modified_at5 > last_modified_at4)
+
+    @drop_datasets
     def test_indexes(self):
         dataset = fo.Dataset()
 
@@ -1021,6 +1062,91 @@ class DatasetTests(unittest.TestCase):
                 m3 < m4 for m3, m4 in zip(last_modified_at3, last_modified_at4)
             )
         )
+
+    @skip_windows  # TODO: don't skip on Windows
+    @drop_datasets
+    def test_update_samples(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [fo.Sample(filepath="image%d.jpg" % i, int=i) for i in range(50)]
+        )
+
+        self.assertTupleEqual(dataset.bounds("int"), (0, 49))
+
+        def update_fcn(sample):
+            sample.int += 1
+
+        #
+        # Multiple workers
+        #
+
+        dataset.update_samples(
+            update_fcn,
+            num_workers=2,
+            batch_method="id",
+            parallelize_method="process",
+        )
+
+        self.assertTupleEqual(dataset.bounds("int"), (1, 50))
+
+        dataset.update_samples(
+            update_fcn,
+            num_workers=2,
+            batch_method="slice",
+            parallelize_method="process",
+        )
+
+        self.assertTupleEqual(dataset.bounds("int"), (2, 51))
+
+        #
+        # Main process
+        #
+
+        dataset.update_samples(
+            update_fcn, num_workers=1, parallelize_method="process"
+        )
+
+        self.assertTupleEqual(dataset.bounds("int"), (3, 52))
+
+    @skip_windows  # TODO: don't skip on Windows
+    @drop_datasets
+    def test_map_samples(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="image%d.jpg" % i, foo="bar")
+                for i in range(50)
+            ]
+        )
+
+        self.assertDictEqual(dataset.count_values("foo"), {"bar": 50})
+
+        def map_fcn(sample):
+            return sample.foo.upper()
+
+        #
+        # Multiple workers
+        #
+
+        counter = Counter()
+        for _, value in dataset.map_samples(
+            map_fcn, num_workers=2, parallelize_method="process"
+        ):
+            counter[value] += 1
+
+        self.assertDictEqual(dict(counter), {"BAR": 50})
+
+        #
+        # Main process
+        #
+
+        counter = Counter()
+        for _, value in dataset.map_samples(
+            map_fcn, num_workers=1, parallelize_method="process"
+        ):
+            counter[value] += 1
+
+        self.assertDictEqual(dict(counter), {"BAR": 50})
 
     @drop_datasets
     def test_date_fields(self):
@@ -1806,6 +1932,19 @@ class DatasetTests(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             _ = dataset.one(F("filepath").ends_with(".jpg"), exact=True)
+
+    @drop_datasets
+    def test_add_samples_generator(self):
+        samples = [fo.Sample(filepath=f"image{i}.jpg") for i in range(10)]
+
+        dataset = fo.Dataset()
+
+        sample_ids = []
+        for ids in dataset.add_samples(samples, generator=True):
+            sample_ids.extend(ids)
+
+        assert len(sample_ids) == 10
+        assert len(dataset) == 10
 
     @drop_datasets
     def test_merge_sample(self):
@@ -7070,6 +7209,32 @@ class DynamicFieldTests(unittest.TestCase):
         self.assertNotIn("predictions.detections.field", schema)
         self.assertFalse(frame.has_field("field"))
         self.assertFalse(frame.predictions.detections[0].has_field("field"))
+
+    @drop_datasets
+    def test_set_new_embedded_document_field(self):
+        dataset = fo.Dataset()
+
+        sample = fo.Sample(filepath="image.jpg")
+        dataset.add_sample(sample)
+
+        dataset.add_sample_field(
+            "data",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.DynamicEmbeddedDocument,
+        )
+
+        self.assertTrue(dataset.has_field("data"))
+        self.assertIsNone(sample["data"])
+
+        sample["data.foo"] = "bar"
+        sample.save()
+
+        self.assertTrue(dataset.has_field("data.foo"))
+
+        dataset.reload()
+
+        self.assertEqual(sample["data.foo"], "bar")
+        self.assertListEqual(dataset.values("data.foo"), ["bar"])
 
 
 class CustomEmbeddedDocumentTests(unittest.TestCase):

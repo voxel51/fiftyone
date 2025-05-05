@@ -1,5 +1,4 @@
-import { useTheme } from "@fiftyone/components";
-import ExternalLink from "@fiftyone/components/src/components/ExternalLink";
+import { ExternalLink, useTheme } from "@fiftyone/components";
 import { Launch } from "@mui/icons-material";
 import type { MouseEventHandler } from "react";
 import React from "react";

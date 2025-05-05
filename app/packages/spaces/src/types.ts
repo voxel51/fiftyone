@@ -14,6 +14,7 @@ export type AddPanelItemProps = {
   Icon?: React.ComponentType;
   onClick?: () => void;
   spaceId: string;
+  showAlpha?: boolean;
   showBeta?: boolean;
   showNew?: boolean;
 };

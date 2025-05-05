@@ -17,7 +17,7 @@ from typing import Tuple
 import asyncio
 from bson import json_util, ObjectId
 from bson.codec_options import CodecOptions
-from mongoengine import connect
+import mongoengine
 import motor.motor_asyncio as mtr
 
 from packaging.version import Version
@@ -222,7 +222,7 @@ def establish_db_conn(config):
     # Register cleanup method
     atexit.register(_delete_non_persistent_datasets_if_allowed)
 
-    connect(config.database_name, **_connection_kwargs)
+    mongoengine.connect(config.database_name, **_connection_kwargs)
 
     db_config = get_db_config()
     if db_config.type != foc.CLIENT_TYPE:
@@ -244,6 +244,13 @@ def _connect():
         global _connection_kwargs
 
         establish_db_conn(fo.config)
+
+
+def _disconnect():
+    global _client, _async_client
+    _client = None
+    _async_client = None
+    mongoengine.disconnect_all()
 
 
 def _async_connect(use_global=False):
@@ -323,7 +330,7 @@ def _validate_db_version(config, client):
         )
 
 
-def aggregate(collection, pipelines):
+def aggregate(collection, pipelines, hints=None):
     """Executes one or more aggregations on a collection.
 
     Multiple aggregations are executed using multiple threads, and their
@@ -333,6 +340,8 @@ def aggregate(collection, pipelines):
         collection: a ``pymongo.collection.Collection`` or
             ``motor.motor_asyncio.AsyncIOMotorCollection``
         pipelines: a MongoDB aggregation pipeline or a list of pipelines
+        hints (None): a corresponding index hint or list of index hints for
+            each pipeline
 
     Returns:
         -   If a single pipeline is provided, a
@@ -343,44 +352,70 @@ def aggregate(collection, pipelines):
             a list and the list of lists is returned
     """
     pipelines = list(pipelines)
-
     is_list = pipelines and not isinstance(pipelines[0], dict)
     if not is_list:
         pipelines = [pipelines]
+        hints = [hints]
 
     num_pipelines = len(pipelines)
+    if hints is None:
+        hints = [None] * num_pipelines
+
     if isinstance(collection, mtr.AsyncIOMotorCollection):
         if num_pipelines == 1 and not is_list:
-            return collection.aggregate(pipelines[0], allowDiskUse=True)
+            kwargs = {"hint": hints[0]} if hints[0] is not None else {}
+            return collection.aggregate(
+                pipelines[0], allowDiskUse=True, **kwargs
+            )
 
-        return _do_async_pooled_aggregate(collection, pipelines)
+        return _do_async_pooled_aggregate(collection, pipelines, hints)
 
     if num_pipelines == 1:
-        result = collection.aggregate(pipelines[0], allowDiskUse=True)
+        kwargs = {"hint": hints[0]} if hints[0] is not None else {}
+        result = collection.aggregate(
+            pipelines[0], allowDiskUse=True, **kwargs
+        )
         return [result] if is_list else result
 
-    return _do_pooled_aggregate(collection, pipelines)
+    return _do_pooled_aggregate(collection, pipelines, hints)
 
 
-def _do_pooled_aggregate(collection, pipelines):
+def _do_pooled_aggregate(collection, pipelines, hints):
     # @todo: MongoDB 5.0 supports snapshots which can be used to make the
     # results consistent, i.e. read from the same point in time
+
+    def _aggregate(args):
+        pipeline, hint = args
+        kwargs = {"hint": hint} if hint is not None else {}
+        return list(
+            collection.aggregate(pipeline, allowDiskUse=True, **kwargs)
+        )
+
     with ThreadPool(processes=len(pipelines)) as pool:
         return pool.map(
-            lambda p: list(collection.aggregate(p, allowDiskUse=True)),
-            pipelines,
+            _aggregate,
+            zip(pipelines, hints),
             chunksize=1,
         )
 
 
-async def _do_async_pooled_aggregate(collection, pipelines):
+async def _do_async_pooled_aggregate(collection, pipelines, hints):
     return await asyncio.gather(
-        *[_do_async_aggregate(collection, pipeline) for pipeline in pipelines]
+        *[
+            _do_async_aggregate(collection, pipeline, hint)
+            for pipeline, hint in zip(pipelines, hints)
+        ]
     )
 
 
-async def _do_async_aggregate(collection, pipeline):
-    return [i async for i in collection.aggregate(pipeline, allowDiskUse=True)]
+async def _do_async_aggregate(collection, pipeline, hint):
+    kwargs = {"hint": hint} if hint is not None else {}
+    return [
+        i
+        async for i in collection.aggregate(
+            pipeline, allowDiskUse=True, **kwargs
+        )
+    ]
 
 
 def ensure_connection():
@@ -793,7 +828,14 @@ def _import_collection_multi(json_dir):
     return docs, len(json_paths)
 
 
-def insert_documents(docs, coll, ordered=False, progress=None, num_docs=None):
+def insert_documents(
+    docs,
+    coll,
+    ordered=False,
+    batcher=None,
+    progress=None,
+    num_docs=None,
+):
     """Inserts documents into a collection.
 
     The ``_id`` field of the input documents will be populated if it is not
@@ -803,6 +845,10 @@ def insert_documents(docs, coll, ordered=False, progress=None, num_docs=None):
         docs: an iterable of BSON document dicts
         coll: a pymongo collection
         ordered (False): whether the documents must be inserted in order
+        batcher (None): an optional :class:`fiftyone.core.utils.Batcher` class
+            to use to batch the documents, or ``False`` to strictly insert the
+            documents in a single batch. By default,
+            ``fiftyone.config.default_batcher`` is used
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
@@ -814,7 +860,12 @@ def insert_documents(docs, coll, ordered=False, progress=None, num_docs=None):
         a list of IDs of the inserted documents
     """
     ids = []
-    batcher = fou.get_default_batcher(docs, progress=progress, total=num_docs)
+    batcher = fou.get_default_batcher(
+        docs,
+        batcher=batcher,
+        progress=progress,
+        total=num_docs,
+    )
 
     try:
         with batcher:
@@ -834,18 +885,26 @@ def insert_documents(docs, coll, ordered=False, progress=None, num_docs=None):
     return ids
 
 
-def bulk_write(ops, coll, ordered=False, progress=False):
+def bulk_write(ops, coll, ordered=False, batcher=None, progress=False):
     """Performs a batch of write operations on a collection.
 
     Args:
         ops: a list of pymongo operations
         coll: a pymongo collection
         ordered (False): whether the operations must be performed in order
+        batcher (None): an optional :class:`fiftyone.core.utils.Batcher` class
+            to use to batch the operations, or ``False`` to strictly perform
+            the operations in a single batch. By default,
+            ``fiftyone.config.default_batcher`` is used
         progress (False): whether to render a progress bar (True/False), use
             the default value ``fiftyone.config.show_progress_bars`` (None), or
             a progress callback function to invoke instead
+
+    Returns:
+        A list of :class:`pymongo.results.BulkWriteResult` objects
     """
-    batcher = fou.get_default_batcher(ops, progress=progress)
+    batcher = fou.get_default_batcher(ops, batcher=batcher, progress=progress)
+    results = []
 
     try:
         with batcher:
@@ -858,10 +917,12 @@ def bulk_write(ops, coll, ordered=False, progress=False):
                     batcher.set_encoding_ratio(
                         res.bulk_api_result.get("nBytes")
                     )
+                results.append(res)
 
     except BulkWriteError as bwe:
         msg = bwe.details["writeErrors"][0]["errmsg"]
         raise ValueError(msg) from bwe
+    return results
 
 
 def list_datasets():
@@ -1492,6 +1553,94 @@ def delete_runs(name, dry_run=False):
         "run",
         dry_run=dry_run,
     )
+
+
+def get_indexed_values(
+    collection,
+    field_or_fields,
+    *,
+    index_key=None,
+    query=None,
+    values_only=False,
+):
+    """Returns the values of the field(s) for all samples in the given collection
+    that are covered by the index. Raises an error if the field is not indexed.
+
+    Args:
+        collection: a ``pymongo.collection.Collection`` or
+            ``motor.motor_asyncio.AsyncIOMotorCollection``
+        field_or_fields: the field name or list of field names to retrieve.
+        index_key (None): the name of the index to use. If None, the default
+            index name will be constructed from the field name(s).
+        query (None): a dict selection filter to apply when querying.
+            For performance, this should only include fields that are in
+            the specified index.
+        values_only (False): whether to remove field names from the resulting list.
+            If True, the field names are removed and only the values will be
+            returned as a list for each sample. If False, the field names are
+            preserved and the values will be returned as a dict for each sample.
+
+    Returns:
+        a list of values for the specified field or index keys for each sample
+        sorted in the same order as the index
+
+    Raises:
+        ValueError: if the field is not indexed
+    """
+    try:
+        cursor = _iter_indexed_values(
+            collection, field_or_fields, index_key=index_key, query=query
+        )
+
+        if field_or_fields == "id":
+            if values_only:
+                return [str(doc["_id"]) for doc in cursor]
+            return [{"id": str(doc["_id"])} for doc in cursor]
+
+        if values_only:
+            # If `values_only` is True, we need to extract the values from the dict
+            if isinstance(field_or_fields, str):
+                # Flatten single field values for consistency with `values()`
+                return [doc[field_or_fields] for doc in cursor]
+            return [list(doc.values()) for doc in cursor]
+
+        return list(cursor)
+    except Exception as e:
+        # Error may contain some extra info that may be useful for debugging
+        logger.debug("Error getting indexed values using hint:\n %s", e)
+
+        if "hint provided does not correspond to an existing index" in str(e):
+            raise ValueError(
+                "The field '%s' is not indexed. Please ensure that the field is "
+                "indexed before calling this function or use values() instead."
+                % field_or_fields
+            ) from e
+        raise e
+
+
+def _iter_indexed_values(
+    collection, field_or_fields, *, index_key=None, query=None
+):
+    # It's possible to create an index with a custom name. However, if not specified,
+    # the hint will use the default index name, which is constructed from the field name(s)
+    # joined with "_1".
+    hint = index_key
+    proj = {"_id": 0}
+
+    if field_or_fields == "id" or field_or_fields == "_id":
+        proj = {"_id": 1}
+        hint = "_id_"  # special case for _id
+    else:
+        if isinstance(field_or_fields, str):
+            proj[field_or_fields] = 1
+            if not hint:
+                hint = field_or_fields + "_1"
+        else:
+            proj.update({f: 1 for f in field_or_fields})
+            if not hint:
+                hint = "_".join([f + "_1" for f in field_or_fields])
+
+    return collection.find(query or {}, proj, hint=hint)
 
 
 def _get_logger(dry_run=False):

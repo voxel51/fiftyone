@@ -271,7 +271,8 @@ class Mutation(SetColorScheme):
             fose.StateUpdate(state=state),
         )
 
-        return result_view._serialize() if result_view else []
+        # is None comparison only
+        return result_view._serialize() if result_view is not None else []
 
     @gql.mutation
     async def create_saved_view(

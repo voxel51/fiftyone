@@ -432,9 +432,24 @@ only those samples and/or labels that match the filter.
    :alt: app-filters
    :align: center
 
+.. _app-sorting-in-the-grid:
+
+Sorting in the grid
+-------------------
+
+To sort samples in the grid select a numeric field in the drop down next to the
+grid slider settings. Note that when Query Performance is enabled, only numeric
+fields with an available index can be sorted on.
+
+.. note::
+
+    Did you know? The active sort setting in the grid is included in `ctx.view`
+    for :ref:`operators <using-operators>`
+
+
 .. _app-managing-grid-memory:
 
-Managing Grid Memory Usage
+Managing grid memory usage
 --------------------------
 
 When scrolling through the grid, a certain number samples are cached by the App
@@ -552,9 +567,11 @@ perform initial filters on:
     `disable_frame_filtering=True` in your
     :ref:`App config <configuring-fiftyone-app>`.
 
-For :ref:`grouped datasets <groups>`, you should create two indexes for each
-field you wish to filter by: the field itself and a compound index that
-includes the group slice name:
+For :ref:`grouped datasets <groups>`, you should create a
+:ref:`compound index <app-compound-indexes-for-query-performance>` for each
+field you wish to filter by that includes the field itself and ends with the
+group slice name. This ensures grid results and counts are performant when
+filtering by that field and matching on the active `slice`:
 
 .. code-block:: python
     :linenos:
@@ -566,7 +583,7 @@ includes the group slice name:
 
     # Index a specific field
     dataset.create_index("ground_truth.detections.label")
-    dataset.create_index([("group.name", 1), ("ground_truth.detections.label", 1)])
+    dataset.create_index([("ground_truth.detections.label", 1), ("group.name", 1)])
 
     session = fo.launch_app(dataset)
 
@@ -603,6 +620,83 @@ field:
 .. note::
 
     Numeric field filters are not supported by wildcard indexes.
+
+.. _app-compound-indexes-for-query-performance
+
+Compound indexes for Query Performance
+--------------------------------------
+
+With the right indexes configured, the App can support filtering truly massive
+datasets in complex scenarios using the sidebar and grid. The simple case is a
+single index that allows efficient subset creation after which one can refine
+with filters on unindexed fields.
+
+When single field index subsets are too large, e.g. 5 million samples,
+efficiently refining further is possible with a
+`compound indexes <https://www.mongodb.com/docs/manual/core/indexes/index-types/index-compound/>`_.
+
+In the example below, a compound index on `timeofday.label`, `clip_pred.label`,
+and `created_at` exists on a 30 million sample dataset. Since `created_at` is
+the last field in the compound index, we are able to sort the results after
+filtering, as well.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.load_dataset("big-image-ds")
+    dataset.create_index(
+        [("timeofday.label", 1), ("clip_pred.label", 1), ("created_at", 1)]
+    )
+
+.. image:: /images/app/app-compound-indexes-for-query-performance.gif
+    :alt: app-compound-indexes-for-query-performance
+    :align: center
+
+Note that as the filters are applied, any fields that can take advantage of a 
+compound index have there lightning bolt icon highlighted. `clip_pred.label`
+after applying the `timeofday.label` filter, and then `created_at` after
+applying the `clip_pred.label` filter.
+
+Indexes, and especially compound indexes, add extra overhead to datasets but
+for truly massive datasets, FiftyOne can guide users to high value subsets with
+the right set of compound indices.
+
+.. _app-unindexed-sidebar-results:
+
+Unindexed sidebar results doc limit
+-----------------------------------
+
+When loading data results in the sidebar when Query Performance is enabed, a
+limited number of sample documents are scanned to populate widget values for
+fields without a top level index, i.e. search results for string fields and
+bounds for numeric fields.
+
+The default value is 10,000 samples and is configurable via the settings icon.
+
+.. image:: /images/app/app-unindexed-sidebar-results.gif
+    :alt: app-unindexed-sidebar-results
+    :align: center
+
+For complete widget results in the above GIF, the below indexes are created:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.load_dataset("big-image-ds")
+    dataset.create_index("yolo8l_coco_torch.detections.confidence")
+    dataset.create_index("yolo8l_coco_torch.detections.label")
+
+.. note::
+
+    Indexed sidebar results for a field are possible via a single field index
+    or the presence of a compound index whose first field matches. For example,
+    a `("created_at", "ground_truth.label")` compound index provides indexed
+    sidebar results for `created_at`.
+
 
 .. _app-disabling-query-performance:
 
@@ -2760,3 +2854,58 @@ you can use to customize the behavior of the App for that particular dataset:
     :meth:`app_config <fiftyone.core.dataset.Dataset.app_config>` will override
     the corresponding settings from your
     :ref:`global App config <configuring-fiftyone-app>`.
+
+.. _app-labels-correspondence:
+
+Labels Correspondence
+_____________________
+
+FiftyOne provides a mechanism to link related labels together, such as the same
+object instance observed across multiple frames of a video or across different
+views (group slices) in a grouped dataset. This linking is achieved by
+assigning the same :class:`fiftyone.core.labels.Instance` to the ``instance``
+field of the relevant :class:`~fiftyone.core.labels.Detection`,
+:class:`~fiftyone.core.labels.Keypoint`, or
+:class:`~fiftyone.core.labels.Polyline` labels.
+
+See the :ref:`video <linking-labels-across-frames>` and
+:ref:`group <linking-labels-across-group-slices>` dataset sections for API
+details.
+
+When labels are linked via their ``instance`` field, the App provides enhanced
+visualizations and interactions:
+
+*   **Visual Linking (Hover):** When you hover over a label that is part of an
+    instance group, all other labels belonging to the same instance (across
+    frames or group slices) will be highlighted with a white border.
+
+*   **Bulk Selection/Deselection (Shift+Click):** When you hold the ``Shift``
+    key and click on a label that is part of an instance group, you can
+    select or deselect all labels belonging to that same instance in bulk.
+    This is particularly useful for tasks like reviewing or tagging all
+    occurrences of a specific object instance quickly.
+
+In Video Datasets
+-----------------
+
+In video datasets, label correspondence helps track objects over time. Hovering
+over a detection in one frame can highlight the same detected object in other
+frames. Shift-clicking allows for selecting/deselecting all instances of that
+object throughout the relevant frames of the video.
+
+.. image:: /images/app/labels-correspondence-video.gif
+   :alt: labels-correspondence-video
+   :align: center
+
+In Grouped Datasets
+-------------------
+
+In grouped datasets, label correspondence links the same object viewed from
+different perspectives (slices). Hovering over an object in one camera view can
+highlight its corresponding detection in another camera view within the same
+group. Shift-clicking enables bulk selection/deselection of these corresponding
+objects across the group slices.
+
+.. image:: /images/app/labels-correspondence-groups.gif
+   :alt: labels-correspondence-groups
+   :align: center

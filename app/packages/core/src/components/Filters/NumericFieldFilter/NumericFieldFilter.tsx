@@ -2,8 +2,8 @@ import * as fos from "@fiftyone/state";
 import React, { Suspense } from "react";
 import styled from "styled-components";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
-import { LightningBolt } from "../../Sidebar/Entries/FilterablePathEntry/Icon";
 import { Button } from "../../utils";
+import useQueryPerformanceIcon from "../use-query-performance-icon";
 import useQueryPerformanceTimeout from "../use-query-performance-timeout";
 import Box from "./Box";
 import RangeSlider from "./RangeSlider";
@@ -34,13 +34,8 @@ const NumericFieldFilter = ({ color, modal, named = true, path }: Props) => {
   const [showRange, setShowRange] = React.useState(!named);
   const field = fos.useAssertedRecoilValue(fos.field(path));
 
-  const { show, showLoadButton, showQueryPerformanceIcon } = useShow(
-    modal,
-    named,
-    path,
-    showRange
-  );
-
+  const { show, showLoadButton } = useShow(modal, named, path, showRange);
+  const icon = useQueryPerformanceIcon(modal, named, path, color);
   if (!show) {
     return null;
   }
@@ -62,7 +57,7 @@ const NumericFieldFilter = ({ color, modal, named = true, path }: Props) => {
           template={({ label, hoverTarget }) => (
             <Header>
               <span ref={hoverTarget}>{label}</span>
-              {showQueryPerformanceIcon && <LightningBolt />}
+              {icon}
             </Header>
           )}
         />

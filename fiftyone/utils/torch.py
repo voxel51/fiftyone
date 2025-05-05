@@ -22,7 +22,6 @@ from PIL import Image
 import eta.core.geometry as etag
 import eta.core.learning as etal
 import eta.core.utils as etau
-from torchvision.models.feature_extraction import create_feature_extractor
 
 import fiftyone.core.config as foc
 import fiftyone.core.labels as fol
@@ -36,11 +35,14 @@ import fiftyone.core.sample as fos
 import fiftyone.core.view as fov
 
 fou.ensure_torch()
+
 import torch
-import torchvision
-from torchvision.transforms import functional as F
 from torch.utils.data import Dataset
 import torch.distributed as dist
+
+import torchvision
+from torchvision.models.feature_extraction import create_feature_extractor
+from torchvision.transforms import functional as F
 
 
 logger = logging.getLogger(__name__)
@@ -551,6 +553,14 @@ class TorchImageModel(
         self._transforms = transforms
         self._ragged_batches = ragged_batches
         self._preprocess = True
+        if self.has_collate_fn and self.ragged_batches:
+            raise ValueError(
+                "Cannot use collate_fn while ragged_batches is True. "
+                "Set `ragged_batches=False` to use collate_fn. "
+                "While the inputs to collate_fn may be ragged, "
+                "the model has to flag itself as ragged_batches=False "
+                "to enable proper dataloader support in apply_model."
+            )
 
         # Parse model details
         self._classes = self._parse_classes(config)
@@ -610,6 +620,38 @@ class TorchImageModel(
         input before prediction, if any.
         """
         return self._transforms
+
+    @property
+    def has_collate_fn(self):
+        """Whether this model has a custom collate function.
+
+        Set this to ``True`` if you want :meth:`collate_fn` to be used during
+        inference.
+        """
+        return False
+
+    @staticmethod
+    def collate_fn(batch):
+        """The collate function to use when creating dataloaders for this
+        model.
+
+        In order to enable this functionality, the model's
+        :meth:`has_collate_fn` property must return ``True``.
+
+        By default, this is the default collate function for
+        :class:`torch:torch.utils.data.DataLoader`, but subclasses can override
+        this method as necessary.
+
+        Note that this function must be serializable so it is compatible
+        with multiprocessing for dataloaders.
+
+        Args:
+            batch: a list of items to collate
+
+        Returns:
+            the collated batch, which will be fed directly to the model
+        """
+        return torch.utils.data.dataloader.default_collate(batch)
 
     @property
     def preprocess(self):
@@ -703,6 +745,11 @@ class TorchImageModel(
     def _predict_all(self, imgs):
         if self._preprocess and self._transforms is not None:
             imgs = [self._transforms(img) for img in imgs]
+            if self.has_collate_fn:
+                # models that have collate_fn defined
+                # will want to use it when doing _predict_all
+                # without a dataloader
+                imgs = self.collate_fn(imgs)
 
         height, width = None, None
 
@@ -1699,7 +1746,9 @@ class FiftyOneTorchDataset(Dataset):
 
         if self.cached_fields is None:
             # pylint: disable=unsubscriptable-object
-            sample = self._dataset[self.ids[index]]
+            sample = fov.make_optimized_select_view(
+                self._samples, self.ids[index]
+            ).first()
             return self._get_item(sample)
 
         else:
@@ -1716,7 +1765,9 @@ class FiftyOneTorchDataset(Dataset):
         if self.cached_fields is None:
             ids = [self.ids[i] for i in indices]
             # pylint: disable=unsubscriptable-object
-            samples = self._dataset.select(ids, ordered=True)
+            samples = fov.make_optimized_select_view(
+                self._samples, ids, ordered=True
+            )
             return [self._get_item(s) for s in samples]
 
         else:
