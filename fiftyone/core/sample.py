@@ -526,15 +526,17 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
         d = self._dataset._sample_collection.find_one({"_id": self._id})
         self._doc = self._dataset._sample_dict_to_doc(d)
 
-    def reload(self, hard=False):
+    def reload(self, hard=False, include_frames=True):
         """Reloads the sample from the database.
 
         Args:
             hard (False): whether to reload the sample's schema in addition to
                 its field values. This is necessary if new fields may have been
                 added to the dataset schema
+            include_frames (True): whether to reload any in-memory frames of
+                video samples
         """
-        if self.media_type == fomm.VIDEO:
+        if self.media_type == fomm.VIDEO and include_frames:
             self.frames.reload(hard=hard)
 
         super().reload(hard=hard)
@@ -550,11 +552,14 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
             )
 
         if self.media_type == fomm.VIDEO:
-            frame_ops = self.frames._save(deferred=deferred)
+            _sample_ops, frame_ops = self.frames._save(deferred=deferred)
         else:
-            frame_ops = []
+            _sample_ops, frame_ops = None, None
 
         sample_ops = super()._save(deferred=deferred)
+
+        if _sample_ops:
+            sample_ops.extend(_sample_ops)
 
         return sample_ops, frame_ops
 
@@ -739,11 +744,14 @@ class SampleView(_SampleMixin, DocumentView):
 
     def _save(self, deferred=False):
         if self.media_type == fomm.VIDEO:
-            frame_ops = self.frames._save(deferred=deferred)
+            _sample_ops, frame_ops = self.frames._save(deferred=deferred)
         else:
-            frame_ops = []
+            _sample_ops, frame_ops = None, None
 
         sample_ops = super()._save(deferred=deferred)
+
+        if _sample_ops:
+            sample_ops.extend(_sample_ops)
 
         return sample_ops, frame_ops
 

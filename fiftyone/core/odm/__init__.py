@@ -40,6 +40,7 @@ from .database import (
     drop_orphan_stores,
     list_collections,
     get_collection_stats,
+    get_indexed_values,
     stream_collection,
     count_documents,
     export_document,

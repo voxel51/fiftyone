@@ -11,6 +11,9 @@ export default r(graphql`
     $filters: BSON = null
     $extendedStages: BSON
     $paginationData: Boolean = true
+    $sortBy: String
+    $desc: Boolean
+    $hint: String
   ) {
     samples(
       dataset: $dataset
@@ -21,6 +24,9 @@ export default r(graphql`
       filters: $filters
       extendedStages: $extendedStages
       paginationData: $paginationData
+      sortBy: $sortBy
+      desc: $desc
+      hint: $hint
     ) {
       pageInfo {
         hasNextPage

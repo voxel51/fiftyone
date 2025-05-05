@@ -6,19 +6,20 @@ FiftyOne Server lightning queries
 |
 """
 
-from bson import ObjectId
 from dataclasses import asdict, dataclass
 from datetime import date, datetime
 import math
+import re
 import typing as t
 
 import asyncio
-from bson.regex import Regex
+from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorCollection
 import strawberry as gql
 
 import fiftyone as fo
 import fiftyone.core.fields as fof
+from fiftyone.core.utils import run_sync_task
 
 import fiftyone.server.constants as foc
 from fiftyone.server.data import Info
@@ -37,9 +38,11 @@ class LightningPathInput:
     exclude: t.Optional[t.List[str]] = gql.field(
         description="exclude these values from results", default=None
     )
-    first: t.Optional[int] = foc.LIST_LIMIT
-    search: t.Optional[str] = None
     filters: t.Optional[BSON] = None
+    first: t.Optional[int] = foc.LIST_LIMIT
+    index: t.Optional[str] = None
+    max_documents_search: t.Optional[int] = None
+    search: t.Optional[str] = None
 
 
 @gql.input
@@ -109,9 +112,8 @@ INT_CLS = {
     fof.IntField: IntLightningResult,
 }
 
-LightningResults = gql.union(
-    "LightningResults",
-    (
+LightningResults = t.Annotated[
+    t.Union[
         BooleanLightningResult,
         DateLightningResult,
         DateTimeLightningResult,
@@ -119,14 +121,18 @@ LightningResults = gql.union(
         IntLightningResult,
         ObjectIdLightningResult,
         StringLightningResult,
-    ),
-)
+    ],
+    gql.union("LightningResults"),
+]
 
 
 async def lightning_resolver(
     input: LightningInput, info: Info
 ) -> t.List[LightningResults]:
-    dataset: fo.Dataset = fo.load_dataset(input.dataset)
+    run = lambda: get_view(input.dataset, reload=True)
+    dataset = await run_sync_task(run)
+    dataset = dataset._dataset
+
     collections, queries, resolvers, is_frames = zip(
         *[
             _resolve_lightning_path_queries(path, dataset, info)
@@ -165,8 +171,10 @@ class DistinctQuery:
     has_list: bool
     is_object_id_field: bool
     exclude: t.Optional[t.List[str]] = None
-    search: t.Optional[str] = None
     filters: t.Optional[BSON] = None
+    index: t.Optional[str] = None
+    max_documents_search: t.Optional[int] = None
+    search: t.Optional[str] = None
 
 
 def _resolve_lightning_path_queries(
@@ -199,9 +207,9 @@ def _resolve_lightning_path_queries(
 
     if meets_type(field, fof.BooleanField):
         queries = [
-            _match(field_path, False),
-            _match(field_path, None),
-            _match(field_path, True),
+            _match(field_path, False, limit=path.max_documents_search),
+            _match(field_path, None, limit=path.max_documents_search),
+            _match(field_path, True, limit=path.max_documents_search),
         ]
 
         def _resolve_bool(results):
@@ -217,9 +225,21 @@ def _resolve_lightning_path_queries(
 
     if meets_type(field, (fof.DateField, fof.DateTimeField, fof.IntField)):
         queries = [
-            _first(field_path, dataset, 1, is_frame_field),
-            _first(field_path, dataset, -1, is_frame_field),
-            _match(field_path, None),
+            _first(
+                field_path,
+                dataset,
+                1,
+                is_frame_field,
+                limit=path.max_documents_search,
+            ),
+            _first(
+                field_path,
+                dataset,
+                -1,
+                is_frame_field,
+                limit=path.max_documents_search,
+            ),
+            _match(field_path, None, limit=path.max_documents_search),
         ]
 
         def _resolve_int(results):
@@ -235,10 +255,24 @@ def _resolve_lightning_path_queries(
 
     if meets_type(field, fof.FloatField):
         queries = [
-            _first(field_path, dataset, 1, is_frame_field, floats=True),
-            _first(field_path, dataset, -1, is_frame_field, floats=True),
+            _first(
+                field_path,
+                dataset,
+                1,
+                is_frame_field,
+                floats=True,
+                limit=path.max_documents_search,
+            ),
+            _first(
+                field_path,
+                dataset,
+                -1,
+                is_frame_field,
+                floats=True,
+                limit=path.max_documents_search,
+            ),
         ] + [
-            _match(field_path, v)
+            _match(field_path, v, limit=path.max_documents_search)
             for v in (float("-inf"), float("inf"), float("nan"), None)
         ]
 
@@ -268,10 +302,12 @@ def _resolve_lightning_path_queries(
             return ObjectIdLightningResult(path=path.path, values=results[0])
 
         d = asdict(path)
+        d["filters"] = path.filters
         d["has_list"] = _has_list(dataset, field_path, is_frame_field)
         d["is_object_id_field"] = True
+        d["index"] = path.index
+        d["max_documents_search"] = path.max_documents_search
         d["path"] = field_path
-        d["filters"] = path.filters
         return (
             collection,
             [DistinctQuery(**d)],
@@ -285,10 +321,12 @@ def _resolve_lightning_path_queries(
             return StringLightningResult(path=path.path, values=results[0])
 
         d = asdict(path)
+        d["filters"] = path.filters
         d["has_list"] = _has_list(dataset, field_path, is_frame_field)
         d["is_object_id_field"] = False
+        d["index"] = path.index
+        d["max_documents_search"] = path.max_documents_search
         d["path"] = field_path
-        d["filters"] = path.filters
         return (
             collection,
             [DistinctQuery(**d)],
@@ -313,7 +351,11 @@ async def _do_async_pooled_queries(
     return await asyncio.gather(
         *[
             _do_async_query(
-                dataset, collection, query, None if is_frames else filter
+                dataset,
+                collection,
+                query,
+                None if is_frames else filter,
+                is_frames,
             )
             for collection, query, is_frames in queries
         ]
@@ -325,12 +367,12 @@ async def _do_async_query(
     collection: AsyncIOMotorCollection,
     query: t.Union[DistinctQuery, t.List[t.Dict]],
     filter: t.Optional[t.Mapping[str, str]],
+    is_frames: bool,
 ):
     if isinstance(query, DistinctQuery):
-        if query.has_list:
-            return await _do_distinct_query(collection, query)
-
-        return await _do_distinct_pipeline(dataset, collection, query, filter)
+        return await _do_distinct_queries(
+            dataset, collection, query, filter, is_frames
+        )
 
     if filter:
         for k, v in filter.items():
@@ -340,15 +382,35 @@ async def _do_async_query(
     return [i async for i in collection.aggregate(query)]
 
 
-async def _do_distinct_query(
+async def _do_distinct_queries(
+    dataset: fo.Dataset,
     collection: AsyncIOMotorCollection,
-    query: DistinctQuery,
+    query: t.Union[DistinctQuery, t.List[t.Dict]],
+    filter: t.Optional[t.Mapping[str, str]],
+    is_frames: bool,
+):
+    if query.filters or not query.index:
+        return await _do_distinct_lazy_pipeline(
+            dataset, collection, query, filter, is_frames
+        )
+
+    if query.has_list:
+        return await _do_list_distinct_query(collection, query)
+
+    return await _do_distinct_grouped_pipeline(
+        dataset, collection, query, is_frames
+    )
+
+
+async def _do_list_distinct_query(
+    collection: AsyncIOMotorCollection,
+    query: t.Union[DistinctQuery, t.List[t.Dict]],
 ):
     match = None
     matcher = lambda v: False
     if query.search:
         match = query.search
-        matcher = lambda v: match not in v
+        matcher = lambda v: not v.startswith(match)
         if query.is_object_id_field:
             match = match[:_TWENTY_FOUR]
             matcher = lambda v: v < match
@@ -379,50 +441,45 @@ async def _do_distinct_query(
     return values
 
 
-async def _do_distinct_pipeline(
+async def _do_distinct_lazy_pipeline(
     dataset: fo.Dataset,
     collection: AsyncIOMotorCollection,
     query: DistinctQuery,
     filter: t.Optional[t.Mapping[str, str]],
+    is_frames: bool,
 ):
     pipeline = []
     if filter:
         pipeline.append({"$match": filter})
 
-    if query.filters:
+    if query.filters and not is_frames:
         pipeline += get_view(dataset, filters=query.filters)._pipeline()
 
-    pipeline.append({"$sort": {query.path: 1}})
-
-    match_search = None
-    if query.search:
-        match_search = _add_search(query)
-        pipeline.append(match_search)
-
-    match_arrays = _match_arrays(dataset, query.path, False) + _unwind(
-        dataset, query.path, False
+    pipeline.append(
+        {"$project": {"_id": f"${query.path}"}},
     )
-    if match_arrays:
-        pipeline += match_arrays
-        if match_search:
-            # match again after unwinding list fields
-            pipeline.append(match_search)
 
-    pipeline += [{"$group": {"_id": f"${query.path}"}}]
+    return await _handle_pipeline(
+        pipeline, dataset, collection, query, is_frames
+    )
 
-    values = []
-    exclude = set(query.exclude or [])
-    async for value in collection.aggregate(pipeline):
-        value = value["_id"]
-        if value is None or value in exclude:
-            continue
 
-        values.append(value)
+async def _do_distinct_grouped_pipeline(
+    dataset: fo.Dataset,
+    collection: AsyncIOMotorCollection,
+    query: DistinctQuery,
+    is_frames: bool,
+):
+    # sort first, we are using an index so order should be correct even after
+    # grouping
+    pipeline = [
+        {"$sort": {query.path: 1}},
+        {"$group": {"_id": f"${query.path}"}},
+    ]
 
-        if len(values) == query.first:
-            break
-
-    return values
+    return await _handle_pipeline(
+        pipeline, dataset, collection, query, is_frames, disable_limit=True
+    )
 
 
 def _add_search(query: DistinctQuery):
@@ -438,8 +495,8 @@ def _add_search(query: DistinctQuery):
             # search is not valid
             value = {"$lt": ObjectId("0" * _TWENTY_FOUR)}
     else:
-        value = Regex(f"^{query.search}")
-    return {"$match": {query.path: value}}
+        value = {"$regex": f"^{re.escape(query.search)}"}
+    return {"$match": {"_id": value}}
 
 
 def _first(
@@ -448,37 +505,45 @@ def _first(
     sort: t.Union[t.Literal[-1], t.Literal[1]],
     is_frame_field: bool,
     floats=False,
+    limit=None,
 ):
-    pipeline = [{"$sort": {path: sort}}]
+    pipeline = []
+    if limit:
+        pipeline.append({"$limit": limit})
+
+    pipeline += [
+        {"$sort": {path: sort}},
+        {"$project": {"_id": f"${path}"}},
+    ]
 
     matched_arrays = _match_arrays(dataset, path, is_frame_field)
     if matched_arrays:
         pipeline += matched_arrays
     elif floats:
-        pipeline.extend(_handle_nonfinites(path, sort))
+        pipeline.extend(_handle_nonfinites(sort))
 
-    pipeline.extend([{"$match": {path: {"$exists": True}}}, {"$limit": 1}])
+    pipeline.extend([{"$limit": 1}])
     unwound = _unwind(dataset, path, is_frame_field)
     if unwound:
         pipeline += unwound
         if floats:
-            pipeline.extend(_handle_nonfinites(path, sort))
+            pipeline.extend(_handle_nonfinites(sort))
 
     return pipeline + [
         {
             "$group": {
                 "_id": None,
-                "value": {"$min" if sort == 1 else "$max": f"${path}"},
+                "value": {"$min" if sort == 1 else "$max": "$_id"},
             }
         }
     ]
 
 
-def _handle_nonfinites(path: str, sort: t.Union[t.Literal[-1], t.Literal[1]]):
+def _handle_nonfinites(sort: t.Union[t.Literal[-1], t.Literal[1]]):
     return [
         {
             "$match": {
-                path: (
+                "_id": (
                     {"$gt": float("-inf")}
                     if sort == 1
                     else {"$lt": float("inf")}
@@ -486,6 +551,51 @@ def _handle_nonfinites(path: str, sort: t.Union[t.Literal[-1], t.Literal[1]]):
             }
         }
     ]
+
+
+async def _handle_pipeline(
+    pipeline,
+    dataset: fo.Dataset,
+    collection: AsyncIOMotorCollection,
+    query: DistinctQuery,
+    is_frames: bool,
+    disable_limit=False,
+):
+    match_search = None
+
+    if not disable_limit and query.max_documents_search:
+        pipeline.append({"$limit": query.max_documents_search})
+
+    match_arrays = _match_arrays(dataset, query.path, is_frames) + _unwind(
+        dataset, query.path, is_frames
+    )
+
+    if query.search:
+        match_search = _add_search(query)
+        if len(match_arrays) <= 2:
+            pipeline.append(match_search)
+
+    if match_arrays:
+        pipeline += match_arrays
+        if match_search:
+            # match again after unwinding list fields
+            pipeline.append(match_search)
+
+    values = set()
+    exclude = set(query.exclude or [])
+    kwargs = {"hint": query.index} if query.index else {}
+
+    async for value in collection.aggregate(pipeline, **kwargs):
+        value = value.get("_id", None)
+        if value is None or value in exclude:
+            continue
+
+        values.add(value)
+
+        if len(values) == query.first:
+            break
+
+    return list(sorted(values))
 
 
 def _has_list(dataset: fo.Dataset, path: str, is_frame_field: bool):
@@ -504,8 +614,14 @@ def _has_list(dataset: fo.Dataset, path: str, is_frame_field: bool):
     return False
 
 
-def _match(path: str, value: t.Union[str, float, int, bool]):
-    return [
+def _match(path: str, value: t.Union[str, float, int, bool], limit=None):
+    pipeline = []
+    if limit:
+        pipeline.append(
+            {"$limit": limit},
+        )
+
+    return pipeline + [
         {"$match": {path: value}},
         {"$project": {"_id": True}},
         {"$limit": 1},
@@ -515,7 +631,6 @@ def _match(path: str, value: t.Union[str, float, int, bool]):
 def _match_arrays(dataset: fo.Dataset, path: str, is_frame_field: bool):
     keys = path.split(".")
     path = None
-    pipeline = []
 
     if is_frame_field:
         path = keys[0]
@@ -526,9 +641,9 @@ def _match_arrays(dataset: fo.Dataset, path: str, is_frame_field: bool):
         field = dataset.get_field(path)
         if isinstance(field, fof.ListField):
             # only once for label list fields, e.g. Detections
-            return [{"$match": {f"{path}.0": {"$exists": True}}}]
+            return [{"$match": {"_id.0": {"$exists": True}}}]
 
-    return pipeline
+    return []
 
 
 def _parse_result(data):
@@ -560,7 +675,7 @@ def _unwind(dataset: fo.Dataset, path: str, is_frame_field: bool):
         path = ".".join([path, key]) if path else key
         field = dataset.get_field(f"{prefix}{path}")
         while isinstance(field, fof.ListField):
-            pipeline.append({"$unwind": f"${path}"})
+            pipeline.append({"$unwind": "$_id"})
             field = field.field
 
     return pipeline

@@ -1,4 +1,5 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
+import { GridPom } from "../grid";
 
 const enabledParentPaths = ["uniqueness", "predictions", "ground_truth"];
 const disabledParentPaths = ["filepath", "id", "metadata", "tags"];
@@ -35,13 +36,15 @@ type TabType = "Filter rule" | "Selection";
 
 export class FieldVisibilityPom {
   readonly page: Page;
+  readonly gridPom: GridPom;
   readonly asserter: FieldVisibilityAsserter;
 
   readonly sidebarLocator: Locator;
   readonly containerLocator: Locator;
 
-  constructor(page: Page) {
+  constructor(page: Page, gridPom: GridPom) {
     this.page = page;
+    this.gridPom = gridPom;
 
     this.asserter = new FieldVisibilityAsserter(this);
 
@@ -186,7 +189,9 @@ export class FieldVisibilityPom {
   }
 
   async submitFieldVisibilityChanges() {
+    const gridRefreshPromise = this.gridPom.getWaitForGridRefreshPromise();
     await this.applyBtn.click();
+    await gridRefreshPromise;
   }
 
   async clearFieldVisibilityChanges() {

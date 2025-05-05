@@ -1,4 +1,5 @@
 awscli==1.37.2
+freezegun==1.5.1
 open3d>=0.16.0
 werkzeug>=2.0.3
 pydicom<3
@@ -8,4 +9,6 @@ pytest-mock==3.10.0
 pytest-asyncio
 shapely
 tensorflow==2.17.0
+torch>=2.2.2
+torchvision>=0.17.2
 twine>=3

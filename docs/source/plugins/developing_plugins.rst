@@ -2469,6 +2469,122 @@ that are available to all datasets via the
     Global stores have no automatic garbage collection, so take care when
     creating and using global stores whose keys do not utilize TTLs.
 
+.. _panel-execution-cache:
+
+Execution cache
+---------------
+
+The :mod:`execution cache <fiftyone.operators.cache>` is a decorator-based
+interface for caching function results in the execution store. This is useful
+for avoiding repeated computations or persisting long-lived values across panel
+instances and App sessions.
+
+Cached entries are stored in a dataset-scoped or global
+:class:`ExecutionStore <fiftyone.operators.store.ExecutionStore>`, and can be
+customized with TTLs, user scoping, operator scoping, and more.
+
+To cache a function's result scoped to the current ``ctx.dataset``, use the
+:func:`execution_cache <fiftyone.operators.cache.execution_cache>` decorator:
+
+.. code-block:: python
+    :linenos:
+
+    from fiftyone.operators.cache import execution_cache
+
+    # Default usage: cache is scoped to the dataset
+    @execution_cache
+    def expensive_query(ctx, path):
+        return ctx.dataset.count_values(path)
+
+    # Method with custom TTL and store name
+    class Processor:
+        @execution_cache(ttl=60, store_name="processor_cache")
+        def expensive_query(self, ctx, path):
+            return ctx.dataset.count_values(path)
+
+    # Using a custom key function with user-level scoping
+    # NOTE: must return a tuple or list
+    def custom_key_fn(ctx, path):
+        return path, ctx.user_id
+
+    @execution_cache(ttl=90, key_fn=custom_key_fn, jwt_scoped=True)
+    def user_specific_query(ctx, path):
+        return ctx.dataset.match(F("creator_id") == ctx.user_id).count_values(path)
+
+    @execution_cache(residency="ephemeral")
+    def example_custom_residency(ctx, path):
+        # this value will only be cached in memory
+        return ctx.dataset.count_values(path)
+
+    # Bypass the cache
+    result = expensive_query.uncached(ctx, path)
+
+    # Set the cache for the given arguments
+    expensive_query.set_cache(ctx, path, value_to_cache)
+
+    # Clear the cache for a specific input
+    expensive_query.clear_cache(ctx, path)
+
+    # Clear all cache entries for the function
+    expensive_query.clear_all_caches()
+
+    # NOTE: dataset_id is required if link_to_dataset=True
+    expensive_query.clear_all_caches(dataset_id=dataset._doc.id)
+
+.. note::
+
+    When ``link_to_dataset=True`` (the default), cached entries are associated
+    with the current dataset and will be automatically deleted when the dataset
+    is deleted.
+
+.. warning::
+
+    Cached values must be JSON-serializable. Use the ``serialize`` and
+    ``deserialize`` arguments to handle custom types like NumPy arrays or
+    FiftyOne Samples.
+
+Advanced options for scoping and serialization are supported through arguments
+to the decorator:
+
+- ``ttl``: Time-to-live (in seconds) for the cached entry
+- ``key_fn``: Custom function to generate the cache key
+- ``link_to_dataset``: When ``True``, the cache is dropped when the dataset is
+  deleted (default is ``True``)
+- ``store_name``: Custom store name (default is based on function name)
+- ``version``: Optional version tag to isolate changes in function behavior
+- ``operator_scoped``: Cache is tied to the current operator URI
+- ``user_scoped``: Cache is tied to the current user
+- ``prompt_scoped``: Cache is tied to the current prompt ID
+- ``jwt_scoped``: Cache is tied to the current user's JWT
+- ``serialize`` / ``deserialize``: Custom (de)serialization functions
+- ``residency``: Cache residency policy (default is ``hybrid``)
+
+See the :func:`execution_cache <fiftyone.operators.cache.execution_cache>`
+documentation for more details.
+
+For example, caching a sample using custom serialization:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    def serialize_sample(sample):
+        return sample.to_dict()
+
+    def deserialize_sample(data):
+        return fo.Sample.from_dict(data)
+
+    @execution_cache(
+        ttl=60,
+        serialize=serialize_sample,
+        deserialize=deserialize_sample,
+    )
+    def get_first_sample(ctx):
+        return ctx.dataset.first()
+
+
+
 .. _panel-saved-workspaces
 
 Saved workspaces

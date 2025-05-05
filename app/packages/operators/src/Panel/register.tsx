@@ -26,6 +26,7 @@ export default function registerPanel(ctx: ExecutionContext) {
       allowDuplicates: ctx.params.allow_duplicates,
       helpMarkdown: ctx.params.help_markdown,
       surfaces: ctx.params.surfaces,
+      alpha: ctx.params.alpha,
       beta: ctx.params.beta,
       category: ctx.params.category,
       isNew: ctx.params.is_new,

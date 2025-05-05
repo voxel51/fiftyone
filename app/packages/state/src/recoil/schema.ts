@@ -323,6 +323,30 @@ export const dbPath = selectorFamily({
     },
 });
 
+export const fieldPath = selectorFamily({
+  key: "fieldPath",
+  get:
+    (path: string) =>
+    ({ get }) => {
+      const keys = path.split(".");
+      const parent = keys.slice(0, -1).join(".");
+      const dbField = keys[keys.length - 1];
+      const fieldData = parent.length
+        ? get(field(parent)).fields
+        : get(fullSchema);
+
+      let name = dbField;
+      for (const key in fieldData) {
+        if (fieldData[key].dbField === dbField) {
+          name = key;
+        }
+      }
+
+      keys[keys.length - 1] = name;
+      return keys.join(".");
+    },
+});
+
 export const defaultActiveFields = selector<string[]>({
   key: "defaultActiveFields",
   get: ({ get }) => {

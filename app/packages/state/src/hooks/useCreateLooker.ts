@@ -1,16 +1,19 @@
 import {
   AbstractLooker,
-  MetadataLooker,
+  FO_LABEL_TOGGLED_EVENT,
   FrameLooker,
   ImaVidLooker,
   ImageLooker,
+  MetadataLooker,
   Sample,
   ThreeDLooker,
   VideoLooker,
+  selectiveRenderingEventBus,
 } from "@fiftyone/looker";
 import { ImaVidFramesController } from "@fiftyone/looker/src/lookers/imavid/controller";
 import { ImaVidFramesControllerStore } from "@fiftyone/looker/src/lookers/imavid/store";
 import type { BaseState, ImaVidConfig } from "@fiftyone/looker/src/state";
+import { isNativeMediaType } from "@fiftyone/looker/src/util";
 import {
   EMBEDDED_DOCUMENT_FIELD,
   LIST_FIELD,
@@ -32,7 +35,7 @@ import { State } from "../recoil/types";
 import { getSampleSrc } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
 import { getStandardizedUrls } from "../utils";
-import { isNativeMediaType } from "@fiftyone/looker/src/util";
+import { useOnShiftClickLabel } from "./useOnShiftClickLabel";
 
 export default <T extends AbstractLooker<BaseState>>(
   isModal: boolean,
@@ -83,8 +86,10 @@ export default <T extends AbstractLooker<BaseState>>(
     };
   }, []);
 
+  const getOnShiftClickLabelCallback = useOnShiftClickLabel();
+
   const create = useRecoilCallback(
-    ({ snapshot }) =>
+    ({ snapshot, set }) =>
       (
         { frameNumber, frameRate, sample, urls: rawUrls, symbol },
         extra: Partial<Omit<Parameters<T["updateOptions"]>[0], "selected">> = {}
@@ -280,6 +285,12 @@ export default <T extends AbstractLooker<BaseState>>(
           { signal: abortControllerRef.current.signal }
         );
 
+        selectiveRenderingEventBus.on(
+          FO_LABEL_TOGGLED_EVENT,
+          (e) => getOnShiftClickLabelCallback(e),
+          abortControllerRef.current.signal
+        );
+
         return looker;
       },
     [
@@ -298,8 +309,10 @@ export default <T extends AbstractLooker<BaseState>>(
       selected,
       thumbnail,
       view,
+      getOnShiftClickLabelCallback,
     ]
   );
+
   const createLookerRef = useRef(create);
 
   createLookerRef.current = create;

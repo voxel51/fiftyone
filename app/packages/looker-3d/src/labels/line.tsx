@@ -10,19 +10,11 @@ import type { OverlayProps } from "./shared";
 
 extend({ Line2, LineMaterial, LineGeometry });
 
-interface LineProps extends OverlayProps {
+interface LineProps extends Omit<OverlayProps, "tooltip" | "onClick"> {
   points: THREE.Vector3Tuple[];
 }
 
-export const Line = ({
-  rotation,
-  points,
-  color,
-  opacity,
-  onClick,
-  tooltip,
-  label,
-}: LineProps) => {
+export const Line = ({ rotation, points, color, opacity }: LineProps) => {
   const lineWidth = useRecoilValue(polylineLabelLineWidthAtom);
   const geo = React.useMemo(() => {
     const g = new THREE.BufferGeometry().setFromPoints(
@@ -33,10 +25,6 @@ export const Line = ({
     g.rotateZ(rotation[2]);
     return g;
   }, [points, rotation]);
-
-  const tooltipProps = React.useMemo(() => {
-    return tooltip.getMeshProps(label);
-  }, [tooltip, label]);
 
   const geometry = React.useMemo(() => {
     return new LineGeometry().fromLine(new THREE.Line(geo));
@@ -51,7 +39,7 @@ export const Line = ({
   }, [color, lineWidth, opacity]);
 
   return (
-    <mesh onClick={onClick} rotation={rotation} {...tooltipProps}>
+    <mesh rotation={rotation}>
       <line2 geometry={geometry} material={material} />
     </mesh>
   );

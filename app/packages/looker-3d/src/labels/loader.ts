@@ -13,6 +13,17 @@ export type OverlayLabel = {
   label?: string;
   sampleId?: string;
   _cls: string;
+
+  /**
+   * Unlike id, instanceId is not guaranteed to be unique across samples.
+   * It is only guaranteed to be unique within a sample.
+   *
+   * It is commonly used to cross-link labels between samples.
+   */
+  instance?: {
+    _cls: "Instance";
+    _id: string;
+  };
 };
 
 export const load3dOverlayForSample = (
