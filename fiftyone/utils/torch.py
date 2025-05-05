@@ -1731,6 +1731,9 @@ class FiftyOneTorchDataset(Dataset):
                 f"Your start method is {start_method}. It is recommended to use 'spawn' or 'forkserver' with this class."
             )
 
+        self.field_mapping = get_item.field_mapping.copy()
+        samples = samples.select_fields(list(self.field_mapping.values()))
+
         self.name = samples._dataset.name
         # either a whole dataset or a view
         self.stages = (
@@ -1740,8 +1743,6 @@ class FiftyOneTorchDataset(Dataset):
         )
         self.get_item = get_item
         self.skip_failures = skip_failures
-
-        self.field_mapping = get_item.field_mapping.copy()
 
         self.ids = self._load_field(samples, "id", local_process_group)
 
