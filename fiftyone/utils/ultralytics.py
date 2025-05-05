@@ -433,6 +433,14 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
     def __init__(self, config):
         super().__init__(config)
 
+    @property
+    def has_collate_fn(self):
+        return True
+
+    @staticmethod
+    def collate_fn(batch):
+        return batch
+
     def _download_model(self, config):
         config.download_model_if_necessary()
 
@@ -445,7 +453,7 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
             "conf": config.confidence_thresh,
             "save": False,
             "mode": "predict",
-            "rect": self.ragged_batches,
+            "rect": False,
             "verbose": False,
             "device": self._device,
         }
