@@ -708,7 +708,7 @@ class ErrorHandlingCollate:
 
         self.user_collate_fn = user_collate_fn
         if self.user_collate_fn is None:
-            self.user_collate_fn = user_collate_fn
+            self.user_collate_fn = tud.dataloader.default_collate
 
     def __call__(self, batch):
         return self._collate_fn(batch)
