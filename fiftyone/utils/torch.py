@@ -258,71 +258,47 @@ def ensure_torch_hub_requirements(
 
 class GetItem:
     """A class that defines how to get the input for a model from a sample.
-    It's :method:`fiftyone.utils.torch.GetItem.samples_dict_to_input` method
-    should return the input for the model from a sample or a dictionary corresponding
+
+    The :method:`fiftyone.utils.torch.GetItem.__call__` method
+    should return the input for the model from a dictionary corresponding
     to a sample view.
+
     Instances of this class can be used in conjunction with
     :class:`fiftyone.utils.torch.FiftyOneTorchDataset` to create performant torch datasets.
+
     A :class:`fiftyone.utils.torch.GetItem` instance should only require
-    the fields specified in `required_fields` from samples.
-    It should look for those fields under the names specified in `field_mapping`.
-    the `field_mapping` dictionary is used to map the fields in the sample to the input fields for the model.
-    Subclasses should interact with `required_fields` and `field_mapping` through the properties.
-    the method :method:`fiftyone.utils.torch.GetItem.add_required_fields`
-    can be used to add fields to required_fields.
-    Required fields should be set in the subclass's `__init__` method.
-    Required fields cannot repeat. If a field is added twice, it will be ignored.
-    Make sure to check if a superclass has already added a field before adding to it.
+    the fields specified in the values of `field_mapping`.
+
+    In the `__call__` method, only the keys specified in `required_keys`
+    should be used to create the input for the model.
     """
 
     def __init__(self, field_mapping=None, **kwargs):
         super().__init__(**kwargs)
         self.field_mapping = field_mapping
 
-    def sample_dict_to_input(self, sample_dict):
-        """Return model input from a list if samples' dicts
+    def __call__(self, d):
+        """Prepares the input for :meth:`Model.predict` for a sample.
+
         Args:
-            sample_dict:  A dictionarty corresponding to a sample view.
-                            Can be the sample itself.
+            d: a dict with keys :meth:`media_key` and :meth:`required_keys`
+                prepared for a sample
+
         Returns:
-            model input
+            the model input
         """
-        raise NotImplementedError("Subclass should implement this method.")
-
-    def __call__(self, sample):
-        return self.sample_dict_to_input(sample)
-
-    @property
-    def required_fields(self):
-        """a list of fields that are required in the sample for the GetItem to work."""
-        if not hasattr(self, "_required_fields_list"):
-            self._required_fields_list = ()
-        return self._required_fields_list
-
-    def add_required_fields(self, value):
-        """
-        Add fields to the required_fields list.
-        Args:
-            value: a list of fields or a single field to add to the required
-        """
-        if not hasattr(self, "_required_fields_list"):
-            self._required_fields_list = ()
-        if isinstance(value, str):
-            value = [value]
-        if not isinstance(value, list):
-            raise ValueError("required_fields must be a list or a string.")
-        self._required_fields_list = tuple(
-            set(list(self._required_fields_list) + value)
-        )
-        self.update_field_mapping()
+        raise NotImplementedError("subclasses must implement __call__()")
 
     @property
     def field_mapping(self):
         """
         a dictionary mapping the fields in the sample to the input fields for the model
-        if not defined, we will assume the fields are the same
+        if not defined, it's assumed that the fields are the same as the `required_keys`
+        of the `GetItem` instance.
+
         When this is updated, the behavior of __call__ should be updated accordingly.
-        This is what allows the user to specify the fields in the sample that are used as input to the model.
+        This is what allows the user to specify the fields in the sample that are use
+        as input to the model.
         """
         if not hasattr(self, "_field_mapping_dict"):
             self._field_mapping_dict = {}
@@ -333,45 +309,21 @@ class GetItem:
         if not hasattr(self, "_field_mapping_dict"):
             self._field_mapping_dict = {}
         if value is None:  # generally on init
-            value = {k: k for k in self.required_fields}
-            for k, v in self._field_mapping_dict.items():
-                # if mixins have already set the field mapping, we should keep it
-                value[k] = v
+            value = {k: k for k in self.required_keys}
         if not isinstance(value, dict):
             raise ValueError("field_mapping must be a dictionary.")
-        for k in value.keys():
-            if k not in self.required_fields:
+
+        for k, v in value.items():
+            if k not in self.required_keys:
                 raise ValueError(
-                    f"field_mapping key {k} not in required_fields."
+                    f"Field '{k}' is not in the required keys: {self.required_keys}"
                 )
+            self._field_mapping_dict[k] = v
 
-        for f in self.required_fields:
-            if f not in value:
-                value[f] = self.field_mapping.get(f, f)
-
-        self._field_mapping_dict = value
-
-    def update_field_mapping(self):
-        """
-        Update the field mapping for the get_item function.
-        """
-        for f in self.required_fields:
-            if f not in self.field_mapping:
-                self.field_mapping[f] = f
-
-    def validate_compatible_samples(self, samples):
-        """
-        Validate that the samples are compatible with the GetItem.
-        This should be called every time so we can fail quickly and loudly when needed.
-        TODO: Add type checking for the fields.
-        """
-        # is this the correct way to do this?
-        sample = samples.first()
-        foval.get_fields(sample, self.field_mapping.values(), allow_none=False)
-        try:
-            return self(sample)
-        except Exception as e:
-            raise ValueError("Sample is not compatible with GetItem.") from e
+    @property
+    def required_keys(self):
+        """Subclasses can implement this property if they require additional keys."""
+        return []
 
 
 class TorchEmbeddingsMixin(fom.EmbeddingsMixin):
@@ -654,12 +606,11 @@ class ImageGetItem(GetItem):
         self.raw_inputs = raw_inputs
         self.using_half_precision = using_half_precision
         self.use_numpy = use_numpy
-        self.add_required_fields("filepath")
 
-    def sample_dict_to_input(self, sample_dict):
+    def __call__(self, d):
         img = _load_image(
             # hardcoded because that's how it was in fiftyone.core.models._make_data_loader
-            sample_dict["filepath"],
+            d["filepath"],
             use_numpy=self.use_numpy,
             force_rgb=True,
         )
@@ -675,9 +626,17 @@ class ImageGetItem(GetItem):
 
         return img
 
+    @property
+    def required_keys(self):
+        return ["filepath"]
+
 
 class TorchImageModel(
-    TorchEmbeddingsMixin, fom.TorchModelMixin, fom.LogitsMixin, fom.Model
+    fom.SupportsGetItem,
+    TorchEmbeddingsMixin,
+    fom.TorchModelMixin,
+    fom.LogitsMixin,
+    fom.Model,
 ):
     """Wrapper for evaluating a Torch model on images.
 
@@ -745,25 +704,14 @@ class TorchImageModel(
             self._no_grad.__exit__(*args)
             self._no_grad = None
 
-    def _build_get_item(self, **kwargs):
+    def build_get_item(self, field_mapping=None):
         return ImageGetItem(
             transform=self._transforms,
             raw_inputs=self.config.raw_inputs,
             using_half_precision=self._using_half_precision,
             use_numpy=False,
-            **kwargs,
+            field_mapping=field_mapping,
         )
-
-    def build_get_item(self, **kwargs):
-        """Builds a :class:`GetItem` instance for the model.
-
-        Args:
-            **kwargs: additional parameters for :class:`GetItem`
-
-        Returns:
-            a :class:`GetItem` instance
-        """
-        return self._build_get_item(**kwargs)
 
     @property
     def media_type(self):
@@ -1654,19 +1602,16 @@ class FiftyOneTorchDataset(Dataset):
 
     Args:
         samples: a :class:`fo.core.collections.SampleCollection`
-        get_item: a `Callable[:class:`fo.core.sample.SampleView`, Any]`
-            Must be a serializable function.
-        cache_field_names (None): a list of strings. Fields to cache in memory. If this
-            argument is passed, get_item should be from a dict with keys and values
-            corresponding to the sample's fields and values to the model input.
-            This argument is highly recommended, as it offers a significant performance
-            boost.
+        get_item: a :class:`fiftyone.utils.torch.GetItem` instance.
+        vectorize (False): whether to serialize and load to memory the required fields
+            of the `get_item` passed. This gives faster data loading times, but
+            requires more memory and has some upfront cost. If this is set to `False`,
+            the fields will be loaded on the fly from the database.
             Please note :   the field values must be pickle serializable i.e.
                             `pickle.dumps(field_value)` should not raise an error.
                             `pickle.loads(pickle.dumps(field_value))` should have all of the
                             functionality of the original field value that you would need
                             in your get_item function.
-
         local_process_group (None) - only pass if running Distributed Data Parallel (DDP).
             The process group with each of the processes running the main train script
             on the machine this object is on.
@@ -1720,8 +1665,8 @@ class FiftyOneTorchDataset(Dataset):
     def __init__(
         self,
         samples: focol.SampleCollection,
-        get_item: Callable[fos.SampleView, Any],
-        cache_field_names: list[str] = None,
+        get_item: GetItem,
+        vectorize: bool = False,
         local_process_group=None,
         skip_failures=False,
     ):
@@ -1753,14 +1698,19 @@ class FiftyOneTorchDataset(Dataset):
         self.get_item = get_item
         self.skip_failures = skip_failures
 
+        self.field_mapping = get_item.field_mapping.copy()
+
         self.ids = self._load_field(samples, "id", local_process_group)
 
+        self.vectorize = vectorize
+
         self.cached_fields = None
-        self.cache_field_names = cache_field_names
-        if self.cache_field_names is not None:
+        self.cache_field_names = self.field_mapping.values()
+
+        if self.vectorize:
             self.cached_fields = {}
 
-            to_load = self.cache_field_names
+            to_load = list(self.cache_field_names)
             if "id" in self.cache_field_names:
                 # we already load the id field
                 to_load.remove("id")
@@ -1864,45 +1814,56 @@ class FiftyOneTorchDataset(Dataset):
                 raise e
             return e
 
-    def __getitem__(self, index):
+    def _get_samples(self, indices):
+        ids = [self.ids[idx] for idx in indices]
+        return fov.make_optimized_select_view(self.samples, ids, ordered=True)
 
-        # if self._samples is None at this point then
-        # worker_init was probably never called
-        # meaning we are working on main process
-        # most likely num_workers=0 in dataloader
-        # or someone is testing this object
-        # load samples here instead
-        if self._samples is None:
-            self._load_samples()
+    def _prepare_batch_db(self, indices):
+        samples = self._get_samples(indices)
+        batch = []
+        for sample in samples:
+            d = {}
+            for key, field in self.field_mapping.items():
+                try:
+                    d[key] = sample[field]
+                except Exception as e:
+                    error = ValueError(
+                        f"Error loading field {field} assigned to key {key} : {e}"
+                    )
+                    if not self.skip_failures:
+                        raise error
+                    d = error
+                    break
+            batch.append(d)
+        return batch
 
-        if self.cached_fields is None:
-            # pylint: disable=unsubscriptable-object
-            sample = fov.make_optimized_select_view(
-                self._samples, self.ids[index]
-            ).first()
-            return self._get_item(sample)
+    def _prepare_batch_vectorized(self, indices):
+        batch = []
+        for i in indices:
+            d = {}
+            for key, field in self.field_mapping.items():
+                # errors should be caught earlier
+                d[key] = self.cached_fields[field][i]
+            batch.append(d)
+        return batch
 
-        else:
-            sample_dict = {
-                fn: self.cached_fields[fn][index]
-                for fn in self.cache_field_names
-            }
-            return self._get_item(sample_dict)
+    def __getitem__(self, idx):
+        return self.__getitems__([idx])[0]
 
     def __getitems__(self, indices):
-        if self._samples is None:
-            self._load_samples()
-
-        if self.cached_fields is None:
-            ids = [self.ids[i] for i in indices]
-            # pylint: disable=unsubscriptable-object
-            samples = fov.make_optimized_select_view(
-                self._samples, ids, ordered=True
-            )
-            return [self._get_item(s) for s in samples]
-
+        if self.vectorize:
+            batch = self._prepare_batch_vectorized(indices)
         else:
-            return [self.__getitem__(i) for i in indices]
+            batch = self._prepare_batch_db(indices)
+
+        res = []
+        for d in batch:
+            if isinstance(d, Exception):
+                res.append(d)
+            else:
+                res.append(self._get_item(d))
+
+        return res
 
     def __len__(self):
         return len(self.ids)

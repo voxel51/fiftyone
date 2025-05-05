@@ -772,7 +772,7 @@ def _make_data_loader(
     if batch_size is None:
         batch_size = 1
 
-    use_fotd = hasattr(model, "build_get_item")
+    use_fotd = isinstance(model, SupportsGetItem)
 
     if use_fotd:
         dataset = _make_fo_torch_dataset(
@@ -2347,6 +2347,22 @@ class TorchModelMixin(object):
     """
 
     pass
+
+
+class SupportsGetItem(object):
+    """Mixin for models that support inference with
+    :class:`fiftyone.utils.torch.FiftyOneTorchDataset`."""
+
+    @property
+    def required_keys(self):
+        """The required keys that must be provided via `field_mapping`."""
+        return self.build_get_item().required_keys
+
+    def build_get_item(self, field_mapping=None):
+        """Builds a :class:`fiftyone.utils.torch.GetItem` instance that
+        can be passed to `to_torch`.
+        """
+        raise NotImplementedError("subclasses must implement build_get_item()")
 
 
 class ModelManagerConfig(etam.ModelManagerConfig):
