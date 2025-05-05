@@ -5,6 +5,7 @@ on: workflow_call
 jobs:
   test-python:
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
     env:
       FIFTYONE_DO_NOT_TRACK: true
     strategy:
@@ -35,9 +36,8 @@ jobs:
             requirements/test.txt
       - name: Install requirements
         if: steps.pip-cache.outputs.cache-hit != true
-        # Pinning pip version as the latest throws an error
         run: |
-          pip install -U pip==25.0.1 wheel setuptools
+          pip install -U wheel setuptools
           pip install -r requirements/github.txt
       - name: Install fiftyone
         run: |
