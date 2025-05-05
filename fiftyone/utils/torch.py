@@ -10,7 +10,7 @@ import itertools
 import multiprocessing
 import os
 import sys
-from typing import Callable, Any, Optional, List
+from typing import Any, Optional, List
 import pickle
 import functools
 import warnings
@@ -31,9 +31,7 @@ import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 import fiftyone.utils.image as foui
 import fiftyone.core.collections as focol
-import fiftyone.core.sample as fos
 import fiftyone.core.view as fov
-import fiftyone.core.validation as foval
 
 fou.ensure_torch()
 
@@ -281,8 +279,7 @@ class GetItem:
         """Prepares the input for :meth:`Model.predict` for a sample.
 
         Args:
-            d: a dict with keys :meth:`media_key` and :meth:`required_keys`
-                prepared for a sample
+            d: a dict with keys :meth:`required_keys` prepared for a sample.
 
         Returns:
             the model input
@@ -1831,7 +1828,7 @@ class FiftyOneTorchDataset(Dataset):
                         f"Error loading field {field} assigned to key {key} : {e}"
                     )
                     if not self.skip_failures:
-                        raise error
+                        raise error from e
                     d = error
                     break
             batch.append(d)

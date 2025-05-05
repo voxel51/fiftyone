@@ -9,7 +9,7 @@ import os
 import unittest
 
 import fiftyone as fo
-from fiftyone.utils.torch import FiftyOneTorchDataset, GetItem
+from fiftyone.utils.torch import GetItem
 
 
 class IdentityGetItem(GetItem):

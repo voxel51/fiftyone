@@ -1,7 +1,4 @@
 import unittest
-from collections import Counter
-
-import fiftyone as fo
 
 from fiftyone.utils.torch import GetItem
 
