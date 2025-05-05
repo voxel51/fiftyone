@@ -8115,6 +8115,7 @@ class SampleCollection(object):
                     etau.is_str(field_or_expr)
                     and field_or_expr == "frames"
                     and self._has_frame_fields()
+                    and not self._is_clips
                 )
             )
         ):
