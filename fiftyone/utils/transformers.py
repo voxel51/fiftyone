@@ -683,6 +683,10 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
             processor, **(config.transformers_processor_kwargs)
         )
 
+    @property
+    def has_collate_fn(self):
+        return True
+
     @staticmethod
     def collate_fn(batch):
         if isinstance(batch, transformers.BatchFeature) or isinstance(
