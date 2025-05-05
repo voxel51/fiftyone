@@ -3818,7 +3818,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 f"CVAT server version '{self._server_version}' is not "
                 "currently supported. Please use CVAT <= 2.30.\n\n"
                 "See https://github.com/voxel51/fiftyone/issues/5771 for "
-                "details"
+                "details."
             )
 
     def _add_referer(self):

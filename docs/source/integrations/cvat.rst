@@ -182,7 +182,8 @@ _____
 
 .. warning::
 
-   This integration currently only `supports CVAT server versions <=v2.30.0 <https://github.com/voxel51/fiftyone/issues/5771>`_.
+   This integration currently only
+   `supports CVAT server versions <= 2.30 <https://github.com/voxel51/fiftyone/issues/5771>`_.
 
 FiftyOne supports both `app.cvat.ai <https://app.cvat.ai>`_ and
 `self-hosted servers <https://opencv.github.io/cvat/docs/administration/basics/installation/>`_.
