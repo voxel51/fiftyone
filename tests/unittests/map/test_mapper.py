@@ -11,6 +11,7 @@ from typing import TypeVar
 from unittest import mock
 
 import bson
+import platform
 import pytest
 
 import fiftyone as fo
@@ -303,6 +304,7 @@ class TestMapSamples:
         }
 
     def test_empty_dataset(self, num_workers):
+        num_workers = 1 if platform.system() == "Windows" else num_workers
         dataset = fo.Dataset()
         for _, result in dataset.map_samples(
             lambda s: 1, num_workers=num_workers
@@ -311,6 +313,7 @@ class TestMapSamples:
         assert len(dataset) == 0
 
     def test_empty_view(self, num_workers):
+        num_workers = 1 if platform.system() == "Windows" else num_workers
         dataset = fo.Dataset()
         dataset.add_sample(focs.Sample(filepath="sample.jpg"))
         empty_view = dataset.limit(0)
