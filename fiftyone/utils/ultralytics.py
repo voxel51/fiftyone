@@ -588,7 +588,10 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         if isinstance(images, (list, tuple)):
             images = torch.stack(images)
 
-        height, width = images.size()[-2:]
+        self._model.predictor.setup_source(
+            [np.zeros((10, 10))] * images.size()[0]
+        )
+        self._model.predictor.batch = next(iter(self._model.predictor.dataset))
 
         images = images.to(self._device)
         if self._using_half_precision:
@@ -598,8 +601,12 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
 
         # This is required for Ultralytics post-processing.
         output["orig_imgs"] = orig_images
-        height, width = _get_image_dims(orig_images[0])
         output["imgs"] = images
+
+        width_height = []
+        for img in orig_images:
+            height, width = _get_image_dims(img)
+            width_height.append((width, height))
 
         if self._output_processor is None:
             _output = output.get("preds")
@@ -613,7 +620,7 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
 
         return self._output_processor(
             output,
-            (width, height),
+            width_height,
             confidence_thresh=self.config.confidence_thresh,
         )
 
@@ -644,7 +651,8 @@ class FiftyOneRTDETRModel(FiftyOneYOLOModel):
         config: a :class:`FiftyOneRTDETRModelConfig`
     """
 
-    pass
+    def _pre_transform(self, im):
+        return self._model.predictor.pre_transform(im)
 
 
 class FiftyOneYOLOClassificationModel(FiftyOneYOLOModel):
@@ -823,7 +831,10 @@ class UltralyticsDetectionOutputProcessor(
     def __call__(self, output, frame_size, confidence_thresh=None):
         results = self.post_process(output)
         preds = self._to_dict(results)
-        return super().__call__(preds, frame_size, confidence_thresh)
+        return [
+            self._parse_output(o, wh, confidence_thresh)
+            for o, wh in zip(preds, frame_size)
+        ]
 
     def _to_dict(self, results):
         batch = []
