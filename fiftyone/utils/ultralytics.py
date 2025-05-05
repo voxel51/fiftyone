@@ -8,6 +8,7 @@ Utilities for working with
 """
 
 import itertools
+
 import numpy as np
 from PIL import Image
 
@@ -282,6 +283,78 @@ def _obb_to_polylines(result, filled, confidence_thresh=None):
     return fol.Polylines(polylines=polylines)
 
 
+def to_polylines(results, confidence_thresh=None, tolerance=2, filled=True):
+    """Converts ``ultralytics.YOLO`` instance segmentations to FiftyOne format.
+
+    Args:
+        results: a single or list of ``ultralytics.engine.results.Results``
+        confidence_thresh (None): a confidence threshold to filter boxes
+        tolerance (2): a tolerance, in pixels, when generating approximate
+            polylines for instance masks. Typical values are 1-3 pixels
+        filled (True): whether the polyline should be filled
+
+    Returns:
+        a single or list of :class:`fiftyone.core.labels.Polylines`
+    """
+    single = not isinstance(results, list)
+    if single:
+        results = [results]
+
+    batch = [
+        _to_polylines(
+            r, tolerance, filled, confidence_thresh=confidence_thresh
+        )
+        for r in results
+    ]
+
+    if single:
+        return batch[0]
+
+    return batch
+
+
+def _to_polylines(result, tolerance, filled, confidence_thresh=None):
+    if result.masks is None:
+        return None
+
+    classes = np.rint(result.boxes.cls.detach().cpu().numpy()).astype(int)
+    confs = result.boxes.conf.detach().cpu().numpy().astype(float)
+    track_ids = _extract_track_ids(result)
+
+    if tolerance > 1:
+        masks = result.masks.data.detach().cpu().numpy() > 0.5
+        points = itertools.repeat(None)
+    else:
+        masks = itertools.repeat(None)
+        points = result.masks.xyn
+
+    polylines = []
+    for cls, mask, _points, conf, idx in zip(
+        classes, masks, points, confs, track_ids
+    ):
+        if confidence_thresh is not None and conf < confidence_thresh:
+            continue
+
+        if _points is None:
+            _points = fol._get_polygons(mask, tolerance)
+        else:
+            _points = [_points.astype(float)]
+
+        label = result.names[cls]
+
+        polyline = fol.Polyline(
+            label=label,
+            points=_points,
+            confidence=conf,
+            closed=True,
+            filled=filled,
+            index=idx,
+        )
+        polylines.append(polyline)
+
+    return fol.Polylines(polylines=polylines)
+
+
 def to_keypoints(results, confidence_thresh=None):
     """Converts ``ultralytics.YOLO`` keypoints to FiftyOne format.
     Args:
@@ -370,7 +443,7 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
             "conf": config.confidence_thresh,
             "save": False,
             "mode": "predict",
-            "rect": False,
+            "rect": self.ragged_batches,
             "verbose": False,
             "device": self._device,
         }
