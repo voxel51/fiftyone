@@ -8533,6 +8533,7 @@ def _create_sample_document_cls(
 ):
     cls = type(sample_collection_name, (foo.DatasetSampleDocument,), {})
     cls._dataset = dataset
+    cls.STRICT = True
 
     _declare_fields(dataset, cls, field_docs=field_docs)
     return cls
