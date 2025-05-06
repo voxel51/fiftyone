@@ -386,6 +386,8 @@ class ConfigureScenario(foo.Operator):
     def extract_custom_code(self, ctx, example_type=ScenarioType.CUSTOM_CODE):
         # NOTE: this was causing infinite loop if missing replace
         key = self.get_custom_code_key(ctx.params).replace(".", "_")
+        scenario_type = ctx.params.get("scenario_type", None)
+        field = ctx.params.get("scenario_field", None)
 
         custom_code = (
             ctx.params.get("custom_code_stack", {})
@@ -397,7 +399,9 @@ class ConfigureScenario(foo.Operator):
             custom_code = ctx.params.get("scenario_subsets_code", None)
 
         if not custom_code:
-            custom_code = get_scenario_example(example_type)
+            custom_code = get_scenario_example(
+                example_type, scenario_type, field
+            )
 
         return custom_code, key
 
