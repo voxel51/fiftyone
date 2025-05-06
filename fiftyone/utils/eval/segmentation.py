@@ -472,11 +472,7 @@ class SimpleEvaluation(SegmentationEvaluation):
         dice_field = "%s_dice" % eval_key if compute_dice else None
 
         def _eval_sample(sample):
-            if processing_frames:
-                images = sample.frames.values()
-            else:
-                images = [sample]
-
+            images = sample.frames.values() if processing_frames else [sample]
             sample_conf_mat = np.zeros((len(values), len(values)), dtype=int)
             sample_matches = []
 

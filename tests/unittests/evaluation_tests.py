@@ -3476,10 +3476,6 @@ class EvaluateSegmentationMultiWorkerTests(unittest.TestCase):
         ):
             eval_key = f"eval_config_{i}"
 
-            print(
-                f"\nTesting with {workers} workers, {parallelize_method} parallelize method, {batch_method} batch method"
-            )
-
             results = self.dataset.evaluate_segmentations(
                 "predictions",
                 gt_field="ground_truth",
@@ -3513,7 +3509,6 @@ class EvaluateSegmentationMultiWorkerTests(unittest.TestCase):
             if eval_key == "eval_config_0":
                 continue
 
-            print(f"Comparing baseline to {eval_key}")
             for metric in ["accuracy", "precision", "recall", "fscore"]:
                 # Allow for small floating-point differences
                 self.assertAlmostEqual(
