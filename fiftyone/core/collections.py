@@ -2184,8 +2184,7 @@ class SampleCollection(object):
 
         results = list(view.values(paths))
 
-        if has_frame_fields:
-            frame_numbers = results.pop(0)
+        frame_numbers = results.pop(0) if has_frame_fields else None
 
         sample_ids = results[0]
         all_label_ids = results[1:]
@@ -3841,6 +3840,10 @@ class SampleCollection(object):
         mask_targets=None,
         method=None,
         progress=None,
+        num_workers=1,
+        batch_method="id",
+        batch_size=None,
+        parallelize_method=None,
         **kwargs,
     ):
         """Evaluates the specified semantic segmentation masks in this
@@ -3896,7 +3899,15 @@ class SampleCollection(object):
                 default is ``fo.evaluation_config.segmentation_default_backend``
             progress (None): whether to render a progress bar (True/False), use
                 the default value ``fiftyone.config.show_progress_bars``
-                (None), or a progress callback function to invoke instead
+                (None), or a progress callback function to invoke instead.
+            num_workers (1): the number of processes to use for parallel
+                processing. Set to a value greater than 1 to enable parallel
+                processing.
+            batch_method ("id"): the method to use to shard the dataset
+            batch_size (None): the number of samples to process in each batch. If
+                not provided, the batch size is set to the number of samples in
+                the dataset divided by the number of workers.
+            parallelize_method (None): the parallelize_method to use for multiprocessing
             **kwargs: optional keyword arguments for the constructor of the
                 :class:`fiftyone.utils.eval.segmentation.SegmentationEvaluationConfig`
                 being used
@@ -3912,6 +3923,10 @@ class SampleCollection(object):
             mask_targets=mask_targets,
             method=method,
             progress=progress,
+            num_workers=num_workers,
+            batch_method=batch_method,
+            batch_size=batch_size,
+            parallelize_method=parallelize_method,
             **kwargs,
         )
 
