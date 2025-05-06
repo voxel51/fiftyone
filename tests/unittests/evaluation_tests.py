@@ -3596,9 +3596,9 @@ class EvaluateSegmentationMultiWorkerTests(unittest.TestCase):
 
                     # Verify workers parameter was correctly passed
                     self.assertEqual(
-                        map_samples_calls[0].get("workers"),
+                        map_samples_calls[0].get("num_workers"),
                         worker_count,
-                        f"map_samples was called with incorrect workers value. Expected {worker_count}, got {map_samples_calls[0].get('workers')}",
+                        f"map_samples was called with incorrect workers value. Expected {worker_count}, got {map_samples_calls[0].get('num_workers')}",
                     )
 
                 # Test different parallelize methods
@@ -3683,9 +3683,9 @@ class EvaluateSegmentationMultiWorkerTests(unittest.TestCase):
 
                 # Check all parameters were passed correctly
                 self.assertEqual(
-                    map_samples_calls[0].get("workers"),
+                    map_samples_calls[0].get("num_workers"),
                     test_workers,
-                    f"workers parameter not passed correctly. Expected {test_workers}, got {map_samples_calls[0].get('workers')}",
+                    f"workers parameter not passed correctly. Expected {test_workers}, got {map_samples_calls[0].get('num_workers')}",
                 )
                 self.assertEqual(
                     map_samples_calls[0].get("parallelize_method"),
