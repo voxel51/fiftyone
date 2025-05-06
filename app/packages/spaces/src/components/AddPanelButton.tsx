@@ -96,6 +96,7 @@ export default function AddPanelButton({ node, spaceId }: AddPanelButtonProps) {
                     name={panel.name}
                     label={panel.label}
                     spaceId={spaceId}
+                    showAlpha={panel.panelOptions?.alpha ?? false}
                     showBeta={panel.panelOptions?.beta ?? false}
                     showNew={panel.panelOptions?.isNew ?? false}
                     onClick={() => setOpen(false)}

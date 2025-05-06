@@ -21,5 +21,7 @@ class SampleCollection(Protocol[T]):
     def iter_samples(self, *args, **kwargs) -> Iterator[T]:
         """iter_samples"""
 
-    def values(self, key: Literal["id"]) -> List[bson.ObjectId]:
+    def values(
+        self, key: Literal["id"], _enforce_natural_order: bool = False
+    ) -> List[bson.ObjectId]:
         """values"""

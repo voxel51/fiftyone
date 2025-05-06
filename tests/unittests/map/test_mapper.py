@@ -16,7 +16,6 @@ import pytest
 import fiftyone.core.sample as focs
 import fiftyone.core.map.batcher as fomb
 import fiftyone.core.map.mapper as fomm
-from decorators import skip_windows
 
 T = TypeVar("T")
 R = TypeVar("R")
@@ -78,11 +77,9 @@ class Mapper(fomm.LocalMapper):
     """Test implementation for abstract class"""
 
     @classmethod
-    def create(cls, *_, **__):
-        ...
+    def create(cls, *_, **__): ...
 
-    def _map_samples_multiple_workers(self, *_, **__):
-        ...
+    def _map_samples_multiple_workers(self, *_, **__): ...
 
 
 @pytest.mark.parametrize(
@@ -187,7 +184,6 @@ class TestMapSamples:
             pytest.param(get_random_sample_errors(3), id="errors[multiple]"),
         ),
     )
-    @skip_windows  # TODO: don't skip on Windows
     def test_map_err(
         self,
         num_workers,
@@ -276,7 +272,6 @@ class TestMapSamples:
 
             assert not sample_collection.iter_samples.called
 
-    @skip_windows  # TODO: don't skip on Windows
     def test_ok(
         self,
         num_workers,

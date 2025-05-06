@@ -40,9 +40,12 @@ class ExtendedViewForm:
 async def load_view(
     dataset_name: str,
     serialized_view: BSONArray,
-    form: ExtendedViewForm,
+    form: Optional[ExtendedViewForm] = None,
     view_name: Optional[str] = None,
 ) -> foc.SampleCollection:
+
+    form = form if form else ExtendedViewForm()
+
     def run() -> foc.SampleCollection:
         dataset = fod.load_dataset(dataset_name)
         if view_name:
@@ -183,10 +186,6 @@ def get_extended_view(
         )
         view = extend_view(view, extended_stages)
 
-    if pagination_data:
-        # omit all dict field values for performance, not needed by grid
-        view = _project_pagination_paths(view, media_types)
-
     if filters:
         if "tags" in filters:
             tags = filters.get("tags")
@@ -225,8 +224,6 @@ def get_extended_view(
     if pagination_data:
         # omit all dict field values for performance, not needed by grid
         view = _project_pagination_paths(view, media_types)
-
-    if pagination_data:
         view = _add_labels_tags_counts(view)
 
     return view
@@ -370,13 +367,27 @@ def _project_pagination_paths(
         if isinstance(field, fof.DictField)
     ]
 
+    selected_fields = []
+    for path in schema:
+        if any(path.startswith(exclude) for exclude in excluded):
+            continue
+
+        selected_fields.append(path)
+
+        field = view.get_field(path)
+        while isinstance(field, fof.ListField):
+            field = field.field
+
+        if not isinstance(field, fof.EmbeddedDocumentField):
+            continue
+
+        # include instance, even it is missing from schema
+        if field.document_type in fol._INSTANCE_FIELDS:
+            selected_fields.append(f"{path}.instance")
+
     return view.add_stage(
         fosg.SelectFields(
-            [
-                path
-                for path in schema
-                if all(not path.startswith(exclude) for exclude in excluded)
-            ],
+            selected_fields,
             _media_types=media_types,
         )
     )

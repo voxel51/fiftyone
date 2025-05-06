@@ -152,14 +152,17 @@ class Mapper(abc.ABC):
 
         if iter_fcn is None:
             iter_fcn = _get_default_sample_iter(save=save)
-
-            if check_if_return_is_sample(sample_collection, map_fcn):
-                raise ValueError(
-                    "`map_fcn` should not return Samples objects."
-                )
+            # TODO: consider adding this check back in lazily, so that we do not
+            #  have to create a full view iterator up front just to validate the
+            #  function return type.
+            # if check_if_return_is_sample(sample_collection, map_fcn):
+            #     raise ValueError("`map_fcn` should not return Samples objects.")
         else:
             if save is True:
                 logger.warning("Unable to save when `iter_fcn` is provided")
+                
+        
+
 
         yield from self._map_samples(
             sample_collection,

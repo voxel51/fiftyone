@@ -9,7 +9,6 @@ from unittest import mock
 import pytest
 
 import fiftyone.core.map.batcher.id_batch as fomi
-from decorators import skip_windows
 
 
 @pytest.fixture(name="make_optimized_select_view")
@@ -29,7 +28,6 @@ def patch_make_view():
         pytest.param(64, 2, id="explicit_batch_size_small_max_batch_size"),
     ),
 )
-@skip_windows  # TODO: don't skip on Windows
 def test_split(sample_collection, samples, batch_size, max_batch_size):
     """test splitting sample collection into batches"""
 
@@ -56,7 +54,9 @@ def test_split(sample_collection, samples, batch_size, max_batch_size):
 
     samples_ids = [sample.id for sample in samples]
 
-    sample_collection.values.assert_called_once_with("id")
+    sample_collection.values.assert_called_once_with(
+        "id", _enforce_natural_order=False
+    )
 
     assert len(result) == expected_batch_count
 
@@ -73,7 +73,6 @@ def test_split(sample_collection, samples, batch_size, max_batch_size):
     assert total == len(samples_ids)
 
 
-@skip_windows  # TODO: don't skip on Windows
 def test_create_subset(sample_collection, samples, make_optimized_select_view):
     """Test converting batch into sample collection"""
 

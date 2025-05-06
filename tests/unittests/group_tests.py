@@ -54,15 +54,15 @@ class GroupTests(unittest.TestCase):
         group = fo.Group()
         samples = [
             fo.Sample(
-                filepath=_anchor_test_file("left-image.jpg"),
+                filepath="left-image.jpg",
                 group_field=group.element("left"),
             ),
             fo.Sample(
-                filepath=_anchor_test_file("ego-video.mp4"),
+                filepath="ego-video.mp4",
                 group_field=group.element("ego"),
             ),
             fo.Sample(
-                filepath=_anchor_test_file("right-image.jpg"),
+                filepath="right-image.jpg",
                 group_field=group.element("right"),
             ),
         ]
@@ -112,11 +112,11 @@ class GroupTests(unittest.TestCase):
         dataset.add_samples(
             [
                 fo.Sample(
-                    filepath=_anchor_test_file("left-image.jpg"),
+                    filepath="left-image.jpg",
                     group_field=group.element("left"),
                 ),
                 fo.Sample(
-                    filepath=_anchor_test_file("right-image.jpg"),
+                    filepath="right-image.jpg",
                     group_field=group.element("right"),
                 ),
             ]
@@ -1755,32 +1755,32 @@ def _make_group_dataset():
 
     samples = [
         fo.Sample(
-            filepath=_anchor_test_file("left-image1.jpg"),
+            filepath="left-image1.jpg",
             group_field=group1.element("left"),
             field=1,
         ),
         fo.Sample(
-            filepath=_anchor_test_file("ego-video1.mp4"),
+            filepath="ego-video1.mp4",
             group_field=group1.element("ego"),
             field=2,
         ),
         fo.Sample(
-            filepath=_anchor_test_file("right-image1.jpg"),
+            filepath="right-image1.jpg",
             group_field=group1.element("right"),
             field=3,
         ),
         fo.Sample(
-            filepath=_anchor_test_file("left-image2.jpg"),
+            filepath="left-image2.jpg",
             group_field=group2.element("left"),
             field=4,
         ),
         fo.Sample(
-            filepath=_anchor_test_file("ego-video2.mp4"),
+            filepath="ego-video2.mp4",
             group_field=group2.element("ego"),
             field=5,
         ),
         fo.Sample(
-            filepath=_anchor_test_file("right-image2.jpg"),
+            filepath="right-image2.jpg",
             group_field=group2.element("right"),
             field=6,
         ),
@@ -2349,11 +2349,11 @@ class DynamicGroupTests(unittest.TestCase):
         group = fo.Group()
         samples = [
             fo.Sample(
-                filepath=_anchor_test_file("video.mp4"),
+                filepath="video.mp4",
                 group=group.element("video"),
             ),
             fo.Sample(
-                filepath=_anchor_test_file("image.png"),
+                filepath="image.png",
                 group=group.element("image"),
             ),
         ]
@@ -2391,27 +2391,27 @@ def _make_group_by_dataset():
 
     samples = [
         fo.Sample(
-            filepath=_anchor_test_file("frame11.jpg"),
+            filepath="frame11.jpg",
             sample_id=sample_id1,
             frame_number=1,
         ),
         fo.Sample(
-            filepath=_anchor_test_file("frame22.jpg"),
+            filepath="frame22.jpg",
             sample_id=sample_id2,
             frame_number=2,
         ),
         fo.Sample(
-            filepath=_anchor_test_file("frame13.jpg"),
+            filepath="frame13.jpg",
             sample_id=sample_id1,
             frame_number=3,
         ),
         fo.Sample(
-            filepath=_anchor_test_file("frame21.jpg"),
+            filepath="frame21.jpg",
             sample_id=sample_id2,
             frame_number=1,
         ),
         fo.Sample(
-            filepath=_anchor_test_file("frame12.jpg"),
+            filepath="frame12.jpg",
             sample_id=sample_id1,
             frame_number=2,
         ),
@@ -2434,32 +2434,32 @@ def _make_group_by_group_dataset():
 
     samples = [
         fo.Sample(
-            filepath=_anchor_test_file("left-image1.jpg"),
+            filepath="left-image1.jpg",
             group_field=group1.element("left"),
             scene="foo",
         ),
         fo.Sample(
-            filepath=_anchor_test_file("right-image1.jpg"),
+            filepath="right-image1.jpg",
             group_field=group1.element("right"),
             scene="foo",
         ),
         fo.Sample(
-            filepath=_anchor_test_file("left-image2.jpg"),
+            filepath="left-image2.jpg",
             group_field=group2.element("left"),
             scene="foo",
         ),
         fo.Sample(
-            filepath=_anchor_test_file("right-image2.jpg"),
+            filepath="right-image2.jpg",
             group_field=group2.element("right"),
             scene="foo",
         ),
         fo.Sample(
-            filepath=_anchor_test_file("left-image3.jpg"),
+            filepath="left-image3.jpg",
             group_field=group3.element("left"),
             scene="bar",
         ),
         fo.Sample(
-            filepath=_anchor_test_file("right-image3.jpg"),
+            filepath="right-image3.jpg",
             group_field=group3.element("right"),
             scene="bar",
         ),
@@ -2472,11 +2472,6 @@ def _make_group_by_group_dataset():
 
 def _rle(values):
     return dict((k, len(list(group))) for k, group in groupby(values))
-
-
-def _anchor_test_file(file: str) -> str:
-    td = tempfile.gettempdir()
-    return str(Path(Path(td).anchor, file))
 
 
 if __name__ == "__main__":

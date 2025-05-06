@@ -14,7 +14,7 @@ import {
   gridSortBy,
   isGroup,
 } from "@fiftyone/state";
-import { is3d, toSnakeCase } from "@fiftyone/utilities";
+import { is3d } from "@fiftyone/utilities";
 import { DefaultValue, atomFamily, selector, selectorFamily } from "recoil";
 import { v4 as uuid } from "uuid";
 import * as atoms from "./atoms";
@@ -506,7 +506,7 @@ export const extendedStages = selector({
 
     if (similarity) {
       rest["fiftyone.core.stages.SortBySimilarity"] = similarity
-        ? toSnakeCase(similarity)
+        ? similarity
         : undefined;
     } else if (sort) {
       rest["fiftyone.core.stages.SortBy"] = {
@@ -539,7 +539,7 @@ export const extendedStagesNoSort = selector({
 
     if (similarity) {
       rest["fiftyone.core.stages.SortBySimilarity"] = similarity
-        ? toSnakeCase(similarity)
+        ? similarity
         : undefined;
     }
 

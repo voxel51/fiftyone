@@ -3,6 +3,173 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.8.0
+-------------------------
+*Released May 2, 2025*
+
+Includes all updates from :ref:`FiftyOne 1.5.0 <release-notes-v1.5.0>`, plus:
+
+- Optimized API performance by enabling compression and byte-encoding. This can
+  be configured using FIFTYONE_API_COMPRESSOR and FIFTYONE_API_TRANSFER_METHOD.
+- Optimized plugin state using the Management API as the source of truth
+  instead of the filesystem. This will prevent calling os.walk() on slow
+  filesystems (nfs).
+- Added support for local log file streaming for
+  :ref:`delegated operations <enterprise-delegated-operations>`
+- Added a warning dialog about role re-upgrade limitations before admin
+  downgrades a user
+- Fixed a misleading message during snapshot creation. Message now makes clear
+  the snapshot may still be in progress of being created.
+- Enabled override of API batcher by setting
+  `fo.config.override_api_dynamic_batching`
+- Enabled use of a local filepath when setting the `logPath` for runs
+- Fixed a bug where certain transient 5xx errors were not being correctly
+  retried
+- Fixed a bug where users with read-only access were unable to load a saved
+  view from a snapshot
+- Fixed a bug where the dataset access page UI displayed NO_ACCESS instead of
+  the accurate value.
+- Introduced FiftyOne versions for Sanic configuration variables, and increased
+  default values for: keep-alive, request-timeout, response-timeout,
+  websocket-max-size, and websocket-ping-timeout.
+
+.. _release-notes-v1.5.0:
+
+FiftyOne 1.5.0
+--------------
+*Released May 2, 2025*
+
+App
+
+- Significant performance improvement to the grid and sidebar for datasets of
+  scale: added guided compound filtering in Query Performance mode, and added
+  lazy search results.
+  `#5732 <https://github.com/voxel51/fiftyone/pull/5732>`_
+- Added sorting directly via the grid
+  `#5732 <https://github.com/voxel51/fiftyone/pull/5732>`_
+- Added support for cross-sample label instance tracking via the new `Instance`
+  class in grouped datasets as well as across frames in video datasets. Added
+  new "shift + click" UX modality to select "similar" instances.
+  `#5577 <https://github.com/voxel51/fiftyone/pull/5577>`_
+- Optimized map performance with a new asynchronous `/geo` API route, with
+  frontend and backend caching for geolocation data, and with support for
+  extended stages in geo queries.
+  `#5775 <https://github.com/voxel51/fiftyone/pull/5775>`_
+  `#5794 <https://github.com/voxel51/fiftyone/pull/5794>`_
+- Fixed `#5327 <https://github.com/voxel51/fiftyone/issues/5327>`_
+  improving user experience when tagging
+  `#5638 <https://github.com/voxel51/fiftyone/pull/5638>`_
+- Fixed an issue blocking clicks from the embeddings legend
+  `#5627 <https://github.com/voxel51/fiftyone/pull/5627>`_
+- Fixed `edit_field_values` operator when values are missing from some samples
+  `#5662 <https://github.com/voxel51/fiftyone/pull/5662>`_
+
+Plugins
+
+- Added a new `fiftyone.operators.execution_cache` decorator for function
+  caching `#5680 <https://github.com/voxel51/fiftyone/pull/5680>`_
+- Added a new `residency` parameter to `@execution_cache`, enabling
+  `transient`, `ephemeral`, or `hybrid` caching strategies with optional
+  in-memory cache size limits and automatic LRU eviction.
+  `#5736 <https://github.com/voxel51/fiftyone/pull/5736>`_
+- Added 
+  :attr:`ctx.prompt_id <fiftyone.operators.executor.ExecutionContext.prompt_id>`
+  to the execution context
+  `#5678 <https://github.com/voxel51/fiftyone/pull/5678>`_
+- Added 
+  :attr:`ctx.operator_uri <fiftyone.operators.executor.ExecutionContext.operator_uri>`
+  to the execution context
+  `#5678 <https://github.com/voxel51/fiftyone/pull/5678>`_
+- Added a new `policy` param for creating `ExecutionStore` items with explicit
+  eviction policies. `#5679 <https://github.com/voxel51/fiftyone/pull/5679>`_
+
+Database
+
+- FiftyOne will now manage the feature compatibility version (FCV) of the
+  FiftyOne-managed mongodb instance. This management will happen during the
+  first connection to the database. Customers who utilize an
+  external/standalone instance will be unaffected.
+  `#5639 <https://github.com/voxel51/fiftyone/pull/5639>`_
+- Improved performance of `fiftyone migrate --info`
+  `#5672 <https://github.com/voxel51/fiftyone/pull/5672>`_
+- This version of FiftyOne raises the minimum MongoDB version from 4.4 to 5.0.
+  This is in accordance with our
+  `deprecation documentation. <https://docs.voxel51.com/deprecation.html#mongodb-4-4>`_
+  FiftyOne will now raise exceptions if the MongoDB version is lower than 5.0
+  and database_validation is enabled.
+  `#5682 <https://github.com/voxel51/fiftyone/pull/5682>`_
+
+
+Core
+
+- Introduced `map_samples` and `update_samples` methods, enabling efficient,
+  parallelized sample iteration and modification. These methods provide
+  significant performance improvements for large datasets and include flexible
+  options for batching, parallelization, and progress monitoring.
+  `#5642 <https://github.com/voxel51/fiftyone/pull/5642>`_
+- Added support for creating samples with arbitrary `media_type`
+  `#5506 <https://github.com/voxel51/fiftyone/pull/5506>`_
+- Added support for configuring MongoDB Network Compression. Defaults to None,
+  but can give a significant performance boost when enabled in sub-optimal
+  network environments. We recommend `zstd` as the preferred compressor based
+  on our own benchmarking results, but any compressor supported by your version
+  of mongo will work, provided you've installed the required python package.
+  `#5693 <https://github.com/voxel51/fiftyone/pull/5693>`_
+- Optimized the content size batcher to account for compressed
+  or encoded payload sizes
+  `#5740 <https://github.com/voxel51/fiftyone/pull/5740>`_
+- Optimized `FiftyOneTorchDataset` to speed up model inference
+  `#5703 <https://github.com/voxel51/fiftyone/pull/5703>`_
+- Optimized frame lookups to be as late as possible in aggregation pipelines
+  `#5705 <https://github.com/voxel51/fiftyone/pull/5705>`_
+- Optimized `values()` when retrieving an indexed field value in specific cases
+  `#5743 <https://github.com/voxel51/fiftyone/pull/5743>`_
+- `Dataset.last_modified_at` is now automatically updated when samples are deleted
+  `#5723 <https://github.com/voxel51/fiftyone/pull/5723>`_
+- `Sample.last_modified_at` is now automatically updated when frames are deleted
+  `#5723 <https://github.com/voxel51/fiftyone/pull/5723>`_
+- Adds a shorthand `foo.bulk_write(..., batcher=False)` syntax to perform the
+  write in a single batch (ie disable batching for that particular method
+  invocation) `#5667 <https://github.com/voxel51/fiftyone/pull/5667>`_
+- Optimized `split_labels()` and `delete_labels(view=view)` syntaxes by using
+  optimized per-sample update operations that can leverage the `_id` index
+  rather than requiring full collection scans
+  `#5730 <https://github.com/voxel51/fiftyone/pull/5730>`_
+- Optimized performance of sort by similarity, and added support for similarity
+  queries on filtered views.
+  `#5757 <https://github.com/voxel51/fiftyone/pull/5757>`_
+  `#248 <https://github.com/voxel51/fiftyone-brain/pull/248>`_
+- Fixed a "BSON too large" error that would previously occur when deleting a
+  sufficiently long list of IDs via `delete_labels(ids=ids)`
+  `#5730 <https://github.com/voxel51/fiftyone/pull/5730>`_
+- Fixed a bug where default dataset name can result in a collision
+  `#5759 <https://github.com/voxel51/fiftyone/pull/5759>`_
+- Optimized `SaveContext` to use a more optimal batching strategy
+  `#5747 <https://github.com/voxel51/fiftyone/pull/5747>`_
+- Fixed `#5335 <https://github.com/voxel51/fiftyone/issues/5335>`_
+  which was causing false positives in `evaluate_detections()` when
+  `classwise=False`
+  `#5697 <https://github.com/voxel51/fiftyone/pull/5697>`_
+- Added support for listing schemas without traversing embedded list
+  fields by introducing `subfield` and `unwind` parameters to
+  `get_field_schema()`.
+  `#5663 <https://github.com/voxel51/fiftyone/pull/5663>`_
+- Fix vulnerabilities in: `setuptools` and cve-2025-22151 in `strawberry-graphql`
+  `#5719 <https://github.com/voxel51/fiftyone/pull/5719>`_,
+  `#5735 <https://github.com/voxel51/fiftyone/pull/5735>`_
+
+Docs
+
+- Added compressor and transfer method configuration options to API docs
+  `#5721 <https://github.com/voxel51/fiftyone/pull/5721>`_
+
+
+Zoo
+
+- Added YOLOE instance segmentation models to FiftyOne model zoo.
+  `#5712 <https://github.com/voxel51/fiftyone/pull/5712>`_
+
+
 FiftyOne Enterprise 2.7.2
 -------------------------
 *Released April 4, 2025*
@@ -1120,7 +1287,7 @@ Annotation
 
 Core
 
-- Added support for :ref:`save contexts <efficient-batch-edits>` to generated
+- Added support for :ref:`save contexts <save-contexts>` to generated
   views (patches, frames, and clips)
   `#4636 <https://github.com/voxel51/fiftyone/pull/4636>`_
 - Added support for downloading plugins from branches that contain slashes `/`
@@ -1447,11 +1614,11 @@ App
 
 Core
 
-- All :ref:`autosave contexts <efficient-batch-edits>` now respect the
+- All :ref:`save contexts <save-contexts>` now respect the
   :ref:`default batching strategy <configuring-fiftyone>` and can be configured
   to use content size-based batching
   `#4243 <https://github.com/voxel51/fiftyone/pull/4243>`_
-- All SDK methods now use :ref:`autosave contexts <efficient-batch-edits>`
+- All SDK methods now use :ref:`save contexts <save-contexts>`
   rather than calling :meth:`sample.save() <fiftyone.core.sample.Sample.save>`
   in a loop
   `#4243 <https://github.com/voxel51/fiftyone/pull/4243>`_
@@ -4014,8 +4181,8 @@ App
 
 Core
 
-- Added a save context that enables
-  :ref:`efficient batch edits <efficient-batch-edits>` of datasets and views
+- Added :ref:`save contexts <save-contexts>`, which enable efficient batch
+  edits of datasets and views
   `#1727 <https://github.com/voxel51/fiftyone/pull/1727>`_
 - Added Plotly v5 support
   `#1981 <https://github.com/voxel51/fiftyone/pull/1981>`_

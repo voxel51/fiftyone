@@ -231,7 +231,7 @@ class SegmentationEvaluation(BaseEvaluationMethod):
         """
         pass
 
-    def get_fields(self, samples, eval_key):
+    def get_fields(self, samples, eval_key, include_custom_metrics=True):
         processing_frames = samples._is_frame_field(self.config.gt_field)
 
         fields = [
@@ -256,15 +256,20 @@ class SegmentationEvaluation(BaseEvaluationMethod):
             if self.config.compute_dice:
                 fields.append("%s_dice" % prefix)
 
-        fields.extend(self.get_custom_metric_fields(samples, eval_key))
+        if include_custom_metrics:
+            fields.extend(self.get_custom_metric_fields(samples, eval_key))
 
         return fields
 
     def rename(self, samples, eval_key, new_eval_key):
         dataset = samples._dataset
 
-        in_fields = self.get_fields(dataset, eval_key)
-        out_fields = self.get_fields(dataset, new_eval_key)
+        in_fields = self.get_fields(
+            dataset, eval_key, include_custom_metrics=False
+        )
+        out_fields = self.get_fields(
+            dataset, new_eval_key, include_custom_metrics=False
+        )
 
         in_sample_fields, in_frame_fields = fou.split_frame_fields(in_fields)
         out_sample_fields, out_frame_fields = fou.split_frame_fields(

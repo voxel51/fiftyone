@@ -77,12 +77,12 @@ export const filterSearch = selectorFamily({
 
       if (!result) {
         const active = get(validIndexes(get(filterKeys))).active;
-        if (active.length) {
+        if (active) {
           result = {};
-          for (const key of active[1]) {
+          for (const key of active.keys) {
             result[pathMap[key]] = f[pathMap[key]];
           }
-          resultName = active[0];
+          resultName = active.name;
         }
       }
 
@@ -122,38 +122,37 @@ export const indexInfo = foq.graphQLSyncFragmentAtom<foq.indexesFragment$key>(
   }
 );
 
-const indexKeysMatch = (one: string[], two: Set<string>) =>
-  one.length <= two.size && [...one].every((o) => two.has(o));
+const indexKeysMatch = (one: string[], two: string[]) =>
+  one.length <= two.length && [...one].every((o) => two.includes(o));
 
 export const validIndexes = selectorFamily({
   key: "validIndexes",
   get:
-    (keys: Set<string>) =>
+    (keys: string[]) =>
     ({ get }) => {
       const allIndexes = get(indexInfo)?.sampleIndexes ?? [];
-      const keyList = [...keys].map((k) => get(schemaAtoms.dbPath(k)));
+      const keyList = keys.map((k) => get(schemaAtoms.dbPath(k)));
 
       let matched: string | undefined;
-      let matchedKeys = [];
+      let matchedKeys: string[] = [];
       const trailing: [string, string][] = [];
       const available: [string, string][] = [];
       for (const index of allIndexes) {
         const indexKeys = index.key
-          .slice(0, keys.size)
+          .slice(0, keys.length)
           .map(({ field }) => field);
-        if (indexKeysMatch(indexKeys, new Set(keyList))) {
+
+        if (indexKeysMatch(indexKeys, keyList)) {
           if (indexKeys.length && indexKeys.length > matchedKeys.length) {
             matched = index.name;
-            matchedKeys = indexKeys.map((field) =>
-              get(schemaAtoms.fieldPath(field))
-            );
+            matchedKeys = indexKeys;
           }
 
-          index.key[keys.size]?.field &&
-            available.push([index.name, index.key[keys.size].field]);
+          index.key[keys.length]?.field &&
+            available.push([index.name, index.key[keys.length].field]);
 
-          if (index.key[keys.size - 1]) {
-            trailing.push([index.name, index.key[keys.size - 1].field]);
+          if (index.key[keys.length - 1]) {
+            trailing.push([index.name, index.key[keys.length - 1].field]);
           }
         }
       }
@@ -162,21 +161,40 @@ export const validIndexes = selectorFamily({
         // indexes whose have a field available, e.g. a compound index of
         // 'ground_truth.label' and 'created_at' where 'ground_truth.label' is
         // filtered on, then 'created_at' is available
-        available,
+        available: available.map(([name, key]) => ({
+          name,
+          key,
+        })),
 
         // an active index
-        active: (matched ? [matched, matchedKeys] : []) as [string, string[]],
+        active: matched ? { name: matched, keys: matchedKeys } : undefined,
 
         // trailing indexes, which can be sorted on, e.g. filtering by
         // 'created_at' and then sorting by it
-        trailing,
+        trailing: trailing.map(([name, key]) => ({
+          name,
+          key,
+        })),
       };
     },
 });
 
+const indexMap = selector({
+  key: "indexMap",
+  get: ({ get }) => {
+    const indexes = get(indexInfo)?.sampleIndexes ?? [];
+    const map: { [key: string]: string[] } = {};
+    for (const index of indexes) {
+      map[index.name] = index.key.map(({ field }) => field);
+    }
+
+    return map;
+  },
+});
+
 export const activeIndex = selector({
   key: "activeIndex",
-  get: ({ get }) => get(validIndexes(get(filterKeys))).active[0],
+  get: ({ get }) => get(validIndexes(get(filterKeys))).active?.name,
 });
 
 const firstKeyMap = selectorFamily({
@@ -200,10 +218,7 @@ const wildcardProjection = selectorFamily({
       get(firstKeyMap(frames))["$**"]?.wildcardProjection,
 });
 
-export const indexesByPath = selectorFamily<
-  Set<string>,
-  Set<string> | undefined
->({
+export const indexesByPath = selectorFamily<string[], string[] | undefined>({
   key: "indexesByPath",
   get:
     (keys) =>
@@ -249,13 +264,15 @@ export const indexesByPath = selectorFamily<
         return filtered.filter((field) => field.startsWith(parent));
       };
 
-      const current = get(validIndexes(keys || new Set()));
-      const result = current.active.length ? [...current.active[1]] : [];
+      const current = get(validIndexes(keys || []));
+      const result = new Set(current.active ? current.active.keys : []);
       for (const index of current.available) {
-        result.push(...convertWildcards(index[1], schema, false));
+        for (const value of convertWildcards(index.key, schema, false)) {
+          result.add(value);
+        }
       }
 
-      return new Set<string>(result);
+      return [...result];
     },
 });
 
@@ -267,7 +284,7 @@ export const pathIndex = selectorFamily({
       const indexes = get(
         indexesByPath(withFilters ? get(filterKeys) : undefined)
       );
-      return indexes.has(get(schemaAtoms.dbPath(path)));
+      return indexes.includes(get(schemaAtoms.dbPath(path)));
     },
 });
 
@@ -279,9 +296,9 @@ export const pathHasActiveIndex = selectorFamily({
       const keys = get(filterKeys);
       const db = get(schemaAtoms.dbPath(path));
       return (
-        keys.has(path) &&
+        keys.includes(path) &&
         get(validIndexes(keys))
-          .active.map(([_, p]) => p?.includes(db))
+          .active?.keys.map((p) => p?.includes(db))
           .some((t) => t)
       );
     },
@@ -292,19 +309,58 @@ export const pathHasIndexes = selectorFamily({
   get:
     ({ path, withFilters }: { path: string; withFilters?: boolean }) =>
     ({ get }) => {
-      return !!get(indexedPaths({ path, withFilters })).size;
+      return !!get(indexedPaths({ path, withFilters })).length;
+    },
+});
+
+export const isCompoundIndexed = selectorFamily({
+  key: "isCompoundIndexed",
+  get:
+    (path: string) =>
+    ({ get }) => {
+      const keys = new Set(get(filterKeys));
+      const valid = get(validIndexes([...keys]));
+      const map = get(indexMap);
+      const dbPath = get(schemaAtoms.dbPath(path));
+
+      for (const { name, key: available } of [
+        ...valid.available,
+        ...valid.trailing,
+      ]) {
+        if (map[name].length === 1) {
+          continue;
+        }
+
+        for (const key of map[name]) {
+          if (key === dbPath) {
+            return true;
+          }
+
+          if (key.startsWith(`${dbPath}.`)) {
+            return true;
+          }
+
+          if (key === available) {
+            break;
+          }
+        }
+      }
+
+      return (
+        valid.active?.keys.includes(dbPath) && valid.active?.keys.length > 1
+      );
     },
 });
 
 const filterKeys = selector({
   key: "filterKeys",
   get: ({ get }) => {
-    return new Set(Object.keys(get(filters) ?? {}));
+    return [...new Set(Object.keys(get(filters) ?? {}))];
   },
 });
 
 export const indexedPaths = selectorFamily<
-  Set<string>,
+  string[],
   { path: string; withFilters?: boolean }
 >({
   key: "indexedPaths",
@@ -323,23 +379,21 @@ export const indexedPaths = selectorFamily<
       ) {
         const expanded = get(schemaAtoms.expandPath(path));
         const indexes = get(indexesByPath(filters));
-        return new Set(
-          get(
-            schemaAtoms.fieldPaths({
-              path: expanded,
-              ftype: VALID_PRIMITIVE_TYPES,
-            })
-          )
-            .map((p) => `${expanded}.${p}`)
-            .filter((p) => indexes.has(get(schemaAtoms.dbPath(p))))
-        );
+        return get(
+          schemaAtoms.fieldPaths({
+            path: expanded,
+            ftype: VALID_PRIMITIVE_TYPES,
+          })
+        )
+          .map((p) => `${expanded}.${p}`)
+          .filter((p) => indexes.includes(get(schemaAtoms.dbPath(p))));
       }
 
       if (get(pathIndex({ path, withFilters }))) {
-        return new Set([path]);
+        return [path];
       }
 
-      return new Set();
+      return [];
     },
 });
 
