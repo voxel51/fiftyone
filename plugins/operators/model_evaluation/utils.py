@@ -60,19 +60,19 @@ SCENARIO_BUILDING_CHOICES = [
 ]
 
 
-def get_scenario_example(reason=ScenarioType.CUSTOM_CODE):
+def get_scenario_example(
+    reason=ScenarioType.CUSTOM_CODE, type=ScenarioType.CUSTOM_CODE, field=None
+):
     examples = {
         ScenarioType.CUSTOM_CODE: dedent(
             """
             from fiftyone import ViewField as F
 
+            bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
             subsets = {
-                "Unique Objects": [
-                    dict(type="field", expr=F("uniqueness") > 0.75),
-                ],
-                "Common Objects": [
-                    dict(type="field", expr=F("uniqueness") < 0.16),
-                ]
+                "Small objects": dict(type="attribute", expr=bbox_area <= 0.05),
+                "Medium objects": dict(type="attribute", expr=(0.05 <= bbox_area) & (bbox_area <= 0.5)),
+                "Large objects": dict(type="attribute", expr=bbox_area > 0.5),
             }
         """
         ).strip(),
@@ -111,4 +111,34 @@ def get_scenario_example(reason=ScenarioType.CUSTOM_CODE):
             """
         ).strip(),
     }
-    return examples.get(reason, "")
+    example = examples.get(reason, "")
+
+    # config based example
+    is_numeric = (
+        reason == CustomCodeViewReason.FLOAT_TYPE
+        or reason == CustomCodeViewReason.TOO_MANY_INT_CATEGORIES
+    )
+    is_sample_field = type == ScenarioType.SAMPLE_FIELD
+    is_label_attribute = type == ScenarioType.LABEL_ATTRIBUTE
+    if (is_sample_field or is_label_attribute) and is_numeric:
+        example = dedent(
+            """
+            from fiftyone import ViewField as F
+
+            subsets = {
+                "subset 1": dict(type="$TYPE", expr=F("$FIELD") < 0.25),
+                "subset 2": dict(type="$TYPE", expr=F("$FIELD") > 0.75),
+            }
+            """
+        ).strip()
+        if is_label_attribute and field:
+            example = example.replace("$FIELD", field)
+            example = example.replace("$TYPE", "attribute")
+        if is_sample_field and field:
+            example = example.replace("$FIELD", field)
+            example = example.replace("$TYPE", "field")
+        if reason == CustomCodeViewReason.TOO_MANY_INT_CATEGORIES:
+            example = example.replace("0.25", "25")
+            example = example.replace("0.75", "75")
+
+    return example
