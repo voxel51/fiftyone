@@ -73,7 +73,9 @@ def get_datasets_revisions():
     conn = foo.get_db_conn()
     return {
         dataset_doc["name"]: dataset_doc.get("version", None)
-        for dataset_doc in conn.datasets.find({}, {"name": 1, "version": 1})
+        for dataset_doc in conn.datasets.find(
+            {"name": {"$exists": 1}}, {"name": 1, "version": 1}
+        )
     }
 
 
