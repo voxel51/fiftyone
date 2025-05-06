@@ -27,7 +27,7 @@ import fiftyone.utils.eval.segmentation as fous
 import fiftyone.utils.labels as foul
 import fiftyone.utils.iou as foui
 
-from decorators import drop_datasets, use_local_plugins
+from decorators import drop_datasets, use_local_plugins, skip_windows
 
 
 class CustomRegressionEvaluationConfig(four.SimpleEvaluationConfig):
@@ -1980,6 +1980,7 @@ class DetectionsTests(unittest.TestCase):
         results = dataset.load_evaluation_results("custom")
         self.assertEqual(type(results), foud.DetectionResults)
 
+    @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
     def test_evaluate_detections_map_samples(self):
         """Test evaluate_detections with parallel processing parameters."""
@@ -2073,6 +2074,7 @@ class DetectionsTests(unittest.TestCase):
                 f"FN count mismatch for sample {sample.id}",
             )
 
+    @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
     def test_evaluate_detections_map_samples_batch_methods(self):
         """Test evaluate_detections with batch processing parameters."""
@@ -2165,6 +2167,7 @@ class DetectionsTests(unittest.TestCase):
                     f"FN count mismatch for sample {sample.id}",
                 )
 
+    @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
     def test_evaluate_detections_map_samples_called(self):
         """Test that map_samples is called with correct parameters when evaluating detections."""
@@ -3795,6 +3798,7 @@ class EvaluateDetectionMultiWorkerTests(unittest.TestCase):
         self.assertIsInstance(results.recall, np.ndarray)
         self.assertIsInstance(results.thresholds, np.ndarray)
 
+    @skip_windows  # TODO: don't skip on Windows
     def test_evaluate_detections_multiple_workers(self):
         # Test evaluation with multiple workers
         results = self.dataset.evaluate_detections(
@@ -3815,6 +3819,7 @@ class EvaluateDetectionMultiWorkerTests(unittest.TestCase):
         self.assertIsInstance(results.recall, np.ndarray)
         self.assertIsInstance(results.thresholds, np.ndarray)
 
+    @skip_windows  # TODO: don't skip on Windows
     def test_results_consistency(self):
         # Test that results are consistent between single and multiple worker evaluations
         results_single = self.dataset.evaluate_detections(

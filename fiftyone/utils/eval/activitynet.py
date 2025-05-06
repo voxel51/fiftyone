@@ -217,7 +217,7 @@ class ActivityNetEvaluation(DetectionEvaluation):
         logger.info("Performing IoU sweep...")
         for _, video_matches in _samples.map_samples(
             map_func,
-            workers=num_workers,
+            num_workers=num_workers,
             batch_method=batch_method,
             batch_size=batch_size,
             parallelize_method=parallelize_method,
