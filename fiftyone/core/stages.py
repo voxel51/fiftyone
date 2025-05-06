@@ -3471,7 +3471,7 @@ class GroupBy(ViewStage):
         self,
         field_or_expr,
         order_by=None,
-        order_by_key=False,
+        order_by_key=None,
         reverse=False,
         flat=False,
         match_expr=None,
@@ -3783,7 +3783,7 @@ class GroupBy(ViewStage):
                 spec = [(field_or_expr, 1)]
 
             stage = SortBy(
-                [(order_by, order)] + spec,
+                spec + [(order_by, order)],
                 create_index=self._create_index,
             )
             stage.validate(sample_collection)

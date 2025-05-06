@@ -54,6 +54,7 @@ class ServerGroupTests(unittest.TestCase):
                 id=image.group.id, slice="image", slices=["image"]
             ),
         )
+
         self.assertEqual(
             view._all_stages,
             [
