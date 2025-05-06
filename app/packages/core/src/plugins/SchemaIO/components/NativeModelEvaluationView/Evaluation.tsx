@@ -1,3 +1,4 @@
+import { useTrackEvent } from "@fiftyone/analytics";
 import { EditableLabel } from "@fiftyone/components";
 import { ArrowBack, Close } from "@mui/icons-material";
 import {
@@ -25,10 +26,6 @@ import Status from "./Status";
 import { tabStyles } from "./styles";
 import { ConcreteEvaluationType } from "./Types";
 import { computeSortedCompareKeys } from "./utils";
-import { useTrackEvent } from "@fiftyone/analytics";
-
-const ENABLE_SCENARIO_ANALYSIS =
-  window?.localStorage?.getItem("enable_scenario_analysis") === "true";
 
 export default function Evaluation(props: EvaluationProps) {
   const {
@@ -299,9 +296,7 @@ export default function Evaluation(props: EvaluationProps) {
           sx={tabStyles.tabs}
         >
           <Tab label="Overview" value="overview" />
-          {ENABLE_SCENARIO_ANALYSIS && (
-            <Tab label="Scenario Analysis" value="scenario" />
-          )}
+          <Tab label="Scenario Analysis" value="scenario" />
           <Tab label="Execution Info" value="info" />
         </Tabs>
       </Box>
