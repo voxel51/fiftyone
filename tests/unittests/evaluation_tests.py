@@ -1193,13 +1193,7 @@ class DetectionsTests(unittest.TestCase):
                 detections=[
                     fo.Detection(
                         label="cat",
-                        bounding_box=[0.6, 0.6, 0.4, 0.4],
-                        confidence=0.9,
-                    ),
-                    fo.Detection(
-                        label="dog",
                         bounding_box=[0.1, 0.1, 0.4, 0.4],
-                        confidence=0.9,
                     ),
                 ]
             ),
@@ -1377,18 +1371,9 @@ class DetectionsTests(unittest.TestCase):
                     fo.Polyline(
                         label="cat",
                         points=[
-                            [(0.6, 0.6), (0.6, 1.0), (1.0, 1.0), (1.0, 0.6)]
-                        ],
-                        filled=True,
-                        confidence=0.9,
-                    ),
-                    fo.Polyline(
-                        label="dog",
-                        points=[
                             [(0.1, 0.1), (0.1, 0.4), (0.4, 0.4), (0.4, 0.1)]
                         ],
                         filled=True,
-                        confidence=0.9,
                     ),
                 ]
             ),
@@ -3042,6 +3027,11 @@ class VideoDetectionsTests(unittest.TestCase):
         self.assertNotIn("eval_tp", schema)
         self.assertNotIn("eval_fp", schema)
         self.assertNotIn("eval_fn", schema)
+
+        schema = dataset.get_frame_field_schema(flat=True)
+        self.assertNotIn("eval_tp", schema)
+        self.assertNotIn("eval_fp", schema)
+        self.assertNotIn("eval_fn", schema)
         self.assertNotIn("ground_truth.detections.eval", schema)
         self.assertNotIn("ground_truth.detections.eval_id", schema)
         self.assertNotIn("ground_truth.detections.eval_iou", schema)
@@ -3065,6 +3055,9 @@ class VideoDetectionsTests(unittest.TestCase):
         self.assertIn("eval2_fn", schema)
 
         frame_schema = dataset.get_frame_field_schema(flat=True)
+        self.assertIn("eval2_tp", frame_schema)
+        self.assertIn("eval2_fp", frame_schema)
+        self.assertIn("eval2_fn", frame_schema)
         self.assertIn("ground_truth.detections.eval2", frame_schema)
         self.assertIn("ground_truth.detections.eval2_id", frame_schema)
         self.assertIn("ground_truth.detections.eval2_iou", frame_schema)
@@ -3087,6 +3080,11 @@ class VideoDetectionsTests(unittest.TestCase):
         )
 
         schema = dataset.get_field_schema(flat=True)
+        self.assertNotIn("eval2_tp", schema)
+        self.assertNotIn("eval2_fp", schema)
+        self.assertNotIn("eval2_fn", schema)
+
+        schema = dataset.get_frame_field_schema(flat=True)
         self.assertNotIn("eval2_tp", schema)
         self.assertNotIn("eval2_fp", schema)
         self.assertNotIn("eval2_fn", schema)
