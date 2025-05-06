@@ -3,6 +3,43 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.8.1
+-------------------------
+*Released May 6, 2025*
+
+Includes all updates from :ref:`FiftyOne 1.5.1 <release-notes-v1.5.1>`
+
+.. _release-notes-v1.5.1:
+
+FiftyOne 1.5.1
+--------------
+*Released May 6, 2025*
+
+App
+
+- Fixed a bug with plot interactivity in the
+  :ref:`Model Evaluation panel <app-model-evaluation-panel>`
+  `#5844 <https://github.com/voxel51/fiftyone/pull/5844>`_
+- Fixed a bug where certain modal sidebar queries would error
+  `#5848 <https://github.com/voxel51/fiftyone/pull/5848>`_
+- Fixed a bug which caused some SVG icons to not render correctly in deployed
+  environments `#5849 <https://github.com/voxel51/fiftyone/pull/5849>`_
+- Fixed a bug which resulted in the UI displaying a stale set of saved views
+  `#5858 <https://github.com/voxel51/fiftyone/pull/5858>`_
+
+Core
+
+- Fixed `#5852 <https://github.com/voxel51/fiftyone/issues/5852>`_ by upgrading
+  strawberry-graphql library 
+  `#5855 <https://github.com/voxel51/fiftyone/pull/5855>`_
+
+Docs
+
+- Added a docs warning and raises an error when attempting to use the CVAT
+  integration with a CVAT server >=v2.30.0
+  `#5857 <https://github.com/voxel51/fiftyone/pull/5857>`_
+
+
 FiftyOne Enterprise 2.8.0
 -------------------------
 *Released May 2, 2025*
