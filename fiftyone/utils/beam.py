@@ -352,8 +352,8 @@ def beam_map(
     reduce_fcn=None,
     aggregate_fcn=None,
     save=False,
-    shard_size=None,
-    shard_method="id",
+    batch_method="id",
+    batch_size=None,
     num_workers=None,
     options=None,
     progress=False,
@@ -365,7 +365,7 @@ def beam_map(
     When only a ``map_fcn`` is provided, this function effectively performs
     the following map operation with the outer loop in parallel::
 
-        for batch_view in fou.iter_slices(sample_collection, shard_size):
+        for batch_view in fou.iter_slices(sample_collection, batch_size):
             for sample in batch_view.iter_samples(autosave=save):
                 map_fcn(sample)
 
@@ -374,7 +374,7 @@ def beam_map(
 
         reducer = reduce_fcn(...)
 
-        for batch_view in fou.iter_slices(sample_collection, shard_size):
+        for batch_view in fou.iter_slices(sample_collection, batch_size):
             for sample in batch_view.iter_samples(autosave=save):
                 sample_output = sample.map_fcn(sample)
 
@@ -388,7 +388,7 @@ def beam_map(
 
         outputs = {}
 
-        for batch_view in fou.iter_slices(sample_collection, shard_size):
+        for batch_view in fou.iter_slices(sample_collection, batch_size):
             for sample in batch_view.iter_samples(autosave=save):
                 outputs[sample.id] = map_fcn(sample)
 
@@ -468,11 +468,11 @@ def beam_map(
         aggregate_fcn (None): an optional function to aggregate the map
             outputs. See above for usage information
         save (False): whether to save any sample edits applied by ``map_fcn``
-        shard_size (None): an optional number of samples to distribute to each
-            worker at a time. By default, samples are evenly distributed to
-            workers with one shard per worker
-        shard_method ("id"): whether to use IDs (``"id"``) or slices
+        batch_method ("id"): whether to use IDs (``"id"``) or slices
             (``"slice"``) to assign samples to workers
+        batch_size (None): an optional number of samples to distribute to each
+            worker at a time. By default, samples are evenly distributed to
+            workers with one batch per worker
         num_workers (None): the number of workers to use when no ``options``
             are provided. The default is
             :meth:`fiftyone.core.utils.recommend_process_pool_workers`
@@ -488,7 +488,7 @@ def beam_map(
         the output of ``reduce_fcn`` or ``aggregate_fcn`` if provided, else
         None
     """
-    if shard_method == "slice":
+    if batch_method == "slice":
         n = len(sample_collection)
     else:
         ids = sample_collection.values("id")
@@ -498,37 +498,37 @@ def beam_map(
         num_workers = fou.recommend_process_pool_workers()
 
     # Must cap size of select(ids) stages
-    if shard_method == "id":
-        max_shard_size = fou.recommend_batch_size_for_value(
+    if batch_method == "id":
+        max_batch_size = fou.recommend_batch_size_for_value(
             ObjectId(), max_size=100000
         )
 
-        if shard_size is not None:
-            shard_size = min(shard_size, max_shard_size)
-        elif n > num_workers * max_shard_size:
-            shard_size = max_shard_size
+        if batch_size is not None:
+            batch_size = min(batch_size, max_batch_size)
+        elif n > num_workers * max_batch_size:
+            batch_size = max_batch_size
 
-    if shard_size is not None:
-        # Fixed size shards
-        edges = list(range(0, n + 1, shard_size))
+    if batch_size is not None:
+        # Fixed size batches
+        edges = list(range(0, n + 1, batch_size))
         if edges[-1] < n:
             edges.append(n)
     else:
-        # Split collection into exactly `num_workers` shards
+        # Split collection into exactly `num_workers` batches
         edges = [int(round(b)) for b in np.linspace(0, n, num_workers + 1)]
 
-    if shard_method == "slice":
+    if batch_method == "slice":
         # Slice batches
         slices = list(zip(edges[:-1], edges[1:]))
     else:
         # ID batches
         slices = [ids[i:j] for i, j in zip(edges[:-1], edges[1:])]
 
-    num_shards = len(slices)
+    num_batches = len(slices)
     batches = list(
         zip(
-            range(num_shards),
-            itertools.repeat(num_shards),
+            range(num_batches),
+            itertools.repeat(num_batches),
             slices,
         )
     )
@@ -572,7 +572,7 @@ def beam_map(
     if options is None:
         options = PipelineOptions(
             runner="direct",
-            direct_num_workers=min(num_workers, num_shards),
+            direct_num_workers=min(num_workers, num_batches),
             direct_running_mode="multi_processing",
         )
 
