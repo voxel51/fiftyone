@@ -3,6 +3,49 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.8.1
+-------------------------
+*Released May 6, 2025*
+
+Includes all updates from :ref:`FiftyOne 1.5.1 <release-notes-v1.5.1>`
+
+.. _release-notes-v1.5.1:
+
+FiftyOne 1.5.1
+--------------
+*Released May 6, 2025*
+
+App
+
+- Fixed a bug with plot interactivity in the
+  :ref:`Model Evaluation panel <app-model-evaluation-panel>`
+  `#5844 <https://github.com/voxel51/fiftyone/pull/5844>`_
+- Fixed a bug where certain modal sidebar queries would error
+  `#5848 <https://github.com/voxel51/fiftyone/pull/5848>`_
+- Fixed a bug which caused some SVG icons to not render correctly in deployed
+  environments
+  `#5849 <https://github.com/voxel51/fiftyone/pull/5849>`_
+- Fixed a bug which resulted in the UI displaying a stale set of saved views
+  `#5858 <https://github.com/voxel51/fiftyone/pull/5858>`_
+
+Brain
+
+- Fixed a bug when passing a custom non-sklearn `similarity_index` to
+  :func:`compute_uniqueness() <fiftyone.brain.compute_uniqueness>`
+  `#254 <https://github.com/voxel51/fiftyone-brain/pull/254>`_
+
+Core
+
+- Fixed `#5852 <https://github.com/voxel51/fiftyone/issues/5852>`_ by upgrading
+  strawberry-graphql library 
+  `#5855 <https://github.com/voxel51/fiftyone/pull/5855>`_
+
+Docs
+
+- Added a docs warning and raises an error when attempting to use the
+  :ref:`CVAT integration <cvat-integration>` with a CVAT server > 2.30
+  `#5857 <https://github.com/voxel51/fiftyone/pull/5857>`_
+
 FiftyOne Enterprise 2.8.0
 -------------------------
 *Released May 2, 2025*
@@ -114,21 +157,18 @@ Core
 - Added support for creating samples with
   :ref:`arbitrary media types <dataset-media-type>`
   `#5506 <https://github.com/voxel51/fiftyone/pull/5506>`_
-- Optimized the content size batcher to account for compressed or encoded
-  payloads
-  `#5740 <https://github.com/voxel51/fiftyone/pull/5740>`_
-- Optimized frame lookups to be as late as possible in aggregation pipelines
-  `#5705 <https://github.com/voxel51/fiftyone/pull/5705>`_
-- Optimized
-  :meth:`values() <fiftyone.core.collections.SampleCollection.values>`
-  when retrieving an indexed field value in specific cases
-  `#5743 <https://github.com/voxel51/fiftyone/pull/5743>`_
 - :attr:`Dataset.last_modified_at <fiftyone.core.dataset.Dataset.last_modified_at>`
   is now automatically updated when samples are deleted
   `#5723 <https://github.com/voxel51/fiftyone/pull/5723>`_
 - The `last_modified_at` field of |Sample| objects is now automatically updated
   when frames are deleted
   `#5723 <https://github.com/voxel51/fiftyone/pull/5723>`_
+- Optimized frame lookups to be as late as possible in aggregation pipelines
+  `#5705 <https://github.com/voxel51/fiftyone/pull/5705>`_
+- Optimized
+  :meth:`values() <fiftyone.core.collections.SampleCollection.values>`
+  when retrieving an indexed field value in specific cases
+  `#5743 <https://github.com/voxel51/fiftyone/pull/5743>`_
 - Optimized
   :meth:`split_labels() <fiftyone.core.collections.SampleCollection.split_labels>`
   and
@@ -139,6 +179,9 @@ Core
 - Optimized :ref:`save contexts <save-contexts>` to use a more optimal batching
   strategy
   `#5747 <https://github.com/voxel51/fiftyone/pull/5747>`_
+- Optimized the content size batcher to account for compressed or encoded
+  payloads
+  `#5740 <https://github.com/voxel51/fiftyone/pull/5740>`_
 - Optimized the performance of :ref:`similarity queries <brain-similarity>` on
   full indexes
   `#209 <https://github.com/voxel51/fiftyone-brain/pull/209>`_
