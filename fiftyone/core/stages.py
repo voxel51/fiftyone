@@ -3753,8 +3753,15 @@ class GroupBy(ViewStage):
 
         if order_by is not None:
             order = -1 if self._reverse else 1
+            if isinstance(field_or_expr, (list, tuple)) and all(
+                etau.is_str(f) for f in field_or_expr
+            ):
+                spec = [(f, 1) for f in field_or_expr]
+            else:
+                spec = [(field_or_expr, 1)]
+
             stage = SortBy(
-                [(field_or_expr, 1), (order_by, order)],
+                spec + [(order_by, order)],
                 create_index=self._create_index,
             )
             stage.validate(sample_collection)
