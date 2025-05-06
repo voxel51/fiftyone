@@ -455,6 +455,7 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
             "mode": "predict",
             "rect": False,
             "verbose": False,
+            "retina_masks": True,
             "device": self._device,
         }
         args = {**custom, **model.overrides}
@@ -562,7 +563,10 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         config.output_processor_args[
             "post_processor"
         ] = self._model.predictor.postprocess
-        return super()._build_output_processor(config)
+        output_processor = super()._build_output_processor(config)
+        # Set post-processor to None for config JSON serialization.
+        config.output_processor_args["post_processor"] = None
+        return output_processor
 
     def _predict_all(self, imgs):
         if self._preprocess and self._transforms is not None:
