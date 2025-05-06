@@ -439,7 +439,10 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
 
     @staticmethod
     def collate_fn(batch):
-        return batch
+        orig_images = [img.get("orig_img") for img in batch]
+        images = [img.get("img") for img in batch]
+        images = torch.stack(images)
+        return {"orig_imgs": orig_images, "images": images}
 
     def _download_model(self, config):
         config.download_model_if_necessary()
@@ -530,7 +533,7 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         if not isinstance(img, torch.Tensor):
             if isinstance(img, Image.Image):
                 img = img.convert("RGB")
-            orig_img = np.array(img)
+            orig_img = np.asarray(img)
             return {
                 "img": self._ultralytics_preprocess([orig_img]),
                 "orig_img": orig_img,
@@ -549,6 +552,8 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
 
     def _pre_transform(self, im):
         # Taken from ultralytics.engine.predictor.pre_transform.
+        # TODO: Look into why self._model.predictor.pre_transform
+        # doesn't resize the image to (imgsz, imgsz) with rect=False.
         same_shapes = len({x.shape for x in im}) == 1
         letterbox = ultralytics.data.augment.LetterBox(
             self._model.predictor.args.imgsz,
@@ -574,21 +579,15 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
             if self.has_collate_fn:
                 imgs = self.collate_fn(imgs)
 
-        if isinstance(imgs, list) and len(imgs) and isinstance(imgs[0], dict):
-            orig_images = [img.get("orig_img") for img in imgs]
-            images = [img.get("img") for img in imgs]
+        if isinstance(imgs, dict):
+            orig_images = imgs["orig_imgs"]
+            images = imgs["images"]
         else:
             orig_images = imgs
             images = imgs
 
-        # Feed images as stacked Tensor
-        if isinstance(images, (list, tuple)):
-            images = torch.stack(images)
-
-        self._model.predictor.setup_source(
-            [np.zeros((10, 10))] * images.size()[0]
-        )
-        self._model.predictor.batch = next(iter(self._model.predictor.dataset))
+        # Dummy value to ensure predictor batches have same length as images.
+        self._model.predictor.batch = [[""] * images.size()[0]]
 
         images = images.to(self._device)
         if self._using_half_precision:
@@ -791,7 +790,6 @@ class UltralyticsPostProcessor(object):
             raise ValueError(
                 "Ultralytics post processor needs transformed and original images."
             )
-
         out = self.post_processor(preds, imgs, orig_imgs)
         return out
 
