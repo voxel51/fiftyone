@@ -3975,7 +3975,7 @@ class SampleCollection(object):
         This function effectively performs the following map operation with the
         outer loop in parallel::
 
-            for batch_view in fou.iter_slices(sample_collection, shard_size):
+            for batch_view in fou.iter_slices(sample_collection, batch_size):
                 for sample in batch_view.iter_samples(autosave=save):
                     sample_output = map_fcn(sample)
                     yield sample.id, sample_output
@@ -4061,7 +4061,7 @@ class SampleCollection(object):
         This function effectively performs the following map operation with the
         outer loop in parallel::
 
-            for batch_view in fou.iter_slices(sample_collection, shard_size):
+            for batch_view in fou.iter_slices(sample_collection, batch_size):
                 for sample in batch_view.iter_samples(autosave=True):
                     map_fcn(sample)
 
