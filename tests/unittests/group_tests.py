@@ -2001,6 +2001,25 @@ class DynamicGroupTests(unittest.TestCase):
             default_indexes | {"_sample_id_1_device_id_1"},
         )
 
+        # test ordering
+        view = dataset.group_by(
+            ("sample_id", "device_id"), order_by="created_at"
+        )
+        self.assertEqual(len(view), 4)
+        self.assertSetEqual(
+            set(dataset.list_indexes()),
+            default_indexes
+            | {
+                "_sample_id_1_device_id_1",
+                "_sample_id_1_device_id_1_created_at_1",
+            },
+        )
+
+        also_view = fo.DatasetView._build(dataset, view._serialize())
+
+        self.assertEqual(len(also_view), 4)
+        self.assertEqual(also_view.media_type, "group")
+
     @drop_datasets
     def test_group_by_complex(self):
         dataset = _make_group_by_dataset()
