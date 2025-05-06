@@ -519,6 +519,15 @@ pattern below:
 
     dataset.set_values("predictions", predictions)
 
+To run inference on a batch size of 1 with rectangular resizing, use overrides as shown below when loading a model for inference:
+
+.. code-block:: python
+    :linenos:
+
+    kwargs = {"overrides": {"rect": True, "batch": 1}}
+    model = foz.load_zoo_model(m_name, **kwargs)
+    dataset.apply_model(model, label_field="predictions", batch_size=1)
+
 .. note::
 
     See :ref:`this section <batch-updates>` for more information about
