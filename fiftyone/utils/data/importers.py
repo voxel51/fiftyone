@@ -189,6 +189,7 @@ def merge_samples(
     fields=None,
     omit_fields=None,
     merge_lists=True,
+    merge_embedded_docs=False,
     overwrite=True,
     expand_schema=True,
     dynamic=False,
@@ -276,6 +277,9 @@ def merge_samples(
             elements are either replaced (when ``overwrite`` is True) or kept
             (when ``overwrite`` is False) when their ``id`` matches a label
             from the provided samples
+        merge_embedded_docs (False): whether to merge the attributes of
+            embedded documents (True) rather than merging the entire top-level
+            field (False)
         overwrite (True): whether to overwrite (True) or skip (False) existing
             fields and label elements
         expand_schema (True): whether to dynamically add new fields encountered
@@ -318,6 +322,7 @@ def merge_samples(
                 fields=fields,
                 omit_fields=omit_fields,
                 merge_lists=merge_lists,
+                merge_embedded_docs=merge_embedded_docs,
                 overwrite=overwrite,
                 expand_schema=expand_schema,
                 include_info=add_info,
@@ -356,6 +361,7 @@ def merge_samples(
             fields=fields,
             omit_fields=omit_fields,
             merge_lists=merge_lists,
+            merge_embedded_docs=merge_embedded_docs,
             overwrite=overwrite,
             expand_schema=expand_schema,
             dynamic=dynamic,

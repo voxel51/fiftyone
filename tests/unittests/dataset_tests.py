@@ -2011,6 +2011,182 @@ class DatasetTests(unittest.TestCase):
         self.assertListEqual(s1["tags"], [])
 
     @drop_datasets
+    def test_merge_sample_embedded_docs(self):
+        sample1 = fo.Sample(
+            filepath="image.jpg",
+            data=fo.DynamicEmbeddedDocument(
+                foo="bar",
+                spam="foo",
+                ground_truth=fo.Detections(
+                    detections=[fo.Detection(label="cat")]
+                ),
+            ),
+        )
+        sample2 = fo.Sample(
+            filepath="image.jpg",
+            data=fo.DynamicEmbeddedDocument(
+                spam="eggs",
+                ground_truth=fo.Detections(
+                    detections=[fo.Detection(label="dog")]
+                ),
+            ),
+        )
+
+        # No dataset
+
+        s1 = sample1.copy()
+        s2 = sample2.copy()
+
+        s1.merge(s2, merge_embedded_docs=True)
+
+        self.assertEqual(s1.data.foo, "bar")
+        self.assertEqual(s1.data.spam, "eggs")
+        self.assertListEqual(
+            [d.label for d in s1.data.ground_truth.detections],
+            ["cat", "dog"],
+        )
+
+        # In dataset
+
+        s1 = sample1.copy()
+        s2 = sample2.copy()
+
+        dataset = fo.Dataset()
+        dataset.add_sample(s1, dynamic=True)
+
+        dataset.merge_sample(s2, merge_embedded_docs=True)
+
+        self.assertListEqual(dataset.values("data.foo"), ["bar"])
+        self.assertListEqual(dataset.values("data.spam"), ["eggs"])
+        self.assertListEqual(
+            dataset.values("data.ground_truth.detections.label"),
+            [["cat", "dog"]],
+        )
+
+        # Merging data into an embedded field
+
+        s1 = fo.Sample(
+            filepath="image.jpg",
+            data=fo.DynamicEmbeddedDocument(
+                foo="bar",
+                spam="eggs",
+                ground_truth=fo.Detections(
+                    detections=[fo.Detection(label="cat")]
+                ),
+            ),
+        )
+        s2 = fo.Sample(
+            filepath="image.jpg",
+            ground_truth=fo.Detections(detections=[fo.Detection(label="dog")]),
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(s1, dynamic=True)
+
+        dataset.merge_sample(s2, fields={"ground_truth": "data.ground_truth"})
+
+        self.assertEqual(s1.data.foo, "bar")
+        self.assertEqual(s1.data.spam, "eggs")
+        self.assertListEqual(
+            [d.label for d in s1.data.ground_truth.detections],
+            ["cat", "dog"],
+        )
+
+        self.assertListEqual(dataset.values("data.foo"), ["bar"])
+        self.assertListEqual(dataset.values("data.spam"), ["eggs"])
+        self.assertListEqual(
+            dataset.values("data.ground_truth.detections.label"),
+            [["cat", "dog"]],
+        )
+
+        # Test `fields` and `omit_fields`
+
+        s1 = fo.Sample(
+            filepath="image.jpg",
+            data=fo.DynamicEmbeddedDocument(
+                foo="bar",
+                spam="foo",
+                ground_truth=fo.Detections(
+                    detections=[fo.Detection(label="cat")]
+                ),
+            ),
+        )
+        s2 = fo.Sample(
+            filepath="image.jpg",
+            data=fo.DynamicEmbeddedDocument(
+                foo="bar",
+                spam="eggs",
+                ground_truth=fo.Detections(
+                    detections=[fo.Detection(label="dog")]
+                ),
+            ),
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(s1, dynamic=True)
+
+        dataset.merge_sample(
+            s2,
+            fields="data",
+            omit_fields="data.ground_truth",
+            merge_embedded_docs=True,
+        )
+
+        self.assertEqual(s1.data.foo, "bar")
+        self.assertEqual(s1.data.spam, "eggs")
+        self.assertListEqual(
+            [d.label for d in s1.data.ground_truth.detections],
+            ["cat"],
+        )
+
+        self.assertListEqual(dataset.values("data.foo"), ["bar"])
+        self.assertListEqual(dataset.values("data.spam"), ["eggs"])
+        self.assertListEqual(
+            dataset.values("data.ground_truth.detections.label"),
+            [["cat"]],
+        )
+
+        # Test None values
+
+        s1 = fo.Sample(
+            filepath="image.jpg",
+            data=fo.DynamicEmbeddedDocument(
+                foo="bar",
+                spam=None,
+                ground_truth=fo.Detections(
+                    detections=[fo.Detection(label="cat")]
+                ),
+            ),
+        )
+        s2 = fo.Sample(
+            filepath="image.jpg",
+            data=fo.DynamicEmbeddedDocument(
+                foo=None,
+                spam="eggs",
+                ground_truth=None,
+            ),
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(s1, dynamic=True)
+
+        dataset.merge_sample(s2, merge_embedded_docs=True)
+
+        self.assertEqual(s1.data.foo, "bar")
+        self.assertEqual(s1.data.spam, "eggs")
+        self.assertListEqual(
+            [d.label for d in s1.data.ground_truth.detections],
+            ["cat"],
+        )
+
+        self.assertListEqual(dataset.values("data.foo"), ["bar"])
+        self.assertListEqual(dataset.values("data.spam"), ["eggs"])
+        self.assertListEqual(
+            dataset.values("data.ground_truth.detections.label"),
+            [["cat"]],
+        )
+
+    @drop_datasets
     def test_merge_sample_group(self):
         dataset = fo.Dataset()
 
@@ -2692,6 +2868,236 @@ class DatasetTests(unittest.TestCase):
                     None,
                 ],
             )
+
+    @drop_datasets
+    def test_merge_samples_embedded_docs(self):
+        sample1 = fo.Sample(
+            filepath="image.jpg",
+            data=fo.DynamicEmbeddedDocument(
+                foo="bar",
+                spam="foo",
+                ground_truth=fo.Detections(
+                    detections=[fo.Detection(label="cat")]
+                ),
+            ),
+        )
+        sample2 = fo.Sample(
+            filepath="image.jpg",
+            data=fo.DynamicEmbeddedDocument(
+                spam="eggs",
+                ground_truth=fo.Detections(
+                    detections=[fo.Detection(label="dog")]
+                ),
+            ),
+        )
+
+        dataset1 = fo.Dataset()
+        dataset1.add_sample(sample1, dynamic=True)
+
+        dataset2 = fo.Dataset()
+        dataset2.add_sample(sample2, dynamic=True)
+
+        dataset1.merge_samples(dataset2, merge_embedded_docs=True)
+
+        self.assertEqual(sample1.data.foo, "bar")
+        self.assertEqual(sample1.data.spam, "eggs")
+        self.assertListEqual(
+            [d.label for d in sample1.data.ground_truth.detections],
+            ["cat", "dog"],
+        )
+
+        self.assertListEqual(dataset1.values("data.foo"), ["bar"])
+        self.assertListEqual(dataset1.values("data.spam"), ["eggs"])
+        self.assertListEqual(
+            dataset1.values("data.ground_truth.detections.label"),
+            [["cat", "dog"]],
+        )
+
+        # Merging data into an embedded field
+
+        sample1 = fo.Sample(
+            filepath="image.jpg",
+            data=fo.DynamicEmbeddedDocument(
+                foo="bar",
+                spam="eggs",
+                ground_truth=fo.Detections(
+                    detections=[fo.Detection(label="cat")]
+                ),
+            ),
+        )
+        sample2 = fo.Sample(
+            filepath="image.jpg",
+            ground_truth=fo.Detections(detections=[fo.Detection(label="dog")]),
+        )
+
+        dataset1 = fo.Dataset()
+        dataset1.add_sample(sample1, dynamic=True)
+
+        dataset2 = fo.Dataset()
+        dataset2.add_sample(sample2, dynamic=True)
+
+        dataset1.merge_samples(
+            dataset2,
+            fields={"ground_truth": "data.ground_truth"},
+        )
+
+        self.assertEqual(sample1.data.foo, "bar")
+        self.assertEqual(sample1.data.spam, "eggs")
+        self.assertListEqual(
+            [d.label for d in sample1.data.ground_truth.detections],
+            ["cat", "dog"],
+        )
+
+        self.assertListEqual(dataset1.values("data.foo"), ["bar"])
+        self.assertListEqual(dataset1.values("data.spam"), ["eggs"])
+        self.assertListEqual(
+            dataset1.values("data.ground_truth.detections.label"),
+            [["cat", "dog"]],
+        )
+
+        # Test `fields` and `omit_fields`
+
+        sample1 = fo.Sample(
+            filepath="image.jpg",
+            data=fo.DynamicEmbeddedDocument(
+                foo="bar",
+                spam="foo",
+                ground_truth=fo.Detections(
+                    detections=[fo.Detection(label="cat")]
+                ),
+            ),
+        )
+        sample2 = fo.Sample(
+            filepath="image.jpg",
+            data=fo.DynamicEmbeddedDocument(
+                foo="bar",
+                spam="eggs",
+                ground_truth=fo.Detections(
+                    detections=[fo.Detection(label="dog")]
+                ),
+            ),
+        )
+
+        dataset1 = fo.Dataset()
+        dataset1.add_sample(sample1, dynamic=True)
+
+        dataset2 = fo.Dataset()
+        dataset2.add_sample(sample2, dynamic=True)
+
+        dataset1.merge_samples(
+            dataset2,
+            fields="data",
+            omit_fields="data.ground_truth",
+            merge_embedded_docs=True,
+        )
+
+        self.assertEqual(sample1.data.foo, "bar")
+        self.assertEqual(sample1.data.spam, "eggs")
+        self.assertListEqual(
+            [d.label for d in sample1.data.ground_truth.detections],
+            ["cat"],
+        )
+
+        self.assertListEqual(dataset1.values("data.foo"), ["bar"])
+        self.assertListEqual(dataset1.values("data.spam"), ["eggs"])
+        self.assertListEqual(
+            dataset1.values("data.ground_truth.detections.label"),
+            [["cat"]],
+        )
+
+        # Test view
+
+        sample1 = fo.Sample(
+            filepath="image.jpg",
+            data=fo.DynamicEmbeddedDocument(
+                foo="baz",
+                spam="eggs",
+                ground_truth=fo.Detections(
+                    detections=[fo.Detection(label="cat")]
+                ),
+            ),
+        )
+        sample2 = fo.Sample(
+            filepath="image.jpg",
+            data=fo.DynamicEmbeddedDocument(
+                foo="bar",
+                spam="eggz",
+                ground_truth=fo.Detections(
+                    detections=[fo.Detection(label="dog")]
+                ),
+            ),
+        )
+
+        dataset1 = fo.Dataset()
+        dataset1.add_sample(sample1, dynamic=True)
+
+        dataset2 = fo.Dataset()
+        dataset2.add_sample(sample2, dynamic=True)
+
+        view2 = dataset2.exclude_fields("data.spam").filter_labels(
+            "data.ground_truth",
+            F("label") == "cat",
+            only_matches=False,
+        )
+
+        dataset1.merge_samples(view2, merge_embedded_docs=True)
+
+        self.assertEqual(sample1.data.foo, "bar")
+        self.assertEqual(sample1.data.spam, "eggs")
+        self.assertListEqual(
+            [d.label for d in sample1.data.ground_truth.detections],
+            ["cat"],
+        )
+
+        self.assertListEqual(dataset1.values("data.foo"), ["bar"])
+        self.assertListEqual(dataset1.values("data.spam"), ["eggs"])
+        self.assertListEqual(
+            dataset1.values("data.ground_truth.detections.label"),
+            [["cat"]],
+        )
+
+        # Test None values
+
+        sample1 = fo.Sample(
+            filepath="image.jpg",
+            data=fo.DynamicEmbeddedDocument(
+                foo="bar",
+                spam=None,
+                ground_truth=fo.Detections(
+                    detections=[fo.Detection(label="cat")]
+                ),
+            ),
+        )
+        sample2 = fo.Sample(
+            filepath="image.jpg",
+            data=fo.DynamicEmbeddedDocument(
+                foo=None,
+                spam="eggs",
+                ground_truth=None,
+            ),
+        )
+
+        dataset1 = fo.Dataset()
+        dataset1.add_sample(sample1, dynamic=True)
+
+        dataset2 = fo.Dataset()
+        dataset2.add_sample(sample2, dynamic=True)
+
+        dataset1.merge_samples(dataset2, merge_embedded_docs=True)
+
+        self.assertEqual(sample1.data.foo, "bar")
+        self.assertEqual(sample1.data.spam, "eggs")
+        self.assertListEqual(
+            [d.label for d in sample1.data.ground_truth.detections],
+            ["cat"],
+        )
+
+        self.assertListEqual(dataset1.values("data.foo"), ["bar"])
+        self.assertListEqual(dataset1.values("data.spam"), ["eggs"])
+        self.assertListEqual(
+            dataset1.values("data.ground_truth.detections.label"),
+            [["cat"]],
+        )
 
     @drop_datasets
     def test_add_collection(self):
