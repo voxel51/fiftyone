@@ -547,11 +547,6 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         return torch.squeeze(img, axis=0)
 
     def _pre_transform(self, im):
-        if hasattr(ultralytics, "YOLOE") and isinstance(
-            self._model, ultralytics.YOLOE
-        ):
-            return self._model.predictor.pre_transform(im)
-
         # Taken from ultralytics.engine.predictor.pre_transform.
         same_shapes = len({x.shape for x in im}) == 1
         letterbox = ultralytics.data.augment.LetterBox(
