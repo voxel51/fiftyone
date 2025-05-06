@@ -2037,37 +2037,24 @@ class DetectionsTests(unittest.TestCase):
 
         # Verify the sample-level metrics are the same
         for sample in dataset:
-            # Handle the case where fields might not exist
-            parallel_tp = (
-                sample["parallel_eval_tp"]
-                if "parallel_eval_tp" in sample
-                else None
-            )
-            std_tp = sample["std_eval_tp"] if "std_eval_tp" in sample else None
+            parallel_tp = sample["parallel_eval_tp"]
+            std_tp = sample["std_eval_tp"]
             self.assertEqual(
                 parallel_tp,
                 std_tp,
                 f"TP count mismatch for sample {sample.id}",
             )
+            parallel_fp = sample["parallel_eval_fp"]
+            std_fp = sample["std_eval_fp"]
 
-            parallel_fp = (
-                sample["parallel_eval_fp"]
-                if "parallel_eval_fp" in sample
-                else None
-            )
-            std_fp = sample["std_eval_fp"] if "std_eval_fp" in sample else None
             self.assertEqual(
                 parallel_fp,
                 std_fp,
                 f"FP count mismatch for sample {sample.id}",
             )
 
-            parallel_fn = (
-                sample["parallel_eval_fn"]
-                if "parallel_eval_fn" in sample
-                else None
-            )
-            std_fn = sample["std_eval_fn"] if "std_eval_fn" in sample else None
+            parallel_fn = sample["parallel_eval_fn"]
+            std_fn = sample["std_eval_fn"]
             self.assertEqual(
                 parallel_fn,
                 std_fn,
@@ -2118,49 +2105,27 @@ class DetectionsTests(unittest.TestCase):
 
             # Verify the TP/FP/FN counts on each sample are identical
             for sample in dataset:
-                # Handle the case where fields might not exist
-                batch_tp = (
-                    sample[f"{eval_key}_tp"]
-                    if f"{eval_key}_tp" in sample
-                    else None
-                )
-                std_tp = (
-                    sample["std_batch_eval_tp"]
-                    if "std_batch_eval_tp" in sample
-                    else None
-                )
+                # Check TP count
+                batch_tp = sample[f"{eval_key}_tp"]
+                std_tp = sample["std_batch_eval_tp"]
                 self.assertEqual(
                     batch_tp,
                     std_tp,
                     f"TP count mismatch for sample {sample.id}",
                 )
 
-                batch_fp = (
-                    sample[f"{eval_key}_fp"]
-                    if f"{eval_key}_fp" in sample
-                    else None
-                )
-                std_fp = (
-                    sample["std_batch_eval_fp"]
-                    if "std_batch_eval_fp" in sample
-                    else None
-                )
+                # Check FP count
+                batch_fp = sample[f"{eval_key}_fp"]
+                std_fp = sample["std_batch_eval_fp"]
                 self.assertEqual(
                     batch_fp,
                     std_fp,
                     f"FP count mismatch for sample {sample.id}",
                 )
 
-                batch_fn = (
-                    sample[f"{eval_key}_fn"]
-                    if f"{eval_key}_fn" in sample
-                    else None
-                )
-                std_fn = (
-                    sample["std_batch_eval_fn"]
-                    if "std_batch_eval_fn" in sample
-                    else None
-                )
+                # Check FN count
+                batch_fn = sample[f"{eval_key}_fn"]
+                std_fn = sample["std_batch_eval_fn"]
                 self.assertEqual(
                     batch_fn,
                     std_fn,
@@ -3775,8 +3740,8 @@ class EvaluateDetectionMultiWorkerTests(unittest.TestCase):
         try:
             if cls.dataset.name in fo.list_datasets():
                 cls.dataset.delete()
-        except:
-            pass
+        except Exception as ex:
+            print(f"Error during teardown: {ex}")
 
     def test_evaluate_detections_single_worker(self):
         # Test evaluation with a single worker
