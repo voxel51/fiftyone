@@ -23,9 +23,16 @@ App
 - Fixed a bug where certain modal sidebar queries would error
   `#5848 <https://github.com/voxel51/fiftyone/pull/5848>`_
 - Fixed a bug which caused some SVG icons to not render correctly in deployed
-  environments `#5849 <https://github.com/voxel51/fiftyone/pull/5849>`_
+  environments
+  `#5849 <https://github.com/voxel51/fiftyone/pull/5849>`_
 - Fixed a bug which resulted in the UI displaying a stale set of saved views
   `#5858 <https://github.com/voxel51/fiftyone/pull/5858>`_
+
+Brain
+
+- Fixed a bug when passing a custom non-sklearn `similarity_index` to
+  :func:`compute_uniqueness() <fiftyone.brain.compute_uniqueness>`
+  `#254 <https://github.com/voxel51/fiftyone-brain/pull/254>`_
 
 Core
 
@@ -35,10 +42,9 @@ Core
 
 Docs
 
-- Added a docs warning and raises an error when attempting to use the CVAT
-  integration with a CVAT server >=v2.30.0
+- Added a docs warning and raises an error when attempting to use the
+  :ref:`CVAT integration <cvat-integration>` with a CVAT server > 2.30
   `#5857 <https://github.com/voxel51/fiftyone/pull/5857>`_
-
 
 FiftyOne Enterprise 2.8.0
 -------------------------
