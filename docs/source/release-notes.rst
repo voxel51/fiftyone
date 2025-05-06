@@ -5,7 +5,7 @@ FiftyOne Release Notes
 
 FiftyOne Enterprise 2.8.1
 -------------------------
-*Released May 6, 2025*
+*Released May 7, 2025*
 
 Includes all updates from :ref:`FiftyOne 1.5.1 <release-notes-v1.5.1>`
 
@@ -13,7 +13,7 @@ Includes all updates from :ref:`FiftyOne 1.5.1 <release-notes-v1.5.1>`
 
 FiftyOne 1.5.1
 --------------
-*Released May 6, 2025*
+*Released May 7, 2025*
 
 App
 
