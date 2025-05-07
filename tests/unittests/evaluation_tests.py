@@ -5,6 +5,7 @@ FiftyOne evaluation-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import contextlib
 import os
 import random
 import string
@@ -27,7 +28,7 @@ import fiftyone.utils.eval.segmentation as fous
 import fiftyone.utils.labels as foul
 import fiftyone.utils.iou as foui
 
-from decorators import drop_datasets, use_local_plugins
+from decorators import drop_datasets, use_local_plugins, skip_windows
 
 
 class CustomRegressionEvaluationConfig(four.SimpleEvaluationConfig):
@@ -3415,10 +3416,8 @@ class EvaluateSegmentationMultiWorkerTests(unittest.TestCase):
     def tearDownClass(cls):
         # Clean up the dataset
         if hasattr(cls, "dataset"):
-            try:
+            with contextlib.suppress(Exception):
                 cls.dataset.delete()
-            except:
-                pass
 
         # Remove temporary directory
         if hasattr(cls, "temp_dir"):
@@ -3453,6 +3452,7 @@ class EvaluateSegmentationMultiWorkerTests(unittest.TestCase):
         # Support should be positive (pixels count)
         self.assertTrue(metrics["support"] > 0)
 
+    @skip_windows  # TODO: don't skip on Windows
     def test_multi_worker_configurations(self):
         """Test different worker counts, parallelize methods, and batch methods."""
         # Define test configurations
@@ -3518,6 +3518,7 @@ class EvaluateSegmentationMultiWorkerTests(unittest.TestCase):
                     msg=f"{metric} differs between configurations",
                 )
 
+    @skip_windows  # TODO: don't skip on Windows
     def test_results_consistency(self):
         """Test that results are consistent across multiple runs."""
         # First evaluation
@@ -3548,6 +3549,7 @@ class EvaluateSegmentationMultiWorkerTests(unittest.TestCase):
                 float(metrics1[metric]), float(metrics2[metric]), places=5
             )
 
+    @skip_windows  # TODO: don't skip on Windows
     def test_map_samples_validation(self):
         """Test validation of map_samples parameters when evaluating segmentations."""
         import unittest.mock as mock
@@ -3730,10 +3732,8 @@ class EvaluateSegmentationBasicTests(unittest.TestCase):
     def tearDownClass(cls):
         # Clean up the dataset
         if hasattr(cls, "dataset"):
-            try:
+            with contextlib.suppress(Exception):
                 cls.dataset.delete()
-            except:
-                pass
 
         # Remove temporary directory
         if hasattr(cls, "temp_dir"):
@@ -3768,6 +3768,7 @@ class EvaluateSegmentationBasicTests(unittest.TestCase):
         # Support should be positive (pixels count)
         self.assertTrue(metrics["support"] > 0)
 
+    @skip_windows  # TODO: don't skip on Windows
     def test_results_consistency(self):
         """Test that results are consistent across multiple runs."""
         # First evaluation

@@ -261,7 +261,10 @@ class SegmentationEvaluation(BaseEvaluationMethod):
         Returns:
             a :class:`SegmentationResults` instance
         """
-        pass
+        # Subclasses must implement this method.
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not implement `evaluate_samples`"
+        )
 
     def get_fields(self, samples, eval_key, include_custom_metrics=True):
         processing_frames = samples._is_frame_field(self.config.gt_field)
@@ -532,8 +535,10 @@ class SimpleEvaluation(SegmentationEvaluation):
 
         logger.info("Evaluating segmentations...")
 
-        eval_data = []
-        for _, result in samples.map_samples(
+        # Aggregate results
+        confusion_matrix = np.zeros((len(values), len(values)), dtype=int)
+        matches = []
+        for _, (conf_mat, sample_matches) in samples.map_samples(
             _eval_sample,
             num_workers=num_workers,
             batch_method=batch_method,
@@ -542,12 +547,6 @@ class SimpleEvaluation(SegmentationEvaluation):
             save=save,
             parallelize_method=parallelize_method,
         ):
-            eval_data.append(result)
-
-        # Aggregate results
-        confusion_matrix = np.zeros((len(values), len(values)), dtype=int)
-        matches = []
-        for conf_mat, sample_matches in eval_data:
             confusion_matrix += conf_mat
             matches.extend(sample_matches)
 
