@@ -5,7 +5,7 @@ FiftyOne Release Notes
 
 FiftyOne Enterprise 2.8.1
 -------------------------
-*Released May 7, 2025*
+*Released May 8, 2025*
 
 Includes all updates from :ref:`FiftyOne 1.5.1 <release-notes-v1.5.1>`
 
@@ -13,7 +13,7 @@ Includes all updates from :ref:`FiftyOne 1.5.1 <release-notes-v1.5.1>`
 
 FiftyOne 1.5.1
 --------------
-*Released May 7, 2025*
+*Released May 8, 2025*
 
 App
 
@@ -163,18 +163,21 @@ Core
 - Added support for creating samples with
   :ref:`arbitrary media types <dataset-media-type>`
   `#5506 <https://github.com/voxel51/fiftyone/pull/5506>`_
-- :attr:`Dataset.last_modified_at <fiftyone.core.dataset.Dataset.last_modified_at>`
-  is now automatically updated when samples are deleted
-  `#5723 <https://github.com/voxel51/fiftyone/pull/5723>`_
-- The `last_modified_at` field of |Sample| objects is now automatically updated
-  when frames are deleted
-  `#5723 <https://github.com/voxel51/fiftyone/pull/5723>`_
+- Optimized the content size batcher to account for compressed or encoded
+  payloads
+  `#5740 <https://github.com/voxel51/fiftyone/pull/5740>`_
 - Optimized frame lookups to be as late as possible in aggregation pipelines
   `#5705 <https://github.com/voxel51/fiftyone/pull/5705>`_
 - Optimized
   :meth:`values() <fiftyone.core.collections.SampleCollection.values>`
   when retrieving an indexed field value in specific cases
   `#5743 <https://github.com/voxel51/fiftyone/pull/5743>`_
+- :attr:`Dataset.last_modified_at <fiftyone.core.dataset.Dataset.last_modified_at>`
+  is now automatically updated when samples are deleted
+  `#5723 <https://github.com/voxel51/fiftyone/pull/5723>`_
+- The `last_modified_at` field of |Sample| objects is now automatically updated
+  when frames are deleted
+  `#5723 <https://github.com/voxel51/fiftyone/pull/5723>`_
 - Optimized
   :meth:`split_labels() <fiftyone.core.collections.SampleCollection.split_labels>`
   and
@@ -185,9 +188,6 @@ Core
 - Optimized :ref:`save contexts <save-contexts>` to use a more optimal batching
   strategy
   `#5747 <https://github.com/voxel51/fiftyone/pull/5747>`_
-- Optimized the content size batcher to account for compressed or encoded
-  payloads
-  `#5740 <https://github.com/voxel51/fiftyone/pull/5740>`_
 - Optimized the performance of :ref:`similarity queries <brain-similarity>` on
   full indexes
   `#209 <https://github.com/voxel51/fiftyone-brain/pull/209>`_
