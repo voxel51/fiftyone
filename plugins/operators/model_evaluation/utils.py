@@ -39,12 +39,12 @@ class ScenarioType(str, Enum):
 SCENARIO_BUILDING_CHOICES = [
     {
         "type": ScenarioType.SAMPLE_FIELD,
-        "label": "Select sample fields",
+        "label": "Select sample field",
         "icon": "task_outlined",
     },
     {
         "type": ScenarioType.LABEL_ATTRIBUTE,
-        "label": "Select label attributes",
+        "label": "Select label attribute",
         "icon": "task_outlined",
     },
     {

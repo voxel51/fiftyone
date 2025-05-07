@@ -6,16 +6,15 @@ import {
   CircularProgress,
   IconButton,
   MenuItem,
-  Select,
   Stack,
   Tab,
   Tabs,
   Tooltip,
   Typography,
-  useTheme,
 } from "@mui/material";
 import React, { useEffect, useMemo, useState } from "react";
 import ActionMenu from "./ActionMenu";
+import EvaluationSelect from "./components/EvaluationSelect";
 import { COMPARE_KEY_SECONDARY_COLOR } from "./constants";
 import Error from "./Error";
 import ExecutionInfo from "./evaluation/Info";
@@ -25,7 +24,8 @@ import EvaluationIcon from "./EvaluationIcon";
 import Status from "./Status";
 import { tabStyles } from "./styles";
 import { ConcreteEvaluationType } from "./Types";
-import { computeSortedCompareKeys } from "./utils";
+import { activeTabAtom, computeSortedCompareKeys } from "./utils";
+import { useRecoilState } from "recoil";
 
 export default function Evaluation(props: EvaluationProps) {
   const {
@@ -44,8 +44,7 @@ export default function Evaluation(props: EvaluationProps) {
     deleteScenario,
     loadView,
   } = props;
-  const theme = useTheme();
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useRecoilState(activeTabAtom);
   const trackEvent = useTrackEvent();
   const [loadingCompare, setLoadingCompare] = useState(false);
   const evaluation = useMemo(() => {
@@ -175,27 +174,9 @@ export default function Evaluation(props: EvaluationProps) {
                 You need at least one more evaluation to compare.
               </Typography>
             ) : (
-              <Select
+              <EvaluationSelect
                 key={compareKey}
-                sx={{
-                  height: 40,
-                  width: "100%",
-                  minWidth: 225,
-                  background: theme.palette.background.paper,
-                  "& .MuiOutlinedInput-input": {
-                    display: "flex",
-                    alignItems: "center",
-                  },
-                  "& .MuiOutlinedInput-notchedOutline": {
-                    border: "none",
-                  },
-                  "&:hover .MuiOutlinedInput-notchedOutline": {
-                    border: "none",
-                  },
-                  "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                    border: "none",
-                  },
-                }}
+                ghost
                 defaultValue={compareKey}
                 displayEmpty
                 placeholder="Select a comparison"
@@ -234,12 +215,14 @@ export default function Evaluation(props: EvaluationProps) {
                         sx={{ p: 0 }}
                         disabled={disabled}
                       >
-                        <EvaluationIcon
-                          type={type as ConcreteEvaluationType}
-                          method={method}
-                          color={COMPARE_KEY_SECONDARY_COLOR}
-                        />
-                        <Typography>{key}</Typography>
+                        <Stack direction="row" alignItems="center">
+                          <EvaluationIcon
+                            type={type as ConcreteEvaluationType}
+                            method={method}
+                            color={COMPARE_KEY_SECONDARY_COLOR}
+                          />
+                          <Typography>{key}</Typography>
+                        </Stack>
                       </MenuItem>
                     );
                     return disabled ? (
@@ -263,7 +246,7 @@ export default function Evaluation(props: EvaluationProps) {
                     );
                   }
                 )}
-              </Select>
+              </EvaluationSelect>
             )}
           </Stack>
         </Stack>

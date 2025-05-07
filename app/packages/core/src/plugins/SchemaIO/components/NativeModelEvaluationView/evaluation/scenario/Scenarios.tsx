@@ -998,6 +998,7 @@ function PredictionStatisticsChart(props) {
       type: "bar",
       offsetgroup: 0,
       marker: { color: KEY_COLOR },
+      hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
     };
 
     const fpTrace = {
@@ -1008,6 +1009,7 @@ function PredictionStatisticsChart(props) {
       type: "bar",
       offsetgroup: 0,
       marker: { color: SECONDARY_KEY_COLOR },
+      hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
     };
     const fnTrace = {
       x: subsets,
@@ -1017,6 +1019,7 @@ function PredictionStatisticsChart(props) {
       type: "bar",
       offsetgroup: 0,
       marker: { color: TERTIARY_KEY_COLOR },
+      hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
     };
 
     const compareTPTrace = {
@@ -1028,6 +1031,7 @@ function PredictionStatisticsChart(props) {
       type: "bar",
       offsetgroup: 1,
       marker: { color: COMPARE_KEY_COLOR },
+      hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
     };
 
     const compareFPTrace = {
@@ -1039,6 +1043,7 @@ function PredictionStatisticsChart(props) {
       type: "bar",
       offsetgroup: 1,
       marker: { color: COMPARE_KEY_SECONDARY_COLOR },
+      hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
     };
 
     const compareFNTrace = {
@@ -1050,6 +1055,7 @@ function PredictionStatisticsChart(props) {
       type: "bar",
       offsetgroup: 1,
       marker: { color: COMPARE_KEY_TERTIARY_COLOR },
+      hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
     };
     plotData = [tpTrace, fpTrace, fnTrace];
     if (compareSubsetsData) {
@@ -1123,12 +1129,17 @@ function PredictionStatisticsChart(props) {
           loadView("field", { field: id, subset_def: subsetDef });
         }}
       />
-      <Legends prediction={showAllMetric} {...getLegendProps(props)} />
+      <Legends
+        prediction={showAllMetric}
+        {...getLegendProps(props)}
+        compareKey={compareKey}
+      />
     </Stack>
   );
 }
 
 function ScenarioModelPerformanceChart(props) {
+  const theme = useTheme();
   const { scenario, compareScenario } = props;
   const { subsets } = scenario;
   const [subset, setSubset] = useState(subsets[0]);
@@ -1155,6 +1166,8 @@ function ScenarioModelPerformanceChart(props) {
       fill: "toself",
       name: key,
       marker: { color: KEY_COLOR },
+      hoveron: "points",
+      hovertemplate: PLOT_TOOLTIP_TEMPLATES.radial,
     },
   ];
 
@@ -1175,6 +1188,8 @@ function ScenarioModelPerformanceChart(props) {
       fill: "toself",
       name: compareKey,
       marker: { color: COMPARE_KEY_COLOR },
+      hoveron: "points",
+      hovertemplate: PLOT_TOOLTIP_TEMPLATES.radial,
     });
   }
   return (
@@ -1191,7 +1206,7 @@ function ScenarioModelPerformanceChart(props) {
         data={plotData}
         layout={{
           polar: {
-            bgcolor: "#272727",
+            bgcolor: theme.palette.background.card,
             radialaxis: {
               visible: true,
             },
@@ -1450,7 +1465,14 @@ function MetricPerformanceChart(props) {
   });
 
   const plotData = [
-    { x: subsets, y, type: "bar", name: key, marker: { color: KEY_COLOR } },
+    {
+      x: subsets,
+      y,
+      type: "bar",
+      name: key,
+      marker: { color: KEY_COLOR },
+      hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
+    },
   ];
   if (compareSubsetsData) {
     const compareY = subsets.map((subset) => {
@@ -1463,6 +1485,7 @@ function MetricPerformanceChart(props) {
       type: "bar",
       name: compareKey,
       marker: { color: COMPARE_KEY_COLOR },
+      hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
     });
   }
 
@@ -1518,7 +1541,14 @@ function SubsetDistributionChart(props) {
   });
 
   const plotData = [
-    { x: subsets, y, type: "bar", name: key, marker: { color: KEY_COLOR } },
+    {
+      x: subsets,
+      y,
+      type: "bar",
+      name: key,
+      marker: { color: KEY_COLOR },
+      hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
+    },
   ];
   if (compareSubsetsData) {
     const compareY = subsets.map((subset) => {
@@ -1531,6 +1561,7 @@ function SubsetDistributionChart(props) {
       type: "bar",
       name: compareKey,
       marker: { color: COMPARE_KEY_COLOR },
+      hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
     });
   }
 
@@ -1577,4 +1608,9 @@ const X_AXIS_TITLES = {
   label_attribute: "Label Attributes",
   sample_field: "Sample Fields",
   custom_code: "Scenarios",
+};
+
+const PLOT_TOOLTIP_TEMPLATES = {
+  bar: "<b>%{fullData.name}</b><br>" + "x: %{x}<br>" + "y: %{y}<extra></extra>",
+  radial: "%{fullData.name} %{theta}: %{r}<extra></extra>",
 };
