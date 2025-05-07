@@ -47,19 +47,28 @@ class TestGetDatasetRevisions(unittest.TestCase):
         result = get_datasets_revisions()
         self.assertEqual(result, {})
 
-    def test_missing_name(self):
-        import fiftyone.core.odm as foo
+    @patch("fiftyone.core.odm.get_db_conn")
+    def test_name_is_none(self, mock_get_db_conn):
+        mock_conn = MagicMock()
+        mock_conn.datasets.find.return_value = [
+            {"name": None, "version": "v2"},
+        ]
+        mock_get_db_conn.return_value = mock_conn
 
-        db = foo.get_db_conn()
-        inserted_id = None
-        try:
-            res = db.datasets.insert_one(
-                {"created_at": datetime.datetime.utcnow()}
-            )
-            inserted_id = res.inserted_id
+        result = get_datasets_revisions()
+        self.assertEqual(result, {None: "v2"})
 
-            result = get_datasets_revisions()
-            self.assertNotIn(None, result)
-        finally:
-            if inserted_id:
-                db.datasets.delete_one({"_id": inserted_id})
+    @patch("fiftyone.core.odm.get_db_conn")
+    def test_filter_on_name_exists(self, mock_get_db_conn):
+        mock_conn = MagicMock()
+        mock_conn.datasets.find.return_value = [
+            {"name": "dataset1", "version": "v1"},
+        ]
+        mock_get_db_conn.return_value = mock_conn
+
+        result = get_datasets_revisions()
+        assert result == {"dataset1": "v1"}
+
+        mock_conn.datasets.find.assert_called_with(
+            {"name": {"$exists": 1}}, {"name": 1, "version": 1}
+        )
