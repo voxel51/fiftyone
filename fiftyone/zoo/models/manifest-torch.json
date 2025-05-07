@@ -2664,6 +2664,37 @@
             "date_added": "2024-01-17 14:25:51"
         },
         {
+            "base_name": "vit-base-patch16-224-imagenet-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Hugging Face Transformers model for image classification",
+            "source": "https://huggingface.co/docs/transformers/tasks/image_classification",
+            "author": "Thomas Wolf, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {}
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "logits",
+                "embeddings",
+                "torch",
+                "transformers"
+            ],
+            "date_added": "2024-01-17 14:25:51"
+        },
+        {
             "base_name": "detection-transformer-torch",
             "base_filename": null,
             "version": null,
@@ -2755,7 +2786,47 @@
             "size_bytes": null,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForImageClassification",
-                "config": {}
+                "config": {
+                    "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "logits",
+                "embeddings",
+                "torch",
+                "transformers",
+                "zero-shot"
+            ],
+            "date_added": "2024-01-17 14:25:51"
+        },
+        {
+            "base_name": "siglip-base-patch16-224-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Hugging Face Transformers model for zero-shot image classification",
+            "source": "https://huggingface.co/docs/transformers/tasks/zero_shot_image_classification",
+            "author": "Thomas Wolf, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "google/siglip2-base-patch16-224",
+                    "transformers_processor_kwargs": {
+                        "padding": "max_length",
+                        "max_length": 64
+                    }
+                }
             },
             "requirements": {
                 "packages": ["torch", "torchvision", "transformers"],
@@ -2788,6 +2859,74 @@
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForObjectDetection",
                 "config": {}
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "detection",
+                "logits",
+                "embeddings",
+                "torch",
+                "transformers",
+                "zero-shot"
+            ],
+            "date_added": "2024-01-17 14:25:51"
+        },
+        {
+            "base_name": "owlvit-base-patch16-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Hugging Face Transformers OWL-ViT",
+            "source": "https://huggingface.co/docs/transformers/tasks/zero_shot_object_detection",
+            "author": "Thomas Wolf, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "google/owlvit-base-patch16"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "detection",
+                "logits",
+                "embeddings",
+                "torch",
+                "transformers",
+                "zero-shot"
+            ],
+            "date_added": "2024-01-17 14:25:51"
+        },
+        {
+            "base_name": "omdet-turbo-swin-tiny-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Hugging Face Transformers OmDet-Turbo",
+            "source": "https://huggingface.co/docs/transformers/tasks/zero_shot_object_detection",
+            "author": "Thomas Wolf, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "omlab/omdet-turbo-swin-tiny-hf"
+                }
             },
             "requirements": {
                 "packages": ["torch", "torchvision", "transformers"],
