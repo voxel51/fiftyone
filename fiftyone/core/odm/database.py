@@ -1935,8 +1935,6 @@ def _update_fc_version(client: pymongo.MongoClient):
     if fc_version is None:
         return
 
-    _logger = _get_logger()
-
     if (
         _is_fcv_upgradeable(fc_version, server_version)
         and _db_service is not None
