@@ -78,6 +78,7 @@ def get_view(
     stages=None,
     filters=None,
     pagination_data=False,
+    dynamic_group=None,
     extended_stages=None,
     sample_filter=None,
     reload=True,
@@ -97,11 +98,17 @@ def get_view(
         pagination_data (False): whether process samples as pagination data
             - excludes all :class:`fiftyone.core.fields.DictField` values
             - filters label fields
+        dynamic_group (None): an optional dynamic group value to select. Only
+            applicable when a :class:`fiftyone.core.stages.GroupBy` stage is
+            present in the view
         extended_stages (None): extended view stages
         sample_filter (None): an optional
             :class:`fiftyone.server.filters.SampleFilter`
         reload (True): whether to reload the dataset
         awaitable (False): whether to return an awaitable coroutine
+        sort_by (None): an optional sort field
+        desc (False): whether to sort in descending order. Only applicable when
+            `sort_by` is provided
 
     Returns:
         a :class:`fiftyone.core.view.DatasetView`
@@ -121,6 +128,9 @@ def get_view(
             view = fov.DatasetView._build(dataset, stages)
         else:
             view = dataset.view()
+
+        if dynamic_group:
+            view = view.get_dynamic_group(dynamic_group)
 
         media_types = None
         if sample_filter is not None:
@@ -168,6 +178,9 @@ def get_extended_view(
         extended_stages (None): extended view stages
         pagination_data (False): filters label data
         media_types (None): the media types to consider
+        sort_by (None): an optional sort field
+        desc (False): whether to sort in descending order. Only applicable when
+            `sort_by` is provided
 
     Returns:
         a :class:`fiftyone.core.view.DatasetView`
@@ -370,7 +383,9 @@ def _project_pagination_paths(
                 path
                 for path in schema
                 if all(not path.startswith(exclude) for exclude in excluded)
-            ],
+            ]
+            + ["_group"],
+            _allow_missing=True,
             _media_types=media_types,
         )
     )

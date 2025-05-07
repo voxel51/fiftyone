@@ -14,6 +14,7 @@ export default r(graphql`
     $sortBy: String
     $desc: Boolean
     $hint: String
+    $dynamicGroup: BSON = null
   ) {
     samples(
       dataset: $dataset
@@ -27,6 +28,7 @@ export default r(graphql`
       sortBy: $sortBy
       desc: $desc
       hint: $hint
+      dynamicGroup: $dynamicGroup
     ) {
       pageInfo {
         hasNextPage

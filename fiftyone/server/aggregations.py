@@ -41,9 +41,10 @@ class AggregationForm:
     slice: t.Optional[str]
     slices: t.Optional[t.List[str]]
     view: BSONArray
-    view_name: t.Optional[str] = None
-    query_performance: t.Optional[bool] = False
+    dynamic_group: t.Optional[BSON] = None
     hint: t.Optional[str] = None
+    query_performance: t.Optional[bool] = False
+    view_name: t.Optional[str] = None
 
 
 @gql.interface

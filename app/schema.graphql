@@ -36,9 +36,10 @@ input AggregationForm {
   slice: String
   slices: [String!]
   view: BSONArray!
-  viewName: String = null
-  queryPerformance: Boolean = false
+  dynamicGroup: BSON = null
   hint: String = null
+  queryPerformance: Boolean = false
+  viewName: String = null
 }
 
 union AggregationResponses =
@@ -635,6 +636,7 @@ type Query {
     sortBy: String = null
     desc: Boolean = false
     hint: String = null
+    dynamicGroup: BSON = null
   ): SampleItemStrConnection!
   sample(
     dataset: String!

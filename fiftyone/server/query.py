@@ -450,6 +450,7 @@ class Query(fosa.AggregateQuery):
         sort_by: t.Optional[str] = None,
         desc: t.Optional[bool] = False,
         hint: t.Optional[str] = None,
+        dynamic_group: t.Optional[BSON] = None,
     ) -> Connection[SampleItem, str]:
 
         return await paginate_samples(
@@ -464,6 +465,7 @@ class Query(fosa.AggregateQuery):
             sort_by=sort_by,
             desc=desc,
             hint=hint,
+            dynamic_group=dynamic_group,
         )
 
     @gql.field

@@ -1,16 +1,15 @@
 import { selectorFamily } from "recoil";
 import { aggregationQuery } from "../aggregations";
-import { dynamicGroupViewQuery } from "../dynamicGroups";
 
 export const dynamicGroupsElementCount = selectorFamily<number, string | null>({
   key: "dynamicGroupsElementCount",
   get:
-    (groupByFieldValueExplicit: string | null = null) =>
+    (dynamicGroup: unknown) =>
     ({ get }) => {
       return (
         get(
           aggregationQuery({
-            customView: get(dynamicGroupViewQuery(groupByFieldValueExplicit)),
+            dynamicGroup,
             extended: false,
             modal: false,
             paths: [""],

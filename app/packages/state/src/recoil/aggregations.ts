@@ -1,5 +1,6 @@
 import * as foq from "@fiftyone/relay";
 import type { VariablesOf } from "react-relay";
+import type { SerializableParam } from "recoil";
 import { selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 import type { ResponseFrom } from "../utils";
@@ -34,7 +35,7 @@ type Aggregation = Exclude<
 export const aggregationQuery = graphQLSelectorFamily<
   VariablesOf<foq.aggregationsQuery>,
   {
-    customView?: any;
+    dynamicGroup?: SerializableParam;
     extended: boolean;
     isQueryPerformance?: boolean;
     modal: boolean;
@@ -52,7 +53,7 @@ export const aggregationQuery = graphQLSelectorFamily<
   query: foq.aggregation,
   variables:
     ({
-      customView = undefined,
+      dynamicGroup,
       extended,
       isQueryPerformance = undefined,
       mixed = false,
@@ -78,6 +79,7 @@ export const aggregationQuery = graphQLSelectorFamily<
       const aggForm = {
         index: get(refresher),
         dataset,
+        dynamicGroup,
         extendedStages: root ? {} : get(selectors.extendedStagesNoSort),
         filters:
           extended && !root
@@ -90,7 +92,7 @@ export const aggregationQuery = graphQLSelectorFamily<
         sampleIds,
         slices: mixed ? get(groupSlices) : get(currentSlices(modal)),
         slice: get(groupSlice),
-        view: customView ? customView : !root ? get(viewAtoms.view) : [],
+        view: !root ? get(viewAtoms.view) : [],
         queryPerformance:
           isQueryPerformance === undefined
             ? get(queryPerformance) && !modal

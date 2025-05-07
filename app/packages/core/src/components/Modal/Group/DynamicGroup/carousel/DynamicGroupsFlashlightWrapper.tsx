@@ -33,7 +33,7 @@ const pageParams = selector({
         async (page: number, pageSize: number) => {
           const params = {
             dataset,
-            view: await snapshot.getPromise(fos.dynamicGroupViewQuery(null)),
+            view: await snapshot.getPromise(fos.view),
           };
           return {
             ...params,

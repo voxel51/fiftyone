@@ -3565,7 +3565,11 @@ class GroupBy(ViewStage):
             )
 
         pipeline.extend(
-            [{"$unwind": "$docs"}, {"$replaceRoot": {"newRoot": "$docs"}}]
+            [
+                {"$unwind": "$docs"},
+                {"$replaceRoot": {"newRoot": "$docs"}},
+                {"$addFields": {"_group": group_expr}},
+            ]
         )
 
         return pipeline
@@ -3583,6 +3587,7 @@ class GroupBy(ViewStage):
             [
                 {"$group": {"_id": group_expr, "doc": {"$first": "$$ROOT"}}},
                 {"$replaceRoot": {"newRoot": "$doc"}},
+                {"$addFields": {"_group": group_expr}},
             ]
         )
 
