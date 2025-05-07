@@ -832,7 +832,7 @@ class UltralyticsDetectionOutputProcessor(
         batch = []
         for result in results:
             if not result.boxes:
-                continue
+                batch.append(None)
             else:
                 pred = {
                     "boxes": result.boxes.xyxy,
@@ -844,6 +844,8 @@ class UltralyticsDetectionOutputProcessor(
         return batch
 
     def _parse_output(self, output, frame_size, confidence_thresh):
+        if not output:
+            return None
         detections = super()._parse_output(
             output, frame_size, confidence_thresh
         )
