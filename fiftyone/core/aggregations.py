@@ -2811,6 +2811,7 @@ class Values(Aggregation):
         _big_result=True,
         _raw=False,
         _field=None,
+        _lazy=False,
     ):
         super().__init__(field_or_expr, expr=expr)
         self._missing_value = missing_value
@@ -2823,6 +2824,7 @@ class Values(Aggregation):
         self._big_field = None
         self._manual_field = _field
         self._num_list_fields = None
+        self._lazy = _lazy
 
     def _kwargs(self):
         return [
@@ -2833,6 +2835,7 @@ class Values(Aggregation):
             ["_allow_missing", self._allow_missing],
             ["_big_result", self._big_result],
             ["_raw", self._raw],
+            ["_lazy", self._lazy],
         ]
 
     @property
@@ -2882,7 +2885,9 @@ class Values(Aggregation):
 
         return values
 
-    def to_mongo(self, sample_collection, big_field="values", context=None):
+    def to_mongo(self, sample_collection, big_field=None, context=None):
+        if not self._lazy and not big_field:
+            big_field = "values"
         (
             path,
             pipeline,
@@ -2967,7 +2972,7 @@ def _make_extract_values_pipeline(
 
     # This is important, even if `missing_value` is None, since we need to
     # insert `None` for documents with missing fields
-    expr = (F() != None).if_else(expr, missing_value)
+    expr = expr.if_null(missing_value)
 
     if list_fields:
         subfield = path[len(list_fields[-1]) + 1 :]

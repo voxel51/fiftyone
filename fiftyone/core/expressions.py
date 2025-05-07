@@ -1859,6 +1859,19 @@ class ViewExpression(object):
             {"$cond": {"if": self, "then": true_expr, "else": false_expr}}
         )
 
+    def if_null(self, false_expr):
+        """Returns either this expression or ``false_expr`` if this expression is null.
+        This is a shortcut for ``if_else(self.is_null(), false_expr, self)`` and is useful
+        for replacing null values in a field with a default value.
+
+        Args:
+            false_expr: a :class:`ViewExpression` or MongoDB expression dict
+        Returns:
+            a :class:`ViewExpression`
+
+        """
+        return ViewExpression({"$ifNull": [self, false_expr]})
+
     def cases(self, mapping, default=None):
         """Applies a case statement to this expression, which effectively
         computes the following pseudocode::

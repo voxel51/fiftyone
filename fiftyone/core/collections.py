@@ -9,6 +9,7 @@ Interface for sample collections.
 from collections import defaultdict
 from copy import copy
 from datetime import datetime
+from operator import itemgetter
 import fnmatch
 import itertools
 import logging
@@ -9272,6 +9273,68 @@ class SampleCollection(object):
         )
         return self._make_and_aggregate(make, field_or_expr)
 
+        return self._make_and_aggregate(make, field_or_expr)
+
+    def iter_values(
+        self,
+        field_or_expr,
+        expr=None,
+        missing_value=None,
+        unwind=False,
+        _allow_missing=False,
+        _big_result=True,
+        _raw=False,
+        _field=None,
+        _enforce_natural_order=True,
+    ):
+        """Extracts the values of a field from all samples in the collection.
+
+        Returns:
+            iterator over thevalues
+        """
+
+        # Optimization: if we do not need to follow insertion order, we can
+        # potentially use a covered index query to get the values directly from
+        # the index and avoid a COLLSCAN
+        if not _enforce_natural_order:
+            field = None
+            if isinstance(field_or_expr, str):
+                field = field_or_expr
+            elif etau.is_container(field_or_expr) and len(field_or_expr) == 1:
+                field = field_or_expr[0]
+
+            # @todo consider supporting non-default fields that are indexed
+            # @todo can we support some non-full collections?
+            if (
+                field in ("id", "_id", "filepath")
+                and expr is None
+                and self._is_full_collection()
+            ):
+                try:
+                    return foo.get_indexed_values(
+                        self._dataset._sample_collection,
+                        field,
+                        values_only=True,
+                    )
+                except ValueError as e:
+                    # When get_indexed_values() raises a ValueError, it is a
+                    # recommendation of an index to create
+                    logger.debug(e)
+
+        make = lambda field_or_expr: foa.Values(
+            field_or_expr,
+            expr=expr,
+            missing_value=missing_value,
+            unwind=unwind,
+            _allow_missing=_allow_missing,
+            _big_result=_big_result,
+            _raw=_raw,
+            _field=_field,
+            _lazy=True,
+        )
+
+        return self._make_and_aggregate(make, field_or_expr)
+
     def draw_labels(
         self,
         output_dir,
@@ -10476,8 +10539,9 @@ class SampleCollection(object):
                 instances
 
         Returns:
-            an aggregation result or list of aggregation results corresponding
-            to the input aggregation(s)
+            The aggregation result(s) corresponding to the input aggregation(s).
+            Returns a single result for a single aggregation, a list of results
+            for multiple aggregations, or an iterator if all aggregations are lazy
         """
         if not aggregations:
             return []
@@ -10488,7 +10552,7 @@ class SampleCollection(object):
             aggregations = [aggregations]
 
         # Partition aggregations by type
-        big_aggs, batch_aggs, facet_aggs = self._parse_aggregations(
+        big_aggs, batch_aggs, facet_aggs, stream = self._parse_aggregations(
             aggregations, allow_big=True
         )
 
@@ -10525,6 +10589,8 @@ class SampleCollection(object):
 
         # Parse batch results
         if batch_aggs:
+            if stream:
+                return self._iter_batched_results(batch_aggs, _results[0])
             result = list(_results[0])
             for idx, aggregation in batch_aggs.items():
                 results[idx] = self._parse_big_result(aggregation, result)
@@ -10549,6 +10615,12 @@ class SampleCollection(object):
 
         return results[0] if scalar_result else results
 
+    def _iter_batched_results(self, batch_aggs, cursor):
+        # extract each docs values as a tuple
+        result_fields = [agg._big_field for agg in batch_aggs.values()]
+        for doc in cursor:
+            yield itemgetter(*result_fields)(doc)
+
     async def _async_aggregate(self, aggregations):
         if not aggregations:
             return []
@@ -10558,7 +10630,7 @@ class SampleCollection(object):
         if scalar_result:
             aggregations = [aggregations]
 
-        _, _, facet_aggs = self._parse_aggregations(
+        _, _, facet_aggs, _ = self._parse_aggregations(
             aggregations, allow_big=False
         )
 
@@ -10601,7 +10673,14 @@ class SampleCollection(object):
         big_aggs = {}
         batch_aggs = {}
         facet_aggs = {}
+        stream = None
         for idx, aggregation in enumerate(aggregations):
+            # stream is True if all aggregations are lazy
+            if lazy := getattr(aggregation, "_lazy", False):
+                if stream is None:
+                    stream = lazy
+                elif stream != lazy:
+                    stream = False
             if aggregation._is_big_batchable:
                 batch_aggs[idx] = aggregation
             elif aggregation._has_big_result:
@@ -10615,7 +10694,7 @@ class SampleCollection(object):
                 "results"
             )
 
-        return big_aggs, batch_aggs, facet_aggs
+        return big_aggs, batch_aggs, facet_aggs, stream
 
     def _build_batch_pipeline(self, aggs_map):
         project = {}
