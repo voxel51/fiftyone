@@ -59,7 +59,7 @@ class TestGetDatasetRevisions(unittest.TestCase):
         self.assertEqual(result, {None: "v2"})
 
     @patch("fiftyone.core.odm.get_db_conn")
-    def test_filter_on_name_exists(self, mock_get_db_conn):
+    def test_filter_same_as_list_datasets(self, mock_get_db_conn):
         mock_conn = MagicMock()
         mock_conn.datasets.find.return_value = [
             {"name": "dataset1", "version": "v1"},
@@ -67,8 +67,14 @@ class TestGetDatasetRevisions(unittest.TestCase):
         mock_get_db_conn.return_value = mock_conn
 
         result = get_datasets_revisions()
-        assert result == {"dataset1": "v1"}
+        self.assertEqual(result, {"dataset1": "v1"})
+
+        # Check that the same query used to list all datasets
+        # is used to list revisions
+        from fiftyone.core.dataset import _list_datasets_query
+
+        query = _list_datasets_query(include_private=True)
 
         mock_conn.datasets.find.assert_called_with(
-            {"name": {"$exists": 1}}, {"name": 1, "version": 1}
+            query, {"name": 1, "version": 1}
         )
