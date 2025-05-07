@@ -46,17 +46,14 @@ class TestUpdateFCV(unittest.TestCase):
             with self.subTest(
                 server_version=server_version, fc_version=fc_version
             ), patch("pymongo.MongoClient") as mock_client, patch(
-                "fiftyone.core.odm.database._get_logger"
-            ) as mock_get_logger:
+                "fiftyone.core.odm.database.logger"
+            ) as mock_logger:
 
                 mock_admin = MagicMock()
                 mock_client.admin = mock_admin
                 mock_client.server_info.return_value = {
                     "version": str(server_version)
                 }
-
-                mock_get_logger.return_value = MagicMock()
-                mock_logger = mock_get_logger.return_value
 
                 mock_admin.command.return_value = {
                     "featureCompatibilityVersion": {"version": str(fc_version)}
@@ -69,7 +66,7 @@ class TestUpdateFCV(unittest.TestCase):
                     Version(f"{server_version.major}.0")
                 )
                 mock_admin.command.assert_any_call(expected_call)
-
+                
                 mock_logger.warning.assert_any_call(
                     "Your MongoDB server version is newer than your feature "
                     "compatibility version. "
@@ -82,9 +79,9 @@ class TestUpdateFCV(unittest.TestCase):
 
     @patch("fiftyone.core.odm.database._db_service")
     @patch("pymongo.MongoClient")
-    @patch("fiftyone.core.odm.database._get_logger")
+    @patch("fiftyone.core.odm.database.logger")
     def test_update_fcv_success_minor_and_patch_versions(
-        self, mock_get_logger, mock_client, mock_db_service
+        self, mock_logger, mock_client, mock_db_service
     ):
         """Tests that minor and patch mongoDB versions are upgraded
         as expected.
@@ -96,9 +93,6 @@ class TestUpdateFCV(unittest.TestCase):
         mock_admin = MagicMock()
         mock_client.admin = mock_admin
         mock_client.server_info.return_value = {"version": str(server_version)}
-
-        mock_get_logger.return_value = MagicMock()
-        mock_logger = mock_get_logger.return_value
 
         mock_admin.command.return_value = {
             "featureCompatibilityVersion": {"version": str(fc_version)}
@@ -134,9 +128,9 @@ class TestUpdateFCV(unittest.TestCase):
 
     @patch("fiftyone.core.odm.database._db_service")
     @patch("pymongo.MongoClient")
-    @patch("fiftyone.core.odm.database._get_logger")
+    @patch("fiftyone.core.odm.database.logger")
     def test_update_fcv_success_fcv_less_than_min_version(
-        self, mock_get_logger, mock_client, mock_db_service
+        self, mock_logger, mock_client, mock_db_service
     ):
         """Tests an edge case where the FCV is less than the minimum
         supported version while the server version is the minimum version.
@@ -150,9 +144,6 @@ class TestUpdateFCV(unittest.TestCase):
         mock_client.admin = mock_admin
         mock_client.server_info.return_value = {"version": str(server_version)}
 
-        mock_get_logger.return_value = MagicMock()
-        mock_logger = mock_get_logger.return_value
-
         mock_admin.command.return_value = {
             "featureCompatibilityVersion": {"version": str(fc_version)}
         }
@@ -187,9 +178,9 @@ class TestUpdateFCV(unittest.TestCase):
 
     @patch("fiftyone.core.odm.database._db_service")
     @patch("pymongo.MongoClient")
-    @patch("fiftyone.core.odm.database._get_logger")
+    @patch("fiftyone.core.odm.database.logger")
     def test_update_fcv_log_minimum_version(
-        self, mock_get_logger, mock_client, mock_db_service
+        self, mock_logger, mock_client, mock_db_service
     ):
         """Tests an edge case where the both the FCV and server
         version are the oldest supported version. No actions should
@@ -202,9 +193,6 @@ class TestUpdateFCV(unittest.TestCase):
         mock_admin = MagicMock()
         mock_client.admin = mock_admin
         mock_client.server_info.return_value = {"version": str(server_version)}
-
-        mock_get_logger.return_value = MagicMock()
-        mock_logger = mock_get_logger.return_value
 
         mock_admin.command.return_value = {
             "featureCompatibilityVersion": {"version": str(fc_version)}
@@ -259,9 +247,9 @@ class TestUpdateFCV(unittest.TestCase):
 
     @patch("fiftyone.core.odm.database._db_service")
     @patch("pymongo.MongoClient")
-    @patch("fiftyone.core.odm.database._get_logger")
+    @patch("fiftyone.core.odm.database.logger")
     def test_version_diff_warning(
-        self, mock_get_logger, mock_client, mock_db_service
+        self, mock_logger, mock_client, mock_db_service
     ):
         """Tests the warning that's generated in the event that
         the FO DB is more than 1 version outside of our expected
@@ -274,9 +262,6 @@ class TestUpdateFCV(unittest.TestCase):
         mock_admin = MagicMock()
         mock_client.admin = mock_admin
         mock_client.server_info.return_value = {"version": str(server_version)}
-
-        mock_get_logger.return_value = MagicMock()
-        mock_logger = mock_get_logger.return_value
 
         mock_admin.command.return_value = {
             "featureCompatibilityVersion": {"version": str(fc_version)}
@@ -298,9 +283,9 @@ class TestUpdateFCV(unittest.TestCase):
 
     @patch("fiftyone.core.odm.database._db_service")
     @patch("pymongo.MongoClient")
-    @patch("fiftyone.core.odm.database._get_logger")
+    @patch("fiftyone.core.odm.database.logger")
     def test_fcv_greater_than_server_version_warning(
-        self, mock_get_logger, mock_client, mock_db_service
+        self, mock_logger, mock_client, mock_db_service
     ):
         """Tests the warning that's generated in the event that
         the feature compatability version is ahead of the server version.
@@ -312,9 +297,6 @@ class TestUpdateFCV(unittest.TestCase):
         mock_admin = MagicMock()
         mock_client.admin = mock_admin
         mock_client.server_info.return_value = {"version": str(server_version)}
-
-        mock_get_logger.return_value = MagicMock()
-        mock_logger = mock_get_logger.return_value
 
         mock_admin.command.return_value = {
             "featureCompatibilityVersion": {"version": str(fc_version)}
@@ -337,9 +319,9 @@ class TestUpdateFCV(unittest.TestCase):
 
     @patch("fiftyone.core.odm.database._db_service")
     @patch("pymongo.MongoClient")
-    @patch("fiftyone.core.odm.database._get_logger")
+    @patch("fiftyone.core.odm.database.logger")
     def test_oldest_supported_version_warning(
-        self, mock_get_logger, mock_client, mock_db_service
+        self, mock_logger, mock_client, mock_db_service
     ):
         """Tests the warning that's generated in the event that
         the feature compatability version is currently the oldest supported
@@ -351,9 +333,6 @@ class TestUpdateFCV(unittest.TestCase):
         mock_client.server_info.return_value = {
             "version": str(foc.MONGODB_MIN_VERSION)
         }
-
-        mock_get_logger.return_value = MagicMock()
-        mock_logger = mock_get_logger.return_value
 
         mock_admin.command.return_value = {
             "featureCompatibilityVersion": {
@@ -376,9 +355,9 @@ class TestUpdateFCV(unittest.TestCase):
 
     @patch("fiftyone.core.odm.database._db_service")
     @patch("pymongo.MongoClient")
-    @patch("fiftyone.core.odm.database._get_logger")
+    @patch("fiftyone.core.odm.database.logger")
     def test_update_fc_version_operation_failure(
-        self, mock_get_logger, mock_client, mock_db_service
+        self, mock_logger, mock_client, mock_db_service
     ):
         """Tests the error that's generated in the event that
         the feature compatability version update failed.
@@ -389,9 +368,6 @@ class TestUpdateFCV(unittest.TestCase):
         mock_admin = MagicMock()
         mock_client.admin = mock_admin
         mock_client.server_info.return_value = {"version": str(server_version)}
-
-        mock_get_logger.return_value = MagicMock()
-        mock_logger = mock_get_logger.return_value
 
         mock_admin.command.side_effect = [
             {"featureCompatibilityVersion": {"version": str(fc_version)}},
@@ -413,9 +389,9 @@ class TestUpdateFCV(unittest.TestCase):
 
     @patch("fiftyone.core.odm.database._db_service")
     @patch("pymongo.MongoClient")
-    @patch("fiftyone.core.odm.database._get_logger")
+    @patch("fiftyone.core.odm.database.logger")
     def test_update_fc_version_pymongo_failure(
-        self, mock_get_logger, mock_client, mock_db_service
+        self, mock_logger, mock_client, mock_db_service
     ):
         """Tests the error that's generated in the event that
         the feature compatability version update failed.
@@ -426,9 +402,6 @@ class TestUpdateFCV(unittest.TestCase):
         mock_admin = MagicMock()
         mock_client.admin = mock_admin
         mock_client.server_info.return_value = {"version": str(server_version)}
-
-        mock_get_logger.return_value = MagicMock()
-        mock_logger = mock_get_logger.return_value
 
         mock_admin.command.side_effect = [
             {"featureCompatibilityVersion": {"version": str(fc_version)}},
@@ -450,8 +423,8 @@ class TestUpdateFCV(unittest.TestCase):
 
     @patch("fiftyone.core.odm.database._db_service", new=None)
     @patch("pymongo.MongoClient")
-    @patch("fiftyone.core.odm.database._get_logger")
-    def test_no_action_unless_managed(self, mock_get_logger, mock_client):
+    @patch("fiftyone.core.odm.database.logger")
+    def test_no_action_unless_managed(self, mock_logger, mock_client):
         """Tests that actions are only logged, not taken, if
         we aren't managing the mongodb instance (_db_service is None).
         """
@@ -462,9 +435,6 @@ class TestUpdateFCV(unittest.TestCase):
         mock_admin = MagicMock()
         mock_client.admin = mock_admin
         mock_client.server_info.return_value = {"version": str(server_version)}
-
-        mock_get_logger.return_value = MagicMock()
-        mock_logger = mock_get_logger.return_value
 
         mock_admin.command.return_value = {
             "featureCompatibilityVersion": {"version": str(fc_version)}

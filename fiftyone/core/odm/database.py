@@ -1871,11 +1871,8 @@ def _is_fcv_upgradeable(fc_version: Version, server_version: Version) -> bool:
     Returns:
         whether a version upgrade is possible
     """
-
-    _logger = _get_logger()
-
     if fc_version > server_version:
-        _logger.warning(
+        logger.warning(
             "Your MongoDB feature compatibility is greater than your "
             "server version. "
             "This may result in unexpected consequences. "
@@ -1891,7 +1888,7 @@ def _is_fcv_upgradeable(fc_version: Version, server_version: Version) -> bool:
         server_version.major - fc_version.major
         > foc.MONGODB_MAX_ALLOWABLE_FCV_DELTA
     ):
-        _logger.warning(
+        logger.warning(
             "Your MongoDB server version is more than %s "
             "ahead of your database's feature compatibility version. "
             "Please manually update your database's feature "
@@ -1905,7 +1902,7 @@ def _is_fcv_upgradeable(fc_version: Version, server_version: Version) -> bool:
     elif (fc_version.major == foc.MONGODB_MIN_VERSION.major) or (
         server_version.major == foc.MONGODB_MIN_VERSION.major
     ):
-        _logger.warning(
+        logger.warning(
             "You are running the oldest supported major version of MongoDB. "
             "Please refer to https://deprecation.voxel51.com "
             "for deprecation notices. You can suppress this exception by setting your "
@@ -1955,7 +1952,7 @@ def _update_fc_version(client: pymongo.MongoClient):
             cmd["confirm"] = True
 
         try:
-            _logger.warning(
+            logger.warning(
                 "Your MongoDB server version is newer than your feature "
                 "compatibility version. "
                 "Upgrading the feature compatibility version now. "
@@ -1967,7 +1964,7 @@ def _update_fc_version(client: pymongo.MongoClient):
             client.admin.command(cmd)
 
         except OperationFailure as e:
-            _logger.error(
+            logger.error(
                 "Operation failed while updating database's feature "
                 "compatibility version - %s. "
                 "Please manually set it to %s. "
@@ -1978,7 +1975,7 @@ def _update_fc_version(client: pymongo.MongoClient):
             )
 
         except PyMongoError as e:
-            _logger.error(
+            logger.error(
                 "MongoDB error while updating database's feature "
                 "compatibility version - %s. "
                 "Please manually set it to %s. "
