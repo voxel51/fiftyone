@@ -4,6 +4,7 @@ import { selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 import type { ResponseFrom } from "../utils";
 import { refresher } from "./atoms";
+import { config } from "./config";
 import * as filterAtoms from "./filters";
 import {
   currentSlices,
@@ -26,6 +27,12 @@ type Aggregation = Exclude<
     readonly __typename: "%other";
   }
 >;
+
+export class AggregationQueryTimeout extends Error {
+  constructor(readonly queryTime: number) {
+    super();
+  }
+}
 
 /**
  * GraphQL Selector Family for Aggregations.
@@ -96,6 +103,7 @@ export const aggregationQuery = graphQLSelectorFamily<
             ? get(queryPerformance) && !modal
             : isQueryPerformance,
         hint: get(activeIndex),
+        maxQueryTime: get(queryPerformance) ? get(config).maxQueryTime : null,
       };
 
       return {
@@ -145,12 +153,18 @@ export const aggregation = selectorFamily({
         ? get(modalAggregationPaths({ path, mixed: params.mixed }))
         : get(schemaAtoms.filterFields(path));
 
-      return get(
+      const result = get(
         aggregations({
           ...params,
           paths,
         })
       ).find((data) => data.path === path);
+
+      if (result?.__typename === "AggregationQueryTimeout") {
+        throw new AggregationQueryTimeout(result.queryTime);
+      }
+
+      return result;
     },
 });
 
