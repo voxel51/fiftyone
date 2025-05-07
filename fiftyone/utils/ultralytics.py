@@ -440,9 +440,14 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
     @staticmethod
     def collate_fn(batch):
         orig_images = [img.get("orig_img") for img in batch]
+        orig_shapes = [_get_image_dims(img) for img in orig_images]
         images = [img.get("img") for img in batch]
         images = torch.stack(images)
-        return {"orig_imgs": orig_images, "images": images}
+        return {
+            "orig_imgs": orig_images,
+            "images": images,
+            "orig_shapes": orig_shapes,
+        }
 
     def _download_model(self, config):
         config.download_model_if_necessary()
@@ -579,12 +584,9 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
             if self.has_collate_fn:
                 imgs = self.collate_fn(imgs)
 
-        if isinstance(imgs, dict):
-            orig_images = imgs["orig_imgs"]
-            images = imgs["images"]
-        else:
-            orig_images = imgs
-            images = imgs
+        orig_images = imgs["orig_imgs"]
+        images = imgs["images"]
+        width_height = imgs["orig_shapes"]
 
         # Dummy value to ensure predictor batches have same length as images.
         self._model.predictor.batch = [[""] * images.size()[0]]
@@ -598,11 +600,6 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         # This is required for Ultralytics post-processing.
         output["orig_imgs"] = orig_images
         output["imgs"] = images
-
-        width_height = []
-        for img in orig_images:
-            height, width = _get_image_dims(img)
-            width_height.append((width, height))
 
         if self._output_processor is None:
             _output = output.get("preds")
