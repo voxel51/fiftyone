@@ -18,6 +18,8 @@ import fiftyone.constants as foc
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 
+fod = fou.lazy_import("fiftyone.core.dataset")
+
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +102,7 @@ def migrate_all(destination=None, error_level=0, verbose=False):
     """
     migrate_database_if_necessary(destination=destination, verbose=verbose)
 
-    for name in fo.list_datasets():
+    for name in fod._list_datasets(include_private=True):
         migrate_dataset_if_necessary(
             name,
             destination=destination,
