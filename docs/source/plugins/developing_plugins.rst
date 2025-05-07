@@ -2528,8 +2528,8 @@ To cache a function's result scoped to the current ``ctx.dataset``, use the
     # Clear all cache entries for the function
     expensive_query.clear_all_caches()
 
-    # NOTE: dataset_id is required if link_to_dataset=True
-    expensive_query.clear_all_caches(dataset_id=dataset._doc.id)
+    # NOTE: ctx or dataset_id is required if link_to_dataset=True
+    expensive_query.clear_all_caches(ctx=ctx)
 
 .. note::
 
