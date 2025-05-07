@@ -192,6 +192,11 @@ export const openModelEvalDialog = atom<boolean>({
  * Contains the name and id of the selected evaluation.
  */
 export const selectedModelEvaluation = atom<string | null>({
-  key: "selectedEvalation",
+  key: "selectedModelEvaluation",
   default: null,
+});
+
+export const activeTabAtom = atom<string>({
+  key: "activeTabAtom",
+  default: "overview",
 });

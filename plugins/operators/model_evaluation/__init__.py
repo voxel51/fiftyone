@@ -69,7 +69,7 @@ class ConfigureScenario(foo.Operator):
             default=scenario_name,
             required=True,
             view=types.TextFieldView(
-                label="Scenario Name",
+                label="Scenario name",
                 placeholder="Enter a name for the scenario",
             ),
             invalid=is_invalid,
@@ -214,11 +214,9 @@ class ConfigureScenario(foo.Operator):
                     }
                 )
 
-            return plot_data
+            return plot_data, None
         except Exception as e:
-            # TODO show Alert / error
-            print(e)
-            return
+            return None, e
 
     def convert_to_plotly_data(self, preview_data):
         if preview_data is None or len(preview_data) == 0:
@@ -243,11 +241,12 @@ class ConfigureScenario(foo.Operator):
 
     def is_sample_distribution_enabled_for_custom_code(self, params):
         # NOTE: performance might lack if it is on by default.
-        return (
-            params.get("custom_code_stack", {})
-            .get("control_stack", {})
-            .get("view_sample_distribution", False)
-        )
+        # return (
+        #     params.get("custom_code_stack", {})
+        #     .get("control_stack", {})
+        #     .get("view_sample_distribution", False)
+        # )
+        return True
 
     def render_empty_sample_distribution(
         self, inputs, params, description=None
@@ -259,8 +258,8 @@ class ConfigureScenario(foo.Operator):
         inputs.view(
             "empty_sample_distribution",
             types.HeaderView(
-                label="Subset's sample distribution preview",
-                description=description
+                # label="Subset's sample distribution preview",
+                label=description
                 or "Select a value to view the sample distribution",
                 divider=True,
                 componentsProps={
@@ -268,8 +267,9 @@ class ConfigureScenario(foo.Operator):
                         "sx": {
                             "justifyContent": "center",
                             "padding": "3rem",
-                            "background": "background.secondary",
+                            "background": "var(--fo-palette-background-body)",
                             "color": "text.secondary",
+                            "borderRadius": "4px",
                         }
                     },
                     "label": {
@@ -282,8 +282,6 @@ class ConfigureScenario(foo.Operator):
                     },
                 },
             ),
-            invalid=is_invalid,
-            error_message="No values selected" if is_invalid else None,
         )
 
     def get_label_attribute_path(self, params):
@@ -343,7 +341,18 @@ class ConfigureScenario(foo.Operator):
     def render_sample_distribution_graph(
         self, ctx, inputs, subset_expressions
     ):
-        plot_data = self.get_sample_distribution(ctx, subset_expressions)
+        plot_data, error = self.get_sample_distribution(
+            ctx, subset_expressions
+        )
+
+        if error:
+            inputs.view(
+                "plot_preview_error",
+                view=types.HeaderView(label=""),
+                invalid=True,
+                error_message="Custom scenario definition is invalid",
+            )
+            return
 
         preview_container = inputs.grid("grid", height="400px", width="100%")
         preview_height = "300px"
@@ -455,20 +464,20 @@ class ConfigureScenario(foo.Operator):
         label, description, severity = None, None, "warning"
 
         if reason == CustomCodeViewReason.TOO_MANY_CATEGORIES:
-            label = "Too many categories."
-            description = (
-                f"Selected field has too many values to display. "
+            severity = "info"
+            label = (
+                f"Selected field has too many categories to display. "
                 + "Please use the custom code to define the scenario."
             )
         if reason == CustomCodeViewReason.TOO_MANY_INT_CATEGORIES:
-            label = "Too many distinct integer values."
-            description = (
-                f"Selected field has too many values to display. "
+            severity = "info"
+            label = (
+                f"Selected field has too many distinct integer values to display. "
                 + "Please use the custom code to define the scenario."
             )
         if reason == CustomCodeViewReason.FLOAT_TYPE:
-            label = ""
-            description = f"To create scenarios based on float fields, please use the custom code mode. "
+            severity = "info"
+            label = f"To create scenarios based on float fields, please use the custom code mode. "
         if reason == CustomCodeViewReason.SLOW:
             severity = "info"
             label = "Too many values."
@@ -661,7 +670,15 @@ class ConfigureScenario(foo.Operator):
             Tuple[str, Any]: Picker type and corresponding values.
         """
         # Validate field name
+        eval_key, _ = self.extract_evaluation_keys(ctx)
+
         schema = ctx.dataset.get_field_schema(flat=True)
+        dataset_or_view = ctx.dataset
+        try:
+            dataset_or_view = ctx.dataset.load_evaluation_view(eval_key)
+        except Exception:
+            # if the view is not found, we can still use the dataset
+            pass
         field = schema.get(field_name)
         if field is None:
             raise ValueError(f"Field {field_name} does not exist")
@@ -671,7 +688,7 @@ class ConfigureScenario(foo.Operator):
             return ShowOptionsMethod.CODE, CustomCodeViewReason.FLOAT_TYPE
         if isinstance(field, fof.BooleanField):
             # example counts {True: 2, None: 135888}
-            counts = ctx.dataset.count_values(field_name)
+            counts = dataset_or_view.count_values(field_name)
             return ShowOptionsMethod.CHECKBOX, {
                 "true": counts.get(True, 0),
                 "false": counts.get(False, 0),
@@ -679,7 +696,7 @@ class ConfigureScenario(foo.Operator):
             }
 
         # Retrieve distinct values (may be slow for large datasets)
-        distinct_values = ctx.dataset.distinct(field_name)
+        distinct_values = dataset_or_view.distinct(field_name)
         distinct_count = len(distinct_values)
 
         if distinct_count == 0:
@@ -700,7 +717,7 @@ class ConfigureScenario(foo.Operator):
                 )
 
         # NOTE: may be slow for large datasets
-        values = ctx.dataset.count_values(field_name)
+        values = dataset_or_view.count_values(field_name)
         return (
             (ShowOptionsMethod.EMPTY, None)
             if not values
@@ -722,12 +739,18 @@ class ConfigureScenario(foo.Operator):
             "saved views"
             if scenario_type == "view"
             else (
-                "label attributes"
+                "attribute values"
                 if scenario_type == "label_attribute"
-                else "sample fields"
+                else "field values"
             )
         )
         component_key, selected_values = self.get_selected_values(ctx.params)
+
+        ac_description = (
+            f"Select {scenario_type_display} to define your subsets."
+        )
+        if len(selected_values) > 0:
+            ac_description += f" {len(selected_values)} selected"
 
         inputs.list(
             component_key,
@@ -735,9 +758,7 @@ class ConfigureScenario(foo.Operator):
             default=selected_values,
             required=True,
             label="",
-            description=(
-                f"Select {scenario_type_display} to get started. {len(selected_values)} selected"
-            ),
+            description=ac_description,
             view=types.AutocompleteView(
                 multiple=True,
                 choices=[types.Choice(value=v, label=v) for v in values],
@@ -747,6 +768,9 @@ class ConfigureScenario(foo.Operator):
                 error_message=(
                     "No values selected" if not selected_values else ""
                 ),
+                componentsProps={
+                    "autocomplete": {"disableCloseOnSelect": True}
+                },
             ),
         )
 
@@ -1039,21 +1063,21 @@ class ConfigureScenario(foo.Operator):
             ),
         )
 
-        custom_code_controls.bool(
-            "view_sample_distribution",
-            required=True,
-            default=False,
-            label="View sample distribution",
-            view=types.CheckboxView(
-                componentsProps={
-                    "container": {
-                        "sx": {
-                            "padding": "0 2rem 0 1rem",
-                        }
-                    },
-                }
-            ),
-        )
+        # custom_code_controls.bool(
+        #     "view_sample_distribution",
+        #     required=True,
+        #     default=False,
+        #     label="View sample distribution",
+        #     view=types.CheckboxView(
+        #         componentsProps={
+        #             "container": {
+        #                 "sx": {
+        #                     "padding": "0 2rem 0 1rem",
+        #                 }
+        #             },
+        #         }
+        #     ),
+        # )
 
         body_stack.view(
             code_key,
