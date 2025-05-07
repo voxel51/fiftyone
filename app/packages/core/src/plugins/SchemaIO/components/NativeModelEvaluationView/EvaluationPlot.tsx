@@ -22,7 +22,8 @@ export default function EvaluationPlot(props: EvaluationPlotProps) {
         zerolinecolor: theme.text.tertiary,
         color: theme.text.secondary,
         gridcolor: theme.primary.softBorder,
-        automargin: true, // Enable automatic margin adjustment
+        automargin: true, // Enable automatic margin adjustment,
+        title: { font: { size: 14, color: theme.text.tertiary } },
       },
       yaxis: {
         showgrid: true,
@@ -31,7 +32,8 @@ export default function EvaluationPlot(props: EvaluationPlotProps) {
         zerolinecolor: theme.text.tertiary,
         color: theme.text.secondary,
         gridcolor: theme.primary.softBorder,
-        automargin: true, // Enable automatic margin adjustment
+        automargin: true, // Enable automatic margin adjustment,
+        title: { font: { size: 14, color: theme.text.tertiary } },
       },
       autosize: true,
       margin: { t: 20, l: 50, b: 50, r: 20, pad: 0 },
