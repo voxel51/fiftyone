@@ -440,7 +440,7 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
     @staticmethod
     def collate_fn(batch):
         orig_images = [img.get("orig_img") for img in batch]
-        orig_shapes = [_get_image_dims(img) for img in orig_images]
+        orig_shapes = [_get_image_dims(img)[::-1] for img in orig_images]
         images = [img.get("img") for img in batch]
         images = torch.stack(images)
         return {
