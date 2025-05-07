@@ -298,7 +298,7 @@ def _delete_non_persistent_datasets_if_allowed():
             )
         )
     except:
-        logger.warning(
+        logger.debug(
             "Skipping automatic non-persistent dataset cleanup. This action "
             "requires read access of the 'admin' database"
         )
@@ -1811,10 +1811,11 @@ def _delete_stores(conn, dataset_ids):
     conn.execution_store.delete_many({"dataset_id": {"$in": dataset_ids}})
 
 
-def _get_fcv_and_version(
+def _get_fcv_and_version_if_allowed(
     client: pymongo.MongoClient,
 ) -> Tuple[Version, Version]:
-    """Fetches the current FCV and server version.
+    """Fetches the current FCV and server version, if we have permission to
+    read the ``admin`` database.
 
     Args:
         client: a ``pymongo.MongoClient`` to connect to the database
@@ -1822,8 +1823,8 @@ def _get_fcv_and_version(
     Returns:
         a tuple of
 
-        -   a ``Version`` of the FCV
-        -   a ``Version`` of the server version
+        -   a ``Version`` of the FCV, or ``None`` if not allowed
+        -   a ``Version`` of the server version, or ``None`` if not allowed
 
     Raises:
         ConnectionError: if a connection to ``mongod`` could not be established
@@ -1839,6 +1840,12 @@ def _get_fcv_and_version(
         return current_fcv, server_version
     except ServerSelectionTimeoutError as e:
         raise ConnectionError("Could not connect to `mongod`") from e
+    except:
+        logger.debug(
+            "Skipping feature compatibility version check. This action "
+            "requires read access of the 'admin' database"
+        )
+        return None, None
 
 
 def _is_fcv_upgradeable(fc_version: Version, server_version: Version) -> bool:
@@ -1864,11 +1871,8 @@ def _is_fcv_upgradeable(fc_version: Version, server_version: Version) -> bool:
     Returns:
         whether a version upgrade is possible
     """
-
-    _logger = _get_logger()
-
     if fc_version > server_version:
-        _logger.warning(
+        logger.warning(
             "Your MongoDB feature compatibility is greater than your "
             "server version. "
             "This may result in unexpected consequences. "
@@ -1884,7 +1888,7 @@ def _is_fcv_upgradeable(fc_version: Version, server_version: Version) -> bool:
         server_version.major - fc_version.major
         > foc.MONGODB_MAX_ALLOWABLE_FCV_DELTA
     ):
-        _logger.warning(
+        logger.warning(
             "Your MongoDB server version is more than %s "
             "ahead of your database's feature compatibility version. "
             "Please manually update your database's feature "
@@ -1898,7 +1902,7 @@ def _is_fcv_upgradeable(fc_version: Version, server_version: Version) -> bool:
     elif (fc_version.major == foc.MONGODB_MIN_VERSION.major) or (
         server_version.major == foc.MONGODB_MIN_VERSION.major
     ):
-        _logger.warning(
+        logger.warning(
             "You are running the oldest supported major version of MongoDB. "
             "Please refer to https://deprecation.voxel51.com "
             "for deprecation notices. You can suppress this exception by setting your "
@@ -1926,8 +1930,10 @@ def _update_fc_version(client: pymongo.MongoClient):
 
     global _db_service
 
-    fc_version, server_version = _get_fcv_and_version(client)
-    _logger = _get_logger()
+    fc_version, server_version = _get_fcv_and_version_if_allowed(client)
+
+    if fc_version is None:
+        return
 
     if (
         _is_fcv_upgradeable(fc_version, server_version)
@@ -1944,7 +1950,7 @@ def _update_fc_version(client: pymongo.MongoClient):
             cmd["confirm"] = True
 
         try:
-            _logger.warning(
+            logger.warning(
                 "Your MongoDB server version is newer than your feature "
                 "compatibility version. "
                 "Upgrading the feature compatibility version now. "
@@ -1956,7 +1962,7 @@ def _update_fc_version(client: pymongo.MongoClient):
             client.admin.command(cmd)
 
         except OperationFailure as e:
-            _logger.error(
+            logger.error(
                 "Operation failed while updating database's feature "
                 "compatibility version - %s. "
                 "Please manually set it to %s. "
@@ -1967,7 +1973,7 @@ def _update_fc_version(client: pymongo.MongoClient):
             )
 
         except PyMongoError as e:
-            _logger.error(
+            logger.error(
                 "MongoDB error while updating database's feature "
                 "compatibility version - %s. "
                 "Please manually set it to %s. "
