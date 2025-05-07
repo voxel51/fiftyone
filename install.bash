@@ -139,7 +139,6 @@ if [ ${DEV_INSTALL} = true ]; then
     pre-commit install
     pip install -e .
 else
-    pip install -r requirements.txt
     pip install .
 fi
 
