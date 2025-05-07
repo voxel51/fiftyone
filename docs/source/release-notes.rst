@@ -36,6 +36,12 @@ Brain
 
 Core
 
+- Ensure that read access to the `admin` database is not required in order to
+  use FiftyOne
+  `#5872 <https://github.com/voxel51/fiftyone/pull/5872>`_
+- The :ref:`fiftyone migrate --all <cli-fiftyone-migrate>` command now includes
+  private datasets like patches, frames, and clips
+  `#5868 <https://github.com/voxel51/fiftyone/pull/5868>`_
 - Fixed `#5852 <https://github.com/voxel51/fiftyone/issues/5852>`_ by upgrading
   strawberry-graphql library 
   `#5855 <https://github.com/voxel51/fiftyone/pull/5855>`_
@@ -238,7 +244,7 @@ Database
 - Added support for enabling
   :ref:`MongoDB network compression <mongodb-network-compression>`
   `#5693 <https://github.com/voxel51/fiftyone/pull/5693>`_
-- Improved performance of `fiftyone migrate --info`
+- Improved performance of :ref:`fiftyone migrate --info <cli-fiftyone-migrate>`
   `#5672 <https://github.com/voxel51/fiftyone/pull/5672>`_
 - Raised the minimum MongoDB version from 4.4 to 5.0 in accordance with our
   :ref:`deprecation schedule <deprecation-mongodb-4.4>`. FiftyOne will now
