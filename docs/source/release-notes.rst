@@ -39,6 +39,9 @@ Core
 - Fixed `#5852 <https://github.com/voxel51/fiftyone/issues/5852>`_ by upgrading
   strawberry-graphql library 
   `#5855 <https://github.com/voxel51/fiftyone/pull/5855>`_
+- Fixed a bug so that the fiftyone migrate command correctly handles datasets
+  with missing names
+  `#5868 <https://github.com/voxel51/fiftyone/pull/5868>`_
 
 Docs
 
