@@ -1562,6 +1562,7 @@ def get_indexed_values(
     index_key=None,
     query=None,
     values_only=False,
+    _stream=False,
 ):
     """Returns the values of the field(s) for all samples in the given collection
     that are covered by the index. Raises an error if the field is not indexed.
@@ -1591,6 +1592,8 @@ def get_indexed_values(
         cursor = _iter_indexed_values(
             collection, field_or_fields, index_key=index_key, query=query
         )
+        if _stream:
+            return cursor
 
         if field_or_fields == "id":
             if values_only:

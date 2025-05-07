@@ -9237,30 +9237,27 @@ class SampleCollection(object):
         # Optimization: if we do not need to follow insertion order, we can
         # potentially use a covered index query to get the values directly from
         # the index and avoid a COLLSCAN
-        if not _enforce_natural_order:
-            field = None
-            if isinstance(field_or_expr, str):
-                field = field_or_expr
-            elif etau.is_container(field_or_expr) and len(field_or_expr) == 1:
-                field = field_or_expr[0]
-
-            # @todo consider supporting non-default fields that are indexed
-            # @todo can we support some non-full collections?
-            if (
-                field in ("id", "_id", "filepath")
-                and expr is None
-                and self._is_full_collection()
-            ):
-                try:
-                    return foo.get_indexed_values(
-                        self._dataset._sample_collection,
-                        field,
-                        values_only=True,
-                    )
-                except ValueError as e:
-                    # When get_indexed_values() raises a ValueError, it is a
-                    # recommendation of an index to create
-                    logger.debug(e)
+        if (
+            not _enforce_natural_order
+            and not expr
+            and (
+                field := self._get_field_for_covered_index_query(field_or_expr)
+            )
+        ):
+            try:
+                result = foo.get_indexed_values(
+                    self._dataset._sample_collection,
+                    field,
+                    values_only=True,
+                    _stream=_stream,
+                )
+                if _stream:
+                    for doc in result:
+                        yield doc[field]
+            except ValueError as e:
+                # When get_indexed_values() raises a ValueError, it is a
+                # recommendation of an index to create
+                logger.debug(e)
 
         make = lambda field_or_expr: foa.Values(
             field_or_expr,
@@ -9306,6 +9303,19 @@ class SampleCollection(object):
             _enforce_natural_order=_enforce_natural_order,
             _stream=True,
         )
+
+    def _get_field_for_covered_index_query(self, field_or_expr):
+        field = None
+        if isinstance(field_or_expr, str):
+            field = field_or_expr
+        elif etau.is_container(field_or_expr) and len(field_or_expr) == 1:
+            field = field_or_expr[0]
+
+        # @todo consider supporting non-default fields that are indexed
+        # @todo can we support some non-full collections?
+        if field in ("id", "_id", "filepath") and self._is_full_collection():
+            return field
+        return None
 
     def draw_labels(
         self,
