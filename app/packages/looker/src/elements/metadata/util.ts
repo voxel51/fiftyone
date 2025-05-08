@@ -26,10 +26,17 @@ export const getFileExtension = (path?: string): string | undefined => {
 
 export const getIcon = (path: string): string => {
   const extension = getFileExtension(path);
+
+  // icon may be a path or an object like {src: path} depending on the
+  // environment.
+  let icon: string | { src: string };
   if (!extension || !iconMapping[extension]) {
-    return defaultIcon;
+    icon = defaultIcon;
+  } else {
+    icon = iconMapping[extension];
   }
-  return iconMapping[extension];
+
+  return (icon as any as { src: string }).src ?? icon;
 };
 
 export const getFileName = (path?: string): string | undefined => {
