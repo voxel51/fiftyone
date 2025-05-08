@@ -92,7 +92,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build and push (not latest)
+      - name: Build and push (except latest)
         if: matrix.python != '3.11'
         uses: docker/build-push-action@v6
         with:
@@ -119,6 +119,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
+            voxel51/fiftyone:${{ env.fo_version }}
             voxel51/fiftyone:${{ env.fo_version }}-python${{ env.pyver }}
             voxel51/fiftyone:${{ env.fo_version }}-python${{ env.pyver }}-${{ env.today }}
-            latest
+            voxel51/fiftyone:latest
