@@ -119,6 +119,6 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
+            voxel51/fiftyone:${{ env.fo_version }}
             voxel51/fiftyone:${{ env.fo_version }}-python${{ env.pyver }}
             voxel51/fiftyone:${{ env.fo_version }}-python${{ env.pyver }}-${{ env.today }}
-            latest
