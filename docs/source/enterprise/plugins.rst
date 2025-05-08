@@ -721,7 +721,7 @@ of a run once they are available:
 
 .. image:: /images/plugins/operators/runs/logs_not_available_pre_completion.png
 
-.. image:: /images/plugins/operators/runs/logs_not_available_general.png
+.. image:: /images/plugins/operators/runs/logs_now_available_post_completion.png
 
 **Logs structure**
 
