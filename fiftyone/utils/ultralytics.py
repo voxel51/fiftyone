@@ -458,7 +458,7 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
                 model.overrides[k] = v
 
         custom = {
-            "conf": config.confidence_thresh,
+            "conf": 0.0,
             "save": False,
             "mode": "predict",
             "rect": False,
