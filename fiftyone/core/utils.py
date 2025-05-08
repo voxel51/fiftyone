@@ -1970,39 +1970,44 @@ class UniqueFilenameMaker(object):
             output paths (False)
     """
 
-    def __new__(
-        cls,
-        output_dir=None,
-        rel_dir=None,
-        alt_dir=None,
-        chunk_size=None,
-        default_ext=None,
-        ignore_exts=False,
-        ignore_existing=False,
-        idempotent=True,
-    ):
-        ppid = None
-        try:
-            ppid = psutil.Process(os.getpid()).ppid()
-            parent_process = psutil.Process(ppid)
-            if "python" not in parent_process.name().lower():
-                ppid = None
-        except psutil.NoSuchProcess:
-            pass  # Proceed with ppid as None if parent process doesn't exist
+    # =========================================================================
+    # Removing automatic implementation switch of UniqueFilenameMaker. Bug in
+    # detecting processes needs to be resolved before adding this back in.
+    # =========================================================================
 
-        if ppid is None or chunk_size is not None:
-            return super().__new__(cls)
+    # def __new__(
+    #     cls,
+    #     output_dir=None,
+    #     rel_dir=None,
+    #     alt_dir=None,
+    #     chunk_size=None,
+    #     default_ext=None,
+    #     ignore_exts=False,
+    #     ignore_existing=False,
+    #     idempotent=True,
+    # ):
+    #     ppid = None
+    #     try:
+    #         ppid = psutil.Process(os.getpid()).ppid()
+    #         parent_process = psutil.Process(ppid)
+    #         if "python" not in parent_process.name().lower():
+    #             ppid = None
+    #     except psutil.NoSuchProcess:
+    #         ppid = None  # Proceed with ppid as None if parent process doesn't exist
 
-        return MultiProcessUniqueFilenameMaker(
-            ppid,
-            output_dir,
-            rel_dir,
-            alt_dir,
-            default_ext,
-            ignore_exts,
-            ignore_existing,
-            idempotent,
-        )
+    #     if ppid is None or chunk_size is not None:
+    #         return super().__new__(cls)
+
+    #     return MultiProcessUniqueFilenameMaker(
+    #         ppid,
+    #         output_dir,
+    #         rel_dir,
+    #         alt_dir,
+    #         default_ext,
+    #         ignore_exts,
+    #         ignore_existing,
+    #         idempotent,
+    #     )
 
     def __init__(
         self,
