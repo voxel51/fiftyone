@@ -4100,6 +4100,30 @@ class DatasetTests(unittest.TestCase):
                 dataset3.default_skeleton, dataset.default_skeleton
             )
 
+    @drop_datasets
+    def test_ignore_fields_not_in_schema(self):
+        dataset = fo.Dataset()
+
+        sample = fo.Sample(filepath="image.jpg", foo="bar", bar="baz")
+        dataset.add_sample(sample)
+        field = "not_in_schema"
+        dataset._sample_collection.update_one(
+            {}, {"$set": {field: "some data"}}
+        )
+
+        # Load sample
+        loaded_sample = dataset.first()
+
+        # Verify that the field is not in the loaded sample
+        self.assertTrue(field not in loaded_sample)
+
+        # Verify that the field is in the database
+        doc = dataset._sample_collection.find_one(
+            {"filepath": loaded_sample.filepath}
+        )
+        self.assertTrue(field in doc)
+        self.assertEqual(doc[field], "some data")
+
 
 class DatasetExtrasTests(unittest.TestCase):
     @drop_datasets
