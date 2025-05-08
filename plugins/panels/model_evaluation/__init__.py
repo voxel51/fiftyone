@@ -654,7 +654,7 @@ class EvaluationPanel(Panel):
 
         # Restrict to subset, if applicable
         subset_def = view_options.get("subset_def", None)
-        subset_def_type = subset_def.get("type", None)
+        subset_def_type = subset_def.get("type", None) if subset_def else None
 
         if subset_def_type == "custom_code":
             code = subset_def.get("code", None)
