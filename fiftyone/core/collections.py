@@ -9237,24 +9237,16 @@ class SampleCollection(object):
         # potentially use a covered index query to get the values directly from
         # the index and avoid a COLLSCAN
         if (
-            not _enforce_natural_order
-            and not expr
-            and (
-                field := self._get_field_for_covered_index_query(field_or_expr)
+            field := self._field_for_covered_index_query_or_none(
+                field_or_expr,
+                expr=expr,
+                _enforce_natural_order=_enforce_natural_order,
             )
+        ) and (
+            result := self._indexed_values_or_none(field, _stream=False)
+            is not None
         ):
-            try:
-                return foo.get_indexed_values(
-                    self._dataset._sample_collection,
-                    field,
-                    values_only=True,
-                    _stream=False,
-                )
-
-            except ValueError as e:
-                # When get_indexed_values() raises a ValueError, it is a
-                # recommendation of an index to create
-                logger.debug(e)
+            return result
 
         make = lambda field_or_expr: foa.Values(
             field_or_expr,
@@ -9289,56 +9281,23 @@ class SampleCollection(object):
         """
 
         if (
-            not _enforce_natural_order
-            and not expr
-            and (
-                field := self._get_field_for_covered_index_query(field_or_expr)
+            field := self._field_for_covered_index_query_or_none(
+                field_or_expr,
+                expr=expr,
+                _enforce_natural_order=_enforce_natural_order,
             )
-        ):
-            try:
-                cursor = foo.get_indexed_values(
-                    self._dataset._sample_collection,
-                    field,
-                    values_only=True,
-                    _stream=True,
-                )
-                id_to_str = field_or_expr == "id"
+        ) and (
+            result := self._indexed_values_or_none(field, _stream=True)
+        ) is not None:
+            id_to_str = field_or_expr == "id"
+            if not id_to_str:
+                for doc in result:
+                    yield doc[field]
+            else:
+                for doc in result:
+                    yield str(doc["_id"])
+            return
 
-                for doc in cursor:
-                    if not id_to_str:
-                        yield doc[field]
-                    else:
-                        yield str(doc["_id"])
-                return
-
-            except ValueError as e:
-                # When get_indexed_values() raises a ValueError, it is a
-                # recommendation of an index to create
-                logger.debug(e)
-        # Alternative implementation using aggregation pipeline directly
-        # Unfortunately, can't get it work with just calling values()
-        # make = lambda field_or_expr: foa.Values(
-        #         field_or_expr,
-        #         expr=expr,
-        #         missing_value=missing_value,
-        #         unwind=unwind,
-        #         _allow_missing=_allow_missing,
-        #         _big_result=_big_result,
-        #         _raw=_raw,
-        #         _field=_field,
-        #         _lazy=True
-        # )
-        # if isinstance(field_or_expr, (list, tuple)):
-        #     aggregations=[make(arg) for arg in field_or_expr]
-        # else:
-        #     aggregations = [make(field_or_expr)]
-        #
-        # pipelines = self.aggregate(aggregations, _mongo=True)
-        #
-        # pipeline = pipelines[0]
-        # result_fields = pipeline[-1]["$project"].keys()
-        # for doc in self._dataset._sample_collection.aggregate( pipeline):
-        #     yield itemgetter(*result_fields)(doc)
         make = lambda field_or_expr: foa.Values(
             field_or_expr,
             expr=expr,
@@ -9354,7 +9313,13 @@ class SampleCollection(object):
         for doc_values in self._make_and_aggregate(make, field_or_expr):
             yield doc_values
 
-    def _get_field_for_covered_index_query(self, field_or_expr):
+    def _field_for_covered_index_query_or_none(
+        self, field_or_expr, expr=None, _enforce_natural_order=True
+    ):
+
+        if expr is not None or _enforce_natural_order:
+            return None
+
         field = None
         if isinstance(field_or_expr, str):
             field = field_or_expr
@@ -9365,6 +9330,22 @@ class SampleCollection(object):
         # @todo can we support some non-full collections?
         if field in ("id", "_id", "filepath") and self._is_full_collection():
             return field
+        return None
+
+    def _indexed_values_or_none(self, field, _stream):
+        try:
+            print("_indexed_values_or_none field=", field)
+            cursor = foo.get_indexed_values(
+                self._dataset._sample_collection,
+                field,
+                values_only=True,
+                _stream=_stream,
+            )
+            print("got cursor")
+            return cursor
+        except ValueError as e:
+            logger.debug(e)
+
         return None
 
     def draw_labels(
