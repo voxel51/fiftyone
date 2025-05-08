@@ -2885,9 +2885,7 @@ class Values(Aggregation):
 
         return values
 
-    def to_mongo(self, sample_collection, big_field=None, context=None):
-        if not self._lazy and not big_field:
-            big_field = "values"
+    def to_mongo(self, sample_collection, big_field="values", context=None):
         (
             path,
             pipeline,

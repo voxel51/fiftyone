@@ -9125,7 +9125,6 @@ class SampleCollection(object):
         _raw=False,
         _field=None,
         _enforce_natural_order=True,
-        _stream=False,
     ):
         """Extracts the values of a field from all samples in the collection.
 
@@ -9245,17 +9244,13 @@ class SampleCollection(object):
             )
         ):
             try:
-                result = foo.get_indexed_values(
+                return foo.get_indexed_values(
                     self._dataset._sample_collection,
                     field,
                     values_only=True,
-                    _stream=_stream,
+                    _stream=False,
                 )
-                if _stream:
-                    for doc in result:
-                        yield doc[field]
-                else:
-                    return result
+
             except ValueError as e:
                 # When get_indexed_values() raises a ValueError, it is a
                 # recommendation of an index to create
@@ -9270,7 +9265,7 @@ class SampleCollection(object):
             _big_result=_big_result,
             _raw=_raw,
             _field=_field,
-            _lazy=_stream,
+            _lazy=False,
         )
         return self._make_and_aggregate(make, field_or_expr)
 
@@ -9293,7 +9288,58 @@ class SampleCollection(object):
             iterator over the values
         """
 
-        return self.values(
+        if (
+            not _enforce_natural_order
+            and not expr
+            and (
+                field := self._get_field_for_covered_index_query(field_or_expr)
+            )
+        ):
+            try:
+                cursor = foo.get_indexed_values(
+                    self._dataset._sample_collection,
+                    field,
+                    values_only=True,
+                    _stream=True,
+                )
+                id_to_str = field_or_expr == "id"
+
+                for doc in cursor:
+                    if not id_to_str:
+                        yield doc[field]
+                    else:
+                        yield str(doc["_id"])
+                return
+
+            except ValueError as e:
+                # When get_indexed_values() raises a ValueError, it is a
+                # recommendation of an index to create
+                logger.debug(e)
+        # Alternative implementation using aggregation pipeline directly
+        # Unfortunately, can't get it work with just calling values()
+        # make = lambda field_or_expr: foa.Values(
+        #         field_or_expr,
+        #         expr=expr,
+        #         missing_value=missing_value,
+        #         unwind=unwind,
+        #         _allow_missing=_allow_missing,
+        #         _big_result=_big_result,
+        #         _raw=_raw,
+        #         _field=_field,
+        #         _lazy=True
+        # )
+        # if isinstance(field_or_expr, (list, tuple)):
+        #     aggregations=[make(arg) for arg in field_or_expr]
+        # else:
+        #     aggregations = [make(field_or_expr)]
+        #
+        # pipelines = self.aggregate(aggregations, _mongo=True)
+        #
+        # pipeline = pipelines[0]
+        # result_fields = pipeline[-1]["$project"].keys()
+        # for doc in self._dataset._sample_collection.aggregate( pipeline):
+        #     yield itemgetter(*result_fields)(doc)
+        make = lambda field_or_expr: foa.Values(
             field_or_expr,
             expr=expr,
             missing_value=missing_value,
@@ -9302,9 +9348,11 @@ class SampleCollection(object):
             _big_result=_big_result,
             _raw=_raw,
             _field=_field,
-            _enforce_natural_order=_enforce_natural_order,
-            _stream=True,
+            _lazy=True,
         )
+
+        for doc_values in self._make_and_aggregate(make, field_or_expr):
+            yield doc_values
 
     def _get_field_for_covered_index_query(self, field_or_expr):
         field = None
@@ -10525,7 +10573,7 @@ class SampleCollection(object):
         Returns:
             The aggregation result(s) corresponding to the input aggregation(s).
             Returns a single result for a single aggregation, a list of results
-            for multiple aggregations, or an iterator if all aggregations are lazy
+            for multiple aggregations, or a generator if all aggregations are lazy
         """
         if not aggregations:
             return []
@@ -10602,8 +10650,7 @@ class SampleCollection(object):
     def _iter_batched_results(self, batch_aggs, cursor):
         # extract each docs values as a tuple
         result_fields = [agg._big_field for agg in batch_aggs.values()]
-        for doc in cursor:
-            yield itemgetter(*result_fields)(doc)
+        return (itemgetter(*result_fields)(doc) for doc in cursor)
 
     async def _async_aggregate(self, aggregations):
         if not aggregations:
@@ -10891,9 +10938,15 @@ class SampleCollection(object):
 
     def _make_and_aggregate(self, make, args):
         if isinstance(args, (list, tuple)):
-            return tuple(self.aggregate([make(arg) for arg in args]))
+            return tuple(
+                self.aggregate(
+                    [make(arg) for arg in args],
+                )
+            )
 
-        return self.aggregate(make(args))
+        return self.aggregate(
+            make(args),
+        )
 
     def _build_aggregation(self, aggregations):
         scalar_result = isinstance(aggregations, foa.Aggregation)
