@@ -1592,7 +1592,6 @@ def get_indexed_values(
         cursor = _iter_indexed_values(
             collection, field_or_fields, index_key=index_key, query=query
         )
-        print("get_indexed_values stream:", _stream)
         if _stream:
             return cursor
 
