@@ -34,7 +34,10 @@ const SampleMetadata = ({ sample }: { sample: Sample }) => {
 
         <Stack direction="row" spacing={8}>
           <LabeledMetadata label="Size" value={getFileSize(sample)} />
-          <LabeledMetadata label="Type" value={getMimeType(sample)} />
+          <LabeledMetadata
+            label="Type"
+            value={getMimeType(sample) ?? "Unknown mime type"}
+          />
           <LabeledMetadata
             label="Created"
             value={formatLongDateTime(sample.created_at?.datetime)}
