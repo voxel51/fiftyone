@@ -1799,6 +1799,10 @@ class FiftyOneTorchDataset(Dataset):
     # called on every worker init
     @staticmethod
     def worker_init(worker_id):
+        import fiftyone.core.odm.database as food
+
+        food._disconnect()
+
         torch_dataset_object = torch.utils.data.get_worker_info().dataset
 
         # if the samples are already loaded, fail loudly
