@@ -3,6 +3,55 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.8.1
+-------------------------
+*Released May 8, 2025*
+
+Includes all updates from :ref:`FiftyOne 1.5.1 <release-notes-v1.5.1>`
+
+.. _release-notes-v1.5.1:
+
+FiftyOne 1.5.1
+--------------
+*Released May 8, 2025*
+
+App
+
+- Fixed a bug with plot interactivity in the
+  :ref:`Model Evaluation panel <app-model-evaluation-panel>`
+  `#5844 <https://github.com/voxel51/fiftyone/pull/5844>`_
+- Fixed a bug where certain modal sidebar queries would error
+  `#5848 <https://github.com/voxel51/fiftyone/pull/5848>`_
+- Fixed a bug which caused some SVG icons to not render correctly in deployed
+  environments
+  `#5849 <https://github.com/voxel51/fiftyone/pull/5849>`_
+- Fixed a bug which resulted in the UI displaying a stale set of saved views
+  `#5858 <https://github.com/voxel51/fiftyone/pull/5858>`_
+
+Brain
+
+- Fixed a bug when passing a custom non-sklearn `similarity_index` to
+  :func:`compute_uniqueness() <fiftyone.brain.compute_uniqueness>`
+  `#254 <https://github.com/voxel51/fiftyone-brain/pull/254>`_
+
+Core
+
+- Ensure that read access to the `admin` database is not required in order to
+  use FiftyOne
+  `#5872 <https://github.com/voxel51/fiftyone/pull/5872>`_
+- The :ref:`fiftyone migrate --all <cli-fiftyone-migrate>` command now includes
+  private datasets like patches, frames, and clips
+  `#5868 <https://github.com/voxel51/fiftyone/pull/5868>`_
+- Fixed `#5852 <https://github.com/voxel51/fiftyone/issues/5852>`_ by upgrading
+  strawberry-graphql library 
+  `#5855 <https://github.com/voxel51/fiftyone/pull/5855>`_
+
+Docs
+
+- Added a docs warning and raises an error when attempting to use the
+  :ref:`CVAT integration <cvat-integration>` with a CVAT server > 2.30
+  `#5857 <https://github.com/voxel51/fiftyone/pull/5857>`_
+
 FiftyOne Enterprise 2.8.0
 -------------------------
 *Released May 2, 2025*
@@ -195,7 +244,7 @@ Database
 - Added support for enabling
   :ref:`MongoDB network compression <mongodb-network-compression>`
   `#5693 <https://github.com/voxel51/fiftyone/pull/5693>`_
-- Improved performance of `fiftyone migrate --info`
+- Improved performance of :ref:`fiftyone migrate --info <cli-fiftyone-migrate>`
   `#5672 <https://github.com/voxel51/fiftyone/pull/5672>`_
 - Raised the minimum MongoDB version from 4.4 to 5.0 in accordance with our
   :ref:`deprecation schedule <deprecation-mongodb-4.4>`. FiftyOne will now
