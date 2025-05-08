@@ -9254,6 +9254,8 @@ class SampleCollection(object):
                 if _stream:
                     for doc in result:
                         yield doc[field]
+                else:
+                    return result
             except ValueError as e:
                 # When get_indexed_values() raises a ValueError, it is a
                 # recommendation of an index to create

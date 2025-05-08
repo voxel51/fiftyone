@@ -574,6 +574,12 @@ class DatasetTests(unittest.TestCase):
         self.assertListEqual(d.values("predictions.detections"), [])
         self.assertListEqual(d.values("predictions.detections.label"), [])
 
+        self.assertListEqual(list(d.iter_values("predictions")), [])
+        self.assertListEqual(list(d.iter_values("predictions.detections")), [])
+        self.assertListEqual(
+            list(d.iter_values("predictions.detections.label")), []
+        )
+
         d.add_samples(
             [
                 fo.Sample(
@@ -608,9 +614,11 @@ class DatasetTests(unittest.TestCase):
                 fo.Sample(filepath="image5.jpeg"),
             ]
         )
-
+        actual = d.values("predictions.detections.label")
+        itered_actual = list(d.iter_values("predictions.detections.label"))
+        self.assertListEqual(actual, itered_actual)
         self.assertListEqual(
-            d.values("predictions.detections.label"),
+            actual,
             [
                 ["cat", "dog"],
                 ["cat", "rabbit", "squirrel"],
@@ -620,8 +628,17 @@ class DatasetTests(unittest.TestCase):
             ],
         )
 
+        actual = d.values(
+            "predictions.detections.label", missing_value="missing"
+        )
+        itered_actual = list(
+            d.iter_values(
+                "predictions.detections.label", missing_value="missing"
+            )
+        )
+        self.assertListEqual(actual, itered_actual)
         self.assertListEqual(
-            d.values("predictions.detections.label", missing_value="missing"),
+            actual,
             [
                 ["cat", "dog"],
                 ["cat", "rabbit", "squirrel"],
@@ -631,34 +648,63 @@ class DatasetTests(unittest.TestCase):
             ],
         )
 
+        actual = d.values("predictions.detections[].label")
+        itered_actual = list(d.iter_values("predictions.detections[].label"))
+        self.assertListEqual(actual, itered_actual)
         self.assertListEqual(
-            d.values("predictions.detections[].label"),
+            actual,
             ["cat", "dog", "cat", "rabbit", "squirrel", "elephant", None],
         )
 
+        actual = d.values(F("predictions.detections[].label"))
+        itered_actual = list(
+            d.iter_values(F("predictions.detections[].label"))
+        )
+        self.assertListEqual(actual, itered_actual)
         self.assertListEqual(
-            d.values(F("predictions.detections[].label")),
+            actual,
             ["cat", "dog", "cat", "rabbit", "squirrel", "elephant", None],
         )
 
-        self.assertListEqual(
-            d.values(
+        actual = d.values(
+            "predictions.detections[].label", missing_value="missing"
+        )
+        itered_actual = list(
+            d.iter_values(
                 "predictions.detections[].label", missing_value="missing"
-            ),
+            )
+        )
+        self.assertListEqual(actual, itered_actual)
+        self.assertListEqual(
+            actual,
             ["cat", "dog", "cat", "rabbit", "squirrel", "elephant", "missing"],
         )
 
+        actual = d.values(F("predictions.detections").length())
+        itered_actual = list(
+            d.iter_values(F("predictions.detections").length())
+        )
+        self.assertListEqual(actual, itered_actual)
         self.assertListEqual(
-            d.values(F("predictions.detections").length()),
+            actual,
             [2, 3, 2, 0, 0],
         )
 
-        self.assertListEqual(
+        actual = d.values(
+            (F("predictions.detections.label") != None).if_else(
+                "found", "missing"
+            )
+        )
+        itered_actual = list(
             d.values(
                 (F("predictions.detections.label") != None).if_else(
                     "found", "missing"
                 )
-            ),
+            )
+        )
+        self.assertListEqual(actual, itered_actual)
+        self.assertListEqual(
+            actual,
             [
                 ["found", "found"],
                 ["found", "found", "found"],
@@ -668,12 +714,21 @@ class DatasetTests(unittest.TestCase):
             ],
         )
 
-        self.assertListEqual(
+        actual = d.values(
+            (F("predictions.detections[].label") != None).if_else(
+                "found", "missing"
+            )
+        )
+        itered_actual = list(
             d.values(
                 (F("predictions.detections[].label") != None).if_else(
                     "found", "missing"
                 )
-            ),
+            )
+        )
+        self.assertListEqual(actual, itered_actual)
+        self.assertListEqual(
+            actual,
             ["found", "found", "found", "found", "found", "found", "missing"],
         )
 
@@ -717,32 +772,62 @@ class DatasetTests(unittest.TestCase):
 
         # [num_samples][num_frames][num_classifications]
         values = dataset.values("frames.ground_truth.classifications.label")
+        itered_values = list(
+            dataset.iter_values("frames.ground_truth.classifications.label")
+        )
         expected = [
             [["cat"], None, ["dog"]],
             [["cat", "dog"], ["rabbit"], ["squirrel"]],
         ]
 
         self.assertListEqual(values, expected)
+        self.assertListEqual(itered_values, values)
 
         # [num_samples][num_frames x num_classifications]
         values1 = dataset.values("frames.ground_truth.classifications[].label")
+        itered_values1 = list(
+            dataset.iter_values("frames.ground_truth.classifications[].label")
+        )
+
         values2 = dataset.values(
             "frames.ground_truth.classifications.label", unwind=-1
         )
+        itered_values2 = list(
+            dataset.iter_values(
+                "frames.ground_truth.classifications.label", unwind=-1
+            )
+        )
+
         expected = [["cat", "dog"], ["cat", "dog", "rabbit", "squirrel"]]
         self.assertListEqual(values1, expected)
         self.assertListEqual(values2, expected)
+        self.assertListEqual(values1, itered_values1)
+        self.assertListEqual(values2, itered_values2)
 
         # [num_samples x num_frames x num_classifications]
         values1 = dataset.values(
             "frames[].ground_truth.classifications[].label"
         )
+        itered_values1 = list(
+            dataset.iter_values(
+                "frames[].ground_truth.classifications[].label"
+            )
+        )
+
         values2 = dataset.values(
             "frames.ground_truth.classifications.label", unwind=True
         )
+        itered_values2 = list(
+            dataset.iter_values(
+                "frames.ground_truth.classifications.label", unwind=True
+            )
+        )
+
         expected = ["cat", "dog", "cat", "dog", "rabbit", "squirrel"]
         self.assertListEqual(values1, expected)
         self.assertListEqual(values2, expected)
+        self.assertListEqual(values1, itered_values1)
+        self.assertListEqual(values2, itered_values2)
 
     @drop_datasets
     def test_nan_inf(self):
