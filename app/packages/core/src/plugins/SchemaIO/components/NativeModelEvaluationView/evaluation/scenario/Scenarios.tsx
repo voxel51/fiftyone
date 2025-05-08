@@ -1129,6 +1129,7 @@ function PredictionStatisticsChart(props) {
 }
 
 function ScenarioModelPerformanceChart(props) {
+  const theme = useTheme();
   const { scenario, compareScenario } = props;
   const { subsets } = scenario;
   const [subset, setSubset] = useState(subsets[0]);
@@ -1155,6 +1156,7 @@ function ScenarioModelPerformanceChart(props) {
       fill: "toself",
       name: key,
       marker: { color: KEY_COLOR },
+      hoveron: "points",
     },
   ];
 
@@ -1175,6 +1177,7 @@ function ScenarioModelPerformanceChart(props) {
       fill: "toself",
       name: compareKey,
       marker: { color: COMPARE_KEY_COLOR },
+      hoveron: "points",
     });
   }
   return (
@@ -1191,7 +1194,7 @@ function ScenarioModelPerformanceChart(props) {
         data={plotData}
         layout={{
           polar: {
-            bgcolor: "#272727",
+            bgcolor: theme.palette.background.card,
             radialaxis: {
               visible: true,
             },

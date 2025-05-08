@@ -17,9 +17,7 @@ export default function EvaluationScenarioAnalysis(props) {
     <Card sx={{ p: 2 }}>
       <Stack direction="row" sx={scenarioCardStyles.header}>
         <Stack direction="row" spacing={1} alignItems="center">
-          <Typography sx={scenarioCardStyles.title}>
-            Scenario Analysis
-          </Typography>
+          <Typography variant="h6">Scenario Analysis</Typography>
           <Typography sx={scenarioCardStyles.newBadge}>NEW</Typography>
         </Stack>
       </Stack>
