@@ -1993,7 +1993,7 @@ class UniqueFilenameMaker(object):
     #         if "python" not in parent_process.name().lower():
     #             ppid = None
     #     except psutil.NoSuchProcess:
-    #         pass  # Proceed with ppid as None if parent process doesn't exist
+    #         ppid = None  # Proceed with ppid as None if parent process doesn't exist
 
     #     if ppid is None or chunk_size is not None:
     #         return super().__new__(cls)
