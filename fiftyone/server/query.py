@@ -501,6 +501,7 @@ class Query(fosa.AggregateQuery):
     def saved_views(self, dataset_name: str) -> t.Optional[t.List[SavedView]]:
         try:
             ds = fod.load_dataset(dataset_name)
+            ds.reload()  # reload to avoid singleton issues
             return [
                 SavedView.from_doc(view_doc)
                 for view_doc in ds._doc.saved_views

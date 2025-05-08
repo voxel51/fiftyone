@@ -8316,7 +8316,9 @@ def _list_datasets_info(include_private=False, glob_patt=None, tags=None):
 
 def _list_datasets_query(include_private=False, glob_patt=None, tags=None):
     if include_private:
-        query = {}
+        # Protect against empty dataset docs, which can sometimes occur for
+        # reasons we don't fully understand
+        query = {"name": {"$exists": 1}}
     else:
         # Datasets whose sample collections don't start with `samples.` are
         # private e.g., patches or frames datasets
