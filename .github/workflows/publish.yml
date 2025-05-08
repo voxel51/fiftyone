@@ -103,6 +103,7 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
+          sbom: true
           tags: |
             voxel51/fiftyone:${{ env.fo_version }}-python${{ env.pyver }}
             voxel51/fiftyone:${{ env.fo_version }}-python${{ env.pyver }}-${{ env.today }}
@@ -118,6 +119,7 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
+          sbom: true
           tags: |
             voxel51/fiftyone:${{ env.fo_version }}
             voxel51/fiftyone:${{ env.fo_version }}-python${{ env.pyver }}
