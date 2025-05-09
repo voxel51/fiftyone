@@ -1665,8 +1665,6 @@ class FiftyOneTorchDataset(Dataset):
 
     Notes:
         General:
-        - This only works with persistent datasets.
-            In order to make a dataset persistent, do `dataset.persistent = True`
         - Process start methods
             It is recommended to use the 'spawn' and 'forkserver' start methods over 'fork'
             - Spawn and forkserver are safer when dealing with code that may be threaded (which a lot of code is, for example NumPy).
@@ -1714,11 +1712,6 @@ class FiftyOneTorchDataset(Dataset):
         skip_failures=False,
     ):
         super().__init__()
-
-        if samples._dataset.persistent is False:
-            raise ValueError(
-                "This class only works with persistent datasets. Please set your dataset to be persistent."
-            )
 
         if samples.media_type == fomd.GROUP:
             raise NotImplementedError(
