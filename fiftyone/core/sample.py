@@ -775,6 +775,9 @@ def _apply_confidence_thresh(label, confidence_thresh):
             k: _apply_confidence_thresh(v, confidence_thresh)
             for k, v in label.items()
         }
+    elif isinstance(label, fol.Keypoints):
+        for keypoint in label.keypoints:
+            keypoint.apply_confidence_threshold(confidence_thresh)
     elif isinstance(label, fol._HasLabelList):
         labels = [
             l
@@ -782,6 +785,8 @@ def _apply_confidence_thresh(label, confidence_thresh):
             if l.confidence is not None and l.confidence >= confidence_thresh
         ]
         setattr(label, label._LABEL_LIST_FIELD, labels)
+    elif isinstance(label, fol.Keypoint):
+        label.apply_confidence_threshold(confidence_thresh)
     elif hasattr(label, "confidence"):
         if label.confidence is None or label.confidence < confidence_thresh:
             label = None
