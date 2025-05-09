@@ -1742,7 +1742,7 @@ class FiftyOneTorchDataset(Dataset):
         self.vectorize = vectorize
 
         self.cached_fields = None
-        self.cache_field_names = self.field_mapping.values()
+        self.cache_field_names = list(self.field_mapping.values())
 
         if self.vectorize:
             self.cached_fields = {}
