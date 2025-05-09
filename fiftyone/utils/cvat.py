@@ -3671,6 +3671,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         return "%s/%d" % (self.tasks_url, task_id)
 
     def task_status_url(self, task_id):
+        logger.warning(
+            "task_status_url is deprecated and will be removed in a future version"
+        )
         return "%s/status" % self.task_url(task_id)
 
     def task_data_url(self, task_id):
@@ -3812,14 +3815,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             )
 
         logger.debug("CVAT server version: %s", self._server_version)
-
-        if self._server_version > Version("2.30"):
-            raise RuntimeError(
-                f"CVAT server version '{self._server_version}' is not "
-                "currently supported. Please use CVAT <= 2.30.\n\n"
-                "See https://github.com/voxel51/fiftyone/issues/5771 for "
-                "details."
-            )
 
     def _add_referer(self):
         if "Referer" not in self._session.headers:
@@ -4213,9 +4208,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             True/False
         """
         try:
-            response = self.get(
-                self.task_status_url(task_id), print_error_info=False
-            )
+            response = self.get(self.task_url(task_id), print_error_info=False)
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 404:
                 return False
