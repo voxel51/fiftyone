@@ -783,7 +783,9 @@ class DatasetTests(unittest.TestCase):
         # [num_samples][num_frames][num_classifications]
         values = dataset.values("frames.ground_truth.classifications.label")
         itered_values = list(
-            dataset.iter_values("frames.ground_truth.classifications.label")
+            dataset.values(
+                "frames.ground_truth.classifications.label", _generator=True
+            )
         )
         expected = [
             [["cat"], None, ["dog"]],
@@ -796,7 +798,9 @@ class DatasetTests(unittest.TestCase):
         # [num_samples][num_frames x num_classifications]
         values1 = dataset.values("frames.ground_truth.classifications[].label")
         itered_values1 = list(
-            dataset.iter_values("frames.ground_truth.classifications[].label")
+            dataset.values(
+                "frames.ground_truth.classifications[].label", _generator=True
+            )
         )
 
         values2 = dataset.values(
