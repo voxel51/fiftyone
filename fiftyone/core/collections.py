@@ -9583,6 +9583,46 @@ class SampleCollection(object):
         if archive_path is not None:
             etau.make_archive(export_dir, archive_path, cleanup=True)
 
+    def to_torch(
+        self,
+        get_item,
+        vectorize=False,
+        skip_failures=False,
+        local_process_group=None,
+    ):
+        """Constructs a :class:`torch:torch.utils.data.Dataset` that loads data
+        from this collection via the provided
+        :class:`fiftyone.utils.torch.GetItem` instance.
+
+        Args:
+            get_item: a :class:`fiftyone.utils.torch.GetItem`
+            vectorize (False): whether to load and cache the required fields
+                from the sample collection upfront (True) or lazily load the
+                values from each sample when items are retrieved (False).
+                Vectorizing gives faster data loading times, but you must have
+                enough memory to store the required field values for the entire
+                sample collection. When ``vectorize=True``, all field values
+                must be serializable; ie ``pickle.dumps(field_value)`` must not
+                raise an error
+            skip_failures (False): whether to skip failures that occur when
+                calling ``get_item``. If True, the exception will be returned
+                rather than the intended field values
+            local_process_group (None): the local process group. Only used
+                during distributed training
+
+        Returns:
+            a :class:`torch:torch.utils.data.Dataset`
+        """
+        from fiftyone.utils.torch import FiftyOneTorchDataset
+
+        return FiftyOneTorchDataset(
+            self,
+            get_item,
+            vectorize=vectorize,
+            skip_failures=skip_failures,
+            local_process_group=local_process_group,
+        )
+
     def annotate(
         self,
         anno_key,
@@ -11463,12 +11503,6 @@ class SampleCollection(object):
             raise ValueError(f"Dataset has no store '{store_name}'")
 
         return foos.ExecutionStore(store_name, svc)
-
-    def to_torch(self, get_item, **kwargs):
-        """See fo.utils.torch.FiftyOneTorchDataset for documentation."""
-        from fiftyone.utils.torch import FiftyOneTorchDataset
-
-        return FiftyOneTorchDataset(self, get_item, **kwargs)
 
 
 def _iter_label_fields(sample_collection):
