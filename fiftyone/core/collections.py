@@ -9244,8 +9244,7 @@ class SampleCollection(object):
             )
         ) and (
             result := self._indexed_values_or_none(field, _stream=False)
-            is not None
-        ):
+        ) is not None:
             return result
 
         make = lambda field_or_expr: foa.Values(
@@ -9334,15 +9333,12 @@ class SampleCollection(object):
 
     def _indexed_values_or_none(self, field, _stream):
         try:
-            print("_indexed_values_or_none field=", field)
-            cursor = foo.get_indexed_values(
+            return foo.get_indexed_values(
                 self._dataset._sample_collection,
                 field,
                 values_only=True,
                 _stream=_stream,
             )
-            print("got cursor")
-            return cursor
         except ValueError as e:
             logger.debug(e)
 
