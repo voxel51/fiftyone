@@ -19,10 +19,11 @@ import fiftyone.utils.torch as fout
 import fiftyone.core.utils as fou
 import fiftyone.zoo.models as fozm
 
-
 ultralytics = fou.lazy_import("ultralytics")
 torch = fou.lazy_import("torch")
 torchvision = fou.lazy_import("torchvision")
+
+DEFAULT_ULTRALYTICS_CONF = 0.25
 
 
 def convert_ultralytics_model(model):
@@ -457,8 +458,13 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
             for k, v in config.overrides.items():
                 model.overrides[k] = v
 
+        conf = (
+            config.confidence_thresh
+            if config.confidence_thresh
+            else DEFAULT_ULTRALYTICS_CONF
+        )
         custom = {
-            "conf": 0.0,
+            "conf": conf,
             "save": False,
             "mode": "predict",
             "rect": False,
@@ -610,6 +616,9 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
 
         if self.has_logits:
             self._output_processor.store_logits = self.has_logits
+
+        if self.config.confidence_thresh:
+            self._model.predictor.args.conf = self.config.confidence_thresh
 
         return self._output_processor(
             output,
