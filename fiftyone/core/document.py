@@ -18,6 +18,8 @@ from fiftyone.core.singletons import DocumentSingleton
 
 
 class _Document(object):
+    __slots__ = ("_doc", "_dataset", "__weakref__")
+
     def __init__(self, doc, dataset=None):
         self._doc = doc
         self._dataset = dataset
@@ -45,8 +47,12 @@ class _Document(object):
 
     def __setattr__(self, name, value):
         if name.startswith("_"):
-            super().__setattr__(name, value)
-            return
+            try:
+                super().__setattr__(name, value)
+                return
+            except AttributeError:
+                # Not a __slot__'ed field
+                pass
 
         if not self.has_field(name):
             dtype = "frame" if "Frame" in self.__class__.__name__ else "sample"
@@ -174,8 +180,8 @@ class _Document(object):
         field_name,
         value,
         create=True,
-        validate=True,
         dynamic=False,
+        **kwargs,
     ):
         """Sets the value of a field of the document.
 
@@ -183,7 +189,6 @@ class _Document(object):
             field_name: the field name
             value: the field value
             create (True): whether to create the field if it does not exist
-            validate (True): whether to validate values for existing fields
             dynamic (False): whether to declare dynamic embedded document
                 fields
 
@@ -195,16 +200,16 @@ class _Document(object):
             field_name,
             value,
             create=create,
-            validate=validate,
             dynamic=dynamic,
+            **kwargs,
         )
 
     def update_fields(
         self,
         fields_dict,
         expand_schema=True,
-        validate=True,
         dynamic=False,
+        **kwargs,
     ):
         """Sets the dictionary of fields on the document.
 
@@ -213,7 +218,6 @@ class _Document(object):
             expand_schema (True): whether to dynamically add new fields
                 encountered to the document schema. If False, an error is
                 raised if any fields are not in the document schema
-            validate (True): whether to validate values for existing fields
             dynamic (False): whether to declare dynamic embedded document
                 fields
 
@@ -226,8 +230,8 @@ class _Document(object):
                 field_name,
                 value,
                 create=expand_schema,
-                validate=validate,
                 dynamic=dynamic,
+                **kwargs,
             )
 
     def clear_field(self, field_name):
@@ -241,20 +245,32 @@ class _Document(object):
         """
         self._doc.clear_field(field_name)
 
-    def iter_fields(self, include_id=False, include_timestamps=False):
-        """Returns an iterator over the ``(name, value)`` pairs of the public
-        fields of the document.
+    def iter_fields(
+        self,
+        include_id=False,
+        include_timestamps=False,
+        include_private=False,
+    ):
+        """Returns an iterator over the ``(name, value)`` pairs of the fields
+        of the document.
 
         Args:
-            include_id (False): whether to include the ``id`` field
+            include_id (False): whether to include ID fields
             include_timestamps (False): whether to include the ``created_at``
                 and ``last_modified_at`` fields
+            include_private (False): whether to include private fields
 
         Returns:
             an iterator that emits ``(name, value)`` tuples
         """
-        for field_name in self.field_names:
-            if not include_id and field_name == "id":
+        for field_name in self._get_field_names(
+            include_private=include_private
+        ):
+            if not include_id and field_name in (
+                "id",
+                "_dataset_id",
+                "_sample_id",
+            ):
                 continue
 
             if not include_timestamps and field_name in (
@@ -282,8 +298,8 @@ class _Document(object):
         merge_lists=True,
         overwrite=True,
         expand_schema=True,
-        validate=True,
         dynamic=False,
+        **kwargs,
     ):
         """Merges the fields of the document into this document.
 
@@ -331,7 +347,6 @@ class _Document(object):
             expand_schema (True): whether to dynamically add new fields
                 encountered to the document schema. If False, an error is
                 raised if any fields are not in the document schema
-            validate (True): whether to validate values for existing fields
             dynamic (False): whether to declare dynamic embedded document
                 fields
 
@@ -340,7 +355,9 @@ class _Document(object):
                 exist
         """
         if not overwrite:
-            existing_field_names = set(self.field_names)
+            existing_field_names = set(
+                self._get_field_names(include_private=True)
+            )
 
         fields = document._parse_fields(fields=fields, omit_fields=omit_fields)
 
@@ -377,8 +394,8 @@ class _Document(object):
                 dst_field,
                 value,
                 create=expand_schema,
-                validate=validate,
                 dynamic=dynamic,
+                **kwargs,
             )
 
     def copy(self, fields=None, omit_fields=None):
@@ -459,9 +476,15 @@ class _Document(object):
         if fields is None:
             fields = {
                 f: f
-                for f in self.field_names
+                for f in self._get_field_names(include_private=True)
                 if f
-                not in ("id", "_dataset_id", "created_at", "last_modified_at")
+                not in (
+                    "id",
+                    "_sample_id",
+                    "_dataset_id",
+                    "created_at",
+                    "last_modified_at",
+                )
             }
         elif etau.is_str(fields):
             fields = {fields: fields}
@@ -492,6 +515,8 @@ class Document(_Document):
     Args:
         **kwargs: field names and values
     """
+
+    __slots__ = ()
 
     # The :class:`fiftyone.core.odm.document.Document` class used by this class
     # to store backing documents for instances that are *not* in the dataset
@@ -651,6 +676,13 @@ class DocumentView(_Document):
             filtered in this document view, if any
     """
 
+    __slots__ = (
+        "_view",
+        "_selected_fields",
+        "_excluded_fields",
+        "_filtered_fields",
+    )
+
     # The `Document` class associated with this `DocumentView` class
     # Subclasses must define this
     _DOCUMENT_CLS = Document
@@ -765,8 +797,8 @@ class DocumentView(_Document):
         field_name,
         value,
         create=True,
-        validate=True,
         dynamic=False,
+        **kwargs,
     ):
         if not create:
             # Ensures field exists
@@ -776,16 +808,16 @@ class DocumentView(_Document):
                 field_name,
                 value,
                 create=create,
-                validate=validate,
                 dynamic=dynamic,
+                **kwargs,
             )
         else:
             super().set_field(
                 field_name,
                 value,
                 create=create,
-                validate=validate,
                 dynamic=dynamic,
+                **kwargs,
             )
 
             if self._selected_fields is not None:
