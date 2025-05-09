@@ -254,32 +254,41 @@ def ensure_torch_hub_requirements(
         )
 
 
-class GetItem:
-    """A class that defines how to get the input for a model from a sample.
+class GetItem(object):
+    """A class that defines how to load the input for a model.
 
-    The :method:`fiftyone.utils.torch.GetItem.__call__` method
-    should return the input for the model from a dictionary corresponding
-    to a sample view.
+    Models that implement the
+    :class:`SupportsGetItem <fiftyone.core.models.SupportsGetItem` mixin use
+    this class to define how :class:`FiftyOneTorchDataset` should load their
+    inputs.
 
-    Instances of this class can be used in conjunction with
-    :class:`fiftyone.utils.torch.FiftyOneTorchDataset` to create performant torch datasets.
+    The :meth:`__call__` method should accept a dictionary mapping the keys
+    defined by :attr:`required_keys` to values extracted from the input
+    :class:`fiftyone.core.sample.Sample` instance according to the mapping
+    defined by :attr:`field_mapping`.
 
-    A :class:`fiftyone.utils.torch.GetItem` instance should only require
-    the fields specified in the values of `field_mapping`.
-
-    In the `__call__` method, only the keys specified in `required_keys`
-    should be used to create the input for the model.
+    Args:
+        field_mapping (None): a user-supplied dict mapping keys in
+            :attr:`required_keys` to field names of their dataset that contain
+            the required values
     """
 
     def __init__(self, field_mapping=None, **kwargs):
         super().__init__(**kwargs)
+
+        # By default, we assume that any keys not specified by `field_mapping`
+        # will exist under field names that exactly match `required_keys`
+        self._field_mapping = {k: k for k in self.required_keys}
+
+        # This updates `_field_mapping` via the attribute setter
         self.field_mapping = field_mapping
 
     def __call__(self, d):
-        """Prepares the input for :meth:`Model.predict` for a sample.
+        """Prepares the model input for a given sample's data.
 
         Args:
-            d: a dict with keys :meth:`required_keys` prepared for a sample.
+            d: a dict mapping the :meth:`required_keys` to values from the
+                sample being processed
 
         Returns:
             the model input
@@ -287,40 +296,34 @@ class GetItem:
         raise NotImplementedError("subclasses must implement __call__()")
 
     @property
-    def field_mapping(self):
-        """
-        a dictionary mapping the fields in the sample to the input fields for the model
-        if not defined, it's assumed that the fields are the same as the `required_keys`
-        of the `GetItem` instance.
+    def required_keys(self):
+        """The list of keys that must exist on the dicts provided to the
+        :meth:`__call__` method at runtime.
 
-        When this is updated, the behavior of __call__ should be updated accordingly.
-        This is what allows the user to specify the fields in the sample that are use
-        as input to the model.
+        The user supplies the field names from which to extract these values
+        from their samples via :attr:`field_mapping`.
         """
-        if not hasattr(self, "_field_mapping_dict"):
-            self._field_mapping_dict = {k: k for k in self.required_keys}
-        return self._field_mapping_dict
+        raise NotImplementedError("subclasses must implement required_keys")
+
+    @property
+    def field_mapping(self):
+        """A user-supplied dictionary mappings keys in :attr:`required_keys`
+        to field names of their dataset that contain the required values.
+        """
+        return self._field_mapping
 
     @field_mapping.setter
     def field_mapping(self, value):
-        if not hasattr(self, "_field_mapping_dict"):
-            self._field_mapping_dict = {k: k for k in self.required_keys}
-        if value is None:  # generally on init
-            value = {k: k for k in self.required_keys}
-        if not isinstance(value, dict):
-            raise ValueError("field_mapping must be a dictionary.")
+        if value is None:
+            return
 
         for k, v in value.items():
             if k not in self.required_keys:
                 raise ValueError(
-                    f"Field '{k}' is not in the required keys: {self.required_keys}"
+                    f"Unknown key '{k}'. The supported keys are {self.required_keys}"
                 )
-            self._field_mapping_dict[k] = v
 
-    @property
-    def required_keys(self):
-        """Subclasses can implement this property if they require additional keys."""
-        return []
+            self._field_mapping[k] = v
 
 
 class TorchEmbeddingsMixin(fom.EmbeddingsMixin):
@@ -588,17 +591,36 @@ class TorchImageModelConfig(foc.Config):
 
 
 class ImageGetItem(GetItem):
-    """GetItem for :class:`TorchImageModels`"""
+    """A :class:`GetItem` that loads images to feed to :class:`TorchImageModel`
+    instances.
+
+    By default, images are loaded from the ``"filepath"`` field of samples, but
+    users can override this by providing
+    ``field_mapping={"filepath": "another_field"}``.
+
+    Args:
+        field_mapping (None): the user-supplied dict mapping keys in
+            :attr:`required_keys` to field names of their dataset that contain
+            the required values
+        transform (None): a ``torchvision.transforms`` function to apply
+        raw_inputs (False): whether to feed the raw list of images to the model
+            rather than stacking them as a Torch tensor
+        using_half_precision (False): whether the model is using half precision
+        use_numpy (False): whether to use numpy arrays rather than PIL images
+            and Torch tensors when loading data
+    """
 
     def __init__(
         self,
+        field_mapping=None,
         transform=None,
         raw_inputs=False,
         using_half_precision=False,
         use_numpy=False,
         **kwargs,
     ):
-        super().__init__(**kwargs)
+        super().__init__(field_mapping=field_mapping, **kwargs)
+
         self.transform = transform
         self.raw_inputs = raw_inputs
         self.using_half_precision = using_half_precision
@@ -606,20 +628,19 @@ class ImageGetItem(GetItem):
 
     def __call__(self, d):
         img = _load_image(
-            # hardcoded because that's how it was in fiftyone.core.models._make_data_loader
             d["filepath"],
             use_numpy=self.use_numpy,
             force_rgb=True,
         )
+
         if self.transform is not None:
             img = self.transform(img)
 
         if self.raw_inputs:
             return img
 
-        else:
-            if self.using_half_precision and torch.is_tensor(img):
-                img = img.half()
+        if self.using_half_precision and torch.is_tensor(img):
+            img = img.half()
 
         return img
 
@@ -1641,187 +1662,139 @@ def _is_string_array(targets):
 
 
 class FiftyOneTorchDataset(Dataset):
-    """A class that accepts a FO dataset and creates a corresponding torch.utils.data.Dataset
+    """Constructs a :class:`torch:torch.utils.data.Dataset` that loads data
+    from an arbitrary :class:`fiftyone.core.collections.SampleCollection` via
+    the provided :class:`GetItem` instance.
 
     Args:
-        samples: a :class:`fo.core.collections.SampleCollection`
-        get_item: a :class:`fiftyone.utils.torch.GetItem` instance.
-        vectorize (False): whether to serialize and load to memory the required fields
-            of the `get_item` passed. This gives faster data loading times, but
-            requires more memory and has some upfront cost. If this is set to `False`,
-            the fields will be loaded on the fly from the database.
-            Please note :   the field values must be pickle serializable i.e.
-                            `pickle.dumps(field_value)` should not raise an error.
-                            `pickle.loads(pickle.dumps(field_value))` should have all of the
-                            functionality of the original field value that you would need
-                            in your get_item function.
-        local_process_group (None) - only pass if running Distributed Data Parallel (DDP).
-            The process group with each of the processes running the main train script
-            on the machine this object is on.
-        skip_failures (False): whether to skip failures when loading samples.
-            If True, the dataset will return the exception that occurred in place of the
-            resulting get_item value.
-            If False, the code will fail normally.
-
-    Notes:
-        General:
-        - Process start methods
-            It is recommended to use the 'spawn' and 'forkserver' start methods over 'fork'
-            - Spawn and forkserver are safer when dealing with code that may be threaded (which a lot of code is, for example NumPy).
-            - MongoDB, which backs FiftyOne's database, is not fork safe. In theory nothing here should be breaking, but you will see a lot of warnings.
-            - When using persistent_workers=True, the overhead of 'spawn' and 'forkserver' is low.
-            - When using Jupyter notebooks, if you want all of your code to be in the notebook, rather than calling it from a python file, you'll have
-                to use fork. Do so at your own risk.
-                You can easily set the start method for all of your torch code with the following command:
-                `torch.multiprocessing.set_start_method('forkserver')`
-        - Make sure to not touch `self.samples` or subscript this object until after
-            all workers are initialized. This will help you avoid unnecessary memory
-            usage. If you're using DDP, this will help your code not crash.
-
-        DDP:
-        - A helper function ::method:`distributed_init` is provided to be called by each
-            trainer process in the beginning of DDP training. This function:
-            - Safely creates a database connection for each trainer
-            - Shares an authkey between all local processes to ensure they can communicate
-
-        torch.utils.data.Dataloader use:
-        - DO NOT use torch.Tensor.to in this function, do so in the train loop, or use
-            the `pin_memory` argument in your torch.utils.data.DataLoader
-        - If using a dataloader with many workers, remember to pass
-            :method:`fo.utils.torch.FiftyOneTorchDataset.worker_init` to the argument `worker_init_fn`.
-            This class will not work otherwise.
-        - Using `persistent_workers=True` is a good idea.
-
-        On reading and writing to the FO object during training:
-        - Reading
-            - Try to have as many of the reads as possible during `get_item` or
-             when caching fields rather than in the main training script loop.
-             Reads into the FO object during training may slow your code down significantly.
-        - Writing
-            - Writing currently happens on the process from which it is called. This
-            shows moderate slowdown, and will be adressed.
-
+        samples: a :class:`fiftyone.core.collections.SampleCollection`
+        get_item: a :class:`GetItem`
+        vectorize (False): whether to load and cache the required fields from
+            the sample collection upfront (True) or lazily load the values from
+            each sample when items are retrieved (False). Vectorizing gives
+            faster data loading times, but you must have enough memory to store
+            the required field values for the entire collection. When
+            ``vectorize=True``, all field values must be serializable; ie
+            ``pickle.dumps(field_value)`` must not raise an error
+        skip_failures (False): whether to skip failures that occur when calling
+            ``get_item``. If True, the exception will be returned rather than
+            the intended field values
+        local_process_group (None): the local process group. Only used during
+            distributed training
     """
 
     def __init__(
         self,
-        samples: focol.SampleCollection,
-        get_item: GetItem,
-        vectorize: bool = False,
-        local_process_group=None,
+        samples,
+        get_item,
+        vectorize=False,
         skip_failures=False,
+        local_process_group=None,
     ):
         super().__init__()
 
-        if samples.media_type == fomd.GROUP:
-            raise NotImplementedError(
-                "Not compatible with grouped datasets yet. If you want this feature, please let us know!"
-            )
-
-        start_method = multiprocessing.get_start_method(allow_none=True)
-        if start_method not in ["spawn", "forkserver"]:
-            warnings.warn(
-                f"Your start method is {start_method}. It is recommended to use 'spawn' or 'forkserver' with this class."
-            )
-
         self.field_mapping = get_item.field_mapping.copy()
+
+        # Optimization: only select the specific fields that we'll need to
+        # pass to `get_item`
         samples = samples.select_fields(list(self.field_mapping.values()))
 
-        self.name = samples._dataset.name
-        # either a whole dataset or a view
+        self.dataset_name = samples._root_dataset.name
         self.stages = (
             samples._serialize()
             if isinstance(samples, fov.DatasetView)
             else None
         )
+
         self.get_item = get_item
         self.skip_failures = skip_failures
 
-        self.ids = self._load_field(samples, "id", local_process_group)
+        self.ids = self._load_field(
+            samples, "id", local_process_group=local_process_group
+        )
 
         self.vectorize = vectorize
-
         self.cached_fields = None
-        self.cache_field_names = list(self.field_mapping.values())
-
-        if self.vectorize:
-            self.cached_fields = {}
-
-            to_load = list(self.cache_field_names)
-            if "id" in self.cache_field_names:
-                # we already load the id field
-                to_load.remove("id")
-                self.cached_fields["id"] = self.ids
-
-            for fn in to_load:
-                self.cached_fields[fn] = self._load_field(
-                    samples, fn, local_process_group
-                )
+        if vectorize:
+            self._cache_fields(
+                samples, local_process_group=local_process_group
+            )
 
         # initialized in worker
         self._dataset = None
         self._samples = None
 
-    def _load_field(self, samples, field_name, local_process_group):
-        if not samples.has_field(field_name):
-            raise ValueError(
-                f'Can\'t find field with name "{field_name}" in samples passed.'
+    def _cache_fields(self, samples, local_process_group=None):
+        self.cached_fields = {}
+
+        fields_to_load = list(self.field_mapping.values())
+
+        if "id" in fields_to_load:
+            self.cached_fields["id"] = self.ids
+            fields_to_load.remove("id")
+
+        # @todo load all fields via a single `values()` call
+        for field_name in fields_to_load:
+            self.cached_fields[field_name] = self._load_field(
+                samples, field_name, local_process_group=local_process_group
             )
 
-        # don't get fancy if you don't have to
+    def _load_field(self, samples, field_name, local_process_group):
         if local_process_group is None:
             return TorchSerializedList(samples.values(field_name))
 
-        # have to get fancy
-        else:
-            if get_local_rank(local_process_group) == 0:
-                return TorchShmSerializedList(
-                    samples.values(field_name), local_process_group
-                )
-            else:
-                # don't need to pass actual data if not local rank 0
-                # we read it from shared memory anyways
-                return TorchShmSerializedList([], local_process_group)
+        if get_local_rank(local_process_group) == 0:
+            return TorchShmSerializedList(
+                samples.values(field_name), local_process_group
+            )
+
+        # We don't need to pass actual data if we're not in local rank 0
+        # we read it from shared memory instead
+        return TorchShmSerializedList([], local_process_group)
 
     @property
     def samples(self):
-        if self._samples == None:
+        if self._samples is None:
             self._load_samples()
+
         return self._samples
 
-    # called on every worker init
     @staticmethod
     def worker_init(worker_id):
         import fiftyone.core.odm.database as food
 
+        # Ensure that each process creates its own MongoDB clients
+        # https://pymongo.readthedocs.io/en/stable/faq.html#using-pymongo-with-multiprocessing
+        # pylint:disable-next=protected-access
         food._disconnect()
 
-        torch_dataset_object = torch.utils.data.get_worker_info().dataset
+        torch_dataset = torch.utils.data.get_worker_info().dataset
 
-        # if the samples are already loaded, fail loudly
-        if torch_dataset_object._samples is not None:
+        if torch_dataset._samples is not None:
             raise ValueError(
-                "Worker init called after samples have been loaded. This should not happen. "
-                "This will fail anyways if using 'spawn' or 'forkserver' and can lead"
-                " to unexpected behavior if using 'fork'."
+                "worker_init() called after samples have been loaded. This "
+                "should not happen!"
             )
 
-        torch_dataset_object._load_samples()
+        torch_dataset._load_samples()
 
     @staticmethod
     def distributed_init(dataset_name, local_process_group, view_name=None):
-        """Function to be called by each trainer process in DDP training.
-        Facilitates communication between processes. Safely creates database connection for each trainer.
+        """Initializes a trainer process during distributed training.
 
         This function should be called at the beginning of the training script.
+        It facilitates communication between processes and safely creates a
+        database connection for each trainer.
 
         Args:
             dataset_name: the name of the dataset to load
-            local_process_group: the process group with all the processes running the main training script
-            view_name (None): the name of the view to load. If None, the whole dataset is loaded.
+            local_process_group: the process group with all the processes
+                running the main training script
+            view_name (None): the name of a saved view to load
 
         Returns:
-            The loaded :class:`fiftyone.core.dataset.Dataset` or :class:`fiftyone.core.view.DatasetView`
+            the loaded :class:`fiftyone.core.dataset.Dataset` or
+            :class:`fiftyone.core.view.DatasetView`
         """
         import fiftyone as fo
 
@@ -1830,10 +1803,10 @@ class FiftyOneTorchDataset(Dataset):
 
         for i in range(get_local_size(local_process_group)):
             if get_local_rank(local_process_group) == i:
-                # load the dataset
                 dataset = fo.load_dataset(dataset_name)
                 if view_name is not None:
                     dataset = dataset.load_saved_view(view_name)
+
             torch.distributed.barrier(local_process_group)
 
         return dataset
@@ -1841,7 +1814,7 @@ class FiftyOneTorchDataset(Dataset):
     def _load_samples(self):
         import fiftyone as fo
 
-        self._dataset = fo.load_dataset(self.name)
+        self._dataset = fo.load_dataset(self.dataset_name)
         if self.stages is not None:
             self._samples = fov.DatasetView._build(self._dataset, self.stages)
         else:
@@ -1853,6 +1826,7 @@ class FiftyOneTorchDataset(Dataset):
         except Exception as e:
             if not self.skip_failures:
                 raise e
+
             return e
 
     def _get_samples(self, indices):
@@ -1869,13 +1843,16 @@ class FiftyOneTorchDataset(Dataset):
                     d[key] = sample[field]
                 except Exception as e:
                     error = ValueError(
-                        f"Error loading field {field} assigned to key {key} : {e}"
+                        f"Error loading field {field} assigned to key {key}: {e}"
                     )
                     if not self.skip_failures:
                         raise error from e
+
                     d = error
                     break
+
             batch.append(d)
+
         return batch
 
     def _prepare_batch_vectorized(self, indices):
@@ -1883,9 +1860,10 @@ class FiftyOneTorchDataset(Dataset):
         for i in indices:
             d = {}
             for key, field in self.field_mapping.items():
-                # errors should be caught earlier
                 d[key] = self.cached_fields[field][i]
+
             batch.append(d)
+
         return batch
 
     def __getitem__(self, idx):
@@ -2490,16 +2468,17 @@ class NumpySerializedList:
             buffer = pickle.dumps(data, protocol=-1)
             return np.frombuffer(buffer, dtype=np.uint8)
 
-        logger.info(
-            "Serializing {} elements to byte tensors and concatenating them all ...".format(
-                len(lst)
-            )
+        logger.debug(
+            "Serializing {} elements to byte tensors and concatenating them "
+            "all ...".format(len(lst))
         )
+
         self._lst = [_serialize(x) for x in lst]
         self._addr = np.asarray([len(x) for x in self._lst], dtype=np.int64)
         self._addr = np.cumsum(self._addr)
         self._lst = np.concatenate(self._lst)
-        logger.info(
+
+        logger.debug(
             "Serialized dataset takes {:.2f} MiB".format(
                 len(self._lst) / 1024**2
             )
@@ -2559,77 +2538,115 @@ class TorchShmSerializedList(TorchSerializedList):
             )
 
 
-def get_local_size(local_process_group) -> int:
-    """
+def get_local_size(local_process_group):
+    """Gets the number of processes per-machine in the local process group.
+
+    Args:
+        local_process_group: the local process group
+
     Returns:
-        The size of the per-machine process group,
-        i.e. the number of processes per machine.
+        the number of processes per-machine
     """
     if not dist.is_available():
         return 1
+
     if not dist.is_initialized():
         return 1
+
     return dist.get_world_size(group=local_process_group)
 
 
-def get_local_rank(local_process_group) -> int:
-    """
+def get_world_size():
+    """Returns the world size of the current operation.
+
     Returns:
-        The rank of the current process within the local (per-machine) process group.
+        the world size
+    """
+    if not dist.is_available():
+        return 1
+
+    if not dist.is_initialized():
+        return 1
+
+    return dist.get_world_size()
+
+
+def get_local_rank(local_process_group):
+    """Gets the rank of the current process within the local processes group.
+
+    Args:
+        local_process_group: the local process group
+
+    Returns:
+        the rank of the current process
     """
     if not dist.is_available():
         return 0
+
     if not dist.is_initialized():
         return 0
+
     return dist.get_rank(group=local_process_group)
 
 
-def get_rank() -> int:
+def get_rank():
+    """Gets the rank of the current process.
+
+    Returns:
+        the rank of the current process
+    """
     if not dist.is_available():
         return 0
+
     if not dist.is_initialized():
         return 0
+
     return dist.get_rank()
 
 
-def local_scatter(array: Optional[List[Any]], local_process_group):
-    """
-    Scatter an array from local leader to all local workers.
-    The i-th local worker gets array[i].
+def local_scatter(array, local_process_group):
+    """Scatters the given array from the local leader to all local workers.
+
+    The worker with rank ``i`` gets ``array[i]``.
 
     Args:
-        array: Array with same size of #local workers.
+        array: an array with same size as the local process group
+        local_process_group: the local process group
+
+    Returns:
+        the array element for the current rank
     """
     if get_local_size(local_process_group) == 1:
-        # Just one worker. Do nothing.
         return array[0]
+
     if get_local_rank(local_process_group) == 0:
         assert len(array) == get_local_size(local_process_group)
         all_gather(array)
     else:
         all_data = all_gather(None)
         array = all_data[get_rank() - get_local_rank(local_process_group)]
+
     return array[get_local_rank(local_process_group)]
 
 
 def all_gather(data, group=None):
-    """
-    Run all_gather on arbitrary picklable data (not necessarily tensors).
+    """Gathers arbitrary picklable data (not necessarily tensors).
 
     Args:
         data: any picklable object
-        group: a torch process group. By default, will use a group which
-            contains all ranks on gloo backend.
+        group (None): a torch process group. By default, uses a group which
+            contains all ranks on gloo backend
 
     Returns:
-        list[data]: list of data gathered from each rank
+        the list of data gathered from each rank
     """
     if get_world_size() == 1:
         return [data]
+
     if group is None:
-        group = (
-            _get_global_gloo_group()
-        )  # use CPU group by default, to reduce GPU RAM usage.
+        # use CPU group by default, to reduce GPU RAM usage
+        group = _get_global_gloo_group()
+
     world_size = dist.get_world_size(group)
     if world_size == 1:
         return [data]
@@ -2639,18 +2656,9 @@ def all_gather(data, group=None):
     return output
 
 
-def get_world_size() -> int:
-    if not dist.is_available():
-        return 1
-    if not dist.is_initialized():
-        return 1
-    return dist.get_world_size()
-
-
 @functools.lru_cache()
 def _get_global_gloo_group():
-    """
-    Return a process group based on gloo backend, containing all the ranks
+    """Returns a process group based on gloo backend, containing all the ranks.
     The result is cached.
     """
     if dist.get_backend() == "nccl":
@@ -2663,14 +2671,15 @@ def _get_global_gloo_group():
 def local_broadcast_process_authkey(local_process_group):
     if get_local_size(local_process_group) == 1:
         return
+
     local_rank = get_local_rank(local_process_group)
     authkey = bytes(torch.multiprocessing.current_process().authkey)
     all_keys = all_gather(authkey, local_process_group)
     local_leader_key = all_keys[torch.distributed.get_rank() - local_rank]
     if authkey != local_leader_key:
         logger.info(
-            "Process authkey is different from the key of local leader. This might happen when "
-            "workers are launched independently."
+            "Process authkey is different from the key of local leader. This "
+            "might happen when workers are launched independently."
         )
         logger.info("Overwriting local authkey ...")
         multiprocessing.current_process().authkey = local_leader_key

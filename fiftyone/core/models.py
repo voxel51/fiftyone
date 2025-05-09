@@ -159,14 +159,14 @@ def apply_model(
         field_mapping = kwargs.pop("field_mapping", {})
         needs_fields = kwargs.pop("needs_fields", {})
         needs_fields.update(kwargs)
-    elif supports_get_item and not needs_samples:  # being explicit
+    elif supports_get_item:
         field_mapping = kwargs.pop("field_mapping", {})
         field_mapping.update(kwargs)
         needs_fields = None
-    elif needs_samples and not supports_get_item:
+    elif needs_samples:
+        field_mapping = None
         needs_fields = kwargs.pop("needs_fields", {})
         needs_fields.update(kwargs)
-        field_mapping = None
     else:
         field_mapping = None
         needs_fields = None
@@ -2447,16 +2447,32 @@ class TorchModelMixin(object):
 
 class SupportsGetItem(object):
     """Mixin for models that support inference with
-    :class:`fiftyone.utils.torch.FiftyOneTorchDataset`."""
+    :class:`fiftyone.utils.torch.FiftyOneTorchDataset`.
+
+    Models that implement this mixin must implement
+    :meth:`build_get_item` to build the :class:`fiftyone.utils.torch.GetItem`
+    instance that defines how their data should be loaded by data loaders
+    during inference.
+    """
 
     @property
     def required_keys(self):
-        """The required keys that must be provided via `field_mapping`."""
+        """The required keys that must be provided to methods like
+        :func:`apply_model` and :func:`compute_embeddings` during inference.
+        """
         return self.build_get_item().required_keys
 
     def build_get_item(self, field_mapping=None):
-        """Builds a :class:`fiftyone.utils.torch.GetItem` instance that
-        can be passed to `to_torch`.
+        """Builds the :class:`fiftyone.utils.torch.GetItem` instance that
+        defines how the model's data should be loaded by data loaders during
+        inference.
+
+        Args:
+            field_mapping (None): a dict mapping required keys to dataset field
+                names
+
+        Returns:
+            a :class:`fiftyone.utils.torch.GetItem` instance
         """
         raise NotImplementedError("subclasses must implement build_get_item()")
 
