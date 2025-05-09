@@ -119,12 +119,10 @@ class TestCreate:
                 config=config, batch_cls=batch_cls, num_workers=2
             )
 
-            # Call and consume
             list(
-                # pylint:disable-next=protected-access
-                mapper._map_samples_multiple_workers(
-                    sample_collection=sample_collection,
-                    map_fcn=map_fcn,
+                mapper.map_samples(
+                    sample_collection,
+                    map_fcn,
                     progress=progress_option,
                     save=False,
                     skip_failures=False,

@@ -11,6 +11,7 @@ from queue import Empty
 from typing import (
     Any,
     Callable,
+    Iterable,
     Iterator,
     List,
     Literal,
@@ -25,7 +26,6 @@ import dill as pickle
 import bson
 from tqdm.auto import tqdm
 
-import fiftyone as fo
 import fiftyone.core.config as focc
 import fiftyone.core.utils as fou
 import fiftyone.core.map.batcher as fomb
@@ -37,6 +37,7 @@ fov = fou.lazy_import("fiftyone.core.view")
 
 T = TypeVar("T")
 R = TypeVar("R")
+U = TypeVar("U")
 
 
 class ProcessMapper(fomm.LocalMapper):
@@ -63,21 +64,27 @@ class ProcessMapper(fomm.LocalMapper):
         if config.max_process_pool_workers is not None:
             num_workers = min(num_workers, config.max_process_pool_workers)
 
-        return cls(batch_cls, num_workers, batch_size)
+        return super(ProcessMapper, cls).create(
+            config=config,
+            batch_cls=batch_cls,
+            num_workers=num_workers,
+            batch_size=batch_size,
+        )
 
     def _map_samples_multiple_workers(
         self,
         sample_collection: SampleCollection[T],
-        map_fcn: Callable[[T], R],
+        iter_fcn: Callable[
+            [SampleCollection[T]], Iterable[Tuple[bson.ObjectId, U]]
+        ],
+        map_fcn: Callable[[U], R],
         *,
         progress: Union[bool, Literal["workers"], None],
-        save: bool,
         skip_failures: bool,
-    ) -> Iterator[Tuple[bson.ObjectId, R]]:
+    ) -> Iterator[
+        Tuple[bson.ObjectId, Union[Exception, None], Union[R, None]]
+    ]:
         ctx = fou.get_multiprocessing_context()
-
-        if progress is None:
-            progress = fo.config.show_progress_bars
 
         if progress == "workers":
             worker_progress = True
@@ -115,12 +122,12 @@ class ProcessMapper(fomm.LocalMapper):
             initargs=(
                 dataset_name,
                 view_stages,
+                pickle.dumps(iter_fcn),
                 pickle.dumps(map_fcn),
                 batch_count,
                 sample_count,
                 queue,
                 cancel_event,
-                save,
                 worker_progress,
                 skip_failures,
                 lock,
@@ -201,12 +208,12 @@ class ProcessMapper(fomm.LocalMapper):
 def _init_worker(
     dataset_name: str,
     view_stages: Any,
+    iter_fcn: bytes,
     map_fcn: bytes,
     batch_count: Optional[multiprocessing.Value],  # type: ignore
     sample_count: Optional[multiprocessing.Value],  # type: ignore
     queue: Optional[multiprocessing.Queue],
     cancel_event: multiprocessing.Event,  # type: ignore
-    save: bool,
     progress: bool,
     skip_failures: bool,
     lock: Optional[multiprocessing.RLock],  # type: ignore
@@ -222,12 +229,12 @@ def _init_worker(
 
     # pylint:disable=global-variable-undefined
     global process_sample_collection
+    global process_iter_fcn
     global process_map_fcn
     global process_batch_count
     global process_sample_count
     global process_queue
     global process_cancel_event
-    global process_save
     global process_progress
     global process_skip_failures
 
@@ -246,11 +253,11 @@ def _init_worker(
         process_sample_collection = dataset
 
     process_map_fcn = pickle.loads(map_fcn)
+    process_iter_fcn = pickle.loads(iter_fcn)
     process_batch_count = batch_count
     process_sample_count = sample_count
     process_queue = queue
     process_cancel_event = cancel_event
-    process_save = save
     process_progress = progress
     process_skip_failures = skip_failures
 
@@ -264,7 +271,7 @@ def _map_batch(args: Tuple[int, int, fomb.SampleBatch]):
     try:
         sample_collection = batch.create_subset(process_sample_collection)
 
-        sample_iter = sample_collection.iter_samples(autosave=process_save)
+        sample_iter = process_iter_fcn(sample_collection)
 
         pb = None
         if process_progress:
@@ -272,13 +279,15 @@ def _map_batch(args: Tuple[int, int, fomb.SampleBatch]):
             pb = tqdm(sample_iter, total=batch.total, desc=desc, position=i)
 
         while not process_cancel_event.is_set() and (
-            sample := next(sample_iter, None)
+            value := next(sample_iter, None)
         ):
+            sample_id, sample = value
+
             try:
                 sample_output = process_map_fcn(sample)
             except Exception as err:
                 # Add sample ID and error to the queue.
-                process_queue.put((sample.id, err, None))
+                process_queue.put((sample_id, err, None))
 
                 # If not skipping failures, cancel workers as soon as possible.
                 if not process_skip_failures:
@@ -286,7 +295,7 @@ def _map_batch(args: Tuple[int, int, fomb.SampleBatch]):
                     break
             else:
                 # Add sample ID and result to the queue.
-                process_queue.put((sample.id, None, sample_output))
+                process_queue.put((sample_id, None, sample_output))
 
             finally:
                 if process_sample_count is not None:
