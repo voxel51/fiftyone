@@ -2451,25 +2451,23 @@ class SupportsGetItem(object):
 
     Models that implement this mixin must implement
     :meth:`build_get_item` to build the :class:`fiftyone.utils.torch.GetItem`
-    instance that defines how their data should be loaded by data loaders
-    during inference.
+    instance that defines how their data should be loaded by data loaders.
     """
 
     @property
     def required_keys(self):
-        """The required keys that must be provided to methods like
-        :func:`apply_model` and :func:`compute_embeddings` during inference.
+        """The required keys that must be provided as parameters to methods
+        like :func:`apply_model` and :func:`compute_embeddings` at runtime.
         """
         return self.build_get_item().required_keys
 
     def build_get_item(self, field_mapping=None):
         """Builds the :class:`fiftyone.utils.torch.GetItem` instance that
-        defines how the model's data should be loaded by data loaders during
-        inference.
+        defines how the model's data should be loaded by data loaders.
 
         Args:
-            field_mapping (None): a dict mapping required keys to dataset field
-                names
+            field_mapping (None): a user-provided dict mapping required keys to
+                dataset field names
 
         Returns:
             a :class:`fiftyone.utils.torch.GetItem` instance

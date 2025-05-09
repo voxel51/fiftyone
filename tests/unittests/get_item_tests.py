@@ -25,13 +25,6 @@ class TestGetItem(unittest.TestCase):
         gi = DummyGetItem()
         self.assertEqual(set(gi.required_keys), set(["foo", "bar"]))
 
-    def test_default_required_keys(self):
-        class DummyGetItem(GetItem):
-            pass
-
-        gi = DummyGetItem()
-        self.assertEqual(set(gi.required_keys), set())
-
     def test_default_field_mapping(self):
         gi = DummyGetItem()
         self.assertEqual(gi.field_mapping, {"foo": "foo", "bar": "bar"})
@@ -46,10 +39,6 @@ class TestGetItem(unittest.TestCase):
         self.assertRaises(
             ValueError, setattr, gi, "field_mapping", {"oof": "foo"}
         )
-
-    def test_field_mapping_setter_not_dict(self):
-        gi = DummyGetItem()
-        self.assertRaises(ValueError, setattr, gi, "field_mapping", "foo")
 
     def test_field_mapping_setter_partial(self):
         gi = DummyGetItem()

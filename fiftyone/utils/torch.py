@@ -5,14 +5,14 @@ PyTorch utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import logging
+import functools
 import itertools
+import logging
 import multiprocessing
 import os
+import pickle
 import sys
 from typing import Any, Optional, List
-import pickle
-import functools
 import warnings
 
 import cv2
@@ -257,10 +257,9 @@ def ensure_torch_hub_requirements(
 class GetItem(object):
     """A class that defines how to load the input for a model.
 
-    Models that implement the
-    :class:`SupportsGetItem <fiftyone.core.models.SupportsGetItem` mixin use
-    this class to define how :class:`FiftyOneTorchDataset` should load their
-    inputs.
+    Models that implement the :class:`fiftyone.core.models.SupportsGetItem`
+    mixin use this class to define how :class:`FiftyOneTorchDataset` should
+    load their inputs.
 
     The :meth:`__call__` method should accept a dictionary mapping the keys
     defined by :attr:`required_keys` to values extracted from the input
