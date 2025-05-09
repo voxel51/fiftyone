@@ -807,8 +807,10 @@ class DatasetTests(unittest.TestCase):
             "frames.ground_truth.classifications.label", unwind=-1
         )
         itered_values2 = list(
-            dataset.iter_values(
-                "frames.ground_truth.classifications.label", unwind=-1
+            dataset.values(
+                "frames.ground_truth.classifications.label",
+                unwind=-1,
+                _generator=True,
             )
         )
 
@@ -823,8 +825,9 @@ class DatasetTests(unittest.TestCase):
             "frames[].ground_truth.classifications[].label"
         )
         itered_values1 = list(
-            dataset.iter_values(
-                "frames[].ground_truth.classifications[].label"
+            dataset.values(
+                "frames[].ground_truth.classifications[].label",
+                _generator=True,
             )
         )
 
@@ -832,8 +835,10 @@ class DatasetTests(unittest.TestCase):
             "frames.ground_truth.classifications.label", unwind=True
         )
         itered_values2 = list(
-            dataset.iter_values(
-                "frames.ground_truth.classifications.label", unwind=True
+            dataset.values(
+                "frames.ground_truth.classifications.label",
+                unwind=True,
+                _generator=True,
             )
         )
 
