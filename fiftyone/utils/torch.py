@@ -1738,7 +1738,7 @@ class FiftyOneTorchDataset(Dataset):
                 samples, field_name, local_process_group=local_process_group
             )
 
-    def _load_field(self, samples, field_name, local_process_group):
+    def _load_field(self, samples, field_name, local_process_group=None):
         if local_process_group is None:
             return TorchSerializedList(samples.values(field_name))
 
@@ -1760,6 +1760,14 @@ class FiftyOneTorchDataset(Dataset):
 
     @staticmethod
     def worker_init(worker_id):
+        """Initializes a worker during inference/training.
+
+        This method is used as the ``worker_init_fn`` parameter for
+        :class:`torch:torch.utils.data.DataLoader`.
+
+        Args:
+            worker_id: the worker ID
+        """
         import fiftyone.core.odm.database as food
 
         # Ensure that each process creates its own MongoDB clients
