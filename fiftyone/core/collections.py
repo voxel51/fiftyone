@@ -9125,6 +9125,7 @@ class SampleCollection(object):
         _raw=False,
         _field=None,
         _enforce_natural_order=True,
+        _generator=False,
     ):
         """Extracts the values of a field from all samples in the collection.
 
@@ -9243,9 +9244,19 @@ class SampleCollection(object):
                 _enforce_natural_order=_enforce_natural_order,
             )
         ) and (
-            result := self._indexed_values_or_none(field, _stream=False)
+            result := self._indexed_values_or_none(field, _stream=_generator)
         ) is not None:
-            return result
+            if _generator:
+                id_to_str = field_or_expr == "id"
+                if not id_to_str:
+                    for doc in result:
+                        yield doc[field]
+                else:
+                    for doc in result:
+                        yield str(doc["_id"])
+                return
+            else:
+                return result
 
         make = lambda field_or_expr: foa.Values(
             field_or_expr,
@@ -9256,8 +9267,14 @@ class SampleCollection(object):
             _big_result=_big_result,
             _raw=_raw,
             _field=_field,
-            _lazy=False,
+            _lazy=_generator,
         )
+
+        if _generator:
+            for doc_values in self._make_and_aggregate(make, field_or_expr):
+                yield doc_values
+            return
+
         return self._make_and_aggregate(make, field_or_expr)
 
     def iter_values(

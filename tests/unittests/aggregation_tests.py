@@ -574,10 +574,14 @@ class DatasetTests(unittest.TestCase):
         self.assertListEqual(d.values("predictions.detections"), [])
         self.assertListEqual(d.values("predictions.detections.label"), [])
 
-        self.assertListEqual(list(d.iter_values("predictions")), [])
-        self.assertListEqual(list(d.iter_values("predictions.detections")), [])
         self.assertListEqual(
-            list(d.iter_values("predictions.detections.label")), []
+            list(d.values("predictions", _generator=True)), []
+        )
+        self.assertListEqual(
+            list(d.values("predictions.detections", _generator=True)), []
+        )
+        self.assertListEqual(
+            list(d.values("predictions.detections.label", _generator=True)), []
         )
 
         d.add_samples(
@@ -615,7 +619,9 @@ class DatasetTests(unittest.TestCase):
             ]
         )
         actual = d.values("predictions.detections.label")
-        itered_actual = list(d.iter_values("predictions.detections.label"))
+        itered_actual = list(
+            d.values("predictions.detections.label", _generator=True)
+        )
         self.assertListEqual(actual, itered_actual)
         self.assertListEqual(
             actual,
@@ -632,8 +638,10 @@ class DatasetTests(unittest.TestCase):
             "predictions.detections.label", missing_value="missing"
         )
         itered_actual = list(
-            d.iter_values(
-                "predictions.detections.label", missing_value="missing"
+            d.values(
+                "predictions.detections.label",
+                missing_value="missing",
+                _generator=True,
             )
         )
         self.assertListEqual(actual, itered_actual)
@@ -649,7 +657,9 @@ class DatasetTests(unittest.TestCase):
         )
 
         actual = d.values("predictions.detections[].label")
-        itered_actual = list(d.iter_values("predictions.detections[].label"))
+        itered_actual = list(
+            d.values("predictions.detections[].label", _generator=True)
+        )
         self.assertListEqual(actual, itered_actual)
         self.assertListEqual(
             actual,
@@ -658,7 +668,7 @@ class DatasetTests(unittest.TestCase):
 
         actual = d.values(F("predictions.detections[].label"))
         itered_actual = list(
-            d.iter_values(F("predictions.detections[].label"))
+            d.values(F("predictions.detections[].label"), _generator=True)
         )
         self.assertListEqual(actual, itered_actual)
         self.assertListEqual(
@@ -670,9 +680,7 @@ class DatasetTests(unittest.TestCase):
             "predictions.detections[].label", missing_value="missing"
         )
         itered_actual = list(
-            d.iter_values(
-                "predictions.detections[].label", missing_value="missing"
-            )
+            d.values("predictions.detections[].label", missing_value="missing")
         )
         self.assertListEqual(actual, itered_actual)
         self.assertListEqual(
@@ -682,7 +690,7 @@ class DatasetTests(unittest.TestCase):
 
         actual = d.values(F("predictions.detections").length())
         itered_actual = list(
-            d.iter_values(F("predictions.detections").length())
+            d.values(F("predictions.detections").length(), _generator=True)
         )
         self.assertListEqual(actual, itered_actual)
         self.assertListEqual(
@@ -699,7 +707,8 @@ class DatasetTests(unittest.TestCase):
             d.values(
                 (F("predictions.detections.label") != None).if_else(
                     "found", "missing"
-                )
+                ),
+                _generator=True,
             )
         )
         self.assertListEqual(actual, itered_actual)
@@ -723,7 +732,8 @@ class DatasetTests(unittest.TestCase):
             d.values(
                 (F("predictions.detections[].label") != None).if_else(
                     "found", "missing"
-                )
+                ),
+                _generator=True,
             )
         )
         self.assertListEqual(actual, itered_actual)
