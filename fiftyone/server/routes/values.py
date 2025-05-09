@@ -71,7 +71,6 @@ class Values(HTTPEndpoint):
                 _search=regex_safe_search,
                 _selected=selected,
             ),
-            debug=True,
         )
 
         return {

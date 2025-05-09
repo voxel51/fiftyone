@@ -27,6 +27,8 @@ Python 3.8
 transitions to `end-of-life` effective October of 2024. FiftyOne releases after
 September 30, 2024 will no longer support Python 3.8.
 
+.. _deprecation-kubernetes-1.27:
+
 Kubernetes 1.27
 ---------------
 *Support ended November 1, 2024*
@@ -36,8 +38,10 @@ transitioned to `end-of-life` effective July of 2024. FiftyOne Enterprise
 releases after October 31, 2024 might no longer be compatible with
 Kubernetes 1.27 and older.
 
+.. _deprecation-mongodb-4.4:
+
 MongoDB 4.4
----------------
+-----------
 *Support ended March 1, 2025*
 
 `MongoDB 4.4 <https://www.mongodb.com/legal/support-policy/lifecycles>`_
@@ -45,8 +49,10 @@ transitioned to `end-of-life` effective February of 2024. FiftyOne
 releases after March 1, 2025 might no longer be compatible with
 MongoDB 4.4 and older.
 
+.. _deprecation-mongodb-5.0:
+
 MongoDB 5.0
----------------
+-----------
 *Support ending July 1, 2025*
 
 `MongoDB 5.0 <https://www.mongodb.com/legal/support-policy/lifecycles>`_
