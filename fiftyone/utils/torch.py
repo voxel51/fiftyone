@@ -298,13 +298,13 @@ class GetItem:
         as input to the model.
         """
         if not hasattr(self, "_field_mapping_dict"):
-            self._field_mapping_dict = {}
+            self._field_mapping_dict = {k: k for k in self.required_keys}
         return self._field_mapping_dict
 
     @field_mapping.setter
     def field_mapping(self, value):
         if not hasattr(self, "_field_mapping_dict"):
-            self._field_mapping_dict = {}
+            self._field_mapping_dict = {k: k for k in self.required_keys}
         if value is None:  # generally on init
             value = {k: k for k in self.required_keys}
         if not isinstance(value, dict):

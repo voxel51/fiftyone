@@ -152,17 +152,23 @@ def apply_model(
             "(model.has_logits = %s)" % model.has_logits
         )
 
-    if isinstance(model, SupportsGetItem):
-        field_mapping = kwargs.pop("field_mapping", {})
-        field_mapping.update(kwargs)
-    else:
-        field_mapping = None
-
+    supports_get_item = isinstance(model, SupportsGetItem)
     needs_samples = isinstance(model, SamplesMixin)
-    if needs_samples:
+
+    if supports_get_item and needs_samples:
+        field_mapping = kwargs.pop("field_mapping", {})
         needs_fields = kwargs.pop("needs_fields", {})
         needs_fields.update(kwargs)
+    elif supports_get_item and not needs_samples:  # being explicit
+        field_mapping = kwargs.pop("field_mapping", {})
+        field_mapping.update(kwargs)
+        needs_fields = None
+    elif needs_samples and not supports_get_item:
+        needs_fields = kwargs.pop("needs_fields", {})
+        needs_fields.update(kwargs)
+        field_mapping = None
     else:
+        field_mapping = None
         needs_fields = None
 
     process_video_frames = (
