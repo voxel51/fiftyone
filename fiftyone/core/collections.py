@@ -10548,9 +10548,9 @@ class SampleCollection(object):
                 instances
 
         Returns:
-            The aggregation result(s) corresponding to the input aggregation(s).
+            Aggregation result(s) corresponding to the input aggregation(s).
             Returns a single result for a single aggregation, a list of results
-            for multiple aggregations, or a generator if all aggregations are lazy
+            for multiple aggregations, or a generator for lazy aggregations
         """
         if not aggregations:
             return []
