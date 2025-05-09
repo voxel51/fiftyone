@@ -9233,6 +9233,18 @@ class SampleCollection(object):
         Returns:
             the list of values
         """
+        if _generator:
+            return self._iter_values(
+                field_or_expr,
+                expr,
+                missing_value,
+                unwind,
+                _allow_missing,
+                _big_result,
+                _raw,
+                _field,
+                _enforce_natural_order,
+            )
 
         # Optimization: if we do not need to follow insertion order, we can
         # potentially use a covered index query to get the values directly from
@@ -9246,17 +9258,7 @@ class SampleCollection(object):
         ) and (
             result := self._indexed_values_or_none(field, _stream=_generator)
         ) is not None:
-            if _generator:
-                id_to_str = field_or_expr == "id"
-                if not id_to_str:
-                    for doc in result:
-                        yield doc[field]
-                else:
-                    for doc in result:
-                        yield str(doc["_id"])
-                return
-            else:
-                return result
+            return result
 
         make = lambda field_or_expr: foa.Values(
             field_or_expr,
@@ -9270,14 +9272,9 @@ class SampleCollection(object):
             _lazy=_generator,
         )
 
-        if _generator:
-            for doc_values in self._make_and_aggregate(make, field_or_expr):
-                yield doc_values
-            return
-
         return self._make_and_aggregate(make, field_or_expr)
 
-    def iter_values(
+    def _iter_values(
         self,
         field_or_expr,
         expr=None,
