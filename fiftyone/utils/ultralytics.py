@@ -23,8 +23,6 @@ ultralytics = fou.lazy_import("ultralytics")
 torch = fou.lazy_import("torch")
 torchvision = fou.lazy_import("torchvision")
 
-DEFAULT_ULTRALYTICS_CONF = 0.25
-
 
 def convert_ultralytics_model(model):
     """Converts the given Ultralytics model into a FiftyOne model.
@@ -458,13 +456,8 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
             for k, v in config.overrides.items():
                 model.overrides[k] = v
 
-        conf = (
-            config.confidence_thresh
-            if config.confidence_thresh
-            else DEFAULT_ULTRALYTICS_CONF
-        )
         custom = {
-            "conf": conf,
+            "conf": config.confidence_thresh,
             "save": False,
             "mode": "predict",
             "rect": False,
@@ -601,6 +594,9 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         if self._using_half_precision:
             images = images.half()
 
+        if self.config.confidence_thresh:
+            self._model.predictor.args.conf = self.config.confidence_thresh
+
         output = self._forward_pass(images)
 
         # This is required for Ultralytics post-processing.
@@ -616,9 +612,6 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
 
         if self.has_logits:
             self._output_processor.store_logits = self.has_logits
-
-        if self.config.confidence_thresh:
-            self._model.predictor.args.conf = self.config.confidence_thresh
 
         return self._output_processor(
             output,
