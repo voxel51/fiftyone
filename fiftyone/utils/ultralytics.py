@@ -19,7 +19,6 @@ import fiftyone.utils.torch as fout
 import fiftyone.core.utils as fou
 import fiftyone.zoo.models as fozm
 
-
 ultralytics = fou.lazy_import("ultralytics")
 torch = fou.lazy_import("torch")
 torchvision = fou.lazy_import("torchvision")
@@ -458,7 +457,7 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
                 model.overrides[k] = v
 
         custom = {
-            "conf": 0.0,
+            "conf": config.confidence_thresh,
             "save": False,
             "mode": "predict",
             "rect": False,
@@ -594,6 +593,9 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         images = images.to(self._device)
         if self._using_half_precision:
             images = images.half()
+
+        if self.config.confidence_thresh:
+            self._model.predictor.args.conf = self.config.confidence_thresh
 
         output = self._forward_pass(images)
 
