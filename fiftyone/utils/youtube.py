@@ -11,6 +11,8 @@ import itertools
 import logging
 import multiprocessing.dummy
 import os
+import subprocess
+import json
 
 import numpy as np
 
@@ -20,11 +22,11 @@ import eta.core.video as etav
 import fiftyone.core.utils as fou
 
 
-def _ensure_pytube():
-    fou.ensure_package("pytube>=15")
+def _ensure_ytdlp():
+    fou.ensure_package("yt-dlp>=2023.0")
 
 
-pytube = fou.lazy_import("pytube", callback=_ensure_pytube)
+ytdlp = fou.lazy_import("yt_dlp", callback=_ensure_ytdlp)
 
 
 logger = logging.getLogger(__name__)
@@ -315,161 +317,112 @@ def _do_download(task):
 
     error = None
     warnings = []
+    tmp_path = None  # Initialize tmp_path at the beginning
 
     try:
-        pytube_video = pytube.YouTube(url)
-        _validate_video(pytube_video)
+        # Get video info first
+        ydl_opts = {
+            "quiet": True,
+            "no_warnings": True,
+            "extract_flat": True,
+        }
+
+        with ytdlp.YoutubeDL(ydl_opts) as ydl:
+            try:
+                info = ydl.extract_info(url, download=False)
+            except Exception as e:
+                raise ValueError(str(e))
 
         if video_path is not None and ext is None:
             ext = os.path.splitext(video_path)[1]
 
-        stream = _get_stream(pytube_video, ext, only_progressive, resolution)
+        # Configure format selection
+        format_spec = _get_format_spec(ext, only_progressive, resolution)
 
         if video_path is None:
-            filename = stream.default_filename
-            if ext is not None:
-                filename = os.path.splitext(filename)[0] + ext
-
+            filename = f"{info['id']}{ext or '.mp4'}"
             video_path = os.path.join(download_dir, filename)
 
-        root, ext = os.path.splitext(video_path)
-        stream_ext = os.path.splitext(stream.default_filename)[1]
-        if ext != stream_ext:
-            warnings.append(
-                (
-                    "Unable to find a '%s' stream for '%s'; downloading '%s' "
-                    "instead"
-                )
-                % (ext, url, stream_ext)
-            )
-
-            video_path = root + stream_ext
-
-        if only_progressive and not stream.is_progressive:
-            warnings.append(
-                (
-                    "Unable to find a progressive stream for '%s'; "
-                    "downloading a non-progressive stream instead"
-                )
-                % url
-            )
-
-        if etau.is_numeric(resolution):
-            target_res = "%dp" % resolution
-            stream_res = stream.resolution
-            if target_res != stream_res:
-                warnings.append(
-                    (
-                        "Unable to find a '%s' stream for '%s'; downloading a "
-                        "'%s' stream instead"
-                    )
-                    % (target_res, url, stream_res)
-                )
-
-        # Download to a temporary location first and then move to `video_path`
-        # so that only successful downloads end up at their final destination
+        # Download to temporary location first
         tmp_path = os.path.join(tmp_dir, os.path.basename(video_path))
 
-        if clip_segment is None:
-            _download_video(stream, tmp_path)
-        else:
-            _download_clip(stream, clip_segment, tmp_path)
+        ydl_opts = {
+            "format": format_spec,
+            "outtmpl": tmp_path,
+            "quiet": True,
+            "no_warnings": True,
+            "merge_output_format": "mp4",  # Force MP4 output
+            "postprocessors": [
+                {
+                    "key": "FFmpegVideoConvertor",
+                    "preferedformat": "mp4",
+                }
+            ],
+        }
 
-        etau.move_file(tmp_path, video_path)
+        if clip_segment is not None:
+            start_time, end_time = clip_segment
+            if start_time is not None:
+                ydl_opts["download_ranges"] = lambda info: [
+                    [start_time, end_time]
+                ]
+                ydl_opts["force_keyframes_at_cuts"] = True
+
+        # Ensure the temporary directory exists
+        etau.ensure_dir(os.path.dirname(tmp_path))
+
+        # Download the video
+        with ytdlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+
+        # Verify the file exists and move it
+        if os.path.exists(tmp_path):
+            etau.move_file(tmp_path, video_path)
+        else:
+            raise ValueError("Download completed but file not found")
+
     except Exception as e:
         video_path = None
-        if isinstance(e, pytube.exceptions.PytubeError):
-            error = type(e)
-        else:
-            error = str(e)
+        error = str(e)
+        # Clean up any partial downloads
+        if tmp_path and os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except:
+                pass
 
     return idx, url, video_path, error, warnings
 
 
-def _validate_video(pytube_video):
-    status, messages = pytube.extract.playability_status(
-        pytube_video.watch_html
-    )
+def _get_format_spec(ext, only_progressive, resolution):
+    """Builds a format specification string for yt-dlp based on the desired parameters."""
+    format_spec = []
 
-    if status is None:
-        return None
+    # Handle extension
+    if ext:
+        format_spec.append(f"ext={ext[1:]}")  # Remove leading dot
 
-    if not etau.is_container(messages):
-        error = messages
-    elif messages:
-        error = messages[0]
-    else:
-        error = status
-
-    raise ValueError(error)
-
-
-def _get_stream(pytube_video, ext, only_progressive, resolution):
-    if ext is not None:
-        ext = ext[1:]  # remove "."
-
-    if only_progressive:
-        progressive = True
-    else:
-        progressive = None
-
-    while True:
-        streams = pytube_video.streams.filter(
-            type="video", progressive=progressive, file_extension=ext
+    # Handle resolution
+    if resolution == "highest":
+        format_spec.append(
+            "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
+        )
+    elif resolution == "lowest":
+        format_spec.append(
+            "worstvideo[ext=mp4]+worstaudio[ext=m4a]/worst[ext=mp4]/worst"
+        )
+    elif etau.is_numeric(resolution):
+        format_spec.append(
+            f"bestvideo[height<={resolution}][ext=mp4]+bestaudio[ext=m4a]/best[height<={resolution}][ext=mp4]/best[height<={resolution}]"
         )
 
-        if streams:
-            if etau.is_numeric(resolution):
-                all_res = [int(s.resolution[:-1]) for s in streams]
-                idx = _find_nearest(all_res, resolution)
-                return streams[idx]
+    # Handle progressive vs non-progressive
+    if only_progressive:
+        format_spec.append("vcodec!*=none")
+        format_spec.append("acodec!*=none")
 
-            if resolution == "lowest":
-                return streams.order_by("resolution").first()
-
-            return streams.order_by("resolution").desc().first()
-
-        if progressive:
-            progressive = None
-        elif ext is not None:
-            if only_progressive and progressive is None:
-                progressive = True
-
-            ext = None
-        else:
-            raise ValueError("No video streams found")
+    return "+".join(format_spec)
 
 
 def _find_nearest(array, target):
     return np.argmin(np.abs(np.asarray(array) - target))
-
-
-def _download_video(stream, video_path):
-    outdir, filename = os.path.split(video_path)
-    stream.download(
-        output_path=outdir,
-        filename=filename,
-        skip_existing=False,
-        max_retries=3,
-    )
-
-
-def _download_clip(stream, clip_segment, video_path):
-    if clip_segment is None:
-        clip_segment = (None, None)
-
-    start_time, end_time = clip_segment
-
-    if start_time is None:
-        start_time = 0
-
-    if end_time is not None:
-        duration = end_time - start_time
-    else:
-        duration = None
-
-    # @todo consider using `fast=True` here, or even using an nearest-keyframe
-    # approach to further optimize the clip extraction
-    etav.extract_clip(
-        stream.url, video_path, start_time=start_time, duration=duration
-    )
