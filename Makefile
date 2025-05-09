@@ -15,4 +15,4 @@ docker: python
 	@docker build -t local/fiftyone .
 
 docker-export: docker
-	@docker save voxel51/fiftyone:latest | gzip > fiftyone.tar.gz
+	@docker save local/fiftyone | gzip > fiftyone.tar.gz
