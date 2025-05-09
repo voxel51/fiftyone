@@ -3,6 +3,25 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.8.2
+-------------------------
+*Released May 9, 2025*
+
+Includes all updates from :ref:`FiftyOne 1.5.2 <release-notes-v1.5.2>`
+
+.. _release-notes-v1.5.2:
+
+FiftyOne 1.5.2
+--------------
+*Released May 9, 2025*
+
+Core
+
+- Fixed a bug where the system would sometimes detect a multiprocess
+  environment incorrectly.
+  `#5884 <https://github.com/voxel51/fiftyone/pull/5884>`_
+
+
 FiftyOne Enterprise 2.8.1
 -------------------------
 *Released May 8, 2025*
