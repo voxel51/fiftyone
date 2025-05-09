@@ -745,6 +745,57 @@ class DatasetTests(unittest.TestCase):
         self.assertListEqual(values2, expected)
 
     @drop_datasets
+    def test_values_optimized(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="image1.png"),
+                fo.Sample(filepath="image2.png"),
+                fo.Sample(filepath="image3.png"),
+                fo.Sample(filepath="image4.png"),
+                fo.Sample(filepath="image5.png"),
+                fo.Sample(filepath="image6.png"),
+            ]
+        )
+
+        pipeline = dataset.aggregate(fo.Values("id"), _mongo=True)
+        self.assertListEqual(pipeline, [{"$project": {"_id": 1}}])
+
+        pipeline = dataset.aggregate(fo.Values("filepath"), _mongo=True)
+        self.assertListEqual(
+            pipeline,
+            [{"$project": {"filepath": 1, "_id": False}}],
+        )
+
+        pipeline = dataset.aggregate(
+            [fo.Values("id"), fo.Values("filepath")],
+            _mongo=True,
+        )
+        self.assertListEqual(
+            pipeline,
+            [[{"$project": {"_id": 1, "filepath": 1}}]],
+        )
+
+        ids1 = dataset.values("id")
+        _ids1 = dataset.values("_id")
+        filepaths1 = dataset.values("filepath")
+        ids2, _ids2, filepaths2 = dataset.values(["id", "_id", "filepath"])
+
+        self.assertEqual(len(ids1), 6)
+        self.assertEqual(len(_ids1), 6)
+        self.assertEqual(len(filepaths1), 6)
+        self.assertEqual(len(ids2), 6)
+        self.assertEqual(len(_ids2), 6)
+        self.assertEqual(len(filepaths2), 6)
+
+        self.assertIsInstance(ids1[0], str)
+        self.assertIsInstance(_ids1[0], ObjectId)
+        self.assertIsInstance(filepaths1[0], str)
+        self.assertIsInstance(ids2[0], str)
+        self.assertIsInstance(_ids2[0], ObjectId)
+        self.assertIsInstance(filepaths2[0], str)
+
+    @drop_datasets
     def test_nan_inf(self):
         dataset = fo.Dataset()
         dataset.add_samples(
