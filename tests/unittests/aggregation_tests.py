@@ -733,6 +733,37 @@ class DatasetTests(unittest.TestCase):
         )
 
     @drop_datasets
+    def test_iter_values(self):
+        d = fo.Dataset()
+        d.add_sample_field("numeric_field", fo.IntField)
+        d.add_sample_field("vector_field", fo.VectorField)
+
+        self.assertListEqual(
+            list(d.iter_values(["numeric_field", "vector_field"])), []
+        )
+        vector_values = [[1 + i, 2 + i, 3 + i] for i in range(3)]
+
+        samples = [
+            fo.Sample(
+                filepath=f"image{i}.jpeg",
+                numeric_field=50 + i,
+                vector_field=vector_values[i],
+            )
+            for i in range(3)
+        ]
+        d.add_samples(samples)
+        self.assertListEqual(
+            list(d.iter_values("numeric_field")), [50, 51, 52]
+        )
+
+        values = d.values(["numeric_field", "vector_field"])
+        for i, (n, v) in enumerate(
+            d.iter_values(["numeric_field", "vector_field"])
+        ):
+            self.assertEqual(values[0][i], n)
+            np.testing.assert_array_equal(values[1][i], v)
+
+    @drop_datasets
     def test_values_unwind(self):
         sample1 = fo.Sample(filepath="video1.mp4")
         sample1.frames[1] = fo.Frame(

@@ -9272,11 +9272,63 @@ class SampleCollection(object):
         _field=None,
         _enforce_natural_order=True,
     ):
-        """Wrapper for values() that returns an iterator over the values to enable
-        processing data iteratively without loading all values into memory first.
+        """Lazily extracts the values from all samples in the collection.
 
-        Returns:
-            iterator over the values
+        This method is a generator-based version of :meth:`values` that
+        yields each sample's value or tuple of values as it is received.
+        This is useful for iterating over large collections as it
+        does not require loading all values into memory at once.
+
+
+         .. note::
+
+            Unlike other aggregations, :meth:`iter_values` does not automatically
+            unwind list fields, which ensures that the returned values match the
+            potentially-nested structure of the documents.
+
+            You can opt-in to unwinding specific list fields using the ``[]``
+            syntax, or you can pass the optional ``unwind=True`` parameter to
+            unwind all supported list fields. See
+            :ref:`aggregations-list-fields` for more information.
+
+         .. warning::
+
+             This method yields one value (or tuple of values) per sample.
+             As a result, calling ``list(dataset.iter_values(...))`` will
+             result in a list of tuples where each entry is the values tuple
+             for a sample, **not** a tuple of lists of values per field like
+             :meth:`values`. If you want to get a list of values per field,
+             use :meth:`values` instead.
+
+         Examples::
+
+            # Iterate over field values lazily
+            for val in dataset.iter_values("numeric_field"):
+                print(val)  # 51
+
+            # Iterate over multiple field values lazily
+            for val in dataset.iter_values(['id', 'frames.frame_number']):
+                print(val)  # ('video-sample-id', [1, 2, 3])
+
+        Args:
+            field_or_expr: a field name, ``embedded.field.name``,
+                :class:`fiftyone.core.expressions.ViewExpression`, or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                defining the field or expression to aggregate. This can also be a
+                list or tuple of such arguments, in which case tuples of
+                corresponding aggregation results (each receiving the same
+                additional keyword arguments, if any) will be yielded
+            expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB expression` to apply to ``field_or_expr`` before
+                aggregating
+            missing_value (None): a value to insert for missing or
+                ``None``-valued fields
+            unwind (False): whether to automatically unwind all recognized list
+                fields (True) or unwind all list fields except the top-level
+                sample field (-1)
+
+        Yields:
+            each aggregated field value (or tuple of values, if a list of fields was provided)
         """
 
         if (
@@ -9308,8 +9360,9 @@ class SampleCollection(object):
             _field=_field,
             _lazy=True,
         )
-
-        for doc_values in self._make_and_aggregate(make, field_or_expr):
+        for doc_values in self._make_and_aggregate(
+            make, field_or_expr, _generator=True
+        ):
             yield doc_values
 
     def _field_for_covered_index_query_or_none(
@@ -10627,7 +10680,33 @@ class SampleCollection(object):
     def _iter_batched_results(self, batch_aggs, cursor):
         # extract each docs values as a tuple
         result_fields = [agg._big_field for agg in batch_aggs.values()]
-        return (itemgetter(*result_fields)(doc) for doc in cursor)
+
+        transformers = [agg.parse_result(None) for agg in batch_aggs.values()]
+        has_extra_parsing = any(
+            [
+                agg._field is not None and not agg._raw
+                for agg in batch_aggs.values()
+            ]
+        )
+
+        if len(result_fields) == 1:
+            field = result_fields[0]
+            transform = transformers[0]
+            return (transform(doc[field]) for doc in cursor)
+
+        if not has_extra_parsing:
+            return (itemgetter(*result_fields)(doc) for doc in cursor)
+
+        get_values = itemgetter(*result_fields)
+
+        def gen():
+            for doc in cursor:
+                values = get_values(doc)
+                if not isinstance(values, tuple):
+                    values = (values,)
+                yield tuple(f(v) for f, v in zip(transformers, values))
+
+        return gen()
 
     async def _async_aggregate(self, aggregations):
         if not aggregations:
@@ -10913,13 +10992,16 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement _aggregate()")
 
-    def _make_and_aggregate(self, make, args):
+    def _make_and_aggregate(self, make, args, _generator=False):
         if isinstance(args, (list, tuple)):
-            return tuple(
-                self.aggregate(
-                    [make(arg) for arg in args],
-                )
+            agg = self.aggregate(
+                [make(arg) for arg in args],
             )
+            if _generator:
+                return agg
+            # if not using a generator, we exhaust the cursor and load all
+            # the results into memory at once
+            return tuple(agg)
 
         return self.aggregate(
             make(args),

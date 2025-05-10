@@ -2861,14 +2861,25 @@ class Values(Aggregation):
         return []
 
     def parse_result(self, d):
-        """Parses the output of :meth:`to_mongo`.
+        """Parses the output of :meth:`to_mongo` when the result is a dict or returns an expression
+        that can be evaluated lazily.
 
         Args:
-            d: the result dict
+            d: the result dict or None
 
         Returns:
-            the list of field values
+            the list of field values or a lazy partial result
         """
+        if self._lazy:
+            # Return a function to be called on a single result value
+            # To optimize for performance, x is the value extracted from the doc
+            # result with self._big_result
+            return (
+                (lambda x: self._field.to_python(x))
+                if ((self._field is not None) and (not self._raw))
+                else lambda x: x
+            )
+
         if self._big_result:
             values = [di[self._big_field] for di in d]
         else:
@@ -2948,12 +2959,15 @@ _MONGO_TO_FIFTYONE_TYPES = {
 }
 
 
-def _transform_values(values, fcn, level=1):
+def _transform_values(values, fcn, level=1, _single=False):
     if values is None:
         return None
 
     if level < 1:
         return fcn(values)
+
+    if _single:
+        return _transform_values(values, fcn, level=level - 1, _single=True)
 
     return [_transform_values(v, fcn, level=level - 1) for v in values]
 
