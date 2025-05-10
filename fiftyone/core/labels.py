@@ -10,15 +10,16 @@ import itertools
 import warnings
 from functools import partial
 
+from bson import ObjectId
 import cv2
-import eta.core.frameutils as etaf
-import eta.core.image as etai
-import eta.core.utils as etau
 import numpy as np
 import scipy.ndimage as spn
 import skimage.measure as skm
 import skimage.segmentation as sks
-from bson import ObjectId
+
+import eta.core.frameutils as etaf
+import eta.core.image as etai
+import eta.core.utils as etau
 
 import fiftyone.core.fields as fof
 import fiftyone.core.metadata as fom
@@ -1092,6 +1093,27 @@ class Keypoint(_HasAttributesDict, _HasID, _HasInstance, Label):
             points = [(x * w, y * h) for x, y in points]
 
         return sg.MultiPoint(points)
+
+    def apply_confidence_threshold(self, confidence_thresh):
+        """Replaces all ``points`` on this instance whose confidence are below
+        the provided threshold with ``np.nan``.
+
+        Use
+        :meth:`filter_keypoints <fiftyone.core.collections.SampleCollection.filter_keypoints`
+        to perform this operation as temporary view rather than a permanent
+        data transformation.
+
+        Args:
+            confidence_thresh: a confidence threshold
+        """
+        if self.confidence is None:
+            return
+
+        _points = np.array(self.points)
+        _confs = np.array(self.confidence)
+        _points[_confs < confidence_thresh] = np.nan
+
+        self.points = _points.tolist()
 
 
 class Keypoints(_HasLabelList, Label):
