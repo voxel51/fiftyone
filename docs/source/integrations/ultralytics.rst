@@ -235,7 +235,6 @@ You can also load YOLOv8, YOLOv9, and YOLO11 segmentation models from the
     # model_name = "yolo11m-seg-coco-torch"
     # model_name = "yolo11l-seg-coco-torch"
     # model_name = "yolo11x-seg-coco-torch"
-    
 
     model = foz.load_zoo_model(model_name)
 
@@ -494,12 +493,25 @@ Batch inference
 
 When using
 :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`,
-you can request batch inference by passing the optional `batch_size` parameter:
+you can request batch inference via the pattern below:
 
 .. code-block:: python
     :linenos:
 
-    dataset.apply_model(model, label_field="predictions", batch_size=16)
+    batch_size = 16
+
+    # Tell model to use batch inference
+    model = foz.load_zoo_model(
+        model_name,
+        overrides={"batch": batch_size},
+    )
+
+    # Tell FiftyOne to use batch dataloading
+    dataset.apply_model(
+        model,
+        label_field="predictions",
+        batch_size=batch_size,
+    )
 
 The manual inference loops can be also executed using batch inference via the
 pattern below:
@@ -519,26 +531,24 @@ pattern below:
 
     dataset.set_values("predictions", predictions)
 
-Note that the `batch_size` parameter in :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`
-only controls the batch size for dataloading. Set the batch size of the underlying Ultralytics model predictor via
-overrides to avoid using the default batch size set by Ultralytics.
+Alternatively, to run inference on a batch size of 1 with rectangular resizing,
+use overrides as shown below:
 
 .. code-block:: python
     :linenos:
 
-    kwargs = {"overrides": {"batch": 32}}
-    model = foz.load_zoo_model(m_name, **kwargs)
-    dataset.apply_model(model, label_field="predictions", batch_size=32)
+    batch_size = 1
 
+    model = foz.load_zoo_model(
+        model_name,
+        overrides={"rect": True, "batch": batch_size},
+    )
 
-To run inference on a batch size of 1 with rectangular resizing, use overrides as shown below when loading a model for inference:
-
-.. code-block:: python
-    :linenos:
-
-    kwargs = {"overrides": {"rect": True, "batch": 1}}
-    model = foz.load_zoo_model(m_name, **kwargs)
-    dataset.apply_model(model, label_field="predictions", batch_size=1)
+    dataset.apply_model(
+        model,
+        label_field="predictions",
+        batch_size=batch_size,
+    )
 
 .. note::
 
