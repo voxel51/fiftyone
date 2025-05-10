@@ -5,6 +5,7 @@ PyTorch utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 import itertools
 import multiprocessing
@@ -1420,11 +1421,15 @@ class KeypointDetectorOutputProcessor(OutputProcessor):
             ]
 
             points = []
-            for p in kpts:
-                if p[2] > 0:
-                    points.append((p[0] / width, p[1] / height))
-                else:
+            for p, p_conf in zip(kpts, kpt_scores):
+                if confidence_thresh and p_conf < confidence_thresh:
+                    # Low confidence
                     points.append((float("nan"), float("nan")))
+                elif p[2] == 0:
+                    # Not visible
+                    points.append((float("nan"), float("nan")))
+                else:
+                    points.append((p[0] / width, p[1] / height))
 
             _detections.append(
                 fol.Detection(
@@ -1734,7 +1739,6 @@ class FiftyOneTorchDataset(Dataset):
             return e
 
     def __getitem__(self, index):
-
         # if self._samples is None at this point then
         # worker_init was probably never called
         # meaning we are working on main process
