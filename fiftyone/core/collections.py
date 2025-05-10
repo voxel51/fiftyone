@@ -19,7 +19,6 @@ import string
 import timeit
 import warnings
 
-import dill
 from bson import ObjectId
 from pymongo import InsertOne, UpdateMany, UpdateOne, WriteConcern
 
@@ -10664,8 +10663,6 @@ class SampleCollection(object):
         if big_aggs and stream:
             return self._iter_batched_results(big_aggs, _results)
         for idx, aggregation in big_aggs.items():
-            # if stream:
-
             result = list(_results[idx_map[idx]])
             results[idx] = self._parse_big_result(aggregation, result)
 
@@ -11010,8 +11007,8 @@ class SampleCollection(object):
             )
             if _generator:
                 return agg
-            # if not using a generator, we exhaust the cursor and load all
-            # the results into memory at once
+            # when not using a generator, we exhaust the cursor and load all
+            # the results into memory at once here
             return tuple(agg)
 
         return self.aggregate(

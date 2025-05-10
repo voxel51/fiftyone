@@ -2875,17 +2875,7 @@ class Values(Aggregation):
             # To optimize for performance, x is the value extracted from the doc
             # result with self._big_result
 
-            # if self._raw or self._field is None:
-            #     return lambda x: x
-            # # honour list nesting when converting lazily
-            # level = 1 + self._num_list_fields
-            # return lambda x, _f=self._field.to_python, _lv=level: _transform_values(
-            #         x, _f, level=_lv, _single=True)
-            print("self._num_list_fields", self._num_list_fields)
-            print("self._raw", self._raw)
-            print("self._field", self._field)
             if not self._raw and self._field is not None:
-                print("self._field.to_python", self._field.to_python)
                 return lambda x: _transform_values(
                     x,
                     self._field.to_python,
@@ -2893,15 +2883,8 @@ class Values(Aggregation):
                     _single=True,
                 )
             else:
-                print("returning identity")
                 return lambda x: x
 
-            # return (
-            #     (lambda x: _transform_values(x, self._field.to_python, level=1 + self._num_list_fields, _single=True))
-            #     if ((self._field is not None) and (not self._raw))
-            #     else lambda x: x
-            # )
-        print("not lazy")
         if self._big_result:
             values = [di[self._big_field] for di in d]
         else:
@@ -2982,7 +2965,6 @@ _MONGO_TO_FIFTYONE_TYPES = {
 
 
 def _transform_values(values, fcn, level=1, _single=False):
-    print("_transform_values", values, level, _single)
     if values is None:
         return None
 

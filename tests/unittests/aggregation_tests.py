@@ -760,6 +760,8 @@ class DatasetTests(unittest.TestCase):
         for i, (n, v) in enumerate(
             d.iter_values(["numeric_field", "vector_field"])
         ):
+            # ensure that fields like fo.VectorField are converted
+            # when using iter_values() as they would be using values()
             self.assertEqual(values[0][i], n)
             np.testing.assert_array_equal(values[1][i], v)
 
@@ -804,7 +806,6 @@ class DatasetTests(unittest.TestCase):
         # [num_samples][num_frames][num_classifications]
         values = dataset.values("frames.ground_truth.classifications.label")
 
-        print("=" * 100)
         itered_values = [
             i
             for i in dataset.iter_values(
