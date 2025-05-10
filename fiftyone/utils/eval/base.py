@@ -15,6 +15,8 @@ import numpy as np
 import sklearn.metrics as skm
 from tabulate import tabulate
 
+import eta.core.utils as etau
+
 import fiftyone.core.collections as foc
 import fiftyone.core.evaluation as foe
 from fiftyone.core.expressions import ViewField as F
@@ -300,6 +302,21 @@ class BaseEvaluationMethod(foe.EvaluationMethod):
     def get_fields(self, samples, eval_key, include_custom_metrics=True):
         return []
 
+    def add_fields_to_sidebar_group(self, samples, eval_key, omit_fields=None):
+        if omit_fields is not None:
+            if etau.is_container(omit_fields):
+                omit_fields = set(omit_fields)
+            else:
+                omit_fields = {omit_fields}
+        else:
+            omit_fields = set()
+
+        fields = self.get_fields(samples, eval_key)
+
+        fields = [f for f in fields if "." not in f and f not in omit_fields]
+
+        samples._add_paths_to_sidebar_group(fields, eval_key)
+
 
 class BaseEvaluationResults(foe.EvaluationResults):
     """Base class for evaluation results.
@@ -366,6 +383,12 @@ class BaseEvaluationResults(foe.EvaluationResults):
             self.samples, self.key, self, metric_uris=metric_uris
         )
         self.save()
+
+        if self.samples._has_sidebar_group(self.key):
+            fields = self.backend.get_custom_metric_fields(
+                self.samples, self.key, metric_uris=metric_uris
+            )
+            self.samples._add_paths_to_sidebar_group(fields, self.key)
 
     def metrics(self, *args, **kwargs):
         """Returns the metrics associated with this evaluation run.

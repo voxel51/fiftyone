@@ -11384,6 +11384,60 @@ class SampleCollection(object):
 
         return schema
 
+    def _get_sidebar_group(self, group_name):
+        app_config = self._root_dataset.app_config
+        if app_config.sidebar_groups is None:
+            return None
+
+        for group in app_config.sidebar_groups:
+            if group.name == group_name:
+                return group
+
+        return None
+
+    def _has_sidebar_group(self, group_name):
+        return self._get_sidebar_group(group_name) is not None
+
+    def _add_paths_to_sidebar_group(self, paths, group_name, after_group=None):
+        dataset = self._root_dataset
+        dataset.app_config._add_paths_to_sidebar_group(
+            paths,
+            group_name,
+            after_group=after_group,
+            dataset=dataset,
+        )
+        dataset.save()
+
+    def _rename_sidebar_group(self, group_name, new_group_name):
+        dataset = self._root_dataset
+        if dataset.app_config.sidebar_groups is None:
+            return
+
+        existing_group = None
+        for group in dataset.app_config.sidebar_groups:
+            if group.name == new_group_name:
+                existing_group = group
+
+        for group in dataset.app_config.sidebar_groups[:]:
+            if group.name == group_name:
+                if existing_group is not None:
+                    existing_group.paths.extend(group.paths)
+                    dataset.app_config.sidebar_groups.remove(group)
+                else:
+                    group.name = new_group_name
+
+                dataset.save()
+
+    def _delete_empty_sidebar_group(self, group_name):
+        dataset = self._root_dataset
+        if dataset.app_config.sidebar_groups is None:
+            return
+
+        for group in dataset.app_config.sidebar_groups[:]:
+            if group.name == group_name and not group.paths:
+                dataset.app_config.sidebar_groups.remove(group)
+                dataset.save()
+
     def _unwind_values(self, field_name, values, keep_top_level=False):
         if values is None:
             return None
