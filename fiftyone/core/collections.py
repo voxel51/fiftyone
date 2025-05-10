@@ -10610,7 +10610,6 @@ class SampleCollection(object):
             return []
 
         scalar_result = isinstance(aggregations, foa.Aggregation)
-        print("scalar_result", scalar_result)
 
         if scalar_result:
             aggregations = [aggregations]
@@ -10619,7 +10618,6 @@ class SampleCollection(object):
         big_aggs, batch_aggs, facet_aggs, stream = self._parse_aggregations(
             aggregations, allow_big=True
         )
-        print(f"{big_aggs=}, {batch_aggs=}, {facet_aggs=}, {stream=}")
 
         # Placeholder to store results
         results = [None] * len(aggregations)
@@ -10648,7 +10646,7 @@ class SampleCollection(object):
 
         if _mongo:
             return pipelines[0] if scalar_result else pipelines
-        print(pipelines)
+
         # Run all aggregations
         _results = foo.aggregate(
             self._dataset._sample_collection, pipelines, _stream=stream
@@ -10657,8 +10655,6 @@ class SampleCollection(object):
         # Parse batch results
         if batch_aggs:
             if stream:
-                print("stream")
-                print("batch_aggs", batch_aggs)
                 return self._iter_batched_results(batch_aggs, _results)
             result = list(_results[0])
             for idx, aggregation in batch_aggs.items():
@@ -10666,8 +10662,6 @@ class SampleCollection(object):
 
         # Parse big results
         if big_aggs and stream:
-            print("_results", _results)
-            print("stream big_aggs", big_aggs)
             return self._iter_batched_results(big_aggs, _results)
         for idx, aggregation in big_aggs.items():
             # if stream:
@@ -10678,7 +10672,6 @@ class SampleCollection(object):
         # Parse facet-able results
         for idx, aggregation in compiled_facet_aggs.items():
             result = list(_results[idx_map[idx]])
-            print("compiled_facet_aggs result", result)
             data = self._parse_faceted_result(aggregation, result)
             if (
                 isinstance(aggregation, foa.FacetAggregations)
@@ -10693,8 +10686,6 @@ class SampleCollection(object):
 
     def _iter_batched_results(self, batch_aggs, cursor):
         # extract each docs values as a tuple
-        print("cursor", type(cursor))
-        print("batch_aggs", batch_aggs)
         result_fields = [agg._big_field for agg in batch_aggs.values()]
         has_extra_parsing = any(
             [
@@ -10702,21 +10693,13 @@ class SampleCollection(object):
                 for agg in batch_aggs.values()
             ]
         )
-        print("_iter_batched_results has_extra_parsing", has_extra_parsing)
         if has_extra_parsing:
 
             transformers = [
                 agg.parse_result(None) for agg in batch_aggs.values()
             ]
 
-            print("result_fields", result_fields)
-            print("transformers", transformers)
-
-            print("has_extra_parsing", has_extra_parsing)
-
         if len(result_fields) == 1 and has_extra_parsing:
-            print("single field", result_fields)
-            print("transform", transformers)
             field = result_fields[0]
             f = transformers[0]
 
@@ -10725,7 +10708,6 @@ class SampleCollection(object):
         get_values = itemgetter(*result_fields)
 
         if not has_extra_parsing:
-            print("no extra parsing")
             return (get_values(doc) for doc in cursor)
 
         def gen():
@@ -10734,8 +10716,6 @@ class SampleCollection(object):
                 if not isinstance(values, tuple):
                     values = (values,)
                 yield tuple(f(v) for f, v in zip(transformers, values))
-
-        print("returning gen")
 
         return gen()
 
@@ -11024,26 +11004,15 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement _aggregate()")
 
     def _make_and_aggregate(self, make, args, _generator=False):
-        print("_make_and_aggregate")
         if isinstance(args, (list, tuple)):
-            print("list or tuple args", args)
             agg = self.aggregate(
                 [make(arg) for arg in args],
             )
             if _generator:
-                print("returning generator")
                 return agg
             # if not using a generator, we exhaust the cursor and load all
             # the results into memory at once
             return tuple(agg)
-        print("args", args)
-        print("make", make)
-        print("make(args)", make(args).__dict__)
-        # if _generator:
-        #     return self.aggregate(
-        #         [make(args)],
-        #     )
-        print("calling self.aggregate(make(args))")
 
         return self.aggregate(
             make(args),

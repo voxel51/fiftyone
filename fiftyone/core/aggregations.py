@@ -1966,7 +1966,6 @@ class Quantiles(Aggregation):
             the quantile or list of quantiles
         """
         if self._is_scalar:
-            print("self._is_scalar", self._is_scalar)
             return d["quantiles"][0]
 
         return d["quantiles"]
