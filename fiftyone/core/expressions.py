@@ -1859,6 +1859,34 @@ class ViewExpression(object):
             {"$cond": {"if": self, "then": true_expr, "else": false_expr}}
         )
 
+    def if_null(self, false_expr):
+        """Returns either this expression or ``false_expr`` if this expression is null.
+        This is a shortcut for ``self.is_null().if_else(false_expr, self)`` and is useful
+        for replacing null values in a field with a default value.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Set `gt.detection.label` field to "unknown" if it does not exist
+            view = dataset.set_field(
+                "gt.detection.label",
+                F("gt.detection.label").if_null("unknown")
+            )
+
+        Args:
+            false_expr: a :class:`ViewExpression` or MongoDB expression dict
+
+        Returns:
+            a :class:`ViewExpression`
+
+        """
+        return ViewExpression({"$ifNull": [self, false_expr]})
+
     def cases(self, mapping, default=None):
         """Applies a case statement to this expression, which effectively
         computes the following pseudocode::

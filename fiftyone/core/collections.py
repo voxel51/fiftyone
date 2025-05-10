@@ -9,6 +9,7 @@ Interface for sample collections.
 from collections import defaultdict
 from copy import copy
 from datetime import datetime
+from operator import itemgetter
 import fnmatch
 import itertools
 import logging
@@ -9235,30 +9236,16 @@ class SampleCollection(object):
         # Optimization: if we do not need to follow insertion order, we can
         # potentially use a covered index query to get the values directly from
         # the index and avoid a COLLSCAN
-        if not _enforce_natural_order:
-            field = None
-            if isinstance(field_or_expr, str):
-                field = field_or_expr
-            elif etau.is_container(field_or_expr) and len(field_or_expr) == 1:
-                field = field_or_expr[0]
-
-            # @todo consider supporting non-default fields that are indexed
-            # @todo can we support some non-full collections?
-            if (
-                field in ("id", "_id", "filepath")
-                and expr is None
-                and self._is_full_collection()
-            ):
-                try:
-                    return foo.get_indexed_values(
-                        self._dataset._sample_collection,
-                        field,
-                        values_only=True,
-                    )
-                except ValueError as e:
-                    # When get_indexed_values() raises a ValueError, it is a
-                    # recommendation of an index to create
-                    logger.debug(e)
+        if (
+            field := self._field_for_covered_index_query_or_none(
+                field_or_expr,
+                expr=expr,
+                _enforce_natural_order=_enforce_natural_order,
+            )
+        ) and (
+            result := self._indexed_values_or_none(field, _stream=False)
+        ) is not None:
+            return result
 
         make = lambda field_or_expr: foa.Values(
             field_or_expr,
@@ -9269,8 +9256,146 @@ class SampleCollection(object):
             _big_result=_big_result,
             _raw=_raw,
             _field=_field,
+            _lazy=False,
         )
         return self._make_and_aggregate(make, field_or_expr)
+
+    def iter_values(
+        self,
+        field_or_expr,
+        expr=None,
+        missing_value=None,
+        unwind=False,
+        _allow_missing=False,
+        _big_result=True,
+        _raw=False,
+        _field=None,
+        _enforce_natural_order=True,
+    ):
+        """Lazily extracts the values from all samples in the collection.
+
+        This method is a generator-based version of :meth:`values` that
+        yields each sample's value or tuple of values as it is received.
+        This is useful for iterating over large collections as it
+        does not require loading all values into memory at once.
+
+
+         .. note::
+
+            Unlike other aggregations, :meth:`iter_values` does not automatically
+            unwind list fields, which ensures that the returned values match the
+            potentially-nested structure of the documents.
+
+            You can opt-in to unwinding specific list fields using the ``[]``
+            syntax, or you can pass the optional ``unwind=True`` parameter to
+            unwind all supported list fields. See
+            :ref:`aggregations-list-fields` for more information.
+
+         .. warning::
+
+             This method yields one value (or tuple of values) per sample.
+             As a result, calling ``list(dataset.iter_values(...))`` will
+             result in a list of tuples where each entry is the values tuple
+             for a sample, **not** a tuple of lists of values per field like
+             :meth:`values`. If you want to get a list of values per field,
+             use :meth:`values` instead.
+
+         Examples::
+
+            # Iterate over field values lazily
+            for val in dataset.iter_values("numeric_field"):
+                print(val)  # 51
+
+            # Iterate over multiple field values lazily
+            for val in dataset.iter_values(['id', 'frames.frame_number']):
+                print(val)  # ('video-sample-id', [1, 2, 3])
+
+        Args:
+            field_or_expr: a field name, ``embedded.field.name``,
+                :class:`fiftyone.core.expressions.ViewExpression`, or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                defining the field or expression to aggregate. This can also be a
+                list or tuple of such arguments, in which case tuples of
+                corresponding aggregation results (each receiving the same
+                additional keyword arguments, if any) will be yielded
+            expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB expression` to apply to ``field_or_expr`` before
+                aggregating
+            missing_value (None): a value to insert for missing or
+                ``None``-valued fields
+            unwind (False): whether to automatically unwind all recognized list
+                fields (True) or unwind all list fields except the top-level
+                sample field (-1)
+
+        Yields:
+            each aggregated field value (or tuple of values, if a list of fields was provided)
+        """
+
+        if (
+            field := self._field_for_covered_index_query_or_none(
+                field_or_expr,
+                expr=expr,
+                _enforce_natural_order=_enforce_natural_order,
+            )
+        ) and (
+            result := self._indexed_values_or_none(field, _stream=True)
+        ) is not None:
+            id_to_str = field_or_expr == "id"
+            if not id_to_str:
+                for doc in result:
+                    yield doc[field]
+            else:
+                for doc in result:
+                    yield str(doc["_id"])
+            return
+
+        make = lambda field_or_expr: foa.Values(
+            field_or_expr,
+            expr=expr,
+            missing_value=missing_value,
+            unwind=unwind,
+            _allow_missing=_allow_missing,
+            _big_result=_big_result,
+            _raw=_raw,
+            _field=_field,
+            _lazy=True,
+        )
+        for doc_values in self._make_and_aggregate(
+            make, field_or_expr, _generator=True
+        ):
+            yield doc_values
+
+    def _field_for_covered_index_query_or_none(
+        self, field_or_expr, expr=None, _enforce_natural_order=True
+    ):
+
+        if expr is not None or _enforce_natural_order:
+            return None
+
+        field = None
+        if isinstance(field_or_expr, str):
+            field = field_or_expr
+        elif etau.is_container(field_or_expr) and len(field_or_expr) == 1:
+            field = field_or_expr[0]
+
+        # @todo consider supporting non-default fields that are indexed
+        # @todo can we support some non-full collections?
+        if field in ("id", "_id", "filepath") and self._is_full_collection():
+            return field
+        return None
+
+    def _indexed_values_or_none(self, field, _stream):
+        try:
+            return foo.get_indexed_values(
+                self._dataset._sample_collection,
+                field,
+                values_only=True,
+                _stream=_stream,
+            )
+        except ValueError as e:
+            logger.debug(e)
+
+        return None
 
     def draw_labels(
         self,
@@ -10516,8 +10641,9 @@ class SampleCollection(object):
                 instances
 
         Returns:
-            an aggregation result or list of aggregation results corresponding
-            to the input aggregation(s)
+            Aggregation result(s) corresponding to the input aggregation(s).
+            Returns a single result for a single aggregation, a list of results
+            for multiple aggregations, or a generator for lazy aggregations
         """
         if not aggregations:
             return []
@@ -10528,7 +10654,7 @@ class SampleCollection(object):
             aggregations = [aggregations]
 
         # Partition aggregations by type
-        big_aggs, batch_aggs, facet_aggs = self._parse_aggregations(
+        big_aggs, batch_aggs, facet_aggs, stream = self._parse_aggregations(
             aggregations, allow_big=True
         )
 
@@ -10561,15 +10687,21 @@ class SampleCollection(object):
             return pipelines[0] if scalar_result else pipelines
 
         # Run all aggregations
-        _results = foo.aggregate(self._dataset._sample_collection, pipelines)
+        _results = foo.aggregate(
+            self._dataset._sample_collection, pipelines, _stream=stream
+        )
 
         # Parse batch results
         if batch_aggs:
+            if stream:
+                return self._iter_batched_results(batch_aggs, _results)
             result = list(_results[0])
             for idx, aggregation in batch_aggs.items():
                 results[idx] = self._parse_big_result(aggregation, result)
 
         # Parse big results
+        if big_aggs and stream:
+            return self._iter_batched_results(big_aggs, _results)
         for idx, aggregation in big_aggs.items():
             result = list(_results[idx_map[idx]])
             results[idx] = self._parse_big_result(aggregation, result)
@@ -10589,6 +10721,41 @@ class SampleCollection(object):
 
         return results[0] if scalar_result else results
 
+    def _iter_batched_results(self, batch_aggs, cursor):
+        # extract each docs values as a tuple
+        result_fields = [agg._big_field for agg in batch_aggs.values()]
+        has_extra_parsing = any(
+            [
+                agg._field is not None and not agg._raw
+                for agg in batch_aggs.values()
+            ]
+        )
+        if has_extra_parsing:
+
+            transformers = [
+                agg.parse_result(None) for agg in batch_aggs.values()
+            ]
+
+        if len(result_fields) == 1 and has_extra_parsing:
+            field = result_fields[0]
+            f = transformers[0]
+
+            return (f(doc[field]) for doc in cursor)
+
+        get_values = itemgetter(*result_fields)
+
+        if not has_extra_parsing:
+            return (get_values(doc) for doc in cursor)
+
+        def gen():
+            for doc in cursor:
+                values = get_values(doc)
+                if not isinstance(values, tuple):
+                    values = (values,)
+                yield tuple(f(v) for f, v in zip(transformers, values))
+
+        return gen()
+
     async def _async_aggregate(self, aggregations):
         if not aggregations:
             return []
@@ -10598,7 +10765,7 @@ class SampleCollection(object):
         if scalar_result:
             aggregations = [aggregations]
 
-        _, _, facet_aggs = self._parse_aggregations(
+        _, _, facet_aggs, _ = self._parse_aggregations(
             aggregations, allow_big=False
         )
 
@@ -10641,7 +10808,14 @@ class SampleCollection(object):
         big_aggs = {}
         batch_aggs = {}
         facet_aggs = {}
+        stream = None
         for idx, aggregation in enumerate(aggregations):
+            # stream is True if all aggregations are lazy
+            if lazy := getattr(aggregation, "_lazy", False):
+                if stream is None:
+                    stream = lazy
+                elif stream != lazy:
+                    stream = False
             if aggregation._is_big_batchable:
                 batch_aggs[idx] = aggregation
             elif aggregation._has_big_result:
@@ -10655,7 +10829,7 @@ class SampleCollection(object):
                 "results"
             )
 
-        return big_aggs, batch_aggs, facet_aggs
+        return big_aggs, batch_aggs, facet_aggs, stream
 
     def _build_batch_pipeline(self, aggs_map):
         project = {}
@@ -10866,11 +11040,20 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement _aggregate()")
 
-    def _make_and_aggregate(self, make, args):
+    def _make_and_aggregate(self, make, args, _generator=False):
         if isinstance(args, (list, tuple)):
-            return tuple(self.aggregate([make(arg) for arg in args]))
+            agg = self.aggregate(
+                [make(arg) for arg in args],
+            )
+            if _generator:
+                return agg
+            # when not using a generator, we exhaust the cursor and load all
+            # the results into memory at once here
+            return tuple(agg)
 
-        return self.aggregate(make(args))
+        return self.aggregate(
+            make(args),
+        )
 
     def _build_aggregation(self, aggregations):
         scalar_result = isinstance(aggregations, foa.Aggregation)
