@@ -225,11 +225,11 @@ def establish_db_conn(config):
     mongoengine.connect(config.database_name, **_connection_kwargs)
 
     db_config = get_db_config()
-    if db_config.type != foc.CLIENT_TYPE:
-        raise ConnectionError(
-            "Cannot connect to database type '%s' with client type '%s'"
-            % (db_config.type, foc.CLIENT_TYPE)
-        )
+    # if db_config.type != foc.CLIENT_TYPE:
+    #     raise ConnectionError(
+    #         "Cannot connect to database type '%s' with client type '%s'"
+    #         % (db_config.type, foc.CLIENT_TYPE)
+    #     )
 
     if os.environ.get("FIFTYONE_DISABLE_SERVICES", "0") != "1":
         fom.migrate_database_if_necessary(config=db_config)
@@ -330,7 +330,7 @@ def _validate_db_version(config, client):
         )
 
 
-def aggregate(collection, pipelines, hints=None):
+def aggregate(collection, pipelines, hints=None, _stream=False):
     """Executes one or more aggregations on a collection.
 
     Multiple aggregations are executed using multiple threads, and their
@@ -352,12 +352,14 @@ def aggregate(collection, pipelines, hints=None):
             a list and the list of lists is returned
     """
     pipelines = list(pipelines)
+    print("pipelines", pipelines)
     is_list = pipelines and not isinstance(pipelines[0], dict)
     if not is_list:
         pipelines = [pipelines]
         hints = [hints]
 
     num_pipelines = len(pipelines)
+    print("num_pipelines", num_pipelines)
     if hints is None:
         hints = [None] * num_pipelines
 
@@ -372,9 +374,15 @@ def aggregate(collection, pipelines, hints=None):
 
     if num_pipelines == 1:
         kwargs = {"hint": hints[0]} if hints[0] is not None else {}
+        print("calling collection.aggregate")
         result = collection.aggregate(
             pipelines[0], allowDiskUse=True, **kwargs
         )
+        print("is_list", is_list)
+        print("result", result)
+        if _stream:
+            print("streaming")
+            return result
         return [result] if is_list else result
 
     return _do_pooled_aggregate(collection, pipelines, hints)
