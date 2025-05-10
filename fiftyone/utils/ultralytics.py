@@ -452,10 +452,10 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
     def _download_model(self, config):
         config.download_model_if_necessary()
 
-    def _set_predictor(self, config, model):
-        if config.overrides:
-            for k, v in config.overrides.items():
-                model.overrides[k] = v
+    def _set_predictor(self):
+        if self.config.overrides:
+            for k, v in self.config.overrides.items():
+                self._model.overrides[k] = v
 
         custom = {
             "conf": 0.0,
@@ -466,16 +466,20 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
             "retina_masks": True,
             "device": self._device,
         }
-        args = {**custom, **model.overrides}
-        model.predictor = model.task_map[model.task]["predictor"](
+        args = {**custom, **self._model.overrides}
+        self._model.predictor = self._model.task_map[self._model.task][
+            "predictor"
+        ](
             overrides=args,
-            _callbacks=model.callbacks,
+            _callbacks=self._model.callbacks,
         )
 
-        model.predictor.setup_model(model=model.model, verbose=False)
-        model.predictor.setup_source([np.zeros((10, 10))])
-        model.predictor.batch = next(iter(model.predictor.dataset))
-        return model
+        if not self._model.predictor.model:
+            self._model.predictor.setup_model(
+                model=self._model.model, verbose=False
+            )
+        self._model.predictor.setup_source([np.zeros((10, 10))])
+        self._model.predictor.batch = next(iter(self._model.predictor.dataset))
 
     def _load_model(self, config):
         if config.entrypoint_args:
@@ -507,9 +511,6 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
             else:
                 model.set_classes(config.classes)
 
-        if not model.predictor:
-            model = self._set_predictor(config, model)
-
         return model
 
     def _parse_classes(self, config):
@@ -535,6 +536,8 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         return transforms, ragged_batches
 
     def _preprocess_img(self, img):
+        if not self._model.predictor:
+            self._set_predictor()
         if not isinstance(img, torch.Tensor):
             if isinstance(img, Image.Image):
                 img = img.convert("RGB")
@@ -568,6 +571,9 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         return [letterbox(image=x) for x in im]
 
     def _build_output_processor(self, config):
+        if not self._model.predictor:
+            return None
+
         if not config.output_processor_args:
             config.output_processor_args = {}
         config.output_processor_args[
@@ -579,6 +585,9 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         return output_processor
 
     def _predict_all(self, imgs):
+        if not self._model.predictor:
+            self._set_predictor()
+
         if self._preprocess and self._transforms is not None:
             imgs = [self._transforms(img) for img in imgs]
             if self.has_collate_fn:
@@ -601,12 +610,8 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         output["orig_imgs"] = orig_images
         output["imgs"] = images
 
-        if self._output_processor is None:
-            _output = output.get("preds")
-            if isinstance(_output, torch.Tensor):
-                _output = _output.detach().cpu().numpy()
-
-            return _output
+        if not self._output_processor:
+            self._output_processor = self._build_output_processor(self.config)
 
         if self.has_logits:
             self._output_processor.store_logits = self.has_logits
