@@ -737,17 +737,37 @@ class DatasetTests(unittest.TestCase):
         d = fo.Dataset()
         d.add_sample_field("numeric_field", fo.IntField)
         d.add_sample_field("vector_field", fo.VectorField)
+        d.add_sample_field(
+            "gt",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.Detections,
+        )
 
         self.assertListEqual(
             list(d.iter_values(["numeric_field", "vector_field"])), []
         )
         vector_values = [[1 + i, 2 + i, 3 + i] for i in range(3)]
+        detections = [
+            [
+                fo.Detection(
+                    label=f"cat-{i}", bounding_box=[0.1, 0.1, 0.4, 0.4]
+                ),
+                fo.Detection(
+                    label=f"dog-{i}", bounding_box=[0.5, 0.5, 0.4, 0.4]
+                ),
+                fo.Detection(
+                    label=f"rabbit-{i}", bounding_box=[0.1, 0.1, 0.4, 0.4]
+                ),
+            ]
+            for i in range(3)
+        ]
 
         samples = [
             fo.Sample(
                 filepath=f"image{i}.jpeg",
                 numeric_field=50 + i,
                 vector_field=vector_values[i],
+                gt=fo.Detections(detections=detections[i]),
             )
             for i in range(3)
         ]
@@ -756,14 +776,15 @@ class DatasetTests(unittest.TestCase):
             list(d.iter_values("numeric_field")), [50, 51, 52]
         )
 
-        values = d.values(["numeric_field", "vector_field"])
-        for i, (n, v) in enumerate(
-            d.iter_values(["numeric_field", "vector_field"])
+        nums, vecs, gts = d.values(["numeric_field", "vector_field", "gt"])
+        for i, (n, v, gt) in enumerate(
+            d.iter_values(["numeric_field", "vector_field", "gt"])
         ):
             # ensure that fields like fo.VectorField are converted
             # when using iter_values() as they would be using values()
-            self.assertEqual(values[0][i], n)
-            np.testing.assert_array_equal(values[1][i], v)
+            self.assertEqual(nums[i], n)
+            np.testing.assert_array_equal(vecs[i], v)
+            self.assertEqual(gts[i], gt)
 
     @drop_datasets
     def test_values_unwind(self):

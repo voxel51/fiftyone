@@ -2879,8 +2879,7 @@ class Values(Aggregation):
                 return lambda x: _transform_values(
                     x,
                     self._field.to_python,
-                    level=1 + self._num_list_fields,
-                    _single=True,
+                    level=self._num_list_fields,
                 )
             else:
                 return lambda x: x
@@ -2964,15 +2963,13 @@ _MONGO_TO_FIFTYONE_TYPES = {
 }
 
 
-def _transform_values(values, fcn, level=1, _single=False):
+def _transform_values(values, fcn, level=1):
+
     if values is None:
         return None
 
     if level < 1:
         return fcn(values)
-
-    if _single:
-        return _transform_values(values, fcn, level=level - 1, _single=True)
 
     return [_transform_values(v, fcn, level=level - 1) for v in values]
 
