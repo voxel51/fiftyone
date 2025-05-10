@@ -726,6 +726,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         -   when fields are added or deleted from the dataset's schema
         -   when group slices are added or deleted from the dataset's schema
         -   when saved views or workspaces are added, edited, or deleted
+        -   when annotation, brain, evaluation, or custom runs are added,
+            edited, or deleted
 
         This property is **not** updated when samples are added, edited, or
         deleted. Use
