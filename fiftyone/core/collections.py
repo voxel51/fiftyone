@@ -604,7 +604,8 @@ class SampleCollection(object):
         """Syncs the ``last_modified_at`` property(s) of the dataset.
 
         Updates the :attr:`last_modified_at` property of the dataset if
-        necessary to incorporate any modification timestamps to its samples.
+        necessary to incorporate any modification/deletion timestamps to its
+        samples.
 
         If ``include_frames==True``, the ``last_modified_at`` property of
         each video sample is first updated if necessary to incorporate any
@@ -667,7 +668,10 @@ class SampleCollection(object):
     def _sync_dataset_last_modified_at(self):
         dataset = self._root_dataset
         curr_lma = dataset.last_modified_at
-        lma = self._max("last_modified_at")
+        lma = _none_max(
+            dataset.last_deletion_at,
+            self._max("last_modified_at"),
+        )
 
         if lma is not None and (curr_lma is None or lma > curr_lma):
             dataset._doc.last_modified_at = lma
@@ -8111,6 +8115,7 @@ class SampleCollection(object):
                     etau.is_str(field_or_expr)
                     and field_or_expr == "frames"
                     and self._has_frame_fields()
+                    and not self._is_clips
                 )
             )
         ):
@@ -8505,6 +8510,23 @@ class SampleCollection(object):
         Returns:
             the minimum value
         """
+
+        # Optimization: use `_min()` when possible
+        if (
+            isinstance(field_or_expr, str)
+            and (
+                field_or_expr in ("last_modified_at", "created_at")
+                or (
+                    self._contains_videos(any_slice=True)
+                    and field_or_expr
+                    in ("frames.last_modified_at", "frames.created_at")
+                )
+            )
+            and expr is None
+            and self._is_full_collection()
+        ):
+            return self._min(field_or_expr)
+
         make = lambda field_or_expr: foa.Min(
             field_or_expr, expr=expr, safe=safe
         )
@@ -8589,6 +8611,23 @@ class SampleCollection(object):
         Returns:
             the maximum value
         """
+
+        # Optimization: use `_max()` when possible
+        if (
+            isinstance(field_or_expr, str)
+            and (
+                field_or_expr in ("last_modified_at", "created_at")
+                or (
+                    self._contains_videos(any_slice=True)
+                    and field_or_expr
+                    in ("frames.last_modified_at", "frames.created_at")
+                )
+            )
+            and expr is None
+            and self._is_full_collection()
+        ):
+            return self._max(field_or_expr)
+
         make = lambda field_or_expr: foa.Max(
             field_or_expr, expr=expr, safe=safe
         )
@@ -11032,9 +11071,20 @@ class SampleCollection(object):
         return _handle_id_fields(self, field_name)
 
     def _is_full_collection(self):
+        # Full dataset
         if isinstance(self, fod.Dataset) and self.media_type != fom.GROUP:
             return True
 
+        # Full view (possibly generated)
+        # pylint:disable=no-member
+        if (
+            isinstance(self, fov.DatasetView)
+            and self._dataset.media_type != fom.GROUP
+            and not self._stages
+        ):
+            return True
+
+        # Full group slices view
         # pylint:disable=no-member
         if (
             isinstance(self, fov.DatasetView)
@@ -12474,3 +12524,7 @@ def _add_db_fields_to_schema(schema):
             additions[field.db_field] = field
 
     schema.update(additions)
+
+
+def _none_max(*args, default=None):
+    return max((a for a in args if a is not None), default=default)
