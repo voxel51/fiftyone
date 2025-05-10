@@ -513,24 +513,6 @@ you can request batch inference via the pattern below:
         batch_size=batch_size,
     )
 
-The manual inference loops can be also executed using batch inference via the
-pattern below:
-
-.. code-block:: python
-    :linenos:
-
-    from fiftyone.core.utils import iter_batches
-
-    filepaths = dataset.values("filepath")
-    batch_size = 16
-
-    predictions = []
-    for paths in iter_batches(filepaths, batch_size):
-        results = model(paths)
-        predictions.extend(fou.to_detections(results))
-
-    dataset.set_values("predictions", predictions)
-
 Alternatively, to run inference on a batch size of 1 with rectangular resizing,
 use overrides as shown below:
 
@@ -549,6 +531,24 @@ use overrides as shown below:
         label_field="predictions",
         batch_size=batch_size,
     )
+
+The manual inference loops can be also executed using batch inference via the
+pattern below:
+
+.. code-block:: python
+    :linenos:
+
+    from fiftyone.core.utils import iter_batches
+
+    filepaths = dataset.values("filepath")
+    batch_size = 16
+
+    predictions = []
+    for paths in iter_batches(filepaths, batch_size):
+        results = model(paths)
+        predictions.extend(fou.to_detections(results))
+
+    dataset.set_values("predictions", predictions)
 
 .. note::
 
