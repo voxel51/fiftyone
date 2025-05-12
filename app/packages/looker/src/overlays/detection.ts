@@ -70,16 +70,17 @@ export default class DetectionOverlay<
       return;
     }
 
-    let doesInstanceMatch = false;
+    /**
+     * Four possible cases for stroke style if it's a label _with an instance_:
+     * 1. Label is neither selected nor hovered: default color
+     * 2. Label is hovered: white stroke
+     * 3. Instance is selected: stroke with dash of white and default color
+     * 4. Instance is selected and hovered: stroke with dash of orange and default color
+     */
 
-    if (
+    const doesInstanceMatch =
       this.label.instance?._id &&
-      isHoveringParticularLabelWithInstanceConfig(this.label.instance._id)
-    ) {
-      doesInstanceMatch = true;
-      ctx.strokeStyle = INFO_COLOR;
-      ctx.lineWidth = 2;
-    }
+      isHoveringParticularLabelWithInstanceConfig(this.label.instance._id);
 
     const isSelected = this.isSelected(state);
 

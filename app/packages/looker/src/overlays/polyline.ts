@@ -2,7 +2,12 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import { INFO_COLOR, TOLERANCE } from "../constants";
+import { isHoveringParticularLabelWithInstanceConfig } from "@fiftyone/state/src/jotai";
+import {
+  INFO_COLOR,
+  SELECTED_AND_HOVERED_COLOR,
+  TOLERANCE,
+} from "../constants";
 import { BaseState, Coordinates } from "../state";
 import { distanceFromLineSegment, getRenderedScale } from "../util";
 import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
@@ -43,14 +48,37 @@ export default class PolylineOverlay<
 
     const selected = this.isSelected(state);
 
+    /**
+     * Four possible cases for stroke style if it's a label _with an instance_:
+     * 1. Label is neither selected nor hovered: default color
+     * 2. Label is hovered: white stroke
+     * 3. Instance is selected: stroke with dash of white and default color
+     * 4. Instance is selected and hovered: stroke with dash of orange and default color
+     */
+
+    const doesInstanceMatch =
+      this.label.instance?._id &&
+      isHoveringParticularLabelWithInstanceConfig(this.label.instance._id);
+
+    const strokeColor = doesInstanceMatch ? INFO_COLOR : color;
+
     for (const path of this.label.points) {
       if (path.length < 2) {
         continue;
       }
 
-      this.strokePath(ctx, state, path, color, this.label.filled);
+      this.strokePath(ctx, state, path, strokeColor, this.label.filled);
 
-      if (selected) {
+      if (doesInstanceMatch && selected) {
+        this.strokePath(
+          ctx,
+          state,
+          path,
+          SELECTED_AND_HOVERED_COLOR,
+          false,
+          state.dashLength
+        );
+      } else if (selected) {
         this.strokePath(ctx, state, path, INFO_COLOR, false, state.dashLength);
       }
     }
