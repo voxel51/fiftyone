@@ -474,6 +474,9 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         model.predictor.setup_model(model=model.model, verbose=False)
         model.predictor.setup_source([np.zeros((10, 10))])
         model.predictor.batch = next(iter(model.predictor.dataset))
+        # Remove thread lock to avoid issues with pickle in multiprocessing.
+        model.predictor._lock = None
+
         return model
 
     def _load_model(self, config):
@@ -602,13 +605,6 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         # This is required for Ultralytics post-processing.
         output["orig_imgs"] = orig_images
         output["imgs"] = images
-
-        if self._output_processor is None:
-            _output = output.get("preds")
-            if isinstance(_output, torch.Tensor):
-                _output = _output.detach().cpu().numpy()
-
-            return _output
 
         if self.has_logits:
             self._output_processor.store_logits = self.has_logits
