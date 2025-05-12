@@ -92,7 +92,7 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
         expand_gt_hierarchy=True,
         expand_pred_hierarchy=False,
         custom_metrics=None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(
             pred_field,
@@ -236,6 +236,7 @@ class OpenImagesEvaluation(DetectionEvaluation):
         classes=None,
         missing=None,
         progress=None,
+        **kwargs,
     ):
         """Generates aggregate evaluation results for the samples.
 

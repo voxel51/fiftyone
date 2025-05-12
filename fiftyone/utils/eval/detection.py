@@ -9,6 +9,7 @@ from copy import deepcopy
 import inspect
 import itertools
 import logging
+from typing import List, Any
 
 import numpy as np
 
@@ -30,6 +31,45 @@ from .base import (
 logger = logging.getLogger(__name__)
 
 
+def _compute_matches_single(
+    sample,
+    eval_method,
+    eval_key,
+    save=False,
+    processing_frames=False,
+    tp_field=None,
+    fp_field=None,
+    fn_field=None,
+) -> List[Any]:
+    matches = []
+    if processing_frames:
+        docs = sample.frames.values()
+    else:
+        docs = [sample]
+
+    sample_tp = 0
+    sample_fp = 0
+    sample_fn = 0
+    for doc in docs:
+        doc_matches = eval_method.evaluate(doc, eval_key=eval_key)
+        matches.extend(doc_matches)
+        tp, fp, fn = _tally_matches(doc_matches)
+        sample_tp += tp
+        sample_fp += fp
+        sample_fn += fn
+
+        if processing_frames and save:
+            doc[tp_field] = tp
+            doc[fp_field] = fp
+            doc[fn_field] = fn
+
+    if save:
+        sample[tp_field] = sample_tp
+        sample[fp_field] = sample_fp
+        sample[fn_field] = sample_fn
+    return matches
+
+
 def evaluate_detections(
     samples,
     pred_field,
@@ -45,6 +85,10 @@ def evaluate_detections(
     dynamic=True,
     custom_metrics=None,
     progress=None,
+    num_workers=1,
+    batch_method=None,
+    batch_size=None,
+    parallelize_method=None,
     **kwargs,
 ):
     """Evaluates the predicted detections in the given samples with respect to
@@ -141,6 +185,15 @@ def evaluate_detections(
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
+        num_workers (1): the number of workers to use to compute detections. If
+            set to greater than 1, will use parallel processing to compute.
+        batch_method (None): the method to use to batch the dataset for parallel
+            processing. The supported values are ``"id"`` and ``"slice"``.
+        batch_size (None): the size of the samples per batch to process in
+            parallel. If not provided, the samples are distributed evenly
+            across the workers.
+        parallelize_method (None): the backend to use for multiprocessing. The
+            supported values are ``"thread"`` and ``"process"``.
         **kwargs: optional keyword arguments for the constructor of the
             :class:`DetectionEvaluationConfig` being used
 
@@ -183,44 +236,38 @@ def evaluate_detections(
     processing_frames = samples._is_frame_field(pred_field)
     save = eval_key is not None
 
-    if save:
-        tp_field = "%s_tp" % eval_key
-        fp_field = "%s_fp" % eval_key
-        fn_field = "%s_fn" % eval_key
+    tp_field = "%s_tp" % eval_key if eval_key else None
+    fp_field = "%s_fp" % eval_key if eval_key else None
+    fn_field = "%s_fn" % eval_key if eval_key else None
 
     if config.requires_additional_fields:
         _samples = samples
     else:
         _samples = samples.select_fields([gt_field, pred_field])
 
+    def _map_fnc(sample) -> List[Any]:
+        return _compute_matches_single(
+            sample,
+            eval_method,
+            eval_key,
+            save=save,
+            processing_frames=processing_frames,
+            tp_field=tp_field,
+            fp_field=fp_field,
+            fn_field=fn_field,
+        )
+
     matches = []
-    logger.info("Evaluating detections...")
-    for sample in _samples.iter_samples(progress=progress, autosave=save):
-        if processing_frames:
-            docs = sample.frames.values()
-        else:
-            docs = [sample]
-
-        sample_tp = 0
-        sample_fp = 0
-        sample_fn = 0
-        for doc in docs:
-            doc_matches = eval_method.evaluate(doc, eval_key=eval_key)
-            matches.extend(doc_matches)
-            tp, fp, fn = _tally_matches(doc_matches)
-            sample_tp += tp
-            sample_fp += fp
-            sample_fn += fn
-
-            if processing_frames and save:
-                doc[tp_field] = tp
-                doc[fp_field] = fp
-                doc[fn_field] = fn
-
-        if save:
-            sample[tp_field] = sample_tp
-            sample[fp_field] = sample_fp
-            sample[fn_field] = sample_fn
+    for _, result in _samples.map_samples(
+        _map_fnc,
+        num_workers=num_workers,
+        batch_method=batch_method,
+        batch_size=batch_size,
+        progress=progress,
+        parallelize_method=parallelize_method,
+        save=save,
+    ):
+        matches.extend(result)
 
     results = eval_method.generate_results(
         samples,
@@ -229,6 +276,10 @@ def evaluate_detections(
         classes=classes,
         missing=missing,
         progress=progress,
+        num_workers=num_workers,
+        batch_method=batch_method,
+        batch_size=batch_size,
+        parallelize_method=parallelize_method,
     )
     eval_method.compute_custom_metrics(samples, eval_key, results)
     eval_method.save_run_results(samples, eval_key, results)
@@ -393,6 +444,7 @@ class DetectionEvaluation(BaseEvaluationMethod):
         classes=None,
         missing=None,
         progress=None,
+        **kwargs,
     ):
         """Generates aggregate evaluation results for the samples.
 
@@ -413,7 +465,7 @@ class DetectionEvaluation(BaseEvaluationMethod):
                 given this label for results purposes
             progress (None): whether to render a progress bar (True/False), use
                 the default value ``fiftyone.config.show_progress_bars``
-                (None), or a progress callback function to invoke instead
+                (None), or a progress callback function to invoke instead`.
 
         Returns:
             a :class:`DetectionResults`
