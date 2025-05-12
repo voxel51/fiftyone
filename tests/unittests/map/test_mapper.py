@@ -184,11 +184,19 @@ class TestMapSamples:
             pytest.param(get_random_sample_errors(3), id="errors[multiple]"),
         ),
     )
+    @pytest.mark.parametrize(
+        "use_iter_fcn",
+        (
+            pytest.param(False, id="default-iter-fcn"),
+            pytest.param(True, id="custom-iter-fcn"),
+        ),
+    )
     def test_map_err(
         self,
         num_workers,
         skip_failures,
         errors,
+        use_iter_fcn,
         mapper,
         sample_collection,
         samples,
@@ -199,6 +207,11 @@ class TestMapSamples:
         map_samples_multi_worker_val,
     ):
         """Test map function error"""
+
+        custom_iter_fcn = mock.MagicMock()
+        custom_iter_fcn.return_value.__iter__.return_value = [
+            (sample.id, sample) for sample in samples
+        ]
 
         for idx, err in errors.items():
             if num_workers == 1:
@@ -216,6 +229,7 @@ class TestMapSamples:
             for sid, _ in mapper.map_samples(
                 sample_collection,
                 map_fcn,
+                iter_fcn=custom_iter_fcn if use_iter_fcn else None,
                 progress=(progress := mock.Mock()),
                 save=(save := mock.Mock()),
                 skip_failures=skip_failures,
@@ -228,7 +242,11 @@ class TestMapSamples:
             (idx, err) for idx, err in errors.items()
         )
 
-        get_default_sample_iter.assert_called_once_with(save=save)
+        if use_iter_fcn:
+            iter_fcn = custom_iter_fcn
+        else:
+            get_default_sample_iter.assert_called_once_with(save=save)
+            iter_fcn = get_default_sample_iter.return_value
 
         if skip_failures:
             assert len(returned_sample_ids) == (SAMPLE_COUNT - len(errors))
@@ -239,9 +257,7 @@ class TestMapSamples:
         if num_workers == 1:
             assert not map_samples_multiple_workers.called
 
-            get_default_sample_iter.return_value.assert_called_once_with(
-                sample_collection
-            )
+            iter_fcn.assert_called_once_with(sample_collection)
 
             if skip_failures:
                 expected_map_fcn_call_count = SAMPLE_COUNT
@@ -259,12 +275,12 @@ class TestMapSamples:
             map_fcn.assert_has_calls(expected_map_fcn_calls)
 
         else:
-            assert not get_default_sample_iter.return_value.called
+            assert not iter_fcn.called
             assert not map_fcn.called
 
             map_samples_multiple_workers.assert_called_once_with(
                 sample_collection,
-                get_default_sample_iter.return_value,
+                iter_fcn,
                 map_fcn,
                 progress=progress,
                 skip_failures=skip_failures,
@@ -272,9 +288,17 @@ class TestMapSamples:
 
             assert not sample_collection.iter_samples.called
 
+    @pytest.mark.parametrize(
+        "use_iter_fcn",
+        (
+            pytest.param(False, id="default-iter-fcn"),
+            pytest.param(True, id="custom-iter-fcn"),
+        ),
+    )
     def test_ok(
         self,
         num_workers,
+        use_iter_fcn,
         mapper,
         get_default_sample_iter,
         sample_collection,
@@ -283,11 +307,17 @@ class TestMapSamples:
     ):
         """Test happy path"""
 
+        custom_iter_fcn = mock.MagicMock()
+        custom_iter_fcn.return_value.__iter__.return_value = [
+            (sample.id, sample) for sample in samples
+        ]
+
         #####
         results = list(
             mapper.map_samples(
                 sample_collection,
                 map_fcn := mock.Mock(),
+                iter_fcn=custom_iter_fcn if use_iter_fcn else None,
                 progress=(progress := mock.Mock()),
                 save=(save := mock.Mock()),
                 skip_failures=(skip_failures := mock.Mock()),
@@ -295,14 +325,16 @@ class TestMapSamples:
         )
         #####
 
-        get_default_sample_iter.assert_called_once_with(save=save)
+        if use_iter_fcn:
+            iter_fcn = custom_iter_fcn
+        else:
+            get_default_sample_iter.assert_called_once_with(save=save)
+            iter_fcn = get_default_sample_iter.return_value
 
         if num_workers == 1:
             assert not map_samples_multiple_workers.called
 
-            get_default_sample_iter.return_value.assert_called_once_with(
-                sample_collection
-            )
+            iter_fcn.assert_called_once_with(sample_collection)
 
             assert map_fcn.call_count == len(samples)
 
@@ -312,7 +344,7 @@ class TestMapSamples:
 
             map_samples_multiple_workers.assert_called_once_with(
                 sample_collection,
-                get_default_sample_iter.return_value,
+                iter_fcn,
                 map_fcn,
                 progress=progress,
                 skip_failures=skip_failures,
