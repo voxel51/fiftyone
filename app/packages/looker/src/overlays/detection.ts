@@ -16,6 +16,7 @@ import {
   RegularLabel,
 } from "./base";
 import { t } from "./util";
+import { getInstanceStrokeStyles } from "./util";
 
 export interface DetectionLabel extends RegularLabel {
   mask?: LabelMask;
@@ -56,33 +57,26 @@ export default class DetectionOverlay<
   }
 
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
-    // _renderStatus is guaranteed to be undefined when there is no mask_path
-    // so if render status is not null, means there's a mask
-    // we want to couple rendering of mask with bbox
-    // so we return if render status is truthy and there's no mask
-    // meaning mask is being processed
     if (this.label._renderStatus && !this.label.mask) {
       return;
     }
 
-    // this means we are re-recoloring
     if (this.label.mask && this.label._renderStatus === RENDER_STATUS_PENDING) {
       return;
     }
 
-    /**
-     * Four possible cases for stroke style if it's a label _with an instance_:
-     * 1. Label is neither selected nor hovered: default color
-     * 2. Label is hovered: white stroke
-     * 3. Instance is selected: stroke with dash of white and default color
-     * 4. Instance is selected and hovered: stroke with dash of orange and default color
-     */
-
     const doesInstanceMatch =
       this.label.instance?._id &&
       isHoveringParticularLabelWithInstanceConfig(this.label.instance._id);
-
     const isSelected = this.isSelected(state);
+
+    const { strokeColor, overlayStrokeColor, overlayDash } =
+      getInstanceStrokeStyles({
+        isSelected,
+        getColor: () => this.getColor(state),
+        isHoveringInstance: !!doesInstanceMatch,
+        dashLength: state.dashLength,
+      });
 
     if (
       this.label.mask?.bitmap?.width &&
@@ -93,19 +87,14 @@ export default class DetectionOverlay<
 
     !state.config.thumbnail && this.drawLabelText(ctx, state);
 
-    const strokeColor =
-      !isSelected && doesInstanceMatch ? INFO_COLOR : this.getColor(state);
-
     if (this.is3D && this.label.dimensions && this.label.location) {
       this.fillRectFor3d(ctx, state, strokeColor);
     } else {
       this.strokeRect(ctx, state, strokeColor);
     }
 
-    if (doesInstanceMatch && isSelected) {
-      this.strokeRect(ctx, state, SELECTED_AND_HOVERED_COLOR, state.dashLength);
-    } else if (isSelected) {
-      this.strokeRect(ctx, state, INFO_COLOR, state.dashLength);
+    if (overlayStrokeColor && overlayDash) {
+      this.strokeRect(ctx, state, overlayStrokeColor, overlayDash);
     }
   }
 

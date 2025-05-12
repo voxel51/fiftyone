@@ -12,6 +12,7 @@ import { BaseState, Coordinates } from "../state";
 import { distanceFromLineSegment, getRenderedScale } from "../util";
 import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
 import { t } from "./util";
+import { getInstanceStrokeStyles } from "./util";
 
 interface PolylineLabel extends RegularLabel {
   points: Coordinates[][];
@@ -45,22 +46,18 @@ export default class PolylineOverlay<
 
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
     const color = this.getColor(state);
-
     const selected = this.isSelected(state);
-
-    /**
-     * Four possible cases for stroke style if it's a label _with an instance_:
-     * 1. Label is neither selected nor hovered: default color
-     * 2. Label is hovered: white stroke
-     * 3. Instance is selected: stroke with dash of white and default color
-     * 4. Instance is selected and hovered: stroke with dash of orange and default color
-     */
-
     const doesInstanceMatch =
       this.label.instance?._id &&
       isHoveringParticularLabelWithInstanceConfig(this.label.instance._id);
 
-    const strokeColor = doesInstanceMatch ? INFO_COLOR : color;
+    const { strokeColor, overlayStrokeColor, overlayDash } =
+      getInstanceStrokeStyles({
+        isSelected: selected,
+        getColor: () => color,
+        isHoveringInstance: !!doesInstanceMatch,
+        dashLength: state.dashLength,
+      });
 
     for (const path of this.label.points) {
       if (path.length < 2) {
@@ -69,17 +66,15 @@ export default class PolylineOverlay<
 
       this.strokePath(ctx, state, path, strokeColor, this.label.filled);
 
-      if (doesInstanceMatch && selected) {
+      if (overlayStrokeColor && overlayDash) {
         this.strokePath(
           ctx,
           state,
           path,
-          SELECTED_AND_HOVERED_COLOR,
+          overlayStrokeColor,
           false,
-          state.dashLength
+          overlayDash
         );
-      } else if (selected) {
-        this.strokePath(ctx, state, path, INFO_COLOR, false, state.dashLength);
       }
     }
   }
