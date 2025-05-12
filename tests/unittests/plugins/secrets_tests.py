@@ -40,6 +40,9 @@ class TestExecutionContext:
         mock.get_secret.side_effect = lambda key, operator: MockSecret(
             key, self.secrets.get(key)
         )
+        mock.get_multiple.side_effect = lambda keys, operator: {
+            key: MockSecret(key, self.secrets.get(key)) for key in keys
+        }
         mock.get_secret_sync.side_effect = lambda key, operator: MockSecret(
             key, self.secrets.get(key)
         )
