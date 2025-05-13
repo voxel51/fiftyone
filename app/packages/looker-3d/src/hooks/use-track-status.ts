@@ -10,22 +10,28 @@ export const useTrackStatus = () => {
   THREE.DefaultLoadingManager.onStart = (url) => {
     const log = "Started loading file: " + url;
 
-    setLogs([...logs, { message: log, status: "info" }]);
+    setLogs([...logs, { message: log, status: "info", timestamp: Date.now() }]);
   };
 
   THREE.DefaultLoadingManager.onLoad = () => {
     const log = ALL_LOADING_COMPLETE;
-    setLogs([...logs, { message: log, status: "success" }]);
+    setLogs([
+      ...logs,
+      { message: log, status: "success", timestamp: Date.now() },
+    ]);
   };
 
   THREE.DefaultLoadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
     const log = `Loading file: ${url}. Loaded ${itemsLoaded} of ${itemsTotal} files.`;
 
-    setLogs([...logs, { message: log, status: "info" }]);
+    setLogs([...logs, { message: log, status: "info", timestamp: Date.now() }]);
   };
 
   THREE.DefaultLoadingManager.onError = (url) => {
     const log = "There was an error loading " + url;
-    setLogs([...logs, { message: log, status: "error" }]);
+    setLogs([
+      ...logs,
+      { message: log, status: "error", timestamp: Date.now() },
+    ]);
   };
 };

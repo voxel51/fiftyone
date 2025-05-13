@@ -34,4 +34,5 @@ export type NodeUuid = string;
 export type AssetLoadingLog = {
   message: string;
   status: "info" | "success" | "error";
+  timestamp?: number;
 };

@@ -43,6 +43,38 @@ export const Logs = () => {
     return true;
   }, [logs]);
 
+  const loadingTimeMs = useMemo(() => {
+    if (logs.length === 0 || !isFinalStatusSuccess) {
+      return 0;
+    }
+
+    const firstLogWithTimestamp = logs.find(
+      (log) => log.timestamp !== undefined
+    );
+    const successLog = logs.find(
+      (log) =>
+        log.message === ALL_LOADING_COMPLETE && log.timestamp !== undefined
+    );
+
+    if (firstLogWithTimestamp && successLog) {
+      return successLog.timestamp - firstLogWithTimestamp.timestamp;
+    }
+
+    return 0;
+  }, [logs, isFinalStatusSuccess]);
+
+  const formattedLoadingTime = useMemo(() => {
+    if (loadingTimeMs === 0) {
+      return "";
+    }
+
+    if (loadingTimeMs < 1000) {
+      return `(${loadingTimeMs}ms)`;
+    }
+
+    return `(${(loadingTimeMs / 1000).toFixed(2)}s)`;
+  }, [loadingTimeMs]);
+
   const indicatorIcon = useMemo(() => {
     if (logs.length === 0) {
       return null;
@@ -75,7 +107,7 @@ export const Logs = () => {
         {isStillLoading
           ? logs[logs.length - 1].message
           : isFinalStatusSuccess
-          ? "All assets loaded successfully!"
+          ? `All assets loaded successfully! ${formattedLoadingTime}`
           : errorLogs[errorLogs.length - 1].message}
       </Typography>
     </LogContainer>

@@ -26,7 +26,10 @@ const AddFo3dErrorLogs = ({
       ? `Error loading ${boundaryName}: ${message}`
       : message;
 
-    setLogs((logs) => [...logs, { message: fullMessage, status: "error" }]);
+    setLogs((logs) => [
+      ...logs,
+      { message: fullMessage, status: "error", timestamp: Date.now() },
+    ]);
   }, [boundaryName, error, setLogs]);
 
   return null;
