@@ -827,7 +827,7 @@ class ExecutionContext(object):
             keys, self._operator_uri, **kwargs
         )
         if secrets:
-            for _, secret in secrets.items():
+            for secret in secrets.values():
                 self._secrets[secret.key] = secret.value
 
     def trigger(self, operator_name, params=None):
