@@ -539,6 +539,7 @@ export const MediaTypeFo3dComponent = () => {
         onCreated={onCanvasCreated}
         onPointerMissed={resetActiveNode}
       >
+        <StatusTunnel.Out />
         <Fo3dSceneContext.Provider
           value={{
             isSceneInitialized,
@@ -559,8 +560,6 @@ export const MediaTypeFo3dComponent = () => {
           <group ref={assetsGroupRef} visible={isSceneInitialized}>
             <FoSceneComponent scene={foScene} />
           </group>
-
-          <StatusTunnel.Out />
 
           {isSceneInitialized && <ThreeDLabels sampleMap={{ fo3d: sample }} />}
         </Fo3dSceneContext.Provider>

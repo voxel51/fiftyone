@@ -3,8 +3,9 @@ import { Close } from "@mui/icons-material";
 import CameraIcon from "@mui/icons-material/Videocam";
 import Text from "@mui/material/Typography";
 import { animated, useSpring } from "@react-spring/web";
-import { Perf } from "r3f-perf";
+import { getPerf, PerfHeadless } from "r3f-perf";
 import {
+  CSSProperties,
   type RefObject,
   useCallback,
   useEffect,
@@ -62,6 +63,70 @@ const CameraInfo = ({
   );
 };
 
+const PerfStats = () => {
+  const [perfStats, setPerfStats] = useState({
+    fps: 0,
+    calls: 0,
+    triangles: 0,
+    points: 0,
+    geometries: 0,
+    textures: 0,
+    programs: 0,
+  });
+
+  useEffect(() => {
+    const updateStats = () => {
+      const perfState = getPerf() as any;
+      if (!perfState) return;
+
+      setPerfStats({
+        fps: perfState.log?.fps || 0,
+        calls: perfState.gl?.info?.render?.calls || 0,
+        triangles: perfState.gl?.info?.render?.triangles || 0,
+        points: perfState.gl?.info?.render?.points || 0,
+        geometries: perfState.gl?.info?.memory?.geometries || 0,
+        textures: perfState.gl?.info?.memory?.textures || 0,
+        programs: perfState.gl?.info?.programs?.length || 0,
+      });
+    };
+
+    const interval = setInterval(updateStats, 500);
+    return () => clearInterval(interval);
+  }, []);
+
+  const statStyle: CSSProperties = {
+    fontFamily: "monospace",
+    fontSize: "12px",
+    color: "#ffffff",
+    margin: "2px 0",
+    textShadow: "1px 1px 1px rgba(0,0,0,0.5)",
+  };
+
+  const containerStyle: CSSProperties = {
+    position: "fixed",
+    bottom: "0",
+    right: "2em",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    borderRadius: "4px",
+    padding: "8px 12px",
+    minWidth: "180px",
+  };
+
+  return (
+    <div style={containerStyle}>
+      <div style={statStyle}>FPS: {perfStats.fps.toFixed(1)}</div>
+      <div style={statStyle}>Draw Calls: {perfStats.calls}</div>
+      <div style={statStyle}>
+        Triangles: {perfStats.triangles.toLocaleString()}
+      </div>
+      <div style={statStyle}>Points: {perfStats.points}</div>
+      <div style={statStyle}>Geometries: {perfStats.geometries}</div>
+      <div style={statStyle}>Textures: {perfStats.textures}</div>
+      <div style={statStyle}>Shaders: {perfStats.programs}</div>
+    </div>
+  );
+};
+
 export const StatusBar = ({
   cameraRef,
 }: {
@@ -89,37 +154,40 @@ export const StatusBar = ({
       )}
 
       {showPerfStatus && (
-        <StatusBarContainer>
-          <div
-            style={{
-              display: "flex",
-              width: "100%",
-              justifyContent: "right",
-              backgroundColor: "rgb(255 109 5 / 6%)",
-            }}
-          >
-            <IconButton onClick={onClickHandler}>
-              <Close />
-            </IconButton>
-          </div>
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              paddingLeft: "1em",
-              justifyContent: "space-between",
-              position: "relative",
-              height: "100%",
-              width: "100%",
-              backgroundColor: "hsl(208.46deg 87% 53% / 20%)",
-            }}
-          >
-            <CameraInfo cameraRef={cameraRef} />
-            <StatusTunnel.In>
-              <Perf style={{ position: "absolute", top: "4em" }} />
-            </StatusTunnel.In>
-          </div>
-        </StatusBarContainer>
+        <>
+          <PerfStats />
+          <StatusBarContainer>
+            <div
+              style={{
+                display: "flex",
+                width: "100%",
+                justifyContent: "right",
+                backgroundColor: "rgb(255 109 5 / 6%)",
+              }}
+            >
+              <IconButton onClick={onClickHandler}>
+                <Close />
+              </IconButton>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                paddingLeft: "1em",
+                justifyContent: "space-between",
+                position: "relative",
+                height: "100%",
+                width: "100%",
+                backgroundColor: "hsl(208.46deg 87% 53% / 20%)",
+              }}
+            >
+              <CameraInfo cameraRef={cameraRef} />
+              <StatusTunnel.In>
+                <PerfHeadless />
+              </StatusTunnel.In>
+            </div>
+          </StatusBarContainer>
+        </>
       )}
     </animated.div>
   );
