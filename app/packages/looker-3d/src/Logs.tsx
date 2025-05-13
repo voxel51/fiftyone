@@ -69,7 +69,7 @@ export const Logs = () => {
     }
 
     if (loadingTimeMs < 1000) {
-      return `(${loadingTimeMs}ms)`;
+      return `(Load Time: ${loadingTimeMs}ms)`;
     }
 
     return `(${(loadingTimeMs / 1000).toFixed(2)}s)`;
