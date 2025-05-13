@@ -29,9 +29,9 @@ import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 from fiftyone.core.map.typing import SampleCollection
 
-T = TypeVar("T")
-R = TypeVar("R")
-U = TypeVar("U")
+T = TypeVar("T")  # Sample type
+R = TypeVar("R")  # Return value type of map_fcn
+U = TypeVar("U")  # Return value type of iter_fcn if set - must be same as input type to map_fcn.
 
 
 logger = logging.getLogger(__name__)
