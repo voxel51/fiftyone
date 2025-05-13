@@ -442,7 +442,6 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
 
         custom = {
             "conf": config.confidence_thresh,
-            "batch": 1,
             "save": False,
             "mode": "predict",
             "rect": True,
@@ -573,6 +572,9 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
             images = images.to(self._device)
             if self._using_half_precision:
                 images = images.half()
+
+        if self.config.confidence_thresh:
+            self._model.predictor.args.conf = self.config.confidence_thresh
 
         output = self._forward_pass(images)
 
