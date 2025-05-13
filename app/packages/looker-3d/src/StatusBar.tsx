@@ -1,11 +1,17 @@
 import { IconButton, InfoIcon } from "@fiftyone/components";
 import { Close } from "@mui/icons-material";
+import BubbleChartIcon from "@mui/icons-material/BubbleChart";
+import CallSplitIcon from "@mui/icons-material/CallSplit";
+import CodeIcon from "@mui/icons-material/Code";
+import LayersIcon from "@mui/icons-material/Layers";
+import SpeedIcon from "@mui/icons-material/Speed";
+import TextureIcon from "@mui/icons-material/Texture";
+import TimelineIcon from "@mui/icons-material/Timeline";
 import CameraIcon from "@mui/icons-material/Videocam";
 import Text from "@mui/material/Typography";
 import { animated, useSpring } from "@react-spring/web";
 import { getPerf, PerfHeadless } from "r3f-perf";
 import {
-  CSSProperties,
   type RefObject,
   useCallback,
   useEffect,
@@ -15,8 +21,50 @@ import {
 import { useRecoilState, useSetRecoilState } from "recoil";
 import type { PerspectiveCamera, Vector3 } from "three";
 import tunnel from "tunnel-rat";
-import { StatusBarContainer } from "./containers";
+import {
+  CameraInfoContainer,
+  CameraPositionText,
+  PerfStatsContainer,
+  PerfStatsDivider,
+  PerfStatsFPSValue,
+  PerfStatsHeaderContainer,
+  StatBarInner,
+  StatBarOuterContainer,
+  StatIconWrapper,
+  StatLabelContainer,
+  StatRowContainer,
+  StatsRowWrapper,
+  StatusBarContainer,
+  StatusBarHeaderContainer,
+  StatusBarInfoContainer,
+  StatValueContainer,
+} from "./containers";
 import { activeNodeAtom, isStatusBarOnAtom } from "./state";
+
+const STAT_BAR_COLORS = {
+  // blue
+  calls: "#38bdf8" as const,
+  // purple
+  triangles: "#a78bfa" as const,
+  // pink
+  points: "#f472b6" as const,
+  // yellow
+  geometries: "#fbbf24" as const,
+  // green
+  textures: "#34d399" as const,
+  // light blue
+  programs: "#60a5fa" as const,
+};
+
+// note: this is reasonably arbitrary
+const STAT_MAX = {
+  calls: 1000 as const,
+  triangles: 1000000 as const,
+  points: 1000000 as const,
+  geometries: 1000 as const,
+  textures: 1000 as const,
+  programs: 100 as const,
+};
 
 export const StatusTunnel = tunnel();
 
@@ -51,36 +99,78 @@ const CameraInfo = ({
   }
 
   return (
-    <div style={{ display: "flex", alignItems: "center", opacity: 0.5 }}>
+    <CameraInfoContainer>
       <CameraIcon fontSize="small" />
-      <div style={{ marginLeft: "0.5em", marginTop: "-5px" }}>
+      <CameraPositionText>
         <Text variant="caption">
           {cameraPosition.x.toFixed(2)}, {cameraPosition.y.toFixed(2)},{" "}
           {cameraPosition.z.toFixed(2)}
         </Text>
-      </div>
-    </div>
+      </CameraPositionText>
+    </CameraInfoContainer>
+  );
+};
+
+const StatRow = ({
+  icon,
+  label,
+  value,
+  barKey,
+}: {
+  icon: JSX.Element;
+  label: string;
+  value: number | undefined;
+  barKey: keyof typeof STAT_BAR_COLORS;
+}) => {
+  const barWidth = `${Math.min(
+    100,
+    ((value !== undefined ? value : 0) / STAT_MAX[barKey]) * 100
+  )}%`;
+
+  return (
+    <StatsRowWrapper>
+      <StatRowContainer>
+        <StatLabelContainer>
+          <StatIconWrapper color={STAT_BAR_COLORS[barKey]}>
+            {icon}
+          </StatIconWrapper>
+          {label}
+        </StatLabelContainer>
+        <StatValueContainer>{value?.toLocaleString()}</StatValueContainer>
+      </StatRowContainer>
+      <StatBarOuterContainer>
+        <StatBarInner width={barWidth} background={STAT_BAR_COLORS[barKey]} />
+      </StatBarOuterContainer>
+    </StatsRowWrapper>
   );
 };
 
 const PerfStats = () => {
-  const [perfStats, setPerfStats] = useState({
-    fps: 0,
-    calls: 0,
-    triangles: 0,
-    points: 0,
-    geometries: 0,
-    textures: 0,
-    programs: 0,
+  const [perfStats, setPerfStats] = useState<{
+    fps: number | undefined;
+    calls: number | undefined;
+    triangles: number | undefined;
+    points: number | undefined;
+    geometries: number | undefined;
+    textures: number | undefined;
+    programs: number | undefined;
+  }>({
+    fps: undefined,
+    calls: undefined,
+    triangles: undefined,
+    points: undefined,
+    geometries: undefined,
+    textures: undefined,
+    programs: undefined,
   });
 
   useEffect(() => {
     const updateStats = () => {
-      const perfState = getPerf() as any;
+      const perfState = getPerf();
       if (!perfState) return;
 
       setPerfStats({
-        fps: perfState.log?.fps || 0,
+        fps: perfState.log?.fps || undefined,
         calls: perfState.gl?.info?.render?.calls || 0,
         triangles: perfState.gl?.info?.render?.triangles || 0,
         points: perfState.gl?.info?.render?.points || 0,
@@ -94,36 +184,105 @@ const PerfStats = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const statStyle: CSSProperties = {
-    fontFamily: "monospace",
-    fontSize: "12px",
-    color: "#ffffff",
-    margin: "2px 0",
-    textShadow: "1px 1px 1px rgba(0,0,0,0.5)",
-  };
+  // we want to show green for 50+ fps, yellow for 30-50, and red for <30
+  const fpsColor =
+    perfStats.fps !== undefined && perfStats.fps > 50
+      ? "#4ade80"
+      : perfStats.fps !== undefined && perfStats.fps > 30
+      ? "#facc15"
+      : "#f87171";
 
-  const containerStyle: CSSProperties = {
-    position: "fixed",
-    bottom: "0",
-    right: "2em",
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    borderRadius: "4px",
-    padding: "8px 12px",
-    minWidth: "180px",
-  };
+  const isLoading = perfStats.fps === undefined;
+
+  if (isLoading) {
+    return (
+      <PerfStatsContainer>
+        <div style={{ textAlign: "center", padding: "1em" }}>
+          <span role="status" aria-live="polite">
+            Loading stats...
+          </span>
+        </div>
+      </PerfStatsContainer>
+    );
+  }
 
   return (
-    <div style={containerStyle}>
-      <div style={statStyle}>FPS: {perfStats.fps.toFixed(1)}</div>
-      <div style={statStyle}>Draw Calls: {perfStats.calls}</div>
-      <div style={statStyle}>
-        Triangles: {perfStats.triangles.toLocaleString()}
-      </div>
-      <div style={statStyle}>Points: {perfStats.points}</div>
-      <div style={statStyle}>Geometries: {perfStats.geometries}</div>
-      <div style={statStyle}>Textures: {perfStats.textures}</div>
-      <div style={statStyle}>Shaders: {perfStats.programs}</div>
-    </div>
+    <PerfStatsContainer>
+      <PerfStatsHeaderContainer style={{ color: fpsColor }}>
+        <SpeedIcon style={{ marginRight: 6, fontSize: 20, color: fpsColor }} />
+        FPS
+        <PerfStatsFPSValue color={fpsColor}>
+          {perfStats.fps!.toFixed(1)}
+        </PerfStatsFPSValue>
+      </PerfStatsHeaderContainer>
+      <PerfStatsDivider />
+      <StatRow
+        icon={
+          <CallSplitIcon
+            fontSize="small"
+            style={{ color: STAT_BAR_COLORS.calls }}
+          />
+        }
+        label="Draw Calls"
+        value={perfStats.calls}
+        barKey="calls"
+      />
+      <StatRow
+        icon={
+          <TimelineIcon
+            fontSize="small"
+            style={{ color: STAT_BAR_COLORS.triangles }}
+          />
+        }
+        label="Triangles"
+        value={perfStats.triangles}
+        barKey="triangles"
+      />
+      <StatRow
+        icon={
+          <BubbleChartIcon
+            fontSize="small"
+            style={{ color: STAT_BAR_COLORS.points }}
+          />
+        }
+        label="Points"
+        value={perfStats.points}
+        barKey="points"
+      />
+      <StatRow
+        icon={
+          <LayersIcon
+            fontSize="small"
+            style={{ color: STAT_BAR_COLORS.geometries }}
+          />
+        }
+        label="Geometries"
+        value={perfStats.geometries}
+        barKey="geometries"
+      />
+      <StatRow
+        icon={
+          <TextureIcon
+            fontSize="small"
+            style={{ color: STAT_BAR_COLORS.textures }}
+          />
+        }
+        label="Textures"
+        value={perfStats.textures}
+        barKey="textures"
+      />
+      <StatRow
+        icon={
+          <CodeIcon
+            fontSize="small"
+            style={{ color: STAT_BAR_COLORS.programs }}
+          />
+        }
+        label="Shaders"
+        value={perfStats.programs}
+        barKey="programs"
+      />
+    </PerfStatsContainer>
   );
 };
 
@@ -157,35 +316,17 @@ export const StatusBar = ({
         <>
           <PerfStats />
           <StatusBarContainer>
-            <div
-              style={{
-                display: "flex",
-                width: "100%",
-                justifyContent: "right",
-                backgroundColor: "rgb(255 109 5 / 6%)",
-              }}
-            >
+            <StatusBarHeaderContainer>
               <IconButton onClick={onClickHandler}>
                 <Close />
               </IconButton>
-            </div>
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                paddingLeft: "1em",
-                justifyContent: "space-between",
-                position: "relative",
-                height: "100%",
-                width: "100%",
-                backgroundColor: "hsl(208.46deg 87% 53% / 20%)",
-              }}
-            >
+            </StatusBarHeaderContainer>
+            <StatusBarInfoContainer>
               <CameraInfo cameraRef={cameraRef} />
               <StatusTunnel.In>
                 <PerfHeadless />
               </StatusTunnel.In>
-            </div>
+            </StatusBarInfoContainer>
           </StatusBarContainer>
         </>
       )}
