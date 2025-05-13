@@ -823,11 +823,11 @@ class ExecutionContext(object):
         if None in (self._secrets_client, keys):
             return None
 
-        for key in keys:
-            secret = await self._secrets_client.get_secret(
-                key, self._operator_uri, **kwargs
-            )
-            if secret:
+        secrets = await self._secrets_client.get_multiple(
+            keys, self._operator_uri, **kwargs
+        )
+        if secrets:
+            for secret in secrets.values():
                 self._secrets[secret.key] = secret.value
 
     def trigger(self, operator_name, params=None):
