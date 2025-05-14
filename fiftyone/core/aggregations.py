@@ -2872,14 +2872,13 @@ class Values(Aggregation):
         """
         if self._lazy:
             # Return a function to be called on a single result value
-            # To optimize for performance, x is the value itself
-            # e.g. doc[self._big_result]
-
+            # For performance, x is assumed to be the value itself
+            # (e.g. the result of doc[self._big_result])
             if not self._raw and self._field is not None:
-                return lambda x: _transform_values(
-                    x,
-                    self._field.to_python,
-                    level=self._num_list_fields,
+                fcn = self._field.to_python
+                level = self._num_list_fields
+                return lambda x, _f=_transform_values, _g=fcn, _lv=level: _f(
+                    x, _g, level=_lv
                 )
             else:
                 return lambda x: x
@@ -2964,7 +2963,6 @@ _MONGO_TO_FIFTYONE_TYPES = {
 
 
 def _transform_values(values, fcn, level=1):
-
     if values is None:
         return None
 
