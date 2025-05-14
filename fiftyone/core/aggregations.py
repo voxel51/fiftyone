@@ -2811,6 +2811,7 @@ class Values(Aggregation):
         _big_result=True,
         _raw=False,
         _field=None,
+        _lazy=False,
     ):
         super().__init__(field_or_expr, expr=expr)
         self._missing_value = missing_value
@@ -2823,6 +2824,7 @@ class Values(Aggregation):
         self._big_field = None
         self._manual_field = _field
         self._num_list_fields = None
+        self._lazy = _lazy
 
     def _kwargs(self):
         return [
@@ -2833,6 +2835,7 @@ class Values(Aggregation):
             ["_allow_missing", self._allow_missing],
             ["_big_result", self._big_result],
             ["_raw", self._raw],
+            ["_lazy", self._lazy],
         ]
 
     @property
@@ -2858,14 +2861,28 @@ class Values(Aggregation):
         return []
 
     def parse_result(self, d):
-        """Parses the output of :meth:`to_mongo`.
+        """Parses the output of :meth:`to_mongo` when the result is a dict or returns an expression
+        that can be evaluated lazily.
 
         Args:
-            d: the result dict
+            d: the result dict or None
 
         Returns:
-            the list of field values
+            the list of field values or a lazy partial result
         """
+        if self._lazy:
+            # Return a function to be called on a single result value
+            # For performance, x is assumed to be the value itself
+            # (e.g. the result of doc[self._big_result])
+            if not self._raw and self._field is not None:
+                fcn = self._field.to_python
+                level = self._num_list_fields
+                return lambda x, _f=_transform_values, _g=fcn, _lv=level: _f(
+                    x, _g, level=_lv
+                )
+            else:
+                return lambda x: x
+
         if self._big_result:
             values = [di[self._big_field] for di in d]
         else:
@@ -2967,7 +2984,7 @@ def _make_extract_values_pipeline(
 
     # This is important, even if `missing_value` is None, since we need to
     # insert `None` for documents with missing fields
-    expr = (F() != None).if_else(expr, missing_value)
+    expr = expr.if_null(missing_value)
 
     if list_fields:
         subfield = path[len(list_fields[-1]) + 1 :]
