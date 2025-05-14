@@ -235,7 +235,6 @@ You can also load YOLOv8, YOLOv9, and YOLO11 segmentation models from the
     # model_name = "yolo11m-seg-coco-torch"
     # model_name = "yolo11l-seg-coco-torch"
     # model_name = "yolo11x-seg-coco-torch"
-    
 
     model = foz.load_zoo_model(model_name)
 
@@ -519,25 +518,15 @@ pattern below:
 
     dataset.set_values("predictions", predictions)
 
-Note that the `batch_size` parameter in :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`
-only controls the batch size for dataloading. Set the batch size of the underlying Ultralytics model predictor via
-overrides to avoid using the default batch size set by Ultralytics.
+You can also provide overrides to the underlying Ultralytics model by passing
+them as kwargs to
+:meth:`load_zoo_model() <fiftyone.zoo.models.load_zoo_model>`:
 
 .. code-block:: python
     :linenos:
 
-    kwargs = {"overrides": {"batch": 32}}
-    model = foz.load_zoo_model(m_name, **kwargs)
-    dataset.apply_model(model, label_field="predictions", batch_size=32)
-
-
-To run inference on a batch size of 1 with rectangular resizing, use overrides as shown below when loading a model for inference:
-
-.. code-block:: python
-    :linenos:
-
-    kwargs = {"overrides": {"rect": True, "batch": 1}}
-    model = foz.load_zoo_model(m_name, **kwargs)
+    # Use rectangular resizing with a batch size of 1
+    model = foz.load_zoo_model(model_name, overrides={"rect": True})
     dataset.apply_model(model, label_field="predictions", batch_size=1)
 
 .. note::
