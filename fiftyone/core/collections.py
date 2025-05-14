@@ -10791,6 +10791,7 @@ class SampleCollection(object):
         batch_aggs = {}
         facet_aggs = {}
         stream = None
+
         for idx, aggregation in enumerate(aggregations):
             # stream is True if all aggregations are lazy
             if lazy := getattr(aggregation, "_lazy", False):
