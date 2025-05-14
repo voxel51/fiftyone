@@ -2872,8 +2872,8 @@ class Values(Aggregation):
         """
         if self._lazy:
             # Return a function to be called on a single result value
-            # To optimize for performance, x is the value extracted from the doc
-            # result with self._big_result
+            # To optimize for performance, x is the value itself
+            # e.g. doc[self._big_result]
 
             if not self._raw and self._field is not None:
                 return lambda x: _transform_values(

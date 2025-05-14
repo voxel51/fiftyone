@@ -9234,8 +9234,8 @@ class SampleCollection(object):
         """
 
         # Optimization: if we do not need to follow insertion order, we can
-        # potentially use a covered index query to get the values directly from
-        # the index and avoid a COLLSCAN
+        # potentially use a covered index query to get the values directly
+        # from the index and avoid a COLLSCAN
         if (
             field := self._field_for_covered_index_query_or_none(
                 field_or_expr,
