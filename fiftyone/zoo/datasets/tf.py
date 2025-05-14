@@ -286,10 +286,10 @@ class CIFAR100Dataset(TFDSDataset):
 class ImageNet2012Dataset(TFDSDataset):
     """The ImageNet 2012 dataset.
 
-    ImageNet, as known as ILSVRC 2012, is an image dataset organized according
+    ImageNet, also known as ILSVRC 2012, is an image dataset organized according
     to the WordNet hierarchy. Each meaningful concept in WordNet, possibly
     described by multiple words or word phrases, is called a "synonym set" or
-    "synset". There are more than 100,000 synsets in WordNet, majority of them
+    "synset". There are more than 100,000 synsets in WordNet, the majority of them
     are nouns (80,000+). ImageNet provides on average 1,000 images to
     illustrate each synset. Images of each concept are quality-controlled and
     human-annotated. In its completion, we hope ImageNet will offer tens of
