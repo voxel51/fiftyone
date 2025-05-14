@@ -9260,7 +9260,7 @@ class SampleCollection(object):
         )
         return self._make_and_aggregate(make, field_or_expr)
 
-    def iter_values(
+    def _iter_values(
         self,
         field_or_expr,
         expr=None,
@@ -9272,63 +9272,6 @@ class SampleCollection(object):
         _field=None,
         _enforce_natural_order=True,
     ):
-        """Lazily extracts the values from all samples in the collection.
-
-        This method is a generator-based version of :meth:`values` that
-        yields each sample's value or tuple of values as it is received.
-        This is useful for iterating over large collections as it
-        does not require loading all values into memory at once.
-
-
-         .. note::
-
-            Unlike other aggregations, :meth:`iter_values` does not automatically
-            unwind list fields, which ensures that the returned values match the
-            potentially-nested structure of the documents.
-
-            Unlike :meth:`values`, using ``[]`` to unwind specific list fields
-            is not supported and will be ignored. You can pass the optional
-            ``unwind=True`` parameter to unwind all supported list fields. See
-            :ref:`aggregations-list-fields` for more information.
-
-         .. warning::
-
-             This method yields one value (or tuple of values) per sample.
-             As a result, calling ``list(dataset.iter_values(...))`` will
-             result in a list of tuples where each entry is the values tuple
-             for a sample, **not** a tuple of lists of values per field like
-             :meth:`values`. If you want to get a list of values per field,
-             use :meth:`values` instead.
-
-         Examples::
-
-            # Iterate over field values lazily
-            for val in dataset.iter_values("numeric_field"):
-                print(val)  # 51
-
-            # Iterate over multiple field values lazily
-            for val in dataset.iter_values(['id', 'frames.frame_number']):
-                print(val)  # ('video-sample-id', [1, 2, 3])
-
-        Args:
-            field_or_expr: a field name, ``embedded.field.name``,
-                :class:`fiftyone.core.expressions.ViewExpression`, or
-                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-                defining the field or expression to aggregate. This can also be a
-                list or tuple of such arguments, in which case tuples of
-                corresponding aggregation results (each receiving the same
-                additional keyword arguments, if any) will be yielded
-            expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
-                `MongoDB expression` to apply to ``field_or_expr`` before
-                aggregating
-            missing_value (None): a value to insert for missing or
-                ``None``-valued fields
-            unwind (False): whether to automatically unwind all recognized list
-                fields (True)
-
-        Yields:
-            each aggregated field value (or tuple of values, if a list of fields was provided)
-        """
 
         if (
             field := self._field_for_covered_index_query_or_none(
