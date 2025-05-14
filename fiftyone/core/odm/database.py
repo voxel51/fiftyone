@@ -379,10 +379,10 @@ def aggregate(collection, pipelines, hints=None, _stream=False):
             return result
         return [result] if is_list else result
 
-    return _do_pooled_aggregate(collection, pipelines, hints)
+    return _do_pooled_aggregate(collection, pipelines, hints, _stream=_stream)
 
 
-def _do_pooled_aggregate(collection, pipelines, hints):
+def _do_pooled_aggregate(collection, pipelines, hints, _stream=False):
     # @todo: MongoDB 5.0 supports snapshots which can be used to make the
     # results consistent, i.e. read from the same point in time
 
@@ -392,6 +392,18 @@ def _do_pooled_aggregate(collection, pipelines, hints):
         return list(
             collection.aggregate(pipeline, allowDiskUse=True, **kwargs)
         )
+
+    if _stream:
+        # When `unwind` is used, each aggregation runs in its own independent pipeline.
+        # If streaming is enabled, return a list of cursors so each pipeline's results
+        # can be consumed independently downstream.
+        return [
+            collection.aggregate(
+                pipeline,
+                allowDiskUse=True,
+            )
+            for pipeline in pipelines
+        ]
 
     with ThreadPool(processes=len(pipelines)) as pool:
         return pool.map(
