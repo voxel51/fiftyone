@@ -10639,11 +10639,12 @@ class SampleCollection(object):
         return results[0] if scalar_result else results
 
     def _iter_and_parse_agg_results(self, parsed_aggs, cursor):
+        print("parsed_aggs", parsed_aggs)
+        print("parsed_aggs.values()", parsed_aggs.values())
         result_fields = [agg._big_field for agg in parsed_aggs.values()]
 
-        # Unwind is only supported through explicitly passing unwind=True to
-        # iter_values()
-        unwind = all(agg._unwind for agg in parsed_aggs.values())
+        # Non-batchable aggregations will result a cursor per aggregation
+        handle_multiple_cursors = isinstance(cursor, list)
 
         # Determine if extra parsing is needed for the Aggregation result
         has_extra_parsing = any(
@@ -10664,8 +10665,8 @@ class SampleCollection(object):
 
         # Handle case: no extra parsing
         if not has_extra_parsing:
-            if unwind:
-                # Unwinding with multiple fields may lead to results of
+            if handle_multiple_cursors:
+                # Unwinding fields independently may lead to results of
                 # different length. To enable returning all data,
                 # exhausted cursors will continue to emit None until the longest
                 # cursor is exhausted.
@@ -10689,7 +10690,7 @@ class SampleCollection(object):
             # Apply transformers to each value
             return tuple(f(v) for f, v in zip(transformers, values))
 
-        if isinstance(cursor, list):
+        if handle_multiple_cursors:
             # unwind with fields that need additional parsing
             return (
                 tuple(_process_doc(doc) if doc else None for doc in docs)

@@ -1466,8 +1466,7 @@ class VectorField(mongoengine.fields.BinaryField, Field):
             return value
 
         if isinstance(value, (list, tuple)):
-            # avoid copying into a new array
-            return np.asarray(value)
+            return np.array(value)
 
         return fou.deserialize_numpy_array(value)
 
