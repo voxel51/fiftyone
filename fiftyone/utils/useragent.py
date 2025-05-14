@@ -14,5 +14,5 @@ def with_fiftyone_useragent():
 
         useragent.with_partner("voxel51")
         useragent.with_product("fiftyone", foc.VERSION)
-    except ImportError:
+    except:
         pass
