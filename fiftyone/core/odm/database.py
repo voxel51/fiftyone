@@ -401,8 +401,9 @@ def _do_pooled_aggregate(collection, pipelines, hints, _stream=False):
             collection.aggregate(
                 pipeline,
                 allowDiskUse=True,
+                **({"hint": hint} if hint is not None else {}),
             )
-            for pipeline in pipelines
+            for pipeline, hint in zip(pipelines, hints)
         ]
 
     with ThreadPool(processes=len(pipelines)) as pool:
