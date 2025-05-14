@@ -10645,8 +10645,7 @@ class SampleCollection(object):
 
         if _mongo:
             return pipelines[0] if scalar_result else pipelines
-        for i, p in enumerate(pipelines):
-            print("pipeline", i, p)
+
         # Run all aggregations
         _results = foo.aggregate(
             self._dataset._sample_collection, pipelines, _stream=stream
@@ -10655,22 +10654,20 @@ class SampleCollection(object):
         # Parse batch results
         if batch_aggs:
             if stream:
-                print("streaming batch results")
-                return self._iter_batched_results(batch_aggs, _results)
+                return self._iter_and_parse_agg_results(batch_aggs, _results)
             result = list(_results[0])
             for idx, aggregation in batch_aggs.items():
                 results[idx] = self._parse_big_result(aggregation, result)
 
         # Parse big results
         if big_aggs and stream:
-            print("streaming big results", _results)
-            return self._iter_batched_results(big_aggs, _results)
+            return self._iter_and_parse_agg_results(big_aggs, _results)
         for idx, aggregation in big_aggs.items():
             result = list(_results[idx_map[idx]])
             results[idx] = self._parse_big_result(aggregation, result)
+
         # Parse facet-able results
         for idx, aggregation in compiled_facet_aggs.items():
-            print("compiled_facet_aggs", compiled_facet_aggs)
 
             result = list(_results[idx_map[idx]])
             data = self._parse_faceted_result(aggregation, result)
@@ -10684,70 +10681,7 @@ class SampleCollection(object):
                 results[idx] = data
         return results[0] if scalar_result else results
 
-    # def _iter_batched_results(self, batch_aggs, cursor):
-    #
-    #     # extract each docs values as a tuple
-    #     result_fields = [agg._big_field for agg in batch_aggs.values()]
-    #     unwind = batch_aggs[0]._unwind
-    #
-    #     has_extra_parsing = any(
-    #         [
-    #             agg._field is not None and not agg._raw
-    #             for agg in batch_aggs.values()
-    #         ]
-    #     )
-    #     if has_extra_parsing:
-    #         transformers = [
-    #             agg.parse_result(None) for agg in batch_aggs.values()
-    #         ]
-    #
-    #     if len(result_fields) == 1 and has_extra_parsing:
-    #         field = result_fields[0]
-    #         f = transformers[0]
-    #
-    #         return (f(doc[field]) for doc in cursor)
-    #
-    #     if not has_extra_parsing:
-    #
-    #         if unwind:
-    #             return (
-    #                 tuple(doc[f] for f, doc in zip(result_fields, multi_docs))
-    #                 for multi_docs in itertools.zip_longest(*cursor, fillvalue=None)
-    #             )
-    #         return (itemgetter(*result_fields)(doc) for doc in cursor)
-    #
-    #     get_values = itemgetter(*result_fields)
-    #
-    #     def process_doc(doc):
-    #         values = get_values(doc)
-    #         if not isinstance(values, tuple):
-    #             values = (values,)
-    #         return (
-    #             tuple(f(v) for f, v in zip(transformers, values))
-    #             if transformers
-    #             else values
-    #         )
-    #
-    #     def single_cursor_gen(cursor):
-    #         for doc in cursor:
-    #             yield process_doc(doc)
-    #
-    #     def multi_cursor_gen(cursors):
-    #         # use zip longest to handle uneven lengths and ensure that
-    #         # we return all data that is available
-    #         for docs in itertools.zip_longest(*cursors, fillvalue=None):
-    #             yield tuple(
-    #                 process_doc(doc) if doc is not None else None
-    #                 for doc in docs
-    #             )
-    #
-    #     if isinstance(cursor, list):
-    #         print("multi_cursor_gen len(cursor)", len(cursor))
-    #         return multi_cursor_gen(cursor)
-    #     else:
-    #         return single_cursor_gen(cursor)
-
-    def _iter_batched_results(self, parsed_aggs, cursor):
+    def _iter_and_parse_agg_results(self, parsed_aggs, cursor):
         result_fields = [agg._big_field for agg in parsed_aggs.values()]
         unwind = parsed_aggs[0]._unwind
 
@@ -11098,7 +11032,6 @@ class SampleCollection(object):
             # when not using a generator, we exhaust the cursor and load all
             # the results into memory at once here
             return tuple(agg)
-        print("not a list or tuple", args)
         return self.aggregate(
             make(args),
         )
