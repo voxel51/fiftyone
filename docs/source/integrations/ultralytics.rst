@@ -525,9 +525,9 @@ them as kwargs to
 .. code-block:: python
     :linenos:
 
+    # Use rectangular resizing with a batch size of 1
     model = foz.load_zoo_model(model_name, overrides={"rect": True})
-
-    dataset.apply_model(model, label_field="predictions", batch_size=16)
+    dataset.apply_model(model, label_field="predictions", batch_size=1)
 
 .. note::
 
