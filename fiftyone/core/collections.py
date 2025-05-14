@@ -9286,9 +9286,9 @@ class SampleCollection(object):
             unwind list fields, which ensures that the returned values match the
             potentially-nested structure of the documents.
 
-            You can opt-in to unwinding specific list fields using the ``[]``
-            syntax, or you can pass the optional ``unwind=True`` parameter to
-            unwind all supported list fields. See
+            Unlike :meth:`values`, using ``[]`` to unwind specific list fields
+            is not supported and will be ignored. You can pass the optional
+            ``unwind=True`` parameter to unwind all supported list fields. See
             :ref:`aggregations-list-fields` for more information.
 
          .. warning::
@@ -9324,8 +9324,7 @@ class SampleCollection(object):
             missing_value (None): a value to insert for missing or
                 ``None``-valued fields
             unwind (False): whether to automatically unwind all recognized list
-                fields (True) or unwind all list fields except the top-level
-                sample field (-1)
+                fields (True)
 
         Yields:
             each aggregated field value (or tuple of values, if a list of fields was provided)
@@ -9348,7 +9347,7 @@ class SampleCollection(object):
                 for doc in result:
                     yield str(doc["_id"])
             return
-        # _post_unwind = unwind
+
         make = lambda field_or_expr: foa.Values(
             field_or_expr,
             expr=expr,
@@ -9360,8 +9359,23 @@ class SampleCollection(object):
             _field=_field,
             _lazy=True,
         )
+
+        if isinstance(field_or_expr, (list, tuple)):
+            _field_or_expr = []
+            for field in field_or_expr:
+                if "[]" in field:
+                    field = field.replace("[]", "")
+                    logging.warning(
+                        'Single field unwinding "[]" is not '
+                        "supported when using iter_values "
+                        "and will be ignored."
+                    )
+                _field_or_expr.append(field)
+        else:
+            _field_or_expr = field_or_expr
+
         for doc_values in self._make_and_aggregate(
-            make, field_or_expr, _generator=True
+            make, _field_or_expr, _generator=True
         ):
             yield doc_values
 
@@ -10683,7 +10697,10 @@ class SampleCollection(object):
 
     def _iter_and_parse_agg_results(self, parsed_aggs, cursor):
         result_fields = [agg._big_field for agg in parsed_aggs.values()]
-        unwind = parsed_aggs[0]._unwind
+
+        # Unwind is only supported through explicitly passing unwind=True to
+        # iter_values()
+        unwind = all(agg._unwind for agg in parsed_aggs.values())
 
         # Determine if extra parsing is needed for the Aggregation result
         has_extra_parsing = any(
