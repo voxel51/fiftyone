@@ -6,7 +6,6 @@ User agent utilities.
 |
 """
 import fiftyone.constants as foc
-import fiftyone.core.utils as fou
 
 
 def with_fiftyone_useragent():
