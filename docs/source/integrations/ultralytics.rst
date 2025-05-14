@@ -493,44 +493,12 @@ Batch inference
 
 When using
 :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`,
-you can request batch inference via the pattern below:
+you can request batch inference by passing the optional `batch_size` parameter:
 
 .. code-block:: python
     :linenos:
 
-    batch_size = 16
-
-    # Tell model to use batch inference
-    model = foz.load_zoo_model(
-        model_name,
-        overrides={"batch": batch_size},
-    )
-
-    # Tell FiftyOne to use batch dataloading
-    dataset.apply_model(
-        model,
-        label_field="predictions",
-        batch_size=batch_size,
-    )
-
-Alternatively, to run inference on a batch size of 1 with rectangular resizing,
-use overrides as shown below:
-
-.. code-block:: python
-    :linenos:
-
-    batch_size = 1
-
-    model = foz.load_zoo_model(
-        model_name,
-        overrides={"rect": True, "batch": batch_size},
-    )
-
-    dataset.apply_model(
-        model,
-        label_field="predictions",
-        batch_size=batch_size,
-    )
+    dataset.apply_model(model, label_field="predictions", batch_size=16)
 
 The manual inference loops can be also executed using batch inference via the
 pattern below:
@@ -549,6 +517,17 @@ pattern below:
         predictions.extend(fou.to_detections(results))
 
     dataset.set_values("predictions", predictions)
+
+You can also provide overrides to the underlying Ultralytics model by passing
+them as kwargs to
+:meth:`load_zoo_model() <fiftyone.zoo.models.load_zoo_model>`:
+
+.. code-block:: python
+    :linenos:
+
+    model = foz.load_zoo_model(model_name, overrides={"rect": True})
+
+    dataset.apply_model(model, label_field="predictions", batch_size=16)
 
 .. note::
 
