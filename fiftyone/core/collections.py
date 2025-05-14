@@ -10639,11 +10639,10 @@ class SampleCollection(object):
         return results[0] if scalar_result else results
 
     def _iter_and_parse_agg_results(self, parsed_aggs, cursor):
-        print("parsed_aggs", parsed_aggs)
-        print("parsed_aggs.values()", parsed_aggs.values())
+
         result_fields = [agg._big_field for agg in parsed_aggs.values()]
 
-        # Non-batchable aggregations will result a cursor per aggregation
+        # Non-batchable big aggregations will result a cursor per aggregation
         handle_multiple_cursors = isinstance(cursor, list)
 
         # Determine if extra parsing is needed for the Aggregation result
