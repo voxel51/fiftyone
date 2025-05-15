@@ -44,6 +44,7 @@ const gridIndex = selector({
     }
 
     const field = get(fos.gridSortBy)?.field;
+
     if (!field) return get(fos.activeIndex);
 
     const map = get(sortFieldsMap);

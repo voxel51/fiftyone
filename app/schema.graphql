@@ -453,6 +453,7 @@ input LabelTagColorInput {
 
 input LightningInput {
   dataset: String!
+  match: JSON = null
   paths: [LightningPathInput!]!
   slice: String = null
 }

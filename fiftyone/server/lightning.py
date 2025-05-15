@@ -23,7 +23,7 @@ from fiftyone.core.utils import run_sync_task
 
 import fiftyone.server.constants as foc
 from fiftyone.server.data import Info
-from fiftyone.server.scalars import BSON
+from fiftyone.server.scalars import BSON, JSON
 from fiftyone.server.utils import meets_type
 from fiftyone.server.view import get_view
 
@@ -48,6 +48,7 @@ class LightningPathInput:
 @gql.input
 class LightningInput:
     dataset: str
+    match: t.Optional[JSON] = None
     paths: t.List[LightningPathInput]
     slice: t.Optional[str] = None
 
@@ -148,11 +149,11 @@ async def lightning_resolver(
         for item in sublist
     ]
 
+    filter = input.match or {}
     if dataset.group_field and input.slice:
-        filter = {f"{dataset.group_field}.name": input.slice}
+        filter[f"{dataset.group_field}.name"] = input.slice
         dataset.group_slice = input.slice
-    else:
-        filter = {}
+
     result = await _do_async_pooled_queries(dataset, flattened, filter)
 
     results = []
@@ -241,6 +242,8 @@ def _resolve_lightning_path_queries(
             ),
             _match(field_path, None, limit=path.max_documents_search),
         ]
+
+        queries = []
 
         def _resolve_int(results):
             min, max, none = results
@@ -375,9 +378,7 @@ async def _do_async_query(
         )
 
     if filter:
-        for k, v in filter.items():
-            query.insert(0, {"$match": {k: v}})
-            query.insert(0, {"$sort": {k: 1}})
+        query.insert(0, {"$match": filter})
 
     return [i async for i in collection.aggregate(query)]
 
@@ -398,7 +399,7 @@ async def _do_distinct_queries(
         return await _do_list_distinct_query(collection, query)
 
     return await _do_distinct_grouped_pipeline(
-        dataset, collection, query, is_frames
+        dataset, collection, query, filter, is_frames
     )
 
 
@@ -468,11 +469,15 @@ async def _do_distinct_grouped_pipeline(
     dataset: fo.Dataset,
     collection: AsyncIOMotorCollection,
     query: DistinctQuery,
+    filter: t.Optional[t.Mapping[str, str]],
     is_frames: bool,
 ):
-    # sort first, we are using an index so order should be correct even after
-    # grouping
-    pipeline = [
+
+    pipeline = []
+    if filter:
+        pipeline += [{"$match": filter}]
+
+    pipeline += [
         {"$sort": {query.path: 1}},
         {"$group": {"_id": f"${query.path}"}},
     ]
@@ -507,7 +512,7 @@ def _first(
     floats=False,
     limit=None,
 ):
-    pipeline = []
+    pipeline = [{"$match": {"index": 1}}]
     if limit:
         pipeline.append({"$limit": limit})
 

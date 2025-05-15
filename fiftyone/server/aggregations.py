@@ -154,7 +154,7 @@ async def aggregate_resolver(
     counts = [len(a) for a in aggregations]
     flattened = [item for sublist in aggregations for item in sublist]
 
-    result = await view._async_aggregate(flattened)
+    result = await view._async_aggregate(flattened, debug=True)
 
     results = []
     offset = 0
@@ -207,6 +207,7 @@ async def _load_view(form: AggregationForm, slices: t.List[str]):
                 else None
             )
         ),
+        dynamic_group=form.dynamic_group,
         awaitable=True,
     )
 

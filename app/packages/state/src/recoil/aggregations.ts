@@ -41,7 +41,6 @@ export const aggregationQuery = graphQLSelectorFamily<
     modal: boolean;
     mixed?: boolean;
     paths: string[];
-
     root?: boolean;
   },
   Aggregation[]
@@ -59,12 +58,10 @@ export const aggregationQuery = graphQLSelectorFamily<
       mixed = false,
       modal,
       paths,
-
       root = false,
     }) =>
     ({ get }) => {
       const dataset = get(selectors.datasetName);
-
       if (!dataset) return null;
 
       const useSidebarSampleId = !root && modal && !get(groupId) && !mixed;
@@ -97,7 +94,7 @@ export const aggregationQuery = graphQLSelectorFamily<
           isQueryPerformance === undefined
             ? get(queryPerformance) && !modal
             : isQueryPerformance,
-        hint: get(activeIndex),
+        hint: dynamicGroup ? null : get(activeIndex),
       };
 
       return {

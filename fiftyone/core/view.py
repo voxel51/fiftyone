@@ -1522,7 +1522,8 @@ class DatasetView(foc.SampleCollection):
                 sort.append((group_expr[1:], 1))
 
             order = -1 if reverse else 1
-            sort.append((order_by, order))
+            order_by_db = self._handle_db_field(order_by)
+            sort.append((order_by_db, order))
         else:
             sort = None
 
@@ -2016,7 +2017,12 @@ def make_optimized_select_view(
     #
 
     for stage in stages:
-        if type(stage) not in fost._STAGES_THAT_SELECT_OR_REORDER:
+        if isinstance(stage, fost.GroupBy):
+            _group, _ = stage._get_group_expr(sample_collection)
+            view = view._add_view_stage(
+                fost.Mongo([{"$addFields": {"_group": _group}}])
+            )
+        elif type(stage) not in fost._STAGES_THAT_SELECT_OR_REORDER:
             view = view._add_view_stage(stage, validate=False)
 
     return view

@@ -129,7 +129,7 @@ def get_view(
         else:
             view = dataset.view()
 
-        if dynamic_group:
+        if dynamic_group is not None:
             view = view.get_dynamic_group(dynamic_group)
 
         media_types = None
@@ -212,8 +212,8 @@ def get_extended_view(
         if label_tags:
             view = _match_label_tags(view, label_tags)
 
-        match_stage = _make_match_stage(view, filters)
         stages = []
+        match_stage = _make_match_stage(view, filters)
         if match_stage:
             stages = [match_stage]
 
@@ -229,7 +229,14 @@ def get_extended_view(
         )
 
     if sort_by:
-        view = view.sort_by(sort_by, reverse=bool(desc))
+        view = view.sort_by(sort_by, reverse=bool(desc), create_index=False)
+
+    for stage in view._stages:
+        if isinstance(stage, fosg.GroupBy):
+
+            view = view.mongo(
+                [{"$addFields": {"_group": stage._get_group_expr(view)[0]}}]
+            )
 
     if pagination_data:
         # omit all dict field values for performance, not needed by grid

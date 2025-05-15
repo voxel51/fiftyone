@@ -5744,6 +5744,7 @@ class SampleCollection(object):
         self,
         field_or_expr,
         order_by=None,
+        order_by_key_value=None,
         reverse=False,
         flat=False,
         match_expr=None,
@@ -5824,6 +5825,7 @@ class SampleCollection(object):
             fos.GroupBy(
                 field_or_expr,
                 order_by=order_by,
+                order_by_key_value=order_by_key_value,
                 reverse=reverse,
                 flat=flat,
                 match_expr=match_expr,
@@ -10549,7 +10551,7 @@ class SampleCollection(object):
 
         return results[0] if scalar_result else results
 
-    async def _async_aggregate(self, aggregations):
+    async def _async_aggregate(self, aggregations, debug=True):
         if not aggregations:
             return []
 
@@ -10580,6 +10582,10 @@ class SampleCollection(object):
             # Run all aggregations
             coll_name = self._dataset._sample_collection_name
             collection = foo.get_async_db_conn()[coll_name]
+            if debug:
+                import fiftyone as fo
+
+                fo.pprint(pipelines)
             _results = await foo.aggregate(collection, pipelines, hints)
 
             # Parse facet-able results

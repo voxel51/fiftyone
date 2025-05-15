@@ -115,10 +115,11 @@ export default ({
         kwargs: [
           ["field_or_expr", groupBy],
           ["order_by", useOrdered ? orderBy : null],
-          ["match_expr", null],
-          ["sort_expr", null],
           ["reverse", false],
           ["flat", false],
+          ["match_expr", null],
+          ["sort_expr", null],
+          ["create_index", false],
         ],
       },
     ]);

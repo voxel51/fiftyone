@@ -125,9 +125,6 @@ async def paginate_samples(
         view = view.skip(int(after) + 1)
 
     pipeline = await get_samples_pipeline(view, sample_filter)
-    import fiftyone as fo
-
-    fo.pprint(pipeline)
     samples = await foo.aggregate(
         foo.get_async_db_conn()[view._dataset._sample_collection_name],
         pipeline,

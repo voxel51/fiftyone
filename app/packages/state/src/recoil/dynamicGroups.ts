@@ -88,11 +88,13 @@ export const dynamicGroupPageSelector = selectorFamily<
         params.filter.group.slices = [slice];
       }
 
-      return (cursor: number, pageSize: number) => ({
-        ...params,
-        after: cursor ? String(cursor) : null,
-        count: pageSize,
-      });
+      return (cursor: number, pageSize: number) => {
+        return {
+          ...params,
+          after: cursor ? String(cursor) : null,
+          count: pageSize,
+        };
+      };
     },
 });
 
