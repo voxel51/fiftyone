@@ -3276,7 +3276,6 @@ class SampleCollection(object):
         skip_failures=True,
         warn_failures=False,
         progress=None,
-        batch_size=1000,
     ):
         """Populates the ``metadata`` field of all samples in the collection.
 
@@ -3301,7 +3300,6 @@ class SampleCollection(object):
             skip_failures=skip_failures,
             warn_failures=warn_failures,
             progress=progress,
-            batch_size=batch_size,
         )
 
     def apply_model(
