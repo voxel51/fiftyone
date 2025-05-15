@@ -273,7 +273,7 @@ async def execute_or_delegate_operator(
                 operator=operator.uri,
                 context=ctx.serialize(),
                 delegation_target=ctx.delegation_target,
-                label=operator.name,
+                label=operator.resolve_run_name(ctx),
                 metadata=metadata,
             )
 
