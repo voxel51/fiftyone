@@ -189,7 +189,7 @@ class RegressionTests(unittest.TestCase):
 
     @drop_datasets
     @use_local_plugins
-    def test_regression_custom_metric(self):
+    def test_regression_custom_metric_and_sidebar_groups(self):
         dataset = self._make_regression_dataset()
 
         metric_uri = "@voxel51/evaluation-tests/custom_evaluation_metric"
@@ -207,6 +207,11 @@ class RegressionTests(unittest.TestCase):
         self.assertTrue(metric_uri in results.config.custom_metrics)
         self.assertTrue(dataset.has_field(metric_field))
         self.assertListEqual(dataset.distinct(metric_field), ["spam"])
+
+        group = dataset._get_sidebar_group(eval_key)
+
+        self.assertIsNotNone(group)
+        self.assertSetEqual(set(group.paths), {eval_key, metric_field})
 
         metrics = results.metrics()
 
@@ -234,6 +239,15 @@ class RegressionTests(unittest.TestCase):
         self.assertTrue(dataset.has_field(new_metric_field))
         self.assertListEqual(dataset.distinct(new_metric_field), ["eggs"])
 
+        new_group = dataset._get_sidebar_group(new_eval_key)
+
+        self.assertFalse(dataset._has_sidebar_group(eval_key))
+        self.assertIsNotNone(new_group)
+        self.assertSetEqual(
+            set(new_group.paths),
+            {new_eval_key, new_metric_field},
+        )
+
         new_metrics = results.metrics()
 
         self.assertTrue("example" in new_metrics)
@@ -242,6 +256,80 @@ class RegressionTests(unittest.TestCase):
         dataset.delete_evaluation(new_eval_key)
 
         self.assertFalse(dataset.has_field(new_metric_field))
+        self.assertFalse(dataset._has_sidebar_group(new_eval_key))
+
+    @drop_datasets
+    def test_sidebar_group_edge_cases(self):
+        dataset = self._make_regression_dataset()
+
+        # Manually remove all sidebar groups
+
+        results = dataset.evaluate_regressions(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key="eval",
+        )
+
+        dataset.app_config.sidebar_groups = None
+        dataset.save()
+
+        dataset.rename_evaluation("eval", "still_eval")
+
+        self.assertIsNone(dataset.app_config.sidebar_groups)
+
+        dataset.delete_evaluation("still_eval")
+
+        self.assertIsNone(dataset.app_config.sidebar_groups)
+
+        # Manually remove evaluation's sidebar group
+
+        results = dataset.evaluate_regressions(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key="eval",
+        )
+
+        group = dataset._get_sidebar_group("eval")
+        group.name = "tmp"
+        dataset.save()
+
+        self.assertTrue(dataset._has_sidebar_group("tmp"))
+        self.assertFalse(dataset._has_sidebar_group("eval"))
+
+        dataset.rename_evaluation("eval", "still_eval")
+
+        self.assertTrue(dataset._has_sidebar_group("tmp"))
+        self.assertFalse(dataset._has_sidebar_group("still_eval"))
+
+        dataset.delete_evaluation("still_eval")
+
+        self.assertTrue(dataset._has_sidebar_group("tmp"))
+        self.assertFalse(dataset._has_sidebar_group("still_eval"))
+
+        dataset.app_config.sidebar_groups = None
+        dataset.save()
+
+        # Existing sidebar group of same name
+
+        dataset._add_paths_to_sidebar_group(["id"], "eval")
+        dataset._add_paths_to_sidebar_group(["filepath"], "still_eval")
+
+        results = dataset.evaluate_regressions(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key="eval",
+        )
+
+        group = dataset._get_sidebar_group("eval")
+        self.assertSetEqual(set(group.paths), {"id", "eval"})
+
+        dataset.rename_evaluation("eval", "still_eval")
+
+        self.assertFalse(dataset._has_sidebar_group("eval"))
+
+        group = dataset._get_sidebar_group("still_eval")
+
+        self.assertSetEqual(set(group.paths), {"id", "filepath", "still_eval"})
 
 
 class VideoRegressionTests(unittest.TestCase):
@@ -741,7 +829,7 @@ class ClassificationTests(unittest.TestCase):
 
     @drop_datasets
     @use_local_plugins
-    def test_classification_custom_metric(self):
+    def test_classification_custom_metric_and_sidebar_groups(self):
         dataset = self._make_classification_dataset()
 
         metric_uri = "@voxel51/evaluation-tests/custom_evaluation_metric"
@@ -759,6 +847,11 @@ class ClassificationTests(unittest.TestCase):
         self.assertTrue(metric_uri in results.config.custom_metrics)
         self.assertTrue(dataset.has_field(metric_field))
         self.assertListEqual(dataset.distinct(metric_field), ["spam"])
+
+        group = dataset._get_sidebar_group(eval_key)
+
+        self.assertIsNotNone(group)
+        self.assertSetEqual(set(group.paths), {eval_key, metric_field})
 
         metrics = results.metrics()
 
@@ -786,6 +879,15 @@ class ClassificationTests(unittest.TestCase):
         self.assertTrue(dataset.has_field(new_metric_field))
         self.assertListEqual(dataset.distinct(new_metric_field), ["eggs"])
 
+        new_group = dataset._get_sidebar_group(new_eval_key)
+
+        self.assertFalse(dataset._has_sidebar_group(eval_key))
+        self.assertIsNotNone(new_group)
+        self.assertSetEqual(
+            set(new_group.paths),
+            {new_eval_key, new_metric_field},
+        )
+
         new_metrics = results.metrics()
 
         self.assertTrue("example" in new_metrics)
@@ -794,6 +896,7 @@ class ClassificationTests(unittest.TestCase):
         dataset.delete_evaluation(new_eval_key)
 
         self.assertFalse(dataset.has_field(new_metric_field))
+        self.assertFalse(dataset._has_sidebar_group(new_eval_key))
 
 
 class VideoClassificationTests(unittest.TestCase):
@@ -1980,7 +2083,7 @@ class DetectionsTests(unittest.TestCase):
 
     @drop_datasets
     @use_local_plugins
-    def test_detection_custom_metric(self):
+    def test_detection_custom_metric_and_sidebar_groups(self):
         dataset = self._make_detections_dataset()
 
         metric_uri = "@voxel51/evaluation-tests/custom_evaluation_metric"
@@ -1998,6 +2101,19 @@ class DetectionsTests(unittest.TestCase):
         self.assertTrue(metric_uri in results.config.custom_metrics)
         self.assertTrue(dataset.has_field(metric_field))
         self.assertListEqual(dataset.distinct(metric_field), ["spam"])
+
+        group = dataset._get_sidebar_group(eval_key)
+
+        self.assertIsNotNone(group)
+        self.assertSetEqual(
+            set(group.paths),
+            {
+                f"{eval_key}_tp",
+                f"{eval_key}_fp",
+                f"{eval_key}_fn",
+                metric_field,
+            },
+        )
 
         metrics = results.metrics()
 
@@ -2025,6 +2141,20 @@ class DetectionsTests(unittest.TestCase):
         self.assertTrue(dataset.has_field(new_metric_field))
         self.assertListEqual(dataset.distinct(new_metric_field), ["eggs"])
 
+        new_group = dataset._get_sidebar_group(new_eval_key)
+
+        self.assertFalse(dataset._has_sidebar_group(eval_key))
+        self.assertIsNotNone(new_group)
+        self.assertSetEqual(
+            set(new_group.paths),
+            {
+                f"{new_eval_key}_tp",
+                f"{new_eval_key}_fp",
+                f"{new_eval_key}_fn",
+                new_metric_field,
+            },
+        )
+
         new_metrics = results.metrics()
 
         self.assertTrue("example" in new_metrics)
@@ -2033,6 +2163,7 @@ class DetectionsTests(unittest.TestCase):
         dataset.delete_evaluation(new_eval_key)
 
         self.assertFalse(dataset.has_field(new_metric_field))
+        self.assertFalse(dataset._has_sidebar_group(new_eval_key))
 
 
 class BoxesTests(unittest.TestCase):
@@ -3191,7 +3322,7 @@ class SegmentationTests(unittest.TestCase):
 
     @drop_datasets
     @use_local_plugins
-    def test_segmentation_custom_metric(self):
+    def test_segmentation_custom_metric_and_sidebar_groups(self):
         dataset = self._make_segmentation_dataset()
 
         metric_uri = "@voxel51/evaluation-tests/custom_evaluation_metric"
@@ -3209,6 +3340,19 @@ class SegmentationTests(unittest.TestCase):
         self.assertTrue(metric_uri in results.config.custom_metrics)
         self.assertTrue(dataset.has_field(metric_field))
         self.assertListEqual(dataset.distinct(metric_field), ["spam"])
+
+        group = dataset._get_sidebar_group(eval_key)
+
+        self.assertIsNotNone(group)
+        self.assertSetEqual(
+            set(group.paths),
+            {
+                f"{eval_key}_accuracy",
+                f"{eval_key}_precision",
+                f"{eval_key}_recall",
+                metric_field,
+            },
+        )
 
         metrics = results.metrics()
 
@@ -3236,6 +3380,20 @@ class SegmentationTests(unittest.TestCase):
         self.assertTrue(dataset.has_field(new_metric_field))
         self.assertListEqual(dataset.distinct(new_metric_field), ["eggs"])
 
+        new_group = dataset._get_sidebar_group(new_eval_key)
+
+        self.assertFalse(dataset._has_sidebar_group(eval_key))
+        self.assertIsNotNone(new_group)
+        self.assertSetEqual(
+            set(new_group.paths),
+            {
+                f"{new_eval_key}_accuracy",
+                f"{new_eval_key}_precision",
+                f"{new_eval_key}_recall",
+                new_metric_field,
+            },
+        )
+
         new_metrics = results.metrics()
 
         self.assertTrue("example" in new_metrics)
@@ -3244,6 +3402,7 @@ class SegmentationTests(unittest.TestCase):
         dataset.delete_evaluation(new_eval_key)
 
         self.assertFalse(dataset.has_field(new_metric_field))
+        self.assertFalse(dataset._has_sidebar_group(new_eval_key))
 
 
 class VideoSegmentationTests(unittest.TestCase):
