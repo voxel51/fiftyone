@@ -25,38 +25,41 @@ import bson
 
 import fiftyone.core.config as focc
 import fiftyone.core.map.batcher as fomb
-import fiftyone.core.sample as fos
+
+# import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 from fiftyone.core.map.typing import SampleCollection
 
 T = TypeVar("T")  # Sample type
 R = TypeVar("R")  # Return value type of map_fcn
-U = TypeVar("U")  # Return value type of iter_fcn if set - must be same as input type to map_fcn.
+U = TypeVar(
+    "U"
+)  # Return value type of iter_fcn if set - must be same as input type to map_fcn.
 
 
 logger = logging.getLogger(__name__)
 
 
-def check_if_return_is_sample(
-    sample_collection: SampleCollection[T], map_fcn: Callable[[T], R]
-) -> bool:
-    """
-    Check if the map function returns a sample
-    """
+# def check_if_return_is_sample(
+#     sample_collection: SampleCollection[T], map_fcn: Callable[[T], R]
+# ) -> bool:
+#     """
+#     Check if the map function returns a sample
+#     """
 
-    first_sample = sample_collection.first()
-    if first_sample is None:
-        raise ValueError("Sample collection is empty")
+#     first_sample = sample_collection.first()
+#     if first_sample is None:
+#         raise ValueError("Sample collection is empty")
 
-    # make a copy outside of the db
-    sample_copy = first_sample.copy()
+#     # make a copy outside of the db
+#     sample_copy = first_sample.copy()
 
-    # run the map function on just the copy
-    # if it returns a Sample object
-    if isinstance(map_fcn(sample_copy), fos.Sample):
-        return True
+#     # run the map function on just the copy
+#     # if it returns a Sample object
+#     if isinstance(map_fcn(sample_copy), fos.Sample):
+#         return True
 
-    return False
+#     return False
 
 
 def _get_default_sample_iter(*, save: bool):
@@ -160,9 +163,6 @@ class Mapper(abc.ABC):
         else:
             if save is True:
                 logger.warning("Unable to save when `iter_fcn` is provided")
-                
-        
-
 
         yield from self._map_samples(
             sample_collection,

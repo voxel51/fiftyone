@@ -5,6 +5,7 @@ Metadata stored in dataset samples.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from collections import defaultdict
 import itertools
 import logging
@@ -18,12 +19,12 @@ import eta.core.utils as etau
 import eta.core.video as etav
 
 import fiftyone.core.fields as fof
+import fiftyone.core.map as focm
 import fiftyone.core.media as fom
 from fiftyone.core.odm import DynamicEmbeddedDocument
 import fiftyone.core.storage as fos
 import fiftyone.core.threed as fo3d
 import fiftyone.core.utils as fou
-
 
 logger = logging.getLogger(__name__)
 
@@ -382,24 +383,35 @@ def compute_metadata(
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
     """
-    num_workers = fou.recommend_thread_pool_workers(num_workers)
 
     if sample_collection.media_type == fom.GROUP:
         sample_collection = sample_collection.select_group_slices(
             _allow_mixed=True
         )
 
-    if num_workers <= 1:
-        _compute_metadata(
-            sample_collection, overwrite=overwrite, progress=progress
-        )
-    else:
-        _compute_metadata_multi(
-            sample_collection,
-            num_workers,
-            overwrite=overwrite,
-            progress=progress,
-        )
+    if not overwrite:
+        sample_collection = sample_collection.exists("metadata", False)
+
+    if len(sample_collection) == 0:
+        return
+
+    logger.info("Computing metadata...")
+
+    mapper = focm.MapperFactory.create("process", num_workers=num_workers)
+    metadata_iter = mapper.map_samples(
+        sample_collection,
+        _compute_metadata_map_fcn,
+        iter_fcn=_compute_metadata_iter_fcn,
+        skip_failures=skip_failures,
+        progress=progress,
+    )
+
+    batch_size = 1000  # default from previous implementation
+    while True:
+        if not (values := dict(itertools.islice(metadata_iter, batch_size))):
+            break
+
+        sample_collection.set_values("metadata", values, key_field="id")
 
     if skip_failures and not warn_failures:
         return
@@ -415,6 +427,23 @@ def compute_metadata(
             logger.warning(msg)
         else:
             raise ValueError(msg)
+
+
+def _compute_metadata_map_fcn(args):
+    filepath, media_type, cache = args
+    metadata = _compute_sample_metadata(
+        filepath, media_type, skip_failures=True, cache=cache
+    )
+    return metadata
+
+
+def _compute_metadata_iter_fcn(sample_collection):
+    cache = {}
+
+    for id, filepath, media_type in sample_collection._iter_values(
+        ["id", "filepath", "_media_type"], _allow_missing=True
+    ):
+        yield id, tuple([filepath, media_type, cache])
 
 
 def _image_has_flipped_dimensions(img):
@@ -466,82 +495,6 @@ def get_image_info(f):
         width, height = img.width, img.height
 
     return width, height, len(img.getbands())
-
-
-def _compute_metadata(
-    sample_collection, overwrite=False, batch_size=1000, progress=None
-):
-    if not overwrite:
-        sample_collection = sample_collection.exists("metadata", False)
-
-    ids, filepaths, media_types = sample_collection.values(
-        ["id", "filepath", "_media_type"],
-        _allow_missing=True,
-    )
-
-    num_samples = len(ids)
-    if num_samples == 0:
-        return
-
-    logger.info("Computing metadata...")
-
-    cache = {}
-    values = {}
-    inputs = zip(ids, filepaths, media_types, itertools.repeat(cache))
-
-    try:
-        with fou.ProgressBar(total=num_samples, progress=progress) as pb:
-            for args in pb(inputs):
-                sample_id, metadata = _do_compute_metadata(args)
-                values[sample_id] = metadata
-                if len(values) >= batch_size:
-                    sample_collection.set_values(
-                        "metadata", values, key_field="id"
-                    )
-                    values.clear()
-    finally:
-        sample_collection.set_values("metadata", values, key_field="id")
-
-
-def _compute_metadata_multi(
-    sample_collection,
-    num_workers,
-    overwrite=False,
-    batch_size=1000,
-    progress=None,
-):
-    if not overwrite:
-        sample_collection = sample_collection.exists("metadata", False)
-
-    ids, filepaths, media_types = sample_collection.values(
-        ["id", "filepath", "_media_type"],
-        _allow_missing=True,
-    )
-
-    num_samples = len(ids)
-    if num_samples == 0:
-        return
-
-    logger.info("Computing metadata...")
-
-    cache = {}
-    values = {}
-    inputs = zip(ids, filepaths, media_types, itertools.repeat(cache))
-
-    try:
-        with multiprocessing.dummy.Pool(processes=num_workers) as pool:
-            with fou.ProgressBar(total=num_samples, progress=progress) as pb:
-                for sample_id, metadata in pb(
-                    pool.imap_unordered(_do_compute_metadata, inputs)
-                ):
-                    values[sample_id] = metadata
-                    if len(values) >= batch_size:
-                        sample_collection.set_values(
-                            "metadata", values, key_field="id"
-                        )
-                        values.clear()
-    finally:
-        sample_collection.set_values("metadata", values, key_field="id")
 
 
 def _do_compute_metadata(args):
