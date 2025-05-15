@@ -31,5 +31,3 @@ coverage.xml
 pyvenv.cfg
 
 .env
-
-/packages/app/src/components/__generated__/*
