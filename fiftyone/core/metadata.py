@@ -5,18 +5,23 @@ Metadata stored in dataset samples.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-
-from collections import defaultdict
+import time
+from collections import defaultdict, deque
 import itertools
 import logging
 import multiprocessing.dummy
 import os
 
+from pymongo.errors import BulkWriteError
+from tqdm import tqdm
+
+import fiftyone.core.odm as foo
 import requests
 from PIL import Image
 
 import eta.core.utils as etau
 import eta.core.video as etav
+from pymongo import UpdateOne
 
 import fiftyone.core.fields as fof
 import fiftyone.core.map as focm
@@ -357,6 +362,54 @@ def get_metadata_cls(media_type):
     return Metadata
 
 
+import multiprocessing as mp
+from pymongo import UpdateOne
+import time
+
+
+# def bulk_writer_worker(write_queue, collection):
+#     while True:
+#         batch = write_queue.get()
+#         if batch is None:
+#             break  # Sentinel to exit
+#         if batch:
+#             collection.bulk_write(batch)
+def bulk_writer_worker(write_queue, result_queue, collection):
+    pid = os.getpid()
+    while True:
+        batch = write_queue.get()
+        if batch is None:
+            result_queue.put(("done", pid))
+            break
+
+        try:
+            result = collection.bulk_write(batch)
+            result_queue.put(("success", pid, len(batch)))
+        except BulkWriteError as bwe:
+            result_queue.put(("error", pid, str(bwe)))
+
+
+def start_bulk_writer_pool(collection, num_workers=4):
+    write_queue = mp.Queue(maxsize=2 * num_workers)  # buffer depth
+    result_queue = mp.Queue()
+    processes = []
+    for _ in range(num_workers):
+        p = mp.Process(
+            target=bulk_writer_worker,
+            args=(write_queue, result_queue, collection),
+        )
+        p.start()
+        processes.append(p)
+    return write_queue, result_queue, processes
+
+
+def start_bulk_writer_process(collection):
+    queue = mp.Queue(maxsize=1000)  # adjust maxsize as needed
+    process = mp.Process(target=bulk_writer_worker, args=(queue, collection))
+    process.start()
+    return queue, process
+
+
 def compute_metadata(
     sample_collection,
     overwrite=False,
@@ -364,6 +417,8 @@ def compute_metadata(
     skip_failures=True,
     warn_failures=False,
     progress=None,
+    batch_method="id",
+    batch_size=1000,
 ):
     """Populates the ``metadata`` field of all samples in the collection.
 
@@ -392,12 +447,25 @@ def compute_metadata(
     if not overwrite:
         sample_collection = sample_collection.exists("metadata", False)
 
-    if len(sample_collection) == 0:
+    if (sample_count := len(sample_collection)) == 0:
         return
 
-    logger.info("Computing metadata...")
+    if num_workers == -1:
+        logger.info("Computing metadata (optimized single)...")
+        return _compute_metadata_opt(
+            sample_collection,
+            overwrite=overwrite,
+            progress=progress,
+            total=sample_count,
+        )
 
-    mapper = focm.MapperFactory.create("process", num_workers=num_workers)
+    logger.info(
+        f"Computing metadata with map_samples using batch method {batch_method}..."
+    )
+
+    mapper = focm.MapperFactory.create(
+        "process", num_workers=num_workers, batch_method=batch_method
+    )
     metadata_iter = mapper.map_samples(
         sample_collection,
         _compute_metadata_map_fcn,
@@ -406,12 +474,74 @@ def compute_metadata(
         progress=progress,
     )
 
-    batch_size = 1000  # default from previous implementation
-    while True:
-        if not (values := dict(itertools.islice(metadata_iter, batch_size))):
-            break
+    # batch_size = 1000  # default from previous implementation
+    # update_ops = deque()
+    start = time.time()
+    update_ops = []
 
-        sample_collection.set_values("metadata", values, key_field="id")
+    # write_queue, writer_process = start_bulk_writer_process(
+    #         sample_collection._root_dataset._sample_collection
+    # )
+    collection = sample_collection._root_dataset._sample_collection
+    write_queue, result_queue, workers = start_bulk_writer_pool(
+        collection, num_workers=4
+    )
+
+    pbar = tqdm(total=sample_count)
+    for _, update_op in metadata_iter:
+        if update_op:
+            update_ops.append(update_op)
+        #         update_ops.append(update_op)
+        if len(update_ops) >= batch_size:
+            #         foo.bulk_write(
+            #             update_ops, sample_collection._root_dataset._sample_collection
+            #         )
+            write_queue.put(update_ops)
+            update_ops = []
+    #         update_ops.clear()
+    if update_ops:
+        write_queue.put(update_ops)
+
+    # Tell writer to stop
+    # write_queue.put(None)
+    # writer_process.join()
+    for _ in workers:
+        write_queue.put(None)
+
+    # Collect results
+    done = 0
+    while done < len(workers):
+        msg = result_queue.get()
+        if msg[0] == "success":
+            _, pid, n = msg
+            pbar.update(n)
+        elif msg[0] == "error":
+            _, pid, err = msg
+            print(f"[Worker {pid}] BulkWriteError: {err}")
+        elif msg[0] == "done":
+            _, pid = msg
+            done += 1
+            print(f"[Worker {pid}] Finished.")
+
+    pbar.close()
+
+    for p in workers:
+        p.join()
+    # print('metadata_iter took', time.time() - start)
+    # print('number of update_ops=', len(update_ops))
+    # # foo.bulk_write(
+    # #     update_ops, sample_collection._root_dataset._sample_collection
+    # # )
+    # sample_collection._root_dataset._sample_collection.bulk_write(
+    #     update_ops, ordered=False
+    # )
+    # while True:
+    # if not (update_ops:= dict(itertools.islice(metadata_iter, batch_size))):
+    #     break
+    # # print('update_ops=',update_ops)
+    # foo.bulk_write(
+    #        [op for op in update_ops.values() if op], sample_collection._root_dataset._sample_collection
+    # )
 
     if skip_failures and not warn_failures:
         return
@@ -429,21 +559,142 @@ def compute_metadata(
             raise ValueError(msg)
 
 
+def _compute_metadata(
+    sample_collection, overwrite=False, batch_size=1000, progress=None
+):
+    if not overwrite:
+        sample_collection = sample_collection.exists("metadata", False)
+
+    ids, filepaths, media_types = sample_collection.values(
+        ["id", "filepath", "_media_type"],
+        _allow_missing=True,
+    )
+
+    num_samples = len(ids)
+    if num_samples == 0:
+        return
+
+    logger.info("Computing metadata...")
+
+    cache = {}
+    values = {}
+    inputs = zip(ids, filepaths, media_types, itertools.repeat(cache))
+
+    try:
+        with fou.ProgressBar(total=num_samples, progress=progress) as pb:
+            for args in pb(inputs):
+                sample_id, metadata = _do_compute_metadata(args)
+                values[sample_id] = metadata
+                if len(values) >= batch_size:
+                    sample_collection.set_values(
+                        "metadata", values, key_field="id"
+                    )
+                    values.clear()
+    finally:
+        sample_collection.set_values("metadata", values, key_field="id")
+
+
+def _compute_metadata_multi(
+    sample_collection,
+    num_workers,
+    overwrite=False,
+    batch_size=1000,
+    progress=None,
+):
+    if not overwrite:
+        sample_collection = sample_collection.exists("metadata", False)
+
+    ids, filepaths, media_types = sample_collection.values(
+        ["id", "filepath", "_media_type"],
+        _allow_missing=True,
+    )
+
+    num_samples = len(ids)
+    if num_samples == 0:
+        return
+
+    logger.info("Computing metadata...")
+
+    cache = {}
+    values = {}
+    inputs = zip(ids, filepaths, media_types, itertools.repeat(cache))
+
+    try:
+        with multiprocessing.dummy.Pool(processes=num_workers) as pool:
+            with fou.ProgressBar(total=num_samples, progress=progress) as pb:
+                for sample_id, metadata in pb(
+                    pool.imap_unordered(_do_compute_metadata, inputs)
+                ):
+                    values[sample_id] = metadata
+                    if len(values) >= batch_size:
+                        sample_collection.set_values(
+                            "metadata", values, key_field="id"
+                        )
+                        values.clear()
+    finally:
+        sample_collection.set_values("metadata", values, key_field="id")
+
+
 def _compute_metadata_map_fcn(args):
-    filepath, media_type, cache = args
+    oid, filepath, media_type, cache = args
     metadata = _compute_sample_metadata(
         filepath, media_type, skip_failures=True, cache=cache
     )
-    return metadata
+    if metadata:
+        return UpdateOne(
+            {"_id": oid}, {"$set": {"metadata": metadata.to_mongo()}}
+        )
 
 
 def _compute_metadata_iter_fcn(sample_collection):
     cache = {}
 
-    for id, filepath, media_type in sample_collection._iter_values(
-        ["id", "filepath", "_media_type"], _allow_missing=True
+    for sid, filepath, media_type in sample_collection._iter_values(
+        ["_id", "filepath", "_media_type"], _allow_missing=True
     ):
-        yield id, tuple([filepath, media_type, cache])
+        yield sid, tuple([sid, filepath, media_type, cache])
+
+
+def _compute_metadata_opt(
+    sample_collection,
+    overwrite=False,
+    batch_size=1000,
+    progress=None,
+    total=None,
+):
+    logger.info("Computing metadata...")
+
+    if not overwrite:
+        sample_collection = sample_collection.exists("metadata", False)
+    cache = {}
+    update_ops = []
+    # total = len(sample_collection) if progress is not False else None
+
+    for oid, filepath, media_type in tqdm(
+        sample_collection._iter_values(
+            ["_id", "filepath", "_media_type"],
+            _allow_missing=True,
+        ),
+        total=total,
+    ):
+        metadata = _compute_sample_metadata(
+            filepath, media_type, skip_failures=True, cache=cache
+        )
+        if metadata:
+            update_ops.append(
+                UpdateOne(
+                    {"_id": oid}, {"$set": {"metadata": metadata.to_mongo()}}
+                )
+            )
+        if len(update_ops) >= batch_size:
+            foo.bulk_write(
+                update_ops, sample_collection._root_dataset._sample_collection
+            )
+            update_ops.clear()
+    if len(update_ops) > 0:
+        foo.bulk_write(
+            update_ops, sample_collection._root_dataset._sample_collection
+        )
 
 
 def _image_has_flipped_dimensions(img):
