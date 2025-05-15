@@ -5,6 +5,8 @@ Metadata stored in dataset samples.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import queue
+import threading
 import time
 from collections import defaultdict, deque
 import itertools
@@ -410,6 +412,25 @@ def start_bulk_writer_process(collection):
     return queue, process
 
 
+def worker(collection, update_queue, stop_signal, batch_size=1000):
+    ops = []
+    while True:
+        item = update_queue.get()
+        if item is stop_signal:
+            break
+
+        ops.append(item)
+        if len(ops) >= batch_size:
+            collection.bulk_write(ops)
+            print(f"Flushed {len(ops)} ops")
+            ops.clear()
+
+    # Flush any leftovers
+    if ops:
+        collection.bulk_write(ops)
+        print(f"Flushed final {len(ops)} ops")
+
+
 def compute_metadata(
     sample_collection,
     overwrite=False,
@@ -474,59 +495,80 @@ def compute_metadata(
         progress=progress,
     )
 
+    if not num_workers:
+        num_workers = fou.recommend_thread_pool_workers(num_workers)
+
     # batch_size = 1000  # default from previous implementation
     # update_ops = deque()
     start = time.time()
-    update_ops = []
+    # update_ops = []
 
     # write_queue, writer_process = start_bulk_writer_process(
     #         sample_collection._root_dataset._sample_collection
     # )
     collection = sample_collection._root_dataset._sample_collection
-    write_queue, result_queue, workers = start_bulk_writer_pool(
-        collection, num_workers=4
-    )
+    # write_queue, result_queue, workers = start_bulk_writer_pool(
+    #     collection, num_workers=4
+    # )
 
-    pbar = tqdm(total=sample_count)
+    update_queue = queue.Queue()
+    stop_signal = object()
+    # Start worker threads
+    threads = []
+    for _ in range(num_workers):
+        t = threading.Thread(
+            target=worker,
+            args=(collection, update_queue, stop_signal, batch_size),
+        )
+        t.start()
+        threads.append(t)
+
+    # pbar = tqdm(total=sample_count)
     for _, update_op in metadata_iter:
         if update_op:
-            update_ops.append(update_op)
-        #         update_ops.append(update_op)
-        if len(update_ops) >= batch_size:
-            #         foo.bulk_write(
-            #             update_ops, sample_collection._root_dataset._sample_collection
-            #         )
-            write_queue.put(update_ops)
-            update_ops = []
-    #         update_ops.clear()
-    if update_ops:
-        write_queue.put(update_ops)
+            update_queue.put(update_op)
+    for _ in range(num_workers):
+        update_queue.put(stop_signal)
+
+    for t in threads:
+        t.join()
+    #         update_ops.append(update_op)
+    #     #         update_ops.append(update_op)
+    #     if len(update_ops) >= batch_size:
+    #         #         foo.bulk_write(
+    #         #             update_ops, sample_collection._root_dataset._sample_collection
+    #         #         )
+    #         write_queue.put(update_ops)
+    #         update_ops = []
+    # #         update_ops.clear()
+    # if update_ops:
+    #     write_queue.put(update_ops)
 
     # Tell writer to stop
     # write_queue.put(None)
     # writer_process.join()
-    for _ in workers:
-        write_queue.put(None)
+    # for _ in workers:
+    #     write_queue.put(None)
 
     # Collect results
-    done = 0
-    while done < len(workers):
-        msg = result_queue.get()
-        if msg[0] == "success":
-            _, pid, n = msg
-            pbar.update(n)
-        elif msg[0] == "error":
-            _, pid, err = msg
-            print(f"[Worker {pid}] BulkWriteError: {err}")
-        elif msg[0] == "done":
-            _, pid = msg
-            done += 1
-            print(f"[Worker {pid}] Finished.")
-
-    pbar.close()
-
-    for p in workers:
-        p.join()
+    # done = 0
+    # while done < len(workers):
+    #     msg = result_queue.get()
+    #     if msg[0] == "success":
+    #         _, pid, n = msg
+    #         pbar.update(n)
+    #     elif msg[0] == "error":
+    #         _, pid, err = msg
+    #         print(f"[Worker {pid}] BulkWriteError: {err}")
+    #     elif msg[0] == "done":
+    #         _, pid = msg
+    #         done += 1
+    #         print(f"[Worker {pid}] Finished.")
+    #
+    # pbar.close()
+    #
+    # for p in workers:
+    #     p.join()
     # print('metadata_iter took', time.time() - start)
     # print('number of update_ops=', len(update_ops))
     # # foo.bulk_write(
