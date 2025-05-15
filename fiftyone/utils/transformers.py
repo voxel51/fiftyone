@@ -315,8 +315,11 @@ class FiftyOneTransformerConfig(fout.TorchImageModelConfig, HasZooModel):
                 logger.warning(
                     "Classes were passed in to the FiftyOne model, but the "
                     "HugginFace Transformers model configuration already has classes. "
-                    "Either set the classes argument to `None` to inherit the classes "
-                    "from the HFT model, or change the classes in the HFT model "
+                    "If this is a zero-shot model, this is fine - the classes passed in "
+                    "the FiftyOne model config will be used. "
+                    "If this is not a zero-shot model, either set the classes argument "
+                    "to `None` to inherit the classes from the HFT model, "
+                    "or change the classes in the HFT model "
                     "configuration to match the classes you want to use."
                 )
 
