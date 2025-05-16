@@ -7,14 +7,12 @@ Metadata stored in dataset samples.
 """
 import queue
 import threading
-import time
-from collections import defaultdict, deque
+from collections import defaultdict
 import itertools
 import logging
 import multiprocessing.dummy
 import os
 
-from pymongo.errors import BulkWriteError
 from tqdm import tqdm
 
 import fiftyone.core.odm as foo
@@ -32,6 +30,7 @@ from fiftyone.core.odm import DynamicEmbeddedDocument
 import fiftyone.core.storage as fos
 import fiftyone.core.threed as fo3d
 import fiftyone.core.utils as fou
+
 
 logger = logging.getLogger(__name__)
 

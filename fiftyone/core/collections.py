@@ -10643,7 +10643,6 @@ class SampleCollection(object):
         if _mongo:
             return pipelines[0] if scalar_result else pipelines
 
-        # print('pipelines', pipelines)
         # Run all aggregations
         _results = foo.aggregate(
             self._dataset._sample_collection, pipelines, _stream=stream
