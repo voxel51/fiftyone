@@ -1004,7 +1004,8 @@ class FiftyOneTransformerForObjectDetection(FiftyOneTransformer):
 class FiftyOneZeroShotTransformerForSemanticSegmentationConfig(
     FiftyOneZeroShotTransformerConfig
 ):
-    pass
+    def __init__(self, d):
+        super().__init__(d)
 
 
 class FiftyOneZeroShotTransformerForSemanticSegmentation(
@@ -1022,6 +1023,12 @@ class FiftyOneZeroShotTransformerForSemanticSegmentation(
         if config.output_processor_cls is None:
             config.output_processor_cls = "fiftyone.utils.transformers.TransformersSemanticSegmentatorOutputProcessor"
 
+        # Do not default to use_fast = True since AutoProcessor
+        # (CLIPImageProcessorFast) is failing.
+        if not config.transforms_args:
+            config.transforms_args = {}
+        if not config.transforms_args.get("use_fast"):
+            config.transforms_args["use_fast"] = False
         super().__init__(config)
 
 
