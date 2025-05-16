@@ -2883,6 +2883,53 @@
             "date_added": "2024-01-17 14:25:51"
         },
         {
+            "base_name": "group-vit-segmentation-transformer-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Hugging Face Transformers model for zero-shot semantic segmentation",
+            "source": "https://huggingface.co/docs/transformers/en/tasks/mask_generation",
+            "author": "Thomas Wolf, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForSemanticSegmentation",
+                "config": {
+                    "entrypoint_fcn": "transformers.GroupViTModel.from_pretrained",
+                    "entrypoint_args": {
+                        "pretrained_model_name_or_path": "nvidia/groupvit-gcc-yfcc",
+                        "output_segmentation": true
+                    },
+                    "output_processor_args": {
+                        "logits_key": "segmentation_logits"
+                    },
+                    "transforms_args": {
+                        "use_fast": false
+                    },
+                    "transformers_processor_kwargs": {
+                        "padding": true,
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "segmentation",
+                "embeddings",
+                "torch",
+                "transformers",
+                "zero-shot"
+            ],
+            "date_added": "2025-05-15 15:20:35"
+        },
+        {
             "base_name": "owlvit-base-patch16-torch",
             "base_filename": null,
             "version": null,
