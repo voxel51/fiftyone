@@ -532,6 +532,119 @@ class LabelTests(unittest.TestCase):
         rgb_to_rgb = focl._transform_mask(int_to_rgb, targets_map)
         nptest.assert_array_equal(rgb_to_rgb, np.zeros((3, 3, 3), dtype=int))
 
+    @drop_datasets
+    def test_view_stages_with_instance_ids(self):
+        cat1 = fo.Instance()
+        cat2 = fo.Instance()
+        cat3 = fo.Instance()
+        dog1 = fo.Instance()
+        dog2 = fo.Instance()
+
+        sample1 = fo.Sample(filepath="video1.mp4")
+        sample1.frames[1] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat", instance=cat1),
+                    fo.Detection(label="cat", instance=cat2),
+                    fo.Detection(label="dog", instance=dog1),
+                    fo.Detection(label="none"),
+                ]
+            )
+        )
+        sample1.frames[2] = fo.Frame()
+        sample1.frames[3] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat", instance=cat1),
+                    fo.Detection(label="cat", instance=cat2),
+                    fo.Detection(label="none"),
+                    fo.Detection(label="dog", instance=dog1),
+                ]
+            )
+        )
+        sample1.frames[4] = fo.Frame(ground_truth=fo.Detections())
+        sample1.frames[5] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat", instance=cat1),
+                    fo.Detection(label="cat", instance=cat3),
+                    fo.Detection(label="none"),
+                    fo.Detection(label="dog", instance=dog2),
+                ]
+            )
+        )
+        sample1.frames[6] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="dog", instance=dog2),
+                ]
+            )
+        )
+
+        sample2 = fo.Sample(filepath="video2.mp4")
+        sample2.frames[1] = fo.Frame()
+
+        sample3 = fo.Sample(filepath="video3.mp4")
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2, sample3])
+
+        instances = dataset.count_values(
+            "frames.ground_truth.detections.instance._id"
+        )
+
+        self.assertDictEqual(
+            instances,
+            {
+                cat1._id: 3,
+                cat2._id: 2,
+                cat3._id: 1,
+                dog1._id: 2,
+                dog2._id: 2,
+                None: 3,
+            },
+        )
+
+        view = dataset.select_labels(
+            instance_ids=cat1.id, fields="frames.ground_truth"
+        )
+        instances = view.count_values(
+            "frames.ground_truth.detections.instance._id"
+        )
+
+        self.assertEqual(len(view), 1)
+        self.assertDictEqual(instances, {cat1._id: 3})
+
+        view = dataset.match_labels(
+            instance_ids=cat1.id, fields="frames.ground_truth"
+        )
+
+        self.assertEqual(len(view), 1)
+        self.assertEqual(view.count("frames.ground_truth.detections"), 13)
+
+        view = dataset.exclude_labels(
+            instance_ids=cat1.id,
+            fields="frames.ground_truth",
+            omit_empty=False,
+        )
+        instances = view.count_values(
+            "frames.ground_truth.detections.instance._id"
+        )
+
+        self.assertEqual(len(view), 3)
+        self.assertTrue(cat1._id not in instances)
+
+        dataset.delete_labels(
+            instance_ids=cat1.id, fields="frames.ground_truth"
+        )
+        instances = dataset.count_values(
+            "frames.ground_truth.detections.instance._id"
+        )
+
+        self.assertEqual(len(dataset), 3)
+        self.assertTrue(cat1._id not in instances)
+        self.assertEqual(dataset.count("frames.ground_truth.detections"), 10)
+
 
 class LabelUtilsTests(unittest.TestCase):
     @drop_datasets
