@@ -179,19 +179,6 @@ _MODEL_TEMPLATE = """
     model = foz.load_zoo_model("{{ name }}")
 
     embeddings = dataset.compute_embeddings(model)
-{% elif 'transformers' in tags and 'zero-shot' in tags %}
-
-    classes = ["person", "dog", "cat", "bird", "car", "tree", "chair"]
-
-    model = foz.load_zoo_model(
-        "{{ name }}",
-        classes=classes,
-    )
-
-    dataset.apply_model(model, label_field="predictions")
-
-    session = fo.launch_app(dataset)
-
 {% elif 'zero-shot-classification' in name and 'transformer' in name %}
 
     classes = ["person", "dog", "cat", "bird", "car", "tree", "chair"]
@@ -234,7 +221,19 @@ _MODEL_TEMPLATE = """
     dataset.apply_model(model, label_field="predictions")
 
     session = fo.launch_app(dataset)
+    
+{% elif 'transformers' in tags and 'zero-shot' in tags %}
 
+    classes = ["person", "dog", "cat", "bird", "car", "tree", "chair"]
+
+    model = foz.load_zoo_model(
+        "{{ name }}",
+        classes=classes,
+    )
+
+    dataset.apply_model(model, label_field="predictions")
+
+    session = fo.launch_app(dataset)
 {% else %}
     model = foz.load_zoo_model("{{ name }}")
 
