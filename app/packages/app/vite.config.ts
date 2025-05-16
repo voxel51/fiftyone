@@ -1,4 +1,3 @@
-import path from "path";
 import reactRefresh from "@vitejs/plugin-react-refresh";
 import nodePolyfills from "rollup-plugin-polyfill-node";
 import { defineConfig } from "vite";
@@ -30,11 +29,20 @@ async function loadConfig() {
     build: {
       rollupOptions: {
         external: [
-        '@fiftyone/analytics', '@fiftyone/components', '@fiftyone/core',
-        '@fiftyone/relay', '@fiftyone/state', '@fiftyone/utilities',
-        '@fiftyone/looker', '@fiftyone/map', '@fiftyone/plugins',
-        '@fiftyone/embeddings', '@fiftyone/operators', '@fiftyone/fiftyone',
-        '@fiftyone/aggregations', '@fiftyone/flashlight'
+        '@fiftyone/analytics',
+        '@fiftyone/components',
+        '@fiftyone/core',
+        '@fiftyone/relay',
+        '@fiftyone/state',
+        '@fiftyone/utilities',
+        '@fiftyone/looker',
+        '@fiftyone/map',
+        '@fiftyone/plugins',
+        '@fiftyone/embeddings',
+        '@fiftyone/operators',
+        '@fiftyone/fiftyone',
+        '@fiftyone/aggregations',
+        '@fiftyone/flashlight'
         ],
         onwarn(warning, warn) {
           if (warning.code === "MODULE_LEVEL_DIRECTIVE") {

@@ -48,6 +48,7 @@ export default function Analytics({ fragment }: { fragment: Analytics$key }) {
   // waiting for analytics to show up before we can dismiss it is a pain
   // and adds significant time to the tests.
   // we should usually _never_ have any divergence between tests and prod.
+  // biome-ignore lint/complexity/useLiteralKeys: Custom property not in Window interface
   if (window["IS_PLAYWRIGHT"]) {
     console.log("Analytics component is disabled in playwright"); 
     return null;

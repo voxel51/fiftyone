@@ -220,6 +220,7 @@ export default function Teams({
     const hasSeenTooltip = window.localStorage.getItem(ENTERPRISE_TOOLTIP_LS);
 
     // don't show intro popoverif we're in playwright
+    // biome-ignore lint/complexity/useLiteralKeys: Custom property not in Window interface
     const isPlaywright = window["IS_PLAYWRIGHT"];
     
     if (!hasSeenTooltip && !isPlaywright) {
