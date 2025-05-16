@@ -4186,7 +4186,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     for _ids in fou.iter_batches(instance_ids, batch_size):
                         ops.append(
                             UpdateMany(
-                                {root + "instance._id": {"$in": _ids}},
+                                {root + ".instance._id": {"$in": _ids}},
                                 {
                                     "$set": {
                                         root: None,
