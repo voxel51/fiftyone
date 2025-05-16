@@ -1300,13 +1300,18 @@ class TransformersSemanticSegmentatorOutputProcessor(
         super().__init__(*args, **kwargs)
 
     def __call__(self, output, image_sizes, confidence_thresh=None):
-        return super().__call__(
-            {
-                "out": output[self.logits_key]
-            },  # to be compatible with the base class
-            image_sizes,
-            confidence_thresh=confidence_thresh,
-        )
+        logits = output[self.logits_key].detach().cpu()
+        probs = logits.softmax(dim=1).numpy()
+        masks = probs.argmax(axis=1)
+
+        confidence = probs.max(axis=1)
+        confidence_thresh = confidence_thresh if confidence_thresh else 0
+        conf_mask = confidence > confidence_thresh
+        masks[~conf_mask] = -1
+
+        # Increment class index by 1 since 0 is reserved for background in the app.
+        masks += 1
+        return [fol.Segmentation(mask=mask) for mask in masks]
 
 
 class TransformersDepthEstimatorOutputProcessor(fout.OutputProcessor):
