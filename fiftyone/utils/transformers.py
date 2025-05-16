@@ -563,9 +563,11 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
         if config.entrypoint_fcn is None:
             config.entrypoint_fcn = "transformers.AutoModel.from_pretrained"
         if config.entrypoint_args is None:
-            config.entrypoint_args = {
-                "pretrained_model_name_or_path": config.name_or_path,
-            }
+            config.entrypoint_args = {}
+        if not config.entrypoint_args.get("pretrained_model_name_or_path"):
+            config.entrypoint_args[
+                "pretrained_model_name_or_path"
+            ] = config.name_or_path
 
         # default transforms
         if config.transforms_fcn is None:
@@ -994,7 +996,8 @@ class FiftyOneTransformerForObjectDetection(FiftyOneTransformer):
 class FiftyOneZeroShotTransformerForSemanticSegmentationConfig(
     FiftyOneZeroShotTransformerConfig
 ):
-    pass
+    def __init__(self, d):
+        super().__init__(d)
 
 
 class FiftyOneZeroShotTransformerForSemanticSegmentation(
@@ -1012,6 +1015,12 @@ class FiftyOneZeroShotTransformerForSemanticSegmentation(
         if config.output_processor_cls is None:
             config.output_processor_cls = "fiftyone.utils.transformers.TransformersSemanticSegmentatorOutputProcessor"
 
+        # Do not default to use_fast = True since AutoProcessor
+        # (CLIPImageProcessorFast) is failing.
+        if not config.transforms_args:
+            config.transforms_args = {}
+        if not config.transforms_args.get("use_fast"):
+            config.transforms_args["use_fast"] = False
         super().__init__(config)
 
 
