@@ -201,6 +201,10 @@ class DatasetView(foc.SampleCollection):
         return self._dataset._is_clips
 
     @property
+    def _is_materialized(self):
+        return self._dataset._is_materialized
+
+    @property
     def _is_dynamic_groups(self):
         return self._outputs_dynamic_groups()
 
@@ -1342,8 +1346,8 @@ class DatasetView(foc.SampleCollection):
         self._dataset._keep_fields(view=self)
 
     def keep_frames(self):
-        """For each sample in the view, deletes all frames labels that are
-        **not** in the view from the underlying dataset.
+        """For each sample in the view, deletes all frames that are **not** in
+        the view from the underlying dataset.
 
         .. note::
 
