@@ -2832,7 +2832,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": ["torch", "torchvision", "transformers>=4.51"],
                 "cpu": {
                     "support": true
                 },
