@@ -8,9 +8,11 @@ Label utilities.
 import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
+import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 import fiftyone.utils.iou as foui
+from fiftyone import ViewField as F
 
 
 def objects_to_segmentations(
@@ -892,6 +894,198 @@ def classifications_to_detections(
                 detections.append(detection)
 
             image[out_field] = fol.Detections(detections=detections)
+
+
+def index_to_instance(
+    sample_collection,
+    label_field,
+    index_attr="index",
+    clear_index=False,
+    progress=None,
+):
+    """Populates :class:`fiftyone.core.labels.Instance` values in the
+    ``instance``attribute of the specified label field based on the values in
+    the specified index attribute.
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        label_field: the label field to process. Supported types are
+            :class:`fiftyone.core.labels.Detection`,
+            :class:`fiftyone.core.labels.Detections`,
+            :class:`fiftyone.core.labels.Polyline`,
+            :class:`fiftyone.core.labels.Polylines`,
+            :class:`fiftyone.core.labels.Keypoint`, and
+            :class:`fiftyone.core.labels.Keypoints`
+        index_attr ("index"): the attribute whose unique values define the
+            object instances. When ``index_attr="index"`` specifically, the
+            ``(label, index)`` of each object is used as the unique identifier.
+            Otherwise, the ``index_attr`` values alone are used. In either
+            case, any objects whose index attribute is None/missing are not
+            assigned an ``instance``
+        clear_index (False): whether to clear the values in ``index_attr``
+            (True) or leave them (False) after populating the ``instance``
+            attribute
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
+    """
+    fov.validate_collection_label_fields(
+        sample_collection,
+        label_field,
+        (
+            fol.Detection,
+            fol.Detections,
+            fol.Polyline,
+            fol.Polylines,
+            fol.Keypoint,
+            fol.Keypoints,
+        ),
+    )
+
+    if sample_collection.media_type == fom.GROUP:
+        id_path = sample_collection.group_field + ".id"
+        ids = sample_collection.values(id_path)
+
+        sample_collection = sample_collection.select_group_slices(
+            _allow_mixed=True
+        )
+    else:
+        id_path = "id"
+        ids = sample_collection.values(id_path)
+
+    is_frame_field = sample_collection._is_frame_field(label_field)
+    root, _ = sample_collection._get_label_field_root(label_field)
+    instance_path = root + ".instance"
+    index_path = root + "." + index_attr
+
+    if index_attr == "index":
+        index_paths = [index_path, root + ".label"]
+    else:
+        index_paths = [index_path]
+
+    with fou.ProgressBar(progress=progress) as pb:
+        for id in pb(ids):
+            view = sample_collection.select_by(id_path, id)
+
+            if is_frame_field:
+                sample_ids, frame_numbers, *indexes = view.values(
+                    ["id", "frames.frame_number"] + index_paths
+                )
+                indexes = _zip_values(*indexes)
+
+                instances = _frame_index_to_instance(
+                    sample_ids, frame_numbers, indexes
+                )
+            else:
+                sample_ids, *indexes = view.values(["id"] + index_paths)
+                indexes = _zip_values(*indexes)
+
+                instances = _index_to_instance(sample_ids, indexes)
+
+            if not instances:
+                continue
+
+            sample_collection.set_values(
+                instance_path, instances, key_field="id"
+            )
+
+            if clear_index:
+                sample_collection.set_values(
+                    index_path, _to_none_values(instances), key_field="id"
+                )
+
+
+def _index_to_instance(sample_ids, indexes):
+    instance_map = _to_instance_map(indexes)
+
+    instances = {}
+    for id, _indexes in zip(sample_ids, indexes):
+        if isinstance(_indexes, list):
+            if _indexes:
+                instances[id] = [instance_map.get(i, None) for i in _indexes]
+        else:
+            _instance = instance_map.get(_indexes, None)
+            if _instance is not None:
+                instances[id] = _instance
+
+    return instances
+
+
+def _frame_index_to_instance(sample_ids, frame_numbers, indexes):
+    instance_map = _to_instance_map(indexes)
+
+    instances = {}
+    for id, fns, inds in zip(sample_ids, frame_numbers, indexes):
+        if not inds:
+            continue
+
+        _instances = {}
+        for _fn, _indexes in zip(fns, inds):
+            if isinstance(_indexes, list):
+                if _indexes:
+                    _instances[_fn] = [
+                        instance_map.get(i, None) for i in _indexes
+                    ]
+            else:
+                _instance = instance_map.get(_indexes, None)
+                if _instance is not None:
+                    _instances[_fn] = _instance
+
+        instances[id] = _instances
+
+    return instances
+
+
+def _to_instance_map(indexes):
+    instance_map = {}
+    for i in set(_unwind_values(indexes)):
+        if isinstance(i, tuple):
+            if i[0] is not None:
+                instance_map[i] = fol.Instance()
+        else:
+            if i is not None:
+                instance_map[i] = fol.Instance()
+
+    return instance_map
+
+
+def _zip_values(*args):
+    if len(args) == 1:
+        return args[0]
+
+    values = []
+    for v in zip(*args):
+        if isinstance(v[0], list):
+            values.append(_zip_values(*v))
+        else:
+            values.append(v)
+
+    return values
+
+
+def _unwind_values(values):
+    if isinstance(values, list):
+        for v in values:
+            if isinstance(v, list):
+                yield from _unwind_values(v)
+            else:
+                yield v
+    else:
+        yield values
+
+
+def _to_none_values(instances):
+    nones = {}
+    for k, v in instances.items():
+        if isinstance(v, dict):
+            nones[k] = _to_none_values(v)
+        elif isinstance(v, list):
+            nones[k] = [None] * len(v)
+        else:
+            nones[k] = None
+
+    return nones
 
 
 def perform_nms(

@@ -4031,7 +4031,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._clear_groups(group_ids=group_ids)
 
     def delete_labels(
-        self, labels=None, ids=None, tags=None, view=None, fields=None
+        self,
+        labels=None,
+        ids=None,
+        instance_ids=None,
+        tags=None,
+        view=None,
+        fields=None,
     ):
         """Deletes the specified labels from the dataset.
 
@@ -4041,8 +4047,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dicts in the format returned by
             :attr:`fiftyone.core.session.Session.selected_labels`
 
-        -   Provide the ``ids`` or ``tags`` arguments to specify the labels to
-            delete via their IDs and/or tags
+        -   Provide the ``ids`` argument to specify the labels to delete via
+            their IDs
+
+        -   Provide the ``instance_ids`` argument to specify the labels to
+            delete via their instance IDs
+
+        -   Provide the ``tags`` argument to specify the labels to delete via
+            their tags
 
         -   Provide the ``view`` argument to delete all of the labels in a view
             into this dataset. This syntax is useful if you have constructed a
@@ -4059,6 +4071,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 the format returned by
                 :attr:`fiftyone.core.session.Session.selected_labels`
             ids (None): an ID or iterable of IDs of the labels to delete
+            instance_ids (None): an instance ID or iterable of instance IDs of
+                the labels to delete
             tags (None): a tag or iterable of tags of the labels to delete
             view (None): a :class:`fiftyone.core.view.DatasetView` into this
                 dataset containing the labels to delete
@@ -4072,7 +4086,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             labels = view._get_selected_labels(fields=fields)
             self._delete_labels(labels, fields=fields)
 
-        if ids is None and tags is None:
+        if ids is None and instance_ids is None and tags is None:
             return
 
         if etau.is_str(ids):
@@ -4080,6 +4094,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if ids is not None:
             ids = [ObjectId(_id) for _id in ids]
+
+        if etau.is_str(instance_ids):
+            instance_ids = [instance_ids]
+
+        if instance_ids is not None:
+            instance_ids = [ObjectId(_id) for _id in instance_ids]
 
         if etau.is_str(tags):
             tags = [tags]
@@ -4119,6 +4139,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                             )
                         )
 
+                if instance_ids is not None:
+                    for _ids in fou.iter_batches(instance_ids, batch_size):
+                        ops.append(
+                            UpdateMany(
+                                {root + ".instance._id": {"$in": _ids}},
+                                {
+                                    "$pull": {
+                                        root: {"instance._id": {"$in": _ids}}
+                                    },
+                                    "$set": {"last_modified_at": now},
+                                },
+                            )
+                        )
+
                 if tags is not None:
                     ops.append(
                         UpdateMany(
@@ -4139,6 +4173,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                         ops.append(
                             UpdateMany(
                                 {root + "._id": {"$in": _ids}},
+                                {
+                                    "$set": {
+                                        root: None,
+                                        "last_modified_at": now,
+                                    }
+                                },
+                            )
+                        )
+
+                if instance_ids is not None:
+                    for _ids in fou.iter_batches(instance_ids, batch_size):
+                        ops.append(
+                            UpdateMany(
+                                {root + ".instance._id": {"$in": _ids}},
                                 {
                                     "$set": {
                                         root: None,

@@ -2386,12 +2386,12 @@ labels in the App:
 
     [
         {
-            'object_id': '5f99d2eb36208058abbfc02a',
+            'label_id': '5f99d2eb36208058abbfc02a',
             'sample_id': '5f99d2eb36208058abbfc030',
             'field': 'ground_truth',
         },
         {
-            'object_id': '5f99d2eb36208058abbfc02b',
+            'label_id': '5f99d2eb36208058abbfc02b',
             'sample_id': '5f99d2eb36208058abbfc030',
             'field': 'ground_truth',
         },

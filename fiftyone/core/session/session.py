@@ -824,6 +824,7 @@ class Session(object):
 
         -   ``label_id``: the ID of the label
         -   ``sample_id``: the ID of the sample containing the label
+        -   ``instance_id``: the instance ID of the label (optional)
         -   ``field``: the field name containing the label
         -   ``frame_number``: the frame number containing the label (only
             applicable to video samples)
@@ -841,6 +842,7 @@ class Session(object):
         self,
         labels: t.Optional[t.List[dict]] = None,
         ids: t.Optional[t.Union[str, t.Iterable[str]]] = None,
+        instance_ids: t.Optional[t.Union[str, t.Iterable[str]]] = None,
         tags: t.Optional[t.Union[str, t.Iterable[str]]] = None,
         fields: t.Optional[t.Union[str, t.Iterable[str]]] = None,
     ) -> None:
@@ -853,12 +855,14 @@ class Session(object):
         Args:
             labels (None): a list of dicts specifying the labels to select
             ids (None): an ID or iterable of IDs of the labels to select
+            instance_ids (None): an instance ID or iterable of instance IDs of
+                the labels to select
             tags (None): a tag or iterable of tags of labels to select
             fields (None): a field or iterable of fields from which to select
         """
         if labels is None and self._collection:
             labels = self._collection._get_selected_labels(
-                ids=ids, tags=tags, fields=fields
+                ids=ids, instance_ids=instance_ids, tags=tags, fields=fields
             )
 
         self.selected_labels = list(labels or [])
