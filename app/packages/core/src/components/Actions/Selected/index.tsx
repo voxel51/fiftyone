@@ -48,7 +48,9 @@ export default ({
   let title = "Manage selected";
   if (samples.size > 0 && labels.size > 0) {
     // use title to display count
-    title = `${text} | ${labels.size.toLocaleString()}`;
+    title = `${text} sample${
+      samples.size > 1 ? "s" : ""
+    } | ${labels.size.toLocaleString()} label${labels.size > 1 ? "s" : ""}`;
     text = undefined;
   } else if (labels.size > 0) {
     text = labels.size.toLocaleString();
