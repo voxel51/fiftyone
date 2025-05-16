@@ -179,15 +179,62 @@ _MODEL_TEMPLATE = """
     model = foz.load_zoo_model("{{ name }}")
 
     embeddings = dataset.compute_embeddings(model)
-{% elif 'zero-shot' in name and 'transformer' in name %}
+{% elif 'transformers' in tags and 'zero-shot' in tags %}
+
+    classes = ["person", "dog", "cat", "bird", "car", "tree", "chair"]
+
     model = foz.load_zoo_model(
         "{{ name }}",
-        classes=["person", "dog", "cat", "bird", "car", "tree", "chair"],
+        classes=classes,
     )
 
     dataset.apply_model(model, label_field="predictions")
 
     session = fo.launch_app(dataset)
+
+{% elif 'zero-shot-classification' in name and 'transformer' in name %}
+
+    classes = ["person", "dog", "cat", "bird", "car", "tree", "chair"]
+
+    model = foz.load_zoo_model(
+        "{{ name }}",
+        classes=classes,
+    )
+
+    dataset.apply_model(model, label_field="predictions")
+
+    session = fo.launch_app(dataset)
+
+    # some models make require additional arguments
+    # check the Hugging Face docs to see if any are needed
+
+    # for example, AltCLIP requires `padding=True` in its processor
+    model = foz.load_zoo_model(
+        "zero-shot-classification-transformer-torch",
+        classes=classes,
+        name_or_path="BAAI/AltCLIP",
+        transformers_processor_kwargs={
+            "padding": True,
+        }
+    )
+
+    dataset.apply_model(model, label_field="predictions")
+
+    session = fo.launch_app(dataset)
+
+{% elif 'zero-shot-detection' in name and 'transformer' in name %}
+
+    classes = ["person", "dog", "cat", "bird", "car", "tree", "chair"]
+
+    model = foz.load_zoo_model(
+        "{{ name }}",
+        classes=classes,
+    )
+
+    dataset.apply_model(model, label_field="predictions")
+
+    session = fo.launch_app(dataset)
+
 {% else %}
     model = foz.load_zoo_model("{{ name }}")
 
