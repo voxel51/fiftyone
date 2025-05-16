@@ -534,16 +534,27 @@ def _compute_metadata_single(
                 _allow_missing=True,
             )
         ):
-            if metadata := _compute_sample_metadata(
-                filepath, media_type, skip_failures=skip_failures, cache=cache
-            ):
-                update_ops.append(metadata)
-            if len(update_ops) >= batch_size:
-                foo.bulk_write(
-                    update_ops,
-                    sample_collection._root_dataset._sample_collection,
-                )
-                update_ops.clear()
+            try:
+                if update_op := _compute_metadata_map_fcn(
+                    (oid, filepath, media_type, cache)
+                ):
+                    update_ops.append(update_op)
+                if len(update_ops) >= batch_size:
+                    foo.bulk_write(
+                        update_ops,
+                        sample_collection._root_dataset._sample_collection,
+                    )
+                    update_ops.clear()
+            except Exception as e:
+                if skip_failures:
+                    if warn_failures:
+                        logger.warning(
+                            "Failed to compute metadata for sample %s: %s",
+                            oid,
+                            str(e),
+                        )
+                    continue
+                raise
     if len(update_ops) > 0:
         foo.bulk_write(
             update_ops, sample_collection._root_dataset._sample_collection
