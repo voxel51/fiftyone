@@ -854,12 +854,14 @@ def _make_data_loader(
         )
         worker_init_fn = None
 
+    pin_memory = isinstance(model, fout.TorchImageModel) and model._using_gpu
+
     return tud.DataLoader(
         dataset,
         batch_size=batch_size,
         num_workers=num_workers,
         collate_fn=collate_fn,
-        pin_memory=True,
+        pin_memory=pin_memory,
         persistent_workers=False,
         worker_init_fn=worker_init_fn,
     )
