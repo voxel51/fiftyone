@@ -1011,8 +1011,7 @@ class FiftyOneZeroShotTransformerForSemanticSegmentationConfig(
 class FiftyOneZeroShotTransformerForSemanticSegmentation(
     FiftyOneZeroShotTransformer
 ):
-    """FiftyOne wrapper around a ``transformers`` model for zero-shot image
-    classification.
+    """FiftyOne wrapper around a ``transformers`` model for zero-shot semantic segmentation.
 
     Args:
         config: a `FiftyOneZeroShotTransformerForSemanticSegmentationConfig`
