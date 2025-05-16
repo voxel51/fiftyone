@@ -535,6 +535,159 @@ class LabelTests(unittest.TestCase):
 
 class LabelUtilsTests(unittest.TestCase):
     @drop_datasets
+    def test_label_to_instance_video(self):
+        sample = fo.Sample(filepath="video.mp4")
+        sample.frames[1] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat", index=1),
+                    fo.Detection(label="cat", index=2),
+                    fo.Detection(label="dog", index=1),
+                    fo.Detection(label="none"),
+                ]
+            )
+        )
+        sample.frames[2] = fo.Frame()
+        sample.frames[3] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat", index=1),
+                    fo.Detection(label="cat", index=2),
+                    fo.Detection(label="none"),
+                    fo.Detection(label="dog", index=1),
+                ]
+            )
+        )
+        sample.frames[4] = fo.Frame(ground_truth=fo.Detections())
+        sample.frames[5] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat", index=1),
+                    fo.Detection(label="cat", index=3),
+                    fo.Detection(label="none"),
+                    fo.Detection(label="dog", index=2),
+                ]
+            )
+        )
+        sample.frames[6] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="dog", index=2),
+                ]
+            )
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        foul.index_to_instance(
+            dataset, "frames.ground_truth", clear_index=True
+        )
+
+        instances = dataset.count_values(
+            "frames.ground_truth.detections.instance._id"
+        )
+        indexes = dataset.count_values("frames.ground_truth.detections.index")
+
+        cat1 = sample.frames[1].ground_truth.detections[0].instance._id
+        cat2 = sample.frames[1].ground_truth.detections[1].instance._id
+        cat3 = sample.frames[5].ground_truth.detections[1].instance._id
+        dog1 = sample.frames[1].ground_truth.detections[2].instance._id
+        dog2 = sample.frames[5].ground_truth.detections[3].instance._id
+
+        self.assertDictEqual(
+            instances, {cat1: 3, cat2: 2, cat3: 1, dog1: 2, dog2: 2, None: 3}
+        )
+        self.assertDictEqual(indexes, {None: 13})
+
+    @drop_datasets
+    def test_label_to_instance_group(self):
+        group1 = fo.Group()
+        left_sample1 = fo.Sample(
+            filepath="left-image1.jpg",
+            group=group1.element("left"),
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat", index=1),
+                    fo.Detection(label="cat", index=2),
+                    fo.Detection(label="dog", index=1),
+                    fo.Detection(label="none"),
+                ]
+            ),
+        )
+        right_sample1 = fo.Sample(
+            filepath="right-image1.jpg",
+            group=group1.element("right"),
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat", index=1),
+                    fo.Detection(label="dog", index=1),
+                    fo.Detection(label="none"),
+                    fo.Detection(label="dog", index=2),
+                ]
+            ),
+        )
+
+        group2 = fo.Group()
+        left_sample2 = fo.Sample(
+            filepath="left-image2.jpg",
+            group=group2.element("left"),
+        )
+        right_sample2 = fo.Sample(
+            filepath="right-image2.jpg",
+            group=group2.element("right"),
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat", index=1),
+                    fo.Detection(label="dog", index=1),
+                    fo.Detection(label="none"),
+                ]
+            ),
+        )
+
+        group3 = fo.Group()
+        left_sample3 = fo.Sample(
+            filepath="left-image3.jpg",
+            group=group3.element("left"),
+            ground_truth=fo.Detections(),
+        )
+        right_sample3 = fo.Sample(
+            filepath="right-image3.jpg",
+            group=group3.element("right"),
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                left_sample1,
+                right_sample1,
+                left_sample2,
+                right_sample2,
+                left_sample3,
+                right_sample3,
+            ]
+        )
+
+        foul.index_to_instance(dataset, "ground_truth", clear_index=True)
+
+        view = dataset.select_group_slices()
+        instances = view.count_values("ground_truth.detections.instance._id")
+        indexes = view.count_values("ground_truth.detections.index")
+
+        cat1 = left_sample1.ground_truth.detections[0].instance._id
+        cat2 = left_sample1.ground_truth.detections[1].instance._id
+        cat3 = right_sample2.ground_truth.detections[0].instance._id
+        dog1 = left_sample1.ground_truth.detections[2].instance._id
+        dog2 = right_sample1.ground_truth.detections[3].instance._id
+        dog3 = right_sample2.ground_truth.detections[1].instance._id
+
+        self.assertDictEqual(
+            instances,
+            {cat1: 2, cat2: 1, cat3: 1, dog1: 2, dog2: 1, dog3: 1, None: 3},
+        )
+        self.assertDictEqual(indexes, {None: 11})
+
+    @drop_datasets
     def test_perform_nms(self):
         detections = [
             fo.Detection(

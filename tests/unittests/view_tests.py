@@ -1245,6 +1245,94 @@ class SetValuesTests(unittest.TestCase):
         self.assertListEqual(labels[1][:2], ["cat", "dog"])
         self.assertListEqual(labels[2][:3], ["cat", "dog", "rabbit"])
 
+    def test_set_values_frames_dicts_with_label_lists(self):
+        sample1 = fo.Sample(filepath="video1.mp4")
+        sample1.frames[1] = fo.Frame()
+
+        sample2 = fo.Sample(filepath="video.mp4")
+        sample2.frames[1] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                    fo.Detection(label="cat"),
+                ]
+            )
+        )
+        sample2.frames[2] = fo.Frame()
+        sample2.frames[3] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="dog"),
+                    fo.Detection(label="cat"),
+                ]
+            )
+        )
+        sample2.frames[4] = fo.Frame(ground_truth=fo.Detections())
+        sample2.frames[5] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="dog"),
+                ]
+            )
+        )
+        sample2.frames[7] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                ]
+            )
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2])
+
+        # Test empty
+
+        empty_values = {sample2.id: {4: []}}
+
+        # Here we're verifying that this does NOT raise an error like:
+        #   "unable to determine a field type from empty/None values"
+        # because dynamic attributes aren't required to be declared
+        dataset.set_values(
+            "frames.ground_truth.detections.is_cat",
+            empty_values,
+            key_field="id",
+        )
+
+        # Test setting values for some (but not all) frames
+
+        values = {
+            sample2.id: {
+                1: [True, False, True],
+                4: [],
+                7: [True],
+            }
+        }
+
+        dataset.set_values(
+            "frames.ground_truth.detections.is_cat",
+            values,
+            key_field="id",
+        )
+
+        values = dataset.values("frames.ground_truth.detections.is_cat")
+
+        self.assertListEqual(
+            values,
+            [
+                [None],
+                [
+                    [True, False, True],
+                    None,
+                    [None, None],
+                    [],
+                    [None],
+                    [True],
+                ],
+            ],
+        )
+
     def test_set_values_dataset(self):
         n = len(self.dataset)
 

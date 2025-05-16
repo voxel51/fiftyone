@@ -1305,6 +1305,9 @@ class ExcludeLabels(ViewStage):
 
     -   Provide the ``ids`` argument to exclude labels with specific IDs
 
+    -   Provide the ``instance_ids`` argument to exclude labels with specific
+        instance IDs
+
     -   Provide the ``tags`` argument to exclude labels with specific tags
 
     If multiple criteria are specified, labels must match all of them in order
@@ -1383,6 +1386,8 @@ class ExcludeLabels(ViewStage):
             format returned by
             :attr:`fiftyone.core.session.Session.selected_labels`
         ids (None): an ID or iterable of IDs of the labels to exclude
+        instance_ids (None): an instance ID or iterable of instance IDs of the
+            labels to exclude
         tags (None): a tag or iterable of tags of labels to exclude
         fields (None): a field or iterable of fields from which to exclude
         omit_empty (True): whether to omit samples that have no labels after
@@ -1390,7 +1395,13 @@ class ExcludeLabels(ViewStage):
     """
 
     def __init__(
-        self, labels=None, ids=None, tags=None, fields=None, omit_empty=True
+        self,
+        labels=None,
+        ids=None,
+        instance_ids=None,
+        tags=None,
+        fields=None,
+        omit_empty=True,
     ):
         if labels is not None:
             sample_ids, labels_map = _parse_labels(labels)
@@ -1401,6 +1412,11 @@ class ExcludeLabels(ViewStage):
             ids = [ids]
         elif ids is not None:
             ids = list(ids)
+
+        if etau.is_str(instance_ids):
+            instance_ids = [instance_ids]
+        elif instance_ids is not None:
+            instance_ids = list(instance_ids)
 
         if etau.is_str(tags):
             tags = [tags]
@@ -1414,6 +1430,7 @@ class ExcludeLabels(ViewStage):
 
         self._labels = labels
         self._ids = ids
+        self._instance_ids = instance_ids
         self._tags = tags
         self._fields = fields
         self._omit_empty = omit_empty
@@ -1430,6 +1447,11 @@ class ExcludeLabels(ViewStage):
     def ids(self):
         """A list of IDs of labels to exclude."""
         return self._ids
+
+    @property
+    def instance_ids(self):
+        """A list of instance IDs of labels to exclude."""
+        return self._instance_ids
 
     @property
     def tags(self):
@@ -1504,6 +1526,7 @@ class ExcludeLabels(ViewStage):
         return [
             ["labels", self._labels],
             ["ids", self._ids],
+            ["instance_ids", self._instance_ids],
             ["tags", self._tags],
             ["fields", self._fields],
             ["omit_empty", self._omit_empty],
@@ -1522,6 +1545,12 @@ class ExcludeLabels(ViewStage):
                 "name": "ids",
                 "type": "NoneType|list<id>|id",
                 "placeholder": "ids",
+                "default": "None",
+            },
+            {
+                "name": "instance_ids",
+                "type": "NoneType|list<id>|id",
+                "placeholder": "instance_ids",
                 "default": "None",
             },
             {
@@ -1602,7 +1631,20 @@ class ExcludeLabels(ViewStage):
         filter_expr = None
 
         if self._ids is not None:
-            filter_expr = ~F("_id").is_in([ObjectId(_id) for _id in self._ids])
+            id_expr = ~F("_id").is_in([ObjectId(_id) for _id in self._ids])
+            if filter_expr is not None:
+                filter_expr &= id_expr
+            else:
+                filter_expr = id_expr
+
+        if self._instance_ids is not None:
+            instance_id_expr = ~F("instance._id").is_in(
+                [ObjectId(_id) for _id in self._instance_ids]
+            )
+            if filter_expr is not None:
+                filter_expr &= instance_id_expr
+            else:
+                filter_expr = instance_id_expr
 
         if self._tags is not None:
             tag_expr = (F("tags") != None).if_else(
@@ -5384,6 +5426,9 @@ class MatchLabels(ViewStage):
 
     -   Provide the ``ids`` argument to match labels with specific IDs
 
+    -   Provide the ``instance_ids`` argument to match labels with specific
+        instance IDs
+
     -   Provide the ``tags`` argument to match labels with specific tags
 
     -   Provide the ``filter`` argument to match labels based on a boolean
@@ -5479,6 +5524,8 @@ class MatchLabels(ViewStage):
             format returned by
             :attr:`fiftyone.core.session.Session.selected_labels`
         ids (None): an ID or iterable of IDs of the labels to select
+        instance_ids (None): an instance ID or iterable of instance IDs of the
+            labels to select
         tags (None): a tag or iterable of tags of labels to select
         filter (None): a :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
@@ -5498,6 +5545,7 @@ class MatchLabels(ViewStage):
         self,
         labels=None,
         ids=None,
+        instance_ids=None,
         tags=None,
         filter=None,
         fields=None,
@@ -5512,6 +5560,11 @@ class MatchLabels(ViewStage):
             ids = [ids]
         elif ids is not None:
             ids = list(ids)
+
+        if etau.is_str(instance_ids):
+            instance_ids = [instance_ids]
+        elif instance_ids is not None:
+            instance_ids = list(instance_ids)
 
         if etau.is_str(tags):
             tags = [tags]
@@ -5528,6 +5581,7 @@ class MatchLabels(ViewStage):
 
         self._labels = labels
         self._ids = ids
+        self._instance_ids = instance_ids
         self._tags = tags
         self._filter = filter
         self._fields = fields
@@ -5545,6 +5599,11 @@ class MatchLabels(ViewStage):
     def ids(self):
         """A list of IDs of labels to match."""
         return self._ids
+
+    @property
+    def instance_ids(self):
+        """A list of instance IDs of labels to match."""
+        return self._instance_ids
 
     @property
     def tags(self):
@@ -5581,6 +5640,7 @@ class MatchLabels(ViewStage):
         return [
             ["labels", self._labels],
             ["ids", self._ids],
+            ["instance_ids", self._instance_ids],
             ["tags", self._tags],
             ["filter", self._get_mongo_filter()],
             ["fields", self._fields],
@@ -5600,6 +5660,12 @@ class MatchLabels(ViewStage):
                 "name": "ids",
                 "type": "NoneType|list<id>|id",
                 "placeholder": "ids",
+                "default": "None",
+            },
+            {
+                "name": "instance_ids",
+                "type": "NoneType|list<id>|id",
+                "placeholder": "instance_ids",
                 "default": "None",
             },
             {
@@ -5670,7 +5736,12 @@ class MatchLabels(ViewStage):
         return stage.to_mongo(sample_collection)
 
     def _make_pipeline(self, sample_collection):
-        if self._ids is None and self._tags is None and self._filter is None:
+        if (
+            self._ids is None
+            and self._instance_ids is None
+            and self._tags is None
+            and self._filter is None
+        ):
             if self._bool:
                 return [{"$match": {"$expr": False}}]
 
@@ -5684,7 +5755,20 @@ class MatchLabels(ViewStage):
         id_tag_expr = None
 
         if self._ids is not None:
-            id_tag_expr = F("_id").is_in([ObjectId(_id) for _id in self._ids])
+            id_expr = F("_id").is_in([ObjectId(_id) for _id in self._ids])
+            if id_tag_expr is None:
+                id_tag_expr = id_expr
+            else:
+                id_tag_expr &= id_expr
+
+        if self._instance_ids is not None:
+            instance_id_expr = F("instance._id").is_in(
+                [ObjectId(_id) for _id in self._instance_ids]
+            )
+            if id_tag_expr is None:
+                id_tag_expr = instance_id_expr
+            else:
+                id_tag_expr &= instance_id_expr
 
         if self._tags is not None:
             tag_expr = (F("tags") != None).if_else(
@@ -6819,6 +6903,9 @@ class SelectLabels(ViewStage):
 
     -   Provide the ``ids`` argument to select labels with specific IDs
 
+    -   Provide the ``instance_ids`` argument to select labels with specific
+        instance IDs
+
     -   Provide the ``tags`` argument to select labels with specific tags
 
     If multiple criteria are specified, labels must match all of them in order
@@ -6891,6 +6978,8 @@ class SelectLabels(ViewStage):
             format returned by
             :attr:`fiftyone.core.session.Session.selected_labels`
         ids (None): an ID or iterable of IDs of the labels to select
+        instance_ids (None): an instance ID or iterable of instance IDs of the
+            labels to select
         tags (None): a tag or iterable of tags of labels to select
         fields (None): a field or iterable of fields from which to select
         omit_empty (True): whether to omit samples that have no labels after
@@ -6898,7 +6987,13 @@ class SelectLabels(ViewStage):
     """
 
     def __init__(
-        self, labels=None, ids=None, tags=None, fields=None, omit_empty=True
+        self,
+        labels=None,
+        ids=None,
+        instance_ids=None,
+        tags=None,
+        fields=None,
+        omit_empty=True,
     ):
         if labels is not None:
             sample_ids, labels_map = _parse_labels(labels)
@@ -6909,6 +7004,11 @@ class SelectLabels(ViewStage):
             ids = [ids]
         elif ids is not None:
             ids = list(ids)
+
+        if etau.is_str(instance_ids):
+            instance_ids = [instance_ids]
+        elif instance_ids is not None:
+            instance_ids = list(instance_ids)
 
         if etau.is_str(tags):
             tags = [tags]
@@ -6922,6 +7022,7 @@ class SelectLabels(ViewStage):
 
         self._labels = labels
         self._ids = ids
+        self._instance_ids = instance_ids
         self._tags = tags
         self._fields = fields
         self._omit_empty = omit_empty
@@ -6938,6 +7039,11 @@ class SelectLabels(ViewStage):
     def ids(self):
         """A list of IDs of labels to select."""
         return self._ids
+
+    @property
+    def instance_ids(self):
+        """A list of instance IDs of labels to select."""
+        return self._instance_ids
 
     @property
     def tags(self):
@@ -7012,6 +7118,7 @@ class SelectLabels(ViewStage):
         return [
             ["labels", self._labels],
             ["ids", self._ids],
+            ["instance_ids", self._instance_ids],
             ["tags", self._tags],
             ["fields", self._fields],
             ["omit_empty", self._omit_empty],
@@ -7030,6 +7137,12 @@ class SelectLabels(ViewStage):
                 "name": "ids",
                 "type": "NoneType|list<id>|id",
                 "placeholder": "ids",
+                "default": "None",
+            },
+            {
+                "name": "instance_ids",
+                "type": "NoneType|list<id>|id",
+                "placeholder": "instance_ids",
                 "default": "None",
             },
             {
@@ -7142,13 +7255,26 @@ class SelectLabels(ViewStage):
             pipeline.extend(stage.to_mongo(sample_collection))
 
         #
-        # Filter labels that don't match `tags` and `ids
+        # Filter labels that don't match `ids`, `instance_ids`, and `tags`
         #
 
         filter_expr = None
 
         if self._ids is not None:
-            filter_expr = F("_id").is_in([ObjectId(_id) for _id in self._ids])
+            id_expr = F("_id").is_in([ObjectId(_id) for _id in self._ids])
+            if filter_expr is not None:
+                filter_expr &= id_expr
+            else:
+                filter_expr = id_expr
+
+        if self._instance_ids is not None:
+            instance_id_expr = F("instance._id").is_in(
+                [ObjectId(_id) for _id in self._instance_ids]
+            )
+            if filter_expr is not None:
+                filter_expr &= instance_id_expr
+            else:
+                filter_expr = instance_id_expr
 
         if self._tags is not None:
             tag_expr = (F("tags") != None).if_else(
