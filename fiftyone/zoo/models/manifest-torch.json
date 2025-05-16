@@ -3251,7 +3251,7 @@
             "source": "https://pytorch.org/hub/ultralytics_yolov5",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
-            "size_bytes": 7936,
+            "size_bytes": 4062133,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.torch.TorchImageModel",
                 "config": {
@@ -3284,7 +3284,7 @@
             "source": "https://pytorch.org/hub/ultralytics_yolov5",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
-            "size_bytes": 28928,
+            "size_bytes": 14808437,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.torch.TorchImageModel",
                 "config": {
@@ -3317,7 +3317,7 @@
             "source": "https://pytorch.org/hub/ultralytics_yolov5",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
-            "size_bytes": 83872,
+            "size_bytes": 42806829,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.torch.TorchImageModel",
                 "config": {
@@ -3350,7 +3350,7 @@
             "source": "https://pytorch.org/hub/ultralytics_yolov5",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
-            "size_bytes": 197504,
+            "size_bytes": 93622629,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.torch.TorchImageModel",
                 "config": {
@@ -5452,7 +5452,7 @@
             "source": "https://pytorch.org/hub/ultralytics_yolov5",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
-            "size_bytes": 360496,
+            "size_bytes": 174114333,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.torch.TorchImageModel",
                 "config": {
