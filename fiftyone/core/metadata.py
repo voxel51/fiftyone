@@ -404,11 +404,17 @@ def compute_metadata(
         return
 
     if num_workers == 1:
-        return _compute_metadata_opt(
+        return _compute_metadata_single(
             sample_collection,
             overwrite=overwrite,
-            progress=sample_count if progress else None,
+            progress=progress,
+            num_samples=sample_count,
+            skip_failures=skip_failures,
+            warn_failures=warn_failures,
         )
+
+    if not num_workers:
+        num_workers = fou.recommend_thread_pool_workers(num_workers)
 
     mapper = focm.MapperFactory.create(
         "process",
@@ -422,16 +428,13 @@ def compute_metadata(
         progress=progress,
     )
 
-    if not num_workers:
-        num_workers = fou.recommend_thread_pool_workers(num_workers)
-
     collection = sample_collection._root_dataset._sample_collection
 
     # Collect update operations
     update_queue = queue.Queue()
     stop_signal = object()
 
-    # Start worker threads
+    # Start separate threads to handle the bulk writes
     threads = []
     for _ in range(num_workers):
         t = threading.Thread(
@@ -450,8 +453,7 @@ def compute_metadata(
         if update_op:
             update_queue.put(update_op)
 
-    # Stop worker threads
-    for _ in range(num_workers):
+    for _ in threads:
         update_queue.put(stop_signal)
     for t in threads:
         t.join()
@@ -459,6 +461,7 @@ def compute_metadata(
     if skip_failures and not warn_failures:
         return
 
+    # Note that this count may take a while to compute on large datasets
     num_missing = len(sample_collection.exists("metadata", False))
     if num_missing > 0:
         msg = (
@@ -485,52 +488,15 @@ def _bulk_metadata_writer(
         if len(ops) >= batch_size:
             collection.bulk_write(ops)
             ops.clear()
-
-    # Flush any leftovers
     if ops:
         collection.bulk_write(ops)
         ops.clear()
 
 
-def _compute_metadata(
-    sample_collection, overwrite=False, batch_size=1000, progress=None
-):
-    if not overwrite:
-        sample_collection = sample_collection.exists("metadata", False)
-
-    ids, filepaths, media_types = sample_collection.values(
-        ["id", "filepath", "_media_type"],
-        _allow_missing=True,
-    )
-
-    num_samples = len(ids)
-    if num_samples == 0:
-        return
-
-    logger.info("Computing metadata...")
-
-    cache = {}
-    values = {}
-    inputs = zip(ids, filepaths, media_types, itertools.repeat(cache))
-
-    try:
-        with fou.ProgressBar(total=num_samples, progress=progress) as pb:
-            for args in pb(inputs):
-                sample_id, metadata = _do_compute_metadata(args)
-                values[sample_id] = metadata
-                if len(values) >= batch_size:
-                    sample_collection.set_values(
-                        "metadata", values, key_field="id"
-                    )
-                    values.clear()
-    finally:
-        sample_collection.set_values("metadata", values, key_field="id")
-
-
 def _compute_metadata_map_fcn(args):
     oid, filepath, media_type, cache = args
-    metadata = _compute_sample_metadata(
-        filepath, media_type, skip_failures=True, cache=cache
+    metadata = _get_metadata_from_cache_or_build_from_src(
+        filepath, media_type, cache=cache
     )
     if metadata:
         return UpdateOne(
@@ -547,40 +513,37 @@ def _compute_metadata_iter_fcn(sample_collection):
         yield sid, tuple([sid, filepath, media_type, cache])
 
 
-def _compute_metadata_opt(
+def _compute_metadata_single(
     sample_collection,
     overwrite=False,
     batch_size=1000,
     progress=None,
+    num_samples=None,
+    skip_failures=True,
+    warn_failures=False,
 ):
-    logger.info("Computing metadata...")
-
+    # In case there are issues with multiprocessing, this is a fallback
     if not overwrite:
         sample_collection = sample_collection.exists("metadata", False)
     cache = {}
     update_ops = []
-
-    for oid, filepath, media_type in tqdm(
-        sample_collection._iter_values(
-            ["_id", "filepath", "_media_type"],
-            _allow_missing=True,
-        ),
-        total=progress,
-    ):
-        metadata = _compute_sample_metadata(
-            filepath, media_type, skip_failures=True, cache=cache
-        )
-        if metadata:
-            update_ops.append(
-                UpdateOne(
-                    {"_id": oid}, {"$set": {"metadata": metadata.to_mongo()}}
+    with fou.ProgressBar(total=num_samples, progress=progress) as pb:
+        for oid, filepath, media_type in pb(
+            sample_collection._iter_values(
+                ["_id", "filepath", "_media_type"],
+                _allow_missing=True,
+            )
+        ):
+            if metadata := _compute_sample_metadata(
+                filepath, media_type, skip_failures=skip_failures, cache=cache
+            ):
+                update_ops.append(metadata)
+            if len(update_ops) >= batch_size:
+                foo.bulk_write(
+                    update_ops,
+                    sample_collection._root_dataset._sample_collection,
                 )
-            )
-        if len(update_ops) >= batch_size:
-            foo.bulk_write(
-                update_ops, sample_collection._root_dataset._sample_collection
-            )
-            update_ops.clear()
+                update_ops.clear()
     if len(update_ops) > 0:
         foo.bulk_write(
             update_ops, sample_collection._root_dataset._sample_collection
@@ -650,14 +613,18 @@ def _compute_sample_metadata(
     filepath, media_type, skip_failures=False, cache=None
 ):
     try:
-        return _get_metadata(filepath, media_type, cache=cache)
-    except:
+        return _get_metadata_from_cache_or_build_from_src(
+            filepath, media_type, cache=cache
+        )
+    except Exception:
         if skip_failures:
             return None
         raise
 
 
-def _get_metadata(filepath, media_type, cache=None):
+def _get_metadata_from_cache_or_build_from_src(
+    filepath, media_type, cache=None
+):
     if cache is not None:
         metadata = cache.get(filepath, None)
         if metadata is not None:
