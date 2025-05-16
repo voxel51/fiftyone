@@ -2894,7 +2894,8 @@
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForSemanticSegmentation",
                 "config": {
-                    "entrypoint_fcn": "transformers.GroupViTModel.from_pretrained",
+                    "name_or_path": "nvidia/groupvit-gcc-yfcc",
+                    "entrypoint_fcn": "transformers.GroupViTMod1el.from_pretrained",
                     "entrypoint_args": {
                         "pretrained_model_name_or_path": "nvidia/groupvit-gcc-yfcc",
                         "output_segmentation": true

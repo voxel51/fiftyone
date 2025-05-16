@@ -35,7 +35,6 @@ DEFAULT_SEGMENTATION_PATH = "nvidia/segformer-b0-finetuned-ade-512-512"
 DEFAULT_DEPTH_ESTIMATION_PATH = "Intel/dpt-hybrid-midas"
 DEFAULT_ZERO_SHOT_CLASSIFICATION_PATH = "openai/clip-vit-large-patch14"
 DEFAULT_ZERO_SHOT_DETECTION_PATH = "google/owlvit-base-patch32"
-DEFAULT_ZERO_SHOT_SEGMENTATION_PATH = "nvidia/groupvit-gcc-yfcc"
 
 
 def convert_transformers_model(model, task=None, **kwargs):
@@ -1005,13 +1004,7 @@ class FiftyOneTransformerForObjectDetection(FiftyOneTransformer):
 class FiftyOneZeroShotTransformerForSemanticSegmentationConfig(
     FiftyOneZeroShotTransformerConfig
 ):
-    def __init__(self, d):
-        if (
-            d.get("name_or_path", None) is None
-            and d.get("model", None) is None
-        ):
-            d["name_or_path"] = DEFAULT_ZERO_SHOT_SEGMENTATION_PATH
-        super().__init__(d)
+    pass
 
 
 class FiftyOneZeroShotTransformerForSemanticSegmentation(
