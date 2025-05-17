@@ -571,9 +571,11 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
         if config.entrypoint_fcn is None:
             config.entrypoint_fcn = "transformers.AutoModel.from_pretrained"
         if config.entrypoint_args is None:
-            config.entrypoint_args = {
-                "pretrained_model_name_or_path": config.name_or_path,
-            }
+            config.entrypoint_args = {}
+        if not config.entrypoint_args.get("pretrained_model_name_or_path"):
+            config.entrypoint_args[
+                "pretrained_model_name_or_path"
+            ] = config.name_or_path
 
         # default transforms
         if config.transforms_fcn is None:
@@ -999,6 +1001,36 @@ class FiftyOneTransformerForObjectDetection(FiftyOneTransformer):
         self.transforms.return_image_sizes = True
 
 
+class FiftyOneZeroShotTransformerForSemanticSegmentationConfig(
+    FiftyOneZeroShotTransformerConfig
+):
+    def __init__(self, d):
+        super().__init__(d)
+
+
+class FiftyOneZeroShotTransformerForSemanticSegmentation(
+    FiftyOneZeroShotTransformer
+):
+    """FiftyOne wrapper around a ``transformers`` model for zero-shot semantic segmentation.
+
+    Args:
+        config: a `FiftyOneZeroShotTransformerForSemanticSegmentationConfig`
+    """
+
+    def __init__(self, config):
+        # override output processor
+        if config.output_processor_cls is None:
+            config.output_processor_cls = "fiftyone.utils.transformers.TransformersSemanticSegmentatorOutputProcessor"
+
+        # Do not default to use_fast = True since AutoProcessor
+        # (CLIPImageProcessorFast) is failing.
+        if not config.transforms_args:
+            config.transforms_args = {}
+        if not config.transforms_args.get("use_fast"):
+            config.transforms_args["use_fast"] = False
+        super().__init__(config)
+
+
 class FiftyOneTransformerForSemanticSegmentationConfig(
     FiftyOneTransformerConfig
 ):
@@ -1263,14 +1295,22 @@ class TransformersSemanticSegmentatorOutputProcessor(
     fout.SemanticSegmenterOutputProcessor
 ):
     def __init__(self, *args, **kwargs):
+        self.logits_key = kwargs.pop("logits_key", "logits")
         super().__init__(*args, **kwargs)
 
     def __call__(self, output, image_sizes, confidence_thresh=None):
-        return super().__call__(
-            {"out": output.logits},  # to be compatible with the base class
-            image_sizes,
-            confidence_thresh=confidence_thresh,
-        )
+        logits = output[self.logits_key].detach().cpu()
+        probs = logits.softmax(dim=1).numpy()
+        masks = probs.argmax(axis=1)
+
+        confidence = probs.max(axis=1)
+        confidence_thresh = confidence_thresh if confidence_thresh else 0
+        conf_mask = confidence > confidence_thresh
+        masks[~conf_mask] = -1
+
+        # Increment class index by 1 since 0 is reserved for background in the app.
+        masks += 1
+        return [fol.Segmentation(mask=mask) for mask in masks]
 
 
 class TransformersDepthEstimatorOutputProcessor(fout.OutputProcessor):
@@ -1301,7 +1341,6 @@ class TransformersDepthEstimatorOutputProcessor(fout.OutputProcessor):
                 )
 
     def __call__(self, output, image_sizes, confidence_thresh=None):
-
         output = self._depth_estimation_post_processor(output)
         output = np.array(
             [o["predicted_depth"].detach().cpu().numpy() for o in output]
@@ -1329,6 +1368,7 @@ MODEL_TYPE_TO_CONFIG_CLASS = {
     "depth-estimation": FiftyOneTransformerForDepthEstimationConfig,
     "zero-shot-image-classification": FiftyOneZeroShotTransformerForImageClassificationConfig,
     "zero-shot-object-detection": FiftyOneZeroShotTransformerForObjectDetectionConfig,
+    "zero-shot-semantic-segmentation": FiftyOneZeroShotTransformerForSemanticSegmentationConfig,
 }
 
 MODEL_TYPE_TO_MODEL_CLASS = {
@@ -1339,4 +1379,5 @@ MODEL_TYPE_TO_MODEL_CLASS = {
     "depth-estimation": FiftyOneTransformerForDepthEstimation,
     "zero-shot-image-classification": FiftyOneZeroShotTransformerForImageClassification,
     "zero-shot-object-detection": FiftyOneZeroShotTransformerForObjectDetection,
+    "zero-shot-semantic-segmentation": FiftyOneZeroShotTransformerForSemanticSegmentation,
 }
