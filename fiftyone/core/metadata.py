@@ -12,7 +12,6 @@ import logging
 import multiprocessing.dummy
 import os
 
-import fiftyone.core.odm as foo
 import requests
 from PIL import Image
 

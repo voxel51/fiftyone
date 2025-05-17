@@ -26,7 +26,6 @@ import bson
 import fiftyone.core.config as focc
 import fiftyone.core.map.batcher as fomb
 
-# import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 from fiftyone.core.map.typing import SampleCollection
 
