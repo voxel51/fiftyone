@@ -5385,8 +5385,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     "task, but this requires loading all images "
                     "simultaneously into RAM, which will take at least %s. "
                     "Consider specifying a `task_size` to break the data into "
-                    "smaller chunks, or upgrade to FiftyOne Teams so that you "
-                    "can provide a cloud manifest",
+                    "smaller chunks, or upgrade to FiftyOne Enterprise so "
+                    "that you can provide a cloud manifest",
                     etau.to_human_bytes_str(required_bytes),
                 )
 
