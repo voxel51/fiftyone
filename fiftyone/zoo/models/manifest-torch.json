@@ -220,7 +220,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -255,7 +255,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -290,7 +290,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -325,7 +325,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -359,7 +359,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -394,7 +394,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -429,7 +429,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -464,7 +464,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -498,7 +498,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -541,7 +541,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -578,7 +578,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -615,7 +615,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -652,7 +652,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -688,7 +688,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -725,7 +725,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -762,7 +762,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -799,7 +799,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
