@@ -5,8 +5,9 @@ Metadata stored in dataset samples.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import queue
+import threading
 from collections import defaultdict
-import itertools
 import logging
 import multiprocessing.dummy
 import os
@@ -16,8 +17,10 @@ from PIL import Image
 
 import eta.core.utils as etau
 import eta.core.video as etav
+from pymongo import UpdateOne
 
 import fiftyone.core.fields as fof
+import fiftyone.core.map as focm
 import fiftyone.core.media as fom
 from fiftyone.core.odm import DynamicEmbeddedDocument
 import fiftyone.core.storage as fos
@@ -382,28 +385,69 @@ def compute_metadata(
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
     """
+
+    logger.debug("Computing metadata...")
+
     num_workers = fou.recommend_thread_pool_workers(num_workers)
 
     if sample_collection.media_type == fom.GROUP:
         sample_collection = sample_collection.select_group_slices(
             _allow_mixed=True
         )
+    if not overwrite:
+        sample_collection = sample_collection.exists("metadata", False)
 
-    if num_workers <= 1:
-        _compute_metadata(
-            sample_collection, overwrite=overwrite, progress=progress
+    mapper = focm.MapperFactory.create(
+        num_workers=num_workers,
+    )
+    metadata_iter = mapper.map_samples(
+        sample_collection,
+        _compute_metadata_map_fcn,
+        iter_fcn=_compute_metadata_iter_fcn,
+        skip_failures=skip_failures,
+        progress=progress,
+    )
+
+    collection = sample_collection._root_dataset._sample_collection
+
+    # Collect update operations
+    update_queue = queue.Queue()
+    stop_signal = object()
+
+    # Start separate threads to handle the bulk writes
+    threads = []
+    for _ in range(num_workers):
+        t = threading.Thread(
+            target=_bulk_metadata_writer,
+            args=(
+                collection,
+                update_queue,
+                stop_signal,
+                skip_failures,
+                warn_failures,
+            ),
         )
-    else:
-        _compute_metadata_multi(
-            sample_collection,
-            num_workers,
-            overwrite=overwrite,
-            progress=progress,
-        )
+        t.start()
+        threads.append(t)
+
+    # Process metadata with map function
+    for _, update_op in metadata_iter:
+        # Rather than calling bulk_write here and waiting for it to finish,
+        # we just queue the update operations and let the worker threads
+        # handle them. This allows us to process the metadata in parallel
+        # with the bulk writes.
+        if update_op:
+            update_queue.put(update_op)
+
+    for _ in threads:
+        update_queue.put(stop_signal)
+    for t in threads:
+        t.join()
 
     if skip_failures and not warn_failures:
         return
 
+    # Note that this count may take a while to compute on large datasets
     num_missing = len(sample_collection.exists("metadata", False))
     if num_missing > 0:
         msg = (
@@ -415,6 +459,62 @@ def compute_metadata(
             logger.warning(msg)
         else:
             raise ValueError(msg)
+
+
+def _bulk_metadata_writer(
+    collection,
+    update_queue,
+    stop_signal,
+    skip_failures,
+    warn_failures,
+    batch_size=1000,
+):
+    ops = []
+    while True:
+        item = update_queue.get()
+        try:
+            if item is stop_signal:
+                break
+            ops.append(item)
+            if len(ops) >= batch_size:
+                collection.bulk_write(ops)
+                ops.clear()
+        except Exception as e:
+            if not skip_failures:
+                raise
+            if warn_failures:
+                logger.warning("Failed to write metadata for %s: %s", item, e)
+                # Only log the first failure to avoid flooding the logs
+                warn_failures = False
+    if ops:
+        try:
+            collection.bulk_write(ops)
+        except Exception as e:
+            if not skip_failures:
+                raise
+            if warn_failures:
+                logger.warning("Failed to write metadata for %s: %s", ops, e)
+        ops.clear()
+
+
+def _compute_metadata_map_fcn(args):
+    oid, filepath, media_type, cache = args
+    metadata = _get_metadata_from_cache_or_build_from_src(
+        filepath, media_type, cache=cache
+    )
+    if metadata:
+        return UpdateOne(
+            {"_id": oid}, {"$set": {"metadata": metadata.to_mongo()}}
+        )
+
+
+def _compute_metadata_iter_fcn(sample_collection):
+    cache = {}
+
+    for sid, filepath, media_type in sample_collection._iter_values(
+        ["_id", "filepath", "_media_type"], _allow_missing=True
+    ):
+        yield sid, tuple([sid, filepath, media_type, cache])
 
 
 def _image_has_flipped_dimensions(img):
@@ -468,82 +568,6 @@ def get_image_info(f):
     return width, height, len(img.getbands())
 
 
-def _compute_metadata(
-    sample_collection, overwrite=False, batch_size=1000, progress=None
-):
-    if not overwrite:
-        sample_collection = sample_collection.exists("metadata", False)
-
-    ids, filepaths, media_types = sample_collection.values(
-        ["id", "filepath", "_media_type"],
-        _allow_missing=True,
-    )
-
-    num_samples = len(ids)
-    if num_samples == 0:
-        return
-
-    logger.info("Computing metadata...")
-
-    cache = {}
-    values = {}
-    inputs = zip(ids, filepaths, media_types, itertools.repeat(cache))
-
-    try:
-        with fou.ProgressBar(total=num_samples, progress=progress) as pb:
-            for args in pb(inputs):
-                sample_id, metadata = _do_compute_metadata(args)
-                values[sample_id] = metadata
-                if len(values) >= batch_size:
-                    sample_collection.set_values(
-                        "metadata", values, key_field="id"
-                    )
-                    values.clear()
-    finally:
-        sample_collection.set_values("metadata", values, key_field="id")
-
-
-def _compute_metadata_multi(
-    sample_collection,
-    num_workers,
-    overwrite=False,
-    batch_size=1000,
-    progress=None,
-):
-    if not overwrite:
-        sample_collection = sample_collection.exists("metadata", False)
-
-    ids, filepaths, media_types = sample_collection.values(
-        ["id", "filepath", "_media_type"],
-        _allow_missing=True,
-    )
-
-    num_samples = len(ids)
-    if num_samples == 0:
-        return
-
-    logger.info("Computing metadata...")
-
-    cache = {}
-    values = {}
-    inputs = zip(ids, filepaths, media_types, itertools.repeat(cache))
-
-    try:
-        with multiprocessing.dummy.Pool(processes=num_workers) as pool:
-            with fou.ProgressBar(total=num_samples, progress=progress) as pb:
-                for sample_id, metadata in pb(
-                    pool.imap_unordered(_do_compute_metadata, inputs)
-                ):
-                    values[sample_id] = metadata
-                    if len(values) >= batch_size:
-                        sample_collection.set_values(
-                            "metadata", values, key_field="id"
-                        )
-                        values.clear()
-    finally:
-        sample_collection.set_values("metadata", values, key_field="id")
-
-
 def _do_compute_metadata(args):
     sample_id, filepath, media_type, cache = args
     metadata = _compute_sample_metadata(
@@ -556,14 +580,18 @@ def _compute_sample_metadata(
     filepath, media_type, skip_failures=False, cache=None
 ):
     try:
-        return _get_metadata(filepath, media_type, cache=cache)
-    except:
+        return _get_metadata_from_cache_or_build_from_src(
+            filepath, media_type, cache=cache
+        )
+    except Exception:
         if skip_failures:
             return None
         raise
 
 
-def _get_metadata(filepath, media_type, cache=None):
+def _get_metadata_from_cache_or_build_from_src(
+    filepath, media_type, cache=None
+):
     if cache is not None:
         metadata = cache.get(filepath, None)
         if metadata is not None:
