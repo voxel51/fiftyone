@@ -419,7 +419,13 @@ def compute_metadata(
     for _ in range(num_workers):
         t = threading.Thread(
             target=_bulk_metadata_writer,
-            args=(collection, update_queue, stop_signal),
+            args=(
+                collection,
+                update_queue,
+                stop_signal,
+                skip_failures,
+                warn_failures,
+            ),
         )
         t.start()
         threads.append(t)
@@ -456,20 +462,38 @@ def compute_metadata(
 
 
 def _bulk_metadata_writer(
-    collection, update_queue, stop_signal, batch_size=1000
+    collection,
+    update_queue,
+    stop_signal,
+    skip_failures,
+    warn_failures,
+    batch_size=1000,
 ):
     ops = []
     while True:
         item = update_queue.get()
-        if item is stop_signal:
-            break
-
-        ops.append(item)
-        if len(ops) >= batch_size:
-            collection.bulk_write(ops)
-            ops.clear()
+        try:
+            if item is stop_signal:
+                break
+            ops.append(item)
+            if len(ops) >= batch_size:
+                collection.bulk_write(ops)
+                ops.clear()
+        except Exception as e:
+            if not skip_failures:
+                raise
+            if warn_failures:
+                logger.warning("Failed to write metadata for %s: %s", item, e)
+                # Only log the first failure to avoid flooding the logs
+                warn_failures = False
     if ops:
-        collection.bulk_write(ops)
+        try:
+            collection.bulk_write(ops)
+        except Exception as e:
+            if not skip_failures:
+                raise
+            if warn_failures:
+                logger.warning("Failed to write metadata for %s: %s", ops, e)
         ops.clear()
 
 
