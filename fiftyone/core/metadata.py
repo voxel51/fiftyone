@@ -8,12 +8,9 @@ Metadata stored in dataset samples.
 import queue
 import threading
 from collections import defaultdict
-import itertools
 import logging
 import multiprocessing.dummy
 import os
-
-from tqdm import tqdm
 
 import fiftyone.core.odm as foo
 import requests
@@ -389,8 +386,8 @@ def compute_metadata(
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
     """
-    logger.info("Computing metadata...")
 
+    logger.debug("Computing metadata...")
     if sample_collection.media_type == fom.GROUP:
         sample_collection = sample_collection.select_group_slices(
             _allow_mixed=True
@@ -399,25 +396,10 @@ def compute_metadata(
     if not overwrite:
         sample_collection = sample_collection.exists("metadata", False)
 
-    if (sample_count := len(sample_collection)) == 0:
-        logger.info("No samples to compute metadata for")
-        return
-
-    if num_workers == 1:
-        return _compute_metadata_single(
-            sample_collection,
-            overwrite=overwrite,
-            progress=progress,
-            num_samples=sample_count,
-            skip_failures=skip_failures,
-            warn_failures=warn_failures,
-        )
-
     if not num_workers:
         num_workers = fou.recommend_thread_pool_workers(num_workers)
 
     mapper = focm.MapperFactory.create(
-        "process",
         num_workers=num_workers,
     )
     metadata_iter = mapper.map_samples(
@@ -511,54 +493,6 @@ def _compute_metadata_iter_fcn(sample_collection):
         ["_id", "filepath", "_media_type"], _allow_missing=True
     ):
         yield sid, tuple([sid, filepath, media_type, cache])
-
-
-def _compute_metadata_single(
-    sample_collection,
-    overwrite=False,
-    batch_size=1000,
-    progress=None,
-    num_samples=None,
-    skip_failures=True,
-    warn_failures=False,
-):
-    # In case there are issues with multiprocessing, this is a fallback
-    if not overwrite:
-        sample_collection = sample_collection.exists("metadata", False)
-    cache = {}
-    update_ops = []
-    with fou.ProgressBar(total=num_samples, progress=progress) as pb:
-        for oid, filepath, media_type in pb(
-            sample_collection._iter_values(
-                ["_id", "filepath", "_media_type"],
-                _allow_missing=True,
-            )
-        ):
-            try:
-                if update_op := _compute_metadata_map_fcn(
-                    (oid, filepath, media_type, cache)
-                ):
-                    update_ops.append(update_op)
-                if len(update_ops) >= batch_size:
-                    foo.bulk_write(
-                        update_ops,
-                        sample_collection._root_dataset._sample_collection,
-                    )
-                    update_ops.clear()
-            except Exception as e:
-                if skip_failures:
-                    if warn_failures:
-                        logger.warning(
-                            "Failed to compute metadata for sample %s: %s",
-                            oid,
-                            str(e),
-                        )
-                    continue
-                raise
-    if len(update_ops) > 0:
-        foo.bulk_write(
-            update_ops, sample_collection._root_dataset._sample_collection
-        )
 
 
 def _image_has_flipped_dimensions(img):
