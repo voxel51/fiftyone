@@ -387,16 +387,15 @@ def compute_metadata(
     """
 
     logger.debug("Computing metadata...")
+
+    num_workers = fou.recommend_thread_pool_workers(num_workers)
+
     if sample_collection.media_type == fom.GROUP:
         sample_collection = sample_collection.select_group_slices(
             _allow_mixed=True
         )
-
     if not overwrite:
         sample_collection = sample_collection.exists("metadata", False)
-
-    if not num_workers:
-        num_workers = fou.recommend_thread_pool_workers(num_workers)
 
     mapper = focm.MapperFactory.create(
         num_workers=num_workers,
