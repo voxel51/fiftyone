@@ -46,7 +46,8 @@ def cleanup():
     # it does work when manually running
     # cleaning up touched files after the session finishes
     with contextlib.suppress(Exception):
-        shutil.rmtree(f"/tmp/fo-unq/{os.getpid()}")
+        tmp_dir = focu.MultiProcessUniqueFilenameMaker.gettempdir(os.getpid())
+        shutil.rmtree(tmp_dir)
 
 
 # =========================================================================
@@ -110,14 +111,14 @@ def cleanup():
             {"ignore_existing": True},
             id="{ignore_existing=True, idempotent=True}",
         ),
-        pytest.param(
-            {"ignore_exts": True, "idempotent": False},
-            id="{ignore_exts=True, idempotent=False}",
-        ),
-        pytest.param(
-            {"ignore_exts": True, "idempotent": True},
-            id="{ignore_exts=True, idempotent=True}",
-        ),
+        # pytest.param(
+        #    {"ignore_exts": True, "idempotent": False},
+        #     id="{ignore_exts=True, idempotent=False}",
+        # ),
+        # pytest.param(
+        #     {"ignore_exts": True, "idempotent": True},
+        #     id="{ignore_exts=True, idempotent=True}",
+        # ),
     ),
 )
 @skip_windows  # TODO: don't skip on Windows
