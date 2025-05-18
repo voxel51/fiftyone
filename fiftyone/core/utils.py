@@ -2416,7 +2416,7 @@ class MultiProcessUniqueFilenameMaker(object):
             touch_paths = [
                 f
                 for f in touch_glob_pattern
-                if self.ignore_exts or os.path.splitext(f)[0] == output_ext
+                if self.ignore_exts or os.path.splitext(f)[1] == output_ext
             ]
 
             touched_number = None
