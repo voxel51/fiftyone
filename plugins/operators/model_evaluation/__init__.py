@@ -357,13 +357,13 @@ class ConfigureScenario(foo.Operator):
         preview_container = inputs.grid("grid", height="400px", width="100%")
         preview_height = "300px"
         scenario_type = ctx.params.get("scenario_type", None)
-        x_axis_title = "Scenarios"
+        x_axis_title = "Subset"
         if scenario_type == ScenarioType.LABEL_ATTRIBUTE:
-            x_axis_title = "Label Attributes"
+            x_axis_title = "Attribute value"
         elif scenario_type == ScenarioType.SAMPLE_FIELD:
-            x_axis_title = "Sample Fields"
+            x_axis_title = "Field value"
         elif scenario_type == ScenarioType.VIEW:
-            x_axis_title = "Saved Views"
+            x_axis_title = "Saved view"
 
         preview_container.plot(
             "plot_preview",
