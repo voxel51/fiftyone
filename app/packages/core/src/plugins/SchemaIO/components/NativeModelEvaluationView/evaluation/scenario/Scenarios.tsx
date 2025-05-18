@@ -1604,10 +1604,10 @@ function getLegendProps(props) {
 }
 
 const X_AXIS_TITLES = {
-  view: "Saved Views",
-  label_attribute: "Label Attributes",
-  sample_field: "Sample Fields",
-  custom_code: "Scenarios",
+  view: "Saved view",
+  label_attribute: "Attribute value",
+  sample_field: "Field value",
+  custom_code: "Subset",
 };
 
 const PLOT_TOOLTIP_TEMPLATES = {

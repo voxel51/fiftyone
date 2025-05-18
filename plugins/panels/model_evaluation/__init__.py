@@ -980,8 +980,9 @@ class EvaluationPanel(Panel):
                 scenario_data["subsets_data"][subset] = subset_data
         elif scenario_type == "sample_field":
             scenario_subsets = scenario.get("subsets", [])
+            field_name = scenario.get("field", None)
             for subset in scenario_subsets:
-                subset_def = dict(type="field", field=subset)
+                subset_def = dict(type="field", field=field_name, value=subset)
                 subset_data = self.get_subset_def_data(
                     info, results, subset_def, is_compare
                 )
