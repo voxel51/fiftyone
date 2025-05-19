@@ -6,7 +6,7 @@ Using Sample Parsers
 .. default-role:: code
 
 This page describes how to use the |SampleParser| interface to add samples to
-your FiftyOne datasets.
+your FiftyOne dataset from a stream of in-memory data.
 
 The |SampleParser| interface provides native support for loading samples in a
 variety of :ref:`common formats <builtin-sample-parser>`, and it can be easily
@@ -15,10 +15,12 @@ allowing you to automate the dataset loading process.
 
 .. warning::
 
-    Using the |SampleParser| interface is not recommended. You'll likely prefer
+    The |SampleParser| interface is only recommended for specific use cases.
+
+    In most cases, you'll likely prefer
     :ref:`adding samples manually <loading-custom-datasets>` or
-    :ref:`using dataset importers <loading-datasets-from-disk>` to load data
-    into FiftyOne.
+    :ref:`using dataset importers <importing-datasets>` to load data into
+    FiftyOne.
 
 .. _adding-samples-to-datasets:
 
