@@ -386,9 +386,8 @@ def compute_metadata(
             progress callback function to invoke instead
     """
 
-    logger.debug("Computing metadata...")
-
     num_workers = fou.recommend_thread_pool_workers(num_workers)
+    logger.debug("Computing metadata with %d workers...", num_workers)
 
     if sample_collection.media_type == fom.GROUP:
         sample_collection = sample_collection.select_group_slices(
@@ -414,21 +413,20 @@ def compute_metadata(
     update_queue = queue.Queue()
     stop_signal = object()
 
+    # Might want to make this configurable in the future or
+    # investigate if this is a good enough default.
+    batch_size = 1000
+
     # Start separate threads to handle the bulk writes
-    threads = []
-    for _ in range(num_workers):
-        t = threading.Thread(
-            target=_bulk_metadata_writer,
-            args=(
-                collection,
-                update_queue,
-                stop_signal,
-                skip_failures,
-                warn_failures,
-            ),
-        )
-        t.start()
-        threads.append(t)
+    write_threads = _get_bulk_update_threads(
+        collection=collection,
+        update_queue=update_queue,
+        stop_signal=stop_signal,
+        skip_failures=skip_failures,
+        warn_failures=warn_failures,
+        batch_size=batch_size,
+        num_workers=num_workers,
+    )
 
     # Process metadata with map function
     for _, update_op in metadata_iter:
@@ -439,9 +437,9 @@ def compute_metadata(
         if update_op:
             update_queue.put(update_op)
 
-    for _ in threads:
+    for _ in write_threads:
         update_queue.put(stop_signal)
-    for t in threads:
+    for t in write_threads:
         t.join()
 
     if skip_failures and not warn_failures:
@@ -461,40 +459,57 @@ def compute_metadata(
             raise ValueError(msg)
 
 
-def _bulk_metadata_writer(
+def _get_bulk_update_threads(
+    *,
     collection,
     update_queue,
     stop_signal,
     skip_failures,
     warn_failures,
-    batch_size=1000,
+    batch_size,
+    num_workers
 ):
-    ops = []
-    while True:
-        item = update_queue.get()
-        try:
-            if item is stop_signal:
-                break
-            ops.append(item)
-            if len(ops) >= batch_size:
+    def _bulk_update_writer():
+        ops = []
+        warn_once = warn_failures
+        while True:
+            item = update_queue.get()
+            try:
+                if item is stop_signal:
+                    break
+                ops.append(item)
+                if len(ops) >= batch_size:
+                    collection.bulk_write(ops)
+                    ops.clear()
+            except Exception as e:
+                if not skip_failures:
+                    raise
+                if warn_once:
+                    logger.warning(
+                        "Failed to write updates: `%s`.\nError: %s", item, e
+                    )
+                    # Only log the first failure to avoid flooding the logs
+                    warn_once = False
+        if ops:
+            try:
                 collection.bulk_write(ops)
-                ops.clear()
-        except Exception as e:
-            if not skip_failures:
-                raise
-            if warn_failures:
-                logger.warning("Failed to write metadata for %s: %s", item, e)
-                # Only log the first failure to avoid flooding the logs
-                warn_failures = False
-    if ops:
-        try:
-            collection.bulk_write(ops)
-        except Exception as e:
-            if not skip_failures:
-                raise
-            if warn_failures:
-                logger.warning("Failed to write metadata for %s: %s", ops, e)
-        ops.clear()
+            except Exception as e:
+                if not skip_failures:
+                    raise
+                if warn_failures:
+                    logger.warning(
+                        "Failed to write updates: `%s`.\nError: %s", ops, e
+                    )
+            ops.clear()
+
+    threads = []
+    for _ in range(num_workers):
+        t = threading.Thread(
+            target=_bulk_update_writer,
+        )
+        t.start()
+        threads.append(t)
+    return threads
 
 
 def _compute_metadata_map_fcn(args):
