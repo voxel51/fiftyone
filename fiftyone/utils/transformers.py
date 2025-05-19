@@ -1005,6 +1005,13 @@ class FiftyOneZeroShotTransformerForSemanticSegmentationConfig(
     FiftyOneZeroShotTransformerConfig
 ):
     def __init__(self, d):
+        if (
+            d.get("name_or_path", None) is None
+            and d.get("model", None) is None
+        ):
+            raise ValueError(
+                "There is no default zero-shot semantic segmentation model. User must set name_or_path or model attribute along with other necessary model config parameters."
+            )
         super().__init__(d)
 
 
@@ -1021,13 +1028,6 @@ class FiftyOneZeroShotTransformerForSemanticSegmentation(
         # override output processor
         if config.output_processor_cls is None:
             config.output_processor_cls = "fiftyone.utils.transformers.TransformersSemanticSegmentatorOutputProcessor"
-
-        # Do not default to use_fast = True since AutoProcessor
-        # (CLIPImageProcessorFast) is failing.
-        if not config.transforms_args:
-            config.transforms_args = {}
-        if not config.transforms_args.get("use_fast"):
-            config.transforms_args["use_fast"] = False
         super().__init__(config)
 
 
@@ -1299,18 +1299,13 @@ class TransformersSemanticSegmentatorOutputProcessor(
         super().__init__(*args, **kwargs)
 
     def __call__(self, output, image_sizes, confidence_thresh=None):
-        logits = output[self.logits_key].detach().cpu()
-        probs = logits.softmax(dim=1).numpy()
-        masks = probs.argmax(axis=1)
-
-        confidence = probs.max(axis=1)
-        confidence_thresh = confidence_thresh if confidence_thresh else 0
-        conf_mask = confidence > confidence_thresh
-        masks[~conf_mask] = -1
-
-        # Increment class index by 1 since 0 is reserved for background in the app.
-        masks += 1
-        return [fol.Segmentation(mask=mask) for mask in masks]
+        return super().__call__(
+            {
+                "out": output[self.logits_key]
+            },  # to be compatible with the base class
+            image_sizes,
+            confidence_thresh=confidence_thresh,
+        )
 
 
 class TransformersDepthEstimatorOutputProcessor(fout.OutputProcessor):
