@@ -1,8 +1,13 @@
 import { LoadingDots } from "@fiftyone/components";
 import { usePluginSettings } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import { AdaptiveDpr, AdaptiveEvents, CameraControls } from "@react-three/drei";
-import { Canvas, type RootState } from "@react-three/fiber";
+import {
+  AdaptiveDpr,
+  AdaptiveEvents,
+  CameraControls,
+  PerspectiveCamera as PerspectiveCameraDrei,
+} from "@react-three/drei";
+import { Canvas } from "@react-three/fiber";
 import CameraControlsImpl from "camera-controls";
 import {
   useCallback,
@@ -14,7 +19,7 @@ import {
 } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import * as THREE from "three";
-import { type PerspectiveCamera, Vector3 } from "three";
+import { Vector3 } from "three";
 import { SpinningCube } from "../SpinningCube";
 import { StatusBar, StatusTunnel } from "../StatusBar";
 import {
@@ -35,7 +40,7 @@ import {
 import { FoSceneComponent } from "./FoScene";
 import { Gizmos } from "./Gizmos";
 import { Fo3dSceneContext } from "./context";
-import { Lights } from "./lights/Lights";
+import { SceneControls } from "./scene-controls/SceneControls";
 import {
   getFo3dRoot,
   getMediaPathForFo3dSample,
@@ -75,7 +80,7 @@ export const MediaTypeFo3dComponent = () => {
     []
   );
 
-  const upVector = useMemo(() => {
+  const [upVector, setUpVectorVal] = useState<Vector3>(() => {
     if (foScene?.cameraProps.up) {
       const mayBeUp = foScene.cameraProps.up;
       if (mayBeUp === "X") {
@@ -103,7 +108,7 @@ export const MediaTypeFo3dComponent = () => {
 
     // default to y-up
     return new Vector3(0, 1, 0);
-  }, [foScene, settings]);
+  });
 
   const cameraRef = useRef<THREE.PerspectiveCamera>();
   const cameraControlsRef = useRef<CameraControls>();
@@ -262,10 +267,6 @@ export const MediaTypeFo3dComponent = () => {
     upVector,
   ]);
 
-  const onCanvasCreated = useCallback((state: RootState) => {
-    cameraRef.current = state.camera as PerspectiveCamera;
-  }, []);
-
   const resetActiveNode = useRecoilCallback(
     ({ set }) =>
       () => {
@@ -291,26 +292,6 @@ export const MediaTypeFo3dComponent = () => {
   useEffect(() => {
     resetActiveNode();
   }, [isSceneInitialized, resetActiveNode]);
-
-  const canvasCameraProps = useMemo(() => {
-    const cameraProps = {
-      position: defaultCameraPositionComputed,
-      up: upVector,
-      fov: foScene?.cameraProps.fov ?? 50,
-      near: foScene?.cameraProps.near ?? 0.1,
-      far: foScene?.cameraProps.far ?? 2500,
-    };
-
-    if (foScene?.cameraProps.lookAt) {
-      cameraProps["lookAt"] = foScene.cameraProps.lookAt;
-    }
-
-    if (foScene?.cameraProps.aspect) {
-      cameraProps["aspect"] = foScene.cameraProps.aspect;
-    }
-
-    return cameraProps;
-  }, [foScene, upVector, defaultCameraPositionComputed]);
 
   const onChangeView = useCallback(
     (view: "pov" | "top", useAnimation = true) => {
@@ -527,6 +508,14 @@ export const MediaTypeFo3dComponent = () => {
 
   useTrackStatus();
 
+  const setUpVector = useCallback(
+    (upVector: Vector3) => {
+      setUpVectorVal(upVector);
+      onChangeView("pov");
+    },
+    [onChangeView]
+  );
+
   if (isParsingFo3d) {
     return <LoadingDots />;
   }
@@ -535,23 +524,34 @@ export const MediaTypeFo3dComponent = () => {
     <>
       <Canvas
         id={CANVAS_WRAPPER_ID}
-        camera={canvasCameraProps}
-        onCreated={onCanvasCreated}
         onPointerMissed={resetActiveNode}
+        key={upVector.toArray().join(",")}
       >
         <Fo3dSceneContext.Provider
           value={{
             isSceneInitialized,
             upVector,
+            setUpVector,
             fo3dRoot,
             sceneBoundingBox,
             pluginSettings: settings,
           }}
         >
+          <PerspectiveCameraDrei
+            makeDefault
+            ref={cameraRef}
+            position={defaultCameraPositionComputed}
+            up={upVector}
+            fov={foScene?.cameraProps.fov ?? 50}
+            near={foScene?.cameraProps.near ?? 0.1}
+            far={foScene?.cameraProps.far ?? 2500}
+            aspect={foScene?.cameraProps.aspect ?? 1}
+            onUpdate={(cam) => cam.updateProjectionMatrix()}
+          />
           <AdaptiveDpr pixelated />
           <AdaptiveEvents />
           <CameraControls ref={cameraControlsRef} />
-          <Lights lights={foScene?.lights} />
+          <SceneControls scene={foScene} />
           <Gizmos />
 
           {!isSceneInitialized && <SpinningCube />}

@@ -42,7 +42,7 @@ export const PANEL_ORDER_VISIBILITY = -1;
 export const PANEL_ORDER_ANIMATIONS = 1;
 export const PANEL_ORDER_PCD_CONTROLS = 1;
 export const PANEL_ORDER_LABELS = 998;
-export const PANEL_ORDER_LIGHTS = 999;
+export const PANEL_ORDER_SCENE_CONTROLS = 999;
 export const PANEL_ORDER_SETTINGS = 1000;
 
 export const COLOR_POOL = [
