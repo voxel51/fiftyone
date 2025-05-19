@@ -80,35 +80,50 @@ export const MediaTypeFo3dComponent = () => {
     []
   );
 
-  const [upVector, setUpVectorVal] = useState<Vector3>(() => {
-    if (foScene?.cameraProps.up) {
-      const mayBeUp = foScene.cameraProps.up;
-      if (mayBeUp === "X") {
-        return new Vector3(1, 0, 0);
+  const [upVector, setUpVectorVal] = fos.useBrowserStorage<Vector3>(
+    "fo3d-up-vector",
+    () => {
+      if (foScene?.cameraProps.up) {
+        const mayBeUp = foScene.cameraProps.up;
+        if (mayBeUp === "X") {
+          return new Vector3(1, 0, 0);
+        }
+        if (mayBeUp === "Y") {
+          return new Vector3(0, 1, 0);
+        }
+        if (mayBeUp === "Z") {
+          return new Vector3(0, 0, 1);
+        }
       }
-      if (mayBeUp === "Y") {
-        return new Vector3(0, 1, 0);
+
+      if (settings.defaultUp) {
+        const maybeOrthonormalAxis = getOrthonormalAxis(settings.defaultUp);
+
+        if (maybeOrthonormalAxis) {
+          return new Vector3(
+            settings.defaultUp[0],
+            settings.defaultUp[1],
+            settings.defaultUp[2]
+          );
+        }
       }
-      if (mayBeUp === "Z") {
-        return new Vector3(0, 0, 1);
-      }
+
+      // default to y-up
+      return new Vector3(0, 1, 0);
+    },
+    false,
+    {
+      parse: (upVectorStr) => {
+        try {
+          const [x, y, z] = JSON.parse(upVectorStr);
+          return new Vector3(x, y, z);
+        } catch (error) {
+          return new Vector3(0, 1, 0);
+        }
+      },
+      stringify: (upVector) => JSON.stringify(upVector.toArray()),
     }
-
-    if (settings.defaultUp) {
-      const maybeOrthonormalAxis = getOrthonormalAxis(settings.defaultUp);
-
-      if (maybeOrthonormalAxis) {
-        return new Vector3(
-          settings.defaultUp[0],
-          settings.defaultUp[1],
-          settings.defaultUp[2]
-        );
-      }
-    }
-
-    // default to y-up
-    return new Vector3(0, 1, 0);
-  });
+  );
 
   const cameraRef = useRef<THREE.PerspectiveCamera>();
   const cameraControlsRef = useRef<CameraControls>();
