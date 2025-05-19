@@ -3976,7 +3976,7 @@ class SampleCollection(object):
         This function effectively performs the following map operation with the
         outer loop in parallel::
 
-            for batch_view in fou.iter_slices(sample_collection, shard_size):
+            for batch_view in fou.iter_slices(sample_collection, batch_size):
                 for sample in batch_view.iter_samples(autosave=save):
                     sample_output = map_fcn(sample)
                     yield sample.id, sample_output
@@ -4062,7 +4062,7 @@ class SampleCollection(object):
         This function effectively performs the following map operation with the
         outer loop in parallel::
 
-            for batch_view in fou.iter_slices(sample_collection, shard_size):
+            for batch_view in fou.iter_slices(sample_collection, batch_size):
                 for sample in batch_view.iter_samples(autosave=True):
                     map_fcn(sample)
 
@@ -9234,8 +9234,8 @@ class SampleCollection(object):
         """
 
         # Optimization: if we do not need to follow insertion order, we can
-        # potentially use a covered index query to get the values directly from
-        # the index and avoid a COLLSCAN
+        # potentially use a covered index query to get the values directly
+        # from the index and avoid a COLLSCAN
         if (
             field := self._field_for_covered_index_query_or_none(
                 field_or_expr,
@@ -9329,6 +9329,21 @@ class SampleCollection(object):
         Yields:
             each aggregated field value (or tuple of values, if a list of fields was provided)
         """
+
+        ## TODO
+
+    def _iter_values(
+        self,
+        field_or_expr,
+        expr=None,
+        missing_value=None,
+        unwind=False,
+        _allow_missing=False,
+        _big_result=True,
+        _raw=False,
+        _field=None,
+        _enforce_natural_order=True,
+    ):
 
         if (
             field := self._field_for_covered_index_query_or_none(
@@ -9721,6 +9736,46 @@ class SampleCollection(object):
         # Make archive, if requested
         if archive_path is not None:
             etau.make_archive(export_dir, archive_path, cleanup=True)
+
+    def to_torch(
+        self,
+        get_item,
+        vectorize=False,
+        skip_failures=False,
+        local_process_group=None,
+    ):
+        """Constructs a :class:`torch:torch.utils.data.Dataset` that loads data
+        from this collection via the provided
+        :class:`fiftyone.utils.torch.GetItem` instance.
+
+        Args:
+            get_item: a :class:`fiftyone.utils.torch.GetItem`
+            vectorize (False): whether to load and cache the required fields
+                from the sample collection upfront (True) or lazily load the
+                values from each sample when items are retrieved (False).
+                Vectorizing gives faster data loading times, but you must have
+                enough memory to store the required field values for the entire
+                sample collection. When ``vectorize=True``, all field values
+                must be serializable; ie ``pickle.dumps(field_value)`` must not
+                raise an error
+            skip_failures (False): whether to skip failures that occur when
+                calling ``get_item``. If True, the exception will be returned
+                rather than the intended field values
+            local_process_group (None): the local process group. Only used
+                during distributed training
+
+        Returns:
+            a :class:`torch:torch.utils.data.Dataset`
+        """
+        from fiftyone.utils.torch import FiftyOneTorchDataset
+
+        return FiftyOneTorchDataset(
+            self,
+            get_item,
+            vectorize=vectorize,
+            skip_failures=skip_failures,
+            local_process_group=local_process_group,
+        )
 
     def annotate(
         self,
@@ -10696,11 +10751,11 @@ class SampleCollection(object):
         return results[0] if scalar_result else results
 
     def _iter_and_parse_agg_results(self, parsed_aggs, cursor):
+
         result_fields = [agg._big_field for agg in parsed_aggs.values()]
 
-        # Unwind is only supported through explicitly passing unwind=True to
-        # iter_values()
-        unwind = all(agg._unwind for agg in parsed_aggs.values())
+        # Non-batchable big aggregations will result a cursor per aggregation
+        handle_multiple_cursors = isinstance(cursor, list)
 
         # Determine if extra parsing is needed for the Aggregation result
         has_extra_parsing = any(
@@ -10721,8 +10776,8 @@ class SampleCollection(object):
 
         # Handle case: no extra parsing
         if not has_extra_parsing:
-            if unwind:
-                # Unwinding with multiple fields may lead to results of
+            if handle_multiple_cursors:
+                # Unwinding fields independently may lead to results of
                 # different length. To enable returning all data,
                 # exhausted cursors will continue to emit None until the longest
                 # cursor is exhausted.
@@ -10746,7 +10801,7 @@ class SampleCollection(object):
             # Apply transformers to each value
             return tuple(f(v) for f, v in zip(transformers, values))
 
-        if isinstance(cursor, list):
+        if handle_multiple_cursors:
             # unwind with fields that need additional parsing
             return (
                 tuple(_process_doc(doc) if doc else None for doc in docs)
@@ -11685,12 +11740,6 @@ class SampleCollection(object):
             raise ValueError(f"Dataset has no store '{store_name}'")
 
         return foos.ExecutionStore(store_name, svc)
-
-    def to_torch(self, get_item, **kwargs):
-        """See fo.utils.torch.FiftyOneTorchDataset for documentation."""
-        from fiftyone.utils.torch import FiftyOneTorchDataset
-
-        return FiftyOneTorchDataset(self, get_item, **kwargs)
 
 
 def _iter_label_fields(sample_collection):

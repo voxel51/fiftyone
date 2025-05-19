@@ -235,7 +235,6 @@ You can also load YOLOv8, YOLOv9, and YOLO11 segmentation models from the
     # model_name = "yolo11m-seg-coco-torch"
     # model_name = "yolo11l-seg-coco-torch"
     # model_name = "yolo11x-seg-coco-torch"
-    
 
     model = foz.load_zoo_model(model_name)
 
@@ -518,6 +517,17 @@ pattern below:
         predictions.extend(fou.to_detections(results))
 
     dataset.set_values("predictions", predictions)
+
+You can also provide overrides to the underlying Ultralytics model by passing
+them as kwargs to
+:meth:`load_zoo_model() <fiftyone.zoo.models.load_zoo_model>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Use rectangular resizing with a batch size of 1
+    model = foz.load_zoo_model(model_name, overrides={"rect": True})
+    dataset.apply_model(model, label_field="predictions", batch_size=1)
 
 .. note::
 

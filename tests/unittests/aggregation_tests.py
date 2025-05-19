@@ -574,10 +574,12 @@ class DatasetTests(unittest.TestCase):
         self.assertListEqual(d.values("predictions.detections"), [])
         self.assertListEqual(d.values("predictions.detections.label"), [])
 
-        self.assertListEqual(list(d.iter_values("predictions")), [])
-        self.assertListEqual(list(d.iter_values("predictions.detections")), [])
+        self.assertListEqual(list(d._iter_values("predictions")), [])
         self.assertListEqual(
-            list(d.iter_values("predictions.detections.label")), []
+            list(d._iter_values("predictions.detections")), []
+        )
+        self.assertListEqual(
+            list(d._iter_values("predictions.detections.label")), []
         )
 
         d.add_samples(
@@ -615,7 +617,7 @@ class DatasetTests(unittest.TestCase):
             ]
         )
         actual = d.values("predictions.detections.label")
-        itered_actual = list(d.iter_values("predictions.detections.label"))
+        itered_actual = list(d._iter_values("predictions.detections.label"))
         self.assertListEqual(actual, itered_actual)
         self.assertListEqual(
             actual,
@@ -632,7 +634,7 @@ class DatasetTests(unittest.TestCase):
             "predictions.detections.label", missing_value="missing"
         )
         itered_actual = list(
-            d.iter_values(
+            d._iter_values(
                 "predictions.detections.label", missing_value="missing"
             )
         )
@@ -649,7 +651,7 @@ class DatasetTests(unittest.TestCase):
         )
 
         actual = d.values("predictions.detections[].label")
-        itered_actual = list(d.iter_values("predictions.detections[].label"))
+        itered_actual = list(d._iter_values("predictions.detections[].label"))
         self.assertListEqual(actual, itered_actual)
         self.assertListEqual(
             actual,
@@ -658,7 +660,7 @@ class DatasetTests(unittest.TestCase):
 
         actual = d.values(F("predictions.detections[].label"))
         itered_actual = list(
-            d.iter_values(F("predictions.detections[].label"))
+            d._iter_values(F("predictions.detections[].label"))
         )
         self.assertListEqual(actual, itered_actual)
         self.assertListEqual(
@@ -670,7 +672,7 @@ class DatasetTests(unittest.TestCase):
             "predictions.detections[].label", missing_value="missing"
         )
         itered_actual = list(
-            d.iter_values(
+            d._iter_values(
                 "predictions.detections[].label", missing_value="missing"
             )
         )
@@ -682,7 +684,7 @@ class DatasetTests(unittest.TestCase):
 
         actual = d.values(F("predictions.detections").length())
         itered_actual = list(
-            d.iter_values(F("predictions.detections").length())
+            d._iter_values(F("predictions.detections").length())
         )
         self.assertListEqual(actual, itered_actual)
         self.assertListEqual(
@@ -733,7 +735,7 @@ class DatasetTests(unittest.TestCase):
         )
 
     @drop_datasets
-    def test_iter_values(self):
+    def test_internal_iter_values(self):
         d = fo.Dataset()
         d.add_sample_field("numeric_field", fo.IntField)
         d.add_sample_field("vector_field", fo.VectorField)
@@ -744,7 +746,7 @@ class DatasetTests(unittest.TestCase):
         )
 
         self.assertListEqual(
-            list(d.iter_values(["numeric_field", "vector_field"])), []
+            list(d._iter_values(["numeric_field", "vector_field"])), []
         )
         vector_values = [[1 + i, 2 + i, 3 + i] for i in range(3)]
         detections = [
@@ -773,12 +775,12 @@ class DatasetTests(unittest.TestCase):
         ]
         d.add_samples(samples)
         self.assertListEqual(
-            list(d.iter_values("numeric_field")), [50, 51, 52]
+            list(d._iter_values("numeric_field")), [50, 51, 52]
         )
 
         nums, vecs, gts = d.values(["numeric_field", "vector_field", "gt"])
         for i, (n, v, gt) in enumerate(
-            d.iter_values(["numeric_field", "vector_field", "gt"])
+            d._iter_values(["numeric_field", "vector_field", "gt"])
         ):
             # ensure that fields like fo.VectorField are converted
             # when using iter_values() as they would be using values()
@@ -829,7 +831,7 @@ class DatasetTests(unittest.TestCase):
 
         itered_values = [
             i
-            for i in dataset.iter_values(
+            for i in dataset._iter_values(
                 "frames.ground_truth.classifications.label"
             )
         ]
@@ -846,7 +848,7 @@ class DatasetTests(unittest.TestCase):
         values1 = dataset.values("frames.ground_truth.classifications[].label")
         itered_values1 = [
             labels
-            for labels in dataset.iter_values(
+            for labels in dataset._iter_values(
                 "frames.ground_truth.classifications[].label"
             )
         ]
@@ -855,7 +857,7 @@ class DatasetTests(unittest.TestCase):
             "frames.ground_truth.classifications.label", unwind=-1
         )
         itered_values2 = list(
-            dataset.iter_values(
+            dataset._iter_values(
                 "frames.ground_truth.classifications.label", unwind=-1
             )
         )
@@ -871,7 +873,7 @@ class DatasetTests(unittest.TestCase):
             "frames[].ground_truth.classifications[].label"
         )
         itered_values1 = list(
-            dataset.iter_values(
+            dataset._iter_values(
                 "frames[].ground_truth.classifications[].label"
             )
         )
@@ -880,7 +882,7 @@ class DatasetTests(unittest.TestCase):
             "frames.ground_truth.classifications.label", unwind=True
         )
         itered_values2 = list(
-            dataset.iter_values(
+            dataset._iter_values(
                 "frames.ground_truth.classifications.label", unwind=True
             )
         )

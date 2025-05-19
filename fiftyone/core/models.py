@@ -152,15 +152,36 @@ def apply_model(
             "(model.has_logits = %s)" % model.has_logits
         )
 
+    supports_get_item = isinstance(model, SupportsGetItem)
     needs_samples = isinstance(model, SamplesMixin)
+
+    if supports_get_item and needs_samples:
+        field_mapping = kwargs.pop("field_mapping", {})
+        needs_fields = kwargs.pop("needs_fields", {})
+        needs_fields.update(kwargs)
+    elif supports_get_item:
+        field_mapping = kwargs.pop("field_mapping", {})
+        field_mapping.update(kwargs)
+        needs_fields = None
+    elif needs_samples:
+        field_mapping = None
+        needs_fields = kwargs.pop("needs_fields", {})
+        needs_fields.update(kwargs)
+    else:
+        field_mapping = None
+        needs_fields = None
+
+    process_video_frames = (
+        samples.media_type == fom.VIDEO and model.media_type == "image"
+    )
+
     use_data_loader = (
-        isinstance(model, TorchModelMixin) and samples.media_type == fom.IMAGE
+        isinstance(model, (SupportsGetItem, TorchModelMixin))
+        and not process_video_frames
     )
 
     if num_workers is not None and not use_data_loader:
-        logger.warning(
-            "Ignoring `num_workers` parameter; only supported for Torch models"
-        )
+        logger.warning("Ignoring unsupported `num_workers` parameter")
 
     if output_dir is not None:
         filename_maker = fou.UniqueFilenameMaker(
@@ -190,18 +211,12 @@ def apply_model(
 
         if needs_samples:
             context.enter_context(
-                fou.SetAttributes(model, needs_fields=kwargs)
+                fou.SetAttributes(model, needs_fields=needs_fields)
             )
 
         context.enter_context(model)
 
-        if needs_samples:
-            fields = list(model.needs_fields.values())
-            samples = samples.select_fields(fields)
-        else:
-            samples = samples.select_fields()
-
-        if samples.media_type == fom.VIDEO and model.media_type == "video":
+        if model.media_type == "video":
             return _apply_video_model(
                 samples,
                 model,
@@ -214,7 +229,7 @@ def apply_model(
 
         batch_size = _parse_batch_size(batch_size, model, use_data_loader)
 
-        if samples.media_type == fom.VIDEO and model.media_type == "image":
+        if process_video_frames:
             label_field, _ = samples._handle_frame_field(label_field)
 
             if batch_size is not None:
@@ -250,6 +265,7 @@ def apply_model(
                 skip_failures,
                 filename_maker,
                 progress,
+                field_mapping,
             )
 
         if batch_size is not None:
@@ -319,6 +335,12 @@ def _apply_image_model_single(
 ):
     needs_samples = isinstance(model, SamplesMixin)
 
+    if needs_samples:
+        fields = list(model.needs_fields.values())
+        samples = samples.select_fields(fields)
+    else:
+        samples = samples.select_fields()
+
     with contextlib.ExitStack() as context:
         pb = context.enter_context(fou.ProgressBar(progress=progress))
         ctx = context.enter_context(foc.SaveContext(samples))
@@ -359,6 +381,12 @@ def _apply_image_model_batch(
     progress,
 ):
     needs_samples = isinstance(model, SamplesMixin)
+
+    if needs_samples:
+        fields = list(model.needs_fields.values())
+        samples = samples.select_fields(fields)
+    else:
+        samples = samples.select_fields()
 
     with contextlib.ExitStack() as context:
         pb = context.enter_context(fou.ProgressBar(samples, progress=progress))
@@ -410,12 +438,24 @@ def _apply_image_model_data_loader(
     skip_failures,
     filename_maker,
     progress,
+    field_mapping,
 ):
     needs_samples = isinstance(model, SamplesMixin)
 
     data_loader = _make_data_loader(
-        samples, model, batch_size, num_workers, skip_failures
+        samples,
+        model,
+        batch_size,
+        num_workers,
+        skip_failures,
+        field_mapping,
     )
+
+    if needs_samples:
+        fields = list(model.needs_fields.values())
+        samples = samples.select_fields(fields)
+    else:
+        samples = samples.select_fields()
 
     with contextlib.ExitStack() as context:
         pb = context.enter_context(fou.ProgressBar(samples, progress=progress))
@@ -473,6 +513,12 @@ def _apply_image_model_to_frames_single(
     needs_samples = isinstance(model, SamplesMixin)
     frame_counts, total_frame_count = _get_frame_counts(samples)
     is_clips = samples._dataset._is_clips
+
+    if needs_samples:
+        fields = list(model.needs_fields.values())
+        samples = samples.select_fields(fields)
+    else:
+        samples = samples.select_fields()
 
     with contextlib.ExitStack() as context:
         pb = context.enter_context(
@@ -534,6 +580,12 @@ def _apply_image_model_to_frames_batch(
     needs_samples = isinstance(model, SamplesMixin)
     frame_counts, total_frame_count = _get_frame_counts(samples)
     is_clips = samples._dataset._is_clips
+
+    if needs_samples:
+        fields = list(model.needs_fields.values())
+        samples = samples.select_fields(fields)
+    else:
+        samples = samples.select_fields()
 
     with contextlib.ExitStack() as context:
         pb = context.enter_context(
@@ -599,6 +651,12 @@ def _apply_video_model(
 ):
     needs_samples = isinstance(model, SamplesMixin)
     is_clips = samples._dataset._is_clips
+
+    if needs_samples:
+        fields = list(model.needs_fields.values())
+        samples = samples.select_fields(fields)
+    else:
+        samples = samples.select_fields()
 
     with contextlib.ExitStack() as context:
         pb = context.enter_context(fou.ProgressBar(progress=progress))
@@ -685,23 +743,27 @@ def _iter_batches(video_reader, batch_size):
         yield frame_numbers, imgs
 
 
-def _make_data_loader(samples, model, batch_size, num_workers, skip_failures):
-    # This function supports DataLoaders that emit numpy arrays that can
-    # therefore be used for non-Torch models; but we do not currently use this
-    # functionality
-    use_numpy = not isinstance(model, TorchModelMixin)
+class ErrorHandlingCollate(object):
+    def __init__(
+        self, skip_failures, ragged_batches, use_numpy, user_collate_fn=None
+    ):
+        self.skip_failures = skip_failures
 
-    if num_workers is None:
-        num_workers = fout.recommend_num_workers()
+        if ragged_batches:
+            self._collate_fn = self._ragged_batches
+        elif use_numpy:
+            self._collate_fn = self._use_numpy
+        else:
+            self._collate_fn = self._default
 
-    dataset = fout.TorchImageDataset(
-        samples=samples,
-        transform=model.transforms,
-        use_numpy=use_numpy,
-        force_rgb=True,
-        skip_failures=skip_failures,
-    )
+        self.user_collate_fn = user_collate_fn
+        if self.user_collate_fn is None:
+            self.user_collate_fn = tud.dataloader.default_collate
 
+    def __call__(self, batch):
+        return self._collate_fn(batch)
+
+    @staticmethod
     def handle_errors(batch):
         errors = [b for b in batch if isinstance(b, Exception)]
 
@@ -713,56 +775,95 @@ def _make_data_loader(samples, model, batch_size, num_workers, skip_failures):
 
         return Exception("\n" + "\n".join([str(e) for e in errors]))
 
-    if model.ragged_batches:
+    def _ragged_batches(self, batch):
+        error = ErrorHandlingCollate.handle_errors(batch)
+        if error is not None:
+            return error
 
-        def collate_fn(batch):
-            error = handle_errors(batch)
-            if error is not None:
-                return error
+        return batch
 
-            return batch  # return list
+    def _use_numpy(self, batch):
+        error = ErrorHandlingCollate.handle_errors(batch)
+        if error is not None:
+            return error
 
-    elif use_numpy:
+        try:
+            return np.stack(batch)
+        except Exception as e:
+            if not self.skip_failures:
+                raise e
 
-        def collate_fn(batch):
-            error = handle_errors(batch)
-            if error is not None:
-                return error
+            return e
 
-            try:
-                return np.stack(batch)
-            except Exception as e:
-                if not skip_failures:
-                    raise e
+    def _default(self, batch):
+        error = ErrorHandlingCollate.handle_errors(batch)
+        if error is not None:
+            return error
 
-                return e
+        try:
+            return self.user_collate_fn(batch)
+        except Exception as e:
+            if not self.skip_failures:
+                raise e
 
+            return e
+
+
+def _make_data_loader(
+    samples,
+    model,
+    batch_size,
+    num_workers,
+    skip_failures,
+    field_mapping,
+):
+    # This function supports DataLoaders that emit numpy arrays that can
+    # therefore be used for non-Torch models; but we do not currently use this
+    # functionality
+    use_numpy = not isinstance(model, TorchModelMixin)
+
+    if num_workers is None:
+        num_workers = fout.recommend_num_workers()
+
+    if model.has_collate_fn:
+        user_collate_fn = model.collate_fn
     else:
+        user_collate_fn = None
 
-        def collate_fn(batch):
-            error = handle_errors(batch)
-            if error is not None:
-                return error
-
-            try:
-                if model.has_collate_fn:
-                    return model.collate_fn(batch)
-                else:
-                    return tud.dataloader.default_collate(batch)
-            except Exception as e:
-                if not skip_failures:
-                    raise e
-
-                return e
+    collate_fn = ErrorHandlingCollate(
+        skip_failures,
+        ragged_batches=model.ragged_batches,
+        use_numpy=use_numpy,
+        user_collate_fn=user_collate_fn,
+    )
 
     if batch_size is None:
         batch_size = 1
+
+    if isinstance(model, SupportsGetItem):
+        get_item = model.build_get_item(field_mapping=field_mapping)
+        dataset = samples.to_torch(get_item, skip_failures=skip_failures)
+        worker_init_fn = fout.FiftyOneTorchDataset.worker_init
+    else:
+        dataset = fout.TorchImageDataset(
+            samples=samples,
+            transform=model.transforms,
+            use_numpy=use_numpy,
+            force_rgb=True,
+            skip_failures=skip_failures,
+        )
+        worker_init_fn = None
+
+    pin_memory = isinstance(model, fout.TorchImageModel) and model._using_gpu
 
     return tud.DataLoader(
         dataset,
         batch_size=batch_size,
         num_workers=num_workers,
         collate_fn=collate_fn,
+        pin_memory=pin_memory,
+        persistent_workers=False,
+        worker_init_fn=worker_init_fn,
     )
 
 
@@ -870,14 +971,23 @@ def compute_embeddings(
             "('image', 'video')" % model.media_type
         )
 
+    if isinstance(model, SupportsGetItem):
+        field_mapping = kwargs.pop("field_mapping", {})
+        field_mapping.update(kwargs)
+    else:
+        field_mapping = None
+
+    process_video_frames = (
+        samples.media_type == fom.VIDEO and model.media_type == "image"
+    )
+
     use_data_loader = (
-        isinstance(model, TorchModelMixin) and samples.media_type == fom.IMAGE
+        isinstance(model, (SupportsGetItem, TorchModelMixin))
+        and not process_video_frames
     )
 
     if num_workers is not None and not use_data_loader:
-        logger.warning(
-            "Ignoring `num_workers` parameter; only supported for Torch models"
-        )
+        logger.warning("Ignoring unsupported `num_workers` parameter")
 
     if embeddings_field is not None:
         dataset = samples._dataset
@@ -905,16 +1015,14 @@ def compute_embeddings(
 
         context.enter_context(model)
 
-        samples = samples.select_fields()
-
-        if samples.media_type == fom.VIDEO and model.media_type == "video":
+        if model.media_type == "video":
             return _compute_video_embeddings(
                 samples, model, embeddings_field, skip_failures, progress
             )
 
         batch_size = _parse_batch_size(batch_size, model, use_data_loader)
 
-        if samples.media_type == fom.VIDEO and model.media_type == "image":
+        if process_video_frames:
             if batch_size is not None:
                 return _compute_frame_embeddings_batch(
                     samples,
@@ -938,6 +1046,7 @@ def compute_embeddings(
                 num_workers,
                 skip_failures,
                 progress,
+                field_mapping,
             )
 
         if batch_size is not None:
@@ -958,6 +1067,8 @@ def compute_embeddings(
 def _compute_image_embeddings_single(
     samples, model, embeddings_field, skip_failures, progress
 ):
+    samples = samples.select_fields()
+
     embeddings = []
     errors = False
 
@@ -1000,6 +1111,8 @@ def _compute_image_embeddings_single(
 def _compute_image_embeddings_batch(
     samples, model, embeddings_field, batch_size, skip_failures, progress
 ):
+    samples = samples.select_fields()
+
     embeddings = []
     errors = False
 
@@ -1055,10 +1168,18 @@ def _compute_image_embeddings_data_loader(
     num_workers,
     skip_failures,
     progress,
+    field_mapping,
 ):
     data_loader = _make_data_loader(
-        samples, model, batch_size, num_workers, skip_failures
+        samples,
+        model,
+        batch_size,
+        num_workers,
+        skip_failures,
+        field_mapping,
     )
+
+    samples = samples.select_fields()
 
     embeddings = []
     errors = False
@@ -1117,6 +1238,8 @@ def _compute_frame_embeddings_single(
 ):
     frame_counts, total_frame_count = _get_frame_counts(samples)
     is_clips = samples._dataset._is_clips
+
+    samples = samples.select_fields()
 
     embeddings_dict = {}
 
@@ -1181,6 +1304,8 @@ def _compute_frame_embeddings_batch(
 ):
     frame_counts, total_frame_count = _get_frame_counts(samples)
     is_clips = samples._dataset._is_clips
+
+    samples = samples.select_fields()
 
     embeddings_dict = {}
 
@@ -1249,6 +1374,8 @@ def _compute_video_embeddings(
     samples, model, embeddings_field, skip_failures, progress
 ):
     is_clips = samples._dataset._is_clips
+
+    samples = samples.select_fields()
 
     embeddings = []
     errors = False
@@ -1403,14 +1530,15 @@ def compute_patch_embeddings(
             % (handle_missing, _handle_missing_supported)
         )
 
+    process_video_frames = samples.media_type == fom.VIDEO
+
     use_data_loader = (
-        isinstance(model, TorchModelMixin) and samples.media_type == fom.IMAGE
+        isinstance(model, (SupportsGetItem, TorchModelMixin))
+        and not process_video_frames
     )
 
     if num_workers is not None and not use_data_loader:
-        logger.warning(
-            "Ignoring `num_workers` parameter; only supported for Torch models"
-        )
+        logger.warning("Ignoring unsupported `num_workers` parameter")
 
     if samples.media_type == fom.IMAGE:
         fov.validate_image_collection(samples)
@@ -1459,15 +1587,9 @@ def compute_patch_embeddings(
 
         context.enter_context(model)
 
-        if samples.media_type == fom.VIDEO:
-            _patches_field = samples._FRAMES_PREFIX + patches_field
-            samples = samples.select_fields(_patches_field)
-        else:
-            samples = samples.select_fields(patches_field)
-
         batch_size = _parse_batch_size(batch_size, model, use_data_loader)
 
-        if samples.media_type == fom.VIDEO:
+        if process_video_frames:
             return _embed_frame_patches(
                 samples,
                 model,
@@ -1522,6 +1644,8 @@ def _embed_patches(
     skip_failures,
     progress,
 ):
+    samples = samples.select_fields(patches_field)
+
     if embeddings_field is not None:
         label_parser = _make_label_parser(samples, patches_field)
     else:
@@ -1635,6 +1759,8 @@ def _embed_patches_data_loader(
         skip_failures,
     )
 
+    samples = samples.select_fields(patches_field)
+
     if embeddings_field is not None:
         label_parser = _make_label_parser(samples, patches_field)
     else:
@@ -1697,8 +1823,10 @@ def _embed_frame_patches(
     frame_counts, total_frame_count = _get_frame_counts(samples)
     is_clips = samples._dataset._is_clips
 
+    _patches_field = samples._FRAMES_PREFIX + patches_field
+    samples = samples.select_fields(_patches_field)
+
     if embeddings_field is not None:
-        _patches_field = samples._FRAMES_PREFIX + patches_field
         label_parser = _make_label_parser(samples, _patches_field)
     else:
         embeddings_dict = {}
@@ -2317,6 +2445,36 @@ class TorchModelMixin(object):
             the collated batch, which will be fed directly to the model
         """
         return batch
+
+
+class SupportsGetItem(object):
+    """Mixin for models that support inference with
+    :class:`fiftyone.utils.torch.FiftyOneTorchDataset`.
+
+    Models that implement this mixin must implement
+    :meth:`build_get_item` to build the :class:`fiftyone.utils.torch.GetItem`
+    instance that defines how their data should be loaded by data loaders.
+    """
+
+    @property
+    def required_keys(self):
+        """The required keys that must be provided as parameters to methods
+        like :func:`apply_model` and :func:`compute_embeddings` at runtime.
+        """
+        return self.build_get_item().required_keys
+
+    def build_get_item(self, field_mapping=None):
+        """Builds the :class:`fiftyone.utils.torch.GetItem` instance that
+        defines how the model's data should be loaded by data loaders.
+
+        Args:
+            field_mapping (None): a user-provided dict mapping required keys to
+                dataset field names
+
+        Returns:
+            a :class:`fiftyone.utils.torch.GetItem` instance
+        """
+        raise NotImplementedError("subclasses must implement build_get_item()")
 
 
 class ModelManagerConfig(etam.ModelManagerConfig):

@@ -58,6 +58,8 @@
 .. |GeoLocation| replace:: :class:`GeoLocation <fiftyone.core.labels.GeoLocation>`
 .. |GeoLocations| replace:: :class:`GeoLocations <fiftyone.core.labels.GeoLocations>`
 
+.. |Instance| replace:: :class:`Instance <fiftyone.core.labels.Instance>`
+
 .. |Attribute| replace:: :class:`Attribute <fiftyone.core.labels.Attribute>`
 .. |BooleanAttribute| replace:: :class:`BooleanAttribute <fiftyone.core.labels.BooleanAttribute>`
 .. |CategoricalAttribute| replace:: :class:`CategoricalAttribute <fiftyone.core.labels.CategoricalAttribute>`

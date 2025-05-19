@@ -239,7 +239,7 @@
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
             "license": "Apache 2.0,BSD 3-Clause",
-            "size_bytes": 155906050,
+            "size_bytes": 184309650,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -274,7 +274,7 @@
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
             "license": "Apache 2.0,BSD 3-Clause",
-            "size_bytes": 155906050,
+            "size_bytes": 323493298,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -309,7 +309,7 @@
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
             "license": "Apache 2.0,BSD 3-Clause",
-            "size_bytes": 155906050,
+            "size_bytes": 897952466,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -378,7 +378,7 @@
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
             "license": "Apache 2.0,BSD 3-Clause",
-            "size_bytes": 155906050,
+            "size_bytes": 184309650,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -413,7 +413,7 @@
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
             "license": "Apache 2.0,BSD 3-Clause",
-            "size_bytes": 155906050,
+            "size_bytes": 323493298,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -448,7 +448,7 @@
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
             "license": "Apache 2.0,BSD 3-Clause",
-            "size_bytes": 155906050,
+            "size_bytes": 897952466,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -560,7 +560,7 @@
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
             "license": "Apache 2.0,BSD 3-Clause",
-            "size_bytes": 155906050,
+            "size_bytes": 184416285,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -597,7 +597,7 @@
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
             "license": "Apache 2.0,BSD 3-Clause",
-            "size_bytes": 155906050,
+            "size_bytes": 323606802,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -634,7 +634,7 @@
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
             "license": "Apache 2.0,BSD 3-Clause",
-            "size_bytes": 155906050,
+            "size_bytes": 898083611,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -707,7 +707,7 @@
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
             "license": "Apache 2.0,BSD 3-Clause",
-            "size_bytes": 155906050,
+            "size_bytes": 184416285,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -744,7 +744,7 @@
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
             "license": "Apache 2.0,BSD 3-Clause",
-            "size_bytes": 155906050,
+            "size_bytes": 323606802,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -781,7 +781,7 @@
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
             "license": "Apache 2.0,BSD 3-Clause",
-            "size_bytes": 155906050,
+            "size_bytes": 898083611,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -1378,7 +1378,7 @@
             "base_name": "mnasnet0.5-imagenet-torch",
             "base_filename": "mnasnet0.5_top1_67.823-3ffadce67e.pth",
             "version": null,
-            "description": "MNASNet model from from `MnasNet: Platform-Aware Neural Architecture Search for Mobile <https://arxiv.org/abs/1807.11626>`_ with depth multiplier of 0.5 trained on ImageNet",
+            "description": "MNASNet model from `MnasNet: Platform-Aware Neural Architecture Search for Mobile <https://arxiv.org/abs/1807.11626>`_ with depth multiplier of 0.5 trained on ImageNet",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Mingxing Tan, et al.",
             "license": "BSD 3-Clause",

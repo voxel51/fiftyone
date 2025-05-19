@@ -104,6 +104,28 @@ def test_check_if_return_is_sample(expected, map_fcn_return_value):
     assert result is expected
 
 
+@pytest.fixture(name="disable_map_fcn_validation")
+def patch_check_if_return_is_sample():
+    """Patch check_if_return_is_sample"""
+    with mock.patch.object(fomm, "check_if_return_is_sample") as m:
+        m.return_value = False
+        yield m
+
+
+@pytest.fixture(name="get_default_sample_iter")
+def patch_get_default_sample_iter(samples):
+    """Patch get_default_sample_iter"""
+    with mock.patch.object(fomm, "_get_default_sample_iter") as m:
+        inner = mock.MagicMock()
+        inner.return_value.__iter__.return_value = [
+            (sample.id, sample) for sample in samples
+        ]
+
+        m.return_value = inner
+
+        yield m
+
+
 @pytest.mark.parametrize(
     "num_workers",
     (
@@ -111,6 +133,9 @@ def test_check_if_return_is_sample(expected, map_fcn_return_value):
         pytest.param(8, id="workers[multiple]"),
     ),
 )
+# Skipping validation check on "map_fcn", since thes tests rely on
+# whether or not that mock was called a certain number of times.
+@pytest.mark.usefixtures("disable_map_fcn_validation")
 class TestMapSamples:
     """Test map samples"""
 
@@ -163,14 +188,23 @@ class TestMapSamples:
             pytest.param(get_random_sample_errors(3), id="errors[multiple]"),
         ),
     )
+    @pytest.mark.parametrize(
+        "use_iter_fcn",
+        (
+            pytest.param(False, id="default-iter-fcn"),
+            pytest.param(True, id="custom-iter-fcn"),
+        ),
+    )
     def test_map_err(
         self,
         num_workers,
         skip_failures,
         errors,
+        use_iter_fcn,
         mapper,
         sample_collection,
         samples,
+        get_default_sample_iter,
         map_fcn,
         map_fcn_side_effect,
         map_samples_multiple_workers,
@@ -178,9 +212,13 @@ class TestMapSamples:
     ):
         """Test map function error"""
 
+        custom_iter_fcn = mock.MagicMock()
+        custom_iter_fcn.return_value.__iter__.return_value = [
+            (sample.id, sample) for sample in samples
+        ]
+
         for idx, err in errors.items():
             if num_workers == 1:
-
                 map_fcn_side_effect[idx] = err
             else:
                 map_samples_multi_worker_val[idx][1] = err
@@ -192,13 +230,10 @@ class TestMapSamples:
                 ctx.enter_context(err_ctx)
 
             #####
-            # Calling protected method to skip validation check on "map_fcn",
-            # since thes tests rely on whether or not that mock was called a
-            # certain number of times.
-            # pylint: disable-next=protected-access
-            for sid, _ in mapper._map_samples(
+            for sid, _ in mapper.map_samples(
                 sample_collection,
                 map_fcn,
+                iter_fcn=custom_iter_fcn if use_iter_fcn else None,
                 progress=(progress := mock.Mock()),
                 save=(save := mock.Mock()),
                 skip_failures=skip_failures,
@@ -211,6 +246,12 @@ class TestMapSamples:
             (idx, err) for idx, err in errors.items()
         )
 
+        if use_iter_fcn:
+            iter_fcn = custom_iter_fcn
+        else:
+            get_default_sample_iter.assert_called_once_with(save=save)
+            iter_fcn = get_default_sample_iter.return_value
+
         if skip_failures:
             assert len(returned_sample_ids) == (SAMPLE_COUNT - len(errors))
         else:
@@ -220,9 +261,7 @@ class TestMapSamples:
         if num_workers == 1:
             assert not map_samples_multiple_workers.called
 
-            sample_collection.iter_samples.assert_called_once_with(
-                progress=progress, autosave=save
-            )
+            iter_fcn.assert_called_once_with(sample_collection)
 
             if skip_failures:
                 expected_map_fcn_call_count = SAMPLE_COUNT
@@ -236,41 +275,53 @@ class TestMapSamples:
                 ]
 
             assert map_fcn.call_count == expected_map_fcn_call_count
+
             map_fcn.assert_has_calls(expected_map_fcn_calls)
 
         else:
-            assert not sample_collection.iter_samples.called
+            assert not iter_fcn.called
             assert not map_fcn.called
 
             map_samples_multiple_workers.assert_called_once_with(
                 sample_collection,
+                iter_fcn,
                 map_fcn,
                 progress=progress,
-                save=save,
                 skip_failures=skip_failures,
             )
 
             assert not sample_collection.iter_samples.called
 
+    @pytest.mark.parametrize(
+        "use_iter_fcn",
+        (
+            pytest.param(False, id="default-iter-fcn"),
+            pytest.param(True, id="custom-iter-fcn"),
+        ),
+    )
     def test_ok(
         self,
         num_workers,
+        use_iter_fcn,
         mapper,
+        get_default_sample_iter,
         sample_collection,
         samples,
         map_samples_multiple_workers,
     ):
         """Test happy path"""
 
+        custom_iter_fcn = mock.MagicMock()
+        custom_iter_fcn.return_value.__iter__.return_value = [
+            (sample.id, sample) for sample in samples
+        ]
+
         #####
         results = list(
-            # Calling protected method to skip validation check on "map_fcn",
-            # since thes tests rely on whether or not that mock was called a
-            # certain number of times.
-            # pylint: disable-next=protected-access
-            mapper._map_samples(
+            mapper.map_samples(
                 sample_collection,
                 map_fcn := mock.Mock(),
+                iter_fcn=custom_iter_fcn if use_iter_fcn else None,
                 progress=(progress := mock.Mock()),
                 save=(save := mock.Mock()),
                 skip_failures=(skip_failures := mock.Mock()),
@@ -278,24 +329,28 @@ class TestMapSamples:
         )
         #####
 
+        if use_iter_fcn:
+            iter_fcn = custom_iter_fcn
+        else:
+            get_default_sample_iter.assert_called_once_with(save=save)
+            iter_fcn = get_default_sample_iter.return_value
+
         if num_workers == 1:
             assert not map_samples_multiple_workers.called
 
-            sample_collection.iter_samples.assert_called_once_with(
-                progress=progress, autosave=save
-            )
+            iter_fcn.assert_called_once_with(sample_collection)
 
             assert map_fcn.call_count == len(samples)
 
         else:
-            assert not sample_collection.iter_samples.called
+            assert not get_default_sample_iter.return_value.called
             assert not map_fcn.called
 
             map_samples_multiple_workers.assert_called_once_with(
                 sample_collection,
+                iter_fcn,
                 map_fcn,
                 progress=progress,
-                save=save,
                 skip_failures=skip_failures,
             )
 
