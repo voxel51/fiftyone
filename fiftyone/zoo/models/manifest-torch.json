@@ -99,7 +99,7 @@
             "source": "https://segment-anything.com",
             "author": "Alexander Kirillov, et al.",
             "license": "Apache 2.0",
-            "size_bytes": 732512,
+            "size_bytes": 375042383,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -134,7 +134,7 @@
             "source": "https://segment-anything.com",
             "author": "Alexander Kirillov, et al.",
             "license": "Apache 2.0",
-            "size_bytes": 5008896,
+            "size_bytes": 2564550879,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -169,7 +169,7 @@
             "source": "https://segment-anything.com",
             "author": "Alexander Kirillov, et al.",
             "license": "Apache 2.0",
-            "size_bytes": 2440480,
+            "size_bytes": 1249524607,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
