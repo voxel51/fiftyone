@@ -3250,27 +3250,34 @@
         },
         {
             "base_name": "yolov5n-coco-torch",
+            "base_filename": "yolov5n-coco.pt",
             "description": "Ultralytics YOLOv5n model trained on COCO",
             "source": "https://pytorch.org/hub/ultralytics_yolov5",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
-            "size_bytes": 4062133,
-            "default_deployment_config_dict": {
-                "type": "fiftyone.utils.torch.TorchImageModel",
+            "size_bytes": 5562759,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
-                    "entrypoint_fcn": "fiftyone.utils.torch.load_torch_hub_raw_model",
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov5nu.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
                     "entrypoint_args": {
-                        "repo_or_dir": "ultralytics/yolov5",
-                        "model": "yolov5n",
-                        "pretrained": true,
-                        "device": "cpu"
+                        "model": "yolov5nu.pt"
                     },
-                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
-                    "raw_inputs": true
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
                 }
             },
             "requirements": {
-                "packages": ["torch>=1.7.0", "torchvision>=0.8.1"],
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -3279,31 +3286,38 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo"],
-            "date_added": "2023-08-22 19:22:51"
+            "date_added": "2025-05-22 14:14:45"
         },
         {
             "base_name": "yolov5s-coco-torch",
+            "base_filename": "yolov5s-coco.pt",
             "description": "Ultralytics YOLOv5s model trained on COCO",
             "source": "https://pytorch.org/hub/ultralytics_yolov5",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
-            "size_bytes": 14808437,
-            "default_deployment_config_dict": {
-                "type": "fiftyone.utils.torch.TorchImageModel",
+            "size_bytes": 18581255,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
-                    "entrypoint_fcn": "fiftyone.utils.torch.load_torch_hub_raw_model",
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov5su.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
                     "entrypoint_args": {
-                        "repo_or_dir": "ultralytics/yolov5",
-                        "model": "yolov5s",
-                        "pretrained": true,
-                        "device": "cpu"
+                        "model": "yolov5su.pt"
                     },
-                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
-                    "raw_inputs": true
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
                 }
             },
             "requirements": {
-                "packages": ["torch>=1.7.0", "torchvision>=0.8.1"],
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -3312,31 +3326,38 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo"],
-            "date_added": "2023-08-22 19:22:51"
+            "date_added": "2025-05-22 14:14:45"
         },
         {
             "base_name": "yolov5m-coco-torch",
+            "base_filename": "yolov5m-coco.pt",
             "description": "Ultralytics YOLOv5m model trained on COCO",
             "source": "https://pytorch.org/hub/ultralytics_yolov5",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
-            "size_bytes": 42806829,
-            "default_deployment_config_dict": {
-                "type": "fiftyone.utils.torch.TorchImageModel",
+            "size_bytes": 50589507,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
-                    "entrypoint_fcn": "fiftyone.utils.torch.load_torch_hub_raw_model",
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov5mu.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
                     "entrypoint_args": {
-                        "repo_or_dir": "ultralytics/yolov5",
-                        "model": "yolov5m",
-                        "pretrained": true,
-                        "device": "cpu"
+                        "model": "yolov5mu.pt"
                     },
-                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
-                    "raw_inputs": true
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
                 }
             },
             "requirements": {
-                "packages": ["torch>=1.7.0", "torchvision>=0.8.1"],
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -3345,31 +3366,38 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo"],
-            "date_added": "2023-08-22 19:22:51"
+            "date_added": "2025-05-22 14:14:45"
         },
         {
             "base_name": "yolov5l-coco-torch",
+            "base_filename": "yolov5l-coco.pt",
             "description": "Ultralytics YOLOv5l model trained on COCO",
             "source": "https://pytorch.org/hub/ultralytics_yolov5",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
-            "size_bytes": 93622629,
-            "default_deployment_config_dict": {
-                "type": "fiftyone.utils.torch.TorchImageModel",
+            "size_bytes": 106913919,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
-                    "entrypoint_fcn": "fiftyone.utils.torch.load_torch_hub_raw_model",
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov5lu.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
                     "entrypoint_args": {
-                        "repo_or_dir": "ultralytics/yolov5",
-                        "model": "yolov5l",
-                        "pretrained": true,
-                        "device": "cpu"
+                        "model": "yolov5lu.pt"
                     },
-                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
-                    "raw_inputs": true
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
                 }
             },
             "requirements": {
-                "packages": ["torch>=1.7.0", "torchvision>=0.8.1"],
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -3378,7 +3406,7 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo"],
-            "date_added": "2023-08-22 19:22:51"
+            "date_added": "2025-05-22 14:14:45"
         },
         {
             "base_name": "yolov8n-coco-torch",
@@ -3391,7 +3419,7 @@
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
-                    "url": "https://github.com/ultralytics/assets/releases/download/v8.1.0/yolov8n.pt"
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov8n.pt"
                 }
             },
             "default_deployment_config_dict": {
@@ -5451,23 +5479,26 @@
         },
         {
             "base_name": "yolov5x-coco-torch",
+            "base_filename": "yolov5x-coco.pt",
             "description": "Ultralytics YOLOv5x model trained on COCO",
             "source": "https://pytorch.org/hub/ultralytics_yolov5",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
-            "size_bytes": 174114333,
-            "default_deployment_config_dict": {
-                "type": "fiftyone.utils.torch.TorchImageModel",
+            "size_bytes": 195132283,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
-                    "entrypoint_fcn": "fiftyone.utils.torch.load_torch_hub_raw_model",
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov5xu.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
                     "entrypoint_args": {
-                        "repo_or_dir": "ultralytics/yolov5",
-                        "model": "yolov5x",
-                        "pretrained": true,
-                        "device": "cpu"
+                        "model": "yolov5xu.pt"
                     },
-                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
-                    "raw_inputs": true
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
                 }
             },
             "requirements": {
@@ -5480,7 +5511,7 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo"],
-            "date_added": "2023-08-22 19:22:51"
+            "date_added": "2025-05-22 14:14:45"
         }
     ]
 }
