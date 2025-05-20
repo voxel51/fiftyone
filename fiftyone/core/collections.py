@@ -9265,7 +9265,6 @@ class SampleCollection(object):
         field_or_expr,
         expr=None,
         missing_value=None,
-        unwind=False,
         _allow_missing=False,
         _big_result=True,
         _raw=False,
@@ -9279,17 +9278,15 @@ class SampleCollection(object):
         This is useful for iterating over large collections as it
         does not require loading all values into memory at once.
 
-
          .. note::
 
-            Unlike other aggregations, :meth:`iter_values` does not automatically
-            unwind list fields, which ensures that the returned values match the
-            potentially-nested structure of the documents.
-
-            Unlike :meth:`values`, using ``[]`` to unwind specific list fields
-            is not supported and will be ignored. You can pass the optional
-            ``unwind=True`` parameter to unwind all supported list fields. See
-            :ref:`aggregations-list-fields` for more information.
+            Unlike other aggregations, :meth:`iter_values` does not support
+            unwinding list fields, which ensures that the number of yielded
+            values matches the number of samples in the collection and each
+            iteration yields only the values of the sample being processed.
+            To work with unwound values independently, use
+            :meth:`values` with the ``unwind=True`` parameter or the ``[]``
+            syntax.
 
          .. warning::
 
@@ -9323,14 +9320,22 @@ class SampleCollection(object):
                 aggregating
             missing_value (None): a value to insert for missing or
                 ``None``-valued fields
-            unwind (False): whether to automatically unwind all recognized list
-                fields (True)
 
         Yields:
             each aggregated field value (or tuple of values, if a list of fields was provided)
         """
 
-        ## TODO
+        return self._iter_values(
+            field_or_expr,
+            expr=expr,
+            missing_value=missing_value,
+            unwind=False,
+            _allow_missing=_allow_missing,
+            _big_result=_big_result,
+            _raw=_raw,
+            _field=_field,
+            _enforce_natural_order=_enforce_natural_order,
+        )
 
     def _iter_values(
         self,
@@ -9378,12 +9383,9 @@ class SampleCollection(object):
         if isinstance(field_or_expr, (list, tuple)):
             _field_or_expr = []
             for field in field_or_expr:
-                if "[]" in field:
-                    field = field.replace("[]", "")
-                    logging.warning(
-                        'Single field unwinding "[]" is not '
-                        "supported when using iter_values "
-                        "and will be ignored."
+                if isinstance(field, str) and "[]" in field:
+                    raise ValueError(
+                        "Unwinding via `[]` is not supported with iter_values."
                     )
                 _field_or_expr.append(field)
         else:
