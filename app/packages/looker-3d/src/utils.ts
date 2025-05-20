@@ -164,6 +164,23 @@ export const computeMinMaxForColorBufferAttribute = (
   return { min: minX, max: maxX };
 };
 
+/**
+ * Computes the min and max values for a scalar buffer attribute (like intensity in pcd)
+ */
+export const computeMinMaxForScalarBufferAttribute = (
+  attribute: BufferAttribute | InterleavedBufferAttribute
+) => {
+  const a = attribute.array;
+  let mn = Infinity,
+    mx = -Infinity;
+  for (let i = 0; i < a.length; i += attribute.itemSize) {
+    const v = a[i];
+    if (v < mn) mn = v;
+    if (v > mx) mx = v;
+  }
+  return { min: mn, max: mx };
+};
+
 export const getColorFromPoolBasedOnHash = (str: string) => {
   const hash = str.split("").reduce((acc, char, idx) => {
     const charCode = char.charCodeAt(0);
