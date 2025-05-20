@@ -15,7 +15,7 @@ export type ShaderProps = {
 };
 
 const useGradientMap = (gradients: Gradients, flipY: boolean = false) => {
-  const generateTexture = useCallback((gradients: Gradients) => {
+  const generateTexture = useCallback((gradients: Gradients, flip: boolean) => {
     const size = 512;
     const canvas = document.createElement("canvas");
     canvas.width = size;
@@ -30,14 +30,14 @@ const useGradientMap = (gradients: Gradients, flipY: boolean = false) => {
     ctx.fillRect(0, 0, size, size);
 
     const texture = new THREE.CanvasTexture(canvas);
-    texture.flipY = flipY;
+    texture.flipY = flip;
     texture.minFilter = THREE.LinearFilter;
     texture.needsUpdate = true;
     return texture;
   }, []);
 
   return React.useMemo(
-    () => generateTexture(gradients),
+    () => generateTexture(gradients, flipY),
     [gradients, generateTexture]
   );
 };
@@ -173,12 +173,11 @@ const ShadeByIntensityShaders = {
 // legacy intensity = use r channel of rgb
 const ShadeByLegacyIntensityShaders = {
   vertexShader: /* glsl */ `
-    uniform float max;
-    uniform float min;
+    uniform float uMax;
+    uniform float uMin;
     uniform float pointSize;
     uniform bool isPointSizeAttenuated;
   
-    varying vec2 vUv;
     varying float hValue;
     attribute vec3 color;
   
@@ -187,9 +186,8 @@ const ShadeByLegacyIntensityShaders = {
     }
   
     void main() {
-      vUv = uv;
       vec3 pos = position;
-      hValue = remap(min, max, color.r);
+      hValue = remap(uMin, uMax, color.r);
   
       vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
   

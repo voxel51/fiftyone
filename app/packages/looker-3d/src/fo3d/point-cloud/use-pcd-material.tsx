@@ -77,11 +77,9 @@ export const usePcdMaterial = (
       );
       return minMax;
     } else {
-      const minMax = computeMinMaxForScalarBufferAttribute(
+      return computeMinMaxForScalarBufferAttribute(
         geometry.getAttribute("intensity")
       );
-      console.log("minMax", minMax);
-      return minMax;
     }
   }, [geometry, shadeBy]);
 
