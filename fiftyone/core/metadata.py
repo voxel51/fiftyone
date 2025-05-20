@@ -469,20 +469,27 @@ def _get_bulk_update_threads(
     batch_size,
     num_workers
 ):
-    def _bulk_update_writer():
+    def _bulk_update_writer(
+        _collection,
+        _update_queue,
+        _stop_signal,
+        _skip_failures,
+        _warn_failures,
+        _batch_size,
+    ):
         ops = []
-        warn_once = warn_failures
+        warn_once = _warn_failures
         while True:
-            item = update_queue.get()
+            item = _update_queue.get()
             try:
-                if item is stop_signal:
+                if item is _stop_signal:
                     break
                 ops.append(item)
-                if len(ops) >= batch_size:
-                    collection.bulk_write(ops)
+                if len(ops) >= _batch_size:
+                    _collection.bulk_write(ops)
                     ops.clear()
             except Exception as e:
-                if not skip_failures:
+                if not _skip_failures:
                     raise
                 if warn_once:
                     logger.warning(
@@ -492,20 +499,29 @@ def _get_bulk_update_threads(
                     warn_once = False
         if ops:
             try:
-                collection.bulk_write(ops)
+                _collection.bulk_write(ops)
+                ops.clear()
             except Exception as e:
-                if not skip_failures:
+                if not _skip_failures:
                     raise
-                if warn_failures:
+                if _warn_failures:
                     logger.warning(
                         "Failed to write updates: `%s`.\nError: %s", ops, e
                     )
-            ops.clear()
+        _update_queue.task_done()
 
     threads = []
     for _ in range(num_workers):
         t = threading.Thread(
             target=_bulk_update_writer,
+            args=(
+                collection,
+                update_queue,
+                stop_signal,
+                skip_failures,
+                warn_failures,
+                batch_size,
+            ),
         )
         t.start()
         threads.append(t)
