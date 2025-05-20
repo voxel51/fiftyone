@@ -1583,7 +1583,7 @@ function SubsetDistributionChart(props) {
         }}
         layout={{
           xaxis: { title: { text: X_AXIS_TITLES[type] } },
-          yaxis: { title: { text: "Sample Instances" } },
+          yaxis: { title: { text: "Label Instances" } },
         }}
       />
       <Legends {...getLegendProps(props)} />
