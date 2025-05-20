@@ -9,6 +9,7 @@ Scenario plugin.
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
 import fiftyone.core.fields as fof
+from fiftyone.server.utils import cache_dataset
 from fiftyone.operators.cache import execution_cache
 
 from bson import ObjectId
@@ -270,6 +271,7 @@ class ConfigureScenario(foo.Operator):
                             "background": "var(--fo-palette-background-body)",
                             "color": "text.secondary",
                             "borderRadius": "4px",
+                            "textAlign": "center",
                         }
                     },
                     "label": {
@@ -341,6 +343,27 @@ class ConfigureScenario(foo.Operator):
     def render_sample_distribution_graph(
         self, ctx, inputs, subset_expressions
     ):
+        preview_toggle_container = inputs.h_stack(
+            "preview_toggle_container", align_x="right"
+        )
+        preview_toggle_container.bool(
+            "plot_preview_enabled",
+            view=types.SwitchView(label="Distribution preview"),
+            default=False,
+        )
+
+        plot_preview_enabled = ctx.params.get(
+            "preview_toggle_container", {}
+        ).get("plot_preview_enabled", False)
+
+        if not plot_preview_enabled:
+            return self.render_empty_sample_distribution(
+                inputs,
+                ctx.params,
+                description="Distribution preview is not enabled. Turn on distribution preview"
+                + " to visualize the subset breakdown.",
+            )
+
         plot_data, error = self.get_sample_distribution(
             ctx, subset_expressions
         )
@@ -376,7 +399,7 @@ class ConfigureScenario(foo.Operator):
             width="100%",
             layout={
                 "xaxis": {"title": {"text": x_axis_title}},
-                "yaxis": {"title": {"text": "Samople Instances"}},
+                "yaxis": {"title": {"text": "Label Instances"}},
             },
         )
 
@@ -657,6 +680,7 @@ class ConfigureScenario(foo.Operator):
                 description=f"Select a {sub} to view sample distribution",
             )
 
+    @execution_cache(prompt_scoped=True)
     def get_scenarios_picker_type(self, ctx, field_name):
         """
         Determines the scenario picker type for a given field based on its type and distinct values.
@@ -961,8 +985,9 @@ class ConfigureScenario(foo.Operator):
         return [scenario.get("name") for _, scenario in scenarios.items()]
 
     def resolve_input(self, ctx):
-        inputs = types.Object()
+        cache_dataset(ctx.dataset)
 
+        inputs = types.Object()
         self.render_name_input(ctx, inputs)
         inputs.str(
             "key",
