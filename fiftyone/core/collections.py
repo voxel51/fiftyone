@@ -9368,6 +9368,9 @@ class SampleCollection(object):
                     yield str(doc["_id"])
             return
 
+        # TODO: Although unsafe for any arbitrary set of inputs, _unwind could
+        # be used to optimize performance when iterate over specific fields
+        # that are known to be large but not batchable. Still investigating...
         make = lambda field_or_expr: foa.Values(
             field_or_expr,
             expr=expr,
