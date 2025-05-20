@@ -114,7 +114,6 @@ export const usePcdMaterial = (
             key={key}
             minIntensity={minIntensity}
             maxIntensity={maxIntensity}
-            upVector={upVector}
             gradients={PCD_SHADING_GRADIENTS}
             pointSize={pointSize}
             opacity={opacity}

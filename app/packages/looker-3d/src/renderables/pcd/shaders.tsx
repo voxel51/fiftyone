@@ -272,7 +272,6 @@ export const ShadeByHeight = ({
 
 export const ShadeByIntensity = ({
   gradients,
-  upVector,
   minIntensity,
   maxIntensity,
   opacity,
@@ -284,9 +283,6 @@ export const ShadeByIntensity = ({
   maxIntensity: number;
 }) => {
   const gradientMap = useGradientMap(gradients, true);
-  const upVectorVec3 = useMemo(() => {
-    return [upVector.x, upVector.y, upVector.z];
-  }, [upVector]);
 
   const isLegacyIntensity = useMemo(() => {
     return pcdType !== "intensity";
@@ -298,7 +294,6 @@ export const ShadeByIntensity = ({
         uniforms: {
           uMin: { value: minIntensity },
           uMax: { value: maxIntensity },
-          upVector: { value: upVectorVec3 },
           opacity: { value: opacity ?? 1 },
           gradientMap: { value: gradientMap },
           pointSize: { value: pointSize },
