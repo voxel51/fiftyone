@@ -571,9 +571,11 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
         if config.entrypoint_fcn is None:
             config.entrypoint_fcn = "transformers.AutoModel.from_pretrained"
         if config.entrypoint_args is None:
-            config.entrypoint_args = {
-                "pretrained_model_name_or_path": config.name_or_path,
-            }
+            config.entrypoint_args = {}
+        if not config.entrypoint_args.get("pretrained_model_name_or_path"):
+            config.entrypoint_args[
+                "pretrained_model_name_or_path"
+            ] = config.name_or_path
 
         # default transforms
         if config.transforms_fcn is None:
@@ -1301,7 +1303,6 @@ class TransformersDepthEstimatorOutputProcessor(fout.OutputProcessor):
                 )
 
     def __call__(self, output, image_sizes, confidence_thresh=None):
-
         output = self._depth_estimation_post_processor(output)
         output = np.array(
             [o["predicted_depth"].detach().cpu().numpy() for o in output]
