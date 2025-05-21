@@ -2957,8 +2957,6 @@ _MONGO_TO_FIFTYONE_TYPES = {
 
 
 def _transform_values(values, fcn, level=1):
-    print("_transform_values", values)
-    print("_transform_values level", level)
     if values is None:
         return None
 
