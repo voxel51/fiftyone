@@ -2043,7 +2043,7 @@ attributes between annotation runs.
 Using CVAT groups
 -----------------
 
-The CVAT UI provides a way to group objects together both visually and though
+The CVAT UI provides a way to group objects together both visually and through
 a group id in the API.
 
 You can configure CVAT annotation runs so that the state of the group id is
