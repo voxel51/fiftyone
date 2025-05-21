@@ -2889,7 +2889,7 @@ class Values(Aggregation):
             fcn = self._field.to_python
             level = 1 + self._num_list_fields
 
-            values = _transform_values(values, fcn, level=level)
+            return _transform_values(values, fcn, level=level)
 
         return values
 
