@@ -2154,9 +2154,17 @@ class SampleCollection(object):
 
         return ids, label_ids
 
-    def _get_selected_labels(self, ids=None, tags=None, fields=None):
-        if ids is not None or tags is not None:
-            view = self.select_labels(ids=ids, tags=tags, fields=fields)
+    def _get_selected_labels(
+        self,
+        ids=None,
+        instance_ids=None,
+        tags=None,
+        fields=None,
+    ):
+        if ids is not None or instance_ids is not None or tags is not None:
+            view = self.select_labels(
+                ids=ids, instance_ids=instance_ids, tags=tags, fields=fields
+            )
         else:
             view = self
 
@@ -2240,8 +2248,10 @@ class SampleCollection(object):
 
         return labels
 
-    def _get_label_ids(self, tags=None, fields=None):
-        labels = self._get_selected_labels(tags=tags, fields=fields)
+    def _get_label_ids(self, instance_ids=None, tags=None, fields=None):
+        labels = self._get_selected_labels(
+            instance_ids=instance_ids, tags=tags, fields=fields
+        )
         return [l["label_id"] for l in labels]
 
     def count_label_tags(self, label_fields=None):
@@ -2841,7 +2851,7 @@ class SampleCollection(object):
             value = _get_non_none_value(values, level=level)
 
             if value is None:
-                if field is not None or allow_missing:
+                if field is not None or allow_missing or "." in field_name:
                     return field, new_group_field
 
                 raise ValueError(
@@ -2855,6 +2865,8 @@ class SampleCollection(object):
                         self._dataset._add_implied_frame_field(
                             field_name, _value, dynamic=dynamic, validate=False
                         )
+                        if not dynamic:
+                            break
             elif new_root_field:
                 self._dataset._add_implied_frame_field(
                     field_name, value, dynamic=dynamic
@@ -2881,7 +2893,7 @@ class SampleCollection(object):
             value = _get_non_none_value(values, level=level)
 
             if value is None:
-                if field is not None or allow_missing:
+                if field is not None or allow_missing or "." in field_name:
                     return field, new_group_field
 
                 raise ValueError(
@@ -2925,6 +2937,8 @@ class SampleCollection(object):
                         self._dataset._add_implied_sample_field(
                             field_name, _value, dynamic=dynamic, validate=False
                         )
+                        if not dynamic:
+                            break
             elif new_root_field:
                 self._dataset._add_implied_sample_field(
                     field_name, value, dynamic=dynamic
@@ -3023,7 +3037,15 @@ class SampleCollection(object):
                     ["frames._id", elem_id_field]
                 )
             else:
-                elem_ids = view.values(elem_id_field)
+                _frame_ids, _elem_ids = view.values(
+                    ["frames._id", elem_id_field]
+                )
+                frame_ids, elem_ids = zip(
+                    *(
+                        _select_by_keys(_f, e, f)
+                        for _f, e, f in zip(_frame_ids, _elem_ids, frame_ids)
+                    )
+                )
 
             frame_ids = itertools.chain.from_iterable(frame_ids)
             elem_ids = itertools.chain.from_iterable(elem_ids)
@@ -4918,7 +4940,13 @@ class SampleCollection(object):
 
     @view_stage
     def exclude_labels(
-        self, labels=None, ids=None, tags=None, fields=None, omit_empty=True
+        self,
+        labels=None,
+        ids=None,
+        instance_ids=None,
+        tags=None,
+        fields=None,
+        omit_empty=True,
     ):
         """Excludes the specified labels from the collection.
 
@@ -4933,6 +4961,9 @@ class SampleCollection(object):
             specific labels
 
         -   Provide the ``ids`` argument to exclude labels with specific IDs
+
+        -   Provide the ``instance_ids`` argument to exclude labels with
+            specific instance IDs
 
         -   Provide the ``tags`` argument to exclude labels with specific tags
 
@@ -5010,6 +5041,8 @@ class SampleCollection(object):
                 the format returned by
                 :attr:`fiftyone.core.session.Session.selected_labels`
             ids (None): an ID or iterable of IDs of the labels to exclude
+            instance_ids (None): an instance ID or iterable of instance IDs of
+                the labels to exclude
             tags (None): a tag or iterable of tags of labels to exclude
             fields (None): a field or iterable of fields from which to exclude
             omit_empty (True): whether to omit samples that have no labels
@@ -5022,6 +5055,7 @@ class SampleCollection(object):
             fos.ExcludeLabels(
                 labels=labels,
                 ids=ids,
+                instance_ids=instance_ids,
                 tags=tags,
                 fields=fields,
                 omit_empty=omit_empty,
@@ -6366,6 +6400,7 @@ class SampleCollection(object):
         self,
         labels=None,
         ids=None,
+        instance_ids=None,
         tags=None,
         filter=None,
         fields=None,
@@ -6386,6 +6421,9 @@ class SampleCollection(object):
             specific labels
 
         -   Provide the ``ids`` argument to match labels with specific IDs
+
+        -   Provide the ``instance_ids`` argument to match labels with specific
+            instance IDs
 
         -   Provide the ``tags`` argument to match labels with specific tags
 
@@ -6479,6 +6517,8 @@ class SampleCollection(object):
                 the format returned by
                 :attr:`fiftyone.core.session.Session.selected_labels`
             ids (None): an ID or iterable of IDs of the labels to select
+            instance_ids (None): an instance ID or iterable of instance IDs of
+                the labels to select
             tags (None): a tag or iterable of tags of labels to select
             filter (None): a :class:`fiftyone.core.expressions.ViewExpression`
                 or `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
@@ -6498,6 +6538,7 @@ class SampleCollection(object):
             fos.MatchLabels(
                 labels=labels,
                 ids=ids,
+                instance_ids=instance_ids,
                 tags=tags,
                 filter=filter,
                 fields=fields,
@@ -7079,7 +7120,13 @@ class SampleCollection(object):
 
     @view_stage
     def select_labels(
-        self, labels=None, ids=None, tags=None, fields=None, omit_empty=True
+        self,
+        labels=None,
+        ids=None,
+        instance_ids=None,
+        tags=None,
+        fields=None,
+        omit_empty=True,
     ):
         """Selects only the specified labels from the collection.
 
@@ -7094,6 +7141,9 @@ class SampleCollection(object):
             specific labels
 
         -   Provide the ``ids`` argument to select labels with specific IDs
+
+        -   Provide the ``instance_ids`` argument to select labels with
+            specific instance IDs
 
         -   Provide the ``tags`` argument to select labels with specific tags
 
@@ -7164,6 +7214,8 @@ class SampleCollection(object):
                 the format returned by
                 :attr:`fiftyone.core.session.Session.selected_labels`
             ids (None): an ID or iterable of IDs of the labels to select
+            instance_ids (None): an instance ID or iterable of instance IDs of
+                the labels to select
             tags (None): a tag or iterable of tags of labels to select
             fields (None): a field or iterable of fields from which to select
             omit_empty (True): whether to omit samples that have no labels
@@ -7176,6 +7228,7 @@ class SampleCollection(object):
             fos.SelectLabels(
                 labels=labels,
                 ids=ids,
+                instance_ids=instance_ids,
                 tags=tags,
                 fields=fields,
                 omit_empty=omit_empty,
@@ -11967,6 +12020,12 @@ def _parse_frame_values_dicts(sample_collection, sample_ids, values):
         _values.append(_vals)
 
     return _frame_ids, _values
+
+
+def _select_by_keys(keys, values, select_keys):
+    d = dict(zip(keys, values))
+    select_values = [d.get(k, None) for k in select_keys]
+    return select_keys, select_values
 
 
 def _parse_field_name(
