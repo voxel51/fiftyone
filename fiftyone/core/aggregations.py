@@ -2875,10 +2875,21 @@ class Values(Aggregation):
             return values
 
         if self._field is not None:
+            # Edge case: since values() doesn't automatically unwind list
+            # fields, but supports the [] syntax, we need to parse the inner
+            # field type if the field name ends with [] and the field is a
+            # ListField
+            if (
+                self.field_name.endswith("[]")
+                and isinstance(self._field, fof.ListField)
+                and not self._unwind
+            ):
+                self._field = self._field.field
+
             fcn = self._field.to_python
             level = 1 + self._num_list_fields
 
-            return _transform_values(values, fcn, level=level)
+            values = _transform_values(values, fcn, level=level)
 
         return values
 
@@ -2946,6 +2957,8 @@ _MONGO_TO_FIFTYONE_TYPES = {
 
 
 def _transform_values(values, fcn, level=1):
+    print("_transform_values", values)
+    print("_transform_values level", level)
     if values is None:
         return None
 
