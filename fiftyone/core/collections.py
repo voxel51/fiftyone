@@ -10688,9 +10688,13 @@ class SampleCollection(object):
             aggregations = [aggregations]
 
         # Partition aggregations by type
-        big_aggs, batch_aggs, facet_aggs, stream = self._parse_aggregations(
-            aggregations, allow_big=True
-        )
+        (
+            big_aggs,
+            batch_aggs,
+            facet_aggs,
+            stream,
+            requires_transform,
+        ) = self._parse_aggregations(aggregations, allow_big=True)
 
         # Placeholder to store results
         results = [None] * len(aggregations)
@@ -10719,6 +10723,7 @@ class SampleCollection(object):
 
         if _mongo:
             return pipelines[0] if scalar_result else pipelines
+        print("pipelines", pipelines)
 
         # Run all aggregations
         _results = foo.aggregate(
@@ -10728,14 +10733,22 @@ class SampleCollection(object):
         # Parse batch results
         if batch_aggs:
             if stream:
-                return self._iter_and_parse_agg_results(batch_aggs, _results)
+                if big_aggs:
+                    raise ValueError(
+                        "Cannot stream with both batch and big aggregations"
+                    )
+                return self._iter_and_parse_agg_results(
+                    batch_aggs, _results, requires_transform
+                )
             result = list(_results[0])
             for idx, aggregation in batch_aggs.items():
                 results[idx] = self._parse_big_result(aggregation, result)
 
         # Parse big results
         if big_aggs and stream:
-            return self._iter_and_parse_agg_results(big_aggs, _results)
+            return self._iter_and_parse_agg_results(
+                big_aggs, _results, requires_transform
+            )
         for idx, aggregation in big_aggs.items():
             result = list(_results[idx_map[idx]])
             results[idx] = self._parse_big_result(aggregation, result)
@@ -10755,20 +10768,16 @@ class SampleCollection(object):
                 results[idx] = data
         return results[0] if scalar_result else results
 
-    def _iter_and_parse_agg_results(self, parsed_aggs, cursor):
+    def _iter_and_parse_agg_results(
+        self, parsed_aggs, cursor, requires_transform
+    ):
 
         result_fields = [agg._big_field for agg in parsed_aggs.values()]
 
         # Non-batchable big aggregations will result a cursor per aggregation
         handle_multiple_cursors = isinstance(cursor, list)
 
-        # Determine if extra parsing is needed for the Aggregation result
-        has_extra_parsing = any(
-            agg._field is not None and not agg._raw
-            for agg in parsed_aggs.values()
-        )
-
-        if has_extra_parsing:
+        if requires_transform:
             transformers = [
                 agg.parse_result(None) for agg in parsed_aggs.values()
             ]
@@ -10779,8 +10788,8 @@ class SampleCollection(object):
                 f = transformers[0]
                 return (f(doc[field]) for doc in cursor)
 
-        # Handle case: no extra parsing
-        if not has_extra_parsing:
+        # multiple fields + no extra parsing
+        if not requires_transform:
             if handle_multiple_cursors:
                 # Unwinding fields independently may lead to results of
                 # different length. To enable returning all data,
@@ -10795,7 +10804,7 @@ class SampleCollection(object):
                 )
             return (itemgetter(*result_fields)(doc) for doc in cursor)
 
-        # Handle case: multiple fields with parsing
+        # multiple fields + extra parsing
         get_values = itemgetter(*result_fields)
 
         def _process_doc(doc):
@@ -10824,7 +10833,7 @@ class SampleCollection(object):
         if scalar_result:
             aggregations = [aggregations]
 
-        _, _, facet_aggs, _ = self._parse_aggregations(
+        _, _, facet_aggs, _, _ = self._parse_aggregations(
             aggregations, allow_big=False
         )
 
@@ -10868,14 +10877,23 @@ class SampleCollection(object):
         batch_aggs = {}
         facet_aggs = {}
         stream = None
+        output_must_be_transformed = False
 
         for idx, aggregation in enumerate(aggregations):
+            print("aggregation", aggregation.__dict__)
             # stream is True if all aggregations are lazy
-            if lazy := getattr(aggregation, "_lazy", False):
+            if lazy := aggregation._is_lazy:
                 if stream is None:
                     stream = lazy
                 elif stream != lazy:
-                    stream = False
+                    print("stream", stream)
+                    print("lazy", lazy)
+                    raise ValueError(
+                        "Cannot mix lazy and non-lazy aggregations"
+                    )
+
+            if aggregation._must_transform_output_field_value():
+                output_must_be_transformed = True
             if aggregation._is_big_batchable:
                 batch_aggs[idx] = aggregation
             elif aggregation._has_big_result:
@@ -10888,8 +10906,17 @@ class SampleCollection(object):
                 "This method does not support aggregations that return big "
                 "results"
             )
+        print("output_must_be_transformed", output_must_be_transformed)
+        print("big_aggs", big_aggs)
+        print("batch_aggs", batch_aggs)
 
-        return big_aggs, batch_aggs, facet_aggs, stream
+        return (
+            big_aggs,
+            batch_aggs,
+            facet_aggs,
+            stream,
+            output_must_be_transformed,
+        )
 
     def _build_batch_pipeline(self, aggs_map):
         project = {}
@@ -12209,7 +12236,10 @@ def _parse_field_name(
     # Parse explicit array references
     # Note: `field[][]` is valid syntax for list-of-list fields
     chunks = field_name.split("[]")
+    print("field_name", field_name)
+    print("chunks", chunks)
     for idx in range(len(chunks) - 1):
+        print("append", chunks[: (idx + 1)])
         unwind_list_fields.append("".join(chunks[: (idx + 1)]))
 
     # Array references [] have been stripped
@@ -12264,20 +12294,28 @@ def _parse_field_name(
             break
 
         if isinstance(field_type, fof.ListField):
+            print("field type is ListField")
             if omit_terminal_lists and path == field_name:
+                print("omit_terminal_lists and path == field_name")
                 break
 
             list_count = 1
             while isinstance(field_type.field, fof.ListField):
+                print("field_type.field", field_type.field)
                 list_count += 1
                 field_type = field_type.field
 
             if auto_unwind:
+                print("auto_unwind")
                 if path not in unwind_list_fields:
                     unwind_list_fields.extend([path] * list_count)
             elif path not in unwind_list_fields:
+                print("path not in unwind_list_fields")
                 if path not in other_list_fields:
+                    print("path not in other_list_fields")
                     other_list_fields.extend([path] * list_count)
+            print("unwind_list_fields", unwind_list_fields)
+            print("other_list_fields", other_list_fields)
 
     if is_frame_field:
         if auto_unwind:

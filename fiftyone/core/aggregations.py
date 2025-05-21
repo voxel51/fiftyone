@@ -24,7 +24,6 @@ from fiftyone.core.expressions import VALUE
 from fiftyone.core.expressions import ViewExpression as E
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
-import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 
@@ -130,6 +129,10 @@ class Aggregation(object):
         """
         return False
 
+    @property
+    def _is_lazy(self):
+        return False
+
     def to_mongo(self, sample_collection, context=None):
         """Returns the MongoDB aggregation pipeline for this aggregation.
 
@@ -166,6 +169,19 @@ class Aggregation(object):
             the aggregation result
         """
         raise NotImplementedError("subclasses must implement default_result()")
+
+    def _must_transform_output_field_value(self):
+        """Whether the output value of this aggregation must be transformed with parse_result().
+
+        Returns:
+            True/False
+        """
+        if hasattr(self, "_field_type"):
+            return self._field_type is not None
+        if hasattr(self, "_field"):
+            return self._field is not None
+
+        return False
 
     def _needs_frames(self, sample_collection):
         """Whether the aggregation requires frame labels of video samples to be
@@ -2852,6 +2868,10 @@ class Values(Aggregation):
             and "[]" not in self._field_name
         )
 
+    @property
+    def _is_lazy(self):
+        return self._lazy
+
     def default_result(self):
         """Returns the default result for this aggregation.
 
@@ -2860,9 +2880,16 @@ class Values(Aggregation):
         """
         return []
 
+    def _must_transform_output_field_value(self):
+        # If the field is not raw, we need to transform the output
+        # values to their original types
+        return (
+            not self._raw and not super()._must_transform_output_field_value()
+        )
+
     def parse_result(self, d):
-        """Parses the output of :meth:`to_mongo` when the result is a dict or returns an expression
-        that can be evaluated lazily.
+        """Parses the output of :meth:`to_mongo` when the result is a dict or
+        returns an expression that can be evaluated lazily.
 
         Args:
             d: the result dict or None
@@ -2894,8 +2921,26 @@ class Values(Aggregation):
         if self._field is not None:
             fcn = self._field.to_python
             level = 1 + self._num_list_fields
-
-            return _transform_values(values, fcn, level=level)
+            if self._field_name.endswith("[]") and not self._unwind:
+                level -= 1
+            print(
+                "self._field, self.field_name, self._num_list_fields",
+                self._field,
+                self.field_name,
+                self._num_list_fields,
+            )
+            try:
+                return _transform_values(values, fcn, level=level)
+            except Exception as e:
+                print(
+                    "Error in _transform_values",
+                    self._field,
+                    self.field_name,
+                    self._num_list_fields,
+                )
+                print("level %s" % level)
+                print("fcn %s" % fcn)
+                raise e
 
         return values
 
@@ -2969,8 +3014,13 @@ def _transform_values(values, fcn, level=1):
 
     if level < 1:
         return fcn(values)
-
-    return [_transform_values(v, fcn, level=level - 1) for v in values]
+    try:
+        return [_transform_values(v, fcn, level=level - 1) for v in values]
+    except AttributeError as e:
+        print("Error in _transform_values for values %s" % values[0])
+        print("level %s" % level)
+        print("fcn %s" % fcn)
+        raise e
 
 
 def _make_extract_values_pipeline(
@@ -3027,9 +3077,9 @@ def _parse_field_and_expr(
     optimize=False,
 ):
     # unwind can be {True, False, -1}
-    auto_unwind = unwind != False
+    auto_unwind = unwind is not False
     keep_top_level = unwind < 0
-    omit_terminal_lists = unwind == False
+    omit_terminal_lists = unwind is False
 
     if field_name is None and expr is None:
         raise ValueError(
@@ -3048,6 +3098,7 @@ def _parse_field_and_expr(
         field_type = _get_field_type(
             sample_collection, field_name, unwind=auto_unwind
         )
+    print("root %s" % root)
 
     found_expr = expr is not None
 
