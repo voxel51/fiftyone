@@ -2921,7 +2921,11 @@ class Values(Aggregation):
         if self._field is not None:
             fcn = self._field.to_python
             level = 1 + self._num_list_fields
-            if self._field_name.endswith("[]") and not self._unwind:
+            if (
+                self._field_name.endswith("[]")
+                and not self._unwind
+                and isinstance(self._field, fof.ListField)
+            ):
                 level -= 1
             print(
                 "self._field, self.field_name, self._num_list_fields",
@@ -2959,6 +2963,7 @@ class Values(Aggregation):
             allow_missing=self._allow_missing,
             context=context,
         )
+        print("to_mongo list_fields", list_fields)
 
         self._field = self._manual_field or field
         self._big_field = big_field
