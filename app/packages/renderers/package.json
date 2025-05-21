@@ -1,0 +1,43 @@
+{
+    "name": "@fiftyone/renderers",
+    "version": "0.1.0",
+    "author": "Voxel51, Inc.",
+    "description": "Renderer",
+    "homepage": "https://github.com/voxel51/fiftyone/tree/develop/app/packages/context",
+    "license": "Apache-2.0",
+    "bugs": {
+        "url": "https://github.com/voxel51/fiftyone"
+    },
+    "scripts": {
+        "check": "biome check --write ./src README.md tsconfig.json vite.config.ts",
+        "storybook": "storybook dev -p 6006",
+        "build-storybook": "storybook build"
+    },
+    "main": "./src/index.ts",
+    "private": true,
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "peerDependencies": {
+        "@fiftyone/state": "*",
+        "react": "*",
+        "recoil": "*"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "^1.7.1",
+        "@pixi/storybook-renderer": "^1.0.0",
+        "@pixi/storybook-vite": "^1.0.0",
+        "@storybook/addon-actions": "^8.6.7",
+        "@storybook/addon-backgrounds": "^8.6.7",
+        "@storybook/addon-controls": "^8.6.7",
+        "@storybook/addon-highlight": "^8.6.7",
+        "@storybook/addon-links": "^8.6.7",
+        "@storybook/addon-viewport": "^8.6.7",
+        "pixi.js": "^8.8.1",
+        "storybook": "^8.6.7",
+        "typescript": "^5.4.5",
+        "vite": "^5.4.12"
+    },
+    "type": "module"
+}
