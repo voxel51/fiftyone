@@ -3294,6 +3294,9 @@ def _remove_prefix(expr, prefix):
 
 
 def _get_field_type(sample_collection, field_name, unwind=True):
+    if field_name.endswith("[]"):
+        unwind = True
+
     # Remove array references
     field_name = "".join(field_name.split("[]"))
 
