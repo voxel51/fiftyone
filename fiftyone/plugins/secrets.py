@@ -23,7 +23,7 @@ class PluginSecretsResolver:
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(PluginSecretsResolver, cls).__new__(cls)
-            cls._instance.client = _get_secrets_client()
+            cls._instance._client = _get_secrets_client()
         return cls._instance
 
     def register_operator(
@@ -31,10 +31,9 @@ class PluginSecretsResolver:
     ) -> None:
         self._registered_secrets[operator_uri] = required_secrets
 
+    @property
     def client(self) -> fois.ISecretProvider:
-        if not self._instance:
-            self._instance = self.__new__(self.__class__)
-        return self._instance.client
+        return self._client
 
     async def get_secret(
         self, key: str, operator_uri: str, **kwargs
@@ -198,7 +197,7 @@ class SecretsDictionary:
 
         return {k: None for k in self.__secrets.keys()}
 
-    def __dict__(self):
+    def to_dict(self):
         return {k: True for k, v in self.__secrets.items() if v is not None}
 
     def copy(self):
