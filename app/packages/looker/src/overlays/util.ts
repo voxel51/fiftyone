@@ -101,11 +101,11 @@ export const convertId = (obj: Record<string, any>): Record<string, any> => {
 };
 
 export const getHashLabel = (label: RegularLabel): string => {
-  if (typeof label?.index !== "undefined") {
+  if (label?.index && !isNaN(label.index)) {
     return `${label.label}-${label.index}-${label.instance?._id ?? ""}`;
   }
 
-  if (typeof label?.instance?._id !== "undefined") {
+  if (label?.instance?._id) {
     return `${label.label}-${label.instance?._id}`;
   }
 
