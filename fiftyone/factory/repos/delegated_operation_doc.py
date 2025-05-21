@@ -60,6 +60,10 @@ class DelegatedOperationDocument(object):
         self.log_size = None
         self.log_path = None
 
+        # grouped fields
+        self.num_partitions = None  # Only on parent
+        self.group_id = None  # Only on children
+
     def from_pymongo(self, doc: dict):
         # required fields
         self.operator = doc.get("operator")
@@ -81,6 +85,10 @@ class DelegatedOperationDocument(object):
         self.metadata = doc.get("metadata", None)
         self.label = doc.get("label", None)
         self.updated_at = doc.get("updated_at", None)
+
+        # grouped fields
+        self.num_partitions = doc.get("num_partitions", None)
+        self.group_id = doc.get("group_id", None)
 
         # internal fields
         self.id = doc["_id"]
