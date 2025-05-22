@@ -4356,22 +4356,24 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         files = {}
         open_files = []
 
+        filename_maker = fou.UniqueFilenameMaker()
+
         if len(paths) == 1 and fom.get_media_type(paths[0]) == fom.VIDEO:
             # Video task
-            filename = os.path.basename(paths[0])
+            filename = filename_maker.get_output_path(paths[0])
             f = open(paths[0], "rb")
             files["client_files[0]"] = (filename, f)
             open_files.append(f)
         else:
             # Image task
             for idx, path in enumerate(paths):
-                filename = os.path.basename(path)
+                filename = filename_maker.get_output_path(path)
                 if self._server_version < Version("2.4.6"):
                     # IMPORTANT: older versions of CVAT organizes media within
                     # a task alphabetically by filename, so we must give CVAT
                     # filenames whose alphabetical order matches the order of
                     # `paths`
-                    filename = "%06d_%s" % (idx, os.path.basename(path))
+                    filename = "%06d_%s" % (idx, filename)
 
                 if self._server_version >= Version("2.3"):
                     with open(path, "rb") as f:
