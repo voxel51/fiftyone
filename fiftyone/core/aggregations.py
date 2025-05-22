@@ -171,7 +171,8 @@ class Aggregation(object):
         raise NotImplementedError("subclasses must implement default_result()")
 
     def _must_transform_output_field_value(self):
-        """Whether the output value of this aggregation must be transformed with parse_result().
+        """Whether the output value of this aggregation must be transformed
+        with parse_result().
 
         Returns:
             True/False
