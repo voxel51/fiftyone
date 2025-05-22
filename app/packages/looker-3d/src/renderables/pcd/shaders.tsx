@@ -282,7 +282,7 @@ export const ShadeByIntensity = ({
   minIntensity: number;
   maxIntensity: number;
 }) => {
-  const gradientMap = useGradientMap(gradients, true);
+  const gradientMap = useGradientMap(gradients);
 
   const isLegacyIntensity = useMemo(() => {
     return pcdType !== "intensity";
