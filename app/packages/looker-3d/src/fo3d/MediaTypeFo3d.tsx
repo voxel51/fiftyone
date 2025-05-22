@@ -1,10 +1,13 @@
 import { LoadingDots } from "@fiftyone/components";
 import { usePluginSettings } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
+import { useBrowserStorage } from "@fiftyone/state";
 import {
   AdaptiveDpr,
   AdaptiveEvents,
+  Bvh,
   CameraControls,
+  OrbitControls,
   PerspectiveCamera as PerspectiveCameraDrei,
 } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
@@ -24,6 +27,7 @@ import { SpinningCube } from "../SpinningCube";
 import { StatusBar, StatusTunnel } from "../StatusBar";
 import {
   DEFAULT_CAMERA_POSITION,
+  RAY_CASTING_SENSITIVITY,
   SET_EGO_VIEW_EVENT,
   SET_TOP_VIEW_EVENT,
 } from "../constants";
@@ -39,6 +43,7 @@ import {
 } from "../state";
 import { FoSceneComponent } from "./FoScene";
 import { Gizmos } from "./Gizmos";
+import HoverMetadataHUD from "./HoverMetadataHUD";
 import { Fo3dSceneContext } from "./context";
 import { SceneControls } from "./scene-controls/SceneControls";
 import {
@@ -207,7 +212,7 @@ export const MediaTypeFo3dComponent = () => {
      *
      * This is the order of precedence for the camera position:
      * 0. If the user has set a camera position via operator by writing to `cameraPositionAtom`, use that
-     * 1. If the user has set a default camera position in the scene itself, use that
+     * 1. If the user has set a default camera position in the scene itself, use that
      * 2. If the user has set a default camera position in the plugin settings, use that
      * 3. Compute a default camera position based on the bounding box of the scene
      * 4. Use an arbitrary default camera position
@@ -286,6 +291,7 @@ export const MediaTypeFo3dComponent = () => {
     ({ set }) =>
       () => {
         set(activeNodeAtom, null);
+        setHoverMetadata(null);
       },
     []
   );
@@ -531,16 +537,49 @@ export const MediaTypeFo3dComponent = () => {
     [onChangeView]
   );
 
+  const [autoRotate, setAutoRotate] = useBrowserStorage(
+    "fo3dAutoRotate",
+    false
+  );
+
+  const [pointCloudSettings, setPointCloudSettings] = useBrowserStorage(
+    "fo3dPointCloudSettings",
+    {
+      enableTooltip: false,
+      rayCastingSensitivity: "high",
+    }
+  );
+
+  const [hoverMetadata, setHoverMetadata] = useState<Record<
+    string,
+    string
+  > | null>(null);
+
+  useEffect(() => {
+    onChangeView("pov");
+  }, [autoRotate]);
+
   if (isParsingFo3d) {
     return <LoadingDots />;
   }
 
   return (
     <>
+      <HoverMetadataHUD hoverMetadata={hoverMetadata} />
       <Canvas
         id={CANVAS_WRAPPER_ID}
         onPointerMissed={resetActiveNode}
         key={upVector.toArray().join(",")}
+        raycaster={{
+          params: {
+            Points: {
+              threshold:
+                RAY_CASTING_SENSITIVITY[
+                  pointCloudSettings.rayCastingSensitivity
+                ],
+            },
+          },
+        }}
       >
         <Fo3dSceneContext.Provider
           value={{
@@ -549,6 +588,12 @@ export const MediaTypeFo3dComponent = () => {
             setUpVector,
             fo3dRoot,
             sceneBoundingBox,
+            autoRotate,
+            setAutoRotate,
+            pointCloudSettings,
+            setPointCloudSettings,
+            hoverMetadata,
+            setHoverMetadata,
             pluginSettings: settings,
           }}
         >
@@ -565,15 +610,18 @@ export const MediaTypeFo3dComponent = () => {
           />
           <AdaptiveDpr pixelated />
           <AdaptiveEvents />
-          <CameraControls ref={cameraControlsRef} />
+          {!autoRotate && <CameraControls ref={cameraControlsRef} />}
+          {autoRotate && <OrbitControls autoRotate={autoRotate} makeDefault />}
           <SceneControls scene={foScene} />
           <Gizmos />
 
           {!isSceneInitialized && <SpinningCube />}
 
-          <group ref={assetsGroupRef} visible={isSceneInitialized}>
-            <FoSceneComponent scene={foScene} />
-          </group>
+          <Bvh firstHitOnly enabled={pointCloudSettings.enableTooltip}>
+            <group ref={assetsGroupRef} visible={isSceneInitialized}>
+              <FoSceneComponent scene={foScene} />
+            </group>
+          </Bvh>
 
           <StatusTunnel.Out />
 

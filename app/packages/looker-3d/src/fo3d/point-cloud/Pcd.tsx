@@ -1,13 +1,13 @@
 import { getSampleSrc } from "@fiftyone/state";
-import { useLoader } from "@react-three/fiber";
+import throttle from "lodash/throttle";
 import { useEffect, useMemo, useRef } from "react";
-import type { Quaternion, Vector3 } from "three";
+import type { BufferAttribute, Quaternion, Vector3 } from "three";
 import { PCDLoader } from "three/examples/jsm/loaders/PCDLoader";
 import type { PcdAsset } from "../../hooks";
+import { useFoLoader } from "../../hooks/use-fo-loaders";
 import { useFo3dContext } from "../context";
 import { getResolvedUrlForFo3dAsset } from "../utils";
 import { usePcdMaterial } from "./use-pcd-material";
-import { useFoLoader } from "../../hooks/use-fo-loaders";
 
 export const Pcd = ({
   name,
@@ -24,7 +24,7 @@ export const Pcd = ({
   scale: Vector3;
   children?: React.ReactNode;
 }) => {
-  const { fo3dRoot } = useFo3dContext();
+  const { fo3dRoot, pointCloudSettings, setHoverMetadata } = useFo3dContext();
 
   const pcdUrl = useMemo(
     () =>
@@ -53,6 +53,38 @@ export const Pcd = ({
     pcdContainerRef
   );
 
+  const hoverProps = useMemo(() => {
+    if (!pointCloudSettings.enableTooltip) return {};
+
+    return {
+      // fires on *every* intersected point
+      onPointerMove: throttle((e) => {
+        // e.index is the vertex/point index under the cursor
+        const idx = e.index;
+        if (idx === undefined) return;
+
+        const { color, intensity } = points.geometry.attributes as {
+          color?: BufferAttribute;
+          intensity?: BufferAttribute;
+        };
+
+        const md: Record<string, any> = { index: idx };
+        if (color) {
+          md.rgb = [color.getX(idx), color.getY(idx), color.getZ(idx)];
+        }
+        if (intensity) {
+          md.intensity = intensity.getX(idx);
+        }
+
+        setHoverMetadata(md);
+      }, 30),
+
+      onPointerOut: () => {
+        setHoverMetadata(null);
+      },
+    };
+  }, [pointCloudSettings.enableTooltip, points]);
+
   if (!points) {
     return null;
   }
@@ -64,6 +96,7 @@ export const Pcd = ({
       position={position}
       quaternion={quaternion}
       scale={scale}
+      {...hoverProps}
     >
       {pointsMaterialElement}
       {children ?? null}

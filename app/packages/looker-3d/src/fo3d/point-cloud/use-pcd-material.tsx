@@ -65,7 +65,11 @@ export const usePcdMaterial = (
   }, [upVector, pcdBoundingBox, shadeBy, pluginSettings]);
 
   const { min: minIntensity, max: maxIntensity } = useMemo(() => {
-    if (shadeBy !== SHADE_BY_INTENSITY || !geometry) {
+    if (
+      shadeBy !== SHADE_BY_INTENSITY ||
+      !geometry?.hasAttribute("intensity") ||
+      !geometry?.hasAttribute("color")
+    ) {
       return { min: 0, max: 1 };
     }
 

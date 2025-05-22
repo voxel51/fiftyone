@@ -8,30 +8,71 @@ import { getOrthonormalAxis } from "../utils";
 import { Lights } from "./lights/Lights";
 
 export const SceneControls = ({ scene }: { scene: FoScene }) => {
-  const { upVector, setUpVector } = useFo3dContext();
+  const {
+    upVector,
+    setUpVector,
+    autoRotate,
+    setAutoRotate,
+    pointCloudSettings,
+    setPointCloudSettings,
+  } = useFo3dContext();
 
   const dirFromUpVector = useMemo(
     () => getOrthonormalAxis(upVector),
     [upVector]
   );
 
-  useControls(() => ({
-    Scene: folder(
-      {
-        UpVector: {
-          value: dirFromUpVector,
-          label: "Up",
-          options: ["X", "Y", "Z"],
-          onChange: (value) => {
-            if (value === "X") setUpVector(new Vector3(1, 0, 0));
-            if (value === "Y") setUpVector(new Vector3(0, 1, 0));
-            if (value === "Z") setUpVector(new Vector3(0, 0, 1));
+  useControls(
+    () => ({
+      Scene: folder(
+        {
+          UpVector: {
+            value: dirFromUpVector,
+            label: "Up",
+            options: ["X", "Y", "Z"],
+            onChange: (value) => {
+              if (value === "X") setUpVector(new Vector3(1, 0, 0));
+              if (value === "Y") setUpVector(new Vector3(0, 1, 0));
+              if (value === "Z") setUpVector(new Vector3(0, 0, 1));
+            },
+          },
+          AutoRotate: {
+            value: autoRotate,
+            label: "Auto Rotate",
+            onChange: (value) => {
+              setAutoRotate(value);
+            },
           },
         },
-      },
-      { collapsed: true, order: PANEL_ORDER_SCENE_CONTROLS }
-    ),
-  }));
+        { collapsed: true, order: PANEL_ORDER_SCENE_CONTROLS }
+      ),
+      "Scene.PointCloud": folder({
+        enableTooltip: {
+          value: pointCloudSettings.enableTooltip,
+          label: "Enable Tooltip",
+          onChange: (value) => {
+            setPointCloudSettings({
+              ...pointCloudSettings,
+              enableTooltip: value,
+            });
+          },
+        },
+        rayCastingSensitivity: {
+          value: pointCloudSettings.rayCastingSensitivity,
+          label: "Ray Casting Sensitivity",
+          options: ["high", "medium", "low"],
+          onChange: (value) => {
+            setPointCloudSettings({
+              ...pointCloudSettings,
+              rayCastingSensitivity: value,
+            });
+          },
+          render: () => pointCloudSettings.enableTooltip,
+        },
+      }),
+    }),
+    [pointCloudSettings.enableTooltip]
+  );
 
   return <Lights lights={scene?.lights} />;
 };
