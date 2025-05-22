@@ -9260,6 +9260,101 @@ class SampleCollection(object):
         )
         return self._make_and_aggregate(make, field_or_expr)
 
+    def iter_values(
+        self,
+        field_or_expr,
+        expr=None,
+        missing_value=None,
+        unwind=False,
+        _allow_missing=False,
+        _big_result=True,
+        _raw=False,
+        _field=None,
+        _enforce_natural_order=True,
+    ):
+        """Lazily extracts the values from all samples in the collection.
+
+        This method is a generator-based version of :meth:`values` that
+        yields each resulting value or tuple of values as it is received.
+        This is useful for iterating over large collections as it
+        does not require loading all values into memory at once.
+
+         .. note::
+
+            Unlike other aggregations, :meth:`iter_values` does not support
+            unwinding multiple individual list fields alongside other fields,
+            to ensure that the relationship among the yielded values is
+            preserved. To work with unwound values independently, use
+            :meth:`values` with the ``unwind=True`` parameter or the ``[]``
+            syntax.
+
+         .. warning::
+
+             This method yields one value (or tuple of values) per sample.
+             As a result, calling ``list(dataset.iter_values(...))`` will
+             result in a list of tuples where each entry is the values tuple
+             for a sample, **not** a tuple of lists of values per field like
+             :meth:`values`. If you want to get a list of values per field,
+             use :meth:`values` instead.
+
+         Examples::
+
+            # Iterate over field values lazily
+            for val in dataset.iter_values("numeric_field"):
+                print(val)  # 51
+
+            # Iterate over multiple field values lazily
+            for val in dataset.iter_values(['id', 'frames.frame_number']):
+                print(val)  # ('video-sample-id', [1, 2, 3])
+
+            # Iterate over the frame filepaths of a video sample individually
+            for fpath in dataset.iter_values("frames.filepath", unwind=True):
+                print(fpath)  # /path/to/video/sample/frame1.png
+
+        Args:
+            field_or_expr: a field name, ``embedded.field.name``,
+                :class:`fiftyone.core.expressions.ViewExpression`, or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                defining the field or expression to aggregate. This can also
+                be a list or tuple of such arguments, in which case tuples of
+                corresponding aggregation results (each receiving the same
+                additional keyword arguments, if any) will be yielded
+            expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB expression` to apply to ``field_or_expr`` before
+                aggregating
+            missing_value (None): a value to insert for missing or
+                ``None``-valued fields
+            unwind (False): whether to unwind a list field if field_or_expr
+                 refers to a single list field. If multiple fields are
+                 provided, this parameter is ignored and the fields are
+                 not unwound.
+
+        Yields:
+            each aggregated field value (or tuple of values, if a list of
+            fields was provided)
+        """
+
+        if (
+            unwind
+            and isinstance(field_or_expr, (list, tuple))
+            and len(field_or_expr) > 1
+        ):
+            raise ValueError(
+                "Unwinding multiple fields is not supported with iter_values."
+            )
+
+        return self._iter_values(
+            field_or_expr,
+            expr=expr,
+            missing_value=missing_value,
+            unwind=unwind,
+            _allow_missing=_allow_missing,
+            _big_result=_big_result,
+            _raw=_raw,
+            _field=_field,
+            _enforce_natural_order=_enforce_natural_order,
+        )
+
     def _iter_values(
         self,
         field_or_expr,
@@ -9306,14 +9401,24 @@ class SampleCollection(object):
         if isinstance(field_or_expr, (list, tuple)):
             _field_or_expr = []
             for field in field_or_expr:
-                if "[]" in field:
-                    field = field.replace("[]", "")
-                    logging.warning(
-                        'Single field unwinding "[]" is not '
-                        "supported when using iter_values "
-                        "and will be ignored."
+                if isinstance(field, str) and "[]" in field:
+                    raise ValueError(
+                        "Unwinding individual fields via `[]` is not supported "
+                        "with iter_values."
                     )
                 _field_or_expr.append(field)
+            if unwind and len(_field_or_expr) > 1:
+                # Although unwinding is not supported in the public interface,
+                # we can still experiment with it internally to optimize
+                # performance.
+                # This is temporary and should be removed in the future once
+                # we decide to fully support it and handle nonsense cases or
+                # find alternatives and remove this entirely.
+                logger.debug(
+                    "Warning: Iterating over multiple unwound fields may lead "
+                    "to unexpected results if the fields are not at the same "
+                    "nesting level in each document."
+                )
         else:
             _field_or_expr = field_or_expr
 
@@ -10611,24 +10716,32 @@ class SampleCollection(object):
             aggregations = [aggregations]
 
         # Partition aggregations by type
-        big_aggs, batch_aggs, facet_aggs, stream = self._parse_aggregations(
-            aggregations, allow_big=True
-        )
+        (
+            big_aggs,
+            batch_aggs,
+            facet_aggs,
+            stream,
+        ) = self._parse_aggregations(aggregations, allow_big=True)
 
         # Placeholder to store results
         results = [None] * len(aggregations)
 
         idx_map = {}
         pipelines = []
+        requires_transform = False
 
         # Build batch pipeline
         if batch_aggs:
-            pipeline = self._build_batch_pipeline(batch_aggs)
+            pipeline, requires_transform = self._build_batch_pipeline(
+                batch_aggs
+            )
             pipelines.append(pipeline)
 
         # Build big pipelines
         for idx, aggregation in big_aggs.items():
-            pipeline = self._build_big_pipeline(aggregation)
+            pipeline, requires_transform = self._build_big_pipeline(
+                aggregation
+            )
             idx_map[idx] = len(pipelines)
             pipelines.append(pipeline)
 
@@ -10651,14 +10764,22 @@ class SampleCollection(object):
         # Parse batch results
         if batch_aggs:
             if stream:
-                return self._iter_and_parse_agg_results(batch_aggs, _results)
+                if big_aggs:
+                    raise ValueError(
+                        "Cannot stream with both batch and big aggregations"
+                    )
+                return self._iter_and_parse_agg_results(
+                    batch_aggs, _results, requires_transform
+                )
             result = list(_results[0])
             for idx, aggregation in batch_aggs.items():
                 results[idx] = self._parse_big_result(aggregation, result)
 
         # Parse big results
         if big_aggs and stream:
-            return self._iter_and_parse_agg_results(big_aggs, _results)
+            return self._iter_and_parse_agg_results(
+                big_aggs, _results, requires_transform
+            )
         for idx, aggregation in big_aggs.items():
             result = list(_results[idx_map[idx]])
             results[idx] = self._parse_big_result(aggregation, result)
@@ -10678,20 +10799,16 @@ class SampleCollection(object):
                 results[idx] = data
         return results[0] if scalar_result else results
 
-    def _iter_and_parse_agg_results(self, parsed_aggs, cursor):
+    def _iter_and_parse_agg_results(
+        self, parsed_aggs, cursor, requires_transform
+    ):
 
         result_fields = [agg._big_field for agg in parsed_aggs.values()]
 
         # Non-batchable big aggregations will result a cursor per aggregation
         handle_multiple_cursors = isinstance(cursor, list)
 
-        # Determine if extra parsing is needed for the Aggregation result
-        has_extra_parsing = any(
-            agg._field is not None and not agg._raw
-            for agg in parsed_aggs.values()
-        )
-
-        if has_extra_parsing:
+        if requires_transform:
             transformers = [
                 agg.parse_result(None) for agg in parsed_aggs.values()
             ]
@@ -10702,8 +10819,8 @@ class SampleCollection(object):
                 f = transformers[0]
                 return (f(doc[field]) for doc in cursor)
 
-        # Handle case: no extra parsing
-        if not has_extra_parsing:
+        # multiple fields + no extra parsing
+        if not requires_transform:
             if handle_multiple_cursors:
                 # Unwinding fields independently may lead to results of
                 # different length. To enable returning all data,
@@ -10718,7 +10835,7 @@ class SampleCollection(object):
                 )
             return (itemgetter(*result_fields)(doc) for doc in cursor)
 
-        # Handle case: multiple fields with parsing
+        # multiple fields + extra parsing
         get_values = itemgetter(*result_fields)
 
         def _process_doc(doc):
@@ -10793,12 +10910,15 @@ class SampleCollection(object):
         stream = None
 
         for idx, aggregation in enumerate(aggregations):
-            # stream is True if all aggregations are lazy
-            if lazy := getattr(aggregation, "_lazy", False):
+            # all aggregations must be lazy to stream
+            if lazy := aggregation._is_lazy:
                 if stream is None:
                     stream = lazy
                 elif stream != lazy:
-                    stream = False
+                    raise ValueError(
+                        "Cannot mix lazy and non-lazy aggregations"
+                    )
+
             if aggregation._is_big_batchable:
                 batch_aggs[idx] = aggregation
             elif aggregation._has_big_result:
@@ -10812,16 +10932,25 @@ class SampleCollection(object):
                 "results"
             )
 
-        return big_aggs, batch_aggs, facet_aggs, stream
+        return (
+            big_aggs,
+            batch_aggs,
+            facet_aggs,
+            stream,
+        )
 
     def _build_batch_pipeline(self, aggs_map):
         project = {}
         attach_frames = False
         group_slices = set()
+        requires_transform = False
         for idx, aggregation in aggs_map.items():
             big_field = "value%d" % idx
 
             _pipeline = aggregation.to_mongo(self, big_field=big_field)
+            if aggregation._must_transform_output_field_value():
+                requires_transform = True
+
             attach_frames |= aggregation._needs_frames(self)
             _group_slices = aggregation._needs_group_slices(self)
             if _group_slices:
@@ -10836,17 +10965,23 @@ class SampleCollection(object):
                     "$project stage; found %s" % _pipeline
                 )
 
-        return self._pipeline(
-            pipeline=[{"$project": project}],
-            attach_frames=attach_frames,
-            group_slices=group_slices,
+        return (
+            self._pipeline(
+                pipeline=[{"$project": project}],
+                attach_frames=attach_frames,
+                group_slices=group_slices,
+            ),
+            requires_transform,
         )
 
     def _build_big_pipeline(self, aggregation):
-        return self._pipeline(
-            pipeline=aggregation.to_mongo(self, big_field="values"),
-            attach_frames=aggregation._needs_frames(self),
-            group_slices=aggregation._needs_group_slices(self),
+        return (
+            self._pipeline(
+                pipeline=aggregation.to_mongo(self, big_field="values"),
+                attach_frames=aggregation._needs_frames(self),
+                group_slices=aggregation._needs_group_slices(self),
+            ),
+            aggregation._must_transform_output_field_value(),
         )
 
     def _build_facets(self, aggs_map):
