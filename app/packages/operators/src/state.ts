@@ -572,12 +572,14 @@ export const useOperatorPrompt = () => {
   );
   const execute = useCallback(
     async (options = {}) => {
+      setResolving(true);
       const resolved =
         cachedResolvedInput || (await operator.resolveInput(ctx));
       const { invalid } = await validate(ctx, resolved);
       if (invalid) {
         return;
       }
+      setResolving(false);
       executor.execute(promptingOperator.params, {
         ...options,
         ...promptingOperator.options,
