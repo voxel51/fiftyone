@@ -176,11 +176,10 @@ class Aggregation(object):
         Returns:
             True/False
         """
-        if hasattr(self, "_field_type"):
-            return self._field_type is not None
         if hasattr(self, "_field"):
             return self._field is not None
-
+        if hasattr(self, "_field_type"):
+            return self._field_type is not None
         return False
 
     def _needs_frames(self, sample_collection):
@@ -2881,11 +2880,9 @@ class Values(Aggregation):
         return []
 
     def _must_transform_output_field_value(self):
-        # If the field is not raw, we need to transform the output
-        # values to their original types
-        return (
-            not self._raw and not super()._must_transform_output_field_value()
-        )
+        if self._raw:
+            return False
+        return super()._must_transform_output_field_value()
 
     def parse_result(self, d):
         """Parses the output of :meth:`to_mongo` when the result is a dict or
@@ -2921,30 +2918,8 @@ class Values(Aggregation):
         if self._field is not None:
             fcn = self._field.to_python
             level = 1 + self._num_list_fields
-            if (
-                self._field_name.endswith("[]")
-                and not self._unwind
-                and isinstance(self._field, fof.ListField)
-            ):
-                level -= 1
-            print(
-                "self._field, self.field_name, self._num_list_fields",
-                self._field,
-                self.field_name,
-                self._num_list_fields,
-            )
-            try:
-                return _transform_values(values, fcn, level=level)
-            except Exception as e:
-                print(
-                    "Error in _transform_values",
-                    self._field,
-                    self.field_name,
-                    self._num_list_fields,
-                )
-                print("level %s" % level)
-                print("fcn %s" % fcn)
-                raise e
+
+            return _transform_values(values, fcn, level=level)
 
         return values
 
@@ -2963,7 +2938,6 @@ class Values(Aggregation):
             allow_missing=self._allow_missing,
             context=context,
         )
-        print("to_mongo list_fields", list_fields)
 
         self._field = self._manual_field or field
         self._big_field = big_field
@@ -3103,7 +3077,6 @@ def _parse_field_and_expr(
         field_type = _get_field_type(
             sample_collection, field_name, unwind=auto_unwind
         )
-    print("root %s" % root)
 
     found_expr = expr is not None
 
@@ -3368,6 +3341,9 @@ def _remove_prefix(expr, prefix):
 
 
 def _get_field_type(sample_collection, field_name, unwind=True):
+    if field_name.endswith("[]"):
+        unwind = True
+
     # Remove array references
     field_name = "".join(field_name.split("[]"))
 

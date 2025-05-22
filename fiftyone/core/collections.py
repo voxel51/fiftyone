@@ -9265,6 +9265,7 @@ class SampleCollection(object):
         field_or_expr,
         expr=None,
         missing_value=None,
+        unwind=False,
         _allow_missing=False,
         _big_result=True,
         _raw=False,
@@ -9274,17 +9275,16 @@ class SampleCollection(object):
         """Lazily extracts the values from all samples in the collection.
 
         This method is a generator-based version of :meth:`values` that
-        yields each sample's value or tuple of values as it is received.
+        yields each resulting value or tuple of values as it is received.
         This is useful for iterating over large collections as it
         does not require loading all values into memory at once.
 
          .. note::
 
             Unlike other aggregations, :meth:`iter_values` does not support
-            unwinding list fields, which ensures that the number of yielded
-            values matches the number of samples in the collection and each
-            iteration yields only the values of the sample being processed.
-            To work with unwound values independently, use
+            unwinding multiple individual list fields alongside other fields,
+            to ensure that the relationship among the yielded values is
+            preserved. To work with unwound values independently, use
             :meth:`values` with the ``unwind=True`` parameter or the ``[]``
             syntax.
 
@@ -9320,16 +9320,30 @@ class SampleCollection(object):
                 aggregating
             missing_value (None): a value to insert for missing or
                 ``None``-valued fields
+            unwind (False): whether to unwind a list field if field_or_expr
+                 refers to a single list field. If multiple fields are
+                 provided, this parameter is ignored and the fields are
+                 not unwound.
 
         Yields:
-            each aggregated field value (or tuple of values, if a list of fields was provided)
+            each aggregated field value (or tuple of values, if a list of
+            fields was provided)
         """
+
+        if (
+            unwind
+            and isinstance(field_or_expr, (list, tuple))
+            and len(field_or_expr) > 1
+        ):
+            raise ValueError(
+                "Unwinding multiple fields is not supported with iter_values. "
+            )
 
         return self._iter_values(
             field_or_expr,
             expr=expr,
             missing_value=missing_value,
-            unwind=False,
+            unwind=unwind,
             _allow_missing=_allow_missing,
             _big_result=_big_result,
             _raw=_raw,
@@ -9369,7 +9383,7 @@ class SampleCollection(object):
             return
 
         # TODO: Although unsafe for any arbitrary set of inputs, _unwind could
-        # be used to optimize performance when iterate over specific fields
+        # be used to optimize performance when iterating over specific fields
         # that are known to be large but not batchable. Still investigating...
         make = lambda field_or_expr: foa.Values(
             field_or_expr,
@@ -9388,9 +9402,18 @@ class SampleCollection(object):
             for field in field_or_expr:
                 if isinstance(field, str) and "[]" in field:
                     raise ValueError(
-                        "Unwinding via `[]` is not supported with iter_values."
+                        "Unwinding individual fields via `[]` is not supported with iter_values."
                     )
                 _field_or_expr.append(field)
+            if unwind and len(_field_or_expr) > 1:
+                # Although unwinding is not supported in the public interface,
+                # we can still experiment with it internally to optimize performance.
+                # This is temporary and should be removed in the future once
+                # we decide to fully support it and handle nonsense cases or
+                # find alternatives and remove this entirely.
+                logger.debug(
+                    "Warning: Iterating over multiple unwound fields may lead to unexpected results if the fields are not at the same nesting level in each document."
+                )
         else:
             _field_or_expr = field_or_expr
 
@@ -10723,7 +10746,6 @@ class SampleCollection(object):
 
         if _mongo:
             return pipelines[0] if scalar_result else pipelines
-        print("pipelines", pipelines)
 
         # Run all aggregations
         _results = foo.aggregate(
@@ -10880,14 +10902,11 @@ class SampleCollection(object):
         output_must_be_transformed = False
 
         for idx, aggregation in enumerate(aggregations):
-            print("aggregation", aggregation.__dict__)
-            # stream is True if all aggregations are lazy
+            # all aggregations must be lazy to stream
             if lazy := aggregation._is_lazy:
                 if stream is None:
                     stream = lazy
                 elif stream != lazy:
-                    print("stream", stream)
-                    print("lazy", lazy)
                     raise ValueError(
                         "Cannot mix lazy and non-lazy aggregations"
                     )
@@ -10906,9 +10925,6 @@ class SampleCollection(object):
                 "This method does not support aggregations that return big "
                 "results"
             )
-        print("output_must_be_transformed", output_must_be_transformed)
-        print("big_aggs", big_aggs)
-        print("batch_aggs", batch_aggs)
 
         return (
             big_aggs,
@@ -12236,10 +12252,7 @@ def _parse_field_name(
     # Parse explicit array references
     # Note: `field[][]` is valid syntax for list-of-list fields
     chunks = field_name.split("[]")
-    print("field_name", field_name)
-    print("chunks", chunks)
     for idx in range(len(chunks) - 1):
-        print("append", chunks[: (idx + 1)])
         unwind_list_fields.append("".join(chunks[: (idx + 1)]))
 
     # Array references [] have been stripped
@@ -12294,28 +12307,20 @@ def _parse_field_name(
             break
 
         if isinstance(field_type, fof.ListField):
-            print("field type is ListField")
             if omit_terminal_lists and path == field_name:
-                print("omit_terminal_lists and path == field_name")
                 break
 
             list_count = 1
             while isinstance(field_type.field, fof.ListField):
-                print("field_type.field", field_type.field)
                 list_count += 1
                 field_type = field_type.field
 
             if auto_unwind:
-                print("auto_unwind")
                 if path not in unwind_list_fields:
                     unwind_list_fields.extend([path] * list_count)
             elif path not in unwind_list_fields:
-                print("path not in unwind_list_fields")
                 if path not in other_list_fields:
-                    print("path not in other_list_fields")
                     other_list_fields.extend([path] * list_count)
-            print("unwind_list_fields", unwind_list_fields)
-            print("other_list_fields", other_list_fields)
 
     if is_frame_field:
         if auto_unwind:
