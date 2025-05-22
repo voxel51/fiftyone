@@ -2993,13 +2993,7 @@ def _transform_values(values, fcn, level=1):
 
     if level < 1:
         return fcn(values)
-    try:
-        return [_transform_values(v, fcn, level=level - 1) for v in values]
-    except AttributeError as e:
-        print("Error in _transform_values for values %s" % values[0])
-        print("level %s" % level)
-        print("fcn %s" % fcn)
-        raise e
+    return [_transform_values(v, fcn, level=level - 1) for v in values]
 
 
 def _make_extract_values_pipeline(
@@ -3341,9 +3335,6 @@ def _remove_prefix(expr, prefix):
 
 
 def _get_field_type(sample_collection, field_name, unwind=True):
-    if field_name.endswith("[]"):
-        unwind = True
-
     # Remove array references
     field_name = "".join(field_name.split("[]"))
 
