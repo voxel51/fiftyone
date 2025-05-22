@@ -26,8 +26,7 @@ for visual AI workflows.
 ---
 
 This series is part of the **Getting Started with FiftyOne** initiative. For
-more tutorials, head to
-[FiftyOne Documentation](https://beta-docs.voxel51.com/).
+more tutorials, head to [FiftyOne Documentation](https://docs.voxel51.com/).
 
 ## Next Steps
 
@@ -54,6 +53,6 @@ some suggested next steps to deepen your journey with FiftyOne:
 
 -   **Read the Docs**  
     Dive deeper into what FiftyOne can do in the
-    [official documentation](https://beta-docs.voxel51.com/).
+    [official documentation](https://docs.voxel51.com/).
 
 We can't wait to see what you'll build next with FiftyOne!
