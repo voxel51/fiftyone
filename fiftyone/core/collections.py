@@ -9307,6 +9307,10 @@ class SampleCollection(object):
             for val in dataset.iter_values(['id', 'frames.frame_number']):
                 print(val)  # ('video-sample-id', [1, 2, 3])
 
+            # Iterate over the frame filepaths of a video sample individually
+            for fpath in dataset.iter_values("frames.filepath", unwind=True):
+                print(fpath)  # /path/to/video/sample/frame1.png
+
         Args:
             field_or_expr: a field name, ``embedded.field.name``,
                 :class:`fiftyone.core.expressions.ViewExpression`, or
