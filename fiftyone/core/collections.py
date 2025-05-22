@@ -10721,7 +10721,6 @@ class SampleCollection(object):
             batch_aggs,
             facet_aggs,
             stream,
-            requires_transform,
         ) = self._parse_aggregations(aggregations, allow_big=True)
 
         # Placeholder to store results
@@ -10729,15 +10728,20 @@ class SampleCollection(object):
 
         idx_map = {}
         pipelines = []
+        requires_transform = False
 
         # Build batch pipeline
         if batch_aggs:
-            pipeline = self._build_batch_pipeline(batch_aggs)
+            pipeline, requires_transform = self._build_batch_pipeline(
+                batch_aggs
+            )
             pipelines.append(pipeline)
 
         # Build big pipelines
         for idx, aggregation in big_aggs.items():
-            pipeline = self._build_big_pipeline(aggregation)
+            pipeline, requires_transform = self._build_big_pipeline(
+                aggregation
+            )
             idx_map[idx] = len(pipelines)
             pipelines.append(pipeline)
 
@@ -10860,7 +10864,7 @@ class SampleCollection(object):
         if scalar_result:
             aggregations = [aggregations]
 
-        _, _, facet_aggs, _, _ = self._parse_aggregations(
+        _, _, facet_aggs, _ = self._parse_aggregations(
             aggregations, allow_big=False
         )
 
@@ -10904,7 +10908,6 @@ class SampleCollection(object):
         batch_aggs = {}
         facet_aggs = {}
         stream = None
-        output_must_be_transformed = False
 
         for idx, aggregation in enumerate(aggregations):
             # all aggregations must be lazy to stream
@@ -10916,8 +10919,6 @@ class SampleCollection(object):
                         "Cannot mix lazy and non-lazy aggregations"
                     )
 
-            if aggregation._must_transform_output_field_value():
-                output_must_be_transformed = True
             if aggregation._is_big_batchable:
                 batch_aggs[idx] = aggregation
             elif aggregation._has_big_result:
@@ -10936,17 +10937,20 @@ class SampleCollection(object):
             batch_aggs,
             facet_aggs,
             stream,
-            output_must_be_transformed,
         )
 
     def _build_batch_pipeline(self, aggs_map):
         project = {}
         attach_frames = False
         group_slices = set()
+        requires_transform = False
         for idx, aggregation in aggs_map.items():
             big_field = "value%d" % idx
 
             _pipeline = aggregation.to_mongo(self, big_field=big_field)
+            if aggregation._must_transform_output_field_value():
+                requires_transform = True
+
             attach_frames |= aggregation._needs_frames(self)
             _group_slices = aggregation._needs_group_slices(self)
             if _group_slices:
@@ -10961,17 +10965,23 @@ class SampleCollection(object):
                     "$project stage; found %s" % _pipeline
                 )
 
-        return self._pipeline(
-            pipeline=[{"$project": project}],
-            attach_frames=attach_frames,
-            group_slices=group_slices,
+        return (
+            self._pipeline(
+                pipeline=[{"$project": project}],
+                attach_frames=attach_frames,
+                group_slices=group_slices,
+            ),
+            requires_transform,
         )
 
     def _build_big_pipeline(self, aggregation):
-        return self._pipeline(
-            pipeline=aggregation.to_mongo(self, big_field="values"),
-            attach_frames=aggregation._needs_frames(self),
-            group_slices=aggregation._needs_group_slices(self),
+        return (
+            self._pipeline(
+                pipeline=aggregation.to_mongo(self, big_field="values"),
+                attach_frames=aggregation._needs_frames(self),
+                group_slices=aggregation._needs_group_slices(self),
+            ),
+            aggregation._must_transform_output_field_value(),
         )
 
     def _build_facets(self, aggs_map):

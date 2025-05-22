@@ -172,7 +172,8 @@ class Aggregation(object):
 
     def _must_transform_output_field_value(self):
         """Whether the output value of this aggregation must be transformed
-        with parse_result().
+        with parse_result(). Note that this must be called after to_mongo() for
+        the field to be set.
 
         Returns:
             True/False
@@ -2881,6 +2882,7 @@ class Values(Aggregation):
         return []
 
     def _must_transform_output_field_value(self):
+        # this must be called after to_mongo() for the field to be set
         if self._raw:
             return False
         return super()._must_transform_output_field_value()
