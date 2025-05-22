@@ -5439,7 +5439,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         (a) Provide ``dataset_dir`` and ``dataset_type`` to import the contents
             of a directory that is organized in the default layout for the
             dataset type as documented in
-            :ref:`this guide <loading-datasets-from-disk>`
+            :ref:`this guide <loading-common-datasets>`
 
         (b) Provide ``dataset_type`` along with ``data_path``, ``labels_path``,
             or other type-specific parameters to perform a customized import.
@@ -5450,7 +5450,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         In either workflow, the remaining parameters of this method can be
         provided to further configure the import.
 
-        See :ref:`this guide <loading-datasets-from-disk>` for example usages
+        See :ref:`this guide <loading-common-datasets>` for example usages
         of this method and descriptions of the available dataset types.
 
         Args:
@@ -5588,7 +5588,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         (a) Provide ``dataset_dir`` and ``dataset_type`` to import the contents
             of a directory that is organized in the default layout for the
             dataset type as documented in
-            :ref:`this guide <loading-datasets-from-disk>`
+            :ref:`this guide <loading-common-datasets>`
 
         (b) Provide ``dataset_type`` along with ``data_path``, ``labels_path``,
             or other type-specific parameters to perform a customized import.
@@ -5599,7 +5599,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         In either workflow, the remaining parameters of this method can be
         provided to further configure the import.
 
-        See :ref:`this guide <loading-datasets-from-disk>` for example usages
+        See :ref:`this guide <loading-common-datasets>` for example usages
         of this method and descriptions of the available dataset types.
 
         By default, samples with the same absolute ``filepath`` are merged, but
@@ -5787,7 +5787,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         is assumed that this directory contains the extracted contents of the
         archive, and thus the archive is not re-extracted.
 
-        See :ref:`this guide <loading-datasets-from-disk>` for example usages
+        See :ref:`this guide <loading-common-datasets>` for example usages
         of this method and descriptions of the available dataset types.
 
         .. note::
@@ -5929,7 +5929,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         is assumed that this directory contains the extracted contents of the
         archive, and thus the archive is not re-extracted.
 
-        See :ref:`this guide <loading-datasets-from-disk>` for example usages
+        See :ref:`this guide <loading-common-datasets>` for example usages
         of this method and descriptions of the available dataset types.
 
         .. note::
@@ -6957,7 +6957,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         (a) Provide ``dataset_dir`` and ``dataset_type`` to import the contents
             of a directory that is organized in the default layout for the
             dataset type as documented in
-            :ref:`this guide <loading-datasets-from-disk>`
+            :ref:`this guide <loading-common-datasets>`
 
         (b) Provide ``dataset_type`` along with ``data_path``, ``labels_path``,
             or other type-specific parameters to perform a customized
@@ -6968,7 +6968,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         In either workflow, the remaining parameters of this method can be
         provided to further configure the import.
 
-        See :ref:`this guide <loading-datasets-from-disk>` for example usages
+        See :ref:`this guide <loading-common-datasets>` for example usages
         of this method and descriptions of the available dataset types.
 
         Args:
@@ -7082,7 +7082,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         is assumed that this directory contains the extracted contents of the
         archive, and thus the archive is not re-extracted.
 
-        See :ref:`this guide <loading-datasets-from-disk>` for example usages
+        See :ref:`this guide <loading-common-datasets>` for example usages
         of this method and descriptions of the available dataset types.
 
         .. note::
