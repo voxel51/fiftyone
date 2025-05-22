@@ -1,7 +1,9 @@
+import { useFrame } from "@react-three/fiber";
 import { folder, useControls } from "leva";
 import { useMemo } from "react";
 import { Vector3 } from "three";
 import { PANEL_ORDER_SCENE_CONTROLS } from "../../constants";
+import { CAMERA_POSITION_KEY } from "../../Environment";
 import { FoScene } from "../../hooks";
 import { useFo3dContext } from "../context";
 import { getOrthonormalAxis } from "../utils";
@@ -21,6 +23,15 @@ export const SceneControls = ({ scene }: { scene: FoScene }) => {
     () => getOrthonormalAxis(upVector),
     [upVector]
   );
+
+  useFrame((state) => {
+    if (state.camera) {
+      window?.localStorage.setItem(
+        CAMERA_POSITION_KEY,
+        JSON.stringify(state.camera.position.toArray())
+      );
+    }
+  });
 
   useControls(
     () => ({
@@ -46,6 +57,38 @@ export const SceneControls = ({ scene }: { scene: FoScene }) => {
         },
         { collapsed: true, order: PANEL_ORDER_SCENE_CONTROLS }
       ),
+      "Scene.PointCloud": folder({
+        enableTooltip: {
+          value: pointCloudSettings.enableTooltip,
+          label: "Enable Tooltip",
+          onChange: (value) => {
+            setPointCloudSettings({
+              ...pointCloudSettings,
+              enableTooltip: value,
+            });
+          },
+        },
+        rayCastingSensitivity: {
+          value: pointCloudSettings.rayCastingSensitivity,
+          label: "Ray Casting Sensitivity",
+          options: ["high", "medium", "low"],
+          onChange: (value) => {
+            setPointCloudSettings({
+              ...pointCloudSettings,
+              rayCastingSensitivity: value,
+            });
+          },
+          render: () => pointCloudSettings.enableTooltip,
+        },
+      }),
+    }),
+    []
+  );
+
+  // note: we have to separate the scene controls from the point cloud controls
+  // or else it'll cause unnecessary re-renders
+  useControls(
+    () => ({
       "Scene.PointCloud": folder({
         enableTooltip: {
           value: pointCloudSettings.enableTooltip,
