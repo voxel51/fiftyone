@@ -2009,6 +2009,19 @@ subsequent sections.
             ctx.panel.set_state("event", "on_change_selected_labels")
             ctx.panel.set_data("event_data", event)
 
+        def on_change_active_fields(self, ctx):
+            """Implement this method to set panel state/data when the current
+            active fields change in the sidebar.
+
+            The active fields will be available via ``ctx.active_fields``.
+            """
+            event = {
+                "data": ctx.active_fields,
+                "description": "the current active fields",
+            }
+            ctx.panel.set_state("event", "on_change_active_fields")
+            ctx.panel.set_data("event_data", event)
+
         def on_change_extended_selection(self, ctx):
             """Implement this method to set panel state/data when the current
             extended selection changes.
