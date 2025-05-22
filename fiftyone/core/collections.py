@@ -9315,8 +9315,8 @@ class SampleCollection(object):
             field_or_expr: a field name, ``embedded.field.name``,
                 :class:`fiftyone.core.expressions.ViewExpression`, or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-                defining the field or expression to aggregate. This can also be a
-                list or tuple of such arguments, in which case tuples of
+                defining the field or expression to aggregate. This can also
+                be a list or tuple of such arguments, in which case tuples of
                 corresponding aggregation results (each receiving the same
                 additional keyword arguments, if any) will be yielded
             expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
@@ -9340,7 +9340,7 @@ class SampleCollection(object):
             and len(field_or_expr) > 1
         ):
             raise ValueError(
-                "Unwinding multiple fields is not supported with iter_values. "
+                "Unwinding multiple fields is not supported with iter_values."
             )
 
         return self._iter_values(
@@ -9386,9 +9386,6 @@ class SampleCollection(object):
                     yield str(doc["_id"])
             return
 
-        # TODO: Although unsafe for any arbitrary set of inputs, _unwind could
-        # be used to optimize performance when iterating over specific fields
-        # that are known to be large but not batchable. Still investigating...
         make = lambda field_or_expr: foa.Values(
             field_or_expr,
             expr=expr,
@@ -9406,17 +9403,21 @@ class SampleCollection(object):
             for field in field_or_expr:
                 if isinstance(field, str) and "[]" in field:
                     raise ValueError(
-                        "Unwinding individual fields via `[]` is not supported with iter_values."
+                        "Unwinding individual fields via `[]` is not supported "
+                        "with iter_values."
                     )
                 _field_or_expr.append(field)
             if unwind and len(_field_or_expr) > 1:
                 # Although unwinding is not supported in the public interface,
-                # we can still experiment with it internally to optimize performance.
+                # we can still experiment with it internally to optimize
+                # performance.
                 # This is temporary and should be removed in the future once
                 # we decide to fully support it and handle nonsense cases or
                 # find alternatives and remove this entirely.
                 logger.debug(
-                    "Warning: Iterating over multiple unwound fields may lead to unexpected results if the fields are not at the same nesting level in each document."
+                    "Warning: Iterating over multiple unwound fields may lead "
+                    "to unexpected results if the fields are not at the same "
+                    "nesting level in each document."
                 )
         else:
             _field_or_expr = field_or_expr
