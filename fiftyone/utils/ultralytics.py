@@ -7,6 +7,7 @@ Utilities for working with
 |
 """
 
+import logging
 import itertools
 
 import numpy as np
@@ -18,6 +19,8 @@ import fiftyone.core.labels as fol
 import fiftyone.utils.torch as fout
 import fiftyone.core.utils as fou
 import fiftyone.zoo.models as fozm
+
+logger = logging.getLogger(__name__)
 
 ultralytics = fou.lazy_import("ultralytics")
 torch = fou.lazy_import("torch")
@@ -477,6 +480,15 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         # Remove thread lock to avoid issues with pickle in multiprocessing.
         model.predictor._lock = None
 
+        # Use config.classes for filtering predictions
+        id2label = model.names
+        if not config.classes or config.classes == id2label.values():
+            return model
+
+        label2id = {cls: id for id, cls in id2label.items()}
+        _classes = [label2id.get(cls) for cls in set(config.classes)]
+        model.predictor.args.classes = [c for c in _classes if c is not None]
+
         return model
 
     def _load_model(self, config):
@@ -506,8 +518,12 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
                 model.set_classes(
                     config.classes, model.get_text_pe(config.classes)
                 )
-            else:
+            elif hasattr(model, "set_classes"):
                 model.set_classes(config.classes)
+            else:
+                logger.warning(
+                    "When loading a fixed-vocabulary model, classes set in config are only used for filtering predictions during post-processing. Model vocabulary remains unchanged."
+                )
 
         if not model.predictor:
             model = self._set_predictor(config, model)
@@ -515,10 +531,10 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         return model
 
     def _parse_classes(self, config):
-        if config.classes is not None:
-            return config.classes
         if isinstance(self._model.names, dict):
             return list(self._model.names.values())
+        if config.classes is not None:
+            return config.classes
         return None
 
     def _forward_pass(self, imgs):
