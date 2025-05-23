@@ -63,9 +63,14 @@ export const Pcd = ({
         const idx = e.index;
         if (idx === undefined) return;
 
-        const { color, intensity } = points.geometry.attributes as {
+        const {
+          color,
+          intensity,
+          position: posAttr,
+        } = points.geometry.attributes as {
           color?: BufferAttribute;
           intensity?: BufferAttribute;
+          position?: BufferAttribute;
         };
 
         const md: Record<string, any> = { index: idx };
@@ -74,6 +79,9 @@ export const Pcd = ({
         }
         if (intensity) {
           md.intensity = intensity.getX(idx);
+        }
+        if (posAttr) {
+          md.coord = [posAttr.getX(idx), posAttr.getY(idx), posAttr.getZ(idx)];
         }
 
         setHoverMetadata(md);

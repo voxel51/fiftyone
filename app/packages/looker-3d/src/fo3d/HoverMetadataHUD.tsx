@@ -68,12 +68,14 @@ const HoverMetadataHUD: React.FC<HoverMetadataHUDProps> = ({
   const entries = useMemo(
     () =>
       hoverMetadata
-        ? Object.entries(hoverMetadata).map(([key, value]) => (
-            <React.Fragment key={key}>
-              <dt>{key}</dt>
-              <dd>{formatMetadataValue(value)}</dd>
-            </React.Fragment>
-          ))
+        ? Object.entries(hoverMetadata)
+            .sort((a, b) => a[0].localeCompare(b[0]))
+            .map(([key, value]) => (
+              <React.Fragment key={key}>
+                <dt>{key}</dt>
+                <dd>{formatMetadataValue(value)}</dd>
+              </React.Fragment>
+            ))
         : [],
     [hoverMetadata]
   );
