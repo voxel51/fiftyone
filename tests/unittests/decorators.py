@@ -72,7 +72,7 @@ def skip_windows(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         if platform.system() == "Windows":
-            return unittest.skip(
+            raise unittest.SkipTest(
                 "We've been instructed to skip this test on Windows..."
             )
 
