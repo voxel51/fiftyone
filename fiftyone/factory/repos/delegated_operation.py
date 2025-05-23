@@ -189,6 +189,17 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                 )
             )
 
+        if "group_id_1_status_1" not in index_names:
+            indices_to_create.append(
+                IndexModel(
+                    [
+                        ("group_id", pymongo.ASCENDING),
+                        ("status", pymongo.ASCENDING),
+                    ],
+                    name="group_id_1_status_1",
+                )
+            )
+
         if indices_to_create:
             self._collection.create_indexes(indices_to_create)
 
