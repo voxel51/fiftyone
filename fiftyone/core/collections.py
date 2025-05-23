@@ -11418,7 +11418,7 @@ class SampleCollection(object):
             if group.name == new_group_name:
                 existing_group = group
 
-        for group in dataset.app_config.sidebar_groups[:]:
+        for group in dataset.app_config.sidebar_groups.copy():
             if group.name == group_name:
                 if existing_group is not None:
                     existing_group.paths.extend(group.paths)
@@ -11433,7 +11433,7 @@ class SampleCollection(object):
         if dataset.app_config.sidebar_groups is None:
             return
 
-        for group in dataset.app_config.sidebar_groups[:]:
+        for group in dataset.app_config.sidebar_groups.copy():
             if group.name == group_name and not group.paths:
                 dataset.app_config.sidebar_groups.remove(group)
                 dataset.save()
