@@ -483,7 +483,7 @@
             "source": "https://github.com/MedicineToken/Medical-SAM2",
             "author": "Jiayuan Zhu, et al.",
             "license": "Apache 2.0",
-            "size_bytes": 155906050,
+            "size_bytes": 78078138,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -3895,7 +3895,7 @@
             "source": "https://docs.ultralytics.com/models/yolov9/#__tabbed_1_2",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
-            "size_bytes": 112406113,
+            "size_bytes": 56474024,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -3935,7 +3935,7 @@
             "source": "https://docs.ultralytics.com/models/yolov9/#__tabbed_1_2",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
-            "size_bytes": 243481823,
+            "size_bytes": 122214886,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -4775,7 +4775,7 @@
             "source": "https://docs.ultralytics.com/models/yoloe",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
-            "size_bytes": 70982416,
+            "size_bytes": 107405586,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -5255,7 +5255,7 @@
             "source": "https://docs.ultralytics.com/datasets/detect/open-images-v7",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
-            "size_bytes": 6534387,
+            "size_bytes": 7226939,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -5295,7 +5295,7 @@
             "source": "https://docs.ultralytics.com/datasets/detect/open-images-v7",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
-            "size_bytes": 22573363,
+            "size_bytes": 22986811,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -5335,7 +5335,7 @@
             "source": "https://docs.ultralytics.com/datasets/detect/open-images-v7",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
-            "size_bytes": 52117635,
+            "size_bytes": 52732835,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
