@@ -9,6 +9,7 @@ from collections import defaultdict
 from copy import deepcopy
 
 from bson import ObjectId
+from pymongo import UpdateOne, UpdateMany
 
 import eta.core.utils as etau
 
@@ -37,10 +38,13 @@ class _PatchView(fos.SampleView):
         return ObjectId(self._doc.frame_id)
 
     def _save(self, deferred=False):
-        sample_ops, frame_ops = super()._save(deferred=deferred)
+        sample_ops, frame_ops = super()._save(deferred=True)
 
         if not deferred:
-            self._view._sync_source_sample(self)
+            self._view._save_sample(
+                self, sample_ops=sample_ops, frame_ops=frame_ops
+            )
+            return None, []
 
         return sample_ops, frame_ops
 
@@ -346,7 +350,63 @@ class _PatchesView(fov.DatasetView):
 
         super().reload()
 
-    def _sync_source_sample(self, sample):
+    def _check_for_field_edits(self, ops, fields):
+        updated_fields = set()
+
+        for op in ops:
+            if isinstance(op, (UpdateOne, UpdateMany)):
+                updated_fields.update(op._doc.get("$set", {}).keys())
+                updated_fields.update(op._doc.get("$unset", {}).keys())
+
+        for field in list(updated_fields):
+            chunks = field.split(".")
+            for i in range(1, len(chunks)):
+                updated_fields.add(".".join(chunks[:i]))
+
+        return bool(updated_fields & set(fields))
+
+    def _bulk_write(
+        self,
+        ops,
+        ids=None,
+        sample_ids=None,
+        frames=False,
+        ordered=False,
+        batcher=None,
+        progress=False,
+    ):
+        res = self._patches_dataset._bulk_write(
+            ops,
+            ids=ids,
+            sample_ids=sample_ids,
+            frames=frames,
+            ordered=ordered,
+            batcher=batcher,
+            progress=progress,
+        )
+
+        if self._check_for_field_edits(ops, self._label_fields):
+            self._sync_source(fields=self._label_fields, ids=ids)
+            self._source_collection._dataset._reload_docs(ids=ids)
+
+        return res
+
+    def _save_sample(self, sample, sample_ops=None, frame_ops=None):
+        if sample_ops:
+            foo.bulk_write(
+                sample_ops, self._patches_dataset._sample_collection
+            )
+
+        self._sync_source_sample(
+            sample, sample_ops=sample_ops, frame_ops=frame_ops
+        )
+
+    def _sync_source_sample(self, sample, sample_ops=None, frame_ops=None):
+        if sample_ops is not None and not self._check_for_field_edits(
+            sample_ops, self._label_fields
+        ):
+            return
+
         for field in self._label_fields:
             self._sync_source_sample_field(sample, field)
 
