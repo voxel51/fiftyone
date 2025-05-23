@@ -18,8 +18,8 @@ interface Fo3dContextT {
   setAutoRotate: (autoRotate: boolean) => void;
   pointCloudSettings: Fo3dPointCloudSettings;
   setPointCloudSettings: (pointCloudSettings: Fo3dPointCloudSettings) => void;
-  hoverMetadata: Record<string, string> | null;
-  setHoverMetadata: (hoverMetadata: Record<string, string>) => void;
+  hoverMetadata: Record<string, unknown> | null;
+  setHoverMetadata: (hoverMetadata: Record<string, unknown>) => void;
 }
 
 const defaultContext: Fo3dContextT = {

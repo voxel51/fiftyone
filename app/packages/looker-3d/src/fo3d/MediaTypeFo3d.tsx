@@ -613,7 +613,7 @@ export const MediaTypeFo3dComponent = () => {
 
   const [hoverMetadata, setHoverMetadata] = useState<Record<
     string,
-    string
+    unknown
   > | null>(null);
 
   if (isParsingFo3d) {
