@@ -39,7 +39,27 @@ const HoverMetadataList = styled.dl`
 `;
 
 type HoverMetadataHUDProps = {
-  hoverMetadata: Record<string, any> | null;
+  hoverMetadata: Record<string, unknown> | null;
+};
+
+const formatMaybeNumber = (value: unknown) => {
+  if (typeof value === "number") {
+    if (Number.isInteger(value)) {
+      return value.toString();
+    }
+    return value.toFixed(4);
+  }
+  return value;
+};
+
+const formatMetadataValue = (value: unknown) => {
+  if (Array.isArray(value)) {
+    return value.map((v) => formatMaybeNumber(v)).join(", ");
+  }
+  if (typeof value === "object" && value !== null) {
+    return JSON.stringify(value);
+  }
+  return String(formatMaybeNumber(value));
 };
 
 const HoverMetadataHUD: React.FC<HoverMetadataHUDProps> = ({
@@ -51,13 +71,7 @@ const HoverMetadataHUD: React.FC<HoverMetadataHUDProps> = ({
         ? Object.entries(hoverMetadata).map(([key, value]) => (
             <React.Fragment key={key}>
               <dt>{key}</dt>
-              <dd>
-                {Array.isArray(value)
-                  ? value.join(", ")
-                  : typeof value === "object" && value !== null
-                  ? JSON.stringify(value)
-                  : String(value)}
-              </dd>
+              <dd>{formatMetadataValue(value)}</dd>
             </React.Fragment>
           ))
         : [],
