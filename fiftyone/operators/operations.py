@@ -323,6 +323,7 @@ class Operations(object):
         on_change_extended_selection=None,
         on_change_group_slice=None,
         on_change_query_performance=None,
+        on_change_active_fields=None,
         allow_duplicates=False,
         priority=None,
         _builtin=False,
@@ -369,6 +370,8 @@ class Operations(object):
                 slice changes
             on_change_query_performance (None): an operator to invoke when the
                 query performance changes
+            on_change_active_fields (None): an operator to invoke when the
+                active fields change
             allow_duplicates (False): whether to allow multiple instances of
                 the panel to the opened
             priority (None): the priority of the panel, used for sort order
@@ -399,6 +402,7 @@ class Operations(object):
             "on_change_extended_selection": on_change_extended_selection,
             "on_change_group_slice": on_change_group_slice,
             "on_change_query_performance": on_change_query_performance,
+            "on_change_active_fields": on_change_active_fields,
             "allow_duplicates": allow_duplicates,
             "priority": priority,
             "_builtin": _builtin,
@@ -694,6 +698,10 @@ class Operations(object):
     def toggle_sidebar(self):
         """Toggle the visibility of the App's sidebar."""
         return self._ctx.trigger("toggle_sidebar")
+
+    def clear_active_fields(self):
+        """Clear the active fields in the App."""
+        return self._ctx.trigger("clear_active_fields")
 
 
 def _serialize_view(view):

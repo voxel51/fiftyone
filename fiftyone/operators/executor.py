@@ -143,6 +143,8 @@ def execute_operator(operator_uri, ctx=None, **kwargs):
                 execution, if supported by the operator
             -   ``delegation_target`` (None): an optional orchestrator on which
                 to schedule the operation, if it is delegated
+            -   ``active_fields`` ([]): a list of active field names
+
         **kwargs: you can optionally provide any of the supported ``ctx`` keys
             as keyword arguments rather than including them in ``ctx``
 
@@ -754,6 +756,11 @@ class ExecutionContext(object):
     def operator_uri(self):
         """The URI of the target operator."""
         return self._operator_uri
+
+    @property
+    def active_fields(self):
+        """The list of currently active fields."""
+        return self.request_params.get("active_fields", [])
 
     def prompt(
         self,

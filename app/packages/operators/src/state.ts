@@ -94,6 +94,7 @@ export const usePromptOperatorInput = () => {
 const globalContextSelector = selector({
   key: "globalContext",
   get: ({ get }) => {
+    const modal = !!get(fos.modal);
     const datasetName = get(fos.datasetName);
     const view = get(fos.view);
     const extended = get(fos.extendedStages);
@@ -106,6 +107,7 @@ const globalContextSelector = selector({
     const queryPerformance = get(fos.queryPerformance);
     const spaces = get(fos.sessionSpaces);
     const workspaceName = spaces?._name;
+    const activeFields = get(fos.activeFields({ modal }));
 
     return {
       datasetName,
@@ -120,6 +122,7 @@ const globalContextSelector = selector({
       queryPerformance,
       spaces,
       workspaceName,
+      activeFields,
     };
   },
 });
@@ -163,6 +166,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     queryPerformance,
     spaces,
     workspaceName,
+    activeFields,
   } = curCtx;
   const [analyticsInfo] = useAnalyticsInfo();
   const promptingOperator = useRecoilValue(promptingOperatorState);
@@ -186,6 +190,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
         spaces,
         workspaceName,
         promptId,
+        activeFields,
       },
       hooks
     );
@@ -205,6 +210,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     spaces,
     workspaceName,
     promptId,
+    activeFields,
   ]);
 
   return ctx;

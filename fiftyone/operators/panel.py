@@ -144,6 +144,7 @@ class Panel(Operator):
             "on_change_extended_selection",
             "on_change_group_slice",
             "on_change_query_performance",
+            "on_change_active_fields",
         ]
         for method in methods + ctx_change_events:
             if hasattr(self, method) and callable(getattr(self, method)):
