@@ -53,12 +53,9 @@ export const Pcd = ({
     pcdContainerRef
   );
 
-  const hoverProps = useMemo(() => {
-    if (!pointCloudSettings.enableTooltip) return {};
-
-    return {
-      // fires on *every* intersected point
-      onPointerMove: throttle((e) => {
+  const pointerMoveHandler = useMemo(
+    () =>
+      throttle((e) => {
         // e.index is the vertex/point index under the cursor
         const idx = e.index;
         if (idx === undefined) return;
@@ -86,12 +83,26 @@ export const Pcd = ({
 
         setHoverMetadata(md);
       }, 30),
+    [points, setHoverMetadata]
+  );
 
+  const hoverProps = useMemo(() => {
+    if (!pointCloudSettings.enableTooltip) return {};
+
+    return {
+      // fires on *every* intersected point
+      onPointerMove: pointerMoveHandler,
       onPointerOut: () => {
         setHoverMetadata(null);
       },
     };
-  }, [pointCloudSettings.enableTooltip, points]);
+  }, [pointCloudSettings.enableTooltip, pointerMoveHandler]);
+
+  useEffect(() => {
+    return () => {
+      pointerMoveHandler.cancel();
+    };
+  }, [pointerMoveHandler]);
 
   if (!points) {
     return null;
