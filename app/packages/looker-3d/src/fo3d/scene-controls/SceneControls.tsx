@@ -57,30 +57,6 @@ export const SceneControls = ({ scene }: { scene: FoScene }) => {
         },
         { collapsed: true, order: PANEL_ORDER_SCENE_CONTROLS }
       ),
-      "Scene.PointCloud": folder({
-        enableTooltip: {
-          value: pointCloudSettings.enableTooltip,
-          label: "Enable Tooltip",
-          onChange: (value) => {
-            setPointCloudSettings({
-              ...pointCloudSettings,
-              enableTooltip: value,
-            });
-          },
-        },
-        rayCastingSensitivity: {
-          value: pointCloudSettings.rayCastingSensitivity,
-          label: "Ray Casting Sensitivity",
-          options: ["high", "medium", "low"],
-          onChange: (value) => {
-            setPointCloudSettings({
-              ...pointCloudSettings,
-              rayCastingSensitivity: value,
-            });
-          },
-          render: () => pointCloudSettings.enableTooltip,
-        },
-      }),
     }),
     []
   );
