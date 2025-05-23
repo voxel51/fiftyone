@@ -654,6 +654,19 @@ def _do_export_array(label, input_path, filename_maker):
             input_path, output_ext=".png"
         )
         label.export_map(map_path, update=True)
+    elif isinstance(label, fol.Detection):
+        if label.mask is not None:
+            mask_path = filename_maker.get_output_path(
+                input_path, output_ext=".png"
+            )
+            label.export_mask(mask_path, update=True)
+    elif isinstance(label, fol.Detections):
+        for detection in label.detections:
+            if detection.mask is not None:
+                mask_path = filename_maker.get_output_path(
+                    input_path, output_ext=".png"
+                )
+                detection.export_mask(mask_path, update=True)
 
 
 def _get_frame_counts(samples):
