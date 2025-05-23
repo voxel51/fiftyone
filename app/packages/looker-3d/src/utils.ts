@@ -152,8 +152,8 @@ export const toEulerFromDegreesArray = (degreesArr: Vector3Tuple) => {
 export const computeMinMaxForColorBufferAttribute = (
   colorAttribute: BufferAttribute | InterleavedBufferAttribute
 ) => {
-  let minX = 0;
-  let maxX = 0;
+  let minX = Infinity,
+    maxX = -Infinity;
 
   for (let i = 0; i < colorAttribute.count; i++) {
     const x = colorAttribute.getX(i);

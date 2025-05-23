@@ -65,22 +65,31 @@ export const usePcdMaterial = (
   }, [upVector, pcdBoundingBox, shadeBy, pluginSettings]);
 
   const { min: minIntensity, max: maxIntensity } = useMemo(() => {
-    if (shadeBy !== SHADE_BY_INTENSITY || !geometry) {
+    if (shadeBy !== SHADE_BY_INTENSITY) {
       return { min: 0, max: 1 };
     }
 
     const isLegacyIntensity = !Boolean(geometry.getAttribute("intensity"));
 
     if (isLegacyIntensity) {
-      const minMax = computeMinMaxForColorBufferAttribute(
-        geometry.getAttribute("color")
-      );
-      return minMax;
-    } else {
-      return computeMinMaxForScalarBufferAttribute(
-        geometry.getAttribute("intensity")
+      const attrib = geometry.hasAttribute("color")
+        ? "color"
+        : geometry.hasAttribute("rgb")
+        ? "rgb"
+        : null;
+
+      if (!attrib) {
+        return { min: 0, max: 1 };
+      }
+
+      return computeMinMaxForColorBufferAttribute(
+        geometry.getAttribute(attrib)
       );
     }
+
+    return computeMinMaxForScalarBufferAttribute(
+      geometry.getAttribute("intensity")
+    );
   }, [geometry, shadeBy]);
 
   const pointsMaterial = useMemo(() => {

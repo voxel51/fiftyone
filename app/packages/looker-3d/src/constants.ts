@@ -78,3 +78,10 @@ export const LABEL_3D_HOVERED_AND_SELECTED_COLOR = "#de7e5d";
 export const LABEL_3D_HOVERED_COLOR = "#f2f0ef";
 export const LABEL_3D_INSTANCE_HOVERED_COLOR = "#ffffff";
 export const LABEL_3D_SIMILAR_SELECTED_COLOR = "#ffa500";
+
+// ray casting for points
+export const RAY_CASTING_SENSITIVITY = {
+  high: 0.001,
+  medium: 0.01,
+  low: 0.1,
+};
