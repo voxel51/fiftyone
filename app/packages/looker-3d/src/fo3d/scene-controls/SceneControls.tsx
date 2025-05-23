@@ -1,6 +1,6 @@
 import { useFrame } from "@react-three/fiber";
 import { folder, useControls } from "leva";
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { Vector3 } from "three";
 import { PANEL_ORDER_SCENE_CONTROLS } from "../../constants";
 import { CAMERA_POSITION_KEY } from "../../Environment";
@@ -24,12 +24,23 @@ export const SceneControls = ({ scene }: { scene: FoScene }) => {
     [upVector]
   );
 
+  const lastCameraUpdateRef = useRef(0);
+
+  // save every half second to avoid excessive writes
+  const CAMERA_UPDATE_INTERVAL = 500;
+
   useFrame((state) => {
-    if (state.camera) {
+    const now = Date.now();
+
+    if (
+      state.camera &&
+      now - lastCameraUpdateRef.current > CAMERA_UPDATE_INTERVAL
+    ) {
       window?.localStorage.setItem(
         CAMERA_POSITION_KEY,
         JSON.stringify(state.camera.position.toArray())
       );
+      lastCameraUpdateRef.current = now;
     }
   });
 
