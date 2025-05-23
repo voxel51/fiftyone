@@ -320,6 +320,7 @@ export const MediaTypeFo3dComponent = () => {
       () => {
         set(activeNodeAtom, null);
         setHoverMetadata(null);
+        setAutoRotate(false);
       },
     []
   );
@@ -638,6 +639,7 @@ export const MediaTypeFo3dComponent = () => {
           },
         }}
       >
+        <StatusTunnel.Out />
         <Fo3dSceneContext.Provider
           value={{
             isSceneInitialized,
@@ -679,8 +681,6 @@ export const MediaTypeFo3dComponent = () => {
               <FoSceneComponent scene={foScene} />
             </group>
           </Bvh>
-
-          <StatusTunnel.Out />
 
           {isSceneInitialized && <ThreeDLabels sampleMap={{ fo3d: sample }} />}
         </Fo3dSceneContext.Provider>
