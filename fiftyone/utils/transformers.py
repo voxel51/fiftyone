@@ -1001,6 +1001,36 @@ class FiftyOneTransformerForObjectDetection(FiftyOneTransformer):
         self.transforms.return_image_sizes = True
 
 
+class FiftyOneZeroShotTransformerForSemanticSegmentationConfig(
+    FiftyOneZeroShotTransformerConfig
+):
+    def __init__(self, d):
+        if (
+            d.get("name_or_path", None) is None
+            and d.get("model", None) is None
+        ):
+            raise ValueError(
+                "There is no default zero-shot semantic segmentation model. User must set name_or_path or model attribute along with other necessary model config parameters."
+            )
+        super().__init__(d)
+
+
+class FiftyOneZeroShotTransformerForSemanticSegmentation(
+    FiftyOneZeroShotTransformer
+):
+    """FiftyOne wrapper around a ``transformers`` model for zero-shot semantic segmentation.
+
+    Args:
+        config: a `FiftyOneZeroShotTransformerForSemanticSegmentationConfig`
+    """
+
+    def __init__(self, config):
+        # override output processor
+        if config.output_processor_cls is None:
+            config.output_processor_cls = "fiftyone.utils.transformers.TransformersSemanticSegmentatorOutputProcessor"
+        super().__init__(config)
+
+
 class FiftyOneTransformerForSemanticSegmentationConfig(
     FiftyOneTransformerConfig
 ):
@@ -1265,11 +1295,14 @@ class TransformersSemanticSegmentatorOutputProcessor(
     fout.SemanticSegmenterOutputProcessor
 ):
     def __init__(self, *args, **kwargs):
+        self.logits_key = kwargs.pop("logits_key", "logits")
         super().__init__(*args, **kwargs)
 
     def __call__(self, output, image_sizes, confidence_thresh=None):
         return super().__call__(
-            {"out": output.logits},  # to be compatible with the base class
+            {
+                "out": output[self.logits_key]
+            },  # to be compatible with the base class
             image_sizes,
             confidence_thresh=confidence_thresh,
         )
@@ -1330,6 +1363,7 @@ MODEL_TYPE_TO_CONFIG_CLASS = {
     "depth-estimation": FiftyOneTransformerForDepthEstimationConfig,
     "zero-shot-image-classification": FiftyOneZeroShotTransformerForImageClassificationConfig,
     "zero-shot-object-detection": FiftyOneZeroShotTransformerForObjectDetectionConfig,
+    "zero-shot-semantic-segmentation": FiftyOneZeroShotTransformerForSemanticSegmentationConfig,
 }
 
 MODEL_TYPE_TO_MODEL_CLASS = {
@@ -1340,4 +1374,5 @@ MODEL_TYPE_TO_MODEL_CLASS = {
     "depth-estimation": FiftyOneTransformerForDepthEstimation,
     "zero-shot-image-classification": FiftyOneZeroShotTransformerForImageClassification,
     "zero-shot-object-detection": FiftyOneZeroShotTransformerForObjectDetection,
+    "zero-shot-semantic-segmentation": FiftyOneZeroShotTransformerForSemanticSegmentation,
 }
