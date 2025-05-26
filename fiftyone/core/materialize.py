@@ -286,10 +286,10 @@ class MaterializedView(fov.DatasetView):
 
         self._sync_source(fields=[field_name], ids=sample_ids)
 
-    def _delete_labels(self, ids, fields=None):
-        super()._delete_labels(ids, fields=fields)
+    def _delete_labels(self, labels, fields=None):
+        super()._delete_labels(labels, fields=fields)
 
-        self._source_collection._delete_labels(ids, fields=fields)
+        self._source_collection._delete_labels(labels, fields=fields)
 
     def _bulk_write(
         self,

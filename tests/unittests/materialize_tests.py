@@ -372,6 +372,61 @@ class MaterializeTests(unittest.TestCase):
         self.assertEqual(view.count("frames.foo"), 2)
         self.assertEqual(dataset.count("frames.foo"), 2)
 
+    @drop_datasets
+    def test_materialize_delete_labels(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(filepath="video1.mp4")
+        sample2 = fo.Sample(
+            filepath="video2.mp4",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                    fo.Detection(label="rabbit"),
+                ],
+            ),
+        )
+        sample2.frames[1] = fo.Frame(filepath="frame1.jpg")
+        sample2.frames[2] = fo.Frame(
+            filepath="frame2.jpg",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                    fo.Detection(label="rabbit"),
+                ],
+            ),
+        )
+        sample2.frames[3] = fo.Frame(filepath="frame3.jpg")
+
+        dataset.add_samples([sample1, sample2])
+
+        view = dataset.skip(1).materialize()
+        sample = view.first()
+        frame = sample.frames[2]
+
+        labels = [
+            {
+                "label_id": sample.ground_truth.detections[0].id,
+                "sample_id": sample.id,
+                "field": "ground_truth",
+            },
+            {
+                "label_id": frame.ground_truth.detections[0].id,
+                "sample_id": sample.id,
+                "frame_number": 2,
+                "field": "frames.ground_truth",
+            },
+        ]
+
+        view._delete_labels(labels)
+
+        self.assertEqual(view.count("ground_truth.detections"), 2)
+        self.assertEqual(view.count("frames.ground_truth.detections"), 2)
+        self.assertEqual(dataset.count("ground_truth.detections"), 2)
+        self.assertEqual(dataset.count("frames.ground_truth.detections"), 2)
+
 
 if __name__ == "__main__":
     fo.config.show_progress_bars = False
