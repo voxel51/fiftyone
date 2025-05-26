@@ -1143,6 +1143,24 @@ Materialized views also behave just like any other views in the sense that:
     on the materialized view that edit the underlying dataset's contents will
     autoatically be reflected on the source dataset
 
+By default, materialized views do not retain any
+:ref:`custom indexes <app-optimizing-query-performance>` that you've created on
+the source collection, but you can control this by passing the optional
+`include_indexes` parameter to
+:meth:`materialize() <fiftyone.core.collections.SampleCollection.materialize>`:
+
+.. code-block:: python
+    :linenos:
+
+    dataset.create_index("metadata.size_bytes")
+    dataset.create_index("ground_truth.detections.label")
+
+    # Retain all custom indexes on the materialized view
+    materialized_view = view.materialize(include_indexes=True)
+
+    # Only include specific custom indexes
+    materialized_view = view.materialize(include_indexes=["metadata.size_bytes"])
+
 .. _date-views:
 
 Date-based views
@@ -1320,6 +1338,26 @@ non-patch views:
     Did you know? You can :ref:`export object patches <export-label-coercion>`
     as classification datasets!
 
+By default, patches views do not retain any
+:ref:`custom indexes <app-optimizing-query-performance>` that you've created on
+the source collection, but you can control this by passing the optional
+`include_indexes` parameter to
+:meth:`to_patches() <fiftyone.core.collections.SampleCollection.to_patches>`:
+
+.. code-block:: python
+    :linenos:
+
+    dataset.create_index("ground_truth.detections.label")
+
+    # Retain all custom indexes on the patches field
+    gt_patches = dataset.to_patches("ground_truth", include_indexes=True)
+
+    # Only include specific custom indexes
+    gt_patches = dataset.to_patches(
+        "ground_truth",
+        include_indexes=["ground_truth.detections.label"],
+    )
+
 .. _eval-patches-views:
 
 Evaluation patches
@@ -1385,7 +1423,7 @@ respectively.
 .. note::
 
     You can pass the optional `other_fields` parameter to
-    :meth:`to_patches() <fiftyone.core.collections.SampleCollection.to_patches>`
+    :meth:`to_evaluation_patches() <fiftyone.core.collections.SampleCollection.to_evaluation_patches>`
     to specify additional read-only sample-level fields that each patch should
     include from their parent samples.
 
@@ -1431,6 +1469,27 @@ non-patch views:
 -   Any edits that you make to sample-level fields of evaluation patches views
     other than the ground truth/predicted label fields will not be reflected
     on the source dataset
+
+By default, evaluation patches views do not retain any
+:ref:`custom indexes <app-optimizing-query-performance>` that you've created on
+the source collection, but you can control this by passing the optional
+`include_indexes` parameter to
+:meth:`to_evaluation_patches() <fiftyone.core.collections.SampleCollection.to_evaluation_patches>`:
+
+.. code-block:: python
+    :linenos:
+
+    dataset.create_index("ground_truth.detections.label")
+    dataset.create_index("predictions.detections.label")
+
+    # Retain all custom indexes on the patches fields
+    eval_patches = dataset.to_evaluation_patches("eval", include_indexes=True)
+
+    # Only include specific custom indexes
+    eval_patches = dataset.to_evaluation_patches(
+        "eval",
+        include_indexes=["ground_truth.detections.label"],
+    )
 
 .. _video-views:
 
@@ -1737,6 +1796,34 @@ source dataset, there are some differences compared to non-clip views:
     |Classification| field populated when generating clip views based on
     |TemporalDetection| labels, as described above)
 
+Since clip views directly use the frames of their parent dataset, they
+automatically have access to any
+:ref:`custom indexes <app-optimizing-query-performance>` that you've created on
+the frames of the source collection. By default, clip views do not retain any
+custom sample-level indexes, but you can control this by passing the optional
+`include_indexes` parameter to
+:meth:`to_clips() <fiftyone.core.collections.SampleCollection.to_clips>`:
+
+.. code-block:: python
+    :linenos:
+
+    dataset.compute_metadata()
+    dataset.create_index("metadata.size_bytes")
+
+    # Retain all custom sample indexes
+    clips = dataset.to_clips(
+        "frames.detections",
+        other_fields="metadata",
+        include_indexes=True,
+    )
+
+    # Only include specific custom indexes
+    clips = dataset.to_clips(
+        "frames.detections",
+        other_fields="metadata",
+        include_indexes=["metadata.size_bytes"],
+    )
+
 .. _trajectory-views:
 
 Trajectory views
@@ -1967,6 +2054,26 @@ Frame views are just like any other image collection view in the sense that:
 The only way in which frames views differ from regular image collections is
 that changes to the ``tags`` or ``metadata`` fields of frame samples will not
 be propagated to the frames of the underlying video dataset.
+
+By default, frame views do not retain any
+:ref:`custom indexes <app-optimizing-query-performance>` that you've created on
+the source collection, but you can control this by passing the optional
+`include_indexes` parameter to
+:meth:`to_frames() <fiftyone.core.collections.SampleCollection.to_frames>`:
+
+.. code-block:: python
+    :linenos:
+
+    dataset.create_index("frames.detections.detections.label")
+
+    # Retain all custom frame indexes
+    frames = dataset.to_frames(sample_frames=True, include_indexes=True)
+
+    # Only include specific custom indexes
+    frames = dataset.to_frames(
+        sample_frames=True,
+        include_indexes=["frames.detections.detections.label"],
+    )
 
 .. _frame-patches-views:
 
@@ -2741,6 +2848,25 @@ Alternatively, you can use
 
     print(high_conf_dataset.bounds("predictions.detections.confidence"))
     # (0.3001, 0.9999)
+
+By default, cloned views do not retain any
+:ref:`custom indexes <app-optimizing-query-performance>` that you've created on
+the source collection, but you can control this by passing the optional
+`include_indexes` parameter to
+:meth:`clone() <fiftyone.core.view.DatasetView.clone>`:
+
+.. code-block:: python
+    :linenos:
+
+    dataset.create_index("predictions.detections.label")
+
+    # Retain all custom indexes on the cloned view
+    high_conf_dataset = high_conf_view.clone(include_indexes=True)
+
+    # Only include specific custom indexes
+    high_conf_dataset = high_conf_view.clone(
+        include_indexes=["predictions.detections.label"],
+    )
 
 You can also use
 :meth:`clone_sample_field() <fiftyone.core.view.DatasetView.clone_sample_field>`
