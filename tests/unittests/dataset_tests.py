@@ -785,6 +785,76 @@ class DatasetTests(unittest.TestCase):
             )
 
     @drop_datasets
+    def test_clone_indexes(self):
+        sample = fo.Sample(
+            filepath="image.png",
+            metadata=fo.ImageMetadata(size_bytes=51),
+            field="foo",
+            gt=fo.Detections(detections=[fo.Detection(label="cat")]),
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        dataset.create_index("metadata.size_bytes")
+        dataset.create_index("gt.detections.label")
+        dataset.create_index([("gt.detections.id", 1), ("field", 1)])
+
+        default_indexes = {"id", "filepath", "created_at", "last_modified_at"}
+
+        # Cloning datasets includes all indexes by default
+        dataset2 = dataset.clone()
+        expected_indexes = default_indexes | {
+            "metadata.size_bytes",
+            "gt.detections.label",
+            "gt.detections._id_1_field_1",
+        }
+
+        self.assertSetEqual(set(dataset2.list_indexes()), expected_indexes)
+
+        dataset3 = dataset.clone(include_indexes=False)
+
+        self.assertSetEqual(set(dataset3.list_indexes()), default_indexes)
+
+        dataset4 = dataset.clone(include_indexes=[])
+
+        self.assertSetEqual(set(dataset4.list_indexes()), default_indexes)
+
+        # Indexes can be included by prefix
+        dataset5 = dataset.clone(include_indexes=["gt.detections"])
+        expected_indexes = default_indexes | {
+            "gt.detections.label",
+            "gt.detections._id_1_field_1",
+        }
+
+        self.assertSetEqual(set(dataset5.list_indexes()), expected_indexes)
+
+        dataset6 = dataset.clone(include_indexes=["gt.detections.label"])
+        expected_indexes = default_indexes | {"gt.detections.label"}
+
+        self.assertSetEqual(set(dataset6.list_indexes()), expected_indexes)
+
+        dataset7 = dataset.clone(
+            include_indexes=["gt.detections._id_1_field_1"]
+        )
+        expected_indexes = default_indexes | {"gt.detections._id_1_field_1"}
+
+        self.assertSetEqual(set(dataset7.list_indexes()), expected_indexes)
+
+        view = dataset.select_fields()
+
+        # Cloning views does not include custom indexes by default
+        dataset8 = view.clone()
+
+        self.assertSetEqual(set(dataset8.list_indexes()), default_indexes)
+
+        # Indexes on excluded fields are not included when cloning views
+        dataset9 = view.clone(include_indexes=True)
+        expected_indexes = default_indexes | {"metadata.size_bytes"}
+
+        self.assertSetEqual(set(dataset9.list_indexes()), expected_indexes)
+
+    @drop_datasets
     def test_summary_fields(self):
         gt = fo.Detections(
             detections=[
@@ -5435,7 +5505,7 @@ class DatasetIdTests(unittest.TestCase):
 
         # Simple view
 
-        dataset4 = dataset.limit(1).clone()
+        dataset4 = dataset.limit(1).clone(include_indexes=True)
         sample4 = dataset4.first()
 
         self.assertIn("foo", dataset4.list_indexes())
@@ -5448,7 +5518,7 @@ class DatasetIdTests(unittest.TestCase):
 
         # Exclusion view
 
-        dataset5 = dataset.select_fields().clone()
+        dataset5 = dataset.select_fields().clone(include_indexes=True)
         sample5 = dataset5.first()
 
         self.assertNotIn("foo", dataset5.list_indexes())
@@ -5506,7 +5576,7 @@ class DatasetIdTests(unittest.TestCase):
 
         # Simple view
 
-        dataset4 = dataset.limit(1).clone()
+        dataset4 = dataset.limit(1).clone(include_indexes=True)
         sample4 = dataset4.first()
         frame4 = sample4.frames[1]
 
@@ -5521,7 +5591,7 @@ class DatasetIdTests(unittest.TestCase):
 
         # Exclusion view
 
-        dataset5 = dataset.select_fields().clone()
+        dataset5 = dataset.select_fields().clone(include_indexes=True)
         sample5 = dataset5.first()
         frame5 = sample5.frames[1]
 
@@ -5579,7 +5649,7 @@ class DatasetIdTests(unittest.TestCase):
 
         # Simple view
 
-        dataset4 = dataset.limit(1).clone()
+        dataset4 = dataset.limit(1).clone(include_indexes=True)
 
         self.assertIn("foo", dataset4.list_indexes())
         self.assertSetEqual(
@@ -5589,7 +5659,7 @@ class DatasetIdTests(unittest.TestCase):
 
         # Exclusion view
 
-        dataset5 = dataset.select_fields().clone()
+        dataset5 = dataset.select_fields().clone(include_indexes=True)
 
         self.assertNotIn("foo", dataset5.list_indexes())
         self.assertSetEqual(
