@@ -372,6 +372,88 @@ class MaterializeTests(unittest.TestCase):
         self.assertEqual(view.count("frames.foo"), 2)
         self.assertEqual(dataset.count("frames.foo"), 2)
 
+    @drop_datasets
+    def test_materialize_clone_indexes(self):
+        sample = fo.Sample(
+            filepath="video.mp4",
+            metadata=fo.VideoMetadata(size_bytes=51),
+        )
+        sample.frames[1] = fo.Frame(
+            field="foo",
+            gt=fo.Detections(detections=[fo.Detection(label="cat")]),
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        dataset.create_index("metadata.size_bytes")
+        dataset.create_index("frames.gt.detections.label")
+        dataset.create_index(
+            [("frames.gt.detections.id", 1), ("frames.field", 1)]
+        )
+
+        default_indexes = {
+            "id",
+            "filepath",
+            "created_at",
+            "last_modified_at",
+            "frames.id",
+            "frames.created_at",
+            "frames.last_modified_at",
+            "frames._sample_id_1_frame_number_1",
+        }
+
+        # Materializing views does not include indexes by default
+        view = dataset.limit(1).materialize()
+
+        self.assertSetEqual(set(view.list_indexes()), default_indexes)
+
+        view = dataset.limit(1).materialize(include_indexes=[])
+
+        self.assertSetEqual(set(view.list_indexes()), default_indexes)
+
+        view = dataset.limit(1).materialize(include_indexes=True)
+
+        expected_indexes = default_indexes | {
+            "metadata.size_bytes",
+            "frames.gt.detections.label",
+            "frames.gt.detections._id_1_field_1",
+        }
+
+        self.assertSetEqual(set(view.list_indexes()), expected_indexes)
+
+        # Indexes can be included by prefix
+        view = dataset.limit(1).materialize(
+            include_indexes=["frames.gt.detections"]
+        )
+        expected_indexes = default_indexes | {
+            "frames.gt.detections.label",
+            "frames.gt.detections._id_1_field_1",
+        }
+
+        self.assertSetEqual(set(view.list_indexes()), expected_indexes)
+
+        view = dataset.limit(1).materialize(
+            include_indexes=["frames.gt.detections.label"]
+        )
+        expected_indexes = default_indexes | {"frames.gt.detections.label"}
+
+        self.assertSetEqual(set(view.list_indexes()), expected_indexes)
+
+        view = dataset.limit(1).materialize(
+            include_indexes=["frames.gt.detections._id_1_field_1"]
+        )
+        expected_indexes = default_indexes | {
+            "frames.gt.detections._id_1_field_1"
+        }
+
+        self.assertSetEqual(set(view.list_indexes()), expected_indexes)
+
+        view = dataset.select_fields().materialize(include_indexes=True)
+        expected_indexes = default_indexes | {"metadata.size_bytes"}
+
+        self.assertSetEqual(set(view.list_indexes()), expected_indexes)
+
 
 if __name__ == "__main__":
     fo.config.show_progress_bars = False

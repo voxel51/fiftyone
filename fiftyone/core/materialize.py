@@ -586,13 +586,21 @@ class MaterializedView(fov.DatasetView):
         dst_dataset._keep_frames(view=self)
 
 
-def materialize_view(sample_collection, name=None, persistent=False):
+def materialize_view(
+    sample_collection,
+    include_indexes=False,
+    name=None,
+    persistent=False,
+):
     """Creates a dataset that contains a materialized copy of the given
     collection.
 
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
+        include_indexes (False): whether to recreate any custom indexes on
+            the new dataset (True) or a list of specific indexes or index
+            prefixes to recreate. By default, no custom indexes are recreated
         name (None): a name for the dataset
         persistent (False): whether the dataset should persist in the database
             after the session terminates
@@ -608,5 +616,9 @@ def materialize_view(sample_collection, name=None, persistent=False):
         view = sample_collection.view()
 
     return dataset._clone(
-        name=name, persistent=persistent, view=view, materialized=True
+        name=name,
+        persistent=persistent,
+        view=view,
+        include_indexes=include_indexes,
+        materialized=True,
     )

@@ -6634,7 +6634,7 @@ class SampleCollection(object):
         return self._add_view_stage(fos.MatchTags(tags, bool=bool, all=all))
 
     @view_stage
-    def materialize(self):
+    def materialize(self, **kwargs):
         """Materializes the current view into a temporary database collection.
 
         Apply this stage to an expensive view (eg an unindexed filtering
@@ -6655,10 +6655,16 @@ class SampleCollection(object):
             print(view.count("ground_truth.detections"))
             print(materialized_view.count("ground_truth.detections"))
 
+        Args:
+            include_indexes (False): whether to recreate any custom indexes on
+                the materialized view (True) or a list of specific indexes or
+                index prefixes to recreate. By default, no custom indexes are
+                recreated
+
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        return self._add_view_stage(fos.Materialize())
+        return self._add_view_stage(fos.Materialize(**kwargs))
 
     @view_stage
     def mongo(self, pipeline, _needs_frames=None, _group_slices=None):
@@ -7632,6 +7638,10 @@ class SampleCollection(object):
             keep_label_lists (False): whether to store the patches in label
                 list fields of the same type as the input collection rather
                 than using their single label variants
+            include_indexes (False): whether to recreate any custom indexes on
+                ``field`` and ``other_fields`` on the patches view (True) or a
+                list of specific indexes or index prefixes to recreate. By
+                default, no custom indexes are recreated
 
         Returns:
             a :class:`fiftyone.core.patches.PatchesView`
@@ -7703,6 +7713,11 @@ class SampleCollection(object):
                 -   a field or list of fields to include
                 -   ``True`` to include all other fields
                 -   ``None``/``False`` to include no other fields
+            include_indexes (False): whether to recreate any custom indexes on
+                the ground truth/predicted fields and ``other_fields`` on the
+                patches view (True) or a list of specific indexes or index
+                prefixes to recreate. By default, no custom indexes are
+                recreated
 
         Returns:
             a :class:`fiftyone.core.patches.EvaluationPatchesView`
@@ -7790,6 +7805,10 @@ class SampleCollection(object):
                 -   a field or list of fields to include
                 -   ``True`` to include all other fields
                 -   ``None``/``False`` to include no other fields
+            include_indexes (False): whether to recreate any custom indexes on
+                ``field_or_expr`` and ``other_fields`` on the clips view (True)
+                or a list of specific indexes or index prefixes to recreate.
+                By default, no custom indexes are recreated
             tol (0): the maximum number of false frames that can be overlooked
                 when generating clips. Only applicable when ``field_or_expr``
                 is a frame-level list field or expression
@@ -7847,9 +7866,20 @@ class SampleCollection(object):
                 -   :class:`fiftyone.core.labels.Detections`
                 -   :class:`fiftyone.core.labels.Polylines`
                 -   :class:`fiftyone.core.labels.Keypoints`
-            **kwargs: optional keyword arguments for
-                :meth:`fiftyone.core.clips.make_clips_dataset` specifying how
-                to perform the conversion
+            other_fields (None): controls whether sample fields other than the
+                default sample fields are included. Can be any of the
+                following:
+
+                -   a field or list of fields to include
+                -   ``True`` to include all other fields
+                -   ``None``/``False`` to include no other fields
+            include_indexes (False): whether to recreate any custom indexes on
+                ``other_fields`` on the clips view (True) or a list of specific
+                indexes or index prefixes to recreate. By default, no custom
+                indexes are recreated
+            tol (0): the maximum number of false frames that can be overlooked
+                when generating clips
+            min_len (0): the minimum allowable length of a clip, in frames
 
         Returns:
             a :class:`fiftyone.core.clips.TrajectoriesView`
@@ -8010,6 +8040,10 @@ class SampleCollection(object):
                 raising an error if a video cannot be sampled
             verbose (False): whether to log information about the frames that
                 will be sampled, if any
+            include_indexes (False): whether to recreate any custom frame
+                indexes on the frames view (True) or a list of specific indexes
+                or index prefixes to recreate. By default, no custom indexes
+                are recreated
 
         Returns:
             a :class:`fiftyone.core.video.FramesView`

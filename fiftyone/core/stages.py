@@ -6049,19 +6049,40 @@ class Materialize(ViewStage):
 
         print(view.count("ground_truth.detections"))
         print(materialized_view.count("ground_truth.detections"))
+
+    Args:
+        config (None): an optional dict of keyword arguments for
+            :meth:`fiftyone.core.materialize.materialize_view` specifying how
+            to perform the conversion
+        **kwargs: optional keyword arguments for
+            :meth:`fiftyone.core.materialize.materialize_view` specifying how
+            to perform the conversion
     """
 
-    def __init__(self, _state=None):
+    def __init__(self, config=None, _state=None, **kwargs):
+        if kwargs:
+            if config is None:
+                config = kwargs
+            else:
+                config.update(kwargs)
+
+        self._config = config
         self._state = _state
 
     @property
     def has_view(self):
         return True
 
+    @property
+    def config(self):
+        """Parameters specifying how to perform the conversion."""
+        return self._config
+
     def load_view(self, sample_collection):
         state = {
             "dataset": sample_collection.dataset_name,
             "stages": sample_collection.view()._serialize(include_uuids=False),
+            "config": self._config,
         }
 
         last_state = deepcopy(self._state)
@@ -6071,7 +6092,10 @@ class Materialize(ViewStage):
             name = None
 
         if state != last_state or not fod.dataset_exists(name):
-            materialized_dataset = foma.materialize_view(sample_collection)
+            kwargs = self._config or {}
+            materialized_dataset = foma.materialize_view(
+                sample_collection, **kwargs
+            )
 
             # Other views may use the same generated dataset, so reuse the old
             # name if possible
@@ -6088,11 +6112,19 @@ class Materialize(ViewStage):
         )
 
     def _kwargs(self):
-        return [["_state", self._state]]
+        return [["config", self._config], ["_state", self._state]]
 
     @classmethod
     def _params(self):
-        return [{"name": "_state", "type": "NoneType|json", "default": "None"}]
+        return [
+            {
+                "name": "config",
+                "type": "NoneType|json",
+                "default": "None",
+                "placeholder": "config (default=None)",
+            },
+            {"name": "_state", "type": "NoneType|json", "default": "None"},
+        ]
 
 
 class Mongo(ViewStage):
