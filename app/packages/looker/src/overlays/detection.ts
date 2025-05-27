@@ -232,7 +232,11 @@ export default class DetectionOverlay<
     let text =
       this.label.label && state.options.showLabel ? `${this.label.label}` : "";
 
-    const hasIndex = !isNaN(this.label.index);
+    const hasIndex =
+      (typeof this.label.index === "string" ||
+        typeof this.label.index === "number") &&
+      !isNaN(this.label.index);
+
     const hasInstanceId = Boolean(this.label.instance?._id);
 
     if (state.options.showIndex && (hasIndex || hasInstanceId)) {
