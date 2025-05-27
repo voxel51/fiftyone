@@ -2427,13 +2427,12 @@ When in grid view:
 
 When in expanded sample mode:
 -   `Select visible (current sample)` will select all visible labels in the
-sample
+    current sample
 -   `Unselect visible (current sample)` will unselect all visible labels in
-the sample
+    the current sample
 -   `Clear selected labels` will clear all label selections
 -   `Hide selected labels` will hide the selected labels
 -   `Hide unselected labels (current sample)` will hide the unselected labels
-
 .. image:: /images/app/app-persistent-selections-clear-sample-menu.png
     :alt: app-persistent-selections-clear-sample-menu
     :align: center
