@@ -28,6 +28,7 @@ from .utils import (
 from plugins.utils import get_subsets_from_custom_code
 
 STORE_NAME = "model_evaluation_panel_builtin"
+MAX_SAMPLES_FOR_DEFAULT_PREVIEW = 25000
 
 
 def dataset_serialize_deserialize(dataset):
@@ -58,6 +59,23 @@ class ConfigureScenario(foo.Operator):
         Returns the dataset for the current context.
         """
         return ctx.dataset
+
+    @execution_cache(prompt_scoped=True, residency="ephemeral")
+    def get_samples_count(self, ctx):
+        """
+        Returns the number of samples in the dataset for the current context.
+        """
+        dataset = self.get_dataset(ctx)
+        return dataset.count()
+
+    def get_default_for_distribution_preview(self, ctx):
+        """
+        Returns the default value for the sample distribution preview.
+        """
+        samples_count = self.get_samples_count(ctx)
+        if samples_count > MAX_SAMPLES_FOR_DEFAULT_PREVIEW:
+            return False
+        return True
 
     def render_name_input(self, ctx, inputs):
         params = ctx.params
@@ -387,7 +405,7 @@ class ConfigureScenario(foo.Operator):
         preview_toggle_container.bool(
             "plot_preview_enabled",
             view=types.SwitchView(label="Distribution preview"),
-            default=False,
+            default=self.get_default_for_distribution_preview(ctx),
         )
 
         plot_preview_enabled = ctx.params.get(
