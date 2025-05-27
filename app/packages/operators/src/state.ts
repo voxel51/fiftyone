@@ -462,7 +462,6 @@ export const useOperatorPrompt = () => {
   const hooks = operator.useHooks(ctx);
   const executor = useOperatorExecutor(promptingOperator.operatorName);
   const [inputFields, setInputFields] = useState();
-  const [resolving, setResolving] = useState(false);
   const [resolvedCtx, setResolvedCtx] = useState(null);
   const [resolvedIO, setResolvedIO] = useState({ input: null, output: null });
   const notify = fos.useNotification();
@@ -478,7 +477,6 @@ export const useOperatorPrompt = () => {
     debounce(
       async (ctx) => {
         try {
-          setResolving(true);
           if (operator.config.resolveExecutionOptionsOnChange) {
             execDetails.fetch(ctx);
           }
@@ -496,7 +494,6 @@ export const useOperatorPrompt = () => {
           resolveTypeError.current = e;
           setInputFields(null);
         }
-        setResolving(false);
         setResolvedCtx(ctx);
       },
       operator.isRemote ? RESOLVE_TYPE_TTL : 0,
@@ -578,14 +575,13 @@ export const useOperatorPrompt = () => {
   );
   const execute = useCallback(
     async (options = {}) => {
-      setResolving(true);
       const resolved =
         cachedResolvedInput || (await operator.resolveInput(ctx));
       const { invalid } = await validate(ctx, resolved);
       if (invalid) {
         return;
       }
-      setResolving(false);
+      setResolvedCtx(ctx);
       executor.execute(promptingOperator.params, {
         ...options,
         ...promptingOperator.options,
@@ -676,7 +672,6 @@ export const useOperatorPrompt = () => {
     validateThrottled,
     executorError,
     resolveError,
-    resolving,
     pendingResolve,
     execDetails,
     submitOptions,
