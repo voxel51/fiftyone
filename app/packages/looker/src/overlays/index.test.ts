@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { RegularLabel } from "./base";
 import DetectionOverlay from "./detection";
 import * as index from "./index";
-import { getHashLabel } from "./util";
+import { getHashLabelColorByInstance } from "./util";
 
 describe("label overlay processing", () => {
   it("omits undefined labels", () => {
@@ -25,24 +25,24 @@ describe("label overlay processing", () => {
   });
 
   it("label hash is generated correctly", () => {
-    const hashLabelWithIndex0 = getHashLabel({
+    const hashLabelWithIndex0 = getHashLabelColorByInstance({
       id: "id-0",
       label: "zero-index-label",
       index: 0,
     } as RegularLabel);
 
-    const hashLabelWithIndex1 = getHashLabel({
+    const hashLabelWithIndex1 = getHashLabelColorByInstance({
       id: "id-1",
       label: "one-index-label",
       index: 1,
     } as RegularLabel);
 
-    const hashLabelWithUndefinedIndex = getHashLabel({
+    const hashLabelWithUndefinedIndex = getHashLabelColorByInstance({
       id: "id-no-index",
       label: "label-no-index",
     } as RegularLabel);
 
-    const hashLabelWithUndefinedIndexUndefinedId = getHashLabel({
+    const hashLabelWithUndefinedIndexUndefinedId = getHashLabelColorByInstance({
       label: "only-label-no-index-no-id",
     } as RegularLabel);
 
