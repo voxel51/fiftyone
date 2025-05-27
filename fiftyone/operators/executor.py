@@ -41,6 +41,7 @@ class ExecutionRunState(object):
     SCHEDULED = "scheduled"
     QUEUED = "queued"
     RUNNING = "running"
+    WAITING = "waiting"
     COMPLETED = "completed"
     FAILED = "failed"
 

@@ -5,6 +5,7 @@ import type { Looker3dSettings } from "../settings";
 interface Fo3dContextT {
   isSceneInitialized: boolean;
   upVector: Vector3 | null;
+  setUpVector: (upVector: Vector3) => void;
   sceneBoundingBox: Box3 | null;
   pluginSettings: Looker3dSettings | null;
   fo3dRoot: string | null;
@@ -13,6 +14,7 @@ interface Fo3dContextT {
 const defaultContext: Fo3dContextT = {
   isSceneInitialized: false,
   upVector: null,
+  setUpVector: () => {},
   sceneBoundingBox: null,
   pluginSettings: null,
   fo3dRoot: null,

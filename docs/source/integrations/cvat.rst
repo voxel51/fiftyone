@@ -180,6 +180,11 @@ FiftyOne:
 Setup
 _____
 
+.. warning::
+
+   This integration currently only
+   `supports CVAT server versions <= 2.30 <https://github.com/voxel51/fiftyone/issues/5771>`_.
+
 FiftyOne supports both `app.cvat.ai <https://app.cvat.ai>`_ and
 `self-hosted servers <https://opencv.github.io/cvat/docs/administration/basics/installation/>`_.
 
@@ -2038,7 +2043,7 @@ attributes between annotation runs.
 Using CVAT groups
 -----------------
 
-The CVAT UI provides a way to group objects together both visually and though
+The CVAT UI provides a way to group objects together both visually and through
 a group id in the API.
 
 You can configure CVAT annotation runs so that the state of the group id is

@@ -49,35 +49,40 @@ def cleanup():
         shutil.rmtree(f"/tmp/fo-unq/{os.getpid()}")
 
 
-@pytest.mark.parametrize(
-    "is_main_process",
-    (
-        pytest.param(True, id="main-process"),
-        pytest.param(False, id="sub-process"),
-    ),
-)
-@skip_windows  # TODO: don't skip on Windows
-def test_implementation_switch(is_main_process):
-    """select unique filename maker implementation"""
-    with tempfile.TemporaryDirectory() as tmp_dir:
+# =========================================================================
+# Removing automatic implementation switch of UniqueFilenameMaker. Bug in
+# detecting processes needs to be resolved before adding this back in.
+# =========================================================================
 
-        if is_main_process:
-            filename_maker = focu.UniqueFilenameMaker(tmp_dir)
+# @pytest.mark.parametrize(
+#     "is_main_process",
+#     (
+#         pytest.param(True, id="main-process"),
+#         pytest.param(False, id="sub-process"),
+#     ),
+# )
+# @skip_windows  # TODO: don't skip on Windows
+# def test_implementation_switch(is_main_process):
+#     """select unique filename maker implementation"""
+#     with tempfile.TemporaryDirectory() as tmp_dir:
 
-            assert isinstance(
-                filename_maker, focu.UniqueFilenameMaker
-            ) and not isinstance(
-                filename_maker, focu.MultiProcessUniqueFilenameMaker
-            )
+#         if is_main_process:
+#             filename_maker = focu.UniqueFilenameMaker(tmp_dir)
 
-        else:
-            with multiprocessing.Pool(
-                processes=(processes := 4),
-                initializer=init_process,
-                initargs=(tmp_dir, {}),
-            ) as pool:
-                for _ in range(processes):
-                    assert pool.apply(process_instance_check)
+#             assert isinstance(
+#                 filename_maker, focu.UniqueFilenameMaker
+#             ) and not isinstance(
+#                 filename_maker, focu.MultiProcessUniqueFilenameMaker
+#             )
+
+#         else:
+#             with multiprocessing.Pool(
+#                 processes=(processes := 4),
+#                 initializer=init_process,
+#                 initargs=(tmp_dir, {}),
+#             ) as pool:
+#                 for _ in range(processes):
+#                     assert pool.apply(process_instance_check)
 
 
 @pytest.mark.parametrize(
@@ -130,14 +135,10 @@ def test_existing_input_paths(
             ):
                 ...
 
-        filename_maker = focu.UniqueFilenameMaker(
-            tmp_dir, **unique_filename_maker_kwargs
-        )
+        unique_filename_maker_kwargs["output_dir"] = tmp_dir
 
-        assert isinstance(
-            filename_maker, focu.UniqueFilenameMaker
-        ) and not isinstance(
-            filename_maker, focu.MultiProcessUniqueFilenameMaker
+        filename_maker = focu.UniqueFilenameMaker(
+            **unique_filename_maker_kwargs
         )
 
         # This is the original behavior of `get_output_path``, used as the
@@ -154,10 +155,7 @@ def test_existing_input_paths(
         with multiprocessing.Pool(
             processes=4,
             initializer=init_process,
-            initargs=(
-                tmp_dir,
-                unique_filename_maker_kwargs,
-            ),
+            initargs=(unique_filename_maker_kwargs | {"ppid": os.getpid()},),
         ) as pool:
             random.shuffle(actual_input_paths := INPUT_PATHS[:])
 
@@ -215,7 +213,13 @@ def test_non_existent_input_paths(default_ext):
         with multiprocessing.Pool(
             processes=4,
             initializer=init_process,
-            initargs=(tmp_dir_2, {"default_ext": default_ext}),
+            initargs=(
+                {
+                    "output_dir": tmp_dir_2,
+                    "default_ext": default_ext,
+                    "ppid": os.getpid(),
+                },
+            ),
         ) as pool:
             actual = list(
                 pool.imap_unordered(process_get_output_path, input_paths)
@@ -231,16 +235,15 @@ def test_non_existent_input_paths(default_ext):
 
 
 def init_process(
-    output_dir: str,
-    unique_filename_maker_kwargs: Optional[Dict[str, Any]] = None,
+    kwargs: Optional[Dict[str, Any]] = None,
 ) -> None:
     """initialize multiprocessing worker"""
 
     # pylint:disable-next=global-variable-undefined
     global process_filename_maker
 
-    process_filename_maker = focu.UniqueFilenameMaker(
-        output_dir, **(unique_filename_maker_kwargs or {})
+    process_filename_maker = focu.MultiProcessUniqueFilenameMaker(
+        **(kwargs or {})
     )
 
 
@@ -253,9 +256,5 @@ def process_instance_check() -> bool:
 
 def process_get_output_path(input_path: str) -> str:
     """process get output path"""
-
-    assert isinstance(
-        process_filename_maker, focu.MultiProcessUniqueFilenameMaker
-    )
 
     return process_filename_maker.get_output_path(input_path)

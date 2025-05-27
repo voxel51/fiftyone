@@ -119,13 +119,18 @@ The following media types are available:
     | `group`       | Datasets that contain                             |
     |               | :ref:`grouped data slices <groups>`               |
     +---------------+---------------------------------------------------+
-    | `unknown`     | Fallback value for Datasets that contain          |
-    |               | samples which are not one of the other listed     |
-    |               | media types                                       |
+    | `unknown` †   | Fallback value for datasets that contain          |
+    |               | samples that are not one of the natively          |
+    |               | available media types                             |
     +---------------+---------------------------------------------------+
-    | custom type   | Datasets that contain samples with a custom media |
+    | custom †      | Datasets that contain samples with a custom media |
     |               | type will inherit that type                       |
     +---------------+---------------------------------------------------+
+
+.. note::
+
+    † :ref:`FiftyOne Enterprise <fiftyone-enterprise>` users must upgrade their
+    deployment to 2.8.0+ in order to use `unknown` or "custom" media types.
 
 .. _dataset-persistence:
 
@@ -4850,6 +4855,56 @@ To get started exploring video datasets, try loading the
 .. image:: /images/datasets/quickstart-video.gif
    :alt: quickstart-video
    :align: center
+
+.. _linking-labels-across-frames:
+
+Linking labels across frames
+----------------------------
+
+When working with video datasets, you may want to represent the fact that
+multiple frame-level labels correspond to the same logical object moving
+through the video.
+
+You can achieve this linking by assigning the same |Instance| to the
+``instance`` attribute of the relevant |Detection|, |Keypoint|, or |Polyline|
+objects across the frames of a |Sample|:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(filepath="/path/to/video.mp4")
+
+    # Create instance representing a logical object
+    person_instance = fo.Instance()
+
+    # Add labels for the person in frame 1
+    sample.frames[1]["objects"] = fo.Detections(
+        detections=[
+            fo.Detection(
+                label="person",
+                bounding_box=[0.1, 0.1, 0.2, 0.2],
+                instance=person_instance,  # link this detection
+            )
+        ]
+    )
+
+    # Add labels for the same person in frame 2
+    sample.frames[2]["objects"] = fo.Detections(
+        detections=[
+            fo.Detection(
+                label="person",
+                bounding_box=[0.12, 0.11, 0.2, 0.2],
+                instance=person_instance,  # link this detection
+            )
+        ]
+    )
+
+.. note::
+
+    Linking labels in this way enables helpful interactions in the FiftyOne
+    App. See :ref:`this section <app-linking-labels>` for more details.
 
 .. _3d-datasets:
 

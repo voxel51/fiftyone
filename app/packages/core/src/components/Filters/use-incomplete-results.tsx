@@ -14,7 +14,7 @@ const IncompleteResults = () => {
   const theme = useTheme();
   return (
     <div style={{ textAlign: "right" }}>
-      Incomplete results.{" "}
+      Incomplete search.{" "}
       <ExternalLink
         style={{ color: theme.text.primary, textDecoration: "underline" }}
         href={QUERY_PERFORMANCE_RESULTS}

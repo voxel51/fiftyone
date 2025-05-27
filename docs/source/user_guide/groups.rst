@@ -1090,6 +1090,59 @@ you can use the dynamic grouping action to playback scenes in sequential order:
     Did you know? You can also create :ref:`dynamic group views <view-groups>`
     into your grouped datasets via Python.
 
+.. _linking-labels-across-slices:
+
+Linking labels across slices
+____________________________
+
+When working with grouped datasets representing multiview data, you may want to
+represent the fact that multiple labels across different slices correspond to
+the same logical object observed from different perspectives.
+
+You can achieve this linking by assigning the same |Instance| to the
+``instance`` attribute of the relevant |Detection|, |Keypoint|, or |Polyline|
+objects across the slices of a |Group|:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    group = fo.Group()
+
+    left_sample = fo.Sample(filepath="left.jpg", group=group.element("left"))
+    right_sample = fo.Sample(filepath="right.jpg", group=group.element("right"))
+
+    # Create an instance representing a logical object
+    car_instance = fo.Instance()
+
+    # Add label for the car in the left view
+    left_sample["objects"] = fo.Detections(
+        detections=[
+            fo.Detection(
+                label="car",
+                bounding_box=[0.5, 0.5, 0.3, 0.3],
+                instance=car_instance,  # link this detection
+            )
+        ]
+    )
+
+    # Add label for the same car in the right view
+    right_sample["objects"] = fo.Detections(
+        detections=[
+            fo.Detection(
+                label="car",
+                bounding_box=[0.4, 0.5, 0.3, 0.3],
+                instance=car_instance,  # link this detection
+            )
+        ]
+    )
+
+.. note::
+
+    Linking labels in this way enables helpful interactions in the FiftyOne
+    App. See :ref:`this section <app-linking-labels>` for more details.
+
 .. _groups-importing:
 
 Importing groups
