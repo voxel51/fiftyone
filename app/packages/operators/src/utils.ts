@@ -75,12 +75,12 @@ export function getOperatorPromptConfigs(operatorPrompt: OperatorPromptType) {
 
   const title = getPromptTitle(operatorPrompt);
   const hasValidationErrors = operatorPrompt.validationErrors?.length > 0;
-  const { resolving, pendingResolve } = operatorPrompt;
+  const { pendingResolve } = operatorPrompt;
   const validationErrorsStr = formatValidationErrors(
     operatorPrompt.validationErrors
   );
-  const loading = resolving || pendingResolve;
-  const disableSubmit = hasValidationErrors || resolving || pendingResolve;
+  const loading = pendingResolve;
+  const disableSubmit = hasValidationErrors || pendingResolve;
   const disabledReason = hasValidationErrors
     ? "Cannot execute operator with validation errors\n\n" + validationErrorsStr
     : "Cannot execute operator while validating form";
@@ -89,7 +89,6 @@ export function getOperatorPromptConfigs(operatorPrompt: OperatorPromptType) {
   return {
     title,
     hasValidationErrors,
-    resolving,
     pendingResolve,
     validationErrorsStr,
     showResultOrError,
