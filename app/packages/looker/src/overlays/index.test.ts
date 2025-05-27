@@ -46,8 +46,8 @@ describe("label overlay processing", () => {
       label: "only-label-no-index-no-id",
     } as RegularLabel);
 
-    expect(hashLabelWithIndex0).toEqual("zero-index-label.0");
-    expect(hashLabelWithIndex1).toEqual("one-index-label.1");
+    expect(hashLabelWithIndex0).toEqual("zero-index-label-0-");
+    expect(hashLabelWithIndex1).toEqual("one-index-label-1-");
     expect(hashLabelWithUndefinedIndex).toEqual("label-no-index.id-no-index");
     expect(hashLabelWithUndefinedIndexUndefinedId).toEqual(
       "only-label-no-index-no-id"
