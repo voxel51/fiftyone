@@ -6,7 +6,7 @@ Interface for sample collections.
 |
 """
 
-from collections import defaultdict
+from collections import defaultdict, deque
 from copy import copy
 from datetime import datetime
 import fnmatch
@@ -4067,6 +4067,10 @@ class SampleCollection(object):
             skip_failures=skip_failures,
         )
 
+        # Sync any schema edits from workers to main process
+        if save and isinstance(mapper, focm.ProcessMapper):
+            self.reload()
+
     def update_samples(
         self,
         update_fcn,
@@ -4135,14 +4139,19 @@ class SampleCollection(object):
             parallelize_method, num_workers, batch_method, batch_size
         )
 
-        for _ in mapper.map_samples(
+        generator = mapper.map_samples(
             self,
             update_fcn,
             progress=progress,
             save=True,
             skip_failures=skip_failures,
-        ):
-            ...
+        )
+
+        deque(generator, maxlen=0)
+
+        # Sync any schema edits from workers to main process
+        if isinstance(mapper, focm.ProcessMapper):
+            self.reload()
 
     def rename_evaluation(self, eval_key, new_eval_key):
         """Replaces the key for the given evaluation with a new key.
