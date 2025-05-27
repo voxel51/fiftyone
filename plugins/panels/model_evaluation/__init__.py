@@ -68,6 +68,8 @@ class EvaluationPanel(Panel):
             "can_edit_status": True,
             "can_delete_evaluation": True,
             "can_rename": True,
+            "can_create_scenario": True,
+            "can_edit_scenario": True,
             "can_delete_scenario": True,
         }
 
