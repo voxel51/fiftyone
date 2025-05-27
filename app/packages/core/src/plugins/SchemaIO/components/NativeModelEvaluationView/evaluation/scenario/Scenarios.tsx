@@ -96,6 +96,9 @@ export default function Scenarios(props) {
   const scenariosArray = scenarios ? Object.values(scenarios) : [];
   const scenariosIds = Object.keys(scenarios);
   const readOnly = !data.permissions?.can_delete_scenario;
+  const canCreate = data.permissions?.can_create_scenario;
+  const canEdit = data.permissions?.can_edit_scenario;
+  const canDelete = data.permissions?.can_delete_scenario;
 
   useEffect(() => {
     if (!scenario) {
@@ -353,9 +356,15 @@ export default function Scenarios(props) {
             }}
             evalKey={key}
             compareKey={compareKey}
-            readOnly={readOnly}
+            readOnly={!canCreate}
           />
-          <Actions onDelete={onDelete} onEdit={onEdit} readOnly={readOnly} />
+          <Actions
+            onDelete={onDelete}
+            onEdit={onEdit}
+            canCreate={canCreate}
+            canEdit={canEdit}
+            canDelete={canDelete}
+          />
         </Stack>
       </Stack>
       {scenario && (

@@ -28,7 +28,7 @@ export default function EvaluationScenarioAnalysis(props) {
           gt_field={evaluationConfig.gt_field}
           evalKey={key}
           compareKey={compareKey}
-          readOnly={!data.permissions?.can_delete_scenario}
+          readOnly={!data.permissions?.can_create_scenario}
         />
       ) : (
         <Scenarios {...props} />
