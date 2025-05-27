@@ -56,7 +56,7 @@ export const filterSearch = selectorFamily({
         );
 
         allIndexes = allIndexes
-          .filter((i) => i.key[0].field === start)
+          .filter((i) => i.key[0].field === start && i.key.length > 1)
           .map((i) => ({ ...i, key: i.key.slice(1) }));
       }
 
@@ -156,7 +156,7 @@ export const validIndexes = selectorFamily({
         );
 
         allIndexes = allIndexes
-          .filter((i) => i.key[0].field === start)
+          .filter((i) => i.key[0].field === start && i.key.length > 1)
           .map((i) => ({ ...i, key: i.key.slice(1) }));
       }
 
