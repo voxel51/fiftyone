@@ -21,7 +21,13 @@ import {
 } from "./base";
 import { getInstanceStrokeStyles, t } from "./util";
 
-let cache = {};
+let cache: Record<
+  string,
+  {
+    latestIndex: number;
+    instanceIdToIndexId: Record<string, number>;
+  }
+> = {};
 let lastModalUniqueId = "";
 
 const getIndexIdFromInstanceIdForLabel = (

@@ -17,7 +17,7 @@ const fo3dAssetsParseStatusLog = atomFamily<AssetLoadingLog[], string>({
 export const fo3dAssetsParseStatusThisSample = selector<AssetLoadingLog[]>({
   key: "fo3d-assetsParseStatusLogs",
   get: ({ get }) => {
-    const thisModalUniqueId = `${get(groupId) ?? ""}/${get(
+    const thisModalUniqueId = `${get(groupId) ?? ""}-${get(
       nullableModalSampleId
     )}`;
     return get(fo3dAssetsParseStatusLog(`${thisModalUniqueId}`));
@@ -25,7 +25,7 @@ export const fo3dAssetsParseStatusThisSample = selector<AssetLoadingLog[]>({
   set: ({ get, set }, newValue) => {
     set(
       fo3dAssetsParseStatusLog(
-        `${get(groupId) ?? ""}/${get(nullableModalSampleId)}`
+        `${get(groupId) ?? ""}-${get(nullableModalSampleId)}`
       ),
       newValue
     );
