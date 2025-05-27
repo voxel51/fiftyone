@@ -2398,6 +2398,45 @@ labels in the App:
         ...
     ]
 
+.. _app-persistent-selections:
+
+Persistent selections
+_____________________
+
+By default, selection of samples and labels in the App are persisted for the
+duration of the App session. This means that if you select both samples and
+labels at the same time, the statuses of both selections will persist and
+appear in the App's menu above the grid or within a respective sample.
+
+.. image:: /images/app/app-persistent-selections.gif
+    :alt: app-persistent-selections
+    :align: center
+
+To clear selections, you can click the selection menu button and choose one of
+the following options:
+
+When in grid view:
+-   `Clear selected labels` will clear all label selections
+-   `Clear selected samples` will clear all sample selections
+-   `Only show selected samples` will only show the selected samples
+-   `Hide selected samples` will hide the selected samples
+
+.. image:: /images/app/app-persistent-selections-clear-app-menu.png
+    :alt: app-persistent-selections-clear-app-menu
+    :align: center
+
+When in expanded sample mode:
+-   `Select visible (current sample)` will select all visible labels in the
+    current sample
+-   `Unselect visible (current sample)` will unselect all visible labels in
+    the current sample
+-   `Clear selected labels` will clear all label selections
+-   `Hide selected labels` will hide the selected labels
+-   `Hide unselected labels (current sample)` will hide the unselected labels
+.. image:: /images/app/app-persistent-selections-clear-sample-menu.png
+    :alt: app-persistent-selections-clear-sample-menu
+    :align: center
+
 .. _app-tagging:
 
 Tags and tagging
