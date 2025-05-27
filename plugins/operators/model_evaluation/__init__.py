@@ -30,6 +30,10 @@ from plugins.utils import get_subsets_from_custom_code
 STORE_NAME = "model_evaluation_panel_builtin"
 
 
+def dataset_serialize_deserialize(dataset):
+    return dataset
+
+
 class ConfigureScenario(foo.Operator):
     # tracks the last view type opened
     last_view_type_used = None
@@ -42,6 +46,18 @@ class ConfigureScenario(foo.Operator):
             dynamic=True,
             unlisted=True,
         )
+
+    @execution_cache(
+        prompt_scoped=True,
+        residency="ephemeral",
+        serialize=dataset_serialize_deserialize,
+        deserialize=dataset_serialize_deserialize,
+    )
+    def get_dataset(self, ctx):
+        """
+        Returns the dataset for the current context.
+        """
+        return ctx.dataset
 
     def render_name_input(self, ctx, inputs):
         params = ctx.params
@@ -155,6 +171,25 @@ class ConfigureScenario(foo.Operator):
         return key
 
     @execution_cache(
+        prompt_scoped=True,
+        residency="ephemeral",
+        serialize=dataset_serialize_deserialize,
+        deserialize=dataset_serialize_deserialize,
+    )
+    def get_evaluations_results(self, ctx):
+        """
+        Returns the evaluation results for the current context.
+        """
+        dataset = self.get_dataset(ctx)
+        eval_key, compare_key = self.extract_evaluation_keys(ctx)
+        eval_results = dataset.load_evaluation_results(eval_key)
+        compare_eval_results = None
+        if compare_key:
+            compare_eval_results = dataset.load_evaluation_results(compare_key)
+
+        return eval_results, compare_eval_results
+
+    @execution_cache(
         key_fn=get_subset_def_data_for_eval_key, prompt_scoped=True
     )
     def get_subset_def_data_for_eval(
@@ -168,18 +203,17 @@ class ConfigureScenario(foo.Operator):
 
     def get_sample_distribution(self, ctx, subset_expressions):
         try:
-            eval_key_a, eval_key_b = self.extract_evaluation_keys(ctx)
-
-            eval_result_a = ctx.dataset.load_evaluation_results(eval_key_a)
-            if eval_key_b:
-                eval_result_b = ctx.dataset.load_evaluation_results(eval_key_b)
+            eval_key, compare_eval_key = self.extract_evaluation_keys(ctx)
+            eval_results, compare_eval_results = self.get_evaluations_results(
+                ctx
+            )
 
             plot_data = []
             x = []
             y = []
             for name, subset_def in subset_expressions.items():
                 more_x, more_y = self.get_subset_def_data_for_eval(
-                    ctx, eval_key_a, eval_result_a, name, subset_def
+                    ctx, eval_key, eval_results, name, subset_def
                 )
                 x += more_x
                 y += more_y
@@ -189,18 +223,22 @@ class ConfigureScenario(foo.Operator):
                     "x": x,
                     "y": y,
                     "type": "bar",
-                    "name": eval_key_a,
+                    "name": eval_key,
                     "marker": {"color": KEY_COLOR},
                 }
             )
 
-            if eval_key_b and eval_result_b:
+            if compare_eval_key and compare_eval_results:
                 compare_x = []
                 compare_y = []
 
                 for name, subset_def in subset_expressions.items():
                     more_x, more_y = self.get_subset_def_data_for_eval(
-                        ctx, eval_key_b, eval_result_b, name, subset_def
+                        ctx,
+                        compare_eval_key,
+                        compare_eval_results,
+                        name,
+                        subset_def,
                     )
                     compare_x += more_x
                     compare_y += more_y
@@ -210,7 +248,7 @@ class ConfigureScenario(foo.Operator):
                         "x": compare_x,
                         "y": compare_y,
                         "type": "bar",
-                        "name": eval_key_b,
+                        "name": compare_eval_key,
                         "marker": {"color": COMPARE_KEY_COLOR},
                     }
                 )
@@ -525,7 +563,8 @@ class ConfigureScenario(foo.Operator):
         """
         Returns the view mode for saved views based on the number of available saved views.
         """
-        view_names = ctx.dataset.list_saved_views()
+        dataset = self.get_dataset(ctx)
+        view_names = dataset.list_saved_views()
         if not view_names:
             return ShowOptionsMethod.EMPTY, []
 
@@ -696,10 +735,11 @@ class ConfigureScenario(foo.Operator):
         # Validate field name
         eval_key, _ = self.extract_evaluation_keys(ctx)
 
-        schema = ctx.dataset.get_field_schema(flat=True)
-        dataset_or_view = ctx.dataset
+        dataset = self.get_dataset(ctx)
+        schema = dataset.get_field_schema(flat=True)
+        dataset_or_view = dataset
         try:
-            dataset_or_view = ctx.dataset.load_evaluation_view(eval_key)
+            dataset_or_view = dataset.load_evaluation_view(eval_key)
         except Exception:
             # if the view is not found, we can still use the dataset
             pass
@@ -865,7 +905,8 @@ class ConfigureScenario(foo.Operator):
         ]
 
     def render_label_attribute(self, ctx, inputs, gt_field, label_attr=None):
-        schema = ctx.dataset.get_field_schema(flat=True)
+        dataset = self.get_dataset(ctx)
+        schema = dataset.get_field_schema(flat=True)
         valid_options = self.get_valid_label_attribute_path_options(
             schema, gt_field
         )
@@ -930,7 +971,8 @@ class ConfigureScenario(foo.Operator):
         return options
 
     def render_sample_fields(self, ctx, inputs, field_name=None):
-        schema = ctx.dataset.get_field_schema(flat=True)
+        dataset = self.get_dataset(ctx)
+        schema = dataset.get_field_schema(flat=True)
         valid_options = self.get_valid_sample_field_path_options(schema)
 
         field_choices = types.Choices()
@@ -985,9 +1027,10 @@ class ConfigureScenario(foo.Operator):
         return [scenario.get("name") for _, scenario in scenarios.items()]
 
     def resolve_input(self, ctx):
-        cache_dataset(ctx.dataset)
+        cache_dataset(self.get_dataset(ctx))
 
         inputs = types.Object()
+
         self.render_name_input(ctx, inputs)
         inputs.str(
             "key",
