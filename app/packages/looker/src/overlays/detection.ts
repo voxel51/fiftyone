@@ -49,9 +49,9 @@ const getIndexIdFromInstanceIdForLabel = (
     return cache[key].instanceIdToIndexId[instanceId];
   } else {
     cache[key] = {
-      latestIndex: 0,
+      latestIndex: 1,
       instanceIdToIndexId: {
-        [instanceId]: 0,
+        [instanceId]: 1,
       },
     };
   }
