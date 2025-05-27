@@ -5744,7 +5744,7 @@ class SampleCollection(object):
         self,
         field_or_expr,
         order_by=None,
-        order_by_key_value=None,
+        order_by_key=None,
         reverse=False,
         flat=False,
         match_expr=None,
@@ -5798,7 +5798,10 @@ class SampleCollection(object):
                 that defines the value to group by
             order_by (None): an optional field by which to order the samples in
                 each group
-            reverse (False): whether to return the results in descending order.
+            order_by_key (None): an optional fixed ``order_by`` value
+                representing the first sample in a group. Required for
+                optimized performance. See ...
+            reverse (False): whether to return the results in descending order
                 Applies both to ``order_by`` and ``sort_expr``
             flat (False): whether to return a grouped collection (False) or a
                 flattened collection (True)
@@ -5825,7 +5828,7 @@ class SampleCollection(object):
             fos.GroupBy(
                 field_or_expr,
                 order_by=order_by,
-                order_by_key_value=order_by_key_value,
+                order_by_key=order_by_key,
                 reverse=reverse,
                 flat=flat,
                 match_expr=match_expr,
@@ -10551,7 +10554,7 @@ class SampleCollection(object):
 
         return results[0] if scalar_result else results
 
-    async def _async_aggregate(self, aggregations, debug=True):
+    async def _async_aggregate(self, aggregations):
         if not aggregations:
             return []
 
@@ -10582,10 +10585,6 @@ class SampleCollection(object):
             # Run all aggregations
             coll_name = self._dataset._sample_collection_name
             collection = foo.get_async_db_conn()[coll_name]
-            if debug:
-                import fiftyone as fo
-
-                fo.pprint(pipelines)
             _results = await foo.aggregate(collection, pipelines, hints)
 
             # Parse facet-able results

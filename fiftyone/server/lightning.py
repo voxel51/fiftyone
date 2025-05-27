@@ -243,8 +243,6 @@ def _resolve_lightning_path_queries(
             _match(field_path, None, limit=path.max_documents_search),
         ]
 
-        queries = []
-
         def _resolve_int(results):
             min, max, none = results
             return INT_CLS[field.__class__](
@@ -512,7 +510,7 @@ def _first(
     floats=False,
     limit=None,
 ):
-    pipeline = [{"$match": {"index": 1}}]
+    pipeline = []
     if limit:
         pipeline.append({"$limit": limit})
 

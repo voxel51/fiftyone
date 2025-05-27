@@ -2017,12 +2017,7 @@ def make_optimized_select_view(
     #
 
     for stage in stages:
-        if isinstance(stage, fost.GroupBy):
-            _group, _ = stage._get_group_expr(sample_collection)
-            view = view._add_view_stage(
-                fost.Mongo([{"$addFields": {"_group": _group}}])
-            )
-        elif type(stage) not in fost._STAGES_THAT_SELECT_OR_REORDER:
+        if type(stage) not in fost._STAGES_THAT_SELECT_OR_REORDER:
             view = view._add_view_stage(stage, validate=False)
 
     return view

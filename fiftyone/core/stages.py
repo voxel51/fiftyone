@@ -3443,9 +3443,9 @@ class GroupBy(ViewStage):
             that defines the value to group by
         order_by (None): an optional field by which to order the samples in
             each group
-        order_by_key (None): an optional fixed value that represents the first
-            sample in an ordered group. Required for optimized performance that
-            leverages indexes
+        order_by_key (None): an optional fixed ``order_by`` value representing
+            the first sample in a group. Required for optimized performance.
+            See ...
         reverse (False): whether to return the results in descending order.
             Applies to both ``order_by`` and ``sort_expr``
         flat (False): whether to return a grouped collection (False) or a
@@ -3471,7 +3471,7 @@ class GroupBy(ViewStage):
         self,
         field_or_expr,
         order_by=None,
-        order_by_key=None,
+        order_by_key=False,
         reverse=False,
         flat=False,
         match_expr=None,
@@ -3504,6 +3504,11 @@ class GroupBy(ViewStage):
     def order_by(self):
         """The field by which to order the samples in each group."""
         return self._order_by
+
+    @property
+    def order_by_key(self):
+        """The ``order_by`` value representing the first sample in a group."""
+        return self._order_by_key
 
     @property
     def reverse(self):
@@ -3580,9 +3585,26 @@ class GroupBy(ViewStage):
         return pipeline
 
     def _make_grouped_pipeline(self, sample_collection):
-        group_expr, _ = self._get_group_expr(sample_collection)
+        if self._order_by_key is not None:
+            return [{"$match": {self._order_by: self._order_by_key}}]
 
-        pipeline = [{"$match": {self._order_by: self._order_by_key or 1}}]
+        group_expr, _ = self._get_group_expr(sample_collection)
+        pipeline = []
+
+        # sort so that first document in each group comes from a sorted list
+        if self._sort_stage is not None:
+            pipeline.extend(self._sort_stage.to_mongo(sample_collection))
+
+        pipeline.extend(
+            [
+                {"$group": {"_id": group_expr, "doc": {"$first": "$$ROOT"}}},
+                {"$replaceRoot": {"newRoot": "$doc"}},
+            ]
+        )
+
+        # add a sort stage so that we return a stable ordering of groups
+        # sort by _id to preserve insertion order
+        pipeline.append({"$sort": {"_id": 1}})
         return pipeline
 
     def get_group_expr(self, sample_collection):
@@ -3682,6 +3704,7 @@ class GroupBy(ViewStage):
         return [
             ["field_or_expr", self._get_mongo_field_or_expr()],
             ["order_by", self._order_by],
+            ["order_by_key", self._order_by_key],
             ["reverse", self._reverse],
             ["flat", self._flat],
             ["match_expr", self._get_mongo_match_expr()],
@@ -3701,6 +3724,12 @@ class GroupBy(ViewStage):
                 "name": "order_by",
                 "type": "NoneType|field|str",
                 "placeholder": "order by",
+                "default": "None",
+            },
+            {
+                "name": "order_by_key",
+                "type": "NoneType|float|int|str",
+                "placeholder": "order by key",
                 "default": "None",
             },
             {

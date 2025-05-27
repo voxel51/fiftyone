@@ -190,7 +190,7 @@ export const dynamicGroupParameters =
       );
       if (!groupByViewStageNode) return null;
       // third index is 'flat', we want it to be false for dynamic groups
-      const isFlat = groupByViewStageNode.kwargs[2][1];
+      const isFlat = groupByViewStageNode.kwargs[5][1];
       if (isFlat) return null;
       return {
         // first index is 'field_or_expr', which defines group-by
