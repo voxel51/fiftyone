@@ -1,5 +1,6 @@
 import { useTrackEvent } from "@fiftyone/analytics";
 import { EditableLabel } from "@fiftyone/components";
+import { usePanelStatePartial } from "@fiftyone/spaces";
 import { ArrowBack, Close } from "@mui/icons-material";
 import {
   Box,
@@ -12,7 +13,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ActionMenu from "./ActionMenu";
 import EvaluationSelect from "./components/EvaluationSelect";
 import { COMPARE_KEY_SECONDARY_COLOR } from "./constants";
@@ -24,8 +25,7 @@ import EvaluationIcon from "./EvaluationIcon";
 import Status from "./Status";
 import { tabStyles } from "./styles";
 import { ConcreteEvaluationType } from "./Types";
-import { activeTabAtom, computeSortedCompareKeys } from "./utils";
-import { useRecoilState } from "recoil";
+import { computeSortedCompareKeys } from "./utils";
 
 export default function Evaluation(props: EvaluationProps) {
   const {
@@ -44,7 +44,11 @@ export default function Evaluation(props: EvaluationProps) {
     deleteScenario,
     loadView,
   } = props;
-  const [activeTab, setActiveTab] = useRecoilState(activeTabAtom);
+  const [activeTab, setActiveTab] = usePanelStatePartial(
+    `${name}_evaluation_tab`,
+    "overview",
+    true
+  );
   const trackEvent = useTrackEvent();
   const [loadingCompare, setLoadingCompare] = useState(false);
   const evaluation = useMemo(() => {

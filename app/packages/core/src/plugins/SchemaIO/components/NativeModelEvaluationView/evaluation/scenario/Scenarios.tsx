@@ -1,5 +1,6 @@
+import { useTrackEvent } from "@fiftyone/analytics";
 import { usePanelEvent } from "@fiftyone/operators";
-import { usePanelId } from "@fiftyone/spaces";
+import { usePanelId, usePanelStatePartial } from "@fiftyone/spaces";
 import { isNullish } from "@fiftyone/utilities";
 import {
   Autorenew,
@@ -25,7 +26,9 @@ import {
   Typography,
   useTheme,
 } from "@mui/material";
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { atom, useRecoilState } from "recoil";
+import AlertView from "../../../AlertView";
 import ConfusionMatrixConfig from "../../components/ConfusionMatrixConfig";
 import CreateScenario from "../../components/CreateScenario";
 import Difference from "../../components/Difference";
@@ -43,11 +46,8 @@ import EvaluationPlot from "../../EvaluationPlot";
 import { formatValue, getClasses, getMatrix } from "../../utils";
 import Actions from "./Actions";
 import Legends from "./Legends";
-import { getSubsetDef } from "./utils";
-import { atom, useRecoilState } from "recoil";
 import LoadingError from "./LoadingError";
-import AlertView from "../../../AlertView";
-import { useTrackEvent } from "@fiftyone/analytics";
+import { getSubsetDef } from "./utils";
 
 const CONFIGURE_SCENARIO_ACTION = "model_evaluation_configure_scenario";
 
@@ -77,22 +77,49 @@ export default function Scenarios(props) {
     loadView,
   } = props;
   const { scenarios } = evaluation;
-  const [scenario, setScenario] = useState(getDefaultScenario(scenarios));
-  const [selectedSubsets, setSelectedSubsets] = useState(["all"]);
   const promptOperator = usePanelEvent();
   const panelId = usePanelId();
-  const [mode, setMode] = useState("charts");
-  const [differenceMode, setDifferenceMode] = useState("percentage");
   const [loadingScenario, setLoadingScenario] = useState(false);
   const [loading, setLoading] = useState(false);
   const evaluationInfo = evaluation.info;
   const evaluationConfig = evaluationInfo.config;
   const { key, compareKey, id: eval_id } = data?.view;
+  const trackEvent = useTrackEvent();
+  const [scenario, setScenario] = usePanelStatePartial(
+    `${key}_scenario`,
+    getDefaultScenario(scenarios),
+    true
+  );
+  const [mode, setMode] = usePanelStatePartial(
+    `${key}_scenario_mode`,
+    "charts",
+    true
+  );
+  const [selectedSubsets, setSelectedSubsets] = usePanelStatePartial(
+    `${key}_scenario_subsets`,
+    ["all"],
+    true
+  );
+  const [differenceMode, setDifferenceMode] = usePanelStatePartial(
+    `${key}_scenario_difference_mode`,
+    "percentage",
+    true
+  );
+
+  const updateScenario = useCallback(
+    (scenarioId: string) => {
+      setScenario(scenarioId);
+      setSelectedSubsets(["all"]);
+    },
+    [setScenario, setSelectedSubsets]
+  );
+
   const fullScenario = data?.[`scenario_${scenario}_${key}`] || {};
   const subsets = fullScenario?.subsets || [];
-  const scenarioChanges = data?.[`scenario_${scenario}_changes`] || [];
-  const trackEvent = useTrackEvent();
-
+  const scenarioChanges = useMemo(
+    () => data?.[`scenario_${scenario}_changes`] || [],
+    [data, scenario]
+  );
   const scenariosArray = scenarios ? Object.values(scenarios) : [];
   const scenariosIds = Object.keys(scenarios);
   const readOnly = !data.permissions?.can_delete_scenario;
@@ -102,9 +129,9 @@ export default function Scenarios(props) {
 
   useEffect(() => {
     if (!scenario) {
-      setScenario(getDefaultScenario(scenarios));
+      updateScenario(getDefaultScenario(scenarios));
     }
-  }, [scenario, setScenario, scenarios]);
+  }, [scenario, updateScenario, scenarios]);
 
   const onDelete = useCallback(() => {
     setLoading(true);
@@ -117,7 +144,7 @@ export default function Scenarios(props) {
         (id) => id !== scenario
       );
       if (firstNonDeletedScenario) {
-        setScenario(firstNonDeletedScenario);
+        updateScenario(firstNonDeletedScenario);
       }
       loadScenarios(() => {
         // todo@im: need to find a better way to do this
@@ -133,6 +160,7 @@ export default function Scenarios(props) {
     scenario,
     scenariosIds,
     trackEvent,
+    updateScenario,
   ]);
 
   const onEdit = useCallback(() => {
@@ -221,7 +249,7 @@ export default function Scenarios(props) {
             size="small"
             value={scenario}
             onChange={(e) => {
-              setScenario(e.target.value as string);
+              updateScenario(e.target.value as string);
             }}
             color="secondary"
             ghost
@@ -352,7 +380,7 @@ export default function Scenarios(props) {
             loadScenarios={loadScenarios}
             gt_field={evaluationConfig.gt_field}
             onAdd={(id) => {
-              setScenario(id);
+              updateScenario(id);
             }}
             evalKey={key}
             compareKey={compareKey}

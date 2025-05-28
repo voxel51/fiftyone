@@ -195,8 +195,3 @@ export const selectedModelEvaluation = atom<string | null>({
   key: "selectedModelEvaluation",
   default: null,
 });
-
-export const activeTabAtom = atom<string>({
-  key: "activeTabAtom",
-  default: "overview",
-});
