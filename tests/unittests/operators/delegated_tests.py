@@ -32,6 +32,8 @@ from fiftyone.operators.executor import (
 from fiftyone.factory.repos import delegated_operation
 from fiftyone.operators.operator import Operator, OperatorConfig
 
+TEST_DO_PREFIX = "@testVoxelFiftyOneDOSvc"
+
 
 class MockDataset:
     def __init__(self, **kwargs):
@@ -186,16 +188,9 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         patch.stopall()
 
     def delete_test_data(self):
-        with patch.object(
-            fiftyone.operators.registry.OperatorRegistry, "operator_exists"
-        ) as operator_exists:
-            with patch.object(
-                fiftyone.operators.registry.OperatorRegistry, "get_operator"
-            ) as get_operator:
-                operator_exists.return_value = True
-                get_operator.return_value = MockOperator()
-                for doc in self.docs_to_delete:
-                    self.svc.delete_operation(doc_id=doc.id)
+        self.svc._repo._collection.delete_many(
+            {"operator": {"$regex": TEST_DO_PREFIX}}
+        )
 
     @patch(
         "fiftyone.core.odm.utils.load_dataset",
@@ -206,7 +201,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         mock_load_dataset.return_value.name = dataset_name
         mock_load_dataset.return_value._doc.id = dataset_id
         doc = self.svc.queue_operation(
-            operator="@voxelfiftyone/operator/foo",
+            operator=f"{TEST_DO_PREFIX}/operator/foo",
             label=mock_get_operator.return_value.config.label,
             delegation_target="foo",
             context=ExecutionContext(
@@ -221,7 +216,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         doc2_metadata = {"inputs_schema": {}}
         doc2 = self.svc.queue_operation(
-            operator="@voxelfiftyone/operator/foo",
+            operator=f"{TEST_DO_PREFIX}/operator/foo",
             delegation_target="foo",
             context=ExecutionContext(
                 request_params={"foo": "bar", "dataset_name": dataset_name},
@@ -230,7 +225,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         )
         self.docs_to_delete.append(doc2)
         self.assertIsNotNone(doc2.queued_at)
-        self.assertEqual(doc2.label, "@voxelfiftyone/operator/foo")
+        self.assertEqual(doc2.label, f"{TEST_DO_PREFIX}/operator/foo")
         self.assertEqual(doc2.run_state, ExecutionRunState.QUEUED)
         self.assertEqual(doc2.metadata, doc2_metadata)
 
@@ -247,8 +242,8 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         dataset2.save()
         dataset_id2 = dataset2._doc.id
 
-        operator = "@voxelfiftyone/operator/foo"
-        operator2 = "@voxelfiftyone/operator/bar"
+        operator = f"{TEST_DO_PREFIX}/operator/foo"
+        operator2 = f"{TEST_DO_PREFIX}/operator/bar"
 
         dynamic_docs = []
         static_docs = []
@@ -269,7 +264,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             doc = self.svc.queue_operation(
                 operator=operator,
                 label=mock_get_operator.return_value.name,
-                # delegation_target=f"delegation_target{i}",
+                delegation_target=f"delegation_target{i}",
                 context=ExecutionContext(
                     request_params={
                         "foo": "bar",
@@ -286,7 +281,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             doc = self.svc.queue_operation(
                 operator=operator2,
                 label=mock_get_operator.return_value.name,
-                # delegation_target=f"delegation_target_2{i}",
+                delegation_target=f"delegation_target_2{i}",
                 context=ExecutionContext(
                     request_params={
                         "foo": "bar",
@@ -415,7 +410,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         mock_load_dataset.return_value = MockDataset()
         mock_get_operator.return_value = MockOperatorWithIO()
         doc = self.svc.queue_operation(
-            operator="@voxelfiftyone/operator/foo",
+            operator=f"{TEST_DO_PREFIX}/operator/foo",
             label=mock_get_operator.return_value.name,
             delegation_target=f"test_target",
             context=ExecutionContext(
@@ -461,7 +456,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         mock_get_operator.return_value = MockOperator(sets_progress=True)
 
         doc = self.svc.queue_operation(
-            operator="@voxelfiftyone/operator/foo",
+            operator=f"{TEST_DO_PREFIX}/operator/foo",
             delegation_target=f"test_target",
             context=ExecutionContext(
                 request_params={"foo": "bar", "dataset_id": str(ObjectId())}
@@ -491,7 +486,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
     def test_full_run_success(self, mock_load_dataset, mock_get_operator):
         mock_load_dataset.return_value = MockDataset()
         doc = self.svc.queue_operation(
-            operator="@voxelfiftyone/operator/foo",
+            operator=f"{TEST_DO_PREFIX}/operator/foo",
             label=mock_get_operator.return_value.name,
             delegation_target=f"test_target",
             context=ExecutionContext(
@@ -528,7 +523,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         mock_get_operator.return_value = MockGeneratorOperator()
 
         doc = self.svc.queue_operation(
-            operator="@voxelfiftyone/operator/generator_op",
+            operator=f"{TEST_DO_PREFIX}/operator/generator_op",
             label=mock_get_operator.return_value.name,
             delegation_target=f"test_target_generator",
             context=ExecutionContext(
@@ -565,7 +560,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         )
 
         doc = self.svc.queue_operation(
-            operator="@voxelfiftyone/operator/foo",
+            operator=f"{TEST_DO_PREFIX}/operator/foo",
             delegation_target=f"test_target",
             context=ExecutionContext(request_params={"foo": "bar"}),
         )
@@ -595,7 +590,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         mock_get_operator.return_value = MockProgressiveOperatorWithOutputs()
         mock_load_dataset.return_value = MockDataset()
         doc = self.svc.queue_operation(
-            operator="@voxelfiftyone/operator/foo",
+            operator=f"{TEST_DO_PREFIX}/operator/foo",
             delegation_target=f"test_target",
             context=ExecutionContext(request_params={"foo": "bar"}),
             metadata={"inputs_schema": mock_inputs.to_json()},
@@ -636,7 +631,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         operator = mock.MagicMock()
         mock_get_operator.return_value = operator
         doc = self.svc.queue_operation(
-            operator="@voxelfiftyone/operator/foo",
+            operator=f"{TEST_DO_PREFIX}/operator/foo",
             delegation_target="test_target",
             context=ExecutionContext(request_params={"foo": "bar"}),
             metadata={"inputs_schema": mock_inputs.to_json()},
@@ -665,7 +660,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         ctx = ExecutionContext()
         ctx.request_params = {"foo": "bar"}
         doc = self.svc.queue_operation(
-            operator="@voxelfiftyone/operator/foo",
+            operator=f"{TEST_DO_PREFIX}/operator/foo",
             label=mock_get_operator.return_value.name,
             delegation_target="test_target",
             context=ctx.serialize(),
@@ -705,7 +700,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         ctx = ExecutionContext()
         ctx.request_params = {"foo": "bar"}
         doc = self.svc.queue_operation(
-            operator="@voxelfiftyone/operator/foo",
+            operator=f"{TEST_DO_PREFIX}/operator/foo",
             label=get_op_mock.return_value.name,
             delegation_target="test_target",
             context=ctx.serialize(),
@@ -765,7 +760,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         )
         # Queue operation using original dataset name
         doc = self.svc.queue_operation(
-            operator="@voxelfiftyone/operator/foo",
+            operator=f"{TEST_DO_PREFIX}/operator/foo",
             label=get_op_mock.return_value.name,
             delegation_target="test_target",
             context=ctx.serialize(),
@@ -832,7 +827,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
     ):
         mock_load_dataset.return_value = MockDataset()
         doc = self.svc.queue_operation(
-            operator="@voxelfiftyone/operator/foo",
+            operator=f"{TEST_DO_PREFIX}/operator/foo",
             label=mock_get_operator.return_value.name,
             delegation_target=f"test_target",
             context=ExecutionContext(
@@ -863,7 +858,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         )
         # Queue operation using original dataset name
         doc = self.svc.queue_operation(
-            operator="@voxelfiftyone/operator/foo",
+            operator=f"{TEST_DO_PREFIX}/operator/foo",
             label=get_op_mock.return_value.name,
             delegation_target="test_target",
             context=ctx.serialize(),
@@ -905,18 +900,20 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         running = []
         completed = []
         failed = []
+
         for i in range(4):
-            operator = f"@voxelfiftyone/operator/test_{i}"
+            operator = f"{TEST_DO_PREFIX}/operator/test_{i}"
             for j in range(25):
                 doc = self.svc.queue_operation(
                     operator=operator,
                     label=mock_get_operator.return_value.name,
+                    delegation_target="test_target",
                     context=ExecutionContext(
                         request_params={
                             "foo": "bar",
                             "dataset_name": dataset_name,
                             "dataset_id:": str(dataset_id),
-                        }
+                        },
                     ),
                 )
                 time.sleep(
@@ -982,7 +979,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(docs[0].id, queued[0].id)
 
         docs = self.svc.list_operations(
-            operator=f"@voxelfiftyone/operator/test_0",
+            operator=f"{TEST_DO_PREFIX}/operator/test_0",
             paging=DelegatedOperationPagingParams(skip=0, limit=100),
         )
         self.assertEqual(len(docs), 25)
@@ -990,7 +987,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(states, [ExecutionRunState.QUEUED] * 25)
 
         docs = self.svc.list_operations(
-            operator=f"@voxelfiftyone/operator/test_1",
+            operator=f"{TEST_DO_PREFIX}/operator/test_1",
             paging=DelegatedOperationPagingParams(skip=0, limit=100),
         )
         self.assertEqual(len(docs), 25)
@@ -998,7 +995,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(states, [ExecutionRunState.RUNNING] * 25)
 
         docs = self.svc.list_operations(
-            operator=f"@voxelfiftyone/operator/test_2",
+            operator=f"{TEST_DO_PREFIX}/operator/test_2",
             paging=DelegatedOperationPagingParams(skip=0, limit=100),
         )
         self.assertEqual(len(docs), 25)
@@ -1006,7 +1003,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(states, [ExecutionRunState.COMPLETED] * 25)
 
         docs = self.svc.list_operations(
-            operator=f"@voxelfiftyone/operator/test_3",
+            operator=f"{TEST_DO_PREFIX}/operator/test_3",
             paging=DelegatedOperationPagingParams(skip=0, limit=100),
         )
         self.assertEqual(len(docs), 25)
@@ -1051,7 +1048,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         ctx = ExecutionContext()
         ctx.request_params = {"foo": "bar", "dataset_name": dataset_name}
         doc = self.svc.queue_operation(
-            operator="@voxelfiftyone/operator/foo",
+            operator=f"{TEST_DO_PREFIX}/operator/foo",
             label=mock_get_operator.return_value.name,
             delegation_target="test_target",
             context=ctx.serialize(),
@@ -1072,7 +1069,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         # create 100 docs, 25 of each state & for each user
         queued = []
-        operator = f"@voxelfiftyone/operator/test_{ObjectId}"
+        operator = f"{TEST_DO_PREFIX}/operator/test_{ObjectId}"
         for i in range(25):
             doc = self.svc.queue_operation(
                 operator=operator,
@@ -1125,7 +1122,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         delegation_target = f"delegation_target{ObjectId()}"
         for i in range(4):
-            operator = f"@voxelfiftyone/operator/test_{i}"
+            operator = f"{TEST_DO_PREFIX}/operator/test_{i}"
             for j in range(25):
                 doc = self.svc.queue_operation(
                     operator=operator,
@@ -1170,7 +1167,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(len(docs), 25)
 
         doc = self.svc.queue_operation(
-            operator="@voxel51/test/foo_baz",
+            operator=f"{TEST_DO_PREFIX}/test/foo_baz",
             label=f"I am a label",
             delegation_target=delegation_target,
             context=ExecutionContext(
@@ -1183,7 +1180,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.docs_to_delete.append(doc)
 
         doc = self.svc.queue_operation(
-            operator="@voxel51/test/operator",
+            operator=f"{TEST_DO_PREFIX}/test/operator",
             label=f"foo_baz",
             delegation_target=delegation_target,
             context=ExecutionContext(
@@ -1226,7 +1223,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         delegation_target = f"delegation_target{ObjectId()}"
         for i in range(4):
-            operator = f"@voxelfiftyone/operator/test_{i}"
+            operator = f"{TEST_DO_PREFIX}/operator/test_{i}"
             for j in range(25):
                 doc = self.svc.queue_operation(
                     operator=operator,
@@ -1258,7 +1255,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(docs, 25)
 
         docs = self.svc.count(
-            filters={"operator": f"@voxelfiftyone/operator/test_0"},
+            filters={"operator": f"{TEST_DO_PREFIX}/operator/test_0"},
         )
         self.assertEqual(docs, 25)
 
@@ -1274,7 +1271,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         ctx = ExecutionContext()
         ctx.request_params = {"foo": "bar"}
         doc = self.svc.queue_operation(
-            operator="@voxelfiftyone/operator/foo",
+            operator=f"{TEST_DO_PREFIX}/operator/foo",
             label=mock_get_operator.return_value.name,
             delegation_target="test_target",
             context=ctx.serialize(),
@@ -1304,7 +1301,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         ctx = ExecutionContext()
         ctx.request_params = {"foo": "bar"}
         doc = self.svc.queue_operation(
-            operator="@voxelfiftyone/operator/foo",
+            operator=f"{TEST_DO_PREFIX}/operator/foo",
             label=mock_get_operator.return_value.name,
             delegation_target="test_target",
             context=ctx.serialize(),
@@ -1326,7 +1323,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         #####
         doc = dos.queue_operation(
-            operator="@voxelfiftyone/operator/foo",
+            operator=f"{TEST_DO_PREFIX}/operator/foo",
             label=mock_get_operator.return_value.name,
             delegation_target="test_target",
             context=ctx.serialize(),
