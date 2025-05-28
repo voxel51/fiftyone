@@ -3,8 +3,12 @@
  */
 import { NONFINITES } from "@fiftyone/utilities";
 
-import { isHoveringParticularLabelWithInstanceConfig } from "@fiftyone/state/src/jotai";
-import { INFO_COLOR, SELECTED_AND_HOVERED_COLOR } from "../constants";
+import {
+  currentModalUniqueIdJotaiAtom,
+  isHoveringParticularLabelWithInstanceConfig,
+  jotaiStore,
+} from "@fiftyone/state/src/jotai";
+import { INFO_COLOR } from "../constants";
 import { BaseState, BoundingBox, Coordinates, NONFINITE } from "../state";
 import { distanceFromLineSegment } from "../util";
 import { RENDER_STATUS_PAINTED, RENDER_STATUS_PENDING } from "../worker/shared";
@@ -15,8 +19,51 @@ import {
   PointInfo,
   RegularLabel,
 } from "./base";
-import { t } from "./util";
-import { getInstanceStrokeStyles } from "./util";
+import { getInstanceStrokeStyles, t } from "./util";
+
+let cache: Record<
+  string,
+  {
+    latestIndex: number;
+    instanceIdToIndexId: Record<string, number>;
+  }
+> = {};
+let lastModalUniqueId = "";
+
+const getIndexIdFromInstanceIdForLabel = (
+  instanceId: string,
+  label: DetectionLabel
+) => {
+  const currentModalUniqueId = jotaiStore.get(currentModalUniqueIdJotaiAtom);
+
+  if (currentModalUniqueId !== lastModalUniqueId) {
+    lastModalUniqueId = currentModalUniqueId;
+    cache = {};
+  }
+
+  const key = `${currentModalUniqueId}-${label.label.toLocaleLowerCase()}`;
+
+  if (
+    cache[key] &&
+    cache[key].instanceIdToIndexId &&
+    typeof cache[key].instanceIdToIndexId[instanceId] === "number"
+  ) {
+    return cache[key].instanceIdToIndexId[instanceId];
+  } else if (cache[key] && cache[key].instanceIdToIndexId) {
+    cache[key].instanceIdToIndexId[instanceId] = cache[key].latestIndex + 1;
+    cache[key].latestIndex += 1;
+    return cache[key].instanceIdToIndexId[instanceId];
+  } else {
+    cache[key] = {
+      latestIndex: 1,
+      instanceIdToIndexId: {
+        [instanceId]: 1,
+      },
+    };
+  }
+
+  return cache[key].instanceIdToIndexId[instanceId];
+};
 
 export interface DetectionLabel extends RegularLabel {
   mask?: LabelMask;
@@ -191,9 +238,27 @@ export default class DetectionOverlay<
     let text =
       this.label.label && state.options.showLabel ? `${this.label.label}` : "";
 
-    if (state.options.showIndex && !isNaN(this.label.index)) {
-      text.length && (text += " ");
-      text += `${Number(this.label.index).toLocaleString()}`;
+    const hasIndex =
+      (typeof this.label.index === "string" ||
+        typeof this.label.index === "number") &&
+      !isNaN(this.label.index);
+
+    const hasInstanceId = Boolean(this.label.instance?._id);
+
+    if (state.options.showIndex && (hasIndex || hasInstanceId)) {
+      if (text.length > 0) {
+        text += " ";
+      }
+
+      // index takes precedence over instance id
+      if (hasIndex) {
+        text += `${Number(this.label.index).toLocaleString()}`;
+      } else {
+        text += `${getIndexIdFromInstanceIdForLabel(
+          this.label.instance._id,
+          this.label
+        )}`;
+      }
     }
 
     if (

@@ -100,10 +100,19 @@ export const convertId = (obj: Record<string, any>): Record<string, any> => {
   );
 };
 
-export const getHashLabel = (label: RegularLabel): string => {
-  if (["number", "string"].includes(typeof label?.index)) {
-    return `${label.label}.${label.index}`;
+export const getHashLabelColorByInstance = (label: RegularLabel): string => {
+  const hasIndex =
+    (typeof label.index === "string" || typeof label.index === "number") &&
+    !isNaN(label.index);
+
+  if (hasIndex) {
+    return `${label.label}-${label.index}-${label.instance?._id ?? ""}`;
   }
+
+  if (label?.instance?._id) {
+    return `${label.label}-${label.instance?._id}`;
+  }
+
   if (typeof label?.label !== "undefined" && typeof label?.id !== "undefined") {
     return `${label.label}.${label.id}`;
   }
@@ -144,7 +153,11 @@ export const getLabelColor = ({
   const field = customizeColorSetting.find((s) => s.path === path);
 
   if (coloring.by === COLOR_BY.INSTANCE) {
-    return getColor(coloring.pool, coloring.seed, getHashLabel(label));
+    return getColor(
+      coloring.pool,
+      coloring.seed,
+      getHashLabelColorByInstance(label)
+    );
   }
 
   if (coloring.by === COLOR_BY.FIELD) {
