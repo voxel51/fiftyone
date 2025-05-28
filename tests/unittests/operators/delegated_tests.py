@@ -29,7 +29,10 @@ from fiftyone.operators.executor import (
     ExecutionResult,
     ExecutionRunState,
 )
-from fiftyone.factory.repos import delegated_operation
+from fiftyone.factory.repos import (
+    DelegatedOperationDocument,
+    delegated_operation,
+)
 from fiftyone.operators.operator import Operator, OperatorConfig
 
 TEST_DO_PREFIX = "@testVoxelFiftyOneDOSvc"
@@ -818,6 +821,17 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             )
         finally:
             dataset.delete()
+
+    def test_rerun_child_do_fail(self, mock_get_operator):
+        mock_child_doc = mock.MagicMock(spec=DelegatedOperationDocument)
+        mock_child_doc.group_id = ObjectId()
+
+        with patch.object(self.svc._repo, "get", return_value=mock_child_doc):
+            with patch.object(
+                self.svc._repo, "queue_operation", return_value=mock_child_doc
+            ):
+                with pytest.raises(ValueError):
+                    _ = self.svc.rerun_operation("abc123")
 
     @patch(
         "fiftyone.core.odm.utils.load_dataset",
