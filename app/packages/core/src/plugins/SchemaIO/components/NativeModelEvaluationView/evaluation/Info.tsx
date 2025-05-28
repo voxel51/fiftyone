@@ -156,7 +156,7 @@ export default function Info(props) {
   ];
 
   return (
-    <Card sx={{ p: 2 }}>
+    <Card sx={{ p: 2, overflow: "auto" }}>
       <EvaluationTable>
         <TableHead>
           <TableRow

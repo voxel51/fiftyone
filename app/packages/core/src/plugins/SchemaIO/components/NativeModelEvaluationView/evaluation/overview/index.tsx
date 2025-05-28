@@ -134,7 +134,10 @@ export default function Overview(props) {
         </Stack>
         <EvaluationNotes notes={evaluationNotes} variant="details" />
       </Card>
-      <Stack spacing={1}>
+      <Stack
+        spacing={1}
+        sx={{ ".MuiAccordionDetails-root": { overflow: "auto" } }}
+      >
         <Accordion
           expanded={expanded === "summary"}
           onChange={(e, expanded) => {

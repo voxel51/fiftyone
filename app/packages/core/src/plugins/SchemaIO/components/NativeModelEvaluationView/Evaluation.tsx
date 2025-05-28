@@ -13,7 +13,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import ActionMenu from "./ActionMenu";
 import EvaluationSelect from "./components/EvaluationSelect";
 import { COMPARE_KEY_SECONDARY_COLOR } from "./constants";
@@ -133,6 +133,7 @@ export default function Evaluation(props: EvaluationProps) {
             "& > *": {
               marginLeft: "0px !important",
             },
+            flexWrap: "wrap",
           }}
         >
           <IconButton
@@ -152,24 +153,20 @@ export default function Evaluation(props: EvaluationProps) {
               onSave={(newLabel) => {
                 onRename(name, newLabel);
               }}
-              onCancel={() => {}}
+              onCancel={() => {
+                // do nothing
+              }}
               showEditIcon={!compareKey}
             />
           </Stack>
 
           {/* VS text */}
-          <Typography
-            variant="body2"
-            sx={{
-              color: (theme) => theme.palette.text.secondary,
-              px: 1,
-            }}
-          >
+          <Typography variant="body2" color="secondary" pl={1}>
             vs
           </Typography>
 
           {/* Compare dropdown section */}
-          <Stack sx={{ minWidth: 225 }}>
+          <Stack>
             {compareKeys.length === 0 ? (
               <Typography
                 variant="body2"
