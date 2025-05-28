@@ -326,14 +326,10 @@ class ClipsView(fov.DatasetView):
         """
         self._source_collection.reload()
 
-        #
         # Regenerate the clips dataset
-        #
-        # This assumes that calling `load_view()` when the current clips
-        # dataset has been deleted will cause a new one to be generated
-        #
-        self._clips_dataset.delete()
-        _view = self._clips_stage.load_view(self._source_collection)
+        _view = self._clips_stage.load_view(
+            self._source_collection, reload=True
+        )
         self._clips_dataset = _view._clips_dataset
 
         super().reload()
@@ -814,19 +810,18 @@ def make_clips_dataset(
         add_schema = {k: v for k, v in src_schema.items() if k in add_fields}
         dataset._sample_doc_cls.merge_field_schema(add_schema)
 
-    if include_indexes:
-        if clips_type == "detections":
-            clips_field = field_or_expr
-        else:
-            clips_field = None
+    if clips_type == "detections":
+        clips_field = field_or_expr
+    else:
+        clips_field = None
 
-        fod._clone_indexes_for_clips_view(
-            sample_collection,
-            dataset,
-            clips_field=clips_field,
-            other_fields=other_fields,
-            include_indexes=include_indexes,
-        )
+    fod._clone_indexes_for_clips_view(
+        sample_collection,
+        dataset,
+        clips_field=clips_field,
+        other_fields=other_fields,
+        include_indexes=include_indexes,
+    )
 
     _make_pretty_summary(dataset)
 

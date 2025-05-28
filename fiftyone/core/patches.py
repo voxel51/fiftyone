@@ -338,14 +338,10 @@ class _PatchesView(fov.DatasetView):
         """
         self._source_collection.reload()
 
-        #
         # Regenerate the patches dataset
-        #
-        # This assumes that calling `load_view()` when the current patches
-        # dataset has been deleted will cause a new one to be generated
-        #
-        self._patches_dataset.delete()
-        _view = self._patches_stage.load_view(self._source_collection)
+        _view = self._patches_stage.load_view(
+            self._source_collection, reload=True
+        )
         self._patches_dataset = _view._patches_dataset
 
         super().reload()
@@ -721,14 +717,13 @@ def make_patches_dataset(
         add_schema = {k: v for k, v in src_schema.items() if k in add_fields}
         dataset._sample_doc_cls.merge_field_schema(add_schema)
 
-    if include_indexes:
-        fod._clone_indexes_for_patches_view(
-            sample_collection,
-            dataset,
-            patches_fields=[field],
-            other_fields=other_fields,
-            include_indexes=include_indexes,
-        )
+    fod._clone_indexes_for_patches_view(
+        sample_collection,
+        dataset,
+        patches_fields=[field],
+        other_fields=other_fields,
+        include_indexes=include_indexes,
+    )
 
     _make_pretty_summary(dataset, is_frame_patches=is_frame_patches)
 
@@ -886,14 +881,13 @@ def make_evaluation_patches_dataset(
         add_schema = {k: v for k, v in src_schema.items() if k in add_fields}
         dataset._sample_doc_cls.merge_field_schema(add_schema)
 
-    if include_indexes:
-        fod._clone_indexes_for_patches_view(
-            sample_collection,
-            dataset,
-            patches_fields=[gt_field, pred_field],
-            other_fields=other_fields,
-            include_indexes=include_indexes,
-        )
+    fod._clone_indexes_for_patches_view(
+        sample_collection,
+        dataset,
+        patches_fields=[gt_field, pred_field],
+        other_fields=other_fields,
+        include_indexes=include_indexes,
+    )
 
     _make_pretty_summary(dataset, is_frame_patches=is_frame_patches)
 

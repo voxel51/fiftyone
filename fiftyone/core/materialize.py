@@ -269,14 +269,10 @@ class MaterializedView(fov.DatasetView):
         """
         self._source_collection.reload()
 
-        #
         # Regenerate the materialized dataset
-        #
-        # This assumes that calling `load_view()` when the current materialized
-        # dataset has been deleted will cause a new one to be generated
-        #
-        self._materialized_dataset.delete()
-        _view = self._materialize_stage.load_view(self._source_collection)
+        _view = self._materialize_stage.load_view(
+            self._source_collection, reload=True
+        )
         self._materialized_dataset = _view._materialized_dataset
 
         super().reload()

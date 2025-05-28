@@ -422,6 +422,11 @@ class MaterializeTests(unittest.TestCase):
 
         self.assertSetEqual(set(view.list_indexes()), expected_indexes)
 
+        # Reloading preserves custom indexes
+        view.reload()
+
+        self.assertSetEqual(set(view.list_indexes()), expected_indexes)
+
         # Indexes can be included by prefix
         view = dataset.limit(1).materialize(
             include_indexes=["frames.gt.detections"]
