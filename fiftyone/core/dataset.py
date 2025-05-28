@@ -8547,6 +8547,11 @@ def _create_group_indexes(sample_collection_name, group_field):
 
 
 def _clone_indexes(src_collection, dst_doc, include_indexes=True):
+    # Special syntax: copy indexes exactly from another collection
+    if isinstance(include_indexes, foc.SampleCollection):
+        _clone_indexes(include_indexes, dst_doc)
+        return
+
     src_dataset = src_collection._dataset
 
     # Omit indexes on filtered fields
@@ -8586,6 +8591,14 @@ def _clone_indexes_for_patches_view(
     other_fields=None,
     include_indexes=True,
 ):
+    if include_indexes is False:
+        return
+
+    # Special syntax: copy indexes exactly from another collection
+    if isinstance(include_indexes, foc.SampleCollection):
+        _clone_indexes(include_indexes, dst_dataset._doc)
+        return
+
     src_dataset = src_collection._dataset
 
     remap = {}
@@ -8634,6 +8647,14 @@ def _clone_indexes_for_patches_view(
 def _clone_indexes_for_frames_view(
     src_collection, dst_dataset, include_indexes=True
 ):
+    if include_indexes is False:
+        return
+
+    # Special syntax: copy indexes exactly from another collection
+    if isinstance(include_indexes, foc.SampleCollection):
+        _clone_indexes(include_indexes, dst_dataset._doc)
+        return
+
     src_dataset = src_collection._dataset
 
     # Omit default indexes and indexes on filtered fields
@@ -8661,6 +8682,14 @@ def _clone_indexes_for_clips_view(
     other_fields=None,
     include_indexes=True,
 ):
+    if include_indexes is False:
+        return
+
+    # Special syntax: copy indexes exactly from another collection
+    if isinstance(include_indexes, foc.SampleCollection):
+        _clone_indexes(include_indexes, dst_dataset._doc)
+        return
+
     src_dataset = src_collection._dataset
 
     remap = {}

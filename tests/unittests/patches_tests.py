@@ -1028,6 +1028,11 @@ class PatchesTests(unittest.TestCase):
 
         self.assertSetEqual(set(view.list_indexes()), expected_indexes)
 
+        # Reloading preserves custom indexes
+        view.reload()
+
+        self.assertSetEqual(set(view.list_indexes()), expected_indexes)
+
         # Indexes can be specified by prefix
         view = dataset.to_patches(
             "ground_truth",
@@ -1101,6 +1106,11 @@ class PatchesTests(unittest.TestCase):
             "ground_truth.detections.label",
             "ground_truth.detections._id_1_field_1",
         }
+
+        self.assertSetEqual(set(view.list_indexes()), expected_indexes)
+
+        # Reloading preserves custom indexes
+        view.reload()
 
         self.assertSetEqual(set(view.list_indexes()), expected_indexes)
 

@@ -2353,6 +2353,11 @@ class VideoTests(unittest.TestCase):
 
         self.assertSetEqual(set(view.list_indexes()), expected_indexes)
 
+        # Reloading preserves custom indexes
+        view.reload()
+
+        self.assertSetEqual(set(view.list_indexes()), expected_indexes)
+
         dataset.create_index("frames.hello")
 
         # Frame indexes are always inheritied from source dataset
@@ -3114,6 +3119,11 @@ class VideoTests(unittest.TestCase):
             "ground_truth.detections.label",
             "ground_truth.detections._id_1_field_1",
         }
+
+        self.assertSetEqual(set(view.list_indexes()), expected_indexes)
+
+        # Reloading preserves custom indexes
+        view.reload()
 
         self.assertSetEqual(set(view.list_indexes()), expected_indexes)
 

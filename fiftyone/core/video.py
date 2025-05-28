@@ -295,14 +295,10 @@ class FramesView(fov.DatasetView):
         """
         self._source_collection.reload()
 
-        #
         # Regenerate the frames dataset
-        #
-        # This assumes that calling `load_view()` when the current patches
-        # dataset has been deleted will cause a new one to be generated
-        #
-        self._frames_dataset.delete()
-        _view = self._frames_stage.load_view(self._source_collection)
+        _view = self._frames_stage.load_view(
+            self._source_collection, reload=True
+        )
         self._frames_dataset = _view._frames_dataset
 
         super().reload()
@@ -658,12 +654,11 @@ def make_frames_dataset(
     # later when syncing the source collection
     dataset.create_index([("sample_id", 1), ("frame_number", 1)], unique=True)
 
-    if include_indexes:
-        fod._clone_indexes_for_frames_view(
-            sample_collection,
-            dataset,
-            include_indexes=include_indexes,
-        )
+    fod._clone_indexes_for_frames_view(
+        sample_collection,
+        dataset,
+        include_indexes=include_indexes,
+    )
 
     _make_pretty_summary(dataset)
 
