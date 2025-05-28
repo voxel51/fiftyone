@@ -80,9 +80,12 @@ export const gridSortFields = selector({
       ...valid.trailing.map(({ key }) => key),
     ]);
 
-    return [...all]
-      .sort()
-      .map((path) => get(fieldPath(path)))
-      .filter((path) => get(isNumericField(path)));
+    return (
+      [...all]
+        .sort()
+        .map((path) => get(fieldPath(path)))
+        // an index may exist, but the field may not be in the schema
+        .filter((path) => path && get(isNumericField(path)))
+    );
   },
 });
