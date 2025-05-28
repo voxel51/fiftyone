@@ -694,10 +694,8 @@ The :class:`GroupBy <fiftyone.core.stages.GroupBy>` stage is a query performant
 stage when ``order_by`` and ``order_by_key`` values are provided and a compound
 index exists on the ``group_by`` and ``order_by`` fields with a unique
 constraint and at least one index exists that begins with the ``order_by``
-field.
-
-Query performant fields then exist when they follow the ``order_by`` in a
-compound index. 
+field. Query performant fields then exist when they follow the ``order_by`` in
+a compound index. 
 
 .. code-block:: python
     :linenos:

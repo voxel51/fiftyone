@@ -141,6 +141,7 @@ export const groupByFieldValue = selector({
     return get(modalSample).sample._group as unknown;
   },
 });
+
 export const imaVidStoreKey = selectorFamily<
   string,
   { modal: boolean; groupByFieldValue: string }

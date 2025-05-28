@@ -5801,7 +5801,9 @@ class SampleCollection(object):
                 each group
             order_by_key (None): an optional fixed ``order_by`` value
                 representing the first sample in a group. Required for
-                optimized performance. See ...
+                optimized performance. See
+                :ref:`this guide <app-query-performant-stages>` for more
+                details
             reverse (False): whether to return the results in descending order
                 Applies both to ``order_by`` and ``sort_expr``
             flat (False): whether to return a grouped collection (False) or a
