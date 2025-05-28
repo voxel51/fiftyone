@@ -45,5 +45,5 @@
         "@react-spring/web": "*",
         "recoil": "*"
     },
-    "packageManager": "yarn@3.2.1"
+    "packageManager": "yarn@4.9.1"
 }
