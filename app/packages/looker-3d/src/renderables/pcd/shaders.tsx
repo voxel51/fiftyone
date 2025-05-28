@@ -11,34 +11,33 @@ export type ShaderProps = {
   isPointSizeAttenuated: boolean;
   opacity?: number;
   upVector?: THREE.Vector3;
+  pcdType?: "intensity" | "rgb";
 };
 
-const useGradientMap = (gradients: Gradients) => {
-  const generateTexture = useCallback((gradients: Gradients) => {
+const useGradientMap = (gradients: Gradients, flipY: boolean = false) => {
+  const generateTexture = useCallback((gradients: Gradients, flip: boolean) => {
     const size = 512;
-
-    // create canvas
     const canvas = document.createElement("canvas");
     canvas.width = size;
     canvas.height = size;
+    const ctx = canvas.getContext("2d")!;
 
-    // get context
-    const context = canvas.getContext("2d");
-
-    // draw gradient
-    context.rect(0, 0, size, size);
-    const gradient = context.createLinearGradient(0, 0, 0, size);
-    for (const g of gradients) {
-      gradient.addColorStop(...g);
+    const grad = ctx.createLinearGradient(0, 0, 0, size);
+    for (const [stop, col] of gradients) {
+      grad.addColorStop(stop, col);
     }
-    context.fillStyle = gradient;
-    context.fill();
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, size, size);
 
-    return canvas;
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.flipY = flip;
+    texture.minFilter = THREE.LinearFilter;
+    texture.needsUpdate = true;
+    return texture;
   }, []);
 
   return React.useMemo(
-    () => new THREE.CanvasTexture(generateTexture(gradients)),
+    () => generateTexture(gradients, flipY),
     [gradients, generateTexture]
   );
 };
@@ -125,23 +124,30 @@ const ShadeByHeightShaders = {
 
 const ShadeByIntensityShaders = {
   vertexShader: /* glsl */ `
-  uniform float max;
-  uniform float min;
+  precision highp float;
+  
+  uniform float uMax;
+  uniform float uMin;
   uniform float pointSize;
   uniform bool isPointSizeAttenuated;
 
-  varying vec2 vUv;
-  varying float hValue;
-  attribute vec3 color;
+  varying float vNorm;
+
+  attribute float intensity;
 
   float remap ( float minval, float maxval, float curval ) {
     return ( curval - minval ) / ( maxval - minval );
   }
 
+  float logRemap(float mn, float mx, float val){
+    float v = (log(val) - log(mn)) / (log(mx)-log(mn));
+    return clamp(v, 0., 1.);
+  }
+
   void main() {
-    vUv = uv;
     vec3 pos = position;
-    hValue = remap(min, max, color.r);
+    vNorm = clamp(remap(uMin, uMax, intensity), 0.0, 1.0);
+    // vNorm = clamp(logRemap(uMin, uMax, intensity), 0.0, 1.0);
 
     vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
 
@@ -150,17 +156,57 @@ const ShadeByIntensityShaders = {
   }
 `,
   fragmentShader: /* glsl */ `
-  uniform sampler2D gradientMap;
-  varying float hValue;
+  precision highp float;
 
+  uniform sampler2D gradientMap;
   uniform float opacity;
 
+  varying float vNorm;
+
   void main() {
-    float v = clamp(hValue, 0., 1.);
-    vec3 col = texture2D(gradientMap, vec2(0, v)).rgb;
+    vec3 col = texture2D(gradientMap, vec2(0.5, vNorm)).rgb;
     gl_FragColor = vec4(col, opacity);
   }
 `,
+};
+
+// legacy intensity = use r channel of rgb
+const ShadeByLegacyIntensityShaders = {
+  vertexShader: /* glsl */ `
+    uniform float uMax;
+    uniform float uMin;
+    uniform float pointSize;
+    uniform bool isPointSizeAttenuated;
+  
+    varying float hValue;
+    attribute vec3 color;
+  
+    float remap ( float minval, float maxval, float curval ) {
+      return ( curval - minval ) / ( maxval - minval );
+    }
+  
+    void main() {
+      vec3 pos = position;
+      hValue = remap(uMin, uMax, color.r);
+  
+      vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+  
+      gl_PointSize = pointSize * (isPointSizeAttenuated ? (1.0 / length(mvPosition.xyz)) : 1.0);
+      gl_Position = projectionMatrix * mvPosition;
+    }
+  `,
+  fragmentShader: /* glsl */ `
+    uniform sampler2D gradientMap;
+    varying float hValue;
+  
+    uniform float opacity;
+  
+    void main() {
+      float v = clamp(hValue, 0., 1.);
+      vec3 col = texture2D(gradientMap, vec2(0, v)).rgb;
+      gl_FragColor = vec4(col, opacity);
+    }
+  `,
 };
 
 const ShadeByCustomColorShaders = {
@@ -226,27 +272,39 @@ export const ShadeByHeight = ({
 
 export const ShadeByIntensity = ({
   gradients,
-  min,
-  max,
+  minIntensity,
+  maxIntensity,
   opacity,
   pointSize,
   isPointSizeAttenuated,
-}: ShaderProps) => {
-  const gradientMap = useGradientMap(gradients);
+  pcdType,
+}: Omit<ShaderProps, "min" | "max"> & {
+  minIntensity: number;
+  maxIntensity: number;
+}) => {
+  const gradientMap = useGradientMap(gradients, true);
+
+  const isLegacyIntensity = useMemo(() => {
+    return pcdType !== "intensity";
+  }, [pcdType]);
 
   return (
     <shaderMaterial
       {...{
         uniforms: {
-          min: { value: min },
-          max: { value: max },
+          uMin: { value: minIntensity },
+          uMax: { value: maxIntensity },
           opacity: { value: opacity ?? 1 },
           gradientMap: { value: gradientMap },
           pointSize: { value: pointSize },
           isPointSizeAttenuated: { value: isPointSizeAttenuated },
         },
-        vertexShader: ShadeByIntensityShaders.vertexShader,
-        fragmentShader: ShadeByIntensityShaders.fragmentShader,
+        vertexShader: isLegacyIntensity
+          ? ShadeByLegacyIntensityShaders.vertexShader
+          : ShadeByIntensityShaders.vertexShader,
+        fragmentShader: isLegacyIntensity
+          ? ShadeByLegacyIntensityShaders.fragmentShader
+          : ShadeByIntensityShaders.fragmentShader,
       }}
     />
   );

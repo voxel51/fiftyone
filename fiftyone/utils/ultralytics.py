@@ -597,7 +597,7 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         if self._using_half_precision:
             images = images.half()
 
-        if self.config.confidence_thresh:
+        if self.config.confidence_thresh is not None:
             self._model.predictor.args.conf = self.config.confidence_thresh
 
         output = self._forward_pass(images)

@@ -16,7 +16,10 @@ import {
   ShadeByHeight,
   ShadeByIntensity,
 } from "../../renderables/pcd/shaders";
-import { computeMinMaxForColorBufferAttribute } from "../../utils";
+import {
+  computeMinMaxForColorBufferAttribute,
+  computeMinMaxForScalarBufferAttribute,
+} from "../../utils";
 import { useFo3dContext } from "../context";
 
 export const usePcdMaterial = (
@@ -26,6 +29,14 @@ export const usePcdMaterial = (
   pcdContainerRef: React.RefObject<any>
 ) => {
   const { upVector, pluginSettings } = useFo3dContext();
+
+  const pcdType = useMemo(() => {
+    if (geometry.hasAttribute("intensity")) {
+      return "intensity";
+    }
+
+    return "rgb";
+  }, [geometry]);
 
   const { customColor, pointSize, isPointSizeAttenuated, shadeBy, opacity } =
     usePcdMaterialControls(name, defaultMaterial);
@@ -58,14 +69,18 @@ export const usePcdMaterial = (
       return { min: 0, max: 1 };
     }
 
-    const intensity =
-      geometry.getAttribute("color") ?? geometry.getAttribute("intensity");
+    const isLegacyIntensity = !Boolean(geometry.getAttribute("intensity"));
 
-    if (intensity) {
-      return computeMinMaxForColorBufferAttribute(intensity);
+    if (isLegacyIntensity) {
+      const minMax = computeMinMaxForColorBufferAttribute(
+        geometry.getAttribute("color")
+      );
+      return minMax;
+    } else {
+      return computeMinMaxForScalarBufferAttribute(
+        geometry.getAttribute("intensity")
+      );
     }
-
-    return { min: 0, max: 1 };
   }, [geometry, shadeBy]);
 
   const pointsMaterial = useMemo(() => {
@@ -97,12 +112,13 @@ export const usePcdMaterial = (
         return (
           <ShadeByIntensity
             key={key}
-            min={minIntensity}
-            max={maxIntensity}
+            minIntensity={minIntensity}
+            maxIntensity={maxIntensity}
             gradients={PCD_SHADING_GRADIENTS}
             pointSize={pointSize}
             opacity={opacity}
             isPointSizeAttenuated={isPointSizeAttenuated}
+            pcdType={pcdType}
           />
         );
 
@@ -149,6 +165,7 @@ export const usePcdMaterial = (
     upVector,
     opacity,
     name,
+    pcdType,
   ]);
 
   return pointsMaterial;
