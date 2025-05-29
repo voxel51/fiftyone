@@ -405,6 +405,10 @@ def _make_match_stage(view, filters):
         path_field = view.get_field(path)
 
         field = view.get_field(parent_path)
+
+        if field is None or path_field is None:
+            continue
+
         is_label_field = _is_label_type(field)
         if (
             is_label_field
@@ -461,6 +465,10 @@ def _make_label_filter_stages(
 
         field = view.get_field(path)
         label_field = view.get_field(label_path)
+
+        if field is None or label_field is None:
+            continue
+
         if issubclass(
             label_field.document_type, (fol.Keypoint, fol.Keypoints)
         ) and isinstance(field, fof.ListField):
