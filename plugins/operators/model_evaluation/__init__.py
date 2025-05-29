@@ -29,6 +29,7 @@ from plugins.utils import get_subsets_from_custom_code
 
 STORE_NAME = "model_evaluation_panel_builtin"
 MAX_SAMPLES_FOR_DEFAULT_PREVIEW = 25000
+PROMPT_SCOPED_CACHE_TTL = 60 * 60  # 1 hour
 
 
 def dataset_serialize_deserialize(dataset):
@@ -53,6 +54,7 @@ class ConfigureScenario(foo.Operator):
         residency="ephemeral",
         serialize=dataset_serialize_deserialize,
         deserialize=dataset_serialize_deserialize,
+        ttl=PROMPT_SCOPED_CACHE_TTL,
     )
     def get_dataset(self, ctx):
         """
@@ -60,7 +62,9 @@ class ConfigureScenario(foo.Operator):
         """
         return ctx.dataset
 
-    @execution_cache(prompt_scoped=True, residency="ephemeral")
+    @execution_cache(
+        prompt_scoped=True, residency="ephemeral", ttl=PROMPT_SCOPED_CACHE_TTL
+    )
     def get_samples_count(self, ctx):
         """
         Returns the number of samples in the dataset for the current context.
@@ -193,6 +197,7 @@ class ConfigureScenario(foo.Operator):
         residency="ephemeral",
         serialize=dataset_serialize_deserialize,
         deserialize=dataset_serialize_deserialize,
+        ttl=PROMPT_SCOPED_CACHE_TTL,
     )
     def get_evaluations_results(self, ctx):
         """
@@ -208,7 +213,9 @@ class ConfigureScenario(foo.Operator):
         return eval_results, compare_eval_results
 
     @execution_cache(
-        key_fn=get_subset_def_data_for_eval_key, prompt_scoped=True
+        key_fn=get_subset_def_data_for_eval_key,
+        prompt_scoped=True,
+        ttl=PROMPT_SCOPED_CACHE_TTL,
     )
     def get_subset_def_data_for_eval(
         self, ctx, _, eval_result, name, subset_def
@@ -737,7 +744,7 @@ class ConfigureScenario(foo.Operator):
                 description=f"Select a {sub} to view sample distribution",
             )
 
-    @execution_cache(prompt_scoped=True)
+    @execution_cache(prompt_scoped=True, ttl=PROMPT_SCOPED_CACHE_TTL)
     def get_scenarios_picker_type(self, ctx, field_name):
         """
         Determines the scenario picker type for a given field based on its type and distinct values.
