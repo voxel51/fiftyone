@@ -1,4 +1,5 @@
 import { useAnalyticsInfo } from "@fiftyone/analytics";
+import { Markdown } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { debounce } from "lodash";
 import React, {
@@ -37,9 +38,8 @@ import {
 } from "./operators";
 import { OperatorPromptType, Places } from "./types";
 import { OperatorExecutorOptions } from "./types-internal";
-import { ValidationContext } from "./validation";
-import { Markdown } from "@fiftyone/components";
 import { generateOperatorSessionId } from "./utils";
+import { ValidationContext } from "./validation";
 
 export const promptingOperatorState = atom({
   key: "promptingOperator",
@@ -462,6 +462,7 @@ export const useOperatorPrompt = () => {
   const hooks = operator.useHooks(ctx);
   const executor = useOperatorExecutor(promptingOperator.operatorName);
   const [inputFields, setInputFields] = useState();
+  const [preparing, setPreparing] = useState(false);
   const [resolvedCtx, setResolvedCtx] = useState(null);
   const [resolvedIO, setResolvedIO] = useState({ input: null, output: null });
   const notify = fos.useNotification();
@@ -575,12 +576,14 @@ export const useOperatorPrompt = () => {
   );
   const execute = useCallback(
     async (options = {}) => {
+      setPreparing(true);
       const resolved =
         cachedResolvedInput || (await operator.resolveInput(ctx));
       const { invalid } = await validate(ctx, resolved);
       if (invalid) {
         return;
       }
+      setPreparing(false);
       setResolvedCtx(ctx);
       executor.execute(promptingOperator.params, {
         ...options,
@@ -634,6 +637,7 @@ export const useOperatorPrompt = () => {
     () => ctx.params != resolvedCtx?.params,
     [ctx.params, resolvedCtx?.params]
   );
+  const resolving = pendingResolve || preparing;
 
   const submitOptions = useOperatorPromptSubmitOptions(
     operator.uri,
@@ -672,7 +676,7 @@ export const useOperatorPrompt = () => {
     validateThrottled,
     executorError,
     resolveError,
-    pendingResolve,
+    resolving,
     execDetails,
     submitOptions,
     promptView,
