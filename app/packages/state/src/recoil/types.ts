@@ -124,6 +124,7 @@ export namespace State {
   export interface DynamicGroupParameters {
     groupBy: object | string[];
     orderBy?: string;
+    orderByKey?: unknown;
   }
 
   export interface DatasetAppConfig {

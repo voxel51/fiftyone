@@ -198,6 +198,7 @@ export const dynamicGroupParameters =
         groupBy: groupByViewStageNode.kwargs[0][1] as string,
         // second index is 'order_by', which defines order-by
         orderBy: groupByViewStageNode.kwargs[1][1] as string,
+        orderByKey: groupByViewStageNode.kwargs[2][1] as string,
       };
     },
   });

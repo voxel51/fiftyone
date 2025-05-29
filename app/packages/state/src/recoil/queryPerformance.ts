@@ -13,7 +13,7 @@ import { config } from "./config";
 import { getBrowserStorageEffectForKey } from "./customEffects";
 import { dynamicGroupParameters, isDynamicGroup } from "./dynamicGroups";
 import { filters } from "./filters";
-import { groupSlice } from "./groups";
+import { groupSlice, isGroup } from "./groups";
 import { isLabelPath } from "./labels";
 import { RelayEnvironmentKey } from "./relay";
 import * as schemaAtoms from "./schema";
@@ -50,7 +50,7 @@ export const filterSearch = selectorFamily({
         pathMap[get(schemaAtoms.dbPath(key))] = key;
       }
 
-      if (get(isDynamicGroup)) {
+      if (get(isQueryPerformantDynamicGroup)) {
         const start = get(
           schemaAtoms.dbPath(get(dynamicGroupParameters).orderBy)
         );
@@ -142,6 +142,19 @@ export const indexInfo = foq.graphQLSyncFragmentAtom<foq.indexesFragment$key>(
 const indexKeysMatch = (one: string[], two: string[]) =>
   one.length <= two.length && [...one].every((o) => two.includes(o));
 
+const isQueryPerformantDynamicGroup = selector({
+  key: "isQueryPerformantDynamicGroup",
+  get: ({ get }) => {
+    return (
+      get(isDynamicGroup) &&
+      !get(isGroup) &&
+      get(dynamicGroupParameters).orderBy &&
+      get(dynamicGroupParameters).orderByKey !== null &&
+      get(dynamicGroupParameters).orderByKey !== undefined
+    );
+  },
+});
+
 export const validIndexes = selectorFamily({
   key: "validIndexes",
   get:
@@ -149,8 +162,7 @@ export const validIndexes = selectorFamily({
     ({ get }) => {
       let allIndexes = get(indexInfo)?.sampleIndexes ?? [];
       const keyList = keys.map((k) => get(schemaAtoms.dbPath(k)));
-
-      if (get(isDynamicGroup)) {
+      if (get(isQueryPerformantDynamicGroup)) {
         const start = get(
           schemaAtoms.dbPath(get(dynamicGroupParameters).orderBy)
         );
@@ -433,6 +445,16 @@ export const isQueryPerformantView = selector({
     }
 
     const stageClasses = [...new Set(stages.map(({ _cls }) => _cls))];
+    if (get(isGroup) && stageClasses.some((cls) => cls === GROUP_BY)) {
+      return false;
+    }
+
+    if (stageClasses.some((cls) => cls === GROUP_BY)) {
+      if (!get(dynamicGroupParameters).orderBy) {
+        return false;
+      }
+    }
+
     return stageClasses.every((cls) => VALID_QP_STAGES.has(cls));
   },
 });
