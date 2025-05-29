@@ -81,7 +81,7 @@ export default function Evaluation(props: EvaluationProps) {
   const status = useMemo(() => {
     return statuses[id];
   }, [statuses, id]);
-  const { can_edit_status } = data?.permissions || {};
+  const { can_edit_status, can_rename } = data?.permissions || {};
 
   useEffect(() => {
     if (!evaluation) {
@@ -153,10 +153,12 @@ export default function Evaluation(props: EvaluationProps) {
               onSave={(newLabel) => {
                 onRename(name, newLabel);
               }}
-              onCancel={() => {
-                // do nothing
-              }}
-              showEditIcon={!compareKey}
+              disabled={!can_rename}
+              title={
+                !can_rename
+                  ? "You do not have permission to rename evaluation"
+                  : undefined
+              }
             />
           </Stack>
 
@@ -184,7 +186,7 @@ export default function Evaluation(props: EvaluationProps) {
                 renderValue={
                   !compareKey
                     ? () => (
-                        <Typography sx={{ color: "text.secondary" }}>
+                        <Typography sx={{ color: "text.secondary" }} pl={1}>
                           Select a comparison
                         </Typography>
                       )

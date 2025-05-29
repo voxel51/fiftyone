@@ -1,10 +1,9 @@
+import { useTrackEvent } from "@fiftyone/analytics";
+import { TooltipProvider } from "@fiftyone/components";
 import { usePanelEvent } from "@fiftyone/operators";
 import { usePanelId } from "@fiftyone/spaces";
 import Add from "@mui/icons-material/Add";
 import { Button } from "@mui/material";
-import React from "react";
-import TooltipProvider from "../../TooltipProvider";
-import { useTrackEvent } from "@fiftyone/analytics";
 
 export default function CreateScenario(props) {
   const {

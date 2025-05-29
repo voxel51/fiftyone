@@ -1,14 +1,11 @@
-import { capitalize } from "lodash";
-
-import { IconButton } from "@mui/material";
-
+import { TooltipProvider } from "@fiftyone/components";
 import CallSplitOutlinedIcon from "@mui/icons-material/CallSplitOutlined";
 import CrisisAlertOutlinedIcon from "@mui/icons-material/CrisisAlertOutlined";
 import Layers from "@mui/icons-material/Layers";
 import PieChartOutlinedIcon from "@mui/icons-material/PieChartOutlined";
 import ShowChartOutlinedIcon from "@mui/icons-material/ShowChartOutlined";
-
-import TooltipProvider from "../TooltipProvider";
+import { IconButton } from "@mui/material";
+import { capitalize } from "lodash";
 import { ConcreteEvaluationType } from "./Types";
 
 interface Props {

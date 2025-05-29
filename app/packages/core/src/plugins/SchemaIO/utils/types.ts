@@ -64,6 +64,14 @@ export type ViewPropsType<Schema extends SchemaType = SchemaType> = {
   };
   autoFocused?: React.MutableRefObject<boolean>;
   otherProps: { [key: string]: any };
+  /**
+   * Custom. Available only when explicitly passed to the view.
+   */
+  onClick?: (
+    e: React.MouseEvent,
+    params: { [key: string]: any },
+    props: ViewPropsType
+  ) => void;
 };
 
 export type CustomComponentsType = {
