@@ -1,3 +1,4 @@
+import { TooltipProvider } from "@fiftyone/components";
 import { DeleteOutline, EditOutlined } from "@mui/icons-material";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import {
@@ -10,7 +11,6 @@ import {
 } from "@mui/material";
 import React from "react";
 import ConfirmDelete from "../../components/ConfirmDelete";
-import TooltipProvider from "../../../TooltipProvider";
 
 export default function Actions(props) {
   const { onDelete, onEdit, canEdit, canDelete } = props;

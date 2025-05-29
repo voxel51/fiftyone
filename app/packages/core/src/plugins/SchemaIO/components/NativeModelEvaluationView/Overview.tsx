@@ -55,6 +55,7 @@ export default function Overview(props: OverviewProps) {
             method={method}
             onSelect={onSelect}
             onRename={onRename}
+            hasRenamePermission={permissions?.can_rename}
           />
         );
       })}
@@ -68,6 +69,9 @@ export default function Overview(props: OverviewProps) {
             onSelect={onSelect}
             type={type}
             method={method}
+            onRename={() => {
+              // Do nothing. No rename for pending evaluations
+            }}
           />
         );
       })}
@@ -86,6 +90,7 @@ function EvaluationCard(props: EvaluationCardProps) {
     type,
     method,
     onRename,
+    hasRenamePermission,
   } = props;
   const [hovering, setHovering] = React.useState(false);
 
@@ -123,6 +128,12 @@ function EvaluationCard(props: EvaluationCardProps) {
                 onRename(eval_key, newName);
               }}
               showEditIcon={hovering}
+              disabled={!hasRenamePermission}
+              title={
+                !hasRenamePermission
+                  ? "You do not have permission to rename evaluation"
+                  : undefined
+              }
             />
           </Stack>
           <Stack direction="row" spacing={0.5} alignItems={"center"}>
