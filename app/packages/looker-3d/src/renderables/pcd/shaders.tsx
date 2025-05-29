@@ -117,7 +117,8 @@ const ShadeByHeightShaders = {
 
   void main() {
     float v = clamp(hValue, 0., 1.);
-    vec3 col = texture2D(gradientMap, vec2(0, v)).rgb;
+    // sample from the middle of the gradient map to avoid border artifacts
+    vec3 col = texture2D(gradientMap, vec2(0.5, v)).rgb;
     gl_FragColor = vec4(col, opacity);
   }`,
 };
@@ -139,15 +140,9 @@ const ShadeByIntensityShaders = {
     return ( curval - minval ) / ( maxval - minval );
   }
 
-  float logRemap(float mn, float mx, float val){
-    float v = (log(val) - log(mn)) / (log(mx)-log(mn));
-    return clamp(v, 0., 1.);
-  }
-
   void main() {
     vec3 pos = position;
     vNorm = clamp(remap(uMin, uMax, intensity), 0.0, 1.0);
-    // vNorm = clamp(logRemap(uMin, uMax, intensity), 0.0, 1.0);
 
     vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
 
@@ -178,7 +173,7 @@ const ShadeByLegacyIntensityShaders = {
     uniform float pointSize;
     uniform bool isPointSizeAttenuated;
   
-    varying float hValue;
+    varying float vNorm;
     attribute vec3 color;
   
     float remap ( float minval, float maxval, float curval ) {
@@ -187,7 +182,7 @@ const ShadeByLegacyIntensityShaders = {
   
     void main() {
       vec3 pos = position;
-      hValue = remap(uMin, uMax, color.r);
+      vNorm = clamp(remap(uMin, uMax, color.r), 0.0, 1.0);
   
       vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
   
@@ -196,14 +191,16 @@ const ShadeByLegacyIntensityShaders = {
     }
   `,
   fragmentShader: /* glsl */ `
+    precision highp float;
+
     uniform sampler2D gradientMap;
-    varying float hValue;
-  
     uniform float opacity;
+
+    varying float vNorm;
   
     void main() {
-      float v = clamp(hValue, 0., 1.);
-      vec3 col = texture2D(gradientMap, vec2(0, v)).rgb;
+      // sample from the middle of the gradient map to avoid border artifacts
+      vec3 col = texture2D(gradientMap, vec2(0.5, vNorm)).rgb;
       gl_FragColor = vec4(col, opacity);
     }
   `,
@@ -282,7 +279,7 @@ export const ShadeByIntensity = ({
   minIntensity: number;
   maxIntensity: number;
 }) => {
-  const gradientMap = useGradientMap(gradients, true);
+  const gradientMap = useGradientMap(gradients);
 
   const isLegacyIntensity = useMemo(() => {
     return pcdType !== "intensity";
