@@ -6085,8 +6085,8 @@ class Mongo(ViewStage):
 
             return self._group_slices_manual
 
-        if sample_collection.media_type != fom.GROUP:
-            return None
+        if sample_collection.group_media_types is None:
+            return []
 
         # The pipeline could by anything; always attach all group slices
         return list(sample_collection.group_media_types.keys())
