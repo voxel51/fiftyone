@@ -1,11 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseHeader } from "./utils";
-
-type PCDCase = {
-  name: string;
-  header: string;
-  expectedSlice: string;
-};
+import { parseHeader } from "./parse-header";
 
 function makeBuffer(str: string): ArrayBuffer {
   return new TextEncoder().encode(str).buffer as ArrayBuffer;

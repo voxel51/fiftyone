@@ -1,5 +1,13 @@
 export type PCDFieldType = "F" | "I" | "U";
 
+export const PCDFieldType = {
+  Ascii: "ascii" as const,
+  Binary: "binary" as const,
+  BinaryCompressed: "binary_compressed" as const,
+};
+
+export type PCDFileType = typeof PCDFieldType[keyof typeof PCDFieldType];
+
 export type ProgressCallback = (event: ProgressEvent) => void;
 export type ErrorCallback = (event: ErrorEvent | Error) => void;
 
