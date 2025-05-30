@@ -1057,6 +1057,14 @@ class DatasetTests(unittest.TestCase):
             for edge in edges:
                 self.assertIsInstance(edge, datetime)
 
+        # Ensure that we gracefully handle a single unique datetime value
+
+        counts, _, _ = dataset.limit(1).histogram_values("dates")
+        self.assertEqual(counts[0], 1)
+
+        counts, _, _ = dataset.limit(1).histogram_values("ms")
+        self.assertEqual(counts[0], 1)
+
     @drop_datasets
     def test_order(self):
         d = fo.Dataset()
