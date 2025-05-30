@@ -6508,7 +6508,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     # -1 to convert from CVAT indexing
                     mask = det.mask
                     if w != mask_width or h != mask_height:
-                        mask = etai.resize(mask, width=w, height=h)
+                        mask = etai.resize(
+                            mask.astype("uint8"), width=w, height=h
+                        )
 
                     rle = HasCVATBinaryMask._mask_to_cvat_rle(mask)
                     rle.extend([xtl, ytl, xbr - 1, ybr - 1])
