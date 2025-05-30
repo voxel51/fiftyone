@@ -2,9 +2,9 @@ import { getSampleSrc } from "@fiftyone/state";
 import throttle from "lodash/throttle";
 import { useEffect, useMemo, useRef } from "react";
 import type { BufferAttribute, Quaternion, Vector3 } from "three";
-import { PCDLoader } from "three/examples/jsm/loaders/PCDLoader";
 import type { PcdAsset } from "../../hooks";
 import { useFoLoader } from "../../hooks/use-fo-loaders";
+import { DynamicPCDLoader } from "../../loaders/dynamic-pcd-loader";
 import { useFo3dContext } from "../context";
 import { getResolvedUrlForFo3dAsset } from "../utils";
 import { usePcdMaterial } from "./use-pcd-material";
@@ -33,7 +33,7 @@ export const Pcd = ({
     [pcdPath, preTransformedPcdPath, fo3dRoot]
   );
 
-  const points_ = useFoLoader(PCDLoader, pcdUrl);
+  const points_ = useFoLoader(DynamicPCDLoader, pcdUrl);
 
   // todo: hack until https://github.com/pmndrs/react-three-fiber/issues/245 is fixed
   const points = useMemo(() => points_.clone(false), [points_]);
