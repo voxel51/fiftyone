@@ -580,6 +580,8 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
 
         config.entrypoint_args["cache_dir"] = fo.config.model_zoo_dir
 
+        config.entrypoint_args["cache_dir"] = fo.config.model_zoo_dir
+
         # default transforms
         if config.transforms_fcn is None:
             config.transforms_fcn = (
