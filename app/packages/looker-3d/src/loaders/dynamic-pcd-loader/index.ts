@@ -1,23 +1,19 @@
 import {
-  BufferGeometry,
   FileLoader,
-  Float32BufferAttribute,
-  Int32BufferAttribute,
   Loader,
   LoadingManager,
   Points,
   PointsMaterial,
 } from "three";
-import { ErrorCallback, ProgressCallback } from "./types";
+import { createBufferGeometry } from "./create-buffer-geometry";
 import { parsePCDData } from "./parse-pcd-data";
+import { ErrorCallback, ProgressCallback } from "./types";
 
 /**
  * DynamicPCDLoader parses Point Cloud Data (PCD) files (ASCII, binary, compressed)
  * and returns a THREE.Points instance.
  *
- * This is based on the original THREE.JS PCDLoader, but with the following changes:
- * - It's written in Typescript.
- * - It supports dynamic schema parsing (original PCDLoader only supports static schema of rgb, intensity, normal, and labels)
+ * Based on https://github.com/mrdoob/three.js/blob/master/examples/jsm/loaders/PCDLoader.js
  */
 export class DynamicPCDLoader extends Loader {
   public littleEndian: boolean;
@@ -74,34 +70,17 @@ export class DynamicPCDLoader extends Loader {
    * Parse ArrayBuffer into THREE.Points.
    */
   public parse(data: ArrayBuffer): Points {
-    const { position, normal, color, intensity, label } = parsePCDData(
+    const { header, position, attributes } = parsePCDData(
       data,
       this.littleEndian
     );
-    const geometry = new BufferGeometry();
-    if (position.length)
-      geometry.setAttribute(
-        "position",
-        new Float32BufferAttribute(position, 3)
-      );
-    if (normal.length)
-      geometry.setAttribute("normal", new Float32BufferAttribute(normal, 3));
-    if (color.length)
-      geometry.setAttribute("color", new Float32BufferAttribute(color, 3));
-    if (intensity.length)
-      geometry.setAttribute(
-        "intensity",
-        new Float32BufferAttribute(intensity, 1)
-      );
-    if (label.length)
-      geometry.setAttribute("label", new Int32BufferAttribute(label, 1));
 
-    geometry.computeBoundingSphere();
+    const geometry = createBufferGeometry(header, position, attributes);
 
     // reasonable default material (will most likely be overridden by the user)
     const material = new PointsMaterial({
       size: 0.005,
-      vertexColors: color.length > 0,
+      vertexColors: !!geometry.getAttribute("color"),
     });
     return new Points(geometry, material);
   }

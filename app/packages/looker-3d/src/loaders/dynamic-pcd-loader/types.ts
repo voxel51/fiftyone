@@ -6,6 +6,8 @@ export const PCDFieldType = {
   BinaryCompressed: "binary_compressed" as const,
 };
 
+export type PCDAttributes = Record<string, number[]>;
+
 export type PCDFileType = typeof PCDFieldType[keyof typeof PCDFieldType];
 
 export type ProgressCallback = (event: ProgressEvent) => void;
