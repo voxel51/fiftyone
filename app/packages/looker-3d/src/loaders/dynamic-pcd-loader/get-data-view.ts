@@ -5,13 +5,13 @@ import { PCDFieldType } from "./types";
  *
  * DataView ref: https://developer.mozilla.org/en-US/docs/Web/API/DataView
  */
-export function getDataView(
+export const getDataView = (
   dv: DataView,
   offset: number,
   type: PCDFieldType,
   size: number,
   littleEndian: boolean
-): number {
+): number => {
   switch (type) {
     case "F":
       return size === 8
@@ -26,4 +26,4 @@ export function getDataView(
       if (size === 2) return dv.getUint16(offset, littleEndian);
       return dv.getUint32(offset, littleEndian);
   }
-}
+};

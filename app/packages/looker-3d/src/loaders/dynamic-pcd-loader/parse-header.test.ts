@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { parseHeader } from "./parse-header";
 
-function makeBuffer(str: string): ArrayBuffer {
+const makeBuffer = (str: string): ArrayBuffer => {
   return new TextEncoder().encode(str).buffer as ArrayBuffer;
-}
+};
 
 describe("parseHeader()", () => {
   it("parses a minimal ASCII header with explicit COUNT & POINTS", () => {

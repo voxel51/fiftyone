@@ -2,9 +2,9 @@ import { describe, it, expect } from "vitest";
 import { getDataView } from "./get-data-view";
 import { PCDFieldType } from "./types";
 
-function makeDataView(buffer: ArrayBuffer) {
+const makeDataView = (buffer: ArrayBuffer) => {
   return new DataView(buffer);
-}
+};
 
 describe("getDataView", () => {
   describe("type F (float)", () => {

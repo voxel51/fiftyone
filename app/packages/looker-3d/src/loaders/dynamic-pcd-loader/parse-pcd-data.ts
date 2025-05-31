@@ -7,14 +7,14 @@ import { PCDAttributes, PCDFieldType, PCDHeader } from "./types";
 /**
  * Parses PCD data from ArrayBuffer and returns raw arrays for geometry attributes.
  */
-export function parsePCDData(
+export const parsePCDData = (
   data: ArrayBuffer,
   littleEndian: boolean
 ): {
   header: PCDHeader;
   position: number[];
   attributes: PCDAttributes;
-} {
+} => {
   const header = parseHeader(data);
   const position: number[] = [];
   const attributes: PCDAttributes = {};
@@ -30,9 +30,12 @@ export function parsePCDData(
   if (header.data === PCDFieldType.Ascii) {
     const text = new TextDecoder().decode(data).substring(header.headerLen);
     const lines = text.split("\n");
+
     for (const ln of lines) {
       if (!ln.trim()) continue;
+
       const parts = ln.trim().split(/\s+/);
+
       if ("x" in header.offset) {
         position.push(
           Number(parts[header.offset.x]),
@@ -40,8 +43,10 @@ export function parsePCDData(
           Number(parts[header.offset.z])
         );
       }
+
       for (const field of header.fields) {
         if (field === "x" || field === "y" || field === "z") continue;
+
         if (field === "rgb") {
           const raw = parseFloat(parts[header.offset.rgb]);
           const view = new Float32Array([raw]);
@@ -67,8 +72,8 @@ export function parsePCDData(
     const compressed = new Uint8Array(data, header.headerLen + 8, sizes[0]);
     const decompressed = decompressLZF(compressed, sizes[1]);
     const dv = new DataView(decompressed.buffer);
+
     for (let i = 0; i < header.points; i++) {
-      const base = i * header.rowSize;
       if ("x" in header.offset) {
         const ix = header.fields.indexOf("x");
         position.push(
@@ -97,9 +102,11 @@ export function parsePCDData(
           )
         );
       }
+
       for (const field of header.fields) {
         if (field === "x" || field === "y" || field === "z") continue;
         const idx = header.fields.indexOf(field);
+
         if (field === "rgb") {
           if (tmpColor && SRGBColorSpace) {
             const r =
@@ -139,8 +146,10 @@ export function parsePCDData(
     const ix = fields.indexOf("x");
     const iy = fields.indexOf("y");
     const iz = fields.indexOf("z");
+
     for (let i = 0; i < header.points; i++) {
       const row = i * header.rowSize;
+
       if ("x" in offsetMap) {
         position.push(
           getDataView(
@@ -160,6 +169,7 @@ export function parsePCDData(
           getDataView(dv, row + offsetMap.z, types[iz], sizes[iz], littleEndian)
         );
       }
+
       for (const field of fields) {
         if (field === "x" || field === "y" || field === "z") continue;
         const idx = fields.indexOf(field);
@@ -185,5 +195,6 @@ export function parsePCDData(
       }
     }
   }
+
   return { header, position, attributes };
-}
+};

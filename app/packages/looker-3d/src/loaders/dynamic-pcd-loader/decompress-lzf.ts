@@ -55,6 +55,7 @@ export const decompressLZF = (
       // copy (len + 2) bytes from the computed back‑reference location.
       // the +2 is part of the LZF spec: minimum copy is 2 bytes.
       const copyCount = len + 2;
+
       for (let i = 0; i < copyCount; i++) {
         out[outPtr++] = out[ref++];
       }

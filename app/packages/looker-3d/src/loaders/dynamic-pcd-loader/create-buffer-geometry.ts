@@ -18,11 +18,11 @@ import { PCDAttributes, PCDFieldType, PCDHeader } from "./types";
  * @param attributes - Object containing arrays for each attribute field
  * @returns A BufferGeometry with all attributes properly set
  */
-export function createBufferGeometry(
+export const createBufferGeometry = (
   header: PCDHeader,
   position: number[],
   attributes: PCDAttributes
-): BufferGeometry {
+): BufferGeometry => {
   const geometry = new BufferGeometry();
 
   if (position.length) {
@@ -57,7 +57,7 @@ export function createBufferGeometry(
 
   geometry.computeBoundingSphere();
   return geometry;
-}
+};
 
 /**
  * Creates the appropriate buffer attribute based on PCD field type and size.
@@ -117,5 +117,6 @@ const createBufferAttribute = (
   }
 
   console.warn(`Unknown PCD field type "${type}", defaulting to Float32`);
+
   return new Float32BufferAttribute(data, 1);
 };

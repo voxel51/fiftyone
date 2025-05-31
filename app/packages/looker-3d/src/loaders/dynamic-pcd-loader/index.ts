@@ -25,6 +25,11 @@ export class DynamicPCDLoader extends Loader {
 
   /**
    * Asynchronously load a PCD file.
+   *
+   * @param url - The URL of the PCD file
+   * @param onLoad - The callback function to call when the file is loaded
+   * @param onProgress - The callback function to call when the file is loaded
+   * @param onError - The callback function to call when the file is loaded
    */
   public load(
     url: string,
@@ -56,6 +61,10 @@ export class DynamicPCDLoader extends Loader {
 
   /**
    * Promise-based loader.
+   *
+   * @param url - The URL of the PCD file
+   * @param onProgress - The callback function to call when the file is loaded
+   * @returns A Promise that resolves to a THREE.Points instance
    */
   public loadAsync(
     url: string,
@@ -68,6 +77,9 @@ export class DynamicPCDLoader extends Loader {
 
   /**
    * Parse ArrayBuffer into THREE.Points.
+   *
+   * @param data - The ArrayBuffer to parse
+   * @returns A THREE.Points instance
    */
   public parse(data: ArrayBuffer): Points {
     const { header, position, attributes } = parsePCDData(
