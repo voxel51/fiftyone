@@ -10728,7 +10728,6 @@ class SampleCollection(object):
 
         idx_map = {}
         pipelines = []
-        requires_transform = False
 
         # Build batch pipeline
         if batch_aggs:
