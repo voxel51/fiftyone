@@ -891,11 +891,21 @@ class ExecutionContext(object):
             progress (None): an optional float between 0 and 1 (0% to 100%)
             label (None): an optional label to display
         """
-        if self._set_progress:
-            self._set_progress(
-                self._delegated_operation_id,
-                ExecutionProgress(progress, label),
-            )
+        if self._set_progress is not None:
+            try:
+                self._set_progress(
+                    self._delegated_operation_id,
+                    ExecutionProgress(progress=progress, label=label),
+                )
+            except Exception as e:
+                # Log warning rather than raise exception to prevent things
+                # like intermittent network errors from killing otherwise
+                # functional long-running operations
+                logger.warning(
+                    f"Failed to set progress for the operation: {str(e)}"
+                )
+        elif self.delegated:
+            logger.info(f"Progress: {progress} - {label}")
         else:
             self.log(f"Progress: {progress} - {label}")
 
