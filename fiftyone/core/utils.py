@@ -1012,6 +1012,9 @@ def report_progress(progress, n=None, dt=None):
 
         dataset = foz.load_zoo_dataset("cifar10", split="test")
 
+        # Disable builtin progress bars
+        fo.config.show_progress_bars = False
+
         # Print progress at 10 equally-spaced increments
         progress = fo.report_progress(print_progress, n=10)
         dataset.compute_metadata(progress=progress)
