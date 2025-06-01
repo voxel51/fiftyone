@@ -30,6 +30,8 @@ import fiftyone.core.utils as fou
 
 logger = logging.getLogger(__name__)
 
+IDENTITY_FN = lambda x: x
+
 
 class Aggregation(object):
     """Abstract base class for all aggregations.
@@ -169,20 +171,6 @@ class Aggregation(object):
             the aggregation result
         """
         raise NotImplementedError("subclasses must implement default_result()")
-
-    def _must_transform_output_field_value(self):
-        """Whether the output value of this aggregation must be transformed
-        with parse_result(). Note that this must be called after to_mongo() for
-        the field to be set.
-
-        Returns:
-            True/False
-        """
-        if hasattr(self, "_field"):
-            return self._field is not None
-        if hasattr(self, "_field_type"):
-            return self._field_type is not None
-        return False
 
     def _needs_frames(self, sample_collection):
         """Whether the aggregation requires frame labels of video samples to be
@@ -2881,12 +2869,6 @@ class Values(Aggregation):
         """
         return []
 
-    def _must_transform_output_field_value(self):
-        # this must be called after to_mongo() for the field to be set
-        if self._raw:
-            return False
-        return super()._must_transform_output_field_value()
-
     def parse_result(self, d):
         """Parses the output of :meth:`to_mongo` when the result is a dict or
         returns an expression that can be evaluated lazily.
@@ -2908,7 +2890,9 @@ class Values(Aggregation):
                     x, _g, level=_lv
                 )
             else:
-                return lambda x: x
+                # Return a known identity function to quickly and accurately
+                # determine if the output requires transforming
+                return IDENTITY_FN
 
         if self._big_result:
             values = [di[self._big_field] for di in d]

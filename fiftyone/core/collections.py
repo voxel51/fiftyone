@@ -10732,16 +10732,12 @@ class SampleCollection(object):
 
         # Build batch pipeline
         if batch_aggs:
-            pipeline, requires_transform = self._build_batch_pipeline(
-                batch_aggs
-            )
+            pipeline = self._build_batch_pipeline(batch_aggs)
             pipelines.append(pipeline)
 
         # Build big pipelines
         for idx, aggregation in big_aggs.items():
-            pipeline, requires_transform = self._build_big_pipeline(
-                aggregation
-            )
+            pipeline = self._build_big_pipeline(aggregation)
             idx_map[idx] = len(pipelines)
             pipelines.append(pipeline)
 
@@ -10768,18 +10764,14 @@ class SampleCollection(object):
                     raise ValueError(
                         "Cannot stream with both batch and big aggregations"
                     )
-                return self._iter_and_parse_agg_results(
-                    batch_aggs, _results, requires_transform
-                )
+                return self._iter_and_parse_agg_results(batch_aggs, _results)
             result = list(_results[0])
             for idx, aggregation in batch_aggs.items():
                 results[idx] = self._parse_big_result(aggregation, result)
 
         # Parse big results
         if big_aggs and stream:
-            return self._iter_and_parse_agg_results(
-                big_aggs, _results, requires_transform
-            )
+            return self._iter_and_parse_agg_results(big_aggs, _results)
         for idx, aggregation in big_aggs.items():
             result = list(_results[idx_map[idx]])
             results[idx] = self._parse_big_result(aggregation, result)
@@ -10799,20 +10791,22 @@ class SampleCollection(object):
                 results[idx] = data
         return results[0] if scalar_result else results
 
-    def _iter_and_parse_agg_results(
-        self, parsed_aggs, cursor, requires_transform
-    ):
+    def _iter_and_parse_agg_results(self, parsed_aggs, cursor):
 
         result_fields = [agg._big_field for agg in parsed_aggs.values()]
 
         # Non-batchable big aggregations will result a cursor per aggregation
         handle_multiple_cursors = isinstance(cursor, list)
 
-        if requires_transform:
-            transformers = [
-                agg.parse_result(None) for agg in parsed_aggs.values()
-            ]
+        transformers = [agg.parse_result(None) for agg in parsed_aggs.values()]
 
+        # if none of the values aggregations require transforming the field,
+        # we can just extract and return the value from the doc result
+        requires_transform = any(
+            transform is not foa.IDENTITY_FN for transform in transformers
+        )
+
+        if requires_transform:
             # single field + extra parsing
             if len(result_fields) == 1:
                 field = result_fields[0]
@@ -10943,13 +10937,10 @@ class SampleCollection(object):
         project = {}
         attach_frames = False
         group_slices = set()
-        requires_transform = False
         for idx, aggregation in aggs_map.items():
             big_field = "value%d" % idx
 
             _pipeline = aggregation.to_mongo(self, big_field=big_field)
-            if aggregation._must_transform_output_field_value():
-                requires_transform = True
 
             attach_frames |= aggregation._needs_frames(self)
             _group_slices = aggregation._needs_group_slices(self)
@@ -10965,23 +10956,17 @@ class SampleCollection(object):
                     "$project stage; found %s" % _pipeline
                 )
 
-        return (
-            self._pipeline(
-                pipeline=[{"$project": project}],
-                attach_frames=attach_frames,
-                group_slices=group_slices,
-            ),
-            requires_transform,
+        return self._pipeline(
+            pipeline=[{"$project": project}],
+            attach_frames=attach_frames,
+            group_slices=group_slices,
         )
 
     def _build_big_pipeline(self, aggregation):
-        return (
-            self._pipeline(
-                pipeline=aggregation.to_mongo(self, big_field="values"),
-                attach_frames=aggregation._needs_frames(self),
-                group_slices=aggregation._needs_group_slices(self),
-            ),
-            aggregation._must_transform_output_field_value(),
+        return self._pipeline(
+            pipeline=aggregation.to_mongo(self, big_field="values"),
+            attach_frames=aggregation._needs_frames(self),
+            group_slices=aggregation._needs_group_slices(self),
         )
 
     def _build_facets(self, aggs_map):
