@@ -394,7 +394,6 @@ def _do_pooled_aggregate(collection, pipelines, hints, _stream=False):
         )
 
     if _stream:
-        # When `unwind` is used, each aggregation runs in its own independent pipeline.
         # If streaming is enabled, return a list of cursors so each pipeline's results
         # can be consumed independently downstream.
         return [
