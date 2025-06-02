@@ -1,21 +1,28 @@
+import { useBrowserStorage } from "@fiftyone/state";
 import { folder, useControls } from "leva";
 import type { OnChangeHandler } from "leva/plugin";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { BufferGeometry } from "three";
 import {
   PANEL_ORDER_PCD_CONTROLS,
   SHADE_BY_CUSTOM,
   SHADE_BY_HEIGHT,
-  SHADE_BY_INTENSITY,
   SHADE_BY_NONE,
-  SHADE_BY_RGB,
 } from "../constants";
 import type { FoPointcloudMaterialProps } from "./use-fo3d";
-import { useBrowserStorage } from "@fiftyone/state";
 
 export const usePcdMaterialControls = (
   name: string,
+  geometry: BufferGeometry,
   defaultMaterial: FoPointcloudMaterialProps
 ) => {
+  const shadeModes = useMemo(() => {
+    // list all attributes in the geometry
+    const attributes = geometry.attributes;
+    const attributeNames = Object.keys(attributes);
+    return attributeNames.sort().filter((name) => name !== "position");
+  }, [geometry]);
+
   const [shadeBy, setShadeBy] = useBrowserStorage(
     "fo3dPcdShadingMode",
     defaultMaterial.shadingMode
@@ -54,9 +61,8 @@ export const usePcdMaterialControls = (
             options: [
               SHADE_BY_NONE,
               SHADE_BY_HEIGHT,
-              SHADE_BY_INTENSITY,
-              SHADE_BY_RGB,
               SHADE_BY_CUSTOM,
+              ...shadeModes,
             ],
             label: "Shade By",
             onChange: setShadeBy,

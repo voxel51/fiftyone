@@ -39,7 +39,7 @@ export const usePcdMaterial = (
   }, [geometry]);
 
   const { customColor, pointSize, isPointSizeAttenuated, shadeBy, opacity } =
-    usePcdMaterialControls(name, defaultMaterial);
+    usePcdMaterialControls(name, geometry, defaultMaterial);
 
   const pcdBoundingBox = useFo3dBounds(
     pcdContainerRef,
