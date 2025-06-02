@@ -13,7 +13,7 @@ import { config } from "./config";
 import { getBrowserStorageEffectForKey } from "./customEffects";
 import { dynamicGroupParameters, isDynamicGroup } from "./dynamicGroups";
 import { filters } from "./filters";
-import { groupSlice, isGroup } from "./groups";
+import { groupMediaTypes, groupSlice } from "./groups";
 import { isLabelPath } from "./labels";
 import { RelayEnvironmentKey } from "./relay";
 import * as schemaAtoms from "./schema";
@@ -147,7 +147,6 @@ const isQueryPerformantDynamicGroup = selector({
   get: ({ get }) => {
     return (
       get(isDynamicGroup) &&
-      !get(isGroup) &&
       get(dynamicGroupParameters).orderBy &&
       get(dynamicGroupParameters).orderByKey !== null &&
       get(dynamicGroupParameters).orderByKey !== undefined
@@ -445,7 +444,10 @@ export const isQueryPerformantView = selector({
     }
 
     const stageClasses = [...new Set(stages.map(({ _cls }) => _cls))];
-    if (get(isGroup) && stageClasses.some((cls) => cls === GROUP_BY)) {
+    if (
+      get(groupMediaTypes).length &&
+      stageClasses.some((cls) => cls === GROUP_BY)
+    ) {
       return false;
     }
 
