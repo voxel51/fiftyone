@@ -3,6 +3,137 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.9.0
+-------------------------
+*Released June 5, 2025*
+
+Includes all updates from :ref:`FiftyOne 1.6.0 <release-notes-v1.6.0>`, plus:
+
+- Fixed API connection Websocket `send_bytes` AttributeError when `websocket-client<1.7`
+- Fixed resolving database secrets in the execution context.
+- Fixed vulnerabilities in `prismjs`, `jinja2`, and `@babel`
+
+
+.. _release-notes-v1.6.0:
+
+FiftyOne 1.6.0
+--------------
+*Released June 5, 2025*
+
+Plugins
+
+- Added a new property `active_fields` to the `ExecutionContext`. Operators and
+  panels can now read the currently active fields. Added a new operator
+  `clear_active_fields` for hiding all sidebar fields.
+  `#5952 <https://github.com/voxel51/fiftyone/pull/5952>`_
+- Allows Operators to dynamically resolve their run name given the current
+  `ExecutionContext`. `#5916 <https://github.com/voxel51/fiftyone/pull/5916>`_
+
+Annotation
+
+- Fixed issue with duplicate filenames when uploading to CVAT, allowing for a
+  smoother experience. `#5927 <https://github.com/voxel51/fiftyone/pull/5927>`_
+- Resolved CVAT v2.31.0+ compatibility issue, removing deprecated API path
+  usage and warning from docs.
+  `#5885 <https://github.com/voxel51/fiftyone/pull/5885>`_
+
+Core
+
+- Fixes handling of list fields in `values()` aggregations to prevent unwinding
+  when using `[]` notation. 
+  `#5941 <https://github.com/voxel51/fiftyone/pull/5941>`_
+- Fixed compound key :ref:`groups <view-groups>` when `order_by` is provided `#5867 <https://github.com/voxel51/fiftyone/pull/5867>`_
+- Fixes a bug where `samples.histogram_values()` would raise an error when
+  processing a datetime field whose range is less then `1ms x len(samples)`
+  `#5971 <https://github.com/voxel51/fiftyone/pull/5971>`_
+- Adds `instance_ids` argument to select, match, exclude and delete labels
+  methods, as well as an index_to_instance utility for converting old-style
+  indices to instances. Fixes a bug with `set_values()` when setting frame
+  fields via dict syntax where not all frame numbers are present.
+  `#5918 <https://github.com/voxel51/fiftyone/pull/5918>`_
+- Fixed `#5921 <https://github.com/voxel51/fiftyone/pull/5921>`_ where some
+  `GroupDatasetImporter`s with `has_sample_field_schema=True` were failing to
+  recognize the declared `group_field`.
+  `#5926 <https://github.com/voxel51/fiftyone/pull/5926>`_
+- Added a `Dataset.last_deletion_at` property, allowing separate tracking
+  of deletion times from other metadata changes.
+  `#5853 <https://github.com/voxel51/fiftyone/pull/5853>`_
+- Fixed a bug where confidence was not applied to Keypoint instances correctly.
+  Added a `Keypoint.apply_confidence_threshold()` method that applies a
+  confidence threshold to the keypoints. Updated 
+  `Sample.add_labels(..., confidence_thresh=)` to correctly apply confidence
+  thresholds to `Keypoint` instances. Updated `KeypointDetectorOutputProcessor`
+  to apply confidence thresholds to individual points.
+  `#5894 <https://github.com/voxel51/fiftyone/pull/5894>`_
+- Adds a new `merge_embedded_docs=True` option to `merge_sample()` and
+  `merge_samples()` that causes the attributes of embedded documents to be
+  merged individually, rather than as a single "value". 
+  `#5704 <https://github.com/voxel51/fiftyone/pull/5704>`_
+
+Models
+
+- Converted all `Ultralytics.YOLO` models to `TorchImageModel`.
+  `#5729 <https://github.com/voxel51/fiftyone/pull/5729>`_
+- Converted all Hugging Face Transformers to be `TorceImageModel`s.
+  `#5761 <https://github.com/voxel51/fiftyone/pull/5761>`_
+- Added custom collate functions to `TorchImageModel`. Simply overwrite the
+  `collate_fn` method in `TorchImageModel` and set the property
+  `has_collate_fn` to `True` 
+  `#5851 <https://github.com/voxel51/fiftyone/pull/5851>`_
+
+App
+
+- Added :ref:`Scenario Analysis <>` functionality to the
+  :ref:`Model Evaluation Panel <app-model-evaluation-panel>` 
+  `#5626 <https://github.com/voxel51/fiftyone/pull/5626>`_
+- Reduced clutter in the App sidebar when performing evaluations, all fields
+  added by the evaluation (including custom evaluation metrics, if applicable)
+  are now added to a sidebar group with name `eval_key`. Sidebar groups are
+  automatically renamed or removed when evaluation keys are renamed or deleted.
+  `#5725 <https://github.com/voxel51/fiftyone/pull/5725>`_
+- Enhancements for `map_samples()` and `update_samples()`: use
+  `collections.deque` to exhaust generators in `update_samples()` for
+  efficiency; add `reload()` calls when using multiprocessing so that schema
+  changes are reflected in the main process, for consistency with the user
+  experience when `num_workers=0` or `parallelize_method="thread"` are used;
+  use global `fo.config` rather than loading a separate copy from disk, for
+  consistency with the rest of the library. 
+  `#5957 <https://github.com/voxel51/fiftyone/pull/5957>`_
+- Added support for passing `output_dir` to `apply_model()` to store instance
+  segmentation masks on disk rather than in the database
+  `#5953 <https://github.com/voxel51/fiftyone/pull/5953>`_
+- Improved integration with Databricks by automatically enhancing the user
+  agent string with FiftyOne-specific metadata when available.
+  `#5708 <https://github.com/voxel51/fiftyone/pull/5708>`_
+- Fixed bug where sources url wasn't always refreshed properly.
+  `#5925 <https://github.com/voxel51/fiftyone/pull/5925>`_
+- Label Correspondence polish: instance IDs now render distinct overlay indices
+  if `.index` is missing, updated tooltip from “Select similar” to “Select
+  all”, fixed flickering of "Color by instance" mode.
+  `#5944 <https://github.com/voxel51/fiftyone/pull/5944>`_
+- Standardizes hover and selection states across detection, keypoint, and
+  polyline overlays. `#5902 <https://github.com/voxel51/fiftyone/pull/5902>`_
+- Fixed handling of indexes for non-existent fields
+  `#5965 <https://github.com/voxel51/fiftyone/pull/5965>`_
+- Fixed unwanted index creation for grid sorting when a compound index already
+  applies `#5900 <https://github.com/voxel51/fiftyone/pull/5900>`_
+
+Docs
+
+- Added a new section to the user guide explaining how persistent selections of
+  samples and labels work in the FiftyOne App. Detailed the available selection
+  management options in both grid and expanded sample views. Included
+  illustrative images to demonstrate persistent selections and menu options.
+  `#5959 <https://github.com/voxel51/fiftyone/pull/5959>`_
+- Consolidated documentation into a new
+  :ref:`Importing Datasets <importing-datasets>` page that lists all data
+  formats in the right-hand navbar.  
+  `#5933 <https://github.com/voxel51/fiftyone/pull/5933>`_
+- Improved clarity in deprecation notices by putting most recent notices on
+  top.
+  `#5845 <https://github.com/voxel51/fiftyone/pull/5845>`_
+
+
 FiftyOne Enterprise 2.8.2
 -------------------------
 *Released May 9, 2025*
