@@ -147,6 +147,7 @@ const isQueryPerformantDynamicGroup = selector({
   get: ({ get }) => {
     return (
       get(isDynamicGroup) &&
+      !get(groupMediaTypes)?.length &&
       get(dynamicGroupParameters).orderBy &&
       get(dynamicGroupParameters).orderByKey !== null &&
       get(dynamicGroupParameters).orderByKey !== undefined
@@ -444,15 +445,8 @@ export const isQueryPerformantView = selector({
     }
 
     const stageClasses = [...new Set(stages.map(({ _cls }) => _cls))];
-    if (
-      get(groupMediaTypes).length &&
-      stageClasses.some((cls) => cls === GROUP_BY)
-    ) {
-      return false;
-    }
-
     if (stageClasses.some((cls) => cls === GROUP_BY)) {
-      if (!get(dynamicGroupParameters).orderBy) {
+      if (!get(isQueryPerformantDynamicGroup)) {
         return false;
       }
     }
