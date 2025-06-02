@@ -40,22 +40,26 @@ class GroupBy(foo.Operator):
         )
 
     def execute(self, ctx):
-        if ctx.params["compound_field"]:
+        if ctx.params.get("compound_field", None):
             key = [ctx.params["group_by"], ctx.params["compound_field"]]
         else:
             key = ctx.params["group_by"]
 
-        view = ctx.view.group_by(
+        view = _get_base_view(ctx)
+        view = view.group_by(
             key,
             order_by=ctx.params.get("order_by", None),
             order_by_key=ctx.params.get("order_by_key", None),
             reverse=ctx.params.get("reverse", False),
         )
+
+        for stage in _get_following_stages(ctx):
+            view = view.add_stage(stage)
+
         ctx.ops.set_view(view)
 
 
 def _create(ctx, obj):
-
     choices = types.DropdownView(space=12)
     for path in _get_paths(ctx, _GROUP_FIELDS):
         choices.add_choice(path, label=path)
@@ -78,7 +82,10 @@ def _create(ctx, obj):
             "compound_field",
             required=False,
             label="Compound field",
-            description="An optional compound field or ``embedded.field.name`` to group by",
+            description=(
+                "An optional compound field or ``embedded.field.name`` to "
+                "group by"
+            ),
             view=compound_choices,
         )
 
@@ -108,7 +115,11 @@ def _create(ctx, obj):
             default=False,
             required=False,
             label="Order by key",
-            description="An optional fixed ``order_by`` value representing the first sample in a group. Required for optimized performance",
+            description=(
+                "An optional fixed ``order_by`` value representing the first "
+                "sample in a group. Required for "
+                "[optimized performance](https://docs.voxel51.com/user_guide/app.html#app-query-performant-stages)"
+            ),
         )
 
     obj.bool(
@@ -135,14 +146,40 @@ _ORDER_FIELDS = (
 )
 
 
+def _get_following_stages(ctx):
+    view = ctx.view.view()
+    stages = []
+    found = False
+    for stage in view._all_stages:
+        if found:
+            stages.append(stage)
+
+        if isinstance(stage, fosg.GroupBy):
+            found = True
+
+    return stages
+
+
 def _get_base_view(ctx):
     view = ctx.view.view()
+
+    stages = []
+    for stage in view._all_stages:
+        if isinstance(stage, fosg.GroupBy):
+            break
+
+        stages.append(stage)
+
+    view = ctx.dataset.view()
+    for stage in stages:
+        view = view.add_stage(stage)
 
     return view
 
 
 def _get_paths(ctx, fields):
-    schema = ctx.view.get_field_schema(flat=True)
+    view = _get_base_view(ctx)
+    schema = view.get_field_schema(flat=True)
 
     paths = set()
     for path, field in schema.items():
