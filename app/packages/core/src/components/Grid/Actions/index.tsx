@@ -15,7 +15,6 @@ import SelectedAction from "../../Actions/Selected";
 import SimilarityAction from "../../Actions/Similarity";
 import TagAction from "../../Actions/Tag";
 import ToggleSidebarAction from "../../Actions/ToggleSidebar";
-import DynamicGroupAction from "./DynamicGroup";
 import PatchesAction from "./Patches";
 import SaveFiltersAction from "./SaveFilters";
 
@@ -48,9 +47,6 @@ const Selected = (props: AdaptiveMenuItemComponentPropsType) => (
   <SelectedAction modal={false} adaptiveMenuItemProps={props} />
 );
 
-const DynamicGroup = (props: AdaptiveMenuItemComponentPropsType) => {
-  return <DynamicGroupAction adaptiveMenuItemProps={props} />;
-};
 const BrowseOperations = (props: AdaptiveMenuItemComponentPropsType) => (
   <BrowseOperationsAction adaptiveMenuItemProps={props} />
 );
@@ -96,10 +92,6 @@ export default () => {
       {
         id: "selected",
         Component: Selected,
-      },
-      {
-        id: "dynamic-group-action",
-        Component: DynamicGroup,
       },
       {
         id: "browse-operations",
