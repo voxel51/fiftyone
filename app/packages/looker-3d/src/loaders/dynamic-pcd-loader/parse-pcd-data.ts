@@ -51,9 +51,6 @@ export const parsePCDData = (
     attributes.rgb = new Float32Array(points * 3);
   }
 
-  // used only in rgb branches
-  const tmpColor = new Color();
-
   if (header.data === PCDFieldType.Ascii) {
     const text = new TextDecoder().decode(data).substring(header.headerLen);
     const lines = text.split("\n");

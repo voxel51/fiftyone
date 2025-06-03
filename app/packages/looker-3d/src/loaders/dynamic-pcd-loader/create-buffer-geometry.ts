@@ -8,7 +8,13 @@ import {
   Uint32BufferAttribute,
   Uint8BufferAttribute,
 } from "three";
-import { PCDAttributes, PCDFieldType, PCDHeader } from "./types";
+import { computeMinMaxForScalarBufferAttribute } from "../../utils";
+import {
+  DynamicPCDBufferGeometryUserData,
+  PCDAttributes,
+  PCDFieldType,
+  PCDHeader,
+} from "./types";
 
 /**
  * Creates a BufferGeometry from parsed PCD data.
@@ -42,8 +48,8 @@ export const createBufferGeometry = (
     const fieldSize = header.size[fieldIndex];
 
     // todo: i think we can remove these special handlings
-    if (name === "rgb" || name === "color") {
-      geometry.setAttribute("color", new Float32BufferAttribute(arr, 3));
+    if (name === "rgb") {
+      geometry.setAttribute("rgb", new Float32BufferAttribute(arr, 3));
     } else if (name === "normal" || name === "normal_x") {
       geometry.setAttribute("normal", new Float32BufferAttribute(arr, 3));
     } else {
@@ -56,6 +62,20 @@ export const createBufferGeometry = (
   }
 
   geometry.computeBoundingSphere();
+
+  // compute min and max for all attributes, and store in BufferGeometry.userData
+  const userData: DynamicPCDBufferGeometryUserData = {};
+
+  for (const [name, arr] of Object.entries(geometry.attributes)) {
+    if (name === "position") {
+      continue;
+    }
+
+    userData[name] = computeMinMaxForScalarBufferAttribute(arr);
+  }
+
+  geometry.userData = userData;
+
   return geometry;
 };
 

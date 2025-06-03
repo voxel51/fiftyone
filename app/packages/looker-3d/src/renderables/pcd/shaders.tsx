@@ -51,14 +51,14 @@ const ShadeByRgbShaders = {
   uniform bool isPointSizeAttenuated;
 
   // these attributes are injected into the vertex shader based on geometry
-  attribute vec3 color;
+  attribute vec3 rgb;
 
   // this attribute is used to pass the color to the fragment shader
   varying vec3 vColor;
 
   void main() {
     // assign color to the varying variable so that it can be used in fragment shader
-    vColor = color;
+    vColor = rgb;
 
     // do a model-view transform to get the position of the point in camera space
     vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
@@ -174,7 +174,7 @@ const ShadeByLegacyIntensityShaders = {
     uniform bool isPointSizeAttenuated;
   
     varying float vNorm;
-    attribute vec3 color;
+    attribute vec3 rgb;
   
     float remap ( float minval, float maxval, float curval ) {
       return ( curval - minval ) / ( maxval - minval );
@@ -182,7 +182,7 @@ const ShadeByLegacyIntensityShaders = {
   
     void main() {
       vec3 pos = position;
-      vNorm = clamp(remap(uMin, uMax, color.r), 0.0, 1.0);
+      vNorm = clamp(remap(uMin, uMax, rgb.r), 0.0, 1.0);
   
       vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
   
@@ -274,16 +274,13 @@ export const ShadeByIntensity = ({
   opacity,
   pointSize,
   isPointSizeAttenuated,
-  pcdType,
+  isLegacyIntensity,
 }: Omit<ShaderProps, "min" | "max"> & {
   minIntensity: number;
   maxIntensity: number;
+  isLegacyIntensity: boolean;
 }) => {
   const gradientMap = useGradientMap(gradients);
-
-  const isLegacyIntensity = useMemo(() => {
-    return pcdType !== "intensity";
-  }, [pcdType]);
 
   return (
     <shaderMaterial

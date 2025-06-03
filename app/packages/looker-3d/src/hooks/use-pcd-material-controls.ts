@@ -35,7 +35,15 @@ export const usePcdMaterialControls = (
     // list all attributes in the geometry
     const attributes = geometry.attributes;
     const attributeNames = Object.keys(attributes);
-    return attributeNames.sort().filter((name) => name !== "position");
+
+    // to support legacy intensity, we need to include "intensity" if "rgb" is present
+    if (geometry.hasAttribute("rgb")) {
+      attributeNames.push("intensity");
+    }
+
+    return Array.from(new Set(attributeNames))
+      .sort()
+      .filter((name) => name !== "position");
   }, [geometry]);
 
   const [shadeBy, setShadeBy] = useBrowserStorage(

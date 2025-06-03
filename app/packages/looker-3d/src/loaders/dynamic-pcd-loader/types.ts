@@ -1,10 +1,20 @@
 export type PCDFieldType = "F" | "I" | "U";
 
+export type AttributeName = string;
+
 export const PCDFieldType = {
   Ascii: "ascii" as const,
   Binary: "binary" as const,
   BinaryCompressed: "binary_compressed" as const,
 };
+
+export type DynamicPCDBufferGeometryUserData = Record<
+  AttributeName,
+  {
+    min: number;
+    max: number;
+  }
+>;
 
 export type PCDAttributes = Record<
   string,
