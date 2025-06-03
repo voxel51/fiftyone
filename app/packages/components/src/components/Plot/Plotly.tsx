@@ -1,9 +1,50 @@
-import { useTheme } from "@fiftyone/components";
+import { Box, useTheme } from "@mui/material";
 import { merge } from "lodash";
 import React, { useMemo } from "react";
 import Plot, { PlotParams } from "react-plotly.js";
+import PlotlyTooltip, { TooltipValue } from "./PlotlyTooltip";
 
 export default function EvaluationPlot(props: EvaluationPlotProps) {
+  const { usePlotlyTooltip } = props;
+
+  if (usePlotlyTooltip) {
+    return <Plotly {...props} />;
+  }
+
+  return <PlotlyWithCustomTooltip {...props} />;
+}
+
+function PlotlyWithCustomTooltip(props: EvaluationPlotProps) {
+  const [tooltip, setTooltip] =
+    React.useState<Readonly<Plotly.PlotHoverEvent>>();
+  const { data, tooltip: value } = props;
+
+  const memoizedData = useMemo(() => {
+    return data.map((trace) => ({
+      ...trace,
+      hoverinfo: "none",
+      hovertemplate: undefined,
+    }));
+  }, [data]);
+
+  return (
+    <Box sx={{ position: "relative" }}>
+      <Plotly
+        onHover={(e) => {
+          setTooltip(e);
+        }}
+        onUnhover={(e) => {
+          setTooltip(undefined);
+        }}
+        {...props}
+        data={memoizedData as any}
+      />
+      <PlotlyTooltip event={tooltip} value={value} />
+    </Box>
+  );
+}
+
+function Plotly(props: EvaluationPlotProps) {
   const { layout = {}, data, style = {}, ...otherProps } = props;
   const theme = useTheme();
 
@@ -12,28 +53,28 @@ export default function EvaluationPlot(props: EvaluationPlotProps) {
       font: {
         family: "var(--fo-fontFamily-body)",
         size: 14,
-        color: theme.text.secondary,
+        color: theme.palette.text.secondary,
       },
       showlegend: false,
       xaxis: {
         showgrid: true,
         zeroline: true,
         visible: true,
-        zerolinecolor: theme.text.tertiary,
-        color: theme.text.secondary,
-        gridcolor: theme.primary.softBorder,
+        zerolinecolor: theme.palette.text.tertiary,
+        color: theme.palette.text.secondary,
+        gridcolor: theme.palette.primary.softBorder,
         automargin: true, // Enable automatic margin adjustment,
-        title: { font: { size: 14, color: theme.text.tertiary } },
+        title: { font: { size: 14, color: theme.palette.text.tertiary } },
       },
       yaxis: {
         showgrid: true,
         zeroline: true,
         visible: true,
-        zerolinecolor: theme.text.tertiary,
-        color: theme.text.secondary,
-        gridcolor: theme.primary.softBorder,
+        zerolinecolor: theme.palette.text.tertiary,
+        color: theme.palette.text.secondary,
+        gridcolor: theme.palette.primary.softBorder,
         automargin: true, // Enable automatic margin adjustment,
-        title: { font: { size: 14, color: theme.text.tertiary } },
+        title: { font: { size: 14, color: theme.palette.text.tertiary } },
       },
       autosize: true,
       margin: { t: 20, l: 50, b: 50, r: 20, pad: 0 },
@@ -42,8 +83,8 @@ export default function EvaluationPlot(props: EvaluationPlotProps) {
       legend: {
         x: 1,
         y: 1,
-        bgcolor: theme.background.paper,
-        font: { color: theme.text.secondary },
+        bgcolor: theme.palette.background.paper,
+        font: { color: theme.palette.text.secondary },
       },
     };
   }, [theme]);
@@ -87,4 +128,6 @@ type EvaluationPlotProps = Omit<PlotParams, "layout" | "style" | "config"> & {
   layout?: Partial<PlotParams["layout"]>;
   style?: React.CSSProperties;
   config?: PlotConfig;
+  tooltip?: TooltipValue;
+  usePlotlyTooltip?: boolean;
 };

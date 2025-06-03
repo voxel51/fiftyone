@@ -12,6 +12,7 @@ import EvaluationTable from "../components/EvaluationTable";
 import ColorSquare from "../components/ColorSquare";
 import { COMPARE_KEY_COLOR, KEY_COLOR } from "../constants";
 import { formatValue } from "../utils";
+import { formatValueAsNumber } from "@fiftyone/utilities";
 
 export default function Info(props) {
   const { name, compareKey, evaluation, compareEvaluation } = props;
@@ -198,9 +199,9 @@ export default function Info(props) {
                 <TableCell component="th" scope="row">
                   {row.property}
                 </TableCell>
-                <TableCell>{formatValue(row.value)}</TableCell>
+                <TableCell>{formatValueAsNumber(row.value)}</TableCell>
                 {compareKey && (
-                  <TableCell>{formatValue(row.compareValue)}</TableCell>
+                  <TableCell>{formatValueAsNumber(row.compareValue)}</TableCell>
                 )}
               </TableRow>
             )
