@@ -33,7 +33,7 @@ const defaultContext: Fo3dContextT = {
   setAutoRotate: () => {},
   pointCloudSettings: {
     enableTooltip: false,
-    rayCastingSensitivity: "high",
+    rayCastingSensitivity: "medium",
   },
   setPointCloudSettings: () => {},
   hoverMetadata: null,

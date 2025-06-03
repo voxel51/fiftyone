@@ -20,7 +20,7 @@ import { PCDAttributes, PCDFieldType, PCDHeader } from "./types";
  */
 export const createBufferGeometry = (
   header: PCDHeader,
-  position: number[],
+  position: number[] | Float32Array,
   attributes: PCDAttributes
 ): BufferGeometry => {
   const geometry = new BufferGeometry();
@@ -68,17 +68,24 @@ export const createBufferGeometry = (
  * @returns The appropriate BufferAttribute instance
  */
 const createBufferAttribute = (
-  data: number[],
+  data:
+    | number[]
+    | Float32Array
+    | Int32Array
+    | Uint32Array
+    | Int8Array
+    | Int16Array
+    | Uint8Array
+    | Uint16Array,
   type: PCDFieldType,
   size: number
 ) => {
   // Type 'F' = Float
   if (type === "F") {
-    if (size === 4) {
-      return new Float32BufferAttribute(data, 1);
+    if (size === 8) {
+      console.warn(`Unsupported float size ${size}, defaulting to Float32`);
     }
-    // PCD doesn't typically use Float64, but if needed, we default to Float32
-    console.warn(`Unsupported float size ${size}, defaulting to Float32`);
+
     return new Float32BufferAttribute(data, 1);
   }
 

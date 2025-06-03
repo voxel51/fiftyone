@@ -45,14 +45,13 @@ export class DynamicPCDLoader extends Loader {
     loader.load(
       url,
       (data: ArrayBuffer) => {
-        try {
-          const points = this.parse(data);
-          onLoad(points);
-        } catch (err) {
-          if (onError) onError(err);
-          else console.error(err);
-          this.manager.itemError(url);
-        }
+        this.parse(data)
+          .then(onLoad)
+          .catch((err) => {
+            if (onError) onError(err);
+            else console.error(err);
+            this.manager.itemError(url);
+          });
       },
       onProgress,
       onError
@@ -79,9 +78,9 @@ export class DynamicPCDLoader extends Loader {
    * Parse ArrayBuffer into THREE.Points.
    *
    * @param data - The ArrayBuffer to parse
-   * @returns A THREE.Points instance
+   * @returns A Promise that resolves to a THREE.Points instance
    */
-  public parse(data: ArrayBuffer): Points {
+  public async parse(data: ArrayBuffer): Promise<Points> {
     const { header, position, attributes } = parsePCDData(
       data,
       this.littleEndian

@@ -610,7 +610,7 @@ export const MediaTypeFo3dComponent = () => {
     "fo3dPointCloudSettings",
     {
       enableTooltip: false,
-      rayCastingSensitivity: "high",
+      rayCastingSensitivity: "medium",
     }
   );
 

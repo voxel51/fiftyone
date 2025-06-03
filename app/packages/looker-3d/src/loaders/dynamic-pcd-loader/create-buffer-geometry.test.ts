@@ -62,8 +62,8 @@ describe("createBufferGeometry", () => {
   it("creates Float32 attributes for type 'F' with size 4", () => {
     const position: number[] = [];
     const attributes = {
-      intensity: [0.1, 0.2, 0.3],
-      confidence: [0.9, 0.8, 0.7],
+      intensity: new Float32Array([0.1, 0.2, 0.3]),
+      confidence: new Float32Array([0.9, 0.8, 0.7]),
     };
 
     const geometry = createBufferGeometry(mockHeader, position, attributes);
@@ -88,7 +88,7 @@ describe("createBufferGeometry", () => {
   it("creates Int32 attributes for type 'I' with size 4", () => {
     const position: number[] = [];
     const attributes = {
-      label: [1, 2, 3, 4, 5],
+      label: new Float32Array([1, 2, 3, 4, 5]),
     };
 
     const geometry = createBufferGeometry(mockHeader, position, attributes);
@@ -106,9 +106,9 @@ describe("createBufferGeometry", () => {
 
     const position: number[] = [];
     const attributes = {
-      a: [127, -128],
-      b: [32767, -32768],
-      c: [2147483647, -2147483648],
+      a: new Float32Array([127, -128]),
+      b: new Float32Array([32767, -32768]),
+      c: new Float32Array([2147483647, -2147483648]),
     };
 
     const geometry = createBufferGeometry(mockHeader, position, attributes);
@@ -125,9 +125,9 @@ describe("createBufferGeometry", () => {
 
     const position: number[] = [];
     const attributes = {
-      a: [0, 255],
-      b: [0, 65535],
-      c: [0, 4294967295],
+      a: new Float32Array([0, 255]),
+      b: new Float32Array([0, 65535]),
+      c: new Float32Array([0, 4294967295]),
     };
 
     const geometry = createBufferGeometry(mockHeader, position, attributes);
@@ -144,8 +144,8 @@ describe("createBufferGeometry", () => {
 
     const position: number[] = [];
     const attributes = {
-      rgb: [1, 0, 0, 0, 1, 0], // Two RGB values
-      color: [0, 0, 1, 1, 1, 0], // Two RGB values
+      rgb: new Float32Array([1, 0, 0, 0, 1, 0]), // Two RGB values
+      color: new Float32Array([0, 0, 1, 1, 1, 0]), // Two RGB values
     };
 
     const geometry = createBufferGeometry(mockHeader, position, attributes);
@@ -164,8 +164,8 @@ describe("createBufferGeometry", () => {
 
     const position: number[] = [];
     const attributes = {
-      normal: [0, 1, 0, 1, 0, 0],
-      normal_x: [1, 0, 0, 0, 0, 1],
+      normal: new Float32Array([0, 1, 0, 1, 0, 0]),
+      normal_x: new Float32Array([1, 0, 0, 0, 0, 1]),
     };
 
     const geometry = createBufferGeometry(mockHeader, position, attributes);
@@ -182,7 +182,7 @@ describe("createBufferGeometry", () => {
 
     const position: number[] = [];
     const attributes = {
-      unknown_field: [1, 2, 3],
+      unknown_field: new Float32Array([1, 2, 3]),
     };
 
     const geometry = createBufferGeometry(mockHeader, position, attributes);
@@ -202,11 +202,11 @@ describe("createBufferGeometry", () => {
     mockHeader.type = ["F", "I", "U"];
     mockHeader.size = [8, 8, 8]; // Unsupported sizes
 
-    const position: number[] = [];
+    const position = new Float32Array([]);
     const attributes = {
-      a: [1.1, 2.2],
-      b: [100, 200],
-      c: [300, 400],
+      a: new Float32Array([1.1, 2.2]),
+      b: new Float32Array([1.1, 2.2]),
+      c: new Float32Array([1.1, 2.2]),
     };
 
     const geometry = createBufferGeometry(mockHeader, position, attributes);
@@ -237,7 +237,7 @@ describe("createBufferGeometry", () => {
 
     const position: number[] = [];
     const attributes = {
-      unknown: [1, 2, 3],
+      unknown: new Float32Array([1, 2, 3]),
     };
 
     const geometry = createBufferGeometry(mockHeader, position, attributes);
@@ -255,8 +255,8 @@ describe("createBufferGeometry", () => {
   it("skips empty attribute arrays", () => {
     const position: number[] = [];
     const attributes = {
-      intensity: [1, 2, 3],
-      empty_field: [],
+      intensity: new Float32Array([1, 2, 3]),
+      empty_field: new Float32Array([]),
     };
 
     const geometry = createBufferGeometry(mockHeader, position, attributes);
@@ -285,9 +285,9 @@ describe("createBufferGeometry", () => {
 
     const position: number[] = [];
     const attributes = {
-      int8_field: [100, -50, 127],
-      int16_field: [1000, -500, 32767],
-      uint8_field: [255, 128, 0],
+      int8_field: new Float32Array([100, -50, 127]),
+      int16_field: new Float32Array([1000, -500, 32767]),
+      uint8_field: new Float32Array([255, 128, 0]),
     };
 
     const geometry = createBufferGeometry(mockHeader, position, attributes);

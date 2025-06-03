@@ -6,7 +6,16 @@ export const PCDFieldType = {
   BinaryCompressed: "binary_compressed" as const,
 };
 
-export type PCDAttributes = Record<string, number[]>;
+export type PCDAttributes = Record<
+  string,
+  | Float32Array
+  | Int32Array
+  | Uint32Array
+  | Int8Array
+  | Int16Array
+  | Uint8Array
+  | Uint16Array
+>;
 
 export type PCDFileType = typeof PCDFieldType[keyof typeof PCDFieldType];
 

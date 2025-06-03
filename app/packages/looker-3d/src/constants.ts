@@ -82,6 +82,6 @@ export const LABEL_3D_SIMILAR_SELECTED_COLOR = "#ffa500";
 // ray casting for points
 export const RAY_CASTING_SENSITIVITY = {
   high: 0.001,
-  medium: 0.01,
-  low: 0.1,
+  medium: 0.1,
+  low: 0.25,
 };

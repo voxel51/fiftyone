@@ -121,7 +121,9 @@ describe("parsePCDData", () => {
 
       const result = parsePCDData(data, true);
 
-      expect(result.position).toEqual([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
+      expect(result.position).toEqual(
+        new Float32Array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+      );
       expect(result.attributes).toEqual({});
     });
 
@@ -136,7 +138,9 @@ describe("parsePCDData", () => {
 
       const result = parsePCDData(data, true);
 
-      expect(result.position).toEqual([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
+      expect(result.position).toEqual(
+        new Float32Array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+      );
       expect(result.attributes).toEqual({});
     });
   });
@@ -153,7 +157,9 @@ describe("parsePCDData", () => {
 
       const result = parsePCDData(data, true);
 
-      expect(result.position).toEqual([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
+      expect(result.position).toEqual(
+        new Float32Array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+      );
       expect(result.attributes.intensity.length).toBe(2);
       expect(result.attributes.intensity[0]).toBeCloseTo(0.5, 6);
       expect(result.attributes.intensity[1]).toBeCloseTo(0.8, 6);
@@ -170,7 +176,9 @@ describe("parsePCDData", () => {
 
       const result = parsePCDData(data, true);
 
-      expect(result.position).toEqual([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
+      expect(result.position).toEqual(
+        new Float32Array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+      );
       expect(result.attributes.intensity.length).toBe(2);
       expect(result.attributes.intensity[0]).toBeCloseTo(0.5, 6);
       expect(result.attributes.intensity[1]).toBeCloseTo(0.8, 6);
@@ -203,7 +211,9 @@ describe("parsePCDData", () => {
 
       const result = parsePCDData(data, true);
 
-      expect(result.position).toEqual([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
+      expect(result.position).toEqual(
+        new Float32Array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+      );
       expect(result.attributes.rgb).toBeDefined();
       // 2 points * 3 components
       expect(result.attributes.rgb.length).toBe(6);
@@ -232,10 +242,12 @@ describe("parsePCDData", () => {
 
       const result = parsePCDData(data, true);
 
-      expect(result.position).toEqual([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
-      expect(result.attributes.normal_x).toEqual([0.0, 1.0]);
-      expect(result.attributes.normal_y).toEqual([0.0, 0.0]);
-      expect(result.attributes.normal_z).toEqual([1.0, 0.0]);
+      expect(result.position).toEqual(
+        new Float32Array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+      );
+      expect(result.attributes.normal_x).toEqual(new Float32Array([0.0, 1.0]));
+      expect(result.attributes.normal_y).toEqual(new Float32Array([0.0, 0.0]));
+      expect(result.attributes.normal_z).toEqual(new Float32Array([1.0, 0.0]));
     });
 
     it("should parse Binary PCD with normals", () => {
@@ -249,10 +261,12 @@ describe("parsePCDData", () => {
 
       const result = parsePCDData(data, true);
 
-      expect(result.position).toEqual([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
-      expect(result.attributes.normal_x).toEqual([0.0, 1.0]);
-      expect(result.attributes.normal_y).toEqual([0.0, 0.0]);
-      expect(result.attributes.normal_z).toEqual([1.0, 0.0]);
+      expect(result.position).toEqual(
+        new Float32Array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+      );
+      expect(result.attributes.normal_x).toEqual(new Float32Array([0.0, 1.0]));
+      expect(result.attributes.normal_y).toEqual(new Float32Array([0.0, 0.0]));
+      expect(result.attributes.normal_z).toEqual(new Float32Array([1.0, 0.0]));
     });
   });
 
@@ -268,8 +282,10 @@ describe("parsePCDData", () => {
 
       const result = parsePCDData(data, true);
 
-      expect(result.position).toEqual([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
-      expect(result.attributes.label).toEqual([1, 2]);
+      expect(result.position).toEqual(
+        new Float32Array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+      );
+      expect(result.attributes.label).toEqual(new Float32Array([1, 2]));
     });
 
     it("should parse Binary PCD with labels", () => {
@@ -283,8 +299,10 @@ describe("parsePCDData", () => {
 
       const result = parsePCDData(data, true);
 
-      expect(result.position).toEqual([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
-      expect(result.attributes.label).toEqual([1, 2]);
+      expect(result.position).toEqual(
+        new Float32Array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+      );
+      expect(result.attributes.label).toEqual(new Float32Array([1, 2]));
     });
   });
 
@@ -317,14 +335,16 @@ describe("parsePCDData", () => {
 
       const result = parsePCDData(data, true);
 
-      expect(result.position).toEqual([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
-      expect(result.attributes.intensity).toEqual([0.5, 0.8]);
+      expect(result.position).toEqual(
+        new Float32Array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+      );
+      expect(result.attributes.intensity).toEqual(new Float32Array([0.5, 0.8]));
       expect(result.attributes.rgb).toBeDefined();
       expect(result.attributes.rgb.length).toBe(6);
-      expect(result.attributes.normal_x).toEqual([0.0, 1.0]);
-      expect(result.attributes.normal_y).toEqual([0.0, 0.0]);
-      expect(result.attributes.normal_z).toEqual([1.0, 0.0]);
-      expect(result.attributes.label).toEqual([1, 2]);
+      expect(result.attributes.normal_x).toEqual(new Float32Array([0.0, 1.0]));
+      expect(result.attributes.normal_y).toEqual(new Float32Array([0.0, 0.0]));
+      expect(result.attributes.normal_z).toEqual(new Float32Array([1.0, 0.0]));
+      expect(result.attributes.label).toEqual(new Float32Array([1, 2]));
     });
 
     it("should parse Binary PCD with all standard attributes", () => {
@@ -347,14 +367,16 @@ describe("parsePCDData", () => {
 
       const result = parsePCDData(data, true);
 
-      expect(result.position).toEqual([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
+      expect(result.position).toEqual(
+        new Float32Array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+      );
       expect(result.attributes.intensity.length).toBe(2);
       expect(result.attributes.intensity[0]).toBeCloseTo(0.5, 6);
       expect(result.attributes.intensity[1]).toBeCloseTo(0.8, 6);
-      expect(result.attributes.normal_x).toEqual([0.0, 1.0]);
-      expect(result.attributes.normal_y).toEqual([0.0, 0.0]);
-      expect(result.attributes.normal_z).toEqual([1.0, 0.0]);
-      expect(result.attributes.label).toEqual([1, 2]);
+      expect(result.attributes.normal_x).toEqual(new Float32Array([0.0, 1.0]));
+      expect(result.attributes.normal_y).toEqual(new Float32Array([0.0, 0.0]));
+      expect(result.attributes.normal_z).toEqual(new Float32Array([1.0, 0.0]));
+      expect(result.attributes.label).toEqual(new Float32Array([1, 2]));
     });
   });
 
@@ -370,10 +392,18 @@ describe("parsePCDData", () => {
 
       const result = parsePCDData(data, true);
 
-      expect(result.position).toEqual([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
-      expect(result.attributes.confidence).toEqual([0.95, 0.87]);
-      expect(result.attributes.temperature).toEqual([25.5, 26.3]);
-      expect(result.attributes.custom_field).toEqual([42.0, 43.0]);
+      expect(result.position).toEqual(
+        new Float32Array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+      );
+      expect(result.attributes.confidence).toEqual(
+        new Float32Array([0.95, 0.87])
+      );
+      expect(result.attributes.temperature).toEqual(
+        new Float32Array([25.5, 26.3])
+      );
+      expect(result.attributes.custom_field).toEqual(
+        new Float32Array([42.0, 43.0])
+      );
     });
 
     it("should parse Binary PCD with custom attributes", () => {
@@ -388,7 +418,9 @@ describe("parsePCDData", () => {
 
       const result = parsePCDData(data, true);
 
-      expect(result.position).toEqual([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
+      expect(result.position).toEqual(
+        new Float32Array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+      );
       expect(result.attributes.velocity_x.length).toBe(2);
       expect(result.attributes.velocity_x[0]).toBeCloseTo(0.1, 6);
       expect(result.attributes.velocity_x[1]).toBeCloseTo(0.4, 6);
@@ -396,7 +428,9 @@ describe("parsePCDData", () => {
       expect(result.attributes.velocity_y[1]).toBeCloseTo(0.5, 6);
       expect(result.attributes.velocity_z[0]).toBeCloseTo(0.3, 6);
       expect(result.attributes.velocity_z[1]).toBeCloseTo(0.6, 6);
-      expect(result.attributes.timestamp).toEqual([1234567890, 1234567891]);
+      expect(result.attributes.timestamp).toEqual(
+        new Float32Array([1234567890, 1234567891])
+      );
     });
 
     it("should parse mixed standard and non-standard attributes", () => {
@@ -410,11 +444,15 @@ describe("parsePCDData", () => {
 
       const result = parsePCDData(data, true);
 
-      expect(result.position).toEqual([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
-      expect(result.attributes.intensity).toEqual([0.5, 0.8]);
-      expect(result.attributes.custom_score).toEqual([0.99, 0.75]);
-      expect(result.attributes.label).toEqual([1, 2]);
-      expect(result.attributes.sensor_id).toEqual([101, 102]);
+      expect(result.position).toEqual(
+        new Float32Array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+      );
+      expect(result.attributes.intensity).toEqual(new Float32Array([0.5, 0.8]));
+      expect(result.attributes.custom_score).toEqual(
+        new Float32Array([0.99, 0.75])
+      );
+      expect(result.attributes.label).toEqual(new Float32Array([1, 2]));
+      expect(result.attributes.sensor_id).toEqual(new Float32Array([101, 102]));
     });
   });
 
@@ -424,7 +462,7 @@ describe("parsePCDData", () => {
 
       const result = parsePCDData(data, true);
 
-      expect(result.position).toEqual([]);
+      expect(result.position).toEqual(new Float32Array([]));
       expect(result.attributes).toEqual({});
     });
 
@@ -436,8 +474,8 @@ describe("parsePCDData", () => {
 
       const result = parsePCDData(data, true);
 
-      expect(result.position).toEqual([1.0, 2.0, 3.0]);
-      expect(result.attributes.intensity).toEqual([0.5]);
+      expect(result.position).toEqual(new Float32Array([1.0, 2.0, 3.0]));
+      expect(result.attributes.intensity).toEqual(new Float32Array([0.5]));
     });
 
     it("should handle attributes without position", () => {
@@ -451,9 +489,9 @@ describe("parsePCDData", () => {
 
       const result = parsePCDData(data, true);
 
-      expect(result.position).toEqual([]);
-      expect(result.attributes.intensity).toEqual([0.5, 0.8]);
-      expect(result.attributes.label).toEqual([1, 2]);
+      expect(result.position).toEqual(new Float32Array([]));
+      expect(result.attributes.intensity).toEqual(new Float32Array([0.5, 0.8]));
+      expect(result.attributes.label).toEqual(new Float32Array([1, 2]));
     });
   });
 });

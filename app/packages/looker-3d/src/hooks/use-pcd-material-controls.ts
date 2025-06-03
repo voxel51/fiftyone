@@ -11,6 +11,21 @@ import {
 } from "../constants";
 import type { FoPointcloudMaterialProps } from "./use-fo3d";
 
+const isShadeByDiscreteAttribute = (
+  shadeBy: string,
+  geometry: BufferGeometry
+) => {
+  return (
+    geometry.hasAttribute(shadeBy) &&
+    geometry.getAttribute(shadeBy).itemSize === 1 &&
+    shadeBy !== "rgb" &&
+    shadeBy !== "intensity" &&
+    shadeBy !== "color" &&
+    shadeBy !== "custom" &&
+    shadeBy !== "height"
+  );
+};
+
 export const usePcdMaterialControls = (
   name: string,
   geometry: BufferGeometry,
@@ -28,6 +43,7 @@ export const usePcdMaterialControls = (
     defaultMaterial.shadingMode
   );
   const [customColor, setCustomColor] = useState(defaultMaterial.customColor);
+  const [colorMap, setColorMap] = useBrowserStorage("fo3dPcdColorMap", {});
   const [pointSize, setPointSize] = useBrowserStorage(
     "fo3dPcdPointSize",
     defaultMaterial.pointSize
@@ -70,13 +86,23 @@ export const usePcdMaterialControls = (
           },
           [`${name} color`]: {
             value: customColor || "#ffffff",
-            label: `${name} color`,
+            label: "Custom Color",
             onChange: (newColor: string) => {
               setCustomColor(newColor);
             },
             render: () => {
               if (shadeBy === SHADE_BY_CUSTOM) return true;
               return false;
+            },
+          },
+          [`${shadeBy} color map`]: {
+            value: "{}",
+            label: `${shadeBy} Color Map`,
+            onChange: (newColor: string) => {
+              setColorMap(newColor);
+            },
+            render: () => {
+              return isShadeByDiscreteAttribute(shadeBy, geometry);
             },
           },
           isPointSizeAttenuated: {
@@ -103,7 +129,15 @@ export const usePcdMaterialControls = (
         }
       ),
     }),
-    [defaultMaterial, opacity, pointSize, shadeBy, customColor, onChangeTextBox]
+    [
+      defaultMaterial,
+      geometry,
+      opacity,
+      pointSize,
+      shadeBy,
+      customColor,
+      onChangeTextBox,
+    ]
   );
 
   return {
