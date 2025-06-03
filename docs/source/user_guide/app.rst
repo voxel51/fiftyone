@@ -1017,7 +1017,7 @@ in detail:
     +=================+===============================+===============================================================+
     | Global settings | Color annotations by          | Whether to color the annotations in the grid/modal based on   |
     |                 |                               | the `field` that they are in, the `value` that each           |
-    |                 |                               | annotation takes, or per `instance` of the annotation         |                                     
+    |                 |                               | annotation takes, or :ref:`per instance <app-linking-labels>` |
     +-----------------+-------------------------------+---------------------------------------------------------------+
     | Global settings | Color pool                    | A pool of colors from which colors are randomly assigned      |
     |                 |                               | for otherwise unspecified fields/values                       |
@@ -2296,10 +2296,19 @@ The Histograms panel supports the following `state` parameters:
 -   **plot**: the histograms to plot. Supported values are `"Sample tags"`,
     `"Label tags"`, `"Labels"`, and `"Other fields"`
 
+.. _app-select-data:
+
+Selecting content
+_________________
+
+The App supports selecting content such as samples or specific labels, which is
+useful to take contextual actions like :ref:`tagging <app-tagging>` on **only**
+the selected content.
+
 .. _app-select-samples:
 
 Selecting samples
-_________________
+-----------------
 
 As previously explained, the |Session| object created when you launch the App
 lets you interact with the App from your Python process.
@@ -2343,12 +2352,16 @@ your session to retrieve the IDs of the currently selected samples in the App:
 .. _app-select-labels:
 
 Selecting labels
-_________________
+----------------
 
-You can also use the App to select individual labels within samples. You can
-use this functionality to visually show/hide labels of interest in the App; or
-you can access the data for the selected labels from Python, for example by
-creating a |DatasetView| that includes/excludes the selected labels.
+You can also select individual labels within samples in the App, which is
+useful for a variety of reasons:
+
+-   Visually show/hide labels of interest in the App
+-   Take contextual actions such as :ref:`tagging <app-tagging>` on **only**
+    the selected labels
+-   Access the data for selected labels from Python, for example by creating a
+    |DatasetView| that includes/excludes the selected labels
 
 To perform this workflow, open the expanded sample view by clicking on a sample
 in the App. Then click on individual labels to select them:
@@ -2398,26 +2411,52 @@ labels in the App:
         ...
     ]
 
+If you are working with a dataset that leverages
+:ref:`linked labels <app-linking-labels>`, you can `shift + click` on a label
+to select/deselect all instances of that object across video frames or group
+slices of the dataset:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    import fiftyone.utils.labels as foul
+
+    dataset = foz.load_zoo_dataset("quickstart-video")
+    foul.index_to_instance(dataset, "frames.detections", clear_index=True)
+
+    session = fo.launch_app(dataset)
+
+.. image:: /images/app/app-linked-label-selections.gif
+    :alt: app-linked-label-selections
+    :align: center
+
+.. note::
+
+    Did you know? You can switch to "Color by instance" mode in the
+    :ref:`Color scheme editor <app-color-schemes-app>` to view each instance's
+    trajectory in a distinct color.
+
 .. _app-persistent-selections:
 
 Persistent selections
-_____________________
+---------------------
 
-By default, selection of samples and labels in the App are persisted for the
-duration of the App session. This means that if you select both samples and
-labels at the same time, the statuses of both selections will persist and
-appear in the App's menu above the grid or within a respective sample.
+By default, selection of samples and/or labels in the App are persisted for the
+duration of the App session:
 
 .. image:: /images/app/app-persistent-selections.gif
     :alt: app-persistent-selections
     :align: center
 
 To clear selections, you can click the selection menu button and choose one of
-the following options:
+the following options.
 
 When in grid view:
--   `Clear selected labels` will clear all label selections
+
 -   `Clear selected samples` will clear all sample selections
+-   `Clear selected labels` will clear all label selections
 -   `Only show selected samples` will only show the selected samples
 -   `Hide selected samples` will hide the selected samples
 
@@ -2426,6 +2465,7 @@ When in grid view:
     :align: center
 
 When in expanded sample mode:
+
 -   `Select visible (current sample)` will select all visible labels in the
     current sample
 -   `Unselect visible (current sample)` will unselect all visible labels in
@@ -2433,6 +2473,7 @@ When in expanded sample mode:
 -   `Clear selected labels` will clear all label selections
 -   `Hide selected labels` will hide the selected labels
 -   `Hide unselected labels (current sample)` will hide the unselected labels
+
 .. image:: /images/app/app-persistent-selections-clear-sample-menu.png
     :alt: app-persistent-selections-clear-sample-menu
     :align: center
