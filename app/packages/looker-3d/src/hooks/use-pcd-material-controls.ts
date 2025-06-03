@@ -41,14 +41,27 @@ export const usePcdMaterialControls = (
       attributeNames.push("intensity");
     }
 
-    return Array.from(new Set(attributeNames))
-      .sort()
-      .filter((name) => name !== "position");
+    return [SHADE_BY_NONE, SHADE_BY_HEIGHT, SHADE_BY_CUSTOM].concat(
+      Array.from(new Set(attributeNames))
+        .sort()
+        .filter((name) => name !== "position")
+    );
   }, [geometry]);
 
   const [shadeBy, setShadeBy] = useBrowserStorage(
     "fo3dPcdShadingMode",
-    defaultMaterial.shadingMode
+    defaultMaterial.shadingMode,
+    false,
+    {
+      parse: (value) => {
+        if (!shadeModes.includes(value)) {
+          return SHADE_BY_HEIGHT;
+        }
+
+        return value;
+      },
+      stringify: (value) => value,
+    }
   );
   const [customColor, setCustomColor] = useState(defaultMaterial.customColor);
   const [colorMap, setColorMap] = useBrowserStorage("fo3dPcdColorMap", {});
@@ -82,12 +95,7 @@ export const usePcdMaterialControls = (
           },
           shadeBy: {
             value: shadeBy ?? SHADE_BY_HEIGHT,
-            options: [
-              SHADE_BY_NONE,
-              SHADE_BY_HEIGHT,
-              SHADE_BY_CUSTOM,
-              ...shadeModes,
-            ],
+            options: shadeModes,
             label: "Shade By",
             onChange: setShadeBy,
             order: -1,
