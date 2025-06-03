@@ -8,6 +8,7 @@ import { DynamicPCDLoader } from "../../loaders/dynamic-pcd-loader";
 import { useFo3dContext } from "../context";
 import { getResolvedUrlForFo3dAsset } from "../utils";
 import { usePcdMaterial } from "./use-pcd-material";
+import { PCDAttributes } from "../../loaders/dynamic-pcd-loader/types";
 
 export const Pcd = ({
   name,
@@ -64,22 +65,22 @@ export const Pcd = ({
           color,
           intensity,
           position: posAttr,
-        } = points.geometry.attributes as {
-          color?: BufferAttribute;
-          intensity?: BufferAttribute;
-          position?: BufferAttribute;
-        };
+        } = points.geometry.attributes;
 
         const md: Record<string, any> = { index: idx };
         if (color) {
           md.rgb = [color.getX(idx), color.getY(idx), color.getZ(idx)];
         }
-        if (intensity) {
-          md.intensity = intensity.getX(idx);
-        }
         if (posAttr) {
           md.coord = [posAttr.getX(idx), posAttr.getY(idx), posAttr.getZ(idx)];
         }
+
+        // dynamically handle all other attributes
+        Object.keys(points.geometry.attributes).forEach((attr) => {
+          if (attr === "color" || attr === "intensity" || attr === "position")
+            return;
+          md[attr] = points.geometry.attributes[attr].getX(idx);
+        });
 
         setHoverMetadata(md);
       }, 30),
