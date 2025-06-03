@@ -318,6 +318,12 @@ def handle_group_filter(
                     {group_field + ".name": {"$in": filter.slices}}
                 )
 
+                # add dynamic group value
+                _group, _ = stage._get_group_expr(view)
+                view = view._add_view_stage(
+                    fosg.Mongo([{"$addFields": {"_group": _group}}])
+                )
+
             if isinstance(
                 stage, (fosg.SelectGroupSlices, fosg.ExcludeGroupSlices)
             ):

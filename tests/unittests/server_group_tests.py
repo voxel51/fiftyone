@@ -79,6 +79,7 @@ class ServerGroupTests(unittest.TestCase):
             [
                 fo.SelectGroupSlices(_force_mixed=True),
                 fo.Match({"group.name": {"$in": ["image"]}}),
+                fo.Mongo([{"$addFields": {"_group": "$label.label"}}]),
                 fo.GroupBy("label.label"),
                 fo.FilterLabels("label", expr),
             ],
