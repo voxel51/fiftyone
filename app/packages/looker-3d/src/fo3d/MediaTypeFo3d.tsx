@@ -40,6 +40,7 @@ import type { Looker3dSettings } from "../settings";
 import {
   activeNodeAtom,
   cameraPositionAtom,
+  currentHoveredPointAtom,
   isFo3dBackgroundOnAtom,
 } from "../state";
 import { FoSceneComponent } from "./FoScene";
@@ -319,6 +320,7 @@ export const MediaTypeFo3dComponent = () => {
     ({ set }) =>
       () => {
         set(activeNodeAtom, null);
+        set(currentHoveredPointAtom, null);
         setHoverMetadata(null);
         setAutoRotate(false);
       },

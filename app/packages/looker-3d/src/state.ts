@@ -6,6 +6,7 @@ import {
   modalSampleId,
 } from "@fiftyone/state";
 import { atom, atomFamily, selector } from "recoil";
+import { Vector3 } from "three";
 import { SHADE_BY_HEIGHT } from "./constants";
 import type { FoSceneNode } from "./hooks";
 import type { Actions, AssetLoadingLog, ShadeBy } from "./types";
@@ -150,6 +151,11 @@ export const isStatusBarOnAtom = atom<boolean>({
 
 export const activeNodeAtom = atom<FoSceneNode>({
   key: "fo3d-activeNode",
+  default: null,
+});
+
+export const currentHoveredPointAtom = atom<Vector3 | null>({
+  key: "fo3d-currentHoveredPoint",
   default: null,
 });
 

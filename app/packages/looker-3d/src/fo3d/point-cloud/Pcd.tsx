@@ -1,14 +1,17 @@
 import { getSampleSrc } from "@fiftyone/state";
+import { useFrame } from "@react-three/fiber";
 import throttle from "lodash/throttle";
 import { useEffect, useMemo, useRef } from "react";
-import type { BufferAttribute, Quaternion, Vector3 } from "three";
+import { useRecoilState } from "recoil";
+import type { Quaternion } from "three";
+import { Vector3 } from "three";
 import type { PcdAsset } from "../../hooks";
 import { useFoLoader } from "../../hooks/use-fo-loaders";
 import { DynamicPCDLoader } from "../../loaders/dynamic-pcd-loader";
+import { currentHoveredPointAtom } from "../../state";
 import { useFo3dContext } from "../context";
 import { getResolvedUrlForFo3dAsset } from "../utils";
 import { usePcdMaterial } from "./use-pcd-material";
-import { PCDAttributes } from "../../loaders/dynamic-pcd-loader/types";
 
 export const Pcd = ({
   name,
@@ -26,6 +29,10 @@ export const Pcd = ({
   children?: React.ReactNode;
 }) => {
   const { fo3dRoot, pointCloudSettings, setHoverMetadata } = useFo3dContext();
+
+  const [currentHoveredPoint, setCurrentHoveredPoint] = useRecoilState(
+    currentHoveredPointAtom
+  );
 
   const pcdUrl = useMemo(
     () =>
@@ -61,18 +68,29 @@ export const Pcd = ({
         const idx = e.index;
         if (idx === undefined) return;
 
-        const {
-          color,
-          intensity,
-          position: posAttr,
-        } = points.geometry.attributes;
-
         const md: Record<string, any> = { index: idx };
-        if (color) {
-          md.rgb = [color.getX(idx), color.getY(idx), color.getZ(idx)];
+
+        if (
+          points.geometry.hasAttribute("color") ||
+          points.geometry.hasAttribute("rgb")
+        ) {
+          const colorAttr = points.geometry.hasAttribute("color")
+            ? points.geometry.getAttribute("color")
+            : points.geometry.getAttribute("rgb");
+
+          md.rgb = [
+            colorAttr.getX(idx),
+            colorAttr.getY(idx),
+            colorAttr.getZ(idx),
+          ];
         }
-        if (posAttr) {
+
+        if (points.geometry.hasAttribute("position")) {
+          const posAttr = points.geometry.getAttribute("position");
           md.coord = [posAttr.getX(idx), posAttr.getY(idx), posAttr.getZ(idx)];
+          setCurrentHoveredPoint(
+            new Vector3(posAttr.getX(idx), posAttr.getY(idx), posAttr.getZ(idx))
+          );
         }
 
         // dynamically handle all other attributes
@@ -95,6 +113,7 @@ export const Pcd = ({
       onPointerMove: pointerMoveHandler,
       onPointerOut: () => {
         setHoverMetadata(null);
+        setCurrentHoveredPoint(null);
       },
     };
   }, [pointCloudSettings.enableTooltip, pointerMoveHandler]);
@@ -102,24 +121,62 @@ export const Pcd = ({
   useEffect(() => {
     return () => {
       pointerMoveHandler.cancel();
+      setCurrentHoveredPoint(null);
     };
   }, [pointerMoveHandler]);
+
+  const HoveredPointMarker = ({ position }: { position: Vector3 }) => {
+    const meshRef = useRef<any>(null);
+
+    // apply pulsating effect for scaling (based on distance from camera) and color
+    // so that the marker is visible from far away
+    useFrame(({ clock, camera }) => {
+      const t = clock.getElapsedTime();
+      const distance = camera.position.distanceTo(position);
+      const pulse = 0.5 + 0.3 * Math.sin(t * 4);
+      const scale = pulse * (distance * 0.1);
+
+      if (meshRef.current) {
+        meshRef.current.scale.set(scale, scale, scale);
+        const colorPhase = (Math.sin(t * 2) + 1) / 2;
+        meshRef.current.material.color.setRGB(1, colorPhase, 0);
+        meshRef.current.material.emissive.setRGB(1, colorPhase, 0);
+        meshRef.current.material.emissiveIntensity = 0.7 + 0.3 * colorPhase;
+      }
+    });
+    return (
+      <mesh ref={meshRef} position={position}>
+        <sphereGeometry args={[0.07, 32, 32]} />
+        <meshStandardMaterial
+          color="red"
+          emissive="orange"
+          emissiveIntensity={1}
+        />
+      </mesh>
+    );
+  };
 
   if (!points) {
     return null;
   }
 
   return (
-    <primitive
-      ref={pcdContainerRef}
-      object={points}
-      position={position}
-      quaternion={quaternion}
-      scale={scale}
-      {...hoverProps}
-    >
-      {pointsMaterialElement}
-      {children ?? null}
-    </primitive>
+    <>
+      {currentHoveredPoint && (
+        <HoveredPointMarker position={currentHoveredPoint} />
+      )}
+
+      <primitive
+        ref={pcdContainerRef}
+        object={points}
+        position={position}
+        quaternion={quaternion}
+        scale={scale}
+        {...hoverProps}
+      >
+        {pointsMaterialElement}
+        {children ?? null}
+      </primitive>
+    </>
   );
 };
