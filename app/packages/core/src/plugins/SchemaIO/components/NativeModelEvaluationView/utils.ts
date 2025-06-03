@@ -4,6 +4,7 @@ import { capitalize } from "lodash";
 import { useCallback } from "react";
 import { atom } from "recoil";
 import { NONE_CLASS } from "./constants";
+import { formatValueAsNumber } from "@fiftyone/utilities";
 
 export function useTriggerEvent() {
   const panelId = usePanelId();
@@ -35,19 +36,10 @@ export function getNumericDifference(
     const sanitizedCompareValue = compareValue === 0 ? 1 : compareValue;
     if (percentage) {
       const percentageDifference = (difference / sanitizedCompareValue) * 100;
-      return formatValue(percentageDifference, fractionDigits);
+      return formatValueAsNumber(percentageDifference, fractionDigits);
     }
-    return formatValue(difference, fractionDigits);
+    return formatValueAsNumber(difference, fractionDigits);
   }
-}
-
-export function formatValue(value: string | number, fractionDigits = 3) {
-  const numericValue =
-    typeof value === "number" ? value : parseFloat(value as string);
-  if (!isNaN(numericValue) && numericValue == value) {
-    return parseFloat(numericValue.toFixed(fractionDigits));
-  }
-  return value;
 }
 
 export function getMatrix(

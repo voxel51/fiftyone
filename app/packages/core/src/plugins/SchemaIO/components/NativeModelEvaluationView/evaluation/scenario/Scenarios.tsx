@@ -1,7 +1,8 @@
 import { useTrackEvent } from "@fiftyone/analytics";
+import { Plot } from "@fiftyone/components/src/components/Plot";
 import { usePanelEvent } from "@fiftyone/operators";
 import { usePanelId, usePanelStatePartial } from "@fiftyone/spaces";
-import { isNullish } from "@fiftyone/utilities";
+import { formatValueAsNumber, isNullish } from "@fiftyone/utilities";
 import {
   Autorenew,
   DragHandle,
@@ -26,7 +27,7 @@ import {
   Typography,
   useTheme,
 } from "@mui/material";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { atom, useRecoilState } from "recoil";
 import AlertView from "../../../AlertView";
 import ConfusionMatrixConfig from "../../components/ConfusionMatrixConfig";
@@ -42,12 +43,12 @@ import {
   SECONDARY_KEY_COLOR,
   TERTIARY_KEY_COLOR,
 } from "../../constants";
-import EvaluationPlot from "../../EvaluationPlot";
 import { formatValue, getClasses, getMatrix } from "../../utils";
 import Actions from "./Actions";
 import Legends from "./Legends";
 import LoadingError from "./LoadingError";
 import { getSubsetDef } from "./utils";
+import { m } from "framer-motion";
 
 const CONFIGURE_SCENARIO_ACTION = "model_evaluation_configure_scenario";
 
@@ -762,7 +763,7 @@ function ModelPerformanceMetricsTable(props) {
               <TableCell>{label}</TableCell>
               <TableCell>
                 <Stack direction="row" spacing={1}>
-                  <Typography>{formatValue(value)} </Typography>
+                  <Typography>{formatValueAsNumber(value)} </Typography>
                   <Difference
                     value={value}
                     compareValue={compareMetrics?.[key]}
@@ -775,7 +776,7 @@ function ModelPerformanceMetricsTable(props) {
                   {compareMetrics ? (
                     <Stack direction="row" spacing={1}>
                       <Typography>
-                        {formatValue(compareMetrics[key])}
+                        {formatValueAsNumber(compareMetrics[key])}
                       </Typography>
                       <Difference
                         value={compareMetrics[key]}
@@ -878,7 +879,7 @@ function ConfidenceDistributionTable(props) {
               <TableCell>
                 <Stack direction="row" spacing={1}>
                   <Typography>
-                    {formatValue(confidence_distribution[metric])}
+                    {formatValueAsNumber(confidence_distribution[metric])}
                   </Typography>
                   <Difference
                     value={confidence_distribution[metric]}
@@ -892,7 +893,9 @@ function ConfidenceDistributionTable(props) {
                   {compareSubsetsData ? (
                     <Stack direction="row" spacing={1}>
                       <Typography>
-                        {formatValue(compareConfidenceDistribution[metric])}
+                        {formatValueAsNumber(
+                          compareConfidenceDistribution[metric]
+                        )}
                       </Typography>
                       <Difference
                         value={compareConfidenceDistribution[metric]}
@@ -1150,7 +1153,7 @@ function PredictionStatisticsChart(props) {
         </EvaluationSelect>
       </Stack>
 
-      <EvaluationPlot
+      <Plot
         data={plotData}
         layout={showAllMetric ? { barmode: "stack" } : {}}
         onClick={({ points }) => {
@@ -1239,7 +1242,7 @@ function ScenarioModelPerformanceChart(props) {
           setSelected={setSubset}
         />
       </Stack>
-      <EvaluationPlot
+      <Plot
         data={plotData}
         layout={{
           polar: {
@@ -1309,7 +1312,7 @@ function ConfusionMatrixChart(props) {
 
       <Stack direction="row" spacing={1}>
         <Stack sx={{ width: comparePlotData ? "50%" : "100%" }}>
-          <EvaluationPlot
+          <Plot
             data={plotData}
             onClick={({ points }) => {
               const firstPoint = points[0];
@@ -1325,11 +1328,39 @@ function ConfusionMatrixChart(props) {
                 subset_def: subsetDef,
               });
             }}
+            tooltip={(event: any) => {
+              const [point] = event.points;
+              const x = point.x;
+              const y = point.y;
+              const z = point.z;
+              return {
+                data: [
+                  { label: "Count", value: z },
+                  { label: "predicted", value: x },
+                  { label: "truth", value: y },
+                ],
+              };
+            }}
           />
         </Stack>
         {comparePlotData && (
           <Stack sx={{ width: "50%" }}>
-            <EvaluationPlot data={comparePlotData} />
+            <Plot
+              data={comparePlotData}
+              tooltip={(event: any) => {
+                const [point] = event.points;
+                const x = point.x;
+                const y = point.y;
+                const z = point.z;
+                return {
+                  data: [
+                    { label: "Count", value: z },
+                    { label: "predicted", value: x },
+                    { label: "truth", value: y },
+                  ],
+                };
+              }}
+            />
           </Stack>
         )}
       </Stack>
@@ -1355,7 +1386,13 @@ function ConfidenceDistributionChart(props) {
       const { confidence_distribution } = subsetData;
       y.push(confidence_distribution[mode]);
     }
-    plotData.push({ x: subsets, y, type: "bar", name: key });
+    plotData.push({
+      x: subsets,
+      y,
+      type: "bar",
+      name: key,
+      marker: { color: KEY_COLOR },
+    });
     if (compareSubsetsData) {
       const compareY = [];
       for (const subset in compareSubsetsData) {
@@ -1363,7 +1400,13 @@ function ConfidenceDistributionChart(props) {
         const { confidence_distribution } = subsetData;
         compareY.push(confidence_distribution[mode]);
       }
-      plotData.push({ x: subsets, y: compareY, type: "bar", name: compareKey });
+      plotData.push({
+        x: subsets,
+        y: compareY,
+        type: "bar",
+        name: compareKey,
+        marker: { color: COMPARE_KEY_COLOR },
+      });
     }
   } else {
     if (compareSubsetsData) {
@@ -1479,9 +1522,33 @@ function ConfidenceDistributionChart(props) {
         </EvaluationSelect>
       </Stack>
 
-      <EvaluationPlot
+      <Plot
         data={plotData}
         layout={compareSubsetsData ? { boxmode: "group" } : {}}
+        tooltip={
+          isOverview
+            ? (event: any) => {
+                const [point] = event.points;
+
+                const min = formatValueAsNumber(point.lowerfence);
+                const max = formatValueAsNumber(point.upperfence);
+                const q1 = formatValueAsNumber(point.q1);
+                const q3 = formatValueAsNumber(point.q3);
+                const mean = formatValueAsNumber(point.median);
+                const label = point.x;
+                return {
+                  label,
+                  data: [
+                    { label: "Minimum", value: min },
+                    { label: "Maximum", value: max },
+                    { label: "Q1", value: q1 },
+                    { label: "Mean", value: mean },
+                    { label: "Q3", value: q3 },
+                  ],
+                };
+              }
+            : undefined
+        }
       />
 
       <Legends {...getLegendProps(props)} />
@@ -1547,7 +1614,7 @@ function MetricPerformanceChart(props) {
           })}
         </EvaluationSelect>
       </Stack>
-      <EvaluationPlot
+      <Plot
         data={plotData}
         onClick={({ points }) => {
           const subset = points[0]?.x;
@@ -1605,7 +1672,7 @@ function SubsetDistributionChart(props) {
   return (
     <Stack>
       <Typography>Subset Distribution</Typography>
-      <EvaluationPlot
+      <Plot
         data={plotData}
         onClick={({ points }) => {
           const subset = points[0]?.x;
