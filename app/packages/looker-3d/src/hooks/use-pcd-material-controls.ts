@@ -10,15 +10,23 @@ import {
   SHADE_BY_RGB,
 } from "../constants";
 import type { FoPointcloudMaterialProps } from "./use-fo3d";
+import { useBrowserStorage } from "@fiftyone/state";
 
 export const usePcdMaterialControls = (
   name: string,
   defaultMaterial: FoPointcloudMaterialProps
 ) => {
-  const [shadeBy, setShadeBy] = useState(defaultMaterial.shadingMode);
+  const [shadeBy, setShadeBy] = useBrowserStorage(
+    "fo3dPcdShadingMode",
+    defaultMaterial.shadingMode
+  );
   const [customColor, setCustomColor] = useState(defaultMaterial.customColor);
-  const [pointSize, setPointSize] = useState(defaultMaterial.pointSize);
-  const [isPointSizeAttenuated, setIsPointSizeAttenuated] = useState(
+  const [pointSize, setPointSize] = useBrowserStorage(
+    "fo3dPcdPointSize",
+    defaultMaterial.pointSize
+  );
+  const [isPointSizeAttenuated, setIsPointSizeAttenuated] = useBrowserStorage(
+    "fo3dIsPointSizeAttenuated",
     defaultMaterial.attenuateByDistance
   );
   const [opacity, setOpacity] = useState(defaultMaterial.opacity);

@@ -35,7 +35,7 @@
     "fiftyone": {
         "script": "dist/index.umd.js"
     },
-    "packageManager": "yarn@3.2.1",
+    "packageManager": "yarn@4.9.1",
     "peerDependencies": {
         "@mui/icons-material": "*",
         "react-error-boundary": "*",
