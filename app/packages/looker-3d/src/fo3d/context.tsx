@@ -9,6 +9,7 @@ export interface Fo3dPointCloudSettings {
 
 interface Fo3dContextT {
   isSceneInitialized: boolean;
+  numPrimaryAssets: number;
   upVector: Vector3 | null;
   setUpVector: (upVector: Vector3) => void;
   sceneBoundingBox: Box3 | null;
@@ -24,6 +25,7 @@ interface Fo3dContextT {
 
 const defaultContext: Fo3dContextT = {
   isSceneInitialized: false,
+  numPrimaryAssets: 0,
   upVector: null,
   setUpVector: () => {},
   sceneBoundingBox: null,

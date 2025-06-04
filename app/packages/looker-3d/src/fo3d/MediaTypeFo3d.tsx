@@ -79,6 +79,11 @@ export const MediaTypeFo3dComponent = () => {
 
   const [isSceneInitialized, setSceneInitialized] = useState(false);
 
+  const numPrimaryAssets = useMemo(() => {
+    if (!foScene) return 0;
+    return foScene.children?.length ?? 0;
+  }, [foScene]);
+
   useHotkey(
     "KeyB",
     ({ set }) => {
@@ -645,6 +650,7 @@ export const MediaTypeFo3dComponent = () => {
         <Fo3dSceneContext.Provider
           value={{
             isSceneInitialized,
+            numPrimaryAssets,
             upVector,
             setUpVector,
             fo3dRoot,

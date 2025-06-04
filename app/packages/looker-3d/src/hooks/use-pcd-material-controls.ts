@@ -9,28 +9,16 @@ import {
   SHADE_BY_HEIGHT,
   SHADE_BY_NONE,
 } from "../constants";
+import { useFo3dContext } from "../fo3d/context";
 import type { FoPointcloudMaterialProps } from "./use-fo3d";
-
-const isShadeByDiscreteAttribute = (
-  shadeBy: string,
-  geometry: BufferGeometry
-) => {
-  return (
-    geometry.hasAttribute(shadeBy) &&
-    geometry.getAttribute(shadeBy).itemSize === 1 &&
-    shadeBy !== "rgb" &&
-    shadeBy !== "intensity" &&
-    shadeBy !== "color" &&
-    shadeBy !== "custom" &&
-    shadeBy !== "height"
-  );
-};
 
 export const usePcdMaterialControls = (
   name: string,
   geometry: BufferGeometry,
   defaultMaterial: FoPointcloudMaterialProps
 ) => {
+  const { numPrimaryAssets } = useFo3dContext();
+
   const shadeModes = useMemo(() => {
     // list all attributes in the geometry
     const attributes = geometry.attributes;
@@ -130,7 +118,8 @@ export const usePcdMaterialControls = (
         },
         {
           order: PANEL_ORDER_PCD_CONTROLS,
-          collapsed: true,
+          // collapse only if there's more than one primary asset in the scene
+          collapsed: numPrimaryAssets > 1,
         }
       ),
     }),
