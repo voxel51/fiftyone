@@ -234,6 +234,91 @@ const ShadeByCustomColorShaders = {
 `,
 };
 
+const DynamicAttributeShaders = {
+  vertexShader: /* glsl */ `
+    precision highp float;
+    uniform float uMax;
+    uniform float uMin;
+    uniform float pointSize;
+    uniform bool isPointSizeAttenuated;
+    attribute float dynamicAttr;
+    varying float vNorm;
+
+    float remap(float minval, float maxval, float curval) {
+      return (curval - minval) / (maxval - minval);
+    }
+
+    void main() {
+      vec3 pos = position;
+      vNorm = clamp(remap(uMin, uMax, dynamicAttr), 0.0, 1.0);
+      vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+      gl_PointSize = pointSize * (isPointSizeAttenuated ? (1.0 / length(mvPosition.xyz)) : 1.0);
+      gl_Position = projectionMatrix * mvPosition;
+    }
+  `,
+  fragmentShader: /* glsl */ `
+    precision highp float;
+    uniform sampler2D gradientMap;
+    uniform float opacity;
+    varying float vNorm;
+
+    void main() {
+      vec3 col = texture2D(gradientMap, vec2(0.5, vNorm)).rgb;
+      gl_FragColor = vec4(col, opacity);
+    }
+  `,
+};
+
+export const DynamicAttributeShader = ({
+  attribute,
+  min,
+  max,
+  gradients,
+  pointSize,
+  isPointSizeAttenuated,
+  opacity,
+  geometry,
+}: {
+  attribute: string;
+  min: number;
+  max: number;
+  gradients: Gradients;
+  pointSize: number;
+  isPointSizeAttenuated: boolean;
+  opacity?: number;
+  geometry: THREE.BufferGeometry;
+}) => {
+  const gradientMap = useGradientMap(gradients);
+  // ensure the attribute is available as 'dynamicAttr' in the geometry
+  // this is a runtime check and patch
+  if (
+    geometry &&
+    geometry.hasAttribute(attribute) &&
+    !geometry.hasAttribute("dynamicAttr")
+  ) {
+    // @ts-ignore
+    geometry.setAttribute(
+      "dynamicAttr",
+      geometry.getAttribute(attribute).clone()
+    );
+  }
+  return (
+    <shaderMaterial
+      attach="material"
+      uniforms={{
+        uMin: { value: min },
+        uMax: { value: max },
+        opacity: { value: opacity ?? 1 },
+        gradientMap: { value: gradientMap },
+        pointSize: { value: pointSize },
+        isPointSizeAttenuated: { value: isPointSizeAttenuated },
+      }}
+      vertexShader={DynamicAttributeShaders.vertexShader}
+      fragmentShader={DynamicAttributeShaders.fragmentShader}
+    />
+  );
+};
+
 export const ShadeByHeight = ({
   gradients,
   min,

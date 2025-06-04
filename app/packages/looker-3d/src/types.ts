@@ -23,7 +23,8 @@ export type ShadeBy =
   | typeof SHADE_BY_HEIGHT
   | typeof SHADE_BY_RGB
   | typeof SHADE_BY_CUSTOM
-  | typeof SHADE_BY_NONE;
+  | typeof SHADE_BY_NONE
+  | string;
 
 export type NodeName = string;
 

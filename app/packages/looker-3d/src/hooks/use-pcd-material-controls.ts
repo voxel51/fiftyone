@@ -64,7 +64,6 @@ export const usePcdMaterialControls = (
     }
   );
   const [customColor, setCustomColor] = useState(defaultMaterial.customColor);
-  const [colorMap, setColorMap] = useBrowserStorage("fo3dPcdColorMap", {});
   const [pointSize, setPointSize] = useBrowserStorage(
     "fo3dPcdPointSize",
     defaultMaterial.pointSize
@@ -109,16 +108,6 @@ export const usePcdMaterialControls = (
             render: () => {
               if (shadeBy === SHADE_BY_CUSTOM) return true;
               return false;
-            },
-          },
-          [`${shadeBy} color map`]: {
-            value: "{}",
-            label: `${shadeBy} Color Map`,
-            onChange: (newColor: string) => {
-              setColorMap(newColor);
-            },
-            render: () => {
-              return isShadeByDiscreteAttribute(shadeBy, geometry);
             },
           },
           isPointSizeAttenuated: {

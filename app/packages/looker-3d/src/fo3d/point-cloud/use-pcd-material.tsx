@@ -6,6 +6,7 @@ import {
   SHADE_BY_HEIGHT,
   SHADE_BY_INTENSITY,
   SHADE_BY_RGB,
+  SHADE_BY_NONE,
 } from "../../constants";
 import type { PcdAsset } from "../../hooks";
 import { useFo3dBounds } from "../../hooks/use-bounds";
@@ -15,6 +16,7 @@ import {
   RgbShader,
   ShadeByHeight,
   ShadeByIntensity,
+  DynamicAttributeShader,
 } from "../../renderables/pcd/shaders";
 import {
   computeMinMaxForColorBufferAttribute,
@@ -152,16 +154,63 @@ export const usePcdMaterial = (
             color={customColor || "#ffffff"}
           />
         );
-      default:
+
+      case SHADE_BY_NONE:
         return (
           <pointsMaterial
             color={"#ffffff"}
-            // 1000 and 2 are arbitrary values that seem to work well
             size={isPointSizeAttenuated ? pointSize / 1000 : pointSize / 2}
             opacity={opacity}
             sizeAttenuation={isPointSizeAttenuated}
           />
         );
+
+      default: {
+        // Dynamic attribute case
+        // Check if attribute exists and is scalar
+        const attr = geometry.getAttribute(shadeBy);
+        let min = 0,
+          max = 1;
+        if (attr && attr.itemSize === 1) {
+          // Prefer userData if available
+          if (
+            geometry.userData &&
+            geometry.userData[shadeBy] &&
+            typeof geometry.userData[shadeBy].min === "number" &&
+            typeof geometry.userData[shadeBy].max === "number"
+          ) {
+            min = geometry.userData[shadeBy].min;
+            max = geometry.userData[shadeBy].max;
+          } else {
+            const minMax = computeMinMaxForScalarBufferAttribute(attr);
+            min = minMax.min;
+            max = minMax.max;
+          }
+          return (
+            <DynamicAttributeShader
+              key={key}
+              attribute={shadeBy}
+              min={min}
+              max={max}
+              gradients={PCD_SHADING_GRADIENTS}
+              pointSize={pointSize}
+              isPointSizeAttenuated={isPointSizeAttenuated}
+              opacity={opacity}
+              geometry={geometry}
+            />
+          );
+        } else {
+          // fallback to default
+          return (
+            <pointsMaterial
+              color={"#ffffff"}
+              size={isPointSizeAttenuated ? pointSize / 1000 : pointSize / 2}
+              opacity={opacity}
+              sizeAttenuation={isPointSizeAttenuated}
+            />
+          );
+        }
+      }
     }
   }, [
     shadeBy,
