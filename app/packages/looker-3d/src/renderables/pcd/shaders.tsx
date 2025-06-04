@@ -236,36 +236,35 @@ const ShadeByCustomColorShaders = {
 
 const DynamicAttributeShaders = {
   vertexShader: /* glsl */ `
-    precision highp float;
-    uniform float uMax;
-    uniform float uMin;
-    uniform float pointSize;
-    uniform bool isPointSizeAttenuated;
-    attribute float dynamicAttr;
-    varying float vNorm;
+  uniform float uMax;
+  uniform float uMin;
+  uniform float pointSize;
+  uniform bool isPointSizeAttenuated;
 
-    float remap(float minval, float maxval, float curval) {
-      return (curval - minval) / (maxval - minval);
-    }
+  in float dynamicAttr;
+  out float vNorm;
 
-    void main() {
-      vec3 pos = position;
-      vNorm = clamp(remap(uMin, uMax, dynamicAttr), 0.0, 1.0);
-      vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
-      gl_PointSize = pointSize * (isPointSizeAttenuated ? (1.0 / length(mvPosition.xyz)) : 1.0);
-      gl_Position = projectionMatrix * mvPosition;
-    }
+  float remap(float minval, float maxval, float curval) {
+    return (curval - minval) / (maxval - minval);
+  }
+
+  void main() {
+    vNorm = clamp(remap(uMin, uMax, dynamicAttr), 0.0, 1.0);
+    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+    gl_PointSize = pointSize * (isPointSizeAttenuated ? (1.0 / length(mvPosition.xyz)) : 1.0);
+    gl_Position = projectionMatrix * mvPosition;
+  }
   `,
   fragmentShader: /* glsl */ `
-    precision highp float;
-    uniform sampler2D gradientMap;
-    uniform float opacity;
-    varying float vNorm;
+  uniform sampler2D gradientMap;
+  uniform float opacity;
+  in float vNorm;
+  out vec4 fragColor;
 
-    void main() {
-      vec3 col = texture2D(gradientMap, vec2(0.5, vNorm)).rgb;
-      gl_FragColor = vec4(col, opacity);
-    }
+  void main() {
+    vec3 col = texture(gradientMap, vec2(0.5, vNorm)).rgb;
+    fragColor = vec4(col, opacity);
+  }
   `,
 };
 
@@ -300,6 +299,7 @@ export const DynamicAttributeShader = ({
 
   return (
     <shaderMaterial
+      glslVersion={THREE.GLSL3}
       attach="material"
       uniforms={{
         uMin: { value: min },
