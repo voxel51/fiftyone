@@ -67,13 +67,8 @@ export const Pcd = ({
 
       const md: Record<string, any> = { index: idx };
 
-      if (
-        points.geometry.hasAttribute("color") ||
-        points.geometry.hasAttribute("rgb")
-      ) {
-        const colorAttr = points.geometry.hasAttribute("color")
-          ? points.geometry.getAttribute("color")
-          : points.geometry.getAttribute("rgb");
+      if (points.geometry.hasAttribute("rgb")) {
+        const colorAttr = points.geometry.getAttribute("rgb");
 
         md.rgb = [
           colorAttr.getX(idx),
@@ -92,8 +87,7 @@ export const Pcd = ({
 
       // dynamically handle all other attributes
       Object.keys(points.geometry.attributes).forEach((attr) => {
-        if (attr === "color" || attr === "intensity" || attr === "position")
-          return;
+        if (attr === "rgb" || attr === "position") return;
         md[attr] = points.geometry.attributes[attr].getX(idx);
       });
 
