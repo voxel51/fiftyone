@@ -3443,10 +3443,6 @@ class GroupBy(ViewStage):
             that defines the value to group by
         order_by (None): an optional field by which to order the samples in
             each group
-        order_by_key (None): an optional fixed ``order_by`` value representing
-            the first sample in a group. Required for optimized performance.
-            See :ref:`this guide <app-query-performant-stages>` for more
-            details
         reverse (False): whether to return the results in descending order.
             Applies to both ``order_by`` and ``sort_expr``
         flat (False): whether to return a grouped collection (False) or a
@@ -3466,28 +3462,32 @@ class GroupBy(ViewStage):
         create_index (True): whether to create an index, if necessary, to
             optimize the grouping. Only applicable when grouping by field(s),
             not expressions
+        order_by_key (None): an optional fixed ``order_by`` value representing
+            the first sample in a group. Required for optimized performance.
+            See :ref:`this guide <app-query-performant-stages>` for more
+            details
     """
 
     def __init__(
         self,
         field_or_expr,
         order_by=None,
-        order_by_key=None,
         reverse=False,
         flat=False,
         match_expr=None,
         sort_expr=None,
         create_index=True,
+        order_by_key=None,
     ):
         self._field_or_expr = field_or_expr
         self._order_by = order_by
-        self._order_by_key = order_by_key
         self._reverse = reverse
         self._flat = flat
         self._match_expr = match_expr
         self._sort_expr = sort_expr
         self._create_index = create_index
         self._sort_stage = None
+        self._order_by_key = order_by_key
 
     @property
     def outputs_dynamic_groups(self):
@@ -3587,7 +3587,8 @@ class GroupBy(ViewStage):
 
     def _make_grouped_pipeline(self, sample_collection):
         if self._order_by_key is not None:
-            return [{"$match": {self._order_by: self._order_by_key}}]
+            order_by = sample_collection._handle_db_field(self._order_by)
+            return [{"$match": {order_by: self._order_by_key}}]
 
         group_expr, _ = self._get_group_expr(sample_collection)
         pipeline = []
@@ -3705,12 +3706,12 @@ class GroupBy(ViewStage):
         return [
             ["field_or_expr", self._get_mongo_field_or_expr()],
             ["order_by", self._order_by],
-            ["order_by_key", self._order_by_key],
             ["reverse", self._reverse],
             ["flat", self._flat],
             ["match_expr", self._get_mongo_match_expr()],
             ["sort_expr", self._get_mongo_sort_expr()],
             ["create_index", self._create_index],
+            ["order_by_key", self._order_by_key],
         ]
 
     @classmethod
@@ -3725,12 +3726,6 @@ class GroupBy(ViewStage):
                 "name": "order_by",
                 "type": "NoneType|field|str",
                 "placeholder": "order by",
-                "default": "None",
-            },
-            {
-                "name": "order_by_key",
-                "type": "NoneType|float|int|str",
-                "placeholder": "order by key",
                 "default": "None",
             },
             {
@@ -3763,12 +3758,23 @@ class GroupBy(ViewStage):
                 "default": "True",
                 "placeholder": "create_index (default=True)",
             },
+            {
+                "name": "order_by_key",
+                "type": "NoneType|float|int|str",
+                "placeholder": "order by key",
+                "default": "None",
+            },
         ]
 
     def validate(self, sample_collection):
         if sample_collection._is_dynamic_groups:
             raise ValueError(
                 "Cannot group a collection that is already dynamically grouped"
+            )
+
+        if self._order_by_key is not None and self._order_by is None:
+            raise ValueError(
+                "'order_by' is required when 'order_by_key' is provided"
             )
 
         field_or_expr = self._get_mongo_field_or_expr()

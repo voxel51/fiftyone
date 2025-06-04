@@ -1,5 +1,5 @@
 """
-Builtin :class:
+Dynamic grouping operator
 
 | Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -98,7 +98,7 @@ def _create(ctx, obj):
         required=False,
         label="Order by",
         description="A field to order by",
-        view=choices,
+        view=order_choices,
     )
 
     if ctx.params.get("order_by", None):

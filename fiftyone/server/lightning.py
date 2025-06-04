@@ -149,12 +149,12 @@ async def lightning_resolver(
         for item in sublist
     ]
 
-    filter = input.match or {}
+    match_filter = input.match or {}
     if dataset.group_field and input.slice:
-        filter[f"{dataset.group_field}.name"] = input.slice
+        match_filter[f"{dataset.group_field}.name"] = input.slice
         dataset.group_slice = input.slice
 
-    result = await _do_async_pooled_queries(dataset, flattened, filter)
+    result = await _do_async_pooled_queries(dataset, flattened, match_filter)
 
     results = []
     offset = 0
@@ -347,7 +347,7 @@ async def _do_async_pooled_queries(
             bool,
         ]
     ],
-    filter: t.Optional[t.Mapping[str, str]],
+    match_filter: t.Optional[t.Mapping[str, str]],
 ):
     return await asyncio.gather(
         *[
@@ -355,7 +355,7 @@ async def _do_async_pooled_queries(
                 dataset,
                 collection,
                 query,
-                None if is_frames else filter,
+                None if is_frames else match_filter,
                 is_frames,
             )
             for collection, query, is_frames in queries
@@ -367,16 +367,16 @@ async def _do_async_query(
     dataset: fo.Dataset,
     collection: AsyncIOMotorCollection,
     query: t.Union[DistinctQuery, t.List[t.Dict]],
-    filter: t.Optional[t.Mapping[str, str]],
+    match_filter: t.Optional[t.Mapping[str, str]],
     is_frames: bool,
 ):
     if isinstance(query, DistinctQuery):
         return await _do_distinct_queries(
-            dataset, collection, query, filter, is_frames
+            dataset, collection, query, match_filter, is_frames
         )
 
-    if filter:
-        query.insert(0, {"$match": filter})
+    if match_filter:
+        query.insert(0, {"$match": match_filter})
 
     return [i async for i in collection.aggregate(query)]
 
@@ -385,19 +385,19 @@ async def _do_distinct_queries(
     dataset: fo.Dataset,
     collection: AsyncIOMotorCollection,
     query: t.Union[DistinctQuery, t.List[t.Dict]],
-    filter: t.Optional[t.Mapping[str, str]],
+    match_filter: t.Optional[t.Mapping[str, str]],
     is_frames: bool,
 ):
     if query.filters or not query.index:
         return await _do_distinct_lazy_pipeline(
-            dataset, collection, query, filter, is_frames
+            dataset, collection, query, match_filter, is_frames
         )
 
     if query.has_list:
         return await _do_list_distinct_query(collection, query)
 
     return await _do_distinct_grouped_pipeline(
-        dataset, collection, query, filter, is_frames
+        dataset, collection, query, match_filter, is_frames
     )
 
 
@@ -444,12 +444,12 @@ async def _do_distinct_lazy_pipeline(
     dataset: fo.Dataset,
     collection: AsyncIOMotorCollection,
     query: DistinctQuery,
-    filter: t.Optional[t.Mapping[str, str]],
+    match_filter: t.Optional[t.Mapping[str, str]],
     is_frames: bool,
 ):
     pipeline = []
-    if filter:
-        pipeline.append({"$match": filter})
+    if match_filter:
+        pipeline.append({"$match": match_filter})
 
     if query.filters and not is_frames:
         pipeline += get_view(dataset, filters=query.filters)._pipeline()
@@ -467,13 +467,13 @@ async def _do_distinct_grouped_pipeline(
     dataset: fo.Dataset,
     collection: AsyncIOMotorCollection,
     query: DistinctQuery,
-    filter: t.Optional[t.Mapping[str, str]],
+    match_filter: t.Optional[t.Mapping[str, str]],
     is_frames: bool,
 ):
 
     pipeline = []
-    if filter:
-        pipeline += [{"$match": filter}]
+    if match_filter:
+        pipeline += [{"$match": match_filter}]
 
     pipeline += [
         {"$sort": {query.path: 1}},

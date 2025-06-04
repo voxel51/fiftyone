@@ -138,7 +138,7 @@ export const imaVidLookerState = atomFamily<any, string>({
 export const groupByFieldValue = selector({
   key: "groupByFieldValue",
   get: ({ get }) => {
-    return get(modalSample).sample._group;
+    return get(modalSample)?.sample?._group ?? null;
   },
 });
 

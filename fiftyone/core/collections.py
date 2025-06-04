@@ -5745,12 +5745,12 @@ class SampleCollection(object):
         self,
         field_or_expr,
         order_by=None,
-        order_by_key=None,
         reverse=False,
         flat=False,
         match_expr=None,
         sort_expr=None,
         create_index=True,
+        order_by_key=None,
     ):
         """Creates a view that groups the samples in the collection by a
         specified field or expression.
@@ -5799,11 +5799,6 @@ class SampleCollection(object):
                 that defines the value to group by
             order_by (None): an optional field by which to order the samples in
                 each group
-            order_by_key (None): an optional fixed ``order_by`` value
-                representing the first sample in a group. Required for
-                optimized performance. See
-                :ref:`this guide <app-query-performant-stages>` for more
-                details
             reverse (False): whether to return the results in descending order
                 Applies both to ``order_by`` and ``sort_expr``
             flat (False): whether to return a grouped collection (False) or a
@@ -5823,6 +5818,11 @@ class SampleCollection(object):
             create_index (True): whether to create an index, if necessary, to
                 optimize the grouping. Only applicable when grouping by
                 field(s), not expressions
+            order_by_key (None): an optional fixed ``order_by`` value
+                representing the first sample in a group. Required for
+                optimized performance. See
+                :ref:`this guide <app-query-performant-stages>` for more
+                details
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -5831,12 +5831,12 @@ class SampleCollection(object):
             fos.GroupBy(
                 field_or_expr,
                 order_by=order_by,
-                order_by_key=order_by_key,
                 reverse=reverse,
                 flat=flat,
                 match_expr=match_expr,
                 sort_expr=sort_expr,
                 create_index=create_index,
+                order_by_key=order_by_key,
             )
         )
 
