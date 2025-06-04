@@ -32,7 +32,6 @@ export interface DetectionLabel extends RegularLabel {
 export default class DetectionOverlay<
   State extends BaseState
 > extends CoordinateOverlay<State, DetectionLabel> {
-  private is3D: boolean;
   private labelBoundingBox: BoundingBox;
 
   containsPoint(state: Readonly<State>): CONTAINS {
@@ -95,7 +94,7 @@ export default class DetectionOverlay<
     const strokeColor =
       !isSelected && doesInstanceMatch ? INFO_COLOR : this.getColor(state);
 
-    if (this.is3D && this.label.dimensions && this.label.location) {
+    if (this.label.dimensions && this.label.location) {
       this.fillRectFor3d(ctx, state, strokeColor);
     } else {
       this.strokeRect(ctx, state, strokeColor);
