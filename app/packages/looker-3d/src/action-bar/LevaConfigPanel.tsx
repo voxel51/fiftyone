@@ -15,7 +15,7 @@ export const LevaConfigPanel = React.memo(() => {
   return (
     <>
       <ActionItem
-        title="Render Preferences"
+        title="Render Preferences (R)"
         data-cy="toggle-looker-3d-render-preferences"
       >
         <DisplaySettings
