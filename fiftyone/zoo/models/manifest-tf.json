@@ -1645,7 +1645,7 @@
         },
         {
             "base_name": "centernet-mobilenet-v2-fpn-512-coco-tf2",
-            "base_filename": "centernet_mobilenetv2_fpn_od",
+            "base_filename": "centernet_mobilenetv2_fpn_od.tar.gz",
             "version": null,
             "description": "CenterNet model from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ with the MobileNetV2 backbone trained on COCO resized to 512x512",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
