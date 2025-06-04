@@ -32,7 +32,7 @@ export const usePcdMaterialControls = (
     return [SHADE_BY_NONE, SHADE_BY_HEIGHT, SHADE_BY_CUSTOM].concat(
       Array.from(new Set(attributeNames))
         .sort()
-        .filter((name) => name !== "position")
+        .filter((name) => name !== "position" && name !== "dynamicAttr")
     );
   }, [geometry]);
 
