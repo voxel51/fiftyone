@@ -1,4 +1,3 @@
-import { useLoader } from "@react-three/fiber";
 import { useEffect, useMemo, useState } from "react";
 import type * as THREE from "three";
 import { PCDLoader } from "three/examples/jsm/loaders/PCDLoader";
@@ -9,6 +8,7 @@ import {
   SHADE_BY_INTENSITY,
   SHADE_BY_RGB,
 } from "../../constants";
+import { useFoLoader } from "../../hooks/use-fo-loaders";
 import type { ShadeBy } from "../../types";
 import { computeMinMaxForColorBufferAttribute } from "../../utils";
 import {
@@ -17,7 +17,6 @@ import {
   ShadeByHeight,
   ShadeByIntensity,
 } from "./shaders";
-import { useFoLoader } from "../../hooks/use-fo-loaders";
 
 type PointCloudMeshArgs = {
   upVector: THREE.Vector3;
