@@ -291,17 +291,13 @@ export const DynamicAttributeShader = ({
   const gradientMap = useGradientMap(gradients);
   // ensure the attribute is available as 'dynamicAttr' in the geometry
   // this is a runtime check and patch
-  if (
-    geometry &&
-    geometry.hasAttribute(attribute) &&
-    !geometry.hasAttribute("dynamicAttr")
-  ) {
-    // @ts-ignore
-    geometry.setAttribute(
-      "dynamicAttr",
-      geometry.getAttribute(attribute).clone()
-    );
+  // without this, there's no way to "inject" the attribute into the shader
+  // this implies we're compiling different shaders for different attributes
+  // at runtime
+  if (geometry && geometry.hasAttribute(attribute)) {
+    geometry.setAttribute("dynamicAttr", geometry.getAttribute(attribute));
   }
+
   return (
     <shaderMaterial
       attach="material"
