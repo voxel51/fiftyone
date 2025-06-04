@@ -205,17 +205,9 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         for prop in self.required_props:
             if prop not in kwargs:
                 raise ValueError("Missing required property '%s'" % prop)
-            setattr(op, prop, kwargs.get(prop))
 
-        delegation_target = kwargs.get("delegation_target", None)
-        if delegation_target:
-            setattr(op, "delegation_target", delegation_target)
-
-        metadata = kwargs.get("metadata", None)
-        if metadata:
-            setattr(op, "metadata", metadata)
-        else:
-            setattr(op, "metadata", {})
+        for attr, value in kwargs.items():
+            setattr(op, attr, value)
 
         context = None
         if isinstance(op.context, dict):
@@ -391,9 +383,12 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             return_document=pymongo.ReturnDocument.AFTER,
         )
 
-        if doc.get("num_partitions") and run_state == ExecutionRunState.FAILED:
+        if doc.get("num_partitions") and run_state is ExecutionRunState.FAILED:
             # If a parent operation is failed, also mark the children as failed
-            self._collection.update_many({"group_id": doc["_id"]}, update)
+            self._collection.update_many(
+                {"group_id": doc["_id"]}, {"$set": {"run_state": run_state}}
+            )
+
         return (
             DelegatedOperationDocument().from_pymongo(doc)
             if doc is not None
