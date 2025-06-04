@@ -338,6 +338,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                     "result": execution_result_json,
                 }
             }
+
         elif run_state == ExecutionRunState.RUNNING:
             update = {
                 "$set": {
@@ -390,6 +391,9 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             return_document=pymongo.ReturnDocument.AFTER,
         )
 
+        if doc.get("num_partitions") and run_state == ExecutionRunState.FAILED:
+            # If a parent operation is failed, also mark the children as failed
+            self._collection.update_many({"group_id": doc["_id"]}, update)
         return (
             DelegatedOperationDocument().from_pymongo(doc)
             if doc is not None
