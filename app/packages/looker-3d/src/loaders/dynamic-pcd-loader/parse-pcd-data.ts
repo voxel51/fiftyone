@@ -1,4 +1,3 @@
-import { Color } from "three";
 import { decompressLZF } from "./decompress-lzf";
 import { getDataView } from "./get-data-view";
 import { parseHeader } from "./parse-header";
@@ -97,24 +96,23 @@ export const parsePCDData = (
   } else {
     // setup for both BinaryCompressed and Binary
     let dv: DataView;
+    let baseOffsets: number[] | null = null;
 
     if (header.data === PCDFieldType.BinaryCompressed) {
-      const sizesArr = new Uint32Array(data, header.headerLen, 2);
+      const dvHeader = new DataView(data, header.headerLen, 8);
+      const compressedSize = dvHeader.getUint32(0, true);
+      const decompressedSize = dvHeader.getUint32(4, true);
       const compressed = new Uint8Array(
         data,
         header.headerLen + 8,
-        sizesArr[0]
+        compressedSize
       );
-      const decompressed = decompressLZF(compressed, sizesArr[1]);
+      const decompressed = decompressLZF(compressed, decompressedSize);
       dv = new DataView(decompressed.buffer);
+
+      baseOffsets = fields.map((_, fi) => points * off[fields[fi]]);
     } else {
       dv = new DataView(data, header.headerLen);
-    }
-
-    // Precompute base offsets for each field in compressed case
-    let baseOffsets: number[] | null = null;
-    if (header.data === PCDFieldType.BinaryCompressed) {
-      baseOffsets = fields.map((_, fi) => points * off[fields[fi]]);
     }
 
     for (let i = 0; i < points; i++) {
