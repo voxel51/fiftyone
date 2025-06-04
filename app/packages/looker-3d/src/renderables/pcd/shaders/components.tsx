@@ -68,6 +68,7 @@ export const ShadeByHeight = ({
 
   return (
     <shaderMaterial
+      glslVersion={THREE.GLSL3}
       {...{
         uniforms: {
           opacity: { value: opacity ?? 1 },
@@ -102,6 +103,7 @@ export const ShadeByIntensity = ({
 
   return (
     <shaderMaterial
+      glslVersion={THREE.GLSL3}
       {...{
         uniforms: {
           uMin: { value: minIntensity },
@@ -129,6 +131,7 @@ export const RgbShader = ({
 }: Pick<ShaderProps, "pointSize" | "isPointSizeAttenuated" | "opacity">) => {
   return (
     <shaderMaterial
+      glslVersion={THREE.GLSL3}
       {...{
         scale: { value: 1 },
         uniforms: {
@@ -158,6 +161,7 @@ export const CustomColorShader = ({
 
   return (
     <shaderMaterial
+      glslVersion={THREE.GLSL3}
       {...{
         scale: { value: 1 },
         uniforms: {

@@ -7,10 +7,10 @@ export const ShadeByRgbShaders = {
   uniform bool isPointSizeAttenuated;
 
   // these attributes are injected into the vertex shader based on geometry
-  attribute vec3 rgb;
+  in vec3 rgb;
 
   // this attribute is used to pass the color to the fragment shader
-  varying vec3 vColor;
+  out vec3 vColor;
 
   void main() {
     // assign color to the varying variable so that it can be used in fragment shader
@@ -28,13 +28,15 @@ export const ShadeByRgbShaders = {
 
   `,
   fragmentShader: /* glsl */ `
-  varying vec3 vColor;
+  in vec3 vColor;
   
   // this uniform is used to pass the opacity
   uniform float opacity;
 
+  out vec4 fragColor;
+
   void main() {
-    gl_FragColor = vec4(vColor, opacity);
+    fragColor = vec4(vColor, opacity);
   } 
   `,
 };
@@ -47,15 +49,13 @@ export const ShadeByHeightShaders = {
   uniform float pointSize;
   uniform bool isPointSizeAttenuated;
 
-  varying vec2 vUv;
-  varying float hValue;
+  out float hValue;
 
   float remap(float minval, float maxval, float curval) {
     return (curval - minval) / (maxval - minval);
   }
 
   void main() {
-    vUv = uv;
     vec3 pos = position;
     float projectedHeight = dot(pos, upVector);
     hValue = remap(min, max, projectedHeight);
@@ -67,30 +67,26 @@ export const ShadeByHeightShaders = {
   }`,
   fragmentShader: /* glsl */ `
   uniform sampler2D gradientMap;
-  varying float hValue;
-
   uniform float opacity;
+  in float hValue;
+  out vec4 fragColor;
 
   void main() {
     float v = clamp(hValue, 0., 1.);
     // sample from the middle of the gradient map to avoid border artifacts
-    vec3 col = texture2D(gradientMap, vec2(0.5, v)).rgb;
-    gl_FragColor = vec4(col, opacity);
+    vec3 col = texture(gradientMap, vec2(0.5, v)).rgb;
+    fragColor = vec4(col, opacity);
   }`,
 };
 
 export const ShadeByIntensityShaders = {
   vertexShader: /* glsl */ `
-  precision highp float;
-  
+  in float intensity;
+  out float vNorm;
   uniform float uMax;
   uniform float uMin;
   uniform float pointSize;
   uniform bool isPointSizeAttenuated;
-
-  varying float vNorm;
-
-  attribute float intensity;
 
   float remap ( float minval, float maxval, float curval ) {
     return ( curval - minval ) / ( maxval - minval );
@@ -107,29 +103,26 @@ export const ShadeByIntensityShaders = {
   }
 `,
   fragmentShader: /* glsl */ `
-  precision highp float;
-
   uniform sampler2D gradientMap;
   uniform float opacity;
-
-  varying float vNorm;
+  in float vNorm;
+  out vec4 fragColor;
 
   void main() {
-    vec3 col = texture2D(gradientMap, vec2(0.5, vNorm)).rgb;
-    gl_FragColor = vec4(col, opacity);
+    vec3 col = texture(gradientMap, vec2(0.5, vNorm)).rgb;
+    fragColor = vec4(col, opacity);
   }
 `,
 };
 
 export const ShadeByLegacyIntensityShaders = {
   vertexShader: /* glsl */ `
+    in vec3 rgb;
+    out float vNorm;
     uniform float uMax;
     uniform float uMin;
     uniform float pointSize;
     uniform bool isPointSizeAttenuated;
-  
-    varying float vNorm;
-    attribute vec3 rgb;
   
     float remap ( float minval, float maxval, float curval ) {
       return ( curval - minval ) / ( maxval - minval );
@@ -146,17 +139,15 @@ export const ShadeByLegacyIntensityShaders = {
     }
   `,
   fragmentShader: /* glsl */ `
-    precision highp float;
-
     uniform sampler2D gradientMap;
     uniform float opacity;
-
-    varying float vNorm;
+    in float vNorm;
+    out vec4 fragColor;
   
     void main() {
       // sample from the middle of the gradient map to avoid border artifacts
-      vec3 col = texture2D(gradientMap, vec2(0.5, vNorm)).rgb;
-      gl_FragColor = vec4(col, opacity);
+      vec3 col = texture(gradientMap, vec2(0.5, vNorm)).rgb;
+      fragColor = vec4(col, opacity);
     }
   `,
 };
@@ -166,9 +157,7 @@ export const ShadeByCustomColorShaders = {
   uniform float pointSize;
   uniform bool isPointSizeAttenuated;
   uniform vec3 color;
-
-  // vColor will be assigned to color for frgament shader
-  varying vec3 vColor;
+  out vec3 vColor;
 
   void main() {
     vColor = color;
@@ -179,12 +168,14 @@ export const ShadeByCustomColorShaders = {
   }
 `,
   fragmentShader: /* glsl */ `
-  varying vec3 vColor;
+  in vec3 vColor;
 
   uniform float opacity;
 
+  out vec4 fragColor;
+
   void main() {
-    gl_FragColor = vec4(vColor, opacity);
+    fragColor = vec4(vColor, opacity);
   }
 `,
 };
