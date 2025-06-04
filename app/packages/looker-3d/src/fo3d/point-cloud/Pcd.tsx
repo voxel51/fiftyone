@@ -1,6 +1,5 @@
 import { getSampleSrc } from "@fiftyone/state";
-import { useFrame } from "@react-three/fiber";
-import throttle from "lodash/throttle";
+import { ThreeEvent, useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import { useRecoilState } from "recoil";
 import type { Quaternion } from "three";
@@ -54,7 +53,7 @@ export const Pcd = ({
 
   const pcdContainerRef = useRef();
 
-  const pointsMaterialElement = usePcdMaterial(
+  const { pointsMaterial, shadingMode } = usePcdMaterial(
     name,
     points.geometry,
     defaultMaterial,
@@ -62,47 +61,49 @@ export const Pcd = ({
   );
 
   const pointerMoveHandler = useMemo(
-    () =>
-      throttle((e) => {
-        // e.index is the vertex/point index under the cursor
-        const idx = e.index;
-        if (idx === undefined) return;
+    () => (e: ThreeEvent<MouseEvent>) => {
+      const idx = e.index;
+      if (idx === undefined) return;
 
-        const md: Record<string, any> = { index: idx };
+      const md: Record<string, any> = { index: idx };
 
-        if (
-          points.geometry.hasAttribute("color") ||
-          points.geometry.hasAttribute("rgb")
-        ) {
-          const colorAttr = points.geometry.hasAttribute("color")
-            ? points.geometry.getAttribute("color")
-            : points.geometry.getAttribute("rgb");
+      if (
+        points.geometry.hasAttribute("color") ||
+        points.geometry.hasAttribute("rgb")
+      ) {
+        const colorAttr = points.geometry.hasAttribute("color")
+          ? points.geometry.getAttribute("color")
+          : points.geometry.getAttribute("rgb");
 
-          md.rgb = [
-            colorAttr.getX(idx),
-            colorAttr.getY(idx),
-            colorAttr.getZ(idx),
-          ];
-        }
+        md.rgb = [
+          colorAttr.getX(idx),
+          colorAttr.getY(idx),
+          colorAttr.getZ(idx),
+        ];
+      }
 
-        if (points.geometry.hasAttribute("position")) {
-          const posAttr = points.geometry.getAttribute("position");
-          md.coord = [posAttr.getX(idx), posAttr.getY(idx), posAttr.getZ(idx)];
-          setCurrentHoveredPoint(
-            new Vector3(posAttr.getX(idx), posAttr.getY(idx), posAttr.getZ(idx))
-          );
-        }
+      if (points.geometry.hasAttribute("position")) {
+        const posAttr = points.geometry.getAttribute("position");
+        md.coord = [posAttr.getX(idx), posAttr.getY(idx), posAttr.getZ(idx)];
+        setCurrentHoveredPoint(
+          new Vector3(posAttr.getX(idx), posAttr.getY(idx), posAttr.getZ(idx))
+        );
+      }
 
-        // dynamically handle all other attributes
-        Object.keys(points.geometry.attributes).forEach((attr) => {
-          if (attr === "color" || attr === "intensity" || attr === "position")
-            return;
-          md[attr] = points.geometry.attributes[attr].getX(idx);
-        });
+      // dynamically handle all other attributes
+      Object.keys(points.geometry.attributes).forEach((attr) => {
+        if (attr === "color" || attr === "intensity" || attr === "position")
+          return;
+        md[attr] = points.geometry.attributes[attr].getX(idx);
+      });
 
-        setHoverMetadata(md);
-      }, 30),
-    [points, setHoverMetadata]
+      setHoverMetadata({
+        assetName: name,
+        renderModeDescriptor: shadingMode,
+        attributes: md,
+      });
+    },
+    [points, setHoverMetadata, shadingMode]
   );
 
   const hoverProps = useMemo(() => {
@@ -112,7 +113,6 @@ export const Pcd = ({
       // fires on *every* intersected point
       onPointerMove: pointerMoveHandler,
       onPointerOut: () => {
-        setHoverMetadata(null);
         setCurrentHoveredPoint(null);
       },
     };
@@ -120,10 +120,16 @@ export const Pcd = ({
 
   useEffect(() => {
     return () => {
-      pointerMoveHandler.cancel();
       setCurrentHoveredPoint(null);
     };
   }, [pointerMoveHandler]);
+
+  useEffect(() => {
+    setHoverMetadata((prev) => ({
+      ...prev,
+      renderModeDescriptor: shadingMode,
+    }));
+  }, [shadingMode]);
 
   const HoveredPointMarker = ({ position }: { position: Vector3 }) => {
     const meshRef = useRef<any>(null);
@@ -174,7 +180,7 @@ export const Pcd = ({
         scale={scale}
         {...hoverProps}
       >
-        {pointsMaterialElement}
+        {pointsMaterial}
         {children ?? null}
       </primitive>
     </>

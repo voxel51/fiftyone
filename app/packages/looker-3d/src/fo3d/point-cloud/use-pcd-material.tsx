@@ -224,5 +224,5 @@ export const usePcdMaterial = (
     name,
   ]);
 
-  return pointsMaterial;
+  return { pointsMaterial, shadingMode: shadeBy };
 };

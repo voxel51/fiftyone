@@ -26,6 +26,12 @@ export type ShadeBy =
   | typeof SHADE_BY_NONE
   | string;
 
+export type HoverMetadata = {
+  assetName: string;
+  attributes?: Record<string, string | number | boolean>;
+  renderModeDescriptor?: string;
+};
+
 export type NodeName = string;
 
 export type VisibilityMap = Record<NodeName, boolean>;
