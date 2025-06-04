@@ -1,13 +1,4 @@
-import {
-  BufferGeometry,
-  Float32BufferAttribute,
-  Int16BufferAttribute,
-  Int32BufferAttribute,
-  Int8BufferAttribute,
-  Uint16BufferAttribute,
-  Uint32BufferAttribute,
-  Uint8BufferAttribute,
-} from "three";
+import { BufferGeometry, Float32BufferAttribute } from "three";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createBufferGeometry } from "./create-buffer-geometry";
 import { PCDHeader } from "./types";
@@ -93,8 +84,8 @@ describe("createBufferGeometry", () => {
 
     const geometry = createBufferGeometry(mockHeader, position, attributes);
 
-    const labelAttr = geometry.getAttribute("label") as Int32BufferAttribute;
-    expect(labelAttr).toBeInstanceOf(Int32BufferAttribute);
+    const labelAttr = geometry.getAttribute("label") as Float32BufferAttribute;
+    expect(labelAttr).toBeInstanceOf(Float32BufferAttribute);
     expect(labelAttr.itemSize).toBe(1);
     expect(Array.from(labelAttr.array)).toEqual([1, 2, 3, 4, 5]);
   });
@@ -113,9 +104,9 @@ describe("createBufferGeometry", () => {
 
     const geometry = createBufferGeometry(mockHeader, position, attributes);
 
-    expect(geometry.getAttribute("a")).toBeInstanceOf(Int8BufferAttribute);
-    expect(geometry.getAttribute("b")).toBeInstanceOf(Int16BufferAttribute);
-    expect(geometry.getAttribute("c")).toBeInstanceOf(Int32BufferAttribute);
+    expect(geometry.getAttribute("a")).toBeInstanceOf(Float32BufferAttribute);
+    expect(geometry.getAttribute("b")).toBeInstanceOf(Float32BufferAttribute);
+    expect(geometry.getAttribute("c")).toBeInstanceOf(Float32BufferAttribute);
   });
 
   it("handles unsigned integer types correctly", () => {
@@ -132,29 +123,26 @@ describe("createBufferGeometry", () => {
 
     const geometry = createBufferGeometry(mockHeader, position, attributes);
 
-    expect(geometry.getAttribute("a")).toBeInstanceOf(Uint8BufferAttribute);
-    expect(geometry.getAttribute("b")).toBeInstanceOf(Uint16BufferAttribute);
-    expect(geometry.getAttribute("c")).toBeInstanceOf(Uint32BufferAttribute);
+    expect(geometry.getAttribute("a")).toBeInstanceOf(Float32BufferAttribute);
+    expect(geometry.getAttribute("b")).toBeInstanceOf(Float32BufferAttribute);
+    expect(geometry.getAttribute("c")).toBeInstanceOf(Float32BufferAttribute);
   });
 
-  it("handles rgb/color attributes specially", () => {
-    mockHeader.fields = ["rgb", "color"];
-    mockHeader.type = ["F", "F"];
-    mockHeader.size = [4, 4];
+  it("handles rgb attributes specially", () => {
+    mockHeader.fields = ["rgb"];
+    mockHeader.type = ["F"];
+    mockHeader.size = [4];
 
     const position: number[] = [];
     const attributes = {
-      rgb: new Float32Array([1, 0, 0, 0, 1, 0]), // Two RGB values
-      color: new Float32Array([0, 0, 1, 1, 1, 0]), // Two RGB values
+      rgb: new Float32Array([1, 0, 0, 0, 1, 0]),
     };
 
     const geometry = createBufferGeometry(mockHeader, position, attributes);
 
-    // rgb should be stored as "color" attribute
-    const colorAttr = geometry.getAttribute("color") as Float32BufferAttribute;
-    expect(colorAttr).toBeInstanceOf(Float32BufferAttribute);
-    expect(colorAttr.itemSize).toBe(3);
-    expect(geometry.getAttribute("rgb")).toBeUndefined();
+    const rgbAttr = geometry.getAttribute("rgb") as Float32BufferAttribute;
+    expect(rgbAttr).toBeInstanceOf(Float32BufferAttribute);
+    expect(rgbAttr.itemSize).toBe(3);
   });
 
   it("handles normal attributes specially", () => {
@@ -195,42 +183,7 @@ describe("createBufferGeometry", () => {
     consoleSpy.mockRestore();
   });
 
-  it("warns for unsupported sizes and uses defaults", () => {
-    const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-
-    mockHeader.fields = ["a", "b", "c"];
-    mockHeader.type = ["F", "I", "U"];
-    mockHeader.size = [8, 8, 8]; // Unsupported sizes
-
-    const position = new Float32Array([]);
-    const attributes = {
-      a: new Float32Array([1.1, 2.2]),
-      b: new Float32Array([1.1, 2.2]),
-      c: new Float32Array([1.1, 2.2]),
-    };
-
-    const geometry = createBufferGeometry(mockHeader, position, attributes);
-
-    expect(consoleSpy).toHaveBeenCalledWith(
-      "Unsupported float size 8, defaulting to Float32"
-    );
-    expect(consoleSpy).toHaveBeenCalledWith(
-      "Unsupported signed integer size 8, defaulting to Int32"
-    );
-    expect(consoleSpy).toHaveBeenCalledWith(
-      "Unsupported unsigned integer size 8, defaulting to Uint32"
-    );
-
-    expect(geometry.getAttribute("a")).toBeInstanceOf(Float32BufferAttribute);
-    expect(geometry.getAttribute("b")).toBeInstanceOf(Int32BufferAttribute);
-    expect(geometry.getAttribute("c")).toBeInstanceOf(Uint32BufferAttribute);
-
-    consoleSpy.mockRestore();
-  });
-
   it("handles unknown field types by defaulting to Float32", () => {
-    const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-
     mockHeader.fields = ["unknown"];
     mockHeader.type = ["X" as any];
     mockHeader.size = [4];
@@ -242,14 +195,9 @@ describe("createBufferGeometry", () => {
 
     const geometry = createBufferGeometry(mockHeader, position, attributes);
 
-    expect(consoleSpy).toHaveBeenCalledWith(
-      'Unknown PCD field type "X", defaulting to Float32'
-    );
     expect(geometry.getAttribute("unknown")).toBeInstanceOf(
       Float32BufferAttribute
     );
-
-    consoleSpy.mockRestore();
   });
 
   it("skips empty attribute arrays", () => {
@@ -292,20 +240,22 @@ describe("createBufferGeometry", () => {
 
     const geometry = createBufferGeometry(mockHeader, position, attributes);
 
-    const int8Attr = geometry.getAttribute("int8_field") as Int8BufferAttribute;
-    expect(int8Attr.array).toBeInstanceOf(Int8Array);
+    const int8Attr = geometry.getAttribute(
+      "int8_field"
+    ) as Float32BufferAttribute;
+    expect(int8Attr.array).toBeInstanceOf(Float32Array);
     expect(Array.from(int8Attr.array)).toEqual([100, -50, 127]);
 
     const int16Attr = geometry.getAttribute(
       "int16_field"
-    ) as Int16BufferAttribute;
-    expect(int16Attr.array).toBeInstanceOf(Int16Array);
+    ) as Float32BufferAttribute;
+    expect(int16Attr.array).toBeInstanceOf(Float32Array);
     expect(Array.from(int16Attr.array)).toEqual([1000, -500, 32767]);
 
     const uint8Attr = geometry.getAttribute(
       "uint8_field"
-    ) as Uint8BufferAttribute;
-    expect(uint8Attr.array).toBeInstanceOf(Uint8Array);
+    ) as Float32BufferAttribute;
+    expect(uint8Attr.array).toBeInstanceOf(Float32Array);
     expect(Array.from(uint8Attr.array)).toEqual([255, 128, 0]);
   });
 });

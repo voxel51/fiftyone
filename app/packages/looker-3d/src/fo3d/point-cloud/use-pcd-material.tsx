@@ -5,18 +5,18 @@ import {
   SHADE_BY_CUSTOM,
   SHADE_BY_HEIGHT,
   SHADE_BY_INTENSITY,
-  SHADE_BY_RGB,
   SHADE_BY_NONE,
+  SHADE_BY_RGB,
 } from "../../constants";
 import type { PcdAsset } from "../../hooks";
 import { useFo3dBounds } from "../../hooks/use-bounds";
 import { usePcdMaterialControls } from "../../hooks/use-pcd-material-controls";
 import {
   CustomColorShader,
+  DynamicAttributeShader,
   RgbShader,
   ShadeByHeight,
   ShadeByIntensity,
-  DynamicAttributeShader,
 } from "../../renderables/pcd/shaders";
 import {
   computeMinMaxForColorBufferAttribute,
@@ -166,13 +166,11 @@ export const usePcdMaterial = (
         );
 
       default: {
-        // Dynamic attribute case
-        // Check if attribute exists and is scalar
         const attr = geometry.getAttribute(shadeBy);
         let min = 0,
           max = 1;
         if (attr && attr.itemSize === 1) {
-          // Prefer userData if available
+          // prefer userData if available
           if (
             geometry.userData &&
             geometry.userData[shadeBy] &&
