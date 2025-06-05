@@ -55,7 +55,7 @@ class DelegatedOperationDocument(object):
         self.result = None
         self.id = None
         self._doc = None
-        self.metadata = {}
+        self.metadata = None
         self.log_upload_error = None
         self.log_size = None
         self.log_path = None
