@@ -466,7 +466,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         doc = self.svc._repo.queue_operation(
             operator=f"{TEST_DO_PREFIX}/operator/distributed_foo",
             label=mock_get_operator.return_value.name,
-            delegation_target=f"test_target",
+            delegation_target="test_target",
             context=ExecutionContext(
                 request_params={"foo": "bar", "dataset_id": str(ObjectId())}
             ),
