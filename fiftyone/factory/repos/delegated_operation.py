@@ -392,7 +392,16 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         ):
             # If a parent operation is failed, also mark the children as failed
             self._collection.update_many(
-                {"group_id": doc["_id"]}, {"$set": {"run_state": run_state}}
+                {
+                    "group_id": doc["_id"],
+                    "run_state": {"$nin": ["failed", "completed"]},
+                },
+                {
+                    "$set": {
+                        **update["$set"],
+                        "result": {"error": "parent operation failed"},
+                    }
+                },
             )
 
         return (
