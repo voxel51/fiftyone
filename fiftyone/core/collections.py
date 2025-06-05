@@ -11240,15 +11240,22 @@ class SampleCollection(object):
         if isinstance(self, fod.Dataset) and self.media_type != fom.GROUP:
             return True
 
-        # pylint:disable=no-member
-        if (
-            isinstance(self, fov.DatasetView)
-            and self._dataset.media_type == fom.GROUP
-            and len(self._stages) == 1
-            and isinstance(self._stages[0], fos.SelectGroupSlices)
-            and self._pipeline() == []
-        ):
-            return True
+        if isinstance(self, fov.DatasetView):
+            # pylint:disable=no-member
+            if (
+                not len(self._stages)
+                and not self._is_clips
+                and self._dataset.media_type != fom.GROUP
+            ):
+                return True
+
+            if (
+                self._dataset.media_type == fom.GROUP
+                and len(self._stages) == 1
+                and isinstance(self._stages[0], fos.SelectGroupSlices)
+                and not self._pipeline()
+            ):
+                return True
 
         return False
 
