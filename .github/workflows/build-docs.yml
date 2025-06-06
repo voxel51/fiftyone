@@ -69,6 +69,7 @@ jobs:
       - name: Install
         run: |
           sudo apt-get install pandoc
+          sudo apt-get install libgeos-dev
           pip install -r requirements/docs.txt
           pip install -r fiftyone-teams/requirements/dev.txt
           pip install fiftyone-brain fiftyone-db
