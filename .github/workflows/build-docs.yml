@@ -74,7 +74,7 @@ jobs:
           echo "Installing docs requirements"
           pip install -r requirements/docs.txt
           echo "Installing fiftyone-teams requirements"
-          pip install -r fiftyone-teams/requirements/dev.txt
+          pip install --use-pep517 -r fiftyone-teams/requirements/dev.txt
           echo "Installing fiftyone-brain and fiftyone-db"
           pip install fiftyone-brain fiftyone-db
           echo "Installing fiftyone"
