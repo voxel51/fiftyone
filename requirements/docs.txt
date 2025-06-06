@@ -1,13 +1,12 @@
 # fiftyone requirements
 -r common.txt
--r extras.txt
 pycocotools==2.0.10
 tensorflow==2.19.0
 torch==2.7.1
 torchvision==0.22.1
 typing_extensions==4.14.0
 
-# precommit
+# precommit requirements
 pre-commit==4.2.0
 pylint==3.3.7
 
