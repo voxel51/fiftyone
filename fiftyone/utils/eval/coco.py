@@ -184,6 +184,10 @@ class COCOEvaluation(DetectionEvaluation):
         classes=None,
         missing=None,
         progress=None,
+        num_workers=1,
+        batch_method=None,
+        batch_size=None,
+        parallelize_method=None,
     ):
         """Generates aggregate evaluation results for the samples.
 
@@ -208,6 +212,16 @@ class COCOEvaluation(DetectionEvaluation):
             progress (None): whether to render a progress bar (True/False), use
                 the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
+            num_workers (1): the number of workers to use to compute detections. If
+                set to greater than 1, will use parallel processing to compute.
+            batch_method (None): the method to use to batch the dataset for
+                parallel processing. The supported values are ``"id"`` and
+                ``"slice"``.
+            batch_size (None): the size of the samples per batch to process in
+                parallel. If not provided, the samples are distributed evenly
+                across the workers.
+            parallelize_method (None): the backend to use for multiprocessing.
+                The supported values are ``"thread"`` and ``"process"``.
 
         Returns:
             a :class:`DetectionResults`
@@ -231,7 +245,14 @@ class COCOEvaluation(DetectionEvaluation):
             classes,
             recall_sweep,
         ) = _compute_pr_curves(
-            samples, self.config, classes=classes, progress=progress
+            samples,
+            self.config,
+            classes=classes,
+            progress=progress,
+            num_workers=num_workers,
+            batch_method=batch_method,
+            batch_size=batch_size,
+            parallelize_method=parallelize_method,
         )
 
         return COCODetectionResults(
@@ -707,7 +728,16 @@ def _compute_matches(
     return matches
 
 
-def _compute_pr_curves(samples, config, classes=None, progress=None):
+def _compute_pr_curves(
+    samples,
+    config,
+    classes=None,
+    progress=None,
+    num_workers=1,
+    batch_method=None,
+    batch_size=None,
+    parallelize_method=None,
+):
     gt_field = config.gt_field
     pred_field = config.pred_field
     iou_threshs = config.iou_threshs
@@ -724,19 +754,32 @@ def _compute_pr_curves(samples, config, classes=None, progress=None):
         _classes = set()
 
     logger.info("Performing IoU sweep...")
-    for sample in samples.iter_samples(progress=progress):
+
+    def map_func(sample):
         if processing_frames:
             images = sample.frames.values()
         else:
             images = [sample]
 
+        results = []
         for image in images:
             # Don't edit user's data during sweep
             gts = _copy_labels(image[gt_field])
             preds = _copy_labels(image[pred_field])
+            results.append(_coco_evaluation_iou_sweep(gts, preds, config))
 
-            matches_list = _coco_evaluation_iou_sweep(gts, preds, config)
+        return results
 
+    # Compute matches for each IoU threshold
+    for _, result in samples.map_samples(
+        map_func,
+        num_workers=num_workers,
+        batch_method=batch_method,
+        batch_size=batch_size,
+        parallelize_method=parallelize_method,
+        progress=progress,
+    ):
+        for matches_list in result:
             for idx, matches in enumerate(matches_list):
                 for match in matches:
                     gt_label = match[0]

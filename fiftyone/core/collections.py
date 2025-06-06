@@ -2185,6 +2185,7 @@ class SampleCollection(object):
 
         results = list(view.values(paths))
 
+        frame_numbers = None
         if has_frame_fields:
             frame_numbers = results.pop(0)
 
@@ -3715,6 +3716,10 @@ class SampleCollection(object):
         classwise=True,
         dynamic=True,
         progress=None,
+        num_workers=1,
+        batch_method=None,
+        batch_size=None,
+        parallelize_method=None,
         **kwargs,
     ):
         """Evaluates the specified predicted detections in this collection with
@@ -3810,6 +3815,17 @@ class SampleCollection(object):
             progress (None): whether to render a progress bar (True/False), use
                 the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
+            num_workers (1): the number of workers to use to compute
+                detections. If set to greater than 1, will use parallel
+                processing to compute.
+            batch_method (None): the method to use to batch the dataset for
+                parallel processing. The supported values are ``"id"`` and
+                ``"slice"``.
+            batch_size (None): the size of the samples per batch to process in
+                parallel. If not provided, the samples are distributed evenly
+                across the workers.
+            parallelize_method (None): the backend to use for multiprocessing.
+                The supported values are ``"thread"`` and ``"process"``.
             **kwargs: optional keyword arguments for the constructor of the
                 :class:`fiftyone.utils.eval.detection.DetectionEvaluationConfig`
                 being used
@@ -3831,6 +3847,10 @@ class SampleCollection(object):
             classwise=classwise,
             dynamic=dynamic,
             progress=progress,
+            num_workers=num_workers,
+            batch_method=batch_method,
+            batch_size=batch_size,
+            parallelize_method=parallelize_method,
             **kwargs,
         )
 
