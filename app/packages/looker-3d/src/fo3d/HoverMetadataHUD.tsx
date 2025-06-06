@@ -127,12 +127,18 @@ const HoverMetadataHUD = () => {
       hoverMetadata?.attributes
         ? Object.entries(hoverMetadata.attributes)
             .sort((a, b) => a[0].localeCompare(b[0]))
-            .map(([key, value]) => (
-              <React.Fragment key={key}>
-                <dt>{key}</dt>
-                <dd>{formatMetadataValue(value)}</dd>
-              </React.Fragment>
-            ))
+            .map(([key, value]) => {
+              if (key === "dynamicAttr") {
+                return null;
+              }
+
+              return (
+                <React.Fragment key={key}>
+                  <dt>{key}</dt>
+                  <dd>{formatMetadataValue(value)}</dd>
+                </React.Fragment>
+              );
+            })
         : [],
     [hoverMetadata]
   );
