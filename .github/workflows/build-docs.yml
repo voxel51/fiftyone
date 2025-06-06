@@ -68,11 +68,16 @@ jobs:
           pip install ./dist/*.whl
       - name: Install
         run: |
+          echo "Installing system dependencies"
           sudo apt-get install pandoc
           sudo apt-get install libgeos-dev
+          echo "Installing docs requirements"
           pip install -r requirements/docs.txt
+          echo "Installing fiftyone-teams requirements"
           pip install -r fiftyone-teams/requirements/dev.txt
+          echo "Installing fiftyone-brain and fiftyone-db"
           pip install fiftyone-brain fiftyone-db
+          echo "Installing fiftyone"
           pip install .
       - name: Cache Node Modules
         id: node-cache
