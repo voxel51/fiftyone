@@ -1,19 +1,35 @@
-autodocsumm==0.2.7
-docutils==0.16
-ipykernel==5.3.0
+# fiftyone requirements
+-r common.txt
+-r extras.txt
+pycocotools==2.0.10
+tensorflow==2.19.0
+torch==2.7.1
+torchvision==0.22.1
+typing_extensions==4.14.0
+
+# precommit
+pre-commit==4.2.0
+pylint==3.3.7
+
+# docs requirements
+autodocsumm==0.2.14
+docutils==0.21.2
+ipykernel==6.29.5
 ipython_genutils==0.2.0
-Jinja2==3.0.3
-MarkupSafe==2.0.1
-jsx-lexer==2.0.0
-jupyter-client==6.1.3
-myst-parser==0.13.7
-nbsphinx==0.8.8
-sphinx-tabs==1.2.1
-Sphinx==3.5.4
-sphinx-copybutton==0.4.0
-sphinxcontrib-applehelp==1.0.4
-sphinxcontrib-devhelp==1.0.2
-sphinxcontrib-htmlhelp==2.0.1
+Jinja2==3.1.6
+MarkupSafe==3.0.2
+jsx-lexer==2.0.1
+jupyter-client==8.6.3
+myst-parser==4.0.1
+nbsphinx==0.9.7
+sphinx-tabs==3.4.7
+# nbsphinx does not support yet Sphinx > 8.2: https://github.com/spatialaudio/nbsphinx/issues/832
+Sphinx==8.1.3 
+sphinx-copybutton==0.5.2
+sphinxcontrib-applehelp==2.0.0
+sphinxcontrib-devhelp==2.0.0
+sphinxcontrib-htmlhelp==2.1.0
 sphinxcontrib-napoleon==0.7
-sphinxcontrib-qthelp==1.0.3
-sphinxcontrib-serializinghtml==1.1.5
+sphinxcontrib-qthelp==2.0.0
+sphinxcontrib-serializinghtml==2.0.0
+sphinxcontrib-jquery==4.1

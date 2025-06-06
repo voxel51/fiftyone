@@ -21,6 +21,7 @@ Custom installations:
 -e      Source install of voxel51-eta.
 -m      Install MongoDB from scratch, rather than installing fiftyone-db.
 -p      Install only the core python package, not the App.
+-o      Install docs dependencies.
 "
 }
 
@@ -28,10 +29,11 @@ Custom installations:
 SHOW_HELP=false
 SOURCE_BRAIN_INSTALL=false
 DEV_INSTALL=false
+DOCS_INSTALL=false
 SOURCE_ETA_INSTALL=false
 SCRATCH_MONGODB_INSTALL=false
 BUILD_APP=true
-while getopts "hbdemp" FLAG; do
+while getopts "hbdempo" FLAG; do
     case "${FLAG}" in
         h) SHOW_HELP=true ;;
         b) SOURCE_BRAIN_INSTALL=true ;;
@@ -39,6 +41,7 @@ while getopts "hbdemp" FLAG; do
         e) SOURCE_ETA_INSTALL=true ;;
         m) SCRATCH_MONGODB_INSTALL=true ;;
         p) BUILD_APP=false ;;
+        o) DOCS_INSTALL=true ;;
         *) usage ;;
     esac
 done
@@ -115,6 +118,10 @@ if [ ${DEV_INSTALL} = true ]; then
     pip install -r requirements/dev.txt
     pre-commit install
     pip install -e .
+elif [ ${DOCS_INSTALL} = true ]; then
+    echo "Performing docs install"
+    pip install -r requirements/docs.txt
+    pip install -e .
 else
     pip install -r requirements.txt
     pip install .
@@ -147,7 +154,11 @@ if [ ${BUILD_APP} = true ]; then
     [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
     nvm install ${NODE_VERSION}
     nvm use ${NODE_VERSION}
-    npm -g install yarn
+    if ! command -v yarn &> /dev/null; then
+        npm -g install yarn
+    else
+        echo "yarn is already installed, skipping installation"
+    fi
     if [ -f ~/.bashrc ]; then
         source ~/.bashrc
     elif [ -f ~/.bash_profile ]; then

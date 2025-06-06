@@ -11,19 +11,25 @@ generate its documentation and API reference from source.
 
 In order to build the docs locally, you must:
 
-1.  Be running Python 3.9 in a
-    [virtual environment](https://docs.voxel51.com/getting_started/virtualenv.html)
+1. Use Python 3.11 within a
+   [virtual environment](https://docs.voxel51.com/getting_started/virtualenv.html)
+   created specifically for documentation.
 
-2.  Perform a developer install of `fiftyone`:
+    **Note:** Do **not** use the same environment where you ran `install.bash`
+    with the `-d` (dev mode) flag, as docs dependencies conflict with test
+    dependencies.
+
+2. Install [pandoc](https://pandoc.org/installing.html).
+
+3. Perform a documentation-specific install of `fiftyone` from the root
+   directory using the `-o` (docs) flag:
 
 ```shell
-git clone https://github.com/voxel51/fiftyone
-cd fiftyone
-
-bash install.bash -d
+cd ..
+bash install.bash -o
 ```
 
-3.  Add the path to your cloned `fiftyone` repository to your `PYTHONPATH`:
+4.  Add the path to your cloned `fiftyone` repository to your `PYTHONPATH`:
 
 ```shell
 export PYTHONPATH=$PYTHONPATH:/path/to/fiftyone
@@ -114,3 +120,9 @@ A few commands are available:
 -   `yarn deploy` builds and copies this file into the built documentation
     (which avoids the need to run `generate_docs.bash` again)
 -   `yarn watch` re-runs `yarn deploy` whenever a JS source file changes
+
+## Versions
+
+-   Sphinx latest version: 8.2
+-   https://pypi.org/project/Sphinx/
+-   Sphinx
