@@ -18,7 +18,7 @@ from typing import Optional
 import fiftyone as fo
 import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
-import fiftyone.core.odm.utils as focu
+import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 from fiftyone.operators.decorators import coroutine_timeout
@@ -520,7 +520,7 @@ class ExecutionContext(object):
         # id if it is available
         uid = self.request_params.get("dataset_id", None)
         if uid:
-            self._dataset = focu.load_dataset(id=uid)
+            self._dataset = foo.load_dataset(id=uid)
 
             # Set the dataset_name using the dataset object in case the dataset
             # has been renamed or changed since the context was created
@@ -528,7 +528,7 @@ class ExecutionContext(object):
         else:
             uid = self.request_params.get("dataset_name", None)
             if uid:
-                self._dataset = focu.load_dataset(name=uid)
+                self._dataset = foo.load_dataset(name=uid)
 
         # TODO: refactor so that this additional reload post-load is not
         #  required

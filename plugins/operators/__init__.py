@@ -10,6 +10,7 @@ import json
 import os
 
 from bson import ObjectId
+import humanize
 
 import fiftyone as fo
 import fiftyone.core.media as fom
@@ -1921,6 +1922,130 @@ class LoadSavedView(foo.Operator):
         ctx.ops.set_view(name=name)
 
 
+class ReloadSavedView(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="reload_saved_view",
+            label="Reload saved view",
+            dynamic=True,
+        )
+
+    def resolve_placement(self, ctx):
+        if ctx.view._is_generated and ctx.view.name is not None:
+            return types.Placement(
+                types.Places.SAMPLES_GRID_ACTIONS,
+                types.Button(
+                    label="Reload saved view",
+                    icon="/assets/autorenew.svg",
+                    prompt=True,
+                ),
+            )
+
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+
+        _get_reload_saved_view_inputs(ctx, inputs)
+
+        view = types.View(label="Reload saved view")
+        return types.Property(inputs, view=view)
+
+    def execute(self, ctx):
+        name = ctx.params["name"]
+
+        view = ctx.dataset.load_saved_view(name)
+        view.reload()
+
+        if ctx.view.name == view.name:
+            ctx.trigger("set_view", params={"name": name})
+            ctx.trigger("reload_dataset")
+
+
+def _get_reload_saved_view_inputs(ctx, inputs):
+    saved_views = _get_generated_saved_views(ctx.dataset)
+
+    if not saved_views:
+        warning = types.Warning(
+            label="This dataset has no saved views that may need reloading"
+        )
+        prop = inputs.view("warning", warning)
+        prop.invalid = True
+        return
+
+    view_choices = types.AutocompleteView()
+    for name in saved_views:
+        view_choices.add_choice(name, label=name)
+
+    if ctx.view.name in saved_views:
+        default = ctx.view.name
+    else:
+        default = None
+
+    inputs.enum(
+        "name",
+        view_choices.values(),
+        default=default,
+        required=True,
+        label="Saved view",
+        description="The name of a saved view to reload",
+        view=view_choices,
+    )
+
+    name = ctx.params.get("name", None)
+    if name not in saved_views:
+        return
+
+    last_modified_at = _none_max(
+        getattr(ctx.dataset, "last_deletion_at", None),
+        ctx.dataset.max("last_modified_at"),
+    )
+    if ctx.dataset._contains_videos(any_slice=True):
+        last_modified_at = _none_max(
+            last_modified_at,
+            ctx.dataset.max("frames.last_modified_at"),
+        )
+
+    view_doc = ctx.dataset._get_saved_view_doc(name)
+
+    if last_modified_at > view_doc.last_modified_at:
+        dt = last_modified_at - view_doc.last_modified_at
+        dt_str = humanize.naturaldelta(dt)
+        view = types.Notice(
+            label=(
+                f"Saved view '{name}' may need to be reloaded.\n\n"
+                f"The dataset was last modified {dt_str} after the view was "
+                "generated."
+            )
+        )
+        inputs.view("notice", view)
+    else:
+        dt = view_doc.last_modified_at - last_modified_at
+        dt_str = humanize.naturaldelta(dt)
+        view = types.Notice(
+            label=(
+                f"Saved view '{name}' is up-to-date.\n\n"
+                f"It was generated {dt_str} after the dataset was last "
+                "modified."
+            )
+        )
+        inputs.view("notice", view)
+
+
+def _get_generated_saved_views(dataset):
+    generated_views = set()
+
+    for view_doc in dataset._doc.saved_views:
+        for stage_str in view_doc.view_stages:
+            if '"_state"' in stage_str:
+                generated_views.add(view_doc.name)
+
+    return sorted(generated_views)
+
+
+def _none_max(*args, default=None):
+    return max((a for a in args if a is not None), default=default)
+
+
 class SaveView(foo.Operator):
     @property
     def config(self):
@@ -2622,6 +2747,7 @@ def register(p):
     p.register(DeleteGroupSlice)
     p.register(ListSavedViews)
     p.register(LoadSavedView)
+    p.register(ReloadSavedView)
     p.register(SaveView)
     p.register(EditSavedViewInfo)
     p.register(DeleteSavedView)

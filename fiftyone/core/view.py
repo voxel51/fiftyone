@@ -1439,6 +1439,11 @@ class DatasetView(foc.SampleCollection):
             if hasattr(self, name):
                 delattr(self, name)
 
+        if self.is_saved:
+            self._root_dataset._update_saved_view_if_necessary(
+                self, reload=True
+            )
+
     def to_dict(
         self,
         rel_dir=None,
@@ -1764,11 +1769,16 @@ class DatasetView(foc.SampleCollection):
         ]
 
     @staticmethod
-    def _build(dataset, stage_dicts):
+    def _build(dataset, stage_dicts, name=None):
+        saved_view = name is not None
+
         view = dataset.view()
         for stage_dict in stage_dicts:
             stage = fost.ViewStage._from_dict(stage_dict)
-            view = view.add_stage(stage)
+            view = view._add_view_stage(stage, saved_view=saved_view)
+
+        if name is not None:
+            view._set_name(name)
 
         return view
 
@@ -1807,12 +1817,12 @@ class DatasetView(foc.SampleCollection):
 
         return self.skip(start).limit(stop - start)
 
-    def _add_view_stage(self, stage, validate=True):
+    def _add_view_stage(self, stage, validate=True, saved_view=False):
         if validate:
             stage.validate(self)
 
         if stage.has_view:
-            view = stage.load_view(self)
+            view = stage.load_view(self, saved_view=saved_view)
         else:
             view = copy(self)
             view._stages.append(stage)
