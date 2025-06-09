@@ -220,7 +220,7 @@ _MODEL_TEMPLATE = """
 
     session = fo.launch_app(dataset)
 {% elif 'group-vit' in name and 'transformer' in name %}
-    model = foz.load_zoo_model("group-vit-segmentation-transformer-torch",
+    model = foz.load_zoo_model("{{ name }}",
         text_prompt="A photo of a",
         classes=["person", "dog", "cat", "bird", "car", "tree", "other"])
 
