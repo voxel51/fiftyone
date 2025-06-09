@@ -5036,7 +5036,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return slug
 
-    def clone(self, name=None, persistent=False):
+    def clone(self, name=None, persistent=False, include_indexes=True):
         """Creates a copy of the dataset.
 
         Dataset clones contain deep copies of all samples and dataset-level
@@ -5047,13 +5047,27 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             name (None): a name for the cloned dataset. By default,
                 :func:`get_default_dataset_name` is used
             persistent (False): whether the cloned dataset should be persistent
+            include_indexes (True): whether to recreate any custom indexes on
+                the new dataset (True) or a list of specific indexes or
+                index prefixes to recreate. By default, all custom indexes are
+                recreated
 
         Returns:
             the new :class:`Dataset`
         """
-        return self._clone(name=name, persistent=persistent)
+        return self._clone(
+            name=name,
+            persistent=persistent,
+            include_indexes=include_indexes,
+        )
 
-    def _clone(self, name=None, persistent=False, view=None):
+    def _clone(
+        self,
+        name=None,
+        persistent=False,
+        view=None,
+        include_indexes=True,
+    ):
         if name is None:
             name = get_default_dataset_name()
 
@@ -5062,7 +5076,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         else:
             sample_collection = self
 
-        return _clone_collection(sample_collection, name, persistent)
+        return _clone_collection(
+            sample_collection,
+            name,
+            persistent=persistent,
+            include_indexes=include_indexes,
+        )
 
     def clear(self):
         """Removes all samples from the dataset.
@@ -8525,46 +8544,258 @@ def _create_group_indexes(sample_collection_name, group_field):
     sample_collection.create_index(group_field + ".name")
 
 
-def _clone_indexes(src_collection, dst_doc):
-    if isinstance(src_collection, fov.DatasetView):
-        src_dataset = src_collection._dataset
-        src_view = src_collection
-    else:
-        src_dataset = src_collection
-        src_view = None
+def _clone_indexes(src_collection, dst_doc, include_indexes=True):
+    # Special syntax: copy indexes exactly from another collection
+    if isinstance(include_indexes, foc.SampleCollection):
+        _clone_indexes(include_indexes, dst_doc)
+        return
+
+    src_dataset = src_collection._dataset
 
     # Omit indexes on filtered fields
-    if src_view is not None:
-        skip = _get_indexes_to_skip(src_view)
-    else:
-        skip = None
+    skip = _get_clone_indexes_to_skip(src_collection)
+
+    keep = _get_clone_indexes_to_keep(
+        src_collection, include_indexes, include_default=True
+    )
 
     _clone_collection_indexes(
         src_dataset._sample_collection_name,
         dst_doc.sample_collection_name,
         skip=skip,
+        keep=keep,
     )
 
     if dst_doc.frame_collection_name is not None:
         # Omit indexes on filtered fields
-        if src_view is not None:
-            skip = _get_indexes_to_skip(src_view, frames=True)
-        else:
-            skip = None
+        skip = _get_clone_indexes_to_skip(src_collection, frames=True)
+
+        keep = _get_clone_indexes_to_keep(
+            src_collection, include_indexes, include_default=True, frames=True
+        )
 
         _clone_collection_indexes(
             src_dataset._frame_collection_name,
             dst_doc.frame_collection_name,
             skip=skip,
+            keep=keep,
         )
 
 
-def _get_indexes_to_skip(view, frames=False):
-    selected_fields, excluded_fields = view._get_selected_excluded_fields(
-        frames=frames
+def _clone_indexes_for_patches_view(
+    src_collection,
+    dst_dataset,
+    patches_fields=None,
+    other_fields=None,
+    include_indexes=True,
+):
+    if include_indexes is False:
+        return
+
+    # Special syntax: copy indexes exactly from another collection
+    if isinstance(include_indexes, foc.SampleCollection):
+        _clone_indexes(include_indexes, dst_dataset._doc)
+        return
+
+    src_dataset = src_collection._dataset
+
+    remap = {}
+    if patches_fields is not None:
+        for patches_field in patches_fields:
+            dst_field = dst_dataset.get_field(patches_field)
+            if isinstance(dst_field, fof.EmbeddedDocumentField):
+                label_type = dst_field.document_type
+                if issubclass(label_type, fol._HasLabelList):
+                    # This view maintains label lists
+                    # eg: `Detections` -> `Detections`
+                    pass
+                else:
+                    # This view maps label lists to single labels
+                    # eg: `Detections` -> `Detection`
+                    label_list_type = fol._SINGLE_LABEL_TO_LIST_MAP[label_type]
+                    src_field = (
+                        patches_field + "." + label_list_type._LABEL_LIST_FIELD
+                    )
+                    remap[src_field] = patches_field
+
+    if include_indexes is True:
+        include_indexes = []
+
+        if patches_fields is not None:
+            remap_rev = {v: k for k, v in remap.items()}
+            for patches_field in patches_fields:
+                include_indexes.append(
+                    remap_rev.get(patches_field, patches_field)
+                )
+
+        if other_fields:
+            include_indexes.extend(other_fields)
+
+    keep = _get_clone_indexes_to_keep(
+        src_collection, include_indexes, remap=remap, dst_dataset=dst_dataset
     )
 
-    if selected_fields is None and excluded_fields is None:
+    _clone_collection_indexes(
+        src_dataset._sample_collection_name,
+        dst_dataset._sample_collection_name,
+        keep=keep,
+    )
+
+
+def _clone_indexes_for_frames_view(
+    src_collection, dst_dataset, include_indexes=True
+):
+    if include_indexes is False:
+        return
+
+    # Special syntax: copy indexes exactly from another collection
+    if isinstance(include_indexes, foc.SampleCollection):
+        _clone_indexes(include_indexes, dst_dataset._doc)
+        return
+
+    src_dataset = src_collection._dataset
+
+    # Omit default indexes and indexes on filtered fields
+    skip_indexes = src_collection._get_default_indexes(frames=True)
+    skip = _get_clone_indexes_to_skip(
+        src_collection, skip_indexes=skip_indexes, frames=True
+    )
+
+    keep = _get_clone_indexes_to_keep(
+        src_collection, include_indexes, frames=True
+    )
+
+    _clone_collection_indexes(
+        src_dataset._frame_collection_name,
+        dst_dataset._sample_collection_name,
+        skip=skip,
+        keep=keep,
+    )
+
+
+def _clone_indexes_for_clips_view(
+    src_collection,
+    dst_dataset,
+    clips_field=None,
+    other_fields=None,
+    include_indexes=True,
+):
+    if include_indexes is False:
+        return
+
+    # Special syntax: copy indexes exactly from another collection
+    if isinstance(include_indexes, foc.SampleCollection):
+        _clone_indexes(include_indexes, dst_dataset._doc)
+        return
+
+    src_dataset = src_collection._dataset
+
+    remap = {}
+    if clips_field is not None:
+        src_field = src_collection.get_field(clips_field)
+        if isinstance(src_field, fof.EmbeddedDocumentField):
+            label_type = src_field.document_type
+            if issubclass(label_type, fol._HasLabelList):
+                # This view maps `TemporalDetections` to `Classification`
+                src_root = clips_field + "." + label_type._LABEL_LIST_FIELD
+                remap[src_root] = clips_field
+            else:
+                # This view maps `TemporalDetection` to `Classification`
+                pass
+
+    if include_indexes is True:
+        include_indexes = []
+
+        if clips_field is not None:
+            remap_rev = {v: k for k, v in remap.items()}
+            include_indexes.append(remap_rev.get(clips_field, clips_field))
+
+        if other_fields:
+            include_indexes.extend(other_fields)
+
+    keep = _get_clone_indexes_to_keep(
+        src_collection, include_indexes, remap=remap, dst_dataset=dst_dataset
+    )
+
+    _clone_collection_indexes(
+        src_dataset._sample_collection_name,
+        dst_dataset._sample_collection_name,
+        keep=keep,
+    )
+
+
+def _get_clone_indexes_to_keep(
+    src_collection,
+    include_indexes,
+    include_default=False,
+    frames=False,
+    remap=None,
+    dst_dataset=None,
+):
+    if include_indexes is True:
+        return None
+
+    if include_indexes is False:
+        include_indexes = []
+
+    if etau.is_str(include_indexes):
+        include_indexes = [include_indexes]
+
+    if frames:
+        prefix = src_collection._FRAMES_PREFIX
+        include_indexes = [
+            i[len(prefix) :] for i in include_indexes if i.startswith(prefix)
+        ]
+    elif src_collection._has_frame_fields():
+        prefix = src_collection._FRAMES_PREFIX
+        include_indexes = [
+            i for i in include_indexes if not i.startswith(prefix)
+        ]
+
+    if include_default:
+        default_indexes = src_collection._get_default_indexes(frames=frames)
+        include_indexes = set(include_indexes) | set(default_indexes)
+
+    if remap is None:
+        fields_map = src_collection._get_db_fields_map(frames=frames)
+        return [fields_map.get(f, f) for f in include_indexes]
+
+    keep = {}
+    for i in include_indexes:
+        keep[i] = i
+
+        for k, v in remap.items():
+            if i == k:
+                keep[i] = v
+            elif i.startswith(k + "."):
+                keep[i] = i.replace(k, v, 1)
+
+    key_map = src_collection._get_db_fields_map(frames=frames)
+    value_map = dst_dataset._get_db_fields_map()
+    return {key_map.get(k, k): value_map.get(v, v) for k, v in keep.items()}
+
+
+def _get_clone_indexes_to_skip(
+    src_collection, skip_indexes=None, frames=False
+):
+    src_dataset = src_collection._dataset
+
+    if skip_indexes is not None:
+        skip_indexes = set(skip_indexes)
+
+    if isinstance(src_collection, fov.DatasetView):
+        view = src_collection
+        selected_fields, excluded_fields = view._get_selected_excluded_fields(
+            frames=frames
+        )
+    else:
+        selected_fields, excluded_fields = None, None
+
+    if (
+        skip_indexes is None
+        and selected_fields is None
+        and excluded_fields is None
+    ):
         return None
 
     if selected_fields is not None:
@@ -8573,18 +8804,28 @@ def _get_indexes_to_skip(view, frames=False):
         selected_roots = None
 
     if frames:
-        src_coll = view._dataset._frame_collection
-        fields_map = view._get_db_fields_map(frames=True, reverse=True)
+        src_coll = src_dataset._frame_collection
+        fields_map = src_dataset._get_db_fields_map(frames=True, reverse=True)
     else:
-        src_coll = view._dataset._sample_collection
-        fields_map = view._get_db_fields_map(reverse=True)
+        src_coll = src_dataset._sample_collection
+        fields_map = src_dataset._get_db_fields_map(reverse=True)
 
     skip = set()
 
     for name, index_info in src_coll.index_information().items():
+        if skip_indexes is not None and name in skip_indexes:
+            skip.add(name)
+
         for field, _ in index_info["key"]:
             field = fields_map.get(field, field)
             root = field.split(".", 1)[0]
+
+            if (
+                skip_indexes is not None
+                and len(index_info["key"]) == 1
+                and field in skip_indexes
+            ):
+                skip.add(name)
 
             if selected_roots is not None and root not in selected_roots:
                 skip.add(name)
@@ -8596,8 +8837,14 @@ def _get_indexes_to_skip(view, frames=False):
 
 
 def _clone_collection_indexes(
-    src_collection_name, dst_collection_name, skip=None
+    src_collection_name,
+    dst_collection_name,
+    skip=None,
+    keep=None,
 ):
+    if keep is not None and not isinstance(keep, dict):
+        keep = {k: k for k in keep}
+
     conn = foo.get_db_conn()
     src_coll = conn[src_collection_name]
     dst_coll = conn[dst_collection_name]
@@ -8606,8 +8853,34 @@ def _clone_collection_indexes(
         key = index_info.pop("key")
         index_info.pop("ns", None)
         index_info.pop("v", None)
+
+        # `skip` must contain exact index names
         if skip is not None and name in skip:
             continue
+
+        # `keep` can contain index names or prefixes to match
+        if keep is not None:
+            found = False
+
+            for k, v in keep.items():
+                if name == k:
+                    name = v
+                    found = True
+                elif name.startswith(k + "."):
+                    name = name.replace(k, v, 1)
+                    found = True
+
+                # `keep` can optionally remap field names/roots
+                for idx, (field, order) in enumerate(key):
+                    if field == k:
+                        key[idx] = (v, order)
+                        found = True
+                    elif field.startswith(k + "."):
+                        key[idx] = (field.replace(k, v, 1), order)
+                        found = True
+
+            if not found:
+                continue
 
         dst_coll.create_index(key, name=name, **index_info)
 
@@ -8805,7 +9078,12 @@ def _delete_dataset_doc(dataset_doc):
     dataset_doc.delete()
 
 
-def _clone_collection(sample_collection, name, persistent):
+def _clone_collection(
+    sample_collection,
+    name,
+    persistent=False,
+    include_indexes=True,
+):
     slug = _validate_dataset_name(name)
 
     contains_videos = sample_collection._contains_videos(any_slice=True)
@@ -8888,7 +9166,9 @@ def _clone_collection(sample_collection, name, persistent):
     dataset_doc.save(upsert=True)
 
     # Clone indexes
-    _clone_indexes(sample_collection, dataset_doc)
+    _clone_indexes(
+        sample_collection, dataset_doc, include_indexes=include_indexes
+    )
 
     # Clone samples
     coll, pipeline = _get_samples_pipeline(sample_collection)

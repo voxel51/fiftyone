@@ -322,14 +322,10 @@ class ClipsView(fov.DatasetView):
         """
         self._source_collection.reload()
 
-        #
         # Regenerate the clips dataset
-        #
-        # This assumes that calling `load_view()` when the current clips
-        # dataset has been deleted will cause a new one to be generated
-        #
-        self._clips_dataset.delete()
-        _view = self._clips_stage.load_view(self._source_collection)
+        _view = self._clips_stage.load_view(
+            self._source_collection, reload=True
+        )
         self._clips_dataset = _view._clips_dataset
 
         super().reload()
@@ -598,6 +594,7 @@ def make_clips_dataset(
     sample_collection,
     field_or_expr,
     other_fields=None,
+    include_indexes=False,
     tol=0,
     min_len=0,
     trajectories=False,
@@ -658,6 +655,10 @@ def make_clips_dataset(
             -   a field or list of fields to include
             -   ``True`` to include all other fields
             -   ``None``/``False`` to include no other fields
+        include_indexes (False): whether to recreate any custom indexes on
+            ``field_or_expr`` and ``other_fields`` on the new dataset (True)
+            or a list of specific indexes or index prefixes to recreate.
+            By default, no custom indexes are recreated
         tol (0): the maximum number of false frames that can be overlooked when
             generating clips. Only applicable when ``field_or_expr`` is a
             frame-level list field or expression
@@ -742,6 +743,19 @@ def make_clips_dataset(
         add_fields = [f for f in other_fields if f not in curr_schema]
         add_schema = {k: v for k, v in src_schema.items() if k in add_fields}
         dataset._sample_doc_cls.merge_field_schema(add_schema)
+
+    if clips_type == "detections":
+        clips_field = field_or_expr
+    else:
+        clips_field = None
+
+    fod._clone_indexes_for_clips_view(
+        sample_collection,
+        dataset,
+        clips_field=clips_field,
+        other_fields=other_fields,
+        include_indexes=include_indexes,
+    )
 
     _make_pretty_summary(dataset)
 

@@ -5803,13 +5803,31 @@ copy of a dataset:
     # The source dataset is unaffected
     assert "new_field" not in dataset.get_field_schema()
 
-Dataset clones contain deep copies of all samples and dataset-level information
-in the source dataset. The source *media files*, however, are not copied.
+Dataset clones contain deep copies of all samples and dataset-level metadata
+such as runs, saved views, and workspaces from the source dataset. The source
+*media files*, however, are not copied.
 
 .. note::
 
     Did you know? You can also
     :ref:`clone specific subsets <saving-and-cloning-views>` of your datasets.
+
+By default, cloned datasets also retain all
+:ref:`custom indexes <app-optimizing-query-performance>` that you've created on
+the source collection, but you can control this by passing the optional
+`include_indexes` parameter to
+:meth:`clone() <fiftyone.core.dataset.Dataset.clone>`:
+
+.. code-block:: python
+    :linenos:
+
+    dataset.create_index("ground_truth.detections.label")
+
+    # Do not retain custom indexes on the cloned dataset
+    dataset2 = dataset.clone(include_indexes=False)
+
+    # Only include specific custom indexes
+    dataset2 = dataset.clone(include_indexes=["ground_truth.detections.label"])
 
 .. _batch-updates:
 

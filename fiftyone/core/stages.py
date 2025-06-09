@@ -238,7 +238,7 @@ class ViewStage(object):
         """
         return None
 
-    def load_view(self, sample_collection):
+    def load_view(self, sample_collection, reload=False):
         """Loads the :class:`fiftyone.core.view.DatasetView` containing the
         output of the stage.
 
@@ -248,6 +248,8 @@ class ViewStage(object):
             sample_collection: the
                 :class:`fiftyone.core.collections.SampleCollection` to which
                 the stage is being applied
+            reload (False): whether to force reload generated collections, if
+                necessary
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -8122,7 +8124,7 @@ class ToPatches(ViewStage):
         """Parameters specifying how to perform the conversion."""
         return self._config
 
-    def load_view(self, sample_collection):
+    def load_view(self, sample_collection, reload=False):
         state = {
             "dataset": sample_collection.dataset_name,
             "stages": sample_collection.view()._serialize(include_uuids=False),
@@ -8136,8 +8138,18 @@ class ToPatches(ViewStage):
         else:
             name = None
 
-        if state != last_state or not fod.dataset_exists(name):
-            kwargs = self._config or {}
+        try:
+            last_dataset = fod.load_dataset(name)
+        except:
+            last_dataset = None
+
+        if reload or state != last_state or last_dataset is None:
+            kwargs = deepcopy(self._config) or {}
+
+            # Recreate same indexes from existing dataset
+            if reload and last_dataset is not None:
+                kwargs["include_indexes"] = last_dataset
+
             patches_dataset = fop.make_patches_dataset(
                 sample_collection,
                 self._field,
@@ -8148,12 +8160,15 @@ class ToPatches(ViewStage):
             # Other views may use the same generated dataset, so reuse the old
             # name if possible
             if name is not None and state == last_state:
+                if last_dataset is not None:
+                    last_dataset.delete()
+
                 patches_dataset.name = name
 
             state["name"] = patches_dataset.name
             self._state = state
         else:
-            patches_dataset = fod.load_dataset(name)
+            patches_dataset = last_dataset
 
         return fop.PatchesView(sample_collection, self, patches_dataset)
 
@@ -8269,7 +8284,7 @@ class ToEvaluationPatches(ViewStage):
         """Parameters specifying how to perform the conversion."""
         return self._config
 
-    def load_view(self, sample_collection):
+    def load_view(self, sample_collection, reload=False):
         state = {
             "dataset": sample_collection.dataset_name,
             "stages": sample_collection.view()._serialize(include_uuids=False),
@@ -8283,8 +8298,18 @@ class ToEvaluationPatches(ViewStage):
         else:
             name = None
 
-        if state != last_state or not fod.dataset_exists(name):
-            kwargs = self._config or {}
+        try:
+            last_dataset = fod.load_dataset(name)
+        except:
+            last_dataset = None
+
+        if reload or state != last_state or last_dataset is None:
+            kwargs = deepcopy(self._config) or {}
+
+            # Recreate same indexes from existing dataset
+            if reload and last_dataset is not None:
+                kwargs["include_indexes"] = last_dataset
+
             eval_patches_dataset = fop.make_evaluation_patches_dataset(
                 sample_collection,
                 self._eval_key,
@@ -8295,12 +8320,15 @@ class ToEvaluationPatches(ViewStage):
             # Other views may use the same generated dataset, so reuse the old
             # name if possible
             if name is not None and state == last_state:
+                if last_dataset is not None:
+                    last_dataset.delete()
+
                 eval_patches_dataset.name = name
 
             state["name"] = eval_patches_dataset.name
             self._state = state
         else:
-            eval_patches_dataset = fod.load_dataset(name)
+            eval_patches_dataset = last_dataset
 
         return fop.EvaluationPatchesView(
             sample_collection, self, eval_patches_dataset
@@ -8429,7 +8457,7 @@ class ToClips(ViewStage):
         """Parameters specifying how to perform the conversion."""
         return self._config
 
-    def load_view(self, sample_collection):
+    def load_view(self, sample_collection, reload=False):
         state = {
             "dataset": sample_collection.dataset_name,
             "stages": sample_collection.view()._serialize(include_uuids=False),
@@ -8443,8 +8471,18 @@ class ToClips(ViewStage):
         else:
             name = None
 
-        if state != last_state or not fod.dataset_exists(name):
-            kwargs = self._config or {}
+        try:
+            last_dataset = fod.load_dataset(name)
+        except:
+            last_dataset = None
+
+        if reload or state != last_state or last_dataset is None:
+            kwargs = deepcopy(self._config) or {}
+
+            # Recreate same indexes from existing dataset
+            if reload and last_dataset is not None:
+                kwargs["include_indexes"] = last_dataset
+
             clips_dataset = focl.make_clips_dataset(
                 sample_collection,
                 self._field_or_expr,
@@ -8455,12 +8493,15 @@ class ToClips(ViewStage):
             # Other views may use the same generated dataset, so reuse the old
             # name if possible
             if name is not None and state == last_state:
+                if last_dataset is not None:
+                    last_dataset.delete()
+
                 clips_dataset.name = name
 
             state["name"] = clips_dataset.name
             self._state = state
         else:
-            clips_dataset = fod.load_dataset(name)
+            clips_dataset = last_dataset
 
         return focl.ClipsView(sample_collection, self, clips_dataset)
 
@@ -8566,7 +8607,7 @@ class ToTrajectories(ViewStage):
         """Parameters specifying how to perform the conversion."""
         return self._config
 
-    def load_view(self, sample_collection):
+    def load_view(self, sample_collection, reload=False):
         state = {
             "dataset": sample_collection.dataset_name,
             "stages": sample_collection.view()._serialize(include_uuids=False),
@@ -8580,8 +8621,18 @@ class ToTrajectories(ViewStage):
         else:
             name = None
 
-        if state != last_state or not fod.dataset_exists(name):
-            kwargs = self._config or {}
+        try:
+            last_dataset = fod.load_dataset(name)
+        except:
+            last_dataset = None
+
+        if reload or state != last_state or last_dataset is None:
+            kwargs = deepcopy(self._config) or {}
+
+            # Recreate same indexes from existing dataset
+            if reload and last_dataset is not None:
+                kwargs["include_indexes"] = last_dataset
+
             clips_dataset = focl.make_clips_dataset(
                 sample_collection,
                 self._field,
@@ -8590,10 +8641,18 @@ class ToTrajectories(ViewStage):
                 **kwargs,
             )
 
+            # Other views may use the same generated dataset, so reuse the old
+            # name if possible
+            if name is not None and state == last_state:
+                if last_dataset is not None:
+                    last_dataset.delete()
+
+                clips_dataset.name = name
+
             state["name"] = clips_dataset.name
             self._state = state
         else:
-            clips_dataset = fod.load_dataset(name)
+            clips_dataset = last_dataset
 
         return focl.TrajectoriesView(sample_collection, self, clips_dataset)
 
@@ -8755,7 +8814,7 @@ class ToFrames(ViewStage):
         """Parameters specifying how to perform the conversion."""
         return self._config
 
-    def load_view(self, sample_collection):
+    def load_view(self, sample_collection, reload=False):
         state = {
             "dataset": sample_collection.dataset_name,
             "stages": sample_collection.view()._serialize(include_uuids=False),
@@ -8768,8 +8827,18 @@ class ToFrames(ViewStage):
         else:
             name = None
 
-        if state != last_state or not fod.dataset_exists(name):
-            kwargs = self._config or {}
+        try:
+            last_dataset = fod.load_dataset(name)
+        except:
+            last_dataset = None
+
+        if reload or state != last_state or last_dataset is None:
+            kwargs = deepcopy(self._config) or {}
+
+            # Recreate same indexes from existing dataset
+            if reload and last_dataset is not None:
+                kwargs["include_indexes"] = last_dataset
+
             frames_dataset = fovi.make_frames_dataset(
                 sample_collection,
                 _generated=True,
@@ -8779,12 +8848,15 @@ class ToFrames(ViewStage):
             # Other views may use the same generated dataset, so reuse the old
             # name if possible
             if name is not None and state == last_state:
+                if last_dataset is not None:
+                    last_dataset.delete()
+
                 frames_dataset.name = name
 
             state["name"] = frames_dataset.name
             self._state = state
         else:
-            frames_dataset = fod.load_dataset(name)
+            frames_dataset = last_dataset
 
         return fovi.FramesView(sample_collection, self, frames_dataset)
 
