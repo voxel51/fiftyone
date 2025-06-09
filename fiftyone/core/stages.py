@@ -28,6 +28,7 @@ import fiftyone.core.frame as fofr
 import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+import fiftyone.core.odm as foo
 from fiftyone.core.odm.document import MongoEngineBaseDocument
 import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
@@ -238,7 +239,7 @@ class ViewStage(object):
         """
         return None
 
-    def load_view(self, sample_collection, reload=False):
+    def load_view(self, sample_collection, saved_view=False, reload=False):
         """Loads the :class:`fiftyone.core.view.DatasetView` containing the
         output of the stage.
 
@@ -248,6 +249,8 @@ class ViewStage(object):
             sample_collection: the
                 :class:`fiftyone.core.collections.SampleCollection` to which
                 the stage is being applied
+            saved_view (False): whether this view stage is being loaded in the
+                context of loading a saved view
             reload (False): whether to force reload generated collections, if
                 necessary
 
@@ -462,9 +465,8 @@ class Concat(ViewStage):
         if sample_collection._dataset != self._view._dataset:
             if sample_collection._root_dataset == self._view._root_dataset:
                 raise ValueError(
-                    "When concatenating samples from generated views (e.g. "
-                    "patches or frames), all views must be derived from the "
-                    "same root generated view"
+                    "When concatenating samples from generated views, all "
+                    "views must be derived from the same root generated view"
                 )
             else:
                 raise ValueError(
@@ -501,12 +503,15 @@ class Concat(ViewStage):
 
     def _serialize_view(self, view):
         return {
-            "dataset": view._root_dataset.name,
+            "dataset_id": str(view._root_dataset._doc.id),
             "stages": view._serialize(include_uuids=False),
         }
 
     def _load_view(self, d):
-        dataset = fod.load_dataset(d["dataset"])
+        dataset = foo.load_dataset(
+            id=d.get("dataset_id", None),
+            name=d.get("dataset", None),  # back compatability for saved views
+        )
         return fov.DatasetView._build(dataset, d["stages"])
 
 
@@ -7896,7 +7901,7 @@ class SortBySimilarity(ViewStage):
 
     def validate(self, sample_collection):
         state = {
-            "dataset": sample_collection.dataset_name,
+            "dataset_id": str(sample_collection._root_dataset._doc.id),
             "stages": sample_collection.view()._serialize(include_uuids=False),
             "query": self._query_kwarg,
             "k": self._k,
@@ -7911,7 +7916,7 @@ class SortBySimilarity(ViewStage):
         else:
             pipeline = None
 
-        if state != last_state or pipeline is None:
+        if pipeline is None or state != last_state:
             pipeline = self._make_pipeline(sample_collection)
 
             state["pipeline"] = pipeline
@@ -8153,9 +8158,9 @@ class ToPatches(ViewStage):
         """Parameters specifying how to perform the conversion."""
         return self._config
 
-    def load_view(self, sample_collection, reload=False):
+    def load_view(self, sample_collection, saved_view=False, reload=False):
         state = {
-            "dataset": sample_collection.dataset_name,
+            "dataset_id": str(sample_collection._root_dataset._doc.id),
             "stages": sample_collection.view()._serialize(include_uuids=False),
             "field": self._field,
             "config": self._config,
@@ -8172,7 +8177,7 @@ class ToPatches(ViewStage):
         except:
             last_dataset = None
 
-        if reload or state != last_state or last_dataset is None:
+        if reload or last_dataset is None or state != last_state:
             kwargs = deepcopy(self._config) or {}
 
             # Recreate same indexes from existing dataset
@@ -8188,7 +8193,7 @@ class ToPatches(ViewStage):
 
             # Other views may use the same generated dataset, so reuse the old
             # name if possible
-            if name is not None and state == last_state:
+            if name is not None and (saved_view or state == last_state):
                 if last_dataset is not None:
                     last_dataset.delete()
 
@@ -8313,9 +8318,9 @@ class ToEvaluationPatches(ViewStage):
         """Parameters specifying how to perform the conversion."""
         return self._config
 
-    def load_view(self, sample_collection, reload=False):
+    def load_view(self, sample_collection, saved_view=False, reload=False):
         state = {
-            "dataset": sample_collection.dataset_name,
+            "dataset_id": str(sample_collection._root_dataset._doc.id),
             "stages": sample_collection.view()._serialize(include_uuids=False),
             "eval_key": self._eval_key,
             "config": self._config,
@@ -8332,7 +8337,7 @@ class ToEvaluationPatches(ViewStage):
         except:
             last_dataset = None
 
-        if reload or state != last_state or last_dataset is None:
+        if reload or last_dataset is None or state != last_state:
             kwargs = deepcopy(self._config) or {}
 
             # Recreate same indexes from existing dataset
@@ -8348,7 +8353,7 @@ class ToEvaluationPatches(ViewStage):
 
             # Other views may use the same generated dataset, so reuse the old
             # name if possible
-            if name is not None and state == last_state:
+            if name is not None and (saved_view or state == last_state):
                 if last_dataset is not None:
                     last_dataset.delete()
 
@@ -8486,9 +8491,9 @@ class ToClips(ViewStage):
         """Parameters specifying how to perform the conversion."""
         return self._config
 
-    def load_view(self, sample_collection, reload=False):
+    def load_view(self, sample_collection, saved_view=False, reload=False):
         state = {
-            "dataset": sample_collection.dataset_name,
+            "dataset_id": str(sample_collection._root_dataset._doc.id),
             "stages": sample_collection.view()._serialize(include_uuids=False),
             "field_or_expr": self._get_mongo_field_or_expr(),
             "config": self._config,
@@ -8505,7 +8510,7 @@ class ToClips(ViewStage):
         except:
             last_dataset = None
 
-        if reload or state != last_state or last_dataset is None:
+        if reload or last_dataset is None or state != last_state:
             kwargs = deepcopy(self._config) or {}
 
             # Recreate same indexes from existing dataset
@@ -8521,7 +8526,7 @@ class ToClips(ViewStage):
 
             # Other views may use the same generated dataset, so reuse the old
             # name if possible
-            if name is not None and state == last_state:
+            if name is not None and (saved_view or state == last_state):
                 if last_dataset is not None:
                     last_dataset.delete()
 
@@ -8636,9 +8641,9 @@ class ToTrajectories(ViewStage):
         """Parameters specifying how to perform the conversion."""
         return self._config
 
-    def load_view(self, sample_collection, reload=False):
+    def load_view(self, sample_collection, saved_view=False, reload=False):
         state = {
-            "dataset": sample_collection.dataset_name,
+            "dataset_id": str(sample_collection._root_dataset._doc.id),
             "stages": sample_collection.view()._serialize(include_uuids=False),
             "field": self._field,
             "config": self._config,
@@ -8655,7 +8660,7 @@ class ToTrajectories(ViewStage):
         except:
             last_dataset = None
 
-        if reload or state != last_state or last_dataset is None:
+        if reload or last_dataset is None or state != last_state:
             kwargs = deepcopy(self._config) or {}
 
             # Recreate same indexes from existing dataset
@@ -8672,7 +8677,7 @@ class ToTrajectories(ViewStage):
 
             # Other views may use the same generated dataset, so reuse the old
             # name if possible
-            if name is not None and state == last_state:
+            if name is not None and (saved_view or state == last_state):
                 if last_dataset is not None:
                     last_dataset.delete()
 
@@ -8843,9 +8848,9 @@ class ToFrames(ViewStage):
         """Parameters specifying how to perform the conversion."""
         return self._config
 
-    def load_view(self, sample_collection, reload=False):
+    def load_view(self, sample_collection, saved_view=False, reload=False):
         state = {
-            "dataset": sample_collection.dataset_name,
+            "dataset_id": str(sample_collection._root_dataset._doc.id),
             "stages": sample_collection.view()._serialize(include_uuids=False),
             "config": self._config,
         }
@@ -8861,7 +8866,7 @@ class ToFrames(ViewStage):
         except:
             last_dataset = None
 
-        if reload or state != last_state or last_dataset is None:
+        if reload or last_dataset is None or state != last_state:
             kwargs = deepcopy(self._config) or {}
 
             # Recreate same indexes from existing dataset
@@ -8876,7 +8881,7 @@ class ToFrames(ViewStage):
 
             # Other views may use the same generated dataset, so reuse the old
             # name if possible
-            if name is not None and state == last_state:
+            if name is not None and (saved_view or state == last_state):
                 if last_dataset is not None:
                     last_dataset.delete()
 
