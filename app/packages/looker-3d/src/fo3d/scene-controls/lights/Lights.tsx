@@ -1,14 +1,14 @@
 import { partition } from "lodash";
 import { useMemo, useRef } from "react";
 import { Object3D } from "three";
-import type { FoScene } from "../../hooks";
+import type { FoScene } from "../../../hooks";
 import {
   getColorKey,
   getDecayKey,
   getIntensityKey,
   getPositionKey,
   useLightControls,
-} from "../../hooks/use-light-controls";
+} from "../../../hooks/use-light-controls";
 import { DefaultLights } from "./DefaultLights";
 
 export interface FoLightProps {

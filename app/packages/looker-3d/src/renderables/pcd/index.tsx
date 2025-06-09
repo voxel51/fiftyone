@@ -98,6 +98,14 @@ export const PointCloudMesh = ({
     return boundingBox.min.dot(upVector);
   }, [boundingBox, upVector, minZ]);
 
+  const pcdType = useMemo(() => {
+    if (pointsGeometry.hasAttribute("intensity")) {
+      return "intensity";
+    }
+
+    return "rgb";
+  }, [pointsGeometry]);
+
   const pointsMaterial = useMemo(() => {
     const pointSizeNum = Number(pointSize);
 
@@ -117,7 +125,9 @@ export const PointCloudMesh = ({
       case SHADE_BY_INTENSITY:
         return (
           <ShadeByIntensity
-            {...colorMinMax}
+            minIntensity={colorMinMax.min}
+            maxIntensity={colorMinMax.max}
+            pcdType={pcdType}
             gradients={PCD_SHADING_GRADIENTS}
             pointSize={pointSizeNum}
             isPointSizeAttenuated={isPointSizeAttenuated}
