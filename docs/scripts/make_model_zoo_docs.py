@@ -6,6 +6,7 @@ Script for generating the model zoo docs page contents
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 import os
 import re
@@ -180,7 +181,6 @@ _MODEL_TEMPLATE = """
 
     embeddings = dataset.compute_embeddings(model)
 {% elif 'zero-shot-classification' in name and 'transformer' in name %}
-
     classes = ["person", "dog", "cat", "bird", "car", "tree", "chair"]
 
     model = foz.load_zoo_model(
@@ -208,9 +208,7 @@ _MODEL_TEMPLATE = """
     dataset.apply_model(model, label_field="predictions")
 
     session = fo.launch_app(dataset)
-
 {% elif 'zero-shot-detection' in name and 'transformer' in name %}
-
     classes = ["person", "dog", "cat", "bird", "car", "tree", "chair"]
 
     model = foz.load_zoo_model(
@@ -221,7 +219,14 @@ _MODEL_TEMPLATE = """
     dataset.apply_model(model, label_field="predictions")
 
     session = fo.launch_app(dataset)
+{% elif 'group-vit' in name and 'transformer' in name %}
+    model = foz.load_zoo_model("group-vit-segmentation-transformer-torch",
+        text_prompt="A photo of a",
+        classes=["person", "dog", "cat", "bird", "car", "tree", "other"])
 
+    dataset.apply_model(model, label_field="predictions")
+
+    session = fo.launch_app(dataset)
 {% elif 'transformers' in tags and 'zero-shot' in tags %}
 
     classes = ["person", "dog", "cat", "bird", "car", "tree", "chair"]
