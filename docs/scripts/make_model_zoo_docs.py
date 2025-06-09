@@ -223,25 +223,6 @@ _MODEL_TEMPLATE = """
 
     session = fo.launch_app(dataset)
 
-{% elif 'zero-shot-semantic-segmentation' in name and 'transformer' in name %}
-
-    # There is no default zero-shot semantic segmentation transformer model.
-    # Model and necessary config parameters should be specificed while loading.
-    model = foz.load_zoo_model(
-        "{{ name }}",
-        name_or_path="nvidia/groupvit-gcc-yfcc",
-        output_processor_args={"logits_key": "segmentation_logits"},
-        entrypoint_args={"output_segmentation": True},
-        transforms_args={"use_fast": False},
-        transformers_processor_kwargs={"padding": True, "return_tensors": "pt"},
-        text_prompt="a photo of a",
-        classes=["cat", "dog", "other"]
-    )
-
-    dataset.apply_model(model, label_field="predictions")
-
-    session = fo.launch_app(dataset)
-
 {% elif 'transformers' in tags and 'zero-shot' in tags %}
 
     classes = ["person", "dog", "cat", "bird", "car", "tree", "chair"]
