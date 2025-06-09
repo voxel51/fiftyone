@@ -6085,9 +6085,9 @@ class Materialize(ViewStage):
         """Parameters specifying how to perform the conversion."""
         return self._config
 
-    def load_view(self, sample_collection, reload=False):
+    def load_view(self, sample_collection, saved_view=False, reload=False):
         state = {
-            "dataset": sample_collection.dataset_name,
+            "dataset_id": str(sample_collection._root_dataset._doc.id),
             "stages": sample_collection.view()._serialize(include_uuids=False),
             "config": self._config,
         }
@@ -6103,7 +6103,7 @@ class Materialize(ViewStage):
         except:
             last_dataset = None
 
-        if reload or state != last_state or last_dataset is None:
+        if reload or last_dataset is None or state != last_state:
             kwargs = deepcopy(self._config) or {}
 
             # Recreate same indexes from existing dataset
@@ -6116,7 +6116,7 @@ class Materialize(ViewStage):
 
             # Other views may use the same generated dataset, so reuse the old
             # name if possible
-            if name is not None and state == last_state:
+            if name is not None and (saved_view or state == last_state):
                 if last_dataset is not None:
                     last_dataset.delete()
 

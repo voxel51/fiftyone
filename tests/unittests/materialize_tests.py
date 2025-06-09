@@ -9,8 +9,10 @@ from copy import deepcopy
 
 from bson import ObjectId
 import unittest
+from unittest import mock
 
 import fiftyone as fo
+import fiftyone.core.materialize as fom
 from fiftyone import ViewField as F
 
 from decorators import drop_datasets
@@ -458,6 +460,96 @@ class MaterializeTests(unittest.TestCase):
         expected_indexes = default_indexes | {"metadata.size_bytes"}
 
         self.assertSetEqual(set(view.list_indexes()), expected_indexes)
+
+    @drop_datasets
+    @mock.patch(
+        "fiftyone.core.materialize.materialize_view",
+        side_effect=fom.materialize_view,
+    )
+    def test_materialize_saved_view(self, materialize_view):
+        dataset = fo.Dataset()
+
+        sample = fo.Sample(
+            filepath="image.png",
+            ground_truth=fo.Detections(detections=[fo.Detection(label="cat")]),
+        )
+
+        dataset.add_sample(sample)
+
+        view = dataset.select_fields("ground_truth").materialize().limit(1)
+
+        self.assertFalse(view._dataset.persistent)
+
+        # Backing datasets for saved views should be marked as persistent
+        dataset.save_view("test", view)
+
+        self.assertTrue(view._dataset.persistent)
+        self.assertTrue(view.name, "test")
+        self.assertEqual(materialize_view.call_count, 1)
+
+        name = view._dataset.name
+        view_doc1 = dataset._get_saved_view_doc("test")
+        last_modified_at1 = view_doc1.last_modified_at
+
+        sample.ground_truth.detections[0].label = "dog"
+        sample.save()
+
+        # Reloading saved view should cause backing dataset to be regenerated
+        # and `last_modified_at` to be incremented
+        view.reload()
+
+        self.assertEqual(
+            view.values("ground_truth.detections.label", unwind=True),
+            ["dog"],
+        )
+        self.assertTrue(view._dataset.persistent)
+        self.assertTrue(view.name, "test")
+        self.assertEqual(materialize_view.call_count, 2)
+
+        view_doc2 = dataset._get_saved_view_doc("test")
+        view_doc2.reload()  # avoid microsecond issues
+        last_modified_at2 = view_doc2.last_modified_at
+
+        self.assertEqual(view._dataset.name, name)
+        self.assertTrue(last_modified_at1 < last_modified_at2)
+
+        # Loading a saved view without changes should not cause backing dataset
+        # to be regenerated nor `last_modified_at` to be incremented
+        also_view = dataset.load_saved_view("test")
+
+        view_doc3 = dataset._get_saved_view_doc("test")
+        last_modified_at3 = view_doc3.last_modified_at
+
+        self.assertTrue(also_view.name, "test")
+        self.assertTrue(also_view._dataset.name, name)
+        self.assertEqual(last_modified_at2, last_modified_at3)
+        self.assertEqual(materialize_view.call_count, 2)
+
+        # Loading saved view should cause non-existent backing dataset to be
+        # automatically regenerated
+        also_view._dataset.delete()
+        still_view = dataset.load_saved_view("test")
+
+        view_doc4 = dataset._get_saved_view_doc("test")
+        last_modified_at4 = view_doc4.last_modified_at
+
+        self.assertEqual(still_view._dataset.name, name)
+        self.assertTrue(still_view._dataset.persistent)
+        self.assertEqual(last_modified_at2, last_modified_at4)
+        self.assertEqual(materialize_view.call_count, 3)
+
+        # Renaming dataset should not cause backing dataset to be regenerated
+        dataset.name = fo.get_default_dataset_name()
+
+        still_view = dataset.load_saved_view("test")
+
+        self.assertEqual(materialize_view.call_count, 3)
+
+        # Deleting view should cause backing dataset to become non-persistent
+        dataset.delete_saved_view("test")
+
+        self.assertTrue(fo.dataset_exists(name))
+        self.assertFalse(still_view._dataset.persistent)
 
 
 if __name__ == "__main__":
