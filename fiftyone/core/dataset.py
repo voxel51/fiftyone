@@ -5067,7 +5067,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         persistent=False,
         view=None,
         include_indexes=True,
-        materialized=False,
     ):
         if name is None:
             name = get_default_dataset_name()
@@ -5082,7 +5081,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             name,
             persistent=persistent,
             include_indexes=include_indexes,
-            materialized=materialized,
         )
 
     def clear(self):
@@ -9085,7 +9083,6 @@ def _clone_collection(
     name,
     persistent=False,
     include_indexes=True,
-    materialized=False,
 ):
     slug = _validate_dataset_name(name)
 
