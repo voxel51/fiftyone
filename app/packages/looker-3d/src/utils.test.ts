@@ -32,7 +32,7 @@ describe("computeMinMaxForColorBufferAttribute", () => {
   it("computes min and max for color attribute", () => {
     const attr = new BufferAttribute(new Float32Array([1, 2, 3, 4, 5, 6]), 1);
     expect(computeMinMaxForColorBufferAttribute(attr)).toEqual({
-      min: 0,
+      min: 1,
       max: 6,
     });
   });
@@ -40,7 +40,7 @@ describe("computeMinMaxForColorBufferAttribute", () => {
     const attr = new BufferAttribute(new Float32Array([-1, -2, -3]), 1);
     expect(computeMinMaxForColorBufferAttribute(attr)).toEqual({
       min: -3,
-      max: 0,
+      max: -1,
     });
   });
 });

@@ -9,6 +9,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Enable corepack
+        run: corepack enable
+      - name: Prepare yarn 4
+        run: corepack prepare yarn@4.9.1 --activate
+
       - name: Cache
         id: node-cache
         uses: actions/cache@v4
