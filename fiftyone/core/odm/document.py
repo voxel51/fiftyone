@@ -354,7 +354,7 @@ class MongoEngineBaseDocument(SerializableDocument):
         if len(chunks) > 1:
             doc = self.get_field(chunks[0])
 
-            # handle sytnax: sample["field.0.attr"] = value
+            # handle syntax: sample["field.0.attr"] = value
             if isinstance(doc, (mongoengine.base.BaseList, fof.ListField)):
                 chunks = chunks[1].split(".", 1)
                 doc = doc[int(chunks[0])]
