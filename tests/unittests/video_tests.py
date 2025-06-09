@@ -12,6 +12,7 @@ from datetime import date, datetime
 from bson import ObjectId
 import numpy as np
 import unittest
+from unittest import mock
 
 import fiftyone as fo
 import fiftyone.core.clips as foc
@@ -2429,6 +2430,98 @@ class VideoTests(unittest.TestCase):
         self.assertEqual(dataset.count("frames.ground_truth.detections"), 0)
 
     @drop_datasets
+    @mock.patch(
+        "fiftyone.core.clips.make_clips_dataset",
+        side_effect=foc.make_clips_dataset,
+    )
+    def test_to_clips_saved_view(self, make_clips_dataset):
+        dataset = fo.Dataset()
+
+        sample = fo.Sample(
+            filepath="video.mp4",
+            events=fo.TemporalDetections(
+                detections=[
+                    fo.TemporalDetection(label="meeting", support=[1, 3]),
+                    fo.TemporalDetection(label="party", support=[2, 4]),
+                ]
+            ),
+        )
+
+        dataset.add_sample(sample)
+
+        view = dataset.to_clips("events").limit(1)
+
+        self.assertFalse(view._dataset.persistent)
+
+        # Backing datasets for saved views should be marked as persistent
+        dataset.save_view("test", view)
+
+        self.assertTrue(view._dataset.persistent)
+        self.assertTrue(view.name, "test")
+        self.assertEqual(make_clips_dataset.call_count, 1)
+
+        name = view._dataset.name
+        view_doc1 = dataset._get_saved_view_doc("test")
+        last_modified_at1 = view_doc1.last_modified_at
+
+        sample.events.detections[0].label = "nap"
+        sample.save()
+
+        # Reloading saved view should cause backing dataset to be regenerated
+        # and `last_modified_at` to be incremented
+        view.reload()
+
+        self.assertEqual(view.values("events.label"), ["nap"])
+        self.assertTrue(view._dataset.persistent)
+        self.assertTrue(view.name, "test")
+        self.assertEqual(make_clips_dataset.call_count, 2)
+
+        view_doc2 = dataset._get_saved_view_doc("test")
+        view_doc2.reload()  # avoid microsecond issues
+        last_modified_at2 = view_doc2.last_modified_at
+
+        self.assertEqual(view._dataset.name, name)
+        self.assertTrue(last_modified_at1 < last_modified_at2)
+
+        # Loading a saved view without changes should not cause backing dataset
+        # to be regenerated nor `last_modified_at` to be incremented
+        also_view = dataset.load_saved_view("test")
+
+        view_doc3 = dataset._get_saved_view_doc("test")
+        last_modified_at3 = view_doc3.last_modified_at
+
+        self.assertTrue(also_view.name, "test")
+        self.assertTrue(also_view._dataset.name, name)
+        self.assertEqual(last_modified_at2, last_modified_at3)
+        self.assertEqual(make_clips_dataset.call_count, 2)
+
+        # Loading saved view should cause non-existent backing dataset to be
+        # automatically regenerated
+        also_view._dataset.delete()
+        still_view = dataset.load_saved_view("test")
+
+        view_doc4 = dataset._get_saved_view_doc("test")
+        last_modified_at4 = view_doc4.last_modified_at
+
+        self.assertEqual(still_view._dataset.name, name)
+        self.assertTrue(still_view._dataset.persistent)
+        self.assertEqual(last_modified_at2, last_modified_at4)
+        self.assertEqual(make_clips_dataset.call_count, 3)
+
+        # Renaming dataset should not cause backing dataset to be regenerated
+        dataset.name = fo.get_default_dataset_name()
+
+        still_view = dataset.load_saved_view("test")
+
+        self.assertEqual(make_clips_dataset.call_count, 3)
+
+        # Deleting view should cause backing dataset to become non-persistent
+        dataset.delete_saved_view("test")
+
+        self.assertTrue(fo.dataset_exists(name))
+        self.assertFalse(still_view._dataset.persistent)
+
+    @drop_datasets
     def test_to_frames(self):
         dataset = fo.Dataset()
 
@@ -3246,6 +3339,101 @@ class VideoTests(unittest.TestCase):
         self.assertEqual(len(view), 3)
         self.assertEqual(view.count("ground_truth.detections"), 2)
         self.assertEqual(dataset.count("frames.ground_truth.detections"), 2)
+
+    @drop_datasets
+    @mock.patch(
+        "fiftyone.core.video.make_frames_dataset",
+        side_effect=fov.make_frames_dataset,
+    )
+    def test_to_frames_saved_view(self, make_frames_dataset):
+        dataset = fo.Dataset()
+
+        sample = fo.Sample(
+            filepath="video.mp4",
+            metadata=fo.VideoMetadata(size_bytes=51, total_frame_count=2),
+        )
+        sample.frames[1] = fo.Frame(filepath="frame1.jpg", field="foo")
+        sample.frames[2] = fo.Frame(
+            filepath="frame1.jpg",
+            ground_truth=fo.Detections(detections=[fo.Detection(label="cat")]),
+        )
+
+        dataset.add_sample(sample)
+
+        view = dataset.to_frames().skip(1)
+
+        self.assertFalse(view._dataset.persistent)
+
+        # Backing datasets for saved views should be marked as persistent
+        dataset.save_view("test", view)
+
+        self.assertTrue(view._dataset.persistent)
+        self.assertTrue(view.name, "test")
+        self.assertEqual(make_frames_dataset.call_count, 1)
+
+        name = view._dataset.name
+        view_doc1 = dataset._get_saved_view_doc("test")
+        last_modified_at1 = view_doc1.last_modified_at
+
+        sample.frames[2].ground_truth.detections[0].label = "dog"
+        sample.save()
+
+        # Reloading saved view should cause backing dataset to be regenerated
+        # and `last_modified_at` to be incremented
+        view.reload()
+
+        self.assertEqual(
+            view.values("ground_truth.detections.label", unwind=True),
+            ["dog"],
+        )
+        self.assertTrue(view._dataset.persistent)
+        self.assertTrue(view.name, "test")
+        self.assertEqual(make_frames_dataset.call_count, 2)
+
+        view_doc2 = dataset._get_saved_view_doc("test")
+        view_doc2.reload()  # avoid microsecond issues
+        last_modified_at2 = view_doc2.last_modified_at
+
+        self.assertEqual(view._dataset.name, name)
+        self.assertTrue(last_modified_at1 < last_modified_at2)
+
+        # Loading a saved view without changes should not cause backing dataset
+        # to be regenerated nor `last_modified_at` to be incremented
+        also_view = dataset.load_saved_view("test")
+
+        view_doc3 = dataset._get_saved_view_doc("test")
+        last_modified_at3 = view_doc3.last_modified_at
+
+        self.assertTrue(also_view.name, "test")
+        self.assertTrue(also_view._dataset.name, name)
+        self.assertEqual(last_modified_at2, last_modified_at3)
+        self.assertEqual(make_frames_dataset.call_count, 2)
+
+        # Loading saved view should cause non-existent backing dataset to be
+        # automatically regenerated
+        also_view._dataset.delete()
+        still_view = dataset.load_saved_view("test")
+
+        view_doc4 = dataset._get_saved_view_doc("test")
+        last_modified_at4 = view_doc4.last_modified_at
+
+        self.assertEqual(still_view._dataset.name, name)
+        self.assertTrue(still_view._dataset.persistent)
+        self.assertEqual(last_modified_at2, last_modified_at4)
+        self.assertEqual(make_frames_dataset.call_count, 3)
+
+        # Renaming dataset should not cause backing dataset to be regenerated
+        dataset.name = fo.get_default_dataset_name()
+
+        still_view = dataset.load_saved_view("test")
+
+        self.assertEqual(make_frames_dataset.call_count, 3)
+
+        # Deleting view should cause backing dataset to become non-persistent
+        dataset.delete_saved_view("test")
+
+        self.assertTrue(fo.dataset_exists(name))
+        self.assertFalse(still_view._dataset.persistent)
 
     @drop_datasets
     def test_to_clip_frames(self):

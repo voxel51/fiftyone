@@ -580,6 +580,52 @@ def drop_orphan_saved_views(dry_run=False):
         _delete_saved_views(conn, orphan_view_ids)
 
 
+def drop_orphan_generated_datasets(dry_run=False):
+    """Marks all orphan generated datasets as non-persistent so that they will
+     be deleted the next time non-persistent dataset cleanup runs.
+
+    Orphan generated datsaets are datasets that were originally associated with
+    a saved generated view that no longer exists.
+
+    Args:
+        dry_run (False): whether to log the actions that would be taken but not
+            perform them
+    """
+    conn = get_db_conn()
+    _logger = _get_logger(dry_run=dry_run)
+
+    saved_generated_datasets_in_use = set()
+    for view_doc in conn.views.find({}):
+        name = _get_generated_dataset_name_for_saved_view_if_any(view_doc)
+        if name is not None:
+            saved_generated_datasets_in_use.add(name)
+
+    # All datasets whose sample collections don't start with `samples.` are
+    # generated datasets
+    query = {
+        "sample_collection_name": {"$not": {"$regex": "^samples\\."}},
+        "persistent": True,
+    }
+    all_saved_generated_datasets = set(
+        conn.datasets.find(query).distinct("name")
+    )
+
+    orphan_generated_datasets = list(
+        all_saved_generated_datasets - saved_generated_datasets_in_use
+    )
+
+    if not orphan_generated_datasets:
+        return
+
+    _logger.info(
+        "Marking %d orphan generated dataset(s) as non-persistent: %s",
+        len(orphan_generated_datasets),
+        orphan_generated_datasets,
+    )
+    if not dry_run:
+        _make_datasets_non_persistent(conn, orphan_generated_datasets)
+
+
 def drop_orphan_runs(dry_run=False):
     """Drops all orphan runs from the database.
 
@@ -625,6 +671,36 @@ def drop_orphan_runs(dry_run=False):
         )
         if not dry_run:
             _delete_run_results(conn, orphan_result_ids)
+
+
+def drop_orphan_delegated_ops(dry_run=False):
+    """Drops all orphan delegated operations from the database.
+
+    Orphan delegated operations are those that are associated with a dataset
+    that no longer exists in the database.
+
+    Args:
+        dry_run (False): whether to log the actions that would be taken but not
+            perform them
+    """
+    conn = get_db_conn()
+    _logger = _get_logger(dry_run=dry_run)
+
+    dataset_ids = set(conn.datasets.distinct("_id"))
+
+    dataset_ids_with_ops = set(conn.delegated_ops.distinct("dataset_id"))
+    dataset_ids_with_ops.discard(None)
+
+    orphan_dataset_ids = list(dataset_ids_with_ops - dataset_ids)
+
+    if orphan_dataset_ids:
+        _logger.info(
+            "Deleting orphan delegated ops for %d dataset(s): %s",
+            len(orphan_dataset_ids),
+            orphan_dataset_ids,
+        )
+        if not dry_run:
+            _delete_delegated_ops(conn, orphan_dataset_ids)
 
 
 def drop_orphan_stores(dry_run=False):
@@ -939,6 +1015,32 @@ def list_datasets():
     return conn.datasets.distinct("name")
 
 
+def load_dataset(id=None, name=None):
+    """Loads the FiftyOne dataset with the given ID or name.
+
+    Args:
+        id (None): the ID of the dataset
+        name (None): the name of the dataset
+
+    Returns:
+        a :class:`fiftyone.core.dataset.Dataset`
+    """
+    if id is not None:
+        try:
+            uid = ObjectId(id)
+        except:
+            uid = id
+
+        conn = get_db_conn()
+        res = conn.datasets.find_one({"_id": uid}, {"name": True})
+        if not res:
+            raise ValueError(f"Dataset with id={uid} does not exist")
+
+        name = res.get("name")
+
+    return fod.load_dataset(name)
+
+
 def _patch_referenced_docs(
     dataset_name, collection_name, field_name, dry_run=False
 ):
@@ -1231,6 +1333,13 @@ def delete_dataset(name, dry_run=False):
         _logger.info("Deleting %d run result(s)", len(result_ids))
         if not dry_run:
             _delete_run_results(conn, result_ids)
+
+    _id = dataset_dict["_id"]
+    num_ops = conn.delegated_ops.count_documents({"dataset_id": _id})
+    if num_ops > 0:
+        _logger.info("Deleting %d delegated op(s)", num_ops)
+        if not dry_run:
+            conn.delegated_ops.delete_many({"dataset_id": _id})
 
     _id = dataset_dict["_id"]
     num_stores = conn.execution_store.count_documents(
@@ -1795,7 +1904,38 @@ def _get_result_ids(conn, dataset_dict):
 
 
 def _delete_saved_views(conn, view_ids):
+    # Saved *generated* views have associated datasets that need dropping
+    generated_dataset_names = set()
+    for view_doc in conn.views.find({"_id": {"$in": view_ids}}):
+        name = _get_generated_dataset_name_for_saved_view_if_any(view_doc)
+        if name is not None:
+            generated_dataset_names.add(name)
+
     conn.views.delete_many({"_id": {"$in": view_ids}})
+
+    if generated_dataset_names:
+        _make_datasets_non_persistent(conn, list(generated_dataset_names))
+
+
+def _make_datasets_non_persistent(conn, names):
+    conn.datasets.update_many(
+        {"name": {"$in": names}}, {"$set": {"persistent": False}}
+    )
+
+
+def _get_generated_dataset_name_for_saved_view_if_any(view_doc):
+    # By convention all views that use generated datasets store its
+    # name in a `_state.name` parameter
+    for view_stage_str in view_doc.get("view_stages", []):
+        try:
+            view_stage_dict = json_util.loads(view_stage_str)
+            view_stage_kwargs = dict(view_stage_dict.get("kwargs", {}))
+            _state = view_stage_kwargs.get("_state", {})
+            name = _state.get("name", None)
+            if name:
+                return name
+        except:
+            pass
 
 
 def _delete_run_docs(conn, run_ids):
@@ -1805,6 +1945,10 @@ def _delete_run_docs(conn, run_ids):
 def _delete_run_results(conn, result_ids):
     conn.fs.files.delete_many({"_id": {"$in": result_ids}})
     conn.fs.chunks.delete_many({"files_id": {"$in": result_ids}})
+
+
+def _delete_delegated_ops(conn, dataset_ids):
+    conn.delegated_ops.delete_many({"dataset_id": {"$in": dataset_ids}})
 
 
 def _delete_stores(conn, dataset_ids):
