@@ -372,6 +372,148 @@ class MaterializeTests(unittest.TestCase):
         self.assertEqual(view.count("frames.foo"), 2)
         self.assertEqual(dataset.count("frames.foo"), 2)
 
+    @drop_datasets
+    def test_materialize_clone_indexes(self):
+        sample = fo.Sample(
+            filepath="video.mp4",
+            metadata=fo.VideoMetadata(size_bytes=51),
+        )
+        sample.frames[1] = fo.Frame(
+            field="foo",
+            gt=fo.Detections(detections=[fo.Detection(label="cat")]),
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        dataset.create_index("metadata.size_bytes")
+        dataset.create_index("frames.gt.detections.label")
+        dataset.create_index(
+            [("frames.gt.detections.id", 1), ("frames.field", 1)]
+        )
+
+        default_indexes = {
+            "id",
+            "filepath",
+            "created_at",
+            "last_modified_at",
+            "frames.id",
+            "frames.created_at",
+            "frames.last_modified_at",
+            "frames._sample_id_1_frame_number_1",
+        }
+
+        # Materializing views does not include indexes by default
+        view = dataset.limit(1).materialize()
+
+        self.assertSetEqual(set(view.list_indexes()), default_indexes)
+
+        view = dataset.limit(1).materialize(include_indexes=[])
+
+        self.assertSetEqual(set(view.list_indexes()), default_indexes)
+
+        view = dataset.limit(1).materialize(include_indexes=True)
+
+        expected_indexes = default_indexes | {
+            "metadata.size_bytes",
+            "frames.gt.detections.label",
+            "frames.gt.detections._id_1_field_1",
+        }
+
+        self.assertSetEqual(set(view.list_indexes()), expected_indexes)
+
+        # Reloading preserves custom indexes
+        view.reload()
+
+        self.assertSetEqual(set(view.list_indexes()), expected_indexes)
+
+        # Indexes can be included by prefix
+        view = dataset.limit(1).materialize(
+            include_indexes=["frames.gt.detections"]
+        )
+        expected_indexes = default_indexes | {
+            "frames.gt.detections.label",
+            "frames.gt.detections._id_1_field_1",
+        }
+
+        self.assertSetEqual(set(view.list_indexes()), expected_indexes)
+
+        view = dataset.limit(1).materialize(
+            include_indexes=["frames.gt.detections.label"]
+        )
+        expected_indexes = default_indexes | {"frames.gt.detections.label"}
+
+        self.assertSetEqual(set(view.list_indexes()), expected_indexes)
+
+        view = dataset.limit(1).materialize(
+            include_indexes=["frames.gt.detections._id_1_field_1"]
+        )
+        expected_indexes = default_indexes | {
+            "frames.gt.detections._id_1_field_1"
+        }
+
+        self.assertSetEqual(set(view.list_indexes()), expected_indexes)
+
+        view = dataset.select_fields().materialize(include_indexes=True)
+        expected_indexes = default_indexes | {"metadata.size_bytes"}
+
+        self.assertSetEqual(set(view.list_indexes()), expected_indexes)
+
+    @drop_datasets
+    def test_materialize_delete_labels(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(filepath="video1.mp4")
+        sample2 = fo.Sample(
+            filepath="video2.mp4",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                    fo.Detection(label="rabbit"),
+                ],
+            ),
+        )
+        sample2.frames[1] = fo.Frame(filepath="frame1.jpg")
+        sample2.frames[2] = fo.Frame(
+            filepath="frame2.jpg",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                    fo.Detection(label="rabbit"),
+                ],
+            ),
+        )
+        sample2.frames[3] = fo.Frame(filepath="frame3.jpg")
+
+        dataset.add_samples([sample1, sample2])
+
+        view = dataset.skip(1).materialize()
+        sample = view.first()
+        frame = sample.frames[2]
+
+        labels = [
+            {
+                "label_id": sample.ground_truth.detections[0].id,
+                "sample_id": sample.id,
+                "field": "ground_truth",
+            },
+            {
+                "label_id": frame.ground_truth.detections[0].id,
+                "sample_id": sample.id,
+                "frame_number": 2,
+                "field": "frames.ground_truth",
+            },
+        ]
+
+        view._delete_labels(labels)
+
+        self.assertEqual(view.count("ground_truth.detections"), 2)
+        self.assertEqual(view.count("frames.ground_truth.detections"), 2)
+        self.assertEqual(dataset.count("ground_truth.detections"), 2)
+        self.assertEqual(dataset.count("frames.ground_truth.detections"), 2)
+
 
 if __name__ == "__main__":
     fo.config.show_progress_bars = False
