@@ -1141,7 +1141,25 @@ Materialized views also behave just like any other views in the sense that:
     :meth:`keep() <fiftyone.core.materialize.MaterializedView.keep>`, and
     :meth:`keep_fields() <fiftyone.core.materialize.MaterializedView.keep_fields>`
     on the materialized view that edit the underlying dataset's contents will
-    autoatically be reflected on the source dataset
+    automatically be reflected on the source dataset
+
+By default, materialized views do not retain any
+:ref:`custom indexes <app-optimizing-query-performance>` that you've created on
+the source collection, but you can control this by passing the optional
+`include_indexes` parameter to
+:meth:`materialize() <fiftyone.core.collections.SampleCollection.materialize>`:
+
+.. code-block:: python
+    :linenos:
+
+    dataset.create_index("metadata.size_bytes")
+    dataset.create_index("ground_truth.detections.label")
+
+    # Retain all custom indexes on the materialized view
+    materialized_view = view.materialize(include_indexes=True)
+
+    # Only include specific custom indexes
+    materialized_view = view.materialize(include_indexes=["metadata.size_bytes"])
 
 .. _date-views:
 

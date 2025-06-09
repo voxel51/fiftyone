@@ -269,14 +269,10 @@ class MaterializedView(fov.DatasetView):
         """
         self._source_collection.reload()
 
-        #
         # Regenerate the materialized dataset
-        #
-        # This assumes that calling `load_view()` when the current materialized
-        # dataset has been deleted will cause a new one to be generated
-        #
-        self._materialized_dataset.delete()
-        _view = self._materialize_stage.load_view(self._source_collection)
+        _view = self._materialize_stage.load_view(
+            self._source_collection, reload=True
+        )
         self._materialized_dataset = _view._materialized_dataset
 
         super().reload()
@@ -286,10 +282,10 @@ class MaterializedView(fov.DatasetView):
 
         self._sync_source(fields=[field_name], ids=sample_ids)
 
-    def _delete_labels(self, ids, fields=None):
-        super()._delete_labels(ids, fields=fields)
+    def _delete_labels(self, labels, fields=None):
+        super()._delete_labels(labels, fields=fields)
 
-        self._source_collection._delete_labels(ids, fields=fields)
+        self._source_collection._delete_labels(labels, fields=fields)
 
     def _bulk_write(
         self,
@@ -586,13 +582,22 @@ class MaterializedView(fov.DatasetView):
         dst_dataset._keep_frames(view=self)
 
 
-def materialize_view(sample_collection, name=None, persistent=False):
+def materialize_view(
+    sample_collection,
+    include_indexes=False,
+    name=None,
+    persistent=False,
+):
     """Creates a dataset that contains a materialized copy of the given
     collection.
 
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
+        include_indexes (False): whether to recreate any custom indexes on
+            the new dataset (True) or a list of specific indexes or index
+            prefixes to recreate. By default, no custom indexes are recreated
+
         name (None): a name for the dataset
         persistent (False): whether the dataset should persist in the database
             after the session terminates
@@ -608,5 +613,9 @@ def materialize_view(sample_collection, name=None, persistent=False):
         view = sample_collection.view()
 
     return dataset._clone(
-        name=name, persistent=persistent, view=view, materialized=True
+        name=name,
+        persistent=persistent,
+        view=view,
+        include_indexes=include_indexes,
+        materialized=True,
     )

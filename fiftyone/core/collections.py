@@ -6833,7 +6833,7 @@ class SampleCollection(object):
         return self._add_view_stage(fos.MatchTags(tags, bool=bool, all=all))
 
     @view_stage
-    def materialize(self):
+    def materialize(self, **kwargs):
         """Materializes the current view into a temporary database collection.
 
         Apply this stage to an expensive view (eg an unindexed filtering
@@ -6854,10 +6854,16 @@ class SampleCollection(object):
             print(view.count("ground_truth.detections"))
             print(materialized_view.count("ground_truth.detections"))
 
+        Args:
+            include_indexes (False): whether to recreate any custom indexes on
+                the materialized view (True) or a list of specific indexes or
+                index prefixes to recreate. By default, no custom indexes are
+                recreated
+
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        return self._add_view_stage(fos.Materialize())
+        return self._add_view_stage(fos.Materialize(**kwargs))
 
     @view_stage
     def mongo(self, pipeline, _needs_frames=None, _group_slices=None):
