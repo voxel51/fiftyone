@@ -1004,15 +1004,7 @@ class FiftyOneTransformerForObjectDetection(FiftyOneTransformer):
 class FiftyOneZeroShotTransformerForSemanticSegmentationConfig(
     FiftyOneZeroShotTransformerConfig
 ):
-    def __init__(self, d):
-        if (
-            d.get("name_or_path", None) is None
-            and d.get("model", None) is None
-        ):
-            raise ValueError(
-                "There is no default zero-shot semantic segmentation model. User must set name_or_path or model attribute along with other necessary model config parameters."
-            )
-        super().__init__(d)
+    pass
 
 
 class FiftyOneZeroShotTransformerForSemanticSegmentation(
