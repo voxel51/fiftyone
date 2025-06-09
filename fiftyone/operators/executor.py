@@ -15,8 +15,7 @@ import traceback
 import fiftyone as fo
 import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
-import fiftyone.core.odm.utils as focu
-import fiftyone.core.stages as focs
+import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 from fiftyone.operators import constants
@@ -544,7 +543,7 @@ class ExecutionContext(object):
         # id if it is available
         uid = self.request_params.get("dataset_id", None)
         if uid:
-            self._dataset = focu.load_dataset(id=uid, reload=True)
+            self._dataset = foo.load_dataset(id=uid, reload=True)
 
             # Set the dataset_name using the dataset object in case the dataset
             # has been renamed or changed since the context was created
@@ -552,7 +551,7 @@ class ExecutionContext(object):
         else:
             uid = self.request_params.get("dataset_name", None)
             if uid:
-                self._dataset = focu.load_dataset(name=uid, reload=True)
+                self._dataset = foo.load_dataset(name=uid, reload=True)
 
         if (
             self.group_slice is not None

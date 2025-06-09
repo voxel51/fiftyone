@@ -28,6 +28,7 @@ operators:
   - delete_group_slice
   - list_saved_views
   - load_saved_view
+  - reload_saved_view
   - save_view
   - edit_saved_view_info
   - delete_saved_view
