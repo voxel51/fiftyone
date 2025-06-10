@@ -38,7 +38,7 @@ export const parsePCDData = (
 
   // allocate typed arrays upfront
   // this is better than having a Number[] array that we "push" to
-  const position = hasXYZ ? new Float32Array(points * 3) : new Float32Array(0);
+  let position = hasXYZ ? new Float32Array(points * 3) : new Float32Array(0);
   const attributes: PCDAttributes = {};
 
   for (const f of scalarFields) {
@@ -50,11 +50,12 @@ export const parsePCDData = (
     attributes.rgb = new Float32Array(points * 3);
   }
 
+  // track valid points (non-NaN positions)
+  let validPointCount = 0;
+
   if (header.data === PCDFieldType.Ascii) {
     const text = new TextDecoder().decode(data).substring(header.headerLen);
     const lines = text.split("\n");
-    // point index
-    let pi = 0;
 
     for (let li = 0; li < lines.length; li++) {
       const ln = lines[li].trim();
@@ -62,17 +63,28 @@ export const parsePCDData = (
       const parts = ln.split(/\s+/);
 
       if (hasXYZ) {
-        const base = pi * 3;
-        // unary + is faster than Number()
-        position[base] = +parts[off.x];
-        position[base + 1] = +parts[off.y];
-        position[base + 2] = +parts[off.z];
+        const x = +parts[off.x];
+        const y = +parts[off.y];
+        const z = +parts[off.z];
+
+        // Skip points with NaN positions
+        if (isNaN(x) || isNaN(y) || isNaN(z)) {
+          continue;
+        }
+
+        const base = validPointCount * 3;
+        position[base] = x;
+        position[base + 1] = y;
+        position[base + 2] = z;
       }
 
       // scalar fields
       for (let si = 0; si < scalarFields.length; si++) {
         const f = scalarFields[si];
-        (attributes[f] as Float32Array)[pi] = +parts[off[f]];
+        const value = +parts[off[f]];
+        (attributes[f] as Float32Array)[validPointCount] = isNaN(value)
+          ? 0
+          : value;
       }
 
       // rgb special case
@@ -85,13 +97,13 @@ export const parsePCDData = (
         const g = ((iv >> 8) & 0xff) / 255;
         const b = (iv & 0xff) / 255;
         const rb = attributes.rgb as Float32Array;
-        const base = pi * 3;
+        const base = validPointCount * 3;
         rb[base] = r;
         rb[base + 1] = g;
         rb[base + 2] = b;
       }
 
-      pi++;
+      validPointCount++;
     }
   } else {
     // setup for both BinaryCompressed and Binary
@@ -118,23 +130,24 @@ export const parsePCDData = (
     for (let i = 0; i < points; i++) {
       // position
       if (hasXYZ) {
-        const base = i * 3;
+        let x: number, y: number, z: number;
+
         if (header.data === PCDFieldType.BinaryCompressed && baseOffsets) {
-          position[base] = getDataView(
+          x = getDataView(
             dv,
             baseOffsets[ix] + sizes[ix] * i,
             types[ix],
             sizes[ix],
             littleEndian
           );
-          position[base + 1] = getDataView(
+          y = getDataView(
             dv,
             baseOffsets[iy] + sizes[iy] * i,
             types[iy],
             sizes[iy],
             littleEndian
           );
-          position[base + 2] = getDataView(
+          z = getDataView(
             dv,
             baseOffsets[iz] + sizes[iz] * i,
             types[iz],
@@ -143,36 +156,30 @@ export const parsePCDData = (
           );
         } else {
           const row = i * rowSize;
-          position[base] = getDataView(
-            dv,
-            row + off.x,
-            types[ix],
-            sizes[ix],
-            littleEndian
-          );
-          position[base + 1] = getDataView(
-            dv,
-            row + off.y,
-            types[iy],
-            sizes[iy],
-            littleEndian
-          );
-          position[base + 2] = getDataView(
-            dv,
-            row + off.z,
-            types[iz],
-            sizes[iz],
-            littleEndian
-          );
+          x = getDataView(dv, row + off.x, types[ix], sizes[ix], littleEndian);
+          y = getDataView(dv, row + off.y, types[iy], sizes[iy], littleEndian);
+          z = getDataView(dv, row + off.z, types[iz], sizes[iz], littleEndian);
         }
+
+        // Skip points with NaN positions
+        if (isNaN(x) || isNaN(y) || isNaN(z)) {
+          continue;
+        }
+
+        const base = validPointCount * 3;
+        position[base] = x;
+        position[base + 1] = y;
+        position[base + 2] = z;
       }
 
       // scalar fields
       for (let si = 0; si < scalarFields.length; si++) {
         const f = scalarFields[si];
         const idx = fields.indexOf(f);
+        let value: number;
+
         if (header.data === PCDFieldType.BinaryCompressed && baseOffsets) {
-          (attributes[f] as Float32Array)[i] = getDataView(
+          value = getDataView(
             dv,
             baseOffsets[idx] + sizes[idx] * i,
             types[idx],
@@ -181,7 +188,7 @@ export const parsePCDData = (
           );
         } else {
           const row = i * rowSize;
-          (attributes[f] as Float32Array)[i] = getDataView(
+          value = getDataView(
             dv,
             row + off[f],
             types[idx],
@@ -189,12 +196,16 @@ export const parsePCDData = (
             littleEndian
           );
         }
+
+        (attributes[f] as Float32Array)[validPointCount] = isNaN(value)
+          ? 0
+          : value;
       }
 
       // rgb
       if (rgbIdx !== -1) {
         const rgbArr = attributes.rgb as Float32Array;
-        const base = i * 3;
+        const base = validPointCount * 3;
         if (header.data === PCDFieldType.BinaryCompressed && baseOffsets) {
           const byteOffset = baseOffsets[rgbIdx] + sizes[rgbIdx] * i;
           const r = dv.getUint8(byteOffset + 2) / 255;
@@ -213,6 +224,22 @@ export const parsePCDData = (
           rgbArr[base + 2] = b;
         }
       }
+
+      validPointCount++;
+    }
+  }
+
+  // trim arrays to actual size
+  if (validPointCount < points) {
+    position = position.slice(0, validPointCount * 3);
+    for (const f of scalarFields) {
+      attributes[f] = (attributes[f] as Float32Array).slice(0, validPointCount);
+    }
+    if (rgbIdx !== -1) {
+      attributes.rgb = (attributes.rgb as Float32Array).slice(
+        0,
+        validPointCount * 3
+      );
     }
   }
 

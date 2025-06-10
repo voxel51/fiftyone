@@ -493,5 +493,71 @@ describe("parsePCDData", () => {
       expect(result.attributes.intensity).toEqual(new Float32Array([0.5, 0.8]));
       expect(result.attributes.label).toEqual(new Float32Array([1, 2]));
     });
+
+    it("should handle NaN values in position data by removing those points", () => {
+      const data = createASCIIPCD(
+        ["x", "y", "z", "intensity"],
+        [
+          [1.0, 2.0, 3.0, 0.5], // valid point
+          [NaN, 5.0, 6.0, 0.8], // invalid x
+          [4.0, NaN, 6.0, 0.9], // invalid y
+          [4.0, 5.0, NaN, 1.0], // invalid z
+          [NaN, NaN, NaN, 1.1], // invalid x, y, z
+          [7.0, 8.0, 9.0, 1.1], // valid point
+        ]
+      );
+
+      const result = parsePCDData(data, true);
+
+      expect(result.position).toEqual(
+        new Float32Array([1.0, 2.0, 3.0, 7.0, 8.0, 9.0])
+      );
+      expect(result.attributes.intensity).toEqual(new Float32Array([0.5, 1.1]));
+    });
+
+    it("should replace NaN values in non-position attributes with 0", () => {
+      const data = createASCIIPCD(
+        ["x", "y", "z", "intensity", "confidence"],
+        [
+          [1.0, 2.0, 3.0, 0.5, NaN], // NaN in confidence
+          [4.0, 5.0, 6.0, NaN, 0.8], // NaN in intensity
+          [7.0, 8.0, 9.0, 0.9, 0.9], // all valid
+        ]
+      );
+
+      const result = parsePCDData(data, true);
+
+      expect(result.position).toEqual(
+        new Float32Array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0])
+      );
+      expect(result.attributes.intensity).toEqual(
+        new Float32Array([0.5, 0.0, 0.9])
+      );
+      expect(result.attributes.confidence).toEqual(
+        new Float32Array([0.0, 0.8, 0.9])
+      );
+    });
+
+    it("should handle both NaN positions and NaN attributes correctly", () => {
+      const data = createASCIIPCD(
+        ["x", "y", "z", "intensity", "confidence"],
+        [
+          [1.0, 2.0, 3.0, 0.5, 0.7], // all valid
+          [NaN, 5.0, 6.0, 0.8, NaN], // invalid position, NaN attribute
+          [4.0, NaN, 6.0, NaN, 0.9], // invalid position, NaN attribute
+          [7.0, 8.0, 9.0, 0.9, 0.9], // all valid
+        ]
+      );
+
+      const result = parsePCDData(data, true);
+
+      expect(result.position).toEqual(
+        new Float32Array([1.0, 2.0, 3.0, 7.0, 8.0, 9.0])
+      );
+      expect(result.attributes.intensity).toEqual(new Float32Array([0.5, 0.9]));
+      expect(result.attributes.confidence).toEqual(
+        new Float32Array([0.7, 0.9])
+      );
+    });
   });
 });
