@@ -433,7 +433,7 @@ class _PatchesView(fov.DatasetView):
             label_id_path = label_path + ".id"
             self_ids = set(self.values(label_id_path, unwind=True))
             all_sample_ids, all_label_ids = self._patches_dataset.values(
-                ["sample_id", label_id_path]
+                [self._id_field, label_id_path]
             )
 
             del_labels = []

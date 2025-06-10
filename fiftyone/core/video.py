@@ -317,9 +317,13 @@ class FramesView(fov.DatasetView):
             super()._delete_labels(labels, fields=fields)
 
         if src_labels:
-            self._source_collection._delete_labels(
-                src_labels, fields=src_fields
-            )
+            src_collection = self._source_collection
+
+            # Clips views directly use their source collection's frames
+            if src_collection._is_clips:
+                src_collection = src_collection._source_collection
+
+            src_collection._delete_labels(src_labels, fields=src_fields)
 
     def _parse_labels(self, labels, fields=None):
         if etau.is_str(fields):

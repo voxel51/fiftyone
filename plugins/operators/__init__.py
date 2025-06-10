@@ -6,7 +6,6 @@ Builtin operators.
 |
 """
 
-from copy import deepcopy
 import json
 import os
 
