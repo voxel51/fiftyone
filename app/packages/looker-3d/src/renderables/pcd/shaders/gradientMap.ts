@@ -1,9 +1,35 @@
-import React, { useCallback } from "react";
+import { useMemo } from "react";
 import * as THREE from "three";
-import type { Gradients } from "./types";
 
-const useGradientMap = (gradients: Gradients, flipY: boolean = false) => {
-  const generateTexture = useCallback((gradients: Gradients, flip: boolean) => {
+const NUM_STOPS_FOR_PREDEFINED_NAME = 128;
+
+import { ColorscaleInput } from "@fiftyone/looker/src/state";
+import colormap from "colormap";
+
+export const getGradientFromSchemeName = (
+  schemeName: string,
+  numStops: number = NUM_STOPS_FOR_PREDEFINED_NAME
+): ColorscaleInput["list"] => {
+  const colors = colormap({
+    colormap: schemeName,
+    nshades: numStops,
+    format: "hex",
+    alpha: 1,
+  });
+
+  return colors.map((color, index) => ({
+    value: index / (numStops - 1),
+    color,
+  }));
+};
+
+const useGradientMap = (
+  colorMap: ColorscaleInput["list"],
+  flipY: boolean = false
+) => {
+  return useMemo(() => {
+    const gradients = colorMap.map((item) => [item.value, item.color] as const);
+
     const size = 512;
     const canvas = document.createElement("canvas");
     canvas.width = size;
@@ -18,16 +44,11 @@ const useGradientMap = (gradients: Gradients, flipY: boolean = false) => {
     ctx.fillRect(0, 0, size, size);
 
     const texture = new THREE.CanvasTexture(canvas);
-    texture.flipY = flip;
+    texture.flipY = flipY;
     texture.minFilter = THREE.LinearFilter;
     texture.needsUpdate = true;
     return texture;
-  }, []);
-
-  return React.useMemo(
-    () => generateTexture(gradients, flipY),
-    [gradients, generateTexture]
-  );
+  }, [colorMap, flipY]);
 };
 
 export default useGradientMap;

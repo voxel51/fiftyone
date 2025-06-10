@@ -1,4 +1,5 @@
 import type { Range } from "@fiftyone/core/src/components/Common/RangeSlider";
+import { ColorscaleInput } from "@fiftyone/looker/src/state";
 import {
   currentModalUniqueId,
   getBrowserStorageEffectForKey,
@@ -48,6 +49,19 @@ export const customColorMapAtom = atom<{ [slice: string]: string } | null>({
   effects: [
     getBrowserStorageEffectForKey("customColorMap", {
       useJsonSerialization: true,
+    }),
+  ],
+});
+
+export const fo3dPcdDynamicAttributeColorMapOverridesAtom = atom<{
+  [attribute: string]: ColorscaleInput;
+}>({
+  key: "fo3d-pcdDynamicAttributeColorMapOverrides",
+  default: {},
+  effects: [
+    getBrowserStorageEffectForKey("fo3dPcdDynamicAttributeColorMapOverrides", {
+      useJsonSerialization: true,
+      prependDatasetNameInKey: true,
     }),
   ],
 });

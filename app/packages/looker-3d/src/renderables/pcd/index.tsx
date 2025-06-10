@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type * as THREE from "three";
 import { PCDLoader } from "three/examples/jsm/loaders/PCDLoader";
 import {
-  PCD_SHADING_GRADIENTS,
+  DEFAULT_PCD_SHADING_GRADIENTS_RED_TO_BLUE,
   SHADE_BY_CUSTOM,
   SHADE_BY_HEIGHT,
   SHADE_BY_INTENSITY,
@@ -113,7 +113,7 @@ export const PointCloudMesh = ({
         return (
           <ShadeByHeight
             upVector={upVector}
-            gradients={PCD_SHADING_GRADIENTS}
+            colorMap={DEFAULT_PCD_SHADING_GRADIENTS_RED_TO_BLUE}
             min={minAlongUpVector}
             max={maxAlongUpVector}
             pointSize={pointSizeNum}
@@ -124,10 +124,11 @@ export const PointCloudMesh = ({
       case SHADE_BY_INTENSITY:
         return (
           <ShadeByIntensity
+            isLegacyIntensity={pcdType === "rgb"}
             minIntensity={colorMinMax.min}
             maxIntensity={colorMinMax.max}
             pcdType={pcdType}
-            gradients={PCD_SHADING_GRADIENTS}
+            colorMap={DEFAULT_PCD_SHADING_GRADIENTS_RED_TO_BLUE}
             pointSize={pointSizeNum}
             isPointSizeAttenuated={isPointSizeAttenuated}
           />

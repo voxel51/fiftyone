@@ -4,6 +4,9 @@ import { useEffect, useMemo, useRef } from "react";
 import { useRecoilState } from "recoil";
 import type { Quaternion } from "three";
 import { Vector3 } from "three";
+import PcdColormapModal, {
+  PcdColorMapTunnel,
+} from "../../components/PcdColormapModal";
 import type { PcdAsset } from "../../hooks";
 import { useFoLoader } from "../../hooks/use-fo-loaders";
 import { DynamicPCDLoader } from "../../loaders/dynamic-pcd-loader";
@@ -53,12 +56,14 @@ export const Pcd = ({
 
   const pcdContainerRef = useRef();
 
-  const { pointsMaterial, shadingMode } = usePcdMaterial(
-    name,
-    points.geometry,
-    defaultMaterial,
-    pcdContainerRef
-  );
+  const {
+    pointsMaterial,
+    shadingMode,
+    colorMap,
+    isColormapModalOpen,
+    setIsColormapModalOpen,
+    handleColormapSave,
+  } = usePcdMaterial(name, points.geometry, defaultMaterial, pcdContainerRef);
 
   const pointerMoveHandler = useMemo(
     () => (e: ThreeEvent<MouseEvent>) => {
@@ -177,6 +182,17 @@ export const Pcd = ({
         {pointsMaterial}
         {children ?? null}
       </primitive>
+      {isColormapModalOpen && (
+        <PcdColorMapTunnel.In>
+          <PcdColormapModal
+            isOpen={isColormapModalOpen}
+            onClose={() => setIsColormapModalOpen(false)}
+            attribute={shadingMode}
+            onSave={handleColormapSave}
+            initialColorscale={{ list: colorMap }}
+          />
+        </PcdColorMapTunnel.In>
+      )}
     </>
   );
 };

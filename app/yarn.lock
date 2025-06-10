@@ -2405,11 +2405,13 @@ __metadata:
   dependencies:
     "@testing-library/react": "npm:latest"
     "@testing-library/react-hooks": "npm:latest"
+    "@types/colormap": "npm:^2"
     "@types/react-plotly.js": "npm:^2.6.3"
     "@typescript-eslint/eslint-plugin": "npm:^5.44.0"
     "@typescript-eslint/parser": "npm:^5.44.0"
     "@vitest/coverage-v8": "npm:^3.0.8"
     "@vitest/ui": "npm:^2.0.5"
+    colormap: "npm:^2.3.2"
     concurrently: "npm:^7.2.1"
     eslint: "npm:^8.28.0"
     eslint-config-prettier: "npm:^8.5.0"
@@ -5278,6 +5280,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/colormap@npm:^2":
+  version: 2.3.4
+  resolution: "@types/colormap@npm:2.3.4"
+  checksum: 10/6792da5e8aa4193ddc996ca7e2c932368e2367b7c638cbfb5655919b7fa40ab5ac9c904cbe61000aebb1605965e6548fd69f60c2358084d0d861f56d81e9f8ff
+  languageName: node
+  linkType: hard
+
 "@types/d3-array@npm:^3.0.3":
   version: 3.2.1
   resolution: "@types/d3-array@npm:3.2.1"
@@ -7780,6 +7789,15 @@ __metadata:
   version: 2.9.3
   resolution: "colord@npm:2.9.3"
   checksum: 10/907a4506d7307e2f580b471b581e992181ed75ab0c6925ece9ca46d88161d2fc50ed15891cd0556d0d9321237ca75afc9d462e4c050b939ef88428517f047f30
+  languageName: node
+  linkType: hard
+
+"colormap@npm:^2.3.2":
+  version: 2.3.2
+  resolution: "colormap@npm:2.3.2"
+  dependencies:
+    lerp: "npm:^1.0.3"
+  checksum: 10/0f6ea3b00d3383fd9c4e7ff7774992724dfce625f8a00c81c4dd721ff9411fa3c771068c5afd3af3e64cd458ca3e9be732d88e6ce519a58243f76d8c1e669b35
   languageName: node
   linkType: hard
 
@@ -12813,6 +12831,13 @@ __metadata:
   version: 4.1.5
   resolution: "kleur@npm:4.1.5"
   checksum: 10/44d84cc4eedd4311099402ef6d4acd9b2d16e08e499d6ef3bb92389bd4692d7ef09e35248c26e27f98acac532122acb12a1bfee645994ae3af4f0a37996da7df
+  languageName: node
+  linkType: hard
+
+"lerp@npm:^1.0.3":
+  version: 1.0.3
+  resolution: "lerp@npm:1.0.3"
+  checksum: 10/1fd4cc3136d2d68dbafb3a05fd8936732d7ec7e912f1b4ecdc14808e9f2f18748137b299a19a3e052b692a9f364bd0d3602a3d30fb8f7fa63419dfa6dd82bf5c
   languageName: node
   linkType: hard
 

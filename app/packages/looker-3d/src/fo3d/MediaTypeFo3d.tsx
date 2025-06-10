@@ -26,6 +26,7 @@ import { Vector3 } from "three";
 import { CAMERA_POSITION_KEY } from "../Environment";
 import { SpinningCube } from "../SpinningCube";
 import { StatusBar, StatusTunnel } from "../StatusBar";
+import { PcdColorMapTunnel } from "../components/PcdColormapModal";
 import {
   DEFAULT_CAMERA_POSITION,
   RAY_CASTING_SENSITIVITY,
@@ -646,6 +647,7 @@ export const MediaTypeFo3dComponent = () => {
       }}
     >
       <HoverMetadataHUD />
+      <PcdColorMapTunnel.Out />
       <Canvas
         id={CANVAS_WRAPPER_ID}
         onPointerMissed={resetActiveNode}

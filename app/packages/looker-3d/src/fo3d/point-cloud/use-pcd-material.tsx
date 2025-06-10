@@ -1,7 +1,6 @@
 import { useCallback, useMemo } from "react";
 import type { BufferGeometry } from "three";
 import {
-  PCD_SHADING_GRADIENTS,
   SHADE_BY_CUSTOM,
   SHADE_BY_HEIGHT,
   SHADE_BY_INTENSITY,
@@ -32,8 +31,17 @@ export const usePcdMaterial = (
 ) => {
   const { upVector, pluginSettings } = useFo3dContext();
 
-  const { customColor, pointSize, isPointSizeAttenuated, shadeBy, opacity } =
-    usePcdMaterialControls(name, geometry, defaultMaterial);
+  const {
+    customColor,
+    pointSize,
+    isPointSizeAttenuated,
+    shadeBy,
+    opacity,
+    colorMap,
+    isColormapModalOpen,
+    setIsColormapModalOpen,
+    handleColormapSave,
+  } = usePcdMaterialControls(name, geometry, defaultMaterial);
 
   const pcdBoundingBox = useFo3dBounds(
     pcdContainerRef,
@@ -97,7 +105,9 @@ export const usePcdMaterial = (
 
   const pointsMaterial = useMemo(() => {
     // to trigger rerender
-    const key = `${name}-${opacity}-${pointSize}-${isPointSizeAttenuated}-${shadeBy}-${customColor}-${minMaxCoordinates}-${minIntensity}-${maxIntensity}-${upVector}`;
+    const key = `${name}-${opacity}-${pointSize}-${isPointSizeAttenuated}-${shadeBy}-${customColor}-${minMaxCoordinates}-${minIntensity}-${maxIntensity}-${upVector}-${
+      colorMap ? JSON.stringify(colorMap) : ""
+    }`;
 
     switch (shadeBy) {
       case SHADE_BY_HEIGHT:
@@ -109,7 +119,7 @@ export const usePcdMaterial = (
          */
         return (
           <ShadeByHeight
-            gradients={PCD_SHADING_GRADIENTS}
+            colorMap={colorMap}
             min={minMaxCoordinates?.at(0) ?? 0}
             max={minMaxCoordinates?.at(1) ?? 100}
             upVector={upVector}
@@ -126,7 +136,7 @@ export const usePcdMaterial = (
             key={key}
             minIntensity={minIntensity}
             maxIntensity={maxIntensity}
-            gradients={PCD_SHADING_GRADIENTS}
+            colorMap={colorMap}
             pointSize={pointSize}
             opacity={opacity}
             isPointSizeAttenuated={isPointSizeAttenuated}
@@ -190,11 +200,11 @@ export const usePcdMaterial = (
               attribute={shadeBy}
               min={min}
               max={max}
-              gradients={PCD_SHADING_GRADIENTS}
               pointSize={pointSize}
               isPointSizeAttenuated={isPointSizeAttenuated}
               opacity={opacity}
               geometry={geometry}
+              colorMap={colorMap}
             />
           );
         } else {
@@ -222,7 +232,15 @@ export const usePcdMaterial = (
     upVector,
     opacity,
     name,
+    colorMap,
   ]);
 
-  return { pointsMaterial, shadingMode: shadeBy };
+  return {
+    pointsMaterial,
+    shadingMode: shadeBy,
+    colorMap,
+    isColormapModalOpen,
+    setIsColormapModalOpen,
+    handleColormapSave,
+  };
 };

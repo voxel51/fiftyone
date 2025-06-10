@@ -1,8 +1,9 @@
+import { ColorscaleInput } from "@fiftyone/looker/src/state";
 import * as THREE from "three";
 export type Gradients = [number, string][];
 
 export type ShaderProps = {
-  gradients: Gradients;
+  colorMap: ColorscaleInput["list"];
   min: number;
   max: number;
   pointSize: number;

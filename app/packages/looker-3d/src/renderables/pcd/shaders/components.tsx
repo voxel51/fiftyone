@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import * as THREE from "three";
 import {
   DynamicAttributeShaders,
@@ -9,31 +9,33 @@ import {
   ShadeByRgbShaders,
 } from "./glsl";
 import useGradientMap from "./gradientMap";
-import type { Gradients, ShaderProps } from "./types";
+import type { ShaderProps } from "./types";
 
 export const DynamicAttributeShader = ({
   attribute,
   min,
   max,
-  gradients,
   pointSize,
   isPointSizeAttenuated,
   opacity,
   geometry,
-}: {
+  colorMap,
+}: ShaderProps & {
   attribute: string;
-  min: number;
-  max: number;
-  gradients: Gradients;
-  pointSize: number;
-  isPointSizeAttenuated: boolean;
-  opacity?: number;
   geometry: THREE.BufferGeometry;
 }) => {
-  const gradientMap = useGradientMap(gradients);
-  if (geometry && geometry.hasAttribute(attribute)) {
-    geometry.setAttribute("dynamicAttr", geometry.getAttribute(attribute));
-  }
+  const gradientMap = useGradientMap(colorMap);
+
+  /**
+   * this is how we pass the attribute value to the shader
+   * in a way that works for every attribute
+   */
+  useEffect(() => {
+    if (geometry && geometry.hasAttribute(attribute)) {
+      geometry.setAttribute("dynamicAttr", geometry.getAttribute(attribute));
+    }
+  }, [geometry, attribute]);
+
   return (
     <shaderMaterial
       glslVersion={THREE.GLSL3}
@@ -53,7 +55,7 @@ export const DynamicAttributeShader = ({
 };
 
 export const ShadeByHeight = ({
-  gradients,
+  colorMap,
   min,
   max,
   upVector,
@@ -61,7 +63,7 @@ export const ShadeByHeight = ({
   opacity,
   isPointSizeAttenuated,
 }: ShaderProps) => {
-  const gradientMap = useGradientMap(gradients);
+  const gradientMap = useGradientMap(colorMap);
   const upVectorVec3 = useMemo(() => {
     return [upVector.x, upVector.y, upVector.z];
   }, [upVector]);
@@ -87,7 +89,7 @@ export const ShadeByHeight = ({
 };
 
 export const ShadeByIntensity = ({
-  gradients,
+  colorMap,
   minIntensity,
   maxIntensity,
   opacity,
@@ -99,7 +101,7 @@ export const ShadeByIntensity = ({
   maxIntensity: number;
   isLegacyIntensity: boolean;
 }) => {
-  const gradientMap = useGradientMap(gradients);
+  const gradientMap = useGradientMap(colorMap);
 
   return (
     <shaderMaterial
