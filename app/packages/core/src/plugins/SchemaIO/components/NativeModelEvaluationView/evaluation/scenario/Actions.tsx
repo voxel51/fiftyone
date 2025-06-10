@@ -1,4 +1,5 @@
 import { TooltipProvider } from "@fiftyone/components";
+import { useMutation } from "@fiftyone/state";
 import { DeleteOutline, EditOutlined } from "@mui/icons-material";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import {
@@ -12,7 +13,7 @@ import {
 import React from "react";
 import ConfirmDelete from "../../components/ConfirmDelete";
 
-export default function Actions(props) {
+export default function Actions(props: ActionsPropsType) {
   const { onDelete, onEdit, canEdit, canDelete } = props;
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
@@ -23,6 +24,8 @@ export default function Actions(props) {
   const handleClose = () => {
     setAnchorEl(null);
   };
+  const [enableDelete, deleteMsg] = useMutation(canDelete, "delete scenario");
+  const [enableEdit, editMsg] = useMutation(canEdit, "edit scenario");
 
   return (
     <Stack>
@@ -35,17 +38,13 @@ export default function Actions(props) {
         open={open}
         onClose={handleClose}
       >
-        <TooltipProvider
-          title={
-            canEdit ? undefined : "You do not have permission to edit scenario"
-          }
-        >
+        <TooltipProvider title={editMsg}>
           <MenuItem
             onClick={() => {
               onEdit?.();
               handleClose();
             }}
-            disabled={!canEdit}
+            disabled={!enableEdit}
           >
             <ListItemIcon>
               <EditOutlined fontSize="small" color="secondary" />
@@ -53,19 +52,13 @@ export default function Actions(props) {
             <Typography color="secondary">Edit</Typography>
           </MenuItem>
         </TooltipProvider>
-        <TooltipProvider
-          title={
-            canEdit
-              ? undefined
-              : "You do not have permission to delete scenario"
-          }
-        >
+        <TooltipProvider title={deleteMsg}>
           <MenuItem
             onClick={() => {
               setDeleteOpen(true);
               handleClose();
             }}
-            disabled={!canDelete}
+            disabled={!enableDelete}
           >
             <ListItemIcon>
               <DeleteOutline fontSize="small" color="error" />
@@ -84,3 +77,10 @@ export default function Actions(props) {
     </Stack>
   );
 }
+
+type ActionsPropsType = {
+  onDelete: () => void;
+  onEdit?: () => void;
+  canEdit: boolean;
+  canDelete: boolean;
+};

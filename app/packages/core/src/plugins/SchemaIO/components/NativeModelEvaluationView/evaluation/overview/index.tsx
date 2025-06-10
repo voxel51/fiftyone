@@ -25,6 +25,7 @@ import MetricPerformance from "./MetricPerformance";
 import Summary from "./Summary";
 import { useTrackEvent } from "@fiftyone/analytics";
 import { usePanelStatePartial } from "@fiftyone/spaces";
+import { useMutation } from "@fiftyone/state";
 
 export default function Overview(props) {
   const {
@@ -64,6 +65,10 @@ export default function Overview(props) {
   }, [notes, id]);
 
   const { can_edit_note } = data?.permissions || {};
+  const [enable, message, cursor] = useMutation(
+    can_edit_note,
+    "edit evaluation note"
+  );
 
   useEffect(() => {
     if (!evaluation) {
@@ -111,14 +116,7 @@ export default function Overview(props) {
       <Card sx={{ p: 2, mb: 2 }}>
         <Stack direction="row" sx={{ justifyContent: "space-between" }}>
           <Typography color="secondary">Evaluation notes</Typography>
-          <Box
-            title={
-              can_edit_note
-                ? ""
-                : "You do not have permission to edit evaluation notes"
-            }
-            sx={{ cursor: can_edit_note ? "pointer" : "not-allowed" }}
-          >
+          <Box title={message} sx={{ cursor }}>
             <IconButton
               size="small"
               color="secondary"
@@ -126,7 +124,7 @@ export default function Overview(props) {
               onClick={() => {
                 setEditNoteState((note) => ({ ...note, open: true }));
               }}
-              disabled={!can_edit_note}
+              disabled={!enable}
             >
               <EditNote />
             </IconButton>
