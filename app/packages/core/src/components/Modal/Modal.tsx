@@ -156,7 +156,8 @@ const Modal = () => {
             return newSelected;
           });
         } else if (e.key === "Escape") {
-          if (activeLookerRef.current) {
+          const mediaType = await snapshot.getPromise(fos.mediaType);
+          if (activeLookerRef.current || mediaType === "3d") {
             // we handle close logic in modal + other places
             return;
           }

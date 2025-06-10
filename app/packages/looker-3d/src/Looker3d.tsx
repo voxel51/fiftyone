@@ -1,4 +1,9 @@
 import * as fos from "@fiftyone/state";
+import {
+  isFo3d,
+  isPointCloud,
+  setContainsPointCloud,
+} from "@fiftyone/utilities";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { Fo3dErrorBoundary } from "./ErrorBoundary";
@@ -11,13 +16,10 @@ import { useHotkey } from "./hooks";
 import {
   currentActionAtom,
   fo3dContainsBackground,
+  isColormapModalOpenAtom,
   isGridOnAtom,
+  isLevaConfigPanelOnAtom,
 } from "./state";
-import {
-  isFo3d,
-  isPointCloud,
-  setContainsPointCloud,
-} from "@fiftyone/utilities";
 
 /**
  * This component is responsible for rendering both "3d" as well as
@@ -83,6 +85,22 @@ export const Looker3d = () => {
 
       if (isTooltipLocked) {
         set(fos.isTooltipLocked, false);
+        return;
+      }
+
+      const isColormapModalOpen = await snapshot.getPromise(
+        isColormapModalOpenAtom
+      );
+      if (isColormapModalOpen) {
+        set(isColormapModalOpenAtom, false);
+        return;
+      }
+
+      const isLevaConfigPanelOn = await snapshot.getPromise(
+        isLevaConfigPanelOnAtom
+      );
+      if (isLevaConfigPanelOn) {
+        set(isLevaConfigPanelOnAtom, false);
         return;
       }
 

@@ -53,6 +53,11 @@ export const customColorMapAtom = atom<{ [slice: string]: string } | null>({
   ],
 });
 
+export const isColormapModalOpenAtom = atom<boolean>({
+  key: "fo3d-isColormapModalOpen",
+  default: false,
+});
+
 export const fo3dPcdDynamicAttributeColorMapOverridesAtom = atom<{
   [attribute: string]: ColorscaleInput;
 }>({

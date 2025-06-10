@@ -4,7 +4,7 @@ import * as fos from "@fiftyone/state";
 import { folder, useControls } from "leva";
 import type { OnChangeHandler } from "leva/plugin";
 import { useCallback, useMemo, useState } from "react";
-import { useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import { BufferGeometry } from "three";
 import {
   DEFAULT_PCD_SHADING_GRADIENTS_RED_TO_BLUE,
@@ -16,6 +16,7 @@ import {
 import { useFo3dContext } from "../fo3d/context";
 import { customComponent } from "../fo3d/scene-controls/LevaCustomComponent";
 import { getGradientFromSchemeName } from "../renderables/pcd/shaders/gradientMap";
+import { isColormapModalOpenAtom } from "../state";
 import type { FoPointcloudMaterialProps } from "./use-fo3d";
 
 const ColormapSource = {
@@ -30,7 +31,9 @@ export const usePcdMaterialControls = (
   defaultMaterial: FoPointcloudMaterialProps
 ) => {
   const { numPrimaryAssets } = useFo3dContext();
-  const [isColormapModalOpen, setIsColormapModalOpen] = useState(false);
+  const [isColormapModalOpen, setIsColormapModalOpen] = useRecoilState(
+    isColormapModalOpenAtom
+  );
 
   const shadeModes = useMemo(() => {
     // list all attributes in the geometry
