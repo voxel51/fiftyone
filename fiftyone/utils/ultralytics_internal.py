@@ -11,7 +11,7 @@ import fiftyone as fo
 from pathlib import Path
 import fiftyone.core.utils as fou
 
-fou.ensure_package("ultralytics")
+fou.ensure_package("ultralytics>=8.3.99")
 import ultralytics
 from ultralytics.nn import text_model
 

@@ -512,7 +512,7 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
                 )
                 model.set_classes(config.classes, embeddings)
             else:
-                model.model.clip_model = ultralytics_internal(
+                model.model.clip_model = ultralytics_internal.build_text_model(
                     "clip:ViT-B/32", device=self._device
                 )
                 model.set_classes(config.classes)
@@ -580,9 +580,9 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
     def _build_output_processor(self, config):
         if not config.output_processor_args:
             config.output_processor_args = {}
-        config.output_processor_args["post_processor"] = (
-            self._model.predictor.postprocess
-        )
+        config.output_processor_args[
+            "post_processor"
+        ] = self._model.predictor.postprocess
         output_processor = super()._build_output_processor(config)
         # Set post-processor to None for config JSON serialization.
         config.output_processor_args["post_processor"] = None
