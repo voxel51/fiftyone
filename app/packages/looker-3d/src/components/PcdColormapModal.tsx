@@ -14,7 +14,7 @@ interface PcdColormapModalProps {
   isOpen: boolean;
   onClose: () => void;
   attribute: string;
-  onSave: (colorscaleList: ColorscaleInput["list"]) => void;
+  onSave: (colorscaleList: Readonly<ColorscaleInput["list"]>) => void;
   initialColorscale?: ColorscaleInput;
 }
 
@@ -42,9 +42,9 @@ const rgbToHex = (rgb: string): string => {
   );
 };
 
-const GradientPreview: React.FC<{ stops: ColorscaleInput["list"] }> = ({
-  stops,
-}) => {
+const GradientPreview: React.FC<{
+  stops: Readonly<ColorscaleInput["list"]>;
+}> = ({ stops }) => {
   const gradient = useMemo(
     () => stops.map((stop) => `${stop.color} ${stop.value * 100}%`).join(", "),
     [stops]
@@ -70,7 +70,16 @@ const ColorStopRow: React.FC<{
   onValueChange: (index: number, value: number) => void;
   onColorChange: (index: number, color: string) => void;
   onRemove: (index: number) => void;
-}> = ({ stop, index, total, onValueChange, onColorChange, onRemove }) => {
+  isNew?: boolean;
+}> = ({
+  stop,
+  index,
+  total,
+  onValueChange,
+  onColorChange,
+  onRemove,
+  isNew,
+}) => {
   const isFirst = index === 0;
   const isLast = index === total - 1;
   const [localValue, setLocalValue] = useState(String(stop.value));
@@ -96,6 +105,10 @@ const ColorStopRow: React.FC<{
         gap: "8px",
         alignItems: "center",
         marginBottom: "8px",
+        transition: "background-color 0.3s ease",
+        backgroundColor: isNew ? "rgba(255, 255, 0, 0.2)" : "transparent",
+        padding: "4px",
+        borderRadius: "4px",
       }}
     >
       <Input
@@ -129,6 +142,7 @@ const ColorStopRow: React.FC<{
           style={{
             padding: "4px",
             color: "#666",
+            width: "50px",
           }}
         >
           <DeleteOutlineIcon fontSize="small" />
@@ -147,6 +161,7 @@ const PcdColormapModal: React.FC<PcdColormapModalProps> = ({
 }) => {
   const colorScheme = useRecoilValue(fos.colorScheme);
   const [hasChanges, setHasChanges] = useState(false);
+  const [newRowIndices, setNewRowIndices] = useState<Set<number>>(new Set());
 
   const defaultValue = useMemo(
     () => [
@@ -175,6 +190,7 @@ const PcdColormapModal: React.FC<PcdColormapModalProps> = ({
   const handleSave = useCallback(() => {
     onSave(colorList);
     setHasChanges(false);
+    setNewRowIndices(new Set()); // Clear new row highlights on save
   }, [colorList, onSave]);
 
   const handleColorChange = (index: number, color: string) => {
@@ -217,6 +233,8 @@ const PcdColormapModal: React.FC<PcdColormapModalProps> = ({
     });
 
     setColorList(newList);
+    // Add the new index to the set of new rows
+    setNewRowIndices((prev) => new Set([...prev, insertIndex + 1]));
     setHasChanges(true);
   };
 
@@ -225,6 +243,18 @@ const PcdColormapModal: React.FC<PcdColormapModalProps> = ({
     if (colorList.length <= 2) return;
     const newList = colorList.filter((_, i) => i !== index);
     setColorList(newList);
+    // Remove the index from newRowIndices and adjust other indices
+    setNewRowIndices((prev) => {
+      const newSet = new Set<number>();
+      prev.forEach((i) => {
+        if (i < index) {
+          newSet.add(i);
+        } else if (i > index) {
+          newSet.add(i - 1);
+        }
+      });
+      return newSet;
+    });
     setHasChanges(true);
   };
 
@@ -268,6 +298,7 @@ const PcdColormapModal: React.FC<PcdColormapModalProps> = ({
                 onValueChange={handleValueChange}
                 onColorChange={handleColorChange}
                 onRemove={removeColorStop}
+                isNew={newRowIndices.has(index)}
               />
             ))}
           </div>

@@ -3,7 +3,7 @@ import * as THREE from "three";
 export type Gradients = [number, string][];
 
 export type ShaderProps = {
-  colorMap: ColorscaleInput["list"];
+  colorMap: Readonly<ColorscaleInput["list"]>;
   min: number;
   max: number;
   pointSize: number;

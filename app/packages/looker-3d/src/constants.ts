@@ -60,21 +60,22 @@ export const COLOR_POOL = [
   0xf5f5dc, // Beige
 ];
 
-export const DEFAULT_PCD_SHADING_GRADIENTS_RED_TO_BLUE: ColorscaleInput["list"] =
-  [
-    // reddish
-    { value: 0, color: "#a50026" },
-    { value: 0.111, color: "#d73027" },
-    { value: 0.222, color: "#f46d43" },
-    { value: 0.333, color: "#fdae61" },
-    { value: 0.444, color: "#fee090" },
-    { value: 0.555, color: "#e0f3f8" },
-    { value: 0.666, color: "#abd9e9" },
-    { value: 0.777, color: "#74add1" },
-    { value: 0.888, color: "#4575b4" },
-    // blueish
-    { value: 1, color: "#313695" },
-  ];
+export const DEFAULT_PCD_SHADING_GRADIENTS_RED_TO_BLUE: Readonly<
+  ColorscaleInput["list"]
+> = [
+  // reddish
+  { value: 0, color: "#a50026" },
+  { value: 0.111, color: "#d73027" },
+  { value: 0.222, color: "#f46d43" },
+  { value: 0.333, color: "#fdae61" },
+  { value: 0.444, color: "#fee090" },
+  { value: 0.555, color: "#e0f3f8" },
+  { value: 0.666, color: "#abd9e9" },
+  { value: 0.777, color: "#74add1" },
+  { value: 0.888, color: "#4575b4" },
+  // blueish
+  { value: 1, color: "#313695" },
+];
 
 // peach color, a mix of orange and white
 export const LABEL_3D_HOVERED_AND_SELECTED_COLOR = "#de7e5d";

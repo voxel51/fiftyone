@@ -21,7 +21,8 @@ import type { FoPointcloudMaterialProps } from "./use-fo3d";
 
 const ColormapSource = {
   DEFAULT: "App Default",
-  DATASET: "Dataset App Config",
+  DATASET: "App Config (Explicit)",
+  DATASET_DEFAULT: "App Config (Default)",
   OVERRIDE: "Custom Override",
 } as const;
 
@@ -95,7 +96,7 @@ export const usePcdMaterialControls = (
     stringify: (value) => JSON.stringify(value),
   });
 
-  const isDatasetAppConfigColormapAvailable = useMemo(() => {
+  const isExplicitAppConfigColormapAvailable = useMemo(() => {
     if (colorScheme.colorscales && colorScheme.colorscales.length > 0) {
       // find path
       const path = `::fo3d::pcd::${shadeBy}`;
@@ -106,6 +107,12 @@ export const usePcdMaterialControls = (
     }
   }, [colorScheme.colorscales, shadeBy]);
 
+  const isDefaultAppConfigColormapAvailable = useMemo(() => {
+    return Boolean(
+      colorScheme.defaultColorscale?.name || colorScheme.defaultColorscale?.list
+    );
+  }, [colorScheme.defaultColorscale]);
+
   /**
    * The precedence order for determining the color map to use:
    *
@@ -114,6 +121,13 @@ export const usePcdMaterialControls = (
    * 3. Default color (same as height, )
    */
   const colorMap = useMemo(() => {
+    if (shadeBy === SHADE_BY_HEIGHT) {
+      return {
+        list: DEFAULT_PCD_SHADING_GRADIENTS_RED_TO_BLUE,
+        source: ColormapSource.DEFAULT,
+      };
+    }
+
     if (colormapOverride && colormapOverride[shadeBy]) {
       return {
         list: colormapOverride?.[shadeBy] ?? null,
@@ -121,7 +135,7 @@ export const usePcdMaterialControls = (
       };
     }
 
-    if (isDatasetAppConfigColormapAvailable) {
+    if (isExplicitAppConfigColormapAvailable) {
       const path = `::fo3d::pcd::${shadeBy}`;
       const colorScale = colorScheme.colorscales.find(
         (colorScale) => colorScale.path === path
@@ -142,6 +156,21 @@ export const usePcdMaterialControls = (
       }
     }
 
+    if (isDefaultAppConfigColormapAvailable) {
+      const list = colorScheme.defaultColorscale?.list;
+      if (list) {
+        return {
+          list,
+          source: ColormapSource.DATASET_DEFAULT,
+        };
+      }
+
+      return {
+        list: getGradientFromSchemeName(colorScheme.defaultColorscale?.name),
+        source: ColormapSource.DATASET_DEFAULT,
+      };
+    }
+
     return {
       list: DEFAULT_PCD_SHADING_GRADIENTS_RED_TO_BLUE,
       source: ColormapSource.DEFAULT,
@@ -150,7 +179,8 @@ export const usePcdMaterialControls = (
     colormapOverride,
     colorScheme.colorscales,
     shadeBy,
-    isDatasetAppConfigColormapAvailable,
+    isExplicitAppConfigColormapAvailable,
+    isDefaultAppConfigColormapAvailable,
   ]);
 
   const colormapOverrideButton = useMemo(() => {
@@ -184,7 +214,7 @@ export const usePcdMaterialControls = (
                 }))
               }
             >
-              {isDatasetAppConfigColormapAvailable
+              {isExplicitAppConfigColormapAvailable
                 ? "Reset (App Config)"
                 : "Reset (App Default)"}
             </Button>
@@ -195,7 +225,7 @@ export const usePcdMaterialControls = (
   }, [
     setIsColormapModalOpen,
     colorMap.source,
-    isDatasetAppConfigColormapAvailable,
+    isExplicitAppConfigColormapAvailable,
     colormapOverride,
   ]);
 
@@ -297,7 +327,7 @@ export const usePcdMaterialControls = (
     isPointSizeAttenuated,
     opacity,
     pointSize,
-    colorMap: colorMap.list,
+    colorMap: colorMap.list as Readonly<ColorscaleInput["list"]>,
     colorMapSource: colorMap.source,
     isColormapModalOpen,
     setIsColormapModalOpen,

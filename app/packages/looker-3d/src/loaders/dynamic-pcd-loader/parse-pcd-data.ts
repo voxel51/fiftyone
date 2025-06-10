@@ -1,7 +1,36 @@
 import { decompressLZF } from "./decompress-lzf";
-import { getDataView } from "./get-data-view";
 import { parseHeader } from "./parse-header";
 import { PCDAttributes, PCDFieldType, PCDHeader } from "./types";
+
+const sanitizeNaNToZero = (v: number): number => {
+  return isNaN(v) ? 0 : v;
+};
+
+// helper to read raw values from DataView
+const getRawValue = (
+  dv: DataView,
+  byteOffset: number,
+  type: PCDFieldType,
+  size: number,
+  littleEndian: boolean
+): number => {
+  switch (type) {
+    case "F":
+      return size === 8
+        ? dv.getFloat64(byteOffset, littleEndian)
+        : dv.getFloat32(byteOffset, littleEndian);
+    case "I":
+      if (size === 1) return dv.getInt8(byteOffset);
+      if (size === 2) return dv.getInt16(byteOffset, littleEndian);
+      return dv.getInt32(byteOffset, littleEndian);
+    case "U":
+      if (size === 1) return dv.getUint8(byteOffset);
+      if (size === 2) return dv.getUint16(byteOffset, littleEndian);
+      return dv.getUint32(byteOffset, littleEndian);
+    default:
+      throw new Error(`Unsupported field type: ${type}`);
+  }
+};
 
 /**
  * Parses PCD data from ArrayBuffer and returns raw arrays for geometry attributes.
@@ -82,9 +111,8 @@ export const parsePCDData = (
       for (let si = 0; si < scalarFields.length; si++) {
         const f = scalarFields[si];
         const value = +parts[off[f]];
-        (attributes[f] as Float32Array)[validPointCount] = isNaN(value)
-          ? 0
-          : value;
+        (attributes[f] as Float32Array)[validPointCount] =
+          sanitizeNaNToZero(value);
       }
 
       // rgb special case
@@ -121,124 +149,112 @@ export const parsePCDData = (
       );
       const decompressed = decompressLZF(compressed, decompressedSize);
       dv = new DataView(decompressed.buffer);
-
       baseOffsets = fields.map((_, fi) => points * off[fields[fi]]);
     } else {
       dv = new DataView(data, header.headerLen);
     }
 
-    for (let i = 0; i < points; i++) {
-      // position
-      if (hasXYZ) {
-        let x: number, y: number, z: number;
+    // precompute scalar field indices and local array refs
+    const scalarFieldIndices = scalarFields.map((f) => fields.indexOf(f));
+    const scalarArrays = scalarFields.map((f) => attributes[f] as Float32Array);
+    const rgbArray = rgbIdx !== -1 ? (attributes.rgb as Float32Array) : null;
 
-        if (header.data === PCDFieldType.BinaryCompressed && baseOffsets) {
-          x = getDataView(
-            dv,
+    if (header.data === PCDFieldType.BinaryCompressed && baseOffsets) {
+      for (let i = 0; i < points; i++) {
+        // position
+        if (hasXYZ) {
+          const x = dv.getFloat32(
             baseOffsets[ix] + sizes[ix] * i,
-            types[ix],
-            sizes[ix],
             littleEndian
           );
-          y = getDataView(
-            dv,
+          const y = dv.getFloat32(
             baseOffsets[iy] + sizes[iy] * i,
-            types[iy],
-            sizes[iy],
             littleEndian
           );
-          z = getDataView(
-            dv,
+          const z = dv.getFloat32(
             baseOffsets[iz] + sizes[iz] * i,
-            types[iz],
-            sizes[iz],
             littleEndian
           );
-        } else {
-          const row = i * rowSize;
-          x = getDataView(dv, row + off.x, types[ix], sizes[ix], littleEndian);
-          y = getDataView(dv, row + off.y, types[iy], sizes[iy], littleEndian);
-          z = getDataView(dv, row + off.z, types[iz], sizes[iz], littleEndian);
+          if (isNaN(x) || isNaN(y) || isNaN(z)) continue;
+          const pbase = validPointCount * 3;
+          position[pbase] = x;
+          position[pbase + 1] = y;
+          position[pbase + 2] = z;
         }
 
-        // Skip points with NaN positions
-        if (isNaN(x) || isNaN(y) || isNaN(z)) {
-          continue;
-        }
-
-        const base = validPointCount * 3;
-        position[base] = x;
-        position[base + 1] = y;
-        position[base + 2] = z;
-      }
-
-      // scalar fields
-      for (let si = 0; si < scalarFields.length; si++) {
-        const f = scalarFields[si];
-        const idx = fields.indexOf(f);
-        let value: number;
-
-        if (header.data === PCDFieldType.BinaryCompressed && baseOffsets) {
-          value = getDataView(
+        // scalar fields
+        for (let si = 0; si < scalarFieldIndices.length; si++) {
+          const idx = scalarFieldIndices[si];
+          const raw = getRawValue(
             dv,
             baseOffsets[idx] + sizes[idx] * i,
             types[idx],
             sizes[idx],
             littleEndian
           );
-        } else {
-          const row = i * rowSize;
-          value = getDataView(
+          scalarArrays[si][validPointCount] = sanitizeNaNToZero(raw);
+        }
+
+        // rgb
+        if (rgbArray) {
+          const baseOff = baseOffsets[rgbIdx] + sizes[rgbIdx] * i;
+          const pbase = validPointCount * 3;
+          rgbArray[pbase] = dv.getUint8(baseOff + 2) / 255;
+          rgbArray[pbase + 1] = dv.getUint8(baseOff + 1) / 255;
+          rgbArray[pbase + 2] = dv.getUint8(baseOff) / 255;
+        }
+
+        validPointCount++;
+      }
+    } else {
+      for (let i = 0; i < points; i++) {
+        const rowBase = i * rowSize;
+        // position
+        if (hasXYZ) {
+          const x = dv.getFloat32(rowBase + off.x, littleEndian);
+          const y = dv.getFloat32(rowBase + off.y, littleEndian);
+          const z = dv.getFloat32(rowBase + off.z, littleEndian);
+          if (isNaN(x) || isNaN(y) || isNaN(z)) continue;
+          const pbase = validPointCount * 3;
+          position[pbase] = x;
+          position[pbase + 1] = y;
+          position[pbase + 2] = z;
+        }
+
+        // scalar fields
+        for (let si = 0; si < scalarFieldIndices.length; si++) {
+          const idx = scalarFieldIndices[si];
+          const raw = getRawValue(
             dv,
-            row + off[f],
+            rowBase + off[fields[idx]],
             types[idx],
             sizes[idx],
             littleEndian
           );
+          scalarArrays[si][validPointCount] = sanitizeNaNToZero(raw);
         }
 
-        (attributes[f] as Float32Array)[validPointCount] = isNaN(value)
-          ? 0
-          : value;
-      }
-
-      // rgb
-      if (rgbIdx !== -1) {
-        const rgbArr = attributes.rgb as Float32Array;
-        const base = validPointCount * 3;
-        if (header.data === PCDFieldType.BinaryCompressed && baseOffsets) {
-          const byteOffset = baseOffsets[rgbIdx] + sizes[rgbIdx] * i;
-          const r = dv.getUint8(byteOffset + 2) / 255;
-          const g = dv.getUint8(byteOffset + 1) / 255;
-          const b = dv.getUint8(byteOffset) / 255;
-          rgbArr[base] = r;
-          rgbArr[base + 1] = g;
-          rgbArr[base + 2] = b;
-        } else {
-          const row = i * rowSize;
-          const r = dv.getUint8(row + off.rgb + 2) / 255;
-          const g = dv.getUint8(row + off.rgb + 1) / 255;
-          const b = dv.getUint8(row + off.rgb) / 255;
-          rgbArr[base] = r;
-          rgbArr[base + 1] = g;
-          rgbArr[base + 2] = b;
+        // rgb
+        if (rgbArray) {
+          const pbase = validPointCount * 3;
+          rgbArray[pbase] = dv.getUint8(rowBase + off.rgb + 2) / 255;
+          rgbArray[pbase + 1] = dv.getUint8(rowBase + off.rgb + 1) / 255;
+          rgbArray[pbase + 2] = dv.getUint8(rowBase + off.rgb) / 255;
         }
-      }
 
-      validPointCount++;
+        validPointCount++;
+      }
     }
   }
 
   // trim arrays to actual size
   if (validPointCount < points) {
     position = position.slice(0, validPointCount * 3);
-    for (const f of scalarFields) {
-      attributes[f] = (attributes[f] as Float32Array).slice(0, validPointCount);
-    }
-    if (rgbIdx !== -1) {
-      attributes.rgb = (attributes.rgb as Float32Array).slice(
+    const allAttribsKeys = Object.keys(attributes);
+    for (const f of allAttribsKeys) {
+      attributes[f] = (attributes[f] as Float32Array).slice(
         0,
-        validPointCount * 3
+        f === "rgb" ? validPointCount * 3 : validPointCount
       );
     }
   }

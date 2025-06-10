@@ -9,7 +9,7 @@ import colormap from "colormap";
 export const getGradientFromSchemeName = (
   schemeName: string,
   numStops: number = NUM_STOPS_FOR_PREDEFINED_NAME
-): ColorscaleInput["list"] => {
+): Readonly<ColorscaleInput["list"]> => {
   const colors = colormap({
     colormap: schemeName,
     nshades: numStops,
@@ -24,7 +24,7 @@ export const getGradientFromSchemeName = (
 };
 
 const useGradientMap = (
-  colorMap: ColorscaleInput["list"],
+  colorMap: Readonly<ColorscaleInput["list"]>,
   flipY: boolean = false
 ) => {
   return useMemo(() => {
