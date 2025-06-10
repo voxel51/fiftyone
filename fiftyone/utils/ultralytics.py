@@ -10,7 +10,6 @@ Utilities for working with
 import itertools
 
 import numpy as np
-from pathlib import Path
 from PIL import Image
 
 import eta.core.utils as etau
@@ -19,16 +18,11 @@ import fiftyone.core.labels as fol
 import fiftyone.utils.torch as fout
 import fiftyone.core.utils as fou
 import fiftyone.zoo.models as fozm
-import fiftyone as fo
+from fiftyone.utils import ultralytics_internal
 
-fou.ensure_package("ultralytics")
-import ultralytics
-from ultralytics.nn import text_model
-
+ultralytics = fou.lazy_import("ultralytics")
 torch = fou.lazy_import("torch")
 torchvision = fou.lazy_import("torchvision")
-clip = fou.lazy_import("clip")
-mobileclip = fou.lazy_import("mobileclip")
 
 
 def convert_ultralytics_model(model):
@@ -510,7 +504,7 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
             if hasattr(ultralytics, "YOLOE") and isinstance(
                 model, ultralytics.YOLOE
             ):
-                model.model.clip_model = _build_text_model(
+                model.model.clip_model = ultralytics_internal.build_text_model(
                     "mobileclip:blt", device=self._device
                 )
                 embeddings = model.model.get_text_pe(
@@ -518,7 +512,7 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
                 )
                 model.set_classes(config.classes, embeddings)
             else:
-                model.model.clip_model = _build_text_model(
+                model.model.clip_model = ultralytics_internal(
                     "clip:ViT-B/32", device=self._device
                 )
                 model.set_classes(config.classes)
@@ -586,9 +580,9 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
     def _build_output_processor(self, config):
         if not config.output_processor_args:
             config.output_processor_args = {}
-        config.output_processor_args[
-            "post_processor"
-        ] = self._model.predictor.postprocess
+        config.output_processor_args["post_processor"] = (
+            self._model.predictor.postprocess
+        )
         output_processor = super()._build_output_processor(config)
         # Set post-processor to None for config JSON serialization.
         config.output_processor_args["post_processor"] = None
@@ -923,74 +917,3 @@ class UltralyticsOBBOutputProcessor(
     def __call__(self, output, _, confidence_thresh=None):
         preds = self.post_process(output)
         return obb_to_polylines(preds, confidence_thresh=confidence_thresh)
-
-
-def _build_text_model(variant, device=None):
-    base, size = variant.split(":")
-    if base == "clip":
-        return UltralyticsCLIP(size, device)
-    elif base == "mobileclip":
-        return UltralyticsMobileCLIP(size, device)
-    else:
-        raise ValueError(
-            f"Unrecognized base model: '{base}'. Supported base models: 'clip', 'mobileclip'."
-        )
-
-
-# TODO: Debug inheriting from text_model.CLIP and using TextModel init.
-class UltralyticsCLIP(text_model.TextModel):
-    def __init__(self, size, device):
-        super().__init__()
-        self.model = clip.load(
-            size, device=device, download_root=fo.config.model_zoo_dir
-        )[0]
-        self.to(device)
-        self.device = device
-        self.eval()
-
-    def tokenize(self, texts):
-        return clip.tokenize(texts).to(self.device)
-
-    def encode_text(self, texts, dtype=torch.float32):
-        txt_feats = self.model.encode_text(texts).to(dtype)
-        txt_feats = txt_feats / txt_feats.norm(p=2, dim=-1, keepdim=True)
-        return txt_feats
-
-
-class UltralyticsMobileCLIP(text_model.TextModel):
-    config_size_map = {
-        "s0": "s0",
-        "s1": "s1",
-        "s2": "s2",
-        "b": "b",
-        "blt": "b",
-    }
-
-    def __init__(self, size, device):
-        super().__init__()
-        config = self.config_size_map[size]
-        file = f"mobileclip_{size}.pt"
-        if not Path(file).is_file():
-            from ultralytics import download
-
-            download(
-                f"https://docs-assets.developer.apple.com/ml-research/datasets/mobileclip/{file}",
-                dir=fo.config.model_zoo_dir,
-            )
-        self.model = mobileclip.create_model_and_transforms(
-            f"mobileclip_{config}",
-            pretrained=Path(fo.config.model_zoo_dir) / Path(file),
-            device=device,
-        )[0]
-        self.tokenizer = mobileclip.get_tokenizer(f"mobileclip_{config}")
-        self.to(device)
-        self.device = device
-        self.eval()
-
-    def tokenize(self, texts):
-        return self.tokenizer(texts).to(self.device)
-
-    def encode_text(self, texts, dtype=torch.float32):
-        text_features = self.model.encode_text(texts).to(dtype)
-        text_features /= text_features.norm(p=2, dim=-1, keepdim=True)
-        return text_features
