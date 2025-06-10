@@ -57,7 +57,7 @@ Clicking the "Scan Dataset" button presents two choices for execution:
 .. note::
 
     The "Execute" option is **only for testing**. In this mode, computation is
-    performend synchronously and will timeout if it does not complete within a
+    performed synchronously and will timeout if it does not complete within a
     few minutes.
 
     Choose "Schedule" for all production data, which schedules the scan for

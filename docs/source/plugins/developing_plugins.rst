@@ -219,7 +219,7 @@ The following fields are available:
     +------------------------------+-----------+-----------------------------------------------------------------------------+
     | `operators`                  |           | A list of operator names registered by the plugin, if any                   |
     +------------------------------+-----------+-----------------------------------------------------------------------------+
-    | `panels`                     |           | A list of panel names registred by the plugin, if any                       |
+    | `panels`                     |           | A list of panel names registered by the plugin, if any                       |
     +------------------------------+-----------+-----------------------------------------------------------------------------+
     | `secrets`                    |           | A list of secret keys that may be used by the plugin, if any                |
     +------------------------------+-----------+-----------------------------------------------------------------------------+
@@ -1805,7 +1805,7 @@ subsequent sections.
                 surfaces="grid",  # default = "grid"
 
                 # Markdown-formatted text that describes the panel. This is
-                # rendererd in a tooltip when the help icon in the panel
+                # rendered in a tooltip when the help icon in the panel
                 # title is hovered over
                 help_markdown="A description of the panel",
             )
@@ -2142,7 +2142,7 @@ behavior:
             surfaces="grid",  # default = "grid"
 
             # Markdown-formatted text that describes the panel. This is
-            # rendererd in a tooltip when the help icon in the panel
+            # rendered in a tooltip when the help icon in the panel
             # title is hovered over
             help_markdown="A description of the panel",
         )

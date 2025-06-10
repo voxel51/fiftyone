@@ -878,7 +878,7 @@ Includes all updates from :ref:`FiftyOne 1.1.0 <release-notes-v1.1.0>`, plus:
 - Added support for evaluating models natively from the
   :ref:`Model Evaluation panel <app-model-evaluation-panel>`
 - Added support for :ref:`configuring an SMTP server <identity-providers>` for
-  sending user invitiations via email when running in
+  sending user invitations via email when running in
   :ref:`Internal Mode <internal-mode>`
 
 .. _release-notes-v1.1.0:
@@ -6903,7 +6903,7 @@ Docs
 - Added a recipe demonstrating how to
   :doc:`convert datasets </recipes/convert_datasets>` on disk between common
   formats
-- Added recipes demonstratings how to write your own
+- Added recipes demonstrating how to write your own
   :doc:`custom dataset importers </recipes/custom_importer>`,
   :doc:`custom dataset exporters </recipes/custom_exporter>`, and
   :doc:`custom sample parsers </recipes/custom_parser>`

@@ -232,7 +232,7 @@ about the dataset:
     | `splits`                     |           | A list of the dataset's supported splits. This should be omitted if the     |
     |                              |           | dataset does not contain splits                                             |
     +------------------------------+-----------+-----------------------------------------------------------------------------+
-    | `size_samples`               |           | The totaal number of samples in the dataset, or a list of per-split sizes   |
+    | `size_samples`               |           | The total number of samples in the dataset, or a list of per-split sizes   |
     +------------------------------+-----------+-----------------------------------------------------------------------------+
 
 Here are two example dataset YAML files:
