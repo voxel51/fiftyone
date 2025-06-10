@@ -1370,6 +1370,8 @@ supports:
     +--------------+----------------+-------------------------------+
     | E            | Ego-view       | Reset the camera to ego view  |
     +--------------+----------------+-------------------------------+
+    | R            | Render         | Open render preferences       |
+    +--------------+----------------+-------------------------------+
     | ESC          | Escape context | Escape the current context    |
     +--------------+----------------+-------------------------------+
 
@@ -1392,6 +1394,87 @@ the observed dynamic range of `r` values for each sample.
 
 Similarly, when coloring by height, the `z` value of each point is mapped to
 the full colormap using the same strategy.
+
+.. _app-3d-dynamic-coloring:
+
+Dynamic point cloud coloring
+---------------------------
+
+FiftyOne now supports dynamic coloring of point clouds based on any attribute
+in your PCD file. This allows you to visualize and analyze point cloud data in
+new ways, such as:
+
+- Working with semantic segmentation data where different classes need distinct
+  colors
+- Analyzing LIDAR data where you want to visualize intensity values to identify
+  reflective surfaces
+- Inspecting custom attributes like confidence scores or prediction errors
+- Comparing multiple attributes by quickly switching between different color
+  schemes
+
+
+.. image:: /images/app/pcd-dynamic-coloring.gif
+   :alt: pcd-dynamic-coloring
+   :align: center
+
+To use dynamic coloring:
+
+1. Press `R` or click the render preferences icon in the 3D visualizer menu
+2. Select the attribute to color by from the "Shade by" dropdown
+3. Optionally, override the color map from the available options by clicking
+   the "Override" button
+
+The color map selection follows this precedence order:
+
+1. Color map from browser storage (if previously overridden)
+2. Color map from dataset app config's color scheme, in this order:
+   a. Explicit color map defined in `colorscales` array for the specific attribute
+   b. Default color map defined in `default_color_scale` if no explicit map exists
+3. Fallback color map (red-to-blue gradient)
+
+When defining color maps in the dataset app config, you must use the prefix
+`::fo3d::pcd::` followed by the attribute name in the `path` field. For example,
+to define a color map for the `lidar_id` attribute, the path should be
+`::fo3d::pcd::lidar_id`. See the example below for more details.
+
+You can override the color map for any attribute by clicking the "Override"
+button in the render preferences panel. This will open a new UI where you can:
+
+- Add or remove color stops
+- Preview the gradient
+- Reset to the app config or default color map
+
+.. note::
+
+    Color map overrides are persisted in your browser's local storage, so they
+    will be remembered across sessions.
+
+To define default color maps for your dataset, you can configure them in your
+dataset's app config:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    # Configure color maps for point cloud attributes
+    dataset.app_config.color_scheme = fo.ColorScheme(
+        colorscales=[
+            {
+                "path": "::fo3d::pcd::lidar_id",
+                "name": "viridis",  # Use a named colormap
+            },
+            {
+                "path": "::fo3d::pcd::intensity",
+                "list": [  # Or define a custom colormap
+                    {"value": 0, "color": "rgb(0, 0, 255)"},
+                    {"value": 1, "color": "rgb(0, 255, 255)"},
+                ],
+            },
+        ],
+        default_colorscale={"name": "jet"},  # Default for other attributes
+    )
+    dataset.save()
 
 .. _app-3d-orthographic-projections:
 
