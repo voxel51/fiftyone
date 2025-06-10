@@ -44,15 +44,6 @@ jobs:
     env:
       FIFTYONE_DO_NOT_TRACK: true
     steps:
-      - name: Clone fiftyone
-        uses: actions/checkout@v4
-      # - name: Checkout fiftyone-teams
-      #  uses: actions/checkout@v4
-      #  with:
-      #    repository: voxel51/fiftyone-teams
-      #    path: fiftyone-teams
-      #    token: ${{ secrets.RO_FOT_FG_PAT }}
-      #    ref: main
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
