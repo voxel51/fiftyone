@@ -67,6 +67,8 @@ if [ ${BUILD_APP} = true ]; then
     fi
     cd app
     echo "Building the App. This will take a minute or two..."
+    corepack enable
+    corepack prepare yarn --activate
     yarn install > /dev/null 2>&1
     yarn build
     cd ..
