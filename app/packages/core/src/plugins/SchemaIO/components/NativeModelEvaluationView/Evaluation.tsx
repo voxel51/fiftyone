@@ -26,6 +26,7 @@ import Status from "./Status";
 import { tabStyles } from "./styles";
 import { ConcreteEvaluationType } from "./Types";
 import { computeSortedCompareKeys } from "./utils";
+import { useMutation } from "@fiftyone/state";
 
 export default function Evaluation(props: EvaluationProps) {
   const {
@@ -81,7 +82,9 @@ export default function Evaluation(props: EvaluationProps) {
   const status = useMemo(() => {
     return statuses[id];
   }, [statuses, id]);
-  const { can_edit_status, can_rename } = data?.permissions || {};
+  const { can_edit_status, can_rename, can_delete_evaluation } =
+    data?.permissions || {};
+  const [canRename, renameMsg] = useMutation(can_rename, "rename evaluation");
 
   useEffect(() => {
     if (!evaluation) {
@@ -153,12 +156,8 @@ export default function Evaluation(props: EvaluationProps) {
               onSave={(newLabel) => {
                 onRename(name, newLabel);
               }}
-              disabled={!can_rename}
-              title={
-                !can_rename
-                  ? "You do not have permission to rename evaluation"
-                  : undefined
-              }
+              disabled={!canRename}
+              title={renameMsg}
             />
           </Stack>
 
@@ -260,7 +259,12 @@ export default function Evaluation(props: EvaluationProps) {
             status={status}
             canEdit={can_edit_status}
           />
-          {!compareKey && <ActionMenu evaluationName={evaluation.info.key} />}
+          {!compareKey && (
+            <ActionMenu
+              evaluationName={evaluation.info.key}
+              canDelete={can_delete_evaluation}
+            />
+          )}
         </Stack>
       </Stack>
 

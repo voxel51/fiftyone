@@ -385,12 +385,11 @@ export default function Scenarios(props) {
             }}
             evalKey={key}
             compareKey={compareKey}
-            readOnly={!canCreate}
+            canCreate={canCreate}
           />
           <Actions
             onDelete={onDelete}
             onEdit={onEdit}
-            canCreate={canCreate}
             canEdit={canEdit}
             canDelete={canDelete}
           />
