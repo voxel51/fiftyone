@@ -1395,7 +1395,7 @@ function ConfidenceDistributionChart(props) {
     });
     if (compareSubsetsData) {
       const compareY = [];
-      for (const subset in compareSubsetsData) {
+      for (const subset of subsets) {
         const subsetData = compareSubsetsData[subset];
         const { confidence_distribution } = subsetData;
         compareY.push(confidence_distribution[mode]);
@@ -1422,7 +1422,7 @@ function ConfidenceDistributionChart(props) {
       const compareLowerfence = [];
       const compareUpperfence = [];
 
-      for (const subset in subsets_data) {
+      for (const subset of subsets) {
         const subsetData = subsets_data[subset];
         const compareSubsetData = compareSubsetsData[subset];
         const { confidence_distribution } = subsetData;
@@ -1473,7 +1473,7 @@ function ConfidenceDistributionChart(props) {
       const lowerfence = [];
       const upperfence = [];
 
-      for (const subset in subsets_data) {
+      for (const subset of subsets) {
         const subsetData = subsets_data[subset];
         const { confidence_distribution } = subsetData;
         x.push(subset);
