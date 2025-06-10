@@ -118,7 +118,8 @@ export const usePcdMaterialControls = (
    *
    * 1. Color map from browser storage (colormapOverride)
    * 2. Color map from dataset app config (colorScheme.colorscales)
-   * 3. Default color (same as height, )
+   * 3. Color map from default dataset app config (colorScheme.defaultColorscale)
+   * 3. Fallback (red-to-blue gradient)
    */
   const colorMap = useMemo(() => {
     if (shadeBy === SHADE_BY_HEIGHT) {

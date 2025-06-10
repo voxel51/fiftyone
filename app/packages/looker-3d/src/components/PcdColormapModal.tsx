@@ -1,8 +1,10 @@
 import { Button, Dialog } from "@fiftyone/components";
+import Selector from "@fiftyone/components/src/components/Selector/Selector";
 import { getRGBColorFromPool } from "@fiftyone/core/src/components/ColorModal/utils";
 import Input from "@fiftyone/core/src/components/Common/Input";
 import { ColorscaleInput } from "@fiftyone/looker/src/state";
 import * as fos from "@fiftyone/state";
+import { interpolateColorsHex, rgbStringToHex } from "@fiftyone/utilities";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import IconButton from "@mui/material/IconButton";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -10,37 +12,29 @@ import { useRecoilValue } from "recoil";
 import tunnel from "tunnel-rat";
 import { getGradientFromSchemeName } from "../renderables/pcd/shaders/gradientMap";
 
+const COLORMAP_OPTIONS = [
+  "Grayscale",
+  "Inferno",
+  "Jet",
+  "Magma",
+  "Plasma",
+  "Turbo",
+  "Viridis",
+  "CyanToYellow",
+  "Legacy",
+] as const;
+
+type ColormapType = typeof COLORMAP_OPTIONS[number];
+
 interface PcdColormapModalProps {
+  attribute: string;
+  initialColorscale?: ColorscaleInput;
   isOpen: boolean;
   onClose: () => void;
-  attribute: string;
   onSave: (colorscaleList: Readonly<ColorscaleInput["list"]>) => void;
-  initialColorscale?: ColorscaleInput;
 }
 
 export const PcdColorMapTunnel = tunnel();
-
-/**
- * Convert RGB string to hex
- *
- * @param rgb - RGB string (e.g. "rgb(255, 255, 255)")
- * @returns hex string (e.g. "#ffffff")
- */
-const rgbToHex = (rgb: string): string => {
-  const match = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
-  if (!match) return rgb;
-
-  const r = parseInt(match[1]);
-  const g = parseInt(match[2]);
-  const b = parseInt(match[3]);
-
-  return (
-    "#" +
-    r.toString(16).padStart(2, "0") +
-    g.toString(16).padStart(2, "0") +
-    b.toString(16).padStart(2, "0")
-  );
-};
 
 const GradientPreview: React.FC<{
   stops: Readonly<ColorscaleInput["list"]>;
@@ -82,6 +76,7 @@ const ColorStopRow: React.FC<{
 }) => {
   const isFirst = index === 0;
   const isLast = index === total - 1;
+
   const [localValue, setLocalValue] = useState(String(stop.value));
 
   const handleValueChange = (value: string) => {
@@ -106,7 +101,7 @@ const ColorStopRow: React.FC<{
         alignItems: "center",
         marginBottom: "8px",
         transition: "background-color 0.3s ease",
-        backgroundColor: isNew ? "rgba(255, 255, 0, 0.2)" : "transparent",
+        backgroundColor: isNew ? "rgba(255, 128, 30, 0.1)" : "transparent",
         padding: "4px",
         borderRadius: "4px",
       }}
@@ -162,19 +157,26 @@ const PcdColormapModal: React.FC<PcdColormapModalProps> = ({
   const colorScheme = useRecoilValue(fos.colorScheme);
   const [hasChanges, setHasChanges] = useState(false);
   const [newRowIndices, setNewRowIndices] = useState<Set<number>>(new Set());
+  const [selectedColormap, setSelectedColormap] = useState<ColormapType | null>(
+    null
+  );
 
   const defaultValue = useMemo(
     () => [
       {
         value: 0,
-        color: rgbToHex(getRGBColorFromPool(colorScheme.colorPool)),
+        color: rgbStringToHex(getRGBColorFromPool(colorScheme.colorPool)),
       },
       {
         value: 1,
-        color: rgbToHex(getRGBColorFromPool(colorScheme.colorPool)),
+        color: rgbStringToHex(getRGBColorFromPool(colorScheme.colorPool)),
       },
     ],
     [colorScheme.colorPool]
+  );
+
+  const [numStops, setNumStops] = useState(
+    initialColorscale?.list?.length ?? 20
   );
 
   const [colorList, setColorList] = useState(() => {
@@ -182,33 +184,52 @@ const PcdColormapModal: React.FC<PcdColormapModalProps> = ({
       return initialColorscale.list;
     }
     if (initialColorscale?.name) {
-      return getGradientFromSchemeName(initialColorscale.name);
+      return getGradientFromSchemeName(initialColorscale.name, numStops);
     }
     return defaultValue;
   });
 
+  const handleColormapSelect = useCallback(
+    (value: string) => {
+      const colormap = value as ColormapType;
+      setSelectedColormap(colormap);
+      setNumStops(colormap === "Legacy" ? 10 : 20);
+
+      const gradient = getGradientFromSchemeName(colormap, numStops);
+      setColorList(gradient);
+      setHasChanges(true);
+    },
+    [numStops]
+  );
+
   const handleSave = useCallback(() => {
     onSave(colorList);
     setHasChanges(false);
-    setNewRowIndices(new Set()); // Clear new row highlights on save
+    setNewRowIndices(new Set());
   }, [colorList, onSave]);
 
-  const handleColorChange = (index: number, color: string) => {
-    const newList = [...colorList];
-    newList[index] = { ...newList[index], color };
-    setColorList(newList);
-    setHasChanges(true);
-  };
+  const handleColorChange = useCallback(
+    (index: number, color: string) => {
+      const newList = [...colorList];
+      newList[index] = { ...newList[index], color };
+      setColorList(newList);
+      setHasChanges(true);
+    },
+    [colorList]
+  );
 
-  const handleValueChange = (index: number, value: number) => {
-    const newList = [...colorList];
-    newList[index] = { ...newList[index], value };
-    newList.sort((a, b) => a.value - b.value);
-    setColorList(newList);
-    setHasChanges(true);
-  };
+  const handleValueChange = useCallback(
+    (index: number, value: number) => {
+      const newList = [...colorList];
+      newList[index] = { ...newList[index], value };
+      newList.sort((a, b) => a.value - b.value);
+      setColorList(newList);
+      setHasChanges(true);
+    },
+    [colorList]
+  );
 
-  const addColorStop = () => {
+  const addColorStop = useCallback(() => {
     const newList = [...colorList];
     // find the largest gap between adjacent stops
     let maxGap = 0;
@@ -229,34 +250,76 @@ const PcdColormapModal: React.FC<PcdColormapModalProps> = ({
     // insert the new stop at the midpoint
     newList.splice(insertIndex + 1, 0, {
       value: midValue,
-      color: rgbToHex(getRGBColorFromPool(colorScheme.colorPool)),
+      color: rgbStringToHex(getRGBColorFromPool(colorScheme.colorPool)),
     });
 
     setColorList(newList);
     // Add the new index to the set of new rows
     setNewRowIndices((prev) => new Set([...prev, insertIndex + 1]));
     setHasChanges(true);
-  };
+  }, [colorList]);
 
-  const removeColorStop = (index: number) => {
-    // keep at least two stops
-    if (colorList.length <= 2) return;
-    const newList = colorList.filter((_, i) => i !== index);
-    setColorList(newList);
-    // Remove the index from newRowIndices and adjust other indices
-    setNewRowIndices((prev) => {
-      const newSet = new Set<number>();
-      prev.forEach((i) => {
-        if (i < index) {
-          newSet.add(i);
-        } else if (i > index) {
-          newSet.add(i - 1);
-        }
+  const removeColorStop = useCallback(
+    (index: number) => {
+      // keep at least two stops
+      if (colorList.length <= 2) return;
+      const newList = colorList.filter((_, i) => i !== index);
+      setColorList(newList);
+      // Remove the index from newRowIndices and adjust other indices
+      setNewRowIndices((prev) => {
+        const newSet = new Set<number>();
+        prev.forEach((i) => {
+          if (i < index) {
+            newSet.add(i);
+          } else if (i > index) {
+            newSet.add(i - 1);
+          }
+        });
+        return newSet;
       });
-      return newSet;
-    });
-    setHasChanges(true);
-  };
+      setHasChanges(true);
+    },
+    [colorList]
+  );
+
+  const redistributeStops = useCallback(
+    (newNumStops: number) => {
+      if (!colorList || colorList.length < 2) return;
+
+      const newStops: Array<{ value: number; color: string }> = [];
+      for (let i = 0; i < newNumStops; i++) {
+        const position = i / (newNumStops - 1);
+
+        // find two stops that bound this position
+        let lowerStop = colorList[0];
+        let upperStop = colorList[colorList.length - 1];
+
+        for (let j = 0; j < colorList.length - 1; j++) {
+          if (
+            colorList[j].value <= position &&
+            colorList[j + 1].value >= position
+          ) {
+            lowerStop = colorList[j];
+            upperStop = colorList[j + 1];
+            break;
+          }
+        }
+
+        // calculate interpolation factor
+        const factor =
+          (position - lowerStop.value) / (upperStop.value - lowerStop.value);
+
+        newStops.push({
+          value: position,
+          color: interpolateColorsHex(lowerStop.color, upperStop.color, factor),
+        });
+      }
+
+      setColorList(newStops);
+      setHasChanges(true);
+    },
+    [colorList]
+  );
 
   return (
     <Dialog
@@ -269,8 +332,99 @@ const PcdColormapModal: React.FC<PcdColormapModalProps> = ({
         <h2 id={`colormap-modal-${attribute}`}>Colormap for {attribute}</h2>
         <div style={{ padding: "1rem" }}>
           <div style={{ marginBottom: "1rem" }}>
+            <Selector
+              value={selectedColormap || ""}
+              onSelect={handleColormapSelect}
+              placeholder="Select a predefined colormap..."
+              component={({ value }) => {
+                return <div>{value}</div>;
+              }}
+              useSearch={(search: string) => ({
+                values: COLORMAP_OPTIONS.filter((option) =>
+                  option.toLowerCase().includes(search.toLowerCase())
+                ),
+              })}
+              containerStyle={{ width: "100%", marginBottom: "16px" }}
+            />
+            {selectedColormap !== "Grayscale" &&
+              selectedColormap !== "Legacy" &&
+              selectedColormap !== "CyanToYellow" &&
+              selectedColormap !== "Turbo" && (
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "4px",
+                  }}
+                >
+                  <div>
+                    <span>Number of stops</span>
+                    <div
+                      style={{
+                        color: "#666",
+                        fontSize: "0.8rem",
+                        marginLeft: "8px",
+                        display: "inline-block",
+                      }}
+                    >
+                      (Must be between 2 and 256 stops)
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <Input
+                      value={numStops === -1 ? "" : String(numStops)}
+                      setter={(value) => {
+                        const num = parseInt(value);
+                        if (!isNaN(num)) {
+                          if (num >= 2 && num <= 256) {
+                            setNumStops(num);
+                          } else {
+                            setNumStops(1);
+                          }
+                        } else {
+                          setNumStops(-1);
+                        }
+                      }}
+                      style={{ width: "100px" }}
+                    />
+                    <Button
+                      onClick={() => {
+                        if (selectedColormap) {
+                          const gradient = getGradientFromSchemeName(
+                            selectedColormap,
+                            numStops
+                          );
+                          setColorList(gradient);
+                          setHasChanges(true);
+                        } else {
+                          redistributeStops(numStops);
+                        }
+                      }}
+                      disabled={numStops < 2 || numStops > 256}
+                      style={{
+                        opacity: numStops < 2 || numStops > 256 ? 0.5 : 1,
+                      }}
+                    >
+                      Apply
+                    </Button>
+                    {colorList?.length && (
+                      <span style={{ color: "#666", fontSize: "0.9rem" }}>
+                        Current: {colorList.length} stops
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+          </div>
+          <div style={{ marginBottom: "4px" }}>
             Define a custom colorscale (range between 0 and 1):
-            <br />* must include 0 and 1
           </div>
           <GradientPreview stops={colorList} />
           <div style={{ marginBottom: "16px" }}>
@@ -289,12 +443,12 @@ const PcdColormapModal: React.FC<PcdColormapModalProps> = ({
               <div></div>
               <div></div>
             </div>
-            {colorList.map((stop, index) => (
+            {(colorList ?? []).map((stop, index) => (
               <ColorStopRow
-                key={index}
+                key={`${stop.value}-${stop.color}`}
                 stop={stop}
                 index={index}
-                total={colorList.length}
+                total={colorList?.length ?? 0}
                 onValueChange={handleValueChange}
                 onColorChange={handleColorChange}
                 onRemove={removeColorStop}

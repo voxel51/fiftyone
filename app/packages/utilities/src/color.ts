@@ -74,6 +74,28 @@ export const rgbToHexCached = (color: RGB) => {
   return rgbToHexCache[key];
 };
 
+/**
+ * Convert RGB string to hex
+ *
+ * @param rgb - RGB string (e.g. "rgb(255, 255, 255)")
+ * @returns hex string (e.g. "#ffffff")
+ */
+export const rgbStringToHex = (rgb: string): string => {
+  const match = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+  if (!match) return rgb;
+
+  const r = parseInt(match[1]);
+  const g = parseInt(match[2]);
+  const b = parseInt(match[3]);
+
+  return (
+    "#" +
+    r.toString(16).padStart(2, "0") +
+    g.toString(16).padStart(2, "0") +
+    b.toString(16).padStart(2, "0")
+  );
+};
+
 export const getRGBA = (value: number): RGBA => {
   const uint32 = new Uint32Array(1);
   uint32[0] = value;
@@ -235,6 +257,33 @@ export const hexToRgb = (hex: string): RGB => {
         parseInt(result[3], 16),
       ]
     : null;
+};
+
+export const interpolateColorsHex = (
+  color1: string,
+  color2: string,
+  factor: number
+): string => {
+  const rgb1 = hexToRgb(color1);
+  const rgb2 = hexToRgb(color2);
+
+  if (!rgb1 || !rgb2) return color1;
+
+  const [r, g, b] = interpolateColorsRgb(rgb1, rgb2, factor);
+
+  return rgbToHexCached([r, g, b]);
+};
+
+export const interpolateColorsRgb = (
+  rgb1: RGB,
+  rgb2: RGB,
+  factor: number
+): RGB => {
+  return [
+    Math.round(rgb1[0] + (rgb2[0] - rgb1[0]) * factor),
+    Math.round(rgb1[1] + (rgb2[1] - rgb1[1]) * factor),
+    Math.round(rgb1[2] + (rgb2[2] - rgb1[2]) * factor),
+  ];
 };
 
 export const default_app_color = [

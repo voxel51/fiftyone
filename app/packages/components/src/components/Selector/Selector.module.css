@@ -42,6 +42,7 @@
   box-shadow: 0 2px 20px var(--fo-palette-custom-shadow);
   box-sizing: border-box;
   width: auto;
+  min-width: 100px !important;
   overflow: visible;
   position: absolute;
   overflow: auto;
@@ -80,7 +81,8 @@
   vertical-align: bottom;
   -webkit-animation: ellipsis steps(4, end) 900ms infinite;
   animation: ellipsis steps(4, end) 900ms infinite;
-  content: "\2026"; /* ascii code for the ellipsis character */
+  content: "\2026";
+  /* ascii code for the ellipsis character */
   width: 0px;
 }
 
