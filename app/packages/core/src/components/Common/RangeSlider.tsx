@@ -131,6 +131,10 @@ const BaseSlider = <T extends Range | number>({
     bounds
   );
 
+  const handledRange = Array.isArray(value)
+    ? [value[0] ?? bounds[0], value[1] ?? bounds[1]]
+    : value;
+
   return (
     <>
       {hasTitle ? (
@@ -161,7 +165,7 @@ const BaseSlider = <T extends Range | number>({
           data-cy="slider"
           onMouseDown={() => setClicking(true)}
           onMouseUp={() => setClicking(false)}
-          value={value}
+          value={handledRange}
           onChange={(e, v) => {
             if (
               v instanceof Array

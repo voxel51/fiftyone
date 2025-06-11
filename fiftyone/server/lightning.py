@@ -260,7 +260,6 @@ def _resolve_lightning_path_queries(
                 dataset,
                 1,
                 is_frame_field,
-                floats=True,
                 limit=path.max_documents_search,
             ),
             _first(
@@ -268,7 +267,6 @@ def _resolve_lightning_path_queries(
                 dataset,
                 -1,
                 is_frame_field,
-                floats=True,
                 limit=path.max_documents_search,
             ),
         ] + [
@@ -504,39 +502,51 @@ def _first(
     dataset: fo.Dataset,
     sort: t.Union[t.Literal[-1], t.Literal[1]],
     is_frame_field: bool,
-    floats=False,
     limit=None,
 ):
     pipeline = []
     if limit:
         pipeline.append({"$limit": limit})
 
+    matched_arrays = _match_arrays(dataset, path, is_frame_field)
     pipeline += [
         {"$sort": {path: sort}},
-        {"$project": {"_id": f"${path}"}},
     ]
 
-    matched_arrays = _match_arrays(dataset, path, is_frame_field)
     if matched_arrays:
-        pipeline += matched_arrays
-    elif floats:
-        pipeline.extend(_handle_nonfinites(sort))
+        pipeline.append(
+            {
+                "$project": {
+                    "_id": {
+                        "$reduce": {
+                            "input": f"${path}",
+                            "initialValue": None,
+                            "in": {
+                                "$min"
+                                if sort == 1
+                                else "$max": [
+                                    "$$value",
+                                    "$$this",
+                                ]
+                            },
+                        }
+                    }
+                }
+            }
+        )
+    else:
+        pipeline.append({"$project": {"_id": f"${path}"}})
 
-    pipeline.extend([{"$limit": 1}])
-    unwound = _unwind(dataset, path, is_frame_field)
-    if unwound:
-        pipeline += unwound
-        if floats:
+        field = dataset.get_field(path)
+        while isinstance(field, fof.ListField):
+            field = field.field
+
+        if isinstance(field, (fo.DateField, fo.DateTimeField)):
+            pipeline.append({"$match": {"_id": {"$ne": None}}})
+        else:
             pipeline.extend(_handle_nonfinites(sort))
 
-    return pipeline + [
-        {
-            "$group": {
-                "_id": None,
-                "value": {"$min" if sort == 1 else "$max": "$_id"},
-            }
-        }
-    ]
+    return pipeline + [{"$limit": 1}]
 
 
 def _handle_nonfinites(sort: t.Union[t.Literal[-1], t.Literal[1]]):
@@ -649,13 +659,6 @@ def _match_arrays(dataset: fo.Dataset, path: str, is_frame_field: bool):
 def _parse_result(data):
     if data and data[0]:
         value = data[0]
-        if "value" in value:
-            value = value["value"]
-            return (
-                value
-                if not isinstance(value, float) or math.isfinite(value)
-                else None
-            )
 
         return value.get("_id", None)
 

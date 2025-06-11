@@ -651,6 +651,10 @@ export type Primitive =
   | undefined
   | { datetime: number };
 
+export const isDateOrDateTime = (ftype: string) => {
+  return ftype === DATE_FIELD || ftype === DATE_TIME_FIELD;
+};
+
 export const formatPrimitive = ({
   ftype,
   timeZone,

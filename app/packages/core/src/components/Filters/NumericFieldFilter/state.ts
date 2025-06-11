@@ -1,5 +1,12 @@
 import type { Nonfinite } from "@fiftyone/state";
-import { boundsAtom, nonfiniteData, rangeAtom } from "@fiftyone/state";
+import {
+  boundsAtom,
+  isListField,
+  isOfDocumentFieldList,
+  nonfiniteData,
+  queryPerformance,
+  rangeAtom,
+} from "@fiftyone/state";
 import { selectorFamily } from "recoil";
 
 export const FLOAT_NONFINITES: Nonfinite[] = ["inf", "ninf", "nan"];
@@ -9,6 +16,15 @@ export const hasBounds = selectorFamily({
   get:
     (params: { path: string; modal: boolean; shouldCalculate?: boolean }) =>
     ({ get }) => {
+      if (
+        !params.modal &&
+        get(queryPerformance) &&
+        (get(isOfDocumentFieldList(params.path)) ||
+          get(isListField(params.path)))
+      ) {
+        return true;
+      }
+
       const shouldCalculate = params.shouldCalculate ?? true;
       return shouldCalculate
         ? Boolean(get(boundsAtom(params))?.every((b) => b !== null))

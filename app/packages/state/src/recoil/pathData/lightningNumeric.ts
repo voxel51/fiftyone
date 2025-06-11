@@ -73,7 +73,7 @@ export const lightningBounds = selectorFamily<[number, number] | null, string>({
       const data = get(lightningNumericResults(path));
 
       if (typeof data.max !== "number" || typeof data.min !== "number") {
-        return null;
+        return [null, null];
       }
 
       return [data.min, data.max];
