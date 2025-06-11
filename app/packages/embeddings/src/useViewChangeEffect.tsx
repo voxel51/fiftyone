@@ -41,10 +41,20 @@ export function useViewChangeEffect() {
     setLoadingPlot(true);
     fetchPlot({ datasetName, filters, brainKey, view, labelField, slices })
       .catch((err) => {
-        setLoadingPlotError(err);
-        // setBrainKey(null);
+        setLoadingPlotError({
+          message: err.message,
+          stack: err.stack,
+        });
       })
       .then((res) => {
+        warnings.clear();
+
+        if (res?.error) {
+          console.error(res.stack);
+          setLoadingPlotError(res);
+          return;
+        }
+
         if (!res || !res.index_size) {
           if (res?.index_size === 0) {
             warnings.add(`No samples in the current view.`);
@@ -52,12 +62,13 @@ export function useViewChangeEffect() {
           return;
         }
 
+        
+
         const notUsed = res.index_size - res.available_count;
         const missing = res.missing_count;
         const total = res.index_size;
         const type = res.patches_field ? "patches" : "samples";
 
-        warnings.clear();
 
         if (missing > 0) {
           warnings.add(
