@@ -508,18 +508,35 @@ def _first(
     if limit:
         pipeline.append({"$limit": limit})
 
-    matched_arrays = _match_arrays(dataset, path, is_frame_field)
     pipeline += [
         {"$sort": {path: sort}},
     ]
 
+    full_path = f"frames.{path}" if is_frame_field else path
+    matched_arrays = _match_arrays(dataset, full_path, is_frame_field)
     if matched_arrays:
+        list_of_lists = _is_list_of_lists(dataset, path, is_frame_field)
+        if list_of_lists:
+            pipeline.append(
+                {
+                    "$project": {
+                        "_id": {
+                            "$reduce": {
+                                "input": f"${path}",
+                                "initialValue": [],
+                                "in": {"$concatArrays": ["$$value", "$$this"]},
+                            }
+                        }
+                    }
+                }
+            )
+
         pipeline.append(
             {
                 "$project": {
                     "_id": {
                         "$reduce": {
-                            "input": f"${path}",
+                            "input": "$_id" if list_of_lists else f"${path}",
                             "initialValue": None,
                             "in": {
                                 "$min"
@@ -534,19 +551,22 @@ def _first(
                 }
             }
         )
-    else:
-        pipeline.append({"$project": {"_id": f"${path}"}})
+        return pipeline + [{"$limit": 1}] + _filter_result(dataset, path, sort)
 
-        field = dataset.get_field(path)
-        while isinstance(field, fof.ListField):
-            field = field.field
+    pipeline.append({"$project": {"_id": f"${path}"}})
 
-        if isinstance(field, (fo.DateField, fo.DateTimeField)):
-            pipeline.append({"$match": {"_id": {"$ne": None}}})
-        else:
-            pipeline.extend(_handle_nonfinites(sort))
+    return pipeline + _filter_result(dataset, path, sort) + [{"$limit": 1}]
 
-    return pipeline + [{"$limit": 1}]
+
+def _filter_result(dataset, path, sort):
+    field = dataset.get_field(path)
+    while isinstance(field, fo.ListField):
+        field = field.field
+
+    if isinstance(field, (fo.DateField, fo.DateTimeField)):
+        return [{"$match": {"_id": {"$ne": None}}}]
+
+    return _handle_nonfinites(sort)
 
 
 def _handle_nonfinites(sort: t.Union[t.Literal[-1], t.Literal[1]]):
@@ -654,6 +674,27 @@ def _match_arrays(dataset: fo.Dataset, path: str, is_frame_field: bool):
             return [{"$match": {"_id.0": {"$exists": True}}}]
 
     return []
+
+
+def _is_list_of_lists(dataset: fo.Dataset, path: str, is_frame_field: bool):
+    keys = path.split(".")
+    path = None
+
+    if is_frame_field:
+        path = keys[0]
+        keys = keys[1:]
+
+    is_list = False
+    for key in keys:
+        path = ".".join([path, key]) if path else key
+        field = dataset.get_field(path)
+        if isinstance(field, fof.ListField):
+            if is_list:
+                return True
+
+            is_list = True
+
+    return False
 
 
 def _parse_result(data):
