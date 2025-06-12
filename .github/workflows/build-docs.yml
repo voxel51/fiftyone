@@ -46,6 +46,13 @@ jobs:
     steps:
       - name: Clone fiftyone
         uses: actions/checkout@v4
+      - name: Checkout fiftyone-teams
+        uses: actions/checkout@v4
+        with:
+          repository: voxel51/fiftyone-teams
+          path: fiftyone-teams
+          token: ${{ secrets.RO_FOT_FG_PAT }}
+          ref: main
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
@@ -83,7 +90,7 @@ jobs:
         run: cd app && yarn install
       - name: Build docs
         run: |
-          ./docs/generate_docs.bash
+          ./docs/generate_docs.bash -t fiftyone-teams
       - name: Upload docs
         uses: actions/upload-artifact@v4
         with:
