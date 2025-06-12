@@ -6,6 +6,7 @@ FiftyOne materialized view-related unit tests.
 |
 """
 from copy import deepcopy
+import importlib
 
 from bson import ObjectId
 import unittest
@@ -13,6 +14,7 @@ from unittest import mock
 
 import fiftyone as fo
 import fiftyone.core.materialize as fom
+import fiftyone.core.stages as fos
 from fiftyone import ViewField as F
 
 from decorators import drop_datasets
@@ -519,9 +521,11 @@ class MaterializeTests(unittest.TestCase):
     @drop_datasets
     @mock.patch(
         "fiftyone.core.materialize.materialize_view",
-        side_effect=fom.materialize_view,
+        wraps=fom.materialize_view,
     )
     def test_materialize_saved_view(self, materialize_view):
+        importlib.reload(fos)  # force mock() to propagate
+
         dataset = fo.Dataset()
 
         sample = fo.Sample(

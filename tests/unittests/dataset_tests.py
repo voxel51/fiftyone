@@ -10,6 +10,7 @@ from collections import Counter
 from copy import deepcopy, copy
 from datetime import date, datetime, timedelta
 import gc
+import importlib
 import os
 import random
 import string
@@ -27,6 +28,7 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.core.fields as fof
 import fiftyone.core.materialize as fom
+import fiftyone.core.stages as fos
 import fiftyone.core.odm as foo
 from fiftyone.operators.store import ExecutionStoreService
 import fiftyone.utils.data as foud
@@ -4792,9 +4794,11 @@ class DatasetExtrasTests(unittest.TestCase):
 
     @patch(
         "fiftyone.core.materialize.materialize_view",
-        side_effect=fom.materialize_view,
+        wraps=fom.materialize_view,
     )
     def test_saved_view_parameter_change(self, materialize_view):
+        importlib.reload(fos)  # force mock() to propagate
+
         dataset = self.dataset
 
         view = dataset.select_fields("ground_truth").materialize().limit(2)
