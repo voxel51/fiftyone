@@ -462,8 +462,12 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           // none-list field value is in ['value'] format
           // need to convert to 'value' to pass in the filter
 
-          filter(path, values) &&
-            pushList(PRIMITIVE_RENDERERS[field.ftype], values);
+          if (filter(path, values)) {
+            const toPush =
+              field.ftype === FRAME_SUPPORT_FIELD ? [values] : values;
+            pushList(PRIMITIVE_RENDERERS[field.ftype], toPush);
+          }
+
           continue;
         }
 
