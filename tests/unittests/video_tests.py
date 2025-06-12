@@ -8,7 +8,6 @@ FiftyOne video-related unit tests.
 
 from copy import deepcopy
 from datetime import date, datetime
-import importlib
 
 from bson import ObjectId
 import numpy as np
@@ -18,7 +17,6 @@ from unittest import mock
 import fiftyone as fo
 import fiftyone.core.clips as foc
 import fiftyone.core.odm as foo
-import fiftyone.core.stages as fos
 import fiftyone.core.video as fov
 from fiftyone import ViewField as F
 
@@ -2433,12 +2431,10 @@ class VideoTests(unittest.TestCase):
 
     @drop_datasets
     @mock.patch(
-        "fiftyone.core.clips.make_clips_dataset",
+        "fiftyone.core.stages.focl.make_clips_dataset",
         wraps=foc.make_clips_dataset,
     )
     def test_to_clips_saved_view(self, make_clips_dataset):
-        importlib.reload(fos)  # force mock() to propagate
-
         dataset = fo.Dataset()
 
         sample = fo.Sample(
@@ -3346,12 +3342,10 @@ class VideoTests(unittest.TestCase):
 
     @drop_datasets
     @mock.patch(
-        "fiftyone.core.video.make_frames_dataset",
+        "fiftyone.core.stages.fovi.make_frames_dataset",
         wraps=fov.make_frames_dataset,
     )
     def test_to_frames_saved_view(self, make_frames_dataset):
-        importlib.reload(fos)  # force mock() to propagate
-
         dataset = fo.Dataset()
 
         sample = fo.Sample(

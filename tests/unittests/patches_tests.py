@@ -7,7 +7,6 @@ FiftyOne patches-related unit tests.
 """
 from copy import deepcopy
 from datetime import datetime
-import importlib
 
 from bson import ObjectId
 import unittest
@@ -15,7 +14,6 @@ from unittest import mock
 
 import fiftyone as fo
 import fiftyone.core.patches as fop
-import fiftyone.core.stages as fos
 from fiftyone import ViewField as F
 
 from decorators import drop_datasets
@@ -1198,12 +1196,10 @@ class PatchesTests(unittest.TestCase):
 
     @drop_datasets
     @mock.patch(
-        "fiftyone.core.patches.make_patches_dataset",
+        "fiftyone.core.stages.fop.make_patches_dataset",
         wraps=fop.make_patches_dataset,
     )
     def test_patches_saved_view(self, make_patches_dataset):
-        importlib.reload(fos)  # force mock() to propagate
-
         dataset = fo.Dataset()
 
         sample = fo.Sample(
@@ -1287,14 +1283,12 @@ class PatchesTests(unittest.TestCase):
 
     @drop_datasets
     @mock.patch(
-        "fiftyone.core.patches.make_evaluation_patches_dataset",
+        "fiftyone.core.stages.fop.make_evaluation_patches_dataset",
         wraps=fop.make_evaluation_patches_dataset,
     )
     def test_evaluation_patches_saved_view(
         self, make_evaluation_patches_dataset
     ):
-        importlib.reload(fos)  # force mock() to propagate
-
         dataset = fo.Dataset()
 
         sample = fo.Sample(
