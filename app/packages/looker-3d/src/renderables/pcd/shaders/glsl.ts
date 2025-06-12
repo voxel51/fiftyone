@@ -83,10 +83,13 @@ export const ShadeByIntensityShaders = {
   vertexShader: /* glsl */ `
   in float intensity;
   out float vNorm;
+  out float vIntensity;
   uniform float uMax;
   uniform float uMin;
   uniform float pointSize;
   uniform bool isPointSizeAttenuated;
+  uniform float thresholdMin;
+  uniform float thresholdMax;
 
   float remap ( float minval, float maxval, float curval ) {
     return ( curval - minval ) / ( maxval - minval );
@@ -95,20 +98,35 @@ export const ShadeByIntensityShaders = {
   void main() {
     vec3 pos = position;
     vNorm = clamp(remap(uMin, uMax, intensity), 0.0, 1.0);
+    vIntensity = intensity;
 
     vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
 
-    gl_PointSize = pointSize * (isPointSizeAttenuated ? (1.0 / length(mvPosition.xyz)) : 1.0);
+    // hide points outside threshold range by setting size to 0
+    if (intensity < thresholdMin || intensity > thresholdMax) {
+      gl_PointSize = 0.0;
+    } else {
+      gl_PointSize = pointSize * (isPointSizeAttenuated ? (1.0 / length(mvPosition.xyz)) : 1.0);
+    }
+    
     gl_Position = projectionMatrix * mvPosition;
   }
 `,
   fragmentShader: /* glsl */ `
   uniform sampler2D gradientMap;
   uniform float opacity;
+  uniform float thresholdMin;
+  uniform float thresholdMax;
   in float vNorm;
+  in float vIntensity;
   out vec4 fragColor;
 
   void main() {
+    // discard fragments outside threshold range
+    if (vIntensity < thresholdMin || vIntensity > thresholdMax) {
+      discard;
+    }
+    
     vec3 col = texture(gradientMap, vec2(0.5, vNorm)).rgb;
     fragColor = vec4(col, opacity);
   }
@@ -119,10 +137,13 @@ export const ShadeByLegacyIntensityShaders = {
   vertexShader: /* glsl */ `
     in vec3 rgb;
     out float vNorm;
+    out float vIntensity;
     uniform float uMax;
     uniform float uMin;
     uniform float pointSize;
     uniform bool isPointSizeAttenuated;
+    uniform float thresholdMin;
+    uniform float thresholdMax;
   
     float remap ( float minval, float maxval, float curval ) {
       return ( curval - minval ) / ( maxval - minval );
@@ -130,21 +151,37 @@ export const ShadeByLegacyIntensityShaders = {
   
     void main() {
       vec3 pos = position;
-      vNorm = clamp(remap(uMin, uMax, rgb.r), 0.0, 1.0);
+      float intensity = rgb.r;
+      vNorm = clamp(remap(uMin, uMax, intensity), 0.0, 1.0);
+      vIntensity = intensity;
   
       vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
   
-      gl_PointSize = pointSize * (isPointSizeAttenuated ? (1.0 / length(mvPosition.xyz)) : 1.0);
+      // hide points outside threshold range by setting size to 0
+      if (intensity < thresholdMin || intensity > thresholdMax) {
+        gl_PointSize = 0.0;
+      } else {
+        gl_PointSize = pointSize * (isPointSizeAttenuated ? (1.0 / length(mvPosition.xyz)) : 1.0);
+      }
+      
       gl_Position = projectionMatrix * mvPosition;
     }
   `,
   fragmentShader: /* glsl */ `
     uniform sampler2D gradientMap;
     uniform float opacity;
+    uniform float thresholdMin;
+    uniform float thresholdMax;
     in float vNorm;
+    in float vIntensity;
     out vec4 fragColor;
   
     void main() {
+      // discard fragments outside threshold range
+      if (vIntensity < thresholdMin || vIntensity > thresholdMax) {
+        discard;
+      }
+      
       // sample from the middle of the gradient map to avoid border artifacts
       vec3 col = texture(gradientMap, vec2(0.5, vNorm)).rgb;
       fragColor = vec4(col, opacity);
@@ -186,9 +223,12 @@ export const DynamicAttributeShaders = {
   uniform float uMin;
   uniform float pointSize;
   uniform bool isPointSizeAttenuated;
+  uniform float thresholdMin;
+  uniform float thresholdMax;
 
   in float dynamicAttr;
   out float vNorm;
+  out float vAttrValue;
 
   float remap(float minval, float maxval, float curval) {
     return (curval - minval) / (maxval - minval);
@@ -196,18 +236,35 @@ export const DynamicAttributeShaders = {
 
   void main() {
     vNorm = clamp(remap(uMin, uMax, dynamicAttr), 0.0, 1.0);
+    vAttrValue = dynamicAttr;
+    
     vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-    gl_PointSize = pointSize * (isPointSizeAttenuated ? (1.0 / length(mvPosition.xyz)) : 1.0);
+    
+    // hide points outside threshold range by setting size to 0
+    if (dynamicAttr < thresholdMin || dynamicAttr > thresholdMax) {
+      gl_PointSize = 0.0;
+    } else {
+      gl_PointSize = pointSize * (isPointSizeAttenuated ? (1.0 / length(mvPosition.xyz)) : 1.0);
+    }
+    
     gl_Position = projectionMatrix * mvPosition;
   }
   `,
   fragmentShader: /* glsl */ `
   uniform sampler2D gradientMap;
   uniform float opacity;
+  uniform float thresholdMin;
+  uniform float thresholdMax;
   in float vNorm;
+  in float vAttrValue;
   out vec4 fragColor;
 
   void main() {
+    // discard fragments outside threshold range
+    if (vAttrValue < thresholdMin || vAttrValue > thresholdMax) {
+      discard;
+    }
+    
     vec3 col = texture(gradientMap, vec2(0.5, vNorm)).rgb;
     fragColor = vec4(col, opacity);
   }

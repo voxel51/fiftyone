@@ -1,19 +1,25 @@
-import { Button } from "@fiftyone/components";
+import { Button, useTheme } from "@fiftyone/components";
+import { RangeSlider } from "@fiftyone/core/src/components/Common/RangeSlider";
 import { ColorscaleInput } from "@fiftyone/looker/src/state";
+import type { Range } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
+import { FLOAT_FIELD, INT_FIELD } from "@fiftyone/utilities/src/constants";
 import { folder, useControls } from "leva";
 import type { OnChangeHandler } from "leva/plugin";
-import { useCallback, useMemo, useState } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { atom, atomFamily, useRecoilState, useRecoilValue } from "recoil";
 import { BufferGeometry } from "three";
 import {
   DEFAULT_PCD_SHADING_GRADIENTS_RED_TO_BLUE,
   PANEL_ORDER_PCD_CONTROLS,
   SHADE_BY_CUSTOM,
   SHADE_BY_HEIGHT,
+  SHADE_BY_INTENSITY,
   SHADE_BY_NONE,
+  SHADE_BY_RGB,
 } from "../constants";
 import { useFo3dContext } from "../fo3d/context";
+import { getMinMaxForAttribute } from "../fo3d/point-cloud/use-pcd-material";
 import { customComponent } from "../fo3d/scene-controls/LevaCustomComponent";
 import { getGradientFromSchemeName } from "../renderables/pcd/shaders/gradientMap";
 import { isColormapModalOpenAtom } from "../state";
@@ -25,6 +31,16 @@ const ColormapSource = {
   DATASET_DEFAULT: "App Config (Default)",
   OVERRIDE: "Custom Override",
 } as const;
+
+const activeThresholdAtomFamily = atomFamily<Range, string>({
+  key: "activeThreshold",
+  default: [0, 1],
+});
+
+const boundsAtom = atom<Range>({
+  key: "bounds",
+  default: [0, 1],
+});
 
 export const usePcdMaterialControls = (
   name: string,
@@ -95,6 +111,54 @@ export const usePcdMaterialControls = (
     },
     stringify: (value) => JSON.stringify(value),
   });
+
+  /**
+   * lookup table for min and max values for each attribute
+   */
+  const thresholdsLut = useMemo(() => {
+    const allAttributes = geometry.attributes;
+    const attributeNames = Object.keys(allAttributes);
+    return attributeNames
+      .map((attributeName) => {
+        const [min, max] = getMinMaxForAttribute(geometry, attributeName);
+        return {
+          [attributeName]: { min, max },
+        };
+      })
+      .reduce((acc, curr) => {
+        return { ...acc, ...curr };
+      }, {});
+  }, [geometry]);
+
+  const getSanitizedThreshold = useCallback(
+    (min: number, max: number) => {
+      const normalized = {
+        min: Math.max(min, thresholdsLut[shadeBy]?.min ?? 0),
+        max: Math.min(max, thresholdsLut[shadeBy]?.max ?? 1),
+      };
+
+      if (normalized.min > normalized.max) {
+        return {
+          min: thresholdsLut[shadeBy]?.min ?? 0,
+          max: thresholdsLut[shadeBy]?.max ?? 1,
+        };
+      }
+
+      return normalized;
+    },
+    [shadeBy, thresholdsLut]
+  );
+
+  const [bounds, setBounds] = useRecoilState(boundsAtom);
+
+  useEffect(() => {
+    const min = thresholdsLut[shadeBy]?.min;
+    const max = thresholdsLut[shadeBy]?.max;
+
+    const sanitized = getSanitizedThreshold(min, max);
+
+    setBounds([sanitized.min, sanitized.max]);
+  }, [thresholdsLut, shadeBy]);
 
   const isExplicitAppConfigColormapAvailable = useMemo(() => {
     if (colorScheme.colorscales && colorScheme.colorscales.length > 0) {
@@ -230,6 +294,45 @@ export const usePcdMaterialControls = (
     colormapOverride,
   ]);
 
+  const theme = useTheme();
+
+  const [activeThreshold, setActiveThreshold] = useRecoilState(
+    activeThresholdAtomFamily(shadeBy)
+  );
+
+  useEffect(() => {
+    const min = thresholdsLut[shadeBy]?.min ?? 0;
+    const max = thresholdsLut[shadeBy]?.max ?? 1;
+
+    setActiveThreshold([min, max]);
+  }, [shadeBy]);
+
+  const thresholdControl = useMemo(() => {
+    const randomIndex = Math.floor(
+      Math.random() * geometry.attributes[shadeBy]?.count
+    );
+    const randomValueFromGeometry =
+      geometry.attributes[shadeBy]?.getX(randomIndex);
+    const fieldType =
+      randomValueFromGeometry !== undefined
+        ? Number.isInteger(randomValueFromGeometry)
+          ? INT_FIELD
+          : FLOAT_FIELD
+        : FLOAT_FIELD;
+
+    return (
+      <RangeSlider
+        style={{ padding: "1em 0" }}
+        alternateThumbLabelDirection={true}
+        valueAtom={activeThresholdAtomFamily(shadeBy)}
+        boundsAtom={boundsAtom}
+        color={theme.primary.main}
+        showBounds={true}
+        fieldType={fieldType}
+      />
+    );
+  }, [shadeBy, thresholdsLut, theme.primary.main, activeThresholdAtomFamily]);
+
   const onChangeTextBox: OnChangeHandler = useCallback((newValue: number) => {
     setPointSize(newValue);
   }, []);
@@ -289,8 +392,22 @@ export const usePcdMaterialControls = (
               );
             },
           }),
-
-          // todo: disabling opacity for now because it's not working as intended
+          Thresholding: customComponent({
+            component: thresholdControl,
+            render: () => {
+              return Boolean(
+                shadeBy !== SHADE_BY_HEIGHT &&
+                  shadeBy !== SHADE_BY_NONE &&
+                  shadeBy !== SHADE_BY_RGB &&
+                  !(
+                    shadeBy === SHADE_BY_INTENSITY &&
+                    !geometry.hasAttribute("intensity")
+                  ) &&
+                  shadeBy !== SHADE_BY_CUSTOM
+              );
+            },
+          }),
+          // todo: disabling opacity for now because rit's not working as intended
           // todo: shader logic is not trivial
           // opacity: {
           //   value: opacity,
@@ -319,10 +436,12 @@ export const usePcdMaterialControls = (
       onChangeTextBox,
       colormapOverride,
       isColormapModalOpen,
+      thresholdsLut,
     ]
   );
 
   return {
+    activeThreshold,
     shadeBy,
     customColor,
     isPointSizeAttenuated,

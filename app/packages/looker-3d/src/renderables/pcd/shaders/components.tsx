@@ -20,9 +20,13 @@ export const DynamicAttributeShader = ({
   opacity,
   geometry,
   colorMap,
+  thresholdMin,
+  thresholdMax,
 }: ShaderProps & {
   attribute: string;
   geometry: THREE.BufferGeometry;
+  thresholdMin?: number;
+  thresholdMax?: number;
 }) => {
   const gradientMap = useGradientMap(colorMap);
 
@@ -47,6 +51,8 @@ export const DynamicAttributeShader = ({
         gradientMap: { value: gradientMap },
         pointSize: { value: pointSize },
         isPointSizeAttenuated: { value: isPointSizeAttenuated },
+        thresholdMin: { value: thresholdMin ?? min },
+        thresholdMax: { value: thresholdMax ?? max },
       }}
       vertexShader={DynamicAttributeShaders.vertexShader}
       fragmentShader={DynamicAttributeShaders.fragmentShader}
@@ -96,10 +102,14 @@ export const ShadeByIntensity = ({
   pointSize,
   isPointSizeAttenuated,
   isLegacyIntensity,
+  thresholdMin,
+  thresholdMax,
 }: Omit<ShaderProps, "min" | "max"> & {
   minIntensity: number;
   maxIntensity: number;
   isLegacyIntensity: boolean;
+  thresholdMin?: number;
+  thresholdMax?: number;
 }) => {
   const gradientMap = useGradientMap(colorMap);
 
@@ -114,6 +124,8 @@ export const ShadeByIntensity = ({
           gradientMap: { value: gradientMap },
           pointSize: { value: pointSize },
           isPointSizeAttenuated: { value: isPointSizeAttenuated },
+          thresholdMin: { value: thresholdMin ?? minIntensity },
+          thresholdMax: { value: thresholdMax ?? maxIntensity },
         },
         vertexShader: isLegacyIntensity
           ? ShadeByLegacyIntensityShaders.vertexShader

@@ -23,6 +23,37 @@ import {
 } from "../../utils";
 import { useFo3dContext } from "../context";
 
+export const getMinMaxForAttribute = (
+  geometry: BufferGeometry,
+  attributeName: string
+) => {
+  if (!geometry.hasAttribute(attributeName)) {
+    return [0, 1];
+  }
+
+  const attr = geometry.getAttribute(attributeName);
+  let min = 0,
+    max = 1;
+  if (attr && attr.itemSize === 1) {
+    // prefer userData if available (which it should be, since we set it during parsing)
+    if (
+      geometry.userData &&
+      geometry.userData[attributeName] &&
+      typeof geometry.userData[attributeName].min === "number" &&
+      typeof geometry.userData[attributeName].max === "number"
+    ) {
+      min = geometry.userData[attributeName].min;
+      max = geometry.userData[attributeName].max;
+    } else {
+      const minMax = computeMinMaxForScalarBufferAttribute(attr);
+      min = minMax.min;
+      max = minMax.max;
+    }
+  }
+
+  return [min, max] as const;
+};
+
 export const usePcdMaterial = (
   name: string,
   geometry: BufferGeometry,
@@ -30,18 +61,6 @@ export const usePcdMaterial = (
   pcdContainerRef: React.RefObject<any>
 ) => {
   const { upVector, pluginSettings } = useFo3dContext();
-
-  const {
-    customColor,
-    pointSize,
-    isPointSizeAttenuated,
-    shadeBy,
-    opacity,
-    colorMap,
-    isColormapModalOpen,
-    setIsColormapModalOpen,
-    handleColormapSave,
-  } = usePcdMaterialControls(name, geometry, defaultMaterial);
 
   const pcdBoundingBox = useFo3dBounds(
     pcdContainerRef,
@@ -65,6 +84,19 @@ export const usePcdMaterial = (
 
     return [min, max] as const;
   }, [upVector, pcdBoundingBox, pluginSettings]);
+
+  const {
+    activeThreshold,
+    customColor,
+    pointSize,
+    isPointSizeAttenuated,
+    shadeBy,
+    opacity,
+    colorMap,
+    isColormapModalOpen,
+    setIsColormapModalOpen,
+    handleColormapSave,
+  } = usePcdMaterialControls(name, geometry, defaultMaterial);
 
   // "intensity" itself is generalizable as a custom attribute, but because we
   // defined "intensity" as a special attribute (namely, r of rgb),
@@ -107,7 +139,7 @@ export const usePcdMaterial = (
     // to trigger rerender
     const key = `${name}-${opacity}-${pointSize}-${isPointSizeAttenuated}-${shadeBy}-${customColor}-${minMaxCoordinates}-${minIntensity}-${maxIntensity}-${upVector}-${
       colorMap ? JSON.stringify(colorMap) : ""
-    }`;
+    }-${activeThreshold ? JSON.stringify(activeThreshold) : ""}`;
 
     switch (shadeBy) {
       case SHADE_BY_HEIGHT:
@@ -141,6 +173,8 @@ export const usePcdMaterial = (
             opacity={opacity}
             isPointSizeAttenuated={isPointSizeAttenuated}
             isLegacyIntensity={!geometry.hasAttribute("intensity")}
+            thresholdMin={activeThreshold?.[0]}
+            thresholdMax={activeThreshold?.[1]}
           />
         );
 
@@ -176,24 +210,9 @@ export const usePcdMaterial = (
         );
 
       default: {
-        const attr = geometry.getAttribute(shadeBy);
-        let min = 0,
-          max = 1;
-        if (attr && attr.itemSize === 1) {
-          // prefer userData if available
-          if (
-            geometry.userData &&
-            geometry.userData[shadeBy] &&
-            typeof geometry.userData[shadeBy].min === "number" &&
-            typeof geometry.userData[shadeBy].max === "number"
-          ) {
-            min = geometry.userData[shadeBy].min;
-            max = geometry.userData[shadeBy].max;
-          } else {
-            const minMax = computeMinMaxForScalarBufferAttribute(attr);
-            min = minMax.min;
-            max = minMax.max;
-          }
+        if (geometry.hasAttribute(shadeBy)) {
+          const [min, max] = getMinMaxForAttribute(geometry, shadeBy);
+
           return (
             <DynamicAttributeShader
               key={key}
@@ -205,6 +224,8 @@ export const usePcdMaterial = (
               opacity={opacity}
               geometry={geometry}
               colorMap={colorMap}
+              thresholdMin={activeThreshold?.[0]}
+              thresholdMax={activeThreshold?.[1]}
             />
           );
         } else {
@@ -233,6 +254,7 @@ export const usePcdMaterial = (
     opacity,
     name,
     colorMap,
+    activeThreshold,
   ]);
 
   return {
