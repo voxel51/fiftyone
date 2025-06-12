@@ -4508,7 +4508,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             slug=slug,
             description=description,
             color=color,
-            view_stages=_serialize_view(view),
+            view_stages=[
+                json_util.dumps(s)
+                for s in view._serialize(include_uuids=False)
+            ],
             created_at=now,
             last_modified_at=now,
         )
@@ -4637,9 +4640,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         # about their source collection to determine when they need updating.
         # Over time, ViewStage kwargs may be changed, which then need to be
         # incorporated into the saved `view_stages`
-        _view_stages = _serialize_view(view)
-        if _view_stages != view_doc.view_stages:
-            view_doc.view_stages = _view_stages
+        view_stages = view._serialize(include_uuids=False)
+        saved_view_stages = [json_util.loads(s) for s in view_doc.view_stages]
+        if view_stages != saved_view_stages:
+            view_doc.view_stages = [json_util.dumps(s) for s in view_stages]
             updated = True
 
         # When reloading generated views, always increment `last_modified_at`
@@ -9313,10 +9317,6 @@ def _get_frames_pipeline(sample_collection):
         pipeline = []
 
     return coll, pipeline
-
-
-def _serialize_view(view):
-    return [json_util.dumps(s) for s in view._serialize(include_uuids=False)]
 
 
 def _save_view(view, fields=None):
