@@ -25,7 +25,10 @@ from .utils import (
     ShowOptionsMethod,
     ScenarioType,
 )
-from plugins.utils import get_subsets_from_custom_code
+from plugins.utils.model_evaluation import (
+    get_subsets_from_custom_code,
+    get_scenarios_store,
+)
 
 STORE_NAME = "model_evaluation_panel_builtin"
 MAX_SAMPLES_FOR_DEFAULT_PREVIEW = 25000
@@ -1056,12 +1059,8 @@ class ConfigureScenario(foo.Operator):
         return label
 
     def get_scenario_names(self, ctx):
-        store = ctx.store(STORE_NAME)
+        store = get_scenarios_store(ctx)
         scenarios = store.get("scenarios") or {}
-
-        eval_id_a = self.extract_evaluation_id(ctx)
-        scenarios = scenarios.get(eval_id_a) or {}
-
         return [scenario.get("name") for _, scenario in scenarios.items()]
 
     def resolve_input(self, ctx):
@@ -1169,22 +1168,6 @@ class ConfigureScenario(foo.Operator):
             ),
         )
 
-        # custom_code_controls.bool(
-        #     "view_sample_distribution",
-        #     required=True,
-        #     default=False,
-        #     label="View sample distribution",
-        #     view=types.CheckboxView(
-        #         componentsProps={
-        #             "container": {
-        #                 "sx": {
-        #                     "padding": "0 2rem 0 1rem",
-        #                 }
-        #             },
-        #         }
-        #     ),
-        # )
-
         body_stack.view(
             code_key,
             default=custom_code,
@@ -1224,10 +1207,9 @@ class ConfigureScenario(foo.Operator):
         if eval_id_a is None:
             raise ValueError("No evaluation ids found")
 
-        store = ctx.store(STORE_NAME)
+        store = get_scenarios_store(ctx)
         scenarios = store.get("scenarios") or {}
 
-        scenarios_for_eval = scenarios.get(eval_id_a) or {}
         scenario_field = None
 
         if scenario_type in [
@@ -1275,7 +1257,7 @@ class ConfigureScenario(foo.Operator):
             scenario_id = ObjectId()
 
         scenario_id_str = str(scenario_id)
-        scenarios_for_eval[scenario_id_str] = {
+        scenarios[scenario_id_str] = {
             "id": scenario_id_str,
             "name": scenario_name,
             "type": scenario_type,
@@ -1283,9 +1265,8 @@ class ConfigureScenario(foo.Operator):
         }
 
         if scenario_field:
-            scenarios_for_eval[scenario_id_str]["field"] = scenario_field
+            scenarios[scenario_id_str]["field"] = scenario_field
 
-        scenarios[eval_id_a] = scenarios_for_eval
         store.set("scenarios", scenarios)
 
         ctx.ops.track_event(

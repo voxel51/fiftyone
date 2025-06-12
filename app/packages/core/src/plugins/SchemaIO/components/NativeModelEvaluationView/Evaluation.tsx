@@ -13,7 +13,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ActionMenu from "./ActionMenu";
 import EvaluationSelect from "./components/EvaluationSelect";
 import { COMPARE_KEY_SECONDARY_COLOR } from "./constants";
