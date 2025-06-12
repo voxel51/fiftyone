@@ -35,12 +35,14 @@ const Group = () => {
 
     // hide 3d looker and carousel if `hasGroupSlices`
     if (
+      dynamic &&
       dynamicGroupsViewMode === "video" &&
       (isLooker3DVisible || isCarouselVisible)
     ) {
       setIsMainLookerVisible(true);
     }
   }, [
+    dynamic,
     dynamicGroupsViewMode,
     isNestedDynamicGroup,
     isOrderedDynamicGroup,
