@@ -7,49 +7,47 @@ FiftyOne uses [Sphinx](https://www.sphinx-doc.org/en/master) and
 [Sphinx-Napoleon](https://pypi.python.org/pypi/sphinxcontrib-napoleon) to
 generate its documentation and API reference from source.
 
-## Setup
+## Prerequisites
 
-In order to build the docs locally, you must:
+Before building the docs locally, ensure you have:
 
-1. Use Python 3.11 within a
-   [virtual environment](https://docs.voxel51.com/getting_started/virtualenv.html)
-   created specifically for documentation.
+-   Python 3.11 installed and a
+    [virtual environment](https://docs.voxel51.com/getting_started/virtualenv.html)
+    created specifically for documentation.
 
-    **Note:** Do **not** use the same environment where you ran `install.bash`
+    **Note:** Do **NOT** use the same environment where you ran `install.bash`
     with the `-d` (dev mode) flag, as docs dependencies conflict with test
     dependencies.
 
-2. Install [pandoc](https://pandoc.org/installing.html).
+-   [pandoc](https://pandoc.org/installing.html) installed.
 
-3. Perform a documentation-specific install of `fiftyone` from the root
-   directory using the `-o` (docs) flag:
+-   A Unix-like shell environment to execute bash commands.
 
-    ```shell
-    cd ..
-    bash install.bash -o
-    ```
+## Setup
 
-4. To use the `fiftyone` repository to autogenerate docs, you need to add it to
-   your `PYTHONPATH`:
+To build the documentation locally, follow these steps:
 
-    **Linux/macOS**
+1.  Perform a documentation-specific install of `fiftyone` from the root
+    directory using the `-o` (docs) flag:
 
-    ```shell
-    export PYTHONPATH=$PYTHONPATH:/path/to/fiftyone
-    ```
+        ```shell
+        cd ..
+        bash install.bash -o
+        ```
 
-    **Windows (Powershell)**
+2.  To use the `fiftyone` repository to autogenerate docs, you need to add it
+    to your `PYTHONPATH`:
 
-    ```shell
-    $env:PYTHONPATH = "$env:PYTHONPATH;C:\path\to\fiftyone"
-    ```
+        ```shell
+        export PYTHONPATH=$PYTHONPATH:/path/to/fiftyone
+        ```
 
-    Replace `/path/to/fiftyone` with the absolute path to the root of the
-    fiftyone repo.
+        Replace `/path/to/fiftyone` with the absolute path to the root of the
+        fiftyone repo.
 
-    > **TIP:** To avoid running this every time you build the docs, add the
-    > previous line to your `~/.bashrc`, `~/.zshrc`, system path or the
-    > appropriate file for your shell.
+        > **TIP:** To avoid running this every time you build the docs, add the
+        > previous line to your `~/.bashrc`, `~/.zshrc`, system path or the
+        > appropriate file for your shell.
 
 ## Building
 

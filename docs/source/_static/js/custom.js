@@ -1,4 +1,4 @@
-window.onload = function () {
+$(function () {
   const sections = $(".section").sort(
     (a, b) => $(a).offset().top - $(b).offset().top
   );
@@ -62,6 +62,8 @@ window.onload = function () {
   $(window).on("scroll", updateSidebar);
   $(".pytorch-right-menu").on("click", updateSidebar);
 
-  // Hide API docs for classes and methods
-  $(".toctree-wrapper.compound li:has(> a.has-code)").hide();
-};
+  // Hide API docs classes and methods from toctree
+  $(window).on("load", function () {
+    $(".toctree-wrapper.compound li:has(> a.has-code)").hide();
+  });
+});
