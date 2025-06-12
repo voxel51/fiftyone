@@ -6,7 +6,7 @@ import Scenarios from "./Scenarios";
 
 export default function EvaluationScenarioAnalysis(props) {
   const { evaluation, data, loadScenarios } = props;
-  const { scenarios } = evaluation;
+  const { scenarios } = data;
   const evaluationInfo = evaluation.info;
   const evaluationConfig = evaluationInfo.config;
   const scenariosArray = scenarios ? Object.values(scenarios) : [];

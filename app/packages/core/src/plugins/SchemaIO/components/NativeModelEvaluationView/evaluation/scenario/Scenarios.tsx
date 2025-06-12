@@ -77,7 +77,7 @@ export default function Scenarios(props) {
     deleteScenario,
     loadView,
   } = props;
-  const { scenarios } = evaluation;
+  const { scenarios } = data;
   const promptOperator = usePanelEvent();
   const panelId = usePanelId();
   const [loadingScenario, setLoadingScenario] = useState(false);
