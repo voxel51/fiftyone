@@ -20,9 +20,8 @@ FiftyOne supports the configuration options described below:
 | `database_admin`                 | `FIFTYONE_DATABASE_ADMIN`                 | `True`                        | Whether the client is allowed to trigger database migrations. See                      |
 |                                  |                                           |                               | :ref:`this section <database-migrations>` for more information.                        |
 +----------------------------------+-------------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `database_compressor`            | `FIFTYONE_DATABASE_COMPRESSOR`            | `None`                        | `MongoDB Network Compression                                                           |
-|                                  |                                           |                               | <https://www.mongodb.com/developer/products/mongodb/mongodb-network-compression/>`_ to |
-|                                  |                                           |                               | use. Supported values are: None, `zstd` (recommended), `zlib`, or `snappy`.            |
+| `database_compressor`            | `FIFTYONE_DATABASE_COMPRESSOR`            | `None`                        | Optional :ref:`MongoDB network compression <mongodb-network-compression>` to use. The  |
+|                                  |                                           |                               | supported values are `None`, `zstd`, `zlib`, or `snappy`.                              |
 +----------------------------------+-------------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `database_dir`                   | `FIFTYONE_DATABASE_DIR`                   | `~/.fiftyone/var/lib/mongo`   | The directory in which to store FiftyOne's backing database. Only applicable if        |
 |                                  |                                           |                               | `database_uri` is not defined.                                                         |
@@ -388,6 +387,40 @@ You must also add `?authSource=admin` to your database URI:
 
     mongodb://[username:password@]host[:port]/?authSource=admin
 
+.. _mongodb-network-compression:
+
+MongoDB network compression
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can optionally configure
+`MongoDB network compression <https://www.mongodb.com/developer/products/mongodb/mongodb-network-compression>`_
+via the `database_compressor` config setting.
+
+By default, compression is disabled, but enabling it can give a signifcant
+performance boost in suboptimal network environments.
+
+You can achieve this by adding the following entry to your
+`~/.fiftyone/config.json` file:
+
+.. code-block:: json
+
+    {
+        "database_compressor": "zstd"
+    }
+
+or you can set the following environment variable:
+
+.. code-block:: shell
+
+    export FIFTYONE_DATABASE_COMPRESSOR=zstd
+
+The supported values are `zstd`, `zlib`, and `snappy`.
+
+When network compression makes sense, we recommend `zstd` as the preferred
+compressor based on our benchmarking results, but any compressor supported by
+your version of MongoDB will work, provided you've installed the required
+python package.
+
 .. _using-a-different-mongodb-version:
 
 Using a different MongoDB version
@@ -652,7 +685,7 @@ Or, you can even dynamically change the timezone while you work in Python:
 .. _configuring-fiftyone-app:
 
 Configuring the App
-===================
+-------------------
 
 The :ref:`FiftyOne App <fiftyone-app>` can also be configured in various ways.
 A new copy of your App config is applied to each |Session| object that is

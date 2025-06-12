@@ -322,17 +322,56 @@ class ClipsView(fov.DatasetView):
         """
         self._source_collection.reload()
 
-        #
         # Regenerate the clips dataset
-        #
-        # This assumes that calling `load_view()` when the current clips
-        # dataset has been deleted will cause a new one to be generated
-        #
-        self._clips_dataset.delete()
-        _view = self._clips_stage.load_view(self._source_collection)
+        _view = self._clips_stage.load_view(
+            self._source_collection, reload=True
+        )
         self._clips_dataset = _view._clips_dataset
 
         super().reload()
+
+    def _delete_labels(self, labels, fields=None):
+        clip_labels, other_labels, src_labels = self._parse_labels(
+            labels, fields=fields
+        )
+
+        if clip_labels:
+            clip_ids = [d["sample_id"] for d in clip_labels]
+            self._clips_dataset.delete_samples(clip_ids)
+
+        if other_labels:
+            super()._delete_labels(other_labels, fields=fields)
+
+        if src_labels:
+            self._source_collection._delete_labels(src_labels, fields=fields)
+
+    def _parse_labels(self, labels, fields=None):
+        if etau.is_str(fields):
+            fields = [fields]
+
+        if fields is not None:
+            labels = [d for d in labels if d["field"] in fields]
+
+        frame_labels = [d for d in labels if d.get("frame_number") is not None]
+        labels = [d for d in labels if d.get("frame_number") is None]
+
+        field = self._classification_field
+
+        if field is not None:
+            clip_labels = [d for d in labels if d["field"] == field]
+            other_labels = [d for d in labels if d["field"] != field]
+        else:
+            clip_labels = []
+            other_labels = labels
+
+        src_labels = deepcopy(clip_labels + frame_labels)
+        if src_labels:
+            clip_ids = [d["sample_id"] for d in src_labels]
+            sample_ids = self._map_values(clip_ids, "id", "sample_id")
+            for d, sample_id in zip(src_labels, sample_ids):
+                d["sample_id"] = sample_id
+
+        return clip_labels, other_labels, src_labels
 
     def _sync_source_sample(self, sample):
         if not self._classification_field:
@@ -370,7 +409,7 @@ class ClipsView(fov.DatasetView):
 
         update_ids = []
         update_docs = []
-        del_ids = set()
+        del_labels = []
         for label_id, sample_id, support, doc in zip(
             *sync_view.values(["id", "sample_id", "support", field], _raw=True)
         ):
@@ -380,7 +419,13 @@ class ClipsView(fov.DatasetView):
                 update_ids.append(sample_id)
                 update_docs.append(doc)
             else:
-                del_ids.add(label_id)
+                del_labels.append(
+                    {
+                        "sample_id": sample_id,
+                        "label_id": label_id,
+                        "field": field,
+                    }
+                )
 
         if delete:
             observed_ids = set(update_ids)
@@ -388,15 +433,19 @@ class ClipsView(fov.DatasetView):
                 *self._clips_dataset.values(["id", "sample_id"])
             ):
                 if sample_id not in observed_ids:
-                    del_ids.add(label_id)
+                    del_labels.append(
+                        {
+                            "sample_id": sample_id,
+                            "label_id": label_id,
+                            "field": field,
+                        }
+                    )
 
         if update:
             self._source_collection._set_labels(field, update_ids, update_docs)
 
-        if del_ids:
-            # @todo can we optimize this? we know exactly which samples each
-            # label to be deleted came from
-            self._source_collection._delete_labels(del_ids, fields=[field])
+        if del_labels:
+            self._source_collection._delete_labels(del_labels, fields=[field])
 
     def _sync_source_field_schema(self, path):
         root = path.split(".", 1)[0]
@@ -598,6 +647,7 @@ def make_clips_dataset(
     sample_collection,
     field_or_expr,
     other_fields=None,
+    include_indexes=False,
     tol=0,
     min_len=0,
     trajectories=False,
@@ -658,6 +708,10 @@ def make_clips_dataset(
             -   a field or list of fields to include
             -   ``True`` to include all other fields
             -   ``None``/``False`` to include no other fields
+        include_indexes (False): whether to recreate any custom indexes on
+            ``field_or_expr`` and ``other_fields`` on the new dataset (True)
+            or a list of specific indexes or index prefixes to recreate.
+            By default, no custom indexes are recreated
         tol (0): the maximum number of false frames that can be overlooked when
             generating clips. Only applicable when ``field_or_expr`` is a
             frame-level list field or expression
@@ -742,6 +796,19 @@ def make_clips_dataset(
         add_fields = [f for f in other_fields if f not in curr_schema]
         add_schema = {k: v for k, v in src_schema.items() if k in add_fields}
         dataset._sample_doc_cls.merge_field_schema(add_schema)
+
+    if clips_type == "detections":
+        clips_field = field_or_expr
+    else:
+        clips_field = None
+
+    fod._clone_indexes_for_clips_view(
+        sample_collection,
+        dataset,
+        clips_field=clips_field,
+        other_fields=other_fields,
+        include_indexes=include_indexes,
+    )
 
     _make_pretty_summary(dataset)
 

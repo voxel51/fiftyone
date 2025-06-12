@@ -1,3 +1,4 @@
+import { TooltipProvider } from "@fiftyone/components";
 import { DeleteOutline, EditOutlined } from "@mui/icons-material";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import {
@@ -10,10 +11,9 @@ import {
 } from "@mui/material";
 import React from "react";
 import ConfirmDelete from "../../components/ConfirmDelete";
-import TooltipProvider from "../../../TooltipProvider";
 
 export default function Actions(props) {
-  const { onDelete, onEdit, readOnly } = props;
+  const { onDelete, onEdit, canEdit, canDelete } = props;
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
   const [deleteOpen, setDeleteOpen] = React.useState(false);
@@ -23,9 +23,6 @@ export default function Actions(props) {
   const handleClose = () => {
     setAnchorEl(null);
   };
-  const tooltipTitle = readOnly
-    ? "You do not have permission to create scenarios"
-    : null;
 
   return (
     <Stack>
@@ -38,13 +35,17 @@ export default function Actions(props) {
         open={open}
         onClose={handleClose}
       >
-        <TooltipProvider title={tooltipTitle}>
+        <TooltipProvider
+          title={
+            canEdit ? undefined : "You do not have permission to edit scenario"
+          }
+        >
           <MenuItem
             onClick={() => {
               onEdit?.();
               handleClose();
             }}
-            disabled={readOnly}
+            disabled={!canEdit}
           >
             <ListItemIcon>
               <EditOutlined fontSize="small" color="secondary" />
@@ -52,14 +53,19 @@ export default function Actions(props) {
             <Typography color="secondary">Edit</Typography>
           </MenuItem>
         </TooltipProvider>
-        <TooltipProvider title={tooltipTitle}>
+        <TooltipProvider
+          title={
+            canEdit
+              ? undefined
+              : "You do not have permission to delete scenario"
+          }
+        >
           <MenuItem
             onClick={() => {
               setDeleteOpen(true);
               handleClose();
             }}
-            disabled={readOnly}
-            title={tooltipTitle}
+            disabled={!canDelete}
           >
             <ListItemIcon>
               <DeleteOutline fontSize="small" color="error" />

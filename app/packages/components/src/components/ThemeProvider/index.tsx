@@ -28,9 +28,10 @@ let theme = extendMuiTheme({
   colorSchemes: {
     light: {
       palette: {
+        themeMode: "light",
         action: {
           active: "hsl(200, 0%, 30%)",
-          disabled: "hsl(200, 0%, 50%)",
+          disabled: "hsl(0, 0.9523809523809558%, 20.588235294117645%)",
         },
         background: {
           body: "hsl(200, 0%, 85%)",
@@ -111,6 +112,7 @@ let theme = extendMuiTheme({
     },
     dark: {
       palette: {
+        themeMode: "dark",
         action: {
           active: "hsl(200, 0%, 70%)",
           disabled: "hsl(200, 0%, 50%)",

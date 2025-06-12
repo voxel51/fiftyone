@@ -716,8 +716,33 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def last_modified_at(self):
-        """The datetime that the dataset was last modified."""
+        """The datetime that dataset-level metadata was last modified.
+
+        This property is incremented in the following cases:
+
+        -   when properties such as :attr:`name`, :attr:`persistent`,
+            :attr:`tags`, :attr:`description`, :attr:`info`, and
+            :attr:`app_config` are edited
+        -   when fields are added or deleted from the dataset's schema
+        -   when group slices are added or deleted from the dataset's schema
+        -   when saved views or workspaces are added, edited, or deleted
+        -   when annotation, brain, evaluation, or custom runs are added,
+            edited, or deleted
+
+        This property is **not** updated when samples are added, edited, or
+        deleted. Use
+        :meth:`max("last_modified_at") <fiftyone.core.collections.SampleCollection.max>`
+        to determine when samples were last added or edited, and use
+        :attr:`last_deletion_at` to determine when samples were last deleted.
+        """
         return self._doc.last_modified_at
+
+    @property
+    def last_deletion_at(self):
+        """The datetime that a sample was last deleted from the dataset, or
+        ``None`` if no samples have been deleted.
+        """
+        return self._doc.last_deletion_at
 
     @property
     def last_loaded_at(self):
@@ -3616,6 +3641,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fields=None,
         omit_fields=None,
         merge_lists=True,
+        merge_embedded_docs=False,
         overwrite=True,
         expand_schema=True,
         validate=True,
@@ -3673,6 +3699,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 (when ``overwrite`` is True) or kept (when ``overwrite`` is
                 False) when their ``id`` matches a label from the provided
                 sample
+            merge_embedded_docs (False): whether to merge the attributes of
+                embedded documents (True) rather than merging the entire
+                top-level field (False)
             overwrite (True): whether to overwrite (True) or skip (False)
                 existing fields and label elements
             expand_schema (True): whether to dynamically add new fields
@@ -3706,6 +3735,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 fields=fields,
                 omit_fields=omit_fields,
                 merge_lists=merge_lists,
+                merge_embedded_docs=merge_embedded_docs,
                 overwrite=overwrite,
                 expand_schema=expand_schema,
                 validate=validate,
@@ -3723,6 +3753,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fields=None,
         omit_fields=None,
         merge_lists=True,
+        merge_embedded_docs=False,
         overwrite=True,
         expand_schema=True,
         dynamic=False,
@@ -3804,6 +3835,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 (when ``overwrite`` is True) or kept (when ``overwrite`` is
                 False) when their ``id`` matches a label from the provided
                 samples
+            merge_embedded_docs (False): whether to merge the attributes of
+                embedded documents (True) rather than merging the entire
+                top-level field (False)
             overwrite (True): whether to overwrite (True) or skip (False)
                 existing fields and label elements
             expand_schema (True): whether to dynamically add new fields
@@ -3864,6 +3898,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 fields=fields,
                 omit_fields=omit_fields,
                 merge_lists=merge_lists,
+                merge_embedded_docs=merge_embedded_docs,
                 overwrite=overwrite,
             )
             return
@@ -3894,6 +3929,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     fields=fields,
                     omit_fields=omit_fields,
                     merge_lists=merge_lists,
+                    merge_embedded_docs=merge_embedded_docs,
                     overwrite=overwrite,
                     expand_schema=expand_schema,
                     include_info=False,
@@ -3913,6 +3949,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             fields=fields,
             omit_fields=omit_fields,
             merge_lists=merge_lists,
+            merge_embedded_docs=merge_embedded_docs,
             overwrite=overwrite,
             expand_schema=expand_schema,
             dynamic=dynamic,
@@ -3994,7 +4031,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._clear_groups(group_ids=group_ids)
 
     def delete_labels(
-        self, labels=None, ids=None, tags=None, view=None, fields=None
+        self,
+        labels=None,
+        ids=None,
+        instance_ids=None,
+        tags=None,
+        view=None,
+        fields=None,
     ):
         """Deletes the specified labels from the dataset.
 
@@ -4004,8 +4047,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dicts in the format returned by
             :attr:`fiftyone.core.session.Session.selected_labels`
 
-        -   Provide the ``ids`` or ``tags`` arguments to specify the labels to
-            delete via their IDs and/or tags
+        -   Provide the ``ids`` argument to specify the labels to delete via
+            their IDs
+
+        -   Provide the ``instance_ids`` argument to specify the labels to
+            delete via their instance IDs
+
+        -   Provide the ``tags`` argument to specify the labels to delete via
+            their tags
 
         -   Provide the ``view`` argument to delete all of the labels in a view
             into this dataset. This syntax is useful if you have constructed a
@@ -4022,6 +4071,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 the format returned by
                 :attr:`fiftyone.core.session.Session.selected_labels`
             ids (None): an ID or iterable of IDs of the labels to delete
+            instance_ids (None): an instance ID or iterable of instance IDs of
+                the labels to delete
             tags (None): a tag or iterable of tags of the labels to delete
             view (None): a :class:`fiftyone.core.view.DatasetView` into this
                 dataset containing the labels to delete
@@ -4035,7 +4086,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             labels = view._get_selected_labels(fields=fields)
             self._delete_labels(labels, fields=fields)
 
-        if ids is None and tags is None:
+        if ids is None and instance_ids is None and tags is None:
             return
 
         if etau.is_str(ids):
@@ -4043,6 +4094,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if ids is not None:
             ids = [ObjectId(_id) for _id in ids]
+
+        if etau.is_str(instance_ids):
+            instance_ids = [instance_ids]
+
+        if instance_ids is not None:
+            instance_ids = [ObjectId(_id) for _id in instance_ids]
 
         if etau.is_str(tags):
             tags = [tags]
@@ -4082,6 +4139,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                             )
                         )
 
+                if instance_ids is not None:
+                    for _ids in fou.iter_batches(instance_ids, batch_size):
+                        ops.append(
+                            UpdateMany(
+                                {root + ".instance._id": {"$in": _ids}},
+                                {
+                                    "$pull": {
+                                        root: {"instance._id": {"$in": _ids}}
+                                    },
+                                    "$set": {"last_modified_at": now},
+                                },
+                            )
+                        )
+
                 if tags is not None:
                     ops.append(
                         UpdateMany(
@@ -4102,6 +4173,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                         ops.append(
                             UpdateMany(
                                 {root + "._id": {"$in": _ids}},
+                                {
+                                    "$set": {
+                                        root: None,
+                                        "last_modified_at": now,
+                                    }
+                                },
+                            )
+                        )
+
+                if instance_ids is not None:
+                    for _ids in fou.iter_batches(instance_ids, batch_size):
+                        ops.append(
+                            UpdateMany(
+                                {root + ".instance._id": {"$in": _ids}},
                                 {
                                     "$set": {
                                         root: None,
@@ -4951,7 +5036,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return slug
 
-    def clone(self, name=None, persistent=False):
+    def clone(self, name=None, persistent=False, include_indexes=True):
         """Creates a copy of the dataset.
 
         Dataset clones contain deep copies of all samples and dataset-level
@@ -4962,13 +5047,27 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             name (None): a name for the cloned dataset. By default,
                 :func:`get_default_dataset_name` is used
             persistent (False): whether the cloned dataset should be persistent
+            include_indexes (True): whether to recreate any custom indexes on
+                the new dataset (True) or a list of specific indexes or
+                index prefixes to recreate. By default, all custom indexes are
+                recreated
 
         Returns:
             the new :class:`Dataset`
         """
-        return self._clone(name=name, persistent=persistent)
+        return self._clone(
+            name=name,
+            persistent=persistent,
+            include_indexes=include_indexes,
+        )
 
-    def _clone(self, name=None, persistent=False, view=None):
+    def _clone(
+        self,
+        name=None,
+        persistent=False,
+        view=None,
+        include_indexes=True,
+    ):
         if name is None:
             name = get_default_dataset_name()
 
@@ -4977,7 +5076,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         else:
             sample_collection = self
 
-        return _clone_collection(sample_collection, name, persistent)
+        return _clone_collection(
+            sample_collection,
+            name,
+            persistent=persistent,
+            include_indexes=include_indexes,
+        )
 
     def clear(self):
         """Removes all samples from the dataset.
@@ -5013,7 +5117,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ops.append(DeleteMany({}))
 
         foo.bulk_write(ops, self._sample_collection)
-        self._update_last_modified_at(now)
+        self._update_last_deletion_at(now)
 
         fos.Sample._reset_docs(
             self._sample_collection_name, sample_ids=sample_ids
@@ -5354,7 +5458,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         (a) Provide ``dataset_dir`` and ``dataset_type`` to import the contents
             of a directory that is organized in the default layout for the
             dataset type as documented in
-            :ref:`this guide <loading-datasets-from-disk>`
+            :ref:`this guide <loading-common-datasets>`
 
         (b) Provide ``dataset_type`` along with ``data_path``, ``labels_path``,
             or other type-specific parameters to perform a customized import.
@@ -5365,7 +5469,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         In either workflow, the remaining parameters of this method can be
         provided to further configure the import.
 
-        See :ref:`this guide <loading-datasets-from-disk>` for example usages
+        See :ref:`this guide <loading-common-datasets>` for example usages
         of this method and descriptions of the available dataset types.
 
         Args:
@@ -5479,6 +5583,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fields=None,
         omit_fields=None,
         merge_lists=True,
+        merge_embedded_docs=False,
         overwrite=True,
         expand_schema=True,
         dynamic=False,
@@ -5502,7 +5607,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         (a) Provide ``dataset_dir`` and ``dataset_type`` to import the contents
             of a directory that is organized in the default layout for the
             dataset type as documented in
-            :ref:`this guide <loading-datasets-from-disk>`
+            :ref:`this guide <loading-common-datasets>`
 
         (b) Provide ``dataset_type`` along with ``data_path``, ``labels_path``,
             or other type-specific parameters to perform a customized import.
@@ -5513,7 +5618,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         In either workflow, the remaining parameters of this method can be
         provided to further configure the import.
 
-        See :ref:`this guide <loading-datasets-from-disk>` for example usages
+        See :ref:`this guide <loading-common-datasets>` for example usages
         of this method and descriptions of the available dataset types.
 
         By default, samples with the same absolute ``filepath`` are merged, but
@@ -5632,6 +5737,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 elements are either replaced (when ``overwrite`` is True) or
                 kept (when ``overwrite`` is False) when their ``id`` matches a
                 label from the provided samples
+            merge_embedded_docs (False): whether to merge the attributes of
+                embedded documents (True) rather than merging the entire
+                top-level field (False)
             overwrite (True): whether to overwrite (True) or skip (False)
                 existing fields and label elements
             expand_schema (True): whether to dynamically add new fields
@@ -5668,6 +5776,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             fields=fields,
             omit_fields=omit_fields,
             merge_lists=merge_lists,
+            merge_embedded_docs=merge_embedded_docs,
             overwrite=overwrite,
             expand_schema=expand_schema,
             dynamic=dynamic,
@@ -5697,7 +5806,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         is assumed that this directory contains the extracted contents of the
         archive, and thus the archive is not re-extracted.
 
-        See :ref:`this guide <loading-datasets-from-disk>` for example usages
+        See :ref:`this guide <loading-common-datasets>` for example usages
         of this method and descriptions of the available dataset types.
 
         .. note::
@@ -5816,6 +5925,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fields=None,
         omit_fields=None,
         merge_lists=True,
+        merge_embedded_docs=False,
         overwrite=True,
         expand_schema=True,
         dynamic=False,
@@ -5838,7 +5948,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         is assumed that this directory contains the extracted contents of the
         archive, and thus the archive is not re-extracted.
 
-        See :ref:`this guide <loading-datasets-from-disk>` for example usages
+        See :ref:`this guide <loading-common-datasets>` for example usages
         of this method and descriptions of the available dataset types.
 
         .. note::
@@ -5965,6 +6075,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 elements are either replaced (when ``overwrite`` is True) or
                 kept (when ``overwrite`` is False) when their ``id`` matches a
                 label from the provided samples
+            merge_embedded_docs (False): whether to merge the attributes of
+                embedded documents (True) rather than merging the entire
+                top-level field (False)
             overwrite (True): whether to overwrite (True) or skip (False)
                 existing fields and label elements
             expand_schema (True): whether to dynamically add new fields
@@ -5997,6 +6110,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             fields=fields,
             omit_fields=omit_fields,
             merge_lists=merge_lists,
+            merge_embedded_docs=merge_embedded_docs,
             overwrite=overwrite,
             expand_schema=expand_schema,
             dynamic=dynamic,
@@ -6081,6 +6195,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fields=None,
         omit_fields=None,
         merge_lists=True,
+        merge_embedded_docs=False,
         overwrite=True,
         expand_schema=True,
         dynamic=False,
@@ -6180,6 +6295,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 elements are either replaced (when ``overwrite`` is True) or
                 kept (when ``overwrite`` is False) when their ``id`` matches a
                 label from the provided samples
+            merge_embedded_docs (False): whether to merge the attributes of
+                embedded documents (True) rather than merging the entire
+                top-level field (False)
             overwrite (True): whether to overwrite (True) or skip (False)
                 existing fields and label elements
             expand_schema (True): whether to dynamically add new fields
@@ -6205,6 +6323,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             fields=fields,
             omit_fields=omit_fields,
             merge_lists=merge_lists,
+            merge_embedded_docs=merge_embedded_docs,
             overwrite=overwrite,
             expand_schema=expand_schema,
             dynamic=dynamic,
@@ -6857,7 +6976,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         (a) Provide ``dataset_dir`` and ``dataset_type`` to import the contents
             of a directory that is organized in the default layout for the
             dataset type as documented in
-            :ref:`this guide <loading-datasets-from-disk>`
+            :ref:`this guide <loading-common-datasets>`
 
         (b) Provide ``dataset_type`` along with ``data_path``, ``labels_path``,
             or other type-specific parameters to perform a customized
@@ -6868,7 +6987,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         In either workflow, the remaining parameters of this method can be
         provided to further configure the import.
 
-        See :ref:`this guide <loading-datasets-from-disk>` for example usages
+        See :ref:`this guide <loading-common-datasets>` for example usages
         of this method and descriptions of the available dataset types.
 
         Args:
@@ -6982,7 +7101,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         is assumed that this directory contains the extracted contents of the
         archive, and thus the archive is not re-extracted.
 
-        See :ref:`this guide <loading-datasets-from-disk>` for example usages
+        See :ref:`this guide <loading-common-datasets>` for example usages
         of this method and descriptions of the available dataset types.
 
         .. note::
@@ -8274,6 +8393,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _update_last_modified_at(self, last_modified_at=None):
         self._doc._update_last_modified_at(last_modified_at=last_modified_at)
 
+    def _update_last_deletion_at(self, last_deletion_at=None):
+        self._doc._update_last_deletion_at(last_deletion_at=last_deletion_at)
+
 
 def _get_random_characters(n):
     return "".join(
@@ -8316,7 +8438,9 @@ def _list_datasets_info(include_private=False, glob_patt=None, tags=None):
 
 def _list_datasets_query(include_private=False, glob_patt=None, tags=None):
     if include_private:
-        query = {}
+        # Protect against empty dataset docs, which can sometimes occur for
+        # reasons we don't fully understand
+        query = {"name": {"$exists": 1}}
     else:
         # Datasets whose sample collections don't start with `samples.` are
         # private e.g., patches or frames datasets
@@ -8420,46 +8544,258 @@ def _create_group_indexes(sample_collection_name, group_field):
     sample_collection.create_index(group_field + ".name")
 
 
-def _clone_indexes(src_collection, dst_doc):
-    if isinstance(src_collection, fov.DatasetView):
-        src_dataset = src_collection._dataset
-        src_view = src_collection
-    else:
-        src_dataset = src_collection
-        src_view = None
+def _clone_indexes(src_collection, dst_doc, include_indexes=True):
+    # Special syntax: copy indexes exactly from another collection
+    if isinstance(include_indexes, foc.SampleCollection):
+        _clone_indexes(include_indexes, dst_doc)
+        return
+
+    src_dataset = src_collection._dataset
 
     # Omit indexes on filtered fields
-    if src_view is not None:
-        skip = _get_indexes_to_skip(src_view)
-    else:
-        skip = None
+    skip = _get_clone_indexes_to_skip(src_collection)
+
+    keep = _get_clone_indexes_to_keep(
+        src_collection, include_indexes, include_default=True
+    )
 
     _clone_collection_indexes(
         src_dataset._sample_collection_name,
         dst_doc.sample_collection_name,
         skip=skip,
+        keep=keep,
     )
 
     if dst_doc.frame_collection_name is not None:
         # Omit indexes on filtered fields
-        if src_view is not None:
-            skip = _get_indexes_to_skip(src_view, frames=True)
-        else:
-            skip = None
+        skip = _get_clone_indexes_to_skip(src_collection, frames=True)
+
+        keep = _get_clone_indexes_to_keep(
+            src_collection, include_indexes, include_default=True, frames=True
+        )
 
         _clone_collection_indexes(
             src_dataset._frame_collection_name,
             dst_doc.frame_collection_name,
             skip=skip,
+            keep=keep,
         )
 
 
-def _get_indexes_to_skip(view, frames=False):
-    selected_fields, excluded_fields = view._get_selected_excluded_fields(
-        frames=frames
+def _clone_indexes_for_patches_view(
+    src_collection,
+    dst_dataset,
+    patches_fields=None,
+    other_fields=None,
+    include_indexes=True,
+):
+    if include_indexes is False:
+        return
+
+    # Special syntax: copy indexes exactly from another collection
+    if isinstance(include_indexes, foc.SampleCollection):
+        _clone_indexes(include_indexes, dst_dataset._doc)
+        return
+
+    src_dataset = src_collection._dataset
+
+    remap = {}
+    if patches_fields is not None:
+        for patches_field in patches_fields:
+            dst_field = dst_dataset.get_field(patches_field)
+            if isinstance(dst_field, fof.EmbeddedDocumentField):
+                label_type = dst_field.document_type
+                if issubclass(label_type, fol._HasLabelList):
+                    # This view maintains label lists
+                    # eg: `Detections` -> `Detections`
+                    pass
+                else:
+                    # This view maps label lists to single labels
+                    # eg: `Detections` -> `Detection`
+                    label_list_type = fol._SINGLE_LABEL_TO_LIST_MAP[label_type]
+                    src_field = (
+                        patches_field + "." + label_list_type._LABEL_LIST_FIELD
+                    )
+                    remap[src_field] = patches_field
+
+    if include_indexes is True:
+        include_indexes = []
+
+        if patches_fields is not None:
+            remap_rev = {v: k for k, v in remap.items()}
+            for patches_field in patches_fields:
+                include_indexes.append(
+                    remap_rev.get(patches_field, patches_field)
+                )
+
+        if other_fields:
+            include_indexes.extend(other_fields)
+
+    keep = _get_clone_indexes_to_keep(
+        src_collection, include_indexes, remap=remap, dst_dataset=dst_dataset
     )
 
-    if selected_fields is None and excluded_fields is None:
+    _clone_collection_indexes(
+        src_dataset._sample_collection_name,
+        dst_dataset._sample_collection_name,
+        keep=keep,
+    )
+
+
+def _clone_indexes_for_frames_view(
+    src_collection, dst_dataset, include_indexes=True
+):
+    if include_indexes is False:
+        return
+
+    # Special syntax: copy indexes exactly from another collection
+    if isinstance(include_indexes, foc.SampleCollection):
+        _clone_indexes(include_indexes, dst_dataset._doc)
+        return
+
+    src_dataset = src_collection._dataset
+
+    # Omit default indexes and indexes on filtered fields
+    skip_indexes = src_collection._get_default_indexes(frames=True)
+    skip = _get_clone_indexes_to_skip(
+        src_collection, skip_indexes=skip_indexes, frames=True
+    )
+
+    keep = _get_clone_indexes_to_keep(
+        src_collection, include_indexes, frames=True
+    )
+
+    _clone_collection_indexes(
+        src_dataset._frame_collection_name,
+        dst_dataset._sample_collection_name,
+        skip=skip,
+        keep=keep,
+    )
+
+
+def _clone_indexes_for_clips_view(
+    src_collection,
+    dst_dataset,
+    clips_field=None,
+    other_fields=None,
+    include_indexes=True,
+):
+    if include_indexes is False:
+        return
+
+    # Special syntax: copy indexes exactly from another collection
+    if isinstance(include_indexes, foc.SampleCollection):
+        _clone_indexes(include_indexes, dst_dataset._doc)
+        return
+
+    src_dataset = src_collection._dataset
+
+    remap = {}
+    if clips_field is not None:
+        src_field = src_collection.get_field(clips_field)
+        if isinstance(src_field, fof.EmbeddedDocumentField):
+            label_type = src_field.document_type
+            if issubclass(label_type, fol._HasLabelList):
+                # This view maps `TemporalDetections` to `Classification`
+                src_root = clips_field + "." + label_type._LABEL_LIST_FIELD
+                remap[src_root] = clips_field
+            else:
+                # This view maps `TemporalDetection` to `Classification`
+                pass
+
+    if include_indexes is True:
+        include_indexes = []
+
+        if clips_field is not None:
+            remap_rev = {v: k for k, v in remap.items()}
+            include_indexes.append(remap_rev.get(clips_field, clips_field))
+
+        if other_fields:
+            include_indexes.extend(other_fields)
+
+    keep = _get_clone_indexes_to_keep(
+        src_collection, include_indexes, remap=remap, dst_dataset=dst_dataset
+    )
+
+    _clone_collection_indexes(
+        src_dataset._sample_collection_name,
+        dst_dataset._sample_collection_name,
+        keep=keep,
+    )
+
+
+def _get_clone_indexes_to_keep(
+    src_collection,
+    include_indexes,
+    include_default=False,
+    frames=False,
+    remap=None,
+    dst_dataset=None,
+):
+    if include_indexes is True:
+        return None
+
+    if include_indexes is False:
+        include_indexes = []
+
+    if etau.is_str(include_indexes):
+        include_indexes = [include_indexes]
+
+    if frames:
+        prefix = src_collection._FRAMES_PREFIX
+        include_indexes = [
+            i[len(prefix) :] for i in include_indexes if i.startswith(prefix)
+        ]
+    elif src_collection._has_frame_fields():
+        prefix = src_collection._FRAMES_PREFIX
+        include_indexes = [
+            i for i in include_indexes if not i.startswith(prefix)
+        ]
+
+    if include_default:
+        default_indexes = src_collection._get_default_indexes(frames=frames)
+        include_indexes = set(include_indexes) | set(default_indexes)
+
+    if remap is None:
+        fields_map = src_collection._get_db_fields_map(frames=frames)
+        return [fields_map.get(f, f) for f in include_indexes]
+
+    keep = {}
+    for i in include_indexes:
+        keep[i] = i
+
+        for k, v in remap.items():
+            if i == k:
+                keep[i] = v
+            elif i.startswith(k + "."):
+                keep[i] = i.replace(k, v, 1)
+
+    key_map = src_collection._get_db_fields_map(frames=frames)
+    value_map = dst_dataset._get_db_fields_map()
+    return {key_map.get(k, k): value_map.get(v, v) for k, v in keep.items()}
+
+
+def _get_clone_indexes_to_skip(
+    src_collection, skip_indexes=None, frames=False
+):
+    src_dataset = src_collection._dataset
+
+    if skip_indexes is not None:
+        skip_indexes = set(skip_indexes)
+
+    if isinstance(src_collection, fov.DatasetView):
+        view = src_collection
+        selected_fields, excluded_fields = view._get_selected_excluded_fields(
+            frames=frames
+        )
+    else:
+        selected_fields, excluded_fields = None, None
+
+    if (
+        skip_indexes is None
+        and selected_fields is None
+        and excluded_fields is None
+    ):
         return None
 
     if selected_fields is not None:
@@ -8468,18 +8804,28 @@ def _get_indexes_to_skip(view, frames=False):
         selected_roots = None
 
     if frames:
-        src_coll = view._dataset._frame_collection
-        fields_map = view._get_db_fields_map(frames=True, reverse=True)
+        src_coll = src_dataset._frame_collection
+        fields_map = src_dataset._get_db_fields_map(frames=True, reverse=True)
     else:
-        src_coll = view._dataset._sample_collection
-        fields_map = view._get_db_fields_map(reverse=True)
+        src_coll = src_dataset._sample_collection
+        fields_map = src_dataset._get_db_fields_map(reverse=True)
 
     skip = set()
 
     for name, index_info in src_coll.index_information().items():
+        if skip_indexes is not None and name in skip_indexes:
+            skip.add(name)
+
         for field, _ in index_info["key"]:
             field = fields_map.get(field, field)
             root = field.split(".", 1)[0]
+
+            if (
+                skip_indexes is not None
+                and len(index_info["key"]) == 1
+                and field in skip_indexes
+            ):
+                skip.add(name)
 
             if selected_roots is not None and root not in selected_roots:
                 skip.add(name)
@@ -8491,8 +8837,14 @@ def _get_indexes_to_skip(view, frames=False):
 
 
 def _clone_collection_indexes(
-    src_collection_name, dst_collection_name, skip=None
+    src_collection_name,
+    dst_collection_name,
+    skip=None,
+    keep=None,
 ):
+    if keep is not None and not isinstance(keep, dict):
+        keep = {k: k for k in keep}
+
     conn = foo.get_db_conn()
     src_coll = conn[src_collection_name]
     dst_coll = conn[dst_collection_name]
@@ -8501,8 +8853,34 @@ def _clone_collection_indexes(
         key = index_info.pop("key")
         index_info.pop("ns", None)
         index_info.pop("v", None)
+
+        # `skip` must contain exact index names
         if skip is not None and name in skip:
             continue
+
+        # `keep` can contain index names or prefixes to match
+        if keep is not None:
+            found = False
+
+            for k, v in keep.items():
+                if name == k:
+                    name = v
+                    found = True
+                elif name.startswith(k + "."):
+                    name = name.replace(k, v, 1)
+                    found = True
+
+                # `keep` can optionally remap field names/roots
+                for idx, (field, order) in enumerate(key):
+                    if field == k:
+                        key[idx] = (v, order)
+                        found = True
+                    elif field.startswith(k + "."):
+                        key[idx] = (field.replace(k, v, 1), order)
+                        found = True
+
+            if not found:
+                continue
 
         dst_coll.create_index(key, name=name, **index_info)
 
@@ -8700,7 +9078,12 @@ def _delete_dataset_doc(dataset_doc):
     dataset_doc.delete()
 
 
-def _clone_collection(sample_collection, name, persistent):
+def _clone_collection(
+    sample_collection,
+    name,
+    persistent=False,
+    include_indexes=True,
+):
     slug = _validate_dataset_name(name)
 
     contains_videos = sample_collection._contains_videos(any_slice=True)
@@ -8742,6 +9125,7 @@ def _clone_collection(sample_collection, name, persistent):
     dataset_doc.slug = slug
     dataset_doc.created_at = now
     dataset_doc.last_modified_at = now
+    dataset_doc.last_deletion_at = None
     dataset_doc.last_loaded_at = None
     dataset_doc.persistent = persistent
     dataset_doc.sample_collection_name = sample_collection_name
@@ -8782,7 +9166,9 @@ def _clone_collection(sample_collection, name, persistent):
     dataset_doc.save(upsert=True)
 
     # Clone indexes
-    _clone_indexes(sample_collection, dataset_doc)
+    _clone_indexes(
+        sample_collection, dataset_doc, include_indexes=include_indexes
+    )
 
     # Clone samples
     coll, pipeline = _get_samples_pipeline(sample_collection)
@@ -9028,10 +9414,12 @@ def _merge_dataset_doc(
 
     if isinstance(collection_or_doc, foc.SampleCollection):
         # Respects filtered schemas, if any
+        same_dataset = collection_or_doc._root_dataset is dataset
         doc = collection_or_doc._root_dataset._doc
         schema = collection_or_doc.get_field_schema()
         frame_schema = collection_or_doc.get_frame_field_schema() or {}
     else:
+        same_dataset = False
         doc = collection_or_doc
         schema = {f.name: f.to_field() for f in doc.sample_fields}
         frame_schema = {f.name: f.to_field() for f in doc.frame_fields or []}
@@ -9138,7 +9526,7 @@ def _merge_dataset_doc(
             frame_schema, expand_schema=expand_schema
         )
 
-    if not merge_info:
+    if same_dataset or not merge_info:
         curr_doc.reload()
         return
 
@@ -9464,6 +9852,7 @@ def _merge_samples_python(
     fields=None,
     omit_fields=None,
     merge_lists=True,
+    merge_embedded_docs=False,
     overwrite=True,
     expand_schema=True,
     dynamic=False,
@@ -9503,6 +9892,7 @@ def _merge_samples_python(
         fields=fields,
         omit_fields=omit_fields,
         merge_lists=merge_lists,
+        merge_embedded_docs=merge_embedded_docs,
         overwrite=overwrite,
         expand_schema=expand_schema,
     )
@@ -9527,6 +9917,7 @@ def _make_merge_samples_generator(
     fields=None,
     omit_fields=None,
     merge_lists=True,
+    merge_embedded_docs=False,
     overwrite=True,
     expand_schema=True,
 ):
@@ -9558,6 +9949,7 @@ def _make_merge_samples_generator(
                     fields=fields,
                     omit_fields=omit_fields,
                     merge_lists=merge_lists,
+                    merge_embedded_docs=merge_embedded_docs,
                     overwrite=overwrite,
                     expand_schema=expand_schema,
                 )
@@ -9583,6 +9975,7 @@ def _merge_samples_pipeline(
     fields=None,
     omit_fields=None,
     merge_lists=True,
+    merge_embedded_docs=False,
     overwrite=True,
 ):
     in_key_field = key_field
@@ -9627,18 +10020,6 @@ def _merge_samples_pipeline(
             omit_fields, omit_frame_fields = fou.split_frame_fields(
                 omit_fields
             )
-
-        if fields is not None:
-            fields = {k: v for k, v in fields.items() if k not in omit_fields}
-            omit_fields = None
-
-        if contains_videos and frame_fields is not None:
-            frame_fields = {
-                k: v
-                for k, v in frame_fields.items()
-                if k not in omit_frame_fields
-            }
-            omit_frame_fields = None
 
     #
     # Prepare samples merge pipeline
@@ -9712,6 +10093,7 @@ def _merge_samples_pipeline(
         when_matched = _merge_docs(
             src_collection,
             merge_lists=merge_lists,
+            merge_embedded_docs=merge_embedded_docs,
             fields=fields,
             omit_fields=omit_fields,
             delete_fields=delete_fields,
@@ -9816,6 +10198,7 @@ def _merge_samples_pipeline(
             when_frame_matched = _merge_docs(
                 src_collection,
                 merge_lists=merge_lists,
+                merge_embedded_docs=merge_embedded_docs,
                 fields=frame_fields,
                 omit_fields=omit_frame_fields,
                 delete_fields=delete_fields,
@@ -9924,6 +10307,7 @@ def _merge_samples_pipeline(
 def _merge_docs(
     sample_collection,
     merge_lists=True,
+    merge_embedded_docs=False,
     fields=None,
     omit_fields=None,
     delete_fields=None,
@@ -9935,30 +10319,73 @@ def _merge_docs(
     else:
         schema = sample_collection.get_field_schema()
 
+    # Identify list fields that need merging
     if merge_lists:
-        list_fields = []
-        elem_fields = []
-        for field, field_type in schema.items():
-            if fields is not None and field not in fields:
-                continue
-
-            if omit_fields is not None and field in omit_fields:
-                continue
-
-            if isinstance(field_type, fof.ListField):
-                root = fields[field] if fields is not None else field
-                list_fields.append(root)
-            elif isinstance(
-                field_type, fof.EmbeddedDocumentField
-            ) and issubclass(field_type.document_type, fol._HasLabelList):
-                root = fields[field] if fields is not None else field
-                elem_fields.append(
-                    root + "." + field_type.document_type._LABEL_LIST_FIELD
-                )
+        list_fields, elem_fields = _init_merge_lists(
+            schema, fields=fields, omit_fields=omit_fields
+        )
     else:
         list_fields = None
         elem_fields = None
 
+    # Identify embedded document fields that need merging
+    if merge_embedded_docs:
+        (
+            doc_fields,
+            doc_list_fields,
+            doc_elem_fields,
+        ) = _init_merge_embedded_docs(
+            schema,
+            fields=fields,
+            omit_fields=omit_fields,
+            merge_lists=merge_lists,
+        )
+    else:
+        doc_fields = None
+        doc_list_fields = None
+        doc_elem_fields = None
+
+    #
+    # It is possible that the user is mapping data *into* an embedded field
+    # eg: fields={"ground_truth": "data.gt"}
+    #
+    # We must handle such cases by:
+    #   1. always merging the "data" field, even if merging embedded documents
+    #      wasn't explicitly requested
+    #   2. moving any embedded list fields associated with "data" into the
+    #      per-doc lists
+    #
+    if fields is not None:
+        embedded_roots = set()
+        for k, v in fields.items():
+            if "." in v:
+                root = v.split(".", 1)[0]
+                embedded_roots.add(root)
+
+        if embedded_roots and not merge_embedded_docs:
+            doc_fields = []
+            if merge_lists:
+                doc_list_fields = defaultdict(list)
+                doc_elem_fields = defaultdict(list)
+
+        for root in embedded_roots:
+            if root not in doc_fields:
+                doc_fields.append(root)
+
+            if merge_lists:
+                for i in range(len(list_fields)):
+                    f = list_fields[i]
+                    if f.startswith(root + "."):
+                        del list_fields[i]
+                        doc_list_fields[root].append(f[len(root + ".") :])
+
+                for i in range(len(elem_fields)):
+                    f = elem_fields[i]
+                    if f.startswith(root + "."):
+                        del elem_fields[i]
+                        doc_elem_fields[root].append(f[len(root + ".") :])
+
+    # Handle merging of simple fields
     if overwrite:
         root_doc = "$$ROOT"
 
@@ -10016,6 +10443,7 @@ def _merge_docs(
 
         docs = [new_doc, root_doc]
 
+    # Handle merging of list fields
     if list_fields or elem_fields:
         doc = {}
 
@@ -10029,31 +10457,145 @@ def _merge_docs(
 
         docs.append(doc)
 
+    # Handle merging of embedded document fields
+    if doc_fields:
+        doc = {}
+
+        for doc_field in doc_fields:
+            if merge_lists:
+                _doc_list_fields = doc_list_fields.get(doc_field, [])
+                _doc_elem_fields = doc_elem_fields.get(doc_field, [])
+            else:
+                _doc_list_fields = None
+                _doc_elem_fields = None
+
+            _merge_embedded_doc_field(
+                doc,
+                doc_field,
+                list_fields=_doc_list_fields,
+                elem_fields=_doc_elem_fields,
+                overwrite=overwrite,
+            )
+
+        docs.append(doc)
+
     return [{"$replaceWith": {"$mergeObjects": docs}}]
 
 
-def _merge_list_field(doc, list_field):
+def _init_merge_lists(schema, fields=None, omit_fields=None):
+    list_fields = []
+    elem_fields = []
+
+    for field, field_type in schema.items():
+        if fields is not None and field not in fields:
+            continue
+
+        if omit_fields is not None and field in omit_fields:
+            continue
+
+        if isinstance(field_type, fof.ListField):
+            root = fields[field] if fields is not None else field
+            list_fields.append(root)
+        elif isinstance(field_type, fof.EmbeddedDocumentField) and issubclass(
+            field_type.document_type, fol._HasLabelList
+        ):
+            root = fields[field] if fields is not None else field
+            elem_fields.append(
+                root + "." + field_type.document_type._LABEL_LIST_FIELD
+            )
+
+    return list_fields, elem_fields
+
+
+def _init_merge_embedded_docs(
+    schema, fields=None, omit_fields=None, merge_lists=True
+):
+    doc_fields = []
+
+    if merge_lists:
+        doc_list_fields = {}
+        doc_elem_fields = {}
+    else:
+        doc_list_fields = None
+        doc_elem_fields = None
+
+    for field, field_type in schema.items():
+        if fields is not None and field not in fields:
+            continue
+
+        if omit_fields is not None and field in omit_fields:
+            continue
+
+        if isinstance(
+            field_type, fof.EmbeddedDocumentField
+        ) and not issubclass(field_type.document_type, fol._HasLabelList):
+            root = fields[field] if fields is not None else field
+            doc_fields.append(root)
+
+            if merge_lists:
+                _schema = field_type.get_field_schema()
+                _fields = _filter_by_root(fields, root)
+                _omit_fields = _filter_by_root(omit_fields, root)
+
+                _list_fields, _elem_fields = _init_merge_lists(
+                    _schema, fields=_fields, omit_fields=_omit_fields
+                )
+
+                doc_list_fields[root] = _list_fields
+                doc_elem_fields[root] = _elem_fields
+
+    return doc_fields, doc_list_fields, doc_elem_fields
+
+
+def _filter_by_root(fields, root):
+    if fields is None:
+        return None
+
+    is_dict = isinstance(fields, dict)
+    if is_dict:
+        fields = list(fields.values())
+
+    _fields = []
+    for f in fields:
+        if f.startswith(root + "."):
+            _fields.append(f[len(root + ".") :])
+
+    if not _fields:
+        return None
+
+    if is_dict:
+        return {f: f for f in _fields}
+
+    return _fields
+
+
+def _merge_list_field(doc, list_field, root=None):
+    if root is not None:
+        list_path = root + "." + list_field
+    else:
+        list_path = list_field
+
     doc[list_field] = {
         "$switch": {
             "branches": [
                 {
-                    "case": {"$not": {"$gt": ["$" + list_field, None]}},
-                    "then": "$$new." + list_field,
+                    "case": {"$not": {"$gt": ["$" + list_path, None]}},
+                    "then": "$$new." + list_path,
                 },
                 {
-                    "case": {"$not": {"$gt": ["$$new." + list_field, None]}},
-                    "then": "$" + list_field,
+                    "case": {"$not": {"$gt": ["$$new." + list_path, None]}},
+                    "then": "$" + list_path,
                 },
             ],
             "default": {
                 "$concatArrays": [
-                    "$" + list_field,
+                    "$" + list_path,
                     {
                         "$filter": {
-                            "input": "$$new." + list_field,
+                            "input": "$$new." + list_path,
                             "as": "this",
                             "cond": {
-                                "$not": {"$in": ["$$this", "$" + list_field]}
+                                "$not": {"$in": ["$$this", "$" + list_path]}
                             },
                         }
                     },
@@ -10063,18 +10605,25 @@ def _merge_list_field(doc, list_field):
     }
 
 
-def _merge_label_list_field(doc, elem_field, overwrite=False):
-    field, leaf = elem_field.split(".")
+def _merge_label_list_field(doc, elem_field, root=None, overwrite=False):
+    field, leaf = elem_field.rsplit(".", 1)
+
+    if root is not None:
+        elem_path = root + "." + elem_field
+        field_path = root + "." + field
+    else:
+        elem_path = elem_field
+        field_path = field
 
     if overwrite:
-        root = "$$new." + field
+        root_path = "$$new." + field_path
         elements = {
             "$reverseArray": {
                 "$let": {
                     "vars": {
                         "new_ids": {
                             "$map": {
-                                "input": "$$new." + elem_field,
+                                "input": "$$new." + elem_path,
                                 "as": "this",
                                 "in": "$$this._id",
                             },
@@ -10082,9 +10631,9 @@ def _merge_label_list_field(doc, elem_field, overwrite=False):
                     },
                     "in": {
                         "$reduce": {
-                            "input": {"$reverseArray": "$" + elem_field},
+                            "input": {"$reverseArray": "$" + elem_path},
                             "initialValue": {
-                                "$reverseArray": "$$new." + elem_field
+                                "$reverseArray": "$$new." + elem_path
                             },
                             "in": {
                                 "$cond": {
@@ -10108,13 +10657,13 @@ def _merge_label_list_field(doc, elem_field, overwrite=False):
             }
         }
     else:
-        root = "$" + field
+        root_path = "$" + field_path
         elements = {
             "$let": {
                 "vars": {
                     "existing_ids": {
                         "$map": {
-                            "input": "$" + elem_field,
+                            "input": "$" + elem_path,
                             "as": "this",
                             "in": "$$this._id",
                         },
@@ -10122,8 +10671,8 @@ def _merge_label_list_field(doc, elem_field, overwrite=False):
                 },
                 "in": {
                     "$reduce": {
-                        "input": "$$new." + elem_field,
-                        "initialValue": "$" + elem_field,
+                        "input": "$$new." + elem_path,
+                        "initialValue": "$" + elem_path,
                         "in": {
                             "$cond": {
                                 "if": {
@@ -10146,15 +10695,80 @@ def _merge_label_list_field(doc, elem_field, overwrite=False):
         "$switch": {
             "branches": [
                 {
-                    "case": {"$not": {"$gt": ["$" + field, None]}},
-                    "then": "$$new." + field,
+                    "case": {"$not": {"$gt": ["$" + field_path, None]}},
+                    "then": "$$new." + field_path,
                 },
                 {
-                    "case": {"$not": {"$gt": ["$$new." + field, None]}},
-                    "then": "$" + field,
+                    "case": {"$not": {"$gt": ["$$new." + field_path, None]}},
+                    "then": "$" + field_path,
                 },
             ],
-            "default": {"$mergeObjects": [root, {leaf: elements}]},
+            "default": {"$mergeObjects": [root_path, {leaf: elements}]},
+        }
+    }
+
+
+def _merge_embedded_doc_field(
+    doc,
+    doc_field,
+    list_fields=None,
+    elem_fields=None,
+    overwrite=False,
+):
+    if overwrite:
+        root_field = "$" + doc_field
+        new_field = "$$new." + doc_field
+    else:
+        root_field = "$$new." + doc_field
+        new_field = "$" + doc_field
+
+    # Handle merging of simple fields
+    root_doc = root_field
+    new_doc = {
+        "$arrayToObject": {
+            "$filter": {
+                "input": {"$objectToArray": new_field},
+                "as": "item",
+                "cond": {
+                    "$and": [
+                        {"$ne": ["$$item.v", None]},
+                    ]
+                },
+            }
+        }
+    }
+
+    docs = [root_doc, new_doc]
+
+    # Handle merging of nested list fields
+    if list_fields or elem_fields:
+        list_doc = {}
+
+        if list_fields:
+            for list_field in list_fields:
+                _merge_list_field(list_doc, list_field, root=doc_field)
+
+        if elem_fields:
+            for elem_field in elem_fields:
+                _merge_label_list_field(
+                    list_doc, elem_field, root=doc_field, overwrite=overwrite
+                )
+
+        docs.append(list_doc)
+
+    doc[doc_field] = {
+        "$switch": {
+            "branches": [
+                {
+                    "case": {"$not": {"$gt": [root_field, None]}},
+                    "then": new_field,
+                },
+                {
+                    "case": {"$not": {"$gt": [new_field, None]}},
+                    "then": root_field,
+                },
+            ],
+            "default": {"$mergeObjects": docs},
         }
     }
 

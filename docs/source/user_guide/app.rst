@@ -621,24 +621,22 @@ field:
 
     Numeric field filters are not supported by wildcard indexes.
 
-.. _app-compound-indexes-for-query-performance
+.. _app-compound-indexes-for-query-performance:
 
-Compound indexes for Query Performance
---------------------------------------
+Compound indexes
+----------------
 
-With the right indexes configured, the App can support filtering truly massive
-datasets in complex scenarios using the sidebar and grid. The simple case is a
-single index that allows efficient subset creation after which one can refine
-with filters on unindexed fields.
+With the right indexes configured, the App can support efficient filtering of
+massive datasets in complex scenarios.
 
-When single field index subsets are too large, e.g. 5 million samples,
-efficiently refining further is possible with a
-`compound indexes <https://www.mongodb.com/docs/manual/core/indexes/index-types/index-compound/>`_.
+In the simplest case, a :ref:`single index <app-optimizing-query-performance>`
+allows efficient subset creation. If the number of samples matching the initial
+filter is small enough, you can then refine your search results with additional
+filters on unindexed fields as necessary.
 
-In the example below, a compound index on `timeofday.label`, `clip_pred.label`,
-and `created_at` exists on a 30 million sample dataset. Since `created_at` is
-the last field in the compound index, we are able to sort the results after
-filtering, as well.
+`Compound indexes <https://www.mongodb.com/docs/manual/core/indexes/index-types/index-compound/>`_
+are useful in situations where you need to perform multiple filters to obtain a
+sufficiently small working set. Consider the following example:
 
 .. code-block:: python
     :linenos:
@@ -646,40 +644,62 @@ filtering, as well.
     import fiftyone as fo
 
     dataset = fo.load_dataset("big-image-ds")
+
     dataset.create_index(
-        [("timeofday.label", 1), ("clip_pred.label", 1), ("created_at", 1)]
+        [("ground_truth.label", 1), ("clip_pred.label", 1), ("created_at", 1)]
     )
+
+With this compound index created, we can efficiently perform the following
+multi-stage filtering + sorting operation on a 30M sample dataset.
+
+-   Filter by `ground_truth.label`
+-   Then filter by `clip_pred.label`
+-   Then filter and sort by `created_at`
+
+The GIF below demonstrates this flow in action:
 
 .. image:: /images/app/app-compound-indexes-for-query-performance.gif
     :alt: app-compound-indexes-for-query-performance
     :align: center
 
-Note that as the filters are applied, any fields that can take advantage of a 
-compound index have there lightning bolt icon highlighted. `clip_pred.label`
-after applying the `timeofday.label` filter, and then `created_at` after
-applying the `clip_pred.label` filter.
+.. note::
 
-Indexes, and especially compound indexes, add extra overhead to datasets but
-for truly massive datasets, FiftyOne can guide users to high value subsets with
-the right set of compound indices.
+    As filters are applied, fields that are covered by a compound index have
+    their lightning bolt highlighted in **solid orange** to indicate that
+    filtering by these fields will be performant even if the current number of
+    matching results is large.
+
+Compound indexes can require significant database memory, but they are a
+powerful tool to support efficient exploration of massive datasets.
 
 .. _app-unindexed-sidebar-results:
 
-Unindexed sidebar results doc limit
------------------------------------
+Unindexed sidebar results
+-------------------------
 
-When loading data results in the sidebar when Query Performance is enabed, a
-limited number of sample documents are scanned to populate widget values for
-fields without a top level index, i.e. search results for string fields and
-bounds for numeric fields.
+When Query Performance is enabled, dropdowns and sliders in the sidebar will
+automatically leverage indexes whenever possible to show the full set/range of
+values.
 
-The default value is 10,000 samples and is configurable via the settings icon.
+If an index is not available, a limited number of samples are scanned to
+populate dropdowns and sliders, which ensures that the sidebar responds rapidly
+to your inputs.
+
+.. note::
+
+    By default, a maximum of 10,000 samples are scanned for unindexed fields,
+    but you can customize this via the settings menu (cog icon) above the grid.
+
+As shown in the GIF below, if a sidebar facet leverages a partial scan, you'll
+see an indication of this along with a suggestion to create an index if you
+require full search results for a particular field:
 
 .. image:: /images/app/app-unindexed-sidebar-results.gif
     :alt: app-unindexed-sidebar-results
     :align: center
 
-For complete widget results in the above GIF, the below indexes are created:
+For example, you can enable full search results in the GIF above by creating
+the following indexes:
 
 .. code-block:: python
     :linenos:
@@ -687,16 +707,17 @@ For complete widget results in the above GIF, the below indexes are created:
     import fiftyone as fo
 
     dataset = fo.load_dataset("big-image-ds")
+
     dataset.create_index("yolo8l_coco_torch.detections.confidence")
     dataset.create_index("yolo8l_coco_torch.detections.label")
 
 .. note::
 
-    Indexed sidebar results for a field are possible via a single field index
-    or the presence of a compound index whose first field matches. For example,
-    a `("created_at", "ground_truth.label")` compound index provides indexed
-    sidebar results for `created_at`.
+    The sidebar can leverage indexes for a field if it has a single index
+    **or** if there is a compound index whose first field matches.
 
+    For example, a `("created_at", "ground_truth.label")` compound index
+    provides indexed sidebar results for the `created_at` field.
 
 .. _app-disabling-query-performance:
 
@@ -996,7 +1017,7 @@ in detail:
     +=================+===============================+===============================================================+
     | Global settings | Color annotations by          | Whether to color the annotations in the grid/modal based on   |
     |                 |                               | the `field` that they are in, the `value` that each           |
-    |                 |                               | annotation takes, or per `instance` of the annotation         |                                     
+    |                 |                               | annotation takes, or :ref:`per instance <app-linking-labels>` |
     +-----------------+-------------------------------+---------------------------------------------------------------+
     | Global settings | Color pool                    | A pool of colors from which colors are randomly assigned      |
     |                 |                               | for otherwise unspecified fields/values                       |
@@ -1457,6 +1478,80 @@ the above values on a :ref:`dataset's App config <dataset-app-config>`:
 
     Dataset-specific plugin settings will override any settings from your
     :ref:`global App config <configuring-fiftyone-app>`.
+
+.. _app-linking-labels:
+
+Linking labels
+______________
+
+FiftyOne provides a mechanism to link related labels together, such as the same
+object instance observed across multiple frames of a video or across different
+slices of a grouped dataset.
+
+This linking is achieved by assigning the same |Instance| to the ``instance``
+attribute of the relevant |Detection|, |Keypoint|, or |Polyline| objects:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    # Create instance representing a logical object
+    person_instance = fo.Instance()
+
+    detection1 = fo.Detection(
+        label="person",
+        bounding_box=[0.1, 0.1, 0.2, 0.2],
+        instance=person_instance,  # link this detection
+    )
+
+    detection2 = fo.Detection(
+        label="person",
+        bounding_box=[0.12, 0.11, 0.2, 0.2],
+        instance=person_instance,  # link this detection
+    )
+
+When labels are linked via their ``instance`` attribute, the App provides
+enhanced visualizations and interactions:
+
+-   **Visual linking (on hover):** when you hover over a label that is part of
+    an instance group, all other labels belonging to the same instance (across
+    frames or group slices) will be highlighted with a white border
+
+-   **Bulk selection (shift + click):** when you hold the ``shift``
+    key and click on a label that is part of an instance group, you will select
+    or deselect all labels belonging to that same instance in bulk. This is
+    particularly useful for tasks like reviewing or tagging all occurrences of
+    a specific object instance quickly
+
+Video datasets
+--------------
+
+In :ref:`video datasets <linking-labels-across-frames>`, label correspondence
+helps track objects over time.
+
+Hovering over a detection in one frame can highlight the same detected object
+in other frames. Shift-clicking allows for selecting/deselecting all instances
+of that object throughout the relevant frames of the video:
+
+.. image:: /images/app/labels-correspondence-video.gif
+   :alt: labels-correspondence-video
+   :align: center
+
+Grouped datasets
+----------------
+
+In :ref:`grouped datasets <linking-labels-across-slices>`, label correspondence
+links the same object viewed from different perspectives (group slices).
+
+Hovering over an object in one camera view can highlight its corresponding
+occurrences in other camera views within the same group. Shift-clicking enables
+bulk selection/deselection of these corresponding objects across the group
+slices:
+
+.. image:: /images/app/labels-correspondence-groups.gif
+   :alt: labels-correspondence-groups
+   :align: center
 
 .. _app-spaces:
 
@@ -2201,10 +2296,19 @@ The Histograms panel supports the following `state` parameters:
 -   **plot**: the histograms to plot. Supported values are `"Sample tags"`,
     `"Label tags"`, `"Labels"`, and `"Other fields"`
 
+.. _app-select-data:
+
+Selecting content
+_________________
+
+The App supports selecting content such as samples or specific labels, which is
+useful to take contextual actions like :ref:`tagging <app-tagging>` on **only**
+the selected content.
+
 .. _app-select-samples:
 
 Selecting samples
-_________________
+-----------------
 
 As previously explained, the |Session| object created when you launch the App
 lets you interact with the App from your Python process.
@@ -2248,12 +2352,16 @@ your session to retrieve the IDs of the currently selected samples in the App:
 .. _app-select-labels:
 
 Selecting labels
-_________________
+----------------
 
-You can also use the App to select individual labels within samples. You can
-use this functionality to visually show/hide labels of interest in the App; or
-you can access the data for the selected labels from Python, for example by
-creating a |DatasetView| that includes/excludes the selected labels.
+You can also select individual labels within samples in the App, which is
+useful for a variety of reasons:
+
+-   Visually show/hide labels of interest in the App
+-   Take contextual actions such as :ref:`tagging <app-tagging>` on **only**
+    the selected labels
+-   Access the data for selected labels from Python, for example by creating a
+    |DatasetView| that includes/excludes the selected labels
 
 To perform this workflow, open the expanded sample view by clicking on a sample
 in the App. Then click on individual labels to select them:
@@ -2291,17 +2399,84 @@ labels in the App:
 
     [
         {
-            'object_id': '5f99d2eb36208058abbfc02a',
+            'label_id': '5f99d2eb36208058abbfc02a',
             'sample_id': '5f99d2eb36208058abbfc030',
             'field': 'ground_truth',
         },
         {
-            'object_id': '5f99d2eb36208058abbfc02b',
+            'label_id': '5f99d2eb36208058abbfc02b',
             'sample_id': '5f99d2eb36208058abbfc030',
             'field': 'ground_truth',
         },
         ...
     ]
+
+If you are working with a dataset that leverages
+:ref:`linked labels <app-linking-labels>`, you can `shift + click` on a label
+to select/deselect all instances of that object across video frames or group
+slices of the dataset:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    import fiftyone.utils.labels as foul
+
+    dataset = foz.load_zoo_dataset("quickstart-video")
+    foul.index_to_instance(dataset, "frames.detections", clear_index=True)
+
+    session = fo.launch_app(dataset)
+
+.. image:: /images/app/app-linked-label-selections.gif
+    :alt: app-linked-label-selections
+    :align: center
+
+.. note::
+
+    Did you know? You can switch to "Color by instance" mode in the
+    :ref:`Color scheme editor <app-color-schemes-app>` to view each instance's
+    trajectory in a distinct color.
+
+.. _app-persistent-selections:
+
+Persistent selections
+---------------------
+
+By default, selection of samples and/or labels in the App are persisted for the
+duration of the App session:
+
+.. image:: /images/app/app-persistent-selections.gif
+    :alt: app-persistent-selections
+    :align: center
+
+To clear selections, you can click the selection menu button and choose one of
+the following options.
+
+When in grid view:
+
+-   `Clear selected samples` will clear all sample selections
+-   `Clear selected labels` will clear all label selections
+-   `Only show selected samples` will only show the selected samples
+-   `Hide selected samples` will hide the selected samples
+
+.. image:: /images/app/app-persistent-selections-clear-app-menu.png
+    :alt: app-persistent-selections-clear-app-menu
+    :align: center
+
+When in expanded sample mode:
+
+-   `Select visible (current sample)` will select all visible labels in the
+    current sample
+-   `Unselect visible (current sample)` will unselect all visible labels in
+    the current sample
+-   `Clear selected labels` will clear all label selections
+-   `Hide selected labels` will hide the selected labels
+-   `Hide unselected labels (current sample)` will hide the unselected labels
+
+.. image:: /images/app/app-persistent-selections-clear-sample-menu.png
+    :alt: app-persistent-selections-clear-sample-menu
+    :align: center
 
 .. _app-tagging:
 
@@ -2854,58 +3029,3 @@ you can use to customize the behavior of the App for that particular dataset:
     :meth:`app_config <fiftyone.core.dataset.Dataset.app_config>` will override
     the corresponding settings from your
     :ref:`global App config <configuring-fiftyone-app>`.
-
-.. _app-labels-correspondence:
-
-Labels Correspondence
-_____________________
-
-FiftyOne provides a mechanism to link related labels together, such as the same
-object instance observed across multiple frames of a video or across different
-views (group slices) in a grouped dataset. This linking is achieved by
-assigning the same :class:`fiftyone.core.labels.Instance` to the ``instance``
-field of the relevant :class:`~fiftyone.core.labels.Detection`,
-:class:`~fiftyone.core.labels.Keypoint`, or
-:class:`~fiftyone.core.labels.Polyline` labels.
-
-See the :ref:`video <linking-labels-across-frames>` and
-:ref:`group <linking-labels-across-group-slices>` dataset sections for API
-details.
-
-When labels are linked via their ``instance`` field, the App provides enhanced
-visualizations and interactions:
-
-*   **Visual Linking (Hover):** When you hover over a label that is part of an
-    instance group, all other labels belonging to the same instance (across
-    frames or group slices) will be highlighted with a white border.
-
-*   **Bulk Selection/Deselection (Shift+Click):** When you hold the ``Shift``
-    key and click on a label that is part of an instance group, you can
-    select or deselect all labels belonging to that same instance in bulk.
-    This is particularly useful for tasks like reviewing or tagging all
-    occurrences of a specific object instance quickly.
-
-In Video Datasets
------------------
-
-In video datasets, label correspondence helps track objects over time. Hovering
-over a detection in one frame can highlight the same detected object in other
-frames. Shift-clicking allows for selecting/deselecting all instances of that
-object throughout the relevant frames of the video.
-
-.. image:: /images/app/labels-correspondence-video.gif
-   :alt: labels-correspondence-video
-   :align: center
-
-In Grouped Datasets
--------------------
-
-In grouped datasets, label correspondence links the same object viewed from
-different perspectives (slices). Hovering over an object in one camera view can
-highlight its corresponding detection in another camera view within the same
-group. Shift-clicking enables bulk selection/deselection of these corresponding
-objects across the group slices.
-
-.. image:: /images/app/labels-correspondence-groups.gif
-   :alt: labels-correspondence-groups
-   :align: center

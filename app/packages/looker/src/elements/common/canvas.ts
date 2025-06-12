@@ -51,7 +51,7 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
               dispatchEvent("select", {
                 ...top.getSelectData(state),
                 sampleId: sample.id ?? sample._id,
-                instanceId: top.label.instance?._id,
+                instanceId: top.label?.instance?._id,
                 isShiftPressed,
               });
           }

@@ -280,6 +280,7 @@ class _Document(object):
         fields=None,
         omit_fields=None,
         merge_lists=True,
+        merge_embedded_docs=False,
         overwrite=True,
         expand_schema=True,
         validate=True,
@@ -326,6 +327,9 @@ class _Document(object):
                 (when ``overwrite`` is True) or kept (when ``overwrite`` is
                 False) when their ``id`` matches a label from the provided
                 document
+            merge_embedded_docs (False): whether to merge the attributes of
+                embedded documents (True) rather than merging the entire
+                top-level field (False)
             overwrite (True): whether to overwrite (True) or skip (False)
                 existing fields and label elements
             expand_schema (True): whether to dynamically add new fields
@@ -345,7 +349,10 @@ class _Document(object):
         fields = document._parse_fields(fields=fields, omit_fields=omit_fields)
 
         for src_field, dst_field in fields.items():
-            value = document[src_field]
+            try:
+                value = document[src_field]
+            except KeyError:
+                continue
 
             if value is None:
                 continue
@@ -364,6 +371,22 @@ class _Document(object):
 
                 if issubclass(field_type, fol._HasLabelList):
                     _merge_labels(curr_value, value, overwrite=overwrite)
+                    continue
+
+            if merge_embedded_docs:
+                field_type = type(curr_value)
+
+                if issubclass(
+                    field_type, foo.BaseEmbeddedDocument
+                ) and not issubclass(field_type, fol._HasLabelList):
+                    _merge_embedded_doc(
+                        curr_value,
+                        value,
+                        dst_field,
+                        omit_fields=omit_fields,
+                        merge_lists=merge_lists,
+                        overwrite=overwrite,
+                    )
                     continue
 
             if (
@@ -884,3 +907,41 @@ def _merge_labels(dst, src, overwrite=True):
     else:
         existing_ids = set(l.id for l in labels)
         labels.extend(l for l in new_labels if l.id not in existing_ids)
+
+
+def _merge_embedded_doc(
+    dst,
+    src,
+    root,
+    omit_fields=None,
+    merge_lists=True,
+    overwrite=True,
+):
+    if src is None:
+        return
+
+    for key, value in src.iter_fields():
+        if value is None:
+            continue
+
+        if omit_fields is not None and root + "." + key in omit_fields:
+            continue
+
+        try:
+            curr_value = dst[key]
+        except KeyError:
+            curr_value = None
+
+        if overwrite or curr_value is None:
+            if merge_lists:
+                field_type = type(curr_value)
+
+                if issubclass(field_type, list):
+                    _merge_lists(curr_value, value, overwrite=overwrite)
+                    continue
+
+                if issubclass(field_type, fol._HasLabelList):
+                    _merge_labels(curr_value, value, overwrite=overwrite)
+                    continue
+
+            dst[key] = value

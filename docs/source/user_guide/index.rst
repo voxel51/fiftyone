@@ -21,16 +21,22 @@ on your data quickly and easily.
     :button_link: basics.html
 
 .. customcalloutitem::
-    :header: Loading data into FiftyOne
+    :header: Importing data
     :description: Load data into FiftyOne using standard formats, custom formats, or the Dataset Zoo.
-    :button_text: Learn more about loading data
-    :button_link: dataset_creation/index.html
+    :button_text: Learn more about importing data
+    :button_link: import_datasets.html
 
 .. customcalloutitem::
     :header: Using datasets
     :description: Take a deep dive into FiftyOne datasets and how to use them to manage your data.
     :button_text: Learn more about using datasets
     :button_link: using_datasets.html
+
+.. customcalloutitem::
+    :header: Using the App
+    :description: Visualize your datasets in the FiftyOne App and interactively search, sort, and filter them.
+    :button_text: Learn more about the App
+    :button_link: app.html
 
 .. customcalloutitem::
     :header: Dataset views
@@ -43,12 +49,6 @@ on your data quickly and easily.
     :description: Use grouped datasets to represent your multiview image, video, and point cloud data.
     :button_text: Learn more about grouped datasets
     :button_link: groups.html
-
-.. customcalloutitem::
-    :header: Using the App
-    :description: Visualize your datasets in the FiftyOne App and interactively search, sort, and filter them.
-    :button_text: Learn more about the App
-    :button_link: app.html
 
 .. customcalloutitem::
     :header: Annotating datasets
@@ -87,6 +87,12 @@ on your data quickly and easily.
     :button_link: draw_labels.html
 
 .. customcalloutitem::
+    :header: Using sample parsers
+    :description: Use sample parsers to add samples to your FiftyOne dataset from a stream of in-memory data.
+    :button_text: Learn how to use sample parsers
+    :button_link: sample_parsers.html
+
+.. customcalloutitem::
     :header: Configuring FiftyOne
     :description: Customize the default behavior of the FiftyOne library to suit your needs.
     :button_text: Learn how to configure FiftyOne
@@ -106,10 +112,10 @@ on your data quickly and easily.
     :hidden:
 
     FiftyOne basics <basics>
-    Loading datasets <dataset_creation/index>
+    Importing data <import_datasets>
     Using datasets <using_datasets>
-    Dataset views <using_views>
     Using the App <app>
+    Dataset views <using_views>
     Grouped datasets <groups>
     Annotating datasets <annotation>
     Evaluating models __SUB_NEW__ <evaluation>
@@ -117,4 +123,5 @@ on your data quickly and easily.
     Interactive plots <plots>
     Exporting datasets <export_datasets>
     Drawing labels on samples <draw_labels>
+    Using sample parsers <sample_parsers>
     Configuring FiftyOne <config>

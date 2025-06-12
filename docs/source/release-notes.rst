@@ -3,35 +3,107 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.8.2
+-------------------------
+*Released May 9, 2025*
+
+Includes all updates from :ref:`FiftyOne 1.5.2 <release-notes-v1.5.2>`
+
+.. _release-notes-v1.5.2:
+
+FiftyOne 1.5.2
+--------------
+*Released May 9, 2025*
+
+Core
+
+- Fixed a bug where the system would sometimes detect a multiprocess
+  environment incorrectly.
+  `#5884 <https://github.com/voxel51/fiftyone/pull/5884>`_
+
+
+FiftyOne Enterprise 2.8.1
+-------------------------
+*Released May 8, 2025*
+
+Includes all updates from :ref:`FiftyOne 1.5.1 <release-notes-v1.5.1>`
+
+.. _release-notes-v1.5.1:
+
+FiftyOne 1.5.1
+--------------
+*Released May 8, 2025*
+
+App
+
+- Fixed a bug with plot interactivity in the
+  :ref:`Model Evaluation panel <app-model-evaluation-panel>`
+  `#5844 <https://github.com/voxel51/fiftyone/pull/5844>`_
+- Fixed a bug where certain modal sidebar queries would error
+  `#5848 <https://github.com/voxel51/fiftyone/pull/5848>`_
+- Fixed a bug which caused some SVG icons to not render correctly in deployed
+  environments
+  `#5849 <https://github.com/voxel51/fiftyone/pull/5849>`_
+- Fixed a bug which resulted in the UI displaying a stale set of saved views
+  `#5858 <https://github.com/voxel51/fiftyone/pull/5858>`_
+
+Brain
+
+- Fixed a bug when passing a custom non-sklearn `similarity_index` to
+  :func:`compute_uniqueness() <fiftyone.brain.compute_uniqueness>`
+  `#254 <https://github.com/voxel51/fiftyone-brain/pull/254>`_
+
+Core
+
+- Ensure that read access to the `admin` database is not required in order to
+  use FiftyOne
+  `#5872 <https://github.com/voxel51/fiftyone/pull/5872>`_
+- The :ref:`fiftyone migrate --all <cli-fiftyone-migrate>` command now includes
+  private datasets like patches, frames, and clips
+  `#5868 <https://github.com/voxel51/fiftyone/pull/5868>`_
+- Fixed `#5852 <https://github.com/voxel51/fiftyone/issues/5852>`_ by upgrading
+  strawberry-graphql library 
+  `#5855 <https://github.com/voxel51/fiftyone/pull/5855>`_
+
+Docs
+
+- Added a docs warning and raises an error when attempting to use the
+  :ref:`CVAT integration <cvat-integration>` with a CVAT server > 2.30
+  `#5857 <https://github.com/voxel51/fiftyone/pull/5857>`_
+
 FiftyOne Enterprise 2.8.0
 -------------------------
 *Released May 2, 2025*
 
 Includes all updates from :ref:`FiftyOne 1.5.0 <release-notes-v1.5.0>`, plus:
 
-- Optimized API performance by enabling compression and byte-encoding. This can
-  be configured using FIFTYONE_API_COMPRESSOR and FIFTYONE_API_TRANSFER_METHOD.
-- Optimized plugin state using the Management API as the source of truth
-  instead of the filesystem. This will prevent calling os.walk() on slow
-  filesystems (nfs).
+- Optimized API performance by enabling
+  :ref:`compression and byte-encoding <enterprise-api-connection>`
+- Optimized plugin response times by using the Management API as the source of
+  truth instead of the filesystem
 - Added support for local log file streaming for
   :ref:`delegated operations <enterprise-delegated-operations>`
-- Added a warning dialog about role re-upgrade limitations before admin
-  downgrades a user
+- Added a warning dialog about role re-upgrade limitations before admins
+  downgrade users
+- Enabled override of the API batcher via the `override_api_dynamic_batching`
+  config setting
+- Enabled use of local directories when configuring the log storage location
+  for delegated operations
+- Introduced FiftyOne versions for Sanic configuration variables, and increased
+  default values for keep-alive, request-timeout, response-timeout,
+  websocket-max-size, and websocket-ping-timeout
+- Fixed a concurrency issue that could previously cause errors such as
+  `KeyError: 's3'` during long-running operations like
+  :ref:`downloading media <enterprise-cloud-media-python>` that need to refresh
+  cloud credentials mid-operation
 - Fixed a misleading message during snapshot creation. Message now makes clear
-  the snapshot may still be in progress of being created.
-- Enabled override of API batcher by setting
-  `fo.config.override_api_dynamic_batching`
-- Enabled use of a local filepath when setting the `logPath` for runs
+  the snapshot may still be in progress of being created
 - Fixed a bug where certain transient 5xx errors were not being correctly
   retried
 - Fixed a bug where users with read-only access were unable to load a saved
   view from a snapshot
-- Fixed a bug where the dataset access page UI displayed NO_ACCESS instead of
-  the accurate value.
-- Introduced FiftyOne versions for Sanic configuration variables, and increased
-  default values for: keep-alive, request-timeout, response-timeout,
-  websocket-max-size, and websocket-ping-timeout.
+- Fixed a bug where the dataset access page UI displayed No Access instead of
+  the accurate value
 
 .. _release-notes-v1.5.0:
 
@@ -41,36 +113,50 @@ FiftyOne 1.5.0
 
 App
 
-- Significant performance improvement to the grid and sidebar for datasets of
-  scale: added guided compound filtering in Query Performance mode, and added
-  lazy search results.
+- Optimized the performance of the sidebar when interacting with dropdowns and
+  other field inputs by leveraging indexes when possible and otherwise showing
+  :ref:`partial scan results <app-unindexed-sidebar-results>`
   `#5732 <https://github.com/voxel51/fiftyone/pull/5732>`_
-- Added sorting directly via the grid
+- The sidebar can now make use of
+  :ref:`compound indexes <app-compound-indexes-for-query-performance>` to
+  support multiple filters on massive datasets
   `#5732 <https://github.com/voxel51/fiftyone/pull/5732>`_
-- Added support for cross-sample label instance tracking via the new `Instance`
-  class in grouped datasets as well as across frames in video datasets. Added
-  new "shift + click" UX modality to select "similar" instances.
+- Optimized the performance of the builtin
+  :ref:`sort by similarity <app-similarity>` action by removing unnecessary
+  duplicate queries when scrolling/bookmarking
+  `#5757 <https://github.com/voxel51/fiftyone/pull/5757>`_
+- Added a `Sort by` input field to the upper right of the grid
+  `#5732 <https://github.com/voxel51/fiftyone/pull/5732>`_
+- Added support for linking objects across
+  :ref:`group slices <linking-labels-across-slices>` and
+  :ref:`video frames <linking-labels-across-frames>` via the new |Instance|
+  class
   `#5577 <https://github.com/voxel51/fiftyone/pull/5577>`_
-- Optimized map performance with a new asynchronous `/geo` API route, with
-  frontend and backend caching for geolocation data, and with support for
-  extended stages in geo queries.
-  `#5775 <https://github.com/voxel51/fiftyone/pull/5775>`_
+- Added new :ref:`on-hover and shift+click <app-linking-labels>` interactions
+  for objects that use the new |Instance| class to represent correspondence
+  across group slices and video frames
+  `#5577 <https://github.com/voxel51/fiftyone/pull/5577>`_
+- Optimized :ref:`Map panel <app-map-panel>` loading and rendering
+  `#5775 <https://github.com/voxel51/fiftyone/pull/5775>`_,
   `#5794 <https://github.com/voxel51/fiftyone/pull/5794>`_
 - Fixed `#5327 <https://github.com/voxel51/fiftyone/issues/5327>`_
   improving user experience when tagging
   `#5638 <https://github.com/voxel51/fiftyone/pull/5638>`_
-- Fixed an issue blocking clicks from the embeddings legend
+- Fixed a z-order issue that would block some clicks in the
+  :ref:`Embeddings panel <app-embeddings-panel>`
   `#5627 <https://github.com/voxel51/fiftyone/pull/5627>`_
 - Fixed `edit_field_values` operator when values are missing from some samples
   `#5662 <https://github.com/voxel51/fiftyone/pull/5662>`_
 
 Plugins
 
-- Added a new `fiftyone.operators.execution_cache` decorator for function
-  caching `#5680 <https://github.com/voxel51/fiftyone/pull/5680>`_
-- Added a new `residency` parameter to `@execution_cache`, enabling
+- Added a new :ref:`execution_cache <panel-execution-cache>` decorator for
+  caching intermediate results of dynamic operators and panels
+  `#5680 <https://github.com/voxel51/fiftyone/pull/5680>`_
+- Added a new `residency` parameter to
+  :func:`@execution_cache <fiftyone.operators.cache.execution_cache>`, enabling
   `transient`, `ephemeral`, or `hybrid` caching strategies with optional
-  in-memory cache size limits and automatic LRU eviction.
+  in-memory cache size limits and automatic LRU eviction
   `#5736 <https://github.com/voxel51/fiftyone/pull/5736>`_
 - Added 
   :attr:`ctx.prompt_id <fiftyone.operators.executor.ExecutionContext.prompt_id>`
@@ -80,95 +166,110 @@ Plugins
   :attr:`ctx.operator_uri <fiftyone.operators.executor.ExecutionContext.operator_uri>`
   to the execution context
   `#5678 <https://github.com/voxel51/fiftyone/pull/5678>`_
-- Added a new `policy` param for creating `ExecutionStore` items with explicit
-  eviction policies. `#5679 <https://github.com/voxel51/fiftyone/pull/5679>`_
-
-Database
-
-- FiftyOne will now manage the feature compatibility version (FCV) of the
-  FiftyOne-managed mongodb instance. This management will happen during the
-  first connection to the database. Customers who utilize an
-  external/standalone instance will be unaffected.
-  `#5639 <https://github.com/voxel51/fiftyone/pull/5639>`_
-- Improved performance of `fiftyone migrate --info`
-  `#5672 <https://github.com/voxel51/fiftyone/pull/5672>`_
-- This version of FiftyOne raises the minimum MongoDB version from 4.4 to 5.0.
-  This is in accordance with our
-  `deprecation documentation. <https://docs.voxel51.com/deprecation.html#mongodb-4-4>`_
-  FiftyOne will now raise exceptions if the MongoDB version is lower than 5.0
-  and database_validation is enabled.
-  `#5682 <https://github.com/voxel51/fiftyone/pull/5682>`_
-
+- Added a new `policy` param for creating
+  :class:`ExecutionStore <fiftyone.operators.store.ExecutionStore>` items with
+  explicit eviction policies
+  `#5679 <https://github.com/voxel51/fiftyone/pull/5679>`_
 
 Core
 
-- Introduced `map_samples` and `update_samples` methods, enabling efficient,
+- Introduced :ref:`map_samples() <map-operations>` and
+  :ref:`update_samples() <updating-samples>` methods that enable efficient,
   parallelized sample iteration and modification. These methods provide
   significant performance improvements for large datasets and include flexible
-  options for batching, parallelization, and progress monitoring.
+  options for batching, parallelization, and progress monitoring
   `#5642 <https://github.com/voxel51/fiftyone/pull/5642>`_
-- Added support for creating samples with arbitrary `media_type`
+- Added support for creating samples with
+  :ref:`arbitrary media types <dataset-media-type>`
   `#5506 <https://github.com/voxel51/fiftyone/pull/5506>`_
-- Added support for configuring MongoDB Network Compression. Defaults to None,
-  but can give a significant performance boost when enabled in sub-optimal
-  network environments. We recommend `zstd` as the preferred compressor based
-  on our own benchmarking results, but any compressor supported by your version
-  of mongo will work, provided you've installed the required python package.
-  `#5693 <https://github.com/voxel51/fiftyone/pull/5693>`_
-- Optimized the content size batcher to account for compressed
-  or encoded payload sizes
+- Optimized the content size batcher to account for compressed or encoded
+  payloads
   `#5740 <https://github.com/voxel51/fiftyone/pull/5740>`_
-- Optimized `FiftyOneTorchDataset` to speed up model inference
-  `#5703 <https://github.com/voxel51/fiftyone/pull/5703>`_
 - Optimized frame lookups to be as late as possible in aggregation pipelines
   `#5705 <https://github.com/voxel51/fiftyone/pull/5705>`_
-- Optimized `values()` when retrieving an indexed field value in specific cases
+- Optimized
+  :meth:`values() <fiftyone.core.collections.SampleCollection.values>`
+  when retrieving an indexed field value in specific cases
   `#5743 <https://github.com/voxel51/fiftyone/pull/5743>`_
-- `Dataset.last_modified_at` is now automatically updated when samples are deleted
+- :attr:`Dataset.last_modified_at <fiftyone.core.dataset.Dataset.last_modified_at>`
+  is now automatically updated when samples are deleted
   `#5723 <https://github.com/voxel51/fiftyone/pull/5723>`_
-- `Sample.last_modified_at` is now automatically updated when frames are deleted
+- The `last_modified_at` field of |Sample| objects is now automatically updated
+  when frames are deleted
   `#5723 <https://github.com/voxel51/fiftyone/pull/5723>`_
-- Adds a shorthand `foo.bulk_write(..., batcher=False)` syntax to perform the
-  write in a single batch (ie disable batching for that particular method
-  invocation) `#5667 <https://github.com/voxel51/fiftyone/pull/5667>`_
-- Optimized `split_labels()` and `delete_labels(view=view)` syntaxes by using
-  optimized per-sample update operations that can leverage the `_id` index
-  rather than requiring full collection scans
+- Optimized
+  :meth:`split_labels() <fiftyone.core.collections.SampleCollection.split_labels>`
+  and
+  :meth:`delete_labels(view=view) <fiftyone.core.dataset.Dataset.delete_labels>`
+  by using per-sample update operations rather than requiring full collection
+  scans
   `#5730 <https://github.com/voxel51/fiftyone/pull/5730>`_
-- Optimized performance of sort by similarity, and added support for similarity
-  queries on filtered views.
-  `#5757 <https://github.com/voxel51/fiftyone/pull/5757>`_
-  `#248 <https://github.com/voxel51/fiftyone-brain/pull/248>`_
-- Fixed a "BSON too large" error that would previously occur when deleting a
-  sufficiently long list of IDs via `delete_labels(ids=ids)`
-  `#5730 <https://github.com/voxel51/fiftyone/pull/5730>`_
-- Fixed a bug where default dataset name can result in a collision
-  `#5759 <https://github.com/voxel51/fiftyone/pull/5759>`_
-- Optimized `SaveContext` to use a more optimal batching strategy
+- Optimized :ref:`save contexts <save-contexts>` to use a more optimal batching
+  strategy
   `#5747 <https://github.com/voxel51/fiftyone/pull/5747>`_
-- Fixed `#5335 <https://github.com/voxel51/fiftyone/issues/5335>`_
-  which was causing false positives in `evaluate_detections()` when
-  `classwise=False`
-  `#5697 <https://github.com/voxel51/fiftyone/pull/5697>`_
+- Optimized the performance of :ref:`similarity queries <brain-similarity>` on
+  full indexes
+  `#209 <https://github.com/voxel51/fiftyone-brain/pull/209>`_
+- Added support for similarity queries on filtered views via the
+  :ref:`MongoDB backend <mongodb-integration>`
+  `#248 <https://github.com/voxel51/fiftyone-brain/pull/248>`_
+- Added an optional `generator=True` parameter to methods like
+  :meth:`add_samples() <fiftyone.core.dataset.Dataset.add_samples>` that yields
+  control to the caller after each batch of samples is added
+  `#5666 <https://github.com/voxel51/fiftyone/pull/5666>`_
+- Added support for automatically declaring new embedded document fields when
+  setting sample fields
+  `#5785 <https://github.com/voxel51/fiftyone/pull/5785>`_
 - Added support for listing schemas without traversing embedded list
   fields by introducing `subfield` and `unwind` parameters to
-  `get_field_schema()`.
+  :meth:`get_field_schema() <fiftyone.core.collections.SampleCollection.get_field_schema>`
   `#5663 <https://github.com/voxel51/fiftyone/pull/5663>`_
-- Fix vulnerabilities in: `setuptools` and cve-2025-22151 in `strawberry-graphql`
+- Fixed a bug that would cause spurious warnings when calling
+  :meth:`rename_evaluation() <fiftyone.core.collections.SampleCollection.rename_evaluation>`
+  on an evaluation run with
+  :ref:`custom metrics <custom-evaluation-metrics>`
+  `#5724 <https://github.com/voxel51/fiftyone/pull/5724>`_
+- Fixed `#5335 <https://github.com/voxel51/fiftyone/issues/5335>`_
+  which was causing false positives in
+  :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
+  when `classwise=False`
+  `#5697 <https://github.com/voxel51/fiftyone/pull/5697>`_
+- Fixed a "BSON too large" error that would previously occur when deleting a
+  sufficiently long list of IDs via
+  :meth:`delete_labels(ids=ids) <fiftyone.core.dataset.Dataset.delete_labels>`
+  `#5730 <https://github.com/voxel51/fiftyone/pull/5730>`_
+- Fixed a bug where default dataset name generation could result in a collision
+  `#5759 <https://github.com/voxel51/fiftyone/pull/5759>`_
+- Fix vulnerabilities in `setuptools` and CVE-2025-22151 in
+  `strawberry-graphql`
   `#5719 <https://github.com/voxel51/fiftyone/pull/5719>`_,
   `#5735 <https://github.com/voxel51/fiftyone/pull/5735>`_
 
-Docs
-
-- Added compressor and transfer method configuration options to API docs
-  `#5721 <https://github.com/voxel51/fiftyone/pull/5721>`_
-
-
 Zoo
 
-- Added YOLOE instance segmentation models to FiftyOne model zoo.
+- Added :ref:`YOLOE <model-zoo-yoloev8s-seg-torch>` instance segmentation
+  models to the Model Zoo
   `#5712 <https://github.com/voxel51/fiftyone/pull/5712>`_
+- Optimized
+  :class:`FiftyOneTorchDataset <fiftyone.utils.torch.FiftyOneTorchDataset>` to
+  speed up model inference
+  `#5703 <https://github.com/voxel51/fiftyone/pull/5703>`_
 
+Database
+
+- FiftyOne now :ref:`automatically manages <upgrading-fiftyone>` the feature
+  compatibility version of FiftyOne-managed MongoDB instances
+  `#5639 <https://github.com/voxel51/fiftyone/pull/5639>`_
+- Added support for enabling
+  :ref:`MongoDB network compression <mongodb-network-compression>`
+  `#5693 <https://github.com/voxel51/fiftyone/pull/5693>`_
+- Improved performance of :ref:`fiftyone migrate --info <cli-fiftyone-migrate>`
+  `#5672 <https://github.com/voxel51/fiftyone/pull/5672>`_
+- Raised the minimum MongoDB version from 4.4 to 5.0 in accordance with our
+  :ref:`deprecation schedule <deprecation-mongodb-4.4>`. FiftyOne will now
+  raise exceptions if the MongoDB version is lower than 5.0 unless
+  :ref:`database validation is disabled <using-a-different-mongodb-version>`
+  `#5682 <https://github.com/voxel51/fiftyone/pull/5682>`_
 
 FiftyOne Enterprise 2.7.2
 -------------------------
@@ -746,7 +847,7 @@ SDK
 
 Brain
 
-- Upgraded the :Ref:`MongoDB vector search integration <mongodb-integration>`
+- Upgraded the :ref:`MongoDB vector search integration <mongodb-integration>`
   to use the `vectorSearch` type
   `#218 <https://github.com/voxel51/fiftyone-brain/pull/218>`_
 
@@ -4717,7 +4818,7 @@ Core
 - Added support for importing and exporting `confidence` in YOLO formats
 - Added support for directly passing a `filename -> filepath` mapping dict to
   the `data_path` parameter to
-  :ref:`dataset importers <loading-datasets-from-disk>`
+  :ref:`dataset importers <importing-datasets>`
 - Added graceful casting of `int`-like and `float`-like values like
   `np.float(1.0)` to their respective Python primitives for storage in the
   database
@@ -4911,10 +5012,10 @@ Annotation
 
 Docs
 
-- Added a section on :ref:`adding model predictions <model-predictions>` to
-  existing datasets to the user guide
+- Added a section on :ref:`adding model predictions <adding-model-predictions>`
+  to existing datasets to the user guide
 - Added explicit examples of labels-only
-  :ref:`imports <loading-datasets-from-disk>` and
+  :ref:`imports <importing-datasets>` and
   :ref:`exports <exporting-datasets>` for all relevant datasets to the docs
 - Documented how class lists are computed when exporting in formats like YOLO
   and COCO that require explicit class lists
@@ -5291,7 +5392,7 @@ Core
 - Greatly improved the efficiency of creating
   :ref:`evaluation patch views <evaluation-patches>`
 - Added support for recursively listing data directories when loading datasets
-  :ref:`from disk <loading-datasets-from-disk>`
+  :ref:`from disk <importing-datasets>`
 - Added support for controlling whether/which object attributes are
   imported/exported in formats like :ref:`COCO <COCODetectionDataset-import>`
   that support arbitrary object attributes
@@ -6764,9 +6865,8 @@ Docs
   DatasetViews with powerful matching, filtering, and sorting operations
 - Added :doc:`a recipe </recipes/draw_labels>` showing how to render annotated
   versions of samples with label field(s) overlaid
-- Upgraded :doc:`dataset creation docs </user_guide/dataset_creation/index>`
-  that simplify the material and make it easier to find the creation strategy
-  of interest
+- Upgraded :doc:`data import docs </user_guide/import_datasets>` to simplify
+  the material and make it easier to find the creation strategy of interest
 - Improved layout of :doc:`tutorials </tutorials/index>`,
   :doc:`recipes </recipes/index>`, and :doc:`user guide </user_guide/index>`
   landing pages

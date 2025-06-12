@@ -5,6 +5,7 @@ PyTorch utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 import itertools
 import multiprocessing
@@ -553,6 +554,14 @@ class TorchImageModel(
         self._transforms = transforms
         self._ragged_batches = ragged_batches
         self._preprocess = True
+        if self.has_collate_fn and self.ragged_batches:
+            raise ValueError(
+                "Cannot use collate_fn while ragged_batches is True. "
+                "Set `ragged_batches=False` to use collate_fn. "
+                "While the inputs to collate_fn may be ragged, "
+                "the model has to flag itself as ragged_batches=False "
+                "to enable proper dataloader support in apply_model."
+            )
 
         # Parse model details
         self._classes = self._parse_classes(config)
@@ -612,6 +621,38 @@ class TorchImageModel(
         input before prediction, if any.
         """
         return self._transforms
+
+    @property
+    def has_collate_fn(self):
+        """Whether this model has a custom collate function.
+
+        Set this to ``True`` if you want :meth:`collate_fn` to be used during
+        inference.
+        """
+        return False
+
+    @staticmethod
+    def collate_fn(batch):
+        """The collate function to use when creating dataloaders for this
+        model.
+
+        In order to enable this functionality, the model's
+        :meth:`has_collate_fn` property must return ``True``.
+
+        By default, this is the default collate function for
+        :class:`torch:torch.utils.data.DataLoader`, but subclasses can override
+        this method as necessary.
+
+        Note that this function must be serializable so it is compatible
+        with multiprocessing for dataloaders.
+
+        Args:
+            batch: a list of items to collate
+
+        Returns:
+            the collated batch, which will be fed directly to the model
+        """
+        return torch.utils.data.dataloader.default_collate(batch)
 
     @property
     def preprocess(self):
@@ -705,6 +746,11 @@ class TorchImageModel(
     def _predict_all(self, imgs):
         if self._preprocess and self._transforms is not None:
             imgs = [self._transforms(img) for img in imgs]
+            if self.has_collate_fn:
+                # models that have collate_fn defined
+                # will want to use it when doing _predict_all
+                # without a dataloader
+                imgs = self.collate_fn(imgs)
 
         height, width = None, None
 
@@ -1090,7 +1136,7 @@ class ClassifierOutputProcessor(OutputProcessor):
         store_logits (False): whether to store logits in the model outputs
     """
 
-    def __init__(self, classes=None, store_logits=False):
+    def __init__(self, classes=None, store_logits=False, logits_key="logits"):
         if classes is None:
             raise ValueError(
                 "This model requires class labels, but none were available"
@@ -1098,6 +1144,7 @@ class ClassifierOutputProcessor(OutputProcessor):
 
         self.classes = classes
         self.store_logits = store_logits
+        self.logits_key = logits_key
 
     def __call__(self, output, _, confidence_thresh=None):
         """Parses the model output.
@@ -1114,7 +1161,7 @@ class ClassifierOutputProcessor(OutputProcessor):
             a list of :class:`fiftyone.core.labels.Classification` instances
         """
         if isinstance(output, dict):
-            output = output["logits"]
+            output = output[self.logits_key]
 
         logits = output.detach().cpu().numpy()
 
@@ -1374,11 +1421,15 @@ class KeypointDetectorOutputProcessor(OutputProcessor):
             ]
 
             points = []
-            for p in kpts:
-                if p[2] > 0:
-                    points.append((p[0] / width, p[1] / height))
-                else:
+            for p, p_conf in zip(kpts, kpt_scores):
+                if confidence_thresh and p_conf < confidence_thresh:
+                    # Low confidence
                     points.append((float("nan"), float("nan")))
+                elif p[2] == 0:
+                    # Not visible
+                    points.append((float("nan"), float("nan")))
+                else:
+                    points.append((p[0] / width, p[1] / height))
 
             _detections.append(
                 fol.Detection(
@@ -1688,7 +1739,6 @@ class FiftyOneTorchDataset(Dataset):
             return e
 
     def __getitem__(self, index):
-
         # if self._samples is None at this point then
         # worker_init was probably never called
         # meaning we are working on main process

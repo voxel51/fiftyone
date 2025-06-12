@@ -142,6 +142,7 @@ export function defineCustomPanel({
   on_change_group_slice,
   on_change_query_performance,
   on_change_spaces,
+  on_change_active_fields,
   panel_name,
   panel_label,
 }) {
@@ -163,6 +164,7 @@ export function defineCustomPanel({
         onChangeGroupSlice={on_change_group_slice}
         onChangeQueryPerformance={on_change_query_performance}
         onChangeSpaces={on_change_spaces}
+        onChangeActiveFields={on_change_active_fields}
         dimensions={dimensions}
         panelName={panel_name}
         panelLabel={panel_label}

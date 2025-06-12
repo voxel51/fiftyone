@@ -119,16 +119,18 @@ The following media types are available:
     | `group`       | Datasets that contain                             |
     |               | :ref:`grouped data slices <groups>`               |
     +---------------+---------------------------------------------------+
-    | `unknown` †   | Fallback value for Datasets that contain          |
-    |               | samples which are not one of the other listed     |
-    |               | media types                                       |
+    | `unknown` †   | Fallback value for datasets that contain          |
+    |               | samples that are not one of the natively          |
+    |               | available media types                             |
     +---------------+---------------------------------------------------+
-    | custom type † | Datasets that contain samples with a custom media |
+    | custom †      | Datasets that contain samples with a custom media |
     |               | type will inherit that type                       |
     +---------------+---------------------------------------------------+
 
-† Warning for Enterprise users: Your deployment must be upgraded to version
-  `>=2.8.0` in order to use the `unknown` or "custom type" options.
+.. note::
+
+    † :ref:`FiftyOne Enterprise <fiftyone-enterprise>` users must upgrade their
+    deployment to 2.8.0+ in order to use `unknown` or "custom" media types.
 
 .. _dataset-persistence:
 
@@ -989,6 +991,16 @@ a |Sample| that has not been added to a |Dataset|:
 
     print(sample.id)
     # None
+
+The :meth:`last_deletion_at <fiftyone.core.dataset.Dataset.last_deletion_at>`
+property of a |Dataset| tracks the datetime that a sample was last deleted
+from the dataset:
+
+.. code-block:: python
+    :linenos:
+
+    print(dataset.last_deletion_at)
+    # datetime.datetime(2025, 5, 4, 21, 0, 52, 942511)
 
 .. _using-fields:
 
@@ -2109,6 +2121,189 @@ some workflows when it is available.
 
 Dates and datetimes
 ___________________
+
+.. _builtin-datetime-fields:
+
+Builtin datetime fields
+-----------------------
+
+Datasets and samples have various builtin datetime fields that are
+automatically updated when certain events occur.
+
+The
+:attr:`Dataset.last_loaded_at <fiftyone.core.dataset.Dataset.last_loaded_at>`
+property tracks the datetime that the dataset was last loaded:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    print(dataset.last_loaded_at)
+    # 2025-05-04 21:00:45.559520
+
+The
+:attr:`Dataset.last_modified_at <fiftyone.core.dataset.Dataset.last_modified_at>`
+property tracks the datetime that dataset-level metadata was last modified,
+including:
+
+-   when properties such as
+    :attr:`name <fiftyone.core.dataset.Dataset.name>`,
+    :attr:`persistent <fiftyone.core.dataset.Dataset.persistent>`,
+    :attr:`tags <fiftyone.core.dataset.Dataset.tags>`,
+    :attr:`description <fiftyone.core.dataset.Dataset.description>`,
+    :attr:`info <fiftyone.core.dataset.Dataset.info>`, and
+    :attr:`app_config <fiftyone.core.dataset.Dataset.app_config>` are edited
+-   when fields are added or deleted from the dataset's schema
+-   when group slices are added or deleted from the dataset's schema
+-   when saved views or workspaces are added, edited, or deleted
+-   when annotation, brain, evaluation, or custom runs are added, edited, or
+    deleted
+
+.. code-block:: python
+    :linenos:
+
+    last_modified_at1 = dataset.last_modified_at
+
+    dataset.name = "still-quickstart"
+
+    last_modified_at2 = dataset.last_modified_at
+    assert last_modified_at2 > last_modified_at1
+
+    dataset.app_config.sidebar_groups = ...
+    dataset.save()
+
+    last_modified_at3 = dataset.last_modified_at
+    assert last_modified_at3 > last_modified_at2
+
+    dataset.add_sample_field("foo", fo.StringField)
+
+    last_modified_at4 = dataset.last_modified_at
+    assert last_modified_at4 > last_modified_at3
+
+.. note::
+
+    The
+    :attr:`Dataset.last_modified_at <fiftyone.core.dataset.Dataset.last_modified_at>`
+    property is **not** updated when samples are added, edited, or deleted from
+    a dataset.
+
+    Use the methods described below to ascertain this information.
+
+All samples have a builtin ``last_modified_at`` field that automatically tracks
+the datetime that each sample was last modified:
+
+.. code-block:: python
+    :linenos:
+
+    sample = dataset.first()
+    last_modified_at1 = sample.last_modified_at
+
+    sample.foo = "bar"
+    sample.save()
+
+    last_modified_at2 = sample.last_modified_at
+    assert last_modified_at2 > last_modified_at1
+
+The ``last_modified_at`` field is indexed by default, which means you can
+efficiently check when a dataset's samples were last modified via
+:meth:`max() <fiftyone.core.collections.SampleCollection.max>`:
+
+.. code-block:: python
+    :linenos:
+
+    last_modified_at1 = dataset.max("last_modified_at")
+
+    dataset.add_samples(...)
+
+    last_modified_at2 = dataset.max("last_modified_at")
+    assert last_modified_at2 > last_modified_at1
+
+    dataset.set_field("foo", "spam").save()
+
+    last_modified_at3 = dataset.max("last_modified_at")
+    assert last_modified_at3 > last_modified_at2
+
+The
+:attr:`Dataset.last_deletion_at <fiftyone.core.dataset.Dataset.last_deletion_at>`
+property tracks the datetime that a sample was last deleted
+from the dataset:
+
+.. code-block:: python
+    :linenos:
+
+    last_deletion_at1 = dataset.last_deletion_at
+
+    dataset.delete_samples(...)
+
+    last_deletion_a2 = dataset.last_deletion_at
+    assert last_deletion_a2 > last_deletion_at1
+
+**Video datasets**
+
+The frames of :ref:`video datasets <video-datasets>` also have a builtin
+``last_modified_at`` field that automatically tracks the datetime that each
+frame was last modified:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-video")
+
+    sample = dataset.first()
+    frame = sample.frames.first()
+    last_modified_at1 = frame.last_modified_at
+
+    frame["foo"] = "bar"
+    frame.save()
+
+    last_modified_at2 = frame.last_modified_at
+    assert last_modified_at2 > last_modified_at1
+
+The ``last_modified_at`` frame field is indexed by default, which means you can
+efficiently check when a dataset's frames were last modified via
+:meth:`max() <fiftyone.core.collections.SampleCollection.max>`:
+
+.. code-block:: python
+    :linenos:
+
+    last_modified_at1 = dataset.max("frames.last_modified_at")
+
+    dataset.add_samples(...)
+
+    last_modified_at2 = dataset.max("frames.last_modified_at")
+    assert last_modified_at2 > last_modified_at1
+
+    dataset.set_field("frames.foo", "spam").save()
+
+    last_modified_at3 = dataset.max("last_modified_at")
+    assert last_modified_at3 > last_modified_at2
+
+When frames are deleted from a dataset, the ``last_modified_at`` field of the
+parent samples are automatically updated:
+
+.. code-block:: python
+    :linenos:
+
+    sample = dataset.first()
+    last_modified_at1 = sample.last_modified_at
+
+    del sample.frames[1]
+    sample.save()
+
+    last_modified_at2 = sample.last_modified_at
+    assert last_modified_at2 > last_modified_at1
+
+.. _custom-datetime-fields:
+
+Custom datetime fields
+----------------------
 
 You can store date information in FiftyOne datasets by populating fields with
 `date` or `datetime` values:
@@ -4854,6 +5049,56 @@ To get started exploring video datasets, try loading the
    :alt: quickstart-video
    :align: center
 
+.. _linking-labels-across-frames:
+
+Linking labels across frames
+----------------------------
+
+When working with video datasets, you may want to represent the fact that
+multiple frame-level labels correspond to the same logical object moving
+through the video.
+
+You can achieve this linking by assigning the same |Instance| to the
+``instance`` attribute of the relevant |Detection|, |Keypoint|, or |Polyline|
+objects across the frames of a |Sample|:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(filepath="/path/to/video.mp4")
+
+    # Create instance representing a logical object
+    person_instance = fo.Instance()
+
+    # Add labels for the person in frame 1
+    sample.frames[1]["objects"] = fo.Detections(
+        detections=[
+            fo.Detection(
+                label="person",
+                bounding_box=[0.1, 0.1, 0.2, 0.2],
+                instance=person_instance,  # link this detection
+            )
+        ]
+    )
+
+    # Add labels for the same person in frame 2
+    sample.frames[2]["objects"] = fo.Detections(
+        detections=[
+            fo.Detection(
+                label="person",
+                bounding_box=[0.12, 0.11, 0.2, 0.2],
+                instance=person_instance,  # link this detection
+            )
+        ]
+    )
+
+.. note::
+
+    Linking labels in this way enables helpful interactions in the FiftyOne
+    App. See :ref:`this section <app-linking-labels>` for more details.
+
 .. _3d-datasets:
 
 3D datasets
@@ -5531,9 +5776,8 @@ which samples to merge:
     Did you know? You can use
     :meth:`merge_dir() <fiftyone.core.dataset.Dataset.merge_dir>` to directly
     merge the contents of a dataset on disk into an existing FiftyOne
-    dataset without first
-    :ref:`loading it <loading-datasets-from-disk>` into a temporary dataset and
-    then using
+    dataset without first :ref:`loading it <importing-datasets>` into a
+    temporary dataset and then using
     :meth:`merge_samples() <fiftyone.core.dataset.Dataset.merge_samples>` to
     perform the merge.
 
@@ -5559,13 +5803,31 @@ copy of a dataset:
     # The source dataset is unaffected
     assert "new_field" not in dataset.get_field_schema()
 
-Dataset clones contain deep copies of all samples and dataset-level information
-in the source dataset. The source *media files*, however, are not copied.
+Dataset clones contain deep copies of all samples and dataset-level metadata
+such as runs, saved views, and workspaces from the source dataset. The source
+*media files*, however, are not copied.
 
 .. note::
 
     Did you know? You can also
     :ref:`clone specific subsets <saving-and-cloning-views>` of your datasets.
+
+By default, cloned datasets also retain all
+:ref:`custom indexes <app-optimizing-query-performance>` that you've created on
+the source collection, but you can control this by passing the optional
+`include_indexes` parameter to
+:meth:`clone() <fiftyone.core.dataset.Dataset.clone>`:
+
+.. code-block:: python
+    :linenos:
+
+    dataset.create_index("ground_truth.detections.label")
+
+    # Do not retain custom indexes on the cloned dataset
+    dataset2 = dataset.clone(include_indexes=False)
+
+    # Only include specific custom indexes
+    dataset2 = dataset.clone(include_indexes=["ground_truth.detections.label"])
 
 .. _batch-updates:
 
@@ -6074,63 +6336,3 @@ to conveniently perform the updates:
 
     print(dataset.count_values("predictions.detections.random"))
     # {True: 111, None: 5509}
-
-.. _linking-labels-across-frames:
-
-Linking labels across frames
-----------------------------
-
-When working with video datasets, you often want to represent the fact that
-multiple frame-level labels correspond to the same logical object instance
-moving through the video.
-
-You can achieve this using the :class:`fiftyone.core.labels.Instance` class.
-By assigning the same :class:`~fiftyone.core.labels.Instance` to the
-``instance`` field of multiple labels (e.g., :class:`Detection
-<fiftyone.core.labels.Detection>`, :class:`Keypoint
-<fiftyone.core.labels.Keypoint>`, or :class:`Polyline
-<fiftyone.core.labels.Polyline>`) across different frames of a video, you
-establish a link between them.
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-
-    sample = fo.Sample(filepath="/path/to/video.mp4")
-
-    # Create an instance ID for a logical object
-    person_instance = fo.Instance()
-
-    # Add labels for the person in frame 1
-    sample.frames[1]["objects"] = fo.Detections(
-        detections=[
-            fo.Detection(
-                label="person",
-                bounding_box=[0.1, 0.1, 0.2, 0.2],
-                instance=person_instance,  # Link this detection
-            )
-        ]
-    )
-
-    # Add labels for the same person in frame 2
-    sample.frames[2]["objects"] = fo.Detections(
-        detections=[
-            fo.Detection(
-                label="person",
-                bounding_box=[0.12, 0.11, 0.2, 0.2],
-                instance=person_instance,  # Link this detection
-            )
-        ]
-    )
-
-    sample.save()
-
-Linking labels in this way enables helpful interactions in the FiftyOne App.
-See :ref:`this section <app-labels-correspondence>` for more details.
-
-.. note::
-
-    You must call :meth:`sample.save() <fiftyone.core.sample.Sample.save>` in
-    order to persist changes to the database when editing video samples and/or
-    their frames that are in datasets.

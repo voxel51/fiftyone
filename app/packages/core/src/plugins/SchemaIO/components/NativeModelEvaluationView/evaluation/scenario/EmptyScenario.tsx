@@ -11,10 +11,8 @@ export default function EmptyScenario(props) {
         <Box sx={scenarioCardStyles.iconContainer}>
           <EvaluationIcon type="scenario" />
         </Box>
-        <Typography sx={scenarioCardStyles.emptyStateText}>
-          No scenarios yet
-        </Typography>
-        <Typography sx={scenarioCardStyles.emptyStateDescription}>
+        <Typography variant="h6">No scenarios yet</Typography>
+        <Typography variant="body1" color="text.secondary">
           Scenario analysis helps you analyze model performance across different
           data segments.
         </Typography>

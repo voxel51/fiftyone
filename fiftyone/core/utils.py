@@ -958,7 +958,7 @@ class ProgressBar(etau.ProgressBar):
 
         if callable(progress):
             callback = progress
-            progress = False
+            progress = fo.config.show_progress_bars
         else:
             callback = None
 
@@ -974,16 +974,25 @@ class ProgressBar(etau.ProgressBar):
         if foc.is_notebook_context() and "max_width" not in kwargs:
             kwargs["max_width"] = 90
 
-        super().__init__(**kwargs)
-
         self._progress = progress
         self._callback = callback
+
+        super().__init__(**kwargs)
 
     def set_iteration(self, *args, **kwargs):
         super().set_iteration(*args, **kwargs)
 
         if self._callback is not None:
             self._callback(self)
+
+    def _get_total(self, total, quiet):
+        # When callbacks are provided, we always want a total to be computed
+        # whenever possible so that the `progress` and `completed` properties
+        # are available to the callback
+        if self._callback is not None:
+            quiet = False
+
+        return super()._get_total(total, quiet)
 
 
 def report_progress(progress, n=None, dt=None):
@@ -1002,6 +1011,9 @@ def report_progress(progress, n=None, dt=None):
                 print("PROGRESS: %0.3f" % pb.progress)
 
         dataset = foz.load_zoo_dataset("cifar10", split="test")
+
+        # Disable builtin progress bars
+        fo.config.show_progress_bars = False
 
         # Print progress at 10 equally-spaced increments
         progress = fo.report_progress(print_progress, n=10)
@@ -1970,39 +1982,44 @@ class UniqueFilenameMaker(object):
             output paths (False)
     """
 
-    def __new__(
-        cls,
-        output_dir=None,
-        rel_dir=None,
-        alt_dir=None,
-        chunk_size=None,
-        default_ext=None,
-        ignore_exts=False,
-        ignore_existing=False,
-        idempotent=True,
-    ):
-        ppid = None
-        try:
-            ppid = psutil.Process(os.getpid()).ppid()
-            parent_process = psutil.Process(ppid)
-            if "python" not in parent_process.name().lower():
-                ppid = None
-        except psutil.NoSuchProcess:
-            pass  # Proceed with ppid as None if parent process doesn't exist
+    # =========================================================================
+    # Removing automatic implementation switch of UniqueFilenameMaker. Bug in
+    # detecting processes needs to be resolved before adding this back in.
+    # =========================================================================
 
-        if ppid is None or chunk_size is not None:
-            return super().__new__(cls)
+    # def __new__(
+    #     cls,
+    #     output_dir=None,
+    #     rel_dir=None,
+    #     alt_dir=None,
+    #     chunk_size=None,
+    #     default_ext=None,
+    #     ignore_exts=False,
+    #     ignore_existing=False,
+    #     idempotent=True,
+    # ):
+    #     ppid = None
+    #     try:
+    #         ppid = psutil.Process(os.getpid()).ppid()
+    #         parent_process = psutil.Process(ppid)
+    #         if "python" not in parent_process.name().lower():
+    #             ppid = None
+    #     except psutil.NoSuchProcess:
+    #         ppid = None  # Proceed with ppid as None if parent process doesn't exist
 
-        return MultiProcessUniqueFilenameMaker(
-            ppid,
-            output_dir,
-            rel_dir,
-            alt_dir,
-            default_ext,
-            ignore_exts,
-            ignore_existing,
-            idempotent,
-        )
+    #     if ppid is None or chunk_size is not None:
+    #         return super().__new__(cls)
+
+    #     return MultiProcessUniqueFilenameMaker(
+    #         ppid,
+    #         output_dir,
+    #         rel_dir,
+    #         alt_dir,
+    #         default_ext,
+    #         ignore_exts,
+    #         ignore_existing,
+    #         idempotent,
+    #     )
 
     def __init__(
         self,

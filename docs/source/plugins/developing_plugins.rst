@@ -980,6 +980,8 @@ contains the following properties:
 -   `ctx.selected_labels` - the list of currently selected labels in the App,
     if any
 -   `ctx.extended_selection` - the extended selection of the view, if any
+-   `ctx.active_fields` - the list of currently active fields in the App
+    sidebar, if any
 -   `ctx.group_slice` - the active group slice in the App, if any
 -   `ctx.user_id` - the ID of the user that invoked the operator, if known
 -   `ctx.user` - an object of information about the user that invoked the
@@ -987,6 +989,9 @@ contains the following properties:
     `dataset_permission`
 -   `ctx.user_request_token` - the request token authenticating the user
     executing the operation, if known
+-   `ctx.prompt_id` - a unique identifier for each instance of a user opening
+    an operator prompt in the App
+-   `ctx.operator_uri` - the URI of the target operator
 -   `ctx.panel_id` - the ID of the panel that invoked the operator, if any
 -   `ctx.panel` - a :class:`PanelRef <fiftyone.operators.panel.PanelRef>`
     instance that you can use to read and write the :ref:`state <panel-state>`
@@ -2006,6 +2011,19 @@ subsequent sections.
             ctx.panel.set_state("event", "on_change_selected_labels")
             ctx.panel.set_data("event_data", event)
 
+        def on_change_active_fields(self, ctx):
+            """Implement this method to set panel state/data when the current
+            active fields change in the sidebar.
+
+            The active fields will be available via ``ctx.active_fields``.
+            """
+            event = {
+                "data": ctx.active_fields,
+                "description": "the current active fields",
+            }
+            ctx.panel.set_state("event", "on_change_active_fields")
+            ctx.panel.set_data("event_data", event)
+
         def on_change_extended_selection(self, ctx):
             """Implement this method to set panel state/data when the current
             extended selection changes.
@@ -2476,8 +2494,8 @@ Execution cache
 
 The :mod:`execution cache <fiftyone.operators.cache>` is a decorator-based
 interface for caching function results in the execution store. This is useful
-for avoiding repeated computations or persisting long-lived values across panel
-instances and App sessions.
+for avoiding repeated computations in dynamic operators or persisting
+long-lived values across panel instances and App sessions.
 
 Cached entries are stored in a dataset-scoped or global
 :class:`ExecutionStore <fiftyone.operators.store.ExecutionStore>`, and can be
@@ -2546,23 +2564,20 @@ To cache a function's result scoped to the current ``ctx.dataset``, use the
 Advanced options for scoping and serialization are supported through arguments
 to the decorator:
 
-- ``ttl``: Time-to-live (in seconds) for the cached entry
-- ``key_fn``: Custom function to generate the cache key
-- ``link_to_dataset``: When ``True``, the cache is dropped when the dataset is
+- ``ttl``: time-to-live (in seconds) for the cached entry
+- ``key_fn``: custom function to generate the cache key
+- ``link_to_dataset``: when ``True``, the cache is dropped when the dataset is
   deleted (default is ``True``)
-- ``store_name``: Custom store name (default is based on function name)
-- ``version``: Optional version tag to isolate changes in function behavior
-- ``operator_scoped``: Cache is tied to the current operator URI
-- ``user_scoped``: Cache is tied to the current user
-- ``prompt_scoped``: Cache is tied to the current prompt ID
-- ``jwt_scoped``: Cache is tied to the current user's JWT
-- ``serialize`` / ``deserialize``: Custom (de)serialization functions
-- ``residency``: Cache residency policy (default is ``hybrid``)
+- ``store_name``: custom store name (default is based on function name)
+- ``version``: optional version tag to isolate changes in function behavior
+- ``operator_scoped``: cache is tied to the current operator URI
+- ``user_scoped``: cache is tied to the current user
+- ``prompt_scoped``: cache is tied to the current prompt ID
+- ``jwt_scoped``: cache is tied to the current user's JWT
+- ``serialize`` / ``deserialize``: custom (de)serialization functions
+- ``residency``: cache residency policy (default is ``hybrid``)
 
-See the :func:`execution_cache <fiftyone.operators.cache.execution_cache>`
-documentation for more details.
-
-For example, caching a sample using custom serialization:
+Here's an example of caching a sample using custom serialization:
 
 .. code-block:: python
     :linenos:
@@ -2583,7 +2598,10 @@ For example, caching a sample using custom serialization:
     def get_first_sample(ctx):
         return ctx.dataset.first()
 
+.. note::
 
+    See the :func:`execution_cache <fiftyone.operators.cache.execution_cache>`
+    documentation for more details.
 
 .. _panel-saved-workspaces
 

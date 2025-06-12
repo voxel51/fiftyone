@@ -45,7 +45,7 @@ ____________
 The basic workflow to use Labelbox to add or edit labels on your FiftyOne
 datasets is as follows:
 
-1) Load a :ref:`labeled or unlabeled dataset <loading-datasets>` into FiftyOne
+1) :ref:`Load a dataset <importing-datasets>` into FiftyOne
 
 2) Explore the dataset using the :ref:`App <fiftyone-app>` or
    :ref:`dataset views <using-views>` to locate either unlabeled samples that

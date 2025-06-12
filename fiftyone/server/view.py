@@ -86,7 +86,7 @@ def get_view(
     reload=True,
     awaitable=False,
     sort_by=None,
-    desc=None,
+    desc=False,
 ):
     """Gets the view defined by the given request parameters.
 
@@ -105,6 +105,8 @@ def get_view(
             :class:`fiftyone.server.filters.SampleFilter`
         reload (True): whether to reload the dataset
         awaitable (False): whether to return an awaitable coroutine
+        sort_by (None): a field name to sort by
+        desc (False): whether to sort in descending order
 
     Returns:
         a :class:`fiftyone.core.view.DatasetView`
@@ -135,7 +137,7 @@ def get_view(
             elif sample_filter.id:
                 view = fov.make_optimized_select_view(view, sample_filter.id)
 
-        if filters or extended_stages or pagination_data:
+        if filters or extended_stages or pagination_data or sort_by:
             view = get_extended_view(
                 view,
                 filters,
@@ -161,7 +163,7 @@ def get_extended_view(
     pagination_data=False,
     media_types=None,
     sort_by=None,
-    desc=None,
+    desc=False,
 ):
     """Create an extended view with the provided filters.
 
@@ -171,6 +173,8 @@ def get_extended_view(
         extended_stages (None): extended view stages
         pagination_data (False): filters label data
         media_types (None): the media types to consider
+        sort_by (None): a field name to sort by
+        desc (False): whether to sort in descending order
 
     Returns:
         a :class:`fiftyone.core.view.DatasetView`
@@ -219,7 +223,7 @@ def get_extended_view(
         )
 
     if sort_by:
-        view = view.sort_by(sort_by, reverse=bool(desc))
+        view = view.sort_by(sort_by, reverse=bool(desc), create_index=False)
 
     if pagination_data:
         # omit all dict field values for performance, not needed by grid
@@ -401,6 +405,10 @@ def _make_match_stage(view, filters):
         path_field = view.get_field(path)
 
         field = view.get_field(parent_path)
+
+        if field is None or path_field is None:
+            continue
+
         is_label_field = _is_label_type(field)
         if (
             is_label_field
@@ -457,6 +465,10 @@ def _make_label_filter_stages(
 
         field = view.get_field(path)
         label_field = view.get_field(label_path)
+
+        if field is None or label_field is None:
+            continue
+
         if issubclass(
             label_field.document_type, (fol.Keypoint, fol.Keypoints)
         ) and isinstance(field, fof.ListField):

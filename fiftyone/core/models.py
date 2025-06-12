@@ -654,6 +654,19 @@ def _do_export_array(label, input_path, filename_maker):
             input_path, output_ext=".png"
         )
         label.export_map(map_path, update=True)
+    elif isinstance(label, fol.Detection):
+        if label.mask is not None:
+            mask_path = filename_maker.get_output_path(
+                input_path, output_ext=".png"
+            )
+            label.export_mask(mask_path, update=True)
+    elif isinstance(label, fol.Detections):
+        for detection in label.detections:
+            if detection.mask is not None:
+                mask_path = filename_maker.get_output_path(
+                    input_path, output_ext=".png"
+                )
+                detection.export_mask(mask_path, update=True)
 
 
 def _get_frame_counts(samples):
@@ -745,7 +758,10 @@ def _make_data_loader(samples, model, batch_size, num_workers, skip_failures):
                 return error
 
             try:
-                return tud.dataloader.default_collate(batch)
+                if model.has_collate_fn:
+                    return model.collate_fn(batch)
+                else:
+                    return tud.dataloader.default_collate(batch)
             except Exception as e:
                 if not skip_failures:
                     raise e
@@ -2284,7 +2300,36 @@ class TorchModelMixin(object):
     applied to each input before prediction.
     """
 
-    pass
+    @property
+    def has_collate_fn(self):
+        """Whether this model has a custom collate function.
+
+        Set this to ``True`` if you want :meth:`collate_fn` to be used during
+        inference.
+        """
+        return False
+
+    @staticmethod
+    def collate_fn(batch):
+        """The collate function to use when creating dataloaders for this
+        model.
+
+        In order to enable this functionality, the model's
+        :meth:`has_collate_fn` property must return ``True``.
+
+        By default, this is the identity function, but subclasses can override
+        this method as necessary.
+
+        Note that this function must be serializable so it is compatible
+        with multiprocessing for dataloaders.
+
+        Args:
+            batch: a list of items to collate
+
+        Returns:
+            the collated batch, which will be fed directly to the model
+        """
+        return batch
 
 
 class ModelManagerConfig(etam.ModelManagerConfig):

@@ -1448,7 +1448,15 @@ class HistogramValues(Aggregation):
             bounds = [-1, -1]
 
         bounds, self._is_datetime = _handle_dates(bounds)
-        db = 1 if self._is_datetime else 1e-6
+
+        if self._is_datetime:
+            if bounds[1] - bounds[0] < self._num_bins:
+                # each datetime bucket must be at least 1ms
+                db = self._num_bins
+            else:
+                db = 1
+        else:
+            db = 1e-6
 
         return list(np.linspace(bounds[0], bounds[1] + db, self._num_bins + 1))
 
@@ -3294,6 +3302,9 @@ def _remove_prefix(expr, prefix):
 
 
 def _get_field_type(sample_collection, field_name, unwind=True):
+    if field_name.endswith("[]"):
+        unwind = True
+
     # Remove array references
     field_name = "".join(field_name.split("[]"))
 
