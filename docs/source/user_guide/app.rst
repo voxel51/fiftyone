@@ -1476,6 +1476,36 @@ dataset's app config:
     )
     dataset.save()
 
+
+When visualizing point clouds with dynamic attributes, you can apply
+thresholding to focus on specific value ranges. This is particularly useful
+for:
+
+- Filtering out noise or outliers in your data
+- Isolating points of interest based on their attribute values
+- Analyzing specific ranges of values in your point cloud
+
+To use thresholding:
+
+1. Press `R` or click the render preferences icon in the 3D visualizer menu
+2. Select the attribute to color by from the "Shade by" dropdown
+3. Use the threshold slider that appears below the color map controls
+4. Adjust the minimum and maximum values to show only points within that range
+
+The threshold slider shows the full range of values for the selected attribute,
+and points outside the selected range will be hidden from view.
+
+.. image:: /images/app/pcd-thresholding.gif
+   :alt: thresholding
+   :align: center
+
+.. note::
+
+    Thresholding is available for all numeric attributes except height and RGB
+    values. The threshold range is automatically adjusted based on the data
+    type of the attribute (integer or float).
+
+
 .. _app-3d-orthographic-projections:
 
 Viewing 3D samples in the grid
