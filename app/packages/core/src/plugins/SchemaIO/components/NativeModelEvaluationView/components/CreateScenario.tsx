@@ -6,6 +6,7 @@ import Add from "@mui/icons-material/Add";
 import { Button } from "@mui/material";
 
 export default function CreateScenario(props) {
+  console.log(">>> testing e2e");
   const {
     evalKey,
     compareKey,
