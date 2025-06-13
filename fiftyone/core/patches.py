@@ -342,46 +342,6 @@ class _PatchesView(fov.DatasetView):
 
         super().reload()
 
-    def _delete_labels(self, labels, fields=None):
-        patch_labels, other_labels, src_labels = self._parse_labels(
-            labels, fields=fields
-        )
-
-        if patch_labels:
-            patch_ids = [d["sample_id"] for d in patch_labels]
-            self._patches_dataset.delete_samples(patch_ids)
-
-        if other_labels:
-            super()._delete_labels(other_labels, fields=fields)
-
-        if src_labels:
-            self._source_collection._delete_labels(src_labels, fields=fields)
-
-    def _parse_labels(self, labels, fields=None):
-        if etau.is_str(fields):
-            fields = [fields]
-
-        if fields is not None:
-            labels = [d for d in labels if d["field"] in fields]
-
-        label_fields = self._label_fields
-
-        patch_labels = [d for d in labels if d["field"] in label_fields]
-        other_labels = [d for d in labels if d["field"] not in label_fields]
-
-        src_labels = deepcopy(patch_labels)
-        if src_labels:
-            patch_ids = [d["sample_id"] for d in src_labels]
-            sample_ids = self._map_values(patch_ids, "id", "sample_id")
-            for d, sample_id in zip(src_labels, sample_ids):
-                d["sample_id"] = sample_id
-
-        if len(label_fields) != 1:
-            other_labels += patch_labels
-            patch_labels = None
-
-        return patch_labels, other_labels, src_labels
-
     def _sync_source_sample(self, sample):
         for field in self._label_fields:
             self._sync_source_sample_field(sample, field)
@@ -431,32 +391,13 @@ class _PatchesView(fov.DatasetView):
 
         if delete:
             label_id_path = label_path + ".id"
-            self_ids = set(self.values(label_id_path, unwind=True))
-            all_sample_ids, all_label_ids = self._patches_dataset.values(
-                [self._id_field, label_id_path]
-            )
+            all_ids = self._patches_dataset.values(label_id_path, unwind=True)
+            self_ids = self.values(label_id_path, unwind=True)
+            del_ids = set(all_ids) - set(self_ids)
 
-            del_labels = []
-            for sample_id, label_ids in zip(all_sample_ids, all_label_ids):
-                if label_ids is None:
-                    continue
-
-                if not etau.is_container(label_ids):
-                    label_ids = [label_ids]
-
-                for label_id in label_ids:
-                    if label_id not in self_ids:
-                        del_labels.append(
-                            {
-                                "label_id": label_id,
-                                "sample_id": sample_id,
-                                "field": field,
-                            }
-                        )
-
-            if del_labels:
+            if del_ids:
                 self._source_collection._delete_labels(
-                    del_labels, fields=field
+                    ids=del_ids, fields=field
                 )
 
     def _sync_source_field_schema(self, path):

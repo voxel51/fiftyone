@@ -3291,19 +3291,8 @@ class SampleCollection(object):
                 ops, ids=ids, frames=is_frame_field, progress=progress
             )
 
-    def _delete_labels(self, labels, fields=None):
-        self._dataset._delete_labels(labels, fields=fields)
-
-    def _map_values(self, in_values, in_field, *out_fields):
-        view = self.select_by(in_field, in_values)
-        _in_values, *_all_out_values = view.values([in_field, *out_fields])
-
-        results = []
-        for out_field, _out_values in zip(out_fields, _all_out_values):
-            d = dict(zip(_in_values, _out_values))
-            results.append([d.get(v, None) for v in in_values])
-
-        return tuple(results) if len(results) > 1 else results[0]
+    def _delete_labels(self, ids, fields=None):
+        self._dataset.delete_labels(ids=ids, fields=fields)
 
     def compute_metadata(
         self,
