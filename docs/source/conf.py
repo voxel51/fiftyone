@@ -220,7 +220,7 @@ html_context = {
 
 # -- Options for pushfeedback extension ---------------------------------------
 pushfeedback_project = "1nx7ekqhts"
-feedback_button_text = "Feedback"
+pushfeedback_feedback_button_text = "Feedback"
 
 # -- Custom app setup --------------------------------------------------------
 
