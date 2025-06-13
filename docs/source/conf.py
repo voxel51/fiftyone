@@ -62,6 +62,7 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.intersphinx",
     "sphinx.ext.napoleon",
+    "sphinxcontrib.jquery",
     "nbsphinx",
     "sphinx_tabs.tabs",
     "sphinx_copybutton",
@@ -163,9 +164,7 @@ intersphinx_mapping = {
 #
 html_theme = "pytorch_sphinx_theme"
 html_theme_path = ["../theme"]
-html_theme_options = {
-    "pytorch_project": "docs",
-}
+html_theme_options = {"pytorch_project": "docs"}
 
 html_favicon = "favicon.ico"
 

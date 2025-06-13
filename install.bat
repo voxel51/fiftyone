@@ -14,6 +14,7 @@
 :: -e      Source install of voxel51-eta.
 :: -m      Install MongoDB from scratch, rather than installing fiftyone-db.
 :: -p      Install only the core python package, not the App.
+:: -o      Install docs dependencies.
 
 set SHOW_HELP=false
 set SOURCE_BRAIN_INSTALL=false
@@ -22,6 +23,7 @@ set SOURCE_ETA_INSTALL=false
 set SCRATCH_MONGODB_INSTALL=false
 set BUILD_APP=true
 set USE_FIFTY_ONE_DB=true
+set DOCS_INSTALL=false
 
 :parse
 IF "%~1"=="" GOTO endparse
@@ -31,6 +33,7 @@ IF "%~1"=="-d" set DEV_INSTALL=true
 IF "%~1"=="-e" set SOURCE_ETA_INSTALL=true
 IF "%~1"=="-m" set USE_FIFTY_ONE_DB=false
 IF "%~1"=="-p" set BUILD_APP=false
+IF "%~1"=="-o" set DOCS_INSTALL=true
 SHIFT
 GOTO parse
 :endparse
@@ -63,6 +66,10 @@ IF %DEV_INSTALL%==true (
   pip install -r requirements/dev.txt
   pre-commit install
   pip install .
+) else if %DOCS_INSTALL%==true (
+  echo Performing docs install
+  pip install -r requirements/docs.txt
+  pip install -e .
 ) else (
   pip install -r requirements.txt
   pip install .
@@ -104,4 +111,5 @@ echo -d      Install developer dependencies.
 echo -e      Source install of voxel51-eta.
 echo -m      Use local mongodb instead of installing fiftyone-db.
 echo -p      Install only the core python package, not the App.
+echo -o      Install docs dependencies.
 exit /b

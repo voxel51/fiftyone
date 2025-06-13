@@ -7,27 +7,47 @@ FiftyOne uses [Sphinx](https://www.sphinx-doc.org/en/master) and
 [Sphinx-Napoleon](https://pypi.python.org/pypi/sphinxcontrib-napoleon) to
 generate its documentation and API reference from source.
 
+## Prerequisites
+
+Before building the docs locally, ensure you have:
+
+-   Python 3.11 installed and a
+    [virtual environment](https://docs.voxel51.com/getting_started/virtualenv.html)
+    created specifically for documentation.
+
+    **Note:** Do **NOT** use the same environment where you ran `install.bash`
+    with the `-d` (dev mode) flag, as docs dependencies conflict with test
+    dependencies.
+
+-   [pandoc](https://pandoc.org/installing.html) installed.
+
+-   A Unix-like shell environment to execute bash commands.
+
 ## Setup
 
-In order to build the docs locally, you must:
+To build the documentation locally, follow these steps:
 
-1.  Be running Python 3.9 in a
-    [virtual environment](https://docs.voxel51.com/getting_started/virtualenv.html)
+1.  Perform a documentation-specific install of `fiftyone` from the root
+    directory using the `-o` (docs) flag:
 
-2.  Perform a developer install of `fiftyone`:
+        ```shell
+        cd ..
+        bash install.bash -o
+        ```
 
-```shell
-git clone https://github.com/voxel51/fiftyone
-cd fiftyone
+2.  To use the `fiftyone` repository to autogenerate docs, you need to add it
+    to your `PYTHONPATH`:
 
-bash install.bash -d
-```
+        ```shell
+        export PYTHONPATH=$PYTHONPATH:/path/to/fiftyone
+        ```
 
-3.  Add the path to your cloned `fiftyone` repository to your `PYTHONPATH`:
+        Replace `/path/to/fiftyone` with the absolute path to the root of the
+        fiftyone repo.
 
-```shell
-export PYTHONPATH=$PYTHONPATH:/path/to/fiftyone
-```
+        > **TIP:** To avoid running this every time you build the docs, add the
+        > previous line to your `~/.bashrc`, `~/.zshrc`, system path or the
+        > appropriate file for your shell.
 
 ## Building
 

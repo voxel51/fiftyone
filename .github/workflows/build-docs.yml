@@ -53,10 +53,10 @@ jobs:
           path: fiftyone-teams
           token: ${{ secrets.RO_FOT_FG_PAT }}
           ref: main
-      - name: Set up Python 3.9
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: 3.9
+          python-version: "3.11"
       - name: Install pip dependencies
         run: |
           pip install --upgrade pip setuptools wheel build
@@ -68,12 +68,15 @@ jobs:
           pip install ./dist/*.whl
       - name: Install
         run: |
+          echo "Installing system dependencies"
           sudo apt-get install pandoc
-          pip install -r requirements/dev.txt
-          pip install -r fiftyone-teams/requirements/dev.txt
+          echo "Installing docs requirements"
+          pip install -r requirements/docs.txt
+          echo "Installing fiftyone-teams requirements"
+          pip install -r fiftyone-teams/requirements/common.txt
+          echo "Installing fiftyone-brain and fiftyone-db"
           pip install fiftyone-brain fiftyone-db
-          pip install pycocotools tensorflow torch torchvision
-          pip install typing_extensions==4.10.0
+          echo "Installing fiftyone"
           pip install .
       - name: Cache Node Modules
         id: node-cache
