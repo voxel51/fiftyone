@@ -617,7 +617,10 @@ def _make_range_query(path: str, field: fof.Field, args):
     if range_:
         mn, mx = range_
         if isinstance(field, (fof.DateField, fof.DateTimeField)):
-            mn, mx = [fou.timestamp_to_datetime(d) for d in range_]
+            mn, mx = [
+                fou.timestamp_to_datetime(d) if d is not None else None
+                for d in range_
+            ]
     else:
         mn, mx = None, None
 

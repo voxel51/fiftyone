@@ -154,7 +154,7 @@ export const getEmbeddedLabelFields = (fields: StrictField[], prefix = "") =>
     )
     .flat();
 
-export type Range = [number | null | undefined, number | null | undefined];
+export type Range = [number | null, number | null];
 
 export function useAssertedRecoilValue<T>(recoilValue: RecoilValue<T>) {
   const value = useRecoilValue(recoilValue);

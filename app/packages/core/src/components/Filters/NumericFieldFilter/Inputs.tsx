@@ -1,9 +1,9 @@
-import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import React, { useEffect, useState } from "react";
-import { useRecoilState, useSetRecoilState } from "recoil";
+import React from "react";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
-import { NumberInput } from "../../Common/Input";
+import type { InputType } from "./Input";
+import { Input } from "./Input";
 
 const Container = styled.div`
   display: flex;
@@ -20,6 +20,7 @@ export default function Inputs({
   modal: boolean;
   path: string;
 }) {
+  const ftype = useRecoilValue(fos.fieldType({ path }));
   const [[min, max], setRange] = useRecoilState(
     fos.rangeAtom({
       modal,
@@ -27,61 +28,39 @@ export default function Inputs({
       withBounds: false,
     })
   );
-  const theme = useTheme();
-  const [localMin, setLocalMin] = useState<number | null>(null);
-  const [localMax, setLocalMax] = useState<number | null>(null);
-
   const setSnackBarErrors = useSetRecoilState(fos.snackbarErrors);
-
-  useEffect(() => {
-    setLocalMin(min ?? null);
-  }, [min]);
-
-  useEffect(() => {
-    setLocalMax(max ?? null);
-  }, [max]);
-
-  console.log(min, max);
 
   return (
     <Container>
-      <NumberInput
+      <Input
         color={color}
-        fontColor={theme.text.secondary}
+        ftype={ftype as InputType}
+        key="min"
+        onSubmit={(value) => {
+          if (value !== null && max !== null && value > max) {
+            setSnackBarErrors(["min cannot be greater than max"]);
+            setRange((cur) => [null, cur[1]]);
+            return;
+          }
+          setRange((cur) => [value, cur[1]]);
+        }}
         placeholder="min"
-        value={localMin ?? null}
-        setter={(v) => setLocalMin(v ?? null)}
-        onEnter={() => {
-          if (
-            localMin !== null &&
-            max !== undefined &&
-            max !== null &&
-            localMin > max
-          ) {
-            setSnackBarErrors([`${localMin} is greater than ${max}`]);
-            return;
-          }
-          setRange((cur) => [localMin, cur[1]]);
-        }}
+        value={min ?? null}
       />
-      <NumberInput
+      <Input
         color={color}
-        fontColor={theme.text.secondary}
-        placeholder="max"
-        value={localMax ?? null}
-        setter={(v) => setLocalMax(v ?? null)}
-        onEnter={() => {
-          if (
-            localMax !== null &&
-            min !== undefined &&
-            min !== null &&
-            localMax < min
-          ) {
-            setSnackBarErrors([`${localMax} is less than ${min}`]);
+        ftype={ftype as InputType}
+        key="max"
+        onSubmit={(value) => {
+          if (value !== null && min !== null && value < min) {
+            setSnackBarErrors(["max cannot be less than min"]);
+            setRange((cur) => [cur[0], null]);
             return;
           }
-          setRange((cur) => [cur[0], localMax]);
+          setRange((cur) => [cur[0], value]);
         }}
+        placeholder="max"
+        value={max ?? null}
       />
     </Container>
   );

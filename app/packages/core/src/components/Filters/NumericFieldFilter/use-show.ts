@@ -2,12 +2,7 @@ import * as fos from "@fiftyone/state";
 import { useRecoilValue } from "recoil";
 import * as state from "./state";
 
-export default function useShow(
-  modal: boolean,
-  named: boolean,
-  path: string,
-  showRange: boolean
-) {
+export default function useShow(modal: boolean, named: boolean, path: string) {
   const queryPerformance = useRecoilValue(fos.queryPerformance);
   const hasBounds = useRecoilValue(
     state.hasBounds({
@@ -19,6 +14,6 @@ export default function useShow(
 
   return {
     show: hasBounds || (queryPerformance && !modal) || !named,
-    showLoadButton: named && queryPerformance && !showRange && !modal,
+    showLoadButton: named && queryPerformance && !modal,
   };
 }

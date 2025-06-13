@@ -20,13 +20,10 @@ export const lightningNumericResults = selectorFamily({
   get:
     (path: string) =>
     ({ get }) => {
-      const index = get(pathHasIndexes({ path }));
-
       const [data] = get(
         lightningQuery([
           {
             path,
-            maxDocumentsSearch: index ? null : get(queryPerformanceMaxSearch),
           },
         ])
       );

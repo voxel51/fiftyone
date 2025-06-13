@@ -14,16 +14,20 @@ const FilterablePathEntries = ({
   onFocus?: () => void;
   path: string;
 }) => {
-  const { data } = useFilterData(modal, path);
-  const color = useRecoilValue(pathColor(path));
+  try {
+    const { data } = useFilterData(modal, path);
+    const color = useRecoilValue(pathColor(path));
 
-  return (
-    <>
-      {data.map(({ color: _, ...props }) => (
-        <FilterItem key={props.path} color={color} {...events} {...props} />
-      ))}
-    </>
-  );
+    return (
+      <>
+        {data.map(({ color: _, ...props }) => (
+          <FilterItem key={props.path} color={color} {...events} {...props} />
+        ))}
+      </>
+    );
+  } catch (e) {
+    console.log("ADGDSa");
+  }
 };
 
 export default FilterablePathEntries;

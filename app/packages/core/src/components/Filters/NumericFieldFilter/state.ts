@@ -1,9 +1,8 @@
 import type { Nonfinite } from "@fiftyone/state";
 import {
   boundsAtom,
-  isListField,
-  isOfDocumentFieldList,
   nonfiniteData,
+  pathHasIndexes,
   queryPerformance,
   rangeAtom,
 } from "@fiftyone/state";
@@ -16,19 +15,17 @@ export const hasBounds = selectorFamily({
   get:
     (params: { path: string; modal: boolean; shouldCalculate?: boolean }) =>
     ({ get }) => {
-      if (
-        !params.modal &&
-        get(queryPerformance) &&
-        (get(isOfDocumentFieldList(params.path)) ||
-          get(isListField(params.path)))
-      ) {
-        return true;
+      if (!params.modal && get(queryPerformance)) {
+        return get(pathHasIndexes({ path: params.path }))
+          ? Boolean(get(boundsAtom(params))?.every((b) => b !== null))
+          : false;
       }
 
       const shouldCalculate = params.shouldCalculate ?? true;
+
       return shouldCalculate
         ? Boolean(get(boundsAtom(params))?.every((b) => b !== null))
-        : Boolean(false);
+        : false;
     },
 });
 

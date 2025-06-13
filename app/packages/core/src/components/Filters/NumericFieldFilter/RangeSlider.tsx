@@ -1,10 +1,9 @@
 import * as fos from "@fiftyone/state";
-import { formatPrimitive, isDateOrDateTime } from "@fiftyone/utilities";
+import { formatPrimitive } from "@fiftyone/utilities";
 import React from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import CommonRangeSlider from "../../Common/RangeSlider";
-import useIncompleteResults from "../use-incomplete-results";
 import Box from "./Box";
 import FilterOption from "./FilterOption";
 import Inputs from "./Inputs";
@@ -32,24 +31,12 @@ const RangeSlider = ({
   inputs?: boolean;
 }) => {
   const ftype = useRecoilValue(fos.fieldType({ path }));
-  const datetime = isDateOrDateTime(ftype);
   const key = path.replace(/[ ,.]/g, "-");
   const excluded = useRecoilValue(fos.numericExcludeAtom({ modal, path }));
   const defaultRange = useRecoilValue(state.hasDefaultRange({ modal, path }));
   const one = useRecoilValue(state.oneBound({ path, modal }));
   const timeZone = useRecoilValue(fos.timeZone);
   const hasBounds = useRecoilValue(state.hasBounds({ path, modal }));
-  const nonfinitesText = useRecoilValue(state.nonfinitesText({ path, modal }));
-  const footer = useIncompleteResults(path);
-  if (!hasBounds) {
-    return (
-      <Box>
-        <div>{nonfinitesText ? `${nonfinitesText} present` : "No results"}</div>
-        {footer}
-      </Box>
-    );
-  }
-
   const showSlider = hasBounds && !(excluded && defaultRange);
 
   if (showSlider && one !== null) {
@@ -58,7 +45,6 @@ const RangeSlider = ({
         <div>
           {formatPrimitive({ ftype, timeZone, value: one })?.toString()}
         </div>
-        {footer}
       </Box>
     );
   }
@@ -85,11 +71,10 @@ const RangeSlider = ({
           color={color}
         />
       )}
+      <Inputs modal={modal} path={path} color={color} />
       {defaultRange && <Nonfinites modal={modal} path={path} />}
-      {!datetime && <Inputs modal={modal} path={path} color={color} />}
       <FilterOption color={color} modal={modal} path={path} />
       <Reset color={color} modal={modal} path={path} />
-      {!modal && footer}
     </Container>
   );
 };
