@@ -1,3 +1,7 @@
+:root {
+  --feedback-primary-color: #181a1b;
+}
+
 body {
   font-family: "Palanquin", "Lato", "proxima-nova", "Helvetica Neue", Arial,
     sans-serif;
