@@ -66,6 +66,7 @@ extensions = [
     "nbsphinx",
     "sphinx_tabs.tabs",
     "sphinx_copybutton",
+    "sphinx_pushfeedback",
     "autodocsumm",
     "myst_parser",
 ]
@@ -215,6 +216,10 @@ html_context = {
     "link_voxel51_blog": "https://voxel51.com/blog/",
     "og_image": "https://voxel51.com/wp-content/uploads/2024/03/3.24_webpages_Home_AV.png",
 }
+
+# -- Options for pushfeedback extension ---------------------------------------
+pushfeedback_project = "1nx7ekqhts"
+pushfeedback_feedback_button_text = "Feedback"
 
 # -- Custom app setup --------------------------------------------------------
 
