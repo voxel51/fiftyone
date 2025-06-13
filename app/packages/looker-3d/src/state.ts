@@ -199,3 +199,13 @@ export const polylineLabelLineWidthAtom = atom({
     }),
   ],
 });
+
+export const showIndexAtom = atom<boolean>({
+  key: "fo3d-showIndex",
+  default: true,
+  effects: [
+    getBrowserStorageEffectForKey("fo3d-showIndex", {
+      valueClass: "boolean",
+    }),
+  ],
+});
