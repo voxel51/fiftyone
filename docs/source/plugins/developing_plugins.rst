@@ -980,8 +980,6 @@ contains the following properties:
 -   `ctx.selected_labels` - the list of currently selected labels in the App,
     if any
 -   `ctx.extended_selection` - the extended selection of the view, if any
--   `ctx.active_fields` - the list of currently active fields in the App
-    sidebar, if any
 -   `ctx.group_slice` - the active group slice in the App, if any
 -   `ctx.user_id` - the ID of the user that invoked the operator, if known
 -   `ctx.user` - an object of information about the user that invoked the

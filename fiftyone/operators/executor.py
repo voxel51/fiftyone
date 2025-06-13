@@ -137,13 +137,13 @@ def execute_operator(operator_uri, ctx=None, **kwargs):
                 :attr:`fiftyone.core.session.Session.selected_labels`
             -   ``current_sample`` (None): an optional ID of the current sample
                 being processed
-            -   ``active_fields`` ([]): an optional list of active fields
             -   ``params``: a dictionary of parameters for the operator.
                 Consult the operator's documentation for details
             -   ``request_delegation`` (False): whether to request delegated
                 execution, if supported by the operator
             -   ``delegation_target`` (None): an optional orchestrator on which
                 to schedule the operation, if it is delegated
+            -   ``active_fields`` ([]): a list of active field names
 
         **kwargs: you can optionally provide any of the supported ``ctx`` keys
             as keyword arguments rather than including them in ``ctx``
@@ -664,11 +664,6 @@ class ExecutionContext(object):
         return self.request_params.get("current_sample", None)
 
     @property
-    def active_fields(self):
-        """The list of currently active fields in the FiftyOne App sidebar."""
-        return self.request_params.get("active_fields", [])
-
-    @property
     def user_id(self):
         """The ID of the user executing the operation, if known."""
         return self.user.id if self.user else None
@@ -761,6 +756,11 @@ class ExecutionContext(object):
     def operator_uri(self):
         """The URI of the target operator."""
         return self._operator_uri
+
+    @property
+    def active_fields(self):
+        """The list of currently active fields."""
+        return self.request_params.get("active_fields", [])
 
     def prompt(
         self,
