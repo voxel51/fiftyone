@@ -10356,7 +10356,7 @@ article.pytorch-article p.caption {
   margin-top: 1.25rem;
 }
 
-article.pytorch-article .section:first-of-type h1:first-of-type {
+article.pytorch-article section:first-of-type h1:first-of-type {
   margin-top: 0;
 }
 
@@ -10443,7 +10443,7 @@ article.pytorch-article .sphx-glr-thumbcontainer .figure a.reference.internal {
   }
 }
 
-article.pytorch-article .section :not(dt) > code {
+article.pytorch-article section :not(dt) > code {
   color: #262626;
   border-top: solid 2px #f3f4f7;
   background-color: #f3f4f7;
@@ -10452,7 +10452,7 @@ article.pytorch-article .section :not(dt) > code {
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
 }
-article.pytorch-article .section :not(dt) > code .pre {
+article.pytorch-article section :not(dt) > code .pre {
   outline: 0px;
   padding: 0px;
 }

@@ -1,11 +1,11 @@
 $(function () {
-  const sections = $(".section").sort(
+  const sections = $("section").sort(
     (a, b) => $(a).offset().top - $(b).offset().top
   );
 
   const sectionStartThreshold =
     $("#pytorch-page-level-bar").height() +
-    parseInt($(".section h2").css("marginTop")) +
+    parseInt($("section h2").css("marginTop")) +
     10;
 
   let lastSection = undefined;
@@ -66,6 +66,11 @@ $(function () {
 
   $(window).on("scroll", updateSidebar);
   $(".pytorch-right-menu").on("click", updateSidebar);
+
+  // Hide API docs classes and methods from toctree
+  $(window).on("load", function () {
+    $(".toctree-wrapper.compound li:has(> a.has-code)").hide();
+  });
 });
 
 document.addEventListener("DOMContentLoaded", function () {

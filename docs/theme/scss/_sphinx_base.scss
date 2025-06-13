@@ -251,7 +251,7 @@ article.pytorch-article {
   }
 }
 
-article.pytorch-article .section:first-of-type h1:first-of-type {
+article.pytorch-article section:first-of-type h1:first-of-type {
   margin-top: 0;
 }
 
@@ -333,7 +333,7 @@ article.pytorch-article .sphx-glr-thumbcontainer {
 }
 
 article.pytorch-article {
-  .section {
+  section {
     :not(dt) > code {
       color: $not_quite_black;
       @include format-code($light_grey);
