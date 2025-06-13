@@ -67,6 +67,7 @@ extensions = [
     "sphinx_tabs.tabs",
     "sphinx_copybutton",
     "sphinx_pushfeedback",
+    "sphinx_docsearch",
     "autodocsumm",
     "myst_parser",
 ]
@@ -220,6 +221,12 @@ html_context = {
 # -- Options for pushfeedback extension ---------------------------------------
 pushfeedback_project = "1nx7ekqhts"
 pushfeedback_feedback_button_text = "Feedback"
+
+# -- Options for sphinx-docsearch --------------------------------------------
+docsearch_app_id = "7CWWSPCBVR"
+docsearch_api_key = "2824253b47efccdc7610e4b424dd85d3"
+docsearch_index_name = "voxel51"
+docsearch_container = "#searchbox"
 
 # -- Custom app setup --------------------------------------------------------
 

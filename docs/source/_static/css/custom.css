@@ -1,5 +1,6 @@
 :root {
   --feedback-primary-color: #181a1b;
+  --docsearch-primary-color: #ff6d04;
 }
 
 body {
@@ -673,4 +674,14 @@ a.with-right-arrow,
   width: 100%;
   height: auto;
   aspect-ratio: 16 / 9;
+}
+
+/* DocSearch */
+.DocSearch-Button {
+  margin: 0;
+  width: 100%;
+}
+
+.DocSearch-Container {
+  z-index: 300;
 }
