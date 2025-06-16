@@ -1,4 +1,4 @@
-import { PCDFieldType, PCDHeader } from "./types";
+import { PCDFileFormat, PCDHeader } from "./types";
 
 /**
  * Parses the header of a PCD file.
@@ -52,7 +52,7 @@ export const parseHeader = (bin: ArrayBuffer): PCDHeader => {
     .trim()
     .split(/\s+/)
     .map((t) => {
-      if (t === "F" || t === "I" || t === "U") return t as PCDFieldType;
+      if (t === "F" || t === "I" || t === "U") return t as PCDFileFormat;
       throw new Error(`Unsupported PCD TYPE code: ${t}`);
     });
 

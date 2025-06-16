@@ -118,16 +118,14 @@ export const usePcdMaterialControls = (
   const thresholdsLut = useMemo(() => {
     const allAttributes = geometry.attributes;
     const attributeNames = Object.keys(allAttributes);
-    return attributeNames
-      .map((attributeName) => {
-        const [min, max] = getMinMaxForAttribute(geometry, attributeName);
-        return {
-          [attributeName]: { min, max },
-        };
-      })
-      .reduce((acc, curr) => {
-        return { ...acc, ...curr };
-      }, {});
+    const lut: Record<string, { min: number; max: number }> = {};
+
+    for (const attributeName of attributeNames) {
+      const [min, max] = getMinMaxForAttribute(geometry, attributeName);
+      lut[attributeName] = { min, max };
+    }
+
+    return lut;
   }, [geometry]);
 
   const getSanitizedThreshold = useCallback(
@@ -162,13 +160,14 @@ export const usePcdMaterialControls = (
 
   const isExplicitAppConfigColormapAvailable = useMemo(() => {
     if (colorScheme.colorscales && colorScheme.colorscales.length > 0) {
-      // find path
       const path = `::fo3d::pcd::${shadeBy}`;
       const colorScale = colorScheme.colorscales.find(
         (colorScale) => colorScale.path === path
       );
       return Boolean(colorScale?.name || colorScale?.list);
     }
+
+    return false;
   }, [colorScheme.colorscales, shadeBy]);
 
   const isDefaultAppConfigColormapAvailable = useMemo(() => {
@@ -289,6 +288,7 @@ export const usePcdMaterialControls = (
     );
   }, [
     setIsColormapModalOpen,
+    shadeBy,
     colorMap.source,
     isExplicitAppConfigColormapAvailable,
     colormapOverride,

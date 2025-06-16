@@ -103,7 +103,7 @@ export const usePcdMaterial = (
   // we need custom handling
   const { minIntensity, maxIntensity } = useMemo(() => {
     if (shadeBy !== SHADE_BY_INTENSITY) {
-      return { min: 0, max: 1 };
+      return { minIntensity: 0, maxIntensity: 1 };
     }
 
     const isLegacyIntensity = !geometry.hasAttribute("intensity");
@@ -112,7 +112,7 @@ export const usePcdMaterial = (
       const attrib = geometry.hasAttribute("rgb") ? "rgb" : null;
 
       if (!attrib) {
-        return { min: 0, max: 1 };
+        return { minIntensity: 0, maxIntensity: 1 };
       }
 
       const minMax = computeMinMaxForColorBufferAttribute(

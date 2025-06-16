@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { getDataView } from "./get-data-view";
-import { PCDFieldType } from "./types";
+import { PCDFileFormat } from "./types";
 
 const makeDataView = (buffer: ArrayBuffer) => {
   return new DataView(buffer);
@@ -82,7 +82,7 @@ describe("getDataView", () => {
         getDataView(
           new DataView(new ArrayBuffer(4)),
           0,
-          "X" as PCDFieldType,
+          "X" as PCDFileFormat,
           4,
           true
         )

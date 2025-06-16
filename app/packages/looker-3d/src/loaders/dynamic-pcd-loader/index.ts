@@ -28,8 +28,8 @@ export class DynamicPCDLoader extends Loader {
    *
    * @param url - The URL of the PCD file
    * @param onLoad - The callback function to call when the file is loaded
-   * @param onProgress - The callback function to call when the file is loaded
-   * @param onError - The callback function to call when the file is loaded
+   * @param onProgress - The callback function to call during loading progress
+   * @param onError - The callback function to call when an error occurs
    */
   public load(
     url: string,

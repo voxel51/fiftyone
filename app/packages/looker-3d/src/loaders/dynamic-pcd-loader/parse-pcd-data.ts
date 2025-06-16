@@ -1,6 +1,6 @@
 import { decompressLZF } from "./decompress-lzf";
 import { parseHeader } from "./parse-header";
-import { PCDAttributes, PCDFieldType, PCDHeader } from "./types";
+import { PCDAttributes, PCDFileFormat, PCDHeader } from "./types";
 
 const sanitizeNaNToZero = (v: number): number => {
   return isNaN(v) ? 0 : v;
@@ -10,7 +10,7 @@ const sanitizeNaNToZero = (v: number): number => {
 const getRawValue = (
   dv: DataView,
   byteOffset: number,
-  type: PCDFieldType,
+  type: PCDFileFormat,
   size: number,
   littleEndian: boolean
 ): number => {
@@ -82,7 +82,7 @@ export const parsePCDData = (
   // track valid points (non-NaN positions)
   let validPointCount = 0;
 
-  if (header.data === PCDFieldType.Ascii) {
+  if (header.data === PCDFileFormat.Ascii) {
     const text = new TextDecoder().decode(data).substring(header.headerLen);
     const lines = text.split("\n");
 
@@ -138,7 +138,7 @@ export const parsePCDData = (
     let dv: DataView;
     let baseOffsets: number[] | null = null;
 
-    if (header.data === PCDFieldType.BinaryCompressed) {
+    if (header.data === PCDFileFormat.BinaryCompressed) {
       const dvHeader = new DataView(data, header.headerLen, 8);
       const compressedSize = dvHeader.getUint32(0, true);
       const decompressedSize = dvHeader.getUint32(4, true);
@@ -159,7 +159,7 @@ export const parsePCDData = (
     const scalarArrays = scalarFields.map((f) => attributes[f] as Float32Array);
     const rgbArray = rgbIdx !== -1 ? (attributes.rgb as Float32Array) : null;
 
-    if (header.data === PCDFieldType.BinaryCompressed && baseOffsets) {
+    if (header.data === PCDFileFormat.BinaryCompressed && baseOffsets) {
       for (let i = 0; i < points; i++) {
         // position
         if (hasXYZ) {

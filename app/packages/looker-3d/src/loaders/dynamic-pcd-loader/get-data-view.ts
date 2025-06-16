@@ -1,4 +1,4 @@
-import { PCDFieldType } from "./types";
+import { PCDFileFormat } from "./types";
 
 /**
  * Reads a single field value from DataView.
@@ -8,7 +8,7 @@ import { PCDFieldType } from "./types";
 export const getDataView = (
   dv: DataView,
   offset: number,
-  type: PCDFieldType,
+  type: PCDFileFormat,
   size: number,
   littleEndian: boolean
 ): number => {

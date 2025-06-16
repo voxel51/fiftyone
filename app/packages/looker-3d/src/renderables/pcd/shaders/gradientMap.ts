@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import * as THREE from "three";
 
 const NUM_STOPS_FOR_PREDEFINED_NAME = 128;
@@ -83,7 +83,7 @@ const useGradientMap = (
   colorMap: Readonly<ColorscaleInput["list"]>,
   flipY: boolean = false
 ) => {
-  return useMemo(() => {
+  const texture = useMemo(() => {
     const gradients = colorMap.map((item) => [item.value, item.color] as const);
 
     const size = 512;
@@ -105,6 +105,16 @@ const useGradientMap = (
     texture.needsUpdate = true;
     return texture;
   }, [colorMap, flipY]);
+
+  useEffect(() => {
+    return () => {
+      if (texture) {
+        texture.dispose?.();
+      }
+    };
+  }, [texture]);
+
+  return texture;
 };
 
 export default useGradientMap;

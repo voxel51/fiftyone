@@ -1,8 +1,8 @@
-export type PCDFieldType = "F" | "I" | "U";
+export type PCDFileFormat = "F" | "I" | "U";
 
 export type AttributeName = string;
 
-export const PCDFieldType = {
+export const PCDFileFormat = {
   Ascii: "ascii" as const,
   Binary: "binary" as const,
   BinaryCompressed: "binary_compressed" as const,
@@ -27,7 +27,7 @@ export type PCDAttributes = Record<
   | Uint16Array
 >;
 
-export type PCDFileType = typeof PCDFieldType[keyof typeof PCDFieldType];
+export type PCDFileType = typeof PCDFileFormat[keyof typeof PCDFileFormat];
 
 export type ProgressCallback = (event: ProgressEvent) => void;
 export type ErrorCallback = (event: ErrorEvent | Error) => void;
@@ -37,7 +37,7 @@ export interface PCDHeader {
   headerLen: number;
   fields: string[];
   size: number[];
-  type: PCDFieldType[];
+  type: PCDFileFormat[];
   count: number[];
   width: number;
   height: number;

@@ -193,9 +193,12 @@ const PcdColormapModal: React.FC<PcdColormapModalProps> = ({
     (value: string) => {
       const colormap = value as ColormapType;
       setSelectedColormap(colormap);
-      setNumStops(colormap === "Legacy" ? 10 : 20);
 
-      const gradient = getGradientFromSchemeName(colormap, numStops);
+      const nextStops = colormap === "Legacy" ? 10 : 20;
+      setNumStops(nextStops);
+
+      const gradient = getGradientFromSchemeName(colormap, nextStops);
+
       setColorList(gradient);
       setHasChanges(true);
     },
