@@ -308,20 +308,51 @@ class FramesView(fov.DatasetView):
 
         self._sync_source(fields=[field_name], ids=sample_ids)
 
-    def _delete_labels(self, ids, fields=None):
-        super()._delete_labels(ids, fields=fields)
+    def _delete_labels(self, labels, fields=None):
+        labels, src_labels, src_fields = self._parse_labels(
+            labels, fields=fields
+        )
+
+        if labels:
+            super()._delete_labels(labels, fields=fields)
+
+        if src_labels:
+            src_collection = self._source_collection
+
+            # Clips views directly use their source collection's frames
+            if src_collection._is_clips:
+                src_collection = src_collection._source_collection
+
+            src_collection._delete_labels(src_labels, fields=src_fields)
+
+    def _parse_labels(self, labels, fields=None):
+        if etau.is_str(fields):
+            fields = [fields]
 
         if fields is not None:
-            if etau.is_str(fields):
-                fields = [fields]
+            labels = [d for d in labels if d["field"] in fields]
 
-            frame_fields = [
-                self._source_collection._FRAMES_PREFIX + f for f in fields
-            ]
+        prefix = self._source_collection._FRAMES_PREFIX
+
+        src_labels = deepcopy(labels)
+        if src_labels:
+            frame_ids = [d["sample_id"] for d in src_labels]
+            sample_ids, frame_numbers = self._map_values(
+                frame_ids, "id", "sample_id", "frame_number"
+            )
+            for d, sample_id, frame_number in zip(
+                src_labels, sample_ids, frame_numbers
+            ):
+                d["sample_id"] = sample_id
+                d["field"] = prefix + d["field"]
+                d["frame_number"] = frame_number
+
+        if fields is not None:
+            src_fields = [prefix + f for f in fields]
         else:
-            frame_fields = None
+            src_fields = None
 
-        self._source_collection._delete_labels(ids, fields=frame_fields)
+        return labels, src_labels, src_fields
 
     def _sync_source_sample(self, sample):
         self._sync_source_schema()
