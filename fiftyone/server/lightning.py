@@ -551,11 +551,17 @@ def _first(
                 }
             }
         )
-        return pipeline + [{"$limit": 1}] + _filter_result(dataset, path, sort)
+        return (
+            pipeline
+            + [{"$limit": 1}]
+            + _filter_result(dataset, full_path, sort)
+        )
 
     pipeline.append({"$project": {"_id": f"${path}"}})
 
-    return pipeline + _filter_result(dataset, path, sort) + [{"$limit": 1}]
+    return (
+        pipeline + _filter_result(dataset, full_path, sort) + [{"$limit": 1}]
+    )
 
 
 def _filter_result(dataset, path, sort):

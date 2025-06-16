@@ -52,7 +52,7 @@ const StyledInput = styled.input`
 
   background-color: transparent;
   border: none;
-  color: ${({ theme }) => theme.primary.secondary};
+  color: ${({ theme }) => theme.text.secondary};
   height: 2rem;
   border: none;
   align-items: center;
@@ -80,12 +80,12 @@ const TYPE_MAP = {
 
 const FROM_INPUT = (timeZone: string) => ({
   [DATE_FIELD]: (v) => {
-    const [year, month, day] = v.split("-");
+    const [year, month, day] = v.split("-").map(Number);
     return Date.UTC(year, month - 1, day);
   },
   [DATE_TIME_FIELD]: (v) => {
     const [date, time] = v.split("T");
-    const [year, month, day] = date.split("-");
+    const [year, month, day] = date.split("-").map(Number);
     const times = time.split(":");
     if (times.length === 3) {
       const [hour, minute, second] = time.split(":");

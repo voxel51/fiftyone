@@ -39,7 +39,6 @@ export default function Inputs({
         onSubmit={(value) => {
           if (value !== null && max !== null && value > max) {
             setSnackBarErrors(["min cannot be greater than max"]);
-            setRange((cur) => [null, cur[1]]);
             return;
           }
           setRange((cur) => [value, cur[1]]);
@@ -54,7 +53,6 @@ export default function Inputs({
         onSubmit={(value) => {
           if (value !== null && min !== null && value < min) {
             setSnackBarErrors(["max cannot be less than min"]);
-            setRange((cur) => [cur[0], null]);
             return;
           }
           setRange((cur) => [cur[0], value]);
