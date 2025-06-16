@@ -133,14 +133,7 @@ export default class DetectionOverlay<
 
     !state.config.thumbnail && this.drawLabelText(ctx, state);
 
-<<<<<<< HEAD
-    const strokeColor =
-      !isSelected && doesInstanceMatch ? INFO_COLOR : this.getColor(state);
-
     if (this.label.dimensions && this.label.location) {
-=======
-    if (this.is3D && this.label.dimensions && this.label.location) {
->>>>>>> release/v1.6.0
       this.fillRectFor3d(ctx, state, strokeColor);
     } else {
       this.strokeRect(ctx, state, strokeColor);
