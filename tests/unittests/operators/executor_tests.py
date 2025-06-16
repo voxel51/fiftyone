@@ -31,14 +31,14 @@ class TestOperatorExecutionContext(unittest.TestCase):
             operator_uri="test_operator",
             request_params=request_params,
         )
-        self.assertEqual(
+        self.assertDictEqual(
             ctx.serialize(),
             {
                 "params": request_params["params"],
                 "request_params": request_params,
             },
         )
-        self.assertEqual(
+        self.assertDictEqual(
             ctx.to_dict(),
             {
                 "executor": None,
@@ -47,8 +47,8 @@ class TestOperatorExecutionContext(unittest.TestCase):
                 "user": None,
             },
         )
-        self.assertEqual(ctx.params, request_params["params"])
-        self.assertEqual(ctx.request_params, request_params)
+        self.assertDictEqual(ctx.params, request_params["params"])
+        self.assertDictEqual(ctx.request_params, request_params)
         self.assertEqual(ctx.executor, None)
         self.assertEqual(ctx.delegated, False)
         self.assertEqual(ctx.dataset_name, request_params["dataset_name"])
@@ -71,6 +71,7 @@ class TestOperatorExecutionContext(unittest.TestCase):
         self.assertEqual(delegated_ctx.delegated, True)
         self.assertEqual(delegated_ctx.requesting_delegated_execution, True)
         self.assertEqual(delegated_ctx.delegation_target, "scheduler-one")
+        self.assertIsNone(delegated_ctx.num_distributed_tasks)
 
 
 ECHO_URI = "@voxel51/operators/echo"

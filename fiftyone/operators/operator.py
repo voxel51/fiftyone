@@ -44,7 +44,7 @@ class OperatorConfig(object):
         resolve_execution_options_on_change (None): whether to resolve
             execution options dynamically when inputs change. By default, this
             behavior will match the ``dynamic`` setting
-        allow_distributed_execution(False): whether the operator supports
+        allow_distributed_execution (False): whether the operator supports
             distributing delegated execution across parallel workers.
     """
 

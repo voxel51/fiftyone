@@ -273,7 +273,9 @@ async def execute_or_delegate_operator(
             from .delegated import DelegatedOperationService
 
             # Cannot distribute tasks from this repo
-            if ctx.num_distributed_tasks:
+            if ctx.num_distributed_tasks or ctx.request_params.get(
+                "num_distributed_tasks"
+            ):
                 logger.warning(
                     "Distributed execution only supported in FiftyOne Enterprise"
                 )
@@ -1293,7 +1295,7 @@ class ExecutionOptions(object):
             delegated to an orchestrator
         default_choice_to_delegated (False): whether to default to delegated
             execution, if allowed
-        allow_distributed_execution(False): whether the operator supports
+        allow_distributed_execution (False): whether the operator supports
             distributing delegated execution across parallel workers. Only
             valid for delegated operations.
         min_distributed_tasks (2): the minimum number of tasks that a distributed
@@ -1376,8 +1378,8 @@ class ExecutionOptions(object):
             "allow_delegated_execution": self._allow_delegated_execution,
             "allow_distributed_execution": self._allow_distributed_execution,
             "default_choice_to_delegated": self._default_choice_to_delegated,
-            "min_tasks": self._min_distributed_tasks,
-            "max_task": self._max_distributed_tasks,
+            "min_distributed_tasks": self._min_distributed_tasks,
+            "max_distributed_tasks": self._max_distributed_tasks,
             "recommended_num_tasks": self._recommended_distributed_tasks,
             "orchestrator_registration_enabled": self.orchestrator_registration_enabled,
             "available_orchestrators": [
