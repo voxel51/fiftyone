@@ -5,7 +5,7 @@ FiftyOne delegated operator related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-
+import copy
 import time
 import unittest
 from unittest import mock
@@ -450,6 +450,51 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(doc.run_state, ExecutionRunState.FAILED)
         self.assertIsNotNone(doc.result.error)
         self.assertNotEqual(doc.updated_at, original_updated_at)
+
+    @patch(
+        "fiftyone.core.odm.utils.load_dataset",
+    )
+    def test_set_failed_for_partitioned_do(
+        self, mock_load_dataset, mock_get_operator
+    ):
+        mock_load_dataset.return_value = MockDataset()
+        mock_get_operator.return_value = MockOperatorWithIO()
+
+        num_partitions = 3
+
+        # create parent
+        doc = self.svc._repo.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/operator/distributed_foo",
+            label=mock_get_operator.return_value.name,
+            delegation_target="test_target",
+            context=ExecutionContext(
+                request_params={"foo": "bar", "dataset_id": str(ObjectId())}
+            ),
+            num_partitions=num_partitions,
+        )
+
+        # create children
+        parent_id = doc.id
+        d = doc.to_pymongo()
+        child_doc = copy.deepcopy(d)
+        child_doc["run_state"] = ExecutionRunState.SCHEDULED
+        child_doc.pop("num_partitions", None)
+        child_doc["group_id"] = ObjectId(parent_id)
+        children = [
+            {**child_doc, "_id": ObjectId()} for i in range(num_partitions)
+        ]
+        inserted = self.svc._repo._collection.insert_many(children)
+
+        # test
+        doc = self.svc.set_failed(
+            doc_id=parent_id,
+            result=ExecutionResult(error=str(ValueError("oops!"))),
+        )
+
+        self.assertEqual(doc.run_state, ExecutionRunState.FAILED)
+        for child_id in inserted.inserted_ids:
+            child_doc = self.svc.get(child_id)
+            self.assertEqual(child_doc.run_state, ExecutionRunState.FAILED)
 
     @patch(
         "fiftyone.core.odm.utils.load_dataset",

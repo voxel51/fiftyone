@@ -977,7 +977,7 @@ classification or object detections) associated with the image.
         property that declares whether the sample parser can return an |ImageMetadata|
         for the current sample's image via
         :meth:`get_image_metadata() <fiftyone.utils.data.parsers.LabeledImageSampleParser.get_image_metadata>`.
-        Additionality, the
+        Additionally, the
         :meth:`label_cls <fiftyone.utils.data.parsers.LabeledImageSampleParser.label_cls>`
         property of the parser declares the type of label(s) that the parser
         will produce.

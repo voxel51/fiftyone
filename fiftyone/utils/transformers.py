@@ -256,7 +256,7 @@ class FiftyOneTransformerConfig(fout.TorchImageModelConfig, HasZooModel):
             ``transformers`` processor during input processing.
         embeddings_output_key (None): The key in the model output to access for embeddings.
             if set to `None`, the default value will be picked based on what is
-            avaliable in the model's output with the following priority:
+            available in the model's output with the following priority:
             1. `pooler_output`
             2. `last_hidden_state`
             3. `hidden_states` - in this case, `output['hidden_states'][-1]`
@@ -436,7 +436,7 @@ class TransformerEmbeddingsMixin(EmbeddingsMixin):
     This is mainly due to what is exposed by the model's forward pass. For
     example, the image classification models typically don't return pooled
     or normalized embeddings in HuggingFace. While this can be addressed
-    here, there is no gurantee that this generic solution will work for
+    here, there is no guarantee that this generic solution will work for
     the model passed.
     """
 
@@ -650,7 +650,7 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
         }
         config.ragged_batches = False
 
-        # handle unsuported arguments
+        # handle unsupported arguments
         if config.use_half_precision:
             config.use_half_precision = False
             logger.warning(

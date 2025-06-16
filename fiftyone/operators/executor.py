@@ -122,40 +122,56 @@ class Executor(object):
 def execute_operator(operator_uri, ctx=None, **kwargs):
     """Executes the operator with the given name.
 
-    Args:
-        operator_uri: the URI of the operator
-        ctx (None): a dictionary of parameters defining the execution context.
-            The supported keys are:
+        Args:
+            operator_uri: the URI of the operator
+            ctx (None): a dictionary of parameters defining the execution context.
+                The supported keys are:
 
-            -   ``dataset``: a :class:`fiftyone.core.dataset.Dataset` or the
-                name of a dataset to process. This is required unless a
-                ``view`` is provided
-            -   ``view`` (None): an optional
-                :class:`fiftyone.core.view.DatasetView` to process
-            -   ``selected`` ([]): an optional list of selected sample IDs
-            -   ``selected_labels`` ([]): an optional list of selected labels
-                in the format returned by
-                :attr:`fiftyone.core.session.Session.selected_labels`
-            -   ``current_sample`` (None): an optional ID of the current sample
-                being processed
-            -   ``active_fields`` ([]): an optional list of active fields
-            -   ``params``: a dictionary of parameters for the operator.
-                Consult the operator's documentation for details
-            -   ``request_delegation`` (False): whether to request delegated
-                execution, if supported by the operator
-            -   ``delegation_target`` (None): an optional orchestrator on which
-                to schedule the operation, if it is delegated
+                -   ``dataset``: a :class:`fiftyone.core.dataset.Dataset` or the
+                    name of a dataset to process. This is required unless a
+                    ``view`` is provided
+                -   ``view`` (None): an optional
+                    :class:`fiftyone.core.view.DatasetView` to process
+                -   ``selected`` ([]): an optional list of selected sample IDs
+                -   ``selected_labels`` ([]): an optional list of selected labels
+                    in the format returned by
+                    :attr:`fiftyone.core.session.Session.selected_labels`
+                -   ``current_sample`` (None): an optional ID of the current sample
+                    being processed
+    <<<<<<< HEAD
+                -   ``active_fields`` ([]): an optional list of active fields
+    =======
+                -   ``extended_selection`` (None): an optional extended selection
+                    of the view.
+    >>>>>>> develop
+                -   ``params``: a dictionary of parameters for the operator.
+                    Consult the operator's documentation for details
+                -   ``request_delegation`` (False): whether to request delegated
+                    execution, if supported by the operator
+                -   ``delegation_target`` (None): an optional orchestrator on which
+                    to schedule the operation, if it is delegated
+    <<<<<<< HEAD
+    =======
+                -   ``workspace_name`` (None): an optional name of the workspace
+                    to use for the operation
+                -   ``spaces`` (None): an optional dictionary defining spaces to
+                    use for the operation
+                -   ``group_slice`` (None): an optional group slice to use for the
+                    operation's view. This is only applicable to group datasets
+                -   ``query_performance`` (None): whether to enable query
+                    performance
+    >>>>>>> develop
 
-        **kwargs: you can optionally provide any of the supported ``ctx`` keys
-            as keyword arguments rather than including them in ``ctx``
+            **kwargs: you can optionally provide any of the supported ``ctx`` keys
+                as keyword arguments rather than including them in ``ctx``
 
-    Returns:
-        an :class:`ExecutionResult`, or an ``asyncio.Task`` if you run this
-        method in a notebook context
+        Returns:
+            an :class:`ExecutionResult`, or an ``asyncio.Task`` if you run this
+            method in a notebook context
 
-    Raises:
-        ExecutionError: if an error occurred while immediately executing an
-            operation or scheduling a delegated operation
+        Raises:
+            ExecutionError: if an error occurred while immediately executing an
+                operation or scheduling a delegated operation
     """
     request_params = _parse_ctx(ctx=ctx, **kwargs)
     coroutine = execute_or_delegate_operator(
