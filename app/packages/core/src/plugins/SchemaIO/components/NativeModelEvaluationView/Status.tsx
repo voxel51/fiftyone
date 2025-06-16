@@ -1,4 +1,5 @@
 import { ColoredDot } from "@fiftyone/components";
+import { useMutation } from "@fiftyone/state";
 import { Chip, MenuItem, Select, Stack, Typography } from "@mui/material";
 import React from "react";
 import { useTriggerEvent } from "./utils";
@@ -6,6 +7,7 @@ import { useTriggerEvent } from "./utils";
 export default function Status(props: StatusProps) {
   const { status, canEdit, readOnly, setStatusEvent } = props;
   const triggerEvent = useTriggerEvent();
+  const [enable, message] = useMutation(canEdit, "update evaluation status");
 
   if (!readOnly) {
     return (
@@ -14,20 +16,16 @@ export default function Status(props: StatusProps) {
           height: "28px",
           borderRadius: 16,
           backgroundColor: (theme) => theme.palette.action.selected,
-          "& fieldset": {
-            border: "none",
-          },
+          "& fieldset": { border: "none" },
         }}
         defaultValue={status || "needs_review"}
         onChange={(e) => {
-          triggerEvent(setStatusEvent, { status: e.target.value });
+          if (setStatusEvent) {
+            triggerEvent(setStatusEvent, { status: e.target.value });
+          }
         }}
-        title={
-          canEdit
-            ? ""
-            : "You do not have permission to update evaluation status"
-        }
-        disabled={!canEdit}
+        title={message}
+        disabled={!enable}
       >
         {STATUSES.map((status) => {
           const color = COLOR_BY_STATUS[status];
@@ -67,10 +65,10 @@ export default function Status(props: StatusProps) {
 }
 
 type StatusProps = {
-  status?: string;
-  canEdit?: boolean;
+  status: string;
+  canEdit: boolean;
   readOnly?: boolean;
-  setStatusEvent: string;
+  setStatusEvent?: string;
 };
 
 const STATUS_LABELS = {

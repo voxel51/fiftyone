@@ -12,6 +12,7 @@ export * from "./format";
 export * from "./media";
 export * from "./order";
 export * from "./paths";
+export * from "./permission";
 export * from "./Resource";
 export * from "./schema";
 export { default as sizeBytesEstimate } from "./size-bytes-estimate";

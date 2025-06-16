@@ -25,7 +25,10 @@ from .utils import (
     ShowOptionsMethod,
     ScenarioType,
 )
-from plugins.utils import get_subsets_from_custom_code
+from plugins.utils.model_evaluation import (
+    get_subsets_from_custom_code,
+    get_scenarios_store,
+)
 
 STORE_NAME = "model_evaluation_panel_builtin"
 MAX_SAMPLES_FOR_DEFAULT_PREVIEW = 25000
@@ -313,11 +316,13 @@ class ConfigureScenario(foo.Operator):
         return True
 
     def render_empty_sample_distribution(
-        self, inputs, params, description=None
+        self, ctx, inputs, params, description=None
     ):
         scenario_type = self.get_scenario_type(params)
         # NOTE: custom code validation happens at render_custom_code when exec() is called
         is_invalid = scenario_type != ScenarioType.CUSTOM_CODE
+
+        self.render_plot_preview_toggle(ctx, inputs)
 
         inputs.view(
             "empty_sample_distribution",
@@ -364,7 +369,9 @@ class ConfigureScenario(foo.Operator):
 
     def render_sample_distribution(self, ctx, inputs, scenario_type, values):
         if not values:
-            return self.render_empty_sample_distribution(inputs, ctx.params)
+            return self.render_empty_sample_distribution(
+                ctx, inputs, ctx.params
+            )
 
         subsets = {}
         if scenario_type == ScenarioType.LABEL_ATTRIBUTE:
@@ -395,6 +402,7 @@ class ConfigureScenario(foo.Operator):
                 ctx.params
             ):
                 return self.render_empty_sample_distribution(
+                    ctx,
                     inputs,
                     ctx.params,
                     description="You can toggle the 'View sample distribution' to see the preview.",
@@ -403,9 +411,7 @@ class ConfigureScenario(foo.Operator):
                 # NOTE: values for custom_code is the parsed custom code expression
                 self.render_sample_distribution_graph(ctx, inputs, values)
 
-    def render_sample_distribution_graph(
-        self, ctx, inputs, subset_expressions
-    ):
+    def render_plot_preview_toggle(self, ctx, inputs):
         preview_toggle_container = inputs.h_stack(
             "preview_toggle_container", align_x="right"
         )
@@ -415,12 +421,18 @@ class ConfigureScenario(foo.Operator):
             default=self.get_default_for_distribution_preview(ctx),
         )
 
+    def render_sample_distribution_graph(
+        self, ctx, inputs, subset_expressions
+    ):
+        self.render_plot_preview_toggle(ctx, inputs)
+
         plot_preview_enabled = ctx.params.get(
             "preview_toggle_container", {}
         ).get("plot_preview_enabled", False)
 
         if not plot_preview_enabled:
             return self.render_empty_sample_distribution(
+                ctx,
                 inputs,
                 ctx.params,
                 description="Distribution preview is not enabled. Turn on distribution preview"
@@ -739,6 +751,7 @@ class ConfigureScenario(foo.Operator):
                 )
             )
             self.render_empty_sample_distribution(
+                ctx,
                 inputs,
                 ctx.params,
                 description=f"Select a {sub} to view sample distribution",
@@ -878,6 +891,7 @@ class ConfigureScenario(foo.Operator):
                 )
             )
             self.render_empty_sample_distribution(
+                ctx,
                 inputs,
                 ctx.params,
                 description=f"Select a {sub} to view sample distribution",
@@ -957,6 +971,7 @@ class ConfigureScenario(foo.Operator):
             self.render_scenario_picker_view(ctx, label_attr, inputs)
         else:
             self.render_empty_sample_distribution(
+                ctx,
                 inputs,
                 ctx.params,
                 description=f"Select an attribute to view sample distribution",
@@ -1019,6 +1034,7 @@ class ConfigureScenario(foo.Operator):
             self.render_scenario_picker_view(ctx, field_name, inputs)
         else:
             self.render_empty_sample_distribution(
+                ctx,
                 inputs,
                 ctx.params,
                 description=f"Select a field to view sample distribution",
@@ -1043,12 +1059,8 @@ class ConfigureScenario(foo.Operator):
         return label
 
     def get_scenario_names(self, ctx):
-        store = ctx.store(STORE_NAME)
+        store = get_scenarios_store(ctx)
         scenarios = store.get("scenarios") or {}
-
-        eval_id_a = self.extract_evaluation_id(ctx)
-        scenarios = scenarios.get(eval_id_a) or {}
-
         return [scenario.get("name") for _, scenario in scenarios.items()]
 
     def resolve_input(self, ctx):
@@ -1156,22 +1168,6 @@ class ConfigureScenario(foo.Operator):
             ),
         )
 
-        # custom_code_controls.bool(
-        #     "view_sample_distribution",
-        #     required=True,
-        #     default=False,
-        #     label="View sample distribution",
-        #     view=types.CheckboxView(
-        #         componentsProps={
-        #             "container": {
-        #                 "sx": {
-        #                     "padding": "0 2rem 0 1rem",
-        #                 }
-        #             },
-        #         }
-        #     ),
-        # )
-
         body_stack.view(
             code_key,
             default=custom_code,
@@ -1211,10 +1207,9 @@ class ConfigureScenario(foo.Operator):
         if eval_id_a is None:
             raise ValueError("No evaluation ids found")
 
-        store = ctx.store(STORE_NAME)
+        store = get_scenarios_store(ctx)
         scenarios = store.get("scenarios") or {}
 
-        scenarios_for_eval = scenarios.get(eval_id_a) or {}
         scenario_field = None
 
         if scenario_type in [
@@ -1262,7 +1257,7 @@ class ConfigureScenario(foo.Operator):
             scenario_id = ObjectId()
 
         scenario_id_str = str(scenario_id)
-        scenarios_for_eval[scenario_id_str] = {
+        scenarios[scenario_id_str] = {
             "id": scenario_id_str,
             "name": scenario_name,
             "type": scenario_type,
@@ -1270,9 +1265,8 @@ class ConfigureScenario(foo.Operator):
         }
 
         if scenario_field:
-            scenarios_for_eval[scenario_id_str]["field"] = scenario_field
+            scenarios[scenario_id_str]["field"] = scenario_field
 
-        scenarios[eval_id_a] = scenarios_for_eval
         store.set("scenarios", scenarios)
 
         ctx.ops.track_event(
