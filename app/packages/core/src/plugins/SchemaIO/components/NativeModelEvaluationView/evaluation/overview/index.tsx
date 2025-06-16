@@ -24,6 +24,7 @@ import ConfusionMatrices from "./ConfusionMatrices";
 import MetricPerformance from "./MetricPerformance";
 import Summary from "./Summary";
 import { useTrackEvent } from "@fiftyone/analytics";
+import { usePanelStatePartial } from "@fiftyone/spaces";
 
 export default function Overview(props) {
   const {
@@ -37,7 +38,11 @@ export default function Overview(props) {
     notes = {},
     loadView,
   } = props;
-  const [expanded, setExpanded] = React.useState("summary");
+  const [expanded, setExpanded] = usePanelStatePartial(
+    `${name}_evaluation_overview_expanded`,
+    "summary",
+    true
+  );
   const [editNoteState, setEditNoteState] = useState({ open: false, note: "" });
   const [loadingCompare, setLoadingCompare] = useState(false);
   const evaluation = useMemo(() => {
@@ -129,7 +134,10 @@ export default function Overview(props) {
         </Stack>
         <EvaluationNotes notes={evaluationNotes} variant="details" />
       </Card>
-      <Stack spacing={1}>
+      <Stack
+        spacing={1}
+        sx={{ ".MuiAccordionDetails-root": { overflow: "auto" } }}
+      >
         <Accordion
           expanded={expanded === "summary"}
           onChange={(e, expanded) => {

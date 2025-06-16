@@ -436,10 +436,12 @@ dataset when exporting a view.
 
 .. _supported-export-formats:
 
-Supported formats
------------------
+Built-in formats
+----------------
 
-Each supported dataset type is represented by a subclass of
+FiftyOne provides a variety of built-in exporters for common data formats.
+
+Each data format is represented by a subclass of
 :class:`fiftyone.types.Dataset`, which is used by the Python library and CLI to
 refer to the corresponding dataset format when writing the dataset to disk.
 
@@ -449,77 +451,77 @@ refer to the corresponding dataset format when writing the dataset to disk.
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | Dataset Type                                                       | Description                                                                        |
     +====================================================================+====================================================================================+
-    | :ref:`ImageDirectory <ImageDirectory-export>`                      | A directory of images.                                                             |
+    | :ref:`Image Directory <ImageDirectory-export>`                     | A directory of images.                                                             |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-    | :ref:`VideoDirectory <VideoDirectory-export>`                      | A directory of videos.                                                             |
+    | :ref:`Video Directory <VideoDirectory-export>`                     | A directory of videos.                                                             |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-    | :ref:`MediaDirectory <MediaDirectory-export>`                      | A directory of media files.                                                        |
+    | :ref:`Media Directory <MediaDirectory-export>`                     | A directory of media files.                                                        |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-    | :ref:`FiftyOneImageClassificationDataset                           | A labeled dataset consisting of images and their associated classification labels  |
-    | <FiftyOneImageClassificationDataset-export>`                       | in a simple JSON format.                                                           |
-    +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-    | :ref:`ImageClassificationDirectoryTree                             | A directory tree whose subfolders define an image classification dataset.          |
+    | :ref:`Image Classification Directory Tree                          | A directory tree whose subfolders define an image classification dataset.          |
     | <ImageClassificationDirectoryTree-export>`                         |                                                                                    |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-    | :ref:`VideoClassificationDirectoryTree                             | A directory tree whose subfolders define a video classification dataset.           |
+    | :ref:`Video Classification Directory Tree                          | A directory tree whose subfolders define a video classification dataset.           |
     | <VideoClassificationDirectoryTree-export>`                         |                                                                                    |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-    | :ref:`TFImageClassificationDataset                                 | A labeled dataset consisting of images and their associated classification labels  |
+    | :ref:`FiftyOne Image Classification                                | A labeled dataset consisting of images and their associated classification labels  |
+    | <FiftyOneImageClassificationDataset-export>`                       | in a simple JSON format.                                                           |
+    +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`TF Image Classification                                      | A labeled dataset consisting of images and their associated classification labels  |
     | <TFImageClassificationDataset-export>`                             | stored as TFRecords.                                                               |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-    | :ref:`FiftyOneImageDetectionDataset                                | A labeled dataset consisting of images and their associated object detections      |
-    | <FiftyOneImageDetectionDataset-export>`                            | stored in a simple JSON format.                                                    |
+    | :ref:`COCO <COCODetectionDataset-export>`                          | A labeled dataset consisting of images and their associated object detections      |
+    |                                                                    | saved in `COCO Object Detection Format <https://cocodataset.org/#format-data>`_.   |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-    | :ref:`FiftyOneTemporalDetectionDataset                             | A labeled dataset consisting of videos and their associated temporal detections in |
-    | <FiftyOneTemporalDetectionDataset-export>`                         | a simple JSON format.                                                              |
+    | :ref:`VOC <VOCDetectionDataset-export>`                            | A labeled dataset consisting of images and their associated object detections      |
+    |                                                                    | saved in `VOC format <http://host.robots.ox.ac.uk/pascal/VOC>`_.                   |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-    | :ref:`COCODetectionDataset                                         | A labeled dataset consisting of images and their associated object detections      |
-    | <COCODetectionDataset-export>`                                     | saved in `COCO Object Detection Format <https://cocodataset.org/#format-data>`_.   |
-    +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-    | :ref:`VOCDetectionDataset                                          | A labeled dataset consisting of images and their associated object detections      |
-    | <VOCDetectionDataset-export>`                                      | saved in `VOC format <http://host.robots.ox.ac.uk/pascal/VOC>`_.                   |
-    +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-    | :ref:`KITTIDetectionDataset <KITTIDetectionDataset-export>`        | A labeled dataset consisting of images and their associated object detections      |
+    | :ref:`KITTI <KITTIDetectionDataset-export>`                        | A labeled dataset consisting of images and their associated object detections      |
     |                                                                    | saved in `KITTI format <http://www.cvlibs.net/datasets/kitti/eval\_object.php>`_.  |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-    | :ref:`YOLOv4Dataset <YOLOv4Dataset-export>`                        | A labeled dataset consisting of images and their associated object detections      |
+    | :ref:`YOLOv4 <YOLOv4Dataset-export>`                               | A labeled dataset consisting of images and their associated object detections      |
     |                                                                    | saved in `YOLOv4 format <https://github.com/AlexeyAB/darknet>`_.                   |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-    | :ref:`YOLOv5Dataset <YOLOv5Dataset-export>`                        | A labeled dataset consisting of images and their associated object detections      |
+    | :ref:`YOLOv5 <YOLOv5Dataset-export>`                               | A labeled dataset consisting of images and their associated object detections      |
     |                                                                    | saved in `YOLOv5 format <https://github.com/ultralytics/yolov5>`_.                 |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-    | :ref:`TFObjectDetectionDataset <TFObjectDetectionDataset-export>`  | A labeled dataset consisting of images and their associated object detections      |
+    | :ref:`FiftyOne Object Detection                                    | A labeled dataset consisting of images and their associated object detections      |
+    | <FiftyOneImageDetectionDataset-export>`                            | stored in a simple JSON format.                                                    |
+    +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`FiftyOne Temporal Detection                                  | A labeled dataset consisting of videos and their associated temporal detections in |
+    | <FiftyOneTemporalDetectionDataset-export>`                         | a simple JSON format.                                                              |
+    +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`TF Object Detection <TFObjectDetectionDataset-export>`       | A labeled dataset consisting of images and their associated object detections      |
     |                                                                    | stored as TFRecords in `TF Object Detection API format \                           |
     |                                                                    | <https://github.com/tensorflow/models/blob/master/research/object\_detection>`_.   |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-    | :ref:`ImageSegmentationDirectory                                   | A labeled dataset consisting of images and their associated semantic segmentations |
+    | :ref:`Image Segmentation Directory                                 | A labeled dataset consisting of images and their associated semantic segmentations |
     | <ImageSegmentationDirectory-export>`                               | stored as images on disk.                                                          |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-    | :ref:`CVATImageDataset <CVATImageDataset-export>`                  | A labeled dataset consisting of images and their associated object detections      |
+    | :ref:`CVAT Image <CVATImageDataset-export>`                        | A labeled dataset consisting of images and their associated object detections      |
     |                                                                    | stored in `CVAT image format <https://github.com/opencv/cvat>`_.                   |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-    | :ref:`CVATVideoDataset <CVATVideoDataset-export>`                  | A labeled dataset consisting of videos and their associated object detections      |
+    | :ref:`CVAT Video <CVATVideoDataset-export>`                        | A labeled dataset consisting of videos and their associated object detections      |
     |                                                                    | stored in `CVAT video format <https://github.com/opencv/cvat>`_.                   |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-    | :ref:`FiftyOneImageLabelsDataset                                   | A labeled dataset consisting of images and their associated multitask predictions  |
-    | <FiftyOneImageLabelsDataset-export>`                               | stored in `ETA ImageLabels format \                                                |
-    |                                                                    | <https://github.com/voxel51/eta/blob/develop/docs/image_labels_guide.md>`_.        |
-    +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-    | :ref:`FiftyOneVideoLabelsDataset                                   | A labeled dataset consisting of videos and their associated multitask predictions  |
-    | <FiftyOneVideoLabelsDataset-export>`                               | stored in `ETA VideoLabels format \                                                |
-    |                                                                    | <https://github.com/voxel51/eta/blob/develop/docs/video_labels_guide.md>`_.        |
-    +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-    | :ref:`BDDDataset <BDDDataset-export>`                              | A labeled dataset consisting of images and their associated multitask predictions  |
+    | :ref:`BDD <BDDDataset-export>`                                     | A labeled dataset consisting of images and their associated multitask predictions  |
     |                                                                    | saved in `Berkeley DeepDrive (BDD) format <http://bdd-data.berkeley.edu>`_.        |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-    | :ref:`CSVDataset <CSVDataset-export>`                              | A flexible CSV format that represents slice(s) of a dataset's values as columns of |
+    | :ref:`CSV <CSVDataset-export>`                                     | A flexible CSV format that represents slice(s) of a dataset's values as columns of |
     |                                                                    | a CSV file.                                                                        |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-    | :ref:`GeoJSONDataset <GeoJSONDataset-export>`                      | An image or video dataset whose location data and labels are stored in             |
+    | :ref:`GeoJSON <GeoJSONDataset-export>`                             | An image or video dataset whose location data and labels are stored in             |
     |                                                                    | `GeoJSON format <https://en.wikipedia.org/wiki/GeoJSON>`_.                         |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-    | :ref:`FiftyOneDataset <FiftyOneDataset-export>`                    | A dataset consisting of an entire serialized |Dataset| and its associated source   |
+    | :ref:`FiftyOne Dataset <FiftyOneDataset-export>`                   | A dataset consisting of an entire serialized |Dataset| and its associated source   |
     |                                                                    | media.                                                                             |
+    +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`FiftyOne Image Labels  <FiftyOneImageLabelsDataset-export>`  | A labeled dataset consisting of images and their associated multitask predictions  |
+    |                                                                    | stored in `ETA ImageLabels format \                                                |
+    |                                                                    | <https://github.com/voxel51/eta/blob/develop/docs/image_labels_guide.md>`_.        |
+    +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`FiftyOne Video Labels <FiftyOneVideoLabelsDataset-export>`   | A labeled dataset consisting of videos and their associated multitask predictions  |
+    |                                                                    | stored in `ETA VideoLabels format \                                                |
+    |                                                                    | <https://github.com/voxel51/eta/blob/develop/docs/video_labels_guide.md>`_.        |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`Custom formats <custom-dataset-exporter>`                    | Export datasets in custom formats by defining your own |DatasetType| or            |
     |                                                                    | |DatasetExporter| class.                                                           |
@@ -527,8 +529,8 @@ refer to the corresponding dataset format when writing the dataset to disk.
 
 .. _ImageDirectory-export:
 
-ImageDirectory
---------------
+Image Directory
+---------------
 
 The :class:`fiftyone.types.ImageDirectory` type represents a directory of
 images.
@@ -585,8 +587,8 @@ disk as follows:
 
 .. _VideoDirectory-export:
 
-VideoDirectory
---------------
+Video Directory
+---------------
 
 The :class:`fiftyone.types.VideoDirectory` type represents a directory of
 videos.
@@ -643,8 +645,8 @@ disk as follows:
 
 .. _MediaDirectory-export:
 
-MediaDirectory
---------------
+Media Directory
+---------------
 
 The :class:`fiftyone.types.MediaDirectory` type represents a directory of
 media files.
@@ -699,10 +701,162 @@ disk as follows:
             --export-dir $EXPORT_DIR \
             --type fiftyone.types.MediaDirectory
 
+.. _ImageClassificationDirectoryTree-export:
+
+Image Classification Dir Tree
+-----------------------------
+
+.. admonition:: Supported label types
+    :class: note
+
+    |Classification|
+
+The :class:`fiftyone.types.ImageClassificationDirectoryTree` type represents a
+directory tree whose subfolders define an image classification dataset.
+
+Datasets of this type are exported in the following format:
+
+.. code-block:: text
+
+    <dataset_dir>/
+        <classA>/
+            <image1>.<ext>
+            <image2>.<ext>
+            ...
+        <classB>/
+            <image1>.<ext>
+            <image2>.<ext>
+            ...
+        ...
+
+Unlabeled images are stored in a subdirectory named `_unlabeled`.
+
+.. note::
+
+    See :class:`ImageClassificationDirectoryTreeExporter <fiftyone.utils.data.exporters.ImageClassificationDirectoryTreeExporter>`
+    for parameters that can be passed to methods like
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
+    to customize the export of datasets of this type.
+
+You can export a FiftyOne dataset as an image classification directory tree
+stored on disk in the above format as follows:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        export_dir = "/path/for/image-classification-dir-tree"
+        label_field = "ground_truth"  # for example
+
+        # The dataset or view to export
+        dataset_or_view = fo.load_dataset(...)
+
+        # Export the dataset
+        dataset_or_view.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.ImageClassificationDirectoryTree,
+            label_field=label_field,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        EXPORT_DIR=/path/for/image-classification-dir-tree
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export the dataset
+        fiftyone datasets export $NAME \
+            --export-dir $EXPORT_DIR \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.ImageClassificationDirectoryTree
+
+.. _VideoClassificationDirectoryTree-export:
+
+Video Classification Dir Tree
+-----------------------------
+
+.. admonition:: Supported label types
+    :class: note
+
+    |Classification|
+
+The :class:`fiftyone.types.VideoClassificationDirectoryTree` type represents a
+directory tree whose subfolders define a video classification dataset.
+
+Datasets of this type are exported in the following format:
+
+.. code-block:: text
+
+    <dataset_dir>/
+        <classA>/
+            <video1>.<ext>
+            <video2>.<ext>
+            ...
+        <classB>/
+            <video1>.<ext>
+            <video2>.<ext>
+            ...
+        ...
+
+Unlabeled videos are stored in a subdirectory named `_unlabeled`.
+
+.. note::
+
+    See :class:`VideoClassificationDirectoryTreeExporter <fiftyone.utils.data.exporters.VideoClassificationDirectoryTreeExporter>`
+    for parameters that can be passed to methods like
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
+    to customize the export of datasets of this type.
+
+You can export a FiftyOne dataset as a video classification directory tree
+stored on disk in the above format as follows:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        export_dir = "/path/for/video-classification-dir-tree"
+        label_field = "ground_truth"  # for example
+
+        # The dataset or view to export
+        dataset_or_view = fo.load_dataset(...)
+
+        # Export the dataset
+        dataset_or_view.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.VideoClassificationDirectoryTree,
+            label_field=label_field,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        EXPORT_DIR=/path/for/video-classification-dir-tree
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export the dataset
+        fiftyone datasets export $NAME \
+            --export-dir $EXPORT_DIR \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.VideoClassificationDirectoryTree
+
 .. _FiftyOneImageClassificationDataset-export:
 
-FiftyOneImageClassificationDataset
-----------------------------------
+FiftyOne Image Classification
+-----------------------------
 
 .. admonition:: Supported label types
     :class: note
@@ -932,162 +1086,10 @@ the input paths.
                 labels_path=$LABELS_PATH \
                 rel_dir=/common/images/dir
 
-.. _ImageClassificationDirectoryTree-export:
-
-ImageClassificationDirectoryTree
---------------------------------
-
-.. admonition:: Supported label types
-    :class: note
-
-    |Classification|
-
-The :class:`fiftyone.types.ImageClassificationDirectoryTree` type represents a
-directory tree whose subfolders define an image classification dataset.
-
-Datasets of this type are exported in the following format:
-
-.. code-block:: text
-
-    <dataset_dir>/
-        <classA>/
-            <image1>.<ext>
-            <image2>.<ext>
-            ...
-        <classB>/
-            <image1>.<ext>
-            <image2>.<ext>
-            ...
-        ...
-
-Unlabeled images are stored in a subdirectory named `_unlabeled`.
-
-.. note::
-
-    See :class:`ImageClassificationDirectoryTreeExporter <fiftyone.utils.data.exporters.ImageClassificationDirectoryTreeExporter>`
-    for parameters that can be passed to methods like
-    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
-    to customize the export of datasets of this type.
-
-You can export a FiftyOne dataset as an image classification directory tree
-stored on disk in the above format as follows:
-
-.. tabs::
-
-  .. group-tab:: Python
-
-    .. code-block:: python
-        :linenos:
-
-        import fiftyone as fo
-
-        export_dir = "/path/for/image-classification-dir-tree"
-        label_field = "ground_truth"  # for example
-
-        # The dataset or view to export
-        dataset_or_view = fo.load_dataset(...)
-
-        # Export the dataset
-        dataset_or_view.export(
-            export_dir=export_dir,
-            dataset_type=fo.types.ImageClassificationDirectoryTree,
-            label_field=label_field,
-        )
-
-  .. group-tab:: CLI
-
-    .. code-block:: shell
-
-        NAME=my-dataset
-        EXPORT_DIR=/path/for/image-classification-dir-tree
-        LABEL_FIELD=ground_truth  # for example
-
-        # Export the dataset
-        fiftyone datasets export $NAME \
-            --export-dir $EXPORT_DIR \
-            --label-field $LABEL_FIELD \
-            --type fiftyone.types.ImageClassificationDirectoryTree
-
-.. _VideoClassificationDirectoryTree-export:
-
-VideoClassificationDirectoryTree
---------------------------------
-
-.. admonition:: Supported label types
-    :class: note
-
-    |Classification|
-
-The :class:`fiftyone.types.VideoClassificationDirectoryTree` type represents a
-directory tree whose subfolders define a video classification dataset.
-
-Datasets of this type are exported in the following format:
-
-.. code-block:: text
-
-    <dataset_dir>/
-        <classA>/
-            <video1>.<ext>
-            <video2>.<ext>
-            ...
-        <classB>/
-            <video1>.<ext>
-            <video2>.<ext>
-            ...
-        ...
-
-Unlabeled videos are stored in a subdirectory named `_unlabeled`.
-
-.. note::
-
-    See :class:`VideoClassificationDirectoryTreeExporter <fiftyone.utils.data.exporters.VideoClassificationDirectoryTreeExporter>`
-    for parameters that can be passed to methods like
-    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
-    to customize the export of datasets of this type.
-
-You can export a FiftyOne dataset as a video classification directory tree
-stored on disk in the above format as follows:
-
-.. tabs::
-
-  .. group-tab:: Python
-
-    .. code-block:: python
-        :linenos:
-
-        import fiftyone as fo
-
-        export_dir = "/path/for/video-classification-dir-tree"
-        label_field = "ground_truth"  # for example
-
-        # The dataset or view to export
-        dataset_or_view = fo.load_dataset(...)
-
-        # Export the dataset
-        dataset_or_view.export(
-            export_dir=export_dir,
-            dataset_type=fo.types.VideoClassificationDirectoryTree,
-            label_field=label_field,
-        )
-
-  .. group-tab:: CLI
-
-    .. code-block:: shell
-
-        NAME=my-dataset
-        EXPORT_DIR=/path/for/video-classification-dir-tree
-        LABEL_FIELD=ground_truth  # for example
-
-        # Export the dataset
-        fiftyone datasets export $NAME \
-            --export-dir $EXPORT_DIR \
-            --label-field $LABEL_FIELD \
-            --type fiftyone.types.VideoClassificationDirectoryTree
-
 .. _TFImageClassificationDataset-export:
 
-TFImageClassificationDataset
-----------------------------
+TF Image Classification
+-----------------------
 
 .. admonition:: Supported label types
     :class: note
@@ -1182,10 +1184,817 @@ format as follows:
     :class:`TFImageClassificationDatasetExporter <fiftyone.utils.tf.TFImageClassificationDatasetExporter>`
     for details.
 
+.. _COCODetectionDataset-export:
+
+COCO
+----
+
+.. admonition:: Supported label types
+    :class: note
+
+    |Detections|, |Polylines|, |Keypoints|
+
+The :class:`fiftyone.types.COCODetectionDataset` type represents a labeled
+dataset consisting of images and their associated object detections saved in
+`COCO Object Detection Format <https://cocodataset.org/#format-data>`_.
+
+Datasets of this type are exported in the following format:
+
+.. code-block:: text
+
+    <dataset_dir>/
+        data/
+            <filename0>.<ext>
+            <filename1>.<ext>
+            ...
+        labels.json
+
+where `labels.json` is a JSON file in the following format:
+
+.. code-block:: text
+
+    {
+        "info": {
+            "year": "",
+            "version": "",
+            "description": "Exported from FiftyOne",
+            "contributor": "",
+            "url": "https://voxel51.com/fiftyone",
+            "date_created": "2020-06-19T09:48:27"
+        },
+        "licenses": [],
+        "categories": [
+            {
+                "id": 1,
+                "name": "cat",
+                "supercategory": "animal"
+            },
+            ...
+        ],
+        "images": [
+            {
+                "id": 1,
+                "license": null,
+                "file_name": "<filename0>.<ext>",
+                "height": 480,
+                "width": 640,
+                "date_captured": null
+            },
+            ...
+        ],
+        "annotations": [
+            {
+                "id": 1,
+                "image_id": 1,
+                "category_id": 1,
+                "bbox": [260, 177, 231, 199],
+                "segmentation": [...],
+                "score": 0.95,
+                "area": 45969,
+                "iscrowd": 0
+            },
+            ...
+        ]
+    }
+
+See `this page <https://cocodataset.org/#format-data>`_ for a full
+specification of the `segmentation` field, which will only be included if you
+export |Detections| with instance masks populated or |Polylines|.
+
+For unlabeled datasets, `labels.json` does not contain an `annotations` field.
+
+The `file_name` attribute of the labels file encodes the location of the
+corresponding images, which can be any of the following:
+
+-   The filename of an image in the `data/` folder
+-   A relative path like `path/to/filename.ext` specifying the relative path to
+    the image in a nested subfolder of `data/`
+-   An absolute path to an image, which may or may not be in the `data/` folder
+
+.. note::
+
+    See :class:`COCODetectionDatasetExporter <fiftyone.utils.coco.COCODetectionDatasetExporter>`
+    for parameters that can be passed to methods like
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
+    to customize the export of datasets of this type.
+
+You can export a FiftyOne dataset as a COCO detection dataset in the above
+format as follows:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        export_dir = "/path/for/image-detection-dataset"
+        label_field = "ground_truth"  # for example
+
+        # The dataset or view to export
+        dataset_or_view = fo.load_dataset(...)
+
+        # Export the dataset
+        dataset_or_view.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.COCODetectionDataset,
+            label_field=label_field,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        EXPORT_DIR=/path/for/coco-detection-dataset
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export the dataset
+        fiftyone datasets export $NAME \
+            --export-dir $EXPORT_DIR \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.COCODetectionDataset
+
+.. note::
+
+    You can pass the optional `classes` or `categories` parameters to
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>` to
+    explicitly define the class list/category IDs to use in the exported
+    labels. Otherwise, the strategy outlined in
+    :ref:`this section <export-class-lists>` will be used to populate the class
+    list.
+
+You can also perform labels-only exports of COCO-formatted labels by providing
+the `labels_path` parameter instead of `export_dir`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        labels_path = "/path/for/coco-labels.json"
+        label_field = "ground_truth"  # for example
+
+        # The dataset or view to export
+        dataset_or_view = fo.load_dataset(...)
+
+        # Export labels
+        dataset_or_view.export(
+            dataset_type=fo.types.COCODetectionDataset,
+            labels_path=labels_path,
+            label_field=label_field,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        LABELS_PATH=/path/for/coco-labels.json
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export labels
+        fiftyone datasets export $NAME \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.COCODetectionDataset \
+            --kwargs labels_path=$LABELS_PATH
+
+.. _VOCDetectionDataset-export:
+
+VOC
+---
+
+.. admonition:: Supported label types
+    :class: note
+
+    |Detections|
+
+The :class:`fiftyone.types.VOCDetectionDataset` type represents a labeled
+dataset consisting of images and their associated object detections saved in
+`VOC format <http://host.robots.ox.ac.uk/pascal/VOC>`_.
+
+Datasets of this type are exported in the following format:
+
+.. code-block:: text
+
+    <dataset_dir>/
+        data/
+            <uuid1>.<ext>
+            <uuid2>.<ext>
+            ...
+        labels/
+            <uuid1>.xml
+            <uuid2>.xml
+            ...
+
+where the labels XML files are in the following format:
+
+.. code-block:: xml
+
+    <annotation>
+        <folder></folder>
+        <filename>image.ext</filename>
+        <path>/path/to/dataset-dir/data/image.ext</path>
+        <source>
+            <database></database>
+        </source>
+        <size>
+            <width>640</width>
+            <height>480</height>
+            <depth>3</depth>
+        </size>
+        <segmented></segmented>
+        <object>
+            <name>cat</name>
+            <pose></pose>
+            <truncated>0</truncated>
+            <difficult>0</difficult>
+            <occluded>0</occluded>
+            <bndbox>
+                <xmin>256</xmin>
+                <ymin>200</ymin>
+                <xmax>450</xmax>
+                <ymax>400</ymax>
+            </bndbox>
+        </object>
+        <object>
+            <name>dog</name>
+            <pose></pose>
+            <truncated>1</truncated>
+            <difficult>1</difficult>
+            <occluded>1</occluded>
+            <bndbox>
+                <xmin>128</xmin>
+                <ymin>100</ymin>
+                <xmax>350</xmax>
+                <ymax>300</ymax>
+            </bndbox>
+        </object>
+        ...
+    </annotation>
+
+Samples with no values for certain attributes (like `pose` in the above
+example) are left empty.
+
+Unlabeled images have no corresponding file in `labels/`.
+
+.. note::
+
+    See :class:`VOCDetectionDatasetExporter <fiftyone.utils.voc.VOCDetectionDatasetExporter>`
+    for parameters that can be passed to methods like
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
+    to customize the export of datasets of this type.
+
+You can export a FiftyOne dataset as a VOC detection dataset in the above
+format as follows:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        export_dir = "/path/for/voc-detection-dataset"
+        label_field = "ground_truth"  # for example
+
+        # The dataset or view to export
+        dataset_or_view = fo.load_dataset(...)
+
+        # Export the dataset
+        dataset_or_view.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.VOCDetectionDataset,
+            label_field=label_field,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        EXPORT_DIR=/path/for/voc-detection-dataset
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export the dataset
+        fiftyone datasets export $NAME \
+            --export-dir $EXPORT_DIR \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.VOCDetectionDataset
+
+You can also perform labels-only exports of VOC-formatted labels by providing
+the `labels_path` parameter instead of `export_dir`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        labels_path = "/path/for/voc-labels"
+        label_field = "ground_truth"  # for example
+
+        # The dataset or view to export
+        dataset_or_view = fo.load_dataset(...)
+
+        # Export labels
+        dataset_or_view.export(
+            dataset_type=fo.types.VOCDetectionDataset,
+            labels_path=labels_path,
+            label_field=label_field,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        LABELS_PATH=/path/for/voc-labels
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export labels
+        fiftyone datasets export $NAME \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.VOCDetectionDataset \
+            --kwargs labels_path=$LABELS_PATH
+
+.. _KITTIDetectionDataset-export:
+
+KITTI
+-----
+
+.. admonition:: Supported label types
+    :class: note
+
+    |Detections|
+
+The :class:`fiftyone.types.KITTIDetectionDataset` type represents a labeled
+dataset consisting of images and their associated object detections saved in
+`KITTI format <http://www.cvlibs.net/datasets/kitti/eval_object.php>`_.
+
+Datasets of this type are exported in the following format:
+
+.. code-block:: text
+
+    <dataset_dir>/
+        data/
+            <uuid1>.<ext>
+            <uuid2>.<ext>
+            ...
+        labels/
+            <uuid1>.txt
+            <uuid2>.txt
+            ...
+
+where the labels TXT files are space-delimited files where each row corresponds
+to an object and the 15 (and optional 16th score) columns have the following
+meanings:
+
++----------+-------------+-------------------------------------------------------------+---------+
+| \# of    | Name        | Description                                                 | Default |
+| columns  |             |                                                             |         |
++==========+=============+=============================================================+=========+
+| 1        | type        | The object label                                            |         |
++----------+-------------+-------------------------------------------------------------+---------+
+| 1        | truncated   | A float in `[0, 1]`, where 0 is non-truncated and           | 0       |
+|          |             | 1 is fully truncated. Here, truncation refers to the object |         |
+|          |             | leaving image boundaries                                    |         |
++----------+-------------+-------------------------------------------------------------+---------+
+| 1        | occluded    | An int in `(0, 1, 2, 3)` indicating occlusion state,        | 0       |
+|          |             | where:- 0 = fully visible- 1 = partly occluded- 2 =         |         |
+|          |             | largely occluded- 3 = unknown                               |         |
++----------+-------------+-------------------------------------------------------------+---------+
+| 1        | alpha       | Observation angle of the object, in `[-pi, pi]`             | 0       |
++----------+-------------+-------------------------------------------------------------+---------+
+| 4        | bbox        | 2D bounding box of object in the image in pixels, in the    |         |
+|          |             | format `[xtl, ytl, xbr, ybr]`                               |         |
++----------+-------------+-------------------------------------------------------------+---------+
+| 1        | dimensions  | 3D object dimensions, in meters, in the format              | 0       |
+|          |             | `[height, width, length]`                                   |         |
++----------+-------------+-------------------------------------------------------------+---------+
+| 1        | location    | 3D object location `(x, y, z)` in camera coordinates        | 0       |
+|          |             | (in meters)                                                 |         |
++----------+-------------+-------------------------------------------------------------+---------+
+| 1        | rotation\_y | Rotation around the y-axis in camera coordinates, in        | 0       |
+|          |             | `[-pi, pi]`                                                 |         |
++----------+-------------+-------------------------------------------------------------+---------+
+| 1        | score       | `(optional)` A float confidence for the detection           |         |
++----------+-------------+-------------------------------------------------------------+---------+
+
+The `default` column above indicates the default value that will be used when
+writing datasets in this type whose samples do not contain the necessary
+field(s).
+
+Unlabeled images have no corresponding file in `labels/`.
+
+.. note::
+
+    See :class:`KITTIDetectionDatasetExporter <fiftyone.utils.kitti.KITTIDetectionDatasetExporter>`
+    for parameters that can be passed to methods like
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
+    to customize the export of datasets of this type.
+
+You can export a FiftyOne dataset as a KITTI detection dataset in the above
+format as follows:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        export_dir = "/path/for/kitti-detection-dataset"
+        label_field = "ground_truth"  # for example
+
+        # The dataset or view to export
+        dataset_or_view = fo.load_dataset(...)
+
+        # Export the dataset
+        dataset_or_view.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.KITTIDetectionDataset,
+            label_field=label_field,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        EXPORT_DIR=/path/for/kitti-detection-dataset
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export the dataset
+        fiftyone datasets export $NAME \
+            --export-dir $EXPORT_DIR \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.KITTIDetectionDataset
+
+You can also perform labels-only exports of KITTI-formatted labels by providing
+the `labels_path` parameter instead of `export_dir`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        labels_path = "/path/for/kitti-labels"
+        label_field = "ground_truth"  # for example
+
+        # The dataset or view to export
+        dataset_or_view = fo.load_dataset(...)
+
+        # Export labels
+        dataset_or_view.export(
+            dataset_type=fo.types.KITTIDetectionDataset,
+            labels_path=labels_path,
+            label_field=label_field,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        LABELS_PATH=/path/for/kitti-labels
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export labels
+        fiftyone datasets export $NAME \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.KITTIDetectionDataset \
+            --kwargs labels_path=$LABELS_PATH
+
+.. _YOLOv4Dataset-export:
+
+YOLOv4
+------
+
+.. admonition:: Supported label types
+    :class: note
+
+    |Detections| |Polylines|
+
+The :class:`fiftyone.types.YOLOv4Dataset` type represents a labeled dataset
+consisting of images and their associated object detections saved in
+`YOLOv4 format <https://github.com/AlexeyAB/darknet>`_.
+
+Datasets of this type are exported in the following format:
+
+.. code-block:: text
+
+    <dataset_dir>/
+        obj.names
+        images.txt
+        data/
+            <uuid1>.<ext>
+            <uuid1>.txt
+            <uuid2>.<ext>
+            <uuid2>.txt
+            ...
+
+where `obj.names` contains the object class labels:
+
+.. code-block:: text
+
+    <label-0>
+    <label-1>
+    ...
+
+and `images.txt` contains the list of images in `data/`:
+
+.. code-block:: text
+
+    data/<uuid1>.<ext>
+    data/<uuid2>.<ext>
+    ...
+
+and the TXT files in `data/` are space-delimited files where each row
+corresponds to an object in the image of the same name, in one of the following
+formats:
+
+.. code-block:: text
+
+    # Detections
+    <target> <x-center> <y-center> <width> <height>
+    <target> <x-center> <y-center> <width> <height> <confidence>
+
+    # Polygons
+    <target> <x1> <y1> <x2> <y2> <x3> <y3> ...
+
+where `<target>` is the zero-based integer index of the object class label from
+`obj.names`, all coordinates are expressed as relative values in
+`[0, 1] x [0, 1]`, and `<confidence>` is an optional confidence in `[0, 1]`,
+which will be included only if you pass the optional `include_confidence=True`
+flag to the export.
+
+Unlabeled images have no corresponding TXT file in `data/`.
+
+.. note::
+
+    See :class:`YOLOv4DatasetExporter <fiftyone.utils.yolo.YOLOv4DatasetExporter>`
+    for parameters that can be passed to methods like
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
+    to customize the export of datasets of this type.
+
+You can export a FiftyOne dataset as a YOLOv4 dataset in the above format as
+follows:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        export_dir = "/path/for/yolov4-dataset"
+        label_field = "ground_truth"  # for example
+
+        # The dataset or view to export
+        dataset_or_view = fo.load_dataset(...)
+
+        # Export the dataset
+        dataset_or_view.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.YOLOv4Dataset,
+            label_field=label_field,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        EXPORT_DIR=/path/for/yolov4-dataset
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export the dataset
+        fiftyone datasets export $NAME \
+            --export-dir $EXPORT_DIR \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.YOLOv4Dataset
+
+.. note::
+
+    You can pass the optional `classes` parameter to
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>` to
+    explicitly define the class list to use in the exported labels. Otherwise,
+    the strategy outlined in :ref:`this section <export-class-lists>` will be
+    used to populate the class list.
+
+You can also perform labels-only exports of YOLO-formatted labels by providing
+the `labels_path` parameter instead of `export_dir`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        labels_path = "/path/for/yolo-labels"
+        label_field = "ground_truth"  # for example
+
+        # The dataset or view to export
+        dataset_or_view = fo.load_dataset(...)
+
+        # Export labels
+        dataset_or_view.export(
+            dataset_type=fo.types.YOLOv4Dataset,
+            labels_path=labels_path,
+            label_field=label_field,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        LABELS_PATH=/path/for/yolo-labels
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export labels
+        fiftyone datasets export $NAME \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.YOLOv4Dataset \
+            --kwargs labels_path=$LABELS_PATH
+
+.. _YOLOv5Dataset-export:
+
+YOLOv5
+------
+
+.. admonition:: Supported label types
+    :class: note
+
+    |Detections| |Polylines|
+
+The :class:`fiftyone.types.YOLOv5Dataset` type represents a labeled dataset
+consisting of images and their associated object detections saved in
+`YOLOv5 format <https://github.com/ultralytics/yolov5>`_.
+
+Datasets of this type are exported in the following format:
+
+.. code-block:: text
+
+    <dataset_dir>/
+        dataset.yaml
+        images/
+            train/
+                <uuid1>.<ext>
+                <uuid2>.<ext>
+                ...
+            val/
+                <uuid3>.<ext>
+                <uuid4>.<ext>
+                ...
+        labels/
+            train/
+                <uuid1>.txt
+                <uuid2>.txt
+                ...
+            val/
+                <uuid3>.txt
+                <uuid4>.txt
+                ...
+
+where `dataset.yaml` contains the following information:
+
+.. code-block:: text
+
+    path: <dataset_dir>  # optional
+    train: ./images/train/
+    val: ./images/val/
+
+    names:
+      0: list
+      1: of
+      2: classes
+      ...
+
+See `this page <https://docs.ultralytics.com/datasets/detect>`_ for a full
+description of the possible format of `dataset.yaml`. In particular, the
+dataset may contain one or more splits with arbitrary names, as the specific
+split being imported or exported is specified by the `split` argument to
+:class:`fiftyone.utils.yolo.YOLOv5DatasetExporter`. Also, `dataset.yaml` can be
+located outside of `<dataset_dir>` as long as the optional `path` is provided.
+
+The TXT files in `labels/` are space-delimited files where each row corresponds
+to an object in the image of the same name, in one of the following formats:
+
+.. code-block:: text
+
+    # Detections
+    <target> <x-center> <y-center> <width> <height>
+    <target> <x-center> <y-center> <width> <height> <confidence>
+
+    # Polygons
+    <target> <x1> <y1> <x2> <y2> <x3> <y3> ...
+
+where `<target>` is the zero-based integer index of the object class label from
+`names`, all coordinates are expressed as relative values in `[0, 1] x [0, 1]`,
+and `<confidence>` is an optional confidence in `[0, 1]`, which will be
+included only if you pass the optional `include_confidence=True` flag to the
+export.
+
+Unlabeled images have no corresponding TXT file in `labels/`. The label file
+path for each image is obtained by replacing `images/` with `labels/` in the
+respective image path.
+
+.. note::
+
+    See :class:`YOLOv5DatasetExporter <fiftyone.utils.yolo.YOLOv5DatasetExporter>`
+    for parameters that can be passed to methods like
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
+    to customize the export of datasets of this type.
+
+You can export a FiftyOne dataset as a YOLOv5 dataset in the above format as
+follows:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    export_dir = "/path/for/yolov5-dataset"
+    label_field = "ground_truth"  # for example
+
+    # The splits to export
+    splits = ["train", "val"]
+
+    # All splits must use the same classes list
+    classes = ["list", "of", "classes"]
+
+    # The dataset or view to export
+    # We assume the dataset uses sample tags to encode the splits to export
+    dataset_or_view = fo.load_dataset(...)
+
+    # Export the splits
+    for split in splits:
+        split_view = dataset_or_view.match_tags(split)
+        split_view.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.YOLOv5Dataset,
+            label_field=label_field,
+            split=split,
+            classes=classes,
+        )
+
+.. note::
+
+    You can pass the optional `classes` parameter to
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>` to
+    explicitly define the class list to use in the exported labels. Otherwise,
+    the strategy outlined in :ref:`this section <export-class-lists>` will be
+    used to populate the class list.
+
+You can also perform labels-only exports of YOLO-formatted labels by providing
+the `labels_path` parameter instead of `export_dir`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    labels_path = "/path/for/yolo-labels"
+    label_field = "ground_truth"  # for example
+
+    # The dataset or view to export
+    dataset_or_view = fo.load_dataset(...)
+
+    # Export labels
+    dataset_or_view.export(
+        dataset_type=fo.types.YOLOv5Dataset,
+        labels_path=labels_path,
+        label_field=label_field,
+    )
+
 .. _FiftyOneImageDetectionDataset-export:
 
-FiftyOneImageDetectionDataset
------------------------------
+FiftyOne Object Detection
+-------------------------
 
 .. admonition:: Supported label types
     :class: note
@@ -1383,8 +2192,8 @@ the input paths.
 
 .. _FiftyOneTemporalDetectionDataset-export:
 
-FiftyOneTemporalDetectionDataset
---------------------------------
+FiftyOne Temporal Detection
+---------------------------
 
 .. admonition:: Supported label types
     :class: note
@@ -1606,817 +2415,10 @@ the input paths.
                 labels_path=$LABELS_PATH \
                 rel_dir=/common/images/dir
 
-.. _COCODetectionDataset-export:
-
-COCODetectionDataset
---------------------
-
-.. admonition:: Supported label types
-    :class: note
-
-    |Detections|, |Polylines|, |Keypoints|
-
-The :class:`fiftyone.types.COCODetectionDataset` type represents a labeled
-dataset consisting of images and their associated object detections saved in
-`COCO Object Detection Format <https://cocodataset.org/#format-data>`_.
-
-Datasets of this type are exported in the following format:
-
-.. code-block:: text
-
-    <dataset_dir>/
-        data/
-            <filename0>.<ext>
-            <filename1>.<ext>
-            ...
-        labels.json
-
-where `labels.json` is a JSON file in the following format:
-
-.. code-block:: text
-
-    {
-        "info": {
-            "year": "",
-            "version": "",
-            "description": "Exported from FiftyOne",
-            "contributor": "",
-            "url": "https://voxel51.com/fiftyone",
-            "date_created": "2020-06-19T09:48:27"
-        },
-        "licenses": [],
-        "categories": [
-            {
-                "id": 1,
-                "name": "cat",
-                "supercategory": "animal"
-            },
-            ...
-        ],
-        "images": [
-            {
-                "id": 1,
-                "license": null,
-                "file_name": "<filename0>.<ext>",
-                "height": 480,
-                "width": 640,
-                "date_captured": null
-            },
-            ...
-        ],
-        "annotations": [
-            {
-                "id": 1,
-                "image_id": 1,
-                "category_id": 1,
-                "bbox": [260, 177, 231, 199],
-                "segmentation": [...],
-                "score": 0.95,
-                "area": 45969,
-                "iscrowd": 0
-            },
-            ...
-        ]
-    }
-
-See `this page <https://cocodataset.org/#format-data>`_ for a full
-specification of the `segmentation` field, which will only be included if you
-export |Detections| with instance masks populated or |Polylines|.
-
-For unlabeled datasets, `labels.json` does not contain an `annotations` field.
-
-The `file_name` attribute of the labels file encodes the location of the
-corresponding images, which can be any of the following:
-
--   The filename of an image in the `data/` folder
--   A relative path like `path/to/filename.ext` specifying the relative path to
-    the image in a nested subfolder of `data/`
--   An absolute path to an image, which may or may not be in the `data/` folder
-
-.. note::
-
-    See :class:`COCODetectionDatasetExporter <fiftyone.utils.coco.COCODetectionDatasetExporter>`
-    for parameters that can be passed to methods like
-    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
-    to customize the export of datasets of this type.
-
-You can export a FiftyOne dataset as a COCO detection dataset in the above
-format as follows:
-
-.. tabs::
-
-  .. group-tab:: Python
-
-    .. code-block:: python
-        :linenos:
-
-        import fiftyone as fo
-
-        export_dir = "/path/for/image-detection-dataset"
-        label_field = "ground_truth"  # for example
-
-        # The dataset or view to export
-        dataset_or_view = fo.load_dataset(...)
-
-        # Export the dataset
-        dataset_or_view.export(
-            export_dir=export_dir,
-            dataset_type=fo.types.COCODetectionDataset,
-            label_field=label_field,
-        )
-
-  .. group-tab:: CLI
-
-    .. code-block:: shell
-
-        NAME=my-dataset
-        EXPORT_DIR=/path/for/coco-detection-dataset
-        LABEL_FIELD=ground_truth  # for example
-
-        # Export the dataset
-        fiftyone datasets export $NAME \
-            --export-dir $EXPORT_DIR \
-            --label-field $LABEL_FIELD \
-            --type fiftyone.types.COCODetectionDataset
-
-.. note::
-
-    You can pass the optional `classes` or `categories` parameters to
-    :meth:`export() <fiftyone.core.collections.SampleCollection.export>` to
-    explicitly define the class list/category IDs to use in the exported
-    labels. Otherwise, the strategy outlined in
-    :ref:`this section <export-class-lists>` will be used to populate the class
-    list.
-
-You can also perform labels-only exports of COCO-formatted labels by providing
-the `labels_path` parameter instead of `export_dir`:
-
-.. tabs::
-
-  .. group-tab:: Python
-
-    .. code-block:: python
-        :linenos:
-
-        import fiftyone as fo
-
-        labels_path = "/path/for/coco-labels.json"
-        label_field = "ground_truth"  # for example
-
-        # The dataset or view to export
-        dataset_or_view = fo.load_dataset(...)
-
-        # Export labels
-        dataset_or_view.export(
-            dataset_type=fo.types.COCODetectionDataset,
-            labels_path=labels_path,
-            label_field=label_field,
-        )
-
-  .. group-tab:: CLI
-
-    .. code-block:: shell
-
-        NAME=my-dataset
-        LABELS_PATH=/path/for/coco-labels.json
-        LABEL_FIELD=ground_truth  # for example
-
-        # Export labels
-        fiftyone datasets export $NAME \
-            --label-field $LABEL_FIELD \
-            --type fiftyone.types.COCODetectionDataset \
-            --kwargs labels_path=$LABELS_PATH
-
-.. _VOCDetectionDataset-export:
-
-VOCDetectionDataset
--------------------
-
-.. admonition:: Supported label types
-    :class: note
-
-    |Detections|
-
-The :class:`fiftyone.types.VOCDetectionDataset` type represents a labeled
-dataset consisting of images and their associated object detections saved in
-`VOC format <http://host.robots.ox.ac.uk/pascal/VOC>`_.
-
-Datasets of this type are exported in the following format:
-
-.. code-block:: text
-
-    <dataset_dir>/
-        data/
-            <uuid1>.<ext>
-            <uuid2>.<ext>
-            ...
-        labels/
-            <uuid1>.xml
-            <uuid2>.xml
-            ...
-
-where the labels XML files are in the following format:
-
-.. code-block:: xml
-
-    <annotation>
-        <folder></folder>
-        <filename>image.ext</filename>
-        <path>/path/to/dataset-dir/data/image.ext</path>
-        <source>
-            <database></database>
-        </source>
-        <size>
-            <width>640</width>
-            <height>480</height>
-            <depth>3</depth>
-        </size>
-        <segmented></segmented>
-        <object>
-            <name>cat</name>
-            <pose></pose>
-            <truncated>0</truncated>
-            <difficult>0</difficult>
-            <occluded>0</occluded>
-            <bndbox>
-                <xmin>256</xmin>
-                <ymin>200</ymin>
-                <xmax>450</xmax>
-                <ymax>400</ymax>
-            </bndbox>
-        </object>
-        <object>
-            <name>dog</name>
-            <pose></pose>
-            <truncated>1</truncated>
-            <difficult>1</difficult>
-            <occluded>1</occluded>
-            <bndbox>
-                <xmin>128</xmin>
-                <ymin>100</ymin>
-                <xmax>350</xmax>
-                <ymax>300</ymax>
-            </bndbox>
-        </object>
-        ...
-    </annotation>
-
-Samples with no values for certain attributes (like `pose` in the above
-example) are left empty.
-
-Unlabeled images have no corresponding file in `labels/`.
-
-.. note::
-
-    See :class:`VOCDetectionDatasetExporter <fiftyone.utils.voc.VOCDetectionDatasetExporter>`
-    for parameters that can be passed to methods like
-    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
-    to customize the export of datasets of this type.
-
-You can export a FiftyOne dataset as a VOC detection dataset in the above
-format as follows:
-
-.. tabs::
-
-  .. group-tab:: Python
-
-    .. code-block:: python
-        :linenos:
-
-        import fiftyone as fo
-
-        export_dir = "/path/for/voc-detection-dataset"
-        label_field = "ground_truth"  # for example
-
-        # The dataset or view to export
-        dataset_or_view = fo.load_dataset(...)
-
-        # Export the dataset
-        dataset_or_view.export(
-            export_dir=export_dir,
-            dataset_type=fo.types.VOCDetectionDataset,
-            label_field=label_field,
-        )
-
-  .. group-tab:: CLI
-
-    .. code-block:: shell
-
-        NAME=my-dataset
-        EXPORT_DIR=/path/for/voc-detection-dataset
-        LABEL_FIELD=ground_truth  # for example
-
-        # Export the dataset
-        fiftyone datasets export $NAME \
-            --export-dir $EXPORT_DIR \
-            --label-field $LABEL_FIELD \
-            --type fiftyone.types.VOCDetectionDataset
-
-You can also perform labels-only exports of VOC-formatted labels by providing
-the `labels_path` parameter instead of `export_dir`:
-
-.. tabs::
-
-  .. group-tab:: Python
-
-    .. code-block:: python
-        :linenos:
-
-        import fiftyone as fo
-
-        labels_path = "/path/for/voc-labels"
-        label_field = "ground_truth"  # for example
-
-        # The dataset or view to export
-        dataset_or_view = fo.load_dataset(...)
-
-        # Export labels
-        dataset_or_view.export(
-            dataset_type=fo.types.VOCDetectionDataset,
-            labels_path=labels_path,
-            label_field=label_field,
-        )
-
-  .. group-tab:: CLI
-
-    .. code-block:: shell
-
-        NAME=my-dataset
-        LABELS_PATH=/path/for/voc-labels
-        LABEL_FIELD=ground_truth  # for example
-
-        # Export labels
-        fiftyone datasets export $NAME \
-            --label-field $LABEL_FIELD \
-            --type fiftyone.types.VOCDetectionDataset \
-            --kwargs labels_path=$LABELS_PATH
-
-.. _KITTIDetectionDataset-export:
-
-KITTIDetectionDataset
----------------------
-
-.. admonition:: Supported label types
-    :class: note
-
-    |Detections|
-
-The :class:`fiftyone.types.KITTIDetectionDataset` type represents a labeled
-dataset consisting of images and their associated object detections saved in
-`KITTI format <http://www.cvlibs.net/datasets/kitti/eval_object.php>`_.
-
-Datasets of this type are exported in the following format:
-
-.. code-block:: text
-
-    <dataset_dir>/
-        data/
-            <uuid1>.<ext>
-            <uuid2>.<ext>
-            ...
-        labels/
-            <uuid1>.txt
-            <uuid2>.txt
-            ...
-
-where the labels TXT files are space-delimited files where each row corresponds
-to an object and the 15 (and optional 16th score) columns have the following
-meanings:
-
-+----------+-------------+-------------------------------------------------------------+---------+
-| \# of    | Name        | Description                                                 | Default |
-| columns  |             |                                                             |         |
-+==========+=============+=============================================================+=========+
-| 1        | type        | The object label                                            |         |
-+----------+-------------+-------------------------------------------------------------+---------+
-| 1        | truncated   | A float in `[0, 1]`, where 0 is non-truncated and           | 0       |
-|          |             | 1 is fully truncated. Here, truncation refers to the object |         |
-|          |             | leaving image boundaries                                    |         |
-+----------+-------------+-------------------------------------------------------------+---------+
-| 1        | occluded    | An int in `(0, 1, 2, 3)` indicating occlusion state,        | 0       |
-|          |             | where:- 0 = fully visible- 1 = partly occluded- 2 =         |         |
-|          |             | largely occluded- 3 = unknown                               |         |
-+----------+-------------+-------------------------------------------------------------+---------+
-| 1        | alpha       | Observation angle of the object, in `[-pi, pi]`             | 0       |
-+----------+-------------+-------------------------------------------------------------+---------+
-| 4        | bbox        | 2D bounding box of object in the image in pixels, in the    |         |
-|          |             | format `[xtl, ytl, xbr, ybr]`                               |         |
-+----------+-------------+-------------------------------------------------------------+---------+
-| 1        | dimensions  | 3D object dimensions, in meters, in the format              | 0       |
-|          |             | `[height, width, length]`                                   |         |
-+----------+-------------+-------------------------------------------------------------+---------+
-| 1        | location    | 3D object location `(x, y, z)` in camera coordinates        | 0       |
-|          |             | (in meters)                                                 |         |
-+----------+-------------+-------------------------------------------------------------+---------+
-| 1        | rotation\_y | Rotation around the y-axis in camera coordinates, in        | 0       |
-|          |             | `[-pi, pi]`                                                 |         |
-+----------+-------------+-------------------------------------------------------------+---------+
-| 1        | score       | `(optional)` A float confidence for the detection           |         |
-+----------+-------------+-------------------------------------------------------------+---------+
-
-The `default` column above indicates the default value that will be used when
-writing datasets in this type whose samples do not contain the necessary
-field(s).
-
-Unlabeled images have no corresponding file in `labels/`.
-
-.. note::
-
-    See :class:`KITTIDetectionDatasetExporter <fiftyone.utils.kitti.KITTIDetectionDatasetExporter>`
-    for parameters that can be passed to methods like
-    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
-    to customize the export of datasets of this type.
-
-You can export a FiftyOne dataset as a KITTI detection dataset in the above
-format as follows:
-
-.. tabs::
-
-  .. group-tab:: Python
-
-    .. code-block:: python
-        :linenos:
-
-        import fiftyone as fo
-
-        export_dir = "/path/for/kitti-detection-dataset"
-        label_field = "ground_truth"  # for example
-
-        # The dataset or view to export
-        dataset_or_view = fo.load_dataset(...)
-
-        # Export the dataset
-        dataset_or_view.export(
-            export_dir=export_dir,
-            dataset_type=fo.types.KITTIDetectionDataset,
-            label_field=label_field,
-        )
-
-  .. group-tab:: CLI
-
-    .. code-block:: shell
-
-        NAME=my-dataset
-        EXPORT_DIR=/path/for/kitti-detection-dataset
-        LABEL_FIELD=ground_truth  # for example
-
-        # Export the dataset
-        fiftyone datasets export $NAME \
-            --export-dir $EXPORT_DIR \
-            --label-field $LABEL_FIELD \
-            --type fiftyone.types.KITTIDetectionDataset
-
-You can also perform labels-only exports of KITTI-formatted labels by providing
-the `labels_path` parameter instead of `export_dir`:
-
-.. tabs::
-
-  .. group-tab:: Python
-
-    .. code-block:: python
-        :linenos:
-
-        import fiftyone as fo
-
-        labels_path = "/path/for/kitti-labels"
-        label_field = "ground_truth"  # for example
-
-        # The dataset or view to export
-        dataset_or_view = fo.load_dataset(...)
-
-        # Export labels
-        dataset_or_view.export(
-            dataset_type=fo.types.KITTIDetectionDataset,
-            labels_path=labels_path,
-            label_field=label_field,
-        )
-
-  .. group-tab:: CLI
-
-    .. code-block:: shell
-
-        NAME=my-dataset
-        LABELS_PATH=/path/for/kitti-labels
-        LABEL_FIELD=ground_truth  # for example
-
-        # Export labels
-        fiftyone datasets export $NAME \
-            --label-field $LABEL_FIELD \
-            --type fiftyone.types.KITTIDetectionDataset \
-            --kwargs labels_path=$LABELS_PATH
-
-.. _YOLOv4Dataset-export:
-
-YOLOv4Dataset
--------------
-
-.. admonition:: Supported label types
-    :class: note
-
-    |Detections| |Polylines|
-
-The :class:`fiftyone.types.YOLOv4Dataset` type represents a labeled dataset
-consisting of images and their associated object detections saved in
-`YOLOv4 format <https://github.com/AlexeyAB/darknet>`_.
-
-Datasets of this type are exported in the following format:
-
-.. code-block:: text
-
-    <dataset_dir>/
-        obj.names
-        images.txt
-        data/
-            <uuid1>.<ext>
-            <uuid1>.txt
-            <uuid2>.<ext>
-            <uuid2>.txt
-            ...
-
-where `obj.names` contains the object class labels:
-
-.. code-block:: text
-
-    <label-0>
-    <label-1>
-    ...
-
-and `images.txt` contains the list of images in `data/`:
-
-.. code-block:: text
-
-    data/<uuid1>.<ext>
-    data/<uuid2>.<ext>
-    ...
-
-and the TXT files in `data/` are space-delimited files where each row
-corresponds to an object in the image of the same name, in one of the following
-formats:
-
-.. code-block:: text
-
-    # Detections
-    <target> <x-center> <y-center> <width> <height>
-    <target> <x-center> <y-center> <width> <height> <confidence>
-
-    # Polygons
-    <target> <x1> <y1> <x2> <y2> <x3> <y3> ...
-
-where `<target>` is the zero-based integer index of the object class label from
-`obj.names`, all coordinates are expressed as relative values in
-`[0, 1] x [0, 1]`, and `<confidence>` is an optional confidence in `[0, 1]`,
-which will be included only if you pass the optional `include_confidence=True`
-flag to the export.
-
-Unlabeled images have no corresponding TXT file in `data/`.
-
-.. note::
-
-    See :class:`YOLOv4DatasetExporter <fiftyone.utils.yolo.YOLOv4DatasetExporter>`
-    for parameters that can be passed to methods like
-    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
-    to customize the export of datasets of this type.
-
-You can export a FiftyOne dataset as a YOLOv4 dataset in the above format as
-follows:
-
-.. tabs::
-
-  .. group-tab:: Python
-
-    .. code-block:: python
-        :linenos:
-
-        import fiftyone as fo
-
-        export_dir = "/path/for/yolov4-dataset"
-        label_field = "ground_truth"  # for example
-
-        # The dataset or view to export
-        dataset_or_view = fo.load_dataset(...)
-
-        # Export the dataset
-        dataset_or_view.export(
-            export_dir=export_dir,
-            dataset_type=fo.types.YOLOv4Dataset,
-            label_field=label_field,
-        )
-
-  .. group-tab:: CLI
-
-    .. code-block:: shell
-
-        NAME=my-dataset
-        EXPORT_DIR=/path/for/yolov4-dataset
-        LABEL_FIELD=ground_truth  # for example
-
-        # Export the dataset
-        fiftyone datasets export $NAME \
-            --export-dir $EXPORT_DIR \
-            --label-field $LABEL_FIELD \
-            --type fiftyone.types.YOLOv4Dataset
-
-.. note::
-
-    You can pass the optional `classes` parameter to
-    :meth:`export() <fiftyone.core.collections.SampleCollection.export>` to
-    explicitly define the class list to use in the exported labels. Otherwise,
-    the strategy outlined in :ref:`this section <export-class-lists>` will be
-    used to populate the class list.
-
-You can also perform labels-only exports of YOLO-formatted labels by providing
-the `labels_path` parameter instead of `export_dir`:
-
-.. tabs::
-
-  .. group-tab:: Python
-
-    .. code-block:: python
-        :linenos:
-
-        import fiftyone as fo
-
-        labels_path = "/path/for/yolo-labels"
-        label_field = "ground_truth"  # for example
-
-        # The dataset or view to export
-        dataset_or_view = fo.load_dataset(...)
-
-        # Export labels
-        dataset_or_view.export(
-            dataset_type=fo.types.YOLOv4Dataset,
-            labels_path=labels_path,
-            label_field=label_field,
-        )
-
-  .. group-tab:: CLI
-
-    .. code-block:: shell
-
-        NAME=my-dataset
-        LABELS_PATH=/path/for/yolo-labels
-        LABEL_FIELD=ground_truth  # for example
-
-        # Export labels
-        fiftyone datasets export $NAME \
-            --label-field $LABEL_FIELD \
-            --type fiftyone.types.YOLOv4Dataset \
-            --kwargs labels_path=$LABELS_PATH
-
-.. _YOLOv5Dataset-export:
-
-YOLOv5Dataset
--------------
-
-.. admonition:: Supported label types
-    :class: note
-
-    |Detections| |Polylines|
-
-The :class:`fiftyone.types.YOLOv5Dataset` type represents a labeled dataset
-consisting of images and their associated object detections saved in
-`YOLOv5 format <https://github.com/ultralytics/yolov5>`_.
-
-Datasets of this type are exported in the following format:
-
-.. code-block:: text
-
-    <dataset_dir>/
-        dataset.yaml
-        images/
-            train/
-                <uuid1>.<ext>
-                <uuid2>.<ext>
-                ...
-            val/
-                <uuid3>.<ext>
-                <uuid4>.<ext>
-                ...
-        labels/
-            train/
-                <uuid1>.txt
-                <uuid2>.txt
-                ...
-            val/
-                <uuid3>.txt
-                <uuid4>.txt
-                ...
-
-where `dataset.yaml` contains the following information:
-
-.. code-block:: text
-
-    path: <dataset_dir>  # optional
-    train: ./images/train/
-    val: ./images/val/
-
-    names:
-      0: list
-      1: of
-      2: classes
-      ...
-
-See `this page <https://docs.ultralytics.com/datasets/detect>`_ for a full
-description of the possible format of `dataset.yaml`. In particular, the
-dataset may contain one or more splits with arbitrary names, as the specific
-split being imported or exported is specified by the `split` argument to
-:class:`fiftyone.utils.yolo.YOLOv5DatasetExporter`. Also, `dataset.yaml` can be
-located outside of `<dataset_dir>` as long as the optional `path` is provided.
-
-The TXT files in `labels/` are space-delimited files where each row corresponds
-to an object in the image of the same name, in one of the following formats:
-
-.. code-block:: text
-
-    # Detections
-    <target> <x-center> <y-center> <width> <height>
-    <target> <x-center> <y-center> <width> <height> <confidence>
-
-    # Polygons
-    <target> <x1> <y1> <x2> <y2> <x3> <y3> ...
-
-where `<target>` is the zero-based integer index of the object class label from
-`names`, all coordinates are expressed as relative values in `[0, 1] x [0, 1]`,
-and `<confidence>` is an optional confidence in `[0, 1]`, which will be
-included only if you pass the optional `include_confidence=True` flag to the
-export.
-
-Unlabeled images have no corresponding TXT file in `labels/`. The label file
-path for each image is obtained by replacing `images/` with `labels/` in the
-respective image path.
-
-.. note::
-
-    See :class:`YOLOv5DatasetExporter <fiftyone.utils.yolo.YOLOv5DatasetExporter>`
-    for parameters that can be passed to methods like
-    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
-    to customize the export of datasets of this type.
-
-You can export a FiftyOne dataset as a YOLOv5 dataset in the above format as
-follows:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-
-    export_dir = "/path/for/yolov5-dataset"
-    label_field = "ground_truth"  # for example
-
-    # The splits to export
-    splits = ["train", "val"]
-
-    # All splits must use the same classes list
-    classes = ["list", "of", "classes"]
-
-    # The dataset or view to export
-    # We assume the dataset uses sample tags to encode the splits to export
-    dataset_or_view = fo.load_dataset(...)
-
-    # Export the splits
-    for split in splits:
-        split_view = dataset_or_view.match_tags(split)
-        split_view.export(
-            export_dir=export_dir,
-            dataset_type=fo.types.YOLOv5Dataset,
-            label_field=label_field,
-            split=split,
-            classes=classes,
-        )
-
-.. note::
-
-    You can pass the optional `classes` parameter to
-    :meth:`export() <fiftyone.core.collections.SampleCollection.export>` to
-    explicitly define the class list to use in the exported labels. Otherwise,
-    the strategy outlined in :ref:`this section <export-class-lists>` will be
-    used to populate the class list.
-
-You can also perform labels-only exports of YOLO-formatted labels by providing
-the `labels_path` parameter instead of `export_dir`:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-
-    labels_path = "/path/for/yolo-labels"
-    label_field = "ground_truth"  # for example
-
-    # The dataset or view to export
-    dataset_or_view = fo.load_dataset(...)
-
-    # Export labels
-    dataset_or_view.export(
-        dataset_type=fo.types.YOLOv5Dataset,
-        labels_path=labels_path,
-        label_field=label_field,
-    )
-
 .. _TFObjectDetectionDataset-export:
 
-TFObjectDetectionDataset
-------------------------
+TF Object Detection
+-------------------
 
 .. admonition:: Supported label types
     :class: note
@@ -2546,8 +2548,8 @@ format as follows:
 
 .. _ImageSegmentationDirectory-export:
 
-ImageSegmentationDirectory
---------------------------
+Image Segmentation Directory
+----------------------------
 
 .. admonition:: Supported label types
     :class: note
@@ -2667,8 +2669,8 @@ parameter instead of `export_dir`:
 
 .. _CVATImageDataset-export:
 
-CVATImageDataset
-----------------
+CVAT Image
+----------
 
 .. admonition:: Supported label types
     :class: note
@@ -2873,8 +2875,8 @@ the `labels_path` parameter instead of `export_dir`:
 
 .. _CVATVideoDataset-export:
 
-CVATVideoDataset
-----------------
+CVAT Video
+----------
 
 .. admonition:: Supported label types
     :class: note
@@ -3078,211 +3080,10 @@ the `labels_path` parameter instead of `export_dir`:
             --type fiftyone.types.CVATVideoDataset \
             --kwargs frames_labels_path=$LABELS_PATH
 
-.. _FiftyOneImageLabelsDataset-export:
-
-FiftyOneImageLabelsDataset
---------------------------
-
-.. admonition:: Supported label types
-    :class: note
-
-    |Classifications|, |Detections|, |Polylines|, |Keypoints|
-
-The :class:`fiftyone.types.FiftyOneImageLabelsDataset` type represents a
-labeled dataset consisting of images and their associated multitask predictions
-stored in
-`ETA ImageLabels format <https://github.com/voxel51/eta/blob/develop/docs/image_labels_guide.md>`_.
-
-Datasets of this type are exported in the following format:
-
-.. code-block:: text
-
-    <dataset_dir>/
-        data/
-            <uuid1>.<ext>
-            <uuid2>.<ext>
-            ...
-        labels/
-            <uuid1>.json
-            <uuid2>.json
-            ...
-        manifest.json
-
-where `manifest.json` is a JSON file in the following format:
-
-.. code-block:: text
-
-    {
-        "type": "eta.core.datasets.LabeledImageDataset",
-        "description": "",
-        "index": [
-            {
-                "data": "data/<uuid1>.<ext>",
-                "labels": "labels/<uuid1>.json"
-            },
-            {
-                "data": "data/<uuid2>.<ext>",
-                "labels": "labels/<uuid2>.json"
-            },
-            ...
-        ]
-    }
-
-and where each labels JSON file is stored in
-`ETA ImageLabels format <https://github.com/voxel51/eta/blob/develop/docs/image_labels_guide.md>`_.
-
-For unlabeled images, an empty `eta.core.image.ImageLabels` file is stored.
-
-.. note::
-
-    See :class:`FiftyOneImageLabelsDatasetExporter <fiftyone.utils.data.exporters.FiftyOneImageLabelsDatasetExporter>`
-    for parameters that can be passed to methods like
-    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
-    to customize the export of datasets of this type.
-
-You can export a FiftyOne dataset as an image labels dataset in the above
-format as follows:
-
-.. tabs::
-
-  .. group-tab:: Python
-
-    .. code-block:: python
-        :linenos:
-
-        import fiftyone as fo
-
-        export_dir = "/path/for/image-labels-dataset"
-        label_field = "ground_truth"  # for example
-
-        # The dataset or view to export
-        dataset_or_view = fo.load_dataset(...)
-
-        # Export the dataset
-        dataset_or_view.export(
-            export_dir=export_dir,
-            dataset_type=fo.types.FiftyOneImageLabelsDataset,
-            label_field=label_field,
-        )
-
-  .. group-tab:: CLI
-
-    .. code-block:: shell
-
-        NAME=my-dataset
-        EXPORT_DIR=/path/for/image-labels-dataset
-        LABEL_FIELD=ground_truth  # for example
-
-        # Export the dataset
-        fiftyone datasets export $NAME \
-            --export-dir $EXPORT_DIR \
-            --label-field $LABEL_FIELD \
-            --type fiftyone.types.FiftyOneImageLabelsDataset
-
-.. _FiftyOneVideoLabelsDataset-export:
-
-FiftyOneVideoLabelsDataset
---------------------------
-
-.. admonition:: Supported label types
-    :class: note
-
-    |Classifications|, |Detections|, |TemporalDetections|, |Polylines|, |Keypoints|
-
-The :class:`fiftyone.types.FiftyOneVideoLabelsDataset` type represents a
-labeled dataset consisting of videos and their associated labels stored in
-`ETA VideoLabels format <https://github.com/voxel51/eta/blob/develop/docs/video_labels_guide.md>`_.
-
-Datasets of this type are exported in the following format:
-
-.. code-block:: text
-
-    <dataset_dir>/
-        data/
-            <uuid1>.<ext>
-            <uuid2>.<ext>
-            ...
-        labels/
-            <uuid1>.json
-            <uuid2>.json
-            ...
-        manifest.json
-
-where `manifest.json` is a JSON file in the following format:
-
-.. code-block:: text
-
-    {
-        "type": "eta.core.datasets.LabeledVideoDataset",
-        "description": "",
-        "index": [
-            {
-                "data": "data/<uuid1>.<ext>",
-                "labels": "labels/<uuid1>.json"
-            },
-            {
-                "data": "data/<uuid2>.<ext>",
-                "labels": "labels/<uuid2>.json"
-            },
-            ...
-        ]
-    }
-
-and where each labels JSON file is stored in
-`ETA VideoLabels format <https://github.com/voxel51/eta/blob/develop/docs/video_labels_guide.md>`_.
-
-For unlabeled videos, an empty `eta.core.video.VideoLabels` file is stored.
-
-.. note::
-
-    See :class:`FiftyOneVideoLabelsDatasetExporter <fiftyone.utils.data.exporters.FiftyOneVideoLabelsDatasetExporter>`
-    for parameters that can be passed to methods like
-    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
-    to customize the export of datasets of this type.
-
-You can export a FiftyOne dataset as a video labels dataset in the above format
-as follows:
-
-.. tabs::
-
-  .. group-tab:: Python
-
-    .. code-block:: python
-        :linenos:
-
-        import fiftyone as fo
-
-        export_dir = "/path/for/video-labels-dataset"
-        label_field = "ground_truth"  # for example
-
-        # The dataset or view to export
-        dataset_or_view = fo.load_dataset(...)
-
-        # Export the dataset
-        dataset_or_view.export(
-            export_dir=export_dir,
-            dataset_type=fo.types.FiftyOneVideoLabelsDataset,
-            label_field=label_field,
-        )
-
-  .. group-tab:: CLI
-
-    .. code-block:: shell
-
-        NAME=my-dataset
-        EXPORT_DIR=/path/for/video-labels-dataset
-        LABEL_FIELD=ground_truth  # for example
-
-        # Export the dataset
-        fiftyone datasets export $NAME \
-            --export-dir $EXPORT_DIR \
-            --label-field $LABEL_FIELD \
-            --type fiftyone.types.FiftyOneVideoLabelsDataset
-
 .. _BDDDataset-export:
 
-BDDDataset
-----------
+BDD
+---
 
 .. admonition:: Supported label types
     :class: note
@@ -3484,8 +3285,8 @@ the `labels_path` parameter instead of `export_dir`:
 
 .. _CSVDataset-export:
 
-CSVDataset
-----------
+CSV
+---
 
 The :class:`fiftyone.types.CSVDataset` type is a flexible CSV format that
 represents slice(s) of field values of a dataset as columns of a CSV file.
@@ -3604,8 +3405,8 @@ parameter instead of `export_dir`:
 
 .. _GeoJSONDataset-export:
 
-GeoJSONDataset
---------------
+GeoJSON
+-------
 
 The :class:`fiftyone.types.GeoJSONDataset` type represents a dataset consisting
 of images or videos and their associated geolocation data and optional
@@ -3755,8 +3556,8 @@ providing the `labels_path` parameter instead of `export_dir`:
 
 .. _FiftyOneDataset-export:
 
-FiftyOneDataset
----------------
+FiftyOne Dataset
+----------------
 
 The :class:`fiftyone.types.FiftyOneDataset` provides a disk representation of
 an entire |Dataset| in a serialized JSON format along with its source media.
@@ -3954,6 +3755,207 @@ This will create a directory structure like the following:
                 <filename1>.<ext>
                 <filename2>.<ext>
             ...
+
+.. _FiftyOneImageLabelsDataset-export:
+
+FiftyOne Image Labels
+---------------------
+
+.. admonition:: Supported label types
+    :class: note
+
+    |Classifications|, |Detections|, |Polylines|, |Keypoints|
+
+The :class:`fiftyone.types.FiftyOneImageLabelsDataset` type represents a
+labeled dataset consisting of images and their associated multitask predictions
+stored in
+`ETA ImageLabels format <https://github.com/voxel51/eta/blob/develop/docs/image_labels_guide.md>`_.
+
+Datasets of this type are exported in the following format:
+
+.. code-block:: text
+
+    <dataset_dir>/
+        data/
+            <uuid1>.<ext>
+            <uuid2>.<ext>
+            ...
+        labels/
+            <uuid1>.json
+            <uuid2>.json
+            ...
+        manifest.json
+
+where `manifest.json` is a JSON file in the following format:
+
+.. code-block:: text
+
+    {
+        "type": "eta.core.datasets.LabeledImageDataset",
+        "description": "",
+        "index": [
+            {
+                "data": "data/<uuid1>.<ext>",
+                "labels": "labels/<uuid1>.json"
+            },
+            {
+                "data": "data/<uuid2>.<ext>",
+                "labels": "labels/<uuid2>.json"
+            },
+            ...
+        ]
+    }
+
+and where each labels JSON file is stored in
+`ETA ImageLabels format <https://github.com/voxel51/eta/blob/develop/docs/image_labels_guide.md>`_.
+
+For unlabeled images, an empty `eta.core.image.ImageLabels` file is stored.
+
+.. note::
+
+    See :class:`FiftyOneImageLabelsDatasetExporter <fiftyone.utils.data.exporters.FiftyOneImageLabelsDatasetExporter>`
+    for parameters that can be passed to methods like
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
+    to customize the export of datasets of this type.
+
+You can export a FiftyOne dataset as an image labels dataset in the above
+format as follows:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        export_dir = "/path/for/image-labels-dataset"
+        label_field = "ground_truth"  # for example
+
+        # The dataset or view to export
+        dataset_or_view = fo.load_dataset(...)
+
+        # Export the dataset
+        dataset_or_view.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneImageLabelsDataset,
+            label_field=label_field,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        EXPORT_DIR=/path/for/image-labels-dataset
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export the dataset
+        fiftyone datasets export $NAME \
+            --export-dir $EXPORT_DIR \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.FiftyOneImageLabelsDataset
+
+.. _FiftyOneVideoLabelsDataset-export:
+
+FiftyOne Video Labels
+---------------------
+
+.. admonition:: Supported label types
+    :class: note
+
+    |Classifications|, |Detections|, |TemporalDetections|, |Polylines|, |Keypoints|
+
+The :class:`fiftyone.types.FiftyOneVideoLabelsDataset` type represents a
+labeled dataset consisting of videos and their associated labels stored in
+`ETA VideoLabels format <https://github.com/voxel51/eta/blob/develop/docs/video_labels_guide.md>`_.
+
+Datasets of this type are exported in the following format:
+
+.. code-block:: text
+
+    <dataset_dir>/
+        data/
+            <uuid1>.<ext>
+            <uuid2>.<ext>
+            ...
+        labels/
+            <uuid1>.json
+            <uuid2>.json
+            ...
+        manifest.json
+
+where `manifest.json` is a JSON file in the following format:
+
+.. code-block:: text
+
+    {
+        "type": "eta.core.datasets.LabeledVideoDataset",
+        "description": "",
+        "index": [
+            {
+                "data": "data/<uuid1>.<ext>",
+                "labels": "labels/<uuid1>.json"
+            },
+            {
+                "data": "data/<uuid2>.<ext>",
+                "labels": "labels/<uuid2>.json"
+            },
+            ...
+        ]
+    }
+
+and where each labels JSON file is stored in
+`ETA VideoLabels format <https://github.com/voxel51/eta/blob/develop/docs/video_labels_guide.md>`_.
+
+For unlabeled videos, an empty `eta.core.video.VideoLabels` file is stored.
+
+.. note::
+
+    See :class:`FiftyOneVideoLabelsDatasetExporter <fiftyone.utils.data.exporters.FiftyOneVideoLabelsDatasetExporter>`
+    for parameters that can be passed to methods like
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
+    to customize the export of datasets of this type.
+
+You can export a FiftyOne dataset as a video labels dataset in the above format
+as follows:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        export_dir = "/path/for/video-labels-dataset"
+        label_field = "ground_truth"  # for example
+
+        # The dataset or view to export
+        dataset_or_view = fo.load_dataset(...)
+
+        # Export the dataset
+        dataset_or_view.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneVideoLabelsDataset,
+            label_field=label_field,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        EXPORT_DIR=/path/for/video-labels-dataset
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export the dataset
+        fiftyone datasets export $NAME \
+            --export-dir $EXPORT_DIR \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.FiftyOneVideoLabelsDataset
 
 .. _custom-dataset-exporter:
 

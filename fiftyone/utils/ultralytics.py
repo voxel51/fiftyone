@@ -432,6 +432,7 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
     def __init__(self, config):
         super().__init__(config)
 
+<<<<<<< HEAD
     @property
     def has_collate_fn(self):
         return True
@@ -448,6 +449,8 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
             "orig_shapes": orig_shapes,
         }
 
+=======
+>>>>>>> release/v1.6.0
     def _download_model(self, config):
         config.download_model_if_necessary()
 
@@ -458,11 +461,19 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
 
         custom = {
             "conf": config.confidence_thresh,
+<<<<<<< HEAD
             "save": False,
             "mode": "predict",
             "rect": False,
             "verbose": False,
             "retina_masks": True,
+=======
+            "batch": 1,
+            "save": False,
+            "mode": "predict",
+            "rect": True,
+            "verbose": False,
+>>>>>>> release/v1.6.0
             "device": self._device,
         }
         args = {**custom, **model.overrides}
@@ -474,9 +485,12 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         model.predictor.setup_model(model=model.model, verbose=False)
         model.predictor.setup_source([np.zeros((10, 10))])
         model.predictor.batch = next(iter(model.predictor.dataset))
+<<<<<<< HEAD
         # Remove thread lock to avoid issues with pickle in multiprocessing.
         model.predictor._lock = None
 
+=======
+>>>>>>> release/v1.6.0
         return model
 
     def _load_model(self, config):
@@ -529,7 +543,11 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         if config.ragged_batches is not None:
             ragged_batches = config.ragged_batches
         else:
+<<<<<<< HEAD
             ragged_batches = False
+=======
+            ragged_batches = True
+>>>>>>> release/v1.6.0
 
         transforms = [self._preprocess_img]
         transforms = torchvision.transforms.Compose(transforms)
@@ -540,16 +558,26 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         if not isinstance(img, torch.Tensor):
             if isinstance(img, Image.Image):
                 img = img.convert("RGB")
+<<<<<<< HEAD
             orig_img = np.asarray(img)
             return {
                 "img": self._ultralytics_preprocess([orig_img]),
+=======
+            orig_img = img
+            return {
+                "img": self._ultralytics_preprocess([np.asarray(img)]),
+>>>>>>> release/v1.6.0
                 "orig_img": orig_img,
             }
         return {"img": img, "orig_img": img}
 
     def _ultralytics_preprocess(self, img):
         # Taken from ultralytics.engine.predictor.preprocess.
+<<<<<<< HEAD
         img = np.stack(self._pre_transform(img))
+=======
+        img = np.stack(self._model.predictor.pre_transform(img))
+>>>>>>> release/v1.6.0
         img = img.transpose((0, 3, 1, 2))
         img = np.ascontiguousarray(img)
         img = torch.from_numpy(img)
@@ -557,6 +585,7 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         img /= 255
         return torch.squeeze(img, axis=0)
 
+<<<<<<< HEAD
     def _pre_transform(self, im):
         # Taken from ultralytics.engine.predictor.pre_transform.
         # TODO: Look into why self._model.predictor.pre_transform
@@ -569,20 +598,27 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         )
         return [letterbox(image=x) for x in im]
 
+=======
+>>>>>>> release/v1.6.0
     def _build_output_processor(self, config):
         if not config.output_processor_args:
             config.output_processor_args = {}
         config.output_processor_args[
             "post_processor"
         ] = self._model.predictor.postprocess
+<<<<<<< HEAD
         output_processor = super()._build_output_processor(config)
         # Set post-processor to None for config JSON serialization.
         config.output_processor_args["post_processor"] = None
         return output_processor
+=======
+        return super()._build_output_processor(config)
+>>>>>>> release/v1.6.0
 
     def _predict_all(self, imgs):
         if self._preprocess and self._transforms is not None:
             imgs = [self._transforms(img) for img in imgs]
+<<<<<<< HEAD
             if self.has_collate_fn:
                 imgs = self.collate_fn(imgs)
 
@@ -599,19 +635,62 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
 
         if self.config.confidence_thresh is not None:
             self._model.predictor.args.conf = self.config.confidence_thresh
+=======
+
+        if isinstance(imgs, list) and len(imgs) and isinstance(imgs[0], dict):
+            orig_images = [img.get("orig_img") for img in imgs]
+            images = [img.get("img") for img in imgs]
+        else:
+            orig_images = imgs
+            images = imgs
+
+        height, width = None, None
+        if self.config.raw_inputs:
+            # Feed images as list
+            if self._output_processor is not None:
+                image = imgs[0]
+                height, width = _get_image_dims(image)
+        else:
+            # Feed images as stacked Tensor
+            if isinstance(images, (list, tuple)):
+                images = torch.stack(images)
+
+            height, width = images.size()[-2:]
+
+            images = images.to(self._device)
+            if self._using_half_precision:
+                images = images.half()
+>>>>>>> release/v1.6.0
 
         output = self._forward_pass(images)
 
         # This is required for Ultralytics post-processing.
         output["orig_imgs"] = orig_images
+<<<<<<< HEAD
         output["imgs"] = images
 
+=======
+        height, width = _get_image_dims(orig_images[0])
+        output["imgs"] = images
+
+        if self._output_processor is None:
+            _output = output.get("preds")
+            if isinstance(_output, torch.Tensor):
+                _output = _output.detach().cpu().numpy()
+
+            return _output
+
+>>>>>>> release/v1.6.0
         if self.has_logits:
             self._output_processor.store_logits = self.has_logits
 
         return self._output_processor(
             output,
+<<<<<<< HEAD
             width_height,
+=======
+            (width, height),
+>>>>>>> release/v1.6.0
             confidence_thresh=self.config.confidence_thresh,
         )
 
@@ -642,8 +721,12 @@ class FiftyOneRTDETRModel(FiftyOneYOLOModel):
         config: a :class:`FiftyOneRTDETRModelConfig`
     """
 
+<<<<<<< HEAD
     def _pre_transform(self, im):
         return self._model.predictor.pre_transform(im)
+=======
+    pass
+>>>>>>> release/v1.6.0
 
 
 class FiftyOneYOLOClassificationModel(FiftyOneYOLOModel):
@@ -785,6 +868,10 @@ class UltralyticsPostProcessor(object):
             raise ValueError(
                 "Ultralytics post processor needs transformed and original images."
             )
+<<<<<<< HEAD
+=======
+
+>>>>>>> release/v1.6.0
         out = self.post_processor(preds, imgs, orig_imgs)
         return out
 
@@ -821,16 +908,24 @@ class UltralyticsDetectionOutputProcessor(
     def __call__(self, output, frame_size, confidence_thresh=None):
         results = self.post_process(output)
         preds = self._to_dict(results)
+<<<<<<< HEAD
         return [
             self._parse_output(o, wh, confidence_thresh)
             for o, wh in zip(preds, frame_size)
         ]
+=======
+        return super().__call__(preds, frame_size, confidence_thresh)
+>>>>>>> release/v1.6.0
 
     def _to_dict(self, results):
         batch = []
         for result in results:
             if not result.boxes:
+<<<<<<< HEAD
                 batch.append(None)
+=======
+                continue
+>>>>>>> release/v1.6.0
             else:
                 pred = {
                     "boxes": result.boxes.xyxy,
@@ -842,8 +937,11 @@ class UltralyticsDetectionOutputProcessor(
         return batch
 
     def _parse_output(self, output, frame_size, confidence_thresh):
+<<<<<<< HEAD
         if not output:
             return None
+=======
+>>>>>>> release/v1.6.0
         detections = super()._parse_output(
             output, frame_size, confidence_thresh
         )

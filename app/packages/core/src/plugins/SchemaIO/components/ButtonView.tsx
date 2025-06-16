@@ -1,5 +1,4 @@
-import React from "react";
-import { MuiIconFont } from "@fiftyone/components";
+import { MuiIconFont, TooltipProvider } from "@fiftyone/components";
 import { usePanelEvent } from "@fiftyone/operators";
 import { usePanelId } from "@fiftyone/spaces";
 import { isNullish } from "@fiftyone/utilities";
@@ -7,7 +6,6 @@ import { Box, ButtonProps, Typography } from "@mui/material";
 import { getColorByCode, getComponentProps, getDisabledColors } from "../utils";
 import { ViewPropsType } from "../utils/types";
 import Button from "./Button";
-import TooltipProvider from "./TooltipProvider";
 
 export default function ButtonView(props: ViewPropsType) {
   const { schema, path, onClick } = props;

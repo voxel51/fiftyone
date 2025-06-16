@@ -68,6 +68,8 @@ class EvaluationPanel(Panel):
             "can_edit_status": True,
             "can_delete_evaluation": True,
             "can_rename": True,
+            "can_create_scenario": True,
+            "can_edit_scenario": True,
             "can_delete_scenario": True,
         }
 
@@ -980,8 +982,9 @@ class EvaluationPanel(Panel):
                 scenario_data["subsets_data"][subset] = subset_data
         elif scenario_type == "sample_field":
             scenario_subsets = scenario.get("subsets", [])
+            field_name = scenario.get("field", None)
             for subset in scenario_subsets:
-                subset_def = dict(type="field", field=subset)
+                subset_def = dict(type="field", field=field_name, value=subset)
                 subset_data = self.get_subset_def_data(
                     info, results, subset_def, is_compare
                 )
@@ -1111,6 +1114,13 @@ class EvaluationPanel(Panel):
                         None,
                     )
 
+                # refresh clicked
+                should_refresh_cache = ctx.params.get("refresh_cache", False)
+                if should_refresh_cache:
+                    self.get_scenario_data.clear_cache(
+                        self, ctx, validated_scenario
+                    )
+
                 scenario_data = self.get_scenario_data(ctx, validated_scenario)
 
                 ctx.panel.set_state("scenario_load_error", None)
@@ -1119,7 +1129,8 @@ class EvaluationPanel(Panel):
                     scenario_data,
                 )
                 ctx.panel.set_state("scenario_loading", False)
-        except Exception:
+        except Exception as e:
+            print("error", e)
             ctx.panel.set_state("scenario_loading", False)
             msg = f"We couldn't load this scenario because the underlying data has changed or been removed. To continue your analysis you can,"
             ctx.panel.set_state(

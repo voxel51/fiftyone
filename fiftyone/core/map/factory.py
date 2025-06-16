@@ -1,5 +1,6 @@
 """
-Factory for mapping backends
+Factory for mapping backends.
+
 | Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
@@ -8,8 +9,7 @@ Factory for mapping backends
 import multiprocessing
 from typing import Dict, List, Optional, Type
 
-
-import fiftyone.core.config as focc
+import fiftyone as fo
 import fiftyone.core.map.batcher as fomb
 import fiftyone.core.map.mapper as fomm
 import fiftyone.core.map.process as fomp
@@ -50,10 +50,6 @@ class MapperFactory:
     ) -> fomm.Mapper:
         """Create a mapper instance"""
 
-        # Loading config dynamically here as it causes actual unit tests to fail
-        # without importing the world and using globals.
-        config = focc.load_config()
-
         if batch_method is None:
             batch_method = "id"
 
@@ -70,7 +66,7 @@ class MapperFactory:
         if mapper_key is None:
             # If the default parallelization method is set in the config, use
             # it no matter what.
-            mapper_key = config.default_parallelization_method
+            mapper_key = fo.config.default_parallelization_method
 
             # If a parallelization method is not explicitly provided and
             # no default was set, try to use multiprocessing as default, if it
@@ -89,7 +85,7 @@ class MapperFactory:
             )
 
         return cls._MAPPER_CLASSES[mapper_key].create(
-            config=config,
+            config=fo.config,
             batch_cls=batch_cls,
             num_workers=num_workers,
             batch_size=batch_size,

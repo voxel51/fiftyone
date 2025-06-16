@@ -16,7 +16,7 @@ The |Dataset| class is the core data structure in FiftyOne, allowing you to
 represent your data and manipulate it through the Python library and the
 :ref:`FiftyOne App <fiftyone-app>`.
 
-FiftyOne Datasets allow you to easily :ref:`load <loading-datasets>`,
+FiftyOne Datasets allow you to easily :ref:`load <importing-datasets>`,
 :ref:`modify <using-datasets>`, :ref:`visualize <fiftyone-app>`, and
 :ref:`evaluate <evaluating-models>` your data along with any related labels
 (classifications, detections, etc). They provide a consistent interface for
@@ -37,7 +37,7 @@ model found difficult into your training set.
 
 .. note::
 
-    Check out :ref:`creating FiftyOne datasets <loading-datasets>` for more
+    Check out :ref:`importing datasets <importing-datasets>` for more
     information about loading your data into FiftyOne.
 
 A |Dataset| is composed of multiple |Sample| objects which contain |Field|
