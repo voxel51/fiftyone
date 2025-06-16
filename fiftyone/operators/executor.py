@@ -1380,7 +1380,7 @@ class ExecutionOptions(object):
             "default_choice_to_delegated": self._default_choice_to_delegated,
             "min_distributed_tasks": self._min_distributed_tasks,
             "max_distributed_tasks": self._max_distributed_tasks,
-            "recommended_num_tasks": self._recommended_distributed_tasks,
+            "recommended_distributed_tasks": self._recommended_distributed_tasks,
             "orchestrator_registration_enabled": self.orchestrator_registration_enabled,
             "available_orchestrators": [
                 x.__dict__ for x in self.available_orchestrators
