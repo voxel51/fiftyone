@@ -629,6 +629,10 @@ class DatasetTests(unittest.TestCase):
                 None,
             ],
         )
+        self.assertListEqual(
+            d.values("predictions.detections[]"),
+            d.values("predictions.detections", unwind=True),
+        )
 
         actual = d.values(
             "predictions.detections.label", missing_value="missing"
@@ -640,16 +644,7 @@ class DatasetTests(unittest.TestCase):
         )
         self.assertListEqual(actual, itered_actual)
         self.assertListEqual(
-<<<<<<< HEAD
             actual,
-=======
-            d.values("predictions.detections[]"),
-            d.values("predictions.detections", unwind=True),
-        )
-
-        self.assertListEqual(
-            d.values("predictions.detections.label", missing_value="missing"),
->>>>>>> release/v1.6.0
             [
                 ["cat", "dog"],
                 ["cat", "rabbit", "squirrel"],
