@@ -1,9 +1,5 @@
 import { selectorFamily } from "recoil";
-import {
-  lightningQuery,
-  pathHasIndexes,
-  queryPerformanceMaxSearch,
-} from "../queryPerformance";
+import { lightningQuery, pathHasIndexes } from "../queryPerformance";
 import { filterFields, isNumericField } from "../schema";
 
 export const numericFields = selectorFamily({
@@ -67,8 +63,11 @@ export const lightningBounds = selectorFamily<[number, number] | null, string>({
   get:
     (path) =>
     ({ get }) => {
-      const data = get(lightningNumericResults(path));
+      if (!get(pathHasIndexes({ path }))) {
+        return [null, null];
+      }
 
+      const data = get(lightningNumericResults(path));
       if (typeof data.max !== "number" || typeof data.min !== "number") {
         return [null, null];
       }
@@ -83,15 +82,23 @@ export const lightningNonfinites = selectorFamily({
     (path: string) =>
     ({ get }) => {
       const index = get(pathHasIndexes({ path }));
+      if (!index) {
+        return {
+          inf: false,
+          nan: false,
+          ninf: false,
+          none: false,
+        };
+      }
 
       const [data] = get(
         lightningQuery([
           {
             path,
-            maxDocumentsSearch: index ? null : get(queryPerformanceMaxSearch),
           },
         ])
       );
+
       if (data.__typename === "FloatLightningResult") {
         return {
           inf: data.inf,

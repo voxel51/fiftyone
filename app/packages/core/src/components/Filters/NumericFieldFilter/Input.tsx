@@ -52,7 +52,7 @@ const StyledInput = styled.input`
 
   background-color: transparent;
   border: none;
-  color: ${({ theme }) => theme.primary.secondar};
+  color: ${({ theme }) => theme.primary.secondary};
   height: 2rem;
   border: none;
   align-items: center;
