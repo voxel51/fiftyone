@@ -3,20 +3,20 @@ import _ from "lodash";
 import mime from "mime";
 import { Field } from "./schema";
 
-export * from "./Resource";
 export * from "./buffer-manager";
 export * from "./color";
 export * as constants from "./constants";
 export * from "./errors";
 export * from "./fetch";
+export * from "./format";
 export * from "./media";
 export * from "./order";
 export * from "./paths";
+export * from "./Resource";
 export * from "./schema";
 export { default as sizeBytesEstimate } from "./size-bytes-estimate";
 export * as styles from "./styles";
 export * from "./type-check";
-export * from "./format";
 
 interface O {
   [key: string]: O | any;
@@ -650,10 +650,6 @@ export type Primitive =
   | string
   | undefined
   | { datetime: number };
-
-export const isDateOrDateTime = (ftype: string) => {
-  return ftype === DATE_FIELD || ftype === DATE_TIME_FIELD;
-};
 
 export const formatPrimitive = ({
   ftype,

@@ -59,11 +59,10 @@ interface InputProps extends BaseProps {
 interface NumberInputProps extends BaseProps {
   validator?: (value: number | string) => boolean;
   setter: (value: number | undefined) => void;
-  value: number | null;
+  value: number;
   min?: number;
   max?: number;
   step?: number;
-  fontColor?: string;
 }
 
 const Input = React.memo(
@@ -137,7 +136,6 @@ export const NumberInput = React.memo(
     (
       {
         color = undefined,
-        fontColor = undefined,
         placeholder,
         min,
         max,
@@ -227,8 +225,6 @@ export const NumberInput = React.memo(
               style={
                 disabled
                   ? { color: theme.text.secondary, cursor: "not-allowed" }
-                  : fontColor
-                  ? { color: fontColor }
                   : {}
               }
               disabled={disabled}

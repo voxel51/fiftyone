@@ -12,8 +12,5 @@ export default function useShow(modal: boolean, named: boolean, path: string) {
     })
   );
 
-  return {
-    show: hasBounds || (queryPerformance && !modal) || !named,
-    showLoadButton: named && queryPerformance && !modal,
-  };
+  return hasBounds || (queryPerformance && !modal) || !named;
 }

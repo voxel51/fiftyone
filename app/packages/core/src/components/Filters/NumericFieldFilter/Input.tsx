@@ -80,7 +80,7 @@ const TYPE_MAP = {
 const FROM_INPUT = (timeZone: string) => ({
   [DATE_FIELD]: (v) => {
     const [year, month, day] = v.split("-");
-    return Date.UTC(year, month, day);
+    return Date.UTC(year, month - 1, day);
   },
   [DATE_TIME_FIELD]: (v) => {
     const [date, time] = v.split("T");
@@ -88,6 +88,7 @@ const FROM_INPUT = (timeZone: string) => ({
     const times = time.split(":");
     if (times.length === 3) {
       const [hour, minutes, seconds] = time.split(":");
+
       return new Date(
         `${year}-${month}-${day} ${hour}:${minutes}:${seconds} ${timeZone}`
       ).getTime();
@@ -146,15 +147,21 @@ const TO_INPUT = (timeZone: string) => ({
       second: "2-digit",
       timeZone,
     }).format(date);
-    if (seconds === "0") {
-      return `${year}-${month}-${day}T${hour}:${minutes}:00`;
-    }
 
-    return `${year}-${month}-${day}T${hour}:${minutes}:${seconds}`;
+    return `${year}-${month}-${day}T${hour}:${handleDigits(
+      minutes
+    )}:${handleDigits(seconds)}`;
   },
   [INT_FIELD]: (v) => String(v),
   [FLOAT_FIELD]: (v) => String(v),
 });
+
+const handleDigits = (digits: string) => {
+  return Number.parseInt(digits).toLocaleString("en-US", {
+    minimumIntegerDigits: 2,
+    useGrouping: false,
+  });
+};
 
 export function Input<T extends InputType>({
   color,

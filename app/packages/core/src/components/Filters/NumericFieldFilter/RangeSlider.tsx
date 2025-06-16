@@ -20,6 +20,15 @@ const Container = styled.div`
   padding: 0.25rem 0.5rem;
 `;
 
+const useNoResults = (path: string) => {
+  const indexed = useRecoilValue(fos.pathHasIndexes({ path }));
+  const queryPerformance = useRecoilValue(fos.queryPerformance);
+  const isOfList = useRecoilValue(fos.isOfDocumentFieldList(path));
+  const isList = useRecoilValue(fos.isListField(path));
+
+  return indexed && queryPerformance && !isOfList && !isList;
+};
+
 const RangeSlider = ({
   color,
   modal,
@@ -38,6 +47,15 @@ const RangeSlider = ({
   const timeZone = useRecoilValue(fos.timeZone);
   const hasBounds = useRecoilValue(state.hasBounds({ path, modal }));
   const showSlider = hasBounds && !(excluded && defaultRange);
+
+  const noResults = useNoResults(path);
+  if (!hasBounds && noResults) {
+    return (
+      <Box>
+        <div>No results</div>
+      </Box>
+    );
+  }
 
   if (showSlider && one !== null) {
     return (

@@ -1,11 +1,5 @@
 import type { Nonfinite } from "@fiftyone/state";
-import {
-  boundsAtom,
-  nonfiniteData,
-  pathHasIndexes,
-  queryPerformance,
-  rangeAtom,
-} from "@fiftyone/state";
+import { boundsAtom, nonfiniteData, rangeAtom } from "@fiftyone/state";
 import { selectorFamily } from "recoil";
 
 export const FLOAT_NONFINITES: Nonfinite[] = ["inf", "ninf", "nan"];
@@ -15,12 +9,6 @@ export const hasBounds = selectorFamily({
   get:
     (params: { path: string; modal: boolean; shouldCalculate?: boolean }) =>
     ({ get }) => {
-      if (!params.modal && get(queryPerformance)) {
-        return get(pathHasIndexes({ path: params.path }))
-          ? Boolean(get(boundsAtom(params))?.every((b) => b !== null))
-          : false;
-      }
-
       const shouldCalculate = params.shouldCalculate ?? true;
 
       return shouldCalculate
