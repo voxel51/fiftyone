@@ -44,6 +44,8 @@ class OperatorConfig(object):
         resolve_execution_options_on_change (None): whether to resolve
             execution options dynamically when inputs change. By default, this
             behavior will match the ``dynamic`` setting
+        allow_distributed_execution(False): whether the operator supports
+            distributing delegated execution across parallel workers.
     """
 
     def __init__(
@@ -65,6 +67,7 @@ class OperatorConfig(object):
         allow_delegated_execution=False,
         default_choice_to_delegated=False,
         resolve_execution_options_on_change=None,
+        allow_distributed_execution=False,  # Enterprise only
         **kwargs
     ):
         self.name = name
@@ -83,6 +86,7 @@ class OperatorConfig(object):
         self.allow_immediate_execution = allow_immediate_execution
         self.allow_delegated_execution = allow_delegated_execution
         self.default_choice_to_delegated = default_choice_to_delegated
+        self.allow_distributed_execution = False  # Enterprise only
         if resolve_execution_options_on_change is None:
             self.resolve_execution_options_on_change = dynamic
         else:
@@ -110,6 +114,7 @@ class OperatorConfig(object):
             "allow_delegated_execution": self.allow_delegated_execution,
             "default_choice_to_delegated": self.default_choice_to_delegated,
             "resolve_execution_options_on_change": self.resolve_execution_options_on_change,
+            "allow_distributed_execution": self.allow_distributed_execution,
         }
 
 
@@ -188,12 +193,16 @@ class Operator(object):
             return ExecutionOptions(
                 allow_immediate_execution=not delegate,
                 allow_delegated_execution=delegate,
+                allow_distributed_execution=(
+                    self.config.allow_distributed_execution and delegate
+                ),
             )
 
         return ExecutionOptions(
             allow_immediate_execution=self.config.allow_immediate_execution,
             allow_delegated_execution=self.config.allow_delegated_execution,
             default_choice_to_delegated=self.config.default_choice_to_delegated,
+            allow_distributed_execution=self.config.allow_distributed_execution,
         )
 
     def execute(self, ctx):
