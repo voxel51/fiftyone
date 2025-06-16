@@ -296,7 +296,6 @@ class FiftyOneTransformerConfig(fout.TorchImageModelConfig, HasZooModel):
         self.name_or_path = self.parse_string(d, "name_or_path", default=None)
         self.hf_config = transformers.AutoConfig.from_pretrained(
             self.name_or_path
-<<<<<<< HEAD
         )
 
         self._load_classes(d)
@@ -346,53 +345,6 @@ class FiftyOneTransformerConfig(fout.TorchImageModelConfig, HasZooModel):
                     "or change the classes in the HFT model "
                     "configuration to match the classes you want to use."
                 )
-=======
-        )
-
-        # load classes if they exist
-        if self.hf_config.id2label is not None:
-            if self.classes is None:
-                # only load classes if they are not already set
-                self.classes = [
-                    self.hf_config.id2label[i]
-                    for i in range(len(self.hf_config.id2label))
-                ]
-            else:
-                # if they are, this is either a zero shot model
-                # and the AutoConfig set some strange classes
-                # or the user is trying to override the classes
-                # in the latter case, strange things can happen
-                # not sure how to warn the user about this
-                logger.warning(
-                    "Classes were passed in to the FiftyOne model, but the "
-                    "HugginFace Transformers model configuration already has classes. "
-                    "Either set the classes argument to `None` to inherit the classes "
-                    "from the HFT model, or change the classes in the HFT model "
-                    "configuration to match the classes you want to use."
-                )
-
-        self.transformers_processor_kwargs = self.parse_dict(
-            d, "transformers_processor_kwargs", default={}
-        )
-
-        # embeddings config
-        self.output_hidden_states = self.parse_bool(
-            d, "output_hidden_states", default=False
-        )
-        self.hidden_state_position = self.parse_int(
-            d, "hidden_state_position", default=None
-        )
-        self.embeddings_output_key = self.parse_string(
-            d, "embeddings_output_key", default=None
-        )
-        self.embeddings_aggregation = self.parse_string(
-            d, "embeddings_aggregation", default="token"
-        )
-        self.channels_last = self.parse_bool(d, "channels_last", default=True)
-        self.embeddings_token_position = self.parse_int(
-            d, "embeddings_token_position", default=0
-        )
->>>>>>> release/v1.6.0
 
 
 class FiftyOneZeroShotTransformerConfig(FiftyOneTransformerConfig):
@@ -412,13 +364,10 @@ class FiftyOneZeroShotTransformerConfig(FiftyOneTransformerConfig):
         super().__init__(d)
         self.text_prompt = self.parse_string(d, "text_prompt", default=None)
         self.class_prompts = self.parse_dict(d, "class_prompts", default=None)
-<<<<<<< HEAD
 
     def _load_classes(self, d):
         if self.classes is None:
             raise ValueError("Classes must be set for zero-shot models")
-=======
->>>>>>> release/v1.6.0
 
 
 class TransformerEmbeddingsMixin(EmbeddingsMixin):
@@ -622,17 +571,11 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
         if config.entrypoint_fcn is None:
             config.entrypoint_fcn = "transformers.AutoModel.from_pretrained"
         if config.entrypoint_args is None:
-<<<<<<< HEAD
             config.entrypoint_args = {}
         if not config.entrypoint_args.get("pretrained_model_name_or_path"):
             config.entrypoint_args[
                 "pretrained_model_name_or_path"
             ] = config.name_or_path
-=======
-            config.entrypoint_args = {
-                "pretrained_model_name_or_path": config.name_or_path,
-            }
->>>>>>> release/v1.6.0
 
         # default transforms
         if config.transforms_fcn is None:
@@ -1360,10 +1303,6 @@ class TransformersDepthEstimatorOutputProcessor(fout.OutputProcessor):
                 )
 
     def __call__(self, output, image_sizes, confidence_thresh=None):
-<<<<<<< HEAD
-=======
-
->>>>>>> release/v1.6.0
         output = self._depth_estimation_post_processor(output)
         output = np.array(
             [o["predicted_depth"].detach().cpu().numpy() for o in output]
