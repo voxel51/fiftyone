@@ -27,6 +27,9 @@ export default function useRefreshers() {
   );
   const sort = useRecoilValue(fos.gridSortBy);
   const view = fos.filterView(useRecoilValue(fos.view) ?? []);
+  const schema = useRecoilValue(
+    fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
+  );
 
   // only reload, attempt to return to the last grid location
   const layoutReset = useMemoOne(() => {
@@ -35,7 +38,7 @@ export default function useRefreshers() {
     mediaField;
     refresher;
     return uuid();
-  }, [cropToContent, fieldVisibilityStage, mediaField, refresher]);
+  }, [cropToContent, fieldVisibilityStage, mediaField, refresher, schema]);
 
   // the values reset the page, i.e. return to the top
   const pageReset = useMemoOne(() => {
