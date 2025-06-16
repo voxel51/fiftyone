@@ -2166,6 +2166,7 @@ __metadata:
     "@mui/material": ^5.9.0
     "@react-spring/web": ^9.4.3
     "@types/lodash": ^4.14.182
+    "@types/luxon": ^3.6.2
     "@types/mime": ^2.0.3
     "@types/react": ^18.0.9
     "@types/react-color": ^3.0.6
@@ -2185,6 +2186,7 @@ __metadata:
     history: ^5.3.0
     lodash: ^4.17.21
     lru-cache: ^11.0.1
+    luxon: ^3.6.1
     numeral: ^2.0.6
     prettier: 2.2.1
     re-resizable: ^6.9.17
@@ -5358,6 +5360,13 @@ __metadata:
   dependencies:
     lru-cache: "*"
   checksum: bf0c9a99b3b954adfd1a63621aeea2c7f9412340ac43fad82f2b1ec257df09efa454e6cc7943518659e112b9d650de0e64c5252de9e449576eeb28449e068a1e
+  languageName: node
+  linkType: hard
+
+"@types/luxon@npm:^3.6.2":
+  version: 3.6.2
+  resolution: "@types/luxon@npm:3.6.2"
+  checksum: fa7bf7d74544c77c2010739337d359c5d6f9b0424de0e0eb273f7bae203996168cc33c2ad6f3b35771eac8fea8b7e5bcce72b91d129924d0f84b91dc216de42e
   languageName: node
   linkType: hard
 
@@ -12922,6 +12931,13 @@ __metadata:
   version: 2.3.9
   resolution: "lunr@npm:2.3.9"
   checksum: 176719e24fcce7d3cf1baccce9dd5633cd8bdc1f41ebe6a180112e5ee99d80373fe2454f5d4624d437e5a8319698ca6837b9950566e15d2cae5f2a543a3db4b8
+  languageName: node
+  linkType: hard
+
+"luxon@npm:^3.6.1":
+  version: 3.6.1
+  resolution: "luxon@npm:3.6.1"
+  checksum: bc6c24dde90f4263f548cc5a4ea3328e9c9511bee0b2255bd319639712862f1eb14a39c1b2dcbff8a8bf6686996d28f45b8fc902994a72dd05a29cef1269a6a4
   languageName: node
   linkType: hard
 

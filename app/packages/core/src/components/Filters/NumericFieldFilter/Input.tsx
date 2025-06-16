@@ -5,6 +5,7 @@ import {
   FLOAT_FIELD,
   INT_FIELD,
 } from "@fiftyone/utilities";
+import { DateTime } from "luxon";
 import type { CSSProperties } from "react";
 import React, { useEffect, useMemo, useState } from "react";
 import { useRecoilValue } from "recoil";
@@ -87,17 +88,18 @@ const FROM_INPUT = (timeZone: string) => ({
     const [year, month, day] = date.split("-");
     const times = time.split(":");
     if (times.length === 3) {
-      const [hour, minutes, seconds] = time.split(":");
-
-      return new Date(
-        `${year}-${month}-${day} ${hour}:${minutes}:${seconds} ${timeZone}`
-      ).getTime();
+      const [hour, minute, second] = time.split(":");
+      return DateTime.fromObject(
+        { year, month, day, hour, minute, second },
+        { zone: timeZone }
+      ).valueOf();
     }
 
-    const [hour, minutes] = time.split(":");
-    return new Date(
-      `${year}-${month}-${day} ${hour}:${minutes} ${timeZone}`
-    ).getTime();
+    const [hour, minute] = time.split(":");
+    return DateTime.fromObject(
+      { year, month, day, hour, minute },
+      { zone: timeZone }
+    ).valueOf();
   },
   [INT_FIELD]: (v) => Number.parseInt(v, 10),
   [FLOAT_FIELD]: (v) => Number.parseFloat(v),
