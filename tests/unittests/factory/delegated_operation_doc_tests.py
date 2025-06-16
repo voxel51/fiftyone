@@ -11,11 +11,6 @@ from fiftyone.factory import repos
 from fiftyone.operators import ExecutionContext
 
 
-@pytest.fixture(name="delegated_operation_doc")
-def fixture_delegated_operation_doc():
-    return
-
-
 class TestDelegatedOperationDoc:
     @pytest.mark.parametrize(
         "update_dict,expected_num_tasks",
