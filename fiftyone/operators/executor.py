@@ -174,14 +174,30 @@ def execute_operator(operator_uri, ctx=None, **kwargs):
                 :attr:`fiftyone.core.session.Session.selected_labels`
             -   ``current_sample`` (None): an optional ID of the current sample
                 being processed
+            -   ``extended_selection`` (None): an optional extended selection
+                of the view.
             -   ``params``: a dictionary of parameters for the operator.
                 Consult the operator's documentation for details
             -   ``request_delegation`` (False): whether to request delegated
                 execution, if supported by the operator
             -   ``delegation_target`` (None): an optional orchestrator on which
                 to schedule the operation, if it is delegated
+<<<<<<< HEAD
             -   ``active_fields`` ([]): a list of active field names
 >>>>>>> release/v1.6.0
+=======
+            -   ``workspace_name`` (None): an optional name of the workspace
+                to use for the operation
+            -   ``spaces`` (None): an optional dictionary defining spaces to
+                use for the operation
+            -   ``group_slice`` (None): an optional group slice to use for the
+                operation's view. This is only applicable to group datasets
+            -   ``query_performance`` (None): whether to enable query
+                performance
+
+        **kwargs: you can optionally provide any of the supported ``ctx`` keys
+            as keyword arguments rather than including them in ``ctx``
+>>>>>>> develop
 
             **kwargs: you can optionally provide any of the supported ``ctx`` keys
                 as keyword arguments rather than including them in ``ctx``
