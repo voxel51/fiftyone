@@ -396,7 +396,7 @@ You can optionally configure
 `MongoDB network compression <https://www.mongodb.com/developer/products/mongodb/mongodb-network-compression>`_
 via the `database_compressor` config setting.
 
-By default, compression is disabled, but enabling it can give a signifcant
+By default, compression is disabled, but enabling it can give a significant
 performance boost in suboptimal network environments.
 
 You can achieve this by adding the following entry to your
@@ -742,7 +742,7 @@ The FiftyOne App can be configured in the ways described below:
 | `media_fallback`           | `FIFTYONE_APP_MEDIA_FALLBACK`           | `False`       | Whether to fall back to the default media field (`"filepath"`) when the configured media   |
 |                            |                                         |               | field's value for a sample is not defined.                                                 |
 +----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
-| `multicolor_keypoints`     | `FIFTYONE_APP_MULTICOLOR_KEYPOINTS`     | `False`       | Whether to independently coloy keypoint points by their index                              |
+| `multicolor_keypoints`     | `FIFTYONE_APP_MULTICOLOR_KEYPOINTS`     | `False`       | Whether to independently color keypoint points by their index                              |
 +----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
 | `notebook_height`          | `FIFTYONE_APP_NOTEBOOK_HEIGHT`          | `800`         | The height of App instances displayed in notebook cells.                                   |
 +----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
