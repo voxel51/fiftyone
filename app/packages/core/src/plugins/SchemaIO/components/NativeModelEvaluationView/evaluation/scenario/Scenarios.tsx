@@ -77,7 +77,7 @@ export default function Scenarios(props) {
     deleteScenario,
     loadView,
   } = props;
-  const { scenarios } = evaluation;
+  const { scenarios } = data;
   const promptOperator = usePanelEvent();
   const panelId = usePanelId();
   const [loadingScenario, setLoadingScenario] = useState(false);
@@ -385,12 +385,11 @@ export default function Scenarios(props) {
             }}
             evalKey={key}
             compareKey={compareKey}
-            readOnly={!canCreate}
+            canCreate={canCreate}
           />
           <Actions
             onDelete={onDelete}
             onEdit={onEdit}
-            canCreate={canCreate}
             canEdit={canEdit}
             canDelete={canDelete}
           />

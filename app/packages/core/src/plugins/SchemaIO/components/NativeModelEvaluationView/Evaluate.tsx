@@ -1,4 +1,5 @@
 import { MuiButton } from "@fiftyone/components";
+import { useMutation } from "@fiftyone/state";
 import { Add } from "@mui/icons-material";
 import { Box } from "@mui/material";
 import React from "react";
@@ -6,16 +7,15 @@ import React from "react";
 export default function Evaluate(props: EvaluateProps) {
   const { onEvaluate, permissions } = props;
   const canEvaluate = permissions.can_evaluate;
+  const [enable, message, cursor] = useMutation(canEvaluate, "evaluate model");
+
   return (
-    <Box
-      title={canEvaluate ? "" : "You do not have permission to evaluate model"}
-      sx={{ cursor: canEvaluate ? "pointer" : "not-allowed" }}
-    >
+    <Box title={message} sx={{ cursor }}>
       <MuiButton
         onClick={onEvaluate}
         startIcon={<Add />}
         variant="contained"
-        disabled={!canEvaluate}
+        disabled={!enable}
       >
         Evaluate Model
       </MuiButton>
