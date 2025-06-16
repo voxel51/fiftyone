@@ -5,12 +5,18 @@ FiftyOne Release Notes
 
 FiftyOne Enterprise 2.9.0
 -------------------------
-*Released June 5, 2025*
+*Released June 17, 2025*
 
 Includes all updates from :ref:`FiftyOne 1.6.0 <release-notes-v1.6.0>`, plus:
 
-- Fixed API connection Websocket `send_bytes` AttributeError when `websocket-client<1.7`
-- Fixed resolving database secrets in the execution context.
+- Fixed API connection Websocket `send_bytes` AttributeError when
+  `websocket-client<1.7`
+- Fixed resolving database secrets in the execution context
+- Fixed support for chunked cookies (cookies larger than 4kb)
+- Fixed a bug in executing delegated operators that occurred because of a
+  missing `request_token`
+- Fixed a bug in the :ref:`Data Quality Panel <data-quality>` when an expected
+  field is deleted
 - Fixed vulnerabilities in `prismjs`, `jinja2`, and `@babel`
 
 
@@ -18,7 +24,7 @@ Includes all updates from :ref:`FiftyOne 1.6.0 <release-notes-v1.6.0>`, plus:
 
 FiftyOne 1.6.0
 --------------
-*Released June 5, 2025*
+*Released June 17, 2025*
 
 Plugins
 
@@ -26,30 +32,53 @@ Plugins
   panels can now read the currently active fields. Added a new operator
   `clear_active_fields` for hiding all sidebar fields.
   `#5952 <https://github.com/voxel51/fiftyone/pull/5952>`_
-- Allows Operators to dynamically resolve their run name given the current
-  `ExecutionContext`. `#5916 <https://github.com/voxel51/fiftyone/pull/5916>`_
+- Allows :ref:`Operators <using-operators>` to dynamically resolve their run
+  name given the current
+  :class:`ExecutionContext <fiftyone.operators.executor.ExecutionContext>`.
+  `#5916 <https://github.com/voxel51/fiftyone/pull/5916>`_
+- Fixed a bug where passing a progress callback would cause the `progress` and
+  `total` properties of `ProgressBar` to always be None. Gracefully continue
+  when
+  :meth:`ctx.set_progress() <fiftyone.operators.operations.Operations.set_progress>`
+  calls fail during operator execution to prevent things like intermittent
+  network errors from killing otherwise functional long-running operations.
+  `#5974 <https://github.com/voxel51/fiftyone/pull/5974>`_
 
 Annotation
 
-- Fixed issue with duplicate filenames when uploading to CVAT, allowing for a
-  smoother experience. `#5927 <https://github.com/voxel51/fiftyone/pull/5927>`_
-- Resolved CVAT v2.31.0+ compatibility issue, removing deprecated API path
-  usage and warning from docs.
+- Fixed issue with duplicate filenames when uploading to
+  :ref:`CVAT <cvat-integration>`, allowing for a smoother experience.
+  `#5927 <https://github.com/voxel51/fiftyone/pull/5927>`_
+- Resolved :ref:`CVAT <cvat-integration>` v2.31.0+ compatibility issue,
+  removing deprecated API path usage and warning from docs.
   `#5885 <https://github.com/voxel51/fiftyone/pull/5885>`_
 
 Core
 
-- Fixes handling of list fields in `values()` aggregations to prevent unwinding
-  when using `[]` notation. 
+- Adds an `include_indexes` parameter to
+  :meth:`clone() <fiftyone.core.dataset.Dataset.clone>`,
+  :meth:`to_patches() <fiftyone.core.collections.SampleCollection.to_patches>`,
+  :meth:`to_frames() <fiftyone.core.collections.SampleCollection.to_frames>`,
+  and
+  :meth:`to_clips() <fiftyone.core.collections.SampleCollection.to_clips>`
+  that allows for manually controlling what indexes are recreated on the new
+  dataset. 
+  `#5955 <https://github.com/voxel51/fiftyone/pull/5955>`_
+- Fixes handling of list fields in
+  :meth:`values() <fiftyone.core.collections.SampleCollection.values>`
+  aggregations to prevent unwinding when using `[]` notation. 
   `#5941 <https://github.com/voxel51/fiftyone/pull/5941>`_
-- Fixed compound key :ref:`groups <view-groups>` when `order_by` is provided `#5867 <https://github.com/voxel51/fiftyone/pull/5867>`_
+- Fixed compound key :ref:`groups <view-groups>` when `order_by` is provided
+  `#5867 <https://github.com/voxel51/fiftyone/pull/5867>`_
 - Fixes a bug where `samples.histogram_values()` would raise an error when
   processing a datetime field whose range is less then `1ms x len(samples)`
   `#5971 <https://github.com/voxel51/fiftyone/pull/5971>`_
 - Adds `instance_ids` argument to select, match, exclude and delete labels
-  methods, as well as an index_to_instance utility for converting old-style
-  indices to instances. Fixes a bug with `set_values()` when setting frame
-  fields via dict syntax where not all frame numbers are present.
+  methods, as well as an `index_to_instance` utility for converting old-style
+  indices to instances. Fixes a bug with
+  :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
+  when setting frame fields via dict syntax where not all frame numbers are
+  present.
   `#5918 <https://github.com/voxel51/fiftyone/pull/5918>`_
 - Fixed `#5921 <https://github.com/voxel51/fiftyone/pull/5921>`_ where some
   `GroupDatasetImporter`s with `has_sample_field_schema=True` were failing to
@@ -58,16 +87,19 @@ Core
 - Added a `Dataset.last_deletion_at` property, allowing separate tracking
   of deletion times from other metadata changes.
   `#5853 <https://github.com/voxel51/fiftyone/pull/5853>`_
-- Fixed a bug where confidence was not applied to Keypoint instances correctly.
+- Fixed a bug where confidence was not applied to
+  :class:`Keypoint <fiftyone.core.labels.Keypoint>` instances correctly.
   Added a `Keypoint.apply_confidence_threshold()` method that applies a
-  confidence threshold to the keypoints. Updated 
+  confidence threshold to the keypoints. Updated
   `Sample.add_labels(..., confidence_thresh=)` to correctly apply confidence
   thresholds to `Keypoint` instances. Updated `KeypointDetectorOutputProcessor`
   to apply confidence thresholds to individual points.
   `#5894 <https://github.com/voxel51/fiftyone/pull/5894>`_
-- Adds a new `merge_embedded_docs=True` option to `merge_sample()` and
-  `merge_samples()` that causes the attributes of embedded documents to be
-  merged individually, rather than as a single "value". 
+- Adds a new `merge_embedded_docs=True` option to
+  :meth:`merge_sample() <fiftyone.core.dataset.Dataset.merge_sample>` and
+  :meth:`merge_samples() <fiftyone.core.dataset.Dataset.merge_samples>` that
+  causes the attributes of embedded documents to be merged individually, rather
+  than as a single "value". 
   `#5704 <https://github.com/voxel51/fiftyone/pull/5704>`_
 
 Models
@@ -86,30 +118,35 @@ App
 - Added :ref:`Scenario Analysis <>` functionality to the
   :ref:`Model Evaluation Panel <app-model-evaluation-panel>` 
   `#5626 <https://github.com/voxel51/fiftyone/pull/5626>`_
+- Optimized label deletion on generated views, and upgrades the builtin
+  `delete_selected_labels` to support deleting some/all labels in selected
+  samples in the App `#5956 <https://github.com/voxel51/fiftyone/pull/5956>`_
 - Reduced clutter in the App sidebar when performing evaluations, all fields
   added by the evaluation (including custom evaluation metrics, if applicable)
   are now added to a sidebar group with name `eval_key`. Sidebar groups are
   automatically renamed or removed when evaluation keys are renamed or deleted.
   `#5725 <https://github.com/voxel51/fiftyone/pull/5725>`_
-- Enhancements for `map_samples()` and `update_samples()`: use
-  `collections.deque` to exhaust generators in `update_samples()` for
-  efficiency; add `reload()` calls when using multiprocessing so that schema
-  changes are reflected in the main process, for consistency with the user
-  experience when `num_workers=0` or `parallelize_method="thread"` are used;
-  use global `fo.config` rather than loading a separate copy from disk, for
-  consistency with the rest of the library. 
+- Enhancements for :ref:`map_samples() <map-operations>` and
+  :ref:`update_samples() <updating-samples>`: use `collections.deque` to
+  exhaust generators in `update_samples()` for efficiency; add `reload()` calls
+  when using multiprocessing so that schema changes are reflected in the main
+  process, for consistency with the user experience when `num_workers=0` or
+  `parallelize_method="thread"` are used; use global `fo.config` rather than
+  loading a separate copy from disk, for consistency with the rest of the
+  library. 
   `#5957 <https://github.com/voxel51/fiftyone/pull/5957>`_
-- Added support for passing `output_dir` to `apply_model()` to store instance
-  segmentation masks on disk rather than in the database
+- Added support for passing `output_dir` to
+  :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`
+  to store instance segmentation masks on disk rather than in the database.
   `#5953 <https://github.com/voxel51/fiftyone/pull/5953>`_
 - Improved integration with Databricks by automatically enhancing the user
   agent string with FiftyOne-specific metadata when available.
   `#5708 <https://github.com/voxel51/fiftyone/pull/5708>`_
 - Fixed bug where sources url wasn't always refreshed properly.
   `#5925 <https://github.com/voxel51/fiftyone/pull/5925>`_
-- Label Correspondence polish: instance IDs now render distinct overlay indices
-  if `.index` is missing, updated tooltip from “Select similar” to “Select
-  all”, fixed flickering of "Color by instance" mode.
+- Polish for Label Correspondence: instance IDs now render distinct overlay
+  indices if `.index` is missing, updated tooltip from “Select similar” to
+  “Select all”, fixed flickering of "Color by instance" mode.
   `#5944 <https://github.com/voxel51/fiftyone/pull/5944>`_
 - Standardizes hover and selection states across detection, keypoint, and
   polyline overlays. `#5902 <https://github.com/voxel51/fiftyone/pull/5902>`_
