@@ -5,12 +5,7 @@ PyTorch utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-<<<<<<< HEAD
 import functools
-=======
-
-import logging
->>>>>>> release/v1.6.0
 import itertools
 import logging
 import multiprocessing
@@ -1838,7 +1833,6 @@ class FiftyOneTorchDataset(Dataset):
 
             return e
 
-<<<<<<< HEAD
     def _get_samples(self, indices):
         ids = [self.ids[idx] for idx in indices]
         return fov.make_optimized_select_view(self.samples, ids, ordered=True)
@@ -1857,17 +1851,6 @@ class FiftyOneTorchDataset(Dataset):
                     )
                     if not self.skip_failures:
                         raise error from e
-=======
-    def __getitem__(self, index):
-        # if self._samples is None at this point then
-        # worker_init was probably never called
-        # meaning we are working on main process
-        # most likely num_workers=0 in dataloader
-        # or someone is testing this object
-        # load samples here instead
-        if self._samples is None:
-            self._load_samples()
->>>>>>> release/v1.6.0
 
                     d = error
                     break
