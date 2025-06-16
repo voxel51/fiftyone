@@ -843,30 +843,12 @@ def _make_data_loader(
     else:
         user_collate_fn = None
 
-<<<<<<< HEAD
     collate_fn = ErrorHandlingCollate(
         skip_failures,
         ragged_batches=model.ragged_batches,
         use_numpy=use_numpy,
         user_collate_fn=user_collate_fn,
     )
-=======
-        def collate_fn(batch):
-            error = handle_errors(batch)
-            if error is not None:
-                return error
-
-            try:
-                if model.has_collate_fn:
-                    return model.collate_fn(batch)
-                else:
-                    return tud.dataloader.default_collate(batch)
-            except Exception as e:
-                if not skip_failures:
-                    raise e
-
-                return e
->>>>>>> release/v1.6.0
 
     if batch_size is None:
         batch_size = 1
@@ -2476,7 +2458,6 @@ class TorchModelMixin(object):
             the collated batch, which will be fed directly to the model
         """
         return batch
-<<<<<<< HEAD
 
 
 class SupportsGetItem(object):
@@ -2507,8 +2488,6 @@ class SupportsGetItem(object):
             a :class:`fiftyone.utils.torch.GetItem` instance
         """
         raise NotImplementedError("subclasses must implement build_get_item()")
-=======
->>>>>>> release/v1.6.0
 
 
 class ModelManagerConfig(etam.ModelManagerConfig):
