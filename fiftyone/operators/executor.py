@@ -273,8 +273,9 @@ async def execute_or_delegate_operator(
             from .delegated import DelegatedOperationService
 
             # Cannot distribute tasks from this repo
-            if ctx.num_distributed_tasks or ctx.request_params.get(
-                "num_distributed_tasks"
+            if (
+                ctx.num_distributed_tasks
+                or "num_distributed_tasks" in ctx.request_params
             ):
                 logger.warning(
                     "Distributed execution only supported in FiftyOne Enterprise"
