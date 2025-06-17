@@ -27,7 +27,8 @@ from .utils import (
 )
 from plugins.utils.model_evaluation import (
     get_subsets_from_custom_code,
-    get_scenarios_store,
+    get_scenarios,
+    set_scenarios,
 )
 
 STORE_NAME = "model_evaluation_panel_builtin"
@@ -1059,8 +1060,7 @@ class ConfigureScenario(foo.Operator):
         return label
 
     def get_scenario_names(self, ctx):
-        store = get_scenarios_store(ctx)
-        scenarios = store.get("scenarios") or {}
+        scenarios = get_scenarios(ctx)
         return [scenario.get("name") for _, scenario in scenarios.items()]
 
     def resolve_input(self, ctx):
@@ -1207,8 +1207,7 @@ class ConfigureScenario(foo.Operator):
         if eval_id_a is None:
             raise ValueError("No evaluation ids found")
 
-        store = get_scenarios_store(ctx)
-        scenarios = store.get("scenarios") or {}
+        scenarios = get_scenarios(ctx)
 
         scenario_field = None
 
@@ -1267,7 +1266,7 @@ class ConfigureScenario(foo.Operator):
         if scenario_field:
             scenarios[scenario_id_str]["field"] = scenario_field
 
-        store.set("scenarios", scenarios)
+        set_scenarios(ctx, scenarios)
 
         ctx.ops.track_event(
             "scenario_created",
