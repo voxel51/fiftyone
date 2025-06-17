@@ -1392,7 +1392,7 @@ class DatasetView(foc.SampleCollection):
         """
         self._dataset._save(view=self, fields=fields)
 
-    def clone(self, name=None, persistent=False):
+    def clone(self, name=None, persistent=False, include_indexes=False):
         """Creates a new dataset containing a copy of the contents of the view.
 
         Dataset clones contain deep copies of all samples and dataset-level
@@ -1403,6 +1403,10 @@ class DatasetView(foc.SampleCollection):
             name (None): a name for the cloned dataset. By default,
                 :func:`get_default_dataset_name` is used
             persistent (False): whether the cloned dataset should be persistent
+            include_indexes (False): whether to recreate any custom indexes on
+                the new dataset (True) or a list of specific indexes or index
+                prefixes to recreate. By default, no custom indexes are
+                recreated
 
         Returns:
             the new :class:`fiftyone.core.dataset.Dataset`
@@ -1411,6 +1415,7 @@ class DatasetView(foc.SampleCollection):
             name=name,
             persistent=persistent,
             view=self,
+            include_indexes=include_indexes,
         )
 
     def reload(self):

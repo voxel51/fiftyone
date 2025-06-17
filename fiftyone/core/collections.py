@@ -6,7 +6,7 @@ Interface for sample collections.
 |
 """
 
-from collections import defaultdict
+from collections import defaultdict, deque
 from copy import copy
 from datetime import datetime
 from operator import itemgetter
@@ -605,7 +605,8 @@ class SampleCollection(object):
         """Syncs the ``last_modified_at`` property(s) of the dataset.
 
         Updates the :attr:`last_modified_at` property of the dataset if
-        necessary to incorporate any modification timestamps to its samples.
+        necessary to incorporate any modification/deletion timestamps to its
+        samples.
 
         If ``include_frames==True``, the ``last_modified_at`` property of
         each video sample is first updated if necessary to incorporate any
@@ -668,7 +669,10 @@ class SampleCollection(object):
     def _sync_dataset_last_modified_at(self):
         dataset = self._root_dataset
         curr_lma = dataset.last_modified_at
-        lma = self._max("last_modified_at")
+        lma = _none_max(
+            dataset.last_deletion_at,
+            self._max("last_modified_at"),
+        )
 
         if lma is not None and (curr_lma is None or lma > curr_lma):
             dataset._doc.last_modified_at = lma
@@ -2151,9 +2155,17 @@ class SampleCollection(object):
 
         return ids, label_ids
 
-    def _get_selected_labels(self, ids=None, tags=None, fields=None):
-        if ids is not None or tags is not None:
-            view = self.select_labels(ids=ids, tags=tags, fields=fields)
+    def _get_selected_labels(
+        self,
+        ids=None,
+        instance_ids=None,
+        tags=None,
+        fields=None,
+    ):
+        if ids is not None or instance_ids is not None or tags is not None:
+            view = self.select_labels(
+                ids=ids, instance_ids=instance_ids, tags=tags, fields=fields
+            )
         else:
             view = self
 
@@ -2237,8 +2249,10 @@ class SampleCollection(object):
 
         return labels
 
-    def _get_label_ids(self, tags=None, fields=None):
-        labels = self._get_selected_labels(tags=tags, fields=fields)
+    def _get_label_ids(self, instance_ids=None, tags=None, fields=None):
+        labels = self._get_selected_labels(
+            instance_ids=instance_ids, tags=tags, fields=fields
+        )
         return [l["label_id"] for l in labels]
 
     def count_label_tags(self, label_fields=None):
@@ -2317,7 +2331,7 @@ class SampleCollection(object):
         if not isinstance(self, fod.Dataset):
             labels = self._get_selected_labels(fields=in_field)
 
-        dataset = self._dataset
+        dataset = self._root_dataset
         dataset.merge_samples(
             self,
             key_field="id",
@@ -2838,7 +2852,7 @@ class SampleCollection(object):
             value = _get_non_none_value(values, level=level)
 
             if value is None:
-                if field is not None or allow_missing:
+                if field is not None or allow_missing or "." in field_name:
                     return field, new_group_field
 
                 raise ValueError(
@@ -2852,6 +2866,8 @@ class SampleCollection(object):
                         self._dataset._add_implied_frame_field(
                             field_name, _value, dynamic=dynamic, validate=False
                         )
+                        if not dynamic:
+                            break
             elif new_root_field:
                 self._dataset._add_implied_frame_field(
                     field_name, value, dynamic=dynamic
@@ -2878,7 +2894,7 @@ class SampleCollection(object):
             value = _get_non_none_value(values, level=level)
 
             if value is None:
-                if field is not None or allow_missing:
+                if field is not None or allow_missing or "." in field_name:
                     return field, new_group_field
 
                 raise ValueError(
@@ -2922,6 +2938,8 @@ class SampleCollection(object):
                         self._dataset._add_implied_sample_field(
                             field_name, _value, dynamic=dynamic, validate=False
                         )
+                        if not dynamic:
+                            break
             elif new_root_field:
                 self._dataset._add_implied_sample_field(
                     field_name, value, dynamic=dynamic
@@ -3020,7 +3038,15 @@ class SampleCollection(object):
                     ["frames._id", elem_id_field]
                 )
             else:
-                elem_ids = view.values(elem_id_field)
+                _frame_ids, _elem_ids = view.values(
+                    ["frames._id", elem_id_field]
+                )
+                frame_ids, elem_ids = zip(
+                    *(
+                        _select_by_keys(_f, e, f)
+                        for _f, e, f in zip(_frame_ids, _elem_ids, frame_ids)
+                    )
+                )
 
             frame_ids = itertools.chain.from_iterable(frame_ids)
             elem_ids = itertools.chain.from_iterable(elem_ids)
@@ -4042,6 +4068,10 @@ class SampleCollection(object):
             skip_failures=skip_failures,
         )
 
+        # Sync any schema edits from workers to main process
+        if save and isinstance(mapper, focm.ProcessMapper):
+            self.reload()
+
     def update_samples(
         self,
         update_fcn,
@@ -4110,14 +4140,19 @@ class SampleCollection(object):
             parallelize_method, num_workers, batch_method, batch_size
         )
 
-        for _ in mapper.map_samples(
+        generator = mapper.map_samples(
             self,
             update_fcn,
             progress=progress,
             save=True,
             skip_failures=skip_failures,
-        ):
-            ...
+        )
+
+        deque(generator, maxlen=0)
+
+        # Sync any schema edits from workers to main process
+        if isinstance(mapper, focm.ProcessMapper):
+            self.reload()
 
     def rename_evaluation(self, eval_key, new_eval_key):
         """Replaces the key for the given evaluation with a new key.
@@ -4915,7 +4950,13 @@ class SampleCollection(object):
 
     @view_stage
     def exclude_labels(
-        self, labels=None, ids=None, tags=None, fields=None, omit_empty=True
+        self,
+        labels=None,
+        ids=None,
+        instance_ids=None,
+        tags=None,
+        fields=None,
+        omit_empty=True,
     ):
         """Excludes the specified labels from the collection.
 
@@ -4930,6 +4971,9 @@ class SampleCollection(object):
             specific labels
 
         -   Provide the ``ids`` argument to exclude labels with specific IDs
+
+        -   Provide the ``instance_ids`` argument to exclude labels with
+            specific instance IDs
 
         -   Provide the ``tags`` argument to exclude labels with specific tags
 
@@ -5007,6 +5051,8 @@ class SampleCollection(object):
                 the format returned by
                 :attr:`fiftyone.core.session.Session.selected_labels`
             ids (None): an ID or iterable of IDs of the labels to exclude
+            instance_ids (None): an instance ID or iterable of instance IDs of
+                the labels to exclude
             tags (None): a tag or iterable of tags of labels to exclude
             fields (None): a field or iterable of fields from which to exclude
             omit_empty (True): whether to omit samples that have no labels
@@ -5019,6 +5065,7 @@ class SampleCollection(object):
             fos.ExcludeLabels(
                 labels=labels,
                 ids=ids,
+                instance_ids=instance_ids,
                 tags=tags,
                 fields=fields,
                 omit_empty=omit_empty,
@@ -6363,6 +6410,7 @@ class SampleCollection(object):
         self,
         labels=None,
         ids=None,
+        instance_ids=None,
         tags=None,
         filter=None,
         fields=None,
@@ -6383,6 +6431,9 @@ class SampleCollection(object):
             specific labels
 
         -   Provide the ``ids`` argument to match labels with specific IDs
+
+        -   Provide the ``instance_ids`` argument to match labels with specific
+            instance IDs
 
         -   Provide the ``tags`` argument to match labels with specific tags
 
@@ -6476,6 +6527,8 @@ class SampleCollection(object):
                 the format returned by
                 :attr:`fiftyone.core.session.Session.selected_labels`
             ids (None): an ID or iterable of IDs of the labels to select
+            instance_ids (None): an instance ID or iterable of instance IDs of
+                the labels to select
             tags (None): a tag or iterable of tags of labels to select
             filter (None): a :class:`fiftyone.core.expressions.ViewExpression`
                 or `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
@@ -6495,6 +6548,7 @@ class SampleCollection(object):
             fos.MatchLabels(
                 labels=labels,
                 ids=ids,
+                instance_ids=instance_ids,
                 tags=tags,
                 filter=filter,
                 fields=fields,
@@ -7076,7 +7130,13 @@ class SampleCollection(object):
 
     @view_stage
     def select_labels(
-        self, labels=None, ids=None, tags=None, fields=None, omit_empty=True
+        self,
+        labels=None,
+        ids=None,
+        instance_ids=None,
+        tags=None,
+        fields=None,
+        omit_empty=True,
     ):
         """Selects only the specified labels from the collection.
 
@@ -7091,6 +7151,9 @@ class SampleCollection(object):
             specific labels
 
         -   Provide the ``ids`` argument to select labels with specific IDs
+
+        -   Provide the ``instance_ids`` argument to select labels with
+            specific instance IDs
 
         -   Provide the ``tags`` argument to select labels with specific tags
 
@@ -7161,6 +7224,8 @@ class SampleCollection(object):
                 the format returned by
                 :attr:`fiftyone.core.session.Session.selected_labels`
             ids (None): an ID or iterable of IDs of the labels to select
+            instance_ids (None): an instance ID or iterable of instance IDs of
+                the labels to select
             tags (None): a tag or iterable of tags of labels to select
             fields (None): a field or iterable of fields from which to select
             omit_empty (True): whether to omit samples that have no labels
@@ -7173,6 +7238,7 @@ class SampleCollection(object):
             fos.SelectLabels(
                 labels=labels,
                 ids=ids,
+                instance_ids=instance_ids,
                 tags=tags,
                 fields=fields,
                 omit_empty=omit_empty,
@@ -7529,6 +7595,10 @@ class SampleCollection(object):
             keep_label_lists (False): whether to store the patches in label
                 list fields of the same type as the input collection rather
                 than using their single label variants
+            include_indexes (False): whether to recreate any custom indexes on
+                ``field`` and ``other_fields`` on the patches view (True) or a
+                list of specific indexes or index prefixes to recreate. By
+                default, no custom indexes are recreated
 
         Returns:
             a :class:`fiftyone.core.patches.PatchesView`
@@ -7600,6 +7670,11 @@ class SampleCollection(object):
                 -   a field or list of fields to include
                 -   ``True`` to include all other fields
                 -   ``None``/``False`` to include no other fields
+            include_indexes (False): whether to recreate any custom indexes on
+                the ground truth/predicted fields and ``other_fields`` on the
+                patches view (True) or a list of specific indexes or index
+                prefixes to recreate. By default, no custom indexes are
+                recreated
 
         Returns:
             a :class:`fiftyone.core.patches.EvaluationPatchesView`
@@ -7687,6 +7762,10 @@ class SampleCollection(object):
                 -   a field or list of fields to include
                 -   ``True`` to include all other fields
                 -   ``None``/``False`` to include no other fields
+            include_indexes (False): whether to recreate any custom indexes on
+                ``field_or_expr`` and ``other_fields`` on the clips view (True)
+                or a list of specific indexes or index prefixes to recreate.
+                By default, no custom indexes are recreated
             tol (0): the maximum number of false frames that can be overlooked
                 when generating clips. Only applicable when ``field_or_expr``
                 is a frame-level list field or expression
@@ -7744,9 +7823,20 @@ class SampleCollection(object):
                 -   :class:`fiftyone.core.labels.Detections`
                 -   :class:`fiftyone.core.labels.Polylines`
                 -   :class:`fiftyone.core.labels.Keypoints`
-            **kwargs: optional keyword arguments for
-                :meth:`fiftyone.core.clips.make_clips_dataset` specifying how
-                to perform the conversion
+            other_fields (None): controls whether sample fields other than the
+                default sample fields are included. Can be any of the
+                following:
+
+                -   a field or list of fields to include
+                -   ``True`` to include all other fields
+                -   ``None``/``False`` to include no other fields
+            include_indexes (False): whether to recreate any custom indexes on
+                ``other_fields`` on the clips view (True) or a list of specific
+                indexes or index prefixes to recreate. By default, no custom
+                indexes are recreated
+            tol (0): the maximum number of false frames that can be overlooked
+                when generating clips
+            min_len (0): the minimum allowable length of a clip, in frames
 
         Returns:
             a :class:`fiftyone.core.clips.TrajectoriesView`
@@ -7907,6 +7997,10 @@ class SampleCollection(object):
                 raising an error if a video cannot be sampled
             verbose (False): whether to log information about the frames that
                 will be sampled, if any
+            include_indexes (False): whether to recreate any custom frame
+                indexes on the frames view (True) or a list of specific indexes
+                or index prefixes to recreate. By default, no custom indexes
+                are recreated
 
         Returns:
             a :class:`fiftyone.core.video.FramesView`
@@ -8112,6 +8206,7 @@ class SampleCollection(object):
                     etau.is_str(field_or_expr)
                     and field_or_expr == "frames"
                     and self._has_frame_fields()
+                    and not self._is_clips
                 )
             )
         ):
@@ -8506,6 +8601,23 @@ class SampleCollection(object):
         Returns:
             the minimum value
         """
+
+        # Optimization: use `_min()` when possible
+        if (
+            isinstance(field_or_expr, str)
+            and (
+                field_or_expr in ("last_modified_at", "created_at")
+                or (
+                    self._contains_videos(any_slice=True)
+                    and field_or_expr
+                    in ("frames.last_modified_at", "frames.created_at")
+                )
+            )
+            and expr is None
+            and self._is_full_collection()
+        ):
+            return self._min(field_or_expr)
+
         make = lambda field_or_expr: foa.Min(
             field_or_expr, expr=expr, safe=safe
         )
@@ -8590,6 +8702,23 @@ class SampleCollection(object):
         Returns:
             the maximum value
         """
+
+        # Optimization: use `_max()` when possible
+        if (
+            isinstance(field_or_expr, str)
+            and (
+                field_or_expr in ("last_modified_at", "created_at")
+                or (
+                    self._contains_videos(any_slice=True)
+                    and field_or_expr
+                    in ("frames.last_modified_at", "frames.created_at")
+                )
+            )
+            and expr is None
+            and self._is_full_collection()
+        ):
+            return self._max(field_or_expr)
+
         make = lambda field_or_expr: foa.Max(
             field_or_expr, expr=expr, safe=safe
         )
@@ -11237,9 +11366,20 @@ class SampleCollection(object):
         return _handle_id_fields(self, field_name)
 
     def _is_full_collection(self):
+        # Full dataset
         if isinstance(self, fod.Dataset) and self.media_type != fom.GROUP:
             return True
 
+        # Full view (possibly generated)
+        # pylint:disable=no-member
+        if (
+            isinstance(self, fov.DatasetView)
+            and self._dataset.media_type != fom.GROUP
+            and not self._stages
+        ):
+            return True
+
+        # Full group slices view
         # pylint:disable=no-member
         if (
             isinstance(self, fov.DatasetView)
@@ -11588,6 +11728,60 @@ class SampleCollection(object):
             schema[name] = attr_schema.get("value", None)
 
         return schema
+
+    def _get_sidebar_group(self, group_name):
+        app_config = self._root_dataset.app_config
+        if app_config.sidebar_groups is None:
+            return None
+
+        for group in app_config.sidebar_groups:
+            if group.name == group_name:
+                return group
+
+        return None
+
+    def _has_sidebar_group(self, group_name):
+        return self._get_sidebar_group(group_name) is not None
+
+    def _add_paths_to_sidebar_group(self, paths, group_name, after_group=None):
+        dataset = self._root_dataset
+        dataset.app_config._add_paths_to_sidebar_group(
+            paths,
+            group_name,
+            after_group=after_group,
+            dataset=dataset,
+        )
+        dataset.save()
+
+    def _rename_sidebar_group(self, group_name, new_group_name):
+        dataset = self._root_dataset
+        if dataset.app_config.sidebar_groups is None:
+            return
+
+        existing_group = None
+        for group in dataset.app_config.sidebar_groups:
+            if group.name == new_group_name:
+                existing_group = group
+
+        for group in dataset.app_config.sidebar_groups.copy():
+            if group.name == group_name:
+                if existing_group is not None:
+                    existing_group.paths.extend(group.paths)
+                    dataset.app_config.sidebar_groups.remove(group)
+                else:
+                    group.name = new_group_name
+
+                dataset.save()
+
+    def _delete_empty_sidebar_group(self, group_name):
+        dataset = self._root_dataset
+        if dataset.app_config.sidebar_groups is None:
+            return
+
+        for group in dataset.app_config.sidebar_groups.copy():
+            if group.name == group_name and not group.paths:
+                dataset.app_config.sidebar_groups.remove(group)
+                dataset.save()
 
     def _unwind_values(self, field_name, values, keep_top_level=False):
         if values is None:
@@ -12116,6 +12310,12 @@ def _parse_frame_values_dicts(sample_collection, sample_ids, values):
         _values.append(_vals)
 
     return _frame_ids, _values
+
+
+def _select_by_keys(keys, values, select_keys):
+    d = dict(zip(keys, values))
+    select_values = [d.get(k, None) for k in select_keys]
+    return select_keys, select_values
 
 
 def _parse_field_name(
@@ -12673,3 +12873,7 @@ def _add_db_fields_to_schema(schema):
             additions[field.db_field] = field
 
     schema.update(additions)
+
+
+def _none_max(*args, default=None):
+    return max((a for a in args if a is not None), default=default)

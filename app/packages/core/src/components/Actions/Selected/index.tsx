@@ -44,9 +44,14 @@ export default ({
     return null;
   }
 
-  let text = samples.size.toLocaleString();
+  let text: string | undefined = samples.size.toLocaleString();
+  let title = "Manage selected";
   if (samples.size > 0 && labels.size > 0) {
-    text = `${text} | ${labels.size.toLocaleString()}`;
+    // use title to display count
+    title = `${text} sample${
+      samples.size > 1 ? "s" : ""
+    } | ${labels.size.toLocaleString()} label${labels.size > 1 ? "s" : ""}`;
+    text = undefined;
   } else if (labels.size > 0) {
     text = labels.size.toLocaleString();
   }
@@ -67,7 +72,7 @@ export default ({
         }}
         highlight={samples.size > 0 || open || (labels.size > 0 && modal)}
         text={text}
-        title={"Manage selected"}
+        title={title}
         tooltipPlacement={modal ? "bottom" : "top"}
         style={{
           cursor: loading ? "default" : "pointer",

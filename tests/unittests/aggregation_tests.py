@@ -629,6 +629,10 @@ class DatasetTests(unittest.TestCase):
                 None,
             ],
         )
+        self.assertListEqual(
+            d.values("predictions.detections[]"),
+            d.values("predictions.detections", unwind=True),
+        )
 
         actual = d.values(
             "predictions.detections.label", missing_value="missing"
@@ -790,36 +794,40 @@ class DatasetTests(unittest.TestCase):
 
     @drop_datasets
     def test_values_unwind(self):
+        frames_classifications = [
+            [fo.Classification(label="cat")],
+            [fo.Classification(label="dog")],
+            [fo.Classification(label="cat"), fo.Classification(label="dog")],
+            [fo.Classification(label="rabbit")],
+            [fo.Classification(label="squirrel")],
+        ]
         sample1 = fo.Sample(filepath="video1.mp4")
         sample1.frames[1] = fo.Frame(
             ground_truth=fo.Classifications(
-                classifications=[fo.Classification(label="cat")]
+                classifications=frames_classifications[0]
             )
         )
         sample1.frames[2] = fo.Frame()
         sample1.frames[3] = fo.Frame(
             ground_truth=fo.Classifications(
-                classifications=[fo.Classification(label="dog")]
+                classifications=frames_classifications[1]
             )
         )
 
         sample2 = fo.Sample(filepath="video2.mp4")
         sample2.frames[1] = fo.Frame(
             ground_truth=fo.Classifications(
-                classifications=[
-                    fo.Classification(label="cat"),
-                    fo.Classification(label="dog"),
-                ]
+                classifications=frames_classifications[2]
             )
         )
         sample2.frames[2] = fo.Frame(
             ground_truth=fo.Classifications(
-                classifications=[fo.Classification(label="rabbit")]
+                classifications=frames_classifications[3]
             )
         )
         sample2.frames[3] = fo.Frame(
             ground_truth=fo.Classifications(
-                classifications=[fo.Classification(label="squirrel")]
+                classifications=frames_classifications[4]
             )
         )
 
@@ -892,6 +900,25 @@ class DatasetTests(unittest.TestCase):
         self.assertListEqual(values2, expected)
         self.assertListEqual(values1, itered_values1)
         self.assertListEqual(values2, itered_values2)
+
+        # [num_samples x num_frames]
+        values = dataset.values("frames.ground_truth.classifications[]")
+        frames_classifications_by_sample = [
+            frames_classifications[0] + frames_classifications[1],
+            frames_classifications[2]
+            + frames_classifications[3]
+            + frames_classifications[4],
+        ]
+        for i in range(len(values)):
+            self.assertListEqual(
+                values[i], frames_classifications_by_sample[i]
+            )
+
+        values1 = dataset.values("frames[].ground_truth.classifications[]")
+        values2 = dataset.values(
+            "frames.ground_truth.classifications", unwind=True
+        )
+        self.assertListEqual(values1, values2)
 
     @drop_datasets
     def test_nan_inf(self):
@@ -1177,6 +1204,14 @@ class DatasetTests(unittest.TestCase):
             self.assertEqual(other, 0)
             for edge in edges:
                 self.assertIsInstance(edge, datetime)
+
+        # Ensure that we gracefully handle a single unique datetime value
+
+        counts, _, _ = dataset.limit(1).histogram_values("dates")
+        self.assertEqual(counts[0], 1)
+
+        counts, _, _ = dataset.limit(1).histogram_values("ms")
+        self.assertEqual(counts[0], 1)
 
     @drop_datasets
     def test_order(self):

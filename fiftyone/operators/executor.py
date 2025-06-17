@@ -146,6 +146,7 @@ def execute_operator(operator_uri, ctx=None, **kwargs):
                 execution, if supported by the operator
             -   ``delegation_target`` (None): an optional orchestrator on which
                 to schedule the operation, if it is delegated
+            -   ``active_fields`` ([]): a list of active field names
             -   ``workspace_name`` (None): an optional name of the workspace
                 to use for the operation
             -   ``spaces`` (None): an optional dictionary defining spaces to
@@ -297,7 +298,7 @@ async def execute_or_delegate_operator(
                 operator=operator.uri,
                 context=ctx.serialize(),
                 delegation_target=ctx.delegation_target,
-                label=operator.name,
+                label=operator.resolve_run_name(ctx),
                 metadata=metadata,
             )
 
@@ -787,6 +788,11 @@ class ExecutionContext(object):
         """The URI of the target operator."""
         return self._operator_uri
 
+    @property
+    def active_fields(self):
+        """The list of currently active fields."""
+        return self.request_params.get("active_fields", [])
+
     def prompt(
         self,
         operator_uri,
@@ -855,11 +861,11 @@ class ExecutionContext(object):
         if None in (self._secrets_client, keys):
             return None
 
-        for key in keys:
-            secret = await self._secrets_client.get_secret(
-                key, self._operator_uri, **kwargs
-            )
-            if secret:
+        secrets = await self._secrets_client.get_multiple(
+            keys, self._operator_uri, **kwargs
+        )
+        if secrets:
+            for secret in secrets.values():
                 self._secrets[secret.key] = secret.value
 
     def trigger(self, operator_name, params=None):
@@ -916,11 +922,21 @@ class ExecutionContext(object):
             progress (None): an optional float between 0 and 1 (0% to 100%)
             label (None): an optional label to display
         """
-        if self._set_progress:
-            self._set_progress(
-                self._delegated_operation_id,
-                ExecutionProgress(progress, label),
-            )
+        if self._set_progress is not None:
+            try:
+                self._set_progress(
+                    self._delegated_operation_id,
+                    ExecutionProgress(progress=progress, label=label),
+                )
+            except Exception as e:
+                # Log warning rather than raise exception to prevent things
+                # like intermittent network errors from killing otherwise
+                # functional long-running operations
+                logger.warning(
+                    f"Failed to set progress for the operation: {str(e)}"
+                )
+        elif self.delegated:
+            logger.info(f"Progress: {progress} - {label}")
         else:
             self.log(f"Progress: {progress} - {label}")
 

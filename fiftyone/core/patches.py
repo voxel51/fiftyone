@@ -334,14 +334,10 @@ class _PatchesView(fov.DatasetView):
         """
         self._source_collection.reload()
 
-        #
         # Regenerate the patches dataset
-        #
-        # This assumes that calling `load_view()` when the current patches
-        # dataset has been deleted will cause a new one to be generated
-        #
-        self._patches_dataset.delete()
-        _view = self._patches_stage.load_view(self._source_collection)
+        _view = self._patches_stage.load_view(
+            self._source_collection, reload=True
+        )
         self._patches_dataset = _view._patches_dataset
 
         super().reload()
@@ -561,6 +557,7 @@ def make_patches_dataset(
     field,
     other_fields=None,
     keep_label_lists=False,
+    include_indexes=False,
     name=None,
     persistent=False,
     _generated=False,
@@ -591,6 +588,10 @@ def make_patches_dataset(
         keep_label_lists (False): whether to store the patches in label list
             fields of the same type as the input collection rather than using
             their single label variants
+        include_indexes (False): whether to recreate any custom indexes on
+            ``field`` and ``other_fields`` on the new dataset (True) or a list
+            of specific indexes or index prefixes to recreate. By default, no
+            custom indexes are recreated
         name (None): a name for the dataset
         persistent (False): whether the dataset should persist in the database
             after the session terminates
@@ -656,6 +657,14 @@ def make_patches_dataset(
         add_schema = {k: v for k, v in src_schema.items() if k in add_fields}
         dataset._sample_doc_cls.merge_field_schema(add_schema)
 
+    fod._clone_indexes_for_patches_view(
+        sample_collection,
+        dataset,
+        patches_fields=[field],
+        other_fields=other_fields,
+        include_indexes=include_indexes,
+    )
+
     _make_pretty_summary(dataset, is_frame_patches=is_frame_patches)
 
     patches_view = _make_patches_view(
@@ -681,6 +690,7 @@ def make_evaluation_patches_dataset(
     sample_collection,
     eval_key,
     other_fields=None,
+    include_indexes=False,
     name=None,
     persistent=False,
     _generated=False,
@@ -731,6 +741,10 @@ def make_evaluation_patches_dataset(
             -   a field or list of fields to include
             -   ``True`` to include all other fields
             -   ``None``/``False`` to include no other fields
+        include_indexes (False): whether to recreate any custom indexes on the
+            ground truth/predicted fields and ``other_fields`` on the new
+            dataset (True) or a list of specific indexes or index prefixes to
+            recreate. By default, no custom indexes are recreated
         name (None): a name for the dataset
         persistent (False): whether the dataset should persist in the database
             after the session terminates
@@ -806,6 +820,14 @@ def make_evaluation_patches_dataset(
         add_fields = [f for f in other_fields if f not in curr_schema]
         add_schema = {k: v for k, v in src_schema.items() if k in add_fields}
         dataset._sample_doc_cls.merge_field_schema(add_schema)
+
+    fod._clone_indexes_for_patches_view(
+        sample_collection,
+        dataset,
+        patches_fields=[gt_field, pred_field],
+        other_fields=other_fields,
+        include_indexes=include_indexes,
+    )
 
     _make_pretty_summary(dataset, is_frame_patches=is_frame_patches)
 

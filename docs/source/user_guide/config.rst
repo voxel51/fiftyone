@@ -685,7 +685,7 @@ Or, you can even dynamically change the timezone while you work in Python:
 .. _configuring-fiftyone-app:
 
 Configuring the App
-===================
+-------------------
 
 The :ref:`FiftyOne App <fiftyone-app>` can also be configured in various ways.
 A new copy of your App config is applied to each |Session| object that is

@@ -248,8 +248,8 @@ _________________
 .. customcalloutitem::
     :header: Curating datasets
     :description: Surveys show that machine learning engineers spend over half of their time wrangling data, but it doesn't have to be that way. Use FiftyOne's powerful dataset import and manipulation capabilities to manage your data with ease.
-    :button_text: Learn how to load data into FiftyOne
-    :button_link: user_guide/dataset_creation/index.html
+    :button_text: Learn how to import data into FiftyOne
+    :button_link: user_guide/import_datasets.html
     :image: _static/images/homepage_curate.gif
 
 .. customcalloutitem::
@@ -337,7 +337,7 @@ adding custom tags, model predictions and more.
     formats out-of-the-box, and it also provides the extensibility to load
     datasets in custom formats.
 
-    Check out :doc:`loading datasets <user_guide/dataset_creation/index>` to see
+    Check out :doc:`importing datasets <user_guide/import_datasets>` to see
     how to load your data into FiftyOne.
 
 FiftyOne App

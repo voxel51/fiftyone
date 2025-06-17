@@ -28,7 +28,12 @@ const customFixtures = base.extend<object, CustomFixturesWithoutPage>({
         return;
       }
 
-      await use(3050 + workerInfo.workerIndex + workerInfo.parallelIndex);
+      // random number [0, 99] to avoid port collisions (rare edge case)
+      const rand = Math.floor(Math.random() * 100);
+
+      await use(
+        3050 + workerInfo.workerIndex + workerInfo.parallelIndex + rand
+      );
     },
     { scope: "worker" },
   ],

@@ -1,9 +1,9 @@
+import { Plot } from "@fiftyone/components/src/components/Plot";
 import { Box, Stack, Typography } from "@mui/material";
 import React, { useMemo, useState } from "react";
 import ColorSquare from "../../components/ColorSquare";
 import ConfusionMatrixConfig from "../../components/ConfusionMatrixConfig";
 import { COMPARE_KEY_COLOR, KEY_COLOR } from "../../constants";
-import EvaluationPlot from "../../EvaluationPlot";
 import { getMatrix } from "../../utils";
 import { PLOT_CONFIG_TYPE } from "./types";
 import { getConfigLabel } from "./utils";
@@ -61,7 +61,7 @@ export default function ConfusionMatrices(props) {
             <ColorSquare color={KEY_COLOR} />
             <Typography>{name}</Typography>
           </Stack>
-          <EvaluationPlot
+          <Plot
             data={[
               {
                 z: confusionMatrix?.matrix,
@@ -112,7 +112,7 @@ export default function ConfusionMatrices(props) {
               <ColorSquare color={COMPARE_KEY_COLOR} />
               <Typography>{compareKey}</Typography>
             </Stack>
-            <EvaluationPlot
+            <Plot
               data={[
                 {
                   z: compareConfusionMatrix?.matrix,

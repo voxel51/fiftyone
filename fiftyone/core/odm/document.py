@@ -807,6 +807,13 @@ class Document(BaseDocument, mongoengine.Document):
         self.last_modified_at = last_modified_at
         self.save(virtual=True)
 
+    def _update_last_deletion_at(self, last_deletion_at=None):
+        if last_deletion_at is None:
+            last_deletion_at = datetime.utcnow()
+
+        self.last_deletion_at = last_deletion_at
+        self.save(virtual=True)
+
     def _do_updates(self, _id, updates, upsert):
         updated_existing = True
 
