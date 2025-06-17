@@ -42,7 +42,7 @@ export const PANEL_ORDER_VISIBILITY = -1;
 export const PANEL_ORDER_ANIMATIONS = 1;
 export const PANEL_ORDER_PCD_CONTROLS = 1;
 export const PANEL_ORDER_LABELS = 998;
-export const PANEL_ORDER_LIGHTS = 999;
+export const PANEL_ORDER_SCENE_CONTROLS = 999;
 export const PANEL_ORDER_SETTINGS = 1000;
 
 export const COLOR_POOL = [
@@ -78,3 +78,10 @@ export const LABEL_3D_HOVERED_AND_SELECTED_COLOR = "#de7e5d";
 export const LABEL_3D_HOVERED_COLOR = "#f2f0ef";
 export const LABEL_3D_INSTANCE_HOVERED_COLOR = "#ffffff";
 export const LABEL_3D_SIMILAR_SELECTED_COLOR = "#ffa500";
+
+// ray casting for points
+export const RAY_CASTING_SENSITIVITY = {
+  high: 0.001,
+  medium: 0.01,
+  low: 0.1,
+};

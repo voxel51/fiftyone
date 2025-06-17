@@ -330,7 +330,7 @@ def _validate_db_version(config, client):
         )
 
 
-def aggregate(collection, pipelines, hints=None):
+def aggregate(collection, pipelines, hints=None, _stream=False):
     """Executes one or more aggregations on a collection.
 
     Multiple aggregations are executed using multiple threads, and their
@@ -375,12 +375,14 @@ def aggregate(collection, pipelines, hints=None):
         result = collection.aggregate(
             pipelines[0], allowDiskUse=True, **kwargs
         )
+        if _stream:
+            return result
         return [result] if is_list else result
 
-    return _do_pooled_aggregate(collection, pipelines, hints)
+    return _do_pooled_aggregate(collection, pipelines, hints, _stream=_stream)
 
 
-def _do_pooled_aggregate(collection, pipelines, hints):
+def _do_pooled_aggregate(collection, pipelines, hints, _stream=False):
     # @todo: MongoDB 5.0 supports snapshots which can be used to make the
     # results consistent, i.e. read from the same point in time
 
@@ -390,6 +392,19 @@ def _do_pooled_aggregate(collection, pipelines, hints):
         return list(
             collection.aggregate(pipeline, allowDiskUse=True, **kwargs)
         )
+
+    if _stream:
+        # When `unwind` is used, each aggregation runs in its own independent pipeline.
+        # If streaming is enabled, return a list of cursors so each pipeline's results
+        # can be consumed independently downstream.
+        return [
+            collection.aggregate(
+                pipeline,
+                allowDiskUse=True,
+                **({"hint": hint} if hint is not None else {}),
+            )
+            for pipeline, hint in zip(pipelines, hints)
+        ]
 
     with ThreadPool(processes=len(pipelines)) as pool:
         return pool.map(
@@ -1562,6 +1577,7 @@ def get_indexed_values(
     index_key=None,
     query=None,
     values_only=False,
+    _stream=False,
 ):
     """Returns the values of the field(s) for all samples in the given collection
     that are covered by the index. Raises an error if the field is not indexed.
@@ -1591,6 +1607,8 @@ def get_indexed_values(
         cursor = _iter_indexed_values(
             collection, field_or_fields, index_key=index_key, query=query
         )
+        if _stream:
+            return cursor
 
         if field_or_fields == "id":
             if values_only:
