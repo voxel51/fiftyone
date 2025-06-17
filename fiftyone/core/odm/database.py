@@ -397,7 +397,7 @@ def _do_pooled_aggregate(collection, pipelines, hints, **kwargs):
         if hint:
             next_kwargs["hint"] = hint
 
-        return list(collection.aggregate(pipeline, **kwargs))
+        return list(collection.aggregate(pipeline, **next_kwargs))
 
     with ThreadPool(processes=len(pipelines)) as pool:
         return pool.map(
@@ -421,7 +421,7 @@ async def _do_async_aggregate(collection, pipeline, hint, **kwargs):
     if hint:
         next_kwargs["hint"] = hint
 
-    return [i async for i in collection.aggregate(pipeline, **kwargs)]
+    return [i async for i in collection.aggregate(pipeline, **next_kwargs)]
 
 
 def ensure_connection():
