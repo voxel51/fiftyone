@@ -99,7 +99,7 @@
             "source": "https://segment-anything.com",
             "author": "Alexander Kirillov, et al.",
             "license": "Apache 2.0",
-            "size_bytes": 732512,
+            "size_bytes": 375042383,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -134,7 +134,7 @@
             "source": "https://segment-anything.com",
             "author": "Alexander Kirillov, et al.",
             "license": "Apache 2.0",
-            "size_bytes": 5008896,
+            "size_bytes": 2564550879,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -169,7 +169,7 @@
             "source": "https://segment-anything.com",
             "author": "Alexander Kirillov, et al.",
             "license": "Apache 2.0",
-            "size_bytes": 2440480,
+            "size_bytes": 1249524607,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -220,7 +220,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -239,7 +239,7 @@
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
             "license": "Apache 2.0,BSD 3-Clause",
-            "size_bytes": 155906050,
+            "size_bytes": 184309650,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -255,7 +255,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -274,7 +274,7 @@
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
             "license": "Apache 2.0,BSD 3-Clause",
-            "size_bytes": 155906050,
+            "size_bytes": 323493298,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -290,7 +290,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -309,7 +309,7 @@
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
             "license": "Apache 2.0,BSD 3-Clause",
-            "size_bytes": 155906050,
+            "size_bytes": 897952466,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -325,7 +325,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -359,7 +359,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -378,7 +378,7 @@
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
             "license": "Apache 2.0,BSD 3-Clause",
-            "size_bytes": 155906050,
+            "size_bytes": 184309650,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -394,7 +394,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -413,7 +413,7 @@
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
             "license": "Apache 2.0,BSD 3-Clause",
-            "size_bytes": 155906050,
+            "size_bytes": 323493298,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -429,7 +429,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -448,7 +448,7 @@
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
             "license": "Apache 2.0,BSD 3-Clause",
-            "size_bytes": 155906050,
+            "size_bytes": 897952466,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -464,7 +464,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -483,7 +483,7 @@
             "source": "https://github.com/MedicineToken/Medical-SAM2",
             "author": "Jiayuan Zhu, et al.",
             "license": "Apache 2.0",
-            "size_bytes": 155906050,
+            "size_bytes": 78078138,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -498,7 +498,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -541,7 +541,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -560,7 +560,7 @@
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
             "license": "Apache 2.0,BSD 3-Clause",
-            "size_bytes": 155906050,
+            "size_bytes": 184416285,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -578,7 +578,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -597,7 +597,7 @@
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
             "license": "Apache 2.0,BSD 3-Clause",
-            "size_bytes": 155906050,
+            "size_bytes": 323606802,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -615,7 +615,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -634,7 +634,7 @@
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
             "license": "Apache 2.0,BSD 3-Clause",
-            "size_bytes": 155906050,
+            "size_bytes": 898083611,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -652,7 +652,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -688,7 +688,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -707,7 +707,7 @@
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
             "license": "Apache 2.0,BSD 3-Clause",
-            "size_bytes": 155906050,
+            "size_bytes": 184416285,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -725,7 +725,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -744,7 +744,7 @@
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
             "license": "Apache 2.0,BSD 3-Clause",
-            "size_bytes": 155906050,
+            "size_bytes": 323606802,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -762,7 +762,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -781,7 +781,7 @@
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
             "license": "Apache 2.0,BSD 3-Clause",
-            "size_bytes": 155906050,
+            "size_bytes": 898083611,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -799,7 +799,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -1378,7 +1378,7 @@
             "base_name": "mnasnet0.5-imagenet-torch",
             "base_filename": "mnasnet0.5_top1_67.823-3ffadce67e.pth",
             "version": null,
-            "description": "MNASNet model from from `MnasNet: Platform-Aware Neural Architecture Search for Mobile <https://arxiv.org/abs/1807.11626>`_ with depth multiplier of 0.5 trained on ImageNet",
+            "description": "MNASNet model from `MnasNet: Platform-Aware Neural Architecture Search for Mobile <https://arxiv.org/abs/1807.11626>`_ with depth multiplier of 0.5 trained on ImageNet",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Mingxing Tan, et al.",
             "license": "BSD 3-Clause",
@@ -2787,7 +2787,10 @@
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForImageClassification",
                 "config": {
-                    "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor"
+                    "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
+                    "transforms_args": {
+                        "use_fast": false
+                    }
                 }
             },
             "requirements": {
@@ -2829,7 +2832,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": ["torch", "torchvision", "transformers>=4.51"],
                 "cpu": {
                     "support": true
                 },
@@ -2929,7 +2932,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": ["torch", "torchvision", "transformers>=4.51"],
                 "cpu": {
                     "support": true
                 },
@@ -3247,27 +3250,34 @@
         },
         {
             "base_name": "yolov5n-coco-torch",
+            "base_filename": "yolov5n-coco.pt",
             "description": "Ultralytics YOLOv5n model trained on COCO",
             "source": "https://pytorch.org/hub/ultralytics_yolov5",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
-            "size_bytes": 7936,
-            "default_deployment_config_dict": {
-                "type": "fiftyone.utils.torch.TorchImageModel",
+            "size_bytes": 5562759,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
-                    "entrypoint_fcn": "fiftyone.utils.torch.load_torch_hub_raw_model",
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov5nu.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
                     "entrypoint_args": {
-                        "repo_or_dir": "ultralytics/yolov5",
-                        "model": "yolov5n",
-                        "pretrained": true,
-                        "device": "cpu"
+                        "model": "yolov5nu.pt"
                     },
-                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
-                    "raw_inputs": true
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
                 }
             },
             "requirements": {
-                "packages": ["torch>=1.7.0", "torchvision>=0.8.1"],
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -3276,31 +3286,38 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo"],
-            "date_added": "2023-08-22 19:22:51"
+            "date_added": "2025-05-22 14:14:45"
         },
         {
             "base_name": "yolov5s-coco-torch",
+            "base_filename": "yolov5s-coco.pt",
             "description": "Ultralytics YOLOv5s model trained on COCO",
             "source": "https://pytorch.org/hub/ultralytics_yolov5",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
-            "size_bytes": 28928,
-            "default_deployment_config_dict": {
-                "type": "fiftyone.utils.torch.TorchImageModel",
+            "size_bytes": 18581255,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
-                    "entrypoint_fcn": "fiftyone.utils.torch.load_torch_hub_raw_model",
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov5su.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
                     "entrypoint_args": {
-                        "repo_or_dir": "ultralytics/yolov5",
-                        "model": "yolov5s",
-                        "pretrained": true,
-                        "device": "cpu"
+                        "model": "yolov5su.pt"
                     },
-                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
-                    "raw_inputs": true
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
                 }
             },
             "requirements": {
-                "packages": ["torch>=1.7.0", "torchvision>=0.8.1"],
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -3309,31 +3326,38 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo"],
-            "date_added": "2023-08-22 19:22:51"
+            "date_added": "2025-05-22 14:14:45"
         },
         {
             "base_name": "yolov5m-coco-torch",
+            "base_filename": "yolov5m-coco.pt",
             "description": "Ultralytics YOLOv5m model trained on COCO",
             "source": "https://pytorch.org/hub/ultralytics_yolov5",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
-            "size_bytes": 83872,
-            "default_deployment_config_dict": {
-                "type": "fiftyone.utils.torch.TorchImageModel",
+            "size_bytes": 50589507,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
-                    "entrypoint_fcn": "fiftyone.utils.torch.load_torch_hub_raw_model",
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov5mu.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
                     "entrypoint_args": {
-                        "repo_or_dir": "ultralytics/yolov5",
-                        "model": "yolov5m",
-                        "pretrained": true,
-                        "device": "cpu"
+                        "model": "yolov5mu.pt"
                     },
-                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
-                    "raw_inputs": true
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
                 }
             },
             "requirements": {
-                "packages": ["torch>=1.7.0", "torchvision>=0.8.1"],
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -3342,31 +3366,38 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo"],
-            "date_added": "2023-08-22 19:22:51"
+            "date_added": "2025-05-22 14:14:45"
         },
         {
             "base_name": "yolov5l-coco-torch",
+            "base_filename": "yolov5l-coco.pt",
             "description": "Ultralytics YOLOv5l model trained on COCO",
             "source": "https://pytorch.org/hub/ultralytics_yolov5",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
-            "size_bytes": 197504,
-            "default_deployment_config_dict": {
-                "type": "fiftyone.utils.torch.TorchImageModel",
+            "size_bytes": 106913919,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
-                    "entrypoint_fcn": "fiftyone.utils.torch.load_torch_hub_raw_model",
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov5lu.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
                     "entrypoint_args": {
-                        "repo_or_dir": "ultralytics/yolov5",
-                        "model": "yolov5l",
-                        "pretrained": true,
-                        "device": "cpu"
+                        "model": "yolov5lu.pt"
                     },
-                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
-                    "raw_inputs": true
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
                 }
             },
             "requirements": {
-                "packages": ["torch>=1.7.0", "torchvision>=0.8.1"],
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -3375,7 +3406,7 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo"],
-            "date_added": "2023-08-22 19:22:51"
+            "date_added": "2025-05-22 14:14:45"
         },
         {
             "base_name": "yolov8n-coco-torch",
@@ -3388,7 +3419,7 @@
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
-                    "url": "https://github.com/ultralytics/assets/releases/download/v8.1.0/yolov8n.pt"
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov8n.pt"
                 }
             },
             "default_deployment_config_dict": {
@@ -3864,7 +3895,7 @@
             "source": "https://docs.ultralytics.com/models/yolov9/#__tabbed_1_2",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
-            "size_bytes": 112406113,
+            "size_bytes": 56474024,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -3904,7 +3935,7 @@
             "source": "https://docs.ultralytics.com/models/yolov9/#__tabbed_1_2",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
-            "size_bytes": 243481823,
+            "size_bytes": 122214886,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -4744,7 +4775,7 @@
             "source": "https://docs.ultralytics.com/models/yoloe",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
-            "size_bytes": 70982416,
+            "size_bytes": 107405586,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -5224,7 +5255,7 @@
             "source": "https://docs.ultralytics.com/datasets/detect/open-images-v7",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
-            "size_bytes": 6534387,
+            "size_bytes": 7226939,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -5264,7 +5295,7 @@
             "source": "https://docs.ultralytics.com/datasets/detect/open-images-v7",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
-            "size_bytes": 22573363,
+            "size_bytes": 22986811,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -5304,7 +5335,7 @@
             "source": "https://docs.ultralytics.com/datasets/detect/open-images-v7",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
-            "size_bytes": 52117635,
+            "size_bytes": 52732835,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -5448,23 +5479,26 @@
         },
         {
             "base_name": "yolov5x-coco-torch",
+            "base_filename": "yolov5x-coco.pt",
             "description": "Ultralytics YOLOv5x model trained on COCO",
             "source": "https://pytorch.org/hub/ultralytics_yolov5",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
-            "size_bytes": 360496,
-            "default_deployment_config_dict": {
-                "type": "fiftyone.utils.torch.TorchImageModel",
+            "size_bytes": 195132283,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
-                    "entrypoint_fcn": "fiftyone.utils.torch.load_torch_hub_raw_model",
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov5xu.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
                     "entrypoint_args": {
-                        "repo_or_dir": "ultralytics/yolov5",
-                        "model": "yolov5x",
-                        "pretrained": true,
-                        "device": "cpu"
+                        "model": "yolov5xu.pt"
                     },
-                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
-                    "raw_inputs": true
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
                 }
             },
             "requirements": {
@@ -5477,7 +5511,7 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo"],
-            "date_added": "2023-08-22 19:22:51"
+            "date_added": "2025-05-22 14:14:45"
         }
     ]
 }

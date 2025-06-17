@@ -75,6 +75,12 @@ jobs:
           pip install pycocotools tensorflow torch torchvision
           pip install typing_extensions==4.10.0
           pip install .
+
+      - name: Enable corepack
+        run: corepack enable
+      - name: Prepare yarn 4
+        run: corepack prepare yarn@4.9.1 --activate
+
       - name: Cache Node Modules
         id: node-cache
         uses: actions/cache@v4

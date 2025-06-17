@@ -642,10 +642,6 @@ class Operations(object):
             "set_active_fields", params={"fields": fields}
         )
 
-    def clear_active_fields(self):
-        """Clear the active fields in the App."""
-        return self._ctx.trigger("clear_active_fields")
-
     def track_event(self, event, properties=None):
         """Track an event in the App.
 
@@ -702,6 +698,10 @@ class Operations(object):
     def toggle_sidebar(self):
         """Toggle the visibility of the App's sidebar."""
         return self._ctx.trigger("toggle_sidebar")
+
+    def clear_active_fields(self):
+        """Clear the active fields in the App."""
+        return self._ctx.trigger("clear_active_fields")
 
 
 def _serialize_view(view):

@@ -574,6 +574,14 @@ class DatasetTests(unittest.TestCase):
         self.assertListEqual(d.values("predictions.detections"), [])
         self.assertListEqual(d.values("predictions.detections.label"), [])
 
+        self.assertListEqual(list(d._iter_values("predictions")), [])
+        self.assertListEqual(
+            list(d._iter_values("predictions.detections")), []
+        )
+        self.assertListEqual(
+            list(d._iter_values("predictions.detections.label")), []
+        )
+
         d.add_samples(
             [
                 fo.Sample(
@@ -608,9 +616,11 @@ class DatasetTests(unittest.TestCase):
                 fo.Sample(filepath="image5.jpeg"),
             ]
         )
-
+        actual = d.values("predictions.detections.label")
+        itered_actual = list(d._iter_values("predictions.detections.label"))
+        self.assertListEqual(actual, itered_actual)
         self.assertListEqual(
-            d.values("predictions.detections.label"),
+            actual,
             [
                 ["cat", "dog"],
                 ["cat", "rabbit", "squirrel"],
@@ -619,14 +629,22 @@ class DatasetTests(unittest.TestCase):
                 None,
             ],
         )
-
         self.assertListEqual(
             d.values("predictions.detections[]"),
             d.values("predictions.detections", unwind=True),
         )
 
+        actual = d.values(
+            "predictions.detections.label", missing_value="missing"
+        )
+        itered_actual = list(
+            d._iter_values(
+                "predictions.detections.label", missing_value="missing"
+            )
+        )
+        self.assertListEqual(actual, itered_actual)
         self.assertListEqual(
-            d.values("predictions.detections.label", missing_value="missing"),
+            actual,
             [
                 ["cat", "dog"],
                 ["cat", "rabbit", "squirrel"],
@@ -636,34 +654,63 @@ class DatasetTests(unittest.TestCase):
             ],
         )
 
+        actual = d.values("predictions.detections[].label")
+        itered_actual = list(d._iter_values("predictions.detections[].label"))
+        self.assertListEqual(actual, itered_actual)
         self.assertListEqual(
-            d.values("predictions.detections[].label"),
+            actual,
             ["cat", "dog", "cat", "rabbit", "squirrel", "elephant", None],
         )
 
+        actual = d.values(F("predictions.detections[].label"))
+        itered_actual = list(
+            d._iter_values(F("predictions.detections[].label"))
+        )
+        self.assertListEqual(actual, itered_actual)
         self.assertListEqual(
-            d.values(F("predictions.detections[].label")),
+            actual,
             ["cat", "dog", "cat", "rabbit", "squirrel", "elephant", None],
         )
 
-        self.assertListEqual(
-            d.values(
+        actual = d.values(
+            "predictions.detections[].label", missing_value="missing"
+        )
+        itered_actual = list(
+            d._iter_values(
                 "predictions.detections[].label", missing_value="missing"
-            ),
+            )
+        )
+        self.assertListEqual(actual, itered_actual)
+        self.assertListEqual(
+            actual,
             ["cat", "dog", "cat", "rabbit", "squirrel", "elephant", "missing"],
         )
 
+        actual = d.values(F("predictions.detections").length())
+        itered_actual = list(
+            d._iter_values(F("predictions.detections").length())
+        )
+        self.assertListEqual(actual, itered_actual)
         self.assertListEqual(
-            d.values(F("predictions.detections").length()),
+            actual,
             [2, 3, 2, 0, 0],
         )
 
-        self.assertListEqual(
+        actual = d.values(
+            (F("predictions.detections.label") != None).if_else(
+                "found", "missing"
+            )
+        )
+        itered_actual = list(
             d.values(
                 (F("predictions.detections.label") != None).if_else(
                     "found", "missing"
                 )
-            ),
+            )
+        )
+        self.assertListEqual(actual, itered_actual)
+        self.assertListEqual(
+            actual,
             [
                 ["found", "found"],
                 ["found", "found", "found"],
@@ -673,14 +720,77 @@ class DatasetTests(unittest.TestCase):
             ],
         )
 
-        self.assertListEqual(
+        actual = d.values(
+            (F("predictions.detections[].label") != None).if_else(
+                "found", "missing"
+            )
+        )
+        itered_actual = list(
             d.values(
                 (F("predictions.detections[].label") != None).if_else(
                     "found", "missing"
                 )
-            ),
+            )
+        )
+        self.assertListEqual(actual, itered_actual)
+        self.assertListEqual(
+            actual,
             ["found", "found", "found", "found", "found", "found", "missing"],
         )
+
+    @drop_datasets
+    def test_internal_iter_values(self):
+        d = fo.Dataset()
+        d.add_sample_field("numeric_field", fo.IntField)
+        d.add_sample_field("vector_field", fo.VectorField)
+        d.add_sample_field(
+            "gt",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.Detections,
+        )
+
+        self.assertListEqual(
+            list(d._iter_values(["numeric_field", "vector_field"])), []
+        )
+        vector_values = [[1 + i, 2 + i, 3 + i] for i in range(3)]
+        detections = [
+            [
+                fo.Detection(
+                    label=f"cat-{i}", bounding_box=[0.1, 0.1, 0.4, 0.4]
+                ),
+                fo.Detection(
+                    label=f"dog-{i}", bounding_box=[0.5, 0.5, 0.4, 0.4]
+                ),
+                fo.Detection(
+                    label=f"rabbit-{i}", bounding_box=[0.1, 0.1, 0.4, 0.4]
+                ),
+            ]
+            for i in range(3)
+        ]
+
+        samples = [
+            fo.Sample(
+                filepath=f"image{i}.jpeg",
+                numeric_field=50 + i,
+                vector_field=vector_values[i],
+                gt=fo.Detections(detections=detections[i]),
+            )
+            for i in range(3)
+        ]
+        d.add_samples(samples)
+        self.assertListEqual(
+            list(d._iter_values("numeric_field")), [50, 51, 52]
+        )
+
+        nums, vecs, gts = d.values(["numeric_field", "vector_field", "gt"])
+        for i, (n, v, gt) in enumerate(
+            d._iter_values(["numeric_field", "vector_field", "gt"])
+        ):
+            # ensure that fields like fo.VectorField are converted
+            # when using iter_values() as they would be using values()
+            self.assertEqual(nums[i], n)
+            np.testing.assert_array_equal(vecs[i], v)
+            self.assertEqual(gts[i], gt)
 
     @drop_datasets
     def test_values_unwind(self):
@@ -726,32 +836,70 @@ class DatasetTests(unittest.TestCase):
 
         # [num_samples][num_frames][num_classifications]
         values = dataset.values("frames.ground_truth.classifications.label")
+
+        itered_values = [
+            i
+            for i in dataset._iter_values(
+                "frames.ground_truth.classifications.label"
+            )
+        ]
         expected = [
             [["cat"], None, ["dog"]],
             [["cat", "dog"], ["rabbit"], ["squirrel"]],
         ]
 
         self.assertListEqual(values, expected)
+        self.assertListEqual(itered_values, values)
 
         # [num_samples][num_frames x num_classifications]
+        # test big aggs
         values1 = dataset.values("frames.ground_truth.classifications[].label")
+        itered_values1 = [
+            labels
+            for labels in dataset._iter_values(
+                "frames.ground_truth.classifications[].label"
+            )
+        ]
+
         values2 = dataset.values(
             "frames.ground_truth.classifications.label", unwind=-1
         )
+        itered_values2 = list(
+            dataset._iter_values(
+                "frames.ground_truth.classifications.label", unwind=-1
+            )
+        )
+
         expected = [["cat", "dog"], ["cat", "dog", "rabbit", "squirrel"]]
         self.assertListEqual(values1, expected)
         self.assertListEqual(values2, expected)
+        self.assertListEqual(expected, itered_values1)
+        self.assertListEqual(values2, itered_values2)
 
         # [num_samples x num_frames x num_classifications]
         values1 = dataset.values(
             "frames[].ground_truth.classifications[].label"
         )
+        itered_values1 = list(
+            dataset._iter_values(
+                "frames[].ground_truth.classifications[].label"
+            )
+        )
+
         values2 = dataset.values(
             "frames.ground_truth.classifications.label", unwind=True
         )
+        itered_values2 = list(
+            dataset._iter_values(
+                "frames.ground_truth.classifications.label", unwind=True
+            )
+        )
+
         expected = ["cat", "dog", "cat", "dog", "rabbit", "squirrel"]
         self.assertListEqual(values1, expected)
         self.assertListEqual(values2, expected)
+        self.assertListEqual(values1, itered_values1)
+        self.assertListEqual(values2, itered_values2)
 
         # [num_samples x num_frames]
         values = dataset.values("frames.ground_truth.classifications[]")

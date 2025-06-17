@@ -16,7 +16,10 @@ import {
   ShadeByHeight,
   ShadeByIntensity,
 } from "../../renderables/pcd/shaders";
-import { computeMinMaxForColorBufferAttribute } from "../../utils";
+import {
+  computeMinMaxForColorBufferAttribute,
+  computeMinMaxForScalarBufferAttribute,
+} from "../../utils";
 import { useFo3dContext } from "../context";
 
 export const usePcdMaterial = (
@@ -26,6 +29,14 @@ export const usePcdMaterial = (
   pcdContainerRef: React.RefObject<any>
 ) => {
   const { upVector, pluginSettings } = useFo3dContext();
+
+  const pcdType = useMemo(() => {
+    if (geometry.hasAttribute("intensity")) {
+      return "intensity";
+    }
+
+    return "rgb";
+  }, [geometry]);
 
   const { customColor, pointSize, isPointSizeAttenuated, shadeBy, opacity } =
     usePcdMaterialControls(name, defaultMaterial);
@@ -54,18 +65,31 @@ export const usePcdMaterial = (
   }, [upVector, pcdBoundingBox, shadeBy, pluginSettings]);
 
   const { min: minIntensity, max: maxIntensity } = useMemo(() => {
-    if (shadeBy !== SHADE_BY_INTENSITY || !geometry) {
+    if (shadeBy !== SHADE_BY_INTENSITY) {
       return { min: 0, max: 1 };
     }
 
-    const intensity =
-      geometry.getAttribute("color") ?? geometry.getAttribute("intensity");
+    const isLegacyIntensity = !Boolean(geometry.getAttribute("intensity"));
 
-    if (intensity) {
-      return computeMinMaxForColorBufferAttribute(intensity);
+    if (isLegacyIntensity) {
+      const attrib = geometry.hasAttribute("color")
+        ? "color"
+        : geometry.hasAttribute("rgb")
+        ? "rgb"
+        : null;
+
+      if (!attrib) {
+        return { min: 0, max: 1 };
+      }
+
+      return computeMinMaxForColorBufferAttribute(
+        geometry.getAttribute(attrib)
+      );
     }
 
-    return { min: 0, max: 1 };
+    return computeMinMaxForScalarBufferAttribute(
+      geometry.getAttribute("intensity")
+    );
   }, [geometry, shadeBy]);
 
   const pointsMaterial = useMemo(() => {
@@ -97,12 +121,13 @@ export const usePcdMaterial = (
         return (
           <ShadeByIntensity
             key={key}
-            min={minIntensity}
-            max={maxIntensity}
+            minIntensity={minIntensity}
+            maxIntensity={maxIntensity}
             gradients={PCD_SHADING_GRADIENTS}
             pointSize={pointSize}
             opacity={opacity}
             isPointSizeAttenuated={isPointSizeAttenuated}
+            pcdType={pcdType}
           />
         );
 
@@ -149,6 +174,7 @@ export const usePcdMaterial = (
     upVector,
     opacity,
     name,
+    pcdType,
   ]);
 
   return pointsMaterial;

@@ -19,6 +19,17 @@ transitioned to `end-of-life` effective October of 2024. FiftyOne
 releases after July 1, 2025 might no longer be compatible with
 MongoDB 5.0 and older.
 
+.. _deprecation-kubernetes-1.29:
+
+Kubernetes 1.29
+---------------
+*Support ending June 1, 2025*
+
+`Kubernetes 1.29 <https://kubernetes.io/releases/>`_
+transitioned to `end-of-life` effective February of 2025. FiftyOne Enterprise
+releases after June 1, 2025 might no longer be compatible with
+Kubernetes 1.29 and older.
+
 .. _deprecation-mongodb-4.4:
 
 MongoDB 4.4

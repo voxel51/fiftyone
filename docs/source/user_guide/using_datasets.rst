@@ -4535,7 +4535,7 @@ _________________________
 If you work with collections of related fields that you would like to organize
 under a single top-level field, you can achieve this by defining and using
 custom |EmbeddedDocument| and |DynamicEmbeddedDocument| classes to populate
-your datasetes.
+your datasets.
 
 Using custom embedded document classes enables you to access your data using
 the same object-oriented interface enjoyed by FiftyOne's
@@ -5157,7 +5157,7 @@ serializes the scene into an FO3D file.
 
     print(dataset.media_type)  # 3d
 
-To modify an exising scene, load it via
+To modify an existing scene, load it via
 :meth:`Scene.from_fo3d() <fiftyone.core.threed.Scene.from_fo3d>`, perform any
 necessary updates, and then re-write it to disk:
 
@@ -6016,7 +6016,7 @@ in a collection and saving the sample edits:
 By default,
 :meth:`update_samples() <fiftyone.core.collections.SampleCollection.update_samples>`
 leverages a multiprocessing pool to parallelize the work across a number of
-workers, resulting in signficant performance improvements over the equivalent
+workers, resulting in significant performance improvements over the equivalent
 :meth:`iter_samples(autosave=True) <fiftyone.core.dataset.Dataset.iter_samples>`
 syntax:
 
@@ -6138,7 +6138,7 @@ applying a function to each sample, and returning the results as a generator.
 By default,
 :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
 leverages a multiprocessing pool to parallelize the work across a number of
-workers, resulting in signficant performance improvements over the equivalent
+workers, resulting in significant performance improvements over the equivalent
 :meth:`iter_samples() <fiftyone.core.dataset.Dataset.iter_samples>` syntax:
 
 .. code-block:: python

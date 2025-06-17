@@ -301,7 +301,7 @@ It can also provide optional metadata about the remote source itself:
     | `url`                            |           | The URL of the remote model source                                                        |
     +----------------------------------+-----------+-------------------------------------------------------------------------------------------+
 
-Here's an exaxmple model manifest file that declares a single model:
+Here's an example model manifest file that declares a single model:
 
 .. code-block:: json
 
@@ -395,7 +395,7 @@ below:
             model_name: the name of the model to load, as declared by the
                 ``base_name`` and optional ``version`` fields of the manifest
             model_path: the absolute filename or directory to which the model was
-                donwloaded, as declared by the ``base_filename`` field of the
+                downloaded, as declared by the ``base_filename`` field of the
                 manifest
             **kwargs: optional keyword arguments that configure how the model
                 is loaded
@@ -407,7 +407,7 @@ below:
         # The directory containing this file
         model_dir = os.path.dirname(model_path)
 
-        # Consturct the specified `Model` instance, generally by importing
+        # Construct the specified `Model` instance, generally by importing
         # other modules in `model_dir`
         model = ...
 
