@@ -1,7 +1,7 @@
 {
     "name": "@fiftyone/playback",
     "main": "./index.ts",
-    "packageManager": "yarn@3.2.1",
+    "packageManager": "yarn@4.9.1",
     "devDependencies": {
         "@eslint/compat": "^1.1.1",
         "eslint": "9.7.0",

@@ -11,6 +11,7 @@ import queue
 import threading
 from typing import (
     Callable,
+    Iterable,
     Iterator,
     List,
     Literal,
@@ -33,6 +34,7 @@ from fiftyone.core.map.typing import SampleCollection
 
 T = TypeVar("T")
 R = TypeVar("R")
+U = TypeVar("U")
 
 ResultQueue = queue.Queue[
     Tuple[bson.ObjectId, Union[Exception, None], Union[R, None]]
@@ -61,7 +63,12 @@ class ThreadMapper(fomm.LocalMapper):
         if config.max_thread_pool_workers is not None:
             num_workers = min(num_workers, config.max_thread_pool_workers)
 
-        return cls(batch_cls, num_workers, batch_size)
+        return super(ThreadMapper, cls).create(
+            config=config,
+            batch_cls=batch_cls,
+            num_workers=num_workers,
+            batch_size=batch_size,
+        )
 
     @staticmethod
     def __worker(
@@ -77,15 +84,16 @@ class ThreadMapper(fomm.LocalMapper):
 
         try:
             while not cancel_event.is_set() and (
-                sample := next(sample_iter, None)
+                value := next(sample_iter, None)
             ):
+                sample_id, sample = value
                 try:
                     if progress_bar:
                         progress_bar.update(1)
                     result = map_fcn(sample)
                 except Exception as err:
                     # Add sample ID and error to the queue.
-                    result_queue.put((sample.id, err, None))
+                    result_queue.put((sample_id, err, None))
 
                     if not skip_failures:
                         # Cancel other workers as soon as possible.
@@ -93,19 +101,23 @@ class ThreadMapper(fomm.LocalMapper):
                         break
                 else:
                     # Add sample ID and result to the queue.
-                    result_queue.put((sample.id, None, result))
+                    result_queue.put((sample_id, None, result))
         finally:
             worker_done_event.set()
 
     def _map_samples_multiple_workers(
         self,
         sample_collection: SampleCollection[T],
-        map_fcn: Callable[[T], R],
+        iter_fcn: Callable[
+            [SampleCollection[T]], Iterable[Tuple[bson.ObjectId, U]]
+        ],
+        map_fcn: Callable[[U], R],
         *,
-        progress: Union[bool, Literal["workers"], Callable],
-        save: bool,
+        progress: Union[bool, Literal["workers"], None],
         skip_failures: bool,
-    ) -> Iterator[Tuple[bson.ObjectId, Union[Exception, None], R]]:
+    ) -> Iterator[
+        Tuple[bson.ObjectId, Union[Exception, None], Union[R, None]]
+    ]:
         # Global synchronization primitives
         result_queue: ResultQueue = queue.Queue()
         worker_done_events: List[threading.Event] = []
@@ -130,7 +142,7 @@ class ThreadMapper(fomm.LocalMapper):
 
                 # Create a separate subset for this batch
                 batch_collection = batch.create_subset(sample_collection)
-                sample_iter = batch_collection.iter_samples(autosave=save)
+                sample_iter = iter_fcn(batch_collection)
 
                 # This is for a per-worker progress bar.
                 worker_progress_bar = None

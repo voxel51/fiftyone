@@ -317,6 +317,10 @@ class DelegatedOperationService(object):
             a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
         """
         doc = self._repo.get(_id=doc_id)
+        if doc is None:
+            raise ValueError(f"No delegated operation with {doc_id=} found")
+        if doc.group_id:
+            raise ValueError("Cannot rerun a child delegated operation.")
         return self._repo.queue_operation(**doc.__dict__)
 
     def get_queued_operations(self, operator=None, dataset_name=None):

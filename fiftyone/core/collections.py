@@ -9,6 +9,7 @@ Interface for sample collections.
 from collections import defaultdict, deque
 from copy import copy
 from datetime import datetime
+from operator import itemgetter
 import fnmatch
 import itertools
 import logging
@@ -9373,32 +9374,18 @@ class SampleCollection(object):
         """
 
         # Optimization: if we do not need to follow insertion order, we can
-        # potentially use a covered index query to get the values directly from
-        # the index and avoid a COLLSCAN
-        if not _enforce_natural_order:
-            field = None
-            if isinstance(field_or_expr, str):
-                field = field_or_expr
-            elif etau.is_container(field_or_expr) and len(field_or_expr) == 1:
-                field = field_or_expr[0]
-
-            # @todo consider supporting non-default fields that are indexed
-            # @todo can we support some non-full collections?
-            if (
-                field in ("id", "_id", "filepath")
-                and expr is None
-                and self._is_full_collection()
-            ):
-                try:
-                    return foo.get_indexed_values(
-                        self._dataset._sample_collection,
-                        field,
-                        values_only=True,
-                    )
-                except ValueError as e:
-                    # When get_indexed_values() raises a ValueError, it is a
-                    # recommendation of an index to create
-                    logger.debug(e)
+        # potentially use a covered index query to get the values directly
+        # from the index and avoid a COLLSCAN
+        if (
+            field := self._field_for_covered_index_query_or_none(
+                field_or_expr,
+                expr=expr,
+                _enforce_natural_order=_enforce_natural_order,
+            )
+        ) and (
+            result := self._indexed_values_or_none(field, _stream=False)
+        ) is not None:
+            return result
 
         make = lambda field_or_expr: foa.Values(
             field_or_expr,
@@ -9409,8 +9396,103 @@ class SampleCollection(object):
             _big_result=_big_result,
             _raw=_raw,
             _field=_field,
+            _lazy=False,
         )
         return self._make_and_aggregate(make, field_or_expr)
+
+    def _iter_values(
+        self,
+        field_or_expr,
+        expr=None,
+        missing_value=None,
+        unwind=False,
+        _allow_missing=False,
+        _big_result=True,
+        _raw=False,
+        _field=None,
+        _enforce_natural_order=True,
+    ):
+
+        if (
+            field := self._field_for_covered_index_query_or_none(
+                field_or_expr,
+                expr=expr,
+                _enforce_natural_order=_enforce_natural_order,
+            )
+        ) and (
+            result := self._indexed_values_or_none(field, _stream=True)
+        ) is not None:
+            id_to_str = field_or_expr == "id"
+            if not id_to_str:
+                for doc in result:
+                    yield doc[field]
+            else:
+                for doc in result:
+                    yield str(doc["_id"])
+            return
+
+        make = lambda field_or_expr: foa.Values(
+            field_or_expr,
+            expr=expr,
+            missing_value=missing_value,
+            unwind=unwind,
+            _allow_missing=_allow_missing,
+            _big_result=_big_result,
+            _raw=_raw,
+            _field=_field,
+            _lazy=True,
+        )
+
+        if isinstance(field_or_expr, (list, tuple)):
+            _field_or_expr = []
+            for field in field_or_expr:
+                if "[]" in field:
+                    field = field.replace("[]", "")
+                    logging.warning(
+                        'Single field unwinding "[]" is not '
+                        "supported when using iter_values "
+                        "and will be ignored."
+                    )
+                _field_or_expr.append(field)
+        else:
+            _field_or_expr = field_or_expr
+
+        for doc_values in self._make_and_aggregate(
+            make, _field_or_expr, _generator=True
+        ):
+            yield doc_values
+
+    def _field_for_covered_index_query_or_none(
+        self, field_or_expr, expr=None, _enforce_natural_order=True
+    ):
+
+        if expr is not None or _enforce_natural_order:
+            return None
+
+        field = None
+        if isinstance(field_or_expr, str):
+            field = field_or_expr
+        elif etau.is_container(field_or_expr) and len(field_or_expr) == 1:
+            field = field_or_expr[0]
+
+        # @todo consider supporting non-default fields that are indexed
+        # @todo can we support some non-full collections?
+        if field in ("id", "_id", "filepath") and self._is_full_collection():
+            return field
+        return None
+
+    def _indexed_values_or_none(self, field, _stream):
+        try:
+            return foo.get_indexed_values(
+                self._dataset._sample_collection,
+                field,
+                values_only=True,
+                _stream=_stream,
+            )
+        except ValueError as e:
+            logger.debug(e)
+
+        return None
 
     def draw_labels(
         self,
@@ -9722,6 +9804,46 @@ class SampleCollection(object):
         # Make archive, if requested
         if archive_path is not None:
             etau.make_archive(export_dir, archive_path, cleanup=True)
+
+    def to_torch(
+        self,
+        get_item,
+        vectorize=False,
+        skip_failures=False,
+        local_process_group=None,
+    ):
+        """Constructs a :class:`torch:torch.utils.data.Dataset` that loads data
+        from this collection via the provided
+        :class:`fiftyone.utils.torch.GetItem` instance.
+
+        Args:
+            get_item: a :class:`fiftyone.utils.torch.GetItem`
+            vectorize (False): whether to load and cache the required fields
+                from the sample collection upfront (True) or lazily load the
+                values from each sample when items are retrieved (False).
+                Vectorizing gives faster data loading times, but you must have
+                enough memory to store the required field values for the entire
+                sample collection. When ``vectorize=True``, all field values
+                must be serializable; ie ``pickle.dumps(field_value)`` must not
+                raise an error
+            skip_failures (False): whether to skip failures that occur when
+                calling ``get_item``. If True, the exception will be returned
+                rather than the intended field values
+            local_process_group (None): the local process group. Only used
+                during distributed training
+
+        Returns:
+            a :class:`torch:torch.utils.data.Dataset`
+        """
+        from fiftyone.utils.torch import FiftyOneTorchDataset
+
+        return FiftyOneTorchDataset(
+            self,
+            get_item,
+            vectorize=vectorize,
+            skip_failures=skip_failures,
+            local_process_group=local_process_group,
+        )
 
     def annotate(
         self,
@@ -10616,8 +10738,9 @@ class SampleCollection(object):
                 instances
 
         Returns:
-            an aggregation result or list of aggregation results corresponding
-            to the input aggregation(s)
+            Aggregation result(s) corresponding to the input aggregation(s).
+            Returns a single result for a single aggregation, a list of results
+            for multiple aggregations, or a generator for lazy aggregations
         """
         if not aggregations:
             return []
@@ -10628,7 +10751,7 @@ class SampleCollection(object):
             aggregations = [aggregations]
 
         # Partition aggregations by type
-        big_aggs, batch_aggs, facet_aggs = self._parse_aggregations(
+        big_aggs, batch_aggs, facet_aggs, stream = self._parse_aggregations(
             aggregations, allow_big=True
         )
 
@@ -10661,21 +10784,28 @@ class SampleCollection(object):
             return pipelines[0] if scalar_result else pipelines
 
         # Run all aggregations
-        _results = foo.aggregate(self._dataset._sample_collection, pipelines)
+        _results = foo.aggregate(
+            self._dataset._sample_collection, pipelines, _stream=stream
+        )
 
         # Parse batch results
         if batch_aggs:
+            if stream:
+                return self._iter_and_parse_agg_results(batch_aggs, _results)
             result = list(_results[0])
             for idx, aggregation in batch_aggs.items():
                 results[idx] = self._parse_big_result(aggregation, result)
 
         # Parse big results
+        if big_aggs and stream:
+            return self._iter_and_parse_agg_results(big_aggs, _results)
         for idx, aggregation in big_aggs.items():
             result = list(_results[idx_map[idx]])
             results[idx] = self._parse_big_result(aggregation, result)
 
         # Parse facet-able results
         for idx, aggregation in compiled_facet_aggs.items():
+
             result = list(_results[idx_map[idx]])
             data = self._parse_faceted_result(aggregation, result)
             if (
@@ -10686,8 +10816,67 @@ class SampleCollection(object):
                     results[idx] = d
             else:
                 results[idx] = data
-
         return results[0] if scalar_result else results
+
+    def _iter_and_parse_agg_results(self, parsed_aggs, cursor):
+
+        result_fields = [agg._big_field for agg in parsed_aggs.values()]
+
+        # Non-batchable big aggregations will result a cursor per aggregation
+        handle_multiple_cursors = isinstance(cursor, list)
+
+        # Determine if extra parsing is needed for the Aggregation result
+        has_extra_parsing = any(
+            agg._field is not None and not agg._raw
+            for agg in parsed_aggs.values()
+        )
+
+        if has_extra_parsing:
+            transformers = [
+                agg.parse_result(None) for agg in parsed_aggs.values()
+            ]
+
+            # single field + extra parsing
+            if len(result_fields) == 1:
+                field = result_fields[0]
+                f = transformers[0]
+                return (f(doc[field]) for doc in cursor)
+
+        # Handle case: no extra parsing
+        if not has_extra_parsing:
+            if handle_multiple_cursors:
+                # Unwinding fields independently may lead to results of
+                # different length. To enable returning all data,
+                # exhausted cursors will continue to emit None until the longest
+                # cursor is exhausted.
+                return (
+                    tuple(
+                        doc[f] if doc else None
+                        for f, doc in zip(result_fields, docs)
+                    )
+                    for docs in itertools.zip_longest(*cursor, fillvalue=None)
+                )
+            return (itemgetter(*result_fields)(doc) for doc in cursor)
+
+        # Handle case: multiple fields with parsing
+        get_values = itemgetter(*result_fields)
+
+        def _process_doc(doc):
+            # Extract values from a single document specified by agg._big_field
+            values = get_values(doc)
+            if not isinstance(values, tuple):
+                values = (values,)
+            # Apply transformers to each value
+            return tuple(f(v) for f, v in zip(transformers, values))
+
+        if handle_multiple_cursors:
+            # unwind with fields that need additional parsing
+            return (
+                tuple(_process_doc(doc) if doc else None for doc in docs)
+                for docs in itertools.zip_longest(*cursor, fillvalue=None)
+            )
+
+        return (_process_doc(doc) for doc in cursor)
 
     async def _async_aggregate(self, aggregations):
         if not aggregations:
@@ -10698,7 +10887,7 @@ class SampleCollection(object):
         if scalar_result:
             aggregations = [aggregations]
 
-        _, _, facet_aggs = self._parse_aggregations(
+        _, _, facet_aggs, _ = self._parse_aggregations(
             aggregations, allow_big=False
         )
 
@@ -10741,7 +10930,15 @@ class SampleCollection(object):
         big_aggs = {}
         batch_aggs = {}
         facet_aggs = {}
+        stream = None
+
         for idx, aggregation in enumerate(aggregations):
+            # stream is True if all aggregations are lazy
+            if lazy := getattr(aggregation, "_lazy", False):
+                if stream is None:
+                    stream = lazy
+                elif stream != lazy:
+                    stream = False
             if aggregation._is_big_batchable:
                 batch_aggs[idx] = aggregation
             elif aggregation._has_big_result:
@@ -10755,7 +10952,7 @@ class SampleCollection(object):
                 "results"
             )
 
-        return big_aggs, batch_aggs, facet_aggs
+        return big_aggs, batch_aggs, facet_aggs, stream
 
     def _build_batch_pipeline(self, aggs_map):
         project = {}
@@ -10966,11 +11163,19 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement _aggregate()")
 
-    def _make_and_aggregate(self, make, args):
+    def _make_and_aggregate(self, make, args, _generator=False):
         if isinstance(args, (list, tuple)):
-            return tuple(self.aggregate([make(arg) for arg in args]))
-
-        return self.aggregate(make(args))
+            agg = self.aggregate(
+                [make(arg) for arg in args],
+            )
+            if _generator:
+                return agg
+            # when not using a generator, we exhaust the cursor and load all
+            # the results into memory at once here
+            return tuple(agg)
+        return self.aggregate(
+            make(args),
+        )
 
     def _build_aggregation(self, aggregations):
         scalar_result = isinstance(aggregations, foa.Aggregation)
@@ -11668,12 +11873,6 @@ class SampleCollection(object):
             raise ValueError(f"Dataset has no store '{store_name}'")
 
         return foos.ExecutionStore(store_name, svc)
-
-    def to_torch(self, get_item, **kwargs):
-        """See fo.utils.torch.FiftyOneTorchDataset for documentation."""
-        from fiftyone.utils.torch import FiftyOneTorchDataset
-
-        return FiftyOneTorchDataset(self, get_item, **kwargs)
 
 
 def _iter_label_fields(sample_collection):
