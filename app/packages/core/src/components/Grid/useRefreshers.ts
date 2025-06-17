@@ -37,6 +37,7 @@ export default function useRefreshers() {
     fieldVisibilityStage;
     mediaField;
     refresher;
+    schema;
     return uuid();
   }, [cropToContent, fieldVisibilityStage, mediaField, refresher, schema]);
 
