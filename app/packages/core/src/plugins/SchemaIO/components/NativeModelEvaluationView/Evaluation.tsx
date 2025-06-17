@@ -169,10 +169,7 @@ export default function Evaluation(props: EvaluationProps) {
           {/* Compare dropdown section */}
           <Stack>
             {compareKeys.length === 0 ? (
-              <Typography
-                variant="body2"
-                sx={{ color: (theme) => theme.palette.text.secondary }}
-              >
+              <Typography variant="body2" color="text.tertiary" pl={1.5}>
                 You need at least one more evaluation to compare.
               </Typography>
             ) : (
@@ -185,7 +182,7 @@ export default function Evaluation(props: EvaluationProps) {
                 renderValue={
                   !compareKey
                     ? () => (
-                        <Typography sx={{ color: "text.secondary" }} pl={1}>
+                        <Typography color="secondary">
                           Select a comparison
                         </Typography>
                       )
@@ -207,17 +204,13 @@ export default function Evaluation(props: EvaluationProps) {
                     </IconButton>
                   ) : null
                 }
+                sx={{ pl: 1 }}
               >
                 {compareKeys.map(
                   ({ key, type, method, disabled, tooltip, tooltipBody }) => {
                     const menuItem = (
-                      <MenuItem
-                        value={key}
-                        key={key}
-                        sx={{ p: 0 }}
-                        disabled={disabled}
-                      >
-                        <Stack direction="row" alignItems="center">
+                      <MenuItem value={key} key={key} disabled={disabled}>
+                        <Stack direction="row" alignItems="center" spacing={1}>
                           <EvaluationIcon
                             type={type as ConcreteEvaluationType}
                             method={method}
