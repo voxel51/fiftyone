@@ -122,6 +122,7 @@ export default function Evaluation(props: EvaluationProps) {
   const evaluationConfig = evaluationInfo.config;
   const evaluationType = evaluationConfig.type;
   const evaluationMethod = evaluationConfig.method;
+  const canCompare = compareKeys.length > 0;
 
   return (
     <Stack spacing={2} sx={{ p: 2 }}>
@@ -162,88 +163,80 @@ export default function Evaluation(props: EvaluationProps) {
           </Stack>
 
           {/* VS text */}
-          <Typography variant="body2" color="secondary" pl={1}>
-            vs
-          </Typography>
+          {canCompare && (
+            <Typography variant="body2" color="secondary" pl={1}>
+              vs
+            </Typography>
+          )}
 
           {/* Compare dropdown section */}
-          <Stack>
-            {compareKeys.length === 0 ? (
-              <Typography variant="body2" color="text.tertiary" pl={1.5}>
-                You need at least one more evaluation to compare.
-              </Typography>
-            ) : (
-              <EvaluationSelect
-                key={compareKey}
-                ghost
-                defaultValue={compareKey}
-                displayEmpty
-                placeholder="Select a comparison"
-                renderValue={
-                  !compareKey
-                    ? () => (
-                        <Typography color="secondary">
-                          Select a comparison
-                        </Typography>
-                      )
-                    : undefined
-                }
-                onChange={(e) => {
-                  setLoadingCompare(false);
-                  onChangeCompareKey(e.target.value as string);
-                }}
-                endAdornment={
-                  compareKey ? (
-                    <IconButton
-                      sx={{ mr: 1 }}
-                      onClick={() => {
-                        onChangeCompareKey("");
-                      }}
+          {canCompare && (
+            <EvaluationSelect
+              key={compareKey}
+              ghost
+              defaultValue={compareKey}
+              displayEmpty
+              placeholder="Select a comparison"
+              renderValue={
+                !compareKey
+                  ? () => (
+                      <Typography color="secondary">
+                        Select a comparison
+                      </Typography>
+                    )
+                  : undefined
+              }
+              onChange={(e) => {
+                setLoadingCompare(false);
+                onChangeCompareKey(e.target.value as string);
+              }}
+              endAdornment={
+                compareKey ? (
+                  <IconButton
+                    sx={{ mr: 1 }}
+                    onClick={() => {
+                      onChangeCompareKey("");
+                    }}
+                  >
+                    <Close />
+                  </IconButton>
+                ) : null
+              }
+              sx={{ pl: 1 }}
+            >
+              {compareKeys.map(
+                ({ key, type, method, disabled, tooltip, tooltipBody }) => {
+                  const menuItem = (
+                    <MenuItem value={key} key={key} disabled={disabled}>
+                      <Stack direction="row" alignItems="center" spacing={1}>
+                        <EvaluationIcon
+                          type={type as ConcreteEvaluationType}
+                          method={method}
+                          color={COMPARE_KEY_SECONDARY_COLOR}
+                        />
+                        <Typography>{key}</Typography>
+                      </Stack>
+                    </MenuItem>
+                  );
+                  return disabled ? (
+                    <Tooltip
+                      key={key}
+                      title={
+                        <>
+                          <Typography variant="subtitle1">{tooltip}</Typography>
+                          <Typography variant="body2">{tooltipBody}</Typography>
+                        </>
+                      }
                     >
-                      <Close />
-                    </IconButton>
-                  ) : null
+                      <span>{menuItem}</span>
+                    </Tooltip>
+                  ) : (
+                    menuItem
+                  );
                 }
-                sx={{ pl: 1 }}
-              >
-                {compareKeys.map(
-                  ({ key, type, method, disabled, tooltip, tooltipBody }) => {
-                    const menuItem = (
-                      <MenuItem value={key} key={key} disabled={disabled}>
-                        <Stack direction="row" alignItems="center" spacing={1}>
-                          <EvaluationIcon
-                            type={type as ConcreteEvaluationType}
-                            method={method}
-                            color={COMPARE_KEY_SECONDARY_COLOR}
-                          />
-                          <Typography>{key}</Typography>
-                        </Stack>
-                      </MenuItem>
-                    );
-                    return disabled ? (
-                      <Tooltip
-                        key={key}
-                        title={
-                          <>
-                            <Typography variant="subtitle1">
-                              {tooltip}
-                            </Typography>
-                            <Typography variant="body2">
-                              {tooltipBody}
-                            </Typography>
-                          </>
-                        }
-                      >
-                        <span>{menuItem}</span>
-                      </Tooltip>
-                    ) : (
-                      menuItem
-                    );
-                  }
-                )}
-              </EvaluationSelect>
-            )}
-          </Stack>
+              )}
+            </EvaluationSelect>
+          )}
         </Stack>
 
         <Stack direction="row" sx={{ alignItems: "center" }}>
