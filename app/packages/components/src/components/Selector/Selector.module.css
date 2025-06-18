@@ -42,6 +42,9 @@
   box-shadow: 0 2px 20px var(--fo-palette-custom-shadow);
   box-sizing: border-box;
   width: auto;
+  /*
+    Overriding with important because react-laag overrides the min-width otherwise.
+  */
   min-width: 100px !important;
   overflow: visible;
   position: absolute;

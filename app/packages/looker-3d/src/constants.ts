@@ -85,7 +85,15 @@ export const LABEL_3D_SIMILAR_SELECTED_COLOR = "#ffa500";
 
 // ray casting for points
 export const RAY_CASTING_SENSITIVITY = {
+  // Very precise: only registers hits when the ray is extremely close to the point.
+  // Best for dense point clouds or precision tools
   high: 0.001,
+
+  // Balanced: good tradeoff between ease of selection and accuracy.
+  // Works well for general UI interactions with moderately sized points.
   medium: 0.1,
+
+  // Lenient: ray can be relatively far and still hit a point.
+  // Useful for sparse clouds, large points, or user-friendly selection modes.
   low: 0.25,
 };
