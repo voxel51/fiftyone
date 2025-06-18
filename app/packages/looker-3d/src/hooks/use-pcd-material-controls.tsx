@@ -440,6 +440,12 @@ export const usePcdMaterialControls = (
       colormapOverride,
       isColormapModalOpen,
       thresholdsLut,
+      isPointSizeAttenuated,
+      colormapOverrideButton,
+      thresholdControl,
+      numPrimaryAssets,
+      name,
+      shadeModes,
     ]
   );
 
