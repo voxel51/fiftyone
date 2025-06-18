@@ -305,14 +305,17 @@ export const usePcdMaterialControls = (
     const max = thresholdsLut[shadeBy]?.max ?? 1;
 
     setActiveThreshold([min, max]);
-  }, [shadeBy]);
+  }, [shadeBy, thresholdsLut]);
 
   const thresholdControl = useMemo(() => {
-    const randomIndex = Math.floor(
-      Math.random() * geometry.attributes[shadeBy]?.count
-    );
-    const randomValueFromGeometry =
-      geometry.attributes[shadeBy]?.getX(randomIndex);
+    const attribute = geometry.attributes[shadeBy];
+
+    if (!attribute || !attribute.count) {
+      return null;
+    }
+
+    const randomIndex = Math.floor(Math.random() * attribute.count);
+    const randomValueFromGeometry = attribute.getX(randomIndex);
     const fieldType =
       randomValueFromGeometry !== undefined
         ? Number.isInteger(randomValueFromGeometry)
