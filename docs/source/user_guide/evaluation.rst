@@ -60,26 +60,6 @@ method:
 
     session = fo.launch_app(dataset)
 
-.. _model-evaluation-panel:
-
-Model Evaluation panel __SUB_NEW__
-----------------------------------
-
-When you load a dataset in the App that contains one or more
-:ref:`evaluations <evaluating-models>`, you can open the
-:ref:`Model Evaluation panel <app-model-evaluation-panel>` to visualize and
-interactively explore the evaluation results in the App:
-
-.. image:: /images/app/model-evaluation-compare.gif
-    :alt: model-evaluation-compare
-    :align: center
-
-.. note::
-
-    Did you know? With :ref:`FiftyOne Enterprise <fiftyone-enterprise>` you can execute
-    model evaluations natively from the App
-    :ref:`in the background <delegated-operations>` while you work.
-
 Per-class metrics
 -----------------
 
@@ -212,6 +192,182 @@ programmatically setting
 is automatically updated to show the cell counts for only those objects that
 are included in the current view.
 
+.. _analyzing-scenerios:
+
+Analyzing scenarios  __SUB_NEW__
+--------------------------------
+
+.. note::
+
+    Did you know? You can create and analyze model evaluation scenarios in the
+    App via the :ref:`Scenario Analysis tab <app-scenario-analysis>`.
+
+The :meth:`use_subset() <fiftyone.utils.eval.base.BaseClassificationResults.use_subset>`
+method allows you to evaluate the performance of your model under specific
+scenarios, i.e., subsets of the overall datasset on which evaluation was
+performed.
+
+Consider the following example:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    import fiftyone.utils.random as four
+    from fiftyone import ViewField as F
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    four.random_split(dataset, {"sunny": 0.7, "cloudy": 0.2, "rainy": 0.1})
+
+    counts = dataset.count_values("ground_truth.detections.label")
+    classes = sorted(counts, key=counts.get, reverse=True)[:5]
+
+    dataset.save_view("take100", dataset.take(100))
+
+    results = dataset.evaluate_detections(
+        "predictions",
+        gt_field="ground_truth",
+        eval_key="eval",
+    )
+
+By default, invoking methods on an |EvaluationResults| instance reports
+statistics across the entire evaluation:
+
+.. code-block:: python
+    :linenos:
+
+    # Full results
+    results.print_report(classes=classes)
+
+.. code-block:: text
+
+                  precision    recall  f1-score   support
+
+          person       0.52      0.94      0.67       716
+            kite       0.59      0.88      0.71       140
+             car       0.18      0.80      0.29        61
+            bird       0.65      0.78      0.71       110
+          carrot       0.09      0.74      0.16        47
+
+       micro avg       0.42      0.90      0.57      1074
+       macro avg       0.41      0.83      0.51      1074
+    weighted avg       0.51      0.90      0.64      1074
+
+However, you can use
+:meth:`use_subset() <fiftyone.utils.eval.base.BaseClassificationResults.use_subset>`
+to analyze the performance of the model on specific subsets of interest:
+
+.. tabs::
+
+  .. group-tab:: Sunny samples
+
+    .. code-block:: python
+        :linenos:
+
+        # Sunny samples
+        subset_def = dict(type="field", field="tags", value="sunny")
+        with results.use_subset(subset_def):
+            results.print_report(classes=classes)
+
+    .. code-block:: text
+
+                      precision    recall  f1-score   support
+
+              person       1.00      0.93      0.96       495
+                kite       1.00      0.90      0.95        62
+                 car       1.00      0.69      0.81        35
+                bird       1.00      0.78      0.88       104
+              carrot       1.00      0.69      0.82        36
+
+           micro avg       1.00      0.88      0.94       732
+           macro avg       1.00      0.80      0.88       732
+        weighted avg       1.00      0.88      0.94       732
+
+  .. group-tab:: Small objects
+
+    .. code-block:: python
+        :linenos:
+
+        # Small objects
+        bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
+        small_objects = bbox_area <= 0.05
+        subset_def = dict(type="attribute", expr=small_objects)
+        with results.use_subset(subset_def):
+            results.print_report(classes=classes)
+
+    .. code-block:: text
+
+                      precision    recall  f1-score   support
+
+              person       1.00      0.87      0.93       324
+                kite       1.00      0.76      0.87        72
+                 car       1.00      0.79      0.88        56
+                bird       1.00      0.52      0.69        46
+              carrot       1.00      0.75      0.86        40
+
+           micro avg       1.00      0.81      0.89       538
+           macro avg       1.00      0.74      0.84       538
+        weighted avg       1.00      0.81      0.89       538
+
+  .. group-tab:: Saved view
+
+    .. code-block:: python
+        :linenos:
+
+        # Saved view
+        subset_def = dict(type="view", view="take100")
+        with results.use_subset(subset_def):
+            results.print_report(classes=classes)
+
+    .. code-block:: text
+
+                      precision    recall  f1-score   support
+
+              person       1.00      0.94      0.97       292
+                kite       1.00      0.93      0.97        15
+                 car       1.00      0.87      0.93        15
+                bird       1.00      0.35      0.52        23
+              carrot       1.00      0.67      0.80         9
+
+           micro avg       1.00      0.89      0.94       354
+           macro avg       1.00      0.75      0.84       354
+        weighted avg       1.00      0.89      0.93       354
+
+  .. group-tab:: Compound subset
+
+    .. code-block:: python
+        :linenos:
+
+        # Sunny samples + small objects
+        subset_def = [
+            dict(type="field", field="tags", value="sunny"),
+            dict(type="attribute", expr=small_objects),
+        ]
+        with results.use_subset(subset_def):
+            results.print_report(classes=classes)
+
+    .. code-block:: text
+
+                      precision    recall  f1-score   support
+
+              person       1.00      0.85      0.92       227
+                kite       1.00      0.87      0.93        45
+                 car       1.00      0.66      0.79        32
+                bird       1.00      0.48      0.65        42
+              carrot       1.00      0.71      0.83        31
+
+           micro avg       1.00      0.79      0.88       377
+           macro avg       1.00      0.71      0.82       377
+        weighted avg       1.00      0.79      0.87       377
+
+Refer to
+:meth:`use_subset() <fiftyone.utils.eval.base.BaseClassificationResults.use_subset>`
+and
+:func:`get_subset_view() <fiftyone.utils.eval.base.get_subset_view>` for a
+complete description of the supported syntax for defining subsets to analyze.
+
 .. _managing-evaluations:
 
 Managing evaluations
@@ -254,8 +410,25 @@ The example below demonstrates the basic interface:
     # This will remove any evaluation data that was populated on your dataset
     dataset.delete_evaluation("still_eval")
 
-The sections below discuss evaluating various types of predictions in more
-detail.
+.. _model-evaluation-panel:
+
+Model Evaluation panel __SUB_NEW__
+__________________________________
+
+When you load a dataset in the App that contains one or more
+:ref:`evaluations <evaluating-models>`, you can open the
+:ref:`Model Evaluation panel <app-model-evaluation-panel>` to visualize and
+interactively explore the evaluation results in the App:
+
+.. image:: /images/app/model-evaluation-compare.gif
+    :alt: model-evaluation-compare
+    :align: center
+
+.. note::
+
+    Did you know? With :ref:`FiftyOne Enterprise <fiftyone-enterprise>` you can execute
+    model evaluations natively from the App
+    :ref:`in the background <delegated-operations>` while you work.
 
 .. _evaluating-regressions:
 
