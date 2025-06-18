@@ -564,6 +564,7 @@ function PredictionStatisticsTable(props) {
   const { subsets, subsets_data } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
   const { key, compareKey } = data?.view;
+  const width = getWidth(props);
 
   return (
     <Stack>
@@ -571,7 +572,7 @@ function PredictionStatisticsTable(props) {
       <EvaluationTable variant="card" size="medium">
         <TableHead>
           <TableRow>
-            <TableCell>Subset</TableCell>
+            <TableCell sx={{ width }}>Subset</TableCell>
             <TableCell>{key}</TableCell>
             {compareKey && <TableCell>{compareKey}</TableCell>}
             {compareKey && <TableCell>Difference</TableCell>}
@@ -730,6 +731,7 @@ function ModelPerformanceMetricsTable(props) {
   const compareSubsetsData = compareScenario?.subsets_data;
   const [subset, setSubset] = useState(subsets[0]);
   const { key, compareKey } = data?.view;
+  const width = getWidth(props);
 
   return (
     <Stack>
@@ -744,7 +746,7 @@ function ModelPerformanceMetricsTable(props) {
       <EvaluationTable variant="card" size="medium">
         <TableHead>
           <TableRow>
-            <TableCell>Metric</TableCell>
+            <TableCell sx={{ width }}>Metric</TableCell>
             <TableCell>{key}</TableCell>
             {compareKey && <TableCell>{compareKey}</TableCell>}
             {compareKey && <TableCell>Difference</TableCell>}
@@ -828,6 +830,7 @@ function ConfidenceDistributionTable(props) {
   const compareSubsetsData = compareScenario?.subsets_data;
   const [metric, setMetric] = useState("avg");
   const metricLabel = CONFIDENCE_DISTRIBUTION_METRICS[metric].label;
+  const width = getWidth(props);
 
   return (
     <Stack>
@@ -853,7 +856,7 @@ function ConfidenceDistributionTable(props) {
       <EvaluationTable variant="card" size="medium">
         <TableHead>
           <TableRow>
-            <TableCell>Subset</TableCell>
+            <TableCell sx={{ width }}>Subset</TableCell>
             <TableCell>
               {key} ({metricLabel})
             </TableCell>
@@ -1703,6 +1706,11 @@ function getDefaultScenario(scenarios) {
 function getLegendProps(props) {
   const { key, compareKey } = props.data?.view || {};
   return { primaryKey: key, compareKey };
+}
+
+function getWidth(props) {
+  const { compareKey } = props.data?.view || {};
+  return compareKey ? "25%" : "50%";
 }
 
 const X_AXIS_TITLES = {
