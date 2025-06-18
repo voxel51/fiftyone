@@ -1,5 +1,4 @@
-import { styled } from "@mui/material";
-import { Table } from "@mui/material";
+import { styled, Table } from "@mui/material";
 
 export const EvaluationTable = styled(Table)(({ theme }) => ({
   ".MuiTableCell-root": {

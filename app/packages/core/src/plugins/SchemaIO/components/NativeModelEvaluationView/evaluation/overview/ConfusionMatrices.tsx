@@ -1,6 +1,6 @@
 import { Plot } from "@fiftyone/components/src/components/Plot";
 import { Box, Stack, Typography } from "@mui/material";
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import ColorSquare from "../../components/ColorSquare";
 import ConfusionMatrixConfig from "../../components/ConfusionMatrixConfig";
 import { COMPARE_KEY_COLOR, KEY_COLOR } from "../../constants";

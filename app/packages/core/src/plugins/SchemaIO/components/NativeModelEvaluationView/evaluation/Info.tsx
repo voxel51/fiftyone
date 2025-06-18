@@ -1,3 +1,4 @@
+import { formatValueAsNumber } from "@fiftyone/utilities";
 import {
   Card,
   Stack,
@@ -7,12 +8,9 @@ import {
   TableRow,
   Typography,
 } from "@mui/material";
-import React from "react";
-import EvaluationTable from "../components/EvaluationTable";
 import ColorSquare from "../components/ColorSquare";
+import EvaluationTable from "../components/EvaluationTable";
 import { COMPARE_KEY_COLOR, KEY_COLOR } from "../constants";
-import { formatValue } from "../utils";
-import { formatValueAsNumber } from "@fiftyone/utilities";
 
 export default function Info(props) {
   const { name, compareKey, evaluation, compareEvaluation } = props;
@@ -21,23 +19,13 @@ export default function Info(props) {
   const evaluationKey = evaluationInfo.key;
   const evaluationTimestamp = evaluationInfo.timestamp;
   const evaluationConfig = evaluationInfo.config;
-  const evaluationMetrics = evaluation.metrics;
   const evaluationType = evaluationConfig.type;
-  const evaluationMethod = evaluationConfig.method;
   const compareEvaluationInfo = compareEvaluation?.info || {};
   const compareEvaluationKey = compareEvaluationInfo?.key;
   const compareEvaluationTimestamp = compareEvaluationInfo?.timestamp;
   const compareEvaluationConfig = compareEvaluationInfo?.config || {};
-  const compareEvaluationMetrics = compareEvaluation?.metrics || {};
   const compareEvaluationType = compareEvaluationConfig.type;
   const isObjectDetection = evaluationType === "detection";
-  const isClassification = evaluationType === "classification";
-  const isSegmentation = evaluationType === "segmentation";
-  const isBinaryClassification =
-    evaluationType === "classification" && evaluationMethod === "binary";
-  const showTpFpFn = isObjectDetection || isBinaryClassification;
-  const isNoneBinaryClassification =
-    isClassification && evaluationMethod !== "binary";
   const infoRows = [
     {
       id: "evaluation_key",
