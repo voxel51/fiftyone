@@ -1165,6 +1165,7 @@ class ConfigureScenario(foo.Operator):
             types.Header(
                 label="Custom code",
                 divider=False,
+                doc="https://docs.voxel51.com/user_guide/app.html#app-scenario-analysis-custom-code",
             ),
         )
 
