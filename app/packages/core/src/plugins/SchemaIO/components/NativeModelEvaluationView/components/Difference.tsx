@@ -1,6 +1,5 @@
 import { ArrowDropDown, ArrowDropUp } from "@mui/icons-material";
 import { Box, Stack, Typography, useTheme } from "@mui/material";
-import React from "react";
 import { getNumericDifference } from "../utils";
 
 export default function Difference(props) {

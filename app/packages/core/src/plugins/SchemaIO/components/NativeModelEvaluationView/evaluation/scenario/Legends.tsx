@@ -1,5 +1,4 @@
 import { Stack, Typography } from "@mui/material";
-import React from "react";
 import ColorSquare from "../../components/ColorSquare";
 import {
   COMPARE_KEY_COLOR,

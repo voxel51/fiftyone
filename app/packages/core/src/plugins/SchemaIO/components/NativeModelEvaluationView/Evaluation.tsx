@@ -1,6 +1,7 @@
 import { useTrackEvent } from "@fiftyone/analytics";
 import { EditableLabel } from "@fiftyone/components";
 import { usePanelStatePartial } from "@fiftyone/spaces";
+import { useMutation } from "@fiftyone/state";
 import { ArrowBack, Close } from "@mui/icons-material";
 import {
   Box,
@@ -26,7 +27,6 @@ import Status from "./Status";
 import { tabStyles } from "./styles";
 import { ConcreteEvaluationType } from "./Types";
 import { computeSortedCompareKeys } from "./utils";
-import { useMutation } from "@fiftyone/state";
 
 export default function Evaluation(props: EvaluationProps) {
   const {
