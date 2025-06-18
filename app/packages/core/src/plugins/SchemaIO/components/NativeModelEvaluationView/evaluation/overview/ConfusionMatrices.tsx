@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import ColorSquare from "../../components/ColorSquare";
 import ConfusionMatrixConfig from "../../components/ConfusionMatrixConfig";
 import { COMPARE_KEY_COLOR, KEY_COLOR } from "../../constants";
-import { getMatrix } from "../../utils";
+import { getClasses, getMatrix } from "../../utils";
 import { PLOT_CONFIG_TYPE } from "./types";
 import { getConfigLabel } from "./utils";
 
@@ -41,6 +41,10 @@ export default function ConfusionMatrices(props) {
     evaluationMaskTargets,
     compareEvaluationMaskTargets,
   ]);
+  const classes = getClasses(
+    evaluation?.confusion_matrices,
+    evaluationMaskTargets
+  );
 
   return (
     <Box>
@@ -51,6 +55,7 @@ export default function ConfusionMatrices(props) {
         <ConfusionMatrixConfig
           config={confusionMatrixConfig}
           onSave={setConfusionMatrixConfig}
+          classes={classes}
         />
       </Stack>
       <Stack direction={"row"} key={compareKey}>
