@@ -1370,7 +1370,7 @@ supports:
     +--------------+----------------+-------------------------------+
     | E            | Ego-view       | Reset the camera to ego view  |
     +--------------+----------------+-------------------------------+
-    | R            | Render         | Open render preferences       |
+    | R            | Render         | Toggle render preferences     |
     +--------------+----------------+-------------------------------+
     | ESC          | Escape context | Escape the current context    |
     +--------------+----------------+-------------------------------+
@@ -1398,7 +1398,7 @@ the full colormap using the same strategy.
 .. _app-3d-dynamic-coloring:
 
 Dynamic point cloud coloring
----------------------------
+----------------------------
 
 FiftyOne now supports dynamic coloring of point clouds based on any attribute
 in your PCD file. This allows you to visualize and analyze point cloud data in
@@ -1429,7 +1429,7 @@ The color map selection follows this precedence order:
 1. Color map from browser storage (if previously overridden)
 2. Color map from dataset app config's color scheme, in this order:
    a. Explicit color map defined in `colorscales` array for the specific attribute
-   b. Default color map defined in `default_color_scale` if no explicit map exists
+   b. Default color map defined in `default_colorscale` if no explicit map exists
 3. Fallback color map (red-to-blue gradient)
 
 When defining color maps in the dataset app config, you must use the prefix
