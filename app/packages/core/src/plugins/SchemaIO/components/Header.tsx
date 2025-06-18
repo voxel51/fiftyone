@@ -1,6 +1,6 @@
 import { HelpTooltip, Markdown } from "@fiftyone/components";
-import { Box, Stack, StackProps, Typography } from "@mui/material";
-import React from "react";
+import { Help } from "@mui/icons-material";
+import { Box, Link, Stack, StackProps, Typography } from "@mui/material";
 import { ErrorView } from ".";
 import { getComponentProps } from "../utils";
 
@@ -9,6 +9,7 @@ export default function Header(props: HeaderProps) {
     label,
     description,
     caption,
+    doc,
     divider,
     Actions,
     sx = {},
@@ -70,6 +71,20 @@ export default function Header(props: HeaderProps) {
                 {label}
               </Markdown>
             )}
+            {doc && (
+              <Link
+                href={doc}
+                target="_blank"
+                sx={{ display: "flex", ml: 1 }}
+                {...getComponentProps(viewProps, "doc.link")}
+              >
+                <Help
+                  fontSize="small"
+                  color="secondary"
+                  {...getComponentProps(viewProps, "doc.icon")}
+                />
+              </Link>
+            )}
             {descriptionView === "tooltip" && (
               <HelpTooltip
                 title={description}
@@ -117,6 +132,7 @@ export type HeaderProps = {
   description?: string;
   caption?: string;
   divider?: boolean;
+  doc?: string;
   Actions?: JSX.Element;
   sx?: StackProps["sx"];
   variant?: "primary" | "secondary" | "tertiary";
