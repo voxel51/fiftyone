@@ -40,8 +40,7 @@ export default function Overview(props) {
   } = props;
   const [expanded, setExpanded] = usePanelStatePartial(
     `${name}_evaluation_overview_expanded`,
-    "summary",
-    true
+    "summary"
   );
   const [editNoteState, setEditNoteState] = useState({ open: false, note: "" });
   const [loadingCompare, setLoadingCompare] = useState(false);
@@ -158,6 +157,7 @@ export default function Overview(props) {
               loadView={loadView}
               evaluation={evaluation}
               compareEvaluation={compareEvaluation}
+              id={id}
             />
           </AccordionDetails>
         </Accordion>
@@ -183,6 +183,7 @@ export default function Overview(props) {
               compareKey={compareKey}
               evaluation={evaluation}
               compareEvaluation={compareEvaluation}
+              id={id}
             />
           </AccordionDetails>
         </Accordion>
@@ -209,6 +210,7 @@ export default function Overview(props) {
               loadView={loadView}
               name={name}
               compareKey={compareKey}
+              id={id}
             />
           </AccordionDetails>
         </Accordion>
@@ -235,6 +237,7 @@ export default function Overview(props) {
               name={name}
               compareKey={compareKey}
               loadView={loadView}
+              id={id}
             />
           </AccordionDetails>
         </Accordion>

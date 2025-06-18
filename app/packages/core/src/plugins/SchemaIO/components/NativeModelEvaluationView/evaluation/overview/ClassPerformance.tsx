@@ -1,5 +1,6 @@
 import { Dialog } from "@fiftyone/components";
 import { Plot } from "@fiftyone/components/src/components/Plot";
+import { usePanelStatePartial } from "@fiftyone/spaces";
 import { formatValueAsNumber } from "@fiftyone/utilities";
 import {
   InsertChartOutlined,
@@ -34,13 +35,17 @@ import { PLOT_CONFIG_DIALOG_TYPE, PLOT_CONFIG_TYPE } from "./types";
 import { getConfigLabel, useActiveFilter } from "./utils";
 
 export default function ClassPerformance(props) {
-  const { evaluation, compareEvaluation, loadView, name, compareKey } = props;
+  const { evaluation, compareEvaluation, loadView, name, compareKey, id } =
+    props;
   const [classPerformanceConfig, setClassPerformanceConfig] =
-    useState<PLOT_CONFIG_TYPE>({});
+    usePanelStatePartial<PLOT_CONFIG_TYPE>(`${id}_cpc`, {});
   const [classPerformanceDialogConfig, setClassPerformanceDialogConfig] =
     useState<PLOT_CONFIG_DIALOG_TYPE>(DEFAULT_BAR_CONFIG);
-  const [classMode, setClassMode] = useState("chart");
-  const [performanceClass, setPerformanceClass] = useState("precision");
+  const [classMode, setClassMode] = usePanelStatePartial(`${id}_cpvm`, "chart");
+  const [performanceClass, setPerformanceClass] = usePanelStatePartial(
+    `${id}_cpm`,
+    "precision"
+  );
   const evaluationMaskTargets = useMemo(() => {
     return evaluation?.mask_targets || {};
   }, [evaluation]);
@@ -133,8 +138,8 @@ export default function ClassPerformance(props) {
           </Select>
           <IconButton
             onClick={() => {
-              setClassPerformanceDialogConfig((state) => ({
-                ...state,
+              setClassPerformanceDialogConfig(() => ({
+                ...classPerformanceConfig,
                 open: true,
               }));
             }}
@@ -259,7 +264,9 @@ export default function ClassPerformance(props) {
         <Stack spacing={2} sx={{ p: 2 }}>
           <Stack direction="row" spacing={1}>
             <Settings />
-            <Typography>Display Options: Performance Per Class</Typography>
+            <Typography sx={{ fontSize: 18 }}>
+              Display Options: Performance Per Class
+            </Typography>
           </Stack>
           <Stack spacing={1} pt={1}>
             <Typography color="secondary">Sort by:</Typography>

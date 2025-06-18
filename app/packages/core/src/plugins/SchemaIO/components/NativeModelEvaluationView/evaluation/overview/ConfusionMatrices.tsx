@@ -1,6 +1,7 @@
 import { Plot } from "@fiftyone/components/src/components/Plot";
+import { usePanelStatePartial } from "@fiftyone/spaces";
 import { Box, Stack, Typography } from "@mui/material";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import ColorSquare from "../../components/ColorSquare";
 import ConfusionMatrixConfig from "../../components/ConfusionMatrixConfig";
 import { COMPARE_KEY_COLOR, KEY_COLOR } from "../../constants";
@@ -9,9 +10,10 @@ import { PLOT_CONFIG_TYPE } from "./types";
 import { getConfigLabel } from "./utils";
 
 export default function ConfusionMatrices(props) {
-  const { evaluation, compareEvaluation, name, compareKey, loadView } = props;
+  const { evaluation, compareEvaluation, name, compareKey, loadView, id } =
+    props;
   const [confusionMatrixConfig, setConfusionMatrixConfig] =
-    useState<PLOT_CONFIG_TYPE>({ log: true });
+    usePanelStatePartial<PLOT_CONFIG_TYPE>(`${id}_cmc`, { log: true });
 
   const evaluationMaskTargets = useMemo(() => {
     return evaluation?.mask_targets || {};

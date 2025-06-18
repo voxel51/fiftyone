@@ -87,23 +87,19 @@ export default function Scenarios(props) {
   const trackEvent = useTrackEvent();
   const [scenario, setScenario] = usePanelStatePartial(
     `${key}_scenario`,
-    getDefaultScenario(scenarios),
-    true
+    getDefaultScenario(scenarios)
   );
   const [mode, setMode] = usePanelStatePartial(
     `${key}_scenario_mode`,
-    "charts",
-    true
+    "charts"
   );
   const [selectedSubsets, setSelectedSubsets] = usePanelStatePartial(
     `${key}_scenario_subsets`,
-    ["all"],
-    true
+    ["all"]
   );
   const [differenceMode, setDifferenceMode] = usePanelStatePartial(
     `${key}_scenario_difference_mode`,
-    "percentage",
-    true
+    "percentage"
   );
 
   const updateScenario = useCallback(
@@ -727,9 +723,9 @@ function SelectSubset(props) {
 
 function ModelPerformanceMetricsTable(props) {
   const { scenario, compareScenario, data, differenceMode } = props;
-  const { subsets, subsets_data } = scenario;
+  const { subsets, subsets_data, id } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
-  const [subset, setSubset] = useState(subsets[0]);
+  const [subset, setSubset] = usePanelStatePartial(`${id}_mpts`, subsets[0]);
   const { key, compareKey } = data?.view;
   const width = getWidth(props);
 
@@ -828,7 +824,7 @@ function ConfidenceDistributionTable(props) {
   const { key, compareKey } = data?.view;
   const { subsets, subsets_data } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
-  const [metric, setMetric] = useState("avg");
+  const [metric, setMetric] = usePanelStatePartial("cdt_mode", "avg");
   const metricLabel = CONFIDENCE_DISTRIBUTION_METRICS[metric].label;
   const width = getWidth(props);
 
@@ -838,7 +834,7 @@ function ConfidenceDistributionTable(props) {
         <Typography>Confidence Distribution</Typography>
         <EvaluationSelect
           size="small"
-          defaultValue="avg"
+          defaultValue={metric}
           onChange={(e) => {
             setMetric(e.target.value);
           }}
@@ -999,7 +995,7 @@ function PredictionStatisticsChart(props) {
   const { scenario, compareScenario, loadView, trackEvent } = props;
   const { subsets, subsets_data } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
-  const [metric, setMetric] = useState("all");
+  const [metric, setMetric] = usePanelStatePartial("ps_metric", "all");
   const showAllMetric = metric === "all";
   const { key, compareKey } = props.data?.view || {};
 
@@ -1182,8 +1178,8 @@ function PredictionStatisticsChart(props) {
 function ScenarioModelPerformanceChart(props) {
   const theme = useTheme();
   const { scenario, compareScenario } = props;
-  const { subsets } = scenario;
-  const [subset, setSubset] = useState(subsets[0]);
+  const { subsets, id } = scenario;
+  const [subset, setSubset] = usePanelStatePartial(`${id}_mps`, subsets[0]);
   const subsetData = scenario.subsets_data[subset];
   const compareSubsetData = compareScenario?.subsets_data[subset];
   const { metrics } = subsetData;
@@ -1261,11 +1257,13 @@ function ScenarioModelPerformanceChart(props) {
 
 function ConfusionMatrixChart(props) {
   const { scenario, compareScenario, loadView, trackEvent } = props;
-  const { subsets } = scenario;
-  const [subset, setSubset] = useState(subsets[0]);
+  const { subsets, id } = scenario;
+  const [subset, setSubset] = usePanelStatePartial(`${id}_cms`, subsets[0]);
   const subsetData = scenario.subsets_data[subset];
   const compareSubsetData = compareScenario?.subsets_data[subset];
-  const [config, setConfig] = useState({ log: true });
+  const [config, setConfig] = usePanelStatePartial(`${subset}_matrix_config`, {
+    log: true,
+  });
   const evaluationMaskTargets = props.evaluation?.mask_targets || {};
   const compareEvaluationMaskTargets =
     props.compareEvaluation?.mask_targets || {};
@@ -1304,6 +1302,7 @@ function ConfusionMatrixChart(props) {
             setSelected={setSubset}
           />
           <ConfusionMatrixConfig
+            key={subset}
             config={config}
             onSave={setConfig}
             classes={classes}
@@ -1375,7 +1374,7 @@ function ConfidenceDistributionChart(props) {
   const { subsets, subsets_data } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
   const { key, compareKey } = props.data?.view;
-  const [mode, setMode] = useState("overview");
+  const [mode, setMode] = usePanelStatePartial("cd_mode", "overview");
   const isOverview = mode === "overview";
 
   const plotData: any = [];
@@ -1561,7 +1560,10 @@ function MetricPerformanceChart(props) {
   const { scenario, compareScenario, loadView, trackEvent } = props;
   const { subsets, subsets_data } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
-  const [metric, setMetric] = useState("average_confidence");
+  const [metric, setMetric] = usePanelStatePartial(
+    "mp_mode",
+    "average_confidence"
+  );
   const { key, compareKey } = props.data?.view;
 
   const y = subsets.map((subset) => {

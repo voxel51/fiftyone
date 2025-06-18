@@ -47,8 +47,7 @@ export default function Evaluation(props: EvaluationProps) {
   } = props;
   const [activeTab, setActiveTab] = usePanelStatePartial(
     `${name}_evaluation_tab`,
-    "overview",
-    true
+    "overview"
   );
   const trackEvent = useTrackEvent();
   const [loadingCompare, setLoadingCompare] = useState(false);
