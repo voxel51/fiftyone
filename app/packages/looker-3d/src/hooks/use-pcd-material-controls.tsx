@@ -273,7 +273,7 @@ export const usePcdMaterialControls = (
               }}
               onClick={() =>
                 setColormapOverride((prev) => ({
-                  ...prev,
+                  ...(prev ?? {}),
                   [shadeBy]: null,
                 }))
               }
