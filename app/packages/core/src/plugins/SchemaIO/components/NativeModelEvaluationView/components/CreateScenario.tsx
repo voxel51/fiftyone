@@ -5,8 +5,6 @@ import { usePanelId } from "@fiftyone/spaces";
 import { useMutation } from "@fiftyone/state";
 import Add from "@mui/icons-material/Add";
 import { Button } from "@mui/material";
-import React from "react";
-
 export default function CreateScenario(props: CreateScenarioPropsType) {
   const {
     evalKey,

@@ -2,7 +2,6 @@ import { MuiButton } from "@fiftyone/components";
 import { useMutation } from "@fiftyone/state";
 import { Add } from "@mui/icons-material";
 import { Box } from "@mui/material";
-import React from "react";
 
 export default function Evaluate(props: EvaluateProps) {
   const { onEvaluate, permissions } = props;

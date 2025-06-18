@@ -27,7 +27,7 @@ import {
   Typography,
   useTheme,
 } from "@mui/material";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { atom, useRecoilState } from "recoil";
 import AlertView from "../../../AlertView";
 import ConfusionMatrixConfig from "../../components/ConfusionMatrixConfig";
@@ -43,12 +43,11 @@ import {
   SECONDARY_KEY_COLOR,
   TERTIARY_KEY_COLOR,
 } from "../../constants";
-import { formatValue, getClasses, getMatrix } from "../../utils";
+import { getClasses, getMatrix } from "../../utils";
 import Actions from "./Actions";
 import Legends from "./Legends";
 import LoadingError from "./LoadingError";
 import { getSubsetDef } from "./utils";
-import { m } from "framer-motion";
 
 const CONFIGURE_SCENARIO_ACTION = "model_evaluation_configure_scenario";
 

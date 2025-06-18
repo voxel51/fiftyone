@@ -1,7 +1,6 @@
 import { ColoredDot } from "@fiftyone/components";
 import { useMutation } from "@fiftyone/state";
 import { Chip, MenuItem, Select, Stack, Typography } from "@mui/material";
-import React from "react";
 import { useTriggerEvent } from "./utils";
 
 export default function Status(props: StatusProps) {
