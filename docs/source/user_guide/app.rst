@@ -2312,8 +2312,8 @@ contains the ground truth labels in a specified
 For example, in the example below we define a scenario that contains two
 subsets:
 
--   Samples in the `indoor` saved view
--   Samples in the `outdoor` saved view
+-   Samples in the `indoor scenes` saved view
+-   Samples in the `outdoor scenes` saved view
 
 .. image:: /images/app/scenario-analysis-create-saved-views.gif
     :alt: scenario-analysis-create-saved-views
