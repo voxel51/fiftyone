@@ -192,7 +192,7 @@ programmatically setting
 is automatically updated to show the cell counts for only those objects that
 are included in the current view.
 
-.. _analyzing-scenerios:
+.. _analyzing-scenarios:
 
 Analyzing scenarios  __SUB_NEW__
 --------------------------------
@@ -204,7 +204,7 @@ Analyzing scenarios  __SUB_NEW__
 
 The :meth:`use_subset() <fiftyone.utils.eval.base.BaseClassificationResults.use_subset>`
 method allows you to evaluate the performance of your model under specific
-scenarios, i.e., subsets of the overall datasset on which evaluation was
+scenarios, i.e., subsets of the overall dataset on which evaluation was
 performed.
 
 Consider the following example:

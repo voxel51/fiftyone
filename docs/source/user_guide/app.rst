@@ -2130,7 +2130,7 @@ Scenario analysis __SUB_NEW__
 _____________________________
 
 When evaluating models, it is often useful to deep dive into the behavior of
-your models in different scenerios. This technique can be extremely useful in
+your models in different scenarios. This technique can be extremely useful in
 a number of ways, including to:
 
 -   Uncover edge cases that need more representation in your training data
