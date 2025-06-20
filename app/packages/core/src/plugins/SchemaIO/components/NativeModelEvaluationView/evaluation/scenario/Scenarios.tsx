@@ -43,12 +43,11 @@ import {
   SECONDARY_KEY_COLOR,
   TERTIARY_KEY_COLOR,
 } from "../../constants";
-import { formatValue, getClasses, getMatrix } from "../../utils";
+import { getClasses, getMatrix } from "../../utils";
 import Actions from "./Actions";
 import Legends from "./Legends";
 import LoadingError from "./LoadingError";
 import { getSubsetDef } from "./utils";
-import { m } from "framer-motion";
 
 const CONFIGURE_SCENARIO_ACTION = "model_evaluation_configure_scenario";
 
@@ -88,23 +87,19 @@ export default function Scenarios(props) {
   const trackEvent = useTrackEvent();
   const [scenario, setScenario] = usePanelStatePartial(
     `${key}_scenario`,
-    getDefaultScenario(scenarios),
-    true
+    getDefaultScenario(scenarios)
   );
   const [mode, setMode] = usePanelStatePartial(
     `${key}_scenario_mode`,
-    "charts",
-    true
+    "charts"
   );
   const [selectedSubsets, setSelectedSubsets] = usePanelStatePartial(
     `${key}_scenario_subsets`,
-    ["all"],
-    true
+    ["all"]
   );
   const [differenceMode, setDifferenceMode] = usePanelStatePartial(
     `${key}_scenario_difference_mode`,
-    "percentage",
-    true
+    "percentage"
   );
 
   const updateScenario = useCallback(
@@ -565,6 +560,7 @@ function PredictionStatisticsTable(props) {
   const { subsets, subsets_data } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
   const { key, compareKey } = data?.view;
+  const width = getWidth(props);
 
   return (
     <Stack>
@@ -572,10 +568,10 @@ function PredictionStatisticsTable(props) {
       <EvaluationTable variant="card" size="medium">
         <TableHead>
           <TableRow>
-            <TableCell>Subset</TableCell>
-            <TableCell>{key}</TableCell>
-            {compareKey && <TableCell>{compareKey}</TableCell>}
-            {compareKey && <TableCell>Difference</TableCell>}
+            <TableCell sx={{ width }}>Subset</TableCell>
+            <TableCell sx={{ width }}>{key}</TableCell>
+            {compareKey && <TableCell sx={{ width }}>{compareKey}</TableCell>}
+            {compareKey && <TableCell sx={{ width }}>Difference</TableCell>}
           </TableRow>
         </TableHead>
         {subsets.map((subset) => {
@@ -673,14 +669,12 @@ function PredictionStatisticsTable(props) {
                         compareValue={compareMetrics.fp}
                         mode={differenceMode}
                         arrow
-                        lesserIsBetter
                       />
                       <Difference
                         value={metrics.fn}
                         compareValue={compareMetrics.fn}
                         mode={differenceMode}
                         arrow
-                        lesserIsBetter
                       />
                     </Stack>
                   ) : (
@@ -727,10 +721,11 @@ function SelectSubset(props) {
 
 function ModelPerformanceMetricsTable(props) {
   const { scenario, compareScenario, data, differenceMode } = props;
-  const { subsets, subsets_data } = scenario;
+  const { subsets, subsets_data, id } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
-  const [subset, setSubset] = useState(subsets[0]);
+  const [subset, setSubset] = usePanelStatePartial(`${id}_mpts`, subsets[0]);
   const { key, compareKey } = data?.view;
+  const width = getWidth(props);
 
   return (
     <Stack>
@@ -745,10 +740,10 @@ function ModelPerformanceMetricsTable(props) {
       <EvaluationTable variant="card" size="medium">
         <TableHead>
           <TableRow>
-            <TableCell>Metric</TableCell>
-            <TableCell>{key}</TableCell>
-            {compareKey && <TableCell>{compareKey}</TableCell>}
-            {compareKey && <TableCell>Difference</TableCell>}
+            <TableCell sx={{ width }}>Metric</TableCell>
+            <TableCell sx={{ width }}>{key}</TableCell>
+            {compareKey && <TableCell sx={{ width }}>{compareKey}</TableCell>}
+            {compareKey && <TableCell sx={{ width }}>Difference</TableCell>}
           </TableRow>
         </TableHead>
         {MODEL_PERFORMANCE_METRICS.map(({ label, key }) => {
@@ -796,7 +791,6 @@ function ModelPerformanceMetricsTable(props) {
                       compareValue={compareMetrics[key]}
                       mode={differenceMode}
                       arrow
-                      lesserIsBetter
                     />
                   ) : (
                     <CircularProgress size={16} />
@@ -827,8 +821,10 @@ function ConfidenceDistributionTable(props) {
   const { key, compareKey } = data?.view;
   const { subsets, subsets_data } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
-  const [metric, setMetric] = useState("avg");
+  const [metric, setMetric] = usePanelStatePartial("cdt_mode", "avg");
   const metricLabel = CONFIDENCE_DISTRIBUTION_METRICS[metric].label;
+  const width = getWidth(props);
+  const lesserIsBetter = metric === "std";
 
   return (
     <Stack>
@@ -836,7 +832,7 @@ function ConfidenceDistributionTable(props) {
         <Typography>Confidence Distribution</Typography>
         <EvaluationSelect
           size="small"
-          defaultValue="avg"
+          defaultValue={metric}
           onChange={(e) => {
             setMetric(e.target.value);
           }}
@@ -854,16 +850,18 @@ function ConfidenceDistributionTable(props) {
       <EvaluationTable variant="card" size="medium">
         <TableHead>
           <TableRow>
-            <TableCell>Subset</TableCell>
-            <TableCell>
+            <TableCell sx={{ width }}>Subset</TableCell>
+            <TableCell sx={{ width }}>
               {key} ({metricLabel})
             </TableCell>
             {compareKey && (
-              <TableCell>
+              <TableCell sx={{ width }}>
                 {compareKey} ({metricLabel})
               </TableCell>
             )}
-            {compareKey && <TableCell>Difference ({metricLabel})</TableCell>}
+            {compareKey && (
+              <TableCell sx={{ width }}>Difference ({metricLabel})</TableCell>
+            )}
           </TableRow>
         </TableHead>
         {subsets.map((subset) => {
@@ -884,6 +882,7 @@ function ConfidenceDistributionTable(props) {
                     value={confidence_distribution[metric]}
                     compareValue={compareConfidenceDistribution?.[metric]}
                     mode="trophy"
+                    lesserIsBetter={lesserIsBetter}
                   />
                 </Stack>
               </TableCell>
@@ -900,6 +899,7 @@ function ConfidenceDistributionTable(props) {
                         value={compareConfidenceDistribution[metric]}
                         compareValue={confidence_distribution[metric]}
                         mode="trophy"
+                        lesserIsBetter={lesserIsBetter}
                       />
                     </Stack>
                   ) : (
@@ -915,7 +915,6 @@ function ConfidenceDistributionTable(props) {
                       compareValue={compareConfidenceDistribution[metric]}
                       mode={differenceMode}
                       arrow
-                      lesserIsBetter
                     />
                   ) : (
                     <CircularProgress size={16} />
@@ -997,7 +996,7 @@ function PredictionStatisticsChart(props) {
   const { scenario, compareScenario, loadView, trackEvent } = props;
   const { subsets, subsets_data } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
-  const [metric, setMetric] = useState("all");
+  const [metric, setMetric] = usePanelStatePartial("ps_metric", "all");
   const showAllMetric = metric === "all";
   const { key, compareKey } = props.data?.view || {};
 
@@ -1014,86 +1013,138 @@ function PredictionStatisticsChart(props) {
     fp: { main: fp, compare: compareFP },
     fn: { main: fn, compare: compareFN },
   };
+  const metricsBySubset = {};
+
+  const traceOne: any = { values: [], colors: [], keys: [] };
+  const traceTwo: any = { values: [], colors: [], keys: [] };
+  const traceThree: any = { values: [], colors: [], keys: [] };
+  const compareTraceOne: any = { values: [], colors: [], keys: [] };
+  const compareTraceTwo: any = { values: [], colors: [], keys: [] };
+  const compareTraceThree: any = { values: [], colors: [], keys: [] };
 
   for (const subset of subsets) {
     const metrics = subsets_data[subset].metrics;
     const compareMetrics = compareSubsetsData?.[subset]?.metrics;
+    const traces = [
+      { value: metrics.tp, color: KEY_COLOR, key: "tp" },
+      { value: metrics.fp, color: SECONDARY_KEY_COLOR, key: "fp" },
+      { value: metrics.fn, color: TERTIARY_KEY_COLOR, key: "fn" },
+    ].sort((a, b) => b.value - a.value);
+
+    traceOne.values.push(traces[0].value);
+    traceOne.colors.push(traces[0].color);
+    traceOne.keys.push(traces[0].key);
+    traceTwo.values.push(traces[1].value);
+    traceTwo.colors.push(traces[1].color);
+    traceTwo.keys.push(traces[1].key);
+    traceThree.values.push(traces[2].value);
+    traceThree.colors.push(traces[2].color);
+    traceThree.keys.push(traces[2].key);
+
     tp.push(metrics.tp);
     fp.push(metrics.fp);
     fn.push(metrics.fn);
+
+    metricsBySubset[subset] = {
+      tp: metrics.tp,
+      fp: metrics.fp,
+      fn: metrics.fn,
+    };
+
     if (compareMetrics) {
       compareTP.push(compareMetrics.tp);
       compareFP.push(compareMetrics.fp);
       compareFN.push(compareMetrics.fn);
+
+      metricsBySubset[subset] = {
+        ...metricsBySubset[subset],
+        compareTP: compareMetrics.tp,
+        compareFP: compareMetrics.fp,
+        compareFN: compareMetrics.fn,
+      };
+
+      const compareTraces = [
+        { value: compareMetrics.tp, color: COMPARE_KEY_COLOR, key: "tp" },
+        {
+          value: compareMetrics.fp,
+          color: COMPARE_KEY_SECONDARY_COLOR,
+          key: "fp",
+        },
+        {
+          value: compareMetrics.fn,
+          color: COMPARE_KEY_TERTIARY_COLOR,
+          key: "fn",
+        },
+      ].sort((a, b) => b.value - a.value);
+      compareTraceOne.values.push(compareTraces[0].value);
+      compareTraceOne.colors.push(compareTraces[0].color);
+      compareTraceOne.keys.push(compareTraces[0].key);
+      compareTraceTwo.values.push(compareTraces[1].value);
+      compareTraceTwo.colors.push(compareTraces[1].color);
+      compareTraceTwo.keys.push(compareTraces[1].key);
+      compareTraceThree.values.push(compareTraces[2].value);
+      compareTraceThree.colors.push(compareTraces[2].color);
+      compareTraceThree.keys.push(compareTraces[2].key);
     }
   }
-
   if (showAllMetric) {
     const tpTrace = {
       x: subsets,
-      y: tp,
-      name: `${key} True Positives`,
-      id: "tp",
+      y: traceOne.values,
+      keys: traceOne.keys,
       type: "bar",
       offsetgroup: 0,
-      marker: { color: KEY_COLOR },
+      marker: { color: traceOne.colors },
       hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
     };
 
     const fpTrace = {
       x: subsets,
-      y: fp,
-      name: `${key} False Positives`,
-      id: "fp",
+      y: traceTwo.values,
       type: "bar",
       offsetgroup: 0,
-      marker: { color: SECONDARY_KEY_COLOR },
+      marker: { color: traceTwo.colors },
       hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
     };
     const fnTrace = {
       x: subsets,
-      y: fn,
-      name: `${key} False Negatives`,
-      id: "fn",
+      y: traceThree.values,
       type: "bar",
       offsetgroup: 0,
-      marker: { color: TERTIARY_KEY_COLOR },
+      marker: { color: traceThree.colors },
       hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
     };
 
     const compareTPTrace = {
       x: subsets,
-      y: compareTP,
-      name: `${compareKey} True Positives`,
-      id: "tp",
+      y: compareTraceOne.values,
+      keys: compareTraceOne.keys,
       isCompare: true,
       type: "bar",
       offsetgroup: 1,
-      marker: { color: COMPARE_KEY_COLOR },
+      marker: { color: compareTraceOne.colors },
       hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
     };
 
     const compareFPTrace = {
       x: subsets,
-      y: compareFP,
-      name: `${compareKey} False Positives`,
-      id: "fp",
+      y: compareTraceTwo.values,
+      keys: compareTraceTwo.keys,
       isCompare: true,
       type: "bar",
       offsetgroup: 1,
-      marker: { color: COMPARE_KEY_SECONDARY_COLOR },
+      marker: { color: compareTraceTwo.colors },
       hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
     };
 
     const compareFNTrace = {
       x: subsets,
-      y: compareFN,
-      name: `${compareKey} False Negatives`,
-      id: "fn",
+      y: compareTraceThree.values,
+      keys: compareTraceThree.keys,
       isCompare: true,
       type: "bar",
       offsetgroup: 1,
-      marker: { color: COMPARE_KEY_TERTIARY_COLOR },
+      marker: { color: compareTraceThree.colors },
       hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
     };
     plotData = [tpTrace, fpTrace, fnTrace];
@@ -1154,7 +1205,7 @@ function PredictionStatisticsChart(props) {
 
       <Plot
         data={plotData}
-        layout={showAllMetric ? { barmode: "stack" } : {}}
+        layout={showAllMetric ? { barmode: "overlay" } : {}}
         onClick={({ points }) => {
           const firstPoint = points[0];
           const { id, isCompare } = firstPoint.data;
@@ -1166,6 +1217,29 @@ function PredictionStatisticsChart(props) {
             plotName: "prediction_statistics",
           });
           loadView("field", { field: id, subset_def: subsetDef });
+        }}
+        tooltip={(tooltip) => {
+          const [point] = tooltip.points;
+          const { x, y, data } = point;
+          const isCompare = data.offsetgroup === 1;
+          const metrics = metricsBySubset[x];
+          return {
+            label: x,
+            data: [
+              {
+                label: "True Positives",
+                value: isCompare ? metrics.compareTP : metrics.tp,
+              },
+              {
+                label: "False Positives",
+                value: isCompare ? metrics.compareFP : metrics.fp,
+              },
+              {
+                label: "False Negatives",
+                value: isCompare ? metrics.compareFN : metrics.fn,
+              },
+            ].sort((a, b) => b.value - a.value),
+          };
         }}
       />
       <Legends
@@ -1180,8 +1254,8 @@ function PredictionStatisticsChart(props) {
 function ScenarioModelPerformanceChart(props) {
   const theme = useTheme();
   const { scenario, compareScenario } = props;
-  const { subsets } = scenario;
-  const [subset, setSubset] = useState(subsets[0]);
+  const { subsets, id } = scenario;
+  const [subset, setSubset] = usePanelStatePartial(`${id}_mps`, subsets[0]);
   const subsetData = scenario.subsets_data[subset];
   const compareSubsetData = compareScenario?.subsets_data[subset];
   const { metrics } = subsetData;
@@ -1259,11 +1333,13 @@ function ScenarioModelPerformanceChart(props) {
 
 function ConfusionMatrixChart(props) {
   const { scenario, compareScenario, loadView, trackEvent } = props;
-  const { subsets } = scenario;
-  const [subset, setSubset] = useState(subsets[0]);
+  const { subsets, id } = scenario;
+  const [subset, setSubset] = usePanelStatePartial(`${id}_cms`, subsets[0]);
   const subsetData = scenario.subsets_data[subset];
   const compareSubsetData = compareScenario?.subsets_data[subset];
-  const [config, setConfig] = useState({ log: true });
+  const [config, setConfig] = usePanelStatePartial(`${subset}_matrix_config`, {
+    log: true,
+  });
   const evaluationMaskTargets = props.evaluation?.mask_targets || {};
   const compareEvaluationMaskTargets =
     props.compareEvaluation?.mask_targets || {};
@@ -1302,6 +1378,7 @@ function ConfusionMatrixChart(props) {
             setSelected={setSubset}
           />
           <ConfusionMatrixConfig
+            key={subset}
             config={config}
             onSave={setConfig}
             classes={classes}
@@ -1373,7 +1450,7 @@ function ConfidenceDistributionChart(props) {
   const { subsets, subsets_data } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
   const { key, compareKey } = props.data?.view;
-  const [mode, setMode] = useState("overview");
+  const [mode, setMode] = usePanelStatePartial("cd_mode", "overview");
   const isOverview = mode === "overview";
 
   const plotData: any = [];
@@ -1559,7 +1636,10 @@ function MetricPerformanceChart(props) {
   const { scenario, compareScenario, loadView, trackEvent } = props;
   const { subsets, subsets_data } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
-  const [metric, setMetric] = useState("average_confidence");
+  const [metric, setMetric] = usePanelStatePartial(
+    "mp_mode",
+    "average_confidence"
+  );
   const { key, compareKey } = props.data?.view;
 
   const y = subsets.map((subset) => {
@@ -1704,6 +1784,11 @@ function getDefaultScenario(scenarios) {
 function getLegendProps(props) {
   const { key, compareKey } = props.data?.view || {};
   return { primaryKey: key, compareKey };
+}
+
+function getWidth(props) {
+  const { compareKey } = props.data?.view || {};
+  return compareKey ? "25%" : "50%";
 }
 
 const X_AXIS_TITLES = {

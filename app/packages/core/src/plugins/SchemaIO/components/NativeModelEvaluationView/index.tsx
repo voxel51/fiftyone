@@ -2,7 +2,7 @@ import { PanelCTA } from "@fiftyone/components";
 import { constants } from "@fiftyone/utilities";
 import { Box } from "@mui/material";
 import React, { useCallback, useMemo } from "react";
-import { useRecoilState } from "recoil";
+import { useRecoilState, useSetRecoilState } from "recoil";
 import ConfirmationDialog from "./ConfirmationDialog";
 import Evaluate from "./Evaluate";
 import Evaluation from "./Evaluation";
@@ -16,11 +16,9 @@ import {
 const TRY_LINK = "http://voxel51.com/try-evaluation";
 
 export default function NativeModelEvaluationView(props) {
-  const { data = {}, schema, onChange, layout } = props;
+  const { data = {}, schema, onChange } = props;
   const [openDialog, setOpenDialog] = useRecoilState(openModelEvalDialog);
-  const [selectedEvaluation, setSelectedEvaluation] = useRecoilState(
-    selectedModelEvaluation
-  );
+  const setSelectedEvaluation = useSetRecoilState(selectedModelEvaluation);
   const { view } = schema;
   const {
     on_change_view,

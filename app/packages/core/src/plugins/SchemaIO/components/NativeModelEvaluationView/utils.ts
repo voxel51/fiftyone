@@ -1,10 +1,10 @@
 import { usePanelEvent } from "@fiftyone/operators";
 import { usePanelId } from "@fiftyone/spaces";
+import { formatValueAsNumber } from "@fiftyone/utilities";
 import { capitalize } from "lodash";
 import { useCallback } from "react";
 import { atom } from "recoil";
 import { NONE_CLASS } from "./constants";
-import { formatValueAsNumber } from "@fiftyone/utilities";
 
 export function useTriggerEvent() {
   const panelId = usePanelId();

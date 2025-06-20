@@ -1,5 +1,7 @@
+import { useTrackEvent } from "@fiftyone/analytics";
 import { Dialog } from "@fiftyone/components";
-import { editingFieldAtom } from "@fiftyone/state";
+import { usePanelStatePartial } from "@fiftyone/spaces";
+import { editingFieldAtom, useMutation } from "@fiftyone/state";
 import { EditNote, ExpandMore } from "@mui/icons-material";
 import {
   Accordion,
@@ -14,7 +16,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSetRecoilState } from "recoil";
 import Error from "../../Error";
 import EvaluationNotes from "../../EvaluationNotes";
@@ -23,9 +25,6 @@ import ClassPerformance from "./ClassPerformance";
 import ConfusionMatrices from "./ConfusionMatrices";
 import MetricPerformance from "./MetricPerformance";
 import Summary from "./Summary";
-import { useTrackEvent } from "@fiftyone/analytics";
-import { usePanelStatePartial } from "@fiftyone/spaces";
-import { useMutation } from "@fiftyone/state";
 
 export default function Overview(props) {
   const {
@@ -41,8 +40,7 @@ export default function Overview(props) {
   } = props;
   const [expanded, setExpanded] = usePanelStatePartial(
     `${name}_evaluation_overview_expanded`,
-    "summary",
-    true
+    "summary"
   );
   const [editNoteState, setEditNoteState] = useState({ open: false, note: "" });
   const [loadingCompare, setLoadingCompare] = useState(false);
@@ -159,6 +157,7 @@ export default function Overview(props) {
               loadView={loadView}
               evaluation={evaluation}
               compareEvaluation={compareEvaluation}
+              id={id}
             />
           </AccordionDetails>
         </Accordion>
@@ -184,6 +183,7 @@ export default function Overview(props) {
               compareKey={compareKey}
               evaluation={evaluation}
               compareEvaluation={compareEvaluation}
+              id={id}
             />
           </AccordionDetails>
         </Accordion>
@@ -210,6 +210,7 @@ export default function Overview(props) {
               loadView={loadView}
               name={name}
               compareKey={compareKey}
+              id={id}
             />
           </AccordionDetails>
         </Accordion>
@@ -236,6 +237,7 @@ export default function Overview(props) {
               name={name}
               compareKey={compareKey}
               loadView={loadView}
+              id={id}
             />
           </AccordionDetails>
         </Accordion>

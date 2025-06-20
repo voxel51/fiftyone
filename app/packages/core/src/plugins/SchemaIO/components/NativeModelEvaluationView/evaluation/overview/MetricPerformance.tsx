@@ -1,4 +1,6 @@
 import { Plot } from "@fiftyone/components/src/components/Plot";
+import { usePanelStatePartial } from "@fiftyone/spaces";
+import { formatValueAsNumber } from "@fiftyone/utilities";
 import { InsertChartOutlined, TableChartOutlined } from "@mui/icons-material";
 import {
   Stack,
@@ -10,16 +12,17 @@ import {
   ToggleButtonGroup,
   Typography,
 } from "@mui/material";
-import React, { useState } from "react";
 import ColorSquare from "../../components/ColorSquare";
 import EvaluationTable from "../../components/EvaluationTable";
 import { COMPARE_KEY_COLOR, KEY_COLOR } from "../../constants";
-import { formatValue, getNumericDifference } from "../../utils";
-import { formatValueAsNumber } from "@fiftyone/utilities";
+import { getNumericDifference } from "../../utils";
 
 export default function MetricPerformance(props) {
-  const { name, compareKey, evaluation, compareEvaluation } = props;
-  const [metricMode, setMetricMode] = useState("chart");
+  const { name, compareKey, evaluation, compareEvaluation, id } = props;
+  const [metricMode, setMetricMode] = usePanelStatePartial(
+    `${id}_mpvm`,
+    "chart"
+  );
 
   const evaluationInfo = evaluation.info;
   const evaluationConfig = evaluationInfo.config;

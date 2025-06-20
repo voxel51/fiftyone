@@ -1,5 +1,4 @@
 import { Box, Stack, Typography } from "@mui/material";
-import React from "react";
 import CreateScenario from "../../components/CreateScenario";
 import EvaluationIcon from "../../EvaluationIcon";
 import { scenarioCardStyles } from "../../styles";

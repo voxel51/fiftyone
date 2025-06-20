@@ -1,6 +1,8 @@
 import { EditableLabel, LoadingDots } from "@fiftyone/components";
+import { useMutation } from "@fiftyone/state";
 import { Card, CardActionArea, Chip, Stack, Typography } from "@mui/material";
 import React from "react";
+import ActionMenu from "./ActionMenu";
 import Evaluate from "./Evaluate";
 import EvaluationIcon from "./EvaluationIcon";
 import EvaluationNotes from "./EvaluationNotes";
@@ -10,8 +12,6 @@ import {
   EvaluationCardProps,
   OverviewProps,
 } from "./Types";
-import ActionMenu from "./ActionMenu";
-import { useMutation } from "@fiftyone/state";
 
 export default function Overview(props: OverviewProps) {
   const {

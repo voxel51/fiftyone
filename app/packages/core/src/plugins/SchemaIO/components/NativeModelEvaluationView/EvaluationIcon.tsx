@@ -6,7 +6,6 @@ import PieChartOutlinedIcon from "@mui/icons-material/PieChartOutlined";
 import ShowChartOutlinedIcon from "@mui/icons-material/ShowChartOutlined";
 import { Box } from "@mui/material";
 import { capitalize } from "lodash";
-import React from "react";
 import { ConcreteEvaluationType } from "./Types";
 
 interface Props {

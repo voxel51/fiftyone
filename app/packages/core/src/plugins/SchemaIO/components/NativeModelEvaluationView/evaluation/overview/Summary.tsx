@@ -1,3 +1,4 @@
+import { formatValueAsNumber } from "@fiftyone/utilities";
 import { ArrowDropDown, ArrowDropUp, GridView } from "@mui/icons-material";
 import {
   IconButton,
@@ -10,14 +11,12 @@ import {
   Typography,
   useTheme,
 } from "@mui/material";
-import React from "react";
+import { get } from "lodash";
 import ColorSquare from "../../components/ColorSquare";
 import EvaluationTable from "../../components/EvaluationTable";
 import { COMPARE_KEY_COLOR, KEY_COLOR } from "../../constants";
-import { formatValue, getNumericDifference } from "../../utils";
+import { getNumericDifference } from "../../utils";
 import { useActiveFilter } from "./utils";
-import { get } from "lodash";
-import { formatValueAsNumber } from "@fiftyone/utilities";
 
 export default function Summary(props) {
   const { name, compareKey, loadView, evaluation, compareEvaluation } = props;

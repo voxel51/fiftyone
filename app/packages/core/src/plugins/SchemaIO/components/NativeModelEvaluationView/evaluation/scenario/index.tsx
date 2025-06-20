@@ -1,5 +1,4 @@
 import { Card, Stack, Typography } from "@mui/material";
-import React from "react";
 import { scenarioCardStyles } from "../../styles";
 import EmptyScenario from "./EmptyScenario";
 import Scenarios from "./Scenarios";
