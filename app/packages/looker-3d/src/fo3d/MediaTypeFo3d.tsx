@@ -58,6 +58,47 @@ import {
 
 const CANVAS_WRAPPER_ID = "sample3d-canvas-wrapper";
 
+const calculateCameraPositionForUpVector = (
+  center: Vector3,
+  size: Vector3,
+  upVector: Vector3,
+  distanceMultiplier: number = 2.5,
+  viewType: "top" | "pov" = "pov"
+): Vector3 => {
+  const maxSize = Math.max(size.x, size.y, size.z);
+  const distance = maxSize * distanceMultiplier;
+
+  const upDir = upVector.clone().normalize();
+
+  if (viewType === "top") {
+    // camera positioned directly above/below along the up vector
+    return center.clone().add(upDir.multiplyScalar(distance));
+  }
+
+  // pov view - camera positioned at a 45-degree angle for more natural perspective
+  const angle = Math.PI / 4;
+  const verticalDist = Math.sin(angle) * distance;
+  const horizontalDist = Math.cos(angle) * distance;
+
+  // 1. choose a world-forward direction (Y up ideally, else X)
+  let worldForward = new Vector3(0, 1, 0);
+  if (Math.abs(upDir.dot(worldForward)) > 0.999) {
+    worldForward.set(1, 0, 0);
+  }
+
+  // 2. project that forward into the horizontal plane (perp. to upDir)
+  const proj = worldForward
+    .clone()
+    .sub(upDir.clone().multiplyScalar(worldForward.dot(upDir)))
+    .normalize();
+
+  // 3. build camera position: center + up‐offset + horizontal‐offset
+  return center
+    .clone()
+    .add(upDir.multiplyScalar(verticalDist))
+    .add(proj.multiplyScalar(horizontalDist));
+};
+
 export const MediaTypeFo3dComponent = () => {
   const sample = useRecoilValue(fos.fo3dSample);
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
@@ -157,7 +198,7 @@ export const MediaTypeFo3dComponent = () => {
     }
 
     setUpVectorVal(getDefaultUpVector());
-  }, [foScene, upVector]);
+  }, [foScene, upVector, getDefaultUpVector]);
 
   const cameraRef = useRef<THREE.PerspectiveCamera>();
   const cameraControlsRef = useRef<CameraControls>();
@@ -211,29 +252,14 @@ export const MediaTypeFo3dComponent = () => {
 
     const center = sceneBoundingBox.getCenter(new Vector3());
     const size = sceneBoundingBox.getSize(new Vector3());
-    if (Math.abs(upVector.y) === 1) {
-      return new Vector3(
-        center.x,
-        (center.y + Math.max(size.y, size.x, size.z) * 2.5) *
-          (upVector.y > 0 ? 1 : -1),
-        0
-      );
-    } else if (Math.abs(upVector.x) === 1) {
-      return new Vector3(
-        (center.x + Math.max(size.x, size.z, size.y) * 2.5) *
-          (upVector.x > 0 ? 1 : -1),
-        center.y,
-        0
-      );
-    } else {
-      // assume z-up
-      return new Vector3(
-        center.x,
-        0,
-        (center.z + Math.max(size.z, size.x, size.y) * 2.5) *
-          (upVector.z > 0 ? 1 : -1)
-      );
-    }
+
+    return calculateCameraPositionForUpVector(
+      center,
+      size,
+      upVector,
+      2.5,
+      "top"
+    );
   }, [sceneBoundingBox, upVector]);
 
   const overridenCameraPosition = useRecoilValue(cameraPositionAtom);
@@ -306,26 +332,13 @@ export const MediaTypeFo3dComponent = () => {
         const center = sceneBoundingBox.getCenter(new Vector3());
         const size = sceneBoundingBox.getSize(new Vector3());
 
-        if (Math.abs(upVector.y) === 1) {
-          return new Vector3(
-            center.x,
-            center.y + Math.max(size.y / 2, 1.5),
-            center.z + Math.max(size.x, size.y, size.z) * 2
-          );
-        } else if (Math.abs(upVector.x) === 1) {
-          return new Vector3(
-            center.x + Math.max(size.x / 2, 1.5),
-            center.y + Math.max(size.x, size.y, size.z) * 2,
-            center.z
-          );
-        } else {
-          // assume z-up
-          return new Vector3(
-            center.x,
-            center.y - Math.max(size.x, size.y, size.z) * 2,
-            center.z + Math.max(1.5, size.z / 2)
-          );
-        }
+        return calculateCameraPositionForUpVector(
+          center,
+          size,
+          upVector,
+          1.5,
+          "pov"
+        );
       }
 
       return DEFAULT_CAMERA_POSITION();
@@ -558,31 +571,13 @@ export const MediaTypeFo3dComponent = () => {
         unionBoundingBoxSize.z
       );
 
-      const newCameraPosition = new THREE.Vector3();
-
-      if (Math.abs(upVector.y) === 1) {
-        newCameraPosition.set(
-          unionBoundingBoxCenter.x,
-          // times 3 (arbitrary) to make sure the camera is not inside the bounding box
-          unionBoundingBoxCenter.y + maxSize * 3,
-          unionBoundingBoxCenter.z
-        );
-      } else if (Math.abs(upVector.x) === 1) {
-        newCameraPosition.set(
-          // times 3 (arbitrary) to make sure the camera is not inside the bounding box
-          unionBoundingBoxCenter.x + maxSize * 2,
-          unionBoundingBoxCenter.y,
-          unionBoundingBoxCenter.z
-        );
-      } else {
-        // assume z-up
-        newCameraPosition.set(
-          unionBoundingBoxCenter.x,
-          unionBoundingBoxCenter.y,
-          // times 3 (arbitrary) to make sure the camera is not inside the bounding box
-          unionBoundingBoxCenter.z + maxSize * 2
-        );
-      }
+      const newCameraPosition = calculateCameraPositionForUpVector(
+        unionBoundingBoxCenter,
+        unionBoundingBoxSize,
+        upVector,
+        maxSize * 3,
+        "pov"
+      );
 
       await cameraControlsRef.current.setLookAt(
         newCameraPosition.x,
