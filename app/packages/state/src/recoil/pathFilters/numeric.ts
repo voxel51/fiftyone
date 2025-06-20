@@ -4,9 +4,9 @@ import * as fos from "../atoms";
 import * as visibilityAtoms from "../attributeVisibility";
 import * as filterAtoms from "../filters";
 import * as pathData from "../pathData";
+import { queryPerformance } from "../queryPerformance";
 import type { Range } from "../utils";
 import { isFilterDefault } from "./utils";
-import { queryPerformance } from "../queryPerformance";
 
 export interface NumericFilter {
   range: Range;
