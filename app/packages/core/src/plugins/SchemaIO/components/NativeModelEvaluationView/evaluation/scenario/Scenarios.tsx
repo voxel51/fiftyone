@@ -27,7 +27,7 @@ import {
   Typography,
   useTheme,
 } from "@mui/material";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { atom, useRecoilState } from "recoil";
 import AlertView from "../../../AlertView";
 import ConfusionMatrixConfig from "../../components/ConfusionMatrixConfig";
@@ -569,9 +569,9 @@ function PredictionStatisticsTable(props) {
         <TableHead>
           <TableRow>
             <TableCell sx={{ width }}>Subset</TableCell>
-            <TableCell>{key}</TableCell>
-            {compareKey && <TableCell>{compareKey}</TableCell>}
-            {compareKey && <TableCell>Difference</TableCell>}
+            <TableCell sx={{ width }}>{key}</TableCell>
+            {compareKey && <TableCell sx={{ width }}>{compareKey}</TableCell>}
+            {compareKey && <TableCell sx={{ width }}>Difference</TableCell>}
           </TableRow>
         </TableHead>
         {subsets.map((subset) => {
@@ -669,14 +669,12 @@ function PredictionStatisticsTable(props) {
                         compareValue={compareMetrics.fp}
                         mode={differenceMode}
                         arrow
-                        lesserIsBetter
                       />
                       <Difference
                         value={metrics.fn}
                         compareValue={compareMetrics.fn}
                         mode={differenceMode}
                         arrow
-                        lesserIsBetter
                       />
                     </Stack>
                   ) : (
@@ -743,9 +741,9 @@ function ModelPerformanceMetricsTable(props) {
         <TableHead>
           <TableRow>
             <TableCell sx={{ width }}>Metric</TableCell>
-            <TableCell>{key}</TableCell>
-            {compareKey && <TableCell>{compareKey}</TableCell>}
-            {compareKey && <TableCell>Difference</TableCell>}
+            <TableCell sx={{ width }}>{key}</TableCell>
+            {compareKey && <TableCell sx={{ width }}>{compareKey}</TableCell>}
+            {compareKey && <TableCell sx={{ width }}>Difference</TableCell>}
           </TableRow>
         </TableHead>
         {MODEL_PERFORMANCE_METRICS.map(({ label, key }) => {
@@ -793,7 +791,6 @@ function ModelPerformanceMetricsTable(props) {
                       compareValue={compareMetrics[key]}
                       mode={differenceMode}
                       arrow
-                      lesserIsBetter
                     />
                   ) : (
                     <CircularProgress size={16} />
@@ -827,6 +824,7 @@ function ConfidenceDistributionTable(props) {
   const [metric, setMetric] = usePanelStatePartial("cdt_mode", "avg");
   const metricLabel = CONFIDENCE_DISTRIBUTION_METRICS[metric].label;
   const width = getWidth(props);
+  const lesserIsBetter = metric === "std";
 
   return (
     <Stack>
@@ -853,15 +851,17 @@ function ConfidenceDistributionTable(props) {
         <TableHead>
           <TableRow>
             <TableCell sx={{ width }}>Subset</TableCell>
-            <TableCell>
+            <TableCell sx={{ width }}>
               {key} ({metricLabel})
             </TableCell>
             {compareKey && (
-              <TableCell>
+              <TableCell sx={{ width }}>
                 {compareKey} ({metricLabel})
               </TableCell>
             )}
-            {compareKey && <TableCell>Difference ({metricLabel})</TableCell>}
+            {compareKey && (
+              <TableCell sx={{ width }}>Difference ({metricLabel})</TableCell>
+            )}
           </TableRow>
         </TableHead>
         {subsets.map((subset) => {
@@ -882,6 +882,7 @@ function ConfidenceDistributionTable(props) {
                     value={confidence_distribution[metric]}
                     compareValue={compareConfidenceDistribution?.[metric]}
                     mode="trophy"
+                    lesserIsBetter={lesserIsBetter}
                   />
                 </Stack>
               </TableCell>
@@ -898,6 +899,7 @@ function ConfidenceDistributionTable(props) {
                         value={compareConfidenceDistribution[metric]}
                         compareValue={confidence_distribution[metric]}
                         mode="trophy"
+                        lesserIsBetter={lesserIsBetter}
                       />
                     </Stack>
                   ) : (
@@ -913,7 +915,6 @@ function ConfidenceDistributionTable(props) {
                       compareValue={compareConfidenceDistribution[metric]}
                       mode={differenceMode}
                       arrow
-                      lesserIsBetter
                     />
                   ) : (
                     <CircularProgress size={16} />
