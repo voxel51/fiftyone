@@ -27,3 +27,4 @@ Sphinx==8.1.3
 sphinx-copybutton==0.5.2
 sphinxcontrib-jquery==4.1
 sphinx-pushfeedback==0.1.3
+sphinx-docsearch==0.1.0
