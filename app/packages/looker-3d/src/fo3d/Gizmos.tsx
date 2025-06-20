@@ -58,9 +58,9 @@ const FoAxesHelper = ({
       .filter(
         (axis) =>
           !(
-            (axis.color === AXIS_RED_COLOR && upVector.x === 1) ||
-            (axis.color === AXIS_GREEN_COLOR && upVector.y === 1) ||
-            (axis.color === AXIS_BLUE_COLOR && upVector.z === 1)
+            (axis.color === AXIS_RED_COLOR && Math.abs(upVector.x) === 1) ||
+            (axis.color === AXIS_GREEN_COLOR && Math.abs(upVector.y) === 1) ||
+            (axis.color === AXIS_BLUE_COLOR && Math.abs(upVector.z) === 1)
           )
       )
       .map((axis) => {
@@ -102,11 +102,11 @@ export const Gizmos = () => {
       return 0;
     }
 
-    if (upVector.x === 1) {
+    if (Math.abs(upVector.x) === 1) {
       return Math.max(sceneSize.y, sceneSize.z);
     }
 
-    if (upVector.y === 1) {
+    if (Math.abs(upVector.y) === 1) {
       return Math.max(sceneSize.x, sceneSize.z);
     }
 

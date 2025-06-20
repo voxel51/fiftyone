@@ -94,37 +94,48 @@ export const MediaTypeFo3dComponent = () => {
     []
   );
 
+  const getDefaultUpVector = useCallback(() => {
+    if (foScene?.cameraProps.up) {
+      const mayBeUp = foScene.cameraProps.up;
+      if (mayBeUp === "X") {
+        return new Vector3(1, 0, 0);
+      }
+      if (mayBeUp === "Y") {
+        return new Vector3(0, 1, 0);
+      }
+      if (mayBeUp === "Z") {
+        return new Vector3(0, 0, 1);
+      }
+      if (mayBeUp === "-X") {
+        return new Vector3(-1, 0, 0);
+      }
+      if (mayBeUp === "-Y") {
+        return new Vector3(0, -1, 0);
+      }
+      if (mayBeUp === "-Z") {
+        return new Vector3(0, 0, -1);
+      }
+    }
+
+    if (settings.defaultUp) {
+      const maybeOrthonormalAxis = getOrthonormalAxis(settings.defaultUp);
+
+      if (maybeOrthonormalAxis) {
+        return new Vector3(
+          settings.defaultUp[0],
+          settings.defaultUp[1],
+          settings.defaultUp[2]
+        );
+      }
+    }
+
+    // default to y-up
+    return new Vector3(0, 1, 0);
+  }, [foScene]);
+
   const [upVector, setUpVectorVal] = fos.useBrowserStorage<Vector3>(
     "fo3d-up-vector",
-    () => {
-      if (foScene?.cameraProps.up) {
-        const mayBeUp = foScene.cameraProps.up;
-        if (mayBeUp === "X") {
-          return new Vector3(1, 0, 0);
-        }
-        if (mayBeUp === "Y") {
-          return new Vector3(0, 1, 0);
-        }
-        if (mayBeUp === "Z") {
-          return new Vector3(0, 0, 1);
-        }
-      }
-
-      if (settings.defaultUp) {
-        const maybeOrthonormalAxis = getOrthonormalAxis(settings.defaultUp);
-
-        if (maybeOrthonormalAxis) {
-          return new Vector3(
-            settings.defaultUp[0],
-            settings.defaultUp[1],
-            settings.defaultUp[2]
-          );
-        }
-      }
-
-      // default to y-up
-      return new Vector3(0, 1, 0);
-    },
+    null,
     false,
     {
       parse: (upVectorStr) => {
@@ -135,9 +146,18 @@ export const MediaTypeFo3dComponent = () => {
           return new Vector3(0, 1, 0);
         }
       },
-      stringify: (upVector) => JSON.stringify(upVector.toArray()),
+      stringify: (upVector) =>
+        upVector ? JSON.stringify(upVector.toArray()) : "null",
     }
   );
+
+  useEffect(() => {
+    if (!foScene || upVector) {
+      return;
+    }
+
+    setUpVectorVal(getDefaultUpVector());
+  }, [foScene, upVector]);
 
   const cameraRef = useRef<THREE.PerspectiveCamera>();
   const cameraControlsRef = useRef<CameraControls>();
@@ -191,15 +211,17 @@ export const MediaTypeFo3dComponent = () => {
 
     const center = sceneBoundingBox.getCenter(new Vector3());
     const size = sceneBoundingBox.getSize(new Vector3());
-    if (upVector.y === 1) {
+    if (Math.abs(upVector.y) === 1) {
       return new Vector3(
         center.x,
-        center.y + Math.max(size.y, size.x, size.z) * 2.5,
+        (center.y + Math.max(size.y, size.x, size.z) * 2.5) *
+          (upVector.y > 0 ? 1 : -1),
         0
       );
-    } else if (upVector.x === 1) {
+    } else if (Math.abs(upVector.x) === 1) {
       return new Vector3(
-        center.x + Math.max(size.x, size.z, size.y) * 2.5,
+        (center.x + Math.max(size.x, size.z, size.y) * 2.5) *
+          (upVector.x > 0 ? 1 : -1),
         center.y,
         0
       );
@@ -208,7 +230,8 @@ export const MediaTypeFo3dComponent = () => {
       return new Vector3(
         center.x,
         0,
-        center.z + Math.max(size.z, size.x, size.y) * 2.5
+        (center.z + Math.max(size.z, size.x, size.y) * 2.5) *
+          (upVector.z > 0 ? 1 : -1)
       );
     }
   }, [sceneBoundingBox, upVector]);
@@ -283,13 +306,13 @@ export const MediaTypeFo3dComponent = () => {
         const center = sceneBoundingBox.getCenter(new Vector3());
         const size = sceneBoundingBox.getSize(new Vector3());
 
-        if (upVector.y === 1) {
+        if (Math.abs(upVector.y) === 1) {
           return new Vector3(
             center.x,
             center.y + Math.max(size.y / 2, 1.5),
             center.z + Math.max(size.x, size.y, size.z) * 2
           );
-        } else if (upVector.x === 1) {
+        } else if (Math.abs(upVector.x) === 1) {
           return new Vector3(
             center.x + Math.max(size.x / 2, 1.5),
             center.y + Math.max(size.x, size.y, size.z) * 2,
@@ -537,14 +560,14 @@ export const MediaTypeFo3dComponent = () => {
 
       const newCameraPosition = new THREE.Vector3();
 
-      if (upVector.y === 1) {
+      if (Math.abs(upVector.y) === 1) {
         newCameraPosition.set(
           unionBoundingBoxCenter.x,
           // times 3 (arbitrary) to make sure the camera is not inside the bounding box
           unionBoundingBoxCenter.y + maxSize * 3,
           unionBoundingBoxCenter.z
         );
-      } else if (upVector.x === 1) {
+      } else if (Math.abs(upVector.x) === 1) {
         newCameraPosition.set(
           // times 3 (arbitrary) to make sure the camera is not inside the bounding box
           unionBoundingBoxCenter.x + maxSize * 2,
@@ -591,6 +614,9 @@ export const MediaTypeFo3dComponent = () => {
         foScene.cameraProps.lookAt[2],
         false
       );
+
+      setSceneInitialized(true);
+
       return;
     } else {
       onChangeView("pov", {
@@ -651,7 +677,7 @@ export const MediaTypeFo3dComponent = () => {
       <Canvas
         id={CANVAS_WRAPPER_ID}
         onPointerMissed={resetActiveNode}
-        key={upVector.toArray().join(",")}
+        key={upVector ? upVector.toArray().join(",") : null}
         raycaster={{
           params: {
             Points: {
@@ -668,7 +694,7 @@ export const MediaTypeFo3dComponent = () => {
           makeDefault
           ref={cameraRef}
           position={defaultCameraPositionComputed}
-          up={upVector}
+          up={upVector ?? [0, 1, 0]}
           fov={foScene?.cameraProps.fov ?? 50}
           near={foScene?.cameraProps.near ?? 0.1}
           far={foScene?.cameraProps.far ?? 2500}

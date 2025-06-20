@@ -13,8 +13,8 @@ from .transformation import Vector3, Vec3UnionType, normalize_to_vec3
 from .validators import BaseValidatedDataClass, validate_choice, validate_float
 
 
-UP_DIRECTIONS = frozenset(["X", "Y", "Z"])
-UpDirection = Literal["X", "Y", "Z"]
+UP_DIRECTIONS = frozenset(["X", "Y", "Z", "-X", "-Y", "-Z"])
+UpDirection = Literal["X", "Y", "Z", "-X", "-Y", "-Z"]
 
 
 @dataclass
