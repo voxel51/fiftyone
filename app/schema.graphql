@@ -9,14 +9,6 @@ input Aggregate {
   histogramValues: HistogramValues = null
 }
 
-union AggregateResult =
-    BooleanAggregation
-  | DataAggregation
-  | IntAggregation
-  | FloatAggregation
-  | RootAggregation
-  | StringAggregation
-
 interface Aggregation {
   path: String!
   count: Int!
@@ -36,10 +28,25 @@ input AggregationForm {
   slice: String
   slices: [String!]
   view: BSONArray!
+  hint: String = null
+  maxQueryTime: Int = null
   viewName: String = null
   queryPerformance: Boolean = false
-  hint: String = null
 }
+
+type AggregationQueryTimeout {
+  queryTime: Int!
+  path: String!
+}
+
+union AggregationResponse =
+    BooleanAggregation
+  | DataAggregation
+  | IntAggregation
+  | FloatAggregation
+  | RootAggregation
+  | StringAggregation
+  | AggregationQueryTimeout
 
 union AggregationResponses =
     CountResponse
@@ -71,6 +78,7 @@ type AppConfig {
   useFrameNumber: Boolean!
   spaces: JSON
   disableFrameFiltering: Boolean!
+  maxQueryTime: Int
   mediaFallback: Boolean!
 }
 
@@ -594,6 +602,8 @@ type ObjectIdLightningResult implements LightningResult {
   values: [String]
 }
 
+union PaginateSamplesResponse = SampleItemStrConnection | QueryTimeout
+
 type PointCloudSample implements Sample {
   id: ID!
   sample: JSON!
@@ -614,7 +624,7 @@ type Query {
     first: Int = 100
     after: String = null
   ): DatasetStrConnection!
-  aggregations(form: AggregationForm!): [AggregateResult!]!
+  aggregations(form: AggregationForm!): [AggregationResponse!]!
   lightning(input: LightningInput!): [LightningResults!]!
   colorscale: [[Int!]!]
   config: AppConfig!
@@ -635,7 +645,8 @@ type Query {
     sortBy: String = null
     desc: Boolean = false
     hint: String = null
-  ): SampleItemStrConnection!
+    maxQueryTime: Int = null
+  ): PaginateSamplesResponse!
   sample(
     dataset: String!
     view: BSONArray!
@@ -650,6 +661,10 @@ type Query {
     datasetName: String!
     viewStages: BSONArray!
   ): SchemaResult!
+}
+
+type QueryTimeout {
+  queryTime: Int!
 }
 
 type RootAggregation implements Aggregation {

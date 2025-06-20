@@ -10878,7 +10878,7 @@ class SampleCollection(object):
 
         return (_process_doc(doc) for doc in cursor)
 
-    async def _async_aggregate(self, aggregations):
+    async def _async_aggregate(self, aggregations, maxTimeMS=None):
         if not aggregations:
             return []
 
@@ -10909,7 +10909,9 @@ class SampleCollection(object):
             # Run all aggregations
             coll_name = self._dataset._sample_collection_name
             collection = foo.get_async_db_conn()[coll_name]
-            _results = await foo.aggregate(collection, pipelines, hints)
+            _results = await foo.aggregate(
+                collection, pipelines, hints, maxTimeMS=maxTimeMS
+            )
 
             # Parse facet-able results
             for idx, aggregation in compiled_facet_aggs.items():

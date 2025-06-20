@@ -330,11 +330,13 @@ def _validate_db_version(config, client):
         )
 
 
-def aggregate(collection, pipelines, hints=None, _stream=False):
+def aggregate(
+    collection, pipelines, hints=None, maxTimeMS=None, _stream=False
+):
     """Executes one or more aggregations on a collection.
 
-    Multiple aggregations are executed using multiple threads, and their
-    results are returned as lists rather than cursors.
+        Multiple aggregations are executed using multiple threads, and their
+        results are returned as lists rather than cursors.
 
     Args:
         collection: a ``pymongo.collection.Collection`` or
@@ -342,6 +344,7 @@ def aggregate(collection, pipelines, hints=None, _stream=False):
         pipelines: a MongoDB aggregation pipeline or a list of pipelines
         hints (None): a corresponding index hint or list of index hints for
             each pipeline
+        maxTimeMS (None): max timeout for the request(s)
 
     Returns:
         -   If a single pipeline is provided, a
@@ -361,37 +364,49 @@ def aggregate(collection, pipelines, hints=None, _stream=False):
     if hints is None:
         hints = [None] * num_pipelines
 
+    kwargs = dict(allowDiskUse=True)
+    if maxTimeMS:
+        kwargs["maxTimeMS"] = maxTimeMS
+
     if isinstance(collection, mtr.AsyncIOMotorCollection):
         if num_pipelines == 1 and not is_list:
-            kwargs = {"hint": hints[0]} if hints[0] is not None else {}
-            return collection.aggregate(
-                pipelines[0], allowDiskUse=True, **kwargs
-            )
+            if hints[0]:
+                kwargs["hint"] = hints[0]
 
-        return _do_async_pooled_aggregate(collection, pipelines, hints)
+            return collection.aggregate(pipelines[0], **kwargs)
+
+        return _do_async_pooled_aggregate(
+            collection, pipelines, hints, **kwargs
+        )
 
     if num_pipelines == 1:
-        kwargs = {"hint": hints[0]} if hints[0] is not None else {}
-        result = collection.aggregate(
-            pipelines[0], allowDiskUse=True, **kwargs
-        )
+        if hints[0]:
+            kwargs["hint"] = hints[0]
+
+        result = collection.aggregate(pipelines[0], **kwargs)
         if _stream:
             return result
+
         return [result] if is_list else result
 
-    return _do_pooled_aggregate(collection, pipelines, hints, _stream=_stream)
+    return _do_pooled_aggregate(
+        collection, pipelines, hints, _stream=_stream, **kwargs
+    )
 
 
-def _do_pooled_aggregate(collection, pipelines, hints, _stream=False):
+def _do_pooled_aggregate(
+    collection, pipelines, hints, _stream=False, **kwargs
+):
     # @todo: MongoDB 5.0 supports snapshots which can be used to make the
     # results consistent, i.e. read from the same point in time
 
     def _aggregate(args):
         pipeline, hint = args
-        kwargs = {"hint": hint} if hint is not None else {}
-        return list(
-            collection.aggregate(pipeline, allowDiskUse=True, **kwargs)
-        )
+        next_kwargs = dict(**kwargs)
+        if hint:
+            next_kwargs["hint"] = hint
+
+        return list(collection.aggregate(pipeline, **next_kwargs))
 
     if _stream:
         # When `unwind` is used, each aggregation runs in its own independent pipeline.
@@ -414,23 +429,21 @@ def _do_pooled_aggregate(collection, pipelines, hints, _stream=False):
         )
 
 
-async def _do_async_pooled_aggregate(collection, pipelines, hints):
+async def _do_async_pooled_aggregate(collection, pipelines, hints, **kwargs):
     return await asyncio.gather(
         *[
-            _do_async_aggregate(collection, pipeline, hint)
+            _do_async_aggregate(collection, pipeline, hint, **kwargs)
             for pipeline, hint in zip(pipelines, hints)
         ]
     )
 
 
-async def _do_async_aggregate(collection, pipeline, hint):
-    kwargs = {"hint": hint} if hint is not None else {}
-    return [
-        i
-        async for i in collection.aggregate(
-            pipeline, allowDiskUse=True, **kwargs
-        )
-    ]
+async def _do_async_aggregate(collection, pipeline, hint, **kwargs):
+    next_kwargs = dict(**kwargs)
+    if hint:
+        next_kwargs["hint"] = hint
+
+    return [i async for i in collection.aggregate(pipeline, **next_kwargs)]
 
 
 def ensure_connection():

@@ -1,7 +1,9 @@
 import { LoadingDots } from "@fiftyone/components";
+import { AggregationQueryTimeout } from "@fiftyone/state";
 import React, { Suspense } from "react";
 import type { RecoilValue } from "recoil";
-import { constSelector, useRecoilValue } from "recoil";
+import { constSelector, useRecoilValue, useRecoilValueLoadable } from "recoil";
+import TimedOut from "../Common/TimedOut";
 
 const CONST_SELECTOR = constSelector(null);
 
@@ -16,7 +18,6 @@ const EntryCounts = ({
     useRecoilValue(countAtom),
     useRecoilValue(subcountAtom),
   ];
-
   if (countAtom !== CONST_SELECTOR && typeof count !== "number") {
     return <LoadingDots text="" />;
   }
@@ -48,6 +49,26 @@ const EntryCounts = ({
   );
 };
 
+const EntryCountsContainer = ({
+  countAtom = CONST_SELECTOR,
+  subcountAtom = CONST_SELECTOR,
+}: {
+  countAtom?: RecoilValue<number | null>;
+  subcountAtom?: RecoilValue<number | null>;
+}) => {
+  // only subcounts have a timeout
+  const subResult = useRecoilValueLoadable(subcountAtom);
+
+  if (
+    subResult.state === "hasError" &&
+    subResult.contents instanceof AggregationQueryTimeout
+  ) {
+    return <TimedOut queryTime={subResult.contents.queryTime} />;
+  }
+
+  return <EntryCounts countAtom={countAtom} subcountAtom={subcountAtom} />;
+};
+
 export const SuspenseEntryCounts = ({
   countAtom,
   subcountAtom,
@@ -58,7 +79,10 @@ export const SuspenseEntryCounts = ({
   return (
     <Suspense fallback={<EntryCounts />}>
       <Suspense fallback={<EntryCounts countAtom={countAtom} />}>
-        <EntryCounts countAtom={countAtom} subcountAtom={subcountAtom} />
+        <EntryCountsContainer
+          countAtom={countAtom}
+          subcountAtom={subcountAtom}
+        />
       </Suspense>
     </Suspense>
   );
