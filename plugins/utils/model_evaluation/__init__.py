@@ -23,7 +23,7 @@ def get_subsets_from_custom_code(ctx, custom_code):
 
 
 def get_dataset_id(ctx):
-    return str(ctx.dataset._doc.id)
+    return ctx.dataset._doc.id
 
 
 def get_store(ctx):
@@ -39,3 +39,13 @@ def get_scenarios_store(ctx):
     """
     dataset_id = get_dataset_id(ctx)
     return ExecutionStore.create(STORE_NAME, dataset_id)
+
+
+def get_scenarios(ctx):
+    store = get_scenarios_store(ctx)
+    return (store.get("scenarios") or {}).copy()
+
+
+def set_scenarios(ctx, scenarios):
+    store = get_scenarios_store(ctx)
+    store.set("scenarios", scenarios.copy())
