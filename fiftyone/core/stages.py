@@ -3506,6 +3506,10 @@ class GroupBy(ViewStage):
         create_index (True): whether to create an index, if necessary, to
             optimize the grouping. Only applicable when grouping by field(s),
             not expressions
+        order_by_key (None): an optional fixed ``order_by`` value representing
+            the first sample in a group. Required for optimized performance.
+            See :ref:`this guide <app-query-performant-stages>` for more
+            details
     """
 
     def __init__(
@@ -3517,6 +3521,7 @@ class GroupBy(ViewStage):
         match_expr=None,
         sort_expr=None,
         create_index=True,
+        order_by_key=None,
     ):
         self._field_or_expr = field_or_expr
         self._order_by = order_by
@@ -3526,6 +3531,7 @@ class GroupBy(ViewStage):
         self._sort_expr = sort_expr
         self._create_index = create_index
         self._sort_stage = None
+        self._order_by_key = order_by_key
 
     @property
     def outputs_dynamic_groups(self):
@@ -3543,6 +3549,11 @@ class GroupBy(ViewStage):
     def order_by(self):
         """The field by which to order the samples in each group."""
         return self._order_by
+
+    @property
+    def order_by_key(self):
+        """The ``order_by`` value representing the first sample in a group."""
+        return self._order_by_key
 
     @property
     def reverse(self):
@@ -3609,14 +3620,21 @@ class GroupBy(ViewStage):
             )
 
         pipeline.extend(
-            [{"$unwind": "$docs"}, {"$replaceRoot": {"newRoot": "$docs"}}]
+            [
+                {"$unwind": "$docs"},
+                {"$replaceRoot": {"newRoot": "$docs"}},
+                {"$addFields": {"_group": group_expr}},
+            ]
         )
 
         return pipeline
 
     def _make_grouped_pipeline(self, sample_collection):
-        group_expr, _ = self._get_group_expr(sample_collection)
+        if self._order_by_key is not None:
+            order_by = sample_collection._handle_db_field(self._order_by)
+            return [{"$match": {order_by: self._order_by_key}}]
 
+        group_expr, _ = self._get_group_expr(sample_collection)
         pipeline = []
 
         # sort so that first document in each group comes from a sorted list
@@ -3633,7 +3651,6 @@ class GroupBy(ViewStage):
         # add a sort stage so that we return a stable ordering of groups
         # sort by _id to preserve insertion order
         pipeline.append({"$sort": {"_id": 1}})
-
         return pipeline
 
     def get_group_expr(self, sample_collection):
@@ -3738,6 +3755,7 @@ class GroupBy(ViewStage):
             ["match_expr", self._get_mongo_match_expr()],
             ["sort_expr", self._get_mongo_sort_expr()],
             ["create_index", self._create_index],
+            ["order_by_key", self._order_by_key],
         ]
 
     @classmethod
@@ -3784,12 +3802,23 @@ class GroupBy(ViewStage):
                 "default": "True",
                 "placeholder": "create_index (default=True)",
             },
+            {
+                "name": "order_by_key",
+                "type": "NoneType|float|int|str",
+                "placeholder": "order by key",
+                "default": "None",
+            },
         ]
 
     def validate(self, sample_collection):
         if sample_collection._is_dynamic_groups:
             raise ValueError(
                 "Cannot group a collection that is already dynamically grouped"
+            )
+
+        if self._order_by_key is not None and self._order_by is None:
+            raise ValueError(
+                "'order_by' is required when 'order_by_key' is provided"
             )
 
         field_or_expr = self._get_mongo_field_or_expr()
@@ -6148,8 +6177,8 @@ class Mongo(ViewStage):
 
             return self._group_slices_manual
 
-        if sample_collection.media_type != fom.GROUP:
-            return None
+        if sample_collection.group_media_types is None:
+            return []
 
         # The pipeline could by anything; always attach all group slices
         return list(sample_collection.group_media_types.keys())

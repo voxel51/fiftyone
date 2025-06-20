@@ -99,6 +99,7 @@ async def paginate_samples(
     sort_by: t.Optional[str] = None,
     desc: t.Optional[bool] = False,
     hint: t.Optional[str] = None,
+    dynamic_group: t.Optional[BSON] = None,
     max_query_time: t.Optional[int] = None,
 ) -> Connection[t.Union[ImageSample, VideoSample], str]:
     run = lambda reload: fosv.get_view(
@@ -111,6 +112,7 @@ async def paginate_samples(
         reload=reload,
         sort_by=sort_by,
         desc=desc,
+        dynamic_group=dynamic_group,
     )
     try:
         view = await run_sync_task(run, False)

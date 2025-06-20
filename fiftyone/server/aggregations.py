@@ -32,21 +32,22 @@ import fiftyone.server.view as fosv
 @gql.input
 class AggregationForm:
     dataset: str
+    dynamic_group: t.Optional[BSON] = None
     extended_stages: BSONArray
     filters: t.Optional[BSON]
     group_id: t.Optional[gql.ID]
     hidden_labels: t.List[SelectedLabel]
+    hint: t.Optional[str] = None
     index: t.Optional[int]
+    max_query_time: t.Optional[int] = None
     mixed: bool
     paths: t.List[str]
+    query_performance: t.Optional[bool] = False
     sample_ids: t.List[gql.ID]
     slice: t.Optional[str]
     slices: t.Optional[t.List[str]]
     view: BSONArray
-    hint: t.Optional[str] = None
-    max_query_time: t.Optional[int] = None
     view_name: t.Optional[str] = None
-    query_performance: t.Optional[bool] = False
 
 
 @gql.interface
@@ -221,6 +222,7 @@ async def _load_view(form: AggregationForm, slices: t.List[str]):
                 else None
             )
         ),
+        dynamic_group=form.dynamic_group,
         awaitable=True,
     )
 

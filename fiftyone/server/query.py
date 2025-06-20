@@ -454,6 +454,7 @@ class Query(fosa.AggregateQuery):
         desc: t.Optional[bool] = False,
         hint: t.Optional[str] = None,
         max_query_time: t.Optional[int] = None,
+        dynamic_group: t.Optional[BSON] = None,
     ) -> t.Annotated[
         t.Union[Connection[SampleItem, str], QueryTimeout],
         gql.union("PaginateSamplesResponse"),
@@ -473,6 +474,7 @@ class Query(fosa.AggregateQuery):
                 desc=desc,
                 hint=hint,
                 max_query_time=max_query_time,
+                dynamic_group=dynamic_group,
             )
         except ExecutionTimeout:
             return QueryTimeout(query_time=max_query_time)

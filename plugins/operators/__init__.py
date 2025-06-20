@@ -17,6 +17,7 @@ import fiftyone.core.storage as fos
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
 from fiftyone.core.odm.workspace import default_workspace_factory
+from .group_by import GroupBy
 from .model_evaluation import ConfigureScenario
 
 
@@ -2729,3 +2730,6 @@ def register(p):
     p.register(SyncLastModifiedAt)
     p.register(ListFiles)
     p.register(ConfigureScenario)
+
+    # view stages
+    p.register(GroupBy)

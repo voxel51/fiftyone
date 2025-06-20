@@ -17,21 +17,22 @@ interface Aggregation {
 
 input AggregationForm {
   dataset: String!
+  dynamicGroup: BSON = null
   extendedStages: BSONArray!
   filters: BSON
   groupId: ID
   hiddenLabels: [SelectedLabel!]!
+  hint: String = null
   index: Int
+  maxQueryTime: Int = null
   mixed: Boolean!
   paths: [String!]!
+  queryPerformance: Boolean = false
   sampleIds: [ID!]!
   slice: String
   slices: [String!]
   view: BSONArray!
-  hint: String = null
-  maxQueryTime: Int = null
   viewName: String = null
-  queryPerformance: Boolean = false
 }
 
 type AggregationQueryTimeout {
@@ -460,6 +461,7 @@ input LabelTagColorInput {
 
 input LightningInput {
   dataset: String!
+  match: JSON = null
   paths: [LightningPathInput!]!
   slice: String = null
 }
@@ -646,6 +648,7 @@ type Query {
     desc: Boolean = false
     hint: String = null
     maxQueryTime: Int = null
+    dynamicGroup: BSON = null
   ): PaginateSamplesResponse!
   sample(
     dataset: String!

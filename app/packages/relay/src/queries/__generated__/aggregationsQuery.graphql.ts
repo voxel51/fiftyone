@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<414ad5393df39462cc315b346820a060>>
+ * @generated SignedSource<<5a55f8ce32baf2bf03c11c2954afdaaf>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -11,6 +11,7 @@
 import { ConcreteRequest, Query } from 'relay-runtime';
 export type AggregationForm = {
   dataset: string;
+  dynamicGroup?: object | null;
   extendedStages: Array;
   filters?: object | null;
   groupId?: string | null;

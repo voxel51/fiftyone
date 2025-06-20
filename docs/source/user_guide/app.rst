@@ -672,6 +672,75 @@ The GIF below demonstrates this flow in action:
 Compound indexes can require significant database memory, but they are a
 powerful tool to support efficient exploration of massive datasets.
 
+
+.. _app-query-performant-stages:
+
+Query performant view stages
+----------------------------
+
+In addition to the root view where no view stages are present in the view bar,
+the below :class:`ViewStages <fiftyone.core.stages.ViewStage>` also support
+:ref:`Query Performance <app-optimizing-query-performance>` in the App.
+
+For :class:`ExcludeFields <fiftyone.core.stages.ExcludeFields>` and
+:class:`SelectFields <fiftyone.core.stages.SelectFields>`, index performance
+applies to all fields still present in the schema.
+
+:class:`SelectGroupSlices <fiftyone.core.stages.SelectGroupSlices>` is query
+performant. Expect optimal performan when all slices are included in the
+flattened view.
+
+The :class:`GroupBy <fiftyone.core.stages.GroupBy>` stage is a query performant
+stage when ``order_by`` and ``order_by_key`` values are provided and a compound
+index exists on the ``group_by`` and ``order_by`` fields with a unique
+constraint and at least one index exists that begins with the ``order_by``
+field. Query performant fields then exist when they follow the ``order_by`` in
+a compound index. 
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.load_dataset("frames-as-video")
+    dataset.create_index([("video", 1), ("frame_number", 1)], unique=True)
+
+    # create query performant fields for filtering and sorting
+    dataset.create_index([("frame_number", 1), ("created_at", 1)])
+    dataset.create_index([("frame_number", 1), ("last_modified_at", 1)])
+
+    # create the "video" view and save it
+    videos = dataset.group_by(
+        "video",
+        order_by="frame_number",
+        order_by_key=1,
+        create_index=False
+    )
+    dataset.save_view("videos", videos)
+
+Sidebar filters in the grid now match on the ``order_by_key`` sample for each
+group, i.e. where ``frame_number`` is ``1`` in the above example. Group level
+metadata is stored on the key sample to efficiently filter on large datasets.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import random
+
+    dataset = fo.load_dataset("frames-as-video")
+    videos = dataset.load_saved_view("videos")
+
+    dataset.create_index([("frame_number", 1), ("group_value", 1)])
+
+    # store group level values on the key samples
+    for poster_sample in videos.iter_samples(autosave=True):
+        poster_sample["group_value"] = str(random.randint(0, 51))
+
+.. image:: /images/app/app-optimized-dynamic-groups.gif
+    :alt: app-optimized-dynamic-groups
+    :align: center
+
 .. _app-unindexed-sidebar-results:
 
 Unindexed sidebar results

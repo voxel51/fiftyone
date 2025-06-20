@@ -14,6 +14,7 @@ export default r(graphql`
     $sortBy: String
     $desc: Boolean
     $hint: String
+    $dynamicGroup: BSON = null
     $maxQueryTime: Int
   ) {
     samples(
@@ -28,6 +29,7 @@ export default r(graphql`
       sortBy: $sortBy
       desc: $desc
       hint: $hint
+      dynamicGroup: $dynamicGroup
       maxQueryTime: $maxQueryTime
     ) {
       __typename
