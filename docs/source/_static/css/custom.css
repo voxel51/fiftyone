@@ -685,3 +685,11 @@ a.with-right-arrow,
 .DocSearch-Container {
   z-index: 300;
 }
+
+.DocSearch-Hit-content-wrapper {
+  overflow: hidden;
+}
+
+.DocSearch-Hits mark {
+  padding: 0;
+}

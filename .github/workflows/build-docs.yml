@@ -43,6 +43,7 @@ jobs:
     runs-on: ubuntu-latest-m
     env:
       FIFTYONE_DO_NOT_TRACK: true
+      DOCSEARCH_API_KEY: ${{ secrets.DOCSEARCH_API_KEY }}
     steps:
       - name: Clone fiftyone
         uses: actions/checkout@v4
