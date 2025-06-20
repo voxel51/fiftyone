@@ -2367,6 +2367,68 @@ class VideoTests(unittest.TestCase):
         self.assertSetEqual(set(view.list_indexes()), expected_indexes)
 
     @drop_datasets
+    def test_to_clips_delete_labels(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(filepath="video1.mp4")
+        sample2 = fo.Sample(
+            filepath="video2.mp4",
+            events=fo.TemporalDetections(
+                detections=[
+                    fo.TemporalDetection(label="meeting", support=[1, 3]),
+                    fo.TemporalDetection(label="party", support=[2, 4]),
+                    fo.TemporalDetection(label="nap", support=[3, 5]),
+                ]
+            ),
+        )
+        sample2.frames[3] = fo.Frame(
+            ground_truth=fo.Detections(detections=[fo.Detection(label="cat")])
+        )
+
+        dataset.add_samples([sample1, sample2])
+
+        view = dataset.to_clips("events")
+        clip = view.first()
+
+        labels = [
+            {
+                "label_id": clip.events.id,
+                "sample_id": clip.id,
+                "field": "events",
+            }
+        ]
+
+        view._delete_labels(labels)
+
+        self.assertEqual(len(view), 2)
+        self.assertEqual(dataset.count("events.detections"), 2)
+        self.assertEqual(dataset.count("frames.ground_truth.detections"), 1)
+
+        clip1 = view.first()
+        clip2 = view.last()
+        frame = clip2.frames.first()
+
+        labels = [
+            {
+                "label_id": clip1.events.id,
+                "sample_id": clip1.id,
+                "field": "events",
+            },
+            {
+                "label_id": frame.ground_truth.detections[0].id,
+                "sample_id": clip2.id,
+                "frame_number": 3,
+                "field": "frames.ground_truth",
+            },
+        ]
+
+        view._delete_labels(labels)
+
+        self.assertEqual(len(view), 1)
+        self.assertEqual(dataset.count("events.detections"), 1)
+        self.assertEqual(dataset.count("frames.ground_truth.detections"), 0)
+
+    @drop_datasets
     def test_to_frames(self):
         dataset = fo.Dataset()
 
@@ -3146,6 +3208,44 @@ class VideoTests(unittest.TestCase):
         view = dataset.select_fields().to_frames(include_indexes=True)
 
         self.assertSetEqual(set(view.list_indexes()), default_indexes)
+
+    @drop_datasets
+    def test_to_frames_delete_labels(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(filepath="video1.mp4")
+        sample2 = fo.Sample(filepath="video2.mp4")
+        sample2.frames[1] = fo.Frame(filepath="frame1.jpg")
+        sample2.frames[2] = fo.Frame(
+            filepath="frame2.jpg",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                    fo.Detection(label="rabbit"),
+                ],
+            ),
+        )
+        sample2.frames[3] = fo.Frame(filepath="frame3.jpg")
+
+        dataset.add_samples([sample1, sample2])
+
+        view = dataset.to_frames()
+        frame = view.exists("ground_truth").first()
+
+        labels = [
+            {
+                "label_id": frame.ground_truth.detections[0].id,
+                "sample_id": frame.id,
+                "field": "ground_truth",
+            }
+        ]
+
+        view._delete_labels(labels)
+
+        self.assertEqual(len(view), 3)
+        self.assertEqual(view.count("ground_truth.detections"), 2)
+        self.assertEqual(dataset.count("frames.ground_truth.detections"), 2)
 
     @drop_datasets
     def test_to_clip_frames(self):

@@ -689,6 +689,11 @@ class ExecutionContext(object):
         return self.request_params.get("current_sample", None)
 
     @property
+    def active_fields(self):
+        """The list of currently active fields in the FiftyOne App sidebar."""
+        return self.request_params.get("active_fields", [])
+
+    @property
     def user_id(self):
         """The ID of the user executing the operation, if known."""
         return self.user.id if self.user else None
@@ -787,11 +792,6 @@ class ExecutionContext(object):
     def operator_uri(self):
         """The URI of the target operator."""
         return self._operator_uri
-
-    @property
-    def active_fields(self):
-        """The list of currently active fields."""
-        return self.request_params.get("active_fields", [])
 
     def prompt(
         self,
