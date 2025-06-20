@@ -101,14 +101,18 @@ def _create(ctx, obj):
         view=order_choices,
     )
 
-    if ctx.params.get("order_by", None):
-        field = ctx.view.get_field(ctx.params["order_by"])
+    order_by = ctx.params.get("order_by", None)
+    if order_by:
+        field = ctx.view.get_field(order_by)
+
         if isinstance(field, fo.FloatField):
             input = obj.float
-        if isinstance(field, fo.IntField):
+        elif isinstance(field, fo.IntField):
             input = obj.int
-        if isinstance(field, fo.StringField):
+        elif isinstance(field, fo.StringField):
             input = obj.str
+        else:
+            raise ValueError(f"invalid 'order_by' field '{order_by}'")
 
         input(
             "order_by_key",
