@@ -32,7 +32,10 @@ export interface Coloring {
 export type ColorscaleInput = {
   path?: string;
   name?: string;
-  list?: [];
+  list?: Array<{
+    value: number;
+    color: string;
+  }>;
   rgb?: RGB[];
 };
 

@@ -22,7 +22,7 @@ export const getRGB = (color: string): RGB => {
     [r, g, b] = hexToRGB(color);
   } else if (color.startsWith("rgb")) {
     let sep = color.indexOf(",") > -1 ? "," : " ";
-    [r, g, b] = color.slice(4).split(")")[0].split(sep);
+    [r, g, b] = color.slice(4).split(")")[0].split(sep).map(Number);
   } else if (color.startsWith("hsl")) {
     [r, g, b] = hslToRGB(color);
   }
@@ -74,6 +74,38 @@ export const rgbToHexCached = (color: RGB) => {
   return rgbToHexCache[key];
 };
 
+/**
+ * Convert RGB string to hex
+ *
+ * @param rgb - RGB string (e.g. "rgb(255, 255, 255)")
+ * @returns hex string (e.g. "#ffffff")
+ * @throws if the RGB string is invalid
+ */
+export const rgbStringToHex = (rgb: string): string => {
+  const match = rgb.match(
+    /^rgb\(\s*(\d{1,3})\s*[,\s]\s*(\d{1,3})\s*[,\s]\s*(\d{1,3})\s*\)$/i
+  );
+
+  if (!match) {
+    throw new Error(`Invalid RGB string: ${rgb}`);
+  }
+
+  const r = parseInt(match[1]);
+  const g = parseInt(match[2]);
+  const b = parseInt(match[3]);
+
+  if (r < 0 || r > 255 || g < 0 || g > 255 || b < 0 || b > 255) {
+    throw new Error(`Invalid RGB string: ${rgb}`);
+  }
+
+  return (
+    "#" +
+    r.toString(16).padStart(2, "0") +
+    g.toString(16).padStart(2, "0") +
+    b.toString(16).padStart(2, "0")
+  );
+};
+
 export const getRGBA = (value: number): RGBA => {
   const uint32 = new Uint32Array(1);
   uint32[0] = value;
@@ -82,7 +114,7 @@ export const getRGBA = (value: number): RGBA => {
 };
 
 export const getRGBAColor = ([r, g, b, a]: RGBA) => {
-  return `rgba(${r},${g},${b},${a / 255})`;
+  return `rgba(${r},${g},${b},${a <= 1 ? a : a / 255})`;
 };
 
 export const applyAlpha = (color: string, alpha: number): string => {
@@ -235,6 +267,36 @@ export const hexToRgb = (hex: string): RGB => {
         parseInt(result[3], 16),
       ]
     : null;
+};
+
+export const interpolateColorsHex = (
+  color1: string,
+  color2: string,
+  factor: number
+): string => {
+  const rgb1 = hexToRgb(color1);
+  const rgb2 = hexToRgb(color2);
+
+  if (!rgb1 || !rgb2) return color1;
+
+  // clamp factor between 0 and 1
+  const clampedFactor = Math.min(1, Math.max(0, factor));
+
+  const [r, g, b] = interpolateColorsRgb(rgb1, rgb2, clampedFactor);
+
+  return rgbToHexCached([r, g, b]);
+};
+
+export const interpolateColorsRgb = (
+  rgb1: RGB,
+  rgb2: RGB,
+  factor: number
+): RGB => {
+  return [
+    Math.round(rgb1[0] + (rgb2[0] - rgb1[0]) * factor),
+    Math.round(rgb1[1] + (rgb2[1] - rgb1[1]) * factor),
+    Math.round(rgb1[2] + (rgb2[2] - rgb1[2]) * factor),
+  ];
 };
 
 export const default_app_color = [

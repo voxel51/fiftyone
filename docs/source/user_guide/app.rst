@@ -1370,6 +1370,8 @@ supports:
     +--------------+----------------+-------------------------------+
     | E            | Ego-view       | Reset the camera to ego view  |
     +--------------+----------------+-------------------------------+
+    | R            | Render         | Toggle render preferences     |
+    +--------------+----------------+-------------------------------+
     | ESC          | Escape context | Escape the current context    |
     +--------------+----------------+-------------------------------+
 
@@ -1392,6 +1394,118 @@ the observed dynamic range of `r` values for each sample.
 
 Similarly, when coloring by height, the `z` value of each point is mapped to
 the full colormap using the same strategy.
+
+.. _app-3d-dynamic-coloring:
+
+Dynamic point cloud coloring
+----------------------------
+
+FiftyOne supports dynamic coloring of point clouds based on any attribute
+in your PCD file. This allows you to visualize and analyze point cloud data in
+powerful ways, such as:
+
+-   Working with semantic segmentation data where different classes need
+    distinct colors
+-   Analyzing LIDAR data where you want to visualize intensity values to
+    identify reflective surfaces
+-   Inspecting custom attributes like confidence scores or prediction errors
+-   Comparing multiple attributes by quickly switching between different color
+    schemes
+
+.. image:: /images/app/pcd-dynamic-coloring.gif
+   :alt: pcd-dynamic-coloring
+   :align: center
+
+To use dynamic coloring:
+
+1.  Press `R` or click the render preferences icon in the 3D visualizer menu
+2.  Select the attribute to color by from the "Shade by" dropdown
+3.  Optionally, override the colormap from the available options by clicking
+    the "Override" button
+
+|br|
+Colormap selection follows this precedence order:
+
+1.  Colormap from browser storage (if previously overridden)
+2.  Colormap defined in the `colorscales` property of the
+    :ref:`dataset's App config <dataset-app-config>` for the specific attribute
+3.  Colormap defined in the `default_colorscale` property of the dataset's App
+    config
+4.  Default colormap (red-to-blue gradient)
+
+|br|
+You can override the colormap for any attribute by clicking the "Override"
+button in the render preferences panel. This will open a new UI where you can:
+
+-   Add or remove color stops
+-   Preview the gradient
+-   Reset to the app config or default colormap
+
+.. note::
+
+    Colormap overrides are persisted in your browser's local storage, so they
+    will be remembered across sessions.
+
+You can define default colormaps for point cloud attributes of a dataset by
+configuring them in the :ref:`dataset's App config <dataset-app-config>`.
+You must use the prefix `::fo3d::pcd::` followed by the attribute name in the
+`path` field. For example, to define a colormap for the `lidar_id` attribute,
+the path should be `::fo3d::pcd::lidar_id`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.load_dataset(...)
+
+    # Configure colormaps for point cloud attributes
+    dataset.app_config.color_scheme = fo.ColorScheme(
+        colorscales=[
+            {
+                "path": "::fo3d::pcd::lidar_id",
+                "name": "viridis",  # use a named colormap
+            },
+            {
+                "path": "::fo3d::pcd::intensity",
+                "list": [  # or define a custom colormap
+                    {"value": 0, "color": "rgb(0, 0, 255)"},
+                    {"value": 1, "color": "rgb(0, 255, 255)"},
+                ],
+            },
+        ],
+        default_colorscale={"name": "jet"},  # default for other attributes
+    )
+    dataset.save()
+
+When visualizing point clouds with dynamic attributes, you can apply
+thresholding to focus on specific value ranges. This is particularly useful
+for:
+
+-   Filtering out noise or outliers in your data
+-   Isolating points of interest based on their attribute values
+-   Analyzing specific ranges of values in your point cloud
+
+To use thresholding:
+
+1.  Press `R` or click the render preferences icon in the 3D visualizer menu
+2.  Select the attribute to color by from the "Shade by" dropdown
+3.  Use the threshold slider that appears below the colormap controls
+4.  Adjust the minimum and maximum values to show only points within that range
+
+|br|
+The threshold slider shows the full range of values for the selected attribute,
+and points outside the selected range will be hidden from view.
+
+.. image:: /images/app/pcd-thresholding.gif
+   :alt: thresholding
+   :align: center
+
+.. note::
+
+    Thresholding is available for all numeric attributes except height and RGB
+    values. The threshold range is automatically adjusted based on the data
+    type of the attribute (integer or float).
 
 .. _app-3d-orthographic-projections:
 
