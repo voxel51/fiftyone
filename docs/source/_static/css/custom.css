@@ -1,5 +1,6 @@
 :root {
   --feedback-primary-color: #181a1b;
+  --docsearch-primary-color: #ff6d04;
 }
 
 body {
@@ -675,6 +676,7 @@ a.with-right-arrow,
   aspect-ratio: 16 / 9;
 }
 
+<<<<<<< HEAD
 #kapa-widget-container {
   z-index: 10000 !important;
   position: absolute !important;
@@ -683,4 +685,22 @@ a.with-right-arrow,
 .mantine-Modal-root {
   z-index: 10000;
   position: absolute;
+=======
+/* DocSearch */
+.DocSearch-Button {
+  margin: 0;
+  width: 100%;
+}
+
+.DocSearch-Container {
+  z-index: 300;
+}
+
+.DocSearch-Hit-content-wrapper {
+  overflow: hidden;
+}
+
+.DocSearch-Hits mark {
+  padding: 0;
+>>>>>>> a28cf4f1c (Replace docs search bar with Algolia DocSearch (#6007))
 }
