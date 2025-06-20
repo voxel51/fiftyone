@@ -1013,86 +1013,138 @@ function PredictionStatisticsChart(props) {
     fp: { main: fp, compare: compareFP },
     fn: { main: fn, compare: compareFN },
   };
+  const metricsBySubset = {};
+
+  const traceOne: any = { values: [], colors: [], keys: [] };
+  const traceTwo: any = { values: [], colors: [], keys: [] };
+  const traceThree: any = { values: [], colors: [], keys: [] };
+  const compareTraceOne: any = { values: [], colors: [], keys: [] };
+  const compareTraceTwo: any = { values: [], colors: [], keys: [] };
+  const compareTraceThree: any = { values: [], colors: [], keys: [] };
 
   for (const subset of subsets) {
     const metrics = subsets_data[subset].metrics;
     const compareMetrics = compareSubsetsData?.[subset]?.metrics;
+    const traces = [
+      { value: metrics.tp, color: KEY_COLOR, key: "tp" },
+      { value: metrics.fp, color: SECONDARY_KEY_COLOR, key: "fp" },
+      { value: metrics.fn, color: TERTIARY_KEY_COLOR, key: "fn" },
+    ].sort((a, b) => b.value - a.value);
+
+    traceOne.values.push(traces[0].value);
+    traceOne.colors.push(traces[0].color);
+    traceOne.keys.push(traces[0].key);
+    traceTwo.values.push(traces[1].value);
+    traceTwo.colors.push(traces[1].color);
+    traceTwo.keys.push(traces[1].key);
+    traceThree.values.push(traces[2].value);
+    traceThree.colors.push(traces[2].color);
+    traceThree.keys.push(traces[2].key);
+
     tp.push(metrics.tp);
     fp.push(metrics.fp);
     fn.push(metrics.fn);
+
+    metricsBySubset[subset] = {
+      tp: metrics.tp,
+      fp: metrics.fp,
+      fn: metrics.fn,
+    };
+
     if (compareMetrics) {
       compareTP.push(compareMetrics.tp);
       compareFP.push(compareMetrics.fp);
       compareFN.push(compareMetrics.fn);
+
+      metricsBySubset[subset] = {
+        ...metricsBySubset[subset],
+        compareTP: compareMetrics.tp,
+        compareFP: compareMetrics.fp,
+        compareFN: compareMetrics.fn,
+      };
+
+      const compareTraces = [
+        { value: compareMetrics.tp, color: COMPARE_KEY_COLOR, key: "tp" },
+        {
+          value: compareMetrics.fp,
+          color: COMPARE_KEY_SECONDARY_COLOR,
+          key: "fp",
+        },
+        {
+          value: compareMetrics.fn,
+          color: COMPARE_KEY_TERTIARY_COLOR,
+          key: "fn",
+        },
+      ].sort((a, b) => b.value - a.value);
+      compareTraceOne.values.push(compareTraces[0].value);
+      compareTraceOne.colors.push(compareTraces[0].color);
+      compareTraceOne.keys.push(compareTraces[0].key);
+      compareTraceTwo.values.push(compareTraces[1].value);
+      compareTraceTwo.colors.push(compareTraces[1].color);
+      compareTraceTwo.keys.push(compareTraces[1].key);
+      compareTraceThree.values.push(compareTraces[2].value);
+      compareTraceThree.colors.push(compareTraces[2].color);
+      compareTraceThree.keys.push(compareTraces[2].key);
     }
   }
-
   if (showAllMetric) {
     const tpTrace = {
       x: subsets,
-      y: tp,
-      name: `${key} True Positives`,
-      id: "tp",
+      y: traceOne.values,
+      keys: traceOne.keys,
       type: "bar",
       offsetgroup: 0,
-      marker: { color: KEY_COLOR },
+      marker: { color: traceOne.colors },
       hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
     };
 
     const fpTrace = {
       x: subsets,
-      y: fp,
-      name: `${key} False Positives`,
-      id: "fp",
+      y: traceTwo.values,
       type: "bar",
       offsetgroup: 0,
-      marker: { color: SECONDARY_KEY_COLOR },
+      marker: { color: traceTwo.colors },
       hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
     };
     const fnTrace = {
       x: subsets,
-      y: fn,
-      name: `${key} False Negatives`,
-      id: "fn",
+      y: traceThree.values,
       type: "bar",
       offsetgroup: 0,
-      marker: { color: TERTIARY_KEY_COLOR },
+      marker: { color: traceThree.colors },
       hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
     };
 
     const compareTPTrace = {
       x: subsets,
-      y: compareTP,
-      name: `${compareKey} True Positives`,
-      id: "tp",
+      y: compareTraceOne.values,
+      keys: compareTraceOne.keys,
       isCompare: true,
       type: "bar",
       offsetgroup: 1,
-      marker: { color: COMPARE_KEY_COLOR },
+      marker: { color: compareTraceOne.colors },
       hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
     };
 
     const compareFPTrace = {
       x: subsets,
-      y: compareFP,
-      name: `${compareKey} False Positives`,
-      id: "fp",
+      y: compareTraceTwo.values,
+      keys: compareTraceTwo.keys,
       isCompare: true,
       type: "bar",
       offsetgroup: 1,
-      marker: { color: COMPARE_KEY_SECONDARY_COLOR },
+      marker: { color: compareTraceTwo.colors },
       hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
     };
 
     const compareFNTrace = {
       x: subsets,
-      y: compareFN,
-      name: `${compareKey} False Negatives`,
-      id: "fn",
+      y: compareTraceThree.values,
+      keys: compareTraceThree.keys,
       isCompare: true,
       type: "bar",
       offsetgroup: 1,
-      marker: { color: COMPARE_KEY_TERTIARY_COLOR },
+      marker: { color: compareTraceThree.colors },
       hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
     };
     plotData = [tpTrace, fpTrace, fnTrace];
@@ -1153,7 +1205,7 @@ function PredictionStatisticsChart(props) {
 
       <Plot
         data={plotData}
-        layout={showAllMetric ? { barmode: "stack" } : {}}
+        layout={showAllMetric ? { barmode: "overlay" } : {}}
         onClick={({ points }) => {
           const firstPoint = points[0];
           const { id, isCompare } = firstPoint.data;
@@ -1165,6 +1217,29 @@ function PredictionStatisticsChart(props) {
             plotName: "prediction_statistics",
           });
           loadView("field", { field: id, subset_def: subsetDef });
+        }}
+        tooltip={(tooltip) => {
+          const [point] = tooltip.points;
+          const { x, y, data } = point;
+          const isCompare = data.offsetgroup === 1;
+          const metrics = metricsBySubset[x];
+          return {
+            label: x,
+            data: [
+              {
+                label: "True Positives",
+                value: isCompare ? metrics.compareTP : metrics.tp,
+              },
+              {
+                label: "False Positives",
+                value: isCompare ? metrics.compareFP : metrics.fp,
+              },
+              {
+                label: "False Negatives",
+                value: isCompare ? metrics.compareFN : metrics.fn,
+              },
+            ].sort((a, b) => b.value - a.value),
+          };
         }}
       />
       <Legends
