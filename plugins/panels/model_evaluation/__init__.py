@@ -22,8 +22,9 @@ from fiftyone.operators.cache import execution_cache
 from plugins.utils.model_evaluation import (
     get_dataset_id,
     get_store,
-    get_scenarios_store,
+    get_scenarios,
     get_subsets_from_custom_code,
+    set_scenarios,
 )
 
 
@@ -435,17 +436,12 @@ class EvaluationPanel(Panel):
         incorrect = np.count_nonzero(results.ypred != results.ytrue)
         return correct, incorrect
 
-    def get_scenarios(self, ctx):
-        store = get_scenarios_store(ctx)
-        scenarios = store.get("scenarios") or {}
-        return scenarios
-
     def get_scenario(self, ctx, scenario_id):
-        scenarios = self.get_scenarios(ctx) or {}
+        scenarios = get_scenarios(ctx)
         return scenarios.get(scenario_id)
 
     def load_scenarios(self, ctx):
-        scenarios = self.get_scenarios(ctx)
+        scenarios = get_scenarios(ctx)
         ctx.panel.set_data(f"scenarios", scenarios)
 
     def get_evaluation_data(self, ctx):
@@ -1070,7 +1066,6 @@ class EvaluationPanel(Panel):
         If it fails, it shows an error page with options to edit/delete.
         """
         view_state = ctx.panel.get_state("view") or {}
-        eval_id = view_state.get("id")
         eval_key = view_state.get("key")
         computed_eval_key = ctx.params.get("key", eval_key)
         scenario_id = str(ctx.params.get("id", "") or "")
@@ -1137,10 +1132,9 @@ class EvaluationPanel(Panel):
                 variant="error",
             )
         scenario_id = ctx.params.get("id", None)
-        store = get_scenarios_store(ctx)
-        scenarios = store.get("scenarios") or {}
+        scenarios = get_scenarios(ctx)
         scenarios.pop(scenario_id, None)
-        store.set("scenarios", scenarios)
+        set_scenarios(ctx, scenarios)
         ctx.ops.notify(f"Scenario deleted successfully!", variant="success")
 
     def render(self, ctx):

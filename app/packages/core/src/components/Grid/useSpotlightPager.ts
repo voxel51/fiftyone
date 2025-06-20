@@ -11,6 +11,7 @@ import type { RecoilValueReadOnly } from "recoil";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import type { Subscription } from "relay-runtime";
 import type { Records } from "./useRecords";
+import useTimeout from "./useTimeout";
 import { handleNode } from "./utils";
 
 export const PAGE_SIZE = 20;
@@ -25,6 +26,12 @@ const processSamplePageData = (
   zoom: boolean,
   records: Map<string, number>
 ) => {
+  if (data.samples.__typename !== "SampleItemStrConnection") {
+    throw new Error(
+      `unexepcted typename ${data.samples.__typename}, expected 'SampleItemStrConnection'`
+    );
+  }
+
   return data.samples.edges.map((edge, i) => {
     const node = handleNode(edge.node);
     const id = { description: node.id };
@@ -61,6 +68,7 @@ const useSpotlightPager = ({
   const zoom = useRecoilValue(zoomSelector);
   const handleError = useErrorHandler();
   const store: SampleStore = useMemo(() => new WeakMap(), []);
+  const handleTimeout = useTimeout();
 
   const keys = useRef(new Set<string>());
 
@@ -97,6 +105,16 @@ const useSpotlightPager = ({
             }
           ).subscribe({
             next: (data) => {
+              if (data.samples.__typename !== "SampleItemStrConnection") {
+                resolve({
+                  items: [],
+                  next: null,
+                  previous: null,
+                });
+                data.samples.__typename === "QueryTimeout" &&
+                  handleTimeout(data.samples.queryTime);
+                return;
+              }
               const items = processSamplePageData(
                 pageNumber,
                 store,
@@ -121,7 +139,7 @@ const useSpotlightPager = ({
         });
       };
     },
-    [environment, handleError, pager, store, zoom]
+    [environment, handleError, handleTimeout, pager, store, zoom]
   );
 
   return { page, records, store };

@@ -25,19 +25,9 @@ export const count = selectorFamily({
       value?: string | null;
     }) =>
     ({ get }): number => {
-      if (params.path === "_") {
-        const data = get(aggregation({ ...params, path: "" }));
-
-        if (data.__typename !== "RootAggregation") {
-          throw new Error("unexpected");
-        }
-
-        return data.slice;
-      }
-
       if (
         !params.modal &&
-        params.path === "" &&
+        (params.path === "" || params.path === "_") &&
         !get(viewAtoms.view).length &&
         get(queryPerformance)
       ) {
@@ -46,6 +36,16 @@ export const count = selectorFamily({
           (!params.extended && !params.lightning)
         )
           return get(datasetSampleCount);
+      }
+
+      if (params.path === "_") {
+        const data = get(aggregation({ ...params, path: "" }));
+
+        if (data.__typename !== "RootAggregation") {
+          throw new Error("unexpected");
+        }
+
+        return data.slice;
       }
 
       const exists =
@@ -95,7 +95,8 @@ export const count = selectorFamily({
         return get(counts(params))[value] || 0;
       }
 
-      return get(aggregation(params))?.count as number;
+      const count = get(aggregation(params));
+      return count?.count as number;
     },
 });
 

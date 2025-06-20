@@ -13,6 +13,7 @@ import logging
 import typing as t
 
 import eta.core.utils as etau
+from pymongo.errors import ExecutionTimeout
 import strawberry as gql
 from bson import ObjectId, json_util
 
@@ -45,6 +46,7 @@ from fiftyone.server.samples import (
 )
 from fiftyone.server.scalars import BSON, BSONArray, JSON
 from fiftyone.server.stage_definitions import stage_definitions
+from fiftyone.server.exceptions import QueryTimeout
 from fiftyone.server.utils import from_dict
 from fiftyone.server.workspace import Workspace
 
@@ -385,6 +387,7 @@ class AppConfig:
     use_frame_number: bool
     spaces: t.Optional[JSON]
     disable_frame_filtering: bool = False
+    max_query_time: t.Optional[int] = None
     media_fallback: bool = False
 
 
@@ -450,23 +453,31 @@ class Query(fosa.AggregateQuery):
         sort_by: t.Optional[str] = None,
         desc: t.Optional[bool] = False,
         hint: t.Optional[str] = None,
+        max_query_time: t.Optional[int] = None,
         dynamic_group: t.Optional[BSON] = None,
-    ) -> Connection[SampleItem, str]:
+    ) -> t.Annotated[
+        t.Union[Connection[SampleItem, str], QueryTimeout],
+        gql.union("PaginateSamplesResponse"),
+    ]:
 
-        return await paginate_samples(
-            dataset,
-            view,
-            filters,
-            first,
-            after,
-            sample_filter=filter,
-            extended_stages=extended_stages,
-            pagination_data=pagination_data,
-            sort_by=sort_by,
-            desc=desc,
-            hint=hint,
-            dynamic_group=dynamic_group,
-        )
+        try:
+            return await paginate_samples(
+                dataset,
+                view,
+                filters,
+                first,
+                after,
+                sample_filter=filter,
+                extended_stages=extended_stages,
+                pagination_data=pagination_data,
+                sort_by=sort_by,
+                desc=desc,
+                hint=hint,
+                max_query_time=max_query_time,
+                dynamic_group=dynamic_group,
+            )
+        except ExecutionTimeout:
+            return QueryTimeout(query_time=max_query_time)
 
     @gql.field
     async def sample(

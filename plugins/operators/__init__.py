@@ -1040,14 +1040,68 @@ class DeleteSelectedLabels(foo.Operator):
     def resolve_input(self, ctx):
         inputs = types.Object()
 
-        count = len(ctx.selected_labels)
-        if count > 0:
-            label_text = "label" if count == 1 else "labels"
+        if ctx.selected_labels:
+            label_count = len(ctx.selected_labels)
+            label_text = "label" if label_count == 1 else "labels"
+
             inputs.str(
                 "msg",
-                label=f"Delete {count} selected {label_text}?",
+                label=f"Delete {label_count} selected {label_text}?",
                 view=types.Warning(),
             )
+        elif ctx.selected:
+            label_fields = _get_label_fields(ctx.view, fo.Label)
+
+            field_choices = types.AutocompleteView(allow_duplicates=False)
+            for field in label_fields:
+                field_choices.add_choice(field, label=field)
+
+            inputs.list(
+                "fields",
+                types.String(),
+                label="Label fields",
+                description="Choose specific field(s) whose labels to delete",
+                required=False,
+                default=[f for f in ctx.active_fields if f in label_fields],
+                view=field_choices,
+            )
+
+            fields = ctx.params.get("fields", None)
+
+            if fields:
+                view = ctx.view.select(ctx.selected)
+                label_count = len(view._get_selected_labels(fields=fields))
+                sample_count = len(ctx.selected)
+
+                if ctx.view._is_patches:
+                    sample_text = "patches" if sample_count > 1 else "patch"
+                elif ctx.view._is_frames:
+                    sample_text = "frames" if sample_count > 1 else "frame"
+                elif ctx.view._is_clips:
+                    sample_text = "clips" if sample_count > 1 else "clip"
+                else:
+                    sample_text = "samples" if sample_count > 1 else "sample"
+
+                if not fields:
+                    fields_text = ""
+                elif len(fields) > 1:
+                    fields_str = ", ".join(f"`{f}`" for f in fields)
+                    fields_text = f"the {fields_str} fields of "
+                else:
+                    fields_text = f"the `{fields[0]}` field of "
+
+                inputs.str(
+                    "msg",
+                    label=f"Delete {label_count} labels in {fields_text}{sample_count} selected {sample_text}?",
+                    view=types.Warning(),
+                )
+            else:
+                prop = inputs.str(
+                    "msg",
+                    label="You must select field(s) whose labels to delete",
+                    view=types.Warning(),
+                )
+                prop.invalid = True
         else:
             prop = inputs.str(
                 "msg",
@@ -1060,13 +1114,55 @@ class DeleteSelectedLabels(foo.Operator):
         return types.Property(inputs, view=view)
 
     def execute(self, ctx):
-        if not ctx.selected_labels:
+        has_selected_labels = bool(ctx.selected_labels)
+        has_selected_samples = bool(ctx.selected)
+
+        if has_selected_labels:
+            view = ctx.view
+            labels = ctx.selected_labels
+        elif has_selected_samples:
+            view = ctx.view.select(ctx.selected)
+            fields = ctx.params.get("fields", None)
+            labels = view._get_selected_labels(fields=fields)
+        else:
+            labels = None
+
+        if not labels:
             return
 
-        ctx.dataset.delete_labels(labels=ctx.selected_labels)
+        ctx.view._delete_labels(labels)
 
-        ctx.trigger("clear_selected_labels")
+        if has_selected_labels:
+            ctx.trigger("clear_selected_labels")
+
+        if has_selected_samples:
+            ctx.trigger("clear_selected_samples")
+
         ctx.trigger("reload_dataset")
+
+
+def _get_label_fields(sample_collection, label_types):
+    label_fields = []
+
+    schema = sample_collection.get_field_schema(
+        embedded_doc_type=label_types, flat=True, unwind=False
+    )
+
+    label_fields.extend(sorted(schema.keys()))
+
+    if sample_collection._has_frame_fields():
+        frame_schema = sample_collection.get_frame_field_schema(
+            embedded_doc_type=label_types, flat=True, unwind=False
+        )
+
+        label_fields.extend(
+            [
+                sample_collection._FRAMES_PREFIX + f
+                for f in sorted(frame_schema.keys())
+            ]
+        )
+
+    return label_fields
 
 
 class DeleteSampleField(foo.Operator):

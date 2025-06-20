@@ -26,6 +26,7 @@ import { Vector3 } from "three";
 import { CAMERA_POSITION_KEY } from "../Environment";
 import { SpinningCube } from "../SpinningCube";
 import { StatusBar, StatusTunnel } from "../StatusBar";
+import { PcdColorMapTunnel } from "../components/PcdColormapModal";
 import {
   DEFAULT_CAMERA_POSITION,
   RAY_CASTING_SENSITIVITY,
@@ -40,8 +41,10 @@ import type { Looker3dSettings } from "../settings";
 import {
   activeNodeAtom,
   cameraPositionAtom,
+  currentHoveredPointAtom,
   isFo3dBackgroundOnAtom,
 } from "../state";
+import { HoverMetadata } from "../types";
 import { FoSceneComponent } from "./FoScene";
 import { Gizmos } from "./Gizmos";
 import HoverMetadataHUD from "./HoverMetadataHUD";
@@ -77,6 +80,11 @@ export const MediaTypeFo3dComponent = () => {
   );
 
   const [isSceneInitialized, setSceneInitialized] = useState(false);
+
+  const numPrimaryAssets = useMemo(() => {
+    if (!foScene) return 0;
+    return foScene.children?.length ?? 0;
+  }, [foScene]);
 
   useHotkey(
     "KeyB",
@@ -319,7 +327,7 @@ export const MediaTypeFo3dComponent = () => {
     ({ set }) =>
       () => {
         set(activeNodeAtom, null);
-        setHoverMetadata(null);
+        set(currentHoveredPointAtom, null);
         setAutoRotate(false);
       },
     []
@@ -608,22 +616,38 @@ export const MediaTypeFo3dComponent = () => {
     "fo3dPointCloudSettings",
     {
       enableTooltip: false,
-      rayCastingSensitivity: "high",
+      rayCastingSensitivity: "medium",
     }
   );
 
-  const [hoverMetadata, setHoverMetadata] = useState<Record<
-    string,
-    unknown
-  > | null>(null);
+  const [hoverMetadata, setHoverMetadata] = useState<HoverMetadata | null>(
+    null
+  );
 
   if (isParsingFo3d) {
     return <LoadingDots />;
   }
 
   return (
-    <>
-      <HoverMetadataHUD hoverMetadata={hoverMetadata} />
+    <Fo3dSceneContext.Provider
+      value={{
+        isSceneInitialized,
+        numPrimaryAssets,
+        upVector,
+        setUpVector,
+        fo3dRoot,
+        sceneBoundingBox,
+        autoRotate,
+        setAutoRotate,
+        pointCloudSettings,
+        setPointCloudSettings,
+        hoverMetadata,
+        setHoverMetadata,
+        pluginSettings: settings,
+      }}
+    >
+      <HoverMetadataHUD />
+      <PcdColorMapTunnel.Out />
       <Canvas
         id={CANVAS_WRAPPER_ID}
         onPointerMissed={resetActiveNode}
@@ -640,54 +664,37 @@ export const MediaTypeFo3dComponent = () => {
         }}
       >
         <StatusTunnel.Out />
-        <Fo3dSceneContext.Provider
-          value={{
-            isSceneInitialized,
-            upVector,
-            setUpVector,
-            fo3dRoot,
-            sceneBoundingBox,
-            autoRotate,
-            setAutoRotate,
-            pointCloudSettings,
-            setPointCloudSettings,
-            hoverMetadata,
-            setHoverMetadata,
-            pluginSettings: settings,
-          }}
-        >
-          <PerspectiveCameraDrei
-            makeDefault
-            ref={cameraRef}
-            position={defaultCameraPositionComputed}
-            up={upVector}
-            fov={foScene?.cameraProps.fov ?? 50}
-            near={foScene?.cameraProps.near ?? 0.1}
-            far={foScene?.cameraProps.far ?? 2500}
-            aspect={foScene?.cameraProps.aspect ?? 1}
-            onUpdate={(cam) => cam.updateProjectionMatrix()}
-          />
-          <AdaptiveDpr pixelated />
-          <AdaptiveEvents />
-          {!autoRotate && <CameraControls ref={cameraControlsRef} />}
-          {autoRotate && <OrbitControls autoRotate={autoRotate} makeDefault />}
-          <SceneControls scene={foScene} />
-          <Gizmos />
+        <PerspectiveCameraDrei
+          makeDefault
+          ref={cameraRef}
+          position={defaultCameraPositionComputed}
+          up={upVector}
+          fov={foScene?.cameraProps.fov ?? 50}
+          near={foScene?.cameraProps.near ?? 0.1}
+          far={foScene?.cameraProps.far ?? 2500}
+          aspect={foScene?.cameraProps.aspect ?? 1}
+          onUpdate={(cam) => cam.updateProjectionMatrix()}
+        />
+        <AdaptiveDpr pixelated />
+        <AdaptiveEvents />
+        {!autoRotate && <CameraControls ref={cameraControlsRef} />}
+        {autoRotate && <OrbitControls autoRotate={autoRotate} makeDefault />}
+        <SceneControls scene={foScene} />
+        <Gizmos />
 
-          {!isSceneInitialized && <SpinningCube />}
+        {!isSceneInitialized && <SpinningCube />}
 
-          <Bvh firstHitOnly enabled={pointCloudSettings.enableTooltip}>
-            <group ref={assetsGroupRef} visible={isSceneInitialized}>
-              <FoSceneComponent scene={foScene} />
-            </group>
-          </Bvh>
+        <Bvh firstHitOnly enabled={pointCloudSettings.enableTooltip}>
+          <group ref={assetsGroupRef} visible={isSceneInitialized}>
+            <FoSceneComponent scene={foScene} />
+          </group>
+        </Bvh>
 
-          {isSceneInitialized && <ThreeDLabels sampleMap={{ fo3d: sample }} />}
-        </Fo3dSceneContext.Provider>
+        {isSceneInitialized && <ThreeDLabels sampleMap={{ fo3d: sample }} />}
       </Canvas>
       <StatusBarRootContainer>
         <StatusBar cameraRef={cameraRef} />
       </StatusBarRootContainer>
-    </>
+    </Fo3dSceneContext.Provider>
   );
 };

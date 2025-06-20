@@ -3292,8 +3292,19 @@ class SampleCollection(object):
                 ops, ids=ids, frames=is_frame_field, progress=progress
             )
 
-    def _delete_labels(self, ids, fields=None):
-        self._dataset.delete_labels(ids=ids, fields=fields)
+    def _delete_labels(self, labels, fields=None):
+        self._dataset._delete_labels(labels, fields=fields)
+
+    def _map_values(self, in_values, in_field, *out_fields):
+        view = self.select_by(in_field, in_values)
+        _in_values, *_all_out_values = view.values([in_field, *out_fields])
+
+        results = []
+        for out_field, _out_values in zip(out_fields, _all_out_values):
+            d = dict(zip(_in_values, _out_values))
+            results.append([d.get(v, None) for v in in_values])
+
+        return tuple(results) if len(results) > 1 else results[0]
 
     def compute_metadata(
         self,
@@ -10874,7 +10885,7 @@ class SampleCollection(object):
 
         return (_process_doc(doc) for doc in cursor)
 
-    async def _async_aggregate(self, aggregations):
+    async def _async_aggregate(self, aggregations, maxTimeMS=None):
         if not aggregations:
             return []
 
@@ -10905,7 +10916,9 @@ class SampleCollection(object):
             # Run all aggregations
             coll_name = self._dataset._sample_collection_name
             collection = foo.get_async_db_conn()[coll_name]
-            _results = await foo.aggregate(collection, pipelines, hints)
+            _results = await foo.aggregate(
+                collection, pipelines, hints, maxTimeMS=maxTimeMS
+            )
 
             # Parse facet-able results
             for idx, aggregation in compiled_facet_aggs.items():

@@ -100,6 +100,7 @@ async def paginate_samples(
     desc: t.Optional[bool] = False,
     hint: t.Optional[str] = None,
     dynamic_group: t.Optional[BSON] = None,
+    max_query_time: t.Optional[int] = None,
 ) -> Connection[t.Union[ImageSample, VideoSample], str]:
     run = lambda reload: fosv.get_view(
         dataset,
@@ -125,10 +126,12 @@ async def paginate_samples(
         view = view.skip(int(after) + 1)
 
     pipeline = await get_samples_pipeline(view, sample_filter)
+    maxTimeMS = max_query_time * 1000 if max_query_time else None
     samples = await foo.aggregate(
         foo.get_async_db_conn()[view._dataset._sample_collection_name],
         pipeline,
         hint,
+        maxTimeMS=maxTimeMS,
     ).to_list(first + 1)
 
     more = False
