@@ -87,7 +87,7 @@ def get_view(
     reload=True,
     awaitable=False,
     sort_by=None,
-    desc=None,
+    desc=False,
 ):
     """Gets the view defined by the given request parameters.
 
@@ -145,7 +145,7 @@ def get_view(
             elif sample_filter.id:
                 view = fov.make_optimized_select_view(view, sample_filter.id)
 
-        if filters or extended_stages or pagination_data:
+        if filters or extended_stages or pagination_data or sort_by:
             view = get_extended_view(
                 view,
                 filters,
@@ -171,7 +171,7 @@ def get_extended_view(
     pagination_data=False,
     media_types=None,
     sort_by=None,
-    desc=None,
+    desc=False,
 ):
     """Create an extended view with the provided filters.
 
@@ -426,6 +426,10 @@ def _make_match_stage(view, filters):
         path_field = view.get_field(path)
 
         field = view.get_field(parent_path)
+
+        if field is None or path_field is None:
+            continue
+
         is_label_field = _is_label_type(field)
         if (
             is_label_field
@@ -482,6 +486,10 @@ def _make_label_filter_stages(
 
         field = view.get_field(path)
         label_field = view.get_field(label_path)
+
+        if field is None or label_field is None:
+            continue
+
         if issubclass(
             label_field.document_type, (fol.Keypoint, fol.Keypoints)
         ) and isinstance(field, fof.ListField):

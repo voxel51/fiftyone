@@ -17,6 +17,7 @@ import { COMPARE_KEY_COLOR, KEY_COLOR } from "../../constants";
 import { formatValue, getNumericDifference } from "../../utils";
 import { useActiveFilter } from "./utils";
 import { get } from "lodash";
+import { formatValueAsNumber } from "@fiftyone/utilities";
 
 export default function Summary(props) {
   const { name, compareKey, loadView, evaluation, compareEvaluation } = props;
@@ -246,7 +247,7 @@ export default function Summary(props) {
                 >
                   <Typography>
                     {value ? (
-                      formatValue(value)
+                      formatValueAsNumber(value)
                     ) : (
                       <Typography color="text.tertiary">—</Typography>
                     )}
@@ -283,7 +284,7 @@ export default function Summary(props) {
                     >
                       <Typography>
                         {compareValue ? (
-                          formatValue(compareValue)
+                          formatValueAsNumber(compareValue)
                         ) : (
                           <Typography color="text.tertiary">—</Typography>
                         )}

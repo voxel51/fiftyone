@@ -11,6 +11,7 @@ import {
   OverviewProps,
 } from "./Types";
 import ActionMenu from "./ActionMenu";
+import { useMutation } from "@fiftyone/state";
 
 export default function Overview(props: OverviewProps) {
   const {
@@ -24,6 +25,7 @@ export default function Overview(props: OverviewProps) {
     onRename,
   } = props;
   const count = evaluations.length;
+  const { can_delete_evaluation, can_rename } = permissions;
 
   return (
     <Stack spacing={2} sx={{ p: 2 }}>
@@ -55,6 +57,8 @@ export default function Overview(props: OverviewProps) {
             method={method}
             onSelect={onSelect}
             onRename={onRename}
+            hasDeletePermission={can_delete_evaluation}
+            hasRenamePermission={can_rename}
           />
         );
       })}
@@ -68,6 +72,9 @@ export default function Overview(props: OverviewProps) {
             onSelect={onSelect}
             type={type}
             method={method}
+            onRename={() => {
+              // Do nothing. No rename for pending evaluations
+            }}
           />
         );
       })}
@@ -86,8 +93,15 @@ function EvaluationCard(props: EvaluationCardProps) {
     type,
     method,
     onRename,
+    hasDeletePermission,
+    hasRenamePermission,
   } = props;
   const [hovering, setHovering] = React.useState(false);
+
+  const [enable, message] = useMutation(
+    hasRenamePermission,
+    "rename evaluation"
+  );
 
   return (
     <CardActionArea
@@ -102,7 +116,7 @@ function EvaluationCard(props: EvaluationCardProps) {
     >
       <Card
         sx={{ p: 2, cursor: "pointer" }}
-        onClick={(event: React.MouseEvent<HTMLDivElement>) => {
+        onClick={() => {
           onSelect(eval_key, id);
         }}
       >
@@ -123,6 +137,8 @@ function EvaluationCard(props: EvaluationCardProps) {
                 onRename(eval_key, newName);
               }}
               showEditIcon={hovering}
+              disabled={!enable}
+              title={message}
             />
           </Stack>
           <Stack direction="row" spacing={0.5} alignItems={"center"}>
@@ -143,7 +159,12 @@ function EvaluationCard(props: EvaluationCardProps) {
               />
             )}
             {status && <Status status={status} readOnly />}
-            {!pending && <ActionMenu evaluationName={eval_key} />}
+            {!pending && (
+              <ActionMenu
+                evaluationName={eval_key}
+                canDelete={hasDeletePermission}
+              />
+            )}
           </Stack>
         </Stack>
         {note && <EvaluationNotes notes={note} variant="overview" />}

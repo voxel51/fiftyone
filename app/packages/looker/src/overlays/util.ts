@@ -4,7 +4,7 @@
 
 import { COLOR_BY, REGRESSION, getColor } from "@fiftyone/utilities";
 import colorString from "color-string";
-import { INFO_COLOR } from "../constants";
+import { INFO_COLOR, SELECTED_AND_HOVERED_COLOR } from "../constants";
 import type {
   BaseState,
   Coloring,
@@ -100,10 +100,19 @@ export const convertId = (obj: Record<string, any>): Record<string, any> => {
   );
 };
 
-export const getHashLabel = (label: RegularLabel): string => {
-  if (["number", "string"].includes(typeof label?.index)) {
-    return `${label.label}.${label.index}`;
+export const getHashLabelColorByInstance = (label: RegularLabel): string => {
+  const hasIndex =
+    (typeof label.index === "string" || typeof label.index === "number") &&
+    !isNaN(label.index);
+
+  if (hasIndex) {
+    return `${label.label}-${label.index}-${label.instance?._id ?? ""}`;
   }
+
+  if (label?.instance?._id) {
+    return `${label.label}-${label.instance?._id}`;
+  }
+
   if (typeof label?.label !== "undefined" && typeof label?.id !== "undefined") {
     return `${label.label}.${label.id}`;
   }
@@ -144,7 +153,11 @@ export const getLabelColor = ({
   const field = customizeColorSetting.find((s) => s.path === path);
 
   if (coloring.by === COLOR_BY.INSTANCE) {
-    return getColor(coloring.pool, coloring.seed, getHashLabel(label));
+    return getColor(
+      coloring.pool,
+      coloring.seed,
+      getHashLabelColorByInstance(label)
+    );
   }
 
   if (coloring.by === COLOR_BY.FIELD) {
@@ -287,3 +300,41 @@ const getLabelColorByValue = ({
     return getColor(coloring.pool, coloring.seed, label[key]);
   }
 };
+
+/**
+ * Four possible cases for stroke style if it's a label _with an instance_:
+ * 1. Label is neither selected nor hovered: default color
+ * 2. Label is hovered: white stroke
+ * 3. Instance is selected: stroke with dash of white and default color
+ * 4. Instance is selected and hovered: stroke with dash of orange and default color
+ */
+export function getInstanceStrokeStyles({
+  isSelected,
+  getColor,
+  isHoveringInstance,
+  dashLength,
+}: {
+  isSelected: boolean;
+  getColor: () => string;
+  isHoveringInstance: boolean;
+  dashLength: number;
+}) {
+  // Main stroke color
+  let strokeColor = getColor();
+  let overlayStrokeColor: string | null = null;
+  let overlayDash: number | null = null;
+
+  if (isHoveringInstance && !isSelected) {
+    strokeColor = INFO_COLOR;
+  }
+
+  if (isSelected && isHoveringInstance) {
+    overlayStrokeColor = SELECTED_AND_HOVERED_COLOR;
+    overlayDash = dashLength;
+  } else if (isSelected) {
+    overlayStrokeColor = INFO_COLOR;
+    overlayDash = dashLength;
+  }
+
+  return { strokeColor, overlayStrokeColor, overlayDash };
+}

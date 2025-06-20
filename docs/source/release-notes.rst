@@ -847,7 +847,7 @@ SDK
 
 Brain
 
-- Upgraded the :Ref:`MongoDB vector search integration <mongodb-integration>`
+- Upgraded the :ref:`MongoDB vector search integration <mongodb-integration>`
   to use the `vectorSearch` type
   `#218 <https://github.com/voxel51/fiftyone-brain/pull/218>`_
 
@@ -878,7 +878,7 @@ Includes all updates from :ref:`FiftyOne 1.1.0 <release-notes-v1.1.0>`, plus:
 - Added support for evaluating models natively from the
   :ref:`Model Evaluation panel <app-model-evaluation-panel>`
 - Added support for :ref:`configuring an SMTP server <identity-providers>` for
-  sending user invitiations via email when running in
+  sending user invitations via email when running in
   :ref:`Internal Mode <internal-mode>`
 
 .. _release-notes-v1.1.0:
@@ -4818,7 +4818,7 @@ Core
 - Added support for importing and exporting `confidence` in YOLO formats
 - Added support for directly passing a `filename -> filepath` mapping dict to
   the `data_path` parameter to
-  :ref:`dataset importers <loading-datasets-from-disk>`
+  :ref:`dataset importers <importing-datasets>`
 - Added graceful casting of `int`-like and `float`-like values like
   `np.float(1.0)` to their respective Python primitives for storage in the
   database
@@ -5012,10 +5012,10 @@ Annotation
 
 Docs
 
-- Added a section on :ref:`adding model predictions <model-predictions>` to
-  existing datasets to the user guide
+- Added a section on :ref:`adding model predictions <adding-model-predictions>`
+  to existing datasets to the user guide
 - Added explicit examples of labels-only
-  :ref:`imports <loading-datasets-from-disk>` and
+  :ref:`imports <importing-datasets>` and
   :ref:`exports <exporting-datasets>` for all relevant datasets to the docs
 - Documented how class lists are computed when exporting in formats like YOLO
   and COCO that require explicit class lists
@@ -5392,7 +5392,7 @@ Core
 - Greatly improved the efficiency of creating
   :ref:`evaluation patch views <evaluation-patches>`
 - Added support for recursively listing data directories when loading datasets
-  :ref:`from disk <loading-datasets-from-disk>`
+  :ref:`from disk <importing-datasets>`
 - Added support for controlling whether/which object attributes are
   imported/exported in formats like :ref:`COCO <COCODetectionDataset-import>`
   that support arbitrary object attributes
@@ -6865,9 +6865,8 @@ Docs
   DatasetViews with powerful matching, filtering, and sorting operations
 - Added :doc:`a recipe </recipes/draw_labels>` showing how to render annotated
   versions of samples with label field(s) overlaid
-- Upgraded :doc:`dataset creation docs </user_guide/dataset_creation/index>`
-  that simplify the material and make it easier to find the creation strategy
-  of interest
+- Upgraded :doc:`data import docs </user_guide/import_datasets>` to simplify
+  the material and make it easier to find the creation strategy of interest
 - Improved layout of :doc:`tutorials </tutorials/index>`,
   :doc:`recipes </recipes/index>`, and :doc:`user guide </user_guide/index>`
   landing pages
@@ -6903,7 +6902,7 @@ Docs
 - Added a recipe demonstrating how to
   :doc:`convert datasets </recipes/convert_datasets>` on disk between common
   formats
-- Added recipes demonstratings how to write your own
+- Added recipes demonstrating how to write your own
   :doc:`custom dataset importers </recipes/custom_importer>`,
   :doc:`custom dataset exporters </recipes/custom_exporter>`, and
   :doc:`custom sample parsers </recipes/custom_parser>`

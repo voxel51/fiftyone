@@ -256,7 +256,7 @@ class FiftyOneTransformerConfig(fout.TorchImageModelConfig, HasZooModel):
             ``transformers`` processor during input processing.
         embeddings_output_key (None): The key in the model output to access for embeddings.
             if set to `None`, the default value will be picked based on what is
-            avaliable in the model's output with the following priority:
+            available in the model's output with the following priority:
             1. `pooler_output`
             2. `last_hidden_state`
             3. `hidden_states` - in this case, `output['hidden_states'][-1]`
@@ -385,7 +385,7 @@ class TransformerEmbeddingsMixin(EmbeddingsMixin):
     This is mainly due to what is exposed by the model's forward pass. For
     example, the image classification models typically don't return pooled
     or normalized embeddings in HuggingFace. While this can be addressed
-    here, there is no gurantee that this generic solution will work for
+    here, there is no guarantee that this generic solution will work for
     the model passed.
     """
 
@@ -593,7 +593,7 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
         }
         config.ragged_batches = False
 
-        # handle unsuported arguments
+        # handle unsupported arguments
         if config.use_half_precision:
             config.use_half_precision = False
             logger.warning(
@@ -1001,6 +1001,28 @@ class FiftyOneTransformerForObjectDetection(FiftyOneTransformer):
         self.transforms.return_image_sizes = True
 
 
+class FiftyOneZeroShotTransformerForSemanticSegmentationConfig(
+    FiftyOneZeroShotTransformerConfig
+):
+    pass
+
+
+class FiftyOneZeroShotTransformerForSemanticSegmentation(
+    FiftyOneZeroShotTransformer
+):
+    """FiftyOne wrapper around a ``transformers`` model for zero-shot semantic segmentation.
+
+    Args:
+        config: a `FiftyOneZeroShotTransformerForSemanticSegmentationConfig`
+    """
+
+    def __init__(self, config):
+        # override output processor
+        if config.output_processor_cls is None:
+            config.output_processor_cls = "fiftyone.utils.transformers.TransformersSemanticSegmentatorOutputProcessor"
+        super().__init__(config)
+
+
 class FiftyOneTransformerForSemanticSegmentationConfig(
     FiftyOneTransformerConfig
 ):
@@ -1265,11 +1287,14 @@ class TransformersSemanticSegmentatorOutputProcessor(
     fout.SemanticSegmenterOutputProcessor
 ):
     def __init__(self, *args, **kwargs):
+        self.logits_key = kwargs.pop("logits_key", "logits")
         super().__init__(*args, **kwargs)
 
     def __call__(self, output, image_sizes, confidence_thresh=None):
         return super().__call__(
-            {"out": output.logits},  # to be compatible with the base class
+            {
+                "out": output[self.logits_key]
+            },  # to be compatible with the base class
             image_sizes,
             confidence_thresh=confidence_thresh,
         )
@@ -1330,6 +1355,7 @@ MODEL_TYPE_TO_CONFIG_CLASS = {
     "depth-estimation": FiftyOneTransformerForDepthEstimationConfig,
     "zero-shot-image-classification": FiftyOneZeroShotTransformerForImageClassificationConfig,
     "zero-shot-object-detection": FiftyOneZeroShotTransformerForObjectDetectionConfig,
+    "zero-shot-semantic-segmentation": FiftyOneZeroShotTransformerForSemanticSegmentationConfig,
 }
 
 MODEL_TYPE_TO_MODEL_CLASS = {
@@ -1340,4 +1366,5 @@ MODEL_TYPE_TO_MODEL_CLASS = {
     "depth-estimation": FiftyOneTransformerForDepthEstimation,
     "zero-shot-image-classification": FiftyOneZeroShotTransformerForImageClassification,
     "zero-shot-object-detection": FiftyOneZeroShotTransformerForObjectDetection,
+    "zero-shot-semantic-segmentation": FiftyOneZeroShotTransformerForSemanticSegmentation,
 }

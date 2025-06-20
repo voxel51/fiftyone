@@ -2,7 +2,7 @@ import { COLOR_BY, get32BitColor, rgbToHexCached } from "@fiftyone/utilities";
 import colorString from "color-string";
 import { ARRAY_TYPES, OverlayMask, TypedArray } from "../numpy";
 import {
-  getHashLabel,
+  getHashLabelColorByInstance,
   isRgbMaskTargets,
   shouldShowLabelTag,
 } from "../overlays/util";
@@ -40,7 +40,7 @@ export const PainterFactory = (requestColor) => ({
       color = await requestColor(
         coloring.pool,
         coloring.seed,
-        getHashLabel(label)
+        getHashLabelColorByInstance(label)
       );
     }
     if (coloring.by === COLOR_BY.FIELD) {

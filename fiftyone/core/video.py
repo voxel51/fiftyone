@@ -295,14 +295,10 @@ class FramesView(fov.DatasetView):
         """
         self._source_collection.reload()
 
-        #
         # Regenerate the frames dataset
-        #
-        # This assumes that calling `load_view()` when the current patches
-        # dataset has been deleted will cause a new one to be generated
-        #
-        self._frames_dataset.delete()
-        _view = self._frames_stage.load_view(self._source_collection)
+        _view = self._frames_stage.load_view(
+            self._source_collection, reload=True
+        )
         self._frames_dataset = _view._frames_dataset
 
         super().reload()
@@ -493,6 +489,7 @@ def make_frames_dataset(
     force_sample=False,
     skip_failures=True,
     verbose=False,
+    include_indexes=False,
     name=None,
     persistent=False,
     _generated=False,
@@ -615,6 +612,9 @@ def make_frames_dataset(
             an error if a video cannot be sampled
         verbose (False): whether to log information about the frames that will
             be sampled, if any
+        include_indexes (False): whether to recreate any custom frame indexes
+            on the new dataset (True) or a list of specific indexes or index
+            prefixes to recreate. By default, no custom indexes are recreated
         name (None): a name for the dataset
         persistent (False): whether the dataset should persist in the database
             after the session terminates
@@ -653,6 +653,12 @@ def make_frames_dataset(
     # This index will be used when populating the collection now as well as
     # later when syncing the source collection
     dataset.create_index([("sample_id", 1), ("frame_number", 1)], unique=True)
+
+    fod._clone_indexes_for_frames_view(
+        sample_collection,
+        dataset,
+        include_indexes=include_indexes,
+    )
 
     _make_pretty_summary(dataset)
 

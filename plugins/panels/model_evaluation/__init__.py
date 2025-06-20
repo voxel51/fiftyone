@@ -10,6 +10,7 @@ import os
 import fiftyone.utils.eval as foue
 import numpy as np
 import fiftyone.operators.types as types
+import fiftyone.core.view as fov
 
 from collections import defaultdict, Counter
 from bson import ObjectId
@@ -17,9 +18,13 @@ from fiftyone import ViewField as F
 from fiftyone.core.plots.plotly import _to_log_colorscale
 from fiftyone.operators.categories import Categories
 from fiftyone.operators.panel import Panel, PanelConfig
-from plugins.utils import get_subsets_from_custom_code
 from fiftyone.operators.cache import execution_cache
-import fiftyone.core.view as fov
+from plugins.utils.model_evaluation import (
+    get_dataset_id,
+    get_store,
+    get_scenarios_store,
+    get_subsets_from_custom_code,
+)
 
 
 STORE_NAME = "model_evaluation_panel_builtin"
@@ -49,12 +54,6 @@ class EvaluationPanel(Panel):
             category=Categories.ANALYZE,
         )
 
-    def get_dataset_id(self, ctx):
-        return str(ctx.dataset._doc.id)
-
-    def get_store(self, ctx):
-        return ctx.store(STORE_NAME)
-
     def get_evaluation_id(self, dataset, eval_key):
         try:
             return str(dataset._doc.evaluations[eval_key].id)
@@ -68,6 +67,8 @@ class EvaluationPanel(Panel):
             "can_edit_status": True,
             "can_delete_evaluation": True,
             "can_rename": True,
+            "can_create_scenario": True,
+            "can_edit_scenario": True,
             "can_delete_scenario": True,
         }
 
@@ -93,7 +94,7 @@ class EvaluationPanel(Panel):
         return self.get_permissions(ctx).get("can__scenario", False)
 
     def on_load(self, ctx):
-        store = self.get_store(ctx)
+        store = get_store(ctx)
         statuses = store.get("statuses") or {}
         notes = store.get("notes") or {}
         permissions = self.get_permissions(ctx)
@@ -203,7 +204,7 @@ class EvaluationPanel(Panel):
             )
             return
         status = ctx.params.get("status", None)
-        store = self.get_store(ctx)
+        store = get_store(ctx)
         statuses = store.get("statuses") or {}
         view_state = ctx.panel.get_state("view") or {}
         eval_id = view_state.get("id")
@@ -223,7 +224,7 @@ class EvaluationPanel(Panel):
             )
             return
         note = ctx.params.get("note", None)
-        store = self.get_store(ctx)
+        store = get_store(ctx)
         notes = store.get("notes") or {}
         view_state = ctx.panel.get_state("view") or {}
         eval_id = view_state.get("id")
@@ -245,7 +246,7 @@ class EvaluationPanel(Panel):
             ctx.dataset.rename_evaluation(old_name, new_name)
             view_state = ctx.panel.get_state("view") or {}
             eval_id = view_state.get("id")
-            store = self.get_store(ctx)
+            store = get_store(ctx)
             evaluation_data = store.get(eval_id)
             if evaluation_data:
                 evaluation_data["info"]["name"] = new_name
@@ -276,7 +277,7 @@ class EvaluationPanel(Panel):
 
         try:
             ctx.dataset.delete_evaluation(eval_key)
-            store = self.get_store(ctx)
+            store = get_store(ctx)
             store.delete(eval_id)
             ctx.ops.notify(
                 "Evaluation deleted successfully!",
@@ -434,25 +435,18 @@ class EvaluationPanel(Panel):
         incorrect = np.count_nonzero(results.ypred != results.ytrue)
         return correct, incorrect
 
-    def get_scenarios(self, ctx, eval_id):
-        store = self.get_store(ctx)
+    def get_scenarios(self, ctx):
+        store = get_scenarios_store(ctx)
         scenarios = store.get("scenarios") or {}
-        return scenarios.get(eval_id)
+        return scenarios
 
-    def get_scenario(self, ctx, eval_id, scenario_id):
-        scenarios = self.get_scenarios(ctx, eval_id) or {}
+    def get_scenario(self, ctx, scenario_id):
+        scenarios = self.get_scenarios(ctx) or {}
         return scenarios.get(scenario_id)
 
     def load_scenarios(self, ctx):
-        view_state = ctx.panel.get_state("view") or {}
-        eval_key = view_state.get("key")
-        computed_eval_key = ctx.params.get("key", eval_key)
-        eval_id = view_state.get("id")
-        computed_eval_id = ctx.params.get("id", eval_id)
-        scenarios = self.get_scenarios(ctx, computed_eval_id)
-        ctx.panel.set_data(
-            f"evaluation_{computed_eval_key}.scenarios", scenarios
-        )
+        scenarios = self.get_scenarios(ctx)
+        ctx.panel.set_data(f"scenarios", scenarios)
 
     def get_evaluation_data(self, ctx):
         view_state = ctx.panel.get_state("view") or {}
@@ -523,17 +517,13 @@ class EvaluationPanel(Panel):
         view_state = ctx.panel.get_state("view") or {}
         eval_key = view_state.get("key")
         computed_eval_key = ctx.params.get("key", eval_key)
-        eval_id = view_state.get("id")
-        computed_eval_id = ctx.params.get("id", eval_id)
         evaluation_data = (
             self.get_evaluation_data_cacheable(ctx)
             if ENABLE_CACHING
             else self.get_evaluation_data(ctx)
         )
         # Skip caching scenarios as they are updated frequently
-        evaluation_data["scenarios"] = self.get_scenarios(
-            ctx, computed_eval_id
-        )
+        self.load_scenarios(ctx)
         ctx.panel.set_state("missing", evaluation_data["missing"])
         ctx.panel.set_data(f"evaluation_{computed_eval_key}", evaluation_data)
 
@@ -550,8 +540,8 @@ class EvaluationPanel(Panel):
     def load_pending_evaluations(self, ctx, skip_update=False):
         pending_evaluations = []
         eval_keys = ctx.dataset.list_evaluations()
-        store = self.get_store(ctx)
-        dataset_id = self.get_dataset_id(ctx)
+        store = get_store(ctx)
+        dataset_id = get_dataset_id(ctx)
         pending_evaluations_in_store = store.get("pending_evaluations") or {}
         pending_evaluations_for_dataset_in_store = (
             pending_evaluations_in_store.get(dataset_id, [])
@@ -585,8 +575,8 @@ class EvaluationPanel(Panel):
         ctx.panel.set_data("pending_evaluations", pending_evaluations)
 
     def on_evaluate_model_success(self, ctx):
-        dataset_id = self.get_dataset_id(ctx)
-        store = self.get_store(ctx)
+        dataset_id = get_dataset_id(ctx)
+        store = get_store(ctx)
         result = ctx.params.get("result", {})
         doc_id = result.get("id")
         delegated_eval_key = (
@@ -980,8 +970,9 @@ class EvaluationPanel(Panel):
                 scenario_data["subsets_data"][subset] = subset_data
         elif scenario_type == "sample_field":
             scenario_subsets = scenario.get("subsets", [])
+            field_name = scenario.get("field", None)
             for subset in scenario_subsets:
-                subset_def = dict(type="field", field=subset)
+                subset_def = dict(type="field", field=field_name, value=subset)
                 subset_data = self.get_subset_def_data(
                     info, results, subset_def, is_compare
                 )
@@ -1086,7 +1077,7 @@ class EvaluationPanel(Panel):
 
         try:
             if scenario_id:
-                scenario = self.get_scenario(ctx, eval_id, scenario_id)
+                scenario = self.get_scenario(ctx, scenario_id)
                 validated_scenario, changes = self.validate_scenario_subsets(
                     ctx, scenario
                 )
@@ -1111,6 +1102,13 @@ class EvaluationPanel(Panel):
                         None,
                     )
 
+                # refresh clicked
+                should_refresh_cache = ctx.params.get("refresh_cache", False)
+                if should_refresh_cache:
+                    self.get_scenario_data.clear_cache(
+                        self, ctx, validated_scenario
+                    )
+
                 scenario_data = self.get_scenario_data(ctx, validated_scenario)
 
                 ctx.panel.set_state("scenario_load_error", None)
@@ -1119,7 +1117,8 @@ class EvaluationPanel(Panel):
                     scenario_data,
                 )
                 ctx.panel.set_state("scenario_loading", False)
-        except Exception:
+        except Exception as e:
+            print("error", e)
             ctx.panel.set_state("scenario_loading", False)
             msg = f"We couldn't load this scenario because the underlying data has changed or been removed. To continue your analysis you can,"
             ctx.panel.set_state(
@@ -1138,10 +1137,9 @@ class EvaluationPanel(Panel):
                 variant="error",
             )
         scenario_id = ctx.params.get("id", None)
-        eval_id = ctx.params.get("eval_id", None)
-        store = self.get_store(ctx)
+        store = get_scenarios_store(ctx)
         scenarios = store.get("scenarios") or {}
-        scenarios[eval_id].pop(scenario_id, None)
+        scenarios.pop(scenario_id, None)
         store.set("scenarios", scenarios)
         ctx.ops.notify(f"Scenario deleted successfully!", variant="success")
 

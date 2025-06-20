@@ -1,9 +1,8 @@
 import type { Range } from "@fiftyone/core/src/components/Common/RangeSlider";
 import {
-  currentModalUniqueId,
   getBrowserStorageEffectForKey,
   groupId,
-  modalSampleId,
+  nullableModalSampleId,
 } from "@fiftyone/state";
 import { atom, atomFamily, selector } from "recoil";
 import { SHADE_BY_HEIGHT } from "./constants";
@@ -18,15 +17,18 @@ const fo3dAssetsParseStatusLog = atomFamily<AssetLoadingLog[], string>({
 export const fo3dAssetsParseStatusThisSample = selector<AssetLoadingLog[]>({
   key: "fo3d-assetsParseStatusLogs",
   get: ({ get }) => {
-    const thisModalUniqueId = get(currentModalUniqueId);
-
+    const thisModalUniqueId = `${get(groupId) ?? ""}-${get(
+      nullableModalSampleId
+    )}`;
     return get(fo3dAssetsParseStatusLog(`${thisModalUniqueId}`));
   },
   set: ({ get, set }, newValue) => {
-    const thisSampleId = get(modalSampleId);
-    const thisGroupId = get(groupId) ?? "";
-
-    set(fo3dAssetsParseStatusLog(`${thisGroupId}/${thisSampleId}`), newValue);
+    set(
+      fo3dAssetsParseStatusLog(
+        `${get(groupId) ?? ""}-${get(nullableModalSampleId)}`
+      ),
+      newValue
+    );
   },
 });
 
