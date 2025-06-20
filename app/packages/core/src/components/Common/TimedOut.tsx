@@ -15,7 +15,7 @@ const TimedOut = ({ queryTime }: { queryTime: number }) => {
     >
       <Tooltip
         placement="top-center"
-        text={`Query timed out at ${queryTime} second${
+        text={`Count query timed out at ${queryTime} second${
           queryTime > 1 ? "s" : ""
         }`}
       >
