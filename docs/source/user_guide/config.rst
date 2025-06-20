@@ -739,6 +739,9 @@ The FiftyOne App can be configured in the ways described below:
 +----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
 | `loop_videos`              | `FIFTYONE_APP_LOOP_VIDEOS`              | `False`       | Whether to loop videos by default in the expanded sample view.                             |
 +----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
+| `max_query_time`           | `FIFTYONE_APP_MAX_QUERY_TIME`           | `60`          | Maximum query time in seconds for potentially slow sidebar and grid requests. Only applies |
+|                            |                                         |               | when :ref:`Query Performance <app-optimizing-query-performance>` is enabled.               |
++----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
 | `media_fallback`           | `FIFTYONE_APP_MEDIA_FALLBACK`           | `False`       | Whether to fall back to the default media field (`"filepath"`) when the configured media   |
 |                            |                                         |               | field's value for a sample is not defined.                                                 |
 +----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+

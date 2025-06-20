@@ -9,6 +9,7 @@ FiftyOne Server aggregations
 from datetime import date, datetime
 import typing as t
 
+from pymongo.errors import ExecutionTimeout
 import strawberry as gql
 
 import fiftyone.core.aggregations as foa
@@ -20,6 +21,7 @@ from fiftyone.core.utils import datetime_to_timestamp
 import fiftyone.core.view as fov
 
 from fiftyone.server.constants import LIST_LIMIT
+from fiftyone.server.exceptions import AggregationQueryTimeout
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
 from fiftyone.server.inputs import SelectedLabel
 from fiftyone.server.scalars import BSON, BSONArray
@@ -41,9 +43,10 @@ class AggregationForm:
     slice: t.Optional[str]
     slices: t.Optional[t.List[str]]
     view: BSONArray
+    hint: t.Optional[str] = None
+    max_query_time: t.Optional[int] = None
     view_name: t.Optional[str] = None
     query_performance: t.Optional[bool] = False
-    hint: t.Optional[str] = None
 
 
 @gql.interface
@@ -112,7 +115,12 @@ AggregateResult = t.Annotated[
 
 async def aggregate_resolver(
     form: AggregationForm,
-) -> t.List[AggregateResult]:
+) -> t.List[
+    t.Annotated[
+        t.Union[AggregateResult, AggregationQueryTimeout],
+        gql.union("AggregationResponse"),
+    ]
+]:
     if not form.dataset:
         raise ValueError("Aggregate form missing dataset")
 
@@ -153,7 +161,14 @@ async def aggregate_resolver(
     counts = [len(a) for a in aggregations]
     flattened = [item for sublist in aggregations for item in sublist]
 
-    result = await view._async_aggregate(flattened)
+    maxTimeMS = form.max_query_time * 1000 if form.max_query_time else None
+    try:
+        result = await view._async_aggregate(flattened, maxTimeMS=maxTimeMS)
+    except ExecutionTimeout:
+        return [
+            AggregationQueryTimeout(path=path, query_time=form.max_query_time)
+            for path in form.paths
+        ]
 
     results = []
     offset = 0
