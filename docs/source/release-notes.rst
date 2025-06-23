@@ -18,6 +18,9 @@ Includes all updates from :ref:`FiftyOne 1.6.0 <release-notes-v1.6.0>`, plus:
 - Fixed a bug in the :ref:`Data Quality Panel <data-quality>` when an expected
   field is deleted
 - Fixed vulnerabilities in `prismjs`, `jinja2`, and `@babel`
+- We are deprecating kubernetes versions 1.29 and older in our FiftyOne
+  Enterprise product. Versions 1.29 and older of kubernetes might not be
+  compatible with the FiftyOne Enterprise Helm Chart.
 
 
 .. _release-notes-v1.6.0:
