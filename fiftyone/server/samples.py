@@ -114,10 +114,15 @@ async def paginate_samples(
         desc=desc,
         dynamic_group=dynamic_group,
     )
-    try:
-        view = await run_sync_task(run, False)
-    except:
+    if after is None:
+        # first page, force dataset reload
         view = await run_sync_task(run, True)
+    else:
+        # not first page, optimistically skip dataset reload
+        try:
+            view = await run_sync_task(run, False)
+        except:
+            view = await run_sync_task(run, True)
 
     if after is None:
         after = "-1"
