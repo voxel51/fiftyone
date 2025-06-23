@@ -5,7 +5,7 @@ FiftyOne Release Notes
 
 FiftyOne Enterprise 2.9.0
 -------------------------
-*Released June 17, 2025*
+*Released June 24, 2025*
 
 Includes all updates from :ref:`FiftyOne 1.6.0 <release-notes-v1.6.0>`, plus:
 
@@ -27,7 +27,7 @@ Includes all updates from :ref:`FiftyOne 1.6.0 <release-notes-v1.6.0>`, plus:
 
 FiftyOne 1.6.0
 --------------
-*Released June 17, 2025*
+*Released June 24, 2025*
 
 Plugins
 
