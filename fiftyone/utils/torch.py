@@ -1374,8 +1374,11 @@ class DetectorOutputProcessor(OutputProcessor):
         width, height = frame_size
 
         boxes = output["boxes"].detach().cpu().numpy()
-        labels = output["labels"].detach().cpu().numpy()
+        labels = output["text_labels"] if "text_labels" in output else output["labels"]
         scores = output["scores"].detach().cpu().numpy()
+
+        if hasattr(labels, "detach"):
+            labels = labels.detach().cpu().numpy()
 
         detections = []
         for box, label, score in zip(boxes, labels, scores):
@@ -1390,11 +1393,15 @@ class DetectorOutputProcessor(OutputProcessor):
                 (y2 - y1) / height,
             ]
 
+            if hasattr(self, "classes") and self.classes is not None:
+                if isinstance(label, (int, np.integer)):
+                    label = self.classes[label]
+
             detections.append(
                 fol.Detection(
-                    label=self.classes[label],
+                    label=label,
                     bounding_box=bounding_box,
-                    confidence=score,
+                    confidence=float(score),
                 )
             )
 
