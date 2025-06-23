@@ -115,8 +115,8 @@ Models
 
 App
 
-- Added :ref:`Scenario Analysis <>` functionality to the
-  :ref:`Model Evaluation Panel <app-model-evaluation-panel>` 
+- Added :ref:`Scenario Analysis <app-scenario-analysis>` functionality to the
+  :ref:`Model Evaluation Panel <app-model-evaluation-panel>`.
   `#5626 <https://github.com/voxel51/fiftyone/pull/5626>`_
 - Optimized label deletion on generated views, and upgrades the builtin
   `delete_selected_labels` to support deleting some/all labels in selected
