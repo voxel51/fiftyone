@@ -22,8 +22,8 @@ def get_subsets_from_custom_code(ctx, custom_code):
         return None, str(e)
 
 
-def get_dataset_id(ctx):
-    return ctx.dataset._doc.id
+def get_dataset_id(ctx, serialize=True):
+    return str(ctx.dataset._doc.id) if serialize else ctx.dataset._doc.id
 
 
 def get_store(ctx):
