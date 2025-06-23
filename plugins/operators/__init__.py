@@ -17,7 +17,9 @@ import fiftyone.core.media as fom
 import fiftyone.core.storage as fos
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
+from fiftyone import ViewField as F
 from fiftyone.core.odm.workspace import default_workspace_factory
+
 from .group_by import GroupBy
 from .model_evaluation import ConfigureScenario
 
@@ -172,8 +174,89 @@ class EditFieldValues(foo.Operator):
             for c in current:
                 _map[f(c)] = f(new)
 
-        target_view.map_values(path, _map).save()
+        root = target_view._get_root_field(path)
+
+        if target_view._edits_field(root):
+            _map_values_safe_for_edited_fields(target_view, path, _map)
+        else:
+            target_view.map_values(path, _map).save(root)
+
         ctx.trigger("reload_dataset")
+
+
+def _map_values_safe_for_edited_fields(sample_collection, path, map):
+    inputs = list(map.keys())
+
+    (
+        label_field,
+        root,
+        is_list_field,
+        leaf,
+    ) = sample_collection._parse_label_attribute(path)
+
+    leaf_field = sample_collection.get_field(path)
+    is_list_leaf = isinstance(leaf_field, fo.ListField)
+
+    # @todo support frame fields
+    if label_field is not None:
+        label_id_path = root + ".id"
+
+        if is_list_leaf:
+            expr = F(leaf).exists() & (
+                F(leaf).filter(F().is_in(inputs)).length() > 0
+            )
+        else:
+            expr = F(leaf).is_in(inputs)
+
+        view = sample_collection.filter_labels(label_field, expr)
+        sample_ids, label_ids, curr_values = view.values(
+            ["id", label_id_path, path]
+        )
+
+        new_values = []
+        if is_list_field:
+            for sid, lids, cvals in zip(sample_ids, label_ids, curr_values):
+                for lid, cval in zip(lids, cvals):
+                    if is_list_leaf:
+                        nval = [map[v] for v in cval]
+                    else:
+                        nval = map[cval]
+
+                    new_values.append(
+                        {"sample_id": sid, "label_id": lid, "value": nval}
+                    )
+        else:
+            for sid, lid, cval in zip(sample_ids, label_ids, curr_values):
+                if is_list_leaf:
+                    nval = [map[v] for v in cval]
+                else:
+                    nval = map[cval]
+
+                new_values.append(
+                    {"sample_id": sid, "label_id": lid, "value": nval}
+                )
+
+        sample_collection.set_label_values(path, new_values)
+    else:
+        if is_list_leaf:
+            expr = F(path).is_in(inputs)
+        else:
+            expr = F(path).exists() & (
+                F(path).filter(F().is_in(inputs)).length() > 0
+            )
+
+        view = sample_collection.match(expr)
+        sample_ids, curr_values = view.values(["id", path])
+
+        new_values = {}
+        if is_list_leaf:
+            for sid, cval in zip(sample_ids, curr_values):
+                new_values[sid] = [map[v] for v in cval]
+        else:
+            for sid, cval in zip(sample_ids, curr_values):
+                new_values[sid] = map[cval]
+
+        sample_collection.set_values(path, new_values, key_field="id")
 
 
 def _make_parse_field_fcn(ctx, path):
