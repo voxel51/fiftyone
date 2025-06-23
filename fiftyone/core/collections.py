@@ -13,6 +13,7 @@ from operator import itemgetter
 import fnmatch
 import itertools
 import logging
+import operator
 import os
 import random
 import string
@@ -2440,6 +2441,13 @@ class SampleCollection(object):
 
         .. note::
 
+            If you are setting attributes of a nested list of labels, such as
+            attributes of the objects in a
+            :class:`fiftyone.core.labels.Detections` field, then consider using
+            :meth:`set_label_values` instead for greater efficiency.
+
+        .. note::
+
             If the values you are setting can be described by a
             :class:`fiftyone.core.expressions.ViewExpression` applied to the
             existing dataset contents, then consider using :meth:`set_field` +
@@ -2686,6 +2694,12 @@ class SampleCollection(object):
             wish to modify. See :meth:`set_values` and :meth:`set_field` if
             your updates are not keyed by label ID.
 
+        .. note::
+
+           This method is *most efficient* when you use the list syntax for
+            ``values``, which includes the sample/frame ID of each label that
+            you are modifying.
+
         Examples::
 
             import fiftyone as fo
@@ -2700,6 +2714,22 @@ class SampleCollection(object):
 
             view = dataset.filter_labels("predictions", F("confidence") > 0.99)
 
+            # Option 1: provide label IDs *and* sample IDs
+
+            values = []
+            sample_ids, label_ids = view.values(["id", "predictions.detections.id"])
+            for sid, lids in zip(sample_ids, label_ids):
+                for lid in lids:
+                    values.append({"sample_id": sid, "label_id": lid, "value": True})
+
+            dataset.set_label_values("predictions.detections.high_conf", values)
+
+            print(dataset.count("predictions.detections"))
+            print(len(values))
+            print(dataset.count_values("predictions.detections.high_conf"))
+
+            # Option 2: provide only label IDs
+
             label_ids = view.values("predictions.detections.id", unwind=True)
             values = {_id: True for _id in label_ids}
 
@@ -2711,7 +2741,15 @@ class SampleCollection(object):
 
         Args:
             field_name: a field or ``embedded.field.name``
-            values: a dict mapping label IDs to values
+            values: the label values to set, in one of the following formats:
+
+                -   a list of dicts of the form
+                    ``{"sample_id": sample_id, "label_id": label_id, "value": value}
+                    when setting sample-level labels
+                -   a list of dicts of the form
+                    ``{"frame_id": frame_id, "label_id": label_id, "value": value}
+                    when setting frame-level labels
+                -   a dict mapping label IDs to values
             skip_none (False): whether to treat None data in ``values`` as
                 missing data that should not be set
             dynamic (False): whether to declare dynamic attributes of embedded
@@ -2722,8 +2760,13 @@ class SampleCollection(object):
                 use the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
         """
+        if isinstance(values, list):
+            _values = map(operator.itemgetter("value"), values)
+        else:
+            _values = values.values()
+
         field, _ = self._expand_schema_from_values(
-            field_name, values.values(), dynamic=dynamic, flat=True
+            field_name, _values, dynamic=dynamic, flat=True
         )
 
         if field is None:
@@ -2732,6 +2775,11 @@ class SampleCollection(object):
         if field is not None and field.read_only:
             raise ValueError("Cannot edit read-only field '%s'" % field_name)
 
+        label_field, root, is_list_field, _ = self._parse_label_attribute(
+            field_name
+        )
+        _root, _ = self._handle_frame_field(root)
+
         _field_name, is_frame_field, _, _, id_to_str = self._parse_field_name(
             field_name, omit_terminal_lists=True
         )
@@ -2739,54 +2787,20 @@ class SampleCollection(object):
         if field is None and id_to_str:
             field = fof.ObjectIdField()
 
-        label_field = _field_name.split(".", 1)[0]
-        if is_frame_field:
-            label_field = self._FRAMES_PREFIX + label_field
-
-        root, is_list_field = self._get_label_field_root(label_field)
-        label_id_path = root + ".id"
-        _root, _ = self._handle_frame_field(root)
-
-        id_map = {}
-
-        # We only need `view` to contain labels we actually want to process, so
-        # if the number of values is small enough that `select_labels()` may
-        # optimize, we use it
-        if len(values) <= 100000:
-            view = self.select_labels(ids=list(values), fields=label_field)
+        if isinstance(values, list):
+            id_key = "frame_id" if is_frame_field else "sample_id"
+            get_values = operator.itemgetter(id_key, "label_id", "value")
+            _ids, _label_ids, _values = zip(*map(get_values, values))
         else:
-            view = self
-
-        if is_frame_field:
-            frame_ids, label_ids = view.values(["frames._id", label_id_path])
-
-            if is_list_field:
-                for _fids, _flids in zip(frame_ids, label_ids):
-                    for _frame_id, _label_ids in zip(_fids, _flids):
-                        if _label_ids:
-                            for _label_id in _label_ids:
-                                id_map[_label_id] = _frame_id
-            else:
-                for _fids, _flids in zip(frame_ids, label_ids):
-                    for _frame_id, _label_id in zip(_fids, _flids):
-                        id_map[_label_id] = _frame_id
-        else:
-            sample_ids, label_ids = view.values(["_id", label_id_path])
-
-            if is_list_field:
-                for _sample_id, _label_ids in zip(sample_ids, label_ids):
-                    if _label_ids:
-                        for _label_id in _label_ids:
-                            id_map[_label_id] = _sample_id
-            else:
-                for _sample_id, _label_id in zip(sample_ids, label_ids):
-                    id_map[_label_id] = _sample_id
+            _label_ids, _values = zip(*values.items())
+            _ids = self._get_sample_ids_for_labels(label_field, _label_ids)
 
         if is_list_field:
             self._set_label_list_values(
                 _field_name,
-                values,
-                id_map,
+                _ids,
+                _label_ids,
+                _values,
                 _root,
                 field=field,
                 skip_none=skip_none,
@@ -2795,9 +2809,6 @@ class SampleCollection(object):
                 progress=progress,
             )
         else:
-            _label_ids, _values = zip(*values.items())
-            _ids = [id_map[label_id] for label_id in _label_ids]
-
             self._set_doc_values(
                 _field_name,
                 _ids,
@@ -2808,6 +2819,48 @@ class SampleCollection(object):
                 frames=is_frame_field,
                 progress=progress,
             )
+
+    def _get_sample_ids_for_labels(self, label_field, label_ids):
+        is_frame_field = self._is_frame_field(label_field)
+        root, is_list_field = self._get_label_field_root(label_field)
+        label_id_path = root + ".id"
+
+        # We only need `view` to contain labels we actually want to
+        # process, so if the number of values is small enough that
+        # `select_labels()` may optimize, we use it
+        if len(label_ids) <= 100000:
+            view = self.select_labels(ids=label_ids, fields=label_field)
+        else:
+            view = self
+
+        id_map = {}
+
+        if is_frame_field:
+            _frame_ids, _label_ids = view.values(["frames.id", label_id_path])
+
+            if is_list_field:
+                for _fids, _flids in zip(_frame_ids, _label_ids):
+                    for _frame_id, _lids in zip(_fids, _flids):
+                        if _lids:
+                            for _label_id in _lids:
+                                id_map[_label_id] = _frame_id
+            else:
+                for _fids, _flids in zip(_frame_ids, _label_ids):
+                    for _frame_id, _label_id in zip(_fids, _flids):
+                        id_map[_label_id] = _frame_id
+        else:
+            _sample_ids, _label_ids = view.values(["id", label_id_path])
+
+            if is_list_field:
+                for _sample_id, _lids in zip(_sample_ids, _label_ids):
+                    if _lids:
+                        for _label_id in _lids:
+                            id_map[_label_id] = _sample_id
+            else:
+                for _sample_id, _label_id in zip(_sample_ids, _label_ids):
+                    id_map[_label_id] = _sample_id
+
+        return [id_map[label_id] for label_id in label_ids]
 
     def _expand_schema_from_values(
         self,
@@ -3189,8 +3242,9 @@ class SampleCollection(object):
     def _set_label_list_values(
         self,
         field_name,
+        doc_ids,
+        label_ids,
         values,
-        id_map,
         list_field,
         field=None,
         skip_none=None,
@@ -3209,7 +3263,7 @@ class SampleCollection(object):
 
         ids = []
         ops = []
-        for label_id, value in values.items():
+        for doc_id, label_id, value in zip(doc_ids, label_ids, values):
             if value is None and skip_none:
                 continue
 
@@ -3218,11 +3272,10 @@ class SampleCollection(object):
                     field_name, field, value, validate=validate
                 )
 
-            _id = id_map[label_id]
-            ids.append(_id)
+            ids.append(doc_id)
             ops.append(
                 UpdateOne(
-                    {"_id": _id},
+                    {"_id": ObjectId(doc_id)},
                     {"$set": {path: value, "last_modified_at": now}},
                     array_filters=[{"label._id": ObjectId(label_id)}],
                 )
@@ -11412,11 +11465,14 @@ class SampleCollection(object):
 
         return False
 
-    def _is_label_field(self, field_name, label_type_or_types):
+    def _is_label_field(self, field_name, label_type_or_types=None):
         try:
             label_type = self._get_label_field_type(field_name)
         except:
             return False
+
+        if label_type_or_types is None:
+            return True
 
         if etau.is_container(label_type_or_types):
             label_type_or_types = tuple(label_type_or_types)
@@ -11456,6 +11512,28 @@ class SampleCollection(object):
             force_dict=force_dict,
             required=required,
         )
+
+    def _parse_label_attribute(self, label_path):
+        label_field, leaf = None, None
+
+        root = label_path
+        while True:
+            chunks = root.rsplit(".", 1)
+            if len(chunks) == 1:
+                break
+
+            root = chunks[0]
+            if self._is_label_field(root):
+                label_field = root
+                if leaf is None:
+                    leaf = label_path[len(root) + 1 :]
+
+        if label_field is not None:
+            root, is_list_field = self._get_label_field_root(label_field)
+        else:
+            root, is_list_field = None, None
+
+        return label_field, root, is_list_field, leaf
 
     def _get_db_fields_map(
         self, include_private=False, frames=False, reverse=False
@@ -11593,17 +11671,26 @@ class SampleCollection(object):
         schema = self.get_frame_field_schema()
         return dict(_iter_schema_label_fields(schema))
 
-    def _get_root_fields(self, fields):
+    def _get_root_field(self, path):
+        path, is_frame_field = self._handle_frame_field(path)
+        root = path.split(".", 1)[0]
+        if is_frame_field:
+            root = self._FRAMES_PREFIX + root
+
+        return root
+
+    def _get_root_fields(self, paths):
         root_fields = set()
-        for field in fields:
-            if self._has_frame_fields() and field.startswith(
+
+        for path in paths:
+            if self._has_frame_fields() and path.startswith(
                 self._FRAMES_PREFIX
             ):
                 # Converts `frames.root[.x.y]` to `frames.root`
-                root = ".".join(field.split(".", 2)[:2])
+                root = ".".join(path.split(".", 2)[:2])
             else:
                 # Converts `root[.x.y]` to `root`
-                root = field.split(".", 1)[0]
+                root = path.split(".", 1)[0]
 
             root_fields.add(root)
 
@@ -11833,6 +11920,19 @@ class SampleCollection(object):
             new_field=new_field,
             context=context,
         )
+
+    def _edits_field(self, path):
+        if not isinstance(self, fov.DatasetView):
+            return False
+
+        # pylint:disable=no-member
+        view = self
+        path, is_frame_field = view._handle_frame_field(path)
+        edited_paths = view._get_edited_fields(frames=is_frame_field)
+        if edited_paths is None:
+            return False
+
+        return any(p == path or p.startswith(path + ".") for p in edited_paths)
 
     def _get_values_by_id(self, path_or_expr, ids, link_field=None):
         is_list_field = False
