@@ -14,6 +14,7 @@ import warnings
 import numpy as np
 from PIL import Image
 
+import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 from fiftyone.core.models import EmbeddingsMixin, PromptMixin
@@ -295,7 +296,7 @@ class FiftyOneTransformerConfig(fout.TorchImageModelConfig, HasZooModel):
         super().__init__(d)
         self.name_or_path = self.parse_string(d, "name_or_path", default=None)
         self.hf_config = transformers.AutoConfig.from_pretrained(
-            self.name_or_path
+            self.name_or_path, cache_dir=fo.config.model_zoo_dir
         )
 
         # load classes if they exist
@@ -567,6 +568,8 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
                 "pretrained_model_name_or_path": config.name_or_path,
             }
 
+        config.entrypoint_args["cache_dir"] = fo.config.model_zoo_dir
+
         # default transforms
         if config.transforms_fcn is None:
             config.transforms_fcn = (
@@ -580,6 +583,7 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
             "pretrained_model_name_or_path": config.name_or_path,
             "use_fast": True,
             **config.transforms_args,
+            "cache_dir": fo.config.model_zoo_dir,
         }
         config.ragged_batches = False
 
