@@ -829,7 +829,7 @@ class ConfigureScenario(foo.Operator):
         return (
             (ShowOptionsMethod.EMPTY, None)
             if not values
-            else (ShowOptionsMethod.CHECKBOX, values)
+            else (ShowOptionsMethod.CHECKBOX, dict(sorted(values.items())))
         )
 
     def render_auto_complete_view(self, ctx, values, inputs):
