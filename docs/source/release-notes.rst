@@ -3,7 +3,7 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
-FiftyOne Enterprise 2.9.0
+FiftyOne Enterprise 2.9.1
 -------------------------
 *Released June 24, 2025*
 
