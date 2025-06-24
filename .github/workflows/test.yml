@@ -5,6 +5,7 @@ on: workflow_call
 jobs:
   test-app:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,6 +25,7 @@ jobs:
 
   test-python:
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
     env:
       FIFTYONE_DO_NOT_TRACK: true
     strategy:

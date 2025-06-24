@@ -7,19 +7,25 @@ Utilities for working with
 |
 """
 
+from copy import deepcopy
 import logging
+import warnings
 
-import eta.core.utils as etau
 import numpy as np
+from PIL import Image
 
+import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
-from fiftyone.core.config import Config
-from fiftyone.core.models import EmbeddingsMixin, Model, PromptMixin
+from fiftyone.core.models import EmbeddingsMixin, PromptMixin
 from fiftyone.zoo.models import HasZooModel
+import fiftyone.utils.torch as fout
 
-torch = fou.lazy_import("torch")
-transformers = fou.lazy_import("transformers")
+fou.ensure_torch()
+import torch
+
+fou.ensure_package("transformers")
+import transformers
 
 
 logger = logging.getLogger(__name__)
@@ -32,7 +38,7 @@ DEFAULT_ZERO_SHOT_CLASSIFICATION_PATH = "openai/clip-vit-large-patch14"
 DEFAULT_ZERO_SHOT_DETECTION_PATH = "google/owlvit-base-patch32"
 
 
-def convert_transformers_model(model, task=None):
+def convert_transformers_model(model, task=None, **kwargs):
     """Converts the given Hugging Face transformers model into a FiftyOne
     model.
 
@@ -51,60 +57,23 @@ def convert_transformers_model(model, task=None):
     """
     model_type = get_model_type(model, task=task)
 
-    if model_type == "zero-shot-image-classification":
-        return _convert_zero_shot_transformer_for_image_classification(model)
-    elif model_type == "zero-shot-object-detection":
-        return _convert_zero_shot_transformer_for_object_detection(model)
-    elif model_type == "image-classification":
-        return _convert_transformer_for_image_classification(model)
-    elif model_type == "object-detection":
-        return _convert_transformer_for_object_detection(model)
-    elif model_type == "semantic-segmentation":
-        return _convert_transformer_for_semantic_segmentation(model)
-    elif model_type == "depth-estimation":
-        return _convert_transformer_for_depth_estimation(model)
-    elif model_type == "base-model":
-        return _convert_transformer_base_model(model)
+    name_or_path = model.config._name_or_path
+
+    d = {
+        "model": model,
+        "name_or_path": name_or_path,
+    }
+
+    if model_type in MODEL_TYPE_TO_CONFIG_CLASS:
+        config_cls = MODEL_TYPE_TO_CONFIG_CLASS[model_type]
+        config = config_cls(d)
+        return MODEL_TYPE_TO_MODEL_CLASS[model_type](config)
+
     else:
         raise ValueError(
             "Unsupported model type; cannot convert %s to a FiftyOne model"
             % model
         )
-
-
-def _convert_transformer_base_model(model):
-    config = FiftyOneTransformerConfig({"model": model})
-    return FiftyOneTransformer(config)
-
-
-def _convert_transformer_for_image_classification(model):
-    config = FiftyOneTransformerConfig({"model": model})
-    return FiftyOneTransformerForImageClassification(config)
-
-
-def _convert_transformer_for_object_detection(model):
-    config = FiftyOneTransformerConfig({"model": model})
-    return FiftyOneTransformerForObjectDetection(config)
-
-
-def _convert_transformer_for_semantic_segmentation(model):
-    config = FiftyOneTransformerConfig({"model": model})
-    return FiftyOneTransformerForSemanticSegmentation(config)
-
-
-def _convert_transformer_for_depth_estimation(model):
-    config = FiftyOneTransformerConfig({"model": model})
-    return FiftyOneTransformerForDepthEstimation(config)
-
-
-def _convert_zero_shot_transformer_for_image_classification(model):
-    config = FiftyOneZeroShotTransformerConfig({"model": model})
-    return FiftyOneZeroShotTransformerForImageClassification(config)
-
-
-def _convert_zero_shot_transformer_for_object_detection(model):
-    config = FiftyOneZeroShotTransformerConfig({"model": model})
-    return FiftyOneZeroShotTransformerForObjectDetection(config)
 
 
 def get_model_type(model, task=None):
@@ -162,40 +131,6 @@ def get_model_type(model, task=None):
         return "zero-shot-" + task
 
     return task
-
-
-def to_classification(results, id2label):
-    """Converts the Transformers classification results to FiftyOne format.
-
-    Args:
-        results: Transformers classification results
-        id2label: Transformers ID to label mapping
-
-    Returns:
-        a single or list of :class:`fiftyone.core.labels.Classification`
-    """
-    logits = results.logits
-    predicted_labels = logits.argmax(-1)
-
-    logits = logits.cpu().numpy()
-    label_classes = [id2label[int(i)] for i in predicted_labels]
-
-    odds = np.exp(logits)
-    confidences = np.max(odds, axis=1) / np.sum(odds, axis=1)
-
-    if logits.shape[0] == 1:
-        return fol.Classification(
-            label=label_classes[0], confidence=confidences[0], logits=logits[0]
-        )
-
-    return [
-        fol.Classification(
-            label=label_classes[i],
-            confidence=confidences[i],
-            logits=logits[i],
-        )
-        for i in range(logits.shape[0])
-    ]
 
 
 def to_segmentation(results):
@@ -312,23 +247,101 @@ def _convert_bounding_box(box, image_shape):
     ]
 
 
-class FiftyOneTransformerConfig(Config, HasZooModel):
+class FiftyOneTransformerConfig(fout.TorchImageModelConfig, HasZooModel):
     """Configuration for a :class:`FiftyOneTransformer`.
 
     Args:
         model (None): a ``transformers`` model
         name_or_path (None): the name or path to a checkpoint file to load
+        transformers_processor_kwargs (None): a dict of kwargs to pass to the
+            ``transformers`` processor during input processing.
+        embeddings_output_key (None): The key in the model output to access for embeddings.
+            if set to `None`, the default value will be picked based on what is
+            avaliable in the model's output with the following priority:
+            1. `pooler_output`
+            2. `last_hidden_state`
+            3. `hidden_states` - in this case, `output['hidden_states'][-1]`
+            will be used see
+            https://huggingface.co/docs/transformers/en/main_classes/output
+            for more details on model outputs.
+        hidden_state_position (None): the layer to use for embeddings. If this is set,
+            `embeddings_output_key` is ignored, and will be set to `hidden_states`.
+            In this case, embeddings will be taken from
+            `output['hidden_states'][hidden_state_position]`.
+        embeddings_aggregation ("token"): the method to use for aggregating token
+            embeddings. This is only used if `embeddings_output_key` is set to
+            `last_hidden_state` or `hidden_states`. Supported values are
+            ``"mean"``, ``"max"``, ``"token"``, and ``"no_agg"``. They do the
+            following:
+            1. ``"token"``: the token embedding at the specified position,
+                specified by `embeddings_token_position`, by default the first
+                token (0) is used.
+            2. ``"mean"``: pointwise mean of all token embeddings
+            3. ``"max"``: pointwise max of all token embeddings
+            4. ``"no_agg"``: no aggregation
+        channels_last (True): Whether the model outputs are in channels last format.
+            If set to False, the model outputs are assumed to be in channels first format.
+            The default is True because transformers models typically output in channels last format.
+            Note that CNNs are typically channels first. Make sure to check model documentation
+            to see if this is the case.
+        embeddings_token_position (0): the token position to use when
+            ``embeddings_aggregation`` is set to ``"token"``. This is only used
+            if `embeddings_output_key` is set to ``last_hidden_state`` or
+            ``hidden_states``. Typically, the first (0) token is
+            used, because it usually represent the prediction token, e.g. CLS.
     """
 
     def __init__(self, d):
-        self.model = self.parse_raw(d, "model", default=None)
+        d = self.init(d)
+        super().__init__(d)
         self.name_or_path = self.parse_string(d, "name_or_path", default=None)
-        self.device = self.parse_string(
-            d, "device", default="cuda" if torch.cuda.is_available() else "cpu"
+        self.hf_config = transformers.AutoConfig.from_pretrained(
+            self.name_or_path, cache_dir=fo.config.model_zoo_dir
         )
-        if etau.is_str(self.model):
-            self.name_or_path = self.model
-            self.model = None
+
+        # load classes if they exist
+        if self.hf_config.id2label is not None:
+            if self.classes is None:
+                # only load classes if they are not already set
+                self.classes = [
+                    self.hf_config.id2label[i]
+                    for i in range(len(self.hf_config.id2label))
+                ]
+            else:
+                # if they are, this is either a zero shot model
+                # and the AutoConfig set some strange classes
+                # or the user is trying to override the classes
+                # in the latter case, strange things can happen
+                # not sure how to warn the user about this
+                logger.warning(
+                    "Classes were passed in to the FiftyOne model, but the "
+                    "HugginFace Transformers model configuration already has classes. "
+                    "Either set the classes argument to `None` to inherit the classes "
+                    "from the HFT model, or change the classes in the HFT model "
+                    "configuration to match the classes you want to use."
+                )
+
+        self.transformers_processor_kwargs = self.parse_dict(
+            d, "transformers_processor_kwargs", default={}
+        )
+
+        # embeddings config
+        self.output_hidden_states = self.parse_bool(
+            d, "output_hidden_states", default=False
+        )
+        self.hidden_state_position = self.parse_int(
+            d, "hidden_state_position", default=None
+        )
+        self.embeddings_output_key = self.parse_string(
+            d, "embeddings_output_key", default=None
+        )
+        self.embeddings_aggregation = self.parse_string(
+            d, "embeddings_aggregation", default="token"
+        )
+        self.channels_last = self.parse_bool(d, "channels_last", default=True)
+        self.embeddings_token_position = self.parse_int(
+            d, "embeddings_token_position", default=0
+        )
 
 
 class FiftyOneZeroShotTransformerConfig(FiftyOneTransformerConfig):
@@ -339,48 +352,149 @@ class FiftyOneZeroShotTransformerConfig(FiftyOneTransformerConfig):
         name_or_path (None): the name or path to a checkpoint file to load
         text_prompt: the text prompt to use, e.g., ``"A photo of"``
         classes (None): a list of custom classes for zero-shot prediction
+        class_prompts (None): a dict of class names to custom prompts for zero-shot.
+            If not specified, class prompts take the form of ``"{text_prompt} {class_name}"``,
+            otherwise, prompts take the form of ``"{text_prompt} {class_prompts[class_name]}"``.
     """
 
     def __init__(self, d):
-        self.text_prompt = self.parse_string(d, "text_prompt", default=None)
-        self.classes = self.parse_array(d, "classes", default=None)
         super().__init__(d)
+        self.text_prompt = self.parse_string(d, "text_prompt", default=None)
+        self.class_prompts = self.parse_dict(d, "class_prompts", default=None)
 
 
 class TransformerEmbeddingsMixin(EmbeddingsMixin):
-    """Mixin for Transformers that can generate embeddings."""
+    """Mixin for Transformers that can generate embeddings.
+
+    See :class:`fiftyone.utils.transformers.FiftyOneTransformerConfig`
+    for more details on the configuration options.
+
+    Please note: while it is possible to pull embeddings out of all sorts
+    of model configurations, for best results, use a model that is intended
+    for the job. In HuggingFace, this typically means not using a model
+    built for image classification, object detection, or segmentation, or
+    whatever other downstream task.
+
+    This is mainly due to what is exposed by the model's forward pass. For
+    example, the image classification models typically don't return pooled
+    or normalized embeddings in HuggingFace. While this can be addressed
+    here, there is no gurantee that this generic solution will work for
+    the model passed.
+    """
+
+    _embeddings_output_key_defaults = [
+        "pooler_output",
+        "last_hidden_state",
+        "hidden_states",
+    ]
 
     @property
     def has_embeddings(self):
-        # If the model family supports classification or detection tasks, its
-        # embeddings from last_hidden_layer are meaningful and properly sized
-        smodel = str(type(self.model)).split(".")
-        model_name = smodel[-1][:-2].split("For")[0].replace("Model", "")
-        module_name = "transformers"
+        return True
 
-        classif_model_name = f"{model_name}ForImageClassification"
-        detection_model_name = f"{model_name}ForObjectDetection"
+    def get_embeddings(self):
+        if self.last_output is None:
+            raise ValueError(
+                "No embeddings have been generated yet. Call predict() first."
+            )
 
-        _dynamic_import = __import__(
-            module_name, fromlist=[classif_model_name, detection_model_name]
+        if self.embeddings_output_key is None:
+            self.embeddings_output_key = self.resolve_embeddings_output_key(
+                self.last_output
+            )
+
+        embeddings = self.last_output[self.embeddings_output_key]
+
+        if self.embeddings_output_key == "pooler_output":
+            # already good to go
+            return embeddings
+
+        if self.embeddings_output_key == "hidden_states":
+            # we only want the hidden state at the specified layer
+            embeddings = embeddings[self._hidden_state_position]
+
+        # there could potentially be dims other than batch or embedding
+        # have to send this through the aggregation function
+        return self._aggregate_embeddings(embeddings)
+
+    def _aggregate_embeddings(self, embeddings):
+        if self.config.embeddings_aggregation == "token":
+            return embeddings[:, self.config.embeddings_token_position, :]
+
+        num_dims = len(embeddings.shape)
+        if num_dims == 2:  # Batch x Embedding
+            return embeddings
+
+        if self.config.embeddings_aggregation == "no_agg":
+            # no aggregation, just return the last hidden state
+            return embeddings
+
+        agg_fcn = (
+            np.mean if self.config.embeddings_aggregation == "mean" else np.max
         )
-
-        return hasattr(_dynamic_import, classif_model_name) or hasattr(
-            _dynamic_import, detection_model_name
+        agg_dims = (
+            tuple(range(1, num_dims - 1))
+            if self.config.channels_last
+            else tuple(range(2, num_dims))
         )
+        # aggregate all but batch and channel dims
+        res = agg_fcn(embeddings, axis=agg_dims)
+        return res
+
+    @property
+    def embeddings_output_key(self):
+        if hasattr(self, "_embeddings_output_key"):
+            return self._embeddings_output_key
+        self._embeddings_output_key = self.config.embeddings_output_key
+        return self._embeddings_output_key
+
+    @embeddings_output_key.setter
+    def embeddings_output_key(self, value):
+        self._embeddings_output_key = value
+
+    def resolve_embeddings_output_key(self, output):
+        keys = output.keys()
+        config_value = self.config.embeddings_output_key
+        if config_value is not None and config_value in keys:
+            return config_value
+        elif config_value is not None and config_value not in keys:
+            raise ValueError(
+                "The specified embeddings output key %s is not in the model output"
+                % config_value
+            )
+
+        for key in self._embeddings_output_key_defaults:
+            if key in keys:
+                return key
+
+        else:
+            # have to set this to true to get the hidden states
+            self._output_hidden_states = True
+            return "hidden_states"
 
     def embed(self, arg):
-        return self._embed(arg)[0]
+        return self.embed_all([arg])[0]
 
     def embed_all(self, args):
-        return self._embed(args)
+        # this is a bit of a hack, but we need to make sure that the
+        # embeddings output key is set before we call the forward pass
+        # not great to always have the if here, but it should only
+        # be called once per model.
+        # the alternative is to do this in the constructor with dummy input
+        # however, that opens up strange MRO issues as well as potential
+        # errors from badly constructed dummy input
+        if not self._save_last_output:
+            self._save_last_output = True
+        if self.embeddings_output_key is None:
+            args_copy = deepcopy(args)
+            _ = self.predict_all(args_copy)
+            self.embeddings_output_key = self.resolve_embeddings_output_key(
+                self.last_output
+            )
 
-    def _embed(self, args):
-        inputs = self.image_processor(args, return_tensors="pt")
-        with torch.no_grad():
-            outputs = self.model.base_model(**inputs.to(self.device))
-
-        return outputs.last_hidden_state[:, -1, :].cpu().numpy()
+        self._predict_all(args)
+        self._save_last_output = False
+        return self.get_embeddings()
 
 
 class ZeroShotTransformerEmbeddingsMixin(EmbeddingsMixin):
@@ -388,7 +502,7 @@ class ZeroShotTransformerEmbeddingsMixin(EmbeddingsMixin):
 
     @property
     def has_embeddings(self):
-        return _has_text_and_image_features(self.model)
+        return _has_text_and_image_features(self._model)
 
     def embed(self, arg):
         return self._embed(arg)[0]
@@ -397,12 +511,16 @@ class ZeroShotTransformerEmbeddingsMixin(EmbeddingsMixin):
         return self._embed(args)
 
     def _embed(self, args):
-        inputs = self.processor(images=args, return_tensors="pt")
+        # don't use the regular TransformerEmbeddingsMixin
+        # because doing the whole forward pass is slow
+        # and because HFT offer a cleaner way to do this
+        # via get_image_features
+        if self.preprocess:
+            inputs = self.processor(images=args, return_tensors="pt")
         with torch.no_grad():
-            image_features = self.model.base_model.get_image_features(
-                **inputs.to(self.device)
+            image_features = self._model.get_image_features(
+                **inputs.to(self._device)
             )
-
         return image_features.cpu().numpy()
 
 
@@ -411,40 +529,30 @@ class ZeroShotTransformerPromptMixin(PromptMixin):
 
     @property
     def can_embed_prompts(self):
-        return _has_text_and_image_features(self.model)
+        return _has_text_and_image_features(self._model)
 
     def embed_prompt(self, prompt):
-        """Generates an embedding for the given text prompt.
-
-        Args:
-            prompt: a text string
-
-        Returns:
-            a numpy vector
-        """
         return self.embed_prompts([prompt])[0]
 
     def embed_prompts(self, prompts):
-        """Generates an embedding for the given text prompts.
-
-        Args:
-            prompts: an iterable of text strings
-
-        Returns:
-            a ``num_prompts x num_dims`` array of prompt embeddings
-        """
         return self._embed_prompts(prompts).detach().cpu().numpy()
 
     def _embed_prompts(self, prompts):
-        inputs = self.processor(text=prompts, return_tensors="pt")
+        # I don't think this is ever called with preprocess = False
+        # but just in case
+        if self.preprocess:
+            inputs = self.transforms.processor(
+                text=prompts,
+                **self.transforms.kwargs,
+            )
         with torch.no_grad():
-            text_features = self.model.base_model.get_text_features(
-                **inputs.to(self.device)
+            text_features = self._model.base_model.get_text_features(
+                **inputs.to(self._device)
             )
         return text_features
 
 
-class FiftyOneTransformer(TransformerEmbeddingsMixin, Model):
+class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
     """FiftyOne wrapper around a ``transformers`` model.
 
     Args:
@@ -452,43 +560,175 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, Model):
     """
 
     def __init__(self, config):
-        self.config = config
-        self.model = self._load_model(config)
-        self.device = torch.device(self.config.device)
-        self.model.to(self.device)
-        self.image_processor = self._load_image_processor()
+        # default entry point for Transformers pretrained models
+        if config.entrypoint_fcn is None:
+            config.entrypoint_fcn = "transformers.AutoModel.from_pretrained"
+        if config.entrypoint_args is None:
+            config.entrypoint_args = {
+                "pretrained_model_name_or_path": config.name_or_path,
+            }
+
+        config.entrypoint_args["cache_dir"] = fo.config.model_zoo_dir
+
+        # default transforms
+        if config.transforms_fcn is None:
+            config.transforms_fcn = (
+                "transformers.AutoProcessor.from_pretrained"
+            )
+        if config.transforms_args is None:
+            config.transforms_args = {}
+
+        # set default values if not provided
+        config.transforms_args = {
+            "pretrained_model_name_or_path": config.name_or_path,
+            "use_fast": True,
+            **config.transforms_args,
+            "cache_dir": fo.config.model_zoo_dir,
+        }
+        config.ragged_batches = False
+
+        # handle unsuported arguments
+        if config.use_half_precision:
+            config.use_half_precision = False
+            logger.warning(
+                "Half precision is not a supported argument for HuggingFace Transformers. "
+                "The precision is decided by the model itself."
+            )
+
+        super().__init__(config)
+
+        self._output_hidden_states = False
+        self._hidden_state_position = config.hidden_state_position
+
+        if self._hidden_state_position is None:
+            self._hidden_state_position = -1  # default to last hidden state
+        else:
+            self._embeddings_output_key = "hidden_states"
+            self._output_hidden_states = True
+            if (
+                self.config.embeddings_output_key is not None
+                and self.config.embeddings_output_key != "hidden_states"
+            ):
+                warnings.warn(
+                    "The `embeddings_output_key` has been set to `hidden_states` "
+                    "because `hidden_state_position` is set. "
+                    "Please set `embeddings_output_key` to `None` if you want to use "
+                    "a different value."
+                )
+
+        self._save_last_output = False
+        self._last_output = None
 
     @property
-    def media_type(self):
-        return "image"
+    def last_output(self):
+        return self._last_output
+
+    @last_output.setter
+    def last_output(self, value):
+        if not self._save_last_output:
+            self._last_output = None
+            return
+        self._last_output = {}
+        for k, v in value.items():
+            self._last_output[k] = v
+            if isinstance(self._last_output[k], torch.Tensor):
+                self._last_output[k] = (
+                    self._last_output[k].detach().cpu().numpy()
+                )
+            elif isinstance(self._last_output[k], tuple):
+                self._last_output[k] = tuple(
+                    [i.detach().cpu().numpy() for i in self._last_output[k]]
+                )
+            elif isinstance(
+                self._last_output[k], transformers.utils.ModelOutput
+            ):
+                self._last_output[k] = {
+                    _k: _v.detach().cpu().numpy()
+                    for _k, _v in self._last_output[k].items()
+                }
+
+    def _predict_all(self, args):
+        if self.preprocess:
+            args = self.collate_fn(self.transforms(args))
+
+        # this line is the only difference between this and the base class
+        # we should consolidate this function once post processing is properly
+        # removed out of torchimagemodel
+        image_sizes = args.pop("fo_image_size", [(None, None)])
+
+        for k, v in args.items():
+            args[k] = v.to(self.device)
+
+        output = self._forward_pass(args)
+
+        # now there is another difference
+        # should maybe consider adding callbacks of some sort
+        # this just opens more ways for the user to mess up
+        self.last_output = output
+
+        if self._output_processor is not None:
+            return self._output_processor(
+                output,
+                image_sizes,
+                confidence_thresh=self.config.confidence_thresh,
+            )
+
+        else:
+            return output
+
+    def _forward_pass(self, args):
+        return self._model(
+            **args, output_hidden_states=self._output_hidden_states
+        )
+
+    def _load_transforms(self, config):
+        processor = super()._load_transforms(config)
+        return _HFTransformsHandler(
+            processor, **(config.transformers_processor_kwargs)
+        )
 
     @property
-    def ragged_batches(self):
-        return False
+    def has_collate_fn(self):
+        return True
 
-    @property
-    def transforms(self):
-        return None
+    @staticmethod
+    def collate_fn(batch):
+        if isinstance(batch, transformers.BatchFeature) or isinstance(
+            batch, transformers.BatchEncoding
+        ):
+            # the transforms batch processed the input
+            # no need to collate
+            return batch
+        keys = batch[0].keys()
+        res = {}
+        for k in keys:
+            # Gather shapes for dimension analysis
+            shapes = [b[k].shape for b in batch]
+            # Find the max size in each dimension
+            max_dims = [
+                max(s[d] for s in shapes) for d in range(len(shapes[0]))
+            ]
 
-    @property
-    def preprocess(self):
-        return False
+            # Pad each tensor to match the max dimensions
+            padded_tensors = []
+            for bdict in batch:
+                t = bdict[k]
+                pad_amounts = []
+                for d in reversed(range(len(t.shape))):
+                    diff = max_dims[d] - t.shape[d]
+                    pad_amounts.extend([0, diff])  # (left_pad, right_pad)
+                padded_tensors.append(torch.nn.functional.pad(t, pad_amounts))
 
-    def _load_image_processor(self):
-        return _get_image_processor(self.model)
+            # Concatenate along the first dimension
+            res[k] = torch.cat(padded_tensors, dim=0)
 
-    def _load_model(self, config):
-        if config.model is not None:
-            return config.model
-
-        return transformers.AutoModel.from_pretrained(config.name_or_path)
-
-    def predict(self, arg):
-        raise NotImplementedError("Subclass must implement predict()")
+        return res
 
 
 class FiftyOneZeroShotTransformer(
-    ZeroShotTransformerEmbeddingsMixin, ZeroShotTransformerPromptMixin, Model
+    ZeroShotTransformerEmbeddingsMixin,
+    ZeroShotTransformerPromptMixin,
+    FiftyOneTransformer,
 ):
     """FiftyOne wrapper around a ``transformers`` model.
 
@@ -497,79 +737,85 @@ class FiftyOneZeroShotTransformer(
     """
 
     def __init__(self, config):
-        self.config = config
-        self.classes = config.classes
-        self.model = self._load_model(config)
-        self.device = torch.device(self.config.device)
-        self.model.to(self.device)
-        self.processor = self._load_processor()
+        # ensure padding for variable sized prompts
+        if config.transformers_processor_kwargs is None:
+            config.transformers_processor_kwargs = {}
+        if config.transformers_processor_kwargs.get("padding", None) is None:
+            config.transformers_processor_kwargs["padding"] = True
+        super().__init__(config)
         self._text_prompts = None
+        self._input_ids = None
 
     @property
-    def media_type(self):
-        return "image"
+    def input_ids(self):
+        if self._input_ids is not None:
+            return self._input_ids
+        self._input_ids = self.transforms.processor(
+            text=self.text_prompts,
+            **(self.transforms.kwargs),
+        )["input_ids"]
+        return self._input_ids
 
     @property
-    def ragged_batches(self):
-        return False
-
-    @property
-    def transforms(self):
-        return None
-
-    @property
-    def preprocess(self):
-        return False
-
-    def _load_processor(self):
-        return _get_processor(self.model)
-
-    def _load_model(self, config):
-        if config.model is not None:
-            return config.model
-
-        return transformers.AutoModel.from_pretrained(config.name_or_path)
+    def text_prompts(self):
+        if self._text_prompts is None:
+            return self._get_text_prompts()
+        return self._text_prompts
 
     def _get_text_prompts(self):
-        if self._text_prompts is not None:
-            return self._text_prompts
-
         if self.classes is None and self.config.classes is None:
             return None
 
         if self.classes is None:
             self.classes = self.config.classes
 
-        if self.config.text_prompt is None:
-            self._text_prompts = self.classes
+        text_prompt = (
+            self.config.text_prompt if self.config.text_prompt else None
+        )
+        class_prompts = (
+            self.config.class_prompts
+            if self.config.class_prompts
+            else {c: c for c in self.classes}
+        )
+
+        if text_prompt is None:
+            # if no text prompt is provided, use the class names as prompts
+            self._text_prompts = [f"{class_prompts[c]}" for c in self.classes]
         else:
             self._text_prompts = [
-                "%s %s" % (self.config.text_prompt, c) for c in self.classes
+                f"{text_prompt} {class_prompts[c]}" for c in self.classes
             ]
 
         return self._text_prompts
 
-    def predict(self, arg):
-        raise NotImplementedError("Subclass must implement predict()")
+    def _predict_all(self, args):
+        # this solutions is awful
+        # it means that text embeddings are recomputed every time
+        # I haven't been able to find a way of caching the text embeddings
+        # without entirely ripping apart abstraction barriers
+        # between FiftyOne and HuggingFace Transformers
+        # This is especially painful because the text models
+        # are usually much slower than the image models
+        if self.preprocess:
+            args = {
+                "images": args,
+                "text": self.text_prompts,  # inject text prompts
+            }
+        else:
+            args.update({"input_ids": self.input_ids})
+        return super()._predict_all(args)
 
 
 class FiftyOneZeroShotTransformerForImageClassificationConfig(
     FiftyOneZeroShotTransformerConfig
 ):
-    """Configuration for a
-    :class:`FiftyOneZeroShotTransformerForImageClassification`.
-
-    Args:
-        model (None): a ``transformers`` model
-        name_or_path (None): the name or path to a checkpoint file to load
-        text_prompt: the text prompt to use, e.g., ``"A photo of"``
-        classes (None): a list of custom classes for zero-shot prediction
-    """
-
     def __init__(self, d):
+        if (
+            d.get("name_or_path", None) is None
+            and d.get("model", None) is None
+        ):
+            d["name_or_path"] = DEFAULT_ZERO_SHOT_CLASSIFICATION_PATH
         super().__init__(d)
-        if self.model is None and self.name_or_path is None:
-            self.name_or_path = DEFAULT_ZERO_SHOT_CLASSIFICATION_PATH
 
 
 class FiftyOneZeroShotTransformerForImageClassification(
@@ -582,93 +828,23 @@ class FiftyOneZeroShotTransformerForImageClassification(
         config: a `FiftyOneZeroShotTransformerConfig`
     """
 
-    def _load_model(self, config):
-        if config.model is not None:
-            return config.model
+    def __init__(self, config):
+        # override entry point
+        if config.entrypoint_fcn is None:
+            config.entrypoint_fcn = "transformers.AutoModelForZeroShotImageClassification.from_pretrained"
 
-        device = torch.device(config.device)
-        model = transformers.AutoModel.from_pretrained(config.name_or_path).to(
-            device
-        )
-        if _has_image_text_retrieval(model):
-            model = _get_model_for_image_text_retrieval(
-                model, config.name_or_path
+        # override output processor
+        if config.output_processor_cls is None:
+            config.output_processor_cls = (
+                "fiftyone.utils.torch.ClassifierOutputProcessor"
             )
+        if config.output_processor_args is None:
+            config.output_processor_args = {
+                "store_logits": True,
+                "logits_key": "logits_per_image",
+            }
 
-        return model
-
-    def _predict_all_from_features(self, args):
-        text_prompts = self._get_text_prompts()
-        inputs = self.processor(
-            images=args, text=text_prompts, return_tensors="pt", padding=True
-        )
-
-        with torch.no_grad():
-            outputs = self.model(**inputs.to(self.device))
-
-        logits_per_image = (
-            outputs.logits_per_image.detach().cpu()
-        )  # this is the image-text similarity score
-
-        probs = logits_per_image.softmax(
-            dim=1
-        )  # we can take the softmax to get the label probabilities
-        conf = probs.max(
-            dim=1
-        ).values.numpy()  # the confidence of the most likely label
-        logits = (
-            logits_per_image.numpy()
-        )  # we can also take the logits and train a linear classifier on top
-        arg_max = (
-            probs.argmax(dim=1).numpy().astype(int)
-        )  # the argmax of the label probabilities
-        classifs = [
-            fol.Classification(
-                label=self.classes[arg_max[i]],
-                confidence=conf[i],
-                logits=logits[i],
-            )
-            for i in range(logits.shape[0])
-        ]
-
-        if len(classifs) == 1:
-            classifs = classifs[0]
-
-        return classifs
-
-    def _predict_all_from_retrieval(self, args):
-        return [self._predict_from_retrieval(arg) for arg in args]
-
-    def _predict_from_retrieval(self, arg):
-        text_prompts = self._get_text_prompts()
-        logits = []
-
-        with torch.no_grad():
-            for text_prompt in text_prompts:
-                inputs = self.processor(arg, text_prompt, return_tensors="pt")
-                outputs = self.model(**(inputs.to(self.device)))
-                logits.append(outputs.logits[0, :].item())
-
-        logits = np.array(logits)
-        probs = np.exp(logits) / np.sum(np.exp(logits))
-        conf = probs.max()
-        arg_max = int(probs.argmax())
-        label = self.classes[arg_max]
-
-        return fol.Classification(
-            label=label,
-            confidence=conf,
-            logits=logits,
-        )
-
-    def predict_all(self, args):
-        if _has_text_and_image_features(self.model):
-            return self._predict_all_from_features(args)
-        else:
-            return self._predict_all_from_retrieval(args)
-
-    def predict(self, arg):
-        return self.predict_all(arg)
+        super().__init__(config)
 
 
 class FiftyOneTransformerForImageClassificationConfig(
@@ -682,9 +858,12 @@ class FiftyOneTransformerForImageClassificationConfig(
     """
 
     def __init__(self, d):
+        if (
+            d.get("name_or_path", None) is None
+            and d.get("model", None) is None
+        ):
+            d["name_or_path"] = DEFAULT_CLASSIFICATION_PATH
         super().__init__(d)
-        if self.model is None and self.name_or_path is None:
-            self.name_or_path = DEFAULT_CLASSIFICATION_PATH
 
 
 class FiftyOneTransformerForImageClassification(FiftyOneTransformer):
@@ -695,26 +874,23 @@ class FiftyOneTransformerForImageClassification(FiftyOneTransformer):
         config: a `FiftyOneTransformerConfig`
     """
 
-    def _load_model(self, config):
-        if config.model is not None:
-            return config.model
-        device = torch.device(config.device)
-        return transformers.AutoModelForImageClassification.from_pretrained(
-            config.name_or_path
-        ).to(device)
+    def __init__(self, config):
+        # override entry point
+        if config.entrypoint_fcn is None:
+            config.entrypoint_fcn = (
+                "transformers.AutoModelForImageClassification.from_pretrained"
+            )
 
-    def _predict(self, inputs):
-        with torch.no_grad():
-            results = self.model(**(inputs.to(self.device)))
-        return to_classification(results, self.model.config.id2label)
-
-    def predict(self, arg):
-        inputs = self.image_processor(arg, return_tensors="pt")
-        return self._predict(inputs)
-
-    def predict_all(self, args):
-        inputs = self.image_processor(args, return_tensors="pt")
-        return self._predict(inputs)
+        # override output processor
+        if config.output_processor_cls is None:
+            config.output_processor_cls = (
+                "fiftyone.utils.torch.ClassifierOutputProcessor"
+            )
+        if config.output_processor_args is None:
+            config.output_processor_args = {
+                "store_logits": True,
+            }
+        super().__init__(config)
 
 
 class FiftyOneZeroShotTransformerForObjectDetectionConfig(
@@ -731,11 +907,12 @@ class FiftyOneZeroShotTransformerForObjectDetectionConfig(
     """
 
     def __init__(self, d):
+        if (
+            d.get("name_or_path", None) is None
+            and d.get("model", None) is None
+        ):
+            d["name_or_path"] = DEFAULT_ZERO_SHOT_DETECTION_PATH
         super().__init__(d)
-        if self.model is None and self.name_or_path is None:
-            self.name_or_path = DEFAULT_ZERO_SHOT_DETECTION_PATH
-        elif self.model is not None:
-            self.name_or_path = self.model.name_or_path
 
 
 class FiftyOneZeroShotTransformerForObjectDetection(
@@ -749,58 +926,30 @@ class FiftyOneZeroShotTransformerForObjectDetection(
     """
 
     def __init__(self, config):
-        self.config = config
-        self.classes = config.classes
-        self.processor = self._load_processor(config)
-        self.model = self._load_model(config)
-        self.device = torch.device(self.config.device)
-        self.model.to(self.device)
-        self._text_prompts = None
+        # override entry point
+        if config.entrypoint_fcn is None:
+            config.entrypoint_fcn = "transformers.AutoModelForZeroShotObjectDetection.from_pretrained"
 
-    def _load_processor(self, config):
-        name_or_path = config.name_or_path
-        if not name_or_path:
-            if config.model is not None:
-                name_or_path = config.model.name_or_path
+        # override output processor
+        if config.output_processor_cls is None:
+            config.output_processor_cls = "fiftyone.utils.transformers.TransformersDetectorOutputProcessor"
+        super().__init__(config)
+        # have to do this after init so processor is loaded
+        # I think this is better than instantiating a second one
+        # or passing the entire model to the output processor
+        self._output_processor.processor = self.transforms.processor
+        # ew
+        self.transforms.return_image_sizes = True
+        self.transforms.text = self.text_prompts
+        self.transforms.text_per_image = True
 
-        return transformers.AutoProcessor.from_pretrained(name_or_path)
-
-    def _load_model(self, config):
-        name_or_path = config.name_or_path
-        if not name_or_path:
-            if config.model is not None:
-                name_or_path = config.model.name_or_path
-
-        if config.model is not None:
-            return config.model
-        else:
-            return _get_detector_from_processor(
-                self.processor, name_or_path
-            ).to(config.device)
-
-    def _process_inputs(self, args):
-        text_prompts = self._get_text_prompts()
-        inputs = self.processor(
-            images=args, text=text_prompts, return_tensors="pt", padding=True
-        )
-        return inputs
-
-    def _predict(self, inputs, target_sizes):
-        with torch.no_grad():
-            outputs = self.model(**(inputs.to(self.device)))
-
-        results = self.processor.image_processor.post_process_object_detection(
-            outputs, target_sizes=target_sizes
-        )
-        image_shapes = [i[::-1] for i in target_sizes]
-
-        id2label = {i: c for i, c in enumerate(self.classes)}
-        return to_detections(results, id2label, image_shapes)
-
-    def predict(self, arg):
-        target_sizes = [arg.shape[:-1][::-1]]
-        inputs = self._process_inputs(arg)
-        return self._predict(inputs, target_sizes)
+    def _predict_all(self, args):
+        # we can skip injecting the text prompts here
+        # it's done in the transforms
+        # we can get away with it here because unlike
+        # zero shot classification, we have to pass
+        # the text query for each image
+        return FiftyOneTransformer._predict_all(self, args)
 
 
 class FiftyOneTransformerForObjectDetectionConfig(FiftyOneTransformerConfig):
@@ -812,9 +961,12 @@ class FiftyOneTransformerForObjectDetectionConfig(FiftyOneTransformerConfig):
     """
 
     def __init__(self, d):
+        if (
+            d.get("name_or_path", None) is None
+            and d.get("model", None) is None
+        ):
+            d["name_or_path"] = DEFAULT_DETECTION_PATH
         super().__init__(d)
-        if self.model is None and self.name_or_path is None:
-            self.name_or_path = DEFAULT_DETECTION_PATH
 
 
 class FiftyOneTransformerForObjectDetection(FiftyOneTransformer):
@@ -824,32 +976,23 @@ class FiftyOneTransformerForObjectDetection(FiftyOneTransformer):
         config: a `FiftyOneTransformerConfig`
     """
 
-    def _load_model(self, config):
-        if config.model is not None:
-            return config.model
-        return transformers.AutoModelForObjectDetection.from_pretrained(
-            config.name_or_path
-        ).to(config.device)
+    def __init__(self, config):
+        # override entry point
+        if config.entrypoint_fcn is None:
+            config.entrypoint_fcn = (
+                "transformers.AutoModelForObjectDetection.from_pretrained"
+            )
 
-    def _predict(self, inputs, target_sizes):
-        with torch.no_grad():
-            outputs = self.model(**inputs.to(self.device))
-
-        results = self.image_processor.post_process_object_detection(
-            outputs, target_sizes=target_sizes
-        )
-        image_shapes = [i[::-1] for i in target_sizes]
-        return to_detections(results, self.model.config.id2label, image_shapes)
-
-    def predict(self, arg):
-        target_sizes = [arg.shape[:-1][::-1]]
-        inputs = self.image_processor(arg, return_tensors="pt")
-        return self._predict(inputs, target_sizes)
-
-    def predict_all(self, args):
-        target_sizes = [i.shape[:-1][::-1] for i in args]
-        inputs = self.image_processor(args, return_tensors="pt")
-        return self._predict(inputs, target_sizes)
+        # override output processor
+        if config.output_processor_cls is None:
+            config.output_processor_cls = "fiftyone.utils.transformers.TransformersDetectorOutputProcessor"
+        super().__init__(config)
+        # have to do this after init so processor is loaded
+        # I think this is better than instantiating a second one
+        # or passing the entire model to the output processor
+        self._output_processor.processor = self.transforms.processor
+        # ew
+        self.transforms.return_image_sizes = True
 
 
 class FiftyOneTransformerForSemanticSegmentationConfig(
@@ -863,9 +1006,12 @@ class FiftyOneTransformerForSemanticSegmentationConfig(
     """
 
     def __init__(self, d):
+        if (
+            d.get("name_or_path", None) is None
+            and d.get("model", None) is None
+        ):
+            d["name_or_path"] = DEFAULT_SEGMENTATION_PATH
         super().__init__(d)
-        if self.model is None and self.name_or_path is None:
-            self.name_or_path = DEFAULT_SEGMENTATION_PATH
 
 
 class FiftyOneTransformerForSemanticSegmentation(FiftyOneTransformer):
@@ -876,37 +1022,23 @@ class FiftyOneTransformerForSemanticSegmentation(FiftyOneTransformer):
         config: a `FiftyOneTransformerConfig`
     """
 
-    def _load_model(self, config):
-        if config.model is not None:
-            model = config.model
-        else:
-            model = (
-                transformers.AutoModelForSemanticSegmentation.from_pretrained(
-                    config.name_or_path
-                ).to(config.device)
+    def __init__(self, config):
+        # override entry point
+        if config.entrypoint_fcn is None:
+            config.entrypoint_fcn = (
+                "transformers.AutoModelForSemanticSegmentation.from_pretrained"
             )
 
-        self.mask_targets = model.config.id2label
-        return model
-
-    def _predict(self, inputs, target_sizes):
-        with torch.no_grad():
-            outputs = self.model(**inputs.to(self.device))
-
-        results = self.image_processor.post_process_semantic_segmentation(
-            outputs, target_sizes=target_sizes
-        )
-        return to_segmentation(results)
-
-    def predict(self, arg):
-        target_sizes = [arg.shape[:-1][::-1]]
-        inputs = self.image_processor(arg, return_tensors="pt")
-        return self._predict(inputs, target_sizes)
-
-    def predict_all(self, args):
-        target_sizes = [i.shape[:-1][::-1] for i in args]
-        inputs = self.image_processor(args, return_tensors="pt")
-        return self._predict(inputs, target_sizes)
+        # override output processor
+        if config.output_processor_cls is None:
+            config.output_processor_cls = "fiftyone.utils.transformers.TransformersSemanticSegmentatorOutputProcessor"
+        super().__init__(config)
+        # have to do this after init so processor is loaded
+        # I think this is better than instantiating a second one
+        # or passing the entire model to the output processor
+        self._output_processor.processor = self.transforms.processor
+        # ew
+        self.transforms.return_image_sizes = True
 
 
 class FiftyOneTransformerForDepthEstimationConfig(FiftyOneTransformerConfig):
@@ -918,9 +1050,12 @@ class FiftyOneTransformerForDepthEstimationConfig(FiftyOneTransformerConfig):
     """
 
     def __init__(self, d):
+        if (
+            d.get("name_or_path", None) is None
+            and d.get("model", None) is None
+        ):
+            d["name_or_path"] = DEFAULT_DEPTH_ESTIMATION_PATH
         super().__init__(d)
-        if self.model is None and self.name_or_path is None:
-            self.name_or_path = DEFAULT_DEPTH_ESTIMATION_PATH
 
 
 class FiftyOneTransformerForDepthEstimation(FiftyOneTransformer):
@@ -930,37 +1065,23 @@ class FiftyOneTransformerForDepthEstimation(FiftyOneTransformer):
         config: a `FiftyOneTransformerConfig`
     """
 
-    def _load_model(self, config):
-        if config.model is not None:
-            return config.model
-        return transformers.AutoModelForDepthEstimation.from_pretrained(
-            config.name_or_path
-        ).to(config.device)
+    def __init__(self, config):
+        # override entry point
+        if config.entrypoint_fcn is None:
+            config.entrypoint_fcn = (
+                "transformers.AutoModelForDepthEstimation.from_pretrained"
+            )
 
-    def _predict(self, inputs, target_sizes):
-        with torch.no_grad():
-            outputs = self.model(**inputs.to(self.device))
-
-        predicted_depth = outputs.predicted_depth
-        prediction = torch.nn.functional.interpolate(
-            predicted_depth.unsqueeze(1),
-            size=target_sizes[0],
-            mode="bicubic",
-            align_corners=False,
-        )
-        prediction = prediction.squeeze(1).cpu().numpy()
-
-        return to_heatmap(prediction)
-
-    def predict(self, arg):
-        target_sizes = [arg.shape[:2]]
-        inputs = self.image_processor(arg, return_tensors="pt")
-        return self._predict(inputs, target_sizes)
-
-    def predict_all(self, args):
-        target_sizes = [i.shape[:2] for i in args]
-        inputs = self.image_processor(args, return_tensors="pt")
-        return self._predict(inputs, target_sizes)
+        # override output processor
+        if config.output_processor_cls is None:
+            config.output_processor_cls = "fiftyone.utils.transformers.TransformersDepthEstimatorOutputProcessor"
+        super().__init__(config)
+        # have to do this after init so processor is loaded
+        # I think this is better than instantiating a second one
+        # or passing the entire model to the output processor
+        self._output_processor.processor = self.transforms.processor
+        # ew
+        self.transforms.return_image_sizes = True
 
 
 def _has_text_and_image_features(model):
@@ -1029,62 +1150,189 @@ def _get_base_model_name(model):
     return str(type(model)).split(".")[-1][:-2].split("For")[0]
 
 
-def _get_model_for_image_text_retrieval(base_model, model_name_or_path):
-    model_name = _get_base_model_name(base_model)
-    module_name = "transformers"
-    itr_class_name = f"{model_name}ForImageAndTextRetrieval"
-    itr_class = getattr(
-        __import__(module_name, fromlist=[itr_class_name]),
-        itr_class_name,
-    )
+# rather than using partial to avoid pickling issues
+class _HFTransformsHandler:
+    def __init__(self, processor, return_image_sizes=False, **kwargs):
+        self.processor = processor
+        self.return_image_sizes = return_image_sizes
+        self.kwargs = kwargs
+        if "return_tensors" not in kwargs:
+            self.kwargs["return_tensors"] = "pt"
+        self.text = None  # passed in by model after init
+        self.text_per_image = False  # passed in by model after init
 
-    return itr_class.from_pretrained(model_name_or_path).to(base_model.device)
+    def __call__(self, args):
+        if isinstance(args, dict):
+            # multiple inputs
+            if self.return_image_sizes:
+                if args.get("images", None) is not None:
+                    image_size = (
+                        [_get_image_size(img) for img in args["images"]]
+                        if isinstance(args["images"], list)
+                        else [_get_image_size(args["images"])]
+                    )
+            res = self.processor(**args, **self.kwargs)
+        else:
+            # single input, most likely either a list of images or a single image
+            num_images = len(args) if isinstance(args, list) else 1
+            if self.return_image_sizes:
+                image_size = (
+                    [_get_image_size(img) for img in args]
+                    if isinstance(args, list)
+                    else [_get_image_size(args)]
+                )
+            if self.text:
+                res = self.processor(
+                    images=args,
+                    text=self.text
+                    if not self.text_per_image
+                    else [self.text for _ in range(num_images)],
+                    **self.kwargs,
+                )
+            else:
+                res = self.processor(images=args, **self.kwargs)
+
+        if self.return_image_sizes:
+            res.update({"fo_image_size": torch.tensor(image_size)})
+
+        return res
 
 
-def _get_image_processor_fallback(model):
-    model_name = _get_base_model_name(model)
-    module_name = "transformers"
-    processor_class_name = f"{model_name}ImageProcessor"
-    processor_class = getattr(
-        __import__(module_name, fromlist=[processor_class_name]),
-        processor_class_name,
-    )
-    return processor_class.from_pretrained(model.config.model_name_or_path)
+class TransformersDetectorOutputProcessor(fout.DetectorOutputProcessor):
+    """Output processor for HuggingFace Transformers object detection models.
 
+    Args:
+        store_logits (False): whether to store the logits in the output
+        logits_key ("logits"): the key to use for the logits in the output
+    """
 
-def _get_image_processor(model):
-    try:
-        image_processor = transformers.AutoImageProcessor.from_pretrained(
-            model.config._name_or_path
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._processor = None
+        self._objection_detection_processor = None
+
+    @property
+    def processor(self):
+        if self._processor is None:
+            raise ValueError(
+                "Processor not set. Please make sure the processor is set."
+            )
+        return self._processor
+
+    @processor.setter
+    def processor(self, processor):
+        self._processor = processor
+        if self._processor is not None:
+            if hasattr(self._processor, "post_process_object_detection"):
+                self._objection_detection_processor = (
+                    self._processor.post_process_object_detection
+                )
+            elif hasattr(
+                self._processor, "post_process_grounded_object_detection"
+            ):
+                self._objection_detection_processor = (
+                    self._processor.post_process_grounded_object_detection
+                )
+            else:
+                raise ValueError(
+                    "Processor does not have a post_process_object_detection "
+                    "or post_process_grounded_object_detection method."
+                )
+
+    def __call__(self, output, image_sizes, confidence_thresh=None):
+        output = self._objection_detection_processor(
+            output, target_sizes=image_sizes, threshold=confidence_thresh or 0
         )
-    except:
-        image_processor = _get_image_processor_fallback(model)
+        res = []
+        for o, img_sz in zip(output, image_sizes):
+            res.append(
+                self._parse_output(
+                    o,
+                    (img_sz[1], img_sz[0]),
+                    confidence_thresh=confidence_thresh,
+                )
+            )
+        return res
 
-    return image_processor
 
+class TransformersSemanticSegmentatorOutputProcessor(
+    fout.SemanticSegmenterOutputProcessor
+):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-def _get_processor(model):
-    try:
-        processor = transformers.AutoProcessor.from_pretrained(
-            model.config._name_or_path
+    def __call__(self, output, image_sizes, confidence_thresh=None):
+        return super().__call__(
+            {"out": output.logits},  # to be compatible with the base class
+            image_sizes,
+            confidence_thresh=confidence_thresh,
         )
-    except:
-        raise ValueError(
-            "Could not find a processor for model %s"
-            % model.config._name_or_path
+
+
+class TransformersDepthEstimatorOutputProcessor(fout.OutputProcessor):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._processor = None
+        self._depth_estimation_post_processor = None
+
+    @property
+    def processor(self):
+        if self._processor is None:
+            raise ValueError(
+                "Processor not set. Please make sure the processor is set."
+            )
+        return self._processor
+
+    @processor.setter
+    def processor(self, processor):
+        self._processor = processor
+        if self._processor is not None:
+            if hasattr(self._processor, "post_process_depth_estimation"):
+                self._depth_estimation_post_processor = (
+                    self._processor.post_process_depth_estimation
+                )
+            else:
+                raise ValueError(
+                    "Processor does not have a post_process_depth_estimation."
+                )
+
+    def __call__(self, output, image_sizes, confidence_thresh=None):
+
+        output = self._depth_estimation_post_processor(output)
+        output = np.array(
+            [o["predicted_depth"].detach().cpu().numpy() for o in output]
         )
+        output = output / np.max(output, axis=(1, 2), keepdims=True)
+        return [fol.Heatmap(map=o) for o in output]
 
-    return processor
+
+def _get_image_size(img):
+    if isinstance(img, torch.Tensor):
+        height, width = img.size()[-2:]
+    elif isinstance(img, Image.Image):
+        width, height = img.size
+    elif isinstance(img, np.ndarray):
+        height, width = img.shape[:2]
+
+    return height, width
 
 
-def _get_detector_from_processor(processor, model_name_or_path):
-    module_name = "transformers"
-    processor_class_name = f"{processor.__class__.__name__}"
-    detector_class_name = (
-        f"{processor_class_name.split('Processor')[0]}ForObjectDetection"
-    )
-    detector_class = getattr(
-        __import__(module_name, fromlist=[detector_class_name]),
-        detector_class_name,
-    )
-    return detector_class.from_pretrained(model_name_or_path)
+MODEL_TYPE_TO_CONFIG_CLASS = {
+    "base-model": FiftyOneTransformerConfig,
+    "image-classification": FiftyOneTransformerForImageClassificationConfig,
+    "object-detection": FiftyOneTransformerForObjectDetectionConfig,
+    "semantic-segmentation": FiftyOneTransformerForSemanticSegmentationConfig,
+    "depth-estimation": FiftyOneTransformerForDepthEstimationConfig,
+    "zero-shot-image-classification": FiftyOneZeroShotTransformerForImageClassificationConfig,
+    "zero-shot-object-detection": FiftyOneZeroShotTransformerForObjectDetectionConfig,
+}
+
+MODEL_TYPE_TO_MODEL_CLASS = {
+    "base-model": FiftyOneTransformer,
+    "image-classification": FiftyOneTransformerForImageClassification,
+    "object-detection": FiftyOneTransformerForObjectDetection,
+    "semantic-segmentation": FiftyOneTransformerForSemanticSegmentation,
+    "depth-estimation": FiftyOneTransformerForDepthEstimation,
+    "zero-shot-image-classification": FiftyOneZeroShotTransformerForImageClassification,
+    "zero-shot-object-detection": FiftyOneZeroShotTransformerForObjectDetection,
+}

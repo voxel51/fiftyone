@@ -176,6 +176,93 @@ class VideoTests(unittest.TestCase):
             dataset.create_index("frames.non_existent_field")
 
     @drop_datasets
+    def test_clone_video_indexes(self):
+        sample = fo.Sample(
+            filepath="video.mp4",
+            metadata=fo.VideoMetadata(size_bytes=51),
+        )
+        sample.frames[1] = fo.Frame(
+            field="foo",
+            gt=fo.Detections(detections=[fo.Detection(label="cat")]),
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        dataset.create_index("metadata.size_bytes")
+        dataset.create_index("frames.gt.detections.label")
+        dataset.create_index(
+            [("frames.gt.detections.id", 1), ("frames.field", 1)]
+        )
+
+        default_indexes = {
+            "id",
+            "filepath",
+            "created_at",
+            "last_modified_at",
+            "frames.id",
+            "frames.created_at",
+            "frames.last_modified_at",
+            "frames._sample_id_1_frame_number_1",
+        }
+
+        # Cloning datasets includes all indexes by default
+        dataset2 = dataset.clone()
+        expected_indexes = default_indexes | {
+            "metadata.size_bytes",
+            "frames.gt.detections.label",
+            "frames.gt.detections._id_1_field_1",
+        }
+
+        self.assertSetEqual(set(dataset2.list_indexes()), expected_indexes)
+
+        dataset3 = dataset.clone(include_indexes=False)
+
+        self.assertSetEqual(set(dataset3.list_indexes()), default_indexes)
+
+        dataset4 = dataset.clone(include_indexes=[])
+
+        self.assertSetEqual(set(dataset4.list_indexes()), default_indexes)
+
+        # Indexes can be included by prefix
+        dataset5 = dataset.clone(include_indexes=["frames.gt.detections"])
+        expected_indexes = default_indexes | {
+            "frames.gt.detections.label",
+            "frames.gt.detections._id_1_field_1",
+        }
+
+        self.assertSetEqual(set(dataset5.list_indexes()), expected_indexes)
+
+        dataset6 = dataset.clone(
+            include_indexes=["frames.gt.detections.label"]
+        )
+        expected_indexes = default_indexes | {"frames.gt.detections.label"}
+
+        self.assertSetEqual(set(dataset6.list_indexes()), expected_indexes)
+
+        dataset7 = dataset.clone(
+            include_indexes=["frames.gt.detections._id_1_field_1"]
+        )
+        expected_indexes = default_indexes | {
+            "frames.gt.detections._id_1_field_1"
+        }
+
+        self.assertSetEqual(set(dataset7.list_indexes()), expected_indexes)
+
+        view = dataset.select_fields()
+
+        # Cloning views does not include custom indexes by default
+        dataset8 = view.clone()
+
+        self.assertSetEqual(set(dataset8.list_indexes()), default_indexes)
+
+        # Indexes on excluded fields are not included when cloning views
+        dataset9 = view.clone(include_indexes=True)
+        expected_indexes = default_indexes | {"metadata.size_bytes"}
+
+        self.assertSetEqual(set(dataset9.list_indexes()), expected_indexes)
+
+    @drop_datasets
     def test_frames_order(self):
         dataset = fo.Dataset()
 
@@ -743,7 +830,7 @@ class VideoTests(unittest.TestCase):
         self.assertNotEqual(frame3.id, frame_id)
 
     @drop_datasets
-    def test_last_modified_at_deletions(self):
+    def test_last_modified_at_frame_deletions1(self):
         samples = [
             fo.Sample(
                 filepath=f"video{i}.mp4",
@@ -756,50 +843,46 @@ class VideoTests(unittest.TestCase):
         dataset.add_samples(samples)
 
         dataset.ensure_frames()
-        last_modified_at1 = dataset.last_modified_at
-        last_modified_at2 = dataset.max("last_modified_at")
+        last_deletion_at1 = dataset.last_deletion_at
+        last_modified_at1 = dataset.max("last_modified_at")
 
+        self.assertIsNone(last_deletion_at1)
         self.assertEqual(dataset.count("frames"), 20)
 
         frame_ids = dataset.match_frames(F("frame_number") == 5).values(
             "frames.id", unwind=True
         )
         dataset.delete_frames(frame_ids)
-        last_modified_at3 = dataset.max("last_modified_at")
+        last_modified_at2 = dataset.max("last_modified_at")
 
         self.assertEqual(dataset.count("frames"), 16)
-        self.assertTrue(last_modified_at3 > last_modified_at2)
+        self.assertTrue(last_modified_at2 > last_modified_at1)
 
         dataset.match_frames(F("frame_number") <= 2).keep_frames()
-        last_modified_at4 = dataset.max("last_modified_at")
+        last_modified_at3 = dataset.max("last_modified_at")
 
         self.assertEqual(dataset.count("frames"), 8)
-        self.assertTrue(last_modified_at4 > last_modified_at3)
+        self.assertTrue(last_modified_at3 > last_modified_at2)
 
         dataset[:2].clear_frames()
-        last_modified_at5 = dataset.max("last_modified_at")
+        last_modified_at4 = dataset.max("last_modified_at")
 
         self.assertEqual(dataset.count("frames"), 4)
-        self.assertTrue(last_modified_at5 > last_modified_at4)
+        self.assertTrue(last_modified_at4 > last_modified_at3)
 
         dataset.clear_frames()
-        last_modified_at6 = dataset.max("last_modified_at")
+        last_modified_at5 = dataset.max("last_modified_at")
 
         self.assertEqual(dataset.count("frames"), 0)
-        self.assertTrue(last_modified_at6 > last_modified_at5)
+        self.assertTrue(last_modified_at5 > last_modified_at4)
 
         dataset.reload()
-        last_modified_at7 = dataset.last_modified_at
+        last_deletion_at2 = dataset.last_deletion_at
 
-        self.assertEqual(last_modified_at1, last_modified_at7)
-
-        dataset.sync_last_modified_at()
-        last_modified_at8 = dataset.last_modified_at
-
-        self.assertTrue(last_modified_at8 > last_modified_at7)
+        self.assertIsNone(last_deletion_at2)
 
     @drop_datasets
-    def test_last_modified_at_deletions_frames(self):
+    def test_last_modified_at_frame_deletions2(self):
         samples = [
             fo.Sample(
                 filepath=f"video{i}.mp4",
@@ -812,49 +895,45 @@ class VideoTests(unittest.TestCase):
         dataset.add_samples(samples)
 
         dataset.ensure_frames()
-        last_modified_at1 = dataset.last_modified_at
+        last_deletion_at1 = dataset.last_deletion_at
 
+        self.assertIsNone(last_deletion_at1)
         self.assertEqual(dataset.count("frames"), 10)
 
         sample = dataset.first()
-        last_modified_at2 = sample.last_modified_at
+        last_modified_at1 = sample.last_modified_at
 
         del sample.frames[1]
         del sample.frames[3]
         del sample.frames[5]
 
         sample.save()
-        last_modified_at3 = sample.last_modified_at
+        last_modified_at2 = sample.last_modified_at
 
         self.assertEqual(dataset.count("frames"), 7)
-        self.assertTrue(last_modified_at3 > last_modified_at2)
+        self.assertTrue(last_modified_at2 > last_modified_at1)
 
         sample.reload()
-        last_modified_at4 = sample.last_modified_at
+        last_modified_at3 = sample.last_modified_at
 
-        self.assertEqual(last_modified_at4, last_modified_at3)
+        self.assertEqual(last_modified_at3, last_modified_at2)
 
         sample.frames.clear()
         sample.save()
-        last_modified_at5 = sample.last_modified_at
+        last_modified_at4 = sample.last_modified_at
 
         self.assertEqual(dataset.count("frames"), 5)
-        self.assertTrue(last_modified_at5 > last_modified_at4)
+        self.assertTrue(last_modified_at4 > last_modified_at3)
 
         sample.reload()
-        last_modified_at6 = sample.last_modified_at
+        last_modified_at5 = sample.last_modified_at
 
-        self.assertEqual(last_modified_at6, last_modified_at5)
+        self.assertEqual(last_modified_at5, last_modified_at4)
 
         dataset.reload()
-        last_modified_at7 = dataset.last_modified_at
+        last_deletion_at2 = dataset.last_deletion_at
 
-        self.assertEqual(last_modified_at7, last_modified_at1)
-
-        dataset.sync_last_modified_at()
-        last_modified_at8 = dataset.last_modified_at
-
-        self.assertTrue(last_modified_at8 > last_modified_at7)
+        self.assertIsNone(last_deletion_at2)
 
     @drop_datasets
     def test_save_frame_view(self):
@@ -2208,6 +2287,148 @@ class VideoTests(unittest.TestCase):
         )
 
     @drop_datasets
+    def test_to_clips_clone_indexes(self):
+        dataset = fo.Dataset()
+
+        sample = fo.Sample(
+            filepath="video.mp4",
+            metadata=fo.VideoMetadata(size_bytes=51),
+            field="foo",
+            events=fo.TemporalDetections(
+                detections=[
+                    fo.TemporalDetection(label="meeting", support=[1, 3]),
+                    fo.TemporalDetection(label="party", support=[2, 4]),
+                ]
+            ),
+        )
+        sample.frames[1] = fo.Frame(hello="world")
+
+        dataset.add_sample(sample)
+
+        dataset.create_index("metadata.size_bytes")
+        dataset.create_index("events.detections.label")
+        dataset.create_index([("events.detections.id", 1), ("field", 1)])
+
+        default_indexes = {
+            "id",
+            "sample_id",
+            "filepath",
+            "created_at",
+            "last_modified_at",
+            "frames.id",
+            "frames.created_at",
+            "frames.last_modified_at",
+            "frames._sample_id_1_frame_number_1",
+        }
+
+        # Creating clips views does not include indexes by default
+        view = dataset.to_clips("events")
+
+        self.assertSetEqual(set(view.list_indexes()), default_indexes)
+
+        view = dataset.to_clips("events", include_indexes=[])
+
+        self.assertSetEqual(set(view.list_indexes()), default_indexes)
+
+        view = dataset.to_clips(
+            "events", other_fields="field", include_indexes=True
+        )
+        expected_indexes = default_indexes | {
+            "events.label",
+            "events._id_1_field_1",
+        }
+
+        self.assertSetEqual(set(view.list_indexes()), expected_indexes)
+
+        # Indexes can be specified by prefix
+        view = dataset.to_clips(
+            "events",
+            other_fields="field",
+            include_indexes="events.detections",
+        )
+        expected_indexes = default_indexes | {
+            "events.label",
+            "events._id_1_field_1",
+        }
+
+        self.assertSetEqual(set(view.list_indexes()), expected_indexes)
+
+        # Reloading preserves custom indexes
+        view.reload()
+
+        self.assertSetEqual(set(view.list_indexes()), expected_indexes)
+
+        dataset.create_index("frames.hello")
+
+        # Frame indexes are always inheritied from source dataset
+        view = dataset.to_clips("events", include_indexes=False)
+        expected_indexes = default_indexes | {"frames.hello"}
+
+        self.assertSetEqual(set(view.list_indexes()), expected_indexes)
+
+    @drop_datasets
+    def test_to_clips_delete_labels(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(filepath="video1.mp4")
+        sample2 = fo.Sample(
+            filepath="video2.mp4",
+            events=fo.TemporalDetections(
+                detections=[
+                    fo.TemporalDetection(label="meeting", support=[1, 3]),
+                    fo.TemporalDetection(label="party", support=[2, 4]),
+                    fo.TemporalDetection(label="nap", support=[3, 5]),
+                ]
+            ),
+        )
+        sample2.frames[3] = fo.Frame(
+            ground_truth=fo.Detections(detections=[fo.Detection(label="cat")])
+        )
+
+        dataset.add_samples([sample1, sample2])
+
+        view = dataset.to_clips("events")
+        clip = view.first()
+
+        labels = [
+            {
+                "label_id": clip.events.id,
+                "sample_id": clip.id,
+                "field": "events",
+            }
+        ]
+
+        view._delete_labels(labels)
+
+        self.assertEqual(len(view), 2)
+        self.assertEqual(dataset.count("events.detections"), 2)
+        self.assertEqual(dataset.count("frames.ground_truth.detections"), 1)
+
+        clip1 = view.first()
+        clip2 = view.last()
+        frame = clip2.frames.first()
+
+        labels = [
+            {
+                "label_id": clip1.events.id,
+                "sample_id": clip1.id,
+                "field": "events",
+            },
+            {
+                "label_id": frame.ground_truth.detections[0].id,
+                "sample_id": clip2.id,
+                "frame_number": 3,
+                "field": "frames.ground_truth",
+            },
+        ]
+
+        view._delete_labels(labels)
+
+        self.assertEqual(len(view), 1)
+        self.assertEqual(dataset.count("events.detections"), 1)
+        self.assertEqual(dataset.count("frames.ground_truth.detections"), 0)
+
+    @drop_datasets
     def test_to_frames(self):
         dataset = fo.Dataset()
 
@@ -2902,6 +3123,129 @@ class VideoTests(unittest.TestCase):
                 for dt1, dt2 in zip(last_modified_at1f, last_modified_at2f)
             )
         )
+
+    @drop_datasets
+    def test_to_frames_clone_indexes(self):
+        dataset = fo.Dataset()
+
+        sample = fo.Sample(
+            filepath="video.mp4",
+            metadata=fo.VideoMetadata(size_bytes=51, total_frame_count=2),
+        )
+        sample.frames[1] = fo.Frame(filepath="frame1.jpg", field="foo")
+        sample.frames[2] = fo.Frame(
+            filepath="frame1.jpg",
+            ground_truth=fo.Detections(detections=[fo.Detection(label="cat")]),
+        )
+
+        dataset.add_sample(sample)
+
+        dataset.create_index("metadata.size_bytes")
+        dataset.create_index("frames.ground_truth.detections.label")
+        dataset.create_index(
+            [("frames.ground_truth.detections.id", 1), ("frames.field", 1)]
+        )
+
+        default_indexes = {
+            "id",
+            "sample_id",
+            "filepath",
+            "created_at",
+            "last_modified_at",
+            "_sample_id_1_frame_number_1",
+        }
+
+        # Creating frame views does not include indexes by default
+        view = dataset.to_frames()
+
+        self.assertSetEqual(set(view.list_indexes()), default_indexes)
+
+        view = dataset.to_frames(include_indexes=[])
+
+        self.assertSetEqual(set(view.list_indexes()), default_indexes)
+
+        view = dataset.to_frames(include_indexes=True)
+
+        expected_indexes = default_indexes | {
+            "ground_truth.detections.label",
+            "ground_truth.detections._id_1_field_1",
+        }
+
+        self.assertSetEqual(set(view.list_indexes()), expected_indexes)
+
+        # Indexes can be included by prefix
+        view = dataset.to_frames(
+            include_indexes=["frames.ground_truth.detections"]
+        )
+        expected_indexes = default_indexes | {
+            "ground_truth.detections.label",
+            "ground_truth.detections._id_1_field_1",
+        }
+
+        self.assertSetEqual(set(view.list_indexes()), expected_indexes)
+
+        # Reloading preserves custom indexes
+        view.reload()
+
+        self.assertSetEqual(set(view.list_indexes()), expected_indexes)
+
+        view = dataset.to_frames(
+            include_indexes=["frames.ground_truth.detections.label"]
+        )
+        expected_indexes = default_indexes | {"ground_truth.detections.label"}
+
+        self.assertSetEqual(set(view.list_indexes()), expected_indexes)
+
+        view = dataset.to_frames(
+            include_indexes=["frames.ground_truth.detections._id_1_field_1"]
+        )
+        expected_indexes = default_indexes | {
+            "ground_truth.detections._id_1_field_1"
+        }
+
+        self.assertSetEqual(set(view.list_indexes()), expected_indexes)
+
+        view = dataset.select_fields().to_frames(include_indexes=True)
+
+        self.assertSetEqual(set(view.list_indexes()), default_indexes)
+
+    @drop_datasets
+    def test_to_frames_delete_labels(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(filepath="video1.mp4")
+        sample2 = fo.Sample(filepath="video2.mp4")
+        sample2.frames[1] = fo.Frame(filepath="frame1.jpg")
+        sample2.frames[2] = fo.Frame(
+            filepath="frame2.jpg",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                    fo.Detection(label="rabbit"),
+                ],
+            ),
+        )
+        sample2.frames[3] = fo.Frame(filepath="frame3.jpg")
+
+        dataset.add_samples([sample1, sample2])
+
+        view = dataset.to_frames()
+        frame = view.exists("ground_truth").first()
+
+        labels = [
+            {
+                "label_id": frame.ground_truth.detections[0].id,
+                "sample_id": frame.id,
+                "field": "ground_truth",
+            }
+        ]
+
+        view._delete_labels(labels)
+
+        self.assertEqual(len(view), 3)
+        self.assertEqual(view.count("ground_truth.detections"), 2)
+        self.assertEqual(dataset.count("frames.ground_truth.detections"), 2)
 
     @drop_datasets
     def test_to_clip_frames(self):

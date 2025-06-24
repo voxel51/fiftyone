@@ -1,5 +1,7 @@
+import { useTrackEvent } from "@fiftyone/analytics";
 import { Dialog } from "@fiftyone/components";
-import { editingFieldAtom } from "@fiftyone/state";
+import { usePanelStatePartial } from "@fiftyone/spaces";
+import { editingFieldAtom, useMutation } from "@fiftyone/state";
 import { EditNote, ExpandMore } from "@mui/icons-material";
 import {
   Accordion,
@@ -14,7 +16,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSetRecoilState } from "recoil";
 import Error from "../../Error";
 import EvaluationNotes from "../../EvaluationNotes";
@@ -23,7 +25,6 @@ import ClassPerformance from "./ClassPerformance";
 import ConfusionMatrices from "./ConfusionMatrices";
 import MetricPerformance from "./MetricPerformance";
 import Summary from "./Summary";
-import { useTrackEvent } from "@fiftyone/analytics";
 
 export default function Overview(props) {
   const {
@@ -37,7 +38,10 @@ export default function Overview(props) {
     notes = {},
     loadView,
   } = props;
-  const [expanded, setExpanded] = React.useState("summary");
+  const [expanded, setExpanded] = usePanelStatePartial(
+    `${name}_evaluation_overview_expanded`,
+    "summary"
+  );
   const [editNoteState, setEditNoteState] = useState({ open: false, note: "" });
   const [loadingCompare, setLoadingCompare] = useState(false);
   const evaluation = useMemo(() => {
@@ -59,6 +63,10 @@ export default function Overview(props) {
   }, [notes, id]);
 
   const { can_edit_note } = data?.permissions || {};
+  const [enable, message, cursor] = useMutation(
+    can_edit_note,
+    "edit evaluation note"
+  );
 
   useEffect(() => {
     if (!evaluation) {
@@ -106,14 +114,7 @@ export default function Overview(props) {
       <Card sx={{ p: 2, mb: 2 }}>
         <Stack direction="row" sx={{ justifyContent: "space-between" }}>
           <Typography color="secondary">Evaluation notes</Typography>
-          <Box
-            title={
-              can_edit_note
-                ? ""
-                : "You do not have permission to edit evaluation notes"
-            }
-            sx={{ cursor: can_edit_note ? "pointer" : "not-allowed" }}
-          >
+          <Box title={message} sx={{ cursor }}>
             <IconButton
               size="small"
               color="secondary"
@@ -121,7 +122,7 @@ export default function Overview(props) {
               onClick={() => {
                 setEditNoteState((note) => ({ ...note, open: true }));
               }}
-              disabled={!can_edit_note}
+              disabled={!enable}
             >
               <EditNote />
             </IconButton>
@@ -129,7 +130,10 @@ export default function Overview(props) {
         </Stack>
         <EvaluationNotes notes={evaluationNotes} variant="details" />
       </Card>
-      <Stack spacing={1}>
+      <Stack
+        spacing={1}
+        sx={{ ".MuiAccordionDetails-root": { overflow: "auto" } }}
+      >
         <Accordion
           expanded={expanded === "summary"}
           onChange={(e, expanded) => {
@@ -153,6 +157,7 @@ export default function Overview(props) {
               loadView={loadView}
               evaluation={evaluation}
               compareEvaluation={compareEvaluation}
+              id={id}
             />
           </AccordionDetails>
         </Accordion>
@@ -178,6 +183,7 @@ export default function Overview(props) {
               compareKey={compareKey}
               evaluation={evaluation}
               compareEvaluation={compareEvaluation}
+              id={id}
             />
           </AccordionDetails>
         </Accordion>
@@ -204,6 +210,7 @@ export default function Overview(props) {
               loadView={loadView}
               name={name}
               compareKey={compareKey}
+              id={id}
             />
           </AccordionDetails>
         </Accordion>
@@ -230,6 +237,7 @@ export default function Overview(props) {
               name={name}
               compareKey={compareKey}
               loadView={loadView}
+              id={id}
             />
           </AccordionDetails>
         </Accordion>

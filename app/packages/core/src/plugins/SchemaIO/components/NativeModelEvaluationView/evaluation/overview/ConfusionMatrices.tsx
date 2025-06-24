@@ -1,17 +1,19 @@
+import { Plot } from "@fiftyone/components/src/components/Plot";
+import { usePanelStatePartial } from "@fiftyone/spaces";
 import { Box, Stack, Typography } from "@mui/material";
-import React, { useMemo, useState } from "react";
+import { useMemo } from "react";
 import ColorSquare from "../../components/ColorSquare";
 import ConfusionMatrixConfig from "../../components/ConfusionMatrixConfig";
 import { COMPARE_KEY_COLOR, KEY_COLOR } from "../../constants";
-import EvaluationPlot from "../../EvaluationPlot";
-import { getMatrix } from "../../utils";
+import { getClasses, getMatrix } from "../../utils";
 import { PLOT_CONFIG_TYPE } from "./types";
 import { getConfigLabel } from "./utils";
 
 export default function ConfusionMatrices(props) {
-  const { evaluation, compareEvaluation, name, compareKey, loadView } = props;
+  const { evaluation, compareEvaluation, name, compareKey, loadView, id } =
+    props;
   const [confusionMatrixConfig, setConfusionMatrixConfig] =
-    useState<PLOT_CONFIG_TYPE>({ log: true });
+    usePanelStatePartial<PLOT_CONFIG_TYPE>(`${id}_cmc`, { log: true });
 
   const evaluationMaskTargets = useMemo(() => {
     return evaluation?.mask_targets || {};
@@ -39,6 +41,10 @@ export default function ConfusionMatrices(props) {
     evaluationMaskTargets,
     compareEvaluationMaskTargets,
   ]);
+  const classes = getClasses(
+    evaluation?.confusion_matrices,
+    evaluationMaskTargets
+  );
 
   return (
     <Box>
@@ -49,6 +55,7 @@ export default function ConfusionMatrices(props) {
         <ConfusionMatrixConfig
           config={confusionMatrixConfig}
           onSave={setConfusionMatrixConfig}
+          classes={classes}
         />
       </Stack>
       <Stack direction={"row"} key={compareKey}>
@@ -61,7 +68,7 @@ export default function ConfusionMatrices(props) {
             <ColorSquare color={KEY_COLOR} />
             <Typography>{name}</Typography>
           </Stack>
-          <EvaluationPlot
+          <Plot
             data={[
               {
                 z: confusionMatrix?.matrix,
@@ -112,7 +119,7 @@ export default function ConfusionMatrices(props) {
               <ColorSquare color={COMPARE_KEY_COLOR} />
               <Typography>{compareKey}</Typography>
             </Stack>
-            <EvaluationPlot
+            <Plot
               data={[
                 {
                   z: compareConfusionMatrix?.matrix,

@@ -10,6 +10,8 @@ import types
 
 from fiftyone.core.map.mapper import Mapper
 from fiftyone.core.map.factory import MapperFactory
+from fiftyone.core.map.process import ProcessMapper
+from fiftyone.core.map.threading import ThreadMapper
 
 # This enables Sphinx refs to directly use paths imported here
 __all__ = [

@@ -332,8 +332,12 @@ export const fieldPath = selectorFamily({
       const parent = keys.slice(0, -1).join(".");
       const dbField = keys[keys.length - 1];
       const fieldData = parent.length
-        ? get(field(parent)).fields
+        ? get(field(parent))?.fields
         : get(fullSchema);
+
+      if (!fieldData) {
+        return null;
+      }
 
       let name = dbField;
       for (const key in fieldData) {

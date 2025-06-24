@@ -1,37 +1,49 @@
-import { Stack, Typography, useTheme } from "@mui/material";
-import React from "react";
-import { getNumericDifference } from "../utils";
 import { ArrowDropDown, ArrowDropUp } from "@mui/icons-material";
+import { Box, Stack, Typography, useTheme } from "@mui/material";
+import { getNumericDifference } from "../utils";
 
 export default function Difference(props) {
-  const { value, compareValue, arrow, lesserIsBetter, mode = "ratio" } = props;
+  const {
+    value,
+    compareValue,
+    arrow,
+    lesserIsBetter,
+    mode = "numeric",
+  } = props;
   const theme = useTheme();
 
   const difference = getNumericDifference(value, compareValue);
-  const ratio = getNumericDifference(value, compareValue, true, 1);
-  const positiveRatio = ratio > 0;
-  const zeroRatio = ratio === 0;
-  const negativeRatio = ratio < 0;
-  const isRatioNaN = isNaN(ratio);
+  const numericDifference = getNumericDifference(value, compareValue, true, 1);
+  const isNumericDifferencePositive = numericDifference > 0;
+  const isNumericDifferenceNegative = numericDifference < 0;
+  const isNumericDifferenceZero = numericDifference === 0;
+  const isNumericDifferenceNaN = isNaN(numericDifference);
   const showTrophy = lesserIsBetter ? difference < 0 : difference > 0;
 
-  const ratioColor = positiveRatio
+  const numericDifferenceColor = isNumericDifferencePositive
     ? "#8BC18D"
-    : negativeRatio
+    : isNumericDifferenceNegative
     ? "#FF6464"
     : theme.palette.text.tertiary;
 
   return (
     <Stack direction="row">
-      {positiveRatio && arrow && <ArrowDropUp sx={{ color: ratioColor }} />}
-      {negativeRatio && arrow && <ArrowDropDown sx={{ color: ratioColor }} />}
+      {isNumericDifferencePositive && arrow && (
+        <ArrowDropUp sx={{ color: numericDifferenceColor }} />
+      )}
+      {isNumericDifferenceNegative && arrow && (
+        <ArrowDropDown sx={{ color: numericDifferenceColor }} />
+      )}
+      {isNumericDifferenceZero && arrow && <Box sx={{ pl: "21px" }} />}
       {mode === "percentage" && (
-        <Typography sx={{ color: ratioColor }}>
-          {isRatioNaN ? "-" : `${ratio}%`}
+        <Typography sx={{ color: numericDifferenceColor }}>
+          {isNumericDifferenceNaN ? "-" : `${numericDifference}%`}
         </Typography>
       )}
-      {mode === "ratio" && (
-        <Typography sx={{ color: ratioColor }}>{difference}</Typography>
+      {mode === "numeric" && (
+        <Typography sx={{ color: numericDifferenceColor }}>
+          {difference}
+        </Typography>
       )}
       {mode === "trophy" && showTrophy && (
         <Typography sx={{ fontSize: 12 }}>🏆</Typography>

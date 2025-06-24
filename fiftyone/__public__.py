@@ -7,11 +7,14 @@ FiftyOne's public interface.
 """
 
 import fiftyone.core.config as _foc
+import fiftyone.utils.useragent as _foua
 
 config = _foc.load_config()
 annotation_config = _foc.load_annotation_config()
 evaluation_config = _foc.load_evaluation_config()
 app_config = _foc.load_app_config()
+
+_foua.with_fiftyone_useragent()
 
 from .core.aggregations import (
     Aggregation,

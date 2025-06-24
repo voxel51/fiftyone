@@ -23,21 +23,21 @@ SAMPLE_COUNT = 3
 def fixture_dataset():
     """A simple dataset to test with"""
 
-    dataset_name = "test-mapper"
-
-    dataset = fo.Dataset(name=dataset_name)
-    dataset.persistent = True
+    dataset = fo.Dataset()
 
     # Add samples with an "input" field
+    samples = []
     for i in range(SAMPLE_COUNT):
-        sample = fo.Sample(filepath=f"/tmp/sample_{i}.jpg")
+        sample = fo.Sample(filepath=f"sample_{i}.jpg")
         sample[INPUT_KEY] = i
-        dataset.add_sample(sample)
+        samples.append(sample)
+
+    dataset.add_samples(samples)
 
     try:
         yield dataset
     finally:
-        fo.delete_dataset(dataset_name)
+        dataset.delete()
 
 
 @pytest.mark.parametrize("mapper_key", fomm.MapperFactory.mapper_keys())
@@ -140,3 +140,53 @@ class TestMapperImplementations:
                         assert expected is None
                     except KeyError:
                         ...
+
+
+@pytest.mark.skipif(
+    sys.platform.startswith("win"),
+    reason="Multiprocessing hangs when running the mapper in pytest",
+)
+class TestInterface:
+    """test the public SDK interface"""
+
+    def test_update_samples(self, dataset):
+        def update_fcn(sample):
+            sample["foo"] = "bar"
+
+        empty_view = dataset.limit(0)
+
+        empty_view.update_samples(update_fcn, parallelize_method="process")
+
+        assert not dataset.has_field("foo")
+
+        dataset.update_samples(update_fcn, parallelize_method="process")
+
+        assert dataset.has_field("foo")
+        assert dataset.count_values("foo") == {"bar": SAMPLE_COUNT}
+
+    def test_map_samples(self, dataset):
+        def map_fcn(sample):
+            sample["spam"] = "eggs"
+            return "eggs"
+
+        empty_view = dataset.limit(0)
+        empty_generator = empty_view.map_samples(
+            map_fcn,
+            save=True,
+            parallelize_method="process",
+        )
+        empty_results = [r[1] for r in empty_generator]
+
+        assert empty_results == []
+        assert not dataset.has_field("spam")
+
+        generator = dataset.map_samples(
+            map_fcn,
+            save=True,
+            parallelize_method="process",
+        )
+        results = [r[1] for r in generator]
+
+        assert results == ["eggs"] * SAMPLE_COUNT
+        assert dataset.has_field("spam")
+        assert dataset.count_values("spam") == {"eggs": SAMPLE_COUNT}

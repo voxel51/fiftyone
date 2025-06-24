@@ -1,18 +1,15 @@
-import { capitalize } from "lodash";
-
-import { IconButton } from "@mui/material";
-
+import { TooltipProvider } from "@fiftyone/components";
 import CallSplitOutlinedIcon from "@mui/icons-material/CallSplitOutlined";
 import CrisisAlertOutlinedIcon from "@mui/icons-material/CrisisAlertOutlined";
 import Layers from "@mui/icons-material/Layers";
 import PieChartOutlinedIcon from "@mui/icons-material/PieChartOutlined";
 import ShowChartOutlinedIcon from "@mui/icons-material/ShowChartOutlined";
-
-import TooltipProvider from "../TooltipProvider";
+import { Box } from "@mui/material";
+import { capitalize } from "lodash";
 import { ConcreteEvaluationType } from "./Types";
 
 interface Props {
-  type: ConcreteEvaluationType;
+  type?: ConcreteEvaluationType;
   method?: string;
   color?: string;
 }
@@ -20,40 +17,26 @@ interface Props {
 export default function EvaluationIcon(props: Props) {
   const { type, method, color } = props;
 
-  let evalIcon = <Layers />;
+  let IconComponent = Layers;
   if (type === "classification" && method === "binary") {
-    evalIcon = <CallSplitOutlinedIcon />;
+    IconComponent = CallSplitOutlinedIcon;
   } else if (type === "classification" && method !== "binary") {
-    evalIcon = <Layers />;
+    IconComponent = Layers;
   } else if (type === "detection") {
-    evalIcon = <CrisisAlertOutlinedIcon />;
+    IconComponent = CrisisAlertOutlinedIcon;
   } else if (type === "segmentation") {
-    evalIcon = <PieChartOutlinedIcon />;
+    IconComponent = PieChartOutlinedIcon;
   } else if (type === "regression") {
-    evalIcon = <ShowChartOutlinedIcon />;
+    IconComponent = ShowChartOutlinedIcon;
   }
 
   return (
     <TooltipProvider
-      title={
-        <span style={{ fontSize: "1rem", fontWeight: "normal" }}>
-          Evaluation type: {capitalize(type)}
-        </span>
-      }
-      arrow
-      placement="bottom"
+      title={type ? `Evaluation type: ${capitalize(type)}` : undefined}
     >
-      <IconButton
-        size="small"
-        sx={{
-          color: color ?? "#FFC48B",
-          "&:hover": {
-            backgroundColor: "transparent",
-          },
-        }}
-      >
-        {evalIcon}
-      </IconButton>
+      <Box sx={{ display: "flex" }}>
+        <IconComponent sx={{ color: color ?? "#FFC48B" }} />
+      </Box>
     </TooltipProvider>
   );
 }

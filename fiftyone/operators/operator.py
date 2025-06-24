@@ -287,6 +287,20 @@ class Operator(object):
         """
         return None
 
+    def resolve_run_name(self, ctx):
+        """Returns the resolved run name of the operator.
+
+        Subclasses can implement this method to define the run name of the
+        operator.
+
+        Args:
+            ctx: the :class:`fiftyone.operators.executor.ExecutionContext`
+
+        Returns:
+            a string, or None
+        """
+        return self.name
+
     def method_to_uri(self, method_name):
         """Converts a method name to a URI.
 

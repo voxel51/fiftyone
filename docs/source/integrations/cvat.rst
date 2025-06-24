@@ -60,7 +60,7 @@ ____________
 The basic workflow to use CVAT to add or edit labels on your FiftyOne datasets
 is as follows:
 
-1) Load a :ref:`labeled or unlabeled dataset <loading-datasets>` into FiftyOne
+1) :ref:`Load a dataset <importing-datasets>` into FiftyOne
 
 2) Explore the dataset using the :ref:`App <fiftyone-app>` or
    :ref:`dataset views <using-views>` to locate either unlabeled samples that
@@ -179,11 +179,6 @@ FiftyOne:
 
 Setup
 _____
-
-.. warning::
-
-   This integration currently only
-   `supports CVAT server versions <= 2.30 <https://github.com/voxel51/fiftyone/issues/5771>`_.
 
 FiftyOne supports both `app.cvat.ai <https://app.cvat.ai>`_ and
 `self-hosted servers <https://opencv.github.io/cvat/docs/administration/basics/installation/>`_.
