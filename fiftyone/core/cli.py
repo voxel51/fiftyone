@@ -3338,13 +3338,23 @@ def _print_delegated_list(ops):
 
     rows = []
     for op in ops:
+        state = op.run_state
+        if (
+            op.run_state == fooe.ExecutionRunState.RUNNING
+            and op.status is not None
+        ):
+            if op.status.progress is not None:
+                state += f" ({op.status.progress:.0%})"
+            elif op.status.label is not None:
+                state += f" ({op.status.label})"
+
         rows.append(
             {
                 "id": op.id,
                 "operator": op.operator,
                 "dataset": op.context.request_params.get("dataset_name", None),
                 "queued_at": op.queued_at,
-                "state": op.run_state,
+                "state": state,
                 "completed": op.run_state == fooe.ExecutionRunState.COMPLETED,
             }
         )

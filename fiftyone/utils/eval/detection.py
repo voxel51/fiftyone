@@ -232,6 +232,9 @@ def evaluate_detections(
     )
     eval_method.compute_custom_metrics(samples, eval_key, results)
     eval_method.save_run_results(samples, eval_key, results)
+    eval_method.add_fields_to_sidebar_group(
+        samples, eval_key, omit_fields=(pred_field, gt_field)
+    )
 
     return results
 
@@ -489,6 +492,8 @@ class DetectionEvaluation(BaseEvaluationMethod):
 
         self.rename_custom_metrics(samples, eval_key, new_eval_key)
 
+        samples._rename_sidebar_group(eval_key, new_eval_key)
+
     def cleanup(self, samples, eval_key):
         dataset = samples._dataset
 
@@ -534,6 +539,8 @@ class DetectionEvaluation(BaseEvaluationMethod):
             dataset.delete_sample_fields(fields, error_level=1)
 
         self.cleanup_custom_metrics(samples, eval_key)
+
+        samples._delete_empty_sidebar_group(eval_key)
 
     def _validate_run(self, samples, eval_key, existing_info):
         self._validate_fields_match(eval_key, "pred_field", existing_info)

@@ -1,5 +1,4 @@
 import { test as base } from "src/oss/fixtures";
-import { DynamicGroupPom } from "src/oss/poms/action-row/dynamic-group";
 import { GridActionsRowPom } from "src/oss/poms/action-row/grid-actions-row";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
@@ -17,7 +16,6 @@ const test = base.extend<{
   modal: ModalPom;
   gridActionsRow: GridActionsRowPom;
   sidebar: SidebarPom;
-  dynamicGroups: DynamicGroupPom;
 }>({
   grid: async ({ eventUtils, page }, use) => {
     await use(new GridPom(page, eventUtils));
@@ -28,11 +26,8 @@ const test = base.extend<{
   sidebar: async ({ page }, use) => {
     await use(new SidebarPom(page));
   },
-  gridActionsRow: async ({ eventUtils, page }, use) => {
-    await use(new GridActionsRowPom(page, eventUtils));
-  },
-  dynamicGroups: async ({ eventUtils, page }, use) => {
-    await use(new DynamicGroupPom(page, eventUtils));
+  gridActionsRow: async ({ page }, use) => {
+    await use(new GridActionsRowPom(page));
   },
 });
 
@@ -89,36 +84,25 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
         )
         samples.append(sample)
     dataset.add_samples(samples)
+    groups = dataset.group_by("video_id", order_by="frame_number")
+    dataset.save_view("groups", groups)
     `);
 });
 
-test.beforeEach(
-  async ({ page, fiftyoneLoader, gridActionsRow, dynamicGroups, grid }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+test.beforeEach(async ({ page, fiftyoneLoader, grid }) => {
+  await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
+    searchParams: new URLSearchParams({ view: "groups" }),
+  });
 
-    await gridActionsRow.toggleCreateDynamicGroups();
-    await dynamicGroups.groupBy.openResults();
-    await dynamicGroups.groupBy.selectResult("video_id");
-    await dynamicGroups.groupBy.closeResults();
-    await dynamicGroups.selectTabOption("Ordered");
-    await dynamicGroups.orderBy.openResults();
-    await dynamicGroups.orderBy.selectResult("frame_number");
-    await dynamicGroups.orderBy.closeResults();
-    const gridRefreshPromiseCreateDynamicGroups =
-      grid.getWaitForGridRefreshPromise();
-    await dynamicGroups.submit();
-    await gridRefreshPromiseCreateDynamicGroups;
+  const gridRefreshPromiseSetRenderFramesAsVideo =
+    grid.getWaitForGridRefreshPromise();
+  await grid.actionsRow.toggleDisplayOptions();
+  await grid.actionsRow.displayActions.toggleRenderFramesAsVideo();
+  await gridRefreshPromiseSetRenderFramesAsVideo;
 
-    const gridRefreshPromiseSetRenderFramesAsVideo =
-      grid.getWaitForGridRefreshPromise();
-    await grid.actionsRow.toggleDisplayOptions();
-    await grid.actionsRow.displayActions.toggleRenderFramesAsVideo();
-    await gridRefreshPromiseSetRenderFramesAsVideo;
-
-    await grid.assert.isEntryCountTextEqualTo("2 groups");
-    await grid.assert.isLookerCountEqualTo(2);
-  }
-);
+  await grid.assert.isEntryCountTextEqualTo("2 groups");
+  await grid.assert.isLookerCountEqualTo(2);
+});
 
 test("check modal playback and tagging behavior", async ({ modal, grid }) => {
   await grid.openFirstSample();

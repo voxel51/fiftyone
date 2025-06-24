@@ -944,6 +944,33 @@ class ServerViewTests(unittest.TestCase):
         )
         self.assertEqual(len(view), 1)
 
+    @drop_datasets
+    def test_sort_by(self):
+        dataset = fod.Dataset("test")
+        dataset.add_sample(fo.Sample(filepath="image.png", value="value"))
+
+        view = fosv.get_view(dataset.name, sort_by="value")
+        result = view._serialize()[0]["kwargs"]
+        self.assertEqual(
+            result,
+            [
+                ["field_or_expr", "value"],
+                ["reverse", False],
+                ["create_index", False],
+            ],
+        )
+
+        view = fosv.get_view(dataset.name, sort_by="value", desc=True)
+        result = view._serialize()[0]["kwargs"]
+        self.assertEqual(
+            result,
+            [
+                ["field_or_expr", "value"],
+                ["reverse", True],
+                ["create_index", False],
+            ],
+        )
+
 
 class AysncServerViewTests(unittest.IsolatedAsyncioTestCase):
     @drop_datasets

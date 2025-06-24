@@ -41,7 +41,7 @@ class ExecutionRunState(object):
     SCHEDULED = "scheduled"
     QUEUED = "queued"
     RUNNING = "running"
-    WAITING = "waiting"
+    PROCESSING = "processing"
     COMPLETED = "completed"
     FAILED = "failed"
 
@@ -146,6 +146,7 @@ def execute_operator(operator_uri, ctx=None, **kwargs):
                 execution, if supported by the operator
             -   ``delegation_target`` (None): an optional orchestrator on which
                 to schedule the operation, if it is delegated
+            -   ``active_fields`` ([]): a list of active field names
             -   ``workspace_name`` (None): an optional name of the workspace
                 to use for the operation
             -   ``spaces`` (None): an optional dictionary defining spaces to
@@ -154,6 +155,8 @@ def execute_operator(operator_uri, ctx=None, **kwargs):
                 operation's view. This is only applicable to group datasets
             -   ``query_performance`` (None): whether to enable query
                 performance
+             -   ``num_distributed_tasks`` (None): the number of tasks to split
+                the operation into, if it is delegated.
 
         **kwargs: you can optionally provide any of the supported ``ctx`` keys
             as keyword arguments rather than including them in ``ctx``
@@ -270,6 +273,16 @@ async def execute_or_delegate_operator(
         try:
             from .delegated import DelegatedOperationService
 
+            # Cannot distribute tasks from this repo
+            if (
+                ctx.num_distributed_tasks
+                or "num_distributed_tasks" in ctx.request_params
+            ):
+                logger.warning(
+                    "Distributed execution only supported in FiftyOne Enterprise"
+                )
+                ctx.request_params.pop("num_distributed_tasks", None)
+
             ctx.request_params["delegated"] = True
             metadata = {"inputs_schema": None, "outputs_schema": None}
 
@@ -285,7 +298,7 @@ async def execute_or_delegate_operator(
                 operator=operator.uri,
                 context=ctx.serialize(),
                 delegation_target=ctx.delegation_target,
-                label=operator.name,
+                label=operator.resolve_run_name(ctx),
                 metadata=metadata,
             )
 
@@ -305,6 +318,8 @@ async def execute_or_delegate_operator(
                 error_message=str(error),
             )
     else:
+        # Not delegated, force distributed execution off
+        ctx.request_params.pop("num_distributed_tasks", None)
         try:
             result = await do_execute_operator(operator, ctx, exhaust=exhaust)
         except Exception as error:
@@ -674,6 +689,11 @@ class ExecutionContext(object):
         return self.request_params.get("current_sample", None)
 
     @property
+    def active_fields(self):
+        """The list of currently active fields in the FiftyOne App sidebar."""
+        return self.request_params.get("active_fields", [])
+
+    @property
     def user_id(self):
         """The ID of the user executing the operation, if known."""
         return self.user.id if self.user else None
@@ -749,6 +769,12 @@ class ExecutionContext(object):
     def group_slice(self):
         """The current group slice of the view (if any)."""
         return self.request_params.get("group_slice", None)
+
+    @property
+    def num_distributed_tasks(self):
+        """The number of tasks this job should be split into."""
+        # Only available in FO Enterprise
+        return None
 
     @property
     def query_performance(self):
@@ -835,11 +861,11 @@ class ExecutionContext(object):
         if None in (self._secrets_client, keys):
             return None
 
-        for key in keys:
-            secret = await self._secrets_client.get_secret(
-                key, self._operator_uri, **kwargs
-            )
-            if secret:
+        secrets = await self._secrets_client.get_multiple(
+            keys, self._operator_uri, **kwargs
+        )
+        if secrets:
+            for secret in secrets.values():
                 self._secrets[secret.key] = secret.value
 
     def trigger(self, operator_name, params=None):
@@ -896,11 +922,21 @@ class ExecutionContext(object):
             progress (None): an optional float between 0 and 1 (0% to 100%)
             label (None): an optional label to display
         """
-        if self._set_progress:
-            self._set_progress(
-                self._delegated_operation_id,
-                ExecutionProgress(progress, label),
-            )
+        if self._set_progress is not None:
+            try:
+                self._set_progress(
+                    self._delegated_operation_id,
+                    ExecutionProgress(progress=progress, label=label),
+                )
+            except Exception as e:
+                # Log warning rather than raise exception to prevent things
+                # like intermittent network errors from killing otherwise
+                # functional long-running operations
+                logger.warning(
+                    f"Failed to set progress for the operation: {str(e)}"
+                )
+        elif self.delegated:
+            logger.info(f"Progress: {progress} - {label}")
         else:
             self.log(f"Progress: {progress} - {label}")
 
@@ -1276,6 +1312,19 @@ class ExecutionOptions(object):
             delegated to an orchestrator
         default_choice_to_delegated (False): whether to default to delegated
             execution, if allowed
+        allow_distributed_execution (False): whether the operator supports
+            distributing delegated execution across parallel workers. Only
+            valid for delegated operations.
+        min_distributed_tasks (2): the minimum number of tasks that a distributed
+            delegated operation can be split into. None means no limit.
+            Only valid for distributed and delegated operations.
+        max_distributed_tasks (None): the maximum number of tasks that a distributed
+            delegated operation can be split into. None means no limit.
+            Only valid for distributed and delegated operations.
+        recommended_distributed_tasks (None): the recommended number of tasks
+            that a distributed delegated operation should be split into. None
+            means no recommendation. Only valid for distributed and delegated
+            operations.
     """
 
     def __init__(
@@ -1283,10 +1332,19 @@ class ExecutionOptions(object):
         allow_immediate_execution=True,
         allow_delegated_execution=False,
         default_choice_to_delegated=False,
+        allow_distributed_execution=False,
+        min_distributed_tasks=2,
+        max_distributed_tasks=None,
+        recommended_distributed_tasks=None,
+        **_,  # ignore other kwargs for backwards compatibility
     ):
         self._allow_immediate_execution = allow_immediate_execution
         self._allow_delegated_execution = allow_delegated_execution
+        self._allow_distributed_execution = False  # Enterprise only
         self._default_choice_to_delegated = default_choice_to_delegated
+        self._min_distributed_tasks = min_distributed_tasks
+        self._max_distributed_tasks = max_distributed_tasks
+        self._recommended_distributed_tasks = recommended_distributed_tasks
         self._available_orchestrators = []
 
         if not allow_delegated_execution and not allow_immediate_execution:
@@ -1301,8 +1359,24 @@ class ExecutionOptions(object):
         return self._allow_delegated_execution
 
     @property
+    def allow_distributed_execution(self):
+        return self._allow_distributed_execution
+
+    @property
     def default_choice_to_delegated(self):
         return self._default_choice_to_delegated
+
+    @property
+    def min_distributed_tasks(self):
+        return self._min_distributed_tasks
+
+    @property
+    def max_distributed_tasks(self):
+        return self._max_distributed_tasks
+
+    @property
+    def recommended_distributed_tasks(self):
+        return self._recommended_distributed_tasks
 
     @property
     def available_orchestrators(self):
@@ -1319,7 +1393,11 @@ class ExecutionOptions(object):
         return {
             "allow_immediate_execution": self._allow_immediate_execution,
             "allow_delegated_execution": self._allow_delegated_execution,
+            "allow_distributed_execution": self._allow_distributed_execution,
             "default_choice_to_delegated": self._default_choice_to_delegated,
+            "min_distributed_tasks": self._min_distributed_tasks,
+            "max_distributed_tasks": self._max_distributed_tasks,
+            "recommended_distributed_tasks": self._recommended_distributed_tasks,
             "orchestrator_registration_enabled": self.orchestrator_registration_enabled,
             "available_orchestrators": [
                 x.__dict__ for x in self.available_orchestrators

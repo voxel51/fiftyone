@@ -145,49 +145,17 @@ export class ThreeDElement extends BaseElement<ThreeDState, HTMLImageElement> {
     // a small elevated '3D' logo at the top right
     const logoText = this.isFo3d ? "3D" : "PCD";
     const logoFont = "bold 18px system-ui, sans-serif";
-    const paddingX = 14;
+    const paddingX = 2;
     const margin = 10;
     this.ctx.font = logoFont;
     const textWidth = this.ctx.measureText(logoText).width;
+
     // extra space for cube
     const rectWidth = textWidth + paddingX * 2 + 32;
     const rectHeight = 28;
-    const radius = 10;
     // position at top right
-    const rectX = this.canvas.width - rectWidth - margin;
+    const rectX = this.canvas.width - rectWidth;
     const rectY = margin;
-    // draw background rounded rectangle
-    this.ctx.save();
-    this.ctx.globalAlpha = 0.55;
-    this.ctx.fillStyle = "#151A23";
-    this.ctx.beginPath();
-    this.ctx.moveTo(rectX + radius, rectY);
-    this.ctx.lineTo(rectX + rectWidth - radius, rectY);
-    this.ctx.quadraticCurveTo(
-      rectX + rectWidth,
-      rectY,
-      rectX + rectWidth,
-      rectY + radius
-    );
-    this.ctx.lineTo(rectX + rectWidth, rectY + rectHeight - radius);
-    this.ctx.quadraticCurveTo(
-      rectX + rectWidth,
-      rectY + rectHeight,
-      rectX + rectWidth - radius,
-      rectY + rectHeight
-    );
-    this.ctx.lineTo(rectX + radius, rectY + rectHeight);
-    this.ctx.quadraticCurveTo(
-      rectX,
-      rectY + rectHeight,
-      rectX,
-      rectY + rectHeight - radius
-    );
-    this.ctx.lineTo(rectX, rectY + radius);
-    this.ctx.quadraticCurveTo(rectX, rectY, rectX + radius, rectY);
-    this.ctx.closePath();
-    this.ctx.fill();
-    this.ctx.restore();
 
     // draw cube
     const cubeSize = 18;

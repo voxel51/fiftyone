@@ -672,6 +672,75 @@ The GIF below demonstrates this flow in action:
 Compound indexes can require significant database memory, but they are a
 powerful tool to support efficient exploration of massive datasets.
 
+
+.. _app-query-performant-stages:
+
+Query performant view stages
+----------------------------
+
+In addition to the root view where no view stages are present in the view bar,
+the below :class:`ViewStages <fiftyone.core.stages.ViewStage>` also support
+:ref:`Query Performance <app-optimizing-query-performance>` in the App.
+
+For :class:`ExcludeFields <fiftyone.core.stages.ExcludeFields>` and
+:class:`SelectFields <fiftyone.core.stages.SelectFields>`, index performance
+applies to all fields still present in the schema.
+
+:class:`SelectGroupSlices <fiftyone.core.stages.SelectGroupSlices>` is query
+performant. Expect optimal performan when all slices are included in the
+flattened view.
+
+The :class:`GroupBy <fiftyone.core.stages.GroupBy>` stage is a query performant
+stage when ``order_by`` and ``order_by_key`` values are provided and a compound
+index exists on the ``group_by`` and ``order_by`` fields with a unique
+constraint and at least one index exists that begins with the ``order_by``
+field. Query performant fields then exist when they follow the ``order_by`` in
+a compound index. 
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.load_dataset("frames-as-video")
+    dataset.create_index([("video", 1), ("frame_number", 1)], unique=True)
+
+    # create query performant fields for filtering and sorting
+    dataset.create_index([("frame_number", 1), ("created_at", 1)])
+    dataset.create_index([("frame_number", 1), ("last_modified_at", 1)])
+
+    # create the "video" view and save it
+    videos = dataset.group_by(
+        "video",
+        order_by="frame_number",
+        order_by_key=1,
+        create_index=False
+    )
+    dataset.save_view("videos", videos)
+
+Sidebar filters in the grid now match on the ``order_by_key`` sample for each
+group, i.e. where ``frame_number`` is ``1`` in the above example. Group level
+metadata is stored on the key sample to efficiently filter on large datasets.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import random
+
+    dataset = fo.load_dataset("frames-as-video")
+    videos = dataset.load_saved_view("videos")
+
+    dataset.create_index([("frame_number", 1), ("group_value", 1)])
+
+    # store group level values on the key samples
+    for poster_sample in videos.iter_samples(autosave=True):
+        poster_sample["group_value"] = str(random.randint(0, 51))
+
+.. image:: /images/app/app-optimized-dynamic-groups.gif
+    :alt: app-optimized-dynamic-groups
+    :align: center
+
 .. _app-unindexed-sidebar-results:
 
 Unindexed sidebar results
@@ -1017,7 +1086,7 @@ in detail:
     +=================+===============================+===============================================================+
     | Global settings | Color annotations by          | Whether to color the annotations in the grid/modal based on   |
     |                 |                               | the `field` that they are in, the `value` that each           |
-    |                 |                               | annotation takes, or per `instance` of the annotation         |                                     
+    |                 |                               | annotation takes, or :ref:`per instance <app-linking-labels>` |
     +-----------------+-------------------------------+---------------------------------------------------------------+
     | Global settings | Color pool                    | A pool of colors from which colors are randomly assigned      |
     |                 |                               | for otherwise unspecified fields/values                       |
@@ -1370,6 +1439,8 @@ supports:
     +--------------+----------------+-------------------------------+
     | E            | Ego-view       | Reset the camera to ego view  |
     +--------------+----------------+-------------------------------+
+    | R            | Render         | Toggle render preferences     |
+    +--------------+----------------+-------------------------------+
     | ESC          | Escape context | Escape the current context    |
     +--------------+----------------+-------------------------------+
 
@@ -1392,6 +1463,118 @@ the observed dynamic range of `r` values for each sample.
 
 Similarly, when coloring by height, the `z` value of each point is mapped to
 the full colormap using the same strategy.
+
+.. _app-3d-dynamic-coloring:
+
+Dynamic point cloud coloring
+----------------------------
+
+FiftyOne supports dynamic coloring of point clouds based on any attribute
+in your PCD file. This allows you to visualize and analyze point cloud data in
+powerful ways, such as:
+
+-   Working with semantic segmentation data where different classes need
+    distinct colors
+-   Analyzing LIDAR data where you want to visualize intensity values to
+    identify reflective surfaces
+-   Inspecting custom attributes like confidence scores or prediction errors
+-   Comparing multiple attributes by quickly switching between different color
+    schemes
+
+.. image:: /images/app/pcd-dynamic-coloring.gif
+   :alt: pcd-dynamic-coloring
+   :align: center
+
+To use dynamic coloring:
+
+1.  Press `R` or click the render preferences icon in the 3D visualizer menu
+2.  Select the attribute to color by from the "Shade by" dropdown
+3.  Optionally, override the colormap from the available options by clicking
+    the "Override" button
+
+|br|
+Colormap selection follows this precedence order:
+
+1.  Colormap from browser storage (if previously overridden)
+2.  Colormap defined in the `colorscales` property of the
+    :ref:`dataset's App config <dataset-app-config>` for the specific attribute
+3.  Colormap defined in the `default_colorscale` property of the dataset's App
+    config
+4.  Default colormap (red-to-blue gradient)
+
+|br|
+You can override the colormap for any attribute by clicking the "Override"
+button in the render preferences panel. This will open a new UI where you can:
+
+-   Add or remove color stops
+-   Preview the gradient
+-   Reset to the app config or default colormap
+
+.. note::
+
+    Colormap overrides are persisted in your browser's local storage, so they
+    will be remembered across sessions.
+
+You can define default colormaps for point cloud attributes of a dataset by
+configuring them in the :ref:`dataset's App config <dataset-app-config>`.
+You must use the prefix `::fo3d::pcd::` followed by the attribute name in the
+`path` field. For example, to define a colormap for the `lidar_id` attribute,
+the path should be `::fo3d::pcd::lidar_id`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.load_dataset(...)
+
+    # Configure colormaps for point cloud attributes
+    dataset.app_config.color_scheme = fo.ColorScheme(
+        colorscales=[
+            {
+                "path": "::fo3d::pcd::lidar_id",
+                "name": "viridis",  # use a named colormap
+            },
+            {
+                "path": "::fo3d::pcd::intensity",
+                "list": [  # or define a custom colormap
+                    {"value": 0, "color": "rgb(0, 0, 255)"},
+                    {"value": 1, "color": "rgb(0, 255, 255)"},
+                ],
+            },
+        ],
+        default_colorscale={"name": "jet"},  # default for other attributes
+    )
+    dataset.save()
+
+When visualizing point clouds with dynamic attributes, you can apply
+thresholding to focus on specific value ranges. This is particularly useful
+for:
+
+-   Filtering out noise or outliers in your data
+-   Isolating points of interest based on their attribute values
+-   Analyzing specific ranges of values in your point cloud
+
+To use thresholding:
+
+1.  Press `R` or click the render preferences icon in the 3D visualizer menu
+2.  Select the attribute to color by from the "Shade by" dropdown
+3.  Use the threshold slider that appears below the colormap controls
+4.  Adjust the minimum and maximum values to show only points within that range
+
+|br|
+The threshold slider shows the full range of values for the selected attribute,
+and points outside the selected range will be hidden from view.
+
+.. image:: /images/app/pcd-thresholding.gif
+   :alt: thresholding
+   :align: center
+
+.. note::
+
+    Thresholding is available for all numeric attributes except height and RGB
+    values. The threshold range is automatically adjusted based on the data
+    type of the attribute (integer or float).
 
 .. _app-3d-orthographic-projections:
 
@@ -2124,6 +2307,469 @@ performance by selecting a "Compare against" key:
     :alt: model-evaluation-compare
     :align: center
 
+.. _app-scenario-analysis:
+
+Scenario analysis __SUB_NEW__
+_____________________________
+
+When evaluating models, it is often useful to deep dive into the behavior of
+your models in different scenarios. This technique can be extremely useful in
+a number of ways, including to:
+
+-   Uncover edge cases that need more representation in your training data
+-   Identify annotation mistakes that are confusing or misleading your model
+-   Understand model performance in different contexts
+-   Gain intuition about the strengths and weaknesses of your model based on
+    properties of its predictions
+-   Compare and contrast model performance under different input data and/or
+    prediction characteristics
+
+Scenario analysis is available for all
+:ref:`evaluations <evaluating-models>` by clicking on the Scenario Analysis tab
+of the :ref:`Model Evaluation panel <app-model-evaluation-panel>`.
+
+.. _app-scenario-analysis-example-dataset:
+
+Example dataset
+---------------
+
+The rest of the content in this section is applied to the following dataset:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+
+    # Load a dataset with `ground_truth` and `predictions` fields
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Declare the `iscrowd` attribute on the "ground_truth" field
+    dataset.add_dynamic_sample_fields()
+
+    # Evaluate the `predictions` field
+    results = dataset.evaluate_detections(
+        "predictions",
+        gt_field="ground_truth",
+        eval_key="eval",
+    )
+
+    # Add some additional model predictions in the `predictions_yolo11` field
+    model = foz.load_zoo_model("yolo11s-coco-torch")
+    dataset.apply_model(model, label_field="predictions_yolo11")
+
+    # Evaluate the `predictions_yolo11` field
+    dataset.evaluate_detections(
+        "predictions_yolo11",
+        gt_field="ground_truth",
+        eval_key="eval_yolo11",
+    )
+
+    # Classify each image as `indoor` or `outdoor`
+    model = foz.load_zoo_model(
+        "clip-vit-base32-torch",
+        text_prompt="An image that is",
+        classes=["indoor", "outdoor"],
+    )
+    dataset.apply_model(model, label_field="scene")
+
+    # Create some saved views
+    dataset.save_view("indoor scenes", dataset.match(F("scene.label") == "indoor"))
+    dataset.save_view("outdoor scenes", dataset.match(F("scene.label") == "outdoor"))
+
+    session = fo.launch_app(dataset)
+
+.. _app-scenario-analysis-defining-scenarios:
+
+Defining scenarios
+------------------
+
+When you first open the Scenario Analysis tab in the Model Evaluation panel,
+you'll be prompted to create your first scenario:
+
+.. image:: /images/app/scenario-analysis-create-cta.png
+    :alt: scenario-analysis-create-cta
+    :align: center
+
+The scenario creation modal will prompt you to provide a name for the scenario,
+which will be used to identify the scenario subsequently in the panel, for
+example when switching between scenarios.
+
+Each scenario is composed of multiple subsets that partition the
+**ground truth labels** involved in the evaluation into different semantically
+meaningful sets of interest. FiftyOne supports four methods to define subsets:
+
+-   **Sample field:** partition at the sample-level by defining subsets based
+    on the values that a particular sample field takes
+-   **Label attribute:** partition at the label-level by defining subsets based
+    on the values that a particular attribute of the ground truth labels takes
+-   **Saved views:** define subsets based on the ground truth labels in a list
+    of saved views
+-   **Custom code:** use custom code to define subsets based on arbitrary
+    Python expressions and/or combinations of the above methods
+
+When distribution preview is enabled, you'll see a histogram that represents
+the number of ground truth labels in each subset of the scenario you're
+defining. This preview will automatically update as you continue
+adding/refining your subsets, which allows you to visually confirm that the
+subsets that you're defining have the contents that you expect.
+
+Once you're happy with the scenario's definition, click the `Analyze scenario`
+button in the bottom-right of the modal to create it.
+
+.. image:: /images/app/scenario-analysis-create-empty.png
+    :alt: scenario-analysis-create-empty
+    :align: center
+
+The following subsections describe how to use each of the four scenario
+definition types in detail.
+
+.. _app-scenario-analysis-sample-field:
+
+Select sample field
+~~~~~~~~~~~~~~~~~~~
+
+Selecting a sample field allows you to define a scenario whose subsets contain
+samples for which the specified field takes certain values.
+
+For example, choosing the `scene.label` sample field allows us to define a
+scenario that contains two subsets:
+
+-   Samples whose `scene.label` field is `indoor`
+-   Samples whose `scene.label` field is `outdoor`
+
+.. image:: /images/app/scenario-analysis-create-sample-field.gif
+    :alt: scenario-analysis-create-sample-field
+    :align: center
+
+As you can see in the Distribution preview, each subset is assigned a name
+based on the field value that its member samples take.
+
+.. note::
+
+    If you select a sample field that contains numeric values, or a categorical
+    field that contains many distinct values, you will be prompted to define
+    the subsets via :ref:`custom code <app-scenario-analysis-custom-code>`
+    rather than by selecting values via checkboxes or a multiselect list.
+
+.. _app-scenario-analysis-label-attribute:
+
+Select label attribute
+~~~~~~~~~~~~~~~~~~~~~~
+
+Selecting a label attribute allows you to define a scenario whose subsets
+contain samples for which the specified attribute of the ground truth labels
+takes certain values.
+
+For example, choosing the `iscrowd` attribute allows us to define a scenario
+that contains two subsets:
+
+-   Labels whose `iscrowd` attribute is `0`
+-   Labels whose `iscrowd` attribute is `1`
+
+.. image:: /images/app/scenario-analysis-create-label-attribute.gif
+    :alt: scenario-analysis-create-label-attribute
+    :align: center
+
+If you choose a categorical label attribute, each subset is assigned a name
+based on the field value that its member labels take.
+
+.. note::
+
+    If you select a label attribute that contains numeric values, or a
+    categorical attribute that contains many distinct values, you will be
+    prompted to define the subsets via
+    :ref:`custom code <app-scenario-analysis-custom-code>`
+    rather than by selecting values via checkboxes or a multiselect list.
+
+.. _app-scenario-analysis-saved-views:
+
+Select saved views
+~~~~~~~~~~~~~~~~~~
+
+Selecting saved views allows you to define a scenario where each subset
+contains the ground truth labels in a specified
+:ref:`saved view <saving-views>`.
+
+For example, in the example below we define a scenario that contains two
+subsets:
+
+-   Samples in the `indoor scenes` saved view
+-   Samples in the `outdoor scenes` saved view
+
+.. image:: /images/app/scenario-analysis-create-saved-views.gif
+    :alt: scenario-analysis-create-saved-views
+    :align: center
+
+As you can see in the Distribution preview above, each subset is assigned the
+name of the saved view that defines it.
+
+.. _app-scenario-analysis-custom-code:
+
+Custom code
+~~~~~~~~~~~
+
+The most flexible option for constructing a scenario is to define its subsets
+via Python code.
+
+By default, toggling to custom code mode for an object detection task inserts
+subset definitions that partition the ground truth labels based on their size
+relative to the image in which they reside:
+
+-   **Small objects:** labels whose size is less than 5% of the image
+-   **Medium objects:** labels whose size is between 5% and 50% of the image
+-   **Large objects:** labels whose size is greater than 50% of the image
+
+.. code-block:: python
+    :linenos:
+
+    from fiftyone import ViewField as F
+
+    bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
+    subsets = {
+        "Small objects": dict(type="attribute", expr=bbox_area < 0.05),
+        "Medium objects": dict(type="attribute", expr=(0.05 <= bbox_area) & (bbox_area <= 0.5)),
+        "Large objects": dict(type="attribute", expr=bbox_area > 0.5),
+    }
+
+.. image:: /images/app/scenario-analysis-create-custom-code.gif
+    :alt: scenario-analysis-create-custom-code
+    :align: center
+
+You could also define subsets based on the area of the object in pixels via the
+following subset definitions like so:
+
+.. code-block:: python
+    :linenos:
+
+    from fiftyone import ViewField as F
+
+    bbox_area = (
+        F("bounding_box")[2] * F("$metadata.frame_height")
+        * F("bounding_box")[3] * F("$metadata.frame_width")
+    )
+
+    subsets = {
+        "Small objects": dict(type="attribute", expr=bbox_area < 32**2),
+        "Medium objects": dict(type="attribute", expr=(32**2 <= bbox_area) & (bbox_area <= 96**2)),
+        "Large objects": dict(type="attribute", expr=bbox_area > 96**2),
+    }
+
+In general, the custom code option expects you to define the scenario by
+providing a dict called `subsets` that maps scenario names to scenario
+definitions:
+
+.. code-block:: python
+    :linenos:
+
+    from fiftyone import ViewField as F
+
+    subsets = {
+        "<subset_name>": subset_def,
+        ...
+    }
+
+where each `subset_def` can refer to sample fields, label attributes, saved
+views, or a combination thereof to define the subset using the syntax described
+below:
+
+.. tabs::
+
+  .. group-tab:: Sample field value
+
+    .. code-block:: python
+        :linenos:
+
+        # Subset defined by a sample field value
+        subset_def = {
+            "type": "sample",
+            "field": "timeofday",
+            "value": "night",
+        }
+
+  .. group-tab:: Sample field expression
+
+    .. code-block:: python
+        :linenos:
+
+        # Subset defined by a sample field expression
+        subset_def = {
+            "type": "field",
+            "expr": F("uniqueness") > 0.75,
+        }
+
+  .. group-tab:: Label attribute value
+
+    .. code-block:: python
+        :linenos:
+
+        # Subset defined by a label attribute value
+        subset_def = {
+            "type": "attribute",
+            "field": "type",
+            "value": "sedan",
+        }
+
+  .. group-tab:: Label attribute expression
+
+    .. code-block:: python
+        :linenos:
+
+        # Subset defined by a label expression
+        bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
+        subset_def = {
+            "type": "attribute",
+            "expr": (0.05 <= bbox_area) & (bbox_area <= 0.5),
+        }
+
+  .. group-tab:: Saved view
+
+    .. code-block:: python
+        :linenos:
+
+        # Subset defined by a saved view
+        subset_def = {
+            "type": "view",
+            "view": "night_view",
+        }
+
+  .. group-tab:: Compound criteria
+
+    .. code-block:: python
+        :linenos:
+
+        # Compound subset defined by a sample field value + sample expression
+        subset_def = [
+            {
+                "type": "field",
+                "field": "timeofday",
+                "value": "night",
+            },
+            {
+                "type": "field",
+                "expr": F("uniqueness") > 0.75,
+            },
+        ]
+
+    .. code-block:: python
+        :linenos:
+
+        # Compound subset defined by a sample field value + label expression
+        bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
+        subset_def = [
+            {
+                "type": "field",
+                "field": "timeofday",
+                "value": "night",
+            },
+            {
+                "type": "attribute",
+                "expr": (0.05 <= bbox_area) & (bbox_area <= 0.5),
+            },
+        ]
+
+    .. code-block:: python
+        :linenos:
+
+        # Compound subset defined by a saved view + label attribute value
+        subset_def = [
+            {
+                "type": "view",
+                "view": "night_view",
+            },
+            {
+                "type": "attribute",
+                "field": "type",
+                "value": "sedan",
+            }
+        ]
+
+.. note::
+
+    Refer to the |ViewExpression| docs for a full list of supported operations
+    when using expressions to define subsets.
+
+.. _app-scenario-analysis-analyzing-scenarios:
+
+Analyzing scenarios
+-------------------
+
+Once a scenario is created, you'll see an array of graphs that describe various
+dimensions of the model(s) performance across each subset in the scenario.
+
+As with the `Overview` tab, you can select one evaluation to analyze, or you
+can select two evaluations to compare, in which case there will be two
+series/columns in each graph/table as relevant.
+
+.. image:: /images/app/scenario-analysis-graphs.gif
+    :alt: scenario-analysis-graphs
+    :align: center
+
+Each scenario analysis contains the following charts:
+
+-   **Prediction Statistics**: this stacked bar chart shows the number of true
+    positives, false positives, and false negatives for each model across each
+    subset
+-   **Model Performance:** this radar chart visually depicts each model(s)
+    performance on a particular subset across standard metrics like precision,
+    recall, F1 score, average confidence, and IoU (as relevant). Use the
+    selector in the upper-right corner to toggle between subsets
+-   **Confusion Matrices:** these heatmap(s) display standard confusion
+    matrices for each model(s) on a particular subset. Use the selector in the
+    upper-right corner to toggle between subsets
+-   **Confidence Distribution:** this chart depicts the distribution of
+    prediction confidences for each model across each subset
+-   **Metric Performance:** a variation on the Model Performance chart that
+    displays each model(s) performance across subsets for a particular metric.
+    Use the selector in the upper-right corner to toggle between metrics of
+    interest
+-   **Subset Distribution:** this histogram shows the number of labels
+    generated by each model in each subset
+
+All applicable charts are interactive, meaning that you can click on specific
+bars or cells of interest to load the corresponding samples in the grid!
+
+.. image:: /images/app/scenario-analysis-callbacks.gif
+    :alt: scenario-analysis-callbacks
+    :align: center
+
+You can also view the results in tabular form by clicking the table icon in the
+upper right corner of the Scenario Analysis tab:
+
+.. image:: /images/app/scenario-analysis-tables.gif
+    :alt: scenario-analysis-tables
+    :align: center
+
+.. _app-scenario-analysis-updating-scenarios:
+
+Updating scenarios
+------------------
+
+Once generated, a scenario's results are cached until the model evaluation is
+deleted or the scenario is edited. However, if the underlying dataset has
+changed in such a way that the samples/ground truth labels in a scenario has
+changed, you can click the refresh button at any time to regenerate the
+scenario's results:
+
+.. image:: /images/app/scenario-analysis-refresh.gif
+    :alt: scenario-analysis-refresh
+    :align: center
+
+You can also create additional scenarios at any time by clicking the `+`
+button:
+
+.. image:: /images/app/scenario-analysis-new.gif
+    :alt: scenario-analysis-new
+    :align: center
+
+And you can edit or delete an existing scenario by selecting `Edit` or
+`Delete` under the kebab menu:
+
+.. image:: /images/app/scenario-analysis-edit.gif
+    :alt: scenario-analysis-edit
+    :align: center
+
 .. _app-map-panel:
 
 Map panel
@@ -2296,10 +2942,19 @@ The Histograms panel supports the following `state` parameters:
 -   **plot**: the histograms to plot. Supported values are `"Sample tags"`,
     `"Label tags"`, `"Labels"`, and `"Other fields"`
 
+.. _app-select-data:
+
+Selecting content
+_________________
+
+The App supports selecting content such as samples or specific labels, which is
+useful to take contextual actions like :ref:`tagging <app-tagging>` on **only**
+the selected content.
+
 .. _app-select-samples:
 
 Selecting samples
-_________________
+-----------------
 
 As previously explained, the |Session| object created when you launch the App
 lets you interact with the App from your Python process.
@@ -2343,12 +2998,16 @@ your session to retrieve the IDs of the currently selected samples in the App:
 .. _app-select-labels:
 
 Selecting labels
-_________________
+----------------
 
-You can also use the App to select individual labels within samples. You can
-use this functionality to visually show/hide labels of interest in the App; or
-you can access the data for the selected labels from Python, for example by
-creating a |DatasetView| that includes/excludes the selected labels.
+You can also select individual labels within samples in the App, which is
+useful for a variety of reasons:
+
+-   Visually show/hide labels of interest in the App
+-   Take contextual actions such as :ref:`tagging <app-tagging>` on **only**
+    the selected labels
+-   Access the data for selected labels from Python, for example by creating a
+    |DatasetView| that includes/excludes the selected labels
 
 To perform this workflow, open the expanded sample view by clicking on a sample
 in the App. Then click on individual labels to select them:
@@ -2386,17 +3045,84 @@ labels in the App:
 
     [
         {
-            'object_id': '5f99d2eb36208058abbfc02a',
+            'label_id': '5f99d2eb36208058abbfc02a',
             'sample_id': '5f99d2eb36208058abbfc030',
             'field': 'ground_truth',
         },
         {
-            'object_id': '5f99d2eb36208058abbfc02b',
+            'label_id': '5f99d2eb36208058abbfc02b',
             'sample_id': '5f99d2eb36208058abbfc030',
             'field': 'ground_truth',
         },
         ...
     ]
+
+If you are working with a dataset that leverages
+:ref:`linked labels <app-linking-labels>`, you can `shift + click` on a label
+to select/deselect all instances of that object across video frames or group
+slices of the dataset:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    import fiftyone.utils.labels as foul
+
+    dataset = foz.load_zoo_dataset("quickstart-video")
+    foul.index_to_instance(dataset, "frames.detections", clear_index=True)
+
+    session = fo.launch_app(dataset)
+
+.. image:: /images/app/app-linked-label-selections.gif
+    :alt: app-linked-label-selections
+    :align: center
+
+.. note::
+
+    Did you know? You can switch to "Color by instance" mode in the
+    :ref:`Color scheme editor <app-color-schemes-app>` to view each instance's
+    trajectory in a distinct color.
+
+.. _app-persistent-selections:
+
+Persistent selections
+---------------------
+
+By default, selection of samples and/or labels in the App are persisted for the
+duration of the App session:
+
+.. image:: /images/app/app-persistent-selections.gif
+    :alt: app-persistent-selections
+    :align: center
+
+To clear selections, you can click the selection menu button and choose one of
+the following options.
+
+When in grid view:
+
+-   `Clear selected samples` will clear all sample selections
+-   `Clear selected labels` will clear all label selections
+-   `Only show selected samples` will only show the selected samples
+-   `Hide selected samples` will hide the selected samples
+
+.. image:: /images/app/app-persistent-selections-clear-app-menu.png
+    :alt: app-persistent-selections-clear-app-menu
+    :align: center
+
+When in expanded sample mode:
+
+-   `Select visible (current sample)` will select all visible labels in the
+    current sample
+-   `Unselect visible (current sample)` will unselect all visible labels in
+    the current sample
+-   `Clear selected labels` will clear all label selections
+-   `Hide selected labels` will hide the selected labels
+-   `Hide unselected labels (current sample)` will hide the unselected labels
+
+.. image:: /images/app/app-persistent-selections-clear-sample-menu.png
+    :alt: app-persistent-selections-clear-sample-menu
+    :align: center
 
 .. _app-tagging:
 

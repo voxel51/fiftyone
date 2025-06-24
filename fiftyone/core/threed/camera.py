@@ -13,8 +13,8 @@ from .transformation import Vector3, Vec3UnionType, normalize_to_vec3
 from .validators import BaseValidatedDataClass, validate_choice, validate_float
 
 
-UP_DIRECTIONS = frozenset(["X", "Y", "Z"])
-UpDirection = Literal["X", "Y", "Z"]
+UP_DIRECTIONS = frozenset(["X", "Y", "Z", "-X", "-Y", "-Z"])
+UpDirection = Literal["X", "Y", "Z", "-X", "-Y", "-Z"]
 
 
 @dataclass
@@ -27,9 +27,9 @@ class PerspectiveCamera(BaseValidatedDataClass):
         look_at (None): the point the camera is looking at. If ``None``, the
             camera looks at the center of the scene
         up (None): the orthonormal axis that is considered up. Must be one of
-            "X", "Y", or "Z". If ``None``, it will fallback to the global
-            ``up`` as defined in 3D plugin settings. If that too is not
-            defined, it will fallback to "Y"
+            "X", "Y", "Z", "-X", "-Y", or "-Z". If ``None``, it will fallback
+            to the global ``up`` as defined in 3D plugin settings. If that too
+            is not defined, it will fallback to "Y"
         aspect (None): the aspect ratio of the camera. If ``None``, the aspect
             ratio is calculated based on the width and height of the canvas
         fov (50): camera frustum vertical field of view in degrees. If

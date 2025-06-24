@@ -936,6 +936,10 @@ def _prepare_kitti_split(split_dir, overwrite=False, num_workers=None):
 
 def _load_kitti_annotations(labels_path, frame_size):
     gt2d = load_kitti_detection_annotations(labels_path, frame_size)
+
+    for index, detection in enumerate(gt2d.detections, 1):
+        detection.index = index
+
     gt3d = gt2d.copy()
 
     for detection in gt2d.detections:

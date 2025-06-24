@@ -39,3 +39,5 @@ operators:
   - sync_last_modified_at
   - list_files
   - model_evaluation_configure_scenario
+
+  - group_by

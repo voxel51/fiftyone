@@ -1,6 +1,11 @@
 import { HelpPanel, JSONPanel } from "@fiftyone/components";
+import { selectiveRenderingEventBus } from "@fiftyone/looker";
 import { OPERATOR_PROMPT_AREAS, OperatorPromptArea } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
+import {
+  currentModalUniqueIdJotaiAtom,
+  jotaiStore,
+} from "@fiftyone/state/src/jotai";
 import React, { useCallback, useMemo, useRef } from "react";
 import ReactDOM from "react-dom";
 import { useRecoilCallback, useRecoilValue } from "recoil";
@@ -13,7 +18,6 @@ import { TooltipInfo } from "./TooltipInfo";
 import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
 import { modalContext } from "./modal-context";
 import { useModalSidebarRenderEntry } from "./use-sidebar-render-entry";
-import { selectiveRenderingEventBus } from "@fiftyone/looker";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -111,6 +115,8 @@ const Modal = () => {
         );
 
         selectiveRenderingEventBus.removeAllListeners();
+
+        jotaiStore.set(currentModalUniqueIdJotaiAtom, "");
       },
     [clearModal, jsonPanel, helpPanel]
   );
@@ -156,7 +162,8 @@ const Modal = () => {
             return newSelected;
           });
         } else if (e.key === "Escape") {
-          if (activeLookerRef.current) {
+          const mediaType = await snapshot.getPromise(fos.mediaType);
+          if (activeLookerRef.current || mediaType === "3d") {
             // we handle close logic in modal + other places
             return;
           }
@@ -186,14 +193,23 @@ const Modal = () => {
     typeof addTooltipEventHandler
   > | null>(null);
 
-  const onLookerSet = useCallback(
-    (looker: fos.Lookers) => {
-      looker.addEventListener("close", modalCloseHandler);
+  const onLookerSet = useRecoilCallback(
+    ({ snapshot }) =>
+      (looker: fos.Lookers) => {
+        looker.addEventListener("close", modalCloseHandler);
 
-      // remove previous event listener
-      removeTooltipEventHanlderRef.current?.();
-      removeTooltipEventHanlderRef.current = addTooltipEventHandler(looker);
-    },
+        // remove previous event listener
+        removeTooltipEventHanlderRef.current?.();
+        removeTooltipEventHanlderRef.current = addTooltipEventHandler(looker);
+
+        // set the current modal unique id
+        jotaiStore.set(
+          currentModalUniqueIdJotaiAtom,
+          `${snapshot.getLoadable(fos.groupId).getValue()}-${snapshot
+            .getLoadable(fos.nullableModalSampleId)
+            .getValue()}`
+        );
+      },
     [modalCloseHandler, addTooltipEventHandler]
   );
 

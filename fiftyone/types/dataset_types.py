@@ -890,7 +890,7 @@ class LegacyFiftyOneDataset(Dataset):
 
 
 class PlacesDataset(ImageClassificationDataset):
-    """A labeled dataset consisting of images and their associated lables
+    """A labeled dataset consisting of images and their associated labels
     from the `Places dataset <http://places2.csail.mit.edu/index.html>`.
     """
 

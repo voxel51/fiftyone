@@ -713,6 +713,21 @@ class DatasetAppConfig(EmbeddedDocument):
         if path not in index_group.paths:
             index_group.paths.append(path)
 
+    def _add_paths_to_sidebar_group(
+        self,
+        paths,
+        sidebar_group,
+        after_group=None,
+        dataset=None,
+    ):
+        for path in paths:
+            self._add_path_to_sidebar_group(
+                path,
+                sidebar_group,
+                after_group=after_group,
+                dataset=dataset,
+            )
+
 
 def _make_default_active_fields(sample_collection):
     active_fields = ActiveFields()
@@ -898,6 +913,7 @@ class DatasetDocument(Document):
     version = StringField(required=True, null=True)
     created_at = DateTimeField()
     last_modified_at = DateTimeField()
+    last_deletion_at = DateTimeField()
     last_loaded_at = DateTimeField()
     sample_collection_name = StringField(unique=True, required=True)
     frame_collection_name = StringField()
