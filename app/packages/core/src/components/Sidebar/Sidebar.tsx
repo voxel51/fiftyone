@@ -1,11 +1,9 @@
-import { Resizable } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { replace, useEventHandler } from "@fiftyone/state";
 import { move, styles } from "@fiftyone/utilities";
-import { useTheme as useMUITheme } from "@mui/material";
 import { Controller, animated, config } from "@react-spring/web";
 import { default as React, useCallback, useRef, useState } from "react";
-import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
+import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import SchemaSettings from "../Schema/SchemaSettings";
 import { Filter } from "./Entries";
@@ -429,8 +427,7 @@ const InteractiveSidebar = ({
   const container = useRef<HTMLDivElement>();
   const scroll = useRef<number>(0);
   const maxScrollHeight = useRef<number>();
-  const [width, setWidth] = useRecoilState(fos.sidebarWidth(modal));
-  const resetWidth = useResetRecoilState(fos.sidebarWidth(modal));
+
   const shown = useRecoilValue(fos.sidebarVisible(modal));
   const [entries, setEntries] = fos.useEntries(modal);
   const disabled = useRecoilValue(fos.disabledFilterPaths);
@@ -701,24 +698,9 @@ const InteractiveSidebar = ({
   const [observer] = useState<ResizeObserver>(
     () => new ResizeObserver(placeItems)
   );
-  const muiTheme = useMUITheme();
 
   return shown ? (
-    <Resizable
-      data-cy="sidebar"
-      size={{ height: "100%", width }}
-      minWidth={200}
-      maxWidth={600}
-      direction={modal ? "left" : "right"}
-      onResizeStop={(e, direction, ref, { width: delta }) => {
-        setWidth(width + delta);
-      }}
-      onResizeReset={resetWidth}
-      style={{
-        borderTopRightRadius: 8,
-        zIndex: modal ? muiTheme.zIndex.tooltip + 1 : undefined,
-      }}
-    >
+    <>
       <SchemaSettings />
       {!modal && (
         <TopContainer>
@@ -810,7 +792,7 @@ const InteractiveSidebar = ({
           })}
         </Container>
       </SidebarColumn>
-    </Resizable>
+    </>
   ) : null;
 };
 

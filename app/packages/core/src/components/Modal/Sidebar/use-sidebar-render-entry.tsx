@@ -2,7 +2,7 @@ import * as fos from "@fiftyone/state";
 import { Controller } from "@react-spring/core";
 import React, { useCallback } from "react";
 import { useRecoilValue } from "recoil";
-import { Entries } from "../Sidebar";
+import { Entries } from "../../Sidebar";
 
 export const useModalSidebarRenderEntry = () => {
   const labelPaths = useRecoilValue(fos.labelPaths({ expanded: false }));

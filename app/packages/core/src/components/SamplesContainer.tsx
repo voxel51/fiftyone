@@ -5,7 +5,8 @@ import React, { useCallback } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import MainSpace from "./MainSpace";
-import Sidebar, { Entries } from "./Sidebar";
+import { Entries, default as RenderSidebar } from "./Sidebar";
+import SidebarContainer from "./Sidebar/SidebarContainer";
 
 const Container = styled.div`
   display: flex;
@@ -15,11 +16,8 @@ const Container = styled.div`
   background: ${({ theme }) => theme.background.header};
 `;
 
-function SamplesContainer() {
-  const showSidebar = useRecoilValue(fos.sidebarVisible(false));
+const Sidebar = () => {
   const disabled = useRecoilValue(fos.disabledCheckboxPaths);
-  const isModalOpen = useRecoilValue(fos.isModalActive);
-
   const renderGridEntry = useCallback(
     (
       key: string,
@@ -100,11 +98,23 @@ function SamplesContainer() {
     []
   );
   return (
+    <SidebarContainer modal={false}>
+      <RenderSidebar render={renderGridEntry} modal={false} />
+    </SidebarContainer>
+  );
+};
+
+function SamplesContainer() {
+  const showSidebar = useRecoilValue(fos.sidebarVisible(false));
+
+  const isModalOpen = useRecoilValue(fos.isModalActive);
+
+  return (
     <Container>
       {!isModalOpen && (
         <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />
       )}
-      {showSidebar && <Sidebar render={renderGridEntry} modal={false} />}
+      {showSidebar && <Sidebar />}
       <MainSpace />
       {!isModalOpen && (
         <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_RIGHT} />
