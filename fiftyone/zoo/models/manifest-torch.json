@@ -2787,7 +2787,10 @@
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForImageClassification",
                 "config": {
-                    "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor"
+                    "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
+                    "transforms_args": {
+                        "use_fast": false
+                    }
                 }
             },
             "requirements": {
