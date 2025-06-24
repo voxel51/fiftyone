@@ -6,7 +6,9 @@ FiftyOne Deprecation Notices
 .. default-role:: code
 
 .. note::
-   Deprecation notices below are ordered in reverse chronological order (most recent at the top).
+
+   Deprecation notices below are ordered in reverse chronological order
+   (most recent at the top).
 
 .. _deprecation-mongodb-5.0:
 
