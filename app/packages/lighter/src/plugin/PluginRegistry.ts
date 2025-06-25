@@ -2,11 +2,14 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import { OverlayFactory } from "../overlay/OverlayFactory";
 import type { OverlayConstructor } from "../overlay/OverlayFactory";
+import { OverlayFactory } from "../overlay/OverlayFactory";
 
 /**
  * Registry for plugins that extend overlay functionality.
+ *
+ * NOTE: THIS IS CURRENTLY UNUSED - this needs to be hooked with fiftyone plugins
+ * Goal is to allow plugins to register their own overlays with the lighter library
  */
 export class PluginRegistry {
   private overlayFactory: OverlayFactory;

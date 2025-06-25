@@ -2,6 +2,7 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
+import { EventBus } from "../event/EventBus";
 import type { DrawStyle, Point, Rect, TextOptions } from "../types";
 
 /**
@@ -43,21 +44,38 @@ export interface ImageOptions {
  * 2D renderer interface (merges backend and strategy responsibilities).
  */
 export interface Renderer2D {
+  // Infrastructure
+  eventBus?: EventBus;
+
   // Render loop
   startRenderLoop(onFrame: () => void): void;
   stopRenderLoop(): void;
 
   // Drawing methods
-  drawRect(bounds: Rect, style: DrawStyle): void;
-  drawText(text: string, position: Point, options?: TextOptions): void;
-  drawLine(start: Point, end: Point, style: DrawStyle): void;
-  drawCircle(center: Point, radius: number, style: DrawStyle): void;
+  drawRect(bounds: Rect, style: DrawStyle, id?: string): void;
+  drawText(
+    text: string,
+    position: Point,
+    options?: TextOptions,
+    id?: string
+  ): void;
+  drawLine(start: Point, end: Point, style: DrawStyle, id?: string): void;
+  drawCircle(
+    center: Point,
+    radius: number,
+    style: DrawStyle,
+    id?: string
+  ): void;
   drawImage(
     image: ImageSource,
     destination: Rect,
-    options?: ImageOptions
+    options?: ImageOptions,
+    id?: string
   ): void;
   clear(): void;
+
+  // Element management
+  dispose(id: string): void;
 
   // Container information
   getContainerDimensions(): { width: number; height: number };

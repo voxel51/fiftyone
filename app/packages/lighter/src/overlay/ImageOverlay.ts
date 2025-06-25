@@ -3,6 +3,7 @@
  */
 
 import { getSampleSrc } from "@fiftyone/state";
+import { EventBus, LIGHTER_EVENTS } from "../event/EventBus";
 import type { ImageSource, Renderer2D } from "../renderer/Renderer2D";
 import type { ResourceLoader } from "../resource/ResourceLoader";
 import type { Rect } from "../types";
@@ -24,10 +25,28 @@ export interface ImageOptions {
 export class ImageOverlay extends BaseOverlay {
   private texture?: ImageSource;
   private originalDimensions?: { width: number; height: number };
+  private currentBounds?: Rect;
+  private resizeObserver?: ResizeObserver;
 
   constructor(private options: ImageOptions) {
     const id = `image-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     super(id, "image", ["image", "background"]);
+  }
+
+  /**
+   * Attaches the event bus to this overlay.
+   * @param bus - The event bus to attach.
+   */
+  attachEventBus(bus: EventBus): void {
+    super.attachEventBus(bus);
+
+    // Listen for resize events from the event bus
+    if (this.eventBus) {
+      this.eventBus.on(LIGHTER_EVENTS.RESIZE, (event) => {
+        const { width, height } = event.detail;
+        this.handleResize(width, height);
+      });
+    }
   }
 
   /**
@@ -37,8 +56,37 @@ export class ImageOverlay extends BaseOverlay {
    */
   setResourceLoader(loader: ResourceLoader): void {
     super.setResourceLoader(loader);
-    // Start background loading now that we have a resource loader
+
+    // we could start background loading here
     // this.startBackgroundLoading();
+  }
+
+  /**
+   * Sets the renderer for this overlay and sets up resize handling.
+   * @param renderer - The renderer to use.
+   */
+  setRenderer(renderer: Renderer2D): void {
+    super.setRenderer(renderer);
+  }
+
+  /**
+   * Handles resize events by recalculating image bounds.
+   * @param newWidth - The new width of the container.
+   * @param newHeight - The new height of the container.
+   */
+  private handleResize(newWidth: number, newHeight: number): void {
+    if (!this.renderer) return;
+
+    // Update the current bounds to match the new container size
+    this.currentBounds = {
+      x: 0,
+      y: 0,
+      width: newWidth,
+      height: newHeight,
+    };
+
+    // Mark as dirty instead of triggering re-render
+    this.markDirty();
   }
 
   /**
@@ -53,7 +101,7 @@ export class ImageOverlay extends BaseOverlay {
 
     try {
       // Use background loading for better performance with texture hint
-      this.texture = await this.resourceLoader.loadBackground<Texture>(
+      const rawTexture = await this.resourceLoader.loadBackground(
         getSampleSrc(this.options.src),
         {
           retries: 3,
@@ -61,12 +109,32 @@ export class ImageOverlay extends BaseOverlay {
         }
       );
 
+      this.texture = {
+        type: "texture",
+        texture: rawTexture,
+      };
+
       // Store original dimensions when texture is first loaded
       if (this.texture && !this.originalDimensions) {
-        this.originalDimensions = {
-          width: this.texture.width,
-          height: this.texture.height,
-        };
+        // Try to get dimensions from the texture object
+        const textureObj = this.texture.texture;
+        if (textureObj && typeof textureObj === "object") {
+          // Handle different texture types
+          if ("width" in textureObj && "height" in textureObj) {
+            this.originalDimensions = {
+              width: (textureObj as any).width,
+              height: (textureObj as any).height,
+            };
+          } else if (
+            "naturalWidth" in textureObj &&
+            "naturalHeight" in textureObj
+          ) {
+            this.originalDimensions = {
+              width: (textureObj as any).naturalWidth,
+              height: (textureObj as any).naturalHeight,
+            };
+          }
+        }
       }
     } catch (error) {
       console.error("Failed to background load image overlay:", error);
@@ -75,6 +143,8 @@ export class ImageOverlay extends BaseOverlay {
   }
 
   async render(renderer: Renderer2D): Promise<void> {
+    renderer.dispose(this.id);
+
     try {
       // If texture isn't loaded yet, try to load it now (fallback)
       if (!this.texture && this.resourceLoader) {
@@ -97,20 +167,35 @@ export class ImageOverlay extends BaseOverlay {
 
         // Store original dimensions when texture is first loaded
         if (this.texture && !this.originalDimensions) {
-          this.originalDimensions = {
-            width: this.texture.texture.width,
-            height: this.texture.texture.height,
-          };
+          const textureObj = this.texture.texture;
+          if (textureObj && typeof textureObj === "object") {
+            // Handle different texture types
+            if ("width" in textureObj && "height" in textureObj) {
+              this.originalDimensions = {
+                width: (textureObj as any).width,
+                height: (textureObj as any).height,
+              };
+            } else if (
+              "naturalWidth" in textureObj &&
+              "naturalHeight" in textureObj
+            ) {
+              this.originalDimensions = {
+                width: (textureObj as any).naturalWidth,
+                height: (textureObj as any).naturalHeight,
+              };
+            }
+          }
         }
       }
 
-      // Get bounds - use container dimensions if not provided
-      const bounds = this.options.bounds || {
-        x: 0,
-        y: 0,
-        width: renderer.getContainerDimensions().width,
-        height: renderer.getContainerDimensions().height,
-      };
+      // Get bounds - use current bounds from resize handling, then fallback to options, then container dimensions
+      const bounds = this.currentBounds ||
+        this.options.bounds || {
+          x: 0,
+          y: 0,
+          width: renderer.getContainerDimensions().width,
+          height: renderer.getContainerDimensions().height,
+        };
 
       // Calculate bounds that maintain aspect ratio if requested
       const finalBounds =
@@ -127,7 +212,8 @@ export class ImageOverlay extends BaseOverlay {
         finalBounds,
         {
           opacity: this.options.opacity || 1,
-        }
+        },
+        this.id
       );
 
       // Emit overlay-loaded event using the common method
@@ -203,5 +289,32 @@ export class ImageOverlay extends BaseOverlay {
    */
   getOriginalDimensions(): { width: number; height: number } | undefined {
     return this.originalDimensions;
+  }
+
+  /**
+   * Gets the current bounds of the image.
+   * @returns The current bounds, if available.
+   */
+  getCurrentBounds(): Rect | undefined {
+    return this.currentBounds;
+  }
+
+  /**
+   * Updates the image bounds manually.
+   * @param bounds - The new bounds for the image.
+   */
+  updateBounds(bounds: Rect): void {
+    this.currentBounds = bounds;
+    this.markDirty();
+  }
+
+  /**
+   * Cleanup method to remove resize observer when overlay is destroyed.
+   */
+  destroy(): void {
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+      this.resizeObserver = undefined;
+    }
   }
 }
