@@ -37,7 +37,7 @@ INSTALL_REQUIRES = [
     "beautifulsoup4",
     "boto3",
     "cachetools",
-    "dacite>=1.6.0,<1.8.0",
+    "dacite>=1.6.0,<2",
     "dill",
     "Deprecated",
     "ftfy",
