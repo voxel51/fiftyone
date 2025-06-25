@@ -47,14 +47,16 @@ export function getMatrix(
   config,
   maskTargets?,
   compareMaskTargets?,
-  plot?
+  plot?,
+  isCompare?
 ) {
   if (!matrices) return;
   const { sortBy = "az", limit } = config;
+  const colorscale_key_suffix = isCompare ? "colorscale_blues" : "colorscale";
   const parsedLimit = typeof limit === "number" ? limit : undefined;
   const originalClasses = matrices[`${sortBy}_classes`];
   const originalMatrix = matrices[`${sortBy}_matrix`];
-  const originalColorscale = matrices[`${sortBy}_colorscale`];
+  const originalColorscale = matrices[`${sortBy}_${colorscale_key_suffix}`];
   const chosenClasses = config?.classes;
   const hasChosenClasses =
     Array.isArray(chosenClasses) && chosenClasses?.length;

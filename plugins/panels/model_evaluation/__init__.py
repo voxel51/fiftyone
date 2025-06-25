@@ -41,7 +41,7 @@ ENABLE_CACHING = (
     os.environ.get("FIFTYONE_DISABLE_EVALUATION_CACHING") not in TRUTHY_VALUES
 )
 CACHE_TTL = 30 * 24 * 60 * 60  # 30 days in seconds
-CACHE_VERSION = "v1.5.0"
+CACHE_VERSION = "v1.0.0"
 SUPPORTED_EVALUATION_TYPES = ["classification", "detection", "segmentation"]
 
 
@@ -413,6 +413,22 @@ class EvaluationPanel(Panel):
         lc_colorscale = self.get_confusion_matrix_colorscale(
             lc_matrix, colorscale_name
         )
+        default_colorscale_blues = self.get_confusion_matrix_colorscale(
+            default_matrix, "blues"
+        )
+        az_colorscale_blues = self.get_confusion_matrix_colorscale(
+            az_matrix, "blues"
+        )
+        za_colorscale_blues = self.get_confusion_matrix_colorscale(
+            za_matrix, "blues"
+        )
+        mc_colorscale_blues = self.get_confusion_matrix_colorscale(
+            mc_matrix, "blues"
+        )
+        lc_colorscale_blues = self.get_confusion_matrix_colorscale(
+            lc_matrix, "blues"
+        )
+
         return {
             "default_classes": _default_classes,
             "az_classes": _az_classes,
@@ -429,6 +445,11 @@ class EvaluationPanel(Panel):
             "za_colorscale": za_colorscale,
             "mc_colorscale": mc_colorscale,
             "lc_colorscale": lc_colorscale,
+            "default_colorscale_blues": default_colorscale_blues,
+            "az_colorscale_blues": az_colorscale_blues,
+            "za_colorscale_blues": za_colorscale_blues,
+            "mc_colorscale_blues": mc_colorscale_blues,
+            "lc_colorscale_blues": lc_colorscale_blues,
         }
 
     def get_correct_incorrect(self, results):
@@ -858,7 +879,6 @@ class EvaluationPanel(Panel):
         )
 
     def get_subset_def_data(self, info, results, subset_def, is_compare):
-        colorscale_name = "blues" if is_compare else "oranges"
         with results.use_subset(subset_def):
             metrics = results.metrics()
             per_class_metrics = self.get_per_class_metrics(info, results)
@@ -875,44 +895,13 @@ class EvaluationPanel(Panel):
             return {
                 "metrics": metrics,
                 "distribution": len(results.ytrue_ids),
-                "confusion_matrices": self.get_confusion_matrices(
-                    results, colorscale_name
-                ),
+                "confusion_matrices": self.get_confusion_matrices(results),
                 "confidences": confidences,
                 "confidence_distribution": self.get_confidence_distribution(
                     confidences
                 ),
             }
 
-    def get_subset_def_data_for_eval_key(self, ctx, scenario):
-        """
-        Builds and returns an execution cache key for each type of scenario.
-        """
-        view_state = ctx.panel.get_state("view") or {}
-        eval_key = view_state.get("key")
-        computed_eval_key = ctx.params.get("key", eval_key)
-
-        scenario_type = scenario.get("type", "")
-        scenario_field = scenario.get("field", "")
-        scenario_subsets = scenario.get("subsets", "")
-
-        if scenario_type in ["label_attribute", "sample_field"]:
-            return [
-                "subset-data",
-                computed_eval_key,
-                scenario_type,
-                scenario_field,
-                scenario_subsets,
-            ]
-
-        return [
-            "subset-data",
-            computed_eval_key,
-            scenario_type,
-            scenario_subsets,
-        ]
-
-    @execution_cache(key_fn=get_subset_def_data_for_eval_key)
     def get_scenario_data(self, ctx, scenario):
         view_state = ctx.panel.get_state("view") or {}
         eval_key = view_state.get("key")
@@ -991,6 +980,40 @@ class EvaluationPanel(Panel):
             scenario_data["subsets_data"] = None  # unsupported type
 
         return scenario_data
+
+    def get_subset_def_data_for_eval_key(self, ctx, scenario):
+        """
+        Builds and returns an execution cache key for each type of scenario.
+        """
+        view_state = ctx.panel.get_state("view") or {}
+        eval_key = view_state.get("key")
+        computed_eval_key = ctx.params.get("key", eval_key)
+
+        scenario_type = scenario.get("type", "")
+        scenario_field = scenario.get("field", "")
+        scenario_subsets = scenario.get("subsets", "")
+
+        if scenario_type in ["label_attribute", "sample_field"]:
+            return [
+                "subset-data",
+                computed_eval_key,
+                scenario_type,
+                scenario_field,
+                scenario_subsets,
+                CACHE_VERSION,
+            ]
+
+        return [
+            "subset-data",
+            computed_eval_key,
+            scenario_type,
+            scenario_subsets,
+            CACHE_VERSION,
+        ]
+
+    @execution_cache(key_fn=get_subset_def_data_for_eval_key)
+    def get_scenario_data_cacheable(self, ctx, scenario):
+        return self.get_scenario_data(ctx, scenario)
 
     def validate_scenario_subsets(self, ctx, scenario):
         """
@@ -1100,11 +1123,15 @@ class EvaluationPanel(Panel):
                 # refresh clicked
                 should_refresh_cache = ctx.params.get("refresh_cache", False)
                 if should_refresh_cache:
-                    self.get_scenario_data.clear_cache(
+                    self.get_scenario_data_cacheable.clear_cache(
                         self, ctx, validated_scenario
                     )
 
-                scenario_data = self.get_scenario_data(ctx, validated_scenario)
+                scenario_data = (
+                    self.get_scenario_data_cacheable(ctx, validated_scenario)
+                    if ENABLE_CACHING
+                    else self.get_scenario_data(ctx, validated_scenario)
+                )
 
                 ctx.panel.set_state("scenario_load_error", None)
                 ctx.panel.set_data(
