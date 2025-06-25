@@ -2473,7 +2473,7 @@ __metadata:
     "@typescript-eslint/parser": "npm:^6.0.0"
     eslint: "npm:^8.0.0"
     jest: "npm:^29.5.0"
-    pixi.js: "npm:^8.0.0"
+    pixi.js: "npm:^8.10.2"
     ts-jest: "npm:^29.1.0"
     typescript: "npm:^5.0.0"
   peerDependencies:
@@ -15392,7 +15392,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"pixi.js@npm:^8.0.0":
+"pixi.js@npm:^8.10.2":
   version: 8.10.2
   resolution: "pixi.js@npm:8.10.2"
   dependencies:
