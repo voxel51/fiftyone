@@ -6,6 +6,9 @@ import { fetchPlot } from "./fetch";
 import { useBrainResult, usePointsField } from "./useBrainResult";
 import { useColorByField } from "./useLabelSelector";
 import { useWarnings } from "./useWarnings";
+import { PlotResponse, PlotSuccessResponse } from "./types";
+
+
 
 export function useViewChangeEffect() {
   const colorSeed = useRecoilValue(fos.colorSeed);
@@ -39,12 +42,23 @@ export function useViewChangeEffect() {
   useEffect(() => {
     setOverrideStage(null);
     setLoadingPlot(true);
-    fetchPlot({ datasetName, filters, brainKey, view, labelField, slices })
-      .catch((err) => {
-        setLoadingPlotError(err);
-        // setBrainKey(null);
+    fetchPlot({ datasetName, brainKey, view, labelField, slices })
+      .catch((err: Error) => {
+        setLoadingPlotError({
+          message: err.message,
+          stack: err.stack,
+        });
       })
-      .then((res) => {
+      .then((res: PlotResponse) => {
+        warnings.clear();
+
+        if ('error' in res && res.error) {
+          setLoadingPlotError(res);
+          return;
+        }
+
+        res = res as PlotSuccessResponse;
+
         if (!res || !res.index_size) {
           if (res?.index_size === 0) {
             warnings.add(`No samples in the current view.`);
@@ -54,10 +68,7 @@ export function useViewChangeEffect() {
 
         const notUsed = res.index_size - res.available_count;
         const missing = res.missing_count;
-        const total = res.index_size;
         const type = res.patches_field ? "patches" : "samples";
-
-        warnings.clear();
 
         if (missing > 0) {
           warnings.add(
