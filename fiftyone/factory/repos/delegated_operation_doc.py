@@ -92,7 +92,7 @@ class DelegatedOperationDocument(object):
         self.updated_at = doc.get("updated_at", None)
 
         # grouped fields
-        self.parent = doc.get("parent_id", None)
+        self.parent_id = doc.get("parent_id", None)
 
         # internal fields
         self.id = doc["_id"]
