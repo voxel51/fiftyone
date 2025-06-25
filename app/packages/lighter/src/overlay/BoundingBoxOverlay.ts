@@ -2,9 +2,8 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import type { BaseOverlay, OverlayStatus } from "./BaseOverlay";
+import { BaseOverlay } from "./BaseOverlay";
 import type { Renderer2D } from "../renderer/Renderer2D";
-import type { EventBus } from "../event/EventBus";
 import type { Rect, DrawStyle } from "../types";
 
 /**
@@ -20,37 +19,13 @@ export interface BoundingBoxOptions {
 /**
  * Bounding box overlay implementation.
  */
-export class BoundingBoxOverlay implements BaseOverlay {
-  readonly id: string;
-  name = "bounding-box";
-  tags: string[] = [];
-  status: OverlayStatus = "pending";
-  private renderer?: Renderer2D;
-  private eventBus?: EventBus;
-
+export class BoundingBoxOverlay extends BaseOverlay {
   constructor(private options: BoundingBoxOptions) {
-    this.id = this.generateId();
-    this.tags = ["detection", "bounding-box"];
-  }
-
-  setRenderer(renderer: Renderer2D): void {
-    this.renderer = renderer;
-  }
-
-  attachEventBus(bus: EventBus): void {
-    this.eventBus = bus;
-    // Listen for undo/redo events
-    bus.on("undo", () => {
-      // Handle undo if needed
-    });
-    bus.on("redo", () => {
-      // Handle redo if needed
-    });
+    const id = `bbox_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    super(id, "bounding-box", ["detection", "bounding-box"]);
   }
 
   render(renderer: Renderer2D): void {
-    this.status = "painting";
-
     // Draw the bounding box
     renderer.drawRect(this.options.bounds, this.options.style);
 
@@ -69,15 +44,8 @@ export class BoundingBoxOverlay implements BaseOverlay {
       });
     }
 
-    this.status = "painted";
-
-    // Emit overlay-loaded event
-    if (this.eventBus) {
-      this.eventBus.emit({
-        type: "overlay-loaded",
-        detail: { id: this.id },
-      });
-    }
+    // Emit overlay-loaded event using the common method
+    this.emitLoaded();
   }
 
   /**
@@ -110,9 +78,5 @@ export class BoundingBoxOverlay implements BaseOverlay {
    */
   getConfidence(): number | undefined {
     return this.options.confidence;
-  }
-
-  private generateId(): string {
-    return `bbox_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 }

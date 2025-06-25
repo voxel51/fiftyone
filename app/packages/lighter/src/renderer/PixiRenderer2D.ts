@@ -4,7 +4,7 @@
 
 import * as PIXI from "pixi.js";
 import type { DrawStyle, Point, Rect, TextOptions } from "../types";
-import type { Renderer2D } from "./Renderer2D";
+import type { ImageOptions, ImageSource, Renderer2D } from "./Renderer2D";
 
 /**
  * PixiJS v8 renderer implementation with performance optimizations.
@@ -196,6 +196,130 @@ export class PixiRenderer2D implements Renderer2D {
     this.graphicsContainer.addChild(graphics);
   }
 
+  drawImage(
+    image: ImageSource,
+    destination: Rect,
+    options?: ImageOptions
+  ): void {
+    let sprite: PIXI.Sprite;
+
+    switch (image.type) {
+      case "texture":
+        // Handle TextureLike objects (e.g., Pixi textures)
+        if (image.texture) {
+          sprite = new PIXI.Sprite(image.texture);
+        } else {
+          console.warn("Texture source provided but no texture object found");
+          return;
+        }
+        break;
+
+      case "canvas":
+        // Handle HTMLCanvasElement
+        if (image.canvas) {
+          const texture = PIXI.Texture.from(image.canvas);
+          sprite = new PIXI.Sprite(texture);
+        } else {
+          console.warn("Canvas source provided but no canvas object found");
+          return;
+        }
+        break;
+
+      case "html-image":
+        // Handle HTMLImageElement
+        if (image.src) {
+          const texture = PIXI.Texture.from(image.src);
+          sprite = new PIXI.Sprite(texture);
+        } else {
+          console.warn("HTML image source provided but no src found");
+          return;
+        }
+        break;
+
+      case "image-data":
+        // Handle ImageData objects
+        if (image.imageData) {
+          const canvas = document.createElement("canvas");
+          canvas.width = image.imageData.width;
+          canvas.height = image.imageData.height;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.putImageData(image.imageData, 0, 0);
+            const texture = PIXI.Texture.from(canvas);
+            sprite = new PIXI.Sprite(texture);
+          } else {
+            console.warn("Failed to get 2D context for ImageData");
+            return;
+          }
+        } else {
+          console.warn(
+            "ImageData source provided but no imageData object found"
+          );
+          return;
+        }
+        break;
+
+      case "bitmap":
+        // Handle ImageBitmap objects
+        if (image.bitmap) {
+          const texture = PIXI.Texture.from(image.bitmap);
+          sprite = new PIXI.Sprite(texture);
+        } else {
+          console.warn("Bitmap source provided but no bitmap object found");
+          return;
+        }
+        break;
+
+      case "custom":
+        // Handle custom implementations
+        if (image.custom) {
+          // Try to create texture from custom object
+          try {
+            const texture = PIXI.Texture.from(image.custom);
+            sprite = new PIXI.Sprite(texture);
+          } catch (error) {
+            console.warn(
+              "Failed to create texture from custom image source:",
+              error
+            );
+            return;
+          }
+        } else {
+          console.warn("Custom source provided but no custom object found");
+          return;
+        }
+        break;
+
+      default:
+        console.warn(`Unsupported image source type: ${image.type}`);
+        return;
+    }
+
+    // Apply positioning and sizing
+    sprite.x = destination.x;
+    sprite.y = destination.y;
+    sprite.width = destination.width;
+    sprite.height = destination.height;
+
+    // Apply options
+    if (options) {
+      if (options.opacity !== undefined) {
+        sprite.alpha = options.opacity;
+      }
+
+      if (options.rotation !== undefined) {
+        sprite.rotation = options.rotation;
+      }
+
+      if (options.scaleX !== undefined || options.scaleY !== undefined) {
+        sprite.scale.x = options.scaleX ?? 1;
+        sprite.scale.y = options.scaleY ?? 1;
+      }
+    }
+
+    this.graphicsContainer.addChild(sprite);
+  }
+
   clear(): void {
     // Clear graphics container efficiently
     this.graphicsContainer.removeChildren();
@@ -257,5 +381,18 @@ export class PixiRenderer2D implements Renderer2D {
    */
   isReady(): boolean {
     return this.isInitialized;
+  }
+
+  /**
+   * Get the current container dimensions
+   */
+  getContainerDimensions(): { width: number; height: number } {
+    if (!this.isInitialized || !this.app) {
+      return { width: 0, height: 0 };
+    }
+    return {
+      width: this.app.renderer.width,
+      height: this.app.renderer.height,
+    };
   }
 }

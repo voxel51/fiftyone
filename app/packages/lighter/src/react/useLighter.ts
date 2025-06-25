@@ -10,12 +10,18 @@ import {
   PixiRenderer2D,
   PixiResourceLoader,
   Scene2D,
+  type Renderer2D,
+  type ResourceLoader,
 } from "../index";
 
 /**
  * Hook for using the Lighter library in React components.
  */
-export const useLighter = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
+export const useLighter = (
+  canvasRef: React.RefObject<HTMLCanvasElement>,
+  renderer?: Renderer2D,
+  resourceLoader?: ResourceLoader
+) => {
   const [scene, setScene] = useState<Scene2D | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [overlayCount, setOverlayCount] = useState(0);
@@ -24,14 +30,19 @@ export const useLighter = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
     if (!canvasRef.current) return;
 
     const canvas = canvasRef.current;
-    const renderer = new PixiRenderer2D(canvas);
-    const resourceLoader = new PixiResourceLoader();
+
+    // Use provided renderer or create default PixiRenderer2D
+    const rendererInstance = renderer || new PixiRenderer2D(canvas);
+
+    // Use provided resourceLoader or create default PixiResourceLoader
+    const resourceLoaderInstance = resourceLoader || new PixiResourceLoader();
+
     const eventBus = new EventBus();
 
     const sceneInstance = new Scene2D({
       canvas,
-      renderer,
-      resourceLoader,
+      renderer: rendererInstance,
+      resourceLoader: resourceLoaderInstance,
       eventBus,
     });
 
@@ -40,7 +51,14 @@ export const useLighter = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
     });
 
     (async () => {
-      await renderer.initializePixiJS();
+      // Initialize renderer if it's a PixiRenderer2D and not already initialized
+      if (
+        rendererInstance instanceof PixiRenderer2D &&
+        !rendererInstance.isReady()
+      ) {
+        await rendererInstance.initializePixiJS();
+      }
+
       await sceneInstance.startRenderLoop();
       setScene(sceneInstance);
       setIsReady(true);
@@ -51,7 +69,7 @@ export const useLighter = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
       setScene(null);
       setIsReady(false);
     };
-  }, [canvasRef]);
+  }, [canvasRef, renderer, resourceLoader]);
 
   const addOverlay = useCallback(
     (overlay: BoundingBoxOverlay | ClassificationOverlay) => {
