@@ -91,8 +91,6 @@ export class PixiRenderer2D implements Renderer2D {
     this.isRunning = true;
     this.renderLoop = onFrame;
 
-    // Use PixiJS ticker for optimal performance
-    // In v8, ticker callback receives the ticker instance instead of delta time
     this.app.ticker.add((ticker) => {
       if (this.isRunning && this.renderLoop) {
         this.renderLoop();

@@ -11,7 +11,6 @@ import type { Rect, DrawStyle } from "../types";
  */
 export interface BoundingBoxOptions {
   bounds: Rect;
-  style: DrawStyle;
   label?: string;
   confidence?: number;
 }
@@ -25,9 +24,9 @@ export class BoundingBoxOverlay extends BaseOverlay {
     super(id, "bounding-box", ["detection", "bounding-box"]);
   }
 
-  render(renderer: Renderer2D): void {
+  render(renderer: Renderer2D, style: DrawStyle): void {
     // Draw the bounding box
-    renderer.drawRect(this.options.bounds, this.options.style);
+    renderer.drawRect(this.options.bounds, style);
 
     // Draw label if provided
     if (this.options.label) {
@@ -37,7 +36,7 @@ export class BoundingBoxOverlay extends BaseOverlay {
       };
 
       renderer.drawText(this.options.label, labelPosition, {
-        fontColor: this.options.style.strokeStyle || "#000",
+        fontColor: style.strokeStyle || "#000",
         fontSize: 12,
         backgroundColor: "rgba(255, 255, 255, 0.8)",
         padding: 2,
@@ -54,14 +53,6 @@ export class BoundingBoxOverlay extends BaseOverlay {
    */
   getBounds(): Rect {
     return this.options.bounds;
-  }
-
-  /**
-   * Gets the drawing style.
-   * @returns The drawing style.
-   */
-  getStyle(): DrawStyle {
-    return this.options.style;
   }
 
   /**
