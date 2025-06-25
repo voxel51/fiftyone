@@ -13,7 +13,6 @@ export interface ClassificationOptions {
   label: string;
   confidence: number;
   position: Point;
-  style?: DrawStyle;
   showConfidence?: boolean;
 }
 
@@ -26,14 +25,14 @@ export class ClassificationOverlay extends BaseOverlay {
     super(id, "classification", ["classification", "label"]);
   }
 
-  render(renderer: Renderer2D): void {
+  render(renderer: Renderer2D, style: DrawStyle): void {
     const text = this.options.showConfidence
       ? `${this.options.label} (${(this.options.confidence * 100).toFixed(1)}%)`
       : this.options.label;
 
     // Draw the classification text
     renderer.drawText(text, this.options.position, {
-      fontColor: this.options.style?.strokeStyle || "#000",
+      fontColor: style.strokeStyle || "#000",
       fontSize: 14,
       backgroundColor: "rgba(255, 255, 255, 0.9)",
       padding: 4,
@@ -65,14 +64,6 @@ export class ClassificationOverlay extends BaseOverlay {
    */
   getPosition(): Point {
     return this.options.position;
-  }
-
-  /**
-   * Gets the drawing style.
-   * @returns The drawing style.
-   */
-  getStyle(): DrawStyle | undefined {
-    return this.options.style;
   }
 
   /**

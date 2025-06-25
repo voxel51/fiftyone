@@ -8,6 +8,7 @@ import type { ImageSource, Renderer2D } from "../renderer/Renderer2D";
 import type { ResourceLoader } from "../resource/ResourceLoader";
 import type { Rect } from "../types";
 import { BaseOverlay } from "./BaseOverlay";
+import type { DrawStyle } from "../types";
 
 /**
  * Options for creating an image overlay.
@@ -142,7 +143,7 @@ export class ImageOverlay extends BaseOverlay {
     }
   }
 
-  async render(renderer: Renderer2D): Promise<void> {
+  async render(renderer: Renderer2D, style: DrawStyle): Promise<void> {
     renderer.dispose(this.id);
 
     try {

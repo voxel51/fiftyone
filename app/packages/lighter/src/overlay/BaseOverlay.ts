@@ -6,6 +6,7 @@ import type { EventBus } from "../event/EventBus";
 import { LIGHTER_EVENTS } from "../event/EventBus";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { ResourceLoader } from "../resource/ResourceLoader";
+import type { DrawStyle } from "../types";
 
 /**
  * Base abstract class for all overlays.
@@ -68,10 +69,11 @@ export abstract class BaseOverlay {
   }
 
   /**
-   * Renders the overlay using the provided renderer.
+   * Renders the overlay using the provided renderer and style.
    * @param renderer - The renderer to use for drawing.
+   * @param style - The drawing style to apply.
    */
-  abstract render(renderer: Renderer2D): void | Promise<void>;
+  abstract render(renderer: Renderer2D, style: DrawStyle): void | Promise<void>;
 
   /**
    * Marks the overlay as dirty, indicating it needs to be re-rendered.

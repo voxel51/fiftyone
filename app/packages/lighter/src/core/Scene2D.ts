@@ -4,6 +4,7 @@
 
 import { LIGHTER_EVENTS } from "../event/EventBus";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
+import type { DrawStyle } from "../types";
 import type { Command } from "../undo/Command";
 import { UndoRedoManager } from "../undo/UndoRedoManager";
 import {
@@ -23,6 +24,16 @@ export class Scene2D {
   private undoRedo = new UndoRedoManager();
   private overlayOrder: string[] = [];
   private renderingState = new RenderingStateManager();
+
+  // todo: hook up with fiftyone colorscheme
+  private static randomStyle(): DrawStyle {
+    return {
+      strokeStyle: `hsl(${Math.random() * 360}, 70%, 50%)`,
+      fillStyle: `hsl(${Math.random() * 360}, 70%, 50%)`,
+      lineWidth: 2,
+      opacity: 1,
+    };
+  }
 
   constructor(private readonly config: Scene2DConfig) {}
 
@@ -253,7 +264,7 @@ export class Scene2D {
     this.renderingState.setStatus(overlayId, OVERLAY_STATUS_PAINTING);
 
     try {
-      const ret = overlay.render(this.config.renderer);
+      const ret = overlay.render(this.config.renderer, Scene2D.randomStyle());
       if (ret instanceof Promise) {
         ret.then(() => {
           this.renderingState.setStatus(overlayId, OVERLAY_STATUS_PAINTED);

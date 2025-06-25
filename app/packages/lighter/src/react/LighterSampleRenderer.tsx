@@ -84,11 +84,6 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
         width: 30 + Math.random() * 70,
         height: 20 + Math.random() * 50,
       },
-      style: {
-        strokeStyle: `hsl(${Math.random() * 360}, 70%, 50%)`,
-        fillStyle: `hsl(${Math.random() * 360}, 70%, 50%)`,
-        lineWidth: 2,
-      },
       label: `bbox-${overlayCount + 1}`,
     });
 
@@ -106,9 +101,6 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
         position: {
           x: Math.random() * canvasDimensions.width,
           y: Math.random() * canvasDimensions.height,
-        },
-        style: {
-          strokeStyle: `hsl(${Math.random() * 360}, 70%, 50%)`,
         },
         showConfidence: true,
       }
