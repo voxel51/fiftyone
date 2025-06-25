@@ -44,9 +44,6 @@ INSTALL_REQUIRES = [
     "humanize",
     "hypercorn>=0.13.2",
     "Jinja2>=3",
-    # kaleido indirectly required by plotly for image export
-    # https://plotly.com/python/static-image-export/
-    "kaleido!=0.2.1.post1",
     "matplotlib",
     "mongoengine~=0.29.1",
     "motor~=3.6.0",
@@ -54,7 +51,7 @@ INSTALL_REQUIRES = [
     "packaging",
     "pandas",
     "Pillow>=6.2",
-    "plotly>=4.14",
+    "plotly>=6.1.1",
     "pprintpp",
     "psutil",
     "pymongo~=4.9.2",
