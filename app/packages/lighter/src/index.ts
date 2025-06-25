@@ -2,51 +2,37 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-// Core types and interfaces
-export * from "./types";
+// Core exports
+export { Scene2D } from "./core/Scene2D";
+export type { Scene2DConfig } from "./core/SceneConfig";
 
-// Core classes
-export * from "./core/events";
-export * from "./core/scene";
+// Renderer exports
+export type { Renderer2D } from "./renderer/Renderer2D";
+export { PixiRenderer2D } from "./renderer/PixiRenderer2D";
 
-// Overlays
-export * from "./overlays/base";
-export * from "./overlays/bounding-box";
-export * from "./overlays/classification";
+// Overlay exports
+export type { BaseOverlay, OverlayStatus } from "./overlay/BaseOverlay";
+export { BoundingBoxOverlay } from "./overlay/BoundingBoxOverlay";
+export { ClassificationOverlay } from "./overlay/ClassificationOverlay";
+export { OverlayFactory } from "./overlay/OverlayFactory";
 
-// Rendering
-export * from "./rendering/strategies";
+// Resource exports
+export type { ResourceLoader } from "./resource/ResourceLoader";
+export { PixiResourceLoader } from "./resource/PixiResourceLoader";
 
-// Resources
-export * from "./resources/loader";
+// Event exports
+export { EventBus } from "./event/EventBus";
+export type { OverlayEvent } from "./event/EventBus";
 
-// Factories
-export * from "./factories/overlay-factory";
+// Undo/Redo exports
+export type { Command } from "./undo/Command";
+export { UndoRedoManager } from "./undo/UndoRedoManager";
 
-// Undo/Redo
-export * from "./undo/undo-redo-manager";
+// Plugin exports
+export { PluginRegistry } from "./plugin/PluginRegistry";
 
-// Convenience exports for common use cases
-export { Scene2D, Scene3D, type SceneConfig } from "./core/scene";
+// React exports
+export * from "./react";
 
-export {
-  LighterEventBus,
-  OVERLAY_LOADED_EVENT,
-  OVERLAY_ERROR_EVENT,
-  OVERLAY_UPDATED_EVENT,
-  UNDO_EVENT,
-  REDO_EVENT,
-} from "./core/events";
-
-export {
-  DefaultRenderStrategy2D,
-  StubRenderStrategy3D,
-} from "./rendering/strategies";
-
-export { DefaultResourceLoader, MockResourceLoader } from "./resources/loader";
-
-export {
-  createOverlay,
-  registerOverlayFactory,
-  overlayFactoryRegistry,
-} from "./factories/overlay-factory";
+// Common types
+export type { Rect, Point, DrawStyle, TextOptions } from "./types";
