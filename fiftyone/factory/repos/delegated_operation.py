@@ -189,11 +189,11 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                 )
             )
 
-        if "group_id_1" not in index_names:
+        if "parent_id_1" not in index_names:
             indices_to_create.append(
                 IndexModel(
-                    [("group_id", pymongo.ASCENDING)],
-                    name="group_id_1",
+                    [("parent_id", pymongo.ASCENDING)],
+                    name="parent_id_1",
                 )
             )
 
@@ -393,7 +393,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             # If a parent operation is failed, also mark the children as failed
             self._collection.update_many(
                 {
-                    "group_id": doc["_id"],
+                    "parent_id": doc["_id"],
                     "run_state": {"$nin": ["failed", "completed"]},
                 },
                 {

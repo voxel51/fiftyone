@@ -60,8 +60,8 @@ class DelegatedOperationDocument(object):
         self.log_size = None
         self.log_path = None
 
-        # grouped fields
-        self.group_id = None  # Only on children
+        # distributed task fields
+        self.parent_id = None  # Only on children
 
     @property
     def num_distributed_tasks(self):
@@ -92,7 +92,7 @@ class DelegatedOperationDocument(object):
         self.updated_at = doc.get("updated_at", None)
 
         # grouped fields
-        self.group_id = doc.get("group_id", None)
+        self.parent = doc.get("parent_id", None)
 
         # internal fields
         self.id = doc["_id"]
