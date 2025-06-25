@@ -5,6 +5,7 @@ FiftyOne Server /media route
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import os
 import typing as t
 
@@ -73,6 +74,12 @@ class Media(HTTPEndpoint):
                 path,
             )
         response.headers["Accept-Ranges"] = "bytes"
+
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "GET, HEAD, OPTIONS"
+        response.headers[
+            "Access-Control-Allow-Headers"
+        ] = "Range, Accept-Ranges, Content-Range, Content-Length"
 
         return response
 
