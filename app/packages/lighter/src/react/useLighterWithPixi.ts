@@ -4,23 +4,21 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
-  BoundingBoxOverlay,
-  ClassificationOverlay,
+  BaseOverlay,
   EventBus,
+  globalPixiResourceLoader,
+  overlayFactory,
+  OverlayFactory,
   PixiRenderer2D,
-  PixiResourceLoader,
   Scene2D,
-  type Renderer2D,
-  type ResourceLoader,
 } from "../index";
 
 /**
  * Hook for using the Lighter library in React components.
  */
-export const useLighter = (
+export const useLighterWithPixi = (
   canvasRef: React.RefObject<HTMLCanvasElement>,
-  renderer?: Renderer2D,
-  resourceLoader?: ResourceLoader
+  overlayFactoryInstance?: OverlayFactory
 ) => {
   const [scene, setScene] = useState<Scene2D | null>(null);
   const [isReady, setIsReady] = useState(false);
@@ -31,13 +29,11 @@ export const useLighter = (
 
     const canvas = canvasRef.current;
 
-    // Use provided renderer or create default PixiRenderer2D
-    const rendererInstance = renderer || new PixiRenderer2D(canvas);
-
-    // Use provided resourceLoader or create default PixiResourceLoader
-    const resourceLoaderInstance = resourceLoader || new PixiResourceLoader();
-
     const eventBus = new EventBus();
+
+    const rendererInstance = new PixiRenderer2D(canvas, eventBus);
+
+    const resourceLoaderInstance = globalPixiResourceLoader;
 
     const sceneInstance = new Scene2D({
       canvas,
@@ -52,10 +48,7 @@ export const useLighter = (
 
     (async () => {
       // Initialize renderer if it's a PixiRenderer2D and not already initialized
-      if (
-        rendererInstance instanceof PixiRenderer2D &&
-        !rendererInstance.isReady()
-      ) {
+      if (!rendererInstance.isReady()) {
         await rendererInstance.initializePixiJS();
       }
 
@@ -68,11 +61,18 @@ export const useLighter = (
       sceneInstance.destroy();
       setScene(null);
       setIsReady(false);
+
+      if ("gl" in rendererInstance.getPixiApp().renderer) {
+        // note: this destroys webgl context. right now we're creating a new one per sample...
+        // might want to consider using a global pixi renderer. the cost of doing that is that we have to manage lifecycle really well.
+        // https://pixijs.com/8.x/guides/concepts/architecture
+        rendererInstance.getPixiApp().destroy(true);
+      }
     };
-  }, [canvasRef, renderer, resourceLoader]);
+  }, [canvasRef]);
 
   const addOverlay = useCallback(
-    (overlay: BoundingBoxOverlay | ClassificationOverlay) => {
+    (overlay: BaseOverlay) => {
       if (scene) {
         scene.addOverlay(overlay);
       }
@@ -128,5 +128,6 @@ export const useLighter = (
     redo,
     canUndo,
     canRedo,
+    overlayFactory: overlayFactoryInstance || overlayFactory,
   };
 };

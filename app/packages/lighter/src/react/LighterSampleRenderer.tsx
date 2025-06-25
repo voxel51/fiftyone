@@ -10,14 +10,17 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { BoundingBoxOverlay } from "../index";
-import { ImageOverlay } from "../overlay/ImageOverlay";
-import { useLighter } from "./index";
+import {
+  BoundingBoxOptions,
+  ClassificationOptions,
+  overlayFactory,
+} from "../index";
+import { useLighterWithPixi } from "./useLighterWithPixi";
 
 /**
- * Props for the HookBasedViewer component.
+ * Props for the LighterSampleRenderer component.
  */
-export interface HookBasedViewerProps {
+export interface LighterSampleRendererProps {
   /** Width of the canvas */
   width?: number;
   /** Height of the canvas */
@@ -30,8 +33,9 @@ export interface HookBasedViewerProps {
 
 /**
  * Example of using the useLighter hook with optional custom renderer and resource loader.
+ * This component demonstrates using the OverlayFactory to create overlays instead of direct instantiation.
  */
-export const HookBasedViewer: React.FC<HookBasedViewerProps> = ({
+export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
   width,
   height,
   className = "",
@@ -39,13 +43,13 @@ export const HookBasedViewer: React.FC<HookBasedViewerProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [canvasDimensions, setCanvasDimensions] = useState({
-    width: 0,
-    height: 0,
+    width: width || 0,
+    height: height || 0,
   });
 
   // Use the modified useLighter hook with optional dependencies
   const { isReady, overlayCount, addOverlay, clearOverlays } =
-    useLighter(canvasRef);
+    useLighterWithPixi(canvasRef);
 
   // Get actual canvas dimensions from parent container
   useLayoutEffect(() => {
@@ -62,7 +66,7 @@ export const HookBasedViewer: React.FC<HookBasedViewerProps> = ({
     if (isReady) {
       const mediaUrl = getSampleSrc(sample.urls[0].url!);
       addOverlay(
-        new ImageOverlay({
+        overlayFactory.create("image", {
           src: mediaUrl,
           maintainAspectRatio: true,
         })
@@ -73,7 +77,7 @@ export const HookBasedViewer: React.FC<HookBasedViewerProps> = ({
   const addRandomBoundingBox = useCallback(() => {
     if (canvasDimensions.width === 0 || canvasDimensions.height === 0) return;
 
-    const bbox = new BoundingBoxOverlay({
+    const bbox = overlayFactory.create<BoundingBoxOptions>("bounding-box", {
       bounds: {
         x: Math.random() * canvasDimensions.width,
         y: Math.random() * canvasDimensions.height,
@@ -91,9 +95,31 @@ export const HookBasedViewer: React.FC<HookBasedViewerProps> = ({
     addOverlay(bbox);
   }, [addOverlay, overlayCount, canvasDimensions]);
 
+  const addRandomClassification = useCallback(() => {
+    if (canvasDimensions.width === 0 || canvasDimensions.height === 0) return;
+
+    const classification = overlayFactory.create<ClassificationOptions>(
+      "classification",
+      {
+        label: `class-${overlayCount + 1}`,
+        confidence: Math.random(),
+        position: {
+          x: Math.random() * canvasDimensions.width,
+          y: Math.random() * canvasDimensions.height,
+        },
+        style: {
+          strokeStyle: `hsl(${Math.random() * 360}, 70%, 50%)`,
+        },
+        showConfidence: true,
+      }
+    );
+
+    addOverlay(classification);
+  }, [addOverlay, overlayCount, canvasDimensions]);
+
   return (
     <div
-      className={`hook-based-viewer ${className}`}
+      className={`lighter-sample-renderer ${className}`}
       style={{
         width: "100%",
         height: "90%",
@@ -122,6 +148,22 @@ export const HookBasedViewer: React.FC<HookBasedViewerProps> = ({
           }}
         >
           Add Random BBox
+        </button>
+        <button
+          onClick={addRandomClassification}
+          disabled={!isReady}
+          style={{
+            marginLeft: "8px",
+            padding: "8px 16px",
+            background: "#28a745",
+            color: "white",
+            border: "none",
+            borderRadius: "4px",
+            cursor: isReady ? "pointer" : "not-allowed",
+            opacity: isReady ? 1 : 0.5,
+          }}
+        >
+          Add Random Classification
         </button>
         <button
           onClick={clearOverlays}
