@@ -27,7 +27,7 @@ import useSpotlightPager from "./useSpotlightPager";
 import useUpdates from "./useUpdates";
 import useZoomSetting from "./useZoomSetting";
 
-const MAX_INSTANCES = 5151;
+const MAX_INSTANCES = 200;
 const MAX_ROWS = 5151;
 
 function Grid() {
