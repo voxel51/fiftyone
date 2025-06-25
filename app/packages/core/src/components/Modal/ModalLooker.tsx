@@ -1,18 +1,15 @@
 import { useTheme } from "@fiftyone/components";
 import type { ImageLooker } from "@fiftyone/looker";
+import { isNativeMediaType } from "@fiftyone/looker/src/util";
 import * as fos from "@fiftyone/state";
 import React, { useMemo } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
+import { LighterSampleRenderer } from "../../../../lighter/src";
 import { ImaVidLookerReact } from "./ImaVidLooker";
+import { MetadataLooker } from "./MetadataLooker";
 import { VideoLookerReact } from "./VideoLooker";
 import useLooker from "./use-looker";
 import { useImageModalSelectiveRendering } from "./use-modal-selective-rendering";
-import { isNativeMediaType } from "@fiftyone/looker/src/util";
-import { MetadataLooker } from "./MetadataLooker";
-import {
-  AdvancedLighterViewer,
-  HookBasedViewer,
-} from "../../../../lighter/src";
 
 export const useShowOverlays = () => {
   return useRecoilCallback(({ set }) => async (event: CustomEvent) => {
@@ -86,7 +83,7 @@ export const ModalLooker = React.memo(
     if (
       isNativeMediaType(sample.sample.media_type ?? sample.sample._media_type)
     ) {
-      return <HookBasedViewer sample={sample} />;
+      return <LighterSampleRenderer sample={sample} />;
       // return <ModalLookerNoTimeline sample={sample} />;
     }
 

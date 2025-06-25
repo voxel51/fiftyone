@@ -26,6 +26,8 @@ export const LIGHTER_EVENTS = {
   RESOURCE_LOADED: "resource-loaded",
   /** Emitted when a resource fails to load. This doesn't apply to overlays that have no media. */
   RESOURCE_ERROR: "resource-error",
+  /** Emitted when the canvas or container is resized */
+  RESIZE: "resize",
 } as const;
 
 /**
@@ -53,6 +55,10 @@ export type OverlayEvent =
   | {
       type: typeof LIGHTER_EVENTS.RESOURCE_ERROR;
       detail: { url: string; error: Error };
+    }
+  | {
+      type: typeof LIGHTER_EVENTS.RESIZE;
+      detail: { width: number; height: number };
     };
 
 /**

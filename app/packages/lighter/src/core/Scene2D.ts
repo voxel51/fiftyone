@@ -24,7 +24,7 @@ export class Scene2D {
   private overlayOrder: string[] = [];
   private renderingState = new RenderingStateManager();
 
-  constructor(private config: Scene2DConfig) {}
+  constructor(private readonly config: Scene2DConfig) {}
 
   public async startRenderLoop(): Promise<void> {
     this.config.renderer.startRenderLoop(() => this.renderFrame());
@@ -66,6 +66,9 @@ export class Scene2D {
   removeOverlay(id: string): void {
     const overlay = this.overlays.get(id);
     if (overlay) {
+      // Call destroy method for proper cleanup
+      overlay.destroy();
+
       this.overlays.delete(id);
       this.overlayOrder = this.overlayOrder.filter(
         (overlayId) => overlayId !== id
@@ -183,6 +186,11 @@ export class Scene2D {
    * Clears all overlays from the scene.
    */
   clear(): void {
+    // Call destroy on all overlays for proper cleanup
+    for (const overlay of this.overlays.values()) {
+      overlay.destroy();
+    }
+
     this.overlays.clear();
     this.overlayOrder = [];
     this.renderingState.clearAll();
@@ -230,7 +238,10 @@ export class Scene2D {
     overlay: BaseOverlay | undefined,
     status: string
   ): boolean {
-    return overlay !== undefined && status === OVERLAY_STATUS_PENDING;
+    return (
+      overlay !== undefined &&
+      (status === OVERLAY_STATUS_PENDING || overlay.getIsDirty())
+    );
   }
 
   /**
@@ -246,9 +257,11 @@ export class Scene2D {
       if (ret instanceof Promise) {
         ret.then(() => {
           this.renderingState.setStatus(overlayId, OVERLAY_STATUS_PAINTED);
+          overlay.markClean(); // Mark as clean after successful render
         });
       } else {
         this.renderingState.setStatus(overlayId, OVERLAY_STATUS_PAINTED);
+        overlay.markClean(); // Mark as clean after successful render
       }
     } catch (error) {
       this.handleRenderError(overlayId, error);

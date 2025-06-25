@@ -3,26 +3,37 @@
  */
 
 import * as PIXI from "pixi.js";
+import type { EventBus } from "../event/EventBus";
+import { LIGHTER_EVENTS } from "../event/EventBus";
 import type { DrawStyle, Point, Rect, TextOptions } from "../types";
 import type { ImageOptions, ImageSource, Renderer2D } from "./Renderer2D";
 
 /**
- * PixiJS v8 renderer implementation with performance optimizations.
+ * PixiJS v8 renderer
  */
 export class PixiRenderer2D implements Renderer2D {
   private app!: PIXI.Application;
   private stage!: PIXI.Container;
   private renderLoop?: () => void;
   private isRunning = false;
+  public eventBus?: EventBus;
+
+  private resizeObserver?: ResizeObserver;
 
   // Graphics and text containers
   private graphicsContainer!: PIXI.Container;
   private textContainer!: PIXI.Container;
 
+  // Element tracking for disposal
+  private elementMap = new Map<
+    string,
+    PIXI.Container | PIXI.Graphics | PIXI.Text | PIXI.Sprite
+  >();
+
   private isInitialized = false;
 
-  constructor(private canvas: HTMLCanvasElement) {
-    // this.initializePixiJS().catch(console.error);
+  constructor(private canvas: HTMLCanvasElement, eventBus?: EventBus) {
+    this.eventBus = eventBus;
   }
 
   public async initializePixiJS(): Promise<void> {
@@ -30,18 +41,26 @@ export class PixiRenderer2D implements Renderer2D {
     this.app = new PIXI.Application();
 
     // Set up resize observer to handle canvas resizing
-    const resizeObserver = new ResizeObserver((entries) => {
+    this.resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const { width, height } = entry.contentRect;
         if (this.app && this.isInitialized) {
           this.app.renderer.resize(width, height);
+
+          // Emit resize event to the event bus
+          if (this.eventBus) {
+            this.eventBus.emit({
+              type: LIGHTER_EVENTS.RESIZE,
+              detail: { width, height },
+            });
+          }
         }
       }
     });
 
     // Observe the canvas parent element for size changes
     if (this.canvas.parentElement) {
-      resizeObserver.observe(this.canvas.parentElement);
+      this.resizeObserver.observe(this.canvas.parentElement);
     }
 
     await this.app.init({
@@ -90,7 +109,7 @@ export class PixiRenderer2D implements Renderer2D {
     }
   }
 
-  drawRect(bounds: Rect, style: DrawStyle): void {
+  drawRect(bounds: Rect, style: DrawStyle, id?: string): void {
     const graphics = new PIXI.Graphics();
 
     graphics.rect(bounds.x, bounds.y, bounds.width, bounds.height);
@@ -111,9 +130,19 @@ export class PixiRenderer2D implements Renderer2D {
     }
 
     this.graphicsContainer.addChild(graphics);
+
+    // Track the element if an ID is provided
+    if (id) {
+      this.elementMap.set(id, graphics);
+    }
   }
 
-  drawText(text: string, position: Point, options?: TextOptions): void {
+  drawText(
+    text: string,
+    position: Point,
+    options?: TextOptions,
+    id?: string
+  ): void {
     // Create text with performance optimizations
     // In v8, Text constructor takes an object with text and style properties
     const textStyle = new PIXI.TextStyle({
@@ -143,12 +172,22 @@ export class PixiRenderer2D implements Renderer2D {
         pixiText.height + (options.padding || 0) * 2
       );
       this.textContainer.addChild(background);
+
+      // Track background if ID is provided
+      if (id) {
+        this.elementMap.set(`${id}-background`, background);
+      }
     }
 
     this.textContainer.addChild(pixiText);
+
+    // Track the text element if an ID is provided
+    if (id) {
+      this.elementMap.set(id, pixiText);
+    }
   }
 
-  drawLine(start: Point, end: Point, style: DrawStyle): void {
+  drawLine(start: Point, end: Point, style: DrawStyle, id?: string): void {
     const graphics = new PIXI.Graphics();
 
     // In v8, use setStrokeStyle instead of lineStyle
@@ -165,9 +204,19 @@ export class PixiRenderer2D implements Renderer2D {
     graphics.lineTo(end.x, end.y);
 
     this.graphicsContainer.addChild(graphics);
+
+    // Track the element if an ID is provided
+    if (id) {
+      this.elementMap.set(id, graphics);
+    }
   }
 
-  drawCircle(center: Point, radius: number, style: DrawStyle): void {
+  drawCircle(
+    center: Point,
+    radius: number,
+    style: DrawStyle,
+    id?: string
+  ): void {
     const graphics = new PIXI.Graphics();
 
     // Apply fill if specified
@@ -194,12 +243,18 @@ export class PixiRenderer2D implements Renderer2D {
     }
 
     this.graphicsContainer.addChild(graphics);
+
+    // Track the element if an ID is provided
+    if (id) {
+      this.elementMap.set(id, graphics);
+    }
   }
 
   drawImage(
     image: ImageSource,
     destination: Rect,
-    options?: ImageOptions
+    options?: ImageOptions,
+    id?: string
   ): void {
     let sprite: PIXI.Sprite;
 
@@ -318,12 +373,20 @@ export class PixiRenderer2D implements Renderer2D {
     }
 
     this.graphicsContainer.addChild(sprite);
+
+    // Track the element if an ID is provided
+    if (id) {
+      this.elementMap.set(id, sprite);
+    }
   }
 
   clear(): void {
     // Clear graphics container efficiently
     this.graphicsContainer.removeChildren();
     this.textContainer.removeChildren();
+    // Clear the element map as well
+    this.elementMap.clear();
+    this.resizeObserver?.disconnect();
   }
 
   private parseColorWithAlpha(color: string): { color: number; alpha: number } {
@@ -394,5 +457,26 @@ export class PixiRenderer2D implements Renderer2D {
       width: this.app.renderer.width,
       height: this.app.renderer.height,
     };
+  }
+
+  // Add the dispose method
+  dispose(id: string): void {
+    const element = this.elementMap.get(id);
+    if (element) {
+      // Remove from parent container
+      if (element.parent) {
+        element.parent.removeChild(element);
+      }
+      // Remove from tracking map
+      this.elementMap.delete(id);
+
+      // If it's a sprite, destroy the texture to free memory
+      if (element instanceof PIXI.Sprite && element.texture) {
+        // element.texture.destroy(true);
+      }
+
+      // Destroy the element itself
+      element.destroy({ children: true });
+    }
   }
 }

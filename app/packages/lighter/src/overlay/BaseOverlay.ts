@@ -17,6 +17,11 @@ export abstract class BaseOverlay {
   name: string;
   /** Tags for categorizing the overlay. */
   tags: string[];
+  /** Whether the overlay needs to be re-rendered. The render loop will check this and re-render the overlay if it is dirty.
+   *
+   * See also `markDirty` and `markClean`.
+   */
+  protected isDirty: boolean = false;
 
   /** The renderer instance. */
   protected renderer?: Renderer2D;
@@ -47,10 +52,10 @@ export abstract class BaseOverlay {
     this.eventBus = bus;
     // Listen for undo/redo events
     bus.on(LIGHTER_EVENTS.UNDO, () => {
-      // Handle undo if needed
+      // Handle undo
     });
     bus.on(LIGHTER_EVENTS.REDO, () => {
-      // Handle redo if needed
+      // Handle redo
     });
   }
 
@@ -67,6 +72,28 @@ export abstract class BaseOverlay {
    * @param renderer - The renderer to use for drawing.
    */
   abstract render(renderer: Renderer2D): void | Promise<void>;
+
+  /**
+   * Marks the overlay as dirty, indicating it needs to be re-rendered.
+   */
+  markDirty(): void {
+    this.isDirty = true;
+  }
+
+  /**
+   * Marks the overlay as clean, indicating it doesn't need to be re-rendered.
+   */
+  markClean(): void {
+    this.isDirty = false;
+  }
+
+  /**
+   * Checks if the overlay is dirty and needs to be re-rendered.
+   * @returns True if the overlay is dirty.
+   */
+  getIsDirty(): boolean {
+    return this.isDirty;
+  }
 
   /**
    * Emits an overlay-loaded event.
@@ -100,5 +127,13 @@ export abstract class BaseOverlay {
    */
   protected generateId(prefix = "overlay"): string {
     return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  /**
+   * Cleanup method to be called when the overlay is destroyed.
+   * Override this method in subclasses to perform specific cleanup.
+   */
+  destroy(): void {
+    // Base implementation - subclasses should override if needed
   }
 }
