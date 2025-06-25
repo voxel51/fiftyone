@@ -2,9 +2,17 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import React, { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { getSampleSrc, Sample } from "@fiftyone/state";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { BoundingBoxOverlay } from "../index";
-import { useLighter } from "./useLighter";
+import { ImageOverlay } from "../overlay/ImageOverlay";
+import { useLighter } from "./index";
 
 /**
  * Props for the HookBasedViewer component.
@@ -16,15 +24,18 @@ export interface HookBasedViewerProps {
   height?: number;
   /** Custom CSS class name */
   className?: string;
+  /** Sample to display */
+  sample: Sample;
 }
 
 /**
- * Example of using the useLighter hook.
+ * Example of using the useLighter hook with optional custom renderer and resource loader.
  */
 export const HookBasedViewer: React.FC<HookBasedViewerProps> = ({
   width,
   height,
   className = "",
+  sample,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [canvasDimensions, setCanvasDimensions] = useState({
@@ -32,6 +43,7 @@ export const HookBasedViewer: React.FC<HookBasedViewerProps> = ({
     height: 0,
   });
 
+  // Use the modified useLighter hook with optional dependencies
   const { isReady, overlayCount, addOverlay, clearOverlays } =
     useLighter(canvasRef);
 
@@ -45,6 +57,18 @@ export const HookBasedViewer: React.FC<HookBasedViewerProps> = ({
       canvas.parentElement!.getBoundingClientRect();
     setCanvasDimensions({ width: actualWidth, height: actualHeight });
   }, [canvasRef]);
+
+  useEffect(() => {
+    if (isReady) {
+      const mediaUrl = getSampleSrc(sample.urls[0].url!);
+      addOverlay(
+        new ImageOverlay({
+          src: mediaUrl,
+          maintainAspectRatio: true,
+        })
+      );
+    }
+  }, [isReady, addOverlay, sample]);
 
   const addRandomBoundingBox = useCallback(() => {
     if (canvasDimensions.width === 0 || canvasDimensions.height === 0) return;

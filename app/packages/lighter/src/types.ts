@@ -41,3 +41,13 @@ export interface TextOptions {
   padding?: number;
   maxWidth?: number;
 }
+
+/**
+ * Status of an overlay in the rendering pipeline.
+ */
+export type OverlayStatus =
+  | "pending"
+  | "decoded"
+  | "painting"
+  | "painted"
+  | "error";

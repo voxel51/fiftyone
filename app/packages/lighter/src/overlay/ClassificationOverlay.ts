@@ -2,9 +2,8 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import type { BaseOverlay, OverlayStatus } from "./BaseOverlay";
+import { BaseOverlay } from "./BaseOverlay";
 import type { Renderer2D } from "../renderer/Renderer2D";
-import type { EventBus } from "../event/EventBus";
 import type { Point, DrawStyle } from "../types";
 
 /**
@@ -21,37 +20,13 @@ export interface ClassificationOptions {
 /**
  * Classification overlay implementation.
  */
-export class ClassificationOverlay implements BaseOverlay {
-  readonly id: string;
-  name = "classification";
-  tags: string[] = [];
-  status: OverlayStatus = "pending";
-  private renderer?: Renderer2D;
-  private eventBus?: EventBus;
-
+export class ClassificationOverlay extends BaseOverlay {
   constructor(private options: ClassificationOptions) {
-    this.id = this.generateId();
-    this.tags = ["classification", "label"];
-  }
-
-  setRenderer(renderer: Renderer2D): void {
-    this.renderer = renderer;
-  }
-
-  attachEventBus(bus: EventBus): void {
-    this.eventBus = bus;
-    // Listen for undo/redo events
-    bus.on("undo", () => {
-      // Handle undo if needed
-    });
-    bus.on("redo", () => {
-      // Handle redo if needed
-    });
+    const id = `cls_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    super(id, "classification", ["classification", "label"]);
   }
 
   render(renderer: Renderer2D): void {
-    this.status = "painting";
-
     const text = this.options.showConfidence
       ? `${this.options.label} (${(this.options.confidence * 100).toFixed(1)}%)`
       : this.options.label;
@@ -65,15 +40,7 @@ export class ClassificationOverlay implements BaseOverlay {
       maxWidth: 200,
     });
 
-    this.status = "painted";
-
-    // Emit overlay-loaded event
-    if (this.eventBus) {
-      this.eventBus.emit({
-        type: "overlay-loaded",
-        detail: { id: this.id },
-      });
-    }
+    this.emitLoaded();
   }
 
   /**
@@ -114,9 +81,5 @@ export class ClassificationOverlay implements BaseOverlay {
    */
   shouldShowConfidence(): boolean {
     return this.options.showConfidence ?? false;
-  }
-
-  private generateId(): string {
-    return `cls_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 }
