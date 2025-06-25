@@ -3,6 +3,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import { globalPixiResourceLoader } from "../resource/GlobalPixiResourceLoader";
 import { PixiResourceLoader } from "../resource/PixiResourceLoader";
 import type { LoadOptions } from "../resource/ResourceLoader";
 
@@ -15,7 +16,7 @@ export const usePixiResourceLoader = () => {
   const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    const pixiResourceLoader = new PixiResourceLoader();
+    const pixiResourceLoader = globalPixiResourceLoader;
     setResourceLoader(pixiResourceLoader);
     setIsInitialized(true);
 

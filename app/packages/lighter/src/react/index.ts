@@ -3,11 +3,10 @@
  */
 
 // React components
-export { HookBasedViewer } from "./HookBasedViewer";
-export type { HookBasedViewerProps } from "./HookBasedViewer";
-export { CustomHooksExample } from "./CustomHooksExample";
+export { LighterSampleRenderer } from "./LighterSampleRenderer";
+export type { LighterSampleRendererProps } from "./LighterSampleRenderer";
 
 // React hooks
-export { useLighter } from "./useLighter";
+export { useLighterWithPixi as useLighter } from "./useLighterWithPixi";
 export { usePixiRenderer } from "./usePixiRenderer";
 export { usePixiResourceLoader } from "./usePixiResourceLoader";
