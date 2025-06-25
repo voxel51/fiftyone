@@ -479,7 +479,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         child_doc = copy.deepcopy(d)
         child_doc["run_state"] = ExecutionRunState.SCHEDULED
         child_doc.pop("num_partitions", None)
-        child_doc["group_id"] = ObjectId(parent_id)
+        child_doc["parent_id"] = ObjectId(parent_id)
         children = [
             {**child_doc, "_id": ObjectId()} for i in range(num_partitions)
         ]
@@ -869,7 +869,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
     def test_rerun_child_do_fail(self, mock_get_operator):
         mock_child_doc = mock.MagicMock(spec=DelegatedOperationDocument)
-        mock_child_doc.group_id = ObjectId()
+        mock_child_doc.parent_id = ObjectId()
 
         with patch.object(self.svc._repo, "get", return_value=mock_child_doc):
             with patch.object(

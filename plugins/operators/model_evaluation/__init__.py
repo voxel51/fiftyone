@@ -795,7 +795,8 @@ class ConfigureScenario(foo.Operator):
             return ShowOptionsMethod.CHECKBOX, {
                 "true": counts.get(True, 0),
                 "false": counts.get(False, 0),
-                "none": counts.get(None, 0),
+                # @todo consider supporting None
+                # "none": counts.get(None, 0),
             }
 
         # Retrieve distinct values (may be slow for large datasets)
@@ -821,6 +822,10 @@ class ConfigureScenario(foo.Operator):
 
         # NOTE: may be slow for large datasets
         values = dataset_or_view.count_values(field_name)
+
+        # @todo consider supporting None
+        values.pop(None, None)
+
         return (
             (ShowOptionsMethod.EMPTY, None)
             if not values
