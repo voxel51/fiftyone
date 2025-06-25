@@ -2,9 +2,17 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
+import { LIGHTER_EVENTS } from "../event/EventBus";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
 import type { Command } from "../undo/Command";
 import { UndoRedoManager } from "../undo/UndoRedoManager";
+import {
+  OVERLAY_STATUS_ERROR,
+  OVERLAY_STATUS_PAINTED,
+  OVERLAY_STATUS_PAINTING,
+  OVERLAY_STATUS_PENDING,
+  RenderingStateManager,
+} from "./RenderingStateManager";
 import type { Scene2DConfig } from "./SceneConfig";
 
 /**
@@ -14,6 +22,7 @@ export class Scene2D {
   private overlays = new Map<string, BaseOverlay>();
   private undoRedo = new UndoRedoManager();
   private overlayOrder: string[] = [];
+  private renderingState = new RenderingStateManager();
 
   constructor(private config: Scene2DConfig) {}
 
@@ -26,22 +35,26 @@ export class Scene2D {
    * @param overlay - The overlay to add.
    */
   addOverlay(overlay: BaseOverlay): void {
+    if (this.overlays.has(overlay.id)) {
+      return;
+    }
+
+    this.renderingState.setStatus(overlay.id, OVERLAY_STATUS_PENDING);
     // Inject renderer into overlay
     overlay.setRenderer(this.config.renderer);
 
     // Attach event bus
     overlay.attachEventBus(this.config.eventBus);
 
+    overlay.setResourceLoader(this.config.resourceLoader);
+
     // Add to internal tracking
     this.overlays.set(overlay.id, overlay);
     this.overlayOrder.push(overlay.id);
 
-    // Add to renderer
-    this.config.renderer.addOverlay(overlay);
-
-    // Emit overlay-loaded event when resource loading is complete
+    // Emit overlay-added event when overlay is added to scene
     this.config.eventBus.emit({
-      type: "overlay-loaded",
+      type: LIGHTER_EVENTS.OVERLAY_ADDED,
       detail: { id: overlay.id },
     });
   }
@@ -57,12 +70,12 @@ export class Scene2D {
       this.overlayOrder = this.overlayOrder.filter(
         (overlayId) => overlayId !== id
       );
-      this.config.renderer.removeOverlay(id);
+      this.renderingState.clear(id);
     }
 
     // Emit overlay-removed event
     this.config.eventBus.emit({
-      type: "overlay-removed",
+      type: LIGHTER_EVENTS.OVERLAY_REMOVED,
       detail: { id },
     });
   }
@@ -119,7 +132,7 @@ export class Scene2D {
 
     // Emit undo/redo event
     this.config.eventBus.emit({
-      type: "undo",
+      type: LIGHTER_EVENTS.UNDO,
       detail: { commandId: command.id },
     });
   }
@@ -131,7 +144,7 @@ export class Scene2D {
     const command = this.undoRedo.undo();
     if (command) {
       this.config.eventBus.emit({
-        type: "undo",
+        type: LIGHTER_EVENTS.UNDO,
         detail: { commandId: command.id },
       });
     }
@@ -144,7 +157,7 @@ export class Scene2D {
     const command = this.undoRedo.redo();
     if (command) {
       this.config.eventBus.emit({
-        type: "redo",
+        type: LIGHTER_EVENTS.REDO,
         detail: { commandId: command.id },
       });
     }
@@ -172,6 +185,7 @@ export class Scene2D {
   clear(): void {
     this.overlays.clear();
     this.overlayOrder = [];
+    this.renderingState.clearAll();
     this.config.renderer.clear();
   }
 
@@ -188,13 +202,67 @@ export class Scene2D {
    * Renders a single frame.
    */
   private renderFrame(): void {
-    // Render overlays in order
     for (const overlayId of this.overlayOrder) {
-      const overlay = this.overlays.get(overlayId);
-
-      if (overlay && overlay?.status !== "painted") {
-        overlay.render(this.config.renderer);
-      }
+      this.renderOverlay(overlayId);
     }
+  }
+
+  /**
+   * Renders a specific overlay if it's pending.
+   * @param overlayId - The ID of the overlay to render.
+   */
+  private renderOverlay(overlayId: string): void {
+    const overlay = this.overlays.get(overlayId);
+    const status = this.renderingState.getStatus(overlayId);
+
+    if (this.shouldRenderOverlay(overlay, status)) {
+      this.executeOverlayRender(overlayId, overlay!);
+    }
+  }
+
+  /**
+   * Determines if an overlay should be rendered.
+   * @param overlay - The overlay to check.
+   * @param status - The current rendering status.
+   * @returns True if the overlay should be rendered.
+   */
+  private shouldRenderOverlay(
+    overlay: BaseOverlay | undefined,
+    status: string
+  ): boolean {
+    return overlay !== undefined && status === OVERLAY_STATUS_PENDING;
+  }
+
+  /**
+   * Executes the rendering of an overlay with proper error handling.
+   * @param overlayId - The ID of the overlay being rendered.
+   * @param overlay - The overlay to render.
+   */
+  private executeOverlayRender(overlayId: string, overlay: BaseOverlay): void {
+    this.renderingState.setStatus(overlayId, OVERLAY_STATUS_PAINTING);
+
+    try {
+      const ret = overlay.render(this.config.renderer);
+      if (ret instanceof Promise) {
+        ret.then(() => {
+          this.renderingState.setStatus(overlayId, OVERLAY_STATUS_PAINTED);
+        });
+      } else {
+        this.renderingState.setStatus(overlayId, OVERLAY_STATUS_PAINTED);
+      }
+    } catch (error) {
+      this.handleRenderError(overlayId, error);
+    }
+  }
+
+  /**
+   * Handles rendering errors for an overlay.
+   * @param overlayId - The ID of the overlay that encountered an error.
+   * @param error - The error that occurred during rendering.
+   */
+  private handleRenderError(overlayId: string, error: unknown): void {
+    this.renderingState.setStatus(overlayId, OVERLAY_STATUS_ERROR);
+    // Optionally handle error - could emit an event or log the error
+    console.error(`Error rendering overlay ${overlayId}:`, error);
   }
 }

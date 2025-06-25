@@ -3,18 +3,57 @@
  */
 
 /**
+ * Event type constants for overlay events.
+ */
+export const LIGHTER_EVENTS = {
+  /** Emitted when an overlay is added to the scene */
+  OVERLAY_ADDED: "overlay-added",
+  /** Emitted when an overlay has finished loading resources and is ready */
+  OVERLAY_LOADED: "overlay-loaded",
+  /** Emitted when an overlay is removed from the scene */
+  OVERLAY_REMOVED: "overlay-removed",
+  /** Emitted when an overlay encounters an error during loading or rendering */
+  OVERLAY_ERROR: "overlay-error",
+  /** Emitted when an annotation is added to the scene. An annotation is an overlay after it's committed to the scene. */
+  ANNOTATION_ADDED: "annotation-added",
+  /** Emitted when an annotation is removed from the scene. An annotation is an overlay after it's committed to the scene. */
+  ANNOTATION_REMOVED: "annotation-removed",
+  /** Emitted when an undo operation is performed */
+  UNDO: "undo",
+  /** Emitted when a redo operation is performed */
+  REDO: "redo",
+  /** Emitted when a resource (image, texture, etc.) has finished loading. This doesn't apply to overlays that have no media. */
+  RESOURCE_LOADED: "resource-loaded",
+  /** Emitted when a resource fails to load. This doesn't apply to overlays that have no media. */
+  RESOURCE_ERROR: "resource-error",
+} as const;
+
+/**
  * Overlay events that can be emitted.
  */
 export type OverlayEvent =
-  | { type: "overlay-loaded"; detail: { id: string } }
-  | { type: "overlay-removed"; detail: { id: string } }
-  | { type: "overlay-error"; detail: { id: string; error: Error } }
-  | { type: "annotation-added"; detail: { id: string; annotation: any } }
-  | { type: "annotation-removed"; detail: { id: string } }
-  | { type: "undo"; detail: { commandId: string } }
-  | { type: "redo"; detail: { commandId: string } }
-  | { type: "resource-loaded"; detail: { url: string; resource: any } }
-  | { type: "resource-error"; detail: { url: string; error: Error } };
+  | { type: typeof LIGHTER_EVENTS.OVERLAY_ADDED; detail: { id: string } }
+  | { type: typeof LIGHTER_EVENTS.OVERLAY_LOADED; detail: { id: string } }
+  | { type: typeof LIGHTER_EVENTS.OVERLAY_REMOVED; detail: { id: string } }
+  | {
+      type: typeof LIGHTER_EVENTS.OVERLAY_ERROR;
+      detail: { id: string; error: Error };
+    }
+  | {
+      type: typeof LIGHTER_EVENTS.ANNOTATION_ADDED;
+      detail: { id: string; annotation: any };
+    }
+  | { type: typeof LIGHTER_EVENTS.ANNOTATION_REMOVED; detail: { id: string } }
+  | { type: typeof LIGHTER_EVENTS.UNDO; detail: { commandId: string } }
+  | { type: typeof LIGHTER_EVENTS.REDO; detail: { commandId: string } }
+  | {
+      type: typeof LIGHTER_EVENTS.RESOURCE_LOADED;
+      detail: { url: string; resource: any };
+    }
+  | {
+      type: typeof LIGHTER_EVENTS.RESOURCE_ERROR;
+      detail: { url: string; error: Error };
+    };
 
 /**
  * Event bus for communication between components.
