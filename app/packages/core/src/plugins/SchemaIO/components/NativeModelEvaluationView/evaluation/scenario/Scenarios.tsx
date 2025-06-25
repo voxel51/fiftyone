@@ -1332,8 +1332,9 @@ function ScenarioModelPerformanceChart(props) {
 }
 
 function ConfusionMatrixChart(props) {
-  const { scenario, compareScenario, loadView, trackEvent } = props;
+  const { scenario, compareScenario, loadView, trackEvent, data } = props;
   const { subsets, id } = scenario;
+  const compareKey = data?.view?.compareKey;
   const [subset, setSubset] = usePanelStatePartial(`${id}_cms`, subsets[0]);
   const subsetData = scenario.subsets_data[subset];
   const compareSubsetData = compareScenario?.subsets_data[subset];
@@ -1360,6 +1361,7 @@ function ConfusionMatrixChart(props) {
           config,
           evaluationMaskTargets,
           compareEvaluationMaskTargets,
+          true,
           true
         )?.plot,
       ]
@@ -1423,6 +1425,21 @@ function ConfusionMatrixChart(props) {
           <Stack sx={{ width: "50%" }}>
             <Plot
               data={comparePlotData}
+              onClick={({ points }) => {
+                const firstPoint = points[0];
+                const subsetDef = getSubsetDef(scenario, subset);
+                trackEvent("evaluation_plot_click", {
+                  id: scenario.id,
+                  subsetDef,
+                  plotName: "confusion_matrix",
+                });
+                loadView("matrix", {
+                  x: firstPoint.x,
+                  y: firstPoint.y,
+                  subset_def: subsetDef,
+                  key: compareKey,
+                });
+              }}
               tooltip={(event: any) => {
                 const [point] = event.points;
                 const x = point.x;
