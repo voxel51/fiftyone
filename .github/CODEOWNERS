@@ -7,9 +7,10 @@
 .prettierignore              @voxel51/frontend-devs
 .prettierrc.js               @voxel51/frontend-devs
 /app/                        @voxel51/frontend-devs
-/plugins/panels              @voxel51/plugin-pros
 /e2e-pw/                     @voxel51/frontend-devs
 /fiftyone/server/            @voxel51/frontend-devs
+/plugins/panels/             @voxel51/plugin-pros
+/fiftyone/operators/         @voxel51/plugin-pros
 
 # Backend
 /fiftyone/api/               @voxel51/backend-squad
