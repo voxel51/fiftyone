@@ -2111,14 +2111,14 @@ def _get_reload_saved_view_inputs(ctx, inputs):
     view_doc = ctx.dataset._get_saved_view_doc(name)
 
     if last_modified_at is None:
-        view = types.Notice(
+        view = types.Warning(
             label=f"Saved view '{name}' may need to be reloaded"
         )
         inputs.view("notice", view)
     elif last_modified_at > view_doc.last_modified_at:
         dt = last_modified_at - view_doc.last_modified_at
         dt_str = humanize.naturaldelta(dt)
-        view = types.Notice(
+        view = types.Warning(
             label=(
                 f"Saved view '{name}' may need to be reloaded.\n\n"
                 f"The dataset was last modified {dt_str} after the view was "
