@@ -259,8 +259,12 @@ class FramesView(fov.DatasetView):
         self._sync_source(fields=fields)
 
     def keep(self):
-        """Deletes all frames that are **not** in this view from the underlying
-        dataset.
+        """Deletes all frames that have been filtered from this view from the
+        underlying dataset.
+
+        This method **only** deletes frames that have been omitted by view
+        stages that you append to your :meth:`to_frames` view; it will not
+        delete frames that were not included in the root frames view.
 
         .. note::
 

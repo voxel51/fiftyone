@@ -299,8 +299,12 @@ class _PatchesView(fov.DatasetView):
         self._sync_source(fields=fields)
 
     def keep(self):
-        """Deletes all patches that are **not** in this view from the
+        """Deletes all patches that have been filtered from this view from the
         underlying dataset.
+
+        This method **only** deletes patches that have been omitted by view
+        stages that you append to your :meth:`to_patches` view; it will not
+        delete patches that were not included in the root patches view.
 
         .. note::
 
