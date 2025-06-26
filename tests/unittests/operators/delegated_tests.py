@@ -447,7 +447,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertIsNotNone(doc.result.error)
         self.assertNotEqual(doc.updated_at, original_updated_at)
 
-    @patch("fiftyone.core.odm.utils.load_dataset")
+    @patch("fiftyone.core.odm.load_dataset")
     def test_set_failed_for_partitioned_do(
         self, mock_load_dataset, mock_get_operator
     ):
