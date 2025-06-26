@@ -8173,8 +8173,10 @@ class ToPatches(ViewStage):
             name = None
 
         try:
-            last_dataset = fod.load_dataset(name)
-            last_dataset.reload()
+            # `_force_load=True` forces an exception to be raised if the
+            # dataset has been deleted but this process' singleton doesn't
+            # know about it
+            last_dataset = fod.Dataset(name, _create=False, _force_load=True)
         except:
             last_dataset = None
 
@@ -8334,7 +8336,10 @@ class ToEvaluationPatches(ViewStage):
             name = None
 
         try:
-            last_dataset = fod.load_dataset(name)
+            # `_force_load=True` forces an exception to be raised if the
+            # dataset has been deleted but this process' singleton doesn't
+            # know about it
+            last_dataset = fod.Dataset(name, _create=False, _force_load=True)
         except:
             last_dataset = None
 
@@ -8507,7 +8512,10 @@ class ToClips(ViewStage):
             name = None
 
         try:
-            last_dataset = fod.load_dataset(name)
+            # `_force_load=True` forces an exception to be raised if the
+            # dataset has been deleted but this process' singleton doesn't
+            # know about it
+            last_dataset = fod.Dataset(name, _create=False, _force_load=True)
         except:
             last_dataset = None
 
@@ -8657,7 +8665,10 @@ class ToTrajectories(ViewStage):
             name = None
 
         try:
-            last_dataset = fod.load_dataset(name)
+            # `_force_load=True` forces an exception to be raised if the
+            # dataset has been deleted but this process' singleton doesn't
+            # know about it
+            last_dataset = fod.Dataset(name, _create=False, _force_load=True)
         except:
             last_dataset = None
 
@@ -8863,7 +8874,10 @@ class ToFrames(ViewStage):
             name = None
 
         try:
-            last_dataset = fod.load_dataset(name)
+            # `_force_load=True` forces an exception to be raised if the
+            # dataset has been deleted but this process' singleton doesn't
+            # know about it
+            last_dataset = fod.Dataset(name, _create=False, _force_load=True)
         except:
             last_dataset = None
 
