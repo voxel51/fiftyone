@@ -4,11 +4,12 @@
 /package/graphql/ @voxel51/backend-squad @voxel51/frontend-devs
 
 # Frontend
-.prettierignore   @voxel51/frontend-devs
-.prettierrc.js    @voxel51/frontend-devs
-/app/             @voxel51/frontend-devs
-/e2e-pw/          @voxel51/frontend-devs
-/fiftyone/server/ @voxel51/frontend-devs
+.prettierignore              @voxel51/frontend-devs
+.prettierrc.js               @voxel51/frontend-devs
+/app/                        @voxel51/frontend-devs
+/plugins/panels              @voxel51/plugin-pros
+/e2e-pw/                     @voxel51/frontend-devs
+/fiftyone/server/            @voxel51/frontend-devs
 
 # Backend
 /fiftyone/api/         @voxel51/backend-squad
@@ -19,9 +20,7 @@
 /fiftyone/management/  @voxel51/backend-squad
 /fiftyone/migrations/  @voxel51/backend-squad
 
-# Aloha!
-
-Dockerfile             @voxel51/aloha-shirts
+# Aloha Shirts care about versioning
+setup.py         @voxel51/aloha-shirts
 requirements.txt @voxel51/aloha-shirts
-setup.py               @voxel51/aloha-shirts
-/requirements/         @voxel51/aloha-shirts
+requirements/    @voxel51/aloha-shirts
