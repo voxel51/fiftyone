@@ -5,8 +5,9 @@ FiftyOne Server ``/embeddings`` route.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-
+import logging
 import itertools
+import traceback
 
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
@@ -20,6 +21,7 @@ import fiftyone.server.utils as fosu
 import fiftyone.server.view as fosv
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
 
+logger = logging.getLogger(__name__)
 
 MAX_CATEGORIES = 100
 COLOR_BY_TYPES = (
@@ -39,7 +41,16 @@ class OnPlotLoad(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
         """Loads an embeddings plot based on the current view."""
-        return await run_sync_task(self._post_sync, data)
+        try :
+            return await run_sync_task(self._post_sync, data)
+        except Exception as e:
+            msg = "Unknown error occurred."
+            error_message = str(e)
+            stack = traceback.format_exc()
+            logger.error(msg)
+            logger.error(error_message)
+            logger.error(stack)
+            return {"error": msg, "details": error_message, "stack": stack}
 
     def _post_sync(self, data):
         dataset_name = data["datasetName"]
@@ -48,16 +59,17 @@ class OnPlotLoad(HTTPEndpoint):
         filters = data.get("filters", None)
         label_field = data["labelField"]
         slices = data["slices"]
-        dataset = fosu.load_and_cache_dataset(dataset_name)
 
         try:
+            dataset = fosu.load_and_cache_dataset(dataset_name)
             results = dataset.load_brain_results(brain_key)
-        except:
-            msg = (
-                "Failed to load results for brain run with key '%s'. Try "
-                "regenerating the results"
-            ) % brain_key
-            return {"error": msg}
+        except Exception as e:
+            msg = f"Failed to load results for brain run with key '{brain_key}'."
+            error_message = str(e)
+            stack = traceback.format_exc()
+            logger.error(stack)
+            ui_error = f"{msg} Try regenerating the results."
+            return {"error": ui_error, "details": error_message, "stack": stack}
 
         if results is None:
             msg = (
