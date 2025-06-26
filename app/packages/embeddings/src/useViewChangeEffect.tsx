@@ -7,6 +7,7 @@ import { useBrainResult, usePointsField } from "./useBrainResult";
 import { useColorByField } from "./useLabelSelector";
 import { useWarnings } from "./useWarnings";
 import { PlotResponse, PlotSuccessResponse } from "./types";
+import { NetworkError } from "@fiftyone/utilities";
 
 
 
@@ -44,13 +45,25 @@ export function useViewChangeEffect() {
     setLoadingPlot(true);
     fetchPlot({ datasetName, brainKey, view, labelField, slices })
       .catch((err: Error) => {
-        setLoadingPlotError({
-          message: err.message,
-          stack: err.stack,
-        });
+        if (err instanceof NetworkError) {
+          setLoadingPlotError({
+            message: "Network Error",
+            stack: [
+              err.stack,
+              "See console for network error details."
+            ].join("\n"),
+          });
+        } else {
+          setLoadingPlotError({
+            message: err.message,
+            stack: err.stack,
+          });
+        }
       })
       .then((res: PlotResponse) => {
         warnings.clear();
+
+        if (!res) return;
 
         if ('error' in res && res.error) {
           setLoadingPlotError(res);
