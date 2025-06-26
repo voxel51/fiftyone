@@ -8174,6 +8174,7 @@ class ToPatches(ViewStage):
 
         try:
             last_dataset = fod.load_dataset(name)
+            last_dataset.reload()
         except:
             last_dataset = None
 
