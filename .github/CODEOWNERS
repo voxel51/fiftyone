@@ -12,15 +12,15 @@
 /fiftyone/server/            @voxel51/frontend-devs
 
 # Backend
-/fiftyone/api/         @voxel51/backend-squad
-/fiftyone/core/        @voxel51/backend-squad
+/fiftyone/api/               @voxel51/backend-squad
+/fiftyone/core/              @voxel51/backend-squad
 /fiftyone/core/models.py
-/fiftyone/factory/     @voxel51/backend-squad
-/fiftyone/internal/    @voxel51/backend-squad
-/fiftyone/management/  @voxel51/backend-squad
-/fiftyone/migrations/  @voxel51/backend-squad
+/fiftyone/factory/           @voxel51/backend-squad
+/fiftyone/internal/          @voxel51/backend-squad
+/fiftyone/management/        @voxel51/backend-squad
+/fiftyone/migrations/        @voxel51/backend-squad
 
 # Aloha Shirts care about versioning
-setup.py         @voxel51/aloha-shirts
-requirements.txt @voxel51/aloha-shirts
-requirements/    @voxel51/aloha-shirts
+setup.py                     @voxel51/aloha-shirts
+requirements.txt             @voxel51/aloha-shirts
+requirements/                @voxel51/aloha-shirts
