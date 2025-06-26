@@ -1322,8 +1322,8 @@ class DatasetView(foc.SampleCollection):
         self._dataset._clear_frames(view=self)
 
     def keep(self):
-        """Deletes all samples that are **not** in the view from the underlying
-        dataset.
+        """Deletes all samples that have been filtered from this view from the
+        underlying dataset.
 
         .. note::
 

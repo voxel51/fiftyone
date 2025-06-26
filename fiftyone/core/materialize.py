@@ -216,8 +216,12 @@ class MaterializedView(fov.DatasetView):
         self._sync_source(fields=fields)
 
     def keep(self):
-        """Deletes all samples that are **not** in this view from the underlying
-        dataset.
+        """Deletes all samples that are **not** in this view from the
+        underlying dataset.
+
+        This method **only** deletes samples that have been omitted by view
+        stages that you append to your :meth:`materialize` view; it will not
+        delete samples that were not included in the root materialized view.
 
         .. note::
 

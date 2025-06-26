@@ -290,8 +290,12 @@ class ClipsView(fov.DatasetView):
         super().save(fields=fields)
 
     def keep(self):
-        """Deletes all clips that are **not** in this view from the underlying
-        dataset.
+        """Deletes all clips that have been filtered from this view from the
+        underlying dataset.
+
+        This method **only** deletes clips that have been omitted by view
+        stages that you append to your :meth:`to_clips` view; it will not
+        delete clips that were not included in the root clips view.
 
         .. note::
 
