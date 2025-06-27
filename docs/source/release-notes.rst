@@ -30,7 +30,7 @@ Other
   with a body.
 - Fixed access issue with some temp and generated datasets, where a user who
   should have access did not.
-
+- Fixed vulnerabilities in `cryptography`, `requests`, and `protobuf` libraries
 
 .. _release-notes-v1.7.0:
 
@@ -606,7 +606,7 @@ Core
   `#5730 <https://github.com/voxel51/fiftyone/pull/5730>`_
 - Fixed a bug where default dataset name generation could result in a collision
   `#5759 <https://github.com/voxel51/fiftyone/pull/5759>`_
-- Fix vulnerabilities in `setuptools` and CVE-2025-22151 in
+- Fixed vulnerabilities in `setuptools` and CVE-2025-22151 in
   `strawberry-graphql`
   `#5719 <https://github.com/voxel51/fiftyone/pull/5719>`_,
   `#5735 <https://github.com/voxel51/fiftyone/pull/5735>`_
