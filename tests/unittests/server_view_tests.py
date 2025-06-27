@@ -96,6 +96,17 @@ class ServerViewTests(unittest.TestCase):
         self.assertEqual(len(view.first().predictions.detections), 1)
 
         filters = {
+            "predictions.detections.confidence": {
+                "range": [0.5, None],
+                "exclude": False,
+                "isMatching": False,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 1)
+        self.assertEqual(len(view.first().predictions.detections), 1)
+
+        filters = {
             "list_str": {
                 "values": ["one"],
                 "exclude": False,
