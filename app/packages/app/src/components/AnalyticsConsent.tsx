@@ -1,7 +1,7 @@
-import { DEFAULT_WRITE_KEYS, useAnalyticsInfo } from "@fiftyone/analytics";
+import { DEFAULT_WRITE_KEYS, useAnalyticsInfo, useTrackEvent } from "@fiftyone/analytics";
 import { Box, Grid, Link, Typography, Button } from "@mui/material";
 import React, { useCallback, useEffect, useState } from "react";
-import type { NavGA$data } from "./__generated__/NavGA.graphql";
+import type { Analytics$data } from "./__generated__/Analytics.graphql";
 
 const FIFTYONE_DO_NOT_TRACK_LS = "fiftyone-do-not-track";
 
@@ -14,7 +14,9 @@ function useAnalyticsConsent(disabled?: boolean) {
       setShow(false);
       setReady(true);
     } else {
+      // Show popup for new users (no preference set yet)
       setShow(true);
+      setReady(true);
     }
   }, [disabled, doNotTrack]);
 
@@ -24,16 +26,16 @@ function useAnalyticsConsent(disabled?: boolean) {
     setReady(true);
   }, []);
 
-  const handleEnable = useCallback(() => {
+  const handleAllow = useCallback(() => {
     window.localStorage.setItem(FIFTYONE_DO_NOT_TRACK_LS, "false");
-    setReady(true);
     setShow(false);
+    setReady(true);
   }, []);
 
   return {
     doNotTrack: doNotTrack === "true" || disabled,
     handleDisable,
-    handleEnable,
+    handleAllow,
     ready,
     show,
   };
@@ -44,11 +46,11 @@ export default function AnalyticsConsent({
   info,
 }: {
   callGA: () => void;
-  info: NavGA$data;
+  info: Analytics$data;
 }) {
   const [_, setAnalyticsInfo] = useAnalyticsInfo();
 
-  const { doNotTrack, handleDisable, handleEnable, ready, show } =
+  const { doNotTrack, handleDisable, handleAllow, ready, show } =
     useAnalyticsConsent(info.doNotTrack);
 
   useEffect(() => {
@@ -73,12 +75,15 @@ export default function AnalyticsConsent({
 
   return (
     <PinBottom>
+      <ConsentTracker />
       <Grid
         container
         direction="column"
         alignItems="center"
-        borderTop={(theme) => `1px solid ${theme.palette.divider}`}
-        backgroundColor="background.paper"
+        sx={{
+          borderTop: (theme) => `1px solid ${theme.palette.divider}`,
+          backgroundColor: "background.paper",
+        }}
       >
         <Grid padding={2}>
           <Typography variant="h6" marginBottom={1}>
@@ -86,7 +91,7 @@ export default function AnalyticsConsent({
           </Typography>
           <Typography marginBottom={1}>
             We use cookies to understand how FiftyOne is used and improve the
-            product. You can help us by enabling anonymous analytics.
+            product. You can help us by allowing anonymous analytics.
           </Typography>
           <Grid container gap={2} justifyContent="end" direction="row">
             <Grid item alignContent="center">
@@ -99,8 +104,8 @@ export default function AnalyticsConsent({
               </Link>
             </Grid>
             <Grid item>
-              <Button variant="contained" onClick={handleEnable}>
-                Enable
+              <Button variant="contained" onClick={handleAllow}>
+                Allow
               </Button>
             </Grid>
           </Grid>
@@ -117,4 +122,12 @@ function PinBottom({ children }: React.PropsWithChildren) {
       {children}
     </Box>
   );
+}
+
+function ConsentTracker() {
+  const trackEvent = useTrackEvent();
+  useEffect(() => {
+    trackEvent("analytics-consent-shown");
+  }, [trackEvent]);
+  return null;
 }
