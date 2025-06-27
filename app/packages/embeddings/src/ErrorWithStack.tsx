@@ -11,9 +11,9 @@ export default function ErrorWithStack({ error }) {
         paddingTop: 8
       }}
     >
-      <Typography variant="h6" gutterBottom>
-        {error.error}
-      </Typography>
+      {error.message && (<Typography variant="h6" gutterBottom>
+        {error.message}
+      </Typography>)}
       {error.details && (
         <Typography variant="subtitle1" color="text.secondary" gutterBottom>
           {error.details}
