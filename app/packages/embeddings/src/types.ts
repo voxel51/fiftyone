@@ -1,16 +1,10 @@
 /**
- * Represents an error returned from the embeddings plot API.
- */
-export type PlotError = {
-    message: string;
-    stack: string;
-};
-
-/**
  * Response type for an error from the plot API.
  */
 export type PlotErrorResponse = {
-    error: PlotError;
+    error: string;
+    stack: string;
+    details?: string;
 };
 
 /**

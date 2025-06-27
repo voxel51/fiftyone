@@ -6,7 +6,7 @@ import { fetchPlot } from "./fetch";
 import { useBrainResult, usePointsField } from "./useBrainResult";
 import { useColorByField } from "./useLabelSelector";
 import { useWarnings } from "./useWarnings";
-import { PlotResponse, PlotSuccessResponse } from "./types";
+import { PlotErrorResponse, PlotResponse, PlotSuccessResponse } from "./types";
 import { NetworkError } from "@fiftyone/utilities";
 
 
@@ -66,7 +66,12 @@ export function useViewChangeEffect() {
         if (!res) return;
 
         if ('error' in res && res.error) {
-          setLoadingPlotError(res);
+          res = res as PlotErrorResponse;
+          setLoadingPlotError({
+            message: res.error,
+            details: res.details,
+            stack: res.stack,
+          });
           return;
         }
 
