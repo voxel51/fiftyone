@@ -698,7 +698,7 @@ def _make_scalar_expression(f, args, field, list_field=None, is_label=False):
     if _is_support(field):
         if "range" in args:
             mn, mx = args["range"]
-            if mn is not None and max is not None:
+            if mn is not None and mx is not None:
                 expr = (f[0] >= mn) & (f[1] <= mx)
             elif mn is not None:
                 expr = f[0] >= mn
