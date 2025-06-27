@@ -3,6 +3,146 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.10.0
+-------------------------
+*Released June 30, 2025*
+
+Includes all updates from :ref:`FiftyOne 1.7.0 <release-notes-v1.7.0>`, plus:
+
+Management SDK
+
+- The FiftyOne Management SDK now supports Registering, Listing, Deleting and
+  Getting Orchestrators for Admin users.
+- The FiftyOne Management SDK now supports secret management.
+
+CLI
+
+- Orchestrators can now be managed from the command line. Use "fiftyone
+  orchestrator --help" to get started.
+
+Other
+
+- Optimized executor by skipping the sleep step if there is immediately more
+  work to execute.
+- Introduced SanicWorkerSettings to enable configuration of the Sanic worker
+  timeout threshold (default is 60 seconds).
+- Fixed "not consumed" error that could occur when receiving an OPTIONS request
+  with a body.
+- Fixed access issue with some temp and generated datasets, where a user who
+  should have access did not.
+
+
+.. _release-notes-v1.7.0:
+
+FiftyOne 1.7.0
+--------------
+*Released June 30, 2025*
+
+Improved support for PCD and 3D point clouds
+
+- Introduced a dynamic Point Cloud Data (PCD) loader with enhanced attribute
+  handling and :ref:`Dynamic point cloud coloring <app-3d-dynamic-coloring>`.
+  `#5973 <https://github.com/voxel51/fiftyone/pull/5973>`_
+- Improved 3D visualization in grid with enhanced background and overlay
+  features. `#5976 <https://github.com/voxel51/fiftyone/pull/5976>`_
+- Added support for selecting both positive and negative axis directions ("X",
+  "Y", "Z", "-X", "-Y", "-Z") as the up vector in 3D scene controls and camera
+  settings, allowing for more flexible scene orientation with arbitrary up
+  vector orientations. `#6035 <https://github.com/voxel51/fiftyone/pull/6035>`_
+- Improved quality of life for 3D visualizations: Added interactive point cloud
+  tooltips that show point metadata (RGB, intensity, index, position); Fixee
+  the "assets-shifting" artifact on load; Added configurable ray casting
+  sensitivity (high/medium/low) for better point selection; Introduced
+  auto-rotate camera option; Camera position is now persistent across sessions;
+  Improved point cloud material handling for intensity-based coloring; Updated
+  FPS viewer to better support airgapped deployments.
+  `#5951 <https://github.com/voxel51/fiftyone/pull/5951>`_
+- Added support for an `intensity` field, and allow for manipulating the "up"
+  vector dynamically in the app -- which is then persisted in browser storage.
+  `#5935 <https://github.com/voxel51/fiftyone/pull/5935>`_
+
+App
+
+- Optimized :ref:`dynamic groups <app-query-performant-stages>` via the new
+  `order_by_key` parameter 
+  `#5961 <https://github.com/voxel51/fiftyone/pull/5961>`_
+- Optimized performance and resource usage of the Grid.
+  `#6056 <https://github.com/voxel51/fiftyone/pull/6056>`_
+- Optimized query usage for sidebar, grid, and sample pagination requests:
+  Introduced user-facing timeout indicators with detailed messages and icons in
+  relevant UI components; Enhanced GraphQL API and backend to handle and expose
+  query timeout information for aggregations and sample queries; Added a new
+  configuration option for maximum query time with a default of 60 seconds.
+  `#5842 <https://github.com/voxel51/fiftyone/pull/5842>`_
+- Added manual input for int and float field filters in the sidebar
+  `#5996 <https://github.com/voxel51/fiftyone/pull/5996>`_
+- Fixed a bug with the prediction statistics stacked bar chart in
+  :ref:`Scenario Analysis <app-scenario-analysis>`.
+  `#6060 <https://github.com/voxel51/fiftyone/pull/6060>`_
+- Fixed a bug resulting in an incorrect confusion matrix colorscale in
+  :ref:`Scenario Analysis <app-scenario-analysis>`.
+  `#6057 <https://github.com/voxel51/fiftyone/pull/6057>`_
+- Improved handling and displaying of embeddings plot loading errors in the
+  :ref:`Embeddings Panel <app-embeddings-panel>`.
+  `#5997 <https://github.com/voxel51/fiftyone/pull/5997>`_
+
+Core
+
+- Improved worker recommendation logic on macOS by removing the default that
+  set the number of workers to zero, allowing better parallelism on macOS
+  systems. `#5939 <https://github.com/voxel51/fiftyone/pull/5939>`_
+- Enable users to set confidence threshold via `model.config.confidence_thresh`
+  when loading a model, and updated Ultralytics confidence based on
+  `confidence_thresh` set during `apply_model` (this will override the
+  confidence threshold set at model initialization).
+  `#5893 <https://github.com/voxel51/fiftyone/pull/5893>`_
+
+
+Model Zoo
+
+- Added `group-vit-segmentation-transformer-torch` to FiftyOne Model Zoo.
+  `#5924 <https://github.com/voxel51/fiftyone/pull/5924>`_
+- All `YOLOv5` have been updated to use `ultralytics/ultralytics` YOLOv5 models
+  `#5938 <https://github.com/voxel51/fiftyone/pull/5938>`_
+- Fixed the Centernet MobileNet-V2 FPN TF-2 model in the Model Zoo
+  (`centernet-mobilenet-v2-fpn-512-coco-tf2`) so it now downloads and loads
+  correctly (`foz.load_zoo_model`) on all platforms.
+  `#5977 <https://github.com/voxel51/fiftyone/pull/5977>`_
+- Fixed: Added the missing `sam2` requirement so SAM-2 and SAM-2.1 image models
+  now load out-of-the-box.
+  `#5920 <https://github.com/voxel51/fiftyone/pull/5920>`_
+- Corrected `size_bytes` metadata for the three original Segment-Anything ViT
+  checkpoints (`vitb`, `vitl`, `vith`) so disk-space checks and download
+  progress indicators are accurate.
+  `#5936 <https://github.com/voxel51/fiftyone/pull/5936>`_
+- Corrected `size_bytes` metadata for Ultralytics YOLOv5 (n, s, m, l, x) models
+  in the Torch model manifest to reflect accurate downloaded file sizes.
+  `#5919 <https://github.com/voxel51/fiftyone/pull/5919>`_
+- Corrected `size_bytes` metadata for MedSAM 2 and four Ultralytics YOLO
+  models. `#5950 <https://github.com/voxel51/fiftyone/pull/5950>`_
+- Corrected `size_bytes` metadata for various SAM 2 and SAM 2.1 Hiera "Small",
+  "Base Plus", and "Large" variants.
+  `#5898 <https://github.com/voxel51/fiftyone/pull/5898>`_
+- Improved :ref:`Hugging Face Transformers <huggingface-transformers>` warning
+  messages to provide clearer guidance on handling class conflicts.
+  `#5913 <https://github.com/voxel51/fiftyone/pull/5913>`_
+
+Docs
+
+- Clarified in Ultralytics documentation how to achieve full batch inference.
+  `#5895 <https://github.com/voxel51/fiftyone/pull/5895>`_
+- Fixed a number of typographical errors in documentation, READMEs, and comments.
+  `#5908 <https://github.com/voxel51/fiftyone/pull/5908>`_,
+  `#5991 <https://github.com/voxel51/fiftyone/pull/5991>`_,
+  `#5998 <https://github.com/voxel51/fiftyone/pull/5998>`_,
+  `#6011 <https://github.com/voxel51/fiftyone/pull/6011>`_,
+  `#6012 <https://github.com/voxel51/fiftyone/pull/6012>`_,
+  `#6013 <https://github.com/voxel51/fiftyone/pull/6013>`_,
+  `#6022 <https://github.com/voxel51/fiftyone/pull/6022>`_,
+  `#6025 <https://github.com/voxel51/fiftyone/pull/6025>`_,
+  `#6026 <https://github.com/voxel51/fiftyone/pull/6026>`_
+
+
 FiftyOne Enterprise 2.9.1
 -------------------------
 *Released June 24, 2025*
@@ -210,7 +350,7 @@ Zoo
   `#5836 <https://github.com/voxel51/fiftyone/pull/5836>`_
 - Torch models can now provide custom collate functions via the new
   :meth:`collate_fn <fiftyone.core.models.TorchModelMixin.collate_fn>` method
-  `#5851 <https://github.com/voxel51/fiftyone/pull/5851>`_
+  `#5834 <https://github.com/voxel51/fiftyone/pull/5834>`_
 
 Annotation
 
