@@ -16,11 +16,15 @@ export const useBrowserStorage = <T = string>(
 
   // Pass initial state function to useState so logic is only executed once
   const [storedValue, setStoredValue] = useState<T>(() => {
-    const item = storage.getItem(key);
+    let item = storage.getItem(key);
 
     if (item) {
       if (parseFn) {
         return parseFn.parse(item);
+      }
+      // Workaround for existing "undefined" values in storage
+      if (item === "undefined") {
+        return;
       }
 
       return JSON.parse(item);
@@ -44,12 +48,17 @@ export const useBrowserStorage = <T = string>(
         setStoredValue(value);
       }
 
+      // Convert undefined to null to avoid "undefined" values in storage
+      if (valueToStore === undefined) {  
+        valueToStore = null;
+      }
+
       storage.setItem(
         key,
         parseFn ? parseFn.stringify(valueToStore) : JSON.stringify(valueToStore)
       );
     },
-    [key, storage]
+    [key, storage, parseFn]
   );
 
   return [storedValue, setValue] as const;
