@@ -42,6 +42,8 @@ class ClipView(fos.SampleView):
             filtered in this view
     """
 
+    __slots__ = ()
+
     @property
     def _sample_id(self):
         return ObjectId(self._doc.sample_id)

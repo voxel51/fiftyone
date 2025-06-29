@@ -61,6 +61,25 @@ class DynamicEmbeddedDocument(
         self.validate()
 
     def __setattr__(self, name, value):
+        # mongoengine doesn't allow private dynamic attributes out of the box
+        # but this `if` block forces it
+        if (
+            not hasattr(self, name)
+            and name.startswith("_")
+            and name not in _RESERVED_KEYWORDS
+            and name not in self._fields_ordered
+        ):
+            field = mongoengine.DynamicField(db_field=name, null=True)
+            field.name = name
+            self._dynamic_fields[name] = field
+            self._fields_ordered += (name,)
+
+            try:
+                # pylint: disable=no-member
+                value = self._BaseDocument__expand_dynamic_values(name, value)
+            except:
+                pass
+
         try:
             super().__setattr__(name, value)
         except AttributeError as e:
@@ -117,3 +136,21 @@ class DynamicEmbeddedDocument(
             )
 
         return field
+
+
+# https://github.com/MongoEngine/mongoengine/blob/e51ee40e7dad8e147992ae762e99a0c189a69028/mongoengine/base/document.py#L50
+_RESERVED_KEYWORDS = {
+    # from __slots__
+    "_changed_fields",
+    "_initialised",
+    "_created",
+    "_data",
+    "_dynamic_fields",
+    "_auto_id_field",
+    "_db_field_map",
+    "__weakref__",
+    # not in __slots__ but still reserved
+    "_instance",
+    "_fields",
+    "_fields_ordered",
+}

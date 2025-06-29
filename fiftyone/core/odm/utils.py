@@ -121,13 +121,19 @@ def deserialize_value(value):
     return value
 
 
-def validate_field_name(field_name, media_type=None, is_frame_field=False):
+def validate_field_name(
+    field_name,
+    media_type=None,
+    is_frame_field=False,
+    allow_private=False,
+):
     """Verifies that the given field name is valid.
 
     Args:
         field_name: the field name
         media_type (None): the media type of the sample, if known
         is_frame_field (False): whether this is a frame-level field
+        allow_private (False): whether to allow names that start with ``"_"``
 
     Raises:
         ValueError: if the field name is invalid
@@ -145,7 +151,7 @@ def validate_field_name(field_name, media_type=None, is_frame_field=False):
             "Invalid field name '%s'. Field names cannot be empty" % field_name
         )
 
-    if any(c.startswith("_") for c in chunks):
+    if not allow_private and any(c.startswith("_") for c in chunks):
         raise ValueError(
             "Invalid field name: '%s'. Field names cannot start with '_'"
             % field_name
@@ -287,19 +293,23 @@ def create_field(
     return field
 
 
-def create_implied_field(path, value, dynamic=False):
+def create_implied_field(path, value, dynamic=False, include_private=False):
     """Creates the field for the given value.
 
     Args:
         path: the field name or path
         value: a value
         dynamic (False): whether to declare dynamic embedded document fields
+        include_private (False): whether to declare private embedded document
+            fields
 
     Returns:
         a :class:`fiftyone.core.fields.Field`
     """
     field_name = path.rsplit(".", 1)[-1]
-    kwargs = get_implied_field_kwargs(value, dynamic=dynamic)
+    kwargs = get_implied_field_kwargs(
+        value, dynamic=dynamic, include_private=include_private
+    )
     return create_field(field_name, **kwargs)
 
 
@@ -362,13 +372,15 @@ def _parse_field_str(field_str):
     return kwargs
 
 
-def get_implied_field_kwargs(value, dynamic=False):
+def get_implied_field_kwargs(value, dynamic=False, include_private=False):
     """Infers the field keyword arguments dictionary for a field that can hold
     the given value.
 
     Args:
         value: a value
         dynamic (False): whether to declare dynamic embedded document fields
+        include_private (False): whether to declare private embedded document
+            fields
 
     Returns:
         a field specification dict
@@ -377,7 +389,9 @@ def get_implied_field_kwargs(value, dynamic=False):
         return {
             "ftype": fof.EmbeddedDocumentField,
             "embedded_doc_type": type(value),
-            "fields": _parse_embedded_doc_fields(value, dynamic),
+            "fields": _parse_embedded_doc_fields(
+                value, dynamic, include_private
+            ),
         }
 
     if isinstance(value, (bool, np.bool_)):
@@ -416,7 +430,9 @@ def get_implied_field_kwargs(value, dynamic=False):
 
             if value_type == fof.EmbeddedDocumentField:
                 document_type = _get_list_subfield_type(value)
-                fields = _parse_embedded_doc_list_fields(value, dynamic)
+                fields = _parse_embedded_doc_list_fields(
+                    value, dynamic, include_private
+                )
                 kwargs["embedded_doc_type"] = document_type
                 kwargs["fields"] = fields
 
@@ -436,7 +452,7 @@ def get_implied_field_kwargs(value, dynamic=False):
     )
 
 
-def _get_field_kwargs(value, field, dynamic):
+def _get_field_kwargs(value, field, dynamic, include_private):
     kwargs = {
         "ftype": type(field),
         "db_field": field.db_field,
@@ -451,17 +467,21 @@ def _get_field_kwargs(value, field, dynamic):
         if field is not None:
             kwargs["subfield"] = type(field)
             if isinstance(field, fof.EmbeddedDocumentField):
-                fields = _parse_embedded_doc_list_fields(value, dynamic)
+                fields = _parse_embedded_doc_list_fields(
+                    value, dynamic, include_private
+                )
                 kwargs["embedded_doc_type"] = field.document_type
                 kwargs["fields"] = fields
     elif isinstance(field, fof.EmbeddedDocumentField):
         kwargs["embedded_doc_type"] = field.document_type
-        kwargs["fields"] = _parse_embedded_doc_fields(value, dynamic)
+        kwargs["fields"] = _parse_embedded_doc_fields(
+            value, dynamic, include_private
+        )
 
     return kwargs
 
 
-def _parse_embedded_doc_fields(doc, dynamic):
+def _parse_embedded_doc_fields(doc, dynamic, include_private):
     fields = []
 
     is_label = isinstance(doc, fol.Label)
@@ -471,8 +491,11 @@ def _parse_embedded_doc_fields(doc, dynamic):
             continue
 
         value = getattr(doc, name, None)
-        if value is not None and not name.startswith("_"):
-            kwargs = _get_field_kwargs(value, field, dynamic)
+        if value is None:
+            continue
+
+        if not name.startswith("_") or (include_private and name != "_cls"):
+            kwargs = _get_field_kwargs(value, field, dynamic, include_private)
             kwargs["name"] = name
             fields.append(kwargs)
 
@@ -481,10 +504,15 @@ def _parse_embedded_doc_fields(doc, dynamic):
 
     for name in doc._dynamic_fields.keys():
         value = getattr(doc, name, None)
-        if value is not None and not name.startswith("_"):
+        if value is None:
+            continue
+
+        if not name.startswith("_") or (include_private and name != "_cls"):
             db_field = name if not isinstance(value, ObjectId) else "_" + name
 
-            kwargs = get_implied_field_kwargs(value, dynamic=dynamic)
+            kwargs = get_implied_field_kwargs(
+                value, dynamic=dynamic, include_private=include_private
+            )
             kwargs["name"] = name
             kwargs["db_field"] = db_field
             fields.append(kwargs)
@@ -492,13 +520,13 @@ def _parse_embedded_doc_fields(doc, dynamic):
     return fields
 
 
-def _parse_embedded_doc_list_fields(values, dynamic):
+def _parse_embedded_doc_list_fields(values, dynamic, include_private):
     if not values:
         return []
 
     fields_dict = {}
     for value in values:
-        fields = _parse_embedded_doc_fields(value, dynamic)
+        fields = _parse_embedded_doc_fields(value, dynamic, include_private)
         _merge_embedded_doc_fields(fields_dict, fields)
 
     return _finalize_embedded_doc_fields(fields_dict)

@@ -528,7 +528,8 @@ def _flatten(
         field = field.field
 
     if isinstance(field, EmbeddedDocumentField):
-        for name, _field in field.get_field_schema().items():
+        _schema = field.get_field_schema(include_private=include_private)
+        for name, _field in _schema.items():
             _flatten(
                 schema,
                 prefix,

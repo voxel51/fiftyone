@@ -131,12 +131,13 @@ class DatasetMixin(object):
         field_name,
         value,
         create=True,
-        validate=True,
         dynamic=False,
-        _enforce_read_only=True,
+        validate=True,
+        allow_private=False,
+        enforce_read_only=True,
     ):
         field = self._get_field(field_name, allow_missing=True)
-        if getattr(field, "read_only", False) and _enforce_read_only:
+        if getattr(field, "read_only", False) and enforce_read_only:
             raise ValueError("Cannot edit read-only field '%s'" % field.path)
 
         chunks = field_name.split(".", 1)
@@ -176,8 +177,9 @@ class DatasetMixin(object):
                     field_name,
                     value,
                     expand_schema=True,
-                    validate=validate,
                     dynamic=dynamic,
+                    validate=validate,
+                    allow_private=allow_private,
                 )
             else:
                 raise ValueError(
@@ -192,8 +194,9 @@ class DatasetMixin(object):
                     field_name,
                     value,
                     expand_schema=create,
-                    validate=validate,
                     dynamic=dynamic,
+                    validate=validate,
+                    allow_private=allow_private,
                 )
 
         if len(chunks) > 1:
@@ -281,6 +284,7 @@ class DatasetMixin(object):
         expand_schema=True,
         recursive=True,
         validate=True,
+        allow_private=False,
         overwrite=False,
     ):
         """Merges the field schema into this document.
@@ -295,6 +299,8 @@ class DatasetMixin(object):
                 fields
             validate (True): whether to validate fields against existing fields
                 at the same path
+            allow_private (False): whether to allow new private fields to be
+                created
             overwrite (False): whether to overwrite the editable metadata of
                 existing fields
 
@@ -320,6 +326,7 @@ class DatasetMixin(object):
                 path,
                 field,
                 validate=validate,
+                allow_private=allow_private,
                 recursive=recursive,
                 overwrite=overwrite,
             )
@@ -353,6 +360,7 @@ class DatasetMixin(object):
                 path,
                 media_type=media_type,
                 is_frame_field=is_frame_field,
+                allow_private=allow_private,
             )
 
         # Silently skip updating metadata of any read-only fields
@@ -393,6 +401,7 @@ class DatasetMixin(object):
         expand_schema=True,
         recursive=True,
         validate=True,
+        allow_private=False,
         **kwargs,
     ):
         """Adds a new field or embedded field to the document, if necessary.
@@ -423,6 +432,8 @@ class DatasetMixin(object):
                 fields
             validate (True): whether to validate the field against an existing
                 field at the same path
+            allow_private (False): whether to allow new private fields to be
+                created
 
         Returns:
             True/False whether one or more fields or embedded fields were added
@@ -449,6 +460,7 @@ class DatasetMixin(object):
             expand_schema=expand_schema,
             recursive=recursive,
             validate=validate,
+            allow_private=allow_private,
         )
 
     @classmethod
@@ -460,6 +472,7 @@ class DatasetMixin(object):
         dynamic=False,
         recursive=True,
         validate=True,
+        allow_private=False,
     ):
         """Adds the field or embedded field to the document, if necessary,
         inferring the field type from the provided value.
@@ -476,6 +489,8 @@ class DatasetMixin(object):
                 fields
             validate (True): whether to validate the field against an existing
                 field at the same path
+            allow_private (False): whether to allow new private fields to be
+                created
 
         Returns:
             True/False whether one or more fields or embedded fields were added
@@ -485,13 +500,19 @@ class DatasetMixin(object):
             ValueError: if a field in the schema is not compliant with an
                 existing field of the same name
         """
-        field = create_implied_field(path, value, dynamic=dynamic)
+        field = create_implied_field(
+            path,
+            value,
+            dynamic=dynamic,
+            include_private=allow_private,
+        )
 
         return cls.merge_field_schema(
             {path: field},
             expand_schema=expand_schema,
             recursive=recursive,
             validate=validate,
+            allow_private=allow_private,
         )
 
     @classmethod
@@ -521,7 +542,13 @@ class DatasetMixin(object):
         )
 
     @classmethod
-    def _rename_fields(cls, sample_collection, paths, new_paths):
+    def _rename_fields(
+        cls,
+        sample_collection,
+        paths,
+        new_paths,
+        allow_private=False,
+    ):
         """Renames the fields of the documents in this collection.
 
         Args:
@@ -530,6 +557,8 @@ class DatasetMixin(object):
             paths: an iterable of field names or ``embedded.field.names``
             new_paths: an iterable of new field names or
                 ``embedded.field.names``
+            allow_private (False): whether to allow new private fields to be
+                created
         """
         dataset = cls._dataset
         dataset_doc = dataset._doc
@@ -576,6 +605,7 @@ class DatasetMixin(object):
                 new_path,
                 media_type=media_type,
                 is_frame_field=is_frame_field,
+                allow_private=allow_private,
             )
 
             if fog.is_group_field(field):
@@ -627,7 +657,13 @@ class DatasetMixin(object):
             cls._rename_indexes(paths, new_paths)
 
     @classmethod
-    def _clone_fields(cls, sample_collection, paths, new_paths):
+    def _clone_fields(
+        cls,
+        sample_collection,
+        paths,
+        new_paths,
+        allow_private=False,
+    ):
         """Clones the field(s) of the documents in this collection.
 
         Args:
@@ -636,6 +672,8 @@ class DatasetMixin(object):
             paths: an iterable of field names or ``embedded.field.names``
             new_paths: an iterable of new field names or
                 ``embedded.field.names``
+            allow_private (False): whether to allow new private fields to be
+                created
         """
         dataset = cls._dataset
         dataset_doc = dataset._doc
@@ -674,6 +712,7 @@ class DatasetMixin(object):
                 new_path,
                 media_type=media_type,
                 is_frame_field=is_frame_field,
+                allow_private=allow_private,
             )
 
             if is_dataset and is_root_field:
@@ -1127,6 +1166,7 @@ class DatasetMixin(object):
         path,
         field,
         validate=True,
+        allow_private=False,
         recursive=True,
         overwrite=False,
     ):
@@ -1234,6 +1274,7 @@ class DatasetMixin(object):
             field_name,
             media_type=media_type,
             is_frame_field=is_frame_field,
+            allow_private=allow_private,
         )
 
         if fog.is_group_field(field):
@@ -1795,20 +1836,23 @@ class NoDatasetMixin(object):
         field_name,
         value,
         create=True,
-        validate=True,
         dynamic=False,
+        validate=True,
+        allow_private=False,
     ):
         chunks = field_name.split(".", 1)
         if len(chunks) > 1:
             doc = self.get_field(chunks[0])
             return doc.set_field(chunks[1], value, create=create)
 
-        if not create and not self.has_field(field_name):
-            raise ValueError(
-                "%s has no field '%s'" % (self._doc_name(), field_name)
-            )
+        if not self.has_field(field_name):
+            if not create:
+                raise ValueError(
+                    "%s has no field '%s'" % (self._doc_name(), field_name)
+                )
 
-        validate_field_name(field_name)
+            validate_field_name(field_name, allow_private=allow_private)
+
         self._data[field_name] = value
 
     def clear_field(self, field_name):
