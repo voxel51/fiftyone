@@ -672,15 +672,14 @@ The GIF below demonstrates this flow in action:
 Compound indexes can require significant database memory, but they are a
 powerful tool to support efficient exploration of massive datasets.
 
-
 .. _app-query-performant-stages:
 
 Query performant view stages
 ----------------------------
 
-In addition to the root view where no view stages are present in the view bar,
-the below :class:`ViewStages <fiftyone.core.stages.ViewStage>` also support
-:ref:`Query Performance <app-optimizing-query-performance>` in the App.
+In addition to the full dataset, Query Performance remains active (lightning
+bolts visible in the sidebar) when you add the view stages listed below to your
+view.
 
 For :class:`ExcludeFields <fiftyone.core.stages.ExcludeFields>` and
 :class:`SelectFields <fiftyone.core.stages.SelectFields>`, index performance
