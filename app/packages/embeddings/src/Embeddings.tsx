@@ -26,6 +26,7 @@ import { usePlotSelection } from "./usePlotSelection";
 import { useResetPlotZoom } from "./useResetPlotZoom";
 import { useWarnings } from "./useWarnings";
 import { Warnings } from "./Warnings";
+import EmbeddingsPlotError from "./EmbeddingsPlotError";
 
 const Value: React.FC<{ value: string; className: string }> = ({ value }) => {
   return <>{value}</>;
@@ -38,7 +39,7 @@ export default function Embeddings({ containerHeight, dimensions }) {
   const brainResultSelector = useBrainResultsSelector();
   const labelSelector = useLabelSelector();
   const canSelect = brainResultSelector.canSelect;
-  const showPlot = brainResultSelector.hasSelection;
+  const showPlot = brainResultSelector.showPlot;
   const plotSelection = usePlotSelection();
   const [dragMode, setDragMode] = usePanelStatePartial(
     "dragMode",
@@ -59,6 +60,11 @@ export default function Embeddings({ containerHeight, dimensions }) {
       plotSelection.clearSelection();
     });
   }, [setPanelCloseEffect, plotSelection]);
+  const [loadingPlotError] = usePanelStatePartial(
+    "loadingPlotError",
+    null,
+    true
+  );
 
   const selectorStyle = {
     background: theme.neutral.softBg,
@@ -67,7 +73,21 @@ export default function Embeddings({ containerHeight, dimensions }) {
     padding: "0.25rem",
   };
 
-  if (canSelect && !showCTA)
+  if (canSelect && !showCTA) {
+    let content = null;
+    if (loadingPlotError) {
+      content = <EmbeddingsPlotError error={loadingPlotError} />;
+    } else if (showPlot) {
+      content = (
+        <EmbeddingsPlot
+          labelSelectorLoading={labelSelector.isLoading}
+          plotSelection={plotSelection}
+          bounds={dimensions.bounds}
+          labelField={labelSelector.label}
+        />
+      )
+    }
+
     return (
       <EmbeddingsContainer ref={el} data-cy="embeddings-container">
         <Selectors>
@@ -81,7 +101,7 @@ export default function Embeddings({ containerHeight, dimensions }) {
               resultsPlacement="bottom-start"
               containerStyle={selectorStyle}
             />
-            {brainResultSelector.hasSelection && !labelSelector.isLoading && (
+            {brainResultSelector.hasSelection && !brainResultSelector.hasLoadingError && !labelSelector.isLoading && (
               <Selector
                 cy="embeddings-colorby"
                 {...labelSelector.handlers}
@@ -157,19 +177,10 @@ export default function Embeddings({ containerHeight, dimensions }) {
             <OperatorPlacements place={types.Places.EMBEDDINGS_ACTIONS} />
           </div>
         </Selectors>
-        {showPlot && (
-          <EmbeddingsPlot
-            labelSelectorLoading={labelSelector.isLoading}
-            plotSelection={plotSelection}
-            bounds={dimensions.bounds}
-            el={el}
-            brainKey={brainResultSelector.brainKey}
-            labelField={labelSelector.label}
-            containerHeight={containerHeight}
-          />
-        )}
+        {content}
       </EmbeddingsContainer>
     );
+  }
   return (
     <EmbeddingsCTA
       mode={canSelect ? "default" : "onboarding"}
