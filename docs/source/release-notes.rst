@@ -4,18 +4,20 @@ FiftyOne Release Notes
 .. default-role:: code
 
 FiftyOne Enterprise 2.10.0
--------------------------
-*Released June 30, 2025*
+--------------------------
+*Released July 1, 2025*
 
 Includes all updates from :ref:`FiftyOne 1.7.0 <release-notes-v1.7.0>`, plus:
 
 Management SDK
 
-- Added an :mod:`orchestrator <fiftyone.management.orchestrator>` module to
-  support programmatically managing
+- Added a
+  :ref:`fiftyone.management.orchestrator <enterprise-sdk-orchestrator-management>`
+  module to support programmatically managing
   :ref:`orchestrators <enterprise-delegated-orchestrator>`
-- Added a :mod:`secret <fiftyone.management.secret>` module to support
-  programmatically managing :ref:`secrets <enterprise-secrets>`
+- Added a :ref:`fiftyone.management.secret <enterprise-sdk-secrets>`
+  module to support programmatically managing
+  :ref:`secrets <enterprise-secrets>`
 
 CLI
 
@@ -38,7 +40,7 @@ Other
 
 FiftyOne 1.7.0
 --------------
-*Released June 30, 2025*
+*Released July 1, 2025*
 
 3D point clouds
 
@@ -1694,13 +1696,14 @@ CAS
 
 SDK
 
-- Added a :mod:`user_groups <fiftyone.management.user_groups>` module to the
-  Management SDK for programmatically managing user groups
+- Added a
+  :ref:`fiftyone.management.user_groups <enterprise-sdk-group-management>`
+  module to the Management SDK for programmatically managing user groups
 - The `fiftyone delegated` CLI command is now available to Enterprise users
 - Upgraded the :ref:`upload_media() <enterprise-cloud-media-python>` function to
   gracefully support fields with missing media paths
 - Added an `overwrite` parameter to
-  :meth:`add_cloud_credentials() <fiftyone.management.cloud_credentials.add_cloud_credentials>`
+  :func:`add_cloud_credentials() <fiftyone.management.cloud_credentials.add_cloud_credentials>`
   to control whether existing cloud credentials with the same prefix for a
   provider are overwritten
 
