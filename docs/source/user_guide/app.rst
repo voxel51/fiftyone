@@ -437,15 +437,13 @@ only those samples and/or labels that match the filter.
 Sorting in the grid
 -------------------
 
-To sort samples in the grid select a numeric field in the drop down next to the
-grid slider settings. Note that when Query Performance is enabled, only numeric
-fields with an available index can be sorted on.
+You can sort the samples in the grid by selecting a numeric or datetime field
+from the `Sort by` dropdown in the upper right corner of the Samples panel.
 
 .. note::
 
-    Did you know? The active sort setting in the grid is included in `ctx.view`
-    for :ref:`operators <using-operators>`
-
+    When :ref:`Query Performance <app-optimizing-query-performance>` is
+    enabled, only fields that are indexed can be sorted on.
 
 .. _app-managing-grid-memory:
 
@@ -677,9 +675,10 @@ powerful tool to support efficient exploration of massive datasets.
 Query performant view stages
 ----------------------------
 
-In addition to the full dataset, Query Performance remains active (lightning
-bolts visible in the sidebar) when you add the view stages listed below to your
-view.
+In addition to the full dataset,
+:ref:`Query Performance <app-optimizing-query-performance>` remains active
+(lightning bolts visible in the sidebar) when you add the view stages listed
+below to your view.
 
 For :class:`ExcludeFields <fiftyone.core.stages.ExcludeFields>` and
 :class:`SelectFields <fiftyone.core.stages.SelectFields>`, index performance
@@ -745,9 +744,9 @@ metadata is stored on the key sample to efficiently filter on large datasets.
 Unindexed sidebar results
 -------------------------
 
-When Query Performance is enabled, dropdowns and sliders in the sidebar will
-automatically leverage indexes whenever possible to show the full set/range of
-values.
+When :ref:`Query Performance <app-optimizing-query-performance>` is enabled,
+dropdowns and sliders in the sidebar will automatically leverage indexes
+whenever possible to show the full set/range of values.
 
 If an index is not available, a limited number of samples are scanned to
 populate dropdowns and sliders, which ensures that the sidebar responds rapidly
