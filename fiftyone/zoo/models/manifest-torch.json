@@ -5564,7 +5564,7 @@
             "base_name": "convnext-tiny-224-torch",
             "base_filename": null,
             "version": null,
-            "description": "Tiny modern CNN bridging traditional convolutions with transformer-inspired improvements.",
+            "description": "Tiny modern CNN bridging traditional convolutions with transformer-inspired improvements",
             "source": "https://huggingface.co/facebook/convnext-tiny-224",
             "author": "Zhuang Liu, et al.",
             "license": "Apache 2.0",
