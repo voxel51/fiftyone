@@ -1,7 +1,12 @@
 import React from "react";
+import Actions from "./Actions";
 
 const Annotate = () => {
-  return <div>TODO</div>;
+  return (
+    <>
+      <Actions />
+    </>
+  );
 };
 
 export default Annotate;

@@ -5,8 +5,11 @@ import React, { useCallback } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import MainSpace from "./MainSpace";
+import SchemaSettings from "./Schema/SchemaSettings";
 import { Entries, default as RenderSidebar } from "./Sidebar";
+import { Filter } from "./Sidebar/Entries";
 import SidebarContainer from "./Sidebar/SidebarContainer";
+import ViewSelection from "./Sidebar/ViewSelection";
 
 const Container = styled.div`
   display: flex;
@@ -14,6 +17,15 @@ const Container = styled.div`
   flex-grow: 1;
   overflow: hidden;
   background: ${({ theme }) => theme.background.header};
+`;
+
+const TopContainer = styled.div`
+  padding: 1rem 1rem 0.5rem 1rem;
+  background: ${({ theme }) => theme.background.mediaSpace};
+  display: flex;
+  flex-direction: column;
+  row-gap: 0.5rem;
+  border-radius: 0 6px 0 0;
 `;
 
 const Sidebar = () => {
@@ -99,7 +111,14 @@ const Sidebar = () => {
   );
   return (
     <SidebarContainer modal={false}>
-      <RenderSidebar render={renderGridEntry} modal={false} />
+      <SchemaSettings />
+
+      <TopContainer>
+        <ViewSelection id="saved-views" />
+        <Filter />
+      </TopContainer>
+
+      <RenderSidebar render={renderGridEntry} />
     </SidebarContainer>
   );
 };
