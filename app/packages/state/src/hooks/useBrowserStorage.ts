@@ -48,9 +48,17 @@ export const useBrowserStorage = <T = string>(
         setStoredValue(value);
       }
 
-      // Convert undefined to null to avoid "undefined" values in storage
-      if (valueToStore === undefined) {  
-        valueToStore = null;
+      // Only apply undefined handling when no parseFn is provided
+      if (parseFn) {
+        // Let the custom parser handle undefined however it wants
+        storage.setItem(key, parseFn.stringify(valueToStore));
+      } else {
+        // For JSON.stringify, handle undefined specially to avoid "undefined" strings
+        if (valueToStore !== undefined) {
+          storage.setItem(key, JSON.stringify(valueToStore));
+        } else {
+          storage.removeItem(key);
+        }
       }
 
       storage.setItem(
