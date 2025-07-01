@@ -18,6 +18,7 @@ import fiftyone.core.labels as fol
 import fiftyone.utils.torch as fout
 import fiftyone.core.utils as fou
 import fiftyone.zoo.models as fozm
+from fiftyone.utils import ultralytics_internal
 
 
 ultralytics = fou.lazy_import("ultralytics")
@@ -504,10 +505,17 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
             if hasattr(ultralytics, "YOLOE") and isinstance(
                 model, ultralytics.YOLOE
             ):
-                model.set_classes(
-                    config.classes, model.get_text_pe(config.classes)
+                model.model.clip_model = ultralytics_internal.build_text_model(
+                    "mobileclip:blt", device=self._device
                 )
+                embeddings = model.model.get_text_pe(
+                    config.classes, cache_clip_model=True
+                )
+                model.set_classes(config.classes, embeddings)
             else:
+                model.model.clip_model = ultralytics_internal.build_text_model(
+                    "clip:ViT-B/32", device=self._device
+                )
                 model.set_classes(config.classes)
 
         if not model.predictor:
