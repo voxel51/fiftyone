@@ -95,7 +95,7 @@ export const stringSearchResults = selectorFamily<
       if (isLabelTag) {
         const labels = get(labelTagsCount({ modal, extended: false }));
         return {
-          count: labels.count,
+          count: labels.count ?? 0,
           values: labels.results,
         };
       }
