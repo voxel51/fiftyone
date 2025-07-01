@@ -116,7 +116,7 @@ jobs:
           path: downloads
       - name: Install dependencies
         run: |
-          pip3 install twine packaging
+          pip3 install -U twine packaging
       - name: Set environment
         env:
           RELEASE_TAG: ${{ github.ref }}
