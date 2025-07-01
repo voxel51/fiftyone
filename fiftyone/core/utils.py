@@ -2498,14 +2498,28 @@ def safe_relpath(path, start=None, default=None):
         if default is not None:
             return default
 
-        logger.warning(
-            "Path '%s' is not in '%s'. Using filename as unique identifier",
-            path,
-            start,
-        )
-        relpath = os.path.basename(path)
+        logger.debug("Path '%s' is not in '%s'", path, start)
+        relpath = path
 
     return relpath
+
+
+def get_module_name(path, start=None):
+    """Gets the Python module name for the given file or directory path.
+
+    Args:
+        path: a file or directory path
+        start (None): the relative prefix to strip from ``path``
+
+    Returns:
+        a ``module.name``
+    """
+    if start is not None:
+        path = safe_relpath(path, start)
+
+    path = os.path.splitdrive(path)[1]
+    path = os.path.splitext(path)[0]
+    return path.replace("\\", "/").strip("/").replace("/", ".")
 
 
 def compute_filehash(filepath, method=None, chunk_size=None):
