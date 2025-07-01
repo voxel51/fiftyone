@@ -1,14 +1,14 @@
-import { useLoader } from "@react-three/fiber";
 import { useEffect, useMemo, useState } from "react";
 import type * as THREE from "three";
 import { PCDLoader } from "three/examples/jsm/loaders/PCDLoader";
 import {
-  PCD_SHADING_GRADIENTS,
+  DEFAULT_PCD_SHADING_GRADIENTS_RED_TO_BLUE,
   SHADE_BY_CUSTOM,
   SHADE_BY_HEIGHT,
   SHADE_BY_INTENSITY,
   SHADE_BY_RGB,
 } from "../../constants";
+import { useFoLoader } from "../../hooks/use-fo-loaders";
 import type { ShadeBy } from "../../types";
 import { computeMinMaxForColorBufferAttribute } from "../../utils";
 import {
@@ -17,7 +17,6 @@ import {
   ShadeByHeight,
   ShadeByIntensity,
 } from "./shaders";
-import { useFoLoader } from "../../hooks/use-fo-loaders";
 
 type PointCloudMeshArgs = {
   upVector: THREE.Vector3;
@@ -98,6 +97,14 @@ export const PointCloudMesh = ({
     return boundingBox.min.dot(upVector);
   }, [boundingBox, upVector, minZ]);
 
+  const pcdType = useMemo(() => {
+    if (pointsGeometry.hasAttribute("intensity")) {
+      return "intensity";
+    }
+
+    return "rgb";
+  }, [pointsGeometry]);
+
   const pointsMaterial = useMemo(() => {
     const pointSizeNum = Number(pointSize);
 
@@ -106,7 +113,7 @@ export const PointCloudMesh = ({
         return (
           <ShadeByHeight
             upVector={upVector}
-            gradients={PCD_SHADING_GRADIENTS}
+            colorMap={DEFAULT_PCD_SHADING_GRADIENTS_RED_TO_BLUE}
             min={minAlongUpVector}
             max={maxAlongUpVector}
             pointSize={pointSizeNum}
@@ -117,8 +124,11 @@ export const PointCloudMesh = ({
       case SHADE_BY_INTENSITY:
         return (
           <ShadeByIntensity
-            {...colorMinMax}
-            gradients={PCD_SHADING_GRADIENTS}
+            isLegacyIntensity={pcdType === "rgb"}
+            minIntensity={colorMinMax.min}
+            maxIntensity={colorMinMax.max}
+            pcdType={pcdType}
+            colorMap={DEFAULT_PCD_SHADING_GRADIENTS_RED_TO_BLUE}
             pointSize={pointSizeNum}
             isPointSizeAttenuated={isPointSizeAttenuated}
           />

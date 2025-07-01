@@ -745,7 +745,7 @@ class VideoTests(unittest.TestCase):
         self.assertEqual(sample.frames[1].hello, "there")
         self.assertEqual(sample.frames[3].hello, "there")
 
-        # sample view objects are not singletones
+        # sample view objects are not singletons
         self.assertEqual(sample_view.frames[1].hello, "goodbye")
         self.assertEqual(sample_view.frames[3].hello, "goodbye")
 
@@ -2360,7 +2360,7 @@ class VideoTests(unittest.TestCase):
 
         dataset.create_index("frames.hello")
 
-        # Frame indexes are always inheritied from source dataset
+        # Frame indexes are always inherited from source dataset
         view = dataset.to_clips("events", include_indexes=False)
         expected_indexes = default_indexes | {"frames.hello"}
 

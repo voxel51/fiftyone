@@ -257,7 +257,7 @@ class FiftyOneTransformerConfig(fout.TorchImageModelConfig, HasZooModel):
             ``transformers`` processor during input processing.
         embeddings_output_key (None): The key in the model output to access for embeddings.
             if set to `None`, the default value will be picked based on what is
-            avaliable in the model's output with the following priority:
+            available in the model's output with the following priority:
             1. `pooler_output`
             2. `last_hidden_state`
             3. `hidden_states` - in this case, `output['hidden_states'][-1]`
@@ -299,27 +299,7 @@ class FiftyOneTransformerConfig(fout.TorchImageModelConfig, HasZooModel):
             self.name_or_path, cache_dir=fo.config.model_zoo_dir
         )
 
-        # load classes if they exist
-        if self.hf_config.id2label is not None:
-            if self.classes is None:
-                # only load classes if they are not already set
-                self.classes = [
-                    self.hf_config.id2label[i]
-                    for i in range(len(self.hf_config.id2label))
-                ]
-            else:
-                # if they are, this is either a zero shot model
-                # and the AutoConfig set some strange classes
-                # or the user is trying to override the classes
-                # in the latter case, strange things can happen
-                # not sure how to warn the user about this
-                logger.warning(
-                    "Classes were passed in to the FiftyOne model, but the "
-                    "HugginFace Transformers model configuration already has classes. "
-                    "Either set the classes argument to `None` to inherit the classes "
-                    "from the HFT model, or change the classes in the HFT model "
-                    "configuration to match the classes you want to use."
-                )
+        self._load_classes(d)
 
         self.transformers_processor_kwargs = self.parse_dict(
             d, "transformers_processor_kwargs", default={}
@@ -343,6 +323,30 @@ class FiftyOneTransformerConfig(fout.TorchImageModelConfig, HasZooModel):
             d, "embeddings_token_position", default=0
         )
 
+    def _load_classes(self, d):
+        # load classes if they exist
+        if self.hf_config.id2label is not None:
+            if self.classes is None:
+                # only load classes if they are not already set
+                self.classes = [
+                    self.hf_config.id2label[i]
+                    for i in range(len(self.hf_config.id2label))
+                ]
+            else:
+                # if they are, this is either a zero shot model
+                # and the AutoConfig set some strange classes
+                # or the user is trying to override the classes
+                # in the latter case, strange things can happen
+                # not sure how to warn the user about this
+                logger.warning(
+                    "Classes were passed in to the FiftyOne model, but the "
+                    "HugginFace Transformers model configuration already has classes. "
+                    " either set the classes argument "
+                    "to `None` to inherit the classes from the HFT model, "
+                    "or change the classes in the HFT model "
+                    "configuration to match the classes you want to use."
+                )
+
 
 class FiftyOneZeroShotTransformerConfig(FiftyOneTransformerConfig):
     """Configuration for a :class:`FiftyOneZeroShotTransformer`.
@@ -362,6 +366,10 @@ class FiftyOneZeroShotTransformerConfig(FiftyOneTransformerConfig):
         self.text_prompt = self.parse_string(d, "text_prompt", default=None)
         self.class_prompts = self.parse_dict(d, "class_prompts", default=None)
 
+    def _load_classes(self, d):
+        if self.classes is None:
+            raise ValueError("Classes must be set for zero-shot models")
+
 
 class TransformerEmbeddingsMixin(EmbeddingsMixin):
     """Mixin for Transformers that can generate embeddings.
@@ -378,7 +386,7 @@ class TransformerEmbeddingsMixin(EmbeddingsMixin):
     This is mainly due to what is exposed by the model's forward pass. For
     example, the image classification models typically don't return pooled
     or normalized embeddings in HuggingFace. While this can be addressed
-    here, there is no gurantee that this generic solution will work for
+    here, there is no guarantee that this generic solution will work for
     the model passed.
     """
 
@@ -564,9 +572,11 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
         if config.entrypoint_fcn is None:
             config.entrypoint_fcn = "transformers.AutoModel.from_pretrained"
         if config.entrypoint_args is None:
-            config.entrypoint_args = {
-                "pretrained_model_name_or_path": config.name_or_path,
-            }
+            config.entrypoint_args = {}
+        if not config.entrypoint_args.get("pretrained_model_name_or_path"):
+            config.entrypoint_args[
+                "pretrained_model_name_or_path"
+            ] = config.name_or_path
 
         config.entrypoint_args["cache_dir"] = fo.config.model_zoo_dir
 
@@ -587,7 +597,7 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
         }
         config.ragged_batches = False
 
-        # handle unsuported arguments
+        # handle unsupported arguments
         if config.use_half_precision:
             config.use_half_precision = False
             logger.warning(
@@ -995,6 +1005,28 @@ class FiftyOneTransformerForObjectDetection(FiftyOneTransformer):
         self.transforms.return_image_sizes = True
 
 
+class FiftyOneZeroShotTransformerForSemanticSegmentationConfig(
+    FiftyOneZeroShotTransformerConfig
+):
+    pass
+
+
+class FiftyOneZeroShotTransformerForSemanticSegmentation(
+    FiftyOneZeroShotTransformer
+):
+    """FiftyOne wrapper around a ``transformers`` model for zero-shot semantic segmentation.
+
+    Args:
+        config: a `FiftyOneZeroShotTransformerForSemanticSegmentationConfig`
+    """
+
+    def __init__(self, config):
+        # override output processor
+        if config.output_processor_cls is None:
+            config.output_processor_cls = "fiftyone.utils.transformers.TransformersSemanticSegmentatorOutputProcessor"
+        super().__init__(config)
+
+
 class FiftyOneTransformerForSemanticSegmentationConfig(
     FiftyOneTransformerConfig
 ):
@@ -1259,11 +1291,14 @@ class TransformersSemanticSegmentatorOutputProcessor(
     fout.SemanticSegmenterOutputProcessor
 ):
     def __init__(self, *args, **kwargs):
+        self.logits_key = kwargs.pop("logits_key", "logits")
         super().__init__(*args, **kwargs)
 
     def __call__(self, output, image_sizes, confidence_thresh=None):
         return super().__call__(
-            {"out": output.logits},  # to be compatible with the base class
+            {
+                "out": output[self.logits_key]
+            },  # to be compatible with the base class
             image_sizes,
             confidence_thresh=confidence_thresh,
         )
@@ -1297,7 +1332,6 @@ class TransformersDepthEstimatorOutputProcessor(fout.OutputProcessor):
                 )
 
     def __call__(self, output, image_sizes, confidence_thresh=None):
-
         output = self._depth_estimation_post_processor(output)
         output = np.array(
             [o["predicted_depth"].detach().cpu().numpy() for o in output]
@@ -1325,6 +1359,7 @@ MODEL_TYPE_TO_CONFIG_CLASS = {
     "depth-estimation": FiftyOneTransformerForDepthEstimationConfig,
     "zero-shot-image-classification": FiftyOneZeroShotTransformerForImageClassificationConfig,
     "zero-shot-object-detection": FiftyOneZeroShotTransformerForObjectDetectionConfig,
+    "zero-shot-semantic-segmentation": FiftyOneZeroShotTransformerForSemanticSegmentationConfig,
 }
 
 MODEL_TYPE_TO_MODEL_CLASS = {
@@ -1335,4 +1370,5 @@ MODEL_TYPE_TO_MODEL_CLASS = {
     "depth-estimation": FiftyOneTransformerForDepthEstimation,
     "zero-shot-image-classification": FiftyOneZeroShotTransformerForImageClassification,
     "zero-shot-object-detection": FiftyOneZeroShotTransformerForObjectDetection,
+    "zero-shot-semantic-segmentation": FiftyOneZeroShotTransformerForSemanticSegmentation,
 }

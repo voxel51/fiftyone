@@ -68,7 +68,7 @@ API reference
 -------------
 
 The Model Zoo can be accessed via the Python library and the CLI. Consult the
-API reference belwo to see how to download, apply, and manage zoo models.
+API reference below to see how to download, apply, and manage zoo models.
 
 .. custombutton::
     :button_text: Check out the API reference

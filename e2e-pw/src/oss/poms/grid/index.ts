@@ -21,7 +21,7 @@ export class GridPom {
   ) {
     this.assert = new GridAsserter(this);
     this.url = new UrlPom(page, eventUtils);
-    this.actionsRow = new GridActionsRowPom(page, eventUtils);
+    this.actionsRow = new GridActionsRowPom(page);
     this.sliceSelector = new GridSliceSelectorPom(page);
     this.tagger = new GridTaggerPom(page);
 

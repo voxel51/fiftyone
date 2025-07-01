@@ -1013,138 +1013,86 @@ function PredictionStatisticsChart(props) {
     fp: { main: fp, compare: compareFP },
     fn: { main: fn, compare: compareFN },
   };
-  const metricsBySubset = {};
-
-  const traceOne: any = { values: [], colors: [], keys: [] };
-  const traceTwo: any = { values: [], colors: [], keys: [] };
-  const traceThree: any = { values: [], colors: [], keys: [] };
-  const compareTraceOne: any = { values: [], colors: [], keys: [] };
-  const compareTraceTwo: any = { values: [], colors: [], keys: [] };
-  const compareTraceThree: any = { values: [], colors: [], keys: [] };
 
   for (const subset of subsets) {
     const metrics = subsets_data[subset].metrics;
     const compareMetrics = compareSubsetsData?.[subset]?.metrics;
-    const traces = [
-      { value: metrics.tp, color: KEY_COLOR, key: "tp" },
-      { value: metrics.fp, color: SECONDARY_KEY_COLOR, key: "fp" },
-      { value: metrics.fn, color: TERTIARY_KEY_COLOR, key: "fn" },
-    ].sort((a, b) => b.value - a.value);
-
-    traceOne.values.push(traces[0].value);
-    traceOne.colors.push(traces[0].color);
-    traceOne.keys.push(traces[0].key);
-    traceTwo.values.push(traces[1].value);
-    traceTwo.colors.push(traces[1].color);
-    traceTwo.keys.push(traces[1].key);
-    traceThree.values.push(traces[2].value);
-    traceThree.colors.push(traces[2].color);
-    traceThree.keys.push(traces[2].key);
-
     tp.push(metrics.tp);
     fp.push(metrics.fp);
     fn.push(metrics.fn);
-
-    metricsBySubset[subset] = {
-      tp: metrics.tp,
-      fp: metrics.fp,
-      fn: metrics.fn,
-    };
-
     if (compareMetrics) {
       compareTP.push(compareMetrics.tp);
       compareFP.push(compareMetrics.fp);
       compareFN.push(compareMetrics.fn);
-
-      metricsBySubset[subset] = {
-        ...metricsBySubset[subset],
-        compareTP: compareMetrics.tp,
-        compareFP: compareMetrics.fp,
-        compareFN: compareMetrics.fn,
-      };
-
-      const compareTraces = [
-        { value: compareMetrics.tp, color: COMPARE_KEY_COLOR, key: "tp" },
-        {
-          value: compareMetrics.fp,
-          color: COMPARE_KEY_SECONDARY_COLOR,
-          key: "fp",
-        },
-        {
-          value: compareMetrics.fn,
-          color: COMPARE_KEY_TERTIARY_COLOR,
-          key: "fn",
-        },
-      ].sort((a, b) => b.value - a.value);
-      compareTraceOne.values.push(compareTraces[0].value);
-      compareTraceOne.colors.push(compareTraces[0].color);
-      compareTraceOne.keys.push(compareTraces[0].key);
-      compareTraceTwo.values.push(compareTraces[1].value);
-      compareTraceTwo.colors.push(compareTraces[1].color);
-      compareTraceTwo.keys.push(compareTraces[1].key);
-      compareTraceThree.values.push(compareTraces[2].value);
-      compareTraceThree.colors.push(compareTraces[2].color);
-      compareTraceThree.keys.push(compareTraces[2].key);
     }
   }
+
   if (showAllMetric) {
     const tpTrace = {
       x: subsets,
-      y: traceOne.values,
-      keys: traceOne.keys,
+      y: tp,
+      name: `${key} True Positives`,
+      id: "tp",
       type: "bar",
       offsetgroup: 0,
-      marker: { color: traceOne.colors },
+      marker: { color: KEY_COLOR },
       hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
     };
 
     const fpTrace = {
       x: subsets,
-      y: traceTwo.values,
+      y: fp,
+      name: `${key} False Positives`,
+      id: "fp",
       type: "bar",
       offsetgroup: 0,
-      marker: { color: traceTwo.colors },
+      marker: { color: SECONDARY_KEY_COLOR },
       hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
     };
     const fnTrace = {
       x: subsets,
-      y: traceThree.values,
+      y: fn,
+      name: `${key} False Negatives`,
+      id: "fn",
       type: "bar",
       offsetgroup: 0,
-      marker: { color: traceThree.colors },
+      marker: { color: TERTIARY_KEY_COLOR },
       hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
     };
 
     const compareTPTrace = {
       x: subsets,
-      y: compareTraceOne.values,
-      keys: compareTraceOne.keys,
+      y: compareTP,
+      name: `${compareKey} True Positives`,
+      id: "tp",
       isCompare: true,
       type: "bar",
       offsetgroup: 1,
-      marker: { color: compareTraceOne.colors },
+      marker: { color: COMPARE_KEY_COLOR },
       hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
     };
 
     const compareFPTrace = {
       x: subsets,
-      y: compareTraceTwo.values,
-      keys: compareTraceTwo.keys,
+      y: compareFP,
+      name: `${compareKey} False Positives`,
+      id: "fp",
       isCompare: true,
       type: "bar",
       offsetgroup: 1,
-      marker: { color: compareTraceTwo.colors },
+      marker: { color: COMPARE_KEY_SECONDARY_COLOR },
       hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
     };
 
     const compareFNTrace = {
       x: subsets,
-      y: compareTraceThree.values,
-      keys: compareTraceThree.keys,
+      y: compareFN,
+      name: `${compareKey} False Negatives`,
+      id: "fn",
       isCompare: true,
       type: "bar",
       offsetgroup: 1,
-      marker: { color: compareTraceThree.colors },
+      marker: { color: COMPARE_KEY_TERTIARY_COLOR },
       hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
     };
     plotData = [tpTrace, fpTrace, fnTrace];
@@ -1205,10 +1153,11 @@ function PredictionStatisticsChart(props) {
 
       <Plot
         data={plotData}
-        layout={showAllMetric ? { barmode: "overlay" } : {}}
+        layout={showAllMetric ? { barmode: "stack" } : {}}
         onClick={({ points }) => {
           const firstPoint = points[0];
-          const { id, isCompare } = firstPoint.data;
+          const { id } = firstPoint.data;
+          const isCompare = firstPoint?.fullData?._input?.isCompare;
           const subset = firstPoint.x;
           const subsetDef = getSubsetDef(scenario, subset);
           trackEvent("evaluation_plot_click", {
@@ -1216,30 +1165,11 @@ function PredictionStatisticsChart(props) {
             subsetDef,
             plotName: "prediction_statistics",
           });
-          loadView("field", { field: id, subset_def: subsetDef });
-        }}
-        tooltip={(tooltip) => {
-          const [point] = tooltip.points;
-          const { x, y, data } = point;
-          const isCompare = data.offsetgroup === 1;
-          const metrics = metricsBySubset[x];
-          return {
-            label: x,
-            data: [
-              {
-                label: "True Positives",
-                value: isCompare ? metrics.compareTP : metrics.tp,
-              },
-              {
-                label: "False Positives",
-                value: isCompare ? metrics.compareFP : metrics.fp,
-              },
-              {
-                label: "False Negatives",
-                value: isCompare ? metrics.compareFN : metrics.fn,
-              },
-            ].sort((a, b) => b.value - a.value),
-          };
+          loadView("field", {
+            field: id,
+            subset_def: subsetDef,
+            key: isCompare ? compareKey : undefined,
+          });
         }}
       />
       <Legends
@@ -1332,8 +1262,9 @@ function ScenarioModelPerformanceChart(props) {
 }
 
 function ConfusionMatrixChart(props) {
-  const { scenario, compareScenario, loadView, trackEvent } = props;
+  const { scenario, compareScenario, loadView, trackEvent, data } = props;
   const { subsets, id } = scenario;
+  const compareKey = data?.view?.compareKey;
   const [subset, setSubset] = usePanelStatePartial(`${id}_cms`, subsets[0]);
   const subsetData = scenario.subsets_data[subset];
   const compareSubsetData = compareScenario?.subsets_data[subset];
@@ -1360,6 +1291,7 @@ function ConfusionMatrixChart(props) {
           config,
           evaluationMaskTargets,
           compareEvaluationMaskTargets,
+          true,
           true
         )?.plot,
       ]
@@ -1423,6 +1355,21 @@ function ConfusionMatrixChart(props) {
           <Stack sx={{ width: "50%" }}>
             <Plot
               data={comparePlotData}
+              onClick={({ points }) => {
+                const firstPoint = points[0];
+                const subsetDef = getSubsetDef(scenario, subset);
+                trackEvent("evaluation_plot_click", {
+                  id: scenario.id,
+                  subsetDef,
+                  plotName: "confusion_matrix",
+                });
+                loadView("matrix", {
+                  x: firstPoint.x,
+                  y: firstPoint.y,
+                  subset_def: subsetDef,
+                  key: compareKey,
+                });
+              }}
               tooltip={(event: any) => {
                 const [point] = event.points;
                 const x = point.x;

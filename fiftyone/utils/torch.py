@@ -1638,13 +1638,6 @@ def recommend_num_workers():
         # https://stackoverflow.com/q/20222534
         return 0
 
-    if sys.platform == "darwin" and not torch.cuda.is_available():
-        # There is a parallelism bug on macOS with CPU that prevents us from
-        # using `num_workers > 0`
-        # https://stackoverflow.com/q/64772335
-        # https://github.com/pytorch/pytorch/issues/46409
-        return 0
-
     try:
         return multiprocessing.cpu_count() // 2
     except:

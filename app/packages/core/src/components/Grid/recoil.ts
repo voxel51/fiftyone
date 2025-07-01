@@ -218,6 +218,7 @@ export const pageParameters = selector({
           : null,
       },
       extendedStages,
+      maxQueryTime: queryPerformance ? get(fos.config).maxQueryTime : null,
       ...extra,
     };
 

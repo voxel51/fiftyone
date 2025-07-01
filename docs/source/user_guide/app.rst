@@ -437,15 +437,13 @@ only those samples and/or labels that match the filter.
 Sorting in the grid
 -------------------
 
-To sort samples in the grid select a numeric field in the drop down next to the
-grid slider settings. Note that when Query Performance is enabled, only numeric
-fields with an available index can be sorted on.
+You can sort the samples in the grid by selecting a numeric or datetime field
+from the `Sort by` dropdown in the upper right corner of the Samples panel.
 
 .. note::
 
-    Did you know? The active sort setting in the grid is included in `ctx.view`
-    for :ref:`operators <using-operators>`
-
+    When :ref:`Query Performance <app-optimizing-query-performance>` is
+    enabled, only fields that are indexed can be sorted on.
 
 .. _app-managing-grid-memory:
 
@@ -672,14 +670,83 @@ The GIF below demonstrates this flow in action:
 Compound indexes can require significant database memory, but they are a
 powerful tool to support efficient exploration of massive datasets.
 
+.. _app-query-performant-stages:
+
+Query performant view stages
+----------------------------
+
+In addition to the full dataset,
+:ref:`Query Performance <app-optimizing-query-performance>` remains active
+(lightning bolts visible in the sidebar) when you add the view stages listed
+below to your view.
+
+For :class:`ExcludeFields <fiftyone.core.stages.ExcludeFields>` and
+:class:`SelectFields <fiftyone.core.stages.SelectFields>`, index performance
+applies to all fields still present in the schema.
+
+:class:`SelectGroupSlices <fiftyone.core.stages.SelectGroupSlices>` is query
+performant. Expect optimal performan when all slices are included in the
+flattened view.
+
+The :class:`GroupBy <fiftyone.core.stages.GroupBy>` stage is a query performant
+stage when ``order_by`` and ``order_by_key`` values are provided and a compound
+index exists on the ``group_by`` and ``order_by`` fields with a unique
+constraint and at least one index exists that begins with the ``order_by``
+field. Query performant fields then exist when they follow the ``order_by`` in
+a compound index. 
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.load_dataset("frames-as-video")
+    dataset.create_index([("video", 1), ("frame_number", 1)], unique=True)
+
+    # create query performant fields for filtering and sorting
+    dataset.create_index([("frame_number", 1), ("created_at", 1)])
+    dataset.create_index([("frame_number", 1), ("last_modified_at", 1)])
+
+    # create the "video" view and save it
+    videos = dataset.group_by(
+        "video",
+        order_by="frame_number",
+        order_by_key=1,
+        create_index=False
+    )
+    dataset.save_view("videos", videos)
+
+Sidebar filters in the grid now match on the ``order_by_key`` sample for each
+group, i.e. where ``frame_number`` is ``1`` in the above example. Group level
+metadata is stored on the key sample to efficiently filter on large datasets.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import random
+
+    dataset = fo.load_dataset("frames-as-video")
+    videos = dataset.load_saved_view("videos")
+
+    dataset.create_index([("frame_number", 1), ("group_value", 1)])
+
+    # store group level values on the key samples
+    for poster_sample in videos.iter_samples(autosave=True):
+        poster_sample["group_value"] = str(random.randint(0, 51))
+
+.. image:: /images/app/app-optimized-dynamic-groups.gif
+    :alt: app-optimized-dynamic-groups
+    :align: center
+
 .. _app-unindexed-sidebar-results:
 
 Unindexed sidebar results
 -------------------------
 
-When Query Performance is enabled, dropdowns and sliders in the sidebar will
-automatically leverage indexes whenever possible to show the full set/range of
-values.
+When :ref:`Query Performance <app-optimizing-query-performance>` is enabled,
+dropdowns and sliders in the sidebar will automatically leverage indexes
+whenever possible to show the full set/range of values.
 
 If an index is not available, a limited number of samples are scanned to
 populate dropdowns and sliders, which ensures that the sidebar responds rapidly
@@ -1370,6 +1437,8 @@ supports:
     +--------------+----------------+-------------------------------+
     | E            | Ego-view       | Reset the camera to ego view  |
     +--------------+----------------+-------------------------------+
+    | R            | Render         | Toggle render preferences     |
+    +--------------+----------------+-------------------------------+
     | ESC          | Escape context | Escape the current context    |
     +--------------+----------------+-------------------------------+
 
@@ -1392,6 +1461,118 @@ the observed dynamic range of `r` values for each sample.
 
 Similarly, when coloring by height, the `z` value of each point is mapped to
 the full colormap using the same strategy.
+
+.. _app-3d-dynamic-coloring:
+
+Dynamic point cloud coloring
+----------------------------
+
+FiftyOne supports dynamic coloring of point clouds based on any attribute
+in your PCD file. This allows you to visualize and analyze point cloud data in
+powerful ways, such as:
+
+-   Working with semantic segmentation data where different classes need
+    distinct colors
+-   Analyzing LIDAR data where you want to visualize intensity values to
+    identify reflective surfaces
+-   Inspecting custom attributes like confidence scores or prediction errors
+-   Comparing multiple attributes by quickly switching between different color
+    schemes
+
+.. image:: /images/app/pcd-dynamic-coloring.gif
+   :alt: pcd-dynamic-coloring
+   :align: center
+
+To use dynamic coloring:
+
+1.  Press `R` or click the render preferences icon in the 3D visualizer menu
+2.  Select the attribute to color by from the "Shade by" dropdown
+3.  Optionally, override the colormap from the available options by clicking
+    the "Override" button
+
+|br|
+Colormap selection follows this precedence order:
+
+1.  Colormap from browser storage (if previously overridden)
+2.  Colormap defined in the `colorscales` property of the
+    :ref:`dataset's App config <dataset-app-config>` for the specific attribute
+3.  Colormap defined in the `default_colorscale` property of the dataset's App
+    config
+4.  Default colormap (red-to-blue gradient)
+
+|br|
+You can override the colormap for any attribute by clicking the "Override"
+button in the render preferences panel. This will open a new UI where you can:
+
+-   Add or remove color stops
+-   Preview the gradient
+-   Reset to the app config or default colormap
+
+.. note::
+
+    Colormap overrides are persisted in your browser's local storage, so they
+    will be remembered across sessions.
+
+You can define default colormaps for point cloud attributes of a dataset by
+configuring them in the :ref:`dataset's App config <dataset-app-config>`.
+You must use the prefix `::fo3d::pcd::` followed by the attribute name in the
+`path` field. For example, to define a colormap for the `lidar_id` attribute,
+the path should be `::fo3d::pcd::lidar_id`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.load_dataset(...)
+
+    # Configure colormaps for point cloud attributes
+    dataset.app_config.color_scheme = fo.ColorScheme(
+        colorscales=[
+            {
+                "path": "::fo3d::pcd::lidar_id",
+                "name": "viridis",  # use a named colormap
+            },
+            {
+                "path": "::fo3d::pcd::intensity",
+                "list": [  # or define a custom colormap
+                    {"value": 0, "color": "rgb(0, 0, 255)"},
+                    {"value": 1, "color": "rgb(0, 255, 255)"},
+                ],
+            },
+        ],
+        default_colorscale={"name": "jet"},  # default for other attributes
+    )
+    dataset.save()
+
+When visualizing point clouds with dynamic attributes, you can apply
+thresholding to focus on specific value ranges. This is particularly useful
+for:
+
+-   Filtering out noise or outliers in your data
+-   Isolating points of interest based on their attribute values
+-   Analyzing specific ranges of values in your point cloud
+
+To use thresholding:
+
+1.  Press `R` or click the render preferences icon in the 3D visualizer menu
+2.  Select the attribute to color by from the "Shade by" dropdown
+3.  Use the threshold slider that appears below the colormap controls
+4.  Adjust the minimum and maximum values to show only points within that range
+
+|br|
+The threshold slider shows the full range of values for the selected attribute,
+and points outside the selected range will be hidden from view.
+
+.. image:: /images/app/pcd-thresholding.gif
+   :alt: thresholding
+   :align: center
+
+.. note::
+
+    Thresholding is available for all numeric attributes except height and RGB
+    values. The threshold range is automatically adjusted based on the data
+    type of the attribute (integer or float).
 
 .. _app-3d-orthographic-projections:
 

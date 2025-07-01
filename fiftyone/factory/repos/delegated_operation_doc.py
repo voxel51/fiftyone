@@ -60,6 +60,15 @@ class DelegatedOperationDocument(object):
         self.log_size = None
         self.log_path = None
 
+        # grouped fields
+        self.group_id = None  # Only on children
+
+    @property
+    def num_distributed_tasks(self):
+        """Returns the number of distributed tasks in this operation, if any."""
+        # No distributed tasks
+        return None
+
     def from_pymongo(self, doc: dict):
         # required fields
         self.operator = doc.get("operator")
@@ -81,6 +90,9 @@ class DelegatedOperationDocument(object):
         self.metadata = doc.get("metadata", None)
         self.label = doc.get("label", None)
         self.updated_at = doc.get("updated_at", None)
+
+        # grouped fields
+        self.group_id = doc.get("group_id", None)
 
         # internal fields
         self.id = doc["_id"]

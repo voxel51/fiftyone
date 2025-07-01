@@ -5269,7 +5269,7 @@ of the samples in the dataset, `annotations/` contains any serialized
 
 The contents of the `data/` directory may also be organized in nested
 subfolders, depending on how the dataset was exported, in which case the
-filepaths in `samples.json` should contain corerspondingly nested paths.
+filepaths in `samples.json` should contain correspondingly nested paths.
 
 Video datasets have an additional `frames.json` file that contains a serialized
 representation of the frame labels for each video in the dataset.

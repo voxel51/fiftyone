@@ -89,28 +89,145 @@ export class ThreeDElement extends BaseElement<ThreeDState, HTMLImageElement> {
   }
 
   drawExtension() {
-    this.ctx.globalAlpha = 0.8;
-    this.ctx.font = "34px serif";
-    this.ctx.fillStyle = DEFAULT_FILL_STYLE;
-    this.ctx.textAlign = "center";
-    this.ctx.textBaseline = "middle";
-    this.ctx.fillText(
-      this.isFo3d ? "3D scene" : "point cloud",
-      this.canvas.width / 2,
-      this.canvas.height / 2 - 120
-    );
-
-    // give the icon a dark orange tint
-    this.ctx.globalCompositeOperation = "source-atop";
-    this.ctx.fillStyle = "rgba(255, 165, 0, 0.5)";
+    // background color: slightly faded dark-ink-black
+    this.ctx.fillStyle = "rgba(17, 25, 40, 0.95)";
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-    // reset
-    this.ctx.globalCompositeOperation = "source-over";
+    this.drawGrid();
+  }
+
+  private drawGrid() {
+    this.ctx.save();
+    this.ctx.globalAlpha = 0.13;
+    this.ctx.strokeStyle = "#60A5FA";
+    this.ctx.lineWidth = 1;
+
+    const width = this.canvas.width;
+    const height = this.canvas.height;
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const gridSize = 40;
+
+    // vertical grid lines
+    for (let x = 0; x <= width; x += gridSize) {
+      this.ctx.beginPath();
+      this.ctx.moveTo(x, 0);
+      this.ctx.lineTo(x, height);
+      this.ctx.stroke();
+    }
+
+    // horizontal grid lines
+    for (let y = 0; y <= height; y += gridSize) {
+      this.ctx.beginPath();
+      this.ctx.moveTo(0, y);
+      this.ctx.lineTo(width, y);
+      this.ctx.stroke();
+    }
+
+    // axes lines (X and Y only)
+    this.ctx.globalAlpha = 0.18;
+    this.ctx.lineWidth = 1.2;
+
+    // X axis (red, horizontal)
+    this.ctx.strokeStyle = "#FF5555";
+    this.ctx.beginPath();
+    this.ctx.moveTo(0, centerY);
+    this.ctx.lineTo(width, centerY);
+    this.ctx.stroke();
+
+    // Y axis (green, vertical)
+    this.ctx.strokeStyle = "#22DD55";
+    this.ctx.beginPath();
+    this.ctx.moveTo(centerX, 0);
+    this.ctx.lineTo(centerX, height);
+    this.ctx.stroke();
+
+    // a small elevated '3D' logo at the top right
+    const logoText = this.isFo3d ? "3D" : "PCD";
+    const logoFont = "bold 18px system-ui, sans-serif";
+    const paddingX = 2;
+    const margin = 10;
+    this.ctx.font = logoFont;
+    const textWidth = this.ctx.measureText(logoText).width;
+
+    // extra space for cube
+    const rectWidth = textWidth + paddingX * 2 + 32;
+    const rectHeight = 28;
+    // position at top right
+    const rectX = this.canvas.width - rectWidth;
+    const rectY = margin;
+
+    // draw cube
+    const cubeSize = 18;
+    const cubeX = rectX + paddingX;
+    const cubeY = rectY + rectHeight / 2;
+
+    const half = cubeSize / 2;
+    const quarter = cubeSize / 4;
+
+    // top face
+    this.ctx.save();
+    this.ctx.globalAlpha = 0.85;
+    this.ctx.beginPath();
+    this.ctx.moveTo(cubeX, cubeY - half); // top
+    this.ctx.lineTo(cubeX + half, cubeY - quarter); // right
+    this.ctx.lineTo(cubeX, cubeY); // bottom
+    this.ctx.lineTo(cubeX - half, cubeY - quarter); // left
+    this.ctx.closePath();
+    // one of primary voxel51 colors
+    this.ctx.fillStyle = "#FF6D04";
+    this.ctx.fill();
+
+    // left face
+    this.ctx.beginPath();
+    this.ctx.moveTo(cubeX - half, cubeY - quarter);
+    this.ctx.lineTo(cubeX, cubeY);
+    this.ctx.lineTo(cubeX, cubeY + half);
+    this.ctx.lineTo(cubeX - half, cubeY + quarter);
+    this.ctx.closePath();
+    // one of secondary voxel51 colors
+    this.ctx.fillStyle = "#B681FF";
+    this.ctx.fill();
+
+    // right face
+    this.ctx.beginPath();
+    this.ctx.moveTo(cubeX + half, cubeY - quarter);
+    this.ctx.lineTo(cubeX, cubeY);
+    this.ctx.lineTo(cubeX, cubeY + half);
+    this.ctx.lineTo(cubeX + half, cubeY + quarter);
+    this.ctx.closePath();
+    this.ctx.fillStyle = "#ff0000";
+    this.ctx.fill();
+
+    // outline
+    this.ctx.globalAlpha = 0.7;
+    this.ctx.strokeStyle = "#fff";
+    this.ctx.lineWidth = 1;
+    this.ctx.beginPath();
+    this.ctx.moveTo(cubeX, cubeY - half);
+    this.ctx.lineTo(cubeX + half, cubeY - quarter);
+    this.ctx.lineTo(cubeX + half, cubeY + quarter);
+    this.ctx.lineTo(cubeX, cubeY + half);
+    this.ctx.lineTo(cubeX - half, cubeY + quarter);
+    this.ctx.lineTo(cubeX - half, cubeY - quarter);
+    this.ctx.closePath();
+    this.ctx.stroke();
+    this.ctx.restore();
+
+    this.ctx.save();
+    this.ctx.font = logoFont;
     this.ctx.textAlign = "left";
-    this.ctx.textBaseline = "alphabetic";
-    this.ctx.globalAlpha = 1;
-    this.ctx.fillStyle = DEFAULT_FILL_STYLE;
+    this.ctx.textBaseline = "middle";
+    this.ctx.shadowColor = "rgba(0,0,0,0.45)";
+    this.ctx.shadowBlur = 6;
+    this.ctx.shadowOffsetX = 0;
+    this.ctx.shadowOffsetY = 2;
+    this.ctx.fillStyle = "#fff";
+    this.ctx.globalAlpha = 0.95;
+    this.ctx.fillText(logoText, cubeX + half + 8, rectY + rectHeight / 2);
+    this.ctx.restore();
+
+    this.ctx.restore();
   }
 
   async getFo3dSummary(src: string) {
@@ -159,13 +276,35 @@ export class ThreeDElement extends BaseElement<ThreeDState, HTMLImageElement> {
   }
 
   printSummary(summary: string) {
-    const lines = summary.split("\n");
-    for (let i = 0; i < lines.length; i++) {
-      const lineWidth = this.ctx.measureText(lines[i]).width;
-      const x = this.canvas.width / 2 - lineWidth / 2;
-      const y = this.canvas.height / 2 + 100 + i * 40;
-      this.ctx.fillText(lines[i], x, y);
+    this.ctx.save();
+
+    const lines = summary.split("\n").filter((line) => line.trim() !== "");
+
+    if (lines.length === 0) {
+      this.ctx.restore();
+      this.statusPainted = true;
+      return;
     }
+
+    const centerX = this.canvas.width / 2;
+    const centerY = this.canvas.height / 1.3;
+
+    this.ctx.fillStyle = "#FFFFFF";
+    this.ctx.font =
+      '500 28px system-ui, Roboto, "Helvetica Neue", Arial, sans-serif';
+    this.ctx.textAlign = "center";
+    this.ctx.textBaseline = "middle";
+    this.ctx.globalAlpha = 0.6;
+
+    // adjusted line height for 28px font (28px * 1.5)
+    const lineHeight = 42;
+
+    for (let i = 0; i < lines.length; i++) {
+      const y = centerY + (i - (lines.length - 1) / 2) * lineHeight;
+      this.ctx.fillText(lines[i], centerX, y);
+    }
+
+    this.ctx.restore();
     this.statusPainted = true;
   }
 
@@ -183,6 +322,7 @@ export class ThreeDElement extends BaseElement<ThreeDState, HTMLImageElement> {
       this.getFo3dSummary(src)
         .then((summary) => {
           this.printSummary(summary);
+          this.update({ loaded: true });
         })
         .catch((e) => {
           console.error(e);

@@ -14,6 +14,8 @@ export default r(graphql`
     $sortBy: String
     $desc: Boolean
     $hint: String
+    $dynamicGroup: BSON = null
+    $maxQueryTime: Int
   ) {
     samples(
       dataset: $dataset
@@ -27,59 +29,67 @@ export default r(graphql`
       sortBy: $sortBy
       desc: $desc
       hint: $hint
+      dynamicGroup: $dynamicGroup
+      maxQueryTime: $maxQueryTime
     ) {
-      pageInfo {
-        hasNextPage
+      __typename
+      ... on QueryTimeout {
+        queryTime
       }
-      edges {
-        cursor
-        node {
-          __typename
-          ... on ImageSample {
-            id
-            aspectRatio
-            sample
-            urls {
-              field
-              url
+      ... on SampleItemStrConnection {
+        pageInfo {
+          hasNextPage
+        }
+        edges {
+          cursor
+          node {
+            __typename
+            ... on ImageSample {
+              id
+              aspectRatio
+              sample
+              urls {
+                field
+                url
+              }
             }
-          }
-          ... on PointCloudSample {
-            aspectRatio
-            id
-            sample
-            urls {
-              field
-              url
+            ... on PointCloudSample {
+              aspectRatio
+              id
+              sample
+              urls {
+                field
+                url
+              }
             }
-          }
-          ... on VideoSample {
-            id
-            aspectRatio
-            frameRate
-            frameNumber
-            sample
-            urls {
-              field
-              url
+            ... on VideoSample {
+              id
+              aspectRatio
+              frameRate
+              frameNumber
+              sample
+              urls {
+                field
+                url
+              }
             }
-          }
-          ... on ThreeDSample {
-            id
-            aspectRatio
-            sample
-            urls {
-              field
-              url
+            ... on ThreeDSample {
+              id
+              aspectRatio
+              sample
+              urls {
+                field
+                url
+              }
             }
-          }
-          ... on UnknownSample {
-            id
-            aspectRatio
-            sample
-            urls {
-              field
-              url
+            ... on UnknownSample {
+              id
+              aspectRatio
+              sample
+              urls {
+                field
+                url
+              }
             }
           }
         }

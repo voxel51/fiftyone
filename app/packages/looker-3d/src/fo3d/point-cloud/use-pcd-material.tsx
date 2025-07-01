@@ -1,10 +1,10 @@
 import { useCallback, useMemo } from "react";
 import type { BufferGeometry } from "three";
 import {
-  PCD_SHADING_GRADIENTS,
   SHADE_BY_CUSTOM,
   SHADE_BY_HEIGHT,
   SHADE_BY_INTENSITY,
+  SHADE_BY_NONE,
   SHADE_BY_RGB,
 } from "../../constants";
 import type { PcdAsset } from "../../hooks";
@@ -12,12 +12,47 @@ import { useFo3dBounds } from "../../hooks/use-bounds";
 import { usePcdMaterialControls } from "../../hooks/use-pcd-material-controls";
 import {
   CustomColorShader,
+  DynamicAttributeShader,
   RgbShader,
   ShadeByHeight,
   ShadeByIntensity,
 } from "../../renderables/pcd/shaders";
-import { computeMinMaxForColorBufferAttribute } from "../../utils";
+import {
+  computeMinMaxForColorBufferAttribute,
+  computeMinMaxForScalarBufferAttribute,
+} from "../../utils";
 import { useFo3dContext } from "../context";
+
+export const getMinMaxForAttribute = (
+  geometry: BufferGeometry,
+  attributeName: string
+) => {
+  if (!geometry.hasAttribute(attributeName)) {
+    return [0, 1];
+  }
+
+  const attr = geometry.getAttribute(attributeName);
+  let min = 0,
+    max = 1;
+  if (attr && attr.itemSize === 1) {
+    // prefer userData if available (which it should be, since we set it during parsing)
+    if (
+      geometry.userData &&
+      geometry.userData[attributeName] &&
+      typeof geometry.userData[attributeName].min === "number" &&
+      typeof geometry.userData[attributeName].max === "number"
+    ) {
+      min = geometry.userData[attributeName].min;
+      max = geometry.userData[attributeName].max;
+    } else {
+      const minMax = computeMinMaxForScalarBufferAttribute(attr);
+      min = minMax.min;
+      max = minMax.max;
+    }
+  }
+
+  return [min, max] as const;
+};
 
 export const usePcdMaterial = (
   name: string,
@@ -27,18 +62,15 @@ export const usePcdMaterial = (
 ) => {
   const { upVector, pluginSettings } = useFo3dContext();
 
-  const { customColor, pointSize, isPointSizeAttenuated, shadeBy, opacity } =
-    usePcdMaterialControls(name, defaultMaterial);
-
   const pcdBoundingBox = useFo3dBounds(
     pcdContainerRef,
     useCallback(() => {
-      return !!geometry && shadeBy === SHADE_BY_HEIGHT;
-    }, [geometry, shadeBy])
+      return !!geometry;
+    }, [geometry])
   );
 
   const minMaxCoordinates = useMemo(() => {
-    if (shadeBy !== SHADE_BY_HEIGHT || !pcdBoundingBox || !upVector) {
+    if (!pcdBoundingBox) {
       return null;
     }
 
@@ -50,27 +82,64 @@ export const usePcdMaterial = (
     const min = pcdBoundingBox.min.dot(upVector);
     const max = pcdBoundingBox.max.dot(upVector);
 
-    return [min, max];
-  }, [upVector, pcdBoundingBox, shadeBy, pluginSettings]);
+    return [min, max] as const;
+  }, [upVector, pcdBoundingBox, pluginSettings]);
 
-  const { min: minIntensity, max: maxIntensity } = useMemo(() => {
-    if (shadeBy !== SHADE_BY_INTENSITY || !geometry) {
-      return { min: 0, max: 1 };
+  const {
+    activeThreshold,
+    customColor,
+    pointSize,
+    isPointSizeAttenuated,
+    shadeBy,
+    opacity,
+    colorMap,
+    isColormapModalOpen,
+    setIsColormapModalOpen,
+    handleColormapSave,
+  } = usePcdMaterialControls(name, geometry, defaultMaterial);
+
+  // "intensity" itself is generalizable as a custom attribute, but because we
+  // defined "intensity" as a special attribute (namely, r of rgb),
+  // we need custom handling
+  const { minIntensity, maxIntensity } = useMemo(() => {
+    if (shadeBy !== SHADE_BY_INTENSITY) {
+      return { minIntensity: 0, maxIntensity: 1 };
     }
 
-    const intensity =
-      geometry.getAttribute("color") ?? geometry.getAttribute("intensity");
+    const isLegacyIntensity = !geometry.hasAttribute("intensity");
 
-    if (intensity) {
-      return computeMinMaxForColorBufferAttribute(intensity);
+    if (isLegacyIntensity) {
+      const attrib = geometry.hasAttribute("rgb") ? "rgb" : null;
+
+      if (!attrib) {
+        return { minIntensity: 0, maxIntensity: 1 };
+      }
+
+      const minMax = computeMinMaxForColorBufferAttribute(
+        geometry.getAttribute(attrib)
+      );
+
+      return {
+        minIntensity: minMax.min,
+        maxIntensity: minMax.max,
+      };
     }
 
-    return { min: 0, max: 1 };
+    const minMax = computeMinMaxForScalarBufferAttribute(
+      geometry.getAttribute("intensity")
+    );
+
+    return {
+      minIntensity: minMax.min,
+      maxIntensity: minMax.max,
+    };
   }, [geometry, shadeBy]);
 
   const pointsMaterial = useMemo(() => {
     // to trigger rerender
-    const key = `${name}-${opacity}-${pointSize}-${isPointSizeAttenuated}-${shadeBy}-${customColor}-${minMaxCoordinates}-${minIntensity}-${maxIntensity}-${upVector}`;
+    const key = `${name}-${opacity}-${pointSize}-${isPointSizeAttenuated}-${shadeBy}-${customColor}-${minMaxCoordinates}-${minIntensity}-${maxIntensity}-${upVector}-${
+      colorMap ? JSON.stringify(colorMap) : ""
+    }-${activeThreshold ? JSON.stringify(activeThreshold) : ""}`;
 
     switch (shadeBy) {
       case SHADE_BY_HEIGHT:
@@ -82,7 +151,7 @@ export const usePcdMaterial = (
          */
         return (
           <ShadeByHeight
-            gradients={PCD_SHADING_GRADIENTS}
+            colorMap={colorMap}
             min={minMaxCoordinates?.at(0) ?? 0}
             max={minMaxCoordinates?.at(1) ?? 100}
             upVector={upVector}
@@ -97,12 +166,15 @@ export const usePcdMaterial = (
         return (
           <ShadeByIntensity
             key={key}
-            min={minIntensity}
-            max={maxIntensity}
-            gradients={PCD_SHADING_GRADIENTS}
+            minIntensity={minIntensity}
+            maxIntensity={maxIntensity}
+            colorMap={colorMap}
             pointSize={pointSize}
             opacity={opacity}
             isPointSizeAttenuated={isPointSizeAttenuated}
+            isLegacyIntensity={!geometry.hasAttribute("intensity")}
+            thresholdMin={activeThreshold?.[0]}
+            thresholdMax={activeThreshold?.[1]}
           />
         );
 
@@ -126,16 +198,48 @@ export const usePcdMaterial = (
             color={customColor || "#ffffff"}
           />
         );
-      default:
+
+      case SHADE_BY_NONE:
         return (
           <pointsMaterial
             color={"#ffffff"}
-            // 1000 and 2 are arbitrary values that seem to work well
             size={isPointSizeAttenuated ? pointSize / 1000 : pointSize / 2}
             opacity={opacity}
             sizeAttenuation={isPointSizeAttenuated}
           />
         );
+
+      default: {
+        if (geometry.hasAttribute(shadeBy)) {
+          const [min, max] = getMinMaxForAttribute(geometry, shadeBy);
+
+          return (
+            <DynamicAttributeShader
+              key={key}
+              attribute={shadeBy}
+              min={min}
+              max={max}
+              pointSize={pointSize}
+              isPointSizeAttenuated={isPointSizeAttenuated}
+              opacity={opacity}
+              geometry={geometry}
+              colorMap={colorMap}
+              thresholdMin={activeThreshold?.[0]}
+              thresholdMax={activeThreshold?.[1]}
+            />
+          );
+        } else {
+          // fallback to default
+          return (
+            <pointsMaterial
+              color={"#ffffff"}
+              size={isPointSizeAttenuated ? pointSize / 1000 : pointSize / 2}
+              opacity={opacity}
+              sizeAttenuation={isPointSizeAttenuated}
+            />
+          );
+        }
+      }
     }
   }, [
     shadeBy,
@@ -149,7 +253,16 @@ export const usePcdMaterial = (
     upVector,
     opacity,
     name,
+    colorMap,
+    activeThreshold,
   ]);
 
-  return pointsMaterial;
+  return {
+    pointsMaterial,
+    shadingMode: shadeBy,
+    colorMap,
+    isColormapModalOpen,
+    setIsColormapModalOpen,
+    handleColormapSave,
+  };
 };

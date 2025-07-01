@@ -1,4 +1,3 @@
--r common.txt
 -r docs.txt
 -r extras.txt
 -r test.txt
