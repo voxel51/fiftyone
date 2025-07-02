@@ -34,12 +34,11 @@ class ExecutionStoreRepo(ABC):
     methods that this class provides.
     """
 
-    def __init__(self, dataset_id: Optional[ObjectId] = None, is_cache=False):
+    def __init__(self, dataset_id: Optional[ObjectId] = None):
         """Initialize the execution store repository.
 
         Args:
             dataset_id (Optional[ObjectId]): the dataset ID to operate on
-            is_cache (False): whether the store is a cache store
         """
         if dataset_id is not None and not isinstance(dataset_id, ObjectId):
             raise ValueError(
@@ -302,14 +301,12 @@ class MongoExecutionStoreRepo(ExecutionStoreRepo):
 
     COLLECTION_NAME = "execution_store"
 
-    def __init__(
-        self, collection, dataset_id: Optional[ObjectId] = None, is_cache=False
-    ):
+    def __init__(self, collection, dataset_id: Optional[ObjectId] = None):
         if dataset_id is not None and not isinstance(dataset_id, ObjectId):
             raise ValueError(
                 f"dataset_id must be an ObjectId, got {type(dataset_id).__name__}"
             )
-        super().__init__(dataset_id, is_cache)
+        super().__init__(dataset_id)
         self._collection = collection
         self._create_indexes()
 
