@@ -209,7 +209,6 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
 
         op.delegation_target = kwargs.get("delegation_target", None)
         op.metadata = kwargs.get("metadata") or {}
-        op.num_partitions = kwargs.get("num_partitions", None)
 
         context = None
         if isinstance(op.context, dict):
