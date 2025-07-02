@@ -5573,6 +5573,7 @@
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
                 "config": {
                     "name_or_path": "facebook/convnext-tiny-224",
+                    "channels_last": false,
                     "transformers_processor_kwargs": {
                         "return_tensors": "pt"
                     }
@@ -5609,6 +5610,7 @@
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
                 "config": {
                     "name_or_path": "facebook/convnext-small-224",
+                    "channels_last": false,
                     "transformers_processor_kwargs": {
                         "return_tensors": "pt"
                     }
@@ -5645,6 +5647,7 @@
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
                 "config": {
                     "name_or_path": "facebook/convnext-base-224",
+                    "channels_last": false,
                     "transformers_processor_kwargs": {
                         "return_tensors": "pt"
                     }
@@ -5681,6 +5684,7 @@
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
                 "config": {
                     "name_or_path": "facebook/convnext-large-224",
+                    "channels_last": false,
                     "transformers_processor_kwargs": {
                         "return_tensors": "pt"
                     }
@@ -5717,6 +5721,7 @@
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
                 "config": {
                     "name_or_path": "facebook/convnext-xlarge-224-22k-1k",
+                    "channels_last": false,
                     "transformers_processor_kwargs": {
                         "return_tensors": "pt"
                     }
@@ -5753,6 +5758,7 @@
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
                 "config": {
                     "name_or_path": "google/efficientnet-b0",
+                    "channels_last": false,
                     "transformers_processor_kwargs": {
                         "return_tensors": "pt"
                     }
@@ -5789,6 +5795,7 @@
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
                 "config": {
                     "name_or_path": "google/efficientnet-b1",
+                    "channels_last": false,
                     "transformers_processor_kwargs": {
                         "return_tensors": "pt"
                     }
@@ -5825,6 +5832,7 @@
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
                 "config": {
                     "name_or_path": "google/efficientnet-b2",
+                    "channels_last": false,
                     "transformers_processor_kwargs": {
                         "return_tensors": "pt"
                     }
@@ -5861,6 +5869,7 @@
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
                 "config": {
                     "name_or_path": "google/efficientnet-b3",
+                    "channels_last": false,
                     "transformers_processor_kwargs": {
                         "return_tensors": "pt"
                     }
@@ -5897,6 +5906,7 @@
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
                 "config": {
                     "name_or_path": "google/efficientnet-b4",
+                    "channels_last": false,
                     "transformers_processor_kwargs": {
                         "return_tensors": "pt"
                     }
@@ -5933,6 +5943,7 @@
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
                 "config": {
                     "name_or_path": "google/efficientnet-b5",
+                    "channels_last": false,
                     "transformers_processor_kwargs": {
                         "return_tensors": "pt"
                     }
@@ -5969,6 +5980,7 @@
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
                 "config": {
                     "name_or_path": "google/efficientnet-b6",
+                    "channels_last": false,
                     "transformers_processor_kwargs": {
                         "return_tensors": "pt"
                     }
@@ -6005,6 +6017,7 @@
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
                 "config": {
                     "name_or_path": "google/efficientnet-b7",
+                    "channels_last": false,
                     "transformers_processor_kwargs": {
                         "return_tensors": "pt"
                     }
