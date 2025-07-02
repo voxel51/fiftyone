@@ -6493,14 +6493,22 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     continue
 
                 if self._server_version >= Version("2.3"):
-                    x, y, _, _ = det.bounding_box
+                    x, y, w, h = det.bounding_box
                     frame_width, frame_height = frame_size
                     mask_height, mask_width = det.mask.shape
                     xtl, ytl = round(x * frame_width), round(y * frame_height)
-                    xbr, ybr = xtl + mask_width, ytl + mask_height
+                    w, h = round(w * frame_width), round(h * frame_height)
+                    xbr, ybr = xtl + w, ytl + h
 
                     # -1 to convert from CVAT indexing
-                    rle = HasCVATBinaryMask._mask_to_cvat_rle(det.mask)
+                    mask = det.mask
+                    if w != mask_width or h != mask_height:
+                        mask = etai.resize(
+                            mask.astype("uint8"), width=w, height=h
+                        )
+
+                    mask = mask.astype("bool")
+                    rle = HasCVATBinaryMask._mask_to_cvat_rle(mask)
                     rle.extend([xtl, ytl, xbr - 1, ybr - 1])
 
                     shape = {
