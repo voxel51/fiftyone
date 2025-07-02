@@ -7052,6 +7052,10 @@ class CVATLabel(object):
         self.attributes = {}
         self.fo_attributes = {}
 
+        self._reserved_attr_types = {
+            "tags": list,
+        }
+
         # Parse attributes
         attr_id_map_rev = {v: k for k, v in attr_id_map[cvat_id].items()}
         for attr in attrs:
@@ -7087,10 +7091,21 @@ class CVATLabel(object):
             label.id = self.id
 
         for name, value in self.attributes.items():
+            value = self._check_reserved_attr_value(name, value)
             label[name] = value
 
         if self.fo_attributes:
             label.attributes = self.fo_attributes
+
+    def _check_reserved_attr_value(self, name, value):
+        if name not in self._reserved_attr_types:
+            return value
+
+        attr_type = self._reserved_attr_types[name]
+        if not isinstance(value, attr_type):
+            value = attr_type(value)
+
+        return value
 
 
 class CVATShape(CVATLabel):
