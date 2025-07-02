@@ -5559,6 +5559,487 @@
             },
             "tags": ["detection", "coco", "torch", "yolo"],
             "date_added": "2025-05-22 14:14:45"
+        },
+        {
+            "base_name": "convnext-tiny-224-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Tiny modern CNN bridging traditional convolutions with transformer-inspired improvements",
+            "source": "https://huggingface.co/facebook/convnext-tiny-224",
+            "author": "Zhuang Liu, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "facebook/convnext-tiny-224",
+                    "channels_last": false,
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "convnext"
+            ],
+            "date_added": "2025-06-30 12:00:00"
+        },
+        {
+            "base_name": "convnext-small-224-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Small modernized CNN delivering strong accuracy through architectural innovations",
+            "source": "https://huggingface.co/facebook/convnext-small-224",
+            "author": "Zhuang Liu, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "facebook/convnext-small-224",
+                    "channels_last": false,
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "convnext"
+            ],
+            "date_added": "2025-06-30 12:00:00"
+        },
+        {
+            "base_name": "convnext-base-224-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Base modern CNN with transformer elements for robust visual understanding. From `A ConvNet for the 2020s <https://arxiv.org/abs/2201.03545>`_ trained on ImageNet-1k",
+            "source": "https://huggingface.co/facebook/convnext-base-224",
+            "author": "Zhuang Liu, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "facebook/convnext-base-224",
+                    "channels_last": false,
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "convnext"
+            ],
+            "date_added": "2025-06-30 12:00:00"
+        },
+        {
+            "base_name": "convnext-large-224-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Large modern CNN demonstrating competitive performance with vision transformers",
+            "source": "https://huggingface.co/facebook/convnext-large-224",
+            "author": "Zhuang Liu, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "facebook/convnext-large-224",
+                    "channels_last": false,
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "convnext"
+            ],
+            "date_added": "2025-06-30 12:00:00"
+        },
+        {
+            "base_name": "convnext-xlarge-224-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Extra-large modern CNN maximizing architectural improvements for top accuracy",
+            "source": "https://huggingface.co/facebook/convnext-xlarge-224-22k-1k",
+            "author": "Zhuang Liu, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "facebook/convnext-xlarge-224-22k-1k",
+                    "channels_last": false,
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "convnext"
+            ],
+            "date_added": "2025-06-30 12:00:00"
+        },
+        {
+            "base_name": "efficientnet-b0-imagenet-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Efficient image classifier optimized for mobile devices with excellent accuracy-efficiency tradeoff",
+            "source": "https://huggingface.co/google/efficientnet-b0",
+            "author": "Mingxing Tan and Quoc V. Le",
+            "license": "Apache 2.0",
+            "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "google/efficientnet-b0",
+                    "channels_last": false,
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "efficientnet"
+            ],
+            "date_added": "2025-06-30 12:00:00"
+        },
+        {
+            "base_name": "efficientnet-b1-imagenet-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Scaled efficient classifier with improved accuracy for slightly larger computational budgets",
+            "source": "https://huggingface.co/google/efficientnet-b1",
+            "author": "Mingxing Tan and Quoc V. Le",
+            "license": "Apache 2.0",
+            "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "google/efficientnet-b1",
+                    "channels_last": false,
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "efficientnet"
+            ],
+            "date_added": "2025-06-30 12:00:00"
+        },
+        {
+            "base_name": "efficientnet-b2-imagenet-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Balanced efficient model providing stronger performance while maintaining reasonable resource usage",
+            "source": "https://huggingface.co/google/efficientnet-b2",
+            "author": "Mingxing Tan and Quoc V. Le",
+            "license": "Apache 2.0",
+            "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "google/efficientnet-b2",
+                    "channels_last": false,
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "efficientnet"
+            ],
+            "date_added": "2025-06-30 12:00:00"
+        },
+        {
+            "base_name": "efficientnet-b3-imagenet-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Mid-scale efficient classifier delivering high accuracy for versatile deployment scenarios",
+            "source": "https://huggingface.co/google/efficientnet-b3",
+            "author": "Mingxing Tan and Quoc V. Le",
+            "license": "Apache 2.0",
+            "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "google/efficientnet-b3",
+                    "channels_last": false,
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "efficientnet"
+            ],
+            "date_added": "2025-06-30 12:00:00"
+        },
+        {
+            "base_name": "efficientnet-b4-imagenet-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Large efficient model with enhanced features for transfer learning applications",
+            "source": "https://huggingface.co/google/efficientnet-b4",
+            "author": "Mingxing Tan and Quoc V. Le",
+            "license": "Apache 2.0",
+            "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "google/efficientnet-b4",
+                    "channels_last": false,
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "efficientnet"
+            ],
+            "date_added": "2025-06-30 12:00:00"
+        },
+        {
+            "base_name": "efficientnet-b5-imagenet-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "High-capacity efficient classifier prioritizing accuracy with available compute resources",
+            "source": "https://huggingface.co/google/efficientnet-b5",
+            "author": "Mingxing Tan and Quoc V. Le",
+            "license": "Apache 2.0",
+            "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "google/efficientnet-b5",
+                    "channels_last": false,
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "efficientnet"
+            ],
+            "date_added": "2025-06-30 12:00:00"
+        },
+        {
+            "base_name": "efficientnet-b6-imagenet-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Extended efficient model approaching state-of-the-art accuracy on challenging datasets",
+            "source": "https://huggingface.co/google/efficientnet-b6",
+            "author": "Mingxing Tan and Quoc V. Le",
+            "license": "Apache 2.0",
+            "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "google/efficientnet-b6",
+                    "channels_last": false,
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "efficientnet"
+            ],
+            "date_added": "2025-06-30 12:00:00"
+        },
+        {
+            "base_name": "efficientnet-b7-imagenet-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Maximum efficient classifier pushing performance boundaries while preserving efficiency principles",
+            "source": "https://huggingface.co/google/efficientnet-b7",
+            "author": "Mingxing Tan and Quoc V. Le",
+            "license": "Apache 2.0",
+            "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "google/efficientnet-b7",
+                    "channels_last": false,
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "efficientnet"
+            ],
+            "date_added": "2025-06-30 12:00:00"
         }
     ]
 }
