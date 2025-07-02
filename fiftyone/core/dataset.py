@@ -4528,8 +4528,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._doc.save(virtual=True)
 
         view._set_name(name)
+
+        # Backing datasets for saved generated views should be persistent
         if view._is_generated:
-            view._dataset.persistent = True
+            view._dataset._doc.persistent = True
+            view._dataset.save()
 
     def get_saved_view_info(self, name):
         """Loads the editable information about the saved view with the given
@@ -4648,18 +4651,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             view_doc.view_stages = [json_util.dumps(s) for s in view_stages]
             updated = True
 
-        # When reloading generated views, always increment `last_modified_at`
-        # so we can compute when the view next needs refreshing
-        if updated or (reload and view._is_generated):
+        # When reloading generated views, increment `last_modified_at` so we
+        # can compute when the view next needs refreshing
+        if reload and view._is_generated:
             view_doc.last_modified_at = datetime.utcnow()
             updated = True
 
         if updated:
-            view_doc.save()
+            view_doc.save(virtual=True)
             self._doc.reload("saved_views")
 
+        # Backing datasets for saved generated views should be persistent
         if view._is_generated and not view._dataset.persistent:
-            view._dataset.persistent = True
+            view._dataset._doc.persistent = True
+            view._dataset.save()
 
     def delete_saved_view(self, name):
         """Deletes the saved view with the given name.
@@ -9067,10 +9072,11 @@ def _handle_delete_generated_saved_view(dataset, view_doc):
         return
 
     try:
-        # When deleting *generated* saved views, we mark the backing
-        # dataset as non-persistent so it can be garbage collected
+        # When deleting generated saved views, mark the backing dataset as
+        # non-persistent so it can be garbage collected
         view = dataset._load_saved_view_from_doc(view_doc)
-        view._dataset.persistent = False
+        view._dataset._doc.persistent = False
+        view._dataset.save()
     except:
         pass
 
