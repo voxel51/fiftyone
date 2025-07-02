@@ -13,7 +13,7 @@ import React, { Fragment, useCallback, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import Draggable from "react-draggable";
 import { useRecoilValue, useResetRecoilState } from "recoil";
-import { resizeHandle } from "./../Sidebar/Sidebar.module.css";
+import { resizeHandle } from "./../Sidebar/InteractiveSidebar/style.module.css";
 import ColorFooter from "./ColorFooter";
 import FieldSetting from "./FieldSetting";
 import GlobalSetting from "./GlobalSetting";

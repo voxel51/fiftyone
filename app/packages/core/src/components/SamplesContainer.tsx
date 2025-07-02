@@ -1,6 +1,6 @@
 import { OPERATOR_PROMPT_AREAS, OperatorPromptArea } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
-import { Controller } from "@react-spring/web";
+import type { Controller } from "@react-spring/web";
 import React, { useCallback } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
@@ -107,18 +107,23 @@ const Sidebar = () => {
           throw new Error("invalid entry");
       }
     },
-    []
+    [disabled]
   );
+
   return (
     <SidebarContainer modal={false}>
       <SchemaSettings />
 
       <TopContainer>
-        <ViewSelection id="saved-views" />
+        <ViewSelection />
         <Filter />
       </TopContainer>
 
-      <RenderSidebar render={renderGridEntry} />
+      <RenderSidebar
+        isDisabled={() => false}
+        useEntries={fos.useGridEntries}
+        render={renderGridEntry}
+      />
     </SidebarContainer>
   );
 };

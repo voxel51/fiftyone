@@ -1,4 +1,4 @@
-import { EXPLORE, modalMode } from "@fiftyone/state";
+import { EXPLORE, modalMode, useModalExplorEntries } from "@fiftyone/state";
 import { useAtomValue } from "jotai";
 import React from "react";
 import ExploreSidebar from "../../Sidebar";
@@ -10,7 +10,13 @@ import { useModalSidebarRenderEntry } from "./use-sidebar-render-entry";
 const Explore = () => {
   const renderEntry = useModalSidebarRenderEntry();
 
-  return <ExploreSidebar render={renderEntry} modal={true} />;
+  return (
+    <ExploreSidebar
+      isDisabled={() => false}
+      render={renderEntry}
+      useEntries={useModalExplorEntries}
+    />
+  );
 };
 
 const Sidebar = () => {

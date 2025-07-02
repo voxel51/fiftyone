@@ -15,21 +15,10 @@ const Line = styled.div`
   background: ${({ theme }) => theme.background.level1};
 `;
 
-const Circle = styled.div`
-  padding: 0.5rem;
-  border-radius: 1rem;
-  cursor: pointer;
-
-  &:hover {
-    background: #333333;
-  }
-`;
-
-const Square = styled.div`
+const Container = styled.div`
   padding: 0.25rem;
   width: 2.5rem;
   height: 2.5rem;
-  border-radius: 0.25rem;
   cursor: pointer;
   align-items: center;
   display: flex;
@@ -39,6 +28,14 @@ const Square = styled.div`
   &:hover {
     background: #333333;
   }
+`;
+
+const Circle = styled(Container)`
+  border-radius: 1.25rem;
+`;
+
+const Square = styled(Container)`
+  border-radius: 0.25rem;
 `;
 
 const Arrow = () => {

@@ -36,7 +36,7 @@ export const fn = (
       shown = entry.shown;
     }
 
-    const height = el.getBoundingClientRect().height;
+    const height = el?.getBoundingClientRect().height ?? 0;
     const scale = springs.scale.get();
     if (scale > 1) {
       y += (height - height / scale) / 2;
@@ -51,7 +51,7 @@ export const fn = (
 
   let scale = 1;
   if (activeKey) {
-    const w = items[activeKey].el.parentElement?.getBoundingClientRect()
+    const w = items[activeKey].el?.parentElement?.getBoundingClientRect()
       .width as number;
     scale = (w - 12) / (w - 16);
   }
@@ -94,11 +94,12 @@ export const fn = (
       scale: dragging ? scale : 1,
       shadow: dragging ? 8 : 0,
       left: shown ? 0 : -3000,
-      height: shown
-        ? Array.from(el.children).reduce((height, child) => {
-            return height + child.getBoundingClientRect().height;
-          }, 0)
-        : 0,
+      height:
+        shown && el
+          ? Array.from(el.children).reduce((height, child) => {
+              return height + child.getBoundingClientRect().height;
+            }, 0)
+          : 0,
     };
 
     if (active) {
@@ -106,7 +107,9 @@ export const fn = (
     }
 
     if (shown) {
-      y += el.getBoundingClientRect().height / springs.scale.get() + MARGIN;
+      y +=
+        (el?.getBoundingClientRect().height ?? 0) / springs.scale.get() +
+        MARGIN;
     }
 
     if (activeKey) {
@@ -123,7 +126,7 @@ export const getAfterKey = (
   items: InteractiveItems,
   order: string[],
   direction: Direction,
-  disabled: i
+  isDisabled: (entry: fos.SidebarEntry) => boolean
 ): string | null => {
   if (activeKey === null || !items[activeKey]) {
     return null;
@@ -131,17 +134,17 @@ export const getAfterKey = (
 
   const up = direction === Direction.UP;
   const baseTop =
-    items[order[0]].el.parentElement?.getBoundingClientRect().y || 0;
+    items[order[0]].el?.parentElement?.getBoundingClientRect().y ?? 0;
   const isGroup = items[activeKey].entry.kind === fos.EntryKind.GROUP;
   const measurement = isGroup
     ? measureGroups(activeKey, items, order)
     : measureEntries(activeKey, items, order);
 
   const data = measurement.data.filter(
-    ({ key }) => !isDisabledEntry(items[key].entry, disabled, !isGroup)
+    ({ key }) => !isDisabled(items[key].entry)
   );
 
-  const { top } = items[activeKey].el.getBoundingClientRect();
+  const top = items[activeKey].el?.getBoundingClientRect().top ?? 0;
   let y = top - baseTop;
 
   if (!up) {
@@ -166,7 +169,7 @@ export const getAfterKey = (
   if (up && !isGroup) {
     filtered = filtered.filter(({ key }) => {
       const prev = order[order.indexOf(key) - 1];
-      return !prev || !isDisabledEntry(items[prev].entry, disabled);
+      return !prev || !isDisabled(items[prev].entry);
     });
   }
 
@@ -195,9 +198,7 @@ export const getAfterKey = (
     return order[index];
   }
 
-  const first = order.filter(
-    (key) => !isDisabledEntry(items[key].entry, disabled, true)
-  )[0];
+  const first = order.filter((key) => !isDisabled(items[key].entry))[0];
   if (order.indexOf(result) <= order.indexOf(first)) {
     if (up) return order[order.indexOf(first) + 1];
     return first;
@@ -222,31 +223,11 @@ export const getEntryKey = (entry: fos.SidebarEntry) => {
     return `input-${entry.type}`;
   }
 
+  if (entry.kind === fos.EntryKind.LABEL) {
+    return `label-${entry.id}`;
+  }
+
   throw new Error("invalid entry");
-};
-
-const isDisabledEntry = (
-  entry: fos.SidebarEntry,
-  isDisabled: (entry: fos.SidebarEntry) => boolean,
-  excludeGroups = false
-) => {
-  if (entry.kind === fos.EntryKind.PATH) {
-    return isDisabled(entry);
-  }
-
-  if (entry.kind === fos.EntryKind.EMPTY) {
-    return entry.group === "tags";
-  }
-
-  if (excludeGroups && entry.kind === fos.EntryKind.GROUP) {
-    return entry.name === "tags" || entry.name === "other";
-  }
-
-  if (entry.kind === fos.EntryKind.INPUT) {
-    return true;
-  }
-
-  return false;
 };
 
 const isShown = (entry: fos.SidebarEntry) => {
@@ -283,7 +264,7 @@ const measureEntries = (
 
     if (!isShown(entry)) continue;
 
-    let height = items[key].el.getBoundingClientRect().height;
+    let height = items[key].el?.getBoundingClientRect().height ?? 0;
 
     if (key === activeKey) activeHeight = height;
 
@@ -327,7 +308,7 @@ const measureGroups = (
 
     if (!isShown(entry)) continue;
 
-    const height = items[key].el.getBoundingClientRect().height;
+    const height = items[key].el?.getBoundingClientRect().height ?? 0;
     if (current.key === activeKey) {
       activeHeight += MARGIN + height;
     }

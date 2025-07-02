@@ -11,10 +11,11 @@ import useGetNewOrder from "./useGetNewOrder";
 import { Direction, MARGIN, fn, getEntryKey } from "./utils";
 
 const InteractiveSidebar = ({
+  isDisabled,
   render,
   useEntries,
 }: {
-  isDisabled: (key: string) => boolean;
+  isDisabled: (entry: fos.SidebarEntry) => boolean;
   render: RenderEntry;
   useEntries: () => [fos.SidebarEntry[], (entries: fos.SidebarEntry[]) => void];
 }) => {
@@ -31,9 +32,7 @@ const InteractiveSidebar = ({
   const scroll = useRef<number>(0);
   const start = useRef<number | null>(0);
   const [controller] = useState(() => new Controller({ minHeight: 0 }));
-  const [observer] = useState<ResizeObserver>(
-    () => new ResizeObserver(placeItems)
-  );
+
   const [entries, setEntries] = useEntries();
 
   if (entries instanceof Error) {
@@ -105,8 +104,17 @@ const InteractiveSidebar = ({
       }
     }
   }, [controller]);
+  const [observer] = useState<ResizeObserver>(
+    () => new ResizeObserver(placeItems)
+  );
 
-  const getNewOrder = useGetNewOrder({ down, items, lastOrder, order });
+  const getNewOrder = useGetNewOrder({
+    down,
+    isDisabled,
+    items,
+    lastOrder,
+    order,
+  });
   const animate = useAnimate({
     controller,
     down,
@@ -189,85 +197,81 @@ const InteractiveSidebar = ({
   });
 
   return (
-    <>
-      <SidebarColumn
-        ref={container}
-        data-cy="sidebar-column"
-        onScroll={() => {
-          const scrollTop = container.current?.scrollTop ?? 0;
-          if (start.current !== null) {
-            start.current += scroll.current - (scrollTop ?? 0);
+    <SidebarColumn
+      ref={container}
+      data-cy="sidebar-column"
+      onScroll={() => {
+        const scrollTop = container.current?.scrollTop ?? 0;
+        if (start.current !== null) {
+          start.current += scroll.current - (scrollTop ?? 0);
+        }
+
+        scroll.current = scrollTop ?? 0;
+        down.current && animate(last.current);
+      }}
+    >
+      <Container className={style.sidebar} style={controller.springs}>
+        {order.current.map((key) => {
+          const entry = items.current[key].entry;
+          if (entry.kind === fos.EntryKind.GROUP) {
+            group = entry.name;
           }
 
-          scroll.current = scrollTop ?? 0;
-          down.current && animate(last.current);
-        }}
-      >
-        <Container className={style.sidebar} style={controller.springs}>
-          {order.current.map((key) => {
-            const entry = items.current[key].entry;
-            if (entry.kind === fos.EntryKind.GROUP) {
-              group = entry.name;
-            }
+          const { shadow, ...springs } = items.current[key].controller.springs;
 
-            const { shadow, ...springs } =
-              items.current[key].controller.springs;
+          const { children } = render(
+            key,
+            group,
+            entry,
+            items.current[key].controller,
+            trigger
+          );
+          const style = entry.kind === fos.EntryKind.INPUT ? { zIndex: 0 } : {};
 
-            const { children } = render(
-              key,
-              group,
-              entry,
-              items.current[key].controller,
-              trigger
-            );
-            const style =
-              entry.kind === fos.EntryKind.INPUT ? { zIndex: 0 } : {};
+          let dataCy = "-field";
+          if (entry.kind === fos.EntryKind.GROUP) {
+            dataCy = `sidebar-group-${entry.name}${dataCy}`;
+          } else if (entry.kind === fos.EntryKind.PATH) {
+            dataCy = entry.path + dataCy;
+          } else {
+            dataCy = `sidebar${dataCy}`;
+          }
 
-            let dataCy = "-field";
-            if (entry.kind === fos.EntryKind.GROUP) {
-              dataCy = `sidebar-group-${entry.name}${dataCy}`;
-            } else if (entry.kind === fos.EntryKind.PATH) {
-              dataCy = entry.path + dataCy;
-            } else {
-              dataCy = `sidebar${dataCy}`;
-            }
+          return (
+            <animated.div
+              data-cy={dataCy}
+              onMouseDownCapture={() => {
+                lastTouched.current = null;
+                placeItems();
+              }}
+              key={key}
+              style={{
+                ...springs,
+                boxShadow: shadow.to(
+                  (s) => `rgba(0, 0, 0, 0.15) 0px ${s}px ${2 * s}px 0px`
+                ),
+                ...style,
+              }}
+            >
+              <div
+                ref={(node) => {
+                  if (!items.current[key]) {
+                    return;
+                  }
 
-            return (
-              <animated.div
-                data-cy={dataCy}
-                onMouseDownCapture={() => {
-                  lastTouched.current = null;
-                  placeItems();
-                }}
-                key={key}
-                style={{
-                  ...springs,
-                  boxShadow: shadow.to(
-                    (s) => `rgba(0, 0, 0, 0.15) 0px ${s}px ${2 * s}px 0px`
-                  ),
-                  ...style,
+                  const el = items.current[key].el;
+                  el && observer.unobserve(el);
+                  node && observer.observe(node);
+                  items.current[key].el = node;
                 }}
               >
-                <div
-                  ref={(node) => {
-                    if (!items.current[key]) {
-                      return;
-                    }
-
-                    const el = items.current[key].el;
-                    el && observer.unobserve(el);
-                    node && observer.observe(node);
-                    items.current[key].el = node;
-                  }}
-                >
-                  {children}
-                </div>
-              </animated.div>
-            );
-          })}
-        </Container>
-      </SidebarColumn>
-    </>
+                {children}
+              </div>
+            </animated.div>
+          );
+        })}
+      </Container>
+    </SidebarColumn>
   );
 };
 

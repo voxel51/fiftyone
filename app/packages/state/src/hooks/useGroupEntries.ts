@@ -1,7 +1,7 @@
 import * as fos from "@fiftyone/state";
 import { removeKeys } from "@fiftyone/utilities";
 import { useRecoilCallback, useRecoilValue } from "recoil";
-import { groupLength, replace } from "../recoil/groupEntries";
+import { groupLength } from "../recoil/groupEntries";
 
 export const useRenameGroup = (mutable: boolean, group: string) => {
   const callback = useRecoilCallback(
@@ -30,8 +30,6 @@ export const useRenameGroup = (mutable: boolean, group: string) => {
         const shown = await snapshot.getPromise(
           fos.groupShown({ modal: false, group, loading: true })
         );
-
-        replace[newName] = group;
 
         set(
           fos.groupShown({ group: newName, modal: false, loading: true }),

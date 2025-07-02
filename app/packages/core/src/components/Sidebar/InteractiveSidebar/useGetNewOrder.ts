@@ -8,11 +8,13 @@ import { getAfterKey } from "./utils";
 
 export default function useGetNewOrder({
   down,
+  isDisabled,
   items,
   lastOrder,
   order,
 }: {
   down: MutableRefObject<string | null>;
+  isDisabled: (entry: fos.SidebarEntry) => boolean;
   items: MutableRefObject<InteractiveItems>;
   lastOrder: MutableRefObject<string[]>;
   order: MutableRefObject<string[]>;
@@ -24,7 +26,7 @@ export default function useGetNewOrder({
         items.current,
         lastOrder.current,
         direction,
-        false
+        isDisabled
       );
 
       const currentDown = down.current;
@@ -79,6 +81,6 @@ export default function useGetNewOrder({
 
       return [...result, ...section, ...pool.slice(i)];
     },
-    [down, items, lastOrder, order]
+    [down, isDisabled, items, lastOrder, order]
   );
 }

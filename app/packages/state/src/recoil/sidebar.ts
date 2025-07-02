@@ -75,8 +75,9 @@ import * as viewAtoms from "./view";
 export enum EntryKind {
   EMPTY = "EMPTY",
   GROUP = "GROUP",
-  PATH = "PATH",
   INPUT = "INPUT",
+  LABEL = "LABEL",
+  PATH = "PATH",
 }
 
 export interface EmptyEntry {
@@ -101,7 +102,17 @@ export interface PathEntry {
   shown: boolean;
 }
 
-export type SidebarEntry = EmptyEntry | GroupEntry | PathEntry | InputEntry;
+export interface LabelEntry {
+  kind: EntryKind.LABEL;
+  id: string;
+}
+
+export type SidebarEntry =
+  | EmptyEntry
+  | GroupEntry
+  | InputEntry
+  | LabelEntry
+  | PathEntry;
 
 export const readableTags = selectorFamily<
   string[],
@@ -127,14 +138,32 @@ export const readableTags = selectorFamily<
     },
 });
 
-export const useEntries = (
-  modal: boolean
-): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
+export const useGridEntries = (): [
+  SidebarEntry[],
+  (entries: SidebarEntry[]) => void
+] => {
   const [entries, setEntries] = useRecoilStateLoadable(
-    sidebarEntries({ modal, loading: false, filtered: true })
+    sidebarEntries({ modal: false, loading: false, filtered: true })
   );
   const loadingEntries = useRecoilValueLoadable(
-    sidebarEntries({ modal, loading: true, filtered: true })
+    sidebarEntries({ modal: false, loading: true, filtered: true })
+  );
+
+  return [
+    entries.state === "loading" ? loadingEntries.contents : entries.contents,
+    setEntries,
+  ];
+};
+
+export const useModalExplorEntries = (): [
+  SidebarEntry[],
+  (entries: SidebarEntry[]) => void
+] => {
+  const [entries, setEntries] = useRecoilStateLoadable(
+    sidebarEntries({ modal: true, loading: false, filtered: true })
+  );
+  const loadingEntries = useRecoilValueLoadable(
+    sidebarEntries({ modal: true, loading: true, filtered: true })
   );
 
   return [
