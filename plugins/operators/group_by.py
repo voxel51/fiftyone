@@ -116,7 +116,6 @@ def _create(ctx, obj):
 
         input(
             "order_by_key",
-            default=False,
             required=False,
             label="Order by key",
             description=(
