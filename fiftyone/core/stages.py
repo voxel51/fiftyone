@@ -7919,9 +7919,9 @@ class SortBySimilarity(ViewStage):
         if pipeline is None or state != last_state:
             pipeline = self._make_pipeline(sample_collection)
 
-            state["pipeline"] = pipeline
-            self._state = state
+        state["pipeline"] = pipeline
 
+        self._state = state
         self._pipeline = pipeline
 
     def _make_pipeline(self, sample_collection):
@@ -8180,7 +8180,11 @@ class ToPatches(ViewStage):
         except:
             last_dataset = None
 
-        if reload or last_dataset is None or state != last_state:
+        if (
+            reload
+            or last_dataset is None
+            or (state != last_state and not saved_view)
+        ):
             kwargs = deepcopy(self._config) or {}
 
             # Recreate same indexes from existing dataset
@@ -8198,14 +8202,14 @@ class ToPatches(ViewStage):
             # name if possible
             if name is not None and (saved_view or state == last_state):
                 if last_dataset is not None:
-                    last_dataset.delete()
+                    last_dataset._delete()
 
                 patches_dataset.name = name
-
-            state["name"] = patches_dataset.name
-            self._state = state
         else:
             patches_dataset = last_dataset
+
+        state["name"] = patches_dataset.name
+        self._state = state
 
         return fop.PatchesView(sample_collection, self, patches_dataset)
 
@@ -8343,7 +8347,11 @@ class ToEvaluationPatches(ViewStage):
         except:
             last_dataset = None
 
-        if reload or last_dataset is None or state != last_state:
+        if (
+            reload
+            or last_dataset is None
+            or (state != last_state and not saved_view)
+        ):
             kwargs = deepcopy(self._config) or {}
 
             # Recreate same indexes from existing dataset
@@ -8361,14 +8369,14 @@ class ToEvaluationPatches(ViewStage):
             # name if possible
             if name is not None and (saved_view or state == last_state):
                 if last_dataset is not None:
-                    last_dataset.delete()
+                    last_dataset._delete()
 
                 eval_patches_dataset.name = name
-
-            state["name"] = eval_patches_dataset.name
-            self._state = state
         else:
             eval_patches_dataset = last_dataset
+
+        state["name"] = eval_patches_dataset.name
+        self._state = state
 
         return fop.EvaluationPatchesView(
             sample_collection, self, eval_patches_dataset
@@ -8519,7 +8527,11 @@ class ToClips(ViewStage):
         except:
             last_dataset = None
 
-        if reload or last_dataset is None or state != last_state:
+        if (
+            reload
+            or last_dataset is None
+            or (state != last_state and not saved_view)
+        ):
             kwargs = deepcopy(self._config) or {}
 
             # Recreate same indexes from existing dataset
@@ -8537,14 +8549,14 @@ class ToClips(ViewStage):
             # name if possible
             if name is not None and (saved_view or state == last_state):
                 if last_dataset is not None:
-                    last_dataset.delete()
+                    last_dataset._delete()
 
                 clips_dataset.name = name
-
-            state["name"] = clips_dataset.name
-            self._state = state
         else:
             clips_dataset = last_dataset
+
+        state["name"] = clips_dataset.name
+        self._state = state
 
         return focl.ClipsView(sample_collection, self, clips_dataset)
 
@@ -8672,7 +8684,11 @@ class ToTrajectories(ViewStage):
         except:
             last_dataset = None
 
-        if reload or last_dataset is None or state != last_state:
+        if (
+            reload
+            or last_dataset is None
+            or (state != last_state and not saved_view)
+        ):
             kwargs = deepcopy(self._config) or {}
 
             # Recreate same indexes from existing dataset
@@ -8691,14 +8707,14 @@ class ToTrajectories(ViewStage):
             # name if possible
             if name is not None and (saved_view or state == last_state):
                 if last_dataset is not None:
-                    last_dataset.delete()
+                    last_dataset._delete()
 
                 clips_dataset.name = name
-
-            state["name"] = clips_dataset.name
-            self._state = state
         else:
             clips_dataset = last_dataset
+
+        state["name"] = clips_dataset.name
+        self._state = state
 
         return focl.TrajectoriesView(sample_collection, self, clips_dataset)
 
@@ -8881,7 +8897,11 @@ class ToFrames(ViewStage):
         except:
             last_dataset = None
 
-        if reload or last_dataset is None or state != last_state:
+        if (
+            reload
+            or last_dataset is None
+            or (state != last_state and not saved_view)
+        ):
             kwargs = deepcopy(self._config) or {}
 
             # Recreate same indexes from existing dataset
@@ -8898,14 +8918,14 @@ class ToFrames(ViewStage):
             # name if possible
             if name is not None and (saved_view or state == last_state):
                 if last_dataset is not None:
-                    last_dataset.delete()
+                    last_dataset._delete()
 
                 frames_dataset.name = name
-
-            state["name"] = frames_dataset.name
-            self._state = state
         else:
             frames_dataset = last_dataset
+
+        state["name"] = frames_dataset.name
+        self._state = state
 
         return fovi.FramesView(sample_collection, self, frames_dataset)
 
