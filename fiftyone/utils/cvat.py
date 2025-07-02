@@ -6512,6 +6512,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             mask.astype("uint8"), width=w, height=h
                         )
 
+                    mask = mask.astype("bool")
                     rle = HasCVATBinaryMask._mask_to_cvat_rle(mask)
                     rle.extend([xtl, ytl, xbr - 1, ybr - 1])
 
