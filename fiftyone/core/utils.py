@@ -35,6 +35,7 @@ import struct
 import subprocess
 import sys
 import shutil
+import tempfile
 import timeit
 import types
 import uuid
@@ -2079,11 +2080,10 @@ class UniqueFilenameMaker(object):
 
         self._idx = len(filenames)
         for filename in filenames:
-            key = filename
-
-            # Adding ignore extension to filename counts
             if self.ignore_exts:
                 key, _ = os.path.splitext(filename)
+            else:
+                key = filename
 
             self._filename_counts[key] += 1
 
@@ -2113,28 +2113,8 @@ class UniqueFilenameMaker(object):
         if found_input:
             input_path = fos.normalize_path(input_path)
 
-            if self.idempotent:
-                # Adding ignore extension to idempotent check
-                if self.ignore_exts:
-                    input_path_sans_ext, input_path_ext = os.path.splitext(
-                        input_path
-                    )
-
-                    matched_output_path = next(
-                        (
-                            o
-                            for i, o in self._filepath_map.items()
-                            if os.path.splitext(i)[0] == input_path_sans_ext
-                        ),
-                        None,
-                    )
-
-                    if matched_output_path is not None:
-                        return_path, _ = os.path.splitext(matched_output_path)
-                        return return_path + input_path_ext
-
-                elif input_path in self._filepath_map:
-                    return self._filepath_map[input_path]
+            if self.idempotent and input_path in self._filepath_map:
+                return self._filepath_map[input_path]
 
         self._idx += 1
 
@@ -2200,19 +2180,13 @@ class UniqueFilenameMaker(object):
         return os.path.join(root_dir, rel_path)
 
 
-def __rm_unique_filename_tmpdir():
-    with suppress(Exception):
-        shutil.rmtree(f"/tmp/fo-unq/{os.getpid()}")
-
-
-atexit.register(__rm_unique_filename_tmpdir)
-
-
 class MultiProcessUniqueFilenameMaker(object):
-    """A class that generates unique output paths in a directory. This is
-    multiprocess safe and uses a shared temporary directory structure organized
-    by parent process ID and configuration hash. The approach is robust and
-    handles edge cases like idempotency and file extensions.
+    """A class that generates unique output paths in a directory.
+
+    This class is multiprocess safe and uses a shared temporary directory
+    structure organized by parent process ID and configuration hash. The
+    approach is robust and handles edge cases like idempotency and file
+    extensions.
 
     This class provides a :meth:`get_output_path` method that generates unique
     filenames in the specified output directory.
@@ -2292,7 +2266,6 @@ class MultiProcessUniqueFilenameMaker(object):
                     )
                 }
 
-                # self._idx = len(filenames)
                 for filepath in self.starting_filepaths:
                     key = filepath
                     if self.ignore_exts:
@@ -2318,7 +2291,7 @@ class MultiProcessUniqueFilenameMaker(object):
 
         # Create a temporary directory in main process directory for touched
         # files based on constructor parameters
-        self.tmp_dir = os.path.join(f"/tmp/fo-unq/{ppid}", hashed_params)
+        self.tmp_dir = os.path.join(self.gettempdir(ppid), hashed_params)
 
         etau.ensure_dir(self.tmp_dir)
 
@@ -2390,7 +2363,7 @@ class MultiProcessUniqueFilenameMaker(object):
             + 1
         )
         while True:
-            # Add  file number to the output path with if necessary
+            # Add file number to the output path if necessary
             if output_number > 1:
                 output_path = os.path.join(
                     output_dir,
@@ -2398,7 +2371,7 @@ class MultiProcessUniqueFilenameMaker(object):
                 )
 
             try:
-                # Attempt to create a placeholder file to show  the output
+                # Attempt to create a placeholder file to show the output
                 # path has been claimed
                 touch_filename = os.path.basename(output_path)
 
@@ -2411,12 +2384,11 @@ class MultiProcessUniqueFilenameMaker(object):
 
             except FileExistsError:
                 # The output path has already been claimed with a placeholder
-
                 if self.idempotent:
                     break
 
             else:
-                # The output path was successfully claimed with a placeholder.
+                # The output path was successfully claimed with a placeholder
                 break
 
             last_attempted_output_number = output_number
@@ -2472,6 +2444,19 @@ class MultiProcessUniqueFilenameMaker(object):
         root_dir = alt_dir or self.alt_dir or self.output_dir
         rel_path = os.path.relpath(output_path, self.output_dir)
         return os.path.join(root_dir, rel_path)
+
+    @staticmethod
+    def gettempdir(pid):
+        return os.path.join(tempfile.gettempdir(), "fo-unq", str(pid))
+
+
+def __rm_unique_filename_tmpdir():
+    with suppress(Exception):
+        tmp_dir = MultiProcessUniqueFilenameMaker.gettempdir(os.getpid())
+        shutil.rmtree(tmp_dir)
+
+
+atexit.register(__rm_unique_filename_tmpdir)
 
 
 def safe_relpath(path, start=None, default=None):
