@@ -143,7 +143,7 @@ enum ColorBy {
 
 type ColorScheme {
   id: ID!
-  colorPool: [String!]!
+  colorPool: [String!]
   colorBy: ColorBy
   fields: [CustomizeColor!]
   labelTags: LabelTagColor
