@@ -16,15 +16,16 @@ export const useBrowserStorage = <T = string>(
 
   // Pass initial state function to useState so logic is only executed once
   const [storedValue, setStoredValue] = useState<T>(() => {
-    let item = storage.getItem(key);
+    const item = storage.getItem(key);
 
     if (item) {
-      if (parseFn) {
-        return parseFn.parse(item);
-      }
       // Workaround for existing "undefined" values in storage
       if (item === "undefined") {
-        return;
+        return initialValue instanceof Function ? initialValue() : initialValue;
+      }
+
+      if (parseFn) {
+        return parseFn.parse(item);
       }
 
       return JSON.parse(item);
@@ -48,23 +49,16 @@ export const useBrowserStorage = <T = string>(
         setStoredValue(value);
       }
 
-      // Only apply undefined handling when no parseFn is provided
-      if (parseFn) {
-        // Let the custom parser handle undefined however it wants
+      // Handle undefined values by removing from storage
+      if (valueToStore === undefined) {
+        storage.removeItem(key);
+      } else if (parseFn) {
+        // Let the custom parser handle other values
         storage.setItem(key, parseFn.stringify(valueToStore));
       } else {
-        // For JSON.stringify, handle undefined specially to avoid "undefined" strings
-        if (valueToStore !== undefined) {
-          storage.setItem(key, JSON.stringify(valueToStore));
-        } else {
-          storage.removeItem(key);
-        }
+        // For JSON.stringify, handle other values
+        storage.setItem(key, JSON.stringify(valueToStore));
       }
-
-      storage.setItem(
-        key,
-        parseFn ? parseFn.stringify(valueToStore) : JSON.stringify(valueToStore)
-      );
     },
     [key, storage, parseFn]
   );
