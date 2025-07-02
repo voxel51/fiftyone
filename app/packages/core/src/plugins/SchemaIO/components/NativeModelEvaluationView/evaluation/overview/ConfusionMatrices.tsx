@@ -33,7 +33,9 @@ export default function ConfusionMatrices(props) {
       compareEvaluation?.confusion_matrices,
       confusionMatrixConfig,
       evaluationMaskTargets,
-      compareEvaluationMaskTargets
+      compareEvaluationMaskTargets,
+      undefined,
+      true
     );
   }, [
     compareEvaluation,

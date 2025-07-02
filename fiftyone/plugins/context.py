@@ -12,6 +12,7 @@ import sys
 import traceback
 
 import fiftyone as fo
+import fiftyone.core.utils as fou
 import fiftyone.plugins as fop
 
 from fiftyone.operators.decorators import plugins_cache
@@ -129,9 +130,9 @@ class PluginContext(object):
             if not os.path.isfile(module_path):
                 return
 
-            module_name = os.path.relpath(
+            module_name = fou.get_module_name(
                 module_dir, fo.config.plugins_dir
-            ).replace("/", ".")
+            )
             spec = importlib.util.spec_from_file_location(
                 module_name, module_path
             )

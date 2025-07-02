@@ -101,6 +101,8 @@ MIGRATIONS_REVISIONS_DIR = os.path.join(
     FIFTYONE_DIR, "migrations", "revisions"
 )
 
+# We should bump this to Version("6.0") after fiftyone-db is published.
+# This should be done as part of AS-428.
 MONGODB_MIN_VERSION = Version("5.0")
 MONGODB_MAX_ALLOWABLE_FCV_DELTA = 1
 MONGODB_SERVER_FCV_REQUIRED_CONFIRMATION = Version("7.0")
