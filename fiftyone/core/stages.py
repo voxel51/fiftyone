@@ -6139,7 +6139,11 @@ class Materialize(ViewStage):
         except:
             last_dataset = None
 
-        if reload or last_dataset is None or state != last_state:
+        if (
+            reload
+            or last_dataset is None
+            or (state != last_state and not saved_view)
+        ):
             kwargs = deepcopy(self._config) or {}
 
             # Recreate same indexes from existing dataset
@@ -6154,14 +6158,14 @@ class Materialize(ViewStage):
             # name if possible
             if name is not None and (saved_view or state == last_state):
                 if last_dataset is not None:
-                    last_dataset.delete()
+                    last_dataset._delete()
 
                 materialized_dataset.name = name
-
-            state["name"] = materialized_dataset.name
-            self._state = state
         else:
             materialized_dataset = last_dataset
+
+        state["name"] = materialized_dataset.name
+        self._state = state
 
         return foma.MaterializedView(
             sample_collection, self, materialized_dataset
