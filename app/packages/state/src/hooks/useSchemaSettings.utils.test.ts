@@ -1003,7 +1003,7 @@ describe("Disabled field types in schema fields", () => {
       }).toThrow("mediaType is required");
     });
 
-    it("getSubPath should retrun correct subpaths in an image dataset", () => {
+    it("getSubPath should return correct subpaths in an image dataset", () => {
       expect(
         getSubPaths(FIELDS.METADATA_FIELD.path, SCHEMA, "image")
       ).toContain(FIELDS.METADATA_FIELD.path);
@@ -1012,7 +1012,7 @@ describe("Disabled field types in schema fields", () => {
       ).toContain(FIELDS.METADATA_WIDTH_FIELD.path);
     });
 
-    it("getSubPath should retrun an empty array if the nested field is skip field", () => {
+    it("getSubPath should return an empty array if the nested field is skip field", () => {
       expect([
         ...getSubPaths(FIELDS.VECTOR_TYPE.path, SCHEMA, "image"),
       ]).toHaveLength(1);

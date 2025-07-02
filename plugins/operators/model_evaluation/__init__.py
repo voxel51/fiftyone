@@ -9,6 +9,7 @@ Scenario plugin.
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
 import fiftyone.core.fields as fof
+from fiftyone.server.utils import cache_dataset
 from fiftyone.operators.cache import execution_cache
 
 from bson import ObjectId
@@ -24,9 +25,19 @@ from .utils import (
     ShowOptionsMethod,
     ScenarioType,
 )
-from plugins.utils import get_subsets_from_custom_code
+from plugins.utils.model_evaluation import (
+    get_subsets_from_custom_code,
+    get_scenarios,
+    set_scenarios,
+)
 
 STORE_NAME = "model_evaluation_panel_builtin"
+MAX_SAMPLES_FOR_DEFAULT_PREVIEW = 25000
+PROMPT_SCOPED_CACHE_TTL = 60 * 60  # 1 hour
+
+
+def dataset_serialize_deserialize(dataset):
+    return dataset
 
 
 class ConfigureScenario(foo.Operator):
@@ -41,6 +52,38 @@ class ConfigureScenario(foo.Operator):
             dynamic=True,
             unlisted=True,
         )
+
+    @execution_cache(
+        prompt_scoped=True,
+        residency="ephemeral",
+        serialize=dataset_serialize_deserialize,
+        deserialize=dataset_serialize_deserialize,
+        ttl=PROMPT_SCOPED_CACHE_TTL,
+    )
+    def get_dataset(self, ctx):
+        """
+        Returns the dataset for the current context.
+        """
+        return ctx.dataset
+
+    @execution_cache(
+        prompt_scoped=True, residency="ephemeral", ttl=PROMPT_SCOPED_CACHE_TTL
+    )
+    def get_samples_count(self, ctx):
+        """
+        Returns the number of samples in the dataset for the current context.
+        """
+        dataset = self.get_dataset(ctx)
+        return dataset.count()
+
+    def get_default_for_distribution_preview(self, ctx):
+        """
+        Returns the default value for the sample distribution preview.
+        """
+        samples_count = self.get_samples_count(ctx)
+        if samples_count > MAX_SAMPLES_FOR_DEFAULT_PREVIEW:
+            return False
+        return True
 
     def render_name_input(self, ctx, inputs):
         params = ctx.params
@@ -69,7 +112,7 @@ class ConfigureScenario(foo.Operator):
             default=scenario_name,
             required=True,
             view=types.TextFieldView(
-                label="Scenario Name",
+                label="Scenario name",
                 placeholder="Enter a name for the scenario",
             ),
             invalid=is_invalid,
@@ -153,7 +196,31 @@ class ConfigureScenario(foo.Operator):
 
         return key
 
-    @execution_cache(key_fn=get_subset_def_data_for_eval_key)
+    @execution_cache(
+        prompt_scoped=True,
+        residency="ephemeral",
+        serialize=dataset_serialize_deserialize,
+        deserialize=dataset_serialize_deserialize,
+        ttl=PROMPT_SCOPED_CACHE_TTL,
+    )
+    def get_evaluations_results(self, ctx):
+        """
+        Returns the evaluation results for the current context.
+        """
+        dataset = self.get_dataset(ctx)
+        eval_key, compare_key = self.extract_evaluation_keys(ctx)
+        eval_results = dataset.load_evaluation_results(eval_key)
+        compare_eval_results = None
+        if compare_key:
+            compare_eval_results = dataset.load_evaluation_results(compare_key)
+
+        return eval_results, compare_eval_results
+
+    @execution_cache(
+        key_fn=get_subset_def_data_for_eval_key,
+        prompt_scoped=True,
+        ttl=PROMPT_SCOPED_CACHE_TTL,
+    )
     def get_subset_def_data_for_eval(
         self, ctx, _, eval_result, name, subset_def
     ):
@@ -165,18 +232,17 @@ class ConfigureScenario(foo.Operator):
 
     def get_sample_distribution(self, ctx, subset_expressions):
         try:
-            eval_key_a, eval_key_b = self.extract_evaluation_keys(ctx)
-
-            eval_result_a = ctx.dataset.load_evaluation_results(eval_key_a)
-            if eval_key_b:
-                eval_result_b = ctx.dataset.load_evaluation_results(eval_key_b)
+            eval_key, compare_eval_key = self.extract_evaluation_keys(ctx)
+            eval_results, compare_eval_results = self.get_evaluations_results(
+                ctx
+            )
 
             plot_data = []
             x = []
             y = []
             for name, subset_def in subset_expressions.items():
                 more_x, more_y = self.get_subset_def_data_for_eval(
-                    ctx, eval_key_a, eval_result_a, name, subset_def
+                    ctx, eval_key, eval_results, name, subset_def
                 )
                 x += more_x
                 y += more_y
@@ -186,18 +252,22 @@ class ConfigureScenario(foo.Operator):
                     "x": x,
                     "y": y,
                     "type": "bar",
-                    "name": eval_key_a,
+                    "name": eval_key,
                     "marker": {"color": KEY_COLOR},
                 }
             )
 
-            if eval_key_b and eval_result_b:
+            if compare_eval_key and compare_eval_results:
                 compare_x = []
                 compare_y = []
 
                 for name, subset_def in subset_expressions.items():
                     more_x, more_y = self.get_subset_def_data_for_eval(
-                        ctx, eval_key_b, eval_result_b, name, subset_def
+                        ctx,
+                        compare_eval_key,
+                        compare_eval_results,
+                        name,
+                        subset_def,
                     )
                     compare_x += more_x
                     compare_y += more_y
@@ -207,16 +277,14 @@ class ConfigureScenario(foo.Operator):
                         "x": compare_x,
                         "y": compare_y,
                         "type": "bar",
-                        "name": eval_key_b,
+                        "name": compare_eval_key,
                         "marker": {"color": COMPARE_KEY_COLOR},
                     }
                 )
 
-            return plot_data
+            return plot_data, None
         except Exception as e:
-            # TODO show Alert / error
-            print(e)
-            return
+            return None, e
 
     def convert_to_plotly_data(self, preview_data):
         if preview_data is None or len(preview_data) == 0:
@@ -241,24 +309,27 @@ class ConfigureScenario(foo.Operator):
 
     def is_sample_distribution_enabled_for_custom_code(self, params):
         # NOTE: performance might lack if it is on by default.
-        return (
-            params.get("custom_code_stack", {})
-            .get("control_stack", {})
-            .get("view_sample_distribution", False)
-        )
+        # return (
+        #     params.get("custom_code_stack", {})
+        #     .get("control_stack", {})
+        #     .get("view_sample_distribution", False)
+        # )
+        return True
 
     def render_empty_sample_distribution(
-        self, inputs, params, description=None
+        self, ctx, inputs, params, description=None
     ):
         scenario_type = self.get_scenario_type(params)
         # NOTE: custom code validation happens at render_custom_code when exec() is called
         is_invalid = scenario_type != ScenarioType.CUSTOM_CODE
 
+        self.render_plot_preview_toggle(ctx, inputs)
+
         inputs.view(
             "empty_sample_distribution",
             types.HeaderView(
-                label="Subset's sample distribution preview",
-                description=description
+                # label="Subset's sample distribution preview",
+                label=description
                 or "Select a value to view the sample distribution",
                 divider=True,
                 componentsProps={
@@ -266,8 +337,10 @@ class ConfigureScenario(foo.Operator):
                         "sx": {
                             "justifyContent": "center",
                             "padding": "3rem",
-                            "background": "background.secondary",
+                            "background": "var(--fo-palette-background-body)",
                             "color": "text.secondary",
+                            "borderRadius": "4px",
+                            "textAlign": "center",
                         }
                     },
                     "label": {
@@ -280,8 +353,6 @@ class ConfigureScenario(foo.Operator):
                     },
                 },
             ),
-            invalid=is_invalid,
-            error_message="No values selected" if is_invalid else None,
         )
 
     def get_label_attribute_path(self, params):
@@ -299,7 +370,9 @@ class ConfigureScenario(foo.Operator):
 
     def render_sample_distribution(self, ctx, inputs, scenario_type, values):
         if not values:
-            return self.render_empty_sample_distribution(inputs, ctx.params)
+            return self.render_empty_sample_distribution(
+                ctx, inputs, ctx.params
+            )
 
         subsets = {}
         if scenario_type == ScenarioType.LABEL_ATTRIBUTE:
@@ -330,6 +403,7 @@ class ConfigureScenario(foo.Operator):
                 ctx.params
             ):
                 return self.render_empty_sample_distribution(
+                    ctx,
                     inputs,
                     ctx.params,
                     description="You can toggle the 'View sample distribution' to see the preview.",
@@ -338,13 +412,58 @@ class ConfigureScenario(foo.Operator):
                 # NOTE: values for custom_code is the parsed custom code expression
                 self.render_sample_distribution_graph(ctx, inputs, values)
 
+    def render_plot_preview_toggle(self, ctx, inputs):
+        preview_toggle_container = inputs.h_stack(
+            "preview_toggle_container", align_x="right"
+        )
+        preview_toggle_container.bool(
+            "plot_preview_enabled",
+            view=types.SwitchView(label="Distribution preview"),
+            default=self.get_default_for_distribution_preview(ctx),
+        )
+
     def render_sample_distribution_graph(
         self, ctx, inputs, subset_expressions
     ):
-        plot_data = self.get_sample_distribution(ctx, subset_expressions)
+        self.render_plot_preview_toggle(ctx, inputs)
+
+        plot_preview_enabled = ctx.params.get(
+            "preview_toggle_container", {}
+        ).get("plot_preview_enabled", False)
+
+        if not plot_preview_enabled:
+            return self.render_empty_sample_distribution(
+                ctx,
+                inputs,
+                ctx.params,
+                description="Distribution preview is not enabled. Turn on distribution preview"
+                + " to visualize the subset breakdown.",
+            )
+
+        plot_data, error = self.get_sample_distribution(
+            ctx, subset_expressions
+        )
+
+        if error:
+            inputs.view(
+                "plot_preview_error",
+                view=types.HeaderView(label=""),
+                invalid=True,
+                error_message="Custom scenario definition is invalid",
+            )
+            return
 
         preview_container = inputs.grid("grid", height="400px", width="100%")
         preview_height = "300px"
+        scenario_type = ctx.params.get("scenario_type", None)
+        x_axis_title = "Subset"
+        if scenario_type == ScenarioType.LABEL_ATTRIBUTE:
+            x_axis_title = "Attribute value"
+        elif scenario_type == ScenarioType.SAMPLE_FIELD:
+            x_axis_title = "Field value"
+        elif scenario_type == ScenarioType.VIEW:
+            x_axis_title = "Saved view"
+
         preview_container.plot(
             "plot_preview",
             label="Sample distribution preview",
@@ -354,6 +473,10 @@ class ConfigureScenario(foo.Operator):
             data=plot_data,
             height=preview_height,
             width="100%",
+            layout={
+                "xaxis": {"title": {"text": x_axis_title}},
+                "yaxis": {"title": {"text": "Label Instances"}},
+            },
         )
 
     def get_custom_code_key(self, params):
@@ -371,6 +494,8 @@ class ConfigureScenario(foo.Operator):
     def extract_custom_code(self, ctx, example_type=ScenarioType.CUSTOM_CODE):
         # NOTE: this was causing infinite loop if missing replace
         key = self.get_custom_code_key(ctx.params).replace(".", "_")
+        scenario_type = ctx.params.get("scenario_type", None)
+        field = ctx.params.get("scenario_field", None)
 
         custom_code = (
             ctx.params.get("custom_code_stack", {})
@@ -382,7 +507,9 @@ class ConfigureScenario(foo.Operator):
             custom_code = ctx.params.get("scenario_subsets_code", None)
 
         if not custom_code:
-            custom_code = get_scenario_example(example_type)
+            custom_code = get_scenario_example(
+                example_type, scenario_type, field
+            )
 
         return custom_code, key
 
@@ -436,20 +563,20 @@ class ConfigureScenario(foo.Operator):
         label, description, severity = None, None, "warning"
 
         if reason == CustomCodeViewReason.TOO_MANY_CATEGORIES:
-            label = "Too many categories."
-            description = (
-                f"Selected field has too many values to display. "
+            severity = "info"
+            label = (
+                f"Selected field has too many categories to display. "
                 + "Please use the custom code to define the scenario."
             )
         if reason == CustomCodeViewReason.TOO_MANY_INT_CATEGORIES:
-            label = "Too many distinct integer values."
-            description = (
-                f"Selected field has too many values to display. "
+            severity = "info"
+            label = (
+                f"Selected field has too many distinct integer values to display. "
                 + "Please use the custom code to define the scenario."
             )
         if reason == CustomCodeViewReason.FLOAT_TYPE:
-            label = ""
-            description = f"To create scenarios based on float fields, please use the custom code mode. "
+            severity = "info"
+            label = f"To create scenarios based on float fields, please use the custom code mode. "
         if reason == CustomCodeViewReason.SLOW:
             severity = "info"
             label = "Too many values."
@@ -474,7 +601,8 @@ class ConfigureScenario(foo.Operator):
         """
         Returns the view mode for saved views based on the number of available saved views.
         """
-        view_names = ctx.dataset.list_saved_views()
+        dataset = self.get_dataset(ctx)
+        view_names = dataset.list_saved_views()
         if not view_names:
             return ShowOptionsMethod.EMPTY, []
 
@@ -624,11 +752,13 @@ class ConfigureScenario(foo.Operator):
                 )
             )
             self.render_empty_sample_distribution(
+                ctx,
                 inputs,
                 ctx.params,
                 description=f"Select a {sub} to view sample distribution",
             )
 
+    @execution_cache(prompt_scoped=True, ttl=PROMPT_SCOPED_CACHE_TTL)
     def get_scenarios_picker_type(self, ctx, field_name):
         """
         Determines the scenario picker type for a given field based on its type and distinct values.
@@ -642,7 +772,16 @@ class ConfigureScenario(foo.Operator):
             Tuple[str, Any]: Picker type and corresponding values.
         """
         # Validate field name
-        schema = ctx.dataset.get_field_schema(flat=True)
+        eval_key, _ = self.extract_evaluation_keys(ctx)
+
+        dataset = self.get_dataset(ctx)
+        schema = dataset.get_field_schema(flat=True)
+        dataset_or_view = dataset
+        try:
+            dataset_or_view = dataset.load_evaluation_view(eval_key)
+        except Exception:
+            # if the view is not found, we can still use the dataset
+            pass
         field = schema.get(field_name)
         if field is None:
             raise ValueError(f"Field {field_name} does not exist")
@@ -652,15 +791,16 @@ class ConfigureScenario(foo.Operator):
             return ShowOptionsMethod.CODE, CustomCodeViewReason.FLOAT_TYPE
         if isinstance(field, fof.BooleanField):
             # example counts {True: 2, None: 135888}
-            counts = ctx.dataset.count_values(field_name)
+            counts = dataset_or_view.count_values(field_name)
             return ShowOptionsMethod.CHECKBOX, {
                 "true": counts.get(True, 0),
                 "false": counts.get(False, 0),
-                "none": counts.get(None, 0),
+                # @todo consider supporting None
+                # "none": counts.get(None, 0),
             }
 
         # Retrieve distinct values (may be slow for large datasets)
-        distinct_values = ctx.dataset.distinct(field_name)
+        distinct_values = dataset_or_view.distinct(field_name)
         distinct_count = len(distinct_values)
 
         if distinct_count == 0:
@@ -681,7 +821,11 @@ class ConfigureScenario(foo.Operator):
                 )
 
         # NOTE: may be slow for large datasets
-        values = ctx.dataset.count_values(field_name)
+        values = dataset_or_view.count_values(field_name)
+
+        # @todo consider supporting None
+        values.pop(None, None)
+
         return (
             (ShowOptionsMethod.EMPTY, None)
             if not values
@@ -703,12 +847,18 @@ class ConfigureScenario(foo.Operator):
             "saved views"
             if scenario_type == "view"
             else (
-                "label attributes"
+                "attribute values"
                 if scenario_type == "label_attribute"
-                else "sample fields"
+                else "field values"
             )
         )
         component_key, selected_values = self.get_selected_values(ctx.params)
+
+        ac_description = (
+            f"Select {scenario_type_display} to define your subsets."
+        )
+        if len(selected_values) > 0:
+            ac_description += f" {len(selected_values)} selected"
 
         inputs.list(
             component_key,
@@ -716,9 +866,7 @@ class ConfigureScenario(foo.Operator):
             default=selected_values,
             required=True,
             label="",
-            description=(
-                f"Select {scenario_type_display} to get started. {len(selected_values)} selected"
-            ),
+            description=ac_description,
             view=types.AutocompleteView(
                 multiple=True,
                 choices=[types.Choice(value=v, label=v) for v in values],
@@ -728,6 +876,9 @@ class ConfigureScenario(foo.Operator):
                 error_message=(
                     "No values selected" if not selected_values else ""
                 ),
+                componentsProps={
+                    "autocomplete": {"disableCloseOnSelect": True}
+                },
             ),
         )
 
@@ -746,6 +897,7 @@ class ConfigureScenario(foo.Operator):
                 )
             )
             self.render_empty_sample_distribution(
+                ctx,
                 inputs,
                 ctx.params,
                 description=f"Select a {sub} to view sample distribution",
@@ -798,7 +950,8 @@ class ConfigureScenario(foo.Operator):
         ]
 
     def render_label_attribute(self, ctx, inputs, gt_field, label_attr=None):
-        schema = ctx.dataset.get_field_schema(flat=True)
+        dataset = self.get_dataset(ctx)
+        schema = dataset.get_field_schema(flat=True)
         valid_options = self.get_valid_label_attribute_path_options(
             schema, gt_field
         )
@@ -824,6 +977,7 @@ class ConfigureScenario(foo.Operator):
             self.render_scenario_picker_view(ctx, label_attr, inputs)
         else:
             self.render_empty_sample_distribution(
+                ctx,
                 inputs,
                 ctx.params,
                 description=f"Select an attribute to view sample distribution",
@@ -863,7 +1017,8 @@ class ConfigureScenario(foo.Operator):
         return options
 
     def render_sample_fields(self, ctx, inputs, field_name=None):
-        schema = ctx.dataset.get_field_schema(flat=True)
+        dataset = self.get_dataset(ctx)
+        schema = dataset.get_field_schema(flat=True)
         valid_options = self.get_valid_sample_field_path_options(schema)
 
         field_choices = types.Choices()
@@ -885,6 +1040,7 @@ class ConfigureScenario(foo.Operator):
             self.render_scenario_picker_view(ctx, field_name, inputs)
         else:
             self.render_empty_sample_distribution(
+                ctx,
                 inputs,
                 ctx.params,
                 description=f"Select a field to view sample distribution",
@@ -909,15 +1065,12 @@ class ConfigureScenario(foo.Operator):
         return label
 
     def get_scenario_names(self, ctx):
-        store = ctx.store(STORE_NAME)
-        scenarios = store.get("scenarios") or {}
-
-        eval_id_a = self.extract_evaluation_id(ctx)
-        scenarios = scenarios.get(eval_id_a) or {}
-
+        scenarios = get_scenarios(ctx)
         return [scenario.get("name") for _, scenario in scenarios.items()]
 
     def resolve_input(self, ctx):
+        cache_dataset(self.get_dataset(ctx))
+
         inputs = types.Object()
 
         self.render_name_input(ctx, inputs)
@@ -1017,22 +1170,7 @@ class ConfigureScenario(foo.Operator):
             types.Header(
                 label="Custom code",
                 divider=False,
-            ),
-        )
-
-        custom_code_controls.bool(
-            "view_sample_distribution",
-            required=True,
-            default=False,
-            label="View sample distribution",
-            view=types.CheckboxView(
-                componentsProps={
-                    "container": {
-                        "sx": {
-                            "padding": "0 2rem 0 1rem",
-                        }
-                    },
-                }
+                doc="https://docs.voxel51.com/user_guide/app.html#app-scenario-analysis-custom-code",
             ),
         )
 
@@ -1075,10 +1213,8 @@ class ConfigureScenario(foo.Operator):
         if eval_id_a is None:
             raise ValueError("No evaluation ids found")
 
-        store = ctx.store(STORE_NAME)
-        scenarios = store.get("scenarios") or {}
+        scenarios = get_scenarios(ctx)
 
-        scenarios_for_eval = scenarios.get(eval_id_a) or {}
         scenario_field = None
 
         if scenario_type in [
@@ -1126,7 +1262,7 @@ class ConfigureScenario(foo.Operator):
             scenario_id = ObjectId()
 
         scenario_id_str = str(scenario_id)
-        scenarios_for_eval[scenario_id_str] = {
+        scenarios[scenario_id_str] = {
             "id": scenario_id_str,
             "name": scenario_name,
             "type": scenario_type,
@@ -1134,10 +1270,9 @@ class ConfigureScenario(foo.Operator):
         }
 
         if scenario_field:
-            scenarios_for_eval[scenario_id_str]["field"] = scenario_field
+            scenarios[scenario_id_str]["field"] = scenario_field
 
-        scenarios[eval_id_a] = scenarios_for_eval
-        store.set("scenarios", scenarios)
+        set_scenarios(ctx, scenarios)
 
         ctx.ops.track_event(
             "scenario_created",

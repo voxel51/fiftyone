@@ -1,11 +1,12 @@
 import type { Range } from "@fiftyone/core/src/components/Common/RangeSlider";
+import { ColorscaleInput } from "@fiftyone/looker/src/state";
 import {
-  currentModalUniqueId,
   getBrowserStorageEffectForKey,
   groupId,
-  modalSampleId,
+  nullableModalSampleId,
 } from "@fiftyone/state";
 import { atom, atomFamily, selector } from "recoil";
+import { Vector3 } from "three";
 import { SHADE_BY_HEIGHT } from "./constants";
 import type { FoSceneNode } from "./hooks";
 import type { Actions, AssetLoadingLog, ShadeBy } from "./types";
@@ -18,15 +19,18 @@ const fo3dAssetsParseStatusLog = atomFamily<AssetLoadingLog[], string>({
 export const fo3dAssetsParseStatusThisSample = selector<AssetLoadingLog[]>({
   key: "fo3d-assetsParseStatusLogs",
   get: ({ get }) => {
-    const thisModalUniqueId = get(currentModalUniqueId);
-
+    const thisModalUniqueId = `${get(groupId) ?? ""}-${get(
+      nullableModalSampleId
+    )}`;
     return get(fo3dAssetsParseStatusLog(`${thisModalUniqueId}`));
   },
   set: ({ get, set }, newValue) => {
-    const thisSampleId = get(modalSampleId);
-    const thisGroupId = get(groupId) ?? "";
-
-    set(fo3dAssetsParseStatusLog(`${thisGroupId}/${thisSampleId}`), newValue);
+    set(
+      fo3dAssetsParseStatusLog(
+        `${get(groupId) ?? ""}-${get(nullableModalSampleId)}`
+      ),
+      newValue
+    );
   },
 });
 
@@ -47,6 +51,24 @@ export const customColorMapAtom = atom<{ [slice: string]: string } | null>({
   effects: [
     getBrowserStorageEffectForKey("customColorMap", {
       useJsonSerialization: true,
+    }),
+  ],
+});
+
+export const isColormapModalOpenAtom = atom<boolean>({
+  key: "fo3d-isColormapModalOpen",
+  default: false,
+});
+
+export const fo3dPcdDynamicAttributeColorMapOverridesAtom = atom<{
+  [attribute: string]: ColorscaleInput;
+}>({
+  key: "fo3d-pcdDynamicAttributeColorMapOverrides",
+  default: {},
+  effects: [
+    getBrowserStorageEffectForKey("fo3dPcdDynamicAttributeColorMapOverrides", {
+      useJsonSerialization: true,
+      prependDatasetNameInKey: true,
     }),
   ],
 });
@@ -150,6 +172,11 @@ export const isStatusBarOnAtom = atom<boolean>({
 
 export const activeNodeAtom = atom<FoSceneNode>({
   key: "fo3d-activeNode",
+  default: null,
+});
+
+export const currentHoveredPointAtom = atom<Vector3 | null>({
+  key: "fo3d-currentHoveredPoint",
   default: null,
 });
 

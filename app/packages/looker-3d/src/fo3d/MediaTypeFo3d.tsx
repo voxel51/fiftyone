@@ -26,6 +26,7 @@ import { Vector3 } from "three";
 import { CAMERA_POSITION_KEY } from "../Environment";
 import { SpinningCube } from "../SpinningCube";
 import { StatusBar, StatusTunnel } from "../StatusBar";
+import { PcdColorMapTunnel } from "../components/PcdColormapModal";
 import {
   DEFAULT_CAMERA_POSITION,
   RAY_CASTING_SENSITIVITY,
@@ -40,8 +41,10 @@ import type { Looker3dSettings } from "../settings";
 import {
   activeNodeAtom,
   cameraPositionAtom,
+  currentHoveredPointAtom,
   isFo3dBackgroundOnAtom,
 } from "../state";
+import { HoverMetadata } from "../types";
 import { FoSceneComponent } from "./FoScene";
 import { Gizmos } from "./Gizmos";
 import HoverMetadataHUD from "./HoverMetadataHUD";
@@ -54,6 +57,47 @@ import {
 } from "./utils";
 
 const CANVAS_WRAPPER_ID = "sample3d-canvas-wrapper";
+
+const calculateCameraPositionForUpVector = (
+  center: Vector3,
+  size: Vector3,
+  upVector: Vector3,
+  distanceMultiplier: number = 2.5,
+  viewType: "top" | "pov" = "pov"
+): Vector3 => {
+  const maxSize = Math.max(size.x, size.y, size.z);
+  const distance = maxSize * distanceMultiplier;
+
+  const upDir = upVector.clone().normalize();
+
+  if (viewType === "top") {
+    // camera positioned directly above/below along the up vector
+    return center.clone().add(upDir.multiplyScalar(distance));
+  }
+
+  // pov view - camera positioned at a 45-degree angle for more natural perspective
+  const angle = Math.PI / 4;
+  const verticalDist = Math.sin(angle) * distance;
+  const horizontalDist = Math.cos(angle) * distance;
+
+  // 1. choose a world-forward direction (Y up ideally, else X)
+  let worldForward = new Vector3(0, 1, 0);
+  if (Math.abs(upDir.dot(worldForward)) > 0.999) {
+    worldForward.set(1, 0, 0);
+  }
+
+  // 2. project that forward into the horizontal plane (perp. to upDir)
+  const proj = worldForward
+    .clone()
+    .sub(upDir.clone().multiplyScalar(worldForward.dot(upDir)))
+    .normalize();
+
+  // 3. build camera position: center + up‐offset + horizontal‐offset
+  return center
+    .clone()
+    .add(upDir.multiplyScalar(verticalDist))
+    .add(proj.multiplyScalar(horizontalDist));
+};
 
 export const MediaTypeFo3dComponent = () => {
   const sample = useRecoilValue(fos.fo3dSample);
@@ -78,6 +122,11 @@ export const MediaTypeFo3dComponent = () => {
 
   const [isSceneInitialized, setSceneInitialized] = useState(false);
 
+  const numPrimaryAssets = useMemo(() => {
+    if (!foScene) return 0;
+    return foScene.children?.length ?? 0;
+  }, [foScene]);
+
   useHotkey(
     "KeyB",
     ({ set }) => {
@@ -86,37 +135,48 @@ export const MediaTypeFo3dComponent = () => {
     []
   );
 
+  const getDefaultUpVector = useCallback(() => {
+    if (foScene?.cameraProps.up) {
+      const mayBeUp = foScene.cameraProps.up;
+      if (mayBeUp === "X") {
+        return new Vector3(1, 0, 0);
+      }
+      if (mayBeUp === "Y") {
+        return new Vector3(0, 1, 0);
+      }
+      if (mayBeUp === "Z") {
+        return new Vector3(0, 0, 1);
+      }
+      if (mayBeUp === "-X") {
+        return new Vector3(-1, 0, 0);
+      }
+      if (mayBeUp === "-Y") {
+        return new Vector3(0, -1, 0);
+      }
+      if (mayBeUp === "-Z") {
+        return new Vector3(0, 0, -1);
+      }
+    }
+
+    if (settings.defaultUp) {
+      const maybeOrthonormalAxis = getOrthonormalAxis(settings.defaultUp);
+
+      if (maybeOrthonormalAxis) {
+        return new Vector3(
+          settings.defaultUp[0],
+          settings.defaultUp[1],
+          settings.defaultUp[2]
+        );
+      }
+    }
+
+    // default to y-up
+    return new Vector3(0, 1, 0);
+  }, [foScene]);
+
   const [upVector, setUpVectorVal] = fos.useBrowserStorage<Vector3>(
     "fo3d-up-vector",
-    () => {
-      if (foScene?.cameraProps.up) {
-        const mayBeUp = foScene.cameraProps.up;
-        if (mayBeUp === "X") {
-          return new Vector3(1, 0, 0);
-        }
-        if (mayBeUp === "Y") {
-          return new Vector3(0, 1, 0);
-        }
-        if (mayBeUp === "Z") {
-          return new Vector3(0, 0, 1);
-        }
-      }
-
-      if (settings.defaultUp) {
-        const maybeOrthonormalAxis = getOrthonormalAxis(settings.defaultUp);
-
-        if (maybeOrthonormalAxis) {
-          return new Vector3(
-            settings.defaultUp[0],
-            settings.defaultUp[1],
-            settings.defaultUp[2]
-          );
-        }
-      }
-
-      // default to y-up
-      return new Vector3(0, 1, 0);
-    },
+    null,
     false,
     {
       parse: (upVectorStr) => {
@@ -127,9 +187,18 @@ export const MediaTypeFo3dComponent = () => {
           return new Vector3(0, 1, 0);
         }
       },
-      stringify: (upVector) => JSON.stringify(upVector.toArray()),
+      stringify: (upVector) =>
+        upVector ? JSON.stringify(upVector.toArray()) : "null",
     }
   );
+
+  useEffect(() => {
+    if (!foScene || upVector) {
+      return;
+    }
+
+    setUpVectorVal(getDefaultUpVector());
+  }, [foScene, upVector, getDefaultUpVector]);
 
   const cameraRef = useRef<THREE.PerspectiveCamera>();
   const cameraControlsRef = useRef<CameraControls>();
@@ -183,26 +252,14 @@ export const MediaTypeFo3dComponent = () => {
 
     const center = sceneBoundingBox.getCenter(new Vector3());
     const size = sceneBoundingBox.getSize(new Vector3());
-    if (upVector.y === 1) {
-      return new Vector3(
-        center.x,
-        center.y + Math.max(size.y, size.x, size.z) * 2.5,
-        0
-      );
-    } else if (upVector.x === 1) {
-      return new Vector3(
-        center.x + Math.max(size.x, size.z, size.y) * 2.5,
-        center.y,
-        0
-      );
-    } else {
-      // assume z-up
-      return new Vector3(
-        center.x,
-        0,
-        center.z + Math.max(size.z, size.x, size.y) * 2.5
-      );
-    }
+
+    return calculateCameraPositionForUpVector(
+      center,
+      size,
+      upVector,
+      2.5,
+      "top"
+    );
   }, [sceneBoundingBox, upVector]);
 
   const overridenCameraPosition = useRecoilValue(cameraPositionAtom);
@@ -275,26 +332,13 @@ export const MediaTypeFo3dComponent = () => {
         const center = sceneBoundingBox.getCenter(new Vector3());
         const size = sceneBoundingBox.getSize(new Vector3());
 
-        if (upVector.y === 1) {
-          return new Vector3(
-            center.x,
-            center.y + Math.max(size.y / 2, 1.5),
-            center.z + Math.max(size.x, size.y, size.z) * 2
-          );
-        } else if (upVector.x === 1) {
-          return new Vector3(
-            center.x + Math.max(size.x / 2, 1.5),
-            center.y + Math.max(size.x, size.y, size.z) * 2,
-            center.z
-          );
-        } else {
-          // assume z-up
-          return new Vector3(
-            center.x,
-            center.y - Math.max(size.x, size.y, size.z) * 2,
-            center.z + Math.max(1.5, size.z / 2)
-          );
-        }
+        return calculateCameraPositionForUpVector(
+          center,
+          size,
+          upVector,
+          1.5,
+          "pov"
+        );
       }
 
       return DEFAULT_CAMERA_POSITION();
@@ -319,7 +363,7 @@ export const MediaTypeFo3dComponent = () => {
     ({ set }) =>
       () => {
         set(activeNodeAtom, null);
-        setHoverMetadata(null);
+        set(currentHoveredPointAtom, null);
         setAutoRotate(false);
       },
     []
@@ -527,31 +571,13 @@ export const MediaTypeFo3dComponent = () => {
         unionBoundingBoxSize.z
       );
 
-      const newCameraPosition = new THREE.Vector3();
-
-      if (upVector.y === 1) {
-        newCameraPosition.set(
-          unionBoundingBoxCenter.x,
-          // times 3 (arbitrary) to make sure the camera is not inside the bounding box
-          unionBoundingBoxCenter.y + maxSize * 3,
-          unionBoundingBoxCenter.z
-        );
-      } else if (upVector.x === 1) {
-        newCameraPosition.set(
-          // times 3 (arbitrary) to make sure the camera is not inside the bounding box
-          unionBoundingBoxCenter.x + maxSize * 2,
-          unionBoundingBoxCenter.y,
-          unionBoundingBoxCenter.z
-        );
-      } else {
-        // assume z-up
-        newCameraPosition.set(
-          unionBoundingBoxCenter.x,
-          unionBoundingBoxCenter.y,
-          // times 3 (arbitrary) to make sure the camera is not inside the bounding box
-          unionBoundingBoxCenter.z + maxSize * 2
-        );
-      }
+      const newCameraPosition = calculateCameraPositionForUpVector(
+        unionBoundingBoxCenter,
+        unionBoundingBoxSize,
+        upVector,
+        maxSize * 3,
+        "pov"
+      );
 
       await cameraControlsRef.current.setLookAt(
         newCameraPosition.x,
@@ -583,6 +609,9 @@ export const MediaTypeFo3dComponent = () => {
         foScene.cameraProps.lookAt[2],
         false
       );
+
+      setSceneInitialized(true);
+
       return;
     } else {
       onChangeView("pov", {
@@ -608,26 +637,42 @@ export const MediaTypeFo3dComponent = () => {
     "fo3dPointCloudSettings",
     {
       enableTooltip: false,
-      rayCastingSensitivity: "high",
+      rayCastingSensitivity: "medium",
     }
   );
 
-  const [hoverMetadata, setHoverMetadata] = useState<Record<
-    string,
-    unknown
-  > | null>(null);
+  const [hoverMetadata, setHoverMetadata] = useState<HoverMetadata | null>(
+    null
+  );
 
   if (isParsingFo3d) {
     return <LoadingDots />;
   }
 
   return (
-    <>
-      <HoverMetadataHUD hoverMetadata={hoverMetadata} />
+    <Fo3dSceneContext.Provider
+      value={{
+        isSceneInitialized,
+        numPrimaryAssets,
+        upVector,
+        setUpVector,
+        fo3dRoot,
+        sceneBoundingBox,
+        autoRotate,
+        setAutoRotate,
+        pointCloudSettings,
+        setPointCloudSettings,
+        hoverMetadata,
+        setHoverMetadata,
+        pluginSettings: settings,
+      }}
+    >
+      <HoverMetadataHUD />
+      <PcdColorMapTunnel.Out />
       <Canvas
         id={CANVAS_WRAPPER_ID}
         onPointerMissed={resetActiveNode}
-        key={upVector.toArray().join(",")}
+        key={upVector ? upVector.toArray().join(",") : null}
         raycaster={{
           params: {
             Points: {
@@ -640,54 +685,37 @@ export const MediaTypeFo3dComponent = () => {
         }}
       >
         <StatusTunnel.Out />
-        <Fo3dSceneContext.Provider
-          value={{
-            isSceneInitialized,
-            upVector,
-            setUpVector,
-            fo3dRoot,
-            sceneBoundingBox,
-            autoRotate,
-            setAutoRotate,
-            pointCloudSettings,
-            setPointCloudSettings,
-            hoverMetadata,
-            setHoverMetadata,
-            pluginSettings: settings,
-          }}
-        >
-          <PerspectiveCameraDrei
-            makeDefault
-            ref={cameraRef}
-            position={defaultCameraPositionComputed}
-            up={upVector}
-            fov={foScene?.cameraProps.fov ?? 50}
-            near={foScene?.cameraProps.near ?? 0.1}
-            far={foScene?.cameraProps.far ?? 2500}
-            aspect={foScene?.cameraProps.aspect ?? 1}
-            onUpdate={(cam) => cam.updateProjectionMatrix()}
-          />
-          <AdaptiveDpr pixelated />
-          <AdaptiveEvents />
-          {!autoRotate && <CameraControls ref={cameraControlsRef} />}
-          {autoRotate && <OrbitControls autoRotate={autoRotate} makeDefault />}
-          <SceneControls scene={foScene} />
-          <Gizmos />
+        <PerspectiveCameraDrei
+          makeDefault
+          ref={cameraRef}
+          position={defaultCameraPositionComputed}
+          up={upVector ?? [0, 1, 0]}
+          fov={foScene?.cameraProps.fov ?? 50}
+          near={foScene?.cameraProps.near ?? 0.1}
+          far={foScene?.cameraProps.far ?? 2500}
+          aspect={foScene?.cameraProps.aspect ?? 1}
+          onUpdate={(cam) => cam.updateProjectionMatrix()}
+        />
+        <AdaptiveDpr pixelated />
+        <AdaptiveEvents />
+        {!autoRotate && <CameraControls ref={cameraControlsRef} />}
+        {autoRotate && <OrbitControls autoRotate={autoRotate} makeDefault />}
+        <SceneControls scene={foScene} />
+        <Gizmos />
 
-          {!isSceneInitialized && <SpinningCube />}
+        {!isSceneInitialized && <SpinningCube />}
 
-          <Bvh firstHitOnly enabled={pointCloudSettings.enableTooltip}>
-            <group ref={assetsGroupRef} visible={isSceneInitialized}>
-              <FoSceneComponent scene={foScene} />
-            </group>
-          </Bvh>
+        <Bvh firstHitOnly enabled={pointCloudSettings.enableTooltip}>
+          <group ref={assetsGroupRef} visible={isSceneInitialized}>
+            <FoSceneComponent scene={foScene} />
+          </group>
+        </Bvh>
 
-          {isSceneInitialized && <ThreeDLabels sampleMap={{ fo3d: sample }} />}
-        </Fo3dSceneContext.Provider>
+        {isSceneInitialized && <ThreeDLabels sampleMap={{ fo3d: sample }} />}
       </Canvas>
       <StatusBarRootContainer>
         <StatusBar cameraRef={cameraRef} />
       </StatusBarRootContainer>
-    </>
+    </Fo3dSceneContext.Provider>
   );
 };

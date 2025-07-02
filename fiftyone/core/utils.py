@@ -958,7 +958,7 @@ class ProgressBar(etau.ProgressBar):
 
         if callable(progress):
             callback = progress
-            progress = False
+            progress = fo.config.show_progress_bars
         else:
             callback = None
 
@@ -974,16 +974,25 @@ class ProgressBar(etau.ProgressBar):
         if foc.is_notebook_context() and "max_width" not in kwargs:
             kwargs["max_width"] = 90
 
-        super().__init__(**kwargs)
-
         self._progress = progress
         self._callback = callback
+
+        super().__init__(**kwargs)
 
     def set_iteration(self, *args, **kwargs):
         super().set_iteration(*args, **kwargs)
 
         if self._callback is not None:
             self._callback(self)
+
+    def _get_total(self, total, quiet):
+        # When callbacks are provided, we always want a total to be computed
+        # whenever possible so that the `progress` and `completed` properties
+        # are available to the callback
+        if self._callback is not None:
+            quiet = False
+
+        return super()._get_total(total, quiet)
 
 
 def report_progress(progress, n=None, dt=None):
@@ -1002,6 +1011,9 @@ def report_progress(progress, n=None, dt=None):
                 print("PROGRESS: %0.3f" % pb.progress)
 
         dataset = foz.load_zoo_dataset("cifar10", split="test")
+
+        # Disable builtin progress bars
+        fo.config.show_progress_bars = False
 
         # Print progress at 10 equally-spaced increments
         progress = fo.report_progress(print_progress, n=10)
@@ -2486,14 +2498,28 @@ def safe_relpath(path, start=None, default=None):
         if default is not None:
             return default
 
-        logger.warning(
-            "Path '%s' is not in '%s'. Using filename as unique identifier",
-            path,
-            start,
-        )
-        relpath = os.path.basename(path)
+        logger.debug("Path '%s' is not in '%s'", path, start)
+        relpath = path
 
     return relpath
+
+
+def get_module_name(path, start=None):
+    """Gets the Python module name for the given file or directory path.
+
+    Args:
+        path: a file or directory path
+        start (None): the relative prefix to strip from ``path``
+
+    Returns:
+        a ``module.name``
+    """
+    if start is not None:
+        path = safe_relpath(path, start)
+
+    path = os.path.splitdrive(path)[1]
+    path = os.path.splitext(path)[0]
+    return path.replace("\\", "/").strip("/").replace("/", ".")
 
 
 def compute_filehash(filepath, method=None, chunk_size=None):

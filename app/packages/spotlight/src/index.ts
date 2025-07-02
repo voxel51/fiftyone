@@ -122,15 +122,31 @@ export default class Spotlight<K, V> extends EventTarget {
 
     element.appendChild(this.#element);
 
-    const observer = new ResizeObserver(() => {
-      this.attached && this.#loaded && this.#render({ ...this.#measure() });
+    const observer = new ResizeObserver(([el]) => {
+      if (this.attached && this.#loaded) {
+        // update rect for height
+        this.#rect = el.contentRect;
+        this.#render({ ...this.#measure() });
+      }
     });
     observer.observe(this.#element);
     // Run in the next animation frame for a correct measurement;
-    requestAnimationFrame(() => {
-      this.#rect = this.#element.getBoundingClientRect();
-      this.#fill();
-    });
+
+    const fill = () =>
+      requestAnimationFrame(() => {
+        this.#rect = this.#element.getBoundingClientRect();
+
+        // wait for height
+        if (this.#rect.height) {
+          this.#fill();
+          return;
+        }
+
+        // try again
+        fill();
+      });
+
+    fill();
   }
 
   destroy(): void {

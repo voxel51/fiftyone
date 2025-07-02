@@ -258,7 +258,13 @@ export const FoSceneComponent = ({ scene }: FoSceneProps) => {
   const visibilityMap = useControls(
     "Visibility",
     defaultVisibilityMap ?? {},
-    { order: PANEL_ORDER_VISIBILITY },
+    {
+      order: PANEL_ORDER_VISIBILITY,
+      // note: if there's only one object in the scene, we don't need to show the visibility panel
+      // instead, we can expand the panel of the "main object" by default
+      // this saves an extra click for the user
+      collapsed: Object.keys(defaultVisibilityMap).length < 2,
+    },
     [defaultVisibilityMap]
   );
 

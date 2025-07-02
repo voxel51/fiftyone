@@ -81,12 +81,13 @@ def get_view(
     stages=None,
     filters=None,
     pagination_data=False,
+    dynamic_group=None,
     extended_stages=None,
     sample_filter=None,
     reload=True,
     awaitable=False,
     sort_by=None,
-    desc=None,
+    desc=False,
 ):
     """Gets the view defined by the given request parameters.
 
@@ -100,11 +101,17 @@ def get_view(
         pagination_data (False): whether process samples as pagination data
             - excludes all :class:`fiftyone.core.fields.DictField` values
             - filters label fields
+        dynamic_group (None): an optional dynamic group value to select. Only
+            applicable when a :class:`fiftyone.core.stages.GroupBy` stage is
+            present in the view
         extended_stages (None): extended view stages
         sample_filter (None): an optional
             :class:`fiftyone.server.filters.SampleFilter`
         reload (True): whether to reload the dataset
         awaitable (False): whether to return an awaitable coroutine
+        sort_by (None): an optional sort field
+        desc (False): whether to sort in descending order. Only applicable when
+            `sort_by` is provided
 
     Returns:
         a :class:`fiftyone.core.view.DatasetView`
@@ -125,6 +132,9 @@ def get_view(
         else:
             view = dataset.view()
 
+        if dynamic_group is not None:
+            view = view.get_dynamic_group(dynamic_group)
+
         media_types = None
         if sample_filter is not None:
             if sample_filter.group:
@@ -135,7 +145,7 @@ def get_view(
             elif sample_filter.id:
                 view = fov.make_optimized_select_view(view, sample_filter.id)
 
-        if filters or extended_stages or pagination_data:
+        if filters or extended_stages or pagination_data or sort_by:
             view = get_extended_view(
                 view,
                 filters,
@@ -161,7 +171,7 @@ def get_extended_view(
     pagination_data=False,
     media_types=None,
     sort_by=None,
-    desc=None,
+    desc=False,
 ):
     """Create an extended view with the provided filters.
 
@@ -171,6 +181,9 @@ def get_extended_view(
         extended_stages (None): extended view stages
         pagination_data (False): filters label data
         media_types (None): the media types to consider
+        sort_by (None): an optional sort field
+        desc (False): whether to sort in descending order. Only applicable when
+            `sort_by` is provided
 
     Returns:
         a :class:`fiftyone.core.view.DatasetView`
@@ -202,8 +215,8 @@ def get_extended_view(
         if label_tags:
             view = _match_label_tags(view, label_tags)
 
-        match_stage = _make_match_stage(view, filters)
         stages = []
+        match_stage = _make_match_stage(view, filters)
         if match_stage:
             stages = [match_stage]
 
@@ -219,7 +232,14 @@ def get_extended_view(
         )
 
     if sort_by:
-        view = view.sort_by(sort_by, reverse=bool(desc))
+        view = view.sort_by(sort_by, reverse=bool(desc), create_index=False)
+
+    for stage in view._stages:
+        if isinstance(stage, fosg.GroupBy):
+
+            view = view.mongo(
+                [{"$addFields": {"_group": stage._get_group_expr(view)[0]}}]
+            )
 
     if pagination_data:
         # omit all dict field values for performance, not needed by grid
@@ -298,6 +318,12 @@ def handle_group_filter(
                     {group_field + ".name": {"$in": filter.slices}}
                 )
 
+                # add dynamic group value
+                _group, _ = stage._get_group_expr(view)
+                view = view._add_view_stage(
+                    fosg.Mongo([{"$addFields": {"_group": _group}}])
+                )
+
             if isinstance(
                 stage, (fosg.SelectGroupSlices, fosg.ExcludeGroupSlices)
             ):
@@ -367,7 +393,7 @@ def _project_pagination_paths(
         if isinstance(field, fof.DictField)
     ]
 
-    selected_fields = []
+    selected_fields = ["_group"]  # store dynamic group values
     for path in schema:
         if any(path.startswith(exclude) for exclude in excluded):
             continue
@@ -387,8 +413,7 @@ def _project_pagination_paths(
 
     return view.add_stage(
         fosg.SelectFields(
-            selected_fields,
-            _media_types=media_types,
+            selected_fields, _media_types=media_types, _allow_missing=True
         )
     )
 
@@ -401,6 +426,10 @@ def _make_match_stage(view, filters):
         path_field = view.get_field(path)
 
         field = view.get_field(parent_path)
+
+        if field is None or path_field is None:
+            continue
+
         is_label_field = _is_label_type(field)
         if (
             is_label_field
@@ -457,6 +486,10 @@ def _make_label_filter_stages(
 
         field = view.get_field(path)
         label_field = view.get_field(label_path)
+
+        if field is None or label_field is None:
+            continue
+
         if issubclass(
             label_field.document_type, (fol.Keypoint, fol.Keypoints)
         ) and isinstance(field, fof.ListField):
@@ -605,7 +638,10 @@ def _make_range_query(path: str, field: fof.Field, args):
     if range_:
         mn, mx = range_
         if isinstance(field, (fof.DateField, fof.DateTimeField)):
-            mn, mx = [fou.timestamp_to_datetime(d) for d in range_]
+            mn, mx = [
+                fou.timestamp_to_datetime(d) if d is not None else None
+                for d in range_
+            ]
     else:
         mn, mx = None, None
 

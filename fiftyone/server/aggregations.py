@@ -9,6 +9,7 @@ FiftyOne Server aggregations
 from datetime import date, datetime
 import typing as t
 
+from pymongo.errors import ExecutionTimeout
 import strawberry as gql
 
 import fiftyone.core.aggregations as foa
@@ -20,6 +21,7 @@ from fiftyone.core.utils import datetime_to_timestamp
 import fiftyone.core.view as fov
 
 from fiftyone.server.constants import LIST_LIMIT
+from fiftyone.server.exceptions import AggregationQueryTimeout
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
 from fiftyone.server.inputs import SelectedLabel
 from fiftyone.server.scalars import BSON, BSONArray
@@ -30,20 +32,22 @@ import fiftyone.server.view as fosv
 @gql.input
 class AggregationForm:
     dataset: str
+    dynamic_group: t.Optional[BSON] = None
     extended_stages: BSONArray
     filters: t.Optional[BSON]
     group_id: t.Optional[gql.ID]
     hidden_labels: t.List[SelectedLabel]
+    hint: t.Optional[str] = None
     index: t.Optional[int]
+    max_query_time: t.Optional[int] = None
     mixed: bool
     paths: t.List[str]
+    query_performance: t.Optional[bool] = False
     sample_ids: t.List[gql.ID]
     slice: t.Optional[str]
     slices: t.Optional[t.List[str]]
     view: BSONArray
     view_name: t.Optional[str] = None
-    query_performance: t.Optional[bool] = False
-    hint: t.Optional[str] = None
 
 
 @gql.interface
@@ -112,7 +116,12 @@ AggregateResult = t.Annotated[
 
 async def aggregate_resolver(
     form: AggregationForm,
-) -> t.List[AggregateResult]:
+) -> t.List[
+    t.Annotated[
+        t.Union[AggregateResult, AggregationQueryTimeout],
+        gql.union("AggregationResponse"),
+    ]
+]:
     if not form.dataset:
         raise ValueError("Aggregate form missing dataset")
 
@@ -153,7 +162,14 @@ async def aggregate_resolver(
     counts = [len(a) for a in aggregations]
     flattened = [item for sublist in aggregations for item in sublist]
 
-    result = await view._async_aggregate(flattened)
+    maxTimeMS = form.max_query_time * 1000 if form.max_query_time else None
+    try:
+        result = await view._async_aggregate(flattened, maxTimeMS=maxTimeMS)
+    except ExecutionTimeout:
+        return [
+            AggregationQueryTimeout(path=path, query_time=form.max_query_time)
+            for path in form.paths
+        ]
 
     results = []
     offset = 0
@@ -206,6 +222,7 @@ async def _load_view(form: AggregationForm, slices: t.List[str]):
                 else None
             )
         ),
+        dynamic_group=form.dynamic_group,
         awaitable=True,
     )
 

@@ -213,6 +213,18 @@ export const getOrthonormalAxis = (vec: Vector3Tuple | Vector3) => {
     return "Z";
   }
 
+  if (vec[0] === -1 && vec[1] === 0 && vec[2] === 0) {
+    return "-X";
+  }
+
+  if (vec[0] === 0 && vec[1] === -1 && vec[2] === 0) {
+    return "-Y";
+  }
+
+  if (vec[0] === 0 && vec[1] === 0 && vec[2] === -1) {
+    return "-Z";
+  }
+
   return null;
 };
 

@@ -1,9 +1,8 @@
-import { Box, Stack, Typography } from "@mui/material";
-import React from "react";
-import { scenarioCardStyles } from "../../styles";
-import Button from "../../../Button";
+import { TooltipProvider } from "@fiftyone/components";
 import ErrorOutlineOutlinedIcon from "@mui/icons-material/ErrorOutlineOutlined";
-import TooltipProvider from "../../../TooltipProvider";
+import { Box, Stack, Typography } from "@mui/material";
+import Button from "../../../Button";
+import { scenarioCardStyles } from "../../styles";
 
 interface Props {
   code: "scenario_load_error";

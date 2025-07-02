@@ -219,7 +219,7 @@ The following fields are available:
     +------------------------------+-----------+-----------------------------------------------------------------------------+
     | `operators`                  |           | A list of operator names registered by the plugin, if any                   |
     +------------------------------+-----------+-----------------------------------------------------------------------------+
-    | `panels`                     |           | A list of panel names registred by the plugin, if any                       |
+    | `panels`                     |           | A list of panel names registered by the plugin, if any                       |
     +------------------------------+-----------+-----------------------------------------------------------------------------+
     | `secrets`                    |           | A list of secret keys that may be used by the plugin, if any                |
     +------------------------------+-----------+-----------------------------------------------------------------------------+
@@ -980,6 +980,8 @@ contains the following properties:
 -   `ctx.selected_labels` - the list of currently selected labels in the App,
     if any
 -   `ctx.extended_selection` - the extended selection of the view, if any
+-   `ctx.active_fields` - the list of currently active fields in the App
+    sidebar, if any
 -   `ctx.group_slice` - the active group slice in the App, if any
 -   `ctx.user_id` - the ID of the user that invoked the operator, if known
 -   `ctx.user` - an object of information about the user that invoked the
@@ -1805,7 +1807,7 @@ subsequent sections.
                 surfaces="grid",  # default = "grid"
 
                 # Markdown-formatted text that describes the panel. This is
-                # rendererd in a tooltip when the help icon in the panel
+                # rendered in a tooltip when the help icon in the panel
                 # title is hovered over
                 help_markdown="A description of the panel",
             )
@@ -2009,6 +2011,19 @@ subsequent sections.
             ctx.panel.set_state("event", "on_change_selected_labels")
             ctx.panel.set_data("event_data", event)
 
+        def on_change_active_fields(self, ctx):
+            """Implement this method to set panel state/data when the current
+            active fields change in the sidebar.
+
+            The active fields will be available via ``ctx.active_fields``.
+            """
+            event = {
+                "data": ctx.active_fields,
+                "description": "the current active fields",
+            }
+            ctx.panel.set_state("event", "on_change_active_fields")
+            ctx.panel.set_data("event_data", event)
+
         def on_change_extended_selection(self, ctx):
             """Implement this method to set panel state/data when the current
             extended selection changes.
@@ -2142,7 +2157,7 @@ behavior:
             surfaces="grid",  # default = "grid"
 
             # Markdown-formatted text that describes the panel. This is
-            # rendererd in a tooltip when the help icon in the panel
+            # rendered in a tooltip when the help icon in the panel
             # title is hovered over
             help_markdown="A description of the panel",
         )

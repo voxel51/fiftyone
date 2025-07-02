@@ -189,6 +189,14 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                 )
             )
 
+        if "parent_id_1" not in index_names:
+            indices_to_create.append(
+                IndexModel(
+                    [("parent_id", pymongo.ASCENDING)],
+                    name="parent_id_1",
+                )
+            )
+
         if indices_to_create:
             self._collection.create_indexes(indices_to_create)
 
@@ -199,15 +207,9 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                 raise ValueError("Missing required property '%s'" % prop)
             setattr(op, prop, kwargs.get(prop))
 
-        delegation_target = kwargs.get("delegation_target", None)
-        if delegation_target:
-            setattr(op, "delegation_target", delegation_target)
-
-        metadata = kwargs.get("metadata", None)
-        if metadata:
-            setattr(op, "metadata", metadata)
-        else:
-            setattr(op, "metadata", {})
+        op.delegation_target = kwargs.get("delegation_target", None)
+        op.metadata = kwargs.get("metadata") or {}
+        op.num_partitions = kwargs.get("num_partitions", None)
 
         context = None
         if isinstance(op.context, dict):
@@ -330,6 +332,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                     "result": execution_result_json,
                 }
             }
+
         elif run_state == ExecutionRunState.RUNNING:
             update = {
                 "$set": {
@@ -381,6 +384,25 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             update=update,
             return_document=pymongo.ReturnDocument.AFTER,
         )
+
+        if (
+            doc
+            and doc.get("num_partitions")
+            and run_state is ExecutionRunState.FAILED
+        ):
+            # If a parent operation is failed, also mark the children as failed
+            self._collection.update_many(
+                {
+                    "parent_id": doc["_id"],
+                    "run_state": {"$nin": ["failed", "completed"]},
+                },
+                {
+                    "$set": {
+                        **update["$set"],
+                        "result": {"error": "parent operation failed"},
+                    }
+                },
+            )
 
         return (
             DelegatedOperationDocument().from_pymongo(doc)

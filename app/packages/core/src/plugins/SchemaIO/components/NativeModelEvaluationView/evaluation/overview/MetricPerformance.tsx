@@ -1,3 +1,6 @@
+import { Plot } from "@fiftyone/components/src/components/Plot";
+import { usePanelStatePartial } from "@fiftyone/spaces";
+import { formatValueAsNumber } from "@fiftyone/utilities";
 import { InsertChartOutlined, TableChartOutlined } from "@mui/icons-material";
 import {
   Stack,
@@ -9,16 +12,17 @@ import {
   ToggleButtonGroup,
   Typography,
 } from "@mui/material";
-import React, { useState } from "react";
 import ColorSquare from "../../components/ColorSquare";
 import EvaluationTable from "../../components/EvaluationTable";
 import { COMPARE_KEY_COLOR, KEY_COLOR } from "../../constants";
-import EvaluationPlot from "../../EvaluationPlot";
-import { formatValue, getNumericDifference } from "../../utils";
+import { getNumericDifference } from "../../utils";
 
 export default function MetricPerformance(props) {
-  const { name, compareKey, evaluation, compareEvaluation } = props;
-  const [metricMode, setMetricMode] = useState("chart");
+  const { name, compareKey, evaluation, compareEvaluation, id } = props;
+  const [metricMode, setMetricMode] = usePanelStatePartial(
+    `${id}_mpvm`,
+    "chart"
+  );
 
   const evaluationInfo = evaluation.info;
   const evaluationConfig = evaluationInfo.config;
@@ -85,7 +89,7 @@ export default function MetricPerformance(props) {
         </ToggleButtonGroup>
       </Stack>
       {metricMode === "chart" && (
-        <EvaluationPlot
+        <Plot
           data={[
             {
               histfunc: "sum",
@@ -160,10 +164,12 @@ export default function MetricPerformance(props) {
                 <TableCell component="th" scope="row">
                   {row.property}
                 </TableCell>
-                <TableCell>{formatValue(row.value)}</TableCell>
+                <TableCell>{formatValueAsNumber(row.value)}</TableCell>
                 {compareKey && (
                   <>
-                    <TableCell>{formatValue(row.compareValue)}</TableCell>
+                    <TableCell>
+                      {formatValueAsNumber(row.compareValue)}
+                    </TableCell>
                     <TableCell>
                       {getNumericDifference(row.value, row.compareValue)}
                     </TableCell>

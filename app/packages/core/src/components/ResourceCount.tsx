@@ -4,8 +4,9 @@ import {
   parentMediaTypeSelector,
 } from "@fiftyone/state";
 import React from "react";
-import { useRecoilValue } from "recoil";
+import { useRecoilValue, useRecoilValueLoadable } from "recoil";
 import styled from "styled-components";
+import TimedOut from "./Common/TimedOut";
 import { PathEntryCounts } from "./Sidebar/Entries/EntryCounts";
 
 const RightDiv = styled.div`
@@ -25,6 +26,17 @@ const RightDiv = styled.div`
 const ResourceCount = () => {
   const groupStats = useRecoilValue(fos.groupStatistics(false));
   const queryPerformance = useRecoilValue(fos.queryPerformance);
+  const result = useRecoilValueLoadable(
+    fos.count({ path: "_", extended: true, modal: false })
+  );
+
+  if (
+    result.state === "hasError" &&
+    result.contents instanceof fos.AggregationQueryTimeout
+  ) {
+    return <TimedOut queryTime={result.contents.queryTime} />;
+  }
+
   return groupStats === "group" && !queryPerformance ? (
     <GroupsCount />
   ) : (

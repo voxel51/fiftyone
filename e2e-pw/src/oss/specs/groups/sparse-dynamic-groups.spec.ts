@@ -73,12 +73,10 @@ test.describe.serial("sparse dynamic groups", () => {
     grid,
     modal,
   }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
+      searchParams: new URLSearchParams({ view: "group" }),
+    });
 
-    const groupByRefresh = grid.getWaitForGridRefreshPromise();
-    await grid.actionsRow.toggleCreateDynamicGroups();
-    await grid.actionsRow.groupBy("scene", "frame");
-    await groupByRefresh;
     await grid.assert.isEntryCountTextEqualTo("1 group with slice");
     await grid.openFirstSample();
     await modal.sidebar.toggleSidebarGroup("GROUP");
