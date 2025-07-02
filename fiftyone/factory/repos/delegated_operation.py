@@ -218,25 +218,20 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             )
         elif isinstance(op.context, ExecutionContext):
             context = op.context
-        if not op.dataset_id:
-            # For consistency, set the dataset_id using the
-            # ExecutionContext.dataset
-            # rather than calling load_dataset() on a potentially stale
-            # dataset_name in the request_params
-            try:
-                op.dataset_id = context.dataset._doc.id
-            except:
-                # If we can't resolve the dataset_id, it is possible the
-                # dataset doesn't exist (deleted/being created). However,
-                # it's also possible that future operators can run
-                # dataset-less, so don't raise an error here and just log it
-                # in case we need to debug later.
-                logger.debug("Could not resolve dataset_id for operation. ")
-        elif op.dataset_id:
-            # If the dataset_id is provided, we set it in the request_params
-            # to ensure that the operation is executed on the correct dataset
-            context.request_params["dataset_id"] = str(op.dataset_id)
-            context.request_params["dataset_name"] = context.dataset.name
+
+        # For consistency, set the dataset_id using the
+        # ExecutionContext.dataset
+        # rather than calling load_dataset() on a potentially stale
+        # dataset_name in the request_params
+        try:
+            op.dataset_id = context.dataset._doc.id
+        except:
+            # If we can't resolve the dataset_id, it is possible the
+            # dataset doesn't exist (deleted/being created). However,
+            # it's also possible that future operators can run
+            # dataset-less, so don't raise an error here and just log it
+            # in case we need to debug later.
+            logger.debug("Could not resolve dataset_id for operation. ")
 
         op.context = context
         doc = self._collection.insert_one(op.to_pymongo())
