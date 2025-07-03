@@ -19,6 +19,11 @@ export const useBrowserStorage = <T = string>(
     const item = storage.getItem(key);
 
     if (item) {
+      // Workaround for existing "undefined" values in storage
+      if (item === "undefined") {
+        return initialValue instanceof Function ? initialValue() : initialValue;
+      }
+
       if (parseFn) {
         return parseFn.parse(item);
       }
@@ -44,12 +49,18 @@ export const useBrowserStorage = <T = string>(
         setStoredValue(value);
       }
 
-      storage.setItem(
-        key,
-        parseFn ? parseFn.stringify(valueToStore) : JSON.stringify(valueToStore)
-      );
+      // Handle undefined values by removing from storage
+      if (valueToStore === undefined) {
+        storage.removeItem(key);
+      } else if (parseFn) {
+        // Let the custom parser handle other values
+        storage.setItem(key, parseFn.stringify(valueToStore));
+      } else {
+        // For JSON.stringify, handle other values
+        storage.setItem(key, JSON.stringify(valueToStore));
+      }
     },
-    [key, storage]
+    [key, storage, parseFn]
   );
 
   return [storedValue, setValue] as const;

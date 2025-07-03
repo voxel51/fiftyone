@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<d3d94eb29385217a7d6d59a2c685d87a>>
+ * @generated SignedSource<<da2bff8016ac119e2809cce123facfa2>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -33,7 +33,7 @@ export type DatasetPageQuery$data = {
     readonly appConfig: {
       readonly colorScheme: {
         readonly colorBy: ColorBy | null;
-        readonly colorPool: ReadonlyArray<string>;
+        readonly colorPool: ReadonlyArray<string> | null;
         readonly colorscales: ReadonlyArray<{
           readonly list: ReadonlyArray<{
             readonly color: string;

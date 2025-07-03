@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<4eb93ca357784136884d2f56c71ed5e5>>
+ * @generated SignedSource<<025d078c4ae2fea256541d4dd4c76b64>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -13,7 +13,7 @@ export type ColorBy = "field" | "instance" | "value" | "%future added value";
 import { FragmentRefs } from "relay-runtime";
 export type colorSchemeFragment$data = {
   readonly colorBy: ColorBy | null;
-  readonly colorPool: ReadonlyArray<string>;
+  readonly colorPool: ReadonlyArray<string> | null;
   readonly colorscales: ReadonlyArray<{
     readonly list: ReadonlyArray<{
       readonly color: string;
