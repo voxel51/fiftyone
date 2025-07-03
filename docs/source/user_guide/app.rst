@@ -701,6 +701,11 @@ a compound index.
     import fiftyone as fo
 
     dataset = fo.load_dataset("frames-as-video")
+
+    # index for sample grid
+    dataset.create_index([("frame_number", 1), ("video", 1)], unique=True)
+
+    # index for playback
     dataset.create_index([("video", 1), ("frame_number", 1)], unique=True)
 
     # create query performant fields for filtering and sorting
@@ -712,7 +717,7 @@ a compound index.
         "video",
         order_by="frame_number",
         order_by_key=1,
-        create_index=False
+        create_index=False # we have already created the correct indexes
     )
     dataset.save_view("videos", videos)
 
