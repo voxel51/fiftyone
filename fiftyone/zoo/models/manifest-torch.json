@@ -6040,6 +6040,150 @@
                 "efficientnet"
             ],
             "date_added": "2025-06-30 12:00:00"
+        },
+        {
+            "base_name": "swin-v2-tiny-patch4-window8-256-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Tiny hierarchical transformer for efficient visual recognition on edge devices",
+            "source": "https://huggingface.co/microsoft/swinv2-tiny-patch4-window8-256",
+            "author": "Ze Liu, et al.",
+            "license": "MIT",
+            "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "microsoft/swinv2-tiny-patch4-window8-256",
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "swin-transformer"
+            ],
+            "date_added": "2025-07-02 12:00:00"
+        },
+        {
+            "base_name": "swin-v2-small-patch4-window8-256-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Small hierarchical transformer balancing efficiency and performance for practical use",
+            "source": "https://huggingface.co/microsoft/swinv2-small-patch4-window8-256",
+            "author": "Ze Liu, et al.",
+            "license": "MIT",
+            "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "microsoft/swinv2-small-patch4-window8-256",
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "swin-transformer"
+            ],
+            "date_added": "2025-07-02 12:00:00"
+        },
+        {
+            "base_name": "swin-v2-base-patch4-window8-256-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Base hierarchical transformer delivering strong results across vision tasks",
+            "source": "https://huggingface.co/microsoft/swinv2-base-patch4-window8-256",
+            "author": "Ze Liu, et al.",
+            "license": "MIT",
+            "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "microsoft/swinv2-base-patch4-window8-256",
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "swin-transformer"
+            ],
+            "date_added": "2025-07-02 12:00:00"
+        },
+        {
+            "base_name": "swin-v2-large-patch4-window12to16-192to256-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Large hierarchical transformer with enhanced capacity for demanding applications",
+            "source": "https://huggingface.co/microsoft/swinv2-large-patch4-window12to16-192to256-22kto1k-ft",
+            "author": "Ze Liu, et al.",
+            "license": "MIT",
+            "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "microsoft/swinv2-large-patch4-window12to16-192to256-22kto1k-ft",
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "swin-transformer"
+            ],
+            "date_added": "2025-07-02 12:00:00"
         }
     ]
 }
