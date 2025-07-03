@@ -222,7 +222,7 @@ export const usePcdMaterialControls = (
 
     if (isDefaultAppConfigColormapAvailable) {
       const list = colorScheme.defaultColorscale?.list;
-      if (list) {
+      if (list && list.length > 0) {
         return {
           list,
           source: ColormapSource.DATASET_DEFAULT,
