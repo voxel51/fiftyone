@@ -5568,7 +5568,7 @@
             "source": "https://huggingface.co/facebook/convnext-tiny-224",
             "author": "Zhuang Liu, et al.",
             "license": "Apache 2.0",
-            "size_bytes": null,
+            "size_bytes": 457742046,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
                 "config": {
@@ -5605,7 +5605,7 @@
             "source": "https://huggingface.co/facebook/convnext-small-224",
             "author": "Zhuang Liu, et al.",
             "license": "Apache 2.0",
-            "size_bytes": null,
+            "size_bytes": 402011374,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
                 "config": {
@@ -5642,7 +5642,7 @@
             "source": "https://huggingface.co/facebook/convnext-base-224",
             "author": "Zhuang Liu, et al.",
             "license": "Apache 2.0",
-            "size_bytes": null,
+            "size_bytes": 1417939660,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
                 "config": {
@@ -5679,7 +5679,7 @@
             "source": "https://huggingface.co/facebook/convnext-large-224",
             "author": "Zhuang Liu, et al.",
             "license": "Apache 2.0",
-            "size_bytes": null,
+            "size_bytes": 3164754044,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
                 "config": {
@@ -5716,7 +5716,7 @@
             "source": "https://huggingface.co/facebook/convnext-xlarge-224-22k-1k",
             "author": "Zhuang Liu, et al.",
             "license": "Apache 2.0",
-            "size_bytes": null,
+            "size_bytes": 31647540445603633486,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
                 "config": {
@@ -5753,7 +5753,7 @@
             "source": "https://huggingface.co/google/efficientnet-b0",
             "author": "Mingxing Tan and Quoc V. Le",
             "license": "Apache 2.0",
-            "size_bytes": null,
+            "size_bytes": 85768446,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
                 "config": {
@@ -5790,7 +5790,7 @@
             "source": "https://huggingface.co/google/efficientnet-b1",
             "author": "Mingxing Tan and Quoc V. Le",
             "license": "Apache 2.0",
-            "size_bytes": null,
+            "size_bytes": 126318898,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
                 "config": {
@@ -5827,7 +5827,7 @@
             "source": "https://huggingface.co/google/efficientnet-b2",
             "author": "Mingxing Tan and Quoc V. Le",
             "license": "Apache 2.0",
-            "size_bytes": null,
+            "size_bytes": 147458738,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
                 "config": {
@@ -5864,7 +5864,7 @@
             "source": "https://huggingface.co/google/efficientnet-b3",
             "author": "Mingxing Tan and Quoc V. Le",
             "license": "Apache 2.0",
-            "size_bytes": null,
+            "size_bytes": 197807644,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
                 "config": {
@@ -5901,7 +5901,7 @@
             "source": "https://huggingface.co/google/efficientnet-b4",
             "author": "Mingxing Tan and Quoc V. Le",
             "license": "Apache 2.0",
-            "size_bytes": null,
+            "size_bytes": 312276324,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
                 "config": {
@@ -5938,7 +5938,7 @@
             "source": "https://huggingface.co/google/efficientnet-b5",
             "author": "Mingxing Tan and Quoc V. Le",
             "license": "Apache 2.0",
-            "size_bytes": null,
+            "size_bytes": 489948742,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
                 "config": {
@@ -5975,7 +5975,7 @@
             "source": "https://huggingface.co/google/efficientnet-b6",
             "author": "Mingxing Tan and Quoc V. Le",
             "license": "Apache 2.0",
-            "size_bytes": null,
+            "size_bytes": 693311678,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
                 "config": {
@@ -6012,7 +6012,7 @@
             "source": "https://huggingface.co/google/efficientnet-b7",
             "author": "Mingxing Tan and Quoc V. Le",
             "license": "Apache 2.0",
-            "size_bytes": null,
+            "size_bytes": 1067822754,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
                 "config": {
