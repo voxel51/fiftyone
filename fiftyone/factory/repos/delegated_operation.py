@@ -379,25 +379,6 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             return_document=pymongo.ReturnDocument.AFTER,
         )
 
-        if (
-            doc
-            and doc.get("num_partitions")
-            and run_state is ExecutionRunState.FAILED
-        ):
-            # If a parent operation is failed, also mark the children as failed
-            self._collection.update_many(
-                {
-                    "parent_id": doc["_id"],
-                    "run_state": {"$nin": ["failed", "completed"]},
-                },
-                {
-                    "$set": {
-                        **update["$set"],
-                        "result": {"error": "parent operation failed"},
-                    }
-                },
-            )
-
         return (
             DelegatedOperationDocument().from_pymongo(doc)
             if doc is not None
