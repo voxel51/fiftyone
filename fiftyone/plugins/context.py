@@ -37,9 +37,12 @@ def build_plugin_contexts(enabled=True):
     """
     plugin_contexts = []
     for pd in fop.list_plugins(enabled=enabled, builtin="all"):
-        pctx = PluginContext(pd)
-        pctx.register_all()
-        plugin_contexts.append(pctx)
+        try:
+            pctx = PluginContext(pd)
+            pctx.register_all()
+            plugin_contexts.append(pctx)
+        except Exception as e:
+            logger.error(f"Failed to register plugin '{pd.name}': {e}")
 
     return plugin_contexts
 
