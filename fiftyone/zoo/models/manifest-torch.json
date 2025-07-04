@@ -6184,6 +6184,80 @@
                 "swin-transformer"
             ],
             "date_added": "2025-07-02 12:00:00"
+        },
+        {
+            "base_name": "rtdetr-v2-s-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Lightweight real-time object detector optimized for speed on edge devices",
+            "source": "https://huggingface.co/PekingU/rtdetr_v2_r18vd",
+            "author": "Wenyu Lv, et al.",
+            "license": "Apache-2.0",
+            "size_bytes": 161820194,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "PekingU/rtdetr_v2_r18vd",
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "transformers",
+                "real-time",
+                "rtdetr"
+            ],
+            "date_added": "2025-07-03 12:00:00"
+        },
+        {
+            "base_name": "rtdetr-v2-m-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Balanced real-time object detector offering improved accuracy for production use",
+            "source": "https://huggingface.co/PekingU/rtdetr_v2_r50vd",
+            "author": "Wenyu Lv, et al.",
+            "license": "Apache-2.0",
+            "size_bytes": 344364318,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "PekingU/rtdetr_v2_r50vd",
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "transformers",
+                "real-time",
+                "rtdetr"
+            ],
+            "date_added": "2025-07-03 12:00:00"
         }
     ]
 }
