@@ -31,3 +31,4 @@ coverage.xml
 pyvenv.cfg
 
 .env
+.venv
