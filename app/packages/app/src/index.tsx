@@ -8,11 +8,12 @@ import Network from "./Network";
 import "./index.css";
 import { useRouter } from "./routing";
 
-const App: React.FC = () => {
-  const { context, environment } = useRouter();
+// In your App.tsx or similar entry point
+import { TestHarness } from '@fiftyone/operators'; // Import your harness
 
-  return <Network environment={environment} context={context} />;
-};
+const App: React.FC = () => {
+  return <TestHarness />;
+}
 
 createRoot(document.getElementById("root") as HTMLDivElement).render(
   <RecoilRoot>
