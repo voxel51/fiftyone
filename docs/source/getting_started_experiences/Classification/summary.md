@@ -28,9 +28,9 @@ We mastered the integration between FiftyOne's dataset management and PyTorch's 
 
 We interpreted model behavior by examining prediction confidence, hardness, and mistakenness. We also extracted embeddings from our own trained model's intermediate layers to analyze its learned features and identify unique or problematic training samples.
 
-### Step 7: Data Augmentation and Fine-Tuning
+### Step 7: Data Augmentation, Fine-Tuning, and Publishing
 
-We improved our model's performance through principled data augmentation. By identifying samples the model struggled with, applying targeted augmentations, and fine-tuning, we addressed specific weaknesses and boosted overall accuracy.
+We improved our model's performance through principled data augmentation. By identifying samples the model struggled with, applying targeted augmentations, and fine-tuning, we addressed specific weaknesses and boosted overall accuracy. We wrapped up by saving the curated dataset to disk and publishing our work through HuggingFace. 
 
 ---
 
