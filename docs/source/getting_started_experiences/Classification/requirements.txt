@@ -20,5 +20,4 @@ numpy==2.2.6
 torch==2.7.1
 torchvision==0.22.1
 umap-learn==0.5.9.post2
-import getpass
 huggingface_hub==0.33.2
