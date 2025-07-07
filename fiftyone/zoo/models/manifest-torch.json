@@ -6223,7 +6223,7 @@
             "date_added": "2025-07-03 12:00:00"
         },
         {
-            "base_name": "rtdetr-v2-m-torch",
+            "base_name": "rtdetr-v2-m-coco-torch",
             "base_filename": null,
             "version": null,
             "description": "Balanced real-time object detector offering improved accuracy for production use",
