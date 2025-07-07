@@ -54,7 +54,7 @@ The Modified National Institute of Standards and Technology (MNIST) dataset is o
 
 CLIP (Contrastive Language-Image Pre-training) is a vision-language model from OpenAI that learns visual concepts from natural language supervision. Trained on 400 million image-text pairs, CLIP can perform "zero-shot" classification by matching images to text descriptions of categories it has never explicitly seen during training.
 
-![](https://github.com/andandandand/images-for-colab-notebooks/blob/main/clip%20contrastive%20pre-training.png?raw=true)
+![](https://github.com/andandandand/fiftyone/blob/develop/docs/source/getting_started_experiences/Classification/assets/clip_architecture.webp?raw=True)
 
 While CLIP is immensely useful, it struggles with specialized datasets that are too different from its training distribution. MNIST is one of those cases, and we will explore it here.
 
