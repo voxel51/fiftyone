@@ -1,9 +1,8 @@
-
 # Getting Started with Image Classification, Model Comparison, and Dataset Curation using FiftyOne and PyTorch
 
 ## Zero-shot Classification with CLIP vs Supervised Learning with Convolutional Neural Networks
 
-### Who Is this Tutorial for
+### Who Is This Tutorial For
 
 This tutorial is designed for computer vision practitioners and data scientists who want to master image classification workflows using FiftyOne. Whether you're new to computer vision or experienced with other tools, you'll learn how to leverage FiftyOne's powerful capabilities for dataset curation, model evaluation, and visual analysis.
 
@@ -17,31 +16,39 @@ We assume familiarity with basic Python programming and fundamental machine lear
 
 120-150 minutes (for the entire series)
 
-### Required Packages
+### Required Packages and Virtual Environment
+
+We recommend that you create and activate a virtual environment with a Python version between 3.9 and 3.11 to run this tutorial.
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+```
 
 FiftyOne, PyTorch, and several other packages are required. You can install them in the first notebook with:
 
 ```bash
-pip install fiftyone torch torchvision numpy albumentations
+pip install -r requirements.txt
 ```
+The `requirements.txt` file inside the folder lists the exact versions of the packages that were used to develop and test the notebooks using Python 3.11.
 
 ### Content Overview
 
 This tutorial series is broken down into the following parts:
 
-1.  **MNIST Dataset Exploration with FiftyOne**: Load the MNIST dataset, compute metadata, and explore its distributions visually.
-2.  **Image Embeddings with CLIP**: Generate and visualize high-dimensional image embeddings using a pre-trained CLIP model to understand image similarity.
-3.  **Zero-Shot Classification with CLIP**: Perform image classification using CLIP without any task-specific training and evaluate its performance.
-4.  **Supervised Classification: LeNet-5 with PyTorch**: Build, train, and validate a classic LeNet-5 convolutional neural network from scratch using PyTorch.
-5.  **LeNet-5 Model Evaluation**: Apply the trained LeNet-5 model to the test set, evaluate its performance, and analyze prediction characteristics like hardness and mistakenness.
-6.  **Analysis of LeNet-5 Learned Features**: Extract embeddings from your trained LeNet model to analyze its learned features, uniqueness, and representativeness on the training data.
-7.  **Data Augmentation and Retraining**: Use insights from model analysis to perform targeted data augmentation on misclassified samples and fine-tune the model for improved performance.
+1. **MNIST Dataset Exploration with FiftyOne**: Load the MNIST dataset, compute metadata, and explore its distributions visually.
+2. **Image Embeddings with CLIP**: Generate and visualize high-dimensional image embeddings using a pre-trained CLIP model to understand image similarity.
+3. **Zero-Shot Classification with CLIP**: Perform image classification using CLIP without any task-specific training and evaluate its performance.
+4. **Supervised Classification: LeNet-5 with PyTorch**: Build, train, and validate a classic LeNet-5 convolutional neural network from scratch using PyTorch and FiftyOne.
+5. **LeNet-5 Model Evaluation**: Apply the trained LeNet-5 model to the test set, evaluate its performance, and analyze prediction characteristics like hardness and mistakenness.
+6. **Analysis of LeNet-5 Learned Features**: Extract embeddings from your trained LeNet model to analyze its learned features, uniqueness, and representativeness on the training data.
+7. **Data Augmentation, Retraining, and Publishing**: Use insights from model analysis to perform targeted data augmentation on misclassified samples and fine-tune the model for improved performance. Finally, save and publish your work on HuggingFace's dataset hub.
 
-## The MNIST dataset
+## The MNIST Dataset
 
 ![](https://github.com/andandandand/practical-computer-vision/blob/main/images/mnist_clean.png?raw=true)
 
-The Modified National Institute of Standards and Technology (MNIST) dataset is one of the most influential benchmarks in computer vision. It contains 60,000 training and 10,000 testing images of 28x28 grayscale handwritten digits (0-9). Its simplicity and small size make it ideal for learning fundamental concepts, yet achieving state-of-the-art performance requires sophisticated techniques.
+The Modified National Institute of Standards and Technology (MNIST) dataset is one of the most influential benchmarks in computer vision. It contains 60,000 training and 10,000 testing images of 28×28 grayscale handwritten digits (0-9). Its simplicity and small size make it ideal for learning fundamental concepts, yet achieving state-of-the-art performance requires sophisticated techniques.
 
 ## CLIP
 
@@ -49,7 +56,7 @@ CLIP (Contrastive Language-Image Pre-training) is a vision-language model from O
 
 ![](https://github.com/andandandand/images-for-colab-notebooks/blob/main/clip%20contrastive%20pre-training.png?raw=true)
 
-While CLIP is immensely useful, it struggles with specialized datasets that are too different from its training distribution. MNIST is one of those cases and we will explore it here. 
+While CLIP is immensely useful, it struggles with specialized datasets that are too different from its training distribution. MNIST is one of those cases, and we will explore it here.
 
 ---
 
@@ -69,11 +76,8 @@ In this tutorial series, we will build, train, and evaluate a modernized version
 
 A key aspect of this tutorial is demonstrating a seamless workflow between data management and model training. We leverage the strengths of both FiftyOne and PyTorch by:
 
-1.  **Managing Data in FiftyOne**: We use FiftyOne to load the MNIST dataset, explore it, and split it into training and validation sets. FiftyOne's powerful querying and tagging capabilities make this data preparation step robust and reproducible.
-2.  **Bridging to PyTorch**: We create a custom `torch.utils.data.Dataset` class that acts as a bridge between our FiftyOne dataset views and the PyTorch ecosystem. This custom class reads file paths and labels directly from the FiftyOne dataset.
-3.  **Training in PyTorch**: The custom dataset is then wrapped in a PyTorch `DataLoader`, which efficiently handles batching, shuffling, and multi-process data loading, feeding the data directly to our LeNet-5 model for training.
+1. **Managing Data in FiftyOne**: We use FiftyOne to load the MNIST dataset, explore it, and split it into training and validation sets. FiftyOne's powerful querying and tagging capabilities make this data preparation step robust and reproducible.
+2. **Bridging to PyTorch**: We create a custom `torch.utils.data.Dataset` class that acts as a bridge between our FiftyOne dataset views and the PyTorch ecosystem. This custom class reads file paths and labels directly from the FiftyOne dataset.
+3. **Training in PyTorch**: The custom dataset is then wrapped in a PyTorch `DataLoader`, which efficiently handles batching, shuffling, and multi-process data loading, feeding the data directly to our LeNet-5 model for training.
 
 This approach gives us the best of both worlds: the rich, interactive data curation and analysis features of FiftyOne, and the powerful, flexible model training and optimization capabilities of PyTorch.
-
-
-
