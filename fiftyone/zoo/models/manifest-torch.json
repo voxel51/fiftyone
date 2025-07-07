@@ -6217,7 +6217,6 @@
                 "coco",
                 "torch",
                 "transformers",
-                "real-time",
                 "rtdetr"
             ],
             "date_added": "2025-07-03 12:00:00"
@@ -6254,7 +6253,6 @@
                 "coco",
                 "torch",
                 "transformers",
-                "real-time",
                 "rtdetr"
             ],
             "date_added": "2025-07-03 12:00:00"
