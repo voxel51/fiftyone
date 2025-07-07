@@ -6186,7 +6186,7 @@
             "date_added": "2025-07-02 12:00:00"
         },
         {
-            "base_name": "rtdetr-v2-s-torch",
+            "base_name": "rtdetr-v2-s-coco-torch",
             "base_filename": null,
             "version": null,
             "description": "Lightweight real-time object detector optimized for speed on edge devices",
