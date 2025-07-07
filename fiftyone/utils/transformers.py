@@ -525,11 +525,15 @@ class ZeroShotTransformerEmbeddingsMixin(EmbeddingsMixin):
         # via get_image_features
         if self.preprocess:
             inputs = self.transforms.processor(images=args, return_tensors="pt")
-        with torch.no_grad():
-            image_features = self._model.get_image_features(
-                **inputs.to(self._device)
+            with torch.no_grad():
+                image_features = self._model.get_image_features(
+                    **inputs.to(self._device)
+                )
+            return image_features.cpu().numpy()
+        else:
+            raise ValueError(
+                "Embeddings extraction requires preprocessing. Set model.preprocess=True"
             )
-        return image_features.cpu().numpy()
 
 
 class ZeroShotTransformerPromptMixin(PromptMixin):
