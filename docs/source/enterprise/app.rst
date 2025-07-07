@@ -7,7 +7,7 @@ FiftyOne Enterprise App
 
 The FiftyOne Enterprise App allows you to visualize, browse, and interact with your
 individual datasets like you can with the :ref:`FiftyOne App <fiftyone-app>`,
-but with expanded features for organizing, permissionsing, versioning, and
+but with expanded features for organizing, permissioning, versioning, and
 sharing your team's datasets, all from a centralized web portal.
 
 This page provides a brief overview of some features available only in the

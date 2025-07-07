@@ -10,6 +10,7 @@ const EvaluationSelect = styled(Select, {
   if (ghost) {
     return {
       ".MuiSelect-select": {
+        background: "none",
         padding: "4px 32px 4px 4px",
       },
       fieldset: {

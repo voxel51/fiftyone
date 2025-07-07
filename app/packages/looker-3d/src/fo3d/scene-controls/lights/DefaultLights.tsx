@@ -38,7 +38,7 @@ export const DefaultLights = () => {
 
     const offset = Math.max(Math.max(size.x, size.y, size.z)) + 1;
 
-    if (upVector.y === 1) {
+    if (Math.abs(upVector.y) === 1) {
       return [
         new Vector3(0, center.y + offset, 0), // top
         new Vector3(0, center.y - offset, 0), // bottom
@@ -49,7 +49,7 @@ export const DefaultLights = () => {
       ];
     }
 
-    if (upVector.x === 1) {
+    if (Math.abs(upVector.x) === 1) {
       return [
         new Vector3(center.x + offset, 0, 0), // top
         new Vector3(center.x - offset, 0, 0), // bottom
@@ -60,7 +60,7 @@ export const DefaultLights = () => {
       ];
     }
 
-    if (upVector.z === 1) {
+    if (Math.abs(upVector.z) === 1) {
       return [
         new Vector3(0, 0, center.z + offset), // top
         new Vector3(0, 0, center.z - offset), // bottom

@@ -551,7 +551,7 @@ const CtrlToLock = () => {
       {shouldShowSimilar && (
         <ShortcutRow>
           <ShortcutAction variant="caption" color="gray" fontSize={"0.5rem"}>
-            Select similar
+            Select all
           </ShortcutAction>
           <ShortcutKey>
             <KeyboardKey>Shift</KeyboardKey>

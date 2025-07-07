@@ -92,7 +92,7 @@ When you click "Execute", the index will be initiated and you'll see
 
 After the index creation has finished, the field that you indexed will have a
 lightning bolt icon in the sidebar, and you should notice that expanding the
-field's filter widget and performing queries on it will be noticably faster.
+field's filter widget and performing queries on it will be noticeably faster.
 
 .. warning::
 

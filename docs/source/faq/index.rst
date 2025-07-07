@@ -323,7 +323,7 @@ Yes! Here's a couple options:
 
 You can easily :ref:`export a dataset <exporting-datasets>` in one line of
 code, zip it, and share the zip with your collaborator, who can then
-:ref:`load it in a few lines of code <loading-datasets-from-disk>`.
+:ref:`load it in a few lines of code <importing-datasets>`.
 
 **Option 2: Sharing a remote session**
 

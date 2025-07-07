@@ -107,6 +107,9 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
           samples.extend([s1, s2])
 
       dataset.add_samples(samples)
+
+      groups = dataset.group_by("scene_key", order_by="order_key")
+      dataset.save_view("groups", groups)
       `;
   await fiftyoneLoader.executePythonCode(pythonCode);
 });
@@ -118,7 +121,13 @@ test.beforeEach(async ({ page, fiftyoneLoader }) => {
   );
 });
 
-test(`dynamic groups of groups works`, async ({ grid, modal, sidebar }) => {
+test(`dynamic groups of groups works`, async ({
+  fiftyoneLoader,
+  grid,
+  page,
+  modal,
+  sidebar,
+}) => {
   await grid.assert.isLookerCountEqualTo(4);
   await grid.assert.isEntryCountTextEqualTo("4 groups with slice");
 
@@ -130,11 +139,13 @@ test(`dynamic groups of groups works`, async ({ grid, modal, sidebar }) => {
   await grid.assert.nthSampleHasTagValue(2, "order_key", "1");
   await grid.assert.nthSampleHasTagValue(3, "order_key", "2");
 
-  const groupByRefresh = grid.getWaitForGridRefreshPromise();
-  await grid.actionsRow.toggleCreateDynamicGroups();
-  await grid.actionsRow.groupBy("scene_key", "order_key");
-  await groupByRefresh;
-
+  await fiftyoneLoader.waitUntilGridVisible(
+    page,
+    nestedDynamicGroupsDatasetName,
+    {
+      searchParams: new URLSearchParams({ view: "groups" }),
+    }
+  );
   const gridRefreshPromiseSetRenderFramesAsVideo =
     grid.getWaitForGridRefreshPromise();
   await grid.actionsRow.toggleDisplayOptions();

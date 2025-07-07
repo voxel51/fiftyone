@@ -292,6 +292,7 @@ class _SampleMixin(object):
         fields=None,
         omit_fields=None,
         merge_lists=True,
+        merge_embedded_docs=False,
         overwrite=True,
         expand_schema=True,
         validate=True,
@@ -338,6 +339,9 @@ class _SampleMixin(object):
                 (when ``overwrite`` is True) or kept (when ``overwrite`` is
                 False) when their ``id`` matches a label from the provided
                 sample
+            merge_embedded_docs (False): whether to merge the attributes of
+                embedded documents (True) rather than merging the entire
+                top-level field (False)
             overwrite (True): whether to overwrite (True) or skip (False)
                 existing fields and label elements
             expand_schema (True): whether to dynamically add new fields
@@ -368,6 +372,7 @@ class _SampleMixin(object):
             fields=fields,
             omit_fields=omit_fields,
             merge_lists=merge_lists,
+            merge_embedded_docs=merge_embedded_docs,
             overwrite=overwrite,
             expand_schema=expand_schema,
             validate=validate,
@@ -380,6 +385,7 @@ class _SampleMixin(object):
                 fields=frame_fields,
                 omit_fields=omit_frame_fields,
                 merge_lists=merge_lists,
+                merge_embedded_docs=merge_embedded_docs,
                 overwrite=overwrite,
                 expand_schema=expand_schema,
                 validate=validate,
@@ -769,6 +775,9 @@ def _apply_confidence_thresh(label, confidence_thresh):
             k: _apply_confidence_thresh(v, confidence_thresh)
             for k, v in label.items()
         }
+    elif isinstance(label, fol.Keypoints):
+        for keypoint in label.keypoints:
+            keypoint.apply_confidence_threshold(confidence_thresh)
     elif isinstance(label, fol._HasLabelList):
         labels = [
             l
@@ -776,6 +785,8 @@ def _apply_confidence_thresh(label, confidence_thresh):
             if l.confidence is not None and l.confidence >= confidence_thresh
         ]
         setattr(label, label._LABEL_LIST_FIELD, labels)
+    elif isinstance(label, fol.Keypoint):
+        label.apply_confidence_threshold(confidence_thresh)
     elif hasattr(label, "confidence"):
         if label.confidence is None or label.confidence < confidence_thresh:
             label = None

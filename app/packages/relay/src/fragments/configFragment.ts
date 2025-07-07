@@ -14,6 +14,7 @@ export default r(graphql`
       defaultQueryPerformance
       loopVideos
       mediaFallback
+      maxQueryTime
       multicolorKeypoints
       notebookHeight
       plugins

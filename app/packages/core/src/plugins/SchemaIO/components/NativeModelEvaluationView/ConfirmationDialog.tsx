@@ -6,7 +6,6 @@ import {
   DialogContentText,
   DialogTitle,
 } from "@mui/material";
-import React from "react";
 import { useRecoilState } from "recoil";
 import { selectedModelEvaluation } from "./utils";
 

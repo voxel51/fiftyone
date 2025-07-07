@@ -35,7 +35,7 @@ Local data
 __________
 
 When working with data that is stored on disk on a machine with a display, you
-can directly :ref:`load a dataset <loading-datasets>` and then
+can directly :ref:`load a dataset <importing-datasets>` and then
 :ref:`launch the App <creating-an-app-session>`:
 
 .. code-block:: python
@@ -71,7 +71,7 @@ local machine where you can then interact with the App.
 First, `ssh` into your remote machine and
 :ref:`install FiftyOne <installing-fiftyone>` if necessary.
 
-Then :ref:`load a dataset <loading-datasets>` using Python on the remote
+Then :ref:`load a dataset <importing-datasets>` using Python on the remote
 machine and launch a remote session:
 
 .. code-block:: python
@@ -571,7 +571,7 @@ as outlined in the `s3fs-fuse README <https://github.com/s3fs-fuse/s3fs-fuse>`_.
 **Step 4**
 
 Now that you can access your data from the compute instance, start up Python
-and :ref:`create a FiftyOne dataset <loading-datasets>` whose filepaths are in
+and :ref:`create a FiftyOne dataset <importing-datasets>` whose filepaths are in
 the mount point you specified above. Then you can launch the App and work with
 it locally in your browser using :ref:`remote sessions <remote-data>`.
 
@@ -620,7 +620,7 @@ this:
 **Step 4**
 
 Now that you can access your data from the compute instance, start up Python
-and :ref:`create a FiftyOne dataset <loading-datasets>` whose filepaths are in
+and :ref:`create a FiftyOne dataset <importing-datasets>` whose filepaths are in
 the mount point you specified above. Then you can launch the App and work with
 it locally in your browser using :ref:`remote sessions <remote-data>`.
 
@@ -665,7 +665,7 @@ You can use `blobfuse <https://github.com/Azure/azure-storage-fuse>`_ for this.
 **Step 4**
 
 Now that you can access your data from the compute instance, start up Python
-and :ref:`create a FiftyOne dataset <loading-datasets>` whose filepaths are in
+and :ref:`create a FiftyOne dataset <importing-datasets>` whose filepaths are in
 the mount point you specified above. Then you can launch the App and work with
 it locally in your browser using :ref:`remote sessions <remote-data>`.
 

@@ -1245,6 +1245,94 @@ class SetValuesTests(unittest.TestCase):
         self.assertListEqual(labels[1][:2], ["cat", "dog"])
         self.assertListEqual(labels[2][:3], ["cat", "dog", "rabbit"])
 
+    def test_set_values_frames_dicts_with_label_lists(self):
+        sample1 = fo.Sample(filepath="video1.mp4")
+        sample1.frames[1] = fo.Frame()
+
+        sample2 = fo.Sample(filepath="video.mp4")
+        sample2.frames[1] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                    fo.Detection(label="cat"),
+                ]
+            )
+        )
+        sample2.frames[2] = fo.Frame()
+        sample2.frames[3] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="dog"),
+                    fo.Detection(label="cat"),
+                ]
+            )
+        )
+        sample2.frames[4] = fo.Frame(ground_truth=fo.Detections())
+        sample2.frames[5] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="dog"),
+                ]
+            )
+        )
+        sample2.frames[7] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                ]
+            )
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2])
+
+        # Test empty
+
+        empty_values = {sample2.id: {4: []}}
+
+        # Here we're verifying that this does NOT raise an error like:
+        #   "unable to determine a field type from empty/None values"
+        # because dynamic attributes aren't required to be declared
+        dataset.set_values(
+            "frames.ground_truth.detections.is_cat",
+            empty_values,
+            key_field="id",
+        )
+
+        # Test setting values for some (but not all) frames
+
+        values = {
+            sample2.id: {
+                1: [True, False, True],
+                4: [],
+                7: [True],
+            }
+        }
+
+        dataset.set_values(
+            "frames.ground_truth.detections.is_cat",
+            values,
+            key_field="id",
+        )
+
+        values = dataset.values("frames.ground_truth.detections.is_cat")
+
+        self.assertListEqual(
+            values,
+            [
+                [None],
+                [
+                    [True, False, True],
+                    None,
+                    [None, None],
+                    [],
+                    [None],
+                    [True],
+                ],
+            ],
+        )
+
     def test_set_values_dataset(self):
         n = len(self.dataset)
 
@@ -5052,6 +5140,94 @@ class ViewStageTests(unittest.TestCase):
         dataset.add_samples(samples)
 
         return (dataset, [s.id for s in samples])
+
+
+class FullCollectionTests(unittest.TestCase):
+    @drop_datasets
+    def test_is_full_collection(self):
+        samples = [
+            fo.Sample(
+                filepath="image1.jpg",
+                ground_truth=fo.Detections(
+                    detections=[fo.Detection(label="cat")]
+                ),
+            ),
+            fo.Sample(
+                filepath="image2.jpg",
+                ground_truth=fo.Detections(
+                    detections=[fo.Detection(label="dog")]
+                ),
+            ),
+            fo.Sample(filepath="image3.jpg"),
+        ]
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
+
+        self.assertTrue(dataset._is_full_collection())
+
+        view = dataset.view()
+
+        self.assertTrue(view._is_full_collection())
+
+        view = dataset.limit(2)
+
+        self.assertFalse(view._is_full_collection())
+
+        patches = dataset.to_patches("ground_truth")
+
+        self.assertTrue(patches._is_full_collection())
+
+        view = patches.view()
+
+        self.assertTrue(view._is_full_collection())
+
+        view = patches.limit(2)
+
+        self.assertFalse(view._is_full_collection())
+
+    @drop_datasets
+    def test_is_full_collection_group(self):
+        dataset = fo.Dataset()
+        dataset.add_group_field("group_field", default="left")
+
+        group1 = fo.Group()
+        group2 = fo.Group()
+
+        samples = [
+            fo.Sample(
+                filepath="left-image1.jpg",
+                group_field=group1.element("left"),
+            ),
+            fo.Sample(
+                filepath="right-image1.jpg",
+                group_field=group1.element("right"),
+            ),
+            fo.Sample(
+                filepath="left-image2.jpg",
+                group_field=group2.element("left"),
+            ),
+            fo.Sample(
+                filepath="right-image2.jpg",
+                group_field=group2.element("right"),
+            ),
+        ]
+
+        dataset.add_samples(samples)
+
+        self.assertFalse(dataset._is_full_collection())
+
+        view = dataset.select_group_slices()
+
+        self.assertTrue(view._is_full_collection())
+
+        view = dataset.select_group_slices(media_type="image")
+
+        self.assertFalse(view._is_full_collection())
+
+        view = dataset.limit(1)
+
+        self.assertFalse(view._is_full_collection())
 
 
 if __name__ == "__main__":

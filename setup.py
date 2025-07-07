@@ -13,7 +13,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "1.7.0"
+VERSION = "1.8.0"
 
 
 def get_version():
@@ -37,16 +37,13 @@ INSTALL_REQUIRES = [
     "beautifulsoup4",
     "boto3",
     "cachetools",
-    "dacite>=1.6.0,<1.8.0",
+    "dacite>=1.6.0,<2",
     "dill",
     "Deprecated",
     "ftfy",
     "humanize",
     "hypercorn>=0.13.2",
     "Jinja2>=3",
-    # kaleido indirectly required by plotly for image export
-    # https://plotly.com/python/static-image-export/
-    "kaleido!=0.2.1.post1",
     "matplotlib",
     "mongoengine~=0.29.1",
     "motor~=3.6.0",
@@ -54,7 +51,7 @@ INSTALL_REQUIRES = [
     "packaging",
     "pandas",
     "Pillow>=6.2",
-    "plotly>=4.14",
+    "plotly>=6.1.1",
     "pprintpp",
     "psutil",
     "pymongo~=4.9.2",
@@ -79,7 +76,7 @@ INSTALL_REQUIRES = [
     # internal packages
     "fiftyone-brain>=0.21.2,<0.22",
     "fiftyone-db>=0.4,<2.0",
-    "voxel51-eta>=0.14.0,<0.15",
+    "voxel51-eta>=0.14.2,<0.15",
 ]
 
 

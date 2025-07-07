@@ -17,7 +17,13 @@ const SliderContainer = styled.div`
   line-height: 1.9rem;
 `;
 
-const SliderStyled = styled(SliderUnstyled)`
+interface SliderStyledProps {
+  // if true, min value thumb label will appear below the slider,
+  // and max value thumb label will appear above the slider
+  alternateThumbLabelDirection?: boolean;
+}
+
+const SliderStyled = styled(SliderUnstyled)<SliderStyledProps>`
   && {
     color: ${({ theme }) => theme.palette.primary.plainColor};
     margin: 0 1.5rem 0 1.3rem;
@@ -77,6 +83,26 @@ const SliderStyled = styled(SliderUnstyled)`
   .valueLabel > span > span {
     text-align: center;
   }
+
+  ${({ alternateThumbLabelDirection }) =>
+    alternateThumbLabelDirection &&
+    `
+    .valueLabel {
+      font-size: 12px;
+      opacity: 0.4;
+      transition: opacity 0.2s ease;
+    }
+
+    .thumb[data-index="0"] .valueLabel {
+      top: 56px;
+    }
+
+    .thumb:hover .valueLabel,
+    .thumb:focus .valueLabel,
+    .thumb.active .valueLabel {
+      opacity: 1;
+    }
+  `}
 ` as typeof SliderUnstyled;
 
 type SliderValue = number | undefined | null;
@@ -95,6 +121,7 @@ type BaseSliderProps<T extends Range | number> = {
   showValue?: boolean;
   int?: boolean;
   style?: React.CSSProperties;
+  alternateThumbLabelDirection?: boolean;
 };
 
 const BaseSlider = <T extends Range | number>({
@@ -108,6 +135,7 @@ const BaseSlider = <T extends Range | number>({
   value,
   style,
   showValue = true,
+  alternateThumbLabelDirection = false,
 }: BaseSliderProps<T>) => {
   const theme = useTheme();
   const bounds = useRecoilValue(boundsAtom);
@@ -130,6 +158,10 @@ const BaseSlider = <T extends Range | number>({
     fieldType === DATE_FIELD ? "UTC" : timeZone,
     bounds
   );
+
+  const handledRange = Array.isArray(value)
+    ? [value[0] ?? bounds[0], value[1] ?? bounds[1]]
+    : value;
 
   return (
     <>
@@ -161,7 +193,7 @@ const BaseSlider = <T extends Range | number>({
           data-cy="slider"
           onMouseDown={() => setClicking(true)}
           onMouseUp={() => setClicking(false)}
-          value={value}
+          value={handledRange}
           onChange={(e, v) => {
             if (
               v instanceof Array
@@ -198,6 +230,7 @@ const BaseSlider = <T extends Range | number>({
               primary: { ...theme.primary, plainColor: color },
             },
           }}
+          alternateThumbLabelDirection={alternateThumbLabelDirection}
         />
         {showBounds && formatter(bounds[1])}
       </SliderContainer>
@@ -245,7 +278,7 @@ type RangeSliderProps = {
   color: string;
   showBounds?: boolean;
   fieldType: string;
-};
+} & Partial<BaseSliderProps<Range>>;
 
 export const RangeSlider = ({ valueAtom, ...rest }: RangeSliderProps) => {
   const [value, setValue] = useRecoilState(valueAtom);

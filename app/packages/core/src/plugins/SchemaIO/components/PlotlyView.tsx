@@ -156,6 +156,7 @@ export default function PlotlyView(props: ViewPropsType) {
         color: theme.text.secondary,
         gridcolor: theme.primary.softBorder,
         automargin: true, // Enable automatic margin adjustment
+        title: { font: { size: 14, color: theme.text.tertiary } },
       },
       yaxis: {
         showgrid: true,
@@ -165,6 +166,7 @@ export default function PlotlyView(props: ViewPropsType) {
         color: theme.text.secondary,
         gridcolor: theme.primary.softBorder,
         automargin: true, // Enable automatic margin adjustment
+        title: { font: { size: 14, color: theme.text.tertiary } },
       },
       autosize: true,
       margin: {

@@ -1392,7 +1392,7 @@ class DatasetView(foc.SampleCollection):
         """
         self._dataset._save(view=self, fields=fields)
 
-    def clone(self, name=None, persistent=False):
+    def clone(self, name=None, persistent=False, include_indexes=False):
         """Creates a new dataset containing a copy of the contents of the view.
 
         Dataset clones contain deep copies of all samples and dataset-level
@@ -1403,6 +1403,10 @@ class DatasetView(foc.SampleCollection):
             name (None): a name for the cloned dataset. By default,
                 :func:`get_default_dataset_name` is used
             persistent (False): whether the cloned dataset should be persistent
+            include_indexes (False): whether to recreate any custom indexes on
+                the new dataset (True) or a list of specific indexes or index
+                prefixes to recreate. By default, no custom indexes are
+                recreated
 
         Returns:
             the new :class:`fiftyone.core.dataset.Dataset`
@@ -1411,6 +1415,7 @@ class DatasetView(foc.SampleCollection):
             name=name,
             persistent=persistent,
             view=self,
+            include_indexes=include_indexes,
         )
 
     def reload(self):
@@ -1522,7 +1527,8 @@ class DatasetView(foc.SampleCollection):
                 sort.append((group_expr[1:], 1))
 
             order = -1 if reverse else 1
-            sort.append((order_by, order))
+            order_by_db = self._handle_db_field(order_by)
+            sort.append((order_by_db, order))
         else:
             sort = None
 
@@ -2016,7 +2022,12 @@ def make_optimized_select_view(
     #
 
     for stage in stages:
-        if type(stage) not in fost._STAGES_THAT_SELECT_OR_REORDER:
+        if isinstance(stage, fost.GroupBy):
+            _group, _ = stage._get_group_expr(sample_collection)
+            view = view._add_view_stage(
+                fost.Mongo([{"$addFields": {"_group": _group}}])
+            )
+        elif type(stage) not in fost._STAGES_THAT_SELECT_OR_REORDER:
             view = view._add_view_stage(stage, validate=False)
 
     return view

@@ -11,8 +11,9 @@ import { graphQLSelectorFamily } from "recoil-relay";
 import type { ResponseFrom } from "../utils";
 import { config } from "./config";
 import { getBrowserStorageEffectForKey } from "./customEffects";
+import { dynamicGroupParameters, isDynamicGroup } from "./dynamicGroups";
 import { filters } from "./filters";
-import { groupSlice } from "./groups";
+import { groupMediaTypes, groupSlice } from "./groups";
 import { isLabelPath } from "./labels";
 import { RelayEnvironmentKey } from "./relay";
 import * as schemaAtoms from "./schema";
@@ -22,10 +23,12 @@ import { view } from "./view";
 
 const DEFAULT_MAX_SEARCH = 10000;
 const EXCLUDE_FIELDS = "fiftyone.core.stages.ExcludeFields";
+const GROUP_BY = "fiftyone.core.stages.GroupBy";
 const SELECT_FIELDS = "fiftyone.core.stages.SelectFields";
 const SELECT_GROUP_SLICES = "fiftyone.core.stages.SelectGroupSlices";
 const VALID_QP_STAGES = new Set([
   EXCLUDE_FIELDS,
+  GROUP_BY,
   SELECT_FIELDS,
   SELECT_GROUP_SLICES,
 ]);
@@ -39,11 +42,22 @@ export const filterSearch = selectorFamily({
   get:
     (path: string) =>
     ({ get }) => {
-      const allIndexes = get(indexInfo)?.sampleIndexes ?? [];
+      let allIndexes = get(indexInfo)?.sampleIndexes ?? [];
       const f = get(filters) ?? {};
       const pathMap: { [key: string]: string } = {};
+
       for (const key in f) {
         pathMap[get(schemaAtoms.dbPath(key))] = key;
+      }
+
+      if (get(isQueryPerformantDynamicGroup)) {
+        const start = get(
+          schemaAtoms.dbPath(get(dynamicGroupParameters).orderBy)
+        );
+
+        allIndexes = allIndexes
+          .filter((i) => i.key[0].field === start && i.key.length > 1)
+          .map((i) => ({ ...i, key: i.key.slice(1) }));
       }
 
       let result: typeof f | undefined = undefined;
@@ -105,6 +119,9 @@ export const lightningQuery = graphQLSelectorFamily<
       return {
         input: {
           dataset: get(datasetName),
+          match: get(isDynamicGroup)
+            ? { [get(dynamicGroupParameters).orderBy]: 1 }
+            : null,
           paths,
           slice: get(groupSlice),
         },
@@ -125,13 +142,35 @@ export const indexInfo = foq.graphQLSyncFragmentAtom<foq.indexesFragment$key>(
 const indexKeysMatch = (one: string[], two: string[]) =>
   one.length <= two.length && [...one].every((o) => two.includes(o));
 
+const isQueryPerformantDynamicGroup = selector({
+  key: "isQueryPerformantDynamicGroup",
+  get: ({ get }) => {
+    return (
+      get(isDynamicGroup) &&
+      !get(groupMediaTypes)?.length &&
+      get(dynamicGroupParameters).orderBy &&
+      get(dynamicGroupParameters).orderByKey !== null &&
+      get(dynamicGroupParameters).orderByKey !== undefined
+    );
+  },
+});
+
 export const validIndexes = selectorFamily({
   key: "validIndexes",
   get:
     (keys: string[]) =>
     ({ get }) => {
-      const allIndexes = get(indexInfo)?.sampleIndexes ?? [];
+      let allIndexes = get(indexInfo)?.sampleIndexes ?? [];
       const keyList = keys.map((k) => get(schemaAtoms.dbPath(k)));
+      if (get(isQueryPerformantDynamicGroup)) {
+        const start = get(
+          schemaAtoms.dbPath(get(dynamicGroupParameters).orderBy)
+        );
+
+        allIndexes = allIndexes
+          .filter((i) => i.key[0].field === start && i.key.length > 1)
+          .map((i) => ({ ...i, key: i.key.slice(1) }));
+      }
 
       let matched: string | undefined;
       let matchedKeys: string[] = [];
@@ -406,6 +445,12 @@ export const isQueryPerformantView = selector({
     }
 
     const stageClasses = [...new Set(stages.map(({ _cls }) => _cls))];
+    if (stageClasses.some((cls) => cls === GROUP_BY)) {
+      if (!get(isQueryPerformantDynamicGroup)) {
+        return false;
+      }
+    }
+
     return stageClasses.every((cls) => VALID_QP_STAGES.has(cls));
   },
 });

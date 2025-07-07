@@ -1546,7 +1546,7 @@ def _merge_labels(
     merge_ids = anno_ids - new_ids
 
     #
-    # Manually prevent duplicate label IDs from being imported by regnerating
+    # Manually prevent duplicate label IDs from being imported by regenerating
     # any newly added IDs that are duplicates.
     #
     # Duplicate IDs can happen when copying annotations or splitting/merging
@@ -2313,7 +2313,7 @@ class AnnotationResults(foa.AnnotationResults):
 
     @property
     def _is_clips(self):
-        """Whether this annotation run was perfromed on a clips view."""
+        """Whether this annotation run was performed on a clips view."""
         return "_clips" in self.id_map
 
     @property

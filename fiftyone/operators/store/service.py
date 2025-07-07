@@ -32,7 +32,7 @@ class ExecutionStoreService(object):
             If not provided, a new
             :class:`fiftyone.factory.repos.execution_store.MongoExecutionStoreRepo`
             will be created
-        dataset_id (None): a dataset ID to scope operations to
+        dataset_id (None): a dataset ID (ObjectId) to scope operations to
         collection_name (None): a collection name to use for the execution
             store. If `repo` is provided, this argument is ignored
     """

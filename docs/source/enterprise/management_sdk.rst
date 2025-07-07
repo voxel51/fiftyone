@@ -8,14 +8,14 @@ Enterprise Management SDK
 One of FiftyOne's core design principles is that you should be able to do
 everything *programmatically* if you want.
 
-To this end, the `fiftyone.management` module provides Enterprise-specific methods
-for managing users, invitations, dataset permissions, plugins, API keys, and
-more.
+To this end, the `fiftyone.management` module provides Enterprise-specific
+methods for managing users, invitations, dataset permissions, plugins, API
+keys, and more.
 
 .. note::
 
-   You must use an :ref:`API connection <enterprise-api-connection>` (not a direct
-   MongoDB connection) in order to use Management SDK methods.
+   You must use an :ref:`API connection <enterprise-api-connection>`
+   (not a direct MongoDB connection) in order to use Management SDK methods.
 
 .. _enterprise-sdk-api-reference:
 
@@ -59,7 +59,6 @@ Dataset permissions
 
 .. _enterprise-sdk-organization-settings:
 
-
 Organization settings
 ---------------------
 
@@ -73,6 +72,24 @@ Plugin management
 -----------------
 
 .. automodule:: fiftyone.management.plugin
+   :members:
+   :undoc-members:
+
+.. _enterprise-sdk-orchestrator-management:
+
+Orchestrator management
+-----------------------
+
+.. automodule:: fiftyone.management.orchestrator
+   :members:
+   :undoc-members:
+
+.. _enterprise-sdk-secrets:
+
+Secrets
+-------
+
+.. automodule:: fiftyone.management.secret
    :members:
    :undoc-members:
 

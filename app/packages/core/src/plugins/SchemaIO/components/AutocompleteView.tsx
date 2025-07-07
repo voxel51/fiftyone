@@ -1,10 +1,9 @@
+import { Autocomplete, MenuItem, TextField } from "@mui/material";
 import React from "react";
-import { Autocomplete, MenuItem, Select, TextField } from "@mui/material";
-import FieldWrapper from "./FieldWrapper";
-import autoFocus from "../utils/auto-focus";
+import { useKey } from "../hooks";
 import { getComponentProps } from "../utils";
 import ChoiceMenuItemBody from "./ChoiceMenuItemBody";
-import { useKey } from "../hooks";
+import FieldWrapper from "./FieldWrapper";
 
 export default function AutocompleteView(props) {
   const { onChange, path, schema, data } = props;

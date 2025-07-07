@@ -18,6 +18,23 @@ export function isObjectIdString(value: string, strict = true) {
   return isHex(value) && strict ? value.length === 24 : value.length <= 24;
 }
 
+export function isFunctionalComponent(
+  value?: unknown
+): value is React.FunctionComponent {
+  if (typeof value !== "function") return false;
+
+  const fnStr = value.toString();
+
+  const returnsJSX =
+    /return\s*\(.*<\w+/.test(fnStr) || /React\.createElement/.test(fnStr);
+  const usesHooks =
+    /\buse(State|Effect|Context|Reducer|Memo|Callback|Ref|LayoutEffect|ImperativeHandle)\b/.test(
+      fnStr
+    );
+
+  return returnsJSX || usesHooks;
+}
+
 export type NumberKeyObjectType<V = unknown> = {
   [key: string]: V;
 };

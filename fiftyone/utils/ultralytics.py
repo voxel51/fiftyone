@@ -20,6 +20,7 @@ import fiftyone.core.utils as fou
 import fiftyone.zoo.models as fozm
 from fiftyone.utils import ultralytics_internal
 
+
 ultralytics = fou.lazy_import("ultralytics")
 torch = fou.lazy_import("torch")
 torchvision = fou.lazy_import("torchvision")
@@ -481,9 +482,10 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         return model
 
     def _load_model(self, config):
-        if config.entrypoint_args:
-            if config.model_path:
-                config.entrypoint_args["model"] = config.model_path
+        if config.model_path:
+            if not config.entrypoint_args:
+                config.entrypoint_args = {}
+            config.entrypoint_args["model"] = config.model_path
 
         if config.model is not None:
             model = config.model
@@ -654,11 +656,17 @@ class FiftyOneRTDETRModel(FiftyOneYOLOModel):
         return self._model.predictor.pre_transform(im)
 
 
+class FiftyOneYOLOClassificationModelConfig(FiftyOneYOLOModelConfig):
+    """Configuration for a :class:`FiftyOneYOLOClassificationModel`."""
+
+    pass
+
+
 class FiftyOneYOLOClassificationModel(FiftyOneYOLOModel):
     """FiftyOne wrapper around Ultralytics YOLO Classification model.
 
     Args:
-        config: a :class:`FiftyOneYOLOModelConfig`
+        config: a :class:`FiftyOneYOLOClassificationModelConfig`
     """
 
     def _ultralytics_preprocess(self, img):
@@ -685,7 +693,7 @@ class FiftyOneYOLOClassificationModel(FiftyOneYOLOModel):
 
 
 def _convert_yolo_classification_model(model):
-    config = FiftyOneYOLOModelConfig(
+    config = FiftyOneYOLOClassificationModelConfig(
         {
             "model": model,
             "output_processor_cls": UltralyticsClassificationOutputProcessor,

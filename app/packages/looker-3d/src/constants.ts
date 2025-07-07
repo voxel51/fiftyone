@@ -1,5 +1,5 @@
+import { ColorscaleInput } from "@fiftyone/looker/src/state";
 import { Vector3 } from "three";
-import type { Gradients } from "./renderables/pcd/shaders";
 import type { ShadeBy } from "./types";
 
 export const ACTION_GRID = "grid";
@@ -21,7 +21,7 @@ export const SHADE_BY_RGB = "rgb";
 export const SHADE_BY_CUSTOM = "custom";
 export const SHADE_BY_NONE = "none";
 
-export const DEFAULT_CAMERA_POSITION = () => new Vector3(0, 5, -5).clone();
+export const DEFAULT_CAMERA_POSITION = () => new Vector3(0, 5, -5);
 
 export const ACTIONS = [
   { label: "Color By", value: ACTION_SHADE_BY },
@@ -60,17 +60,21 @@ export const COLOR_POOL = [
   0xf5f5dc, // Beige
 ];
 
-export const PCD_SHADING_GRADIENTS: Gradients = [
-  [0.0, "rgb(165,0,38)"],
-  [0.111, "rgb(215,48,39)"],
-  [0.222, "rgb(244,109,67)"],
-  [0.333, "rgb(253,174,97)"],
-  [0.444, "rgb(254,224,144)"],
-  [0.555, "rgb(224,243,248)"],
-  [0.666, "rgb(171,217,233)"],
-  [0.777, "rgb(116,173,209)"],
-  [0.888, "rgb(69,117,180)"],
-  [1.0, "rgb(49,54,149)"],
+export const DEFAULT_PCD_SHADING_GRADIENTS_RED_TO_BLUE: Readonly<
+  ColorscaleInput["list"]
+> = [
+  // reddish
+  { value: 0, color: "#a50026" },
+  { value: 0.111, color: "#d73027" },
+  { value: 0.222, color: "#f46d43" },
+  { value: 0.333, color: "#fdae61" },
+  { value: 0.444, color: "#fee090" },
+  { value: 0.555, color: "#e0f3f8" },
+  { value: 0.666, color: "#abd9e9" },
+  { value: 0.777, color: "#74add1" },
+  { value: 0.888, color: "#4575b4" },
+  // blueish
+  { value: 1, color: "#313695" },
 ];
 
 // peach color, a mix of orange and white
@@ -81,7 +85,15 @@ export const LABEL_3D_SIMILAR_SELECTED_COLOR = "#ffa500";
 
 // ray casting for points
 export const RAY_CASTING_SENSITIVITY = {
+  // Very precise: only registers hits when the ray is extremely close to the point.
+  // Best for dense point clouds or precision tools
   high: 0.001,
-  medium: 0.01,
-  low: 0.1,
+
+  // Balanced: good tradeoff between ease of selection and accuracy.
+  // Works well for general UI interactions with moderately sized points.
+  medium: 0.1,
+
+  // Lenient: ray can be relatively far and still hit a point.
+  // Useful for sparse clouds, large points, or user-friendly selection modes.
+  low: 0.25,
 };

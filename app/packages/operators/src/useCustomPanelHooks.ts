@@ -29,6 +29,7 @@ export interface CustomPanelProps {
   onChangeQueryPerformance?: boolean;
   onChangeSpaces?: string;
   onChangeWorkspace?: string;
+  onChangeActiveFields?: string;
   dimensions: DimensionsType | null;
   panelName?: string;
   panelLabel?: string;
@@ -152,6 +153,12 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
     panelId,
     ctx.workspaceName,
     props.onChangeWorkspace
+  );
+  useCtxChangePanelEvent(
+    isLoaded,
+    panelId,
+    ctx.activeFields,
+    props.onChangeActiveFields
   );
 
   useEffect(() => {

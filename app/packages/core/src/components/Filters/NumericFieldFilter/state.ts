@@ -10,9 +10,10 @@ export const hasBounds = selectorFamily({
     (params: { path: string; modal: boolean; shouldCalculate?: boolean }) =>
     ({ get }) => {
       const shouldCalculate = params.shouldCalculate ?? true;
+
       return shouldCalculate
         ? Boolean(get(boundsAtom(params))?.every((b) => b !== null))
-        : Boolean(false);
+        : false;
     },
 });
 

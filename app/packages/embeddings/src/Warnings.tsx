@@ -16,7 +16,7 @@ export function Warnings() {
         <Close onClick={warnings.hide} />
       </WarningClose>
       {warnings.items.map((msg) => (
-        <WarningItem>
+        <WarningItem key={msg}>
           <div>
             <Warning />
           </div>

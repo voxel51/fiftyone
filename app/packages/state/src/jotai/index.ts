@@ -88,4 +88,10 @@ export const removeAllHoveredInstances = atom(null, (_get, set) => {
   set(hoveredInstances, false);
 });
 
+/**
+ * Current modal unique id.
+ * It's a concatenation of the group id and the sample id.
+ */
+export const currentModalUniqueIdJotaiAtom = atom<string>("");
+
 export * from "./jotai-store";

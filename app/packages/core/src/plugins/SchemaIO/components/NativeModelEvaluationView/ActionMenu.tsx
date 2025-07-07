@@ -1,3 +1,5 @@
+import { TooltipProvider } from "@fiftyone/components";
+import { useMutation } from "@fiftyone/state";
 import { DeleteOutline, MoreVert } from "@mui/icons-material";
 import {
   Box,
@@ -11,11 +13,8 @@ import React, { useState } from "react";
 import { useSetRecoilState } from "recoil";
 import { openModelEvalDialog, selectedModelEvaluation } from "./utils";
 
-type ActionMenuProps = {
-  evaluationName: string;
-};
-
-const ActionMenu: React.FC<ActionMenuProps> = (props) => {
+export default function ActionMenu(props: ActionMenuProps) {
+  const { canDelete } = props;
   const setOpenModelEvalDialog = useSetRecoilState(openModelEvalDialog);
   const setEvaluation = useSetRecoilState(selectedModelEvaluation);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -24,6 +23,7 @@ const ActionMenu: React.FC<ActionMenuProps> = (props) => {
     event.preventDefault();
     setAnchorEl(event.currentTarget);
   };
+  const [enable, message] = useMutation(canDelete, "delete evaluation");
 
   return (
     <Box>
@@ -35,38 +35,33 @@ const ActionMenu: React.FC<ActionMenuProps> = (props) => {
         open={Boolean(anchorEl)}
         onClose={() => setAnchorEl(null)}
       >
-        {/* <MenuItem
-        onClick={() => {
-          // Handle re-evaluate action
-          handleReEvaluate();
-          setAnchorEl(null);
-        }}
-      >
-        <ListItemIcon>
-          <Refresh fontSize="small" />
-        </ListItemIcon>
-        <ListItemText>Re-evaluate</ListItemText>
-      </MenuItem> */}
-        <MenuItem
-          onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
-            event.stopPropagation();
-            event.preventDefault();
-            setEvaluation(props.evaluationName);
-            setOpenModelEvalDialog(true);
-            setAnchorEl(null);
-          }}
-        >
-          <ListItemIcon>
-            <DeleteOutline fontSize="small" color="error" />
-          </ListItemIcon>
-          <ListItemText
-            primary="Delete"
-            primaryTypographyProps={{ color: "error" }}
-          />
-        </MenuItem>
+        <TooltipProvider title={message}>
+          <MenuItem
+            onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
+              event.stopPropagation();
+              event.preventDefault();
+              setEvaluation(props.evaluationName);
+              setOpenModelEvalDialog(true);
+              setAnchorEl(null);
+            }}
+            disabled={!enable}
+            title={message}
+          >
+            <ListItemIcon>
+              <DeleteOutline fontSize="small" color="error" />
+            </ListItemIcon>
+            <ListItemText
+              primary="Delete"
+              primaryTypographyProps={{ color: "error" }}
+            />
+          </MenuItem>
+        </TooltipProvider>
       </Menu>
     </Box>
   );
-};
+}
 
-export default ActionMenu;
+type ActionMenuProps = {
+  evaluationName: string;
+  canDelete: boolean;
+};

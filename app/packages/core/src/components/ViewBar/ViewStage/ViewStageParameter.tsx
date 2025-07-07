@@ -75,7 +75,7 @@ const ObjectEditorTextArea = animated(styled.textarea`
   color: ${({ theme }) => theme.text.primary};
   height: 100%;
   font-size: 14px;
-  will-change: tranform;
+  will-change: transform;
   resize: none;
 
   &::-webkit-scrollbar {
@@ -227,7 +227,7 @@ const ObjectEditor = ({
       containerRef.current.style.left = state.matches("editing")
         ? `${x}px`
         : "unset";
-      // barRef.current is oten undefined. Should it be set somehwere?
+      // barRef.current is oten undefined. Should it be set somewhere?
       const { x: barX, width: barWidth } = barRef.current
         ? barRef.current.getBoundingClientRect()
         : { x: "auto", width: "auto" };

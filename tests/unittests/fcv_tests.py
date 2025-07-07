@@ -288,7 +288,7 @@ class TestUpdateFCV(unittest.TestCase):
         self, mock_logger, mock_client, mock_db_service
     ):
         """Tests the warning that's generated in the event that
-        the feature compatability version is ahead of the server version.
+        the feature compatibility version is ahead of the server version.
         """
 
         server_version = Version(f"{foc.MONGODB_MIN_VERSION.major}.0.0")
@@ -324,7 +324,7 @@ class TestUpdateFCV(unittest.TestCase):
         self, mock_logger, mock_client, mock_db_service
     ):
         """Tests the warning that's generated in the event that
-        the feature compatability version is currently the oldest supported
+        the feature compatibility version is currently the oldest supported
         version.
         """
 
@@ -360,7 +360,7 @@ class TestUpdateFCV(unittest.TestCase):
         self, mock_logger, mock_client, mock_db_service
     ):
         """Tests the error that's generated in the event that
-        the feature compatability version update failed.
+        the feature compatibility version update failed.
         """
 
         server_version = Version(f"{foc.MONGODB_MIN_VERSION.major + 1}.0.0")
@@ -394,7 +394,7 @@ class TestUpdateFCV(unittest.TestCase):
         self, mock_logger, mock_client, mock_db_service
     ):
         """Tests the error that's generated in the event that
-        the feature compatability version update failed.
+        the feature compatibility version update failed.
         """
 
         server_version = Version(f"{foc.MONGODB_MIN_VERSION.major + 1}.0.0")

@@ -992,6 +992,16 @@ a |Sample| that has not been added to a |Dataset|:
     print(sample.id)
     # None
 
+The :meth:`last_deletion_at <fiftyone.core.dataset.Dataset.last_deletion_at>`
+property of a |Dataset| tracks the datetime that a sample was last deleted
+from the dataset:
+
+.. code-block:: python
+    :linenos:
+
+    print(dataset.last_deletion_at)
+    # datetime.datetime(2025, 5, 4, 21, 0, 52, 942511)
+
 .. _using-fields:
 
 Fields
@@ -2111,6 +2121,189 @@ some workflows when it is available.
 
 Dates and datetimes
 ___________________
+
+.. _builtin-datetime-fields:
+
+Builtin datetime fields
+-----------------------
+
+Datasets and samples have various builtin datetime fields that are
+automatically updated when certain events occur.
+
+The
+:attr:`Dataset.last_loaded_at <fiftyone.core.dataset.Dataset.last_loaded_at>`
+property tracks the datetime that the dataset was last loaded:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    print(dataset.last_loaded_at)
+    # 2025-05-04 21:00:45.559520
+
+The
+:attr:`Dataset.last_modified_at <fiftyone.core.dataset.Dataset.last_modified_at>`
+property tracks the datetime that dataset-level metadata was last modified,
+including:
+
+-   when properties such as
+    :attr:`name <fiftyone.core.dataset.Dataset.name>`,
+    :attr:`persistent <fiftyone.core.dataset.Dataset.persistent>`,
+    :attr:`tags <fiftyone.core.dataset.Dataset.tags>`,
+    :attr:`description <fiftyone.core.dataset.Dataset.description>`,
+    :attr:`info <fiftyone.core.dataset.Dataset.info>`, and
+    :attr:`app_config <fiftyone.core.dataset.Dataset.app_config>` are edited
+-   when fields are added or deleted from the dataset's schema
+-   when group slices are added or deleted from the dataset's schema
+-   when saved views or workspaces are added, edited, or deleted
+-   when annotation, brain, evaluation, or custom runs are added, edited, or
+    deleted
+
+.. code-block:: python
+    :linenos:
+
+    last_modified_at1 = dataset.last_modified_at
+
+    dataset.name = "still-quickstart"
+
+    last_modified_at2 = dataset.last_modified_at
+    assert last_modified_at2 > last_modified_at1
+
+    dataset.app_config.sidebar_groups = ...
+    dataset.save()
+
+    last_modified_at3 = dataset.last_modified_at
+    assert last_modified_at3 > last_modified_at2
+
+    dataset.add_sample_field("foo", fo.StringField)
+
+    last_modified_at4 = dataset.last_modified_at
+    assert last_modified_at4 > last_modified_at3
+
+.. note::
+
+    The
+    :attr:`Dataset.last_modified_at <fiftyone.core.dataset.Dataset.last_modified_at>`
+    property is **not** updated when samples are added, edited, or deleted from
+    a dataset.
+
+    Use the methods described below to ascertain this information.
+
+All samples have a builtin ``last_modified_at`` field that automatically tracks
+the datetime that each sample was last modified:
+
+.. code-block:: python
+    :linenos:
+
+    sample = dataset.first()
+    last_modified_at1 = sample.last_modified_at
+
+    sample.foo = "bar"
+    sample.save()
+
+    last_modified_at2 = sample.last_modified_at
+    assert last_modified_at2 > last_modified_at1
+
+The ``last_modified_at`` field is indexed by default, which means you can
+efficiently check when a dataset's samples were last modified via
+:meth:`max() <fiftyone.core.collections.SampleCollection.max>`:
+
+.. code-block:: python
+    :linenos:
+
+    last_modified_at1 = dataset.max("last_modified_at")
+
+    dataset.add_samples(...)
+
+    last_modified_at2 = dataset.max("last_modified_at")
+    assert last_modified_at2 > last_modified_at1
+
+    dataset.set_field("foo", "spam").save()
+
+    last_modified_at3 = dataset.max("last_modified_at")
+    assert last_modified_at3 > last_modified_at2
+
+The
+:attr:`Dataset.last_deletion_at <fiftyone.core.dataset.Dataset.last_deletion_at>`
+property tracks the datetime that a sample was last deleted
+from the dataset:
+
+.. code-block:: python
+    :linenos:
+
+    last_deletion_at1 = dataset.last_deletion_at
+
+    dataset.delete_samples(...)
+
+    last_deletion_a2 = dataset.last_deletion_at
+    assert last_deletion_a2 > last_deletion_at1
+
+**Video datasets**
+
+The frames of :ref:`video datasets <video-datasets>` also have a builtin
+``last_modified_at`` field that automatically tracks the datetime that each
+frame was last modified:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-video")
+
+    sample = dataset.first()
+    frame = sample.frames.first()
+    last_modified_at1 = frame.last_modified_at
+
+    frame["foo"] = "bar"
+    frame.save()
+
+    last_modified_at2 = frame.last_modified_at
+    assert last_modified_at2 > last_modified_at1
+
+The ``last_modified_at`` frame field is indexed by default, which means you can
+efficiently check when a dataset's frames were last modified via
+:meth:`max() <fiftyone.core.collections.SampleCollection.max>`:
+
+.. code-block:: python
+    :linenos:
+
+    last_modified_at1 = dataset.max("frames.last_modified_at")
+
+    dataset.add_samples(...)
+
+    last_modified_at2 = dataset.max("frames.last_modified_at")
+    assert last_modified_at2 > last_modified_at1
+
+    dataset.set_field("frames.foo", "spam").save()
+
+    last_modified_at3 = dataset.max("last_modified_at")
+    assert last_modified_at3 > last_modified_at2
+
+When frames are deleted from a dataset, the ``last_modified_at`` field of the
+parent samples are automatically updated:
+
+.. code-block:: python
+    :linenos:
+
+    sample = dataset.first()
+    last_modified_at1 = sample.last_modified_at
+
+    del sample.frames[1]
+    sample.save()
+
+    last_modified_at2 = sample.last_modified_at
+    assert last_modified_at2 > last_modified_at1
+
+.. _custom-datetime-fields:
+
+Custom datetime fields
+----------------------
 
 You can store date information in FiftyOne datasets by populating fields with
 `date` or `datetime` values:
@@ -4342,7 +4535,7 @@ _________________________
 If you work with collections of related fields that you would like to organize
 under a single top-level field, you can achieve this by defining and using
 custom |EmbeddedDocument| and |DynamicEmbeddedDocument| classes to populate
-your datasetes.
+your datasets.
 
 Using custom embedded document classes enables you to access your data using
 the same object-oriented interface enjoyed by FiftyOne's
@@ -4964,7 +5157,7 @@ serializes the scene into an FO3D file.
 
     print(dataset.media_type)  # 3d
 
-To modify an exising scene, load it via
+To modify an existing scene, load it via
 :meth:`Scene.from_fo3d() <fiftyone.core.threed.Scene.from_fo3d>`, perform any
 necessary updates, and then re-write it to disk:
 
@@ -5583,9 +5776,8 @@ which samples to merge:
     Did you know? You can use
     :meth:`merge_dir() <fiftyone.core.dataset.Dataset.merge_dir>` to directly
     merge the contents of a dataset on disk into an existing FiftyOne
-    dataset without first
-    :ref:`loading it <loading-datasets-from-disk>` into a temporary dataset and
-    then using
+    dataset without first :ref:`loading it <importing-datasets>` into a
+    temporary dataset and then using
     :meth:`merge_samples() <fiftyone.core.dataset.Dataset.merge_samples>` to
     perform the merge.
 
@@ -5611,13 +5803,31 @@ copy of a dataset:
     # The source dataset is unaffected
     assert "new_field" not in dataset.get_field_schema()
 
-Dataset clones contain deep copies of all samples and dataset-level information
-in the source dataset. The source *media files*, however, are not copied.
+Dataset clones contain deep copies of all samples and dataset-level metadata
+such as runs, saved views, and workspaces from the source dataset. The source
+*media files*, however, are not copied.
 
 .. note::
 
     Did you know? You can also
     :ref:`clone specific subsets <saving-and-cloning-views>` of your datasets.
+
+By default, cloned datasets also retain all
+:ref:`custom indexes <app-optimizing-query-performance>` that you've created on
+the source collection, but you can control this by passing the optional
+`include_indexes` parameter to
+:meth:`clone() <fiftyone.core.dataset.Dataset.clone>`:
+
+.. code-block:: python
+    :linenos:
+
+    dataset.create_index("ground_truth.detections.label")
+
+    # Do not retain custom indexes on the cloned dataset
+    dataset2 = dataset.clone(include_indexes=False)
+
+    # Only include specific custom indexes
+    dataset2 = dataset.clone(include_indexes=["ground_truth.detections.label"])
 
 .. _batch-updates:
 
@@ -5806,7 +6016,7 @@ in a collection and saving the sample edits:
 By default,
 :meth:`update_samples() <fiftyone.core.collections.SampleCollection.update_samples>`
 leverages a multiprocessing pool to parallelize the work across a number of
-workers, resulting in signficant performance improvements over the equivalent
+workers, resulting in significant performance improvements over the equivalent
 :meth:`iter_samples(autosave=True) <fiftyone.core.dataset.Dataset.iter_samples>`
 syntax:
 
@@ -5928,7 +6138,7 @@ applying a function to each sample, and returning the results as a generator.
 By default,
 :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
 leverages a multiprocessing pool to parallelize the work across a number of
-workers, resulting in signficant performance improvements over the equivalent
+workers, resulting in significant performance improvements over the equivalent
 :meth:`iter_samples() <fiftyone.core.dataset.Dataset.iter_samples>` syntax:
 
 .. code-block:: python

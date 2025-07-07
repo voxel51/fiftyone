@@ -189,6 +189,7 @@ def merge_samples(
     fields=None,
     omit_fields=None,
     merge_lists=True,
+    merge_embedded_docs=False,
     overwrite=True,
     expand_schema=True,
     dynamic=False,
@@ -276,6 +277,9 @@ def merge_samples(
             elements are either replaced (when ``overwrite`` is True) or kept
             (when ``overwrite`` is False) when their ``id`` matches a label
             from the provided samples
+        merge_embedded_docs (False): whether to merge the attributes of
+            embedded documents (True) rather than merging the entire top-level
+            field (False)
         overwrite (True): whether to overwrite (True) or skip (False) existing
             fields and label elements
         expand_schema (True): whether to dynamically add new fields encountered
@@ -318,6 +322,7 @@ def merge_samples(
                 fields=fields,
                 omit_fields=omit_fields,
                 merge_lists=merge_lists,
+                merge_embedded_docs=merge_embedded_docs,
                 overwrite=overwrite,
                 expand_schema=expand_schema,
                 include_info=add_info,
@@ -356,6 +361,7 @@ def merge_samples(
             fields=fields,
             omit_fields=omit_fields,
             merge_lists=merge_lists,
+            merge_embedded_docs=merge_embedded_docs,
             overwrite=overwrite,
             expand_schema=expand_schema,
             dynamic=dynamic,
@@ -398,6 +404,18 @@ def _generate_group_samples(dataset_importer, parse_sample):
 def _build_parse_sample_fcn(
     dataset, dataset_importer, label_field, tags, expand_schema, dynamic
 ):
+    if isinstance(dataset_importer, GroupDatasetImporter):
+        # Group dataset importer
+
+        if dataset.media_type is None:
+            dataset.media_type = fomm.GROUP
+
+        if expand_schema and dataset_importer.has_sample_field_schema:
+            group_media_types = dataset_importer.get_group_media_types()
+            if group_media_types:
+                for slice_name, media_type in group_media_types.items():
+                    dataset.add_group_slice(slice_name, media_type)
+
     if isinstance(dataset_importer, GenericSampleDatasetImporter):
         # Generic sample/group dataset
 
@@ -895,7 +913,7 @@ class DatasetImporter(object):
     @property
     def has_dataset_info(self):
         """Whether this importer produces a dataset info dictionary."""
-        raise NotImplementedError("subclass must implement has_dataset_info")
+        return False
 
     def setup(self):
         """Performs any necessary setup before importing the first sample in
@@ -998,10 +1016,6 @@ class BatchDatasetImporter(DatasetImporter):
             "%s instances cannot be iterated over. Use import_samples() "
             "instead" % type(self)
         )
-
-    @property
-    def has_dataset_info(self):
-        return False
 
     def import_samples(self, dataset, tags=None, progress=None):
         """Imports the samples into the given dataset.
@@ -1130,6 +1144,23 @@ class GroupDatasetImporter(GenericSampleDatasetImporter):
     def group_field(self):
         """The name of the group field to populate on each sample."""
         return "group"
+
+    def get_group_media_types(self):
+        """Returns a dictionary describing the group slices of the samples
+        loaded by this importer.
+
+        Returns:
+            a dict mapping slice names to media types
+        """
+        if not self.has_sample_field_schema:
+            raise ValueError(
+                "This '%s' does not provide group media types"
+                % etau.get_class_name(self)
+            )
+
+        raise NotImplementedError(
+            "subclass must implement get_group_media_types()"
+        )
 
 
 class UnlabeledImageDatasetImporter(DatasetImporter):

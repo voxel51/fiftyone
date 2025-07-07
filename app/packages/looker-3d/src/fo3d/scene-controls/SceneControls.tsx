@@ -51,11 +51,14 @@ export const SceneControls = ({ scene }: { scene: FoScene }) => {
           UpVector: {
             value: dirFromUpVector,
             label: "Up",
-            options: ["X", "Y", "Z"],
+            options: ["X", "Y", "Z", "-X", "-Y", "-Z"],
             onChange: (value) => {
               if (value === "X") setUpVector(new Vector3(1, 0, 0));
               if (value === "Y") setUpVector(new Vector3(0, 1, 0));
               if (value === "Z") setUpVector(new Vector3(0, 0, 1));
+              if (value === "-X") setUpVector(new Vector3(-1, 0, 0));
+              if (value === "-Y") setUpVector(new Vector3(0, -1, 0));
+              if (value === "-Z") setUpVector(new Vector3(0, 0, -1));
             },
           },
           AutoRotate: {

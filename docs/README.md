@@ -38,7 +38,7 @@ in this folder:
 bash docs/generate_docs.bash
 ```
 
-A couple noteable flags are supported:
+A couple notable flags are supported:
 
 -   `-c` performs a clean build by removing the `docs/build` folder beforehand.
     This is sometimes necessary to force updates, e.g. if you have edited a

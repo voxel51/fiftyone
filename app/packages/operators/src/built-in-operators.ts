@@ -37,6 +37,7 @@ import {
 } from "./operators";
 import { useShowOperatorIO } from "./state";
 import usePanelEvent from "./usePanelEvent";
+import { Clear } from "@mui/icons-material";
 
 //
 // BUILT-IN OPERATORS
@@ -1179,6 +1180,32 @@ export class SetActiveFields extends Operator {
   }
 }
 
+export class ClearActiveFields extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "clear_active_fields",
+      label: "Clear active fields",
+    });
+  }
+  useHooks(): {
+    setActiveFields: (fields: string[]) => void;
+  } {
+    return {
+      clearActiveFields: useRecoilCallback(({ snapshot, set }) => async () => {
+        const modal = !!(await snapshot.getPromise(fos.modal));
+        set(fos.activeFields({ modal }), []);
+      }),
+    };
+  }
+  async resolveInput(): Promise<types.Property> {
+    const inputs = new types.Object();
+    return new types.Property(inputs);
+  }
+  async execute(ctx: ExecutionContext): Promise<void> {
+    ctx.hooks.clearActiveFields();
+  }
+}
+
 export class TrackEvent extends Operator {
   get config(): OperatorConfig {
     return new OperatorConfig({
@@ -1531,6 +1558,7 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(ShowSidebar);
     _registerBuiltInOperator(HideSidebar);
     _registerBuiltInOperator(ToggleSidebar);
+    _registerBuiltInOperator(ClearActiveFields);
   } catch (e) {
     console.error("Error registering built-in operators");
     console.error(e);

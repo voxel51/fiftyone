@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<6cdb13f3ab3a33af4425c230a1bb0a8d>>
+ * @generated SignedSource<<5a55f8ce32baf2bf03c11c2954afdaaf>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -11,12 +11,14 @@
 import { ConcreteRequest, Query } from 'relay-runtime';
 export type AggregationForm = {
   dataset: string;
+  dynamicGroup?: object | null;
   extendedStages: Array;
   filters?: object | null;
   groupId?: string | null;
   hiddenLabels: ReadonlyArray<SelectedLabel>;
   hint?: string | null;
   index?: number | null;
+  maxQueryTime?: number | null;
   mixed: boolean;
   paths: ReadonlyArray<string>;
   queryPerformance?: boolean | null;
@@ -38,6 +40,10 @@ export type aggregationsQuery$variables = {
 };
 export type aggregationsQuery$data = {
   readonly aggregations: ReadonlyArray<{
+    readonly __typename: "AggregationQueryTimeout";
+    readonly path: string;
+    readonly queryTime: number;
+  } | {
     readonly __typename: "BooleanAggregation";
     readonly count: number;
     readonly exists: number;
@@ -157,6 +163,21 @@ v6 = [
         "kind": "ScalarField",
         "name": "__typename",
         "storageKey": null
+      },
+      {
+        "kind": "InlineFragment",
+        "selections": [
+          (v1/*: any*/),
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "queryTime",
+            "storageKey": null
+          }
+        ],
+        "type": "AggregationQueryTimeout",
+        "abstractKey": null
       },
       {
         "kind": "InlineFragment",
@@ -318,16 +339,16 @@ return {
     "selections": (v6/*: any*/)
   },
   "params": {
-    "cacheID": "b7b1aa700040bbdd3f5615b96aa9aabe",
+    "cacheID": "590742c0e5a6d1e7d4576b3c2412a6e8",
     "id": null,
     "metadata": {},
     "name": "aggregationsQuery",
     "operationKind": "query",
-    "text": "query aggregationsQuery(\n  $form: AggregationForm!\n) {\n  aggregations(form: $form) {\n    __typename\n    ... on BooleanAggregation {\n      path\n      count\n      exists\n      false\n      true\n    }\n    ... on DataAggregation {\n      path\n      count\n    }\n    ... on IntAggregation {\n      path\n      count\n      exists\n      max\n      min\n    }\n    ... on FloatAggregation {\n      path\n      count\n      exists\n      inf\n      max\n      min\n      nan\n      ninf\n    }\n    ... on RootAggregation {\n      path\n      count\n      exists\n      slice\n      expandedFieldCount\n      frameLabelFieldCount\n    }\n    ... on StringAggregation {\n      path\n      count\n      exists\n      values {\n        count\n        value\n      }\n    }\n  }\n}\n"
+    "text": "query aggregationsQuery(\n  $form: AggregationForm!\n) {\n  aggregations(form: $form) {\n    __typename\n    ... on AggregationQueryTimeout {\n      path\n      queryTime\n    }\n    ... on BooleanAggregation {\n      path\n      count\n      exists\n      false\n      true\n    }\n    ... on DataAggregation {\n      path\n      count\n    }\n    ... on IntAggregation {\n      path\n      count\n      exists\n      max\n      min\n    }\n    ... on FloatAggregation {\n      path\n      count\n      exists\n      inf\n      max\n      min\n      nan\n      ninf\n    }\n    ... on RootAggregation {\n      path\n      count\n      exists\n      slice\n      expandedFieldCount\n      frameLabelFieldCount\n    }\n    ... on StringAggregation {\n      path\n      count\n      exists\n      values {\n        count\n        value\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "817d2630505a7c0859ac0b6554523113";
+(node as any).hash = "e610bc0d8dbced3c9a28516320db5457";
 
 export default node;

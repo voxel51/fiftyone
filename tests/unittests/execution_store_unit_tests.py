@@ -357,20 +357,21 @@ class ExecutionStoreServiceDatasetIdTests(unittest.TestCase):
             }
         )
 
-        def test_create_store_with_dataset_id(self):
-            self.store_service.create_store("widgets")
-            self.mock_collection.insert_one.assert_called_once()
-            self.mock_collection.insert_one.assert_called_with(
-                {
-                    "store_name": "widgets",
-                    "key": "__store__",  # Include this in your expected call
-                    "value": None,
-                    "dataset_id": self.dataset_id,
-                    "created_at": IsDateTime(),
-                    "updated_at": None,
-                    "expires_at": None,
-                }
-            )
+    def test_create_store_with_dataset_id(self):
+        self.store_service.create_store("widgets")
+        self.mock_collection.insert_one.assert_called_once()
+        self.mock_collection.insert_one.assert_called_with(
+            {
+                "store_name": "widgets",
+                "key": "__store__",
+                "value": None,
+                "dataset_id": self.dataset_id,
+                "created_at": IsDateTime(),
+                "updated_at": None,
+                "expires_at": None,
+                "policy": "persist",
+            }
+        )
 
     def test_delete_store_with_dataset_id(self):
         self.store_service.delete_store("widgets")
@@ -407,3 +408,13 @@ class ExecutionStoreServiceDatasetIdTests(unittest.TestCase):
         assert_delta_seconds_approx(
             time_delta, 0
         )  # Check that the time difference is within the allowed EPSILON
+
+    def test_string_dataset_id_raises_exception(self):
+        """Test that creating a MongoExecutionStoreRepo with a string dataset_id raises an exception."""
+        mock_collection = MagicMock()
+        string_dataset_id = "507f1f77bcf86cd799439011"
+        
+        with self.assertRaises(ValueError) as context:
+            MongoExecutionStoreRepo(mock_collection, dataset_id=string_dataset_id)
+        
+        self.assertIn("dataset_id must be an ObjectId", str(context.exception))

@@ -24,9 +24,22 @@ const test = base.extend<{
 
 test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
   await foWebServer.startWebServer();
-  await fiftyoneLoader.loadZooDataset("quickstart", datasetName, {
-    max_samples: 5,
-  });
+  await fiftyoneLoader.executePythonCode(`
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset_name = "${datasetName}"
+    dataset = foz.load_zoo_dataset(
+      "quickstart", max_samples=5, dataset_name=dataset_name
+    )
+    dataset.persistent = True
+
+    patches = dataset.to_patches("predictions")
+    dataset.save_view("patches", patches)
+
+    grouped_patches = patches.group_by("predictions.label")
+    dataset.save_view("grouped-patches", grouped_patches)
+  `);
 });
 
 test.afterAll(async ({ foWebServer }) => {
@@ -70,19 +83,19 @@ test.describe.serial("quickstart", () => {
     await sidebar.asserter.assertFilterIsVisibile("id", "categorical");
   });
 
-  test("entry counts text when toPatches then groupedBy", async ({ grid }) => {
-    await grid.actionsRow.toggleToClipsOrPatches();
-
-    const gridRefreshPromisePredictions = grid.getWaitForGridRefreshPromise();
-    await grid.actionsRow.clickToPatchesByLabelField("predictions");
-    await gridRefreshPromisePredictions;
-
+  test("entry counts text when toPatches then groupedBy", async ({
+    grid,
+    fiftyoneLoader,
+    page,
+  }) => {
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
+      searchParams: new URLSearchParams({ view: "patches" }),
+    });
     await grid.assert.isEntryCountTextEqualTo("122 patches");
 
-    await grid.actionsRow.toggleCreateDynamicGroups();
-    const gridRefreshPromiseGroupByLabel = grid.getWaitForGridRefreshPromise();
-    await grid.actionsRow.groupBy("predictions.label");
-    await gridRefreshPromiseGroupByLabel;
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
+      searchParams: new URLSearchParams({ view: "grouped-patches" }),
+    });
 
     await grid.assert.isEntryCountTextEqualTo("33 groups of patches");
   });

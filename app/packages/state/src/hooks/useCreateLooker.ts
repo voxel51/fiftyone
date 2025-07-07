@@ -17,11 +17,9 @@ import { isNativeMediaType } from "@fiftyone/looker/src/util";
 import {
   EMBEDDED_DOCUMENT_FIELD,
   LIST_FIELD,
-  getFieldInfo,
   getMimeType,
   isNullish,
 } from "@fiftyone/utilities";
-import { get } from "lodash";
 import { useEffect, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useRelayEnvironment } from "react-relay";
@@ -89,7 +87,7 @@ export default <T extends AbstractLooker<BaseState>>(
   const getOnShiftClickLabelCallback = useOnShiftClickLabel();
 
   const create = useRecoilCallback(
-    ({ snapshot, set }) =>
+    ({ snapshot }) =>
       (
         { frameNumber, frameRate, sample, urls: rawUrls, symbol },
         extra: Partial<Omit<Parameters<T["updateOptions"]>[0], "selected">> = {}
@@ -197,24 +195,13 @@ export default <T extends AbstractLooker<BaseState>>(
         }
 
         if (create === ImaVidLooker) {
-          const { groupBy } = snapshot
-            .getLoadable(dynamicGroupAtoms.dynamicGroupParameters)
-            .valueMaybe();
-          const groupByKeyFieldInfo = getFieldInfo(groupBy, fieldSchema);
-          const groupByFieldValue = get(
-            sample,
-            groupByKeyFieldInfo.pathWithDbField
-          );
-          const groupByFieldValueTransformed =
-            groupByFieldValue !== null ? String(groupByFieldValue) : null;
-
           const totalFrameCountPromise = getPromise(
-            dynamicGroupsElementCount(groupByFieldValueTransformed)
+            dynamicGroupsElementCount(sample._group)
           );
           const page = snapshot
             .getLoadable(
               dynamicGroupAtoms.dynamicGroupPageSelector({
-                value: groupByFieldValueTransformed,
+                value: sample._group,
                 modal: isModal,
               })
             )
@@ -229,7 +216,7 @@ export default <T extends AbstractLooker<BaseState>>(
           const imavidKey = snapshot
             .getLoadable(
               dynamicGroupAtoms.imaVidStoreKey({
-                groupByFieldValue: groupByFieldValueTransformed,
+                groupByFieldValue: sample._group,
                 modal: isModal,
               })
             )

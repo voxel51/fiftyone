@@ -2,7 +2,6 @@ import * as fos from "@fiftyone/state";
 import React, { Suspense } from "react";
 import styled from "styled-components";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
-import { Button } from "../../utils";
 import useQueryPerformanceIcon from "../use-query-performance-icon";
 import useQueryPerformanceTimeout from "../use-query-performance-timeout";
 import Box from "./Box";
@@ -31,18 +30,13 @@ type Props = {
 
 const NumericFieldFilter = ({ color, modal, named = true, path }: Props) => {
   const name = path.split(".").slice(-1)[0];
-  const [showRange, setShowRange] = React.useState(!named);
   const field = fos.useAssertedRecoilValue(fos.field(path));
 
-  const { show, showLoadButton } = useShow(modal, named, path, showRange);
+  const show = useShow(modal, named, path);
   const icon = useQueryPerformanceIcon(modal, named, path, color);
   if (!show) {
     return null;
   }
-
-  const handleShowRange = () => {
-    setShowRange(true);
-  };
 
   return (
     <Container
@@ -63,23 +57,7 @@ const NumericFieldFilter = ({ color, modal, named = true, path }: Props) => {
         />
       )}
       <Suspense fallback={<Loading modal={modal} path={path} />}>
-        {showLoadButton ? (
-          <Box>
-            <Button
-              text={`Filter by ${name}`}
-              color={color}
-              onClick={handleShowRange}
-              style={{
-                height: "2rem",
-                margin: "0 -0.5rem",
-                borderRadius: 0,
-                textAlign: "center",
-              }}
-            />
-          </Box>
-        ) : (
-          <RangeSlider color={color} modal={modal} path={path} />
-        )}
+        <RangeSlider color={color} modal={modal} path={path} />
       </Suspense>
     </Container>
   );

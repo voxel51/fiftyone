@@ -29,3 +29,4 @@ export * from "./sidebarExpanded";
 export * from "./types";
 export * from "./utils";
 export * from "./view";
+export * from "./permission";

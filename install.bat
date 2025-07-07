@@ -55,15 +55,26 @@ IF %USE_FIFTY_ONE_DB%==true (
 
 echo ***** INSTALLING FIFTYONE-BRAIN *****
 IF %SOURCE_BRAIN_INSTALL%==true (
-  echo Cloning FiftyOne Brain repository
-  git clone https://github.com/voxel51/fiftyone-brain
-  cd fiftyone-brain
+  if not exist "fiftyone-brain\" (
+    if not exist "..\fiftyone-brain\" (
+      echo Cloning FiftyOne Brain repository
+      git clone https://github.com/voxel51/fiftyone-brain
+    )
+  )
+  pushd .
+  if exist "..\fiftyone-brain\" (
+    cd ..\fiftyone-brain
+  ) else (
+    cd fiftyone-brain
+  )
   IF %DEV_INSTALL%==true (
+    echo Performing dev install
     CALL install.bat -d
   ) else (
+    echo Performing install
     pip install .
   )
-  cd ..
+  popd
 ) else (
   pip install --upgrade fiftyone-brain
 )
@@ -75,26 +86,38 @@ IF %DEV_INSTALL%==true (
   pre-commit install
   pip install .
 ) else (
+  echo Performing install
   pip install -r requirements.txt
   pip install .
 )
 
 IF %SOURCE_ETA_INSTALL%==true (
-  echo ***** INSTALLING ETA *****
+  echo ***** INSTALLING ETA FROM SOURCE *****
   if not exist "eta\" (
-    echo Cloning ETA repository
-    git clone https://github.com/voxel51/eta
+    if not exist "..\eta\" (
+      echo Cloning ETA repository
+      git clone https://github.com/voxel51/eta
+    )
   )
-  cd eta
-  pip install .
+  pushd .
+  if exist "..\eta\" (
+    cd ..\eta
+  ) else (
+    cd eta
+  )
+  IF %DEV_INSTALL%==true (
+    echo Performing dev install
+    pip install .
+  ) else (
+    echo Performing install
+    pip install .
+  )
   if not exist "eta\config.json" (
     echo "Installing default ETA config"
     xcopy /y ".\config-example.json" ".\eta\config.*"
   )
-  cd ..
+  popd
 )
-
-
 
 echo ***** INSTALLATION COMPLETE *****
 exit /b

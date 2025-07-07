@@ -9,7 +9,7 @@ from unittest import mock
 
 import pytest
 
-import fiftyone.core.config as focc
+import fiftyone as fo
 import fiftyone.core.map.batcher as fomb
 import fiftyone.core.map.factory as fomf
 import fiftyone.core.map.process as fomp
@@ -17,10 +17,10 @@ import fiftyone.core.map.threading as fomt
 
 
 @pytest.fixture(name="config", autouse=True)
-def patch_load_config():
-    """patch load config"""
-    with mock.patch.object(focc, "load_config") as load_config:
-        config = load_config.return_value = mock.Mock()
+def patch_fiftyone_config():
+    """patch fiftyone.config global"""
+
+    with mock.patch.object(fo, "config") as config:
         config.default_parallelization_method = None
         yield config
 

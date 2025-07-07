@@ -21,7 +21,7 @@ ____________
 The basic workflow to use LanceDB to create a similarity index on your FiftyOne
 datasets and use this to query your data is as follows:
 
-1)  Load a :ref:`dataset <loading-datasets>` into FiftyOne
+1)  :ref:`Load a dataset <importing-datasets>` into FiftyOne
 
 2)  Compute embedding vectors for samples or patches in your dataset, or select
     a model to use to generate embeddings

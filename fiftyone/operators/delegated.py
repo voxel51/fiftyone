@@ -319,7 +319,7 @@ class DelegatedOperationService(object):
         doc = self._repo.get(_id=doc_id)
         if doc is None:
             raise ValueError(f"No delegated operation with {doc_id=} found")
-        if doc.group_id:
+        if doc.parent_id:
             raise ValueError("Cannot rerun a child delegated operation.")
         return self._repo.queue_operation(**doc.__dict__)
 
