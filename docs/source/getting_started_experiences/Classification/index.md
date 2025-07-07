@@ -46,7 +46,7 @@ This tutorial series is broken down into the following parts:
 
 ## The MNIST Dataset
 
-![](https://github.com/andandandand/practical-computer-vision/blob/main/images/mnist_clean.png?raw=true)
+![](https://raw.githubusercontent.com/andandandand/fiftyone/refs/heads/develop/docs/source/getting_started_experiences/Classification/assets/mnist_clean.webp)
 
 The Modified National Institute of Standards and Technology (MNIST) dataset is one of the most influential benchmarks in computer vision. It contains 60,000 training and 10,000 testing images of 28×28 grayscale handwritten digits (0-9). Its simplicity and small size make it ideal for learning fundamental concepts, yet achieving state-of-the-art performance requires sophisticated techniques.
 
@@ -66,10 +66,9 @@ While modern, large-scale models like CLIP are incredibly powerful, understandin
 
 LeNet-5 was groundbreaking because it effectively demonstrated the power of hierarchical feature learning. The network uses a sequence of convolutional and pooling layers to automatically learn to detect simple features like edges and corners in the initial layers, which are then combined into more complex features like curves and digit shapes in deeper layers. This is followed by a set of fully connected layers that perform the final classification.
 
-The architecture is elegantly simple yet powerful:
+The architecture is simple yet powerful:
 
-![](https://raw.githubusercontent.com/andandandand/practical-computer-vision/refs/heads/main/images/lenet5-architecture.png)
-
+![](https://raw.githubusercontent.com/andandandand/fiftyone/refs/heads/develop/docs/source/getting_started_experiences/Classification/assets/lenet_5_schematic.webp)
 In this tutorial series, we will build, train, and evaluate a modernized version of LeNet-5. This process serves two purposes: first, it provides a hands-on understanding of the core mechanics of a CNN; second, it creates a high-performing, specialized model that we can benchmark against CLIP's generalist, zero-shot approach.
 
 ### Integrating FiftyOne with PyTorch for Training
