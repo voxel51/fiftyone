@@ -10,7 +10,7 @@ We explored the MNIST dataset's structure, loaded it into FiftyOne, and computed
 
 ### Step 2: Creating and Visualizing Image Embeddings
 
-We learned how neural networks represent images as high-dimensional vectors. We generated embeddings with a pre-trained CLIP model and visualized them using PCA and UMAP to understand image similarity and natural clustering.
+We learned how neural networks represent images as high-dimensional vectors. We generated embeddings with a pre-trained CLIP model and visualized them using PCA and UMAP to understand image similarity, semantic search, and natural clustering.
 
 ### Step 3: Zero-shot Classification with CLIP
 
