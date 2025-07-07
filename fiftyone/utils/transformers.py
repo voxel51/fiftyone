@@ -531,9 +531,7 @@ class ZeroShotTransformerEmbeddingsMixin(EmbeddingsMixin):
                 )
             return image_features.cpu().numpy()
         else:
-            raise ValueError(
-                "Embeddings extraction requires preprocessing. Set model.preprocess=True"
-            )
+            inputs = args
 
 
 class ZeroShotTransformerPromptMixin(PromptMixin):
