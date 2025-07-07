@@ -15,7 +15,7 @@ We assume familiarity with basic Python programming and fundamental machine lear
 
 ### Time to Complete
 
-90-120 minutes (for the entire series)
+120-150 minutes (for the entire series)
 
 ### Required Packages
 
