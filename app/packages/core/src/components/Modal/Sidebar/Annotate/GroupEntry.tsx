@@ -61,6 +61,7 @@ const Group = React.memo(({ name }: { name: string }) => {
             {name}
           </GroupDiv>
 
+          <span>7</span>
           <span>
             <PlusMinusButton expanded={expanded} />
           </span>

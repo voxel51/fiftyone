@@ -1,6 +1,7 @@
 import { animated } from "@react-spring/web";
 import React from "react";
 import styled from "styled-components";
+import { Classification } from "./Icons";
 
 const Container = animated(styled.div`
   display: flex;
@@ -22,7 +23,10 @@ const Header = styled.div`
 const ObjectItem = () => {
   return (
     <Container>
-      <Header>Hi</Header>
+      <Header>
+        <Classification fill="white" />
+        Label
+      </Header>
     </Container>
   );
 };

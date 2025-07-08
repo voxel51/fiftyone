@@ -5,7 +5,7 @@ import React from "react";
 import styled from "styled-components";
 
 const Container = styled.div`
-  padding: 1rem;
+  padding: 0.5rem 1rem;
   width: 100%;
 `;
 

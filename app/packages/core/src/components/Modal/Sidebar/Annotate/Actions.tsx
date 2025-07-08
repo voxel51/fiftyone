@@ -2,35 +2,40 @@ import React from "react";
 import styled from "styled-components";
 
 const ActionsDiv = styled.div`
-  display: flex;
-  width: 100%;
-  justify-content: space-between;
   align-items: center;
-  padding: 0 1rem;
+  color: ${({ theme }) => theme.text.secondary};
+  display: flex;
+  justify-content: space-between;
+  padding: 0.25rem 1rem;
+  width: 100%;
 `;
 
 const Line = styled.div`
-  width: 2px;
-  height: 16px;
   background: ${({ theme }) => theme.background.level1};
+  height: 16px;
+  width: 2px;
 `;
 
 const Container = styled.div`
-  padding: 0.25rem;
-  width: 2.5rem;
-  height: 2.5rem;
-  cursor: pointer;
   align-items: center;
   display: flex;
+  cursor: pointer;
   flex-direction: column;
+  height: 2.5rem;
   justify-content: center;
+  padding: 0.25rem;
+  width: 2.5rem;
 
   &:hover {
-    background: #333333;
+    background: ${({ theme }) => theme.neutral.softBg};
+  }
+
+  &:hover path {
+    fill: ${({ theme }) => theme.primary.plainColor};
   }
 `;
 
-const Circle = styled(Container)`
+const Round = styled(Container)`
   border-radius: 1.25rem;
 `;
 
@@ -133,7 +138,7 @@ const Detection = () => {
 
 const Undo = () => {
   return (
-    <Circle>
+    <Round>
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="13"
@@ -150,13 +155,13 @@ const Undo = () => {
           fill="#999999"
         />
       </svg>
-    </Circle>
+    </Round>
   );
 };
 
 const Redo = () => {
   return (
-    <Circle>
+    <Round>
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="13"
@@ -173,21 +178,35 @@ const Redo = () => {
           fill="#999999"
         />
       </svg>
-    </Circle>
+    </Round>
+  );
+};
+
+const Schema = () => {
+  return (
+    <Round style={{ width: "auto", height: "auto", padding: "0.25rem 0.5rem" }}>
+      Schema
+    </Round>
   );
 };
 
 const Actions = () => {
   return (
-    <ActionsDiv>
-      <Arrow />
-      <Move />
-      <Classification />
-      <Detection />
-      <Line />
-      <Undo />
-      <Redo />
-    </ActionsDiv>
+    <>
+      <ActionsDiv>
+        <Arrow />
+        <Move />
+        <Classification />
+        <Detection />
+        <Line />
+        <Undo />
+        <Redo />
+      </ActionsDiv>
+      <ActionsDiv style={{ margin: "0 0.25rem", paddingBottom: "0.5rem" }}>
+        <div>Click labels to edit &bull; 24</div>
+        <Schema />
+      </ActionsDiv>
+    </>
   );
 };
 
