@@ -101,8 +101,6 @@ class UltralyticsMobileCLIPTS(BaseMobileCLIP):
 
     def __init__(self, device):
         text_model.TextModel.__init__(self)
-        from ultralytics.utils.downloads import attempt_download_asset
-
         file = "mobileclip_blt.ts"
         filepath = Path(fo.config.model_zoo_dir) / Path(file)
         if not filepath.is_file():
