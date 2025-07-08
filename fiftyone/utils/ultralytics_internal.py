@@ -74,7 +74,8 @@ class UltralyticsMobileCLIP(BaseMobileCLIP):
         text_model.TextModel.__init__(self)
         config = self.config_size_map[size]
         file = f"mobileclip_{size}.pt"
-        if not Path(file).is_file():
+        filepath = Path(fo.config.model_zoo_dir) / Path(file)
+        if not filepath.is_file():
             from ultralytics import download
 
             download(
@@ -83,7 +84,7 @@ class UltralyticsMobileCLIP(BaseMobileCLIP):
             )
         self.model = mobileclip.create_model_and_transforms(
             f"mobileclip_{config}",
-            pretrained=Path(fo.config.model_zoo_dir) / Path(file),
+            pretrained=filepath,
             device=device,
         )[0]
         self.tokenizer = mobileclip.get_tokenizer(f"mobileclip_{config}")
@@ -103,9 +104,22 @@ class UltralyticsMobileCLIPTS(BaseMobileCLIP):
         from ultralytics.utils.downloads import attempt_download_asset
 
         file = "mobileclip_blt.ts"
-        _ = attempt_download_asset(file, dir=fo.config.model_zoo_dir)
+        filepath = Path(fo.config.model_zoo_dir) / Path(file)
+        if not filepath.is_file():
+            from ultralytics.utils import downloads
+
+            download_url = (
+                "https://github.com/ultralytics/assets/releases/download"
+            )
+            downloads.safe_download(
+                url=f"{download_url}/v8.3.0/{Path(file).name}",
+                file=file,
+                min_bytes=1e5,
+                dir=Path(fo.config.model_zoo_dir),
+            )
+
         self.encoder = torch.jit.load(
-            Path(fo.config.model_zoo_dir) / Path(file),
+            filepath,
             map_location=device,
         )
         self.tokenizer = clip.clip.tokenize
