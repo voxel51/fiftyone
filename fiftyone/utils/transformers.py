@@ -36,6 +36,8 @@ DEFAULT_SEGMENTATION_PATH = "nvidia/segformer-b0-finetuned-ade-512-512"
 DEFAULT_DEPTH_ESTIMATION_PATH = "Intel/dpt-hybrid-midas"
 DEFAULT_ZERO_SHOT_CLASSIFICATION_PATH = "openai/clip-vit-large-patch14"
 DEFAULT_ZERO_SHOT_DETECTION_PATH = "google/owlvit-base-patch32"
+DEFAULT_POSE_ESTIMATION_PATH = "usyd-community/vitpose-base-simple"
+
 
 
 def convert_transformers_model(model, task=None, **kwargs):
@@ -122,6 +124,8 @@ def get_model_type(model, task=None):
             task = "semantic-segmentation"
         elif _is_transformer_for_depth_estimation(model):
             task = "depth-estimation"
+        elif _is_transformer_for_pose_estimation(model):
+            task = "pose-estimation"
         elif _is_transformer_base_model(model):
             task = "base-model"
         else:
@@ -1073,6 +1077,45 @@ class FiftyOneTransformerForSemanticSegmentation(FiftyOneTransformer):
         self.transforms.return_image_sizes = True
 
 
+class FiftyOneTransformerForPoseEstimationConfig(FiftyOneTransformerConfig):
+    """Configuration for a :class:`FiftyOneTransformerForPoseEstimation`.
+
+    Args:
+        model (None): a ``transformers`` model
+        name_or_path (None): the name or path to a checkpoint file to load
+    """
+
+    def __init__(self, d):
+        if (
+            d.get("name_or_path", None) is None
+            and d.get("model", None) is None
+        ):
+            d["name_or_path"] = DEFAULT_POSE_ESTIMATION_PATH
+        super().__init__(d)
+
+
+class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
+    """FiftyOne wrapper around a ``transformers`` model for pose estimation.
+
+    Args:
+        config: a `FiftyOneTransformerConfig`
+    """
+
+    def __init__(self, config):
+        # override entry point
+        if config.entrypoint_fcn is None:
+            config.entrypoint_fcn = (
+                "transformers.VitPoseForPoseEstimation.from_pretrained"
+            )
+
+        # override output processor
+        if config.output_processor_cls is None:
+            config.output_processor_cls = "fiftyone.utils.transformers.TransformersPoseEstimationOutputProcessor"
+        super().__init__(config)
+        self._output_processor.processor = self.transforms.processor
+        self.transforms.return_image_sizes = True
+
+
 class FiftyOneTransformerForDepthEstimationConfig(FiftyOneTransformerConfig):
     """Configuration for a :class:`FiftyOneTransformerForDepthEstimation`.
 
@@ -1114,7 +1157,6 @@ class FiftyOneTransformerForDepthEstimation(FiftyOneTransformer):
         self._output_processor.processor = self.transforms.processor
         # ew
         self.transforms.return_image_sizes = True
-
 
 def _has_text_and_image_features(model):
     return hasattr(model.base_model, "get_image_features") and hasattr(
@@ -1172,6 +1214,8 @@ def _is_transformer_for_semantic_segmentation(model):
 def _is_transformer_for_depth_estimation(model):
     return "ForDepthEstimation" in _get_model_type_string(model)
 
+def _is_transformer_for_pose_estimation(model):
+    return "ForPoseEstimation" in _get_model_type_string(model)
 
 def _is_transformer_base_model(model):
     model_type = _get_model_type_string(model)
@@ -1339,6 +1383,96 @@ class TransformersDepthEstimatorOutputProcessor(fout.OutputProcessor):
         output = output / np.max(output, axis=(1, 2), keepdims=True)
         return [fol.Heatmap(map=o) for o in output]
 
+class TransformersPoseEstimationOutputProcessor(fout.OutputProcessor):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._processor = None
+        self._pose_estimation_post_processor = None
+
+    @property
+    def processor(self):
+        if self._processor is None:
+            raise ValueError(
+                "Processor not set. Please make sure the processor is set."
+            )
+        return self._processor
+
+    @processor.setter
+    def processor(self, processor):
+        self._processor = processor
+        if self._processor is not None:
+            if hasattr(self._processor, "post_process_pose_estimation"):
+                self._pose_estimation_post_processor = (
+                    self._processor.post_process_pose_estimation
+                )
+
+    def __call__(self, output, image_sizes, confidence_thresh=None):
+        # If processor has post-processing, use it
+        if self._pose_estimation_post_processor is not None:
+            # Create full-image boxes for each image
+            boxes = [[[0, 0, w, h]] for h, w in image_sizes]
+            
+            # Post-process (returns nested list)
+            results = self._pose_estimation_post_processor(output, boxes=boxes)
+            
+            # Convert to FiftyOne format
+            fo_results = []
+            for batch_idx, batch_result in enumerate(results):
+                if batch_result:  # Check if detections exist
+                    # Extract from nested structure
+                    pose_dict = batch_result[0]
+                    keypoints = pose_dict['keypoints']  # [17, 2] in pixel coords
+                    scores = pose_dict['scores']        # [17]
+                    
+                    # Normalize to [0, 1]
+                    h, w = image_sizes[batch_idx]
+                    normalized_keypoints = []
+                    for kp, score in zip(keypoints, scores):
+                        x_norm = kp[0].item() / w
+                        y_norm = kp[1].item() / h
+                        conf = score.item()
+                        
+                        if confidence_thresh is None or conf >= confidence_thresh:
+                            normalized_keypoints.append([x_norm, y_norm, conf])
+                        else:
+                            normalized_keypoints.append([float('nan'), float('nan'), 0.0])
+                    
+                    fo_results.append(fol.Keypoints(keypoints=normalized_keypoints))
+                else:
+                    # No detections
+                    fo_results.append(fol.Keypoints(keypoints=[]))
+            
+            return fo_results
+        
+        # Fallback to direct heatmap processing if no post-processor
+        elif hasattr(output, 'heatmaps'):
+            heatmaps = output.heatmaps.detach().cpu()
+            results = []
+            
+            for batch_idx, heatmap in enumerate(heatmaps):
+                keypoints = []
+                for kp_idx in range(heatmap.shape[0]):
+                    # Get max location in heatmap
+                    h, w = heatmap[kp_idx].shape
+                    flat_idx = torch.argmax(heatmap[kp_idx])
+                    y_heatmap = (flat_idx // w).float()
+                    x_heatmap = (flat_idx % w).float()
+                    confidence = heatmap[kp_idx].max().item()
+                    
+                    # Convert to normalized coords [0, 1]
+                    x_norm = x_heatmap / w
+                    y_norm = y_heatmap / h
+                    
+                    if confidence_thresh is None or confidence >= confidence_thresh:
+                        keypoints.append([x_norm.item(), y_norm.item(), confidence])
+                    else:
+                        keypoints.append([float('nan'), float('nan'), 0.0])
+                
+                results.append(fol.Keypoints(keypoints=keypoints))
+            
+            return results
+        
+        raise ValueError("Unknown pose estimation output format")
 
 def _get_image_size(img):
     if isinstance(img, torch.Tensor):
@@ -1360,6 +1494,7 @@ MODEL_TYPE_TO_CONFIG_CLASS = {
     "zero-shot-image-classification": FiftyOneZeroShotTransformerForImageClassificationConfig,
     "zero-shot-object-detection": FiftyOneZeroShotTransformerForObjectDetectionConfig,
     "zero-shot-semantic-segmentation": FiftyOneZeroShotTransformerForSemanticSegmentationConfig,
+    "pose-estimation": FiftyOneTransformerForPoseEstimationConfig,
 }
 
 MODEL_TYPE_TO_MODEL_CLASS = {
@@ -1371,4 +1506,5 @@ MODEL_TYPE_TO_MODEL_CLASS = {
     "zero-shot-image-classification": FiftyOneZeroShotTransformerForImageClassification,
     "zero-shot-object-detection": FiftyOneZeroShotTransformerForObjectDetection,
     "zero-shot-semantic-segmentation": FiftyOneZeroShotTransformerForSemanticSegmentation,
+    "pose-estimation": FiftyOneTransformerForPoseEstimation,
 }
