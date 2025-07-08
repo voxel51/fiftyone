@@ -7,8 +7,10 @@ Adaptations for working with
 |
 """
 
-import fiftyone as fo
 from pathlib import Path
+from packaging import version
+
+import fiftyone as fo
 import fiftyone.core.utils as fou
 
 fou.ensure_package("ultralytics>=8.3.99")
@@ -17,6 +19,13 @@ from ultralytics.nn import text_model
 
 clip = fou.lazy_import("clip")
 mobileclip = fou.lazy_import("mobileclip")
+torch = fou.lazy_import("torch")
+
+
+if version.parse(ultralytics.__version__) < version.parse("8.3.118"):
+    BaseMobileCLIP = text_model.MobileCLIP
+else:
+    BaseMobileCLIP = text_model.MobileCLIPTS
 
 
 def build_text_model(variant: str, device=None):
@@ -29,7 +38,10 @@ def build_text_model(variant: str, device=None):
     if base == "clip":
         return UltralyticsCLIP(size, device)
     elif base == "mobileclip":
-        return UltralyticsMobileCLIP(size, device)
+        if version.parse(ultralytics.__version__) < version.parse("8.3.118"):
+            return UltralyticsMobileCLIP(size, device)
+        else:
+            return UltralyticsMobileCLIPTS(device)
     else:
         raise ValueError(
             f"Unrecognized base model: '{base}'. Supported base models: 'clip', 'mobileclip'."
@@ -52,7 +64,7 @@ class UltralyticsCLIP(text_model.CLIP):
         self.eval()
 
 
-class UltralyticsMobileCLIP(text_model.MobileCLIP):
+class UltralyticsMobileCLIP(BaseMobileCLIP):
     """Adaptor for ultralytics.nn.text_model.MobileCLIP.
 
     Ensures that CLIP model is saved to FiftyOne model zoo directory.
@@ -78,3 +90,23 @@ class UltralyticsMobileCLIP(text_model.MobileCLIP):
         self.to(device)
         self.device = device
         self.eval()
+
+
+class UltralyticsMobileCLIPTS(BaseMobileCLIP):
+    """Adaptor for ultralytics.nn.text_model.MobileCLIPTS.
+
+    Ensures that CLIP model is saved to FiftyOne model zoo directory.
+    """
+
+    def __init__(self, device):
+        text_model.TextModel.__init__(self)
+        from ultralytics.utils.downloads import attempt_download_asset
+
+        file = "mobileclip_blt.ts"
+        _ = attempt_download_asset(file, dir=fo.config.model_zoo_dir)
+        self.encoder = torch.jit.load(
+            Path(fo.config.model_zoo_dir) / Path(file),
+            map_location=device,
+        )
+        self.tokenizer = clip.clip.tokenize
+        self.device = device
