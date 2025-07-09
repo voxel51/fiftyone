@@ -1,0 +1,63 @@
+// Primary colors
+$voxel-primary: #ff6d04;
+$voxel-primary-hover: #e85a00;
+$voxel-primary-light: rgba(255, 109, 4, 0.1);
+$voxel-dark: #212529;
+$voxel-light: #f8f9fa;
+$voxel-border: rgba(0, 0, 0, 0.125);
+$voxel-background: #f1ecea;
+$white: #ffffff;
+$black: #000000;
+
+// Spacing
+$navbar-spacing: 0.5rem;
+$navbar-padding: 0.5rem 1rem;
+$dropdown-padding: 0.5rem 1rem;
+$button-padding: 0.5rem 1.5rem;
+
+// Borders and shadows
+$border-radius: 0.375rem;
+$border-radius-button: 25px;
+$box-shadow-dropdown: 0 0.5rem 1rem rgba(0, 0, 0, 0.175);
+$box-shadow-button: 0 4px 15px rgba(255, 109, 4, 0.3);
+
+// Transitions
+$transition-fast: 0.15s ease-in-out;
+$transition-normal: 0.2s ease-in-out;
+$transition-slow: 0.3s ease;
+
+// Font weights
+$font-weight-normal: 400;
+$font-weight-medium: 500;
+$font-weight-bold: 600;
+
+// Breakpoints
+$mobile: 576px;
+$tablet: 768px;
+$desktop: 991.98px;
+
+// Fonts
+$font-family-base: "Geist","Geist Fallback", sans-serif;
+$font-family-monospace: "Geist Mono", monospace;
+
+:root {
+  --pst-font-family-base: #{$font-family-base};
+  --pst-font-family-heading: #{$font-family-base};
+  --pst-font-family-monospace: #{$font-family-monospace};
+
+  --sd-color-primary: #{$voxel-primary};
+  --feedback-primary-color: #181a1b;
+  --docsearch-primary-color: #{$voxel-primary};
+}
+
+/* Light theme variables */
+html[data-theme="light"] {
+  --pst-color-primary: #{$voxel-primary};
+  --pst-color-accent: #{$voxel-primary};
+  --color-background: #{$voxel-background};
+}
+
+/* Dark theme variables */
+html[data-theme="dark"] {
+
+}

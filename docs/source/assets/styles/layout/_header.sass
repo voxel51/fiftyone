@@ -1,0 +1,70 @@
+header.bd-header
+  box-shadow: none
+  border-bottom: 1px solid var(--color-background)
+
+  .bd-header__inner
+    flex-direction: row-reverse
+    padding: 0 20px
+
+    .primary-sidebar-toggle
+      margin-right: 0
+      position: relative
+      padding: 8px 16px
+      background-color: var(--color-background)
+      border: none
+      border-radius: 3.40282e+38px
+      color: #181a1b99
+      font-size: 14px
+      font-weight: 500
+      gap: 10px
+      height: 40px
+
+      &:hover:before
+        border: 0
+
+      .primary-toggle-icon
+        width: 16px
+        height: 16px
+        position: relative
+        display: flex
+        flex-direction: column
+        justify-content: center
+        align-items: center
+        cursor: pointer
+        
+        .line1,
+        .line2
+          width: 16px
+          height: 1.5px
+          background-color: #68615D
+          transition: all 0.3s ease
+          transform-origin: center
+          
+        .line1
+          margin-bottom: 3px
+          
+        .line2
+          margin-top: 3px
+        
+        &.active
+          .line1
+            transform: translateY(3.75px) rotate(45deg)
+            
+          .line2
+            transform: translateY(-3.75px) rotate(-45deg);
+
+
+    .secondary-toggle
+      display: none
+
+    .navbar-header-items__start
+      flex: 1
+
+@media (min-width: 960px)
+  header.bd-header
+    .bd-header__inner
+      flex-direction: row
+
+      .primary-sidebar-toggle
+        display: none
+

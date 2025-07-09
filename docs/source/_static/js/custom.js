@@ -1,69 +1,179 @@
-$(function () {
-  const sections = $("section").sort(
-    (a, b) => $(a).offset().top - $(b).offset().top
-  );
+/* Responsive Sidebar */
+function initSidebarToggle() {
+  const primaryToggle = document.querySelector(".primary-sidebar-toggle");
+  const toggleIcon = document.querySelector(".primary-toggle-icon");
+  let originalSidebarContent = null;
 
-  const sectionStartThreshold =
-    $("#pytorch-page-level-bar").height() +
-    parseInt($("section h2").css("marginTop")) +
-    10;
+  const cutAndPasteNodesAndClasses = (from, to) => {
+    to.innerHTML = "";
+    to.className = "";
+    Array.from(from.childNodes).forEach((node) => {
+      to.appendChild(node.cloneNode(true));
+    });
+    Array.from(from.classList).forEach((cls) => {
+      to.classList.add(cls);
+    });
+  };
 
-  let lastSection = undefined;
-
-  function updateSidebar(e) {
-    let currentSection = undefined;
-    let clicked = false;
-    if (e.target && e.target.href && e.target.href.indexOf("#") >= 0) {
-      currentSection = e.target.href.split("#").pop();
-      clicked = true;
-    } else {
-      for (let i = sections.length - 1; i >= 0; i--) {
-        if (
-          $(sections[i]).offset().top <
-          $(window).scrollTop() + sectionStartThreshold
-        ) {
-          currentSection = sections[i].id;
-          break;
-        }
+  const convertDropdownItemsToNavItems = (dropdownItems) => {
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = dropdownItems;
+    
+    const listItems = tempDiv.querySelectorAll('li');
+    listItems.forEach(li => {
+      const navItem = document.createElement('div');
+      navItem.className = 'nav-item';
+      navItem.innerHTML = li.innerHTML;
+      li.parentNode.replaceChild(navItem, li);
+    });
+    
+    const ulElements = tempDiv.querySelectorAll('ul');
+    ulElements.forEach(ul => {
+      while (ul.firstChild) {
+        ul.parentNode.insertBefore(ul.firstChild, ul);
       }
+      ul.remove();
+    });
+    
+    return tempDiv.innerHTML;
+  };
+
+  const addDropdownIcons = async () => {
+    const primaryDialog = document.getElementById("pst-primary-sidebar-modal");
+    if (!primaryDialog) return;
+
+    let svgContent = '';
+    try {
+      const response = await fetch('/_static/images/icons/arrow-icon.svg');
+      if (response.ok) {
+        svgContent = await response.text();
+      }
+    } catch (error) {
+      console.warn('No se pudo cargar el SVG:', error);
+      return;
     }
 
-    if (currentSection != lastSection) {
-      lastSection = currentSection;
-      let sectionItems = $(".pytorch-content-right .pytorch-side-scroll li");
-
-      sectionItems.removeClass("current-section");
-      sectionItems
-        .find("a.expanded")
-        .removeClass("expanded")
-        .addClass("not-expanded");
-      sectionItems.find("ul ul").hide();
-
-      if (currentSection) {
-        let currentLink = sectionItems.find(
-          'a[href="#' + currentSection + '"]'
-        );
-        currentLink.parent("li").addClass("current-section");
-        currentLink.parents("ul").show();
-        currentLink
-          .parents("ul")
-          .siblings("a.not-expanded")
-          .removeClass("not-expanded")
-          .addClass("expanded");
-
-        if (clicked && currentLink.siblings("ul").length) {
-          currentLink.removeClass("not-expanded").addClass("expanded");
-          currentLink.siblings("ul").show();
+    const dropdownItems = primaryDialog.querySelectorAll('div.nav-item.dropdown');
+    
+    dropdownItems.forEach(navItem => {
+      const dropdownToggle = navItem.querySelector('a.nav-link.dropdown-toggle');
+      if (dropdownToggle) {
+        const existingIcon = dropdownToggle.parentNode.querySelector('.dropdown-arrow');
+        if (!existingIcon) {
+          const iconContainer = document.createElement('span');
+          iconContainer.className = 'arrow dropdown-arrow';
+          iconContainer.innerHTML = svgContent;
+          
+          dropdownToggle.parentNode.insertBefore(iconContainer, dropdownToggle.nextSibling);
         }
       }
+    });
+  };
+
+  const showDropdownContent = (dropdownItems) => {
+    const primaryDialog = document.getElementById("pst-primary-sidebar-modal");
+    if (!primaryDialog) return;
+
+    const convertedItems = convertDropdownItemsToNavItems(dropdownItems);
+
+    const dropdownHTML = `
+      <div class="dropdown-nav-container">
+        <div class="dropdown-items-container">
+          <div class="nav-item">
+            <a href="#" class="dropdown-back-btn dropdown-item">
+              <span class="arrow back-arrow">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <path d="M11.25 6H1.25M1.25 6L6 1.25M1.25 6L6 10.75" stroke="#181A1B99" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </span>
+              <span class="back-text">Back</span>
+            </a>
+          </div>
+          ${convertedItems}
+        </div>
+      </div>
+    `;
+
+    primaryDialog.innerHTML = dropdownHTML;
+
+    const backBtn = primaryDialog.querySelector('.dropdown-back-btn');
+    if (backBtn) {
+      backBtn.addEventListener('click', async () => {
+        if (originalSidebarContent) {
+          primaryDialog.innerHTML = originalSidebarContent;
+          await addDropdownIcons();
+          initDropdownListeners();
+        }
+      });
     }
-  }
+  };
 
-  $(window).on("scroll", updateSidebar);
-  $(".pytorch-right-menu").on("click", updateSidebar);
+  const initDropdownListeners = () => {
+    const primaryDialog = document.getElementById("pst-primary-sidebar-modal");
+    if (!primaryDialog) return;
 
-  // Hide API docs classes and methods from toctree
-  $(window).on("load", function () {
-    $(".toctree-wrapper.compound li:has(> a.has-code)").hide();
+    const dropdowns = primaryDialog.querySelectorAll('.nav-item.dropdown');
+    
+    dropdowns.forEach(dropdown => {
+      const toggle = dropdown.querySelector('.dropdown-toggle');
+      const menu = dropdown.querySelector('.dropdown-menu');
+      
+      if (!toggle || !menu) return;
+
+      const newDropdown = dropdown.cloneNode(true);
+      dropdown.parentNode.replaceChild(newDropdown, dropdown);
+
+      newDropdown.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const dropdownToggle = newDropdown.querySelector('.dropdown-toggle');
+        const dropdownMenu = newDropdown.querySelector('.dropdown-menu');
+        
+        if (dropdownToggle && dropdownMenu) {
+          const dropdownItems = dropdownMenu.innerHTML;
+          
+          showDropdownContent(dropdownItems);
+        }
+      });
+    });
+  };
+
+  if (!primaryToggle) return;
+
+  primaryToggle.addEventListener("click", async (event) => {
+    const primaryDialog = document.getElementById("pst-primary-sidebar-modal");
+    const primarySidebar = document.getElementById("pst-primary-sidebar");
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (toggleIcon) {
+      toggleIcon.classList.toggle('active');
+      
+      const isExpanded = primaryToggle.getAttribute('aria-expanded') === 'true';
+      primaryToggle.setAttribute('aria-expanded', !isExpanded);
+    }
+
+    if (primaryDialog) {
+      if (primaryDialog.open) {
+        primaryDialog.close();
+        document.body.style.overflow = "";
+      } else {
+        cutAndPasteNodesAndClasses(primarySidebar, primaryDialog);
+        
+        await addDropdownIcons();
+        
+        originalSidebarContent = primaryDialog.innerHTML;
+        
+        primaryDialog.show();
+        document.body.style.overflow = "hidden";
+        
+        initDropdownListeners();
+      }
+    }
   });
-});
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initSidebarToggle()
+})

@@ -19,8 +19,11 @@ ipython_genutils==0.2.0
 Jinja2==3.1.6
 MarkupSafe==3.0.2
 jsx-lexer==2.0.1
+libsass==0.23.0
 myst-parser==4.0.1
 nbsphinx==0.9.7
+pydata-sphinx-theme==0.16.1
+sphinx-autobuild==2024.10.3
 sphinx-tabs==3.4.7
 # nbsphinx does not support yet Sphinx > 8.2: https://github.com/spatialaudio/nbsphinx/issues/832
 Sphinx==8.1.3 

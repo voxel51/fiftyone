@@ -1,0 +1,75 @@
+.nav.bd-sidenav
+  @for $i from 1 through 6
+    .toctree-l#{$i}
+      font-size: 14px
+      font-weight: 500
+      margin-bottom: 4px
+
+      a.reference
+        padding: 8px
+        border-radius: 8px
+        color: var(--pst-color-text-base)
+
+        &:hover
+          color: var(--pst-color-text-base)
+          text-decoration: none
+          background-color: var(--color-background)
+
+        &.current
+          font-weight: 500
+          box-shadow: none
+          background-color: var(--color-background)
+
+/* Responsive Navbar */
+.navbar-nav, .dropdown-items-container
+  justify-content: center
+  flex-direction: column
+  
+  .nav-item
+    margin: 0 1rem
+    
+    .nav-link, .dropdown-item
+      color: var(--pst-color-text-base)
+      font-size: 14px
+      font-weight: 500
+
+      &:hover
+        text-decoration: none
+
+.navbar
+  .container,
+  .container-fluid
+    display: flex
+    justify-content: center
+    align-items: center
+
+.bd-navbar
+  justify-content: center
+  
+  .navbar-nav
+    margin: 0 auto
+
+.navbar-header-items
+  &__start,
+  &__end
+    flex: 0 0 auto
+    
+  &__center
+    flex: 1 1 auto
+    display: flex
+    justify-content: center
+    align-items: center
+    
+    .navbar-nav
+      display: flex
+      justify-content: center
+      align-items: center
+
+.navbar-nav .nav-item + .nav-item
+  margin-left: 1rem
+
+
+@media (max-width: 1200px)
+  .navbar-nav
+    width: auto
+    justify-content: flex-start

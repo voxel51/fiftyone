@@ -164,11 +164,20 @@ intersphinx_mapping = {
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = "pytorch_sphinx_theme"
-html_theme_path = ["../theme"]
-html_theme_options = {"pytorch_project": "docs"}
 
-html_favicon = "favicon.ico"
+html_context = {"default_mode": "light"}
+
+html_logo = "https://voxel51.com/images/logo/voxel51-logo-horz-color-600dpi.png"
+
+html_theme = "pydata_sphinx_theme"
+html_theme_options = {
+    "navbar_start": ["navbar-logo"],
+    "navbar_center": ["navbar-links"],
+    "navbar_end": ["book-a-demo"],
+    "navbar_persistent": [],
+}
+
+html_favicon = "_static/favicon/favicon.ico"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -177,8 +186,8 @@ html_static_path = ["_static"]
 
 # These paths are either relative to html_static_path
 # or fully qualified paths (eg. https://...)
-html_css_files = ["css/voxel51-website.css", "css/custom.css"]
-html_js_files = ["js/voxel51-website.js", "js/custom.js"]
+html_css_files = ["css/voxel51-website.css", "css/custom.css", "css/old_custom.css"]
+html_js_files = ["js/custom.js"]
 
 # Prevent RST source files from being included in output
 html_copy_source = False

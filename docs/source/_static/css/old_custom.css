@@ -1,0 +1,685 @@
+a.reference.external:after {
+  font: var(--fa-font-solid);
+  content: " \f08e";
+}
+
+.ui.tabular.menu .item {
+  /* stop breaking tabs */
+  width: unset;
+  margin: unset;
+}
+
+article.pytorch-article pre,
+span.pre {
+  background-color: var(--bg-light-secondary);
+}
+
+article.pytorch-article .wy-table-responsive table tbody .row-odd {
+  background-color: var(--bg-light-secondary);
+}
+
+article.pytorch-article .wy-table-responsive table tbody td {
+  padding-bottom: 0rem;
+}
+
+article.pytorch-article .wy-table-responsive table thead th {
+  line-height: 1rem;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  padding-bottom: 0rem;
+}
+
+.container-fluid.header-holder {
+  /* overrides to make banners display properly in this container */
+  display: block;
+  height: auto;
+}
+
+.pytorch-page-level-bar {
+  z-index: 200;
+}
+
+.pytorch-left-menu {
+  overflow: auto;
+}
+
+.pytorch-menu-vertical {
+  padding-bottom: 0;
+}
+
+@media screen and (max-width: 1100px) {
+  .table-of-contents-link-wrapper {
+    display: block;
+  }
+}
+
+@media screen and (min-width: 1101px) {
+  .pytorch-left-menu {
+    width: 250px;
+    padding-left: 25px;
+    padding-right: 0;
+  }
+
+  .pytorch-left-menu .pytorch-side-scroll {
+    width: 100%;
+    overflow-y: auto;
+  }
+
+  .pytorch-menu-vertical {
+    padding-left: 0;
+    padding-right: 25px;
+  }
+
+  .pytorch-page-level-bar.left-menu-is-fixed {
+    left: 250px;
+    width: calc(100% - 250px);
+  }
+
+  .pytorch-breadcrumbs-wrapper {
+    margin-left: 25px;
+    width: calc(100% - 250px);
+  }
+
+  .pytorch-shortcuts-wrapper {
+    margin-left: 0;
+  }
+
+  .pytorch-container {
+    margin-left: 250px;
+  }
+
+  .pytorch-content-wrap {
+    position: relative;
+  }
+
+  .pytorch-container .pytorch-content-left {
+    width: 100%;
+    margin-left: 0;
+    padding-left: 25px;
+    padding-right: 250px;
+  }
+
+  .pytorch-container .pytorch-content-right {
+    position: absolute;
+    right: 0;
+    width: 250px;
+  }
+
+  .pytorch-content-right .pytorch-right-menu,
+  .pytorch-content-right .pytorch-side-scroll {
+    width: 250px;
+    overflow-y: auto;
+  }
+
+  .pytorch-right-menu.scrolling-fixed {
+    width: 250px;
+    left: unset;
+    right: 0;
+  }
+
+  .pytorch-right-menu .pytorch-side-scroll > ul {
+    padding-left: 25px;
+  }
+}
+
+@media screen and (min-width: 1600px) {
+  .pytorch-breadcrumbs-wrapper {
+    width: 875px;
+  }
+
+  .pytorch-container .pytorch-content-left {
+    width: 850px;
+    padding-right: 0;
+  }
+
+  .pytorch-content-right {
+    left: calc(850px + 25px);
+  }
+
+  .pytorch-right-menu.scrolling-fixed {
+    left: calc(250px + 850px + 25px);
+  }
+}
+
+article.pytorch-article {
+  max-width: unset;
+}
+
+.pytorch-left-menu a:link,
+.pytorch-left-menu a:visited,
+.pytorch-right-menu a:link,
+.pytorch-right-menu a:visited,
+.pytorch-right-menu a:hover,
+.pytorch-shortcuts-wrapper,
+ul.pytorch-breadcrumbs li {
+  font-size: 15px;
+}
+
+article.pytorch-article pre {
+  margin-bottom: 1rem;
+  font-size: 0.8125rem;
+}
+
+article.pytorch-article .note .admonition-title {
+  background-color: var(--color-secondary);
+}
+
+article.pytorch-article h3 {
+  font-size: 1.3rem;
+}
+
+.pytorch-left-menu li.toctree-l1.current > a:before {
+  display: none;
+}
+
+.pytorch-left-menu,
+article.pytorch-article .note {
+  background-color: var(--bg-light-secondary);
+}
+
+div.nbinput.container div.input_area {
+  background-color: var(--bg-light-secondary);
+}
+
+div.nbinput.container div.input_area div[class*="highlight"] {
+  background-color: var(--bg-light-secondary);
+}
+
+div.nboutput.nblast.docutils.container {
+  padding-bottom: 1rem;
+}
+
+a:link,
+a:visited,
+p a:link,
+p a:visited,
+ul.pytorch-breadcrumbs a {
+  color: var(--color-primary);
+}
+
+a:link.has-code span,
+a:link.has-code span.pre,
+a:hover.has-code span,
+a:hover.has-code span.pre,
+a:visited.has-code span,
+a:visited.has-code span.pre {
+  /* make links in inline code blue */
+  color: var(--color-secondary);
+}
+
+.rst-footer-buttons {
+  /* the "next" button is floated and doesn't take up any height by itself */
+  min-height: 2em;
+}
+
+/* nbsphinx style customization */
+
+.nbinput .prompt,
+.nboutput .prompt {
+  display: none;
+}
+
+.nboutput .copybtn {
+  display: none;
+}
+
+/* table fixes */
+
+table,
+article.pytorch-article table,
+article.pytorch-article .wy-table-responsive table {
+  /* allow cells to expand beyond their colgroup's set width if needed */
+  table-layout: auto;
+}
+
+article.pytorch-article .wy-table-responsive {
+  /* make tables scroll horizontally within their container if they overflow */
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+article.pytorch-article table td:first-of-type code {
+  /* prevent line breaks within inline code */
+  white-space: nowrap;
+}
+
+article.pytorch-article .wy-table-responsive table tbody td code {
+  /* move outline to enclosing code tag instead of span.pre, and fix colors */
+  background-color: #ffffff;
+  border: 1px solid #e9e9e9;
+}
+
+article.pytorch-article .wy-table-responsive table tbody td code span.pre {
+  outline: none;
+}
+
+article.pytorch-article .wy-table-responsive table tbody td a[href] span.pre {
+  /* make links in inline code blue */
+  color: var(--color-secondary);
+}
+
+/* fixes for code line numbers */
+
+article.pytorch-article div[class*="highlight-"] {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+article.pytorch-article table.highlighttable {
+  margin-bottom: 0;
+}
+
+table.highlighttable td.linenos {
+  padding-right: 0;
+}
+
+table.highlighttable td.linenos pre {
+  background-color: inherit;
+  outline: 3px solid #f3f4f7;
+  outline-offset: -3px;
+}
+
+table.highlighttable td.code {
+  padding-left: 0;
+  width: 100%;
+}
+
+table.highlighttable td.code pre {
+  white-space: pre;
+}
+
+/* tweaks copied from sphinx-rtd-theme */
+
+.rst-content .section > img,
+.rst-content .section > a > img {
+  margin-bottom: 24px;
+}
+
+.rst-content .align-center {
+  margin: auto;
+}
+
+article.pytorch-article .reference.download.internal {
+  display: unset;
+}
+
+/* voxel51-website.css overrides */
+
+.nav__main {
+  font-size: 18px;
+  padding-left: 0;
+  padding-right: 20px;
+  justify-content: unset;
+  /* avoid horizontal scrollbar */
+  min-width: unset;
+  width: 100%;
+}
+
+.nav__main__logo {
+  width: 260px;
+  margin-left: 30px;
+  margin-right: 20px;
+}
+
+#nav__main__items {
+  text-align: right;
+  width: 100%;
+}
+
+@media only screen and (min-width: 1600px) {
+  #nav__main__items {
+    max-width: 800px;
+  }
+}
+
+.nav__main a {
+  color: inherit;
+}
+
+.nav__item {
+  padding: 0 10px;
+}
+
+#octocat {
+  margin-top: 0.6rem;
+}
+
+.nav__main .fa-header-icon {
+  font-size: 25px;
+}
+
+.nav__dropdown__menu {
+  z-index: 201;
+  min-width: 10rem;
+  height: fit-content;
+  margin-top: -1.5rem;
+  padding: 0.7rem;
+  text-align: left;
+  line-height: 1.9rem;
+}
+
+.nav__dropdown__menu a {
+  color: var(--color-primary);
+}
+
+@media only screen and (min-width: 320px) and (max-width: 850px) {
+  .nav__main {
+    height: 52.5px;
+  }
+
+  .nav__main__logo {
+    margin: 0;
+    padding-left: 30px;
+  }
+
+  #nav__main__items {
+    font-size: 14px;
+    line-height: 2rem;
+  }
+
+  #nav__main__items .nav__item {
+    padding: 0 0 0 10px;
+    margin-top: auto;
+  }
+
+  .nav__dropdown__menu {
+    text-align: right;
+  }
+
+  .nav__dropdown__menu a {
+    color: var(--text-primary-on-dark);
+  }
+}
+
+.footer-wrapper {
+  background-color: var(--bg-dark-secondary);
+}
+
+.footer {
+  max-width: 880px; /* match body content (850px) + left margin (30px) */
+  font-size: 15px;
+  padding-top: 70px;
+  padding-bottom: 10px;
+}
+
+.footer a {
+  line-height: 30px;
+  color: inherit;
+}
+
+.footer .nav__item--brand {
+  margin-bottom: 0;
+  line-height: 30px;
+}
+
+@media only screen and (min-width: 320px) and (max-width: 850px) {
+  .footer {
+    font-size: 12px;
+    padding-top: 30px;
+  }
+
+  .footer__icons {
+    padding-top: 10px;
+    font-size: 15px;
+  }
+}
+
+/* tabs */
+
+.tab.sphinx-tab > :last-child {
+  margin-bottom: 1px;
+}
+
+.tab.sphinx-tab.ui.segment {
+  background-color: rgb(252, 252, 252);
+}
+
+.sphinx-tabs .ui.tabular.menu .active.item {
+  background-color: rgb(252, 252, 252);
+}
+
+/* left side section links */
+
+.pytorch-left-menu li.toctree-l1 ul {
+  margin-left: 1rem;
+}
+
+.pytorch-left-menu li.toctree-l1 ul li {
+  font-size: 1em;
+}
+
+.pytorch-left-menu li.toctree-l2.current li.toctree-l3 > a,
+.pytorch-left-menu li.toctree-l3.current li.toctree-l4 > a {
+  display: inline-block;
+}
+
+.pytorch-left-menu li.current > a,
+.pytorch-left-menu li.toctree-l1.current > a {
+  color: var(--color-primary);
+}
+
+/* right side section link highlighting */
+
+.pytorch-content-right .pytorch-side-scroll li.current-section {
+  font-weight: bold;
+  margin-left: -6px;
+  border-left: 3px solid var(--color-primary);
+  padding-left: 3px;
+}
+
+.pytorch-right-menu li.current-section > a.reference.internal.expanded:before,
+.pytorch-right-menu
+  li.current-section
+  > a.reference.internal.not-expanded:before {
+  margin-left: -3px;
+}
+
+/* tutorials cards */
+
+#tutorial-cards-container {
+  margin-bottom: 2rem;
+}
+
+#tutorial-cards-container .card.tutorials-card .tutorials-image img {
+  height: 100%;
+  width: 100%;
+  margin: 0%;
+}
+
+#tutorial-cards-container .card.tutorials-card:hover:after {
+  background-color: var(--color-primary);
+}
+
+#tutorial-cards-container .card.tutorials-card {
+  background-color: var(--bg-light-secondary);
+}
+
+#tutorial-cards-container .filter-btn {
+  color: var(--gray-neutral);
+  border: 1px solid var(--gray-neutral);
+}
+
+#tutorial-cards-container .filter-btn:hover {
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+}
+
+#tutorial-cards-container .all-tag-selected,
+#tutorial-cards-container .filter-btn.selected {
+  color: #ffffff;
+  background-color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+}
+
+#tutorial-cards-container .all-tag-selected:hover,
+#tutorial-cards-container .filter-btn.selected:hover {
+  color: #ffffff;
+  border: 1px solid #ffffff;
+}
+
+#tutorial-cards-container .pagination .active .page {
+  background-color: var(--bg-light-secondary);
+}
+
+#tutorial-cards-container .pagination .page {
+  border: 1px solid var(--bg-light-secondary);
+}
+
+/* callout cards/button */
+
+article.pytorch-article .tutorials-callout-container {
+  padding-bottom: 0px;
+}
+
+article.pytorch-article
+  .tutorials-callout-container
+  .text-container
+  .body-paragraph {
+  margin-top: -0.5rem;
+  color: var(--text-secondary-on-light);
+  line-height: 1.375rem;
+}
+
+article.pytorch-article
+  .tutorials-callout-container
+  .text-container
+  .body-paragraph {
+  font-size: 1rem;
+}
+
+article.pytorch-article .tutorials-callout-container .btn.callout-button {
+  font-size: 1rem;
+}
+
+article.pytorch-article
+  .tutorials-callout-container
+  .btn.callout-button:hover:after {
+  background-color: var(--color-primary);
+}
+
+/* image is located in docs/theme/images */
+/* @todo replace with version that uses Voxel51 orange, not PyTorch orange */
+a.with-right-arrow,
+.btn.with-right-arrow {
+  background-image: url(../images/chevron-right-orange.svg);
+}
+
+/* table in convert-datasets recipe */
+
+.convert-recipes-table colgroup {
+  display: none;
+}
+
+.convert-recipes-table th:first-of-type {
+  width: 50%;
+}
+
+/* social links on main page */
+
+.social-links #social-links-table {
+  width: 600px !important;
+  margin-bottom: 1.5rem;
+}
+
+.social-links #social-links-table th {
+  text-align: center !important;
+  border: 1px solid var(--bg-light-secondary);
+}
+
+.social-links img {
+  width: 32px !important;
+}
+
+@media only screen and (min-width: 320px) and (max-width: 850px) {
+  .social-links #social-links-table {
+    width: 100% !important;
+  }
+}
+
+.fo-notebook-links {
+  display: inline-block;
+  margin: 0 0 1rem 0 !important;
+}
+
+.fo-notebook-links tr {
+  background: 0;
+  border: 0;
+}
+
+.fo-notebook-links td {
+  padding-left: 0;
+  padding-right: 20px;
+}
+
+.fo-notebook-links a,
+.fo-notebook-links :link,
+.tfo-notebook-links :visited {
+  border-radius: 3px;
+  box-shadow: 0 1px 3px 0px #6c6c6d;
+  padding: 12px 17px;
+  transition: box-shadow 0.2s;
+}
+
+.fo-notebook-links td > a {
+  -webkit-box-align: center;
+  -ms-flex-align: center;
+  align-items: center;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  color: #6c6c6d;
+}
+
+.fo-notebook-links img {
+  height: 32px;
+  width: 32px !important;
+  margin-right: 3px;
+}
+
+.integrations-logos {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.integrations-logos > div {
+  display: flex;
+  flex-direction: column;
+  padding: 5px 15px 15px 15px;
+  vertical-align: middle;
+  text-align: center;
+  justify-content: center;
+  width: 140px;
+  min-height: 96px;
+}
+
+.integrations-logos img {
+  max-height: 52px;
+  max-width: 110px;
+  width: auto !important;
+  height: auto;
+}
+
+#youtube {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+}
+
+/* DocSearch */
+.DocSearch-Button {
+  margin: 0;
+  width: 100%;
+}
+
+.DocSearch-Container {
+  z-index: 300;
+}
+
+.DocSearch-Hit-content-wrapper {
+  overflow: hidden;
+}
+
+.DocSearch-Hits mark {
+  padding: 0;
+}
