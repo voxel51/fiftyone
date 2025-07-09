@@ -3,7 +3,9 @@ import {
   GraphQLError,
   NetworkError,
   NotFoundError,
+  OperatorError,
   ServerError,
+  PanelEventError,
 } from "@fiftyone/utilities";
 import { Clear } from "@mui/icons-material";
 import classnames from "classnames";
@@ -20,7 +22,13 @@ import Loading from "../Loading";
 import style from "./ErrorBoundary.module.css";
 import { useTrackEvent } from "@fiftyone/analytics";
 
-type AppError = GraphQLError | NetworkError | NotFoundError | ServerError;
+type AppError =
+  | GraphQLError
+  | NetworkError
+  | NotFoundError
+  | ServerError
+  | OperatorError
+  | PanelEventError;
 
 interface Props<T extends AppError> extends FallbackProps {
   error: T;
@@ -58,9 +66,15 @@ const Errors = (onReset?: () => void, disableReset?: boolean) => {
           message: "Payload",
           content: JSON.stringify(error.payload, null, 2),
         });
+    } else if (error instanceof OperatorError) {
+      error = error as OperatorError;
+      if (error.operator) {
+        messages.push({ message: "Operator", content: error.operator });
+      }
+      messages.push({ message: error.message, content: error.stack });
     }
 
-    if (error.stack) {
+    if (error.stack && !(error instanceof OperatorError)) {
       messages = [...messages, { message: "Trace", content: error.stack }];
     }
 

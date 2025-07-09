@@ -1,9 +1,11 @@
 import { usePanelStateByIdCallback } from "@fiftyone/spaces";
 import { useNotification } from "@fiftyone/state";
+import { useState, useEffect } from "react";
 import { useActivePanelEventsCount } from "./hooks";
 import { executeOperator } from "./operators";
 import { usePromptOperatorInput } from "./state";
 import { ExecutionCallback } from "./types-internal";
+import { OperatorError, PanelEventError } from "@fiftyone/utilities";
 
 type HandlerOptions = {
   params: { [name: string]: unknown };
@@ -14,10 +16,28 @@ type HandlerOptions = {
   currentPanelState?: any; // most current panel state
 };
 
+type PendingError = {
+  message: string;
+  error: any;
+  operator: string;
+} | null;
+
 export default function usePanelEvent() {
   const promptForOperator = usePromptOperatorInput();
+  // notify is still used for missing operator
   const notify = useNotification();
   const { increment, decrement } = useActivePanelEventsCount("");
+  const [pendingError, setPendingError] = useState<PendingError>(null);
+
+  // Throw error on next re-render if there's a pending error
+  useEffect(() => {
+    if (pendingError) {
+      const { message, error, operator } = pendingError;
+      setPendingError(null); // Clear the pending error
+      throw new OperatorError(message, error, operator);
+    }
+  }, [pendingError]);
+
   return usePanelStateByIdCallback((panelId, panelState, args) => {
     const options = args[0] as HandlerOptions;
     const { params, operator, prompt, currentPanelState } = options;
@@ -33,19 +53,47 @@ export default function usePanelEvent() {
     const actualParams = {
       ...params,
       panel_id: panelId,
-      panel_state: currentPanelState ?? (panelState?.state || {}),
+      panel_state: currentPanelState ?? ((panelState as any)?.state || {}),
     };
 
     const eventCallback = (result, opts) => {
       decrement(panelId);
-      const msg =
-        result.errorMessage || result.error || "Failed to execute operation";
-      const computedMsg = `${msg} (operation: ${operator})`;
-      if (result?.error) {
-        notify({ msg: computedMsg, variant: "error" });
-        console.error(result?.error);
+      let errorMessage = "Failed to execute operation";
+
+      // Determine the error message, handling cases where result.error or result.errorMessage might be Error objects
+      if (result.errorMessage) {
+        errorMessage =
+          typeof result.errorMessage === "string"
+            ? result.errorMessage
+            : result.errorMessage instanceof Error
+            ? result.errorMessage.message
+            : String(result.errorMessage);
+      } else if (result.error) {
+        errorMessage =
+          typeof result.error === "string"
+            ? result.error
+            : result.error instanceof Error
+            ? result.error.message
+            : String(result.error);
       }
-      options?.callback?.(result, opts);
+
+      let suppressError = false;
+      if (typeof options?.callback === "function") {
+        // Only suppress error if callback explicitly returns false
+        const cbResult = options.callback(result, opts);
+        // @ts-expect-error: Intentional comparison to allow void | boolean return
+        if (cbResult === false) {
+          suppressError = true;
+        }
+      }
+      if (result?.error && !suppressError) {
+        // Set pending error to be thrown on next re-render
+        setPendingError({
+          message: errorMessage,
+          error: result.error,
+          operator,
+        });
+      }
     };
 
     if (prompt) {

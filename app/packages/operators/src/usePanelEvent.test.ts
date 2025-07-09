@@ -109,12 +109,10 @@ describe("usePanelEvent", () => {
       false, // delegated
       null // errorMessage
     );
-    eventCallback(mockOperatorResult, { ctx: null });
+    expect(() => eventCallback(mockOperatorResult, { ctx: null })).toThrow(
+      errorMessage
+    );
 
-    expect(mockNotify).toHaveBeenCalledWith({
-      msg: `${errorMessage} (operation: ${operator})`,
-      variant: "error",
-    });
     expect(mockDecrement).toHaveBeenCalledWith(panelId);
   });
 
@@ -149,12 +147,10 @@ describe("usePanelEvent", () => {
       false, // delegated
       null // errorMessage
     );
-    eventCallback(mockOperatorResult, { ctx: null });
+    expect(() => eventCallback(mockOperatorResult, { ctx: null })).toThrow(
+      errorMessage
+    );
 
-    expect(mockNotify).toHaveBeenCalledWith({
-      msg: `${errorMessage} (operation: ${operator})`,
-      variant: "error",
-    });
     expect(mockDecrement).toHaveBeenCalledWith(panelId);
   });
 
@@ -189,9 +185,94 @@ describe("usePanelEvent", () => {
       false, // delegated
       errorMessage // errorMessage - present but won't trigger notify
     );
-    eventCallback(mockOperatorResult, { ctx: null });
+    expect(() =>
+      eventCallback(mockOperatorResult, { ctx: null })
+    ).not.toThrow();
 
-    expect(mockNotify).not.toHaveBeenCalled();
+    expect(mockDecrement).toHaveBeenCalledWith(panelId);
+  });
+
+  it("should handle Error objects in result.error and extract their message", () => {
+    renderHook(() => usePanelEvent(), {
+      wrapper: TestWrapper,
+    });
+
+    const panelId = "test-panel-id";
+    const operator = "test-operator";
+    const errorMessage = "Test error message";
+    const errorObject = new Error(errorMessage);
+
+    // Simulate operator execution with error
+    const options = {
+      params: {},
+      operator,
+      prompt: false,
+      panelId,
+      callback: vi.fn(),
+    };
+
+    // Call the callback with error result
+    mockCallback(panelId, { state: {} }, [options]);
+
+    // Simulate the executeOperator callback being called with an error
+    const eventCallback = mockExecuteOperator.mock.calls[0][2].callback;
+    const mockOperatorResult = new OperatorResult(
+      null, // operator
+      {}, // result
+      null, // executor
+      errorMessage, // error - string for constructor
+      false, // delegated
+      null // errorMessage
+    );
+    // Override the error property to be an Error object to test the handling
+    (mockOperatorResult as any).error = errorObject;
+
+    expect(() => eventCallback(mockOperatorResult, { ctx: null })).toThrow(
+      errorMessage
+    );
+
+    expect(mockDecrement).toHaveBeenCalledWith(panelId);
+  });
+
+  it("should handle Error objects in result.errorMessage and extract their message", () => {
+    renderHook(() => usePanelEvent(), {
+      wrapper: TestWrapper,
+    });
+
+    const panelId = "test-panel-id";
+    const operator = "test-operator";
+    const errorMessage = "Test error message";
+    const errorObject = new Error(errorMessage);
+
+    // Simulate operator execution with error
+    const options = {
+      params: {},
+      operator,
+      prompt: false,
+      panelId,
+      callback: vi.fn(),
+    };
+
+    // Call the callback with error result
+    mockCallback(panelId, { state: {} }, [options]);
+
+    // Simulate the executeOperator callback being called with an error
+    const eventCallback = mockExecuteOperator.mock.calls[0][2].callback;
+    const mockOperatorResult = new OperatorResult(
+      null, // operator
+      {}, // result
+      null, // executor
+      null, // error - null
+      false, // delegated
+      errorMessage // errorMessage - string for constructor
+    );
+    // Override the errorMessage property to be an Error object to test the handling
+    (mockOperatorResult as any).errorMessage = errorObject;
+
+    expect(() => eventCallback(mockOperatorResult, { ctx: null })).toThrow(
+      errorMessage
+    );
+
     expect(mockDecrement).toHaveBeenCalledWith(panelId);
   });
 });
