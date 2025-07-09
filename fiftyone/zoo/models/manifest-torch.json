@@ -6248,6 +6248,15 @@
                     "support": true
                 }
             },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
             "tags": [
                 "detection",
                 "coco",
@@ -6256,6 +6265,168 @@
                 "rtdetr"
             ],
             "date_added": "2025-07-03 12:00:00"
+        },
+        {
+            "base_name": "vitpose-base-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Vision Transformer for pose estimation with 90M parameters using standard ViT backbone. Detects 17 human keypoints through heatmap regression achieving 75.8 AP on COCO. Processes 256x192 images with hierarchical features for accurate joint localization.",
+            "source": "https://github.com/ViTAE-Transformer/ViTPose",
+            "author": "Yufei Xu, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForPoseEstimation",
+                "config": {
+                    "name_or_path": "usyd-community/vitpose-base"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["keypoints", "coco", "torch", "transformers"],
+            "date_added": "2025-07-09 12:00:00"
+        },
+        {
+            "base_name": "vitpose-base-simple-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Simplified ViTPose with 90M parameters removing complex decoder components. Maintains 75.1 AP through direct heatmap prediction from transformer features. Streamlined architecture for easier deployment while preserving accuracy on human pose tasks.",
+            "source": "https://github.com/ViTAE-Transformer/ViTPose",
+            "author": "Yufei Xu, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForPoseEstimation",
+                "config": {
+                    "name_or_path": "usyd-community/vitpose-base-simple"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["keypoints", "coco", "torch", "transformers"],
+            "date_added": "2025-07-09 12:00:00"
+        },
+        {
+            "base_name": "vitpose-plus-small-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Small ViTPose+ with 30M parameters using mixture-of-experts for multi-dataset training. Achieves 68.7 AP through dataset-specific adaptation. Lightweight MOE architecture enables efficient pose estimation across diverse human pose datasets.",
+            "source": "https://github.com/ViTAE-Transformer/ViTPose",
+            "author": "Yufei Xu, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForPoseEstimation",
+                "config": {
+                    "name_or_path": "usyd-community/vitpose-plus-small"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["keypoints", "coco", "torch", "transformers"],
+            "date_added": "2025-07-09 12:00:00"
+        },
+        {
+            "base_name": "vitpose-plus-base-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Base ViTPose+ with 130M parameters implementing mixture-of-experts modules. Delivers 77.5 AP through dataset-aware routing. MOE design handles multiple pose datasets simultaneously while maintaining strong per-dataset performance.",
+            "source": "https://github.com/ViTAE-Transformer/ViTPose",
+            "author": "Yufei Xu, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForPoseEstimation",
+                "config": {
+                    "name_or_path": "usyd-community/vitpose-plus-base"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["keypoints", "coco", "torch", "transformers"],
+            "date_added": "2025-07-09 12:00:00"
+        },
+        {
+            "base_name": "vitpose-plus-large-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Large ViTPose+ with 430M parameters scaling MOE architecture for superior accuracy. Achieves 78.3 AP on COCO through enhanced capacity. Mixture-of-experts enables specialization across pose datasets while maintaining unified architecture.",
+            "source": "https://github.com/ViTAE-Transformer/ViTPose",
+            "author": "Yufei Xu, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForPoseEstimation",
+                "config": {
+                    "name_or_path": "usyd-community/vitpose-plus-large"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["keypoints", "coco", "torch", "transformers"],
+            "date_added": "2025-07-09 12:00:00"
+        },
+        {
+            "base_name": "vitpose-plus-huge-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Huge ViTPose+ with 900M parameters maximizing MOE capacity for best performance. Delivers 78.9 AP through massive scale. Flagship mixture-of-experts model handling diverse pose datasets with dataset-specific optimization paths.",
+            "source": "https://github.com/ViTAE-Transformer/ViTPose",
+            "author": "Yufei Xu, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForPoseEstimation",
+                "config": {
+                    "name_or_path": "usyd-community/vitpose-plus-huge"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["keypoints", "coco", "torch", "transformers"],
+            "date_added": "2025-07-09 12:00:00"
         }
     ]
 }
