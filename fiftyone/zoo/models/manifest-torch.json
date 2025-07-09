@@ -6265,7 +6265,7 @@
             "source": "https://github.com/ViTAE-Transformer/ViTPose",
             "author": "Yufei Xu, et al.",
             "license": "Apache 2.0",
-            "size_bytes": null,
+            "size_bytes": 360007012,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForPoseEstimation",
                 "config": {
@@ -6292,7 +6292,7 @@
             "source": "https://github.com/ViTAE-Transformer/ViTPose",
             "author": "Yufei Xu, et al.",
             "license": "Apache 2.0",
-            "size_bytes": null,
+            "size_bytes": 343673076,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForPoseEstimation",
                 "config": {
@@ -6319,7 +6319,7 @@
             "source": "https://github.com/ViTAE-Transformer/ViTPose",
             "author": "Yufei Xu, et al.",
             "license": "Apache 2.0",
-            "size_bytes": null,
+            "size_bytes": 132619932,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForPoseEstimation",
                 "config": {
@@ -6346,7 +6346,7 @@
             "source": "https://github.com/ViTAE-Transformer/ViTPose",
             "author": "Yufei Xu, et al.",
             "license": "Apache 2.0",
-            "size_bytes": null,
+            "size_bytes": 501627628,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForPoseEstimation",
                 "config": {
@@ -6373,7 +6373,7 @@
             "source": "https://github.com/ViTAE-Transformer/ViTPose",
             "author": "Yufei Xu, et al.",
             "license": "Apache 2.0",
-            "size_bytes": null,
+            "size_bytes": 1737705492,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForPoseEstimation",
                 "config": {
@@ -6400,7 +6400,7 @@
             "source": "https://github.com/ViTAE-Transformer/ViTPose",
             "author": "Yufei Xu, et al.",
             "license": "Apache 2.0",
-            "size_bytes": null,
+            "size_bytes": 3597730876,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForPoseEstimation",
                 "config": {
