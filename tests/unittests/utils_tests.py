@@ -7,6 +7,7 @@ FiftyOne utilities unit tests.
 """
 
 from datetime import datetime
+import sys
 import time
 import unittest
 from unittest.mock import MagicMock, patch
@@ -261,6 +262,74 @@ class CoreUtilsTests(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             fou.to_slug("a" * 101)  # too long
+
+    def test_get_module_name(self):
+        if sys.platform.startswith("win"):
+            self.assertEqual(
+                fou.get_module_name("C:\\tmp\\test\\module"),
+                "tmp.test.module",
+            )
+            self.assertEqual(
+                fou.get_module_name("C:\\tmp\\test\\module.py"),
+                "tmp.test.module",
+            )
+            self.assertEqual(
+                fou.get_module_name("C:\\tmp\\test\\module", "C:\\tmp"),
+                "test.module",
+            )
+            self.assertEqual(
+                fou.get_module_name("C:\\tmp\\test\\module.py", "C:\\tmp"),
+                "test.module",
+            )
+            self.assertEqual(
+                fou.get_module_name("C:\\tmp\\test\\module", "C:\\"),
+                "tmp.test.module",
+            )
+            self.assertEqual(
+                fou.get_module_name("C:\\tmp\\test\\module.py", "C:\\"),
+                "tmp.test.module",
+            )
+            self.assertEqual(
+                fou.get_module_name("C:\\tmp\\test\\module", "D:\\foo"),
+                "tmp.test.module",
+            )
+            self.assertEqual(
+                fou.get_module_name("C:\\tmp\\test\\module.py", "D:\\foo"),
+                "tmp.test.module",
+            )
+        else:
+            self.assertEqual(
+                fou.get_module_name("/tmp/test/module"),
+                "tmp.test.module",
+            )
+            self.assertEqual(
+                fou.get_module_name("/tmp/test/module.py"),
+                "tmp.test.module",
+            )
+            self.assertEqual(
+                fou.get_module_name("/tmp/test/module", "/tmp"),
+                "test.module",
+            )
+            self.assertEqual(
+                fou.get_module_name("/tmp/test/module.py", "/tmp"),
+                "test.module",
+            )
+            self.assertEqual(
+                fou.get_module_name("/tmp/test/module", "/"),
+                "tmp.test.module",
+            )
+            self.assertEqual(
+                fou.get_module_name("/tmp/test/module.py", "/"),
+                "tmp.test.module",
+            )
+            self.assertEqual(
+                fou.get_module_name("/tmp/test/module", "/foo"),
+                "tmp.test.module",
+            )
+            self.assertEqual(
+                fou.get_module_name("/tmp/test/module.py", "/foo"),
+                "tmp.test.module",
+            )
 
 
 class LabelsTests(unittest.TestCase):

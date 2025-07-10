@@ -13,6 +13,7 @@ import yaml
 import eta.core.serial as etas
 
 import fiftyone as fo
+import fiftyone.core.utils as fou
 import fiftyone.plugins.constants as fpc
 
 
@@ -145,7 +146,7 @@ class PluginDefinition(object):
     @property
     def server_path(self):
         """The default server path to the plugin."""
-        relpath = os.path.relpath(self.directory, fo.config.plugins_dir)
+        relpath = fou.safe_relpath(self.directory, fo.config.plugins_dir)
         return "/" + os.path.join("plugins", relpath)
 
     @property
