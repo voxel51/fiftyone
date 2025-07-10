@@ -705,6 +705,8 @@ class ConfigureScenario(foo.Operator):
                 },
             },
         )
+        # Must at least select one subset
+        is_invalid = len(selected_values) < 1
 
         if with_description:
             stack.view(
@@ -731,6 +733,8 @@ class ConfigureScenario(foo.Operator):
                 default=True if label in selected_values else False,
                 label=formatted_label,
                 view=types.CheckboxView(space=4),
+                error_message="Please select at least one option.",
+                invalid=is_invalid,
             )
 
         stack.define_property(key, obj)
@@ -740,7 +744,6 @@ class ConfigureScenario(foo.Operator):
                 ctx, inputs, scenario_type, selected_values
             )
         else:
-            # TODO: render the error using if nothing is selected
             sub = (
                 "attribute"
                 if scenario_type == ScenarioType.LABEL_ATTRIBUTE
