@@ -508,6 +508,7 @@ class TransformerEmbeddingsMixin(EmbeddingsMixin):
 class ZeroShotTransformerEmbeddingsMixin(EmbeddingsMixin):
     """Mixin for Transformers that can generate embeddings."""
 
+    @property
     def has_embeddings(self):
         return hasattr(self._model, "get_image_features")
 
