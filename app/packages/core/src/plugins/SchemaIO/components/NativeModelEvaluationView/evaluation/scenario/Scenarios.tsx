@@ -48,6 +48,7 @@ import Actions from "./Actions";
 import Legends from "./Legends";
 import LoadingError from "./LoadingError";
 import { getSubsetDef } from "./utils";
+import { ErrorBoundary } from "@fiftyone/components";
 
 const CONFIGURE_SCENARIO_ACTION = "model_evaluation_configure_scenario";
 
@@ -390,25 +391,27 @@ export default function Scenarios(props) {
           />
         </Stack>
       </Stack>
-      {scenario && (
-        <Scenario
-          key={scenario}
-          id={scenario}
-          data={data}
-          loadScenario={loadScenario}
-          mode={mode}
-          loading={loadingScenario}
-          differenceMode={differenceMode}
-          evaluation={evaluation}
-          compareEvaluation={compareEvaluation}
-          selectedSubsets={selectedSubsets}
-          loadView={loadView}
-          onDelete={onDelete}
-          onEdit={onEdit}
-          readOnly={readOnly}
-          trackEvent={trackEvent}
-        />
-      )}
+      <ErrorBoundary>
+        {scenario && (
+          <Scenario
+            key={scenario}
+            id={scenario}
+            data={data}
+            loadScenario={loadScenario}
+            mode={mode}
+            loading={loadingScenario}
+            differenceMode={differenceMode}
+            evaluation={evaluation}
+            compareEvaluation={compareEvaluation}
+            selectedSubsets={selectedSubsets}
+            loadView={loadView}
+            onDelete={onDelete}
+            onEdit={onEdit}
+            readOnly={readOnly}
+            trackEvent={trackEvent}
+          />
+        )}
+      </ErrorBoundary>
     </Stack>
   );
 }
