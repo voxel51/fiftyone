@@ -512,6 +512,18 @@ function Scenario(props) {
     }
   }
 
+  if (scenario.subsets.length === 0) {
+    return (
+      <Stack
+        sx={{ minHeight: 300 }}
+        alignItems="center"
+        justifyContent="center"
+      >
+        <Typography>No subset defined</Typography>
+      </Stack>
+    );
+  }
+
   return (
     <Stack>
       {scenarioChanges && (
