@@ -5,3 +5,18 @@ FiftyOne builtin plugins.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
+
+def get_subsets_from_custom_code(ctx, custom_code):
+    try:
+        local_vars = {}
+        exec(custom_code, {"ctx": ctx}, local_vars)
+        data = local_vars.get("subsets", {})
+        if len(data) == 0:
+            return (
+                None,
+                "Subsets must be defined with at least one subset in the custom code",
+            )
+        return data, None
+    except Exception as e:
+        return None, str(e)
