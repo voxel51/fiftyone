@@ -577,11 +577,6 @@ function PredictionStatisticsTable(props) {
   const { key, compareKey } = data?.view;
   const width = getWidth(props);
 
-  // when subset is empty, do not render the table
-  if (subsets.length === 0) {
-    return <div>No subset defined</div>;
-  }
-
   return (
     <Stack>
       <Typography>Prediction Statistics</Typography>
@@ -714,7 +709,6 @@ function SelectSubset(props) {
   const { subsets, selected, setSelected } = props;
 
   useEffect(() => {
-    if (subsets.length === 0) return;
     if (!subsets.includes(selected)) {
       setSelected(subsets[0]);
     }
@@ -747,11 +741,6 @@ function ModelPerformanceMetricsTable(props) {
   const [subset, setSubset] = usePanelStatePartial(`${id}_mpts`, subsets[0]);
   const { key, compareKey } = data?.view;
   const width = getWidth(props);
-
-  // when subset is empty, do not render the table
-  if (subsets.length === 0) {
-    return <></>;
-  }
 
   return (
     <Stack>
