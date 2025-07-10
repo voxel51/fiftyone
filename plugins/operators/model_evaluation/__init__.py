@@ -319,10 +319,6 @@ class ConfigureScenario(foo.Operator):
     def render_empty_sample_distribution(
         self, ctx, inputs, params, description=None
     ):
-        scenario_type = self.get_scenario_type(params)
-        # NOTE: custom code validation happens at render_custom_code when exec() is called
-        is_invalid = scenario_type != ScenarioType.CUSTOM_CODE
-
         self.render_plot_preview_toggle(ctx, inputs)
 
         inputs.view(
@@ -353,6 +349,8 @@ class ConfigureScenario(foo.Operator):
                     },
                 },
             ),
+            invalid=True,
+            error_message="No values selected",
         )
 
     def get_label_attribute_path(self, params):
@@ -742,6 +740,7 @@ class ConfigureScenario(foo.Operator):
                 ctx, inputs, scenario_type, selected_values
             )
         else:
+            # TODO: render the error using if nothing is selected
             sub = (
                 "attribute"
                 if scenario_type == ScenarioType.LABEL_ATTRIBUTE
@@ -751,6 +750,7 @@ class ConfigureScenario(foo.Operator):
                     else "saved view"
                 )
             )
+
             self.render_empty_sample_distribution(
                 ctx,
                 inputs,
@@ -1106,6 +1106,7 @@ class ConfigureScenario(foo.Operator):
 
         if scenario_type == ScenarioType.CUSTOM_CODE:
             self.render_custom_code(ctx, inputs)
+
         if scenario_type == ScenarioType.LABEL_ATTRIBUTE:
             selected_scenario_field = ctx.params.get(
                 "scenario_label_attribute", None
@@ -1123,9 +1124,12 @@ class ConfigureScenario(foo.Operator):
         if scenario_type == ScenarioType.SAMPLE_FIELD:
             self.render_sample_fields(ctx, inputs, selected_scenario_field)
 
+        subsets = ctx.params.get("scenario_subsets", {})
+
         prompt = types.PromptView(
             submit_button_label="Analyze scenario",
             label=self.get_modal_title(ctx),
+            invalid=True,
         )
         return types.Property(inputs, view=prompt)
 
