@@ -11,7 +11,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
@@ -77,7 +77,7 @@ jobs:
           path: package/db/dist/*.whl
 
   test:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: build
     env:
       FIFTYONE_DO_NOT_TRACK: true
@@ -101,7 +101,7 @@ jobs:
           python3 -m pytest --verbose tests/
 
   publish:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: [build, test]
     if: startsWith(github.ref, 'refs/tags/db-v')
     steps:
