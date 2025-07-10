@@ -1127,12 +1127,9 @@ class ConfigureScenario(foo.Operator):
         if scenario_type == ScenarioType.SAMPLE_FIELD:
             self.render_sample_fields(ctx, inputs, selected_scenario_field)
 
-        subsets = ctx.params.get("scenario_subsets", {})
-
         prompt = types.PromptView(
             submit_button_label="Analyze scenario",
             label=self.get_modal_title(ctx),
-            invalid=True,
         )
         return types.Property(inputs, view=prompt)
 
