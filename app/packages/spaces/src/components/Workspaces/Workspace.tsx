@@ -61,7 +61,7 @@ export default function Workspace(props: WorkspacePropsType) {
                 ...state,
                 open: true,
                 edit: true,
-                oldName: name,
+                old_name: name,
                 name,
                 description,
                 color,
