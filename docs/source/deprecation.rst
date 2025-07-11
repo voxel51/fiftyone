@@ -10,6 +10,17 @@ FiftyOne Deprecation Notices
    Deprecation notices below are ordered in reverse chronological order
    (most recent at the top).
 
+.. _deprecation-kubernetes-1.30:
+
+Kubernetes 1.30
+---------------
+*Support ending July 11, 2025*
+
+`Kubernetes 1.30 <https://kubernetes.io/releases/>`_
+transitioned to `end-of-life` effective June of 2025. FiftyOne Enterprise
+releases after July 11, 2025 might no longer be compatible with
+Kubernetes 1.30 and older.
+
 .. _deprecation-mongodb-5.0:
 
 MongoDB 5.0
