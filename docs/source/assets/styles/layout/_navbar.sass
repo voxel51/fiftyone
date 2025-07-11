@@ -9,6 +9,15 @@
         padding: 8px
         border-radius: 8px
         color: var(--pst-color-text-base)
+        box-shadow: none
+        margin-bottom: 4px
+        overflow-wrap: break-word
+        word-break: break-word
+        max-width: 100%
+        min-height: 32px
+        margin-right: 16px
+        padding-right: 30px
+        line-height: 100%
 
         &:hover
           color: var(--pst-color-text-base)
@@ -17,7 +26,6 @@
 
         &.current
           font-weight: 500
-          box-shadow: none
           background-color: var(--color-background)
 
 /* Responsive Navbar */
@@ -32,6 +40,7 @@
       color: var(--pst-color-text-base)
       font-size: 14px
       font-weight: 500
+      width: 100%
 
       &:hover
         text-decoration: none
@@ -68,6 +77,16 @@
 .navbar-nav .nav-item + .nav-item
   margin-left: 1rem
 
+@media (min-width: 960px)
+  .bd-sidebar-primary li.has-children > details > summary .toctree-toggle
+    right: 16px
+  
+  .navbar-nav
+    .nav-item
+      .nav-link
+        height: 64px
+        display: flex
+        align-items: center
 
 @media (max-width: 1200px)
   .navbar-nav

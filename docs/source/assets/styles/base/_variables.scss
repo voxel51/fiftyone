@@ -6,6 +6,7 @@ $voxel-dark: #212529;
 $voxel-light: #f8f9fa;
 $voxel-border: rgba(0, 0, 0, 0.125);
 $voxel-background: #f1ecea;
+$voxel-dropdown-background: #fbfaf9;
 $white: #ffffff;
 $black: #000000;
 
@@ -55,6 +56,7 @@ html[data-theme="light"] {
   --pst-color-primary: #{$voxel-primary};
   --pst-color-accent: #{$voxel-primary};
   --color-background: #{$voxel-background};
+  --color-dropdown-background: #{$voxel-dropdown-background};
 }
 
 /* Dark theme variables */

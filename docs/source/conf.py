@@ -167,7 +167,7 @@ intersphinx_mapping = {
 
 html_context = {"default_mode": "light"}
 
-html_logo = "https://voxel51.com/images/logo/voxel51-logo-horz-color-600dpi.png"
+html_logo = "_static/images/voxel51-logo.svg"
 
 html_theme = "pydata_sphinx_theme"
 html_theme_options = {
