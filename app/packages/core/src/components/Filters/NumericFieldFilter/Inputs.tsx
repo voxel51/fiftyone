@@ -1,9 +1,10 @@
 import * as fos from "@fiftyone/state";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import type { InputType } from "./Input";
 import { Input } from "./Input";
+import { getFormatter } from "../../Common/utils";
 
 const Container = styled.div`
   display: flex;
@@ -28,7 +29,26 @@ export default function Inputs({
       withBounds: false,
     })
   );
+  const bounds = useRecoilValue(fos.boundsAtom({ path, modal }));
   const setSnackBarErrors = useSetRecoilState(fos.snackbarErrors);
+
+  // Display a clipped value in the input to provide a simpler UX
+  const { formatter } = getFormatter(ftype, null, bounds);
+  const [minDisplay, setMinDisplay] = useState(
+    typeof min === "number" ? formatter(min) : null
+  );
+  const [maxDisplay, setMaxDisplay] = useState(
+    typeof max === "number" ? formatter(max) : null
+  );
+
+  // Synchronize with external state updates
+  // todo - move to recoil selector?
+  useEffect(() => {
+    setMinDisplay(typeof min === "number" ? formatter(min) : null);
+  }, [min]);
+  useEffect(() => {
+    setMaxDisplay(typeof max === "number" ? formatter(max) : null);
+  }, [max]);
 
   return (
     <Container>
@@ -44,7 +64,7 @@ export default function Inputs({
           setRange((cur) => [value, cur[1]]);
         }}
         placeholder="min"
-        value={min ?? null}
+        value={minDisplay}
       />
       <Input
         color={color}
@@ -58,7 +78,7 @@ export default function Inputs({
           setRange((cur) => [cur[0], value]);
         }}
         placeholder="max"
-        value={max ?? null}
+        value={maxDisplay}
       />
     </Container>
   );
