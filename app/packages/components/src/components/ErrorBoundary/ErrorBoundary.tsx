@@ -67,13 +67,14 @@ const Errors = (onReset?: () => void, disableReset?: boolean) => {
           content: JSON.stringify(error.payload, null, 2),
         });
     } else if (error instanceof OperatorError) {
-      error = error as OperatorError;
       if (error.operator) {
         messages.push({ message: "Operator", content: error.operator });
       }
+      if (error instanceof PanelEventError) {
+        messages.push({ message: "Event", content: error.event });
+      }
       messages.push({ message: error.message, content: error.stack });
     }
-
     if (error.stack && !(error instanceof OperatorError)) {
       messages = [...messages, { message: "Trace", content: error.stack }];
     }

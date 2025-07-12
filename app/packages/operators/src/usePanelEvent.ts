@@ -34,7 +34,8 @@ export default function usePanelEvent() {
     if (pendingError) {
       const { message, error, operator } = pendingError;
       setPendingError(null); // Clear the pending error
-      throw new OperatorError(message, error, operator);
+      const [operatorUri, eventName] = operator.split("#");
+      throw new PanelEventError(message, error, operatorUri, eventName);
     }
   }, [pendingError]);
 

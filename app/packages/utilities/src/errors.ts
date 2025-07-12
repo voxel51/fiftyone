@@ -168,6 +168,7 @@ export class OperatorError extends AppError {
   ) {
     super({ name: "Uncaught Operator Error" }, message);
     this.stack = stack;
+    // operator uri w/ out any method path
     this.operator = operator;
   }
 }
