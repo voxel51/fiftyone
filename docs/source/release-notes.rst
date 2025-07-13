@@ -3,6 +3,82 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.10.1
+--------------------------
+*Released July 14, 2025*
+
+Includes all updates from :ref:`FiftyOne 1.7.1 <release-notes-v1.7.1>`, plus:
+
+- Optimized the loading of pinned datasets.
+- Changed the `sizeEstimate` fields on both datasets and dataset snapshots to
+  return a float indicating size in megabytes, rather than in bytes.
+- Enhanced connection handling for HTTP requests, allowing faster failure and
+  more robust retry behavior after a successful connection has been
+  established.
+- Fixed error when running `get_datasets_revisions()` in certain cases.
+- Fixed the loading of 
+  :ref:`dataset snapshots <dataset-versioning-snapshot-archival>` in the app.
+  `#1724 <https://github.com/voxel51/fiftyone-teams/pull/1724>`_
+
+.. _release-notes-v1.7.1:
+
+FiftyOne 1.7.1
+--------------
+*Released July 14, 2025*
+
+App
+
+- Updated the :ref:`Scenario Analysis <app-scenario-analysis>` summary table to
+  correctly interpret and display metrics where a lower value is better, such
+  as the "Incorrect" metric. `#6111
+  <https://github.com/voxel51/fiftyone/pull/6111>`_
+- Improved error handling in :ref:`Scenario Analysis <app-scenario-analysis>`
+  when empty subset is defined. `#6127
+  <https://github.com/voxel51/fiftyone/pull/6127>`_
+- Added calendar picker support for `DateField` and `DateTimeField` inputs in
+  the sidebar `#6120 <https://github.com/voxel51/fiftyone/pull/6120>`_
+- Fixed: fully support frame patch embeddings in 
+  :ref:`Embeddings panel <app-embeddings-panel>`. 
+  `#6129 <https://github.com/voxel51/fiftyone/pull/6129>`_
+- Fixed: updated `ColorScheme` to allow `color_pool` to be optional. 
+  `#6128 <https://github.com/voxel51/fiftyone/pull/6128>`_
+- Fixed issue where renaming workspace created a new workspace with the new
+  name. `#6125 <https://github.com/voxel51/fiftyone/pull/6125>`_
+- Fixed search results for `label tags` in the sidebar when 
+  :ref:`Query Performance <app-optimizing-query-performance>` is disabled 
+  `#6095 <https://github.com/voxel51/fiftyone/pull/6095>`_
+- Fixed an issue where the `useBrowserStorage` utility would persist an invalid
+  `"undefined"` value in localStorage. 
+  `#6116 <https://github.com/voxel51/fiftyone/pull/6116>`_
+
+Models
+
+- Fixed a Transformer issue with zero shot embeddings.
+  `#6122 <https://github.com/voxel51/fiftyone/pull/6122>`_
+- Improved semantics when performing inference with 
+  :ref:`Ultralytics models <ultralytics-integration>` and no suitable objects
+  were found. We now return empty labels (eg `Detections()`) rather than
+  `None`. `#6131 <https://github.com/voxel51/fiftyone/pull/6131>`_
+
+Core
+
+- Added a deprecation notice for Kubernetes 1.30, indicating support will end
+  on July 11, 2025 and future releases may not be compatible with this version.
+  `#6132 <https://github.com/voxel51/fiftyone/pull/6132>`_
+
+Utilities
+
+- Fixed `#6082 <https://github.com/voxel51/fiftyone/issues/6082>`_. Corrected
+  edge case with Python module names on Windows machines with multiple drives.
+  `#6124 <https://github.com/voxel51/fiftyone/pull/6124>`_
+- Fixed `#6115 <https://github.com/voxel51/fiftyone/issues/6115>`_. It is now
+  allowed to call `evaluate_XXX()` without providing an `eval_key`. In such
+  cases, the expected behavior is that evaluation metrics will be computed and
+  returned via an `EvaluationResults` object in-memory, but no evaluation info
+  will be stored on the dataset. `#6126
+  <https://github.com/voxel51/fiftyone/pull/6126>`_
+
+
 FiftyOne Enterprise 2.10.0
 --------------------------
 *Released July 1, 2025*
