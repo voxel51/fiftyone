@@ -9,6 +9,8 @@ $voxel-background: #f1ecea;
 $voxel-dropdown-background: #fbfaf9;
 $white: #ffffff;
 $black: #000000;
+$text-base: #181a1b;
+$text-secondary: #5d5e5f;
 
 // Spacing
 $navbar-spacing: 0.5rem;
@@ -46,8 +48,17 @@ $font-family-monospace: "Geist Mono", monospace;
   --pst-font-family-heading: #{$font-family-base};
   --pst-font-family-monospace: #{$font-family-monospace};
 
+  --pst-font-size-h1: 3rem;
+  --pst-font-size-h2: 2.25rem;
+  --pst-font-size-h3: 1.5rem;
+  --pst-font-size-h4: 1rem;
+  --pst-font-size-h5: 1rem;
+  --pst-font-size-h6: 1rem;
+
+  --pst-font-weight-heading: 500;
+
   --sd-color-primary: #{$voxel-primary};
-  --feedback-primary-color: #181a1b;
+  --feedback-primary-color: #{$text-base};
   --docsearch-primary-color: #{$voxel-primary};
 }
 
@@ -57,6 +68,11 @@ html[data-theme="light"] {
   --pst-color-accent: #{$voxel-primary};
   --color-background: #{$voxel-background};
   --color-dropdown-background: #{$voxel-dropdown-background};
+  
+  --pst-color-text-base: #{$text-base};
+  --pst-color-link: #{$text-base};
+  --pst-color-link-hover: #{$text-secondary};
+  --pst-color-inline-code: #{$text-base};
 }
 
 /* Dark theme variables */

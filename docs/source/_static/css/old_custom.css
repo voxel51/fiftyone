@@ -189,14 +189,6 @@ div.nboutput.nblast.docutils.container {
   padding-bottom: 1rem;
 }
 
-a:link,
-a:visited,
-p a:link,
-p a:visited,
-ul.pytorch-breadcrumbs a {
-  color: var(--color-primary);
-}
-
 a:link.has-code span,
 a:link.has-code span.pre,
 a:hover.has-code span,
