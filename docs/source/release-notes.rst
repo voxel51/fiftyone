@@ -37,6 +37,8 @@ App
   <https://github.com/voxel51/fiftyone/pull/6127>`_
 - Added calendar picker support for `DateField` and `DateTimeField` inputs in
   the sidebar `#6120 <https://github.com/voxel51/fiftyone/pull/6120>`_
+- Polished the sidebar's slider UX to improve how we handle numeric precision.
+  `#6134 <https://github.com/voxel51/fiftyone/pull/6134>`_
 - Fixed: fully support frame patch embeddings in 
   :ref:`Embeddings panel <app-embeddings-panel>`. 
   `#6129 <https://github.com/voxel51/fiftyone/pull/6129>`_
@@ -53,7 +55,9 @@ App
 
 Models
 
-- Fixed a Transformer issue with zero shot embeddings.
+- Fixed `#6112 <https://github.com/voxel51/fiftyone/pull/6112>`_: a bug when
+  attempting to extract embeddings from zero-shot transformer models with
+  preprocessing disabled.
   `#6122 <https://github.com/voxel51/fiftyone/pull/6122>`_
 - Improved semantics when performing inference with 
   :ref:`Ultralytics models <ultralytics-integration>` and no suitable objects
@@ -70,13 +74,13 @@ Utilities
 
 - Fixed `#6082 <https://github.com/voxel51/fiftyone/issues/6082>`_. Corrected
   edge case with Python module names on Windows machines with multiple drives.
-  `#6124 <https://github.com/voxel51/fiftyone/pull/6124>`_
+  `#6088 <https://github.com/voxel51/fiftyone/pull/6088>`_
 - Fixed `#6115 <https://github.com/voxel51/fiftyone/issues/6115>`_. It is now
   allowed to call `evaluate_XXX()` without providing an `eval_key`. In such
   cases, the expected behavior is that evaluation metrics will be computed and
   returned via an `EvaluationResults` object in-memory, but no evaluation info
-  will be stored on the dataset. `#6126
-  <https://github.com/voxel51/fiftyone/pull/6126>`_
+  will be stored on the dataset.
+  `#6126 <https://github.com/voxel51/fiftyone/pull/6126>`_
 
 
 FiftyOne Enterprise 2.10.0
