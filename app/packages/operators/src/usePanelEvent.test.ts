@@ -1,11 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renderHook } from "@testing-library/react";
+import { renderHook, act } from "@testing-library/react";
 import React from "react";
 import { RecoilRoot } from "recoil";
-import usePanelEvent from "./usePanelEvent";
+import usePanelEvent, { usePendingPanelEventError } from "./usePanelEvent";
+import { PanelEventError } from "@fiftyone/utilities";
 
-// Mocks
-vi.mock("@fiftyone/spaces", () => ({ usePanelStateByIdCallback: vi.fn() }));
+////////////////////////////
+//   Mock dependencies    //
+////////////////////////////
+
+vi.mock("@fiftyone/spaces", () => ({
+  usePanelStateByIdCallback: vi.fn((cb) => (panelId, options) => cb(panelId, undefined, [options])),
+}));
 vi.mock("@fiftyone/state", () => ({ useNotification: vi.fn() }));
 vi.mock("./hooks", () => ({ useActivePanelEventsCount: vi.fn() }));
 vi.mock("./operators", async () => {
@@ -14,106 +20,115 @@ vi.mock("./operators", async () => {
 });
 vi.mock("./state", () => ({ usePromptOperatorInput: vi.fn() }));
 
-import { usePanelStateByIdCallback } from "@fiftyone/spaces";
-import { useNotification } from "@fiftyone/state";
 import { useActivePanelEventsCount } from "./hooks";
 import { executeOperator, OperatorResult } from "./operators";
-import { usePromptOperatorInput } from "./state";
 
 const TestWrapper = ({ children }: { children: React.ReactNode }) => React.createElement(RecoilRoot, null, children);
 
-// Common mocks
-const mockUsePanelStateByIdCallback = vi.mocked(usePanelStateByIdCallback);
+// NOTE: useActivePanelEventsCount has browser dependencies in its transitive dependencies
+//       likely in "./hooks" so we need to mock it
 const mockUseActivePanelEventsCount = vi.mocked(useActivePanelEventsCount);
-const mockUseNotification = vi.mocked(useNotification);
+// Mock executeOperator to avoid calling the actual operator, which isn't needed for this test
 const mockExecuteOperator = vi.mocked(executeOperator);
-const mockUsePromptOperatorInput = vi.mocked(usePromptOperatorInput);
 
-let mockCallback: any;
+
 let mockDecrement: any;
 
 beforeEach(() => {
   vi.clearAllMocks();
   mockDecrement = vi.fn();
-  mockUsePanelStateByIdCallback.mockImplementation((cb) => { mockCallback = cb; return vi.fn(); });
   mockUseActivePanelEventsCount.mockReturnValue({ increment: vi.fn(), decrement: mockDecrement, count: 0 });
-  mockUseNotification.mockReturnValue(vi.fn());
-  mockUsePromptOperatorInput.mockReturnValue(vi.fn());
 });
 
+////////////////////////////
+//         Tests          //
+////////////////////////////
 
-const setupHook = () => {
-  const { result } = renderHook(() => usePanelEvent(), { wrapper: TestWrapper });
-  const triggerEvent = result.current;
-  return { triggerEvent };
-};
+describe("usePendingPanelEventError", () => {
+  it("should throw an error if there is a pending error", () => {
+    const { result } = renderHook(() => usePendingPanelEventError(), { wrapper: TestWrapper });
+    
+    expect(() => {
+      act(() => {
+        result.current.setPendingError({ message: "test", error: new Error("test"), operator: "test#event" });
+      });
+    }).toThrow(PanelEventError);
+  });
 
-const setupOperatorCallback = (panelId = "id", events = [{ operator: "op", panelId: "id", params: {} }]) => {
-  mockCallback(panelId, {}, events);
-  return mockExecuteOperator.mock.calls[0][2].callback;
-};
+  it("should throw a properly formatted PanelEventError", () => {
+    const { result } = renderHook(() => usePendingPanelEventError(), { wrapper: TestWrapper });
+    
+    let thrownError: PanelEventError;
+    try {
+      act(() => {
+        result.current.setPendingError({ 
+          message: "Operation failed", 
+          error: new Error("Something went wrong"), 
+          operator: "test#event" 
+        });
+      });
+    } catch (error) {
+      thrownError = error as PanelEventError;
+    }
+    
+    expect(thrownError!).toBeInstanceOf(PanelEventError);
+    expect(thrownError!.message).toBe("Operation failed");
+    expect(thrownError!.operator).toBe("test");
+    expect(thrownError!.event).toBe("event");
+    expect(thrownError!.stack).toContain("Something went wrong");
+  });
+});
 
 describe("usePanelEvent", () => {
-  it("returns a function from usePanelStateByIdCallback", () => {
-    setupHook();
-    expect(typeof mockCallback).toBe("function");
+  it("should return a function", () => {
+    const { result } = renderHook(() => usePanelEvent(), { wrapper: TestWrapper });
+    
+    expect(typeof result.current).toBe("function");
   });
 
-  it("sets pendingError when operator execution fails (error)", () => {
-    setupHook();
-    const cb = setupOperatorCallback();
-    const operatorResult = OperatorResult.create({ error: "fail" });
-    expect(() => cb(operatorResult, { ctx: null })).not.toThrow();
-    expect(mockDecrement).toHaveBeenCalledWith("id");
+  it("should call executeOperator", () => {
+    const { result } = renderHook(() => usePanelEvent(), { wrapper: TestWrapper });
+
+    act(() => {
+      result.current("panelId", {
+        operator: "test#event",
+        params: { param: "value" },
+        panelId: "panelId"
+      });
+    });
+
+    expect(mockExecuteOperator).toHaveBeenCalledWith(
+      "test#event",
+      expect.objectContaining({
+        param: "value",
+        panel_id: "panelId"
+      }),
+      expect.objectContaining({
+        callback: expect.any(Function)
+      })
+    );
   });
 
-  it("sets pendingError when operator execution fails (errorMessage)", () => {
-    setupHook();
-    const cb = setupOperatorCallback();
-    const operatorResult = OperatorResult.create({ error: "fail", errorMessage: "failMsg" });
-    expect(() => cb(operatorResult, { ctx: null })).not.toThrow();
-    expect(mockDecrement).toHaveBeenCalledWith("id");
-  });
+  it("should throw a PanelEventError if the operation results in an error", () => {
+    const { result } = renderHook(() => usePanelEvent(), { wrapper: TestWrapper });
 
-  it("does not set pendingError if only errorMessage is present and error is falsy", () => {
-    setupHook();
-    const cb = setupOperatorCallback();
-    const operatorResult = OperatorResult.create({ errorMessage: "failMsg" });
-    expect(() => cb(operatorResult, { ctx: null })).not.toThrow();
-    expect(mockDecrement).toHaveBeenCalledWith("id");
-  });
+    mockExecuteOperator.mockImplementation(async (uri, params, options) => {
+      options.callback(OperatorResult.create({error: 'fail'}), {ctx: null});
+    });
 
-  it("extracts error message from Error object in error", () => {
-    setupHook();
-    const cb = setupOperatorCallback();
-    const operatorResult = OperatorResult.create({ error: "msg" });
-    (operatorResult as any).error = new Error("errObj");
-    expect(() => cb(operatorResult, { ctx: null })).not.toThrow();
-    expect(mockDecrement).toHaveBeenCalledWith("id");
-  });
+    let thrownError: PanelEventError;
+    try {
+      act(() => {
+        result.current("panelId", {
+          operator: "test#event",
+          params: { param: "value" },
+          panelId: "panelId"
+        });
+      });
+    } catch (error) {
+      thrownError = error as PanelEventError;
+    }
 
-  it("extracts error message from Error object in errorMessage", () => {
-    setupHook();
-    const cb = setupOperatorCallback();
-    const operatorResult = OperatorResult.create({ errorMessage: "msg" });
-    (operatorResult as any).errorMessage = new Error("errObj");
-    expect(() => cb(operatorResult, { ctx: null })).not.toThrow();
-    expect(mockDecrement).toHaveBeenCalledWith("id");
-  });
-
-  it("extracts error message from string, Error, and number types", () => {
-    setupHook();
-    const cb = setupOperatorCallback();
-    // string
-    expect(() => cb(OperatorResult.create({ error: "str" }), { ctx: null })).not.toThrow();
-    // Error object
-    const errObj = OperatorResult.create({ error: "err" });
-    (errObj as any).error = new Error("errObj");
-    expect(() => cb(errObj, { ctx: null })).not.toThrow();
-    // number
-    const numObj = OperatorResult.create({ error: "404" });
-    (numObj as any).error = 404;
-    expect(() => cb(numObj, { ctx: null })).not.toThrow();
-    expect(mockDecrement).toHaveBeenCalledWith("id");
+    expect(thrownError).toBeInstanceOf(PanelEventError);  
   });
 });
