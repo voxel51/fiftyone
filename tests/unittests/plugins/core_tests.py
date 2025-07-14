@@ -15,6 +15,8 @@ import yaml
 
 import fiftyone as fo
 import fiftyone.plugins as fop
+import fiftyone.plugins.definitions as fpd
+import fiftyone.plugins.constants as fpc
 import fiftyone.utils.github as foug
 
 
@@ -161,6 +163,38 @@ def test_duplicate_plugins(mocker, fiftyone_plugins_dir):
     fop.enable_plugin("test-plugin1-name")
     _ = fop.find_plugin("test-plugin1-name")
     _ = fop.get_plugin("test-plugin1-name")
+
+
+def test_plugin_definition_server_path_builtin():
+    builtin_plugin_dir = os.path.join(
+        fpc.BUILTIN_PLUGINS_DIR, "test-builtin-plugin"
+    )
+
+    metadata = {"name": "test-builtin-plugin"}
+    plugin_def = fpd.PluginDefinition(builtin_plugin_dir, metadata)
+
+    assert plugin_def.builtin is True
+
+    expected_relpath = "test-builtin-plugin"
+    expected_server_path = "/plugins/" + expected_relpath
+    assert plugin_def.server_path == expected_server_path
+
+
+def test_plugin_definition_server_path_user_plugin(
+    mocker, fiftyone_plugins_dir
+):
+    mocker.patch("fiftyone.config.plugins_dir", fiftyone_plugins_dir)
+
+    user_plugin_dir = os.path.join(fiftyone_plugins_dir, "test-user-plugin")
+
+    metadata = {"name": "test-user-plugin"}
+    plugin_def = fpd.PluginDefinition(user_plugin_dir, metadata)
+
+    assert plugin_def.builtin is False
+
+    expected_relpath = "test-user-plugin"
+    expected_server_path = "/plugins/" + expected_relpath
+    assert plugin_def.server_path == expected_server_path
 
 
 def test_github_repository_parse_url():
