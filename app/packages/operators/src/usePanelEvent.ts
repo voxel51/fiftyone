@@ -2,7 +2,7 @@ import { usePanelStateByIdCallback } from "@fiftyone/spaces";
 import { useNotification } from "@fiftyone/state";
 import { useState, useEffect } from "react";
 import { useActivePanelEventsCount } from "./hooks";
-import { executeOperator } from "./operators";
+import { executeOperator, OperatorResult } from "./operators";
 import { usePromptOperatorInput } from "./state";
 import { ExecutionCallback } from "./types-internal";
 import { PanelEventError } from "@fiftyone/utilities";
@@ -98,7 +98,7 @@ export function handlePanelEvent(
     panel_state: currentPanelState ?? ((panelState as any)?.state || {}),
   };
 
-  const eventCallback = (result, opts) => {
+  const eventCallback = (result: OperatorResult, opts) => {
     decrement(panelId);
     let errorMessage = "Failed to execute operation";
 
@@ -138,11 +138,16 @@ export function handlePanelEvent(
     }
   };
 
+  const executeOptions: OperatorExecutorOptions = {
+    callback: eventCallback,
+    skipErrorNotification: true,
+  };
+
   if (prompt) {
-    promptForOperator(operator, actualParams, { callback: eventCallback });
+    promptForOperator(operator, actualParams, executeOptions);
   } else {
     increment(panelId);
-    executeOperator(operator, actualParams, { callback: eventCallback });
+    executeOperator(operator, actualParams, executeOptions);
   }
 }
 
