@@ -146,7 +146,12 @@ class PluginDefinition(object):
     @property
     def server_path(self):
         """The default server path to the plugin."""
-        relpath = fou.safe_relpath(self.directory, fo.config.plugins_dir)
+        if self.builtin:
+            # For builtin plugins, compute path relative to the builtin plugins directory
+            relpath = fou.safe_relpath(self.directory, fpc.BUILTIN_PLUGINS_DIR)
+        else:
+            # For user plugins, compute path relative to the user's plugins directory
+            relpath = fou.safe_relpath(self.directory, fo.config.plugins_dir)
         return "/" + os.path.join("plugins", relpath)
 
     @property
