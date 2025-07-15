@@ -531,6 +531,13 @@ export class PixiRenderer2D implements Renderer2D {
     };
   }
 
+  /**
+   * Returns the underlying HTMLCanvasElement used for rendering.
+   */
+  getCanvas(): HTMLCanvasElement {
+    return this.canvas;
+  }
+
   // Add the dispose method
   dispose(id: string): void {
     const element = this.elementMap.get(id);
