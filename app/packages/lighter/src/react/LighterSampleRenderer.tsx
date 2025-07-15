@@ -13,9 +13,11 @@ import React, {
 import {
   BoundingBoxOptions,
   ClassificationOptions,
+  LIGHTER_EVENTS,
   overlayFactory,
 } from "../index";
 import { useLighterWithPixi } from "./useLighterWithPixi";
+import { useSceneSelectionState } from "./useSceneSelectionState";
 
 /**
  * Props for the LighterSampleRenderer component.
@@ -47,9 +49,18 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
     height: height || 0,
   });
 
-  // Use the modified useLighter hook with optional dependencies
-  const { isReady, overlayCount, addOverlay, clearOverlays } =
-    useLighterWithPixi(canvasRef);
+  const {
+    scene,
+    isReady,
+    overlayCount,
+    addOverlay,
+    clearOverlays,
+    undo,
+    redo,
+  } = useLighterWithPixi(canvasRef);
+
+  // Use the new selection state hook
+  const { selectedOverlayIds, selectedBounds } = useSceneSelectionState(scene);
 
   // Get actual canvas dimensions from parent container
   useLayoutEffect(() => {
@@ -85,6 +96,8 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
         height: 20 + Math.random() * 50,
       },
       label: `bbox-${overlayCount + 1}`,
+      draggable: true,
+      selectable: true,
     });
 
     addOverlay(bbox);
@@ -103,18 +116,55 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
           y: Math.random() * canvasDimensions.height,
         },
         showConfidence: true,
+        selectable: true,
       }
     );
 
     addOverlay(classification);
   }, [addOverlay, overlayCount, canvasDimensions]);
 
+  // Spatial manipulation functions
+  const shiftPosition = useCallback(
+    (deltaX: number, deltaY: number) => {
+      if (!scene) return;
+      scene.getEventBus().emit({
+        type: LIGHTER_EVENTS.SPATIAL_SHIFT,
+        detail: { deltaX, deltaY },
+      });
+    },
+    [scene]
+  );
+
+  const resizeDimensions = useCallback(
+    (deltaWidth: number, deltaHeight: number) => {
+      if (!scene) return;
+      scene.getEventBus().emit({
+        type: LIGHTER_EVENTS.SPATIAL_RESIZE,
+        detail: { deltaWidth, deltaHeight },
+      });
+    },
+    [scene]
+  );
+
+  const moveToPosition = useCallback(
+    (newX: number, newY: number) => {
+      if (!scene) return;
+      scene.getEventBus().emit({
+        type: LIGHTER_EVENTS.SPATIAL_MOVE,
+        detail: { newX, newY },
+      });
+    },
+    [scene]
+  );
+
   return (
     <div
       className={`lighter-sample-renderer ${className}`}
       style={{
         width: "100%",
-        height: "90%",
+        height: "50%",
+        display: "flex",
+        flexDirection: "column",
       }}
     >
       <canvas
@@ -122,61 +172,235 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
         style={{
           border: "1px solid #ccc",
           display: "block",
+          flex: 1,
         }}
       />
 
-      <div style={{ marginTop: "8px" }}>
-        <button
-          onClick={addRandomBoundingBox}
-          disabled={!isReady}
-          style={{
-            padding: "8px 16px",
-            background: "#007bff",
-            color: "white",
-            border: "none",
-            borderRadius: "4px",
-            cursor: isReady ? "pointer" : "not-allowed",
-            opacity: isReady ? 1 : 0.5,
-          }}
-        >
-          Add Random BBox
-        </button>
-        <button
-          onClick={addRandomClassification}
-          disabled={!isReady}
-          style={{
-            marginLeft: "8px",
-            padding: "8px 16px",
-            background: "#28a745",
-            color: "white",
-            border: "none",
-            borderRadius: "4px",
-            cursor: isReady ? "pointer" : "not-allowed",
-            opacity: isReady ? 1 : 0.5,
-          }}
-        >
-          Add Random Classification
-        </button>
-        <button
-          onClick={clearOverlays}
-          disabled={!isReady}
-          style={{
-            marginLeft: "8px",
-            padding: "8px 16px",
-            background: "#6c757d",
-            color: "white",
-            border: "none",
-            borderRadius: "4px",
-            cursor: isReady ? "pointer" : "not-allowed",
-            opacity: isReady ? 1 : 0.5,
-          }}
-        >
-          Clear All
-        </button>
-        <span style={{ marginLeft: "16px", fontFamily: "monospace" }}>
-          Overlays: {overlayCount}
-        </span>
+      <div style={{ padding: "8px", borderTop: "1px solid #ccc" }}>
+        {/* Overlay creation controls */}
+        <div style={{ marginBottom: "8px" }}>
+          <button
+            onClick={addRandomBoundingBox}
+            disabled={!isReady}
+            style={{
+              padding: "8px 16px",
+              background: "#007bff",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              cursor: isReady ? "pointer" : "not-allowed",
+              opacity: isReady ? 1 : 0.5,
+              marginRight: "8px",
+            }}
+          >
+            Add Random BBox
+          </button>
+          <button
+            onClick={addRandomClassification}
+            disabled={!isReady}
+            style={{
+              padding: "8px 16px",
+              background: "#28a745",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              cursor: isReady ? "pointer" : "not-allowed",
+              opacity: isReady ? 1 : 0.5,
+              marginRight: "8px",
+            }}
+          >
+            Add Random Classification
+          </button>
+          <button
+            onClick={clearOverlays}
+            disabled={!isReady}
+            style={{
+              padding: "8px 16px",
+              background: "#6c757d",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              cursor: isReady ? "pointer" : "not-allowed",
+              opacity: isReady ? 1 : 0.5,
+              marginRight: "16px",
+            }}
+          >
+            Clear All
+          </button>
+          <button
+            onClick={undo}
+            style={{
+              padding: "8px 16px",
+              background: "#ffc107",
+              color: "black",
+              border: "none",
+              borderRadius: "4px",
+              cursor: "pointer",
+              marginRight: "8px",
+            }}
+          >
+            Undo
+          </button>
+          <button
+            onClick={redo}
+            style={{
+              padding: "8px 16px",
+              background: "#17a2b8",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              cursor: "pointer",
+              marginRight: "16px",
+            }}
+          >
+            Redo
+          </button>
+          <span style={{ fontFamily: "monospace" }}>
+            Overlays: {overlayCount} | Selected: {selectedOverlayIds.length}
+          </span>
+        </div>
+
+        {/* Selection manipulation controls */}
+        {selectedOverlayIds.length > 0 && (
+          <div
+            style={{
+              padding: "8px",
+              backgroundColor: "#000",
+              borderRadius: "4px",
+              border: "1px solid #dee2e6",
+            }}
+          >
+            <h4
+              style={{
+                margin: "0 0 8px 0",
+                fontSize: "14px",
+                fontWeight: "bold",
+              }}
+            >
+              Selected Overlay Controls ({selectedOverlayIds.length} selected)
+            </h4>
+
+            {/* Position controls */}
+            <div style={{ marginBottom: "8px" }}>
+              <label
+                style={{
+                  fontSize: "12px",
+                  fontWeight: "bold",
+                  marginRight: "8px",
+                }}
+              >
+                Position:
+              </label>
+              <button onClick={() => shiftPosition(-1, 0)} style={buttonStyle}>
+                ←
+              </button>
+              <button onClick={() => shiftPosition(1, 0)} style={buttonStyle}>
+                →
+              </button>
+              <button onClick={() => shiftPosition(0, -1)} style={buttonStyle}>
+                ↑
+              </button>
+              <button onClick={() => shiftPosition(0, 1)} style={buttonStyle}>
+                ↓
+              </button>
+              <button onClick={() => shiftPosition(-10, 0)} style={buttonStyle}>
+                ← 10
+              </button>
+              <button onClick={() => shiftPosition(10, 0)} style={buttonStyle}>
+                → 10
+              </button>
+              <button onClick={() => shiftPosition(0, -10)} style={buttonStyle}>
+                ↑ 10
+              </button>
+              <button onClick={() => shiftPosition(0, 10)} style={buttonStyle}>
+                ↓ 10
+              </button>
+            </div>
+
+            {/* Dimension controls (only for bounding boxes) */}
+            {selectedBounds && (
+              <div style={{ marginBottom: "8px" }}>
+                <label
+                  style={{
+                    fontSize: "12px",
+                    fontWeight: "bold",
+                    marginRight: "8px",
+                  }}
+                >
+                  Size:
+                </label>
+                <button
+                  onClick={() => resizeDimensions(-1, 0)}
+                  style={buttonStyle}
+                >
+                  W-
+                </button>
+                <button
+                  onClick={() => resizeDimensions(1, 0)}
+                  style={buttonStyle}
+                >
+                  W+
+                </button>
+                <button
+                  onClick={() => resizeDimensions(0, -1)}
+                  style={buttonStyle}
+                >
+                  H-
+                </button>
+                <button
+                  onClick={() => resizeDimensions(0, 1)}
+                  style={buttonStyle}
+                >
+                  H+
+                </button>
+                <button
+                  onClick={() => resizeDimensions(-10, 0)}
+                  style={buttonStyle}
+                >
+                  W-10
+                </button>
+                <button
+                  onClick={() => resizeDimensions(10, 0)}
+                  style={buttonStyle}
+                >
+                  W+10
+                </button>
+                <button
+                  onClick={() => resizeDimensions(0, -10)}
+                  style={buttonStyle}
+                >
+                  H-10
+                </button>
+                <button
+                  onClick={() => resizeDimensions(0, 10)}
+                  style={buttonStyle}
+                >
+                  H+10
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
+};
+
+// Styles
+const buttonStyle: React.CSSProperties = {
+  padding: "2px 6px",
+  margin: "0 2px",
+  fontSize: "11px",
+  border: "1px solid #ccc",
+  borderRadius: "2px",
+  backgroundColor: "#000",
+  cursor: "pointer",
+};
+
+const inputStyle: React.CSSProperties = {
+  width: "60px",
+  padding: "2px 4px",
+  fontSize: "12px",
+  border: "1px solid #ccc",
+  borderRadius: "2px",
 };

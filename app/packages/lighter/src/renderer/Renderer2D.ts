@@ -60,12 +60,6 @@ export interface Renderer2D {
     id?: string
   ): void;
   drawLine(start: Point, end: Point, style: DrawStyle, id?: string): void;
-  drawCircle(
-    center: Point,
-    radius: number,
-    style: DrawStyle,
-    id?: string
-  ): void;
   drawImage(
     image: ImageSource,
     destination: Rect,
@@ -76,6 +70,22 @@ export interface Renderer2D {
 
   // Element management
   dispose(id: string): void;
+
+  // Hit testing
+  /**
+   * Tests if a point intersects with a rendered element.
+   * @param point - The point to test in canvas coordinates.
+   * @param id - Optional ID to test a specific element. If not provided, tests all elements.
+   * @returns True if the point intersects with the element(s).
+   */
+  hitTest(point: Point, id?: string): boolean;
+
+  /**
+   * Gets the bounds of a rendered element.
+   * @param id - The element ID.
+   * @returns The bounds of the element, or undefined if not found.
+   */
+  getBounds(id: string): Rect | undefined;
 
   // Container information
   getContainerDimensions(): { width: number; height: number };

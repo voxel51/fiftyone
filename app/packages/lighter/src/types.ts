@@ -28,6 +28,12 @@ export interface DrawStyle {
   fillStyle?: string;
   lineWidth?: number;
   opacity?: number;
+  /** Border dash pattern for dashed/dotted lines. Empty array or undefined = solid line */
+  dashPattern?: number[];
+  /** Selection highlight style */
+  isSelected?: boolean;
+  /** Selection border color (defaults to orange if not specified) */
+  selectionColor?: string;
 }
 
 /**

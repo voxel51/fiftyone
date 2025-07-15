@@ -34,10 +34,21 @@ export type { ResourceLoader } from "./resource/ResourceLoader";
 // Event exports
 export { EventBus } from "./event/EventBus";
 export type { OverlayEvent } from "./event/EventBus";
+export { LIGHTER_EVENTS } from "./event/EventBus";
+
+// Interaction exports
+export { InteractionManager } from "./interaction/InteractionManager";
+export type { InteractionHandler } from "./interaction/InteractionManager";
+
+// Selection exports
+export { SelectionManager } from "./selection/SelectionManager";
+export type { Selectable } from "./selection/Selectable";
 
 // Undo/Redo exports
 export type { Command } from "./undo/Command";
 export { UndoRedoManager } from "./undo/UndoRedoManager";
+export { MoveOverlayCommand } from "./undo/MoveOverlayCommand";
+export type { Movable } from "./undo/MoveOverlayCommand";
 
 // Plugin exports
 // TODO: PluginRegistry is currently unused - this needs to be hooked with fiftyone plugins

@@ -4,14 +4,15 @@
 
 import type { EventBus } from "../event/EventBus";
 import { LIGHTER_EVENTS } from "../event/EventBus";
+import type { InteractionHandler } from "../interaction/InteractionManager";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { ResourceLoader } from "../resource/ResourceLoader";
-import type { DrawStyle } from "../types";
+import type { DrawStyle, Point } from "../types";
 
 /**
  * Base abstract class for all overlays.
  */
-export abstract class BaseOverlay {
+export abstract class BaseOverlay implements InteractionHandler {
   /** Unique identifier for the overlay. */
   readonly id: string;
   /** Display name of the overlay. */
@@ -138,4 +139,80 @@ export abstract class BaseOverlay {
   destroy(): void {
     // Base implementation - subclasses should override if needed
   }
+
+  // InteractionHandler interface implementation
+
+  /**
+   * Check if a point is within this overlay's bounds.
+   * Default implementation uses renderer hit-testing.
+   * @param point - The point to test.
+   * @returns True if the point is within the overlay.
+   */
+  containsPoint(point: Point): boolean {
+    if (!this.renderer) return false;
+    return this.renderer.hitTest(point, this.id);
+  }
+
+  /**
+   * Handle pointer down event.
+   * Override in subclasses to implement custom behavior.
+   * @param point - The point where the event occurred.
+   * @param event - The original pointer event.
+   * @returns True if the event was handled.
+   */
+  onPointerDown?(point: Point, event: PointerEvent): boolean;
+
+  /**
+   * Handle pointer move event.
+   * Override in subclasses to implement custom behavior.
+   * @param point - The point where the event occurred.
+   * @param event - The original pointer event.
+   * @returns True if the event was handled.
+   */
+  onPointerMove?(point: Point, event: PointerEvent): boolean;
+
+  /**
+   * Handle pointer up event.
+   * Override in subclasses to implement custom behavior.
+   * @param point - The point where the event occurred.
+   * @param event - The original pointer event.
+   * @returns True if the event was handled.
+   */
+  onPointerUp?(point: Point, event: PointerEvent): boolean;
+
+  /**
+   * Handle click event.
+   * Override in subclasses to implement custom behavior.
+   * @param point - The point where the event occurred.
+   * @param event - The original pointer event.
+   * @returns True if the event was handled.
+   */
+  onClick?(point: Point, event: PointerEvent): boolean;
+
+  /**
+   * Handle double-click event.
+   * Override in subclasses to implement custom behavior.
+   * @param point - The point where the event occurred.
+   * @param event - The original pointer event.
+   * @returns True if the event was handled.
+   */
+  onDoubleClick?(point: Point, event: PointerEvent): boolean;
+
+  /**
+   * Handle hover enter event.
+   * Override in subclasses to implement custom behavior.
+   * @param point - The point where the event occurred.
+   * @param event - The original pointer event.
+   * @returns True if the event was handled.
+   */
+  onHoverEnter?(point: Point, event: PointerEvent): boolean;
+
+  /**
+   * Handle hover leave event.
+   * Override in subclasses to implement custom behavior.
+   * @param point - The point where the event occurred.
+   * @param event - The original pointer event.
+   * @returns True if the event was handled.
+   */
+  onHoverLeave?(point: Point, event: PointerEvent): boolean;
 }

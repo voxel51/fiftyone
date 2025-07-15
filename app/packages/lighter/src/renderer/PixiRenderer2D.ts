@@ -120,11 +120,56 @@ export class PixiRenderer2D implements Renderer2D {
     // Apply stroke if specified
     if (style.strokeStyle) {
       const { color, alpha } = this.parseColorWithAlpha(style.strokeStyle);
-      graphics.setStrokeStyle({
-        width: style.lineWidth || 1,
-        color: color,
-        alpha: alpha * (style.opacity || 1),
+
+      if (style.dashPattern && style.dashPattern.length > 0) {
+        // Draw dashed stroke using multiple line segments
+        this.drawDashedRect(graphics, bounds, {
+          color,
+          alpha: alpha * (style.opacity || 1),
+          width: style.lineWidth || 1,
+          dashPattern: style.dashPattern,
+        });
+      } else {
+        // Draw solid stroke
+        const strokeOptions: PIXI.StrokeStyle = {
+          width: style.lineWidth || 1,
+          color: color,
+          alpha: alpha * (style.opacity || 1),
+        };
+        graphics.setStrokeStyle(strokeOptions);
+        graphics.stroke();
+      }
+    }
+
+    // Add selection highlight if selected
+    if (style.isSelected) {
+      const selectionColor = style.selectionColor || "#ff6600"; // Default orange
+      const { color: selColor, alpha: selAlpha } =
+        this.parseColorWithAlpha(selectionColor);
+
+      // Create selection border with dotted pattern
+      const selectionGraphics = new PIXI.Graphics();
+      selectionGraphics.rect(
+        bounds.x - 2,
+        bounds.y - 2,
+        bounds.width + 4,
+        bounds.height + 4
+      );
+      selectionGraphics.setStrokeStyle({
+        width: 2,
+        color: selColor,
+        alpha: selAlpha,
+        cap: "round",
+        join: "round",
       });
+      selectionGraphics.stroke();
+
+      this.graphicsContainer.addChild(selectionGraphics);
+
+      // Track selection border separately for disposal
+      if (id) {
+        this.elementMap.set(`${id}-selection`, selectionGraphics);
+      }
     }
 
     this.graphicsContainer.addChild(graphics);
@@ -200,45 +245,6 @@ export class PixiRenderer2D implements Renderer2D {
 
     graphics.moveTo(start.x, start.y);
     graphics.lineTo(end.x, end.y);
-
-    this.graphicsContainer.addChild(graphics);
-
-    // Track the element if an ID is provided
-    if (id) {
-      this.elementMap.set(id, graphics);
-    }
-  }
-
-  drawCircle(
-    center: Point,
-    radius: number,
-    style: DrawStyle,
-    id?: string
-  ): void {
-    const graphics = new PIXI.Graphics();
-
-    // Apply fill if specified
-    if (style.fillStyle) {
-      const { color, alpha } = this.parseColorWithAlpha(style.fillStyle);
-      graphics.beginFill(color, alpha);
-    }
-
-    // Apply stroke if specified
-    if (style.strokeStyle) {
-      const { color, alpha } = this.parseColorWithAlpha(style.strokeStyle);
-      graphics.setStrokeStyle({
-        width: style.lineWidth || 1,
-        color: color,
-        alpha: alpha * (style.opacity || 1),
-      });
-    }
-
-    graphics.drawCircle(center.x, center.y, radius);
-
-    // End fill if we started one
-    if (style.fillStyle) {
-      graphics.endFill();
-    }
 
     this.graphicsContainer.addChild(graphics);
 
@@ -408,8 +414,76 @@ export class PixiRenderer2D implements Renderer2D {
       }
     }
 
+    if (color.startsWith("hsl")) {
+      // Handle hsla and hsl formats
+      const match = color.match(
+        /hsla?\(([\d.]+),\s*(\d+)%,\s*(\d+)%(?:,\s*([\d.]+))?\)/
+      );
+      if (match) {
+        const [, h, s, l, a] = match;
+        const alpha = a ? parseFloat(a) : 1;
+        const rgb = this.hslToRgb(parseFloat(h), parseInt(s), parseInt(l));
+        const hex = (rgb.r << 16) | (rgb.g << 8) | rgb.b;
+        return { color: hex, alpha };
+      }
+    }
+
     // Default to black
     return { color: 0x000000, alpha: 1 };
+  }
+
+  private hslToRgb(
+    h: number,
+    s: number,
+    l: number
+  ): { r: number; g: number; b: number } {
+    // Normalize hue to 0-360
+    h = h % 360;
+    if (h < 0) h += 360;
+
+    // Normalize saturation and lightness to 0-1
+    s = Math.max(0, Math.min(100, s)) / 100;
+    l = Math.max(0, Math.min(100, l)) / 100;
+
+    const c = (1 - Math.abs(2 * l - 1)) * s;
+    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+    const m = l - c / 2;
+
+    let r = 0,
+      g = 0,
+      b = 0;
+
+    if (h >= 0 && h < 60) {
+      r = c;
+      g = x;
+      b = 0;
+    } else if (h >= 60 && h < 120) {
+      r = x;
+      g = c;
+      b = 0;
+    } else if (h >= 120 && h < 180) {
+      r = 0;
+      g = c;
+      b = x;
+    } else if (h >= 180 && h < 240) {
+      r = 0;
+      g = x;
+      b = c;
+    } else if (h >= 240 && h < 300) {
+      r = x;
+      g = 0;
+      b = c;
+    } else if (h >= 300 && h < 360) {
+      r = c;
+      g = 0;
+      b = x;
+    }
+
+    return {
+      r: Math.round((r + m) * 255),
+      g: Math.round((g + m) * 255),
+      b: Math.round((b + m) * 255),
+    };
   }
 
   /**
@@ -475,6 +549,185 @@ export class PixiRenderer2D implements Renderer2D {
 
       // Destroy the element itself
       element.destroy({ children: true });
+    }
+
+    // Also dispose of related elements (like text backgrounds and selection borders)
+    const backgroundElement = this.elementMap.get(`${id}-background`);
+    if (backgroundElement) {
+      if (backgroundElement.parent) {
+        backgroundElement.parent.removeChild(backgroundElement);
+      }
+      this.elementMap.delete(`${id}-background`);
+      backgroundElement.destroy({ children: true });
+    }
+
+    const selectionElement = this.elementMap.get(`${id}-selection`);
+    if (selectionElement) {
+      if (selectionElement.parent) {
+        selectionElement.parent.removeChild(selectionElement);
+      }
+      this.elementMap.delete(`${id}-selection`);
+      selectionElement.destroy({ children: true });
+    }
+  }
+
+  // Hit testing methods
+  hitTest(point: Point, id?: string): boolean {
+    if (id) {
+      const element = this.elementMap.get(id);
+      if (element) {
+        return this.hitTestElement(element, point);
+      }
+      return false;
+    }
+
+    // Test all elements if no ID specified (in reverse order for proper z-order)
+    const elements = Array.from(this.elementMap.values()).reverse();
+    for (const element of elements) {
+      if (this.hitTestElement(element, point)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  getBounds(id: string): Rect | undefined {
+    const element = this.elementMap.get(id);
+    if (element) {
+      const bounds = element.getBounds();
+      return {
+        x: bounds.x,
+        y: bounds.y,
+        width: bounds.width,
+        height: bounds.height,
+      };
+    }
+    return undefined;
+  }
+
+  private hitTestElement(element: PIXI.Container, point: Point): boolean {
+    // Check if element is visible and interactive
+    if (!element.visible || element.alpha <= 0) {
+      return false;
+    }
+
+    // Get global bounds (already in screen coordinates)
+    const bounds = element.getBounds();
+
+    // Simple bounds check
+    return (
+      point.x >= bounds.x &&
+      point.x <= bounds.x + bounds.width &&
+      point.y >= bounds.y &&
+      point.y <= bounds.y + bounds.height
+    );
+  }
+
+  private drawDashedRect(
+    graphics: PIXI.Graphics,
+    bounds: Rect,
+    style: {
+      color: number;
+      alpha: number;
+      width: number;
+      dashPattern: number[];
+    }
+  ): void {
+    const { color, alpha, width, dashPattern } = style;
+    const dashLength = dashPattern[0];
+    const gapLength = dashPattern[1];
+
+    // Set stroke style for dashed lines
+    graphics.setStrokeStyle({
+      width,
+      color,
+      alpha,
+      cap: "round",
+      join: "round",
+    });
+
+    // Draw dashed top line
+    this.drawDashedLine(
+      graphics,
+      bounds.x,
+      bounds.y,
+      bounds.x + bounds.width,
+      bounds.y,
+      dashLength,
+      gapLength
+    );
+
+    // Draw dashed right line
+    this.drawDashedLine(
+      graphics,
+      bounds.x + bounds.width,
+      bounds.y,
+      bounds.x + bounds.width,
+      bounds.y + bounds.height,
+      dashLength,
+      gapLength
+    );
+
+    // Draw dashed bottom line
+    this.drawDashedLine(
+      graphics,
+      bounds.x + bounds.width,
+      bounds.y + bounds.height,
+      bounds.x,
+      bounds.y + bounds.height,
+      dashLength,
+      gapLength
+    );
+
+    // Draw dashed left line
+    this.drawDashedLine(
+      graphics,
+      bounds.x,
+      bounds.y + bounds.height,
+      bounds.x,
+      bounds.y,
+      dashLength,
+      gapLength
+    );
+
+    // Apply the stroke to all dashed lines
+    graphics.stroke();
+  }
+
+  private drawDashedLine(
+    graphics: PIXI.Graphics,
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    dashLength: number,
+    gapLength: number
+  ): void {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    const unitX = dx / distance;
+    const unitY = dy / distance;
+
+    let currentDistance = 0;
+    let isDrawing = true;
+
+    while (currentDistance < distance) {
+      const segmentLength = isDrawing ? dashLength : gapLength;
+      const nextDistance = Math.min(currentDistance + segmentLength, distance);
+
+      if (isDrawing) {
+        const startX = x1 + unitX * currentDistance;
+        const startY = y1 + unitY * currentDistance;
+        const endX = x1 + unitX * nextDistance;
+        const endY = y1 + unitY * nextDistance;
+
+        graphics.moveTo(startX, startY);
+        graphics.lineTo(endX, endY);
+      }
+
+      currentDistance = nextDistance;
+      isDrawing = !isDrawing;
     }
   }
 }

@@ -2,6 +2,8 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
+import type { Point } from "../types";
+
 /**
  * Event type constants for overlay events.
  */
@@ -28,6 +30,34 @@ export const LIGHTER_EVENTS = {
   RESOURCE_ERROR: "resource-error",
   /** Emitted when the canvas or container is resized */
   RESIZE: "resize",
+  /** Emitted when an overlay starts being dragged */
+  OVERLAY_DRAG_START: "overlay-drag-start",
+  /** Emitted when an overlay is being dragged */
+  OVERLAY_DRAG_MOVE: "overlay-drag-move",
+  /** Emitted when an overlay drag ends */
+  OVERLAY_DRAG_END: "overlay-drag-end",
+  /** Emitted when an overlay is clicked */
+  OVERLAY_CLICK: "overlay-click",
+  /** Emitted when an overlay is double-clicked */
+  OVERLAY_DOUBLE_CLICK: "overlay-double-click",
+  /** Emitted when an overlay is hovered */
+  OVERLAY_HOVER: "overlay-hover",
+  /** Emitted when an overlay is no longer hovered */
+  OVERLAY_UNHOVER: "overlay-unhover",
+  /** Emitted when an overlay is selected */
+  OVERLAY_SELECT: "overlay-select",
+  /** Emitted when an overlay is deselected */
+  OVERLAY_DESELECT: "overlay-deselect",
+  /** Emitted when the selection changes (multiple overlays selected/deselected) */
+  SELECTION_CHANGED: "selection-changed",
+  /** Emitted when all overlays are deselected */
+  SELECTION_CLEARED: "selection-cleared",
+  /** Emitted to request spatial shifting of overlays */
+  SPATIAL_SHIFT: "spatial-shift",
+  /** Emitted to request dimension changes of overlays */
+  SPATIAL_RESIZE: "spatial-resize",
+  /** Emitted to request position changes of overlays */
+  SPATIAL_MOVE: "spatial-move",
 } as const;
 
 /**
@@ -59,6 +89,86 @@ export type OverlayEvent =
   | {
       type: typeof LIGHTER_EVENTS.RESIZE;
       detail: { width: number; height: number };
+    }
+  | {
+      type: typeof LIGHTER_EVENTS.OVERLAY_DRAG_START;
+      detail: { id: string; startPoint: Point; startPosition: Point };
+    }
+  | {
+      type: typeof LIGHTER_EVENTS.OVERLAY_DRAG_MOVE;
+      detail: {
+        id: string;
+        currentPoint: Point;
+        delta: Point;
+        startPosition: Point;
+        currentPosition: Point;
+      };
+    }
+  | {
+      type: typeof LIGHTER_EVENTS.OVERLAY_DRAG_END;
+      detail: {
+        id: string;
+        endPoint: Point;
+        totalDelta: Point;
+        startPosition: Point;
+        endPosition: Point;
+      };
+    }
+  | {
+      type: typeof LIGHTER_EVENTS.OVERLAY_CLICK;
+      detail: { id: string; point: Point };
+    }
+  | {
+      type: typeof LIGHTER_EVENTS.OVERLAY_DOUBLE_CLICK;
+      detail: { id: string; point: Point };
+    }
+  | {
+      type: typeof LIGHTER_EVENTS.OVERLAY_HOVER;
+      detail: { id: string; point: Point };
+    }
+  | {
+      type: typeof LIGHTER_EVENTS.OVERLAY_UNHOVER;
+      detail: { id: string; point: Point };
+    }
+  | {
+      type: typeof LIGHTER_EVENTS.OVERLAY_SELECT;
+      detail: { id: string; point: Point };
+    }
+  | {
+      type: typeof LIGHTER_EVENTS.OVERLAY_DESELECT;
+      detail: { id: string };
+    }
+  | {
+      type: typeof LIGHTER_EVENTS.SELECTION_CHANGED;
+      detail: { selectedIds: string[]; deselectedIds: string[] };
+    }
+  | {
+      type: typeof LIGHTER_EVENTS.SELECTION_CLEARED;
+      detail: { previouslySelectedIds: string[] };
+    }
+  | {
+      type: typeof LIGHTER_EVENTS.SPATIAL_SHIFT;
+      detail: {
+        targetIds?: string[]; // If not provided, applies to selected overlays
+        deltaX: number;
+        deltaY: number;
+      };
+    }
+  | {
+      type: typeof LIGHTER_EVENTS.SPATIAL_RESIZE;
+      detail: {
+        targetIds?: string[]; // If not provided, applies to selected overlays
+        deltaWidth: number;
+        deltaHeight: number;
+      };
+    }
+  | {
+      type: typeof LIGHTER_EVENTS.SPATIAL_MOVE;
+      detail: {
+        targetIds?: string[]; // If not provided, applies to selected overlays
+        newX: number;
+        newY: number;
+      };
     };
 
 /**
