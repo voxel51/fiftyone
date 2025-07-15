@@ -89,4 +89,9 @@ export interface Renderer2D {
 
   // Container information
   getContainerDimensions(): { width: number; height: number };
+
+  /**
+   * Returns the underlying HTMLCanvasElement used for rendering.
+   */
+  getCanvas(): HTMLCanvasElement;
 }
