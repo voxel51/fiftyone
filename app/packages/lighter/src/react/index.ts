@@ -10,3 +10,4 @@ export type { LighterSampleRendererProps } from "./LighterSampleRenderer";
 export { useLighterWithPixi as useLighter } from "./useLighterWithPixi";
 export { usePixiRenderer } from "./usePixiRenderer";
 export { usePixiResourceLoader } from "./usePixiResourceLoader";
+export { useSceneSelectionState } from "./useSceneSelectionState";

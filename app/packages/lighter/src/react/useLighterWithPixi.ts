@@ -42,7 +42,7 @@ export const useLighterWithPixi = (
       eventBus,
     });
 
-    eventBus.on("overlay-loaded", (event) => {
+    eventBus.on("overlay-added", (event) => {
       setOverlayCount((prev) => prev + 1);
     });
 
