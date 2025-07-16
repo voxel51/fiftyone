@@ -183,7 +183,7 @@ def test_plugin_definition_server_path_builtin():
 def test_plugin_definition_server_path_user_plugin(
     mocker, fiftyone_plugins_dir
 ):
-    mocker.patch("fiftyone.config.plugins_dir", fiftyone_plugins_dir)
+    mocker.patch("fiftyone.config.plugins_dir", str(fiftyone_plugins_dir))
 
     user_plugin_dir = os.path.join(fiftyone_plugins_dir, "test-user-plugin")
 
