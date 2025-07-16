@@ -2,7 +2,7 @@ name: Build Internal Docker Images
 on:
   workflow_dispatch: {}
   schedule:
-    # 4:05AM On Thursdays for vulns assesment.
+    # 4:05AM On Thursdays for vuln assessments.
     - cron: '5 4 * * 4'
 jobs:
   build-image:
