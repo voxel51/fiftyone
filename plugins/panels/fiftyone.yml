@@ -6,3 +6,4 @@ fiftyone:
 url: https://github.com/voxel51/fiftyone/plugins/panels
 panels:
   - model_evaluation_panel_builtin
+  - panel_one

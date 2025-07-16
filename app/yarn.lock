@@ -2267,6 +2267,12 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@fiftyone/builtin-plugins@workspace:packages/builtin-plugins":
+  version: 0.0.0-use.local
+  resolution: "@fiftyone/builtin-plugins@workspace:packages/builtin-plugins"
+  languageName: unknown
+  linkType: soft
+
 "@fiftyone/components@npm:*, @fiftyone/components@workspace:packages/components":
   version: 0.0.0-use.local
   resolution: "@fiftyone/components@workspace:packages/components"

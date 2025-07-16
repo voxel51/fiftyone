@@ -1,0 +1,13 @@
+{
+    "name": "@fiftyone/builtin-plugins",
+    "private": true,
+    "author": "Voxel51, Inc.",
+    "version": "1.0.0",
+    "type": "module",
+    "description": "FiftyOne Builtin Plugins",
+    "homepage": "https://github.com/voxel51/fiftyone/app/packages/builtin-plugins",
+    "bugs": {
+        "url": "https://github.com/voxel51/fiftyone/"
+    },
+    "main": "./src/index.ts"
+}
