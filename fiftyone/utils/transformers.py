@@ -1458,7 +1458,7 @@ class TransformersPoseEstimationOutputProcessor(fout.OutputProcessor):
         self._processor = None
         self._pose_estimation_post_processor = None
         self._boxes = None
-
+    
     @property
     def processor(self):
         if self._processor is None:
@@ -1466,7 +1466,7 @@ class TransformersPoseEstimationOutputProcessor(fout.OutputProcessor):
                 "Processor not set. Please make sure the processor is set."
             )
         return self._processor
-
+    
     @processor.setter
     def processor(self, processor):
         self._processor = processor
@@ -1475,131 +1475,125 @@ class TransformersPoseEstimationOutputProcessor(fout.OutputProcessor):
                 self._pose_estimation_post_processor = (
                     self._processor.post_process_pose_estimation
                 )
-
+    
     def __call__(self, output, image_sizes, confidence_thresh=None):
-        # If processor has post-processing, use it
         if self._pose_estimation_post_processor is not None:
-            # Use provided detection boxes or default to full-image boxes
-            if self._boxes is not None:
-                boxes = self._boxes
-                self._boxes = None  # Reset after use
-            else:
-                boxes = [[[0, 0, w, h]] for h, w in image_sizes]
-
-            # Post-process outputs with boxes
-            results = self._pose_estimation_post_processor(output, boxes=boxes)
-
-            # Convert to FiftyOne format
-            fo_results = []
-            for img_idx, img_results in enumerate(results):
-                h, w = image_sizes[img_idx]
-                
-                if len(img_results) == 0:
-                    # No detections - return empty Keypoints
-                    fo_results.append(fol.Keypoints(keypoints=[]))
-                elif len(img_results) == 1:
-                    # Single detection - return Keypoints object
-                    pose_dict = img_results[0]
-                    keypoints = pose_dict['keypoints']
-                    scores = pose_dict['scores']
-
-                    # Create Keypoint objects
-                    keypoint_list = []
-                    for i in range(len(keypoints)):
-                        x_norm = keypoints[i][0].item() / w
-                        y_norm = keypoints[i][1].item() / h
-                        conf = scores[i].item()
-
-                        if confidence_thresh is None or conf >= confidence_thresh:
-                            kp = fol.Keypoint(
-                                label=f"joint_{i}",
-                                points=[(x_norm, y_norm)],
-                                confidence=[conf]
-                            )
-                        else:
-                            kp = fol.Keypoint(
-                                label=f"joint_{i}",
-                                points=[(float('nan'), float('nan'))],
-                                confidence=[0.0]
-                            )
-                        keypoint_list.append(kp)
-
-                    fo_results.append(fol.Keypoints(keypoints=keypoint_list))
-                else:
-                    # Multiple detections - return list of Keypoints
-                    keypoints_list = []
-                    for det_idx, pose_dict in enumerate(img_results):
-                        keypoints = pose_dict['keypoints']
-                        scores = pose_dict['scores']
-
-                        # Create Keypoint objects for this detection
-                        keypoint_list = []
-                        for i in range(len(keypoints)):
-                            x_norm = keypoints[i][0].item() / w
-                            y_norm = keypoints[i][1].item() / h
-                            conf = scores[i].item()
-
-                            if confidence_thresh is None or conf >= confidence_thresh:
-                                kp = fol.Keypoint(
-                                    label=f"joint_{i}",
-                                    points=[(x_norm, y_norm)],
-                                    confidence=[conf]
-                                )
-                            else:
-                                kp = fol.Keypoint(
-                                    label=f"joint_{i}",
-                                    points=[(float('nan'), float('nan'))],
-                                    confidence=[0.0]
-                                )
-                            keypoint_list.append(kp)
-
-                        kp_obj = fol.Keypoints(keypoints=keypoint_list)
-                        kp_obj._detection_idx = det_idx
-                        keypoints_list.append(kp_obj)
-                    
-                    fo_results.append(keypoints_list)
-
-            return fo_results
-        
-        # Fallback to direct heatmap processing if no post-processor
+            return self._process_with_post_processor(output, image_sizes, confidence_thresh)
         elif hasattr(output, 'heatmaps'):
-            heatmaps = output.heatmaps.detach().cpu()
-            results = []
-            
-            for batch_idx, heatmap in enumerate(heatmaps):
-                keypoint_list = []
-                for kp_idx in range(heatmap.shape[0]):
-                    # Get max location in heatmap
-                    h, w = heatmap[kp_idx].shape
-                    flat_idx = torch.argmax(heatmap[kp_idx])
-                    y_heatmap = (flat_idx // w).float()
-                    x_heatmap = (flat_idx % w).float()
-                    confidence = heatmap[kp_idx].max().item()
-                    
-                    # Convert to normalized coordinates [0, 1]
-                    x_norm = x_heatmap / w
-                    y_norm = y_heatmap / h
-                    
-                    if confidence_thresh is None or confidence >= confidence_thresh:
-                        kp = fol.Keypoint(
-                            label=f"joint_{kp_idx}",
-                            points=[(x_norm.item(), y_norm.item())],
-                            confidence=[confidence]
-                        )
-                    else:
-                        kp = fol.Keypoint(
-                            label=f"joint_{kp_idx}",
-                            points=[(float('nan'), float('nan'))],
-                            confidence=[0.0]
-                        )
-                    keypoint_list.append(kp)
-                
-                results.append(fol.Keypoints(keypoints=keypoint_list))
-            
-            return results
+            return self._process_heatmaps(output, image_sizes, confidence_thresh)
+        else:
+            raise ValueError("Unknown pose estimation output format")
+    
+    def _process_with_post_processor(self, output, image_sizes, confidence_thresh):
+        """Process output using the pose estimation post-processor."""
+        # Get boxes
+        if self._boxes is not None:
+            boxes = self._boxes
+            self._boxes = None  # Reset after use
+        else:
+            boxes = [[[0, 0, w, h]] for h, w in image_sizes]
         
-        raise ValueError("Unknown pose estimation output format")
-
+        # Post-process outputs with boxes
+        results = self._pose_estimation_post_processor(output, boxes=boxes)
+        
+        # Convert to FiftyOne format
+        fo_results = []
+        for img_idx, img_results in enumerate(results):
+            if len(img_results) == 0:
+                fo_results.append(fol.Keypoints(keypoints=[]))
+            elif len(img_results) == 1:
+                keypoints = self._create_keypoints_from_detection(
+                    img_results[0], image_sizes[img_idx], confidence_thresh
+                )
+                fo_results.append(keypoints)
+            else:
+                keypoints_list = self._create_keypoints_list_from_detections(
+                    img_results, image_sizes[img_idx], confidence_thresh
+                )
+                fo_results.append(keypoints_list)
+        
+        return fo_results
+    
+    def _create_keypoints_from_detection(self, pose_dict, image_size, confidence_thresh):
+        """Create a Keypoints object from a single detection."""
+        keypoint_list = self._extract_keypoints(pose_dict, image_size, confidence_thresh)
+        return fol.Keypoints(keypoints=keypoint_list)
+    
+    def _create_keypoints_list_from_detections(self, img_results, image_size, confidence_thresh):
+        """Create a list of Keypoints objects from multiple detections."""
+        keypoints_list = []
+        for det_idx, pose_dict in enumerate(img_results):
+            keypoint_list = self._extract_keypoints(pose_dict, image_size, confidence_thresh)
+            kp_obj = fol.Keypoints(keypoints=keypoint_list)
+            kp_obj._detection_idx = det_idx
+            keypoints_list.append(kp_obj)
+        return keypoints_list
+    
+    def _extract_keypoints(self, pose_dict, image_size, confidence_thresh):
+        """Extract and normalize keypoints from a pose dictionary."""
+        h, w = image_size
+        keypoints = pose_dict['keypoints']
+        scores = pose_dict['scores']
+        
+        keypoint_list = []
+        for i in range(len(keypoints)):
+            x_norm = keypoints[i][0].item() / w
+            y_norm = keypoints[i][1].item() / h
+            conf = scores[i].item()
+            
+            if confidence_thresh is None or conf >= confidence_thresh:
+                kp = fol.Keypoint(
+                    label=f"joint_{i}",
+                    points=[(x_norm, y_norm)],
+                    confidence=[conf]
+                )
+            else:
+                kp = fol.Keypoint(
+                    label=f"joint_{i}",
+                    points=[(float('nan'), float('nan'))],
+                    confidence=[0.0]
+                )
+            keypoint_list.append(kp)
+        
+        return keypoint_list
+    
+    def _process_heatmaps(self, output, image_sizes, confidence_thresh):
+        """Process raw heatmaps when no post-processor is available."""
+        heatmaps = output.heatmaps.detach().cpu()
+        results = []
+        
+        for batch_idx, heatmap in enumerate(heatmaps):
+            keypoint_list = []
+            for kp_idx in range(heatmap.shape[0]):
+                # Get max location in heatmap
+                h, w = heatmap[kp_idx].shape
+                flat_idx = torch.argmax(heatmap[kp_idx])
+                y_heatmap = (flat_idx // w).float()
+                x_heatmap = (flat_idx % w).float()
+                confidence = heatmap[kp_idx].max().item()
+                
+                # Convert to normalized coordinates [0, 1]
+                x_norm = x_heatmap / w
+                y_norm = y_heatmap / h
+                
+                if confidence_thresh is None or confidence >= confidence_thresh:
+                    kp = fol.Keypoint(
+                        label=f"joint_{kp_idx}",
+                        points=[(x_norm.item(), y_norm.item())],
+                        confidence=[confidence]
+                    )
+                else:
+                    kp = fol.Keypoint(
+                        label=f"joint_{kp_idx}",
+                        points=[(float('nan'), float('nan'))],
+                        confidence=[0.0]
+                    )
+                keypoint_list.append(kp)
+            
+            results.append(fol.Keypoints(keypoints=keypoint_list))
+        
+        return results
+            
 def _get_image_size(img):
     if isinstance(img, torch.Tensor):
         height, width = img.size()[-2:]
