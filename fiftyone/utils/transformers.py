@@ -1151,7 +1151,7 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
 
         # Run model
         with torch.no_grad():
-            outputs = self.model(**processed)
+             outputs = self._model(**processed)
 
         # Pass boxes to output processor
         self._output_processor._boxes = boxes
