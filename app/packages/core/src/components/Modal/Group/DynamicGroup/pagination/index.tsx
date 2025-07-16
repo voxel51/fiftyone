@@ -57,20 +57,16 @@ export const GroupElementsLinkBar = React.memo(() => {
     ({ set, snapshot }) =>
       async (sample: fos.ModalSample) => {
         const current = await snapshot.getPromise(fos.modalSelector);
-        const currentGroup = await snapshot.getPromise(fos.groupByFieldValue);
-        const nextGroup = String(
-          getValue(sample.sample, dynamicGroupParameters.groupBy)
-        );
 
         if (current && current.id !== sample.id) {
           set(modalSelector, (current) => {
             return {
               ...current,
               id: sample.id,
-              groupId:
-                groupField && currentGroup === nextGroup
-                  ? (getValue(sample.sample, groupField)._id as string)
-                  : current.groupId,
+              groupId: groupField
+                ? // if we are in a grouped dataset, get the next group id
+                  (getValue(sample.sample, groupField)._id as string)
+                : null,
             };
           });
         }
