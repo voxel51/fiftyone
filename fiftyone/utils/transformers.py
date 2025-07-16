@@ -1147,7 +1147,7 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
         processed = self.transforms(images=images, boxes=boxes, return_tensors="pt")
 
         # Move to device
-        processed = {k: v.to(self.model.device) for k, v in processed.items()}
+        processed = {k: v.to(self.device) for k, v in processed.items()}
 
         # Run model
         with torch.no_grad():
