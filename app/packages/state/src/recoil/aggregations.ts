@@ -49,6 +49,7 @@ export const aggregationQuery = graphQLSelectorFamily<
     mixed?: boolean;
     paths: string[];
     root?: boolean;
+    useGroupId?: boolean;
   },
   Aggregation[]
 >({
@@ -66,6 +67,7 @@ export const aggregationQuery = graphQLSelectorFamily<
       modal,
       paths,
       root = false,
+      useGroupId = false,
     }) =>
     ({ get }) => {
       const dataset = get(selectors.datasetName);
@@ -89,7 +91,7 @@ export const aggregationQuery = graphQLSelectorFamily<
           extended && !root
             ? get(modal ? filterAtoms.modalFilters : filterAtoms.filters)
             : null,
-        groupId: !root && modal ? null || null : null,
+        groupId: !root && modal && useGroupId ? get(groupId) || null : null,
         hiddenLabels: !root ? get(selectors.hiddenLabelsArray) : [],
         paths,
         mixed,
