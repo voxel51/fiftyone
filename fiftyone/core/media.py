@@ -7,6 +7,7 @@ Sample media utilities.
 """
 import eta.core.image as etai
 import eta.core.video as etav
+from fiftyone.__public__ import config
 
 
 # Valid media types
@@ -43,7 +44,7 @@ def get_media_type(filepath):
     if filepath.endswith(".fo3d"):
         return THREE_D
 
-    return UNKNOWN
+    return config.default_media_type
 
 
 class MediaTypeError(TypeError):

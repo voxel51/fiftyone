@@ -280,6 +280,12 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_EXECUTION_CACHE_ENABLED",
             default=True,
         )
+        self.default_media_type = self.parse_string(
+            d,
+            "default_media_type",
+            env_var="FIFTYONE_DEFAULT_MEDIA_TYPE",
+            default="unknown",
+        )
         self._init()
 
     @property
