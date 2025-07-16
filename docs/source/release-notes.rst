@@ -70,6 +70,12 @@ Core
   on July 11, 2025 and future releases may not be compatible with this version.
   `#6132 <https://github.com/voxel51/fiftyone/pull/6132>`_
 
+Plugins
+
+- Fixed an issue where builtin plugin definitions server paths were resovled
+  incorrectly.
+  `#6136 <https://github.com/voxel51/fiftyone/pull/6136>`_
+
 Utilities
 
 - Fixed `#6082 <https://github.com/voxel51/fiftyone/issues/6082>`_. Corrected
@@ -81,6 +87,10 @@ Utilities
   returned via an `EvaluationResults` object in-memory, but no evaluation info
   will be stored on the dataset.
   `#6126 <https://github.com/voxel51/fiftyone/pull/6126>`_
+- Fixed `#6137 <https://github.com/voxel51/fiftyone/issues/6137>`_: pickle
+  error in certain cases when using
+  :func:`compute_similarity() <fiftyone.brain.compute_similarity>`
+  `#6138 <https://github.com/voxel51/fiftyone/pull/6138>`_
 
 
 FiftyOne Enterprise 2.10.0
