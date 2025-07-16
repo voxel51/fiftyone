@@ -60,4 +60,3 @@ jobs:
           sbom: true
           tags: |
             ${{ env.GCP_LOCATION }}-docker.pkg.dev/${{ secrets.REPO_GCP_PROJECT }}/${{ env.GCP_DOCKER_REPOSITORY }}/fiftyone:${{ env.fo_version }}-${{ env.short_sha }}-python${{ env.pyver }}-${{ env.today }}
-
