@@ -6281,7 +6281,7 @@
                     "support": true
                 }
             },
-            "tags": ["keypoints", "coco", "torch", "transformers"],
+            "tags": ["keypoints", "coco", "torch", "transformers", "pose-estimation"],
             "date_added": "2025-07-09 12:00:00"
         },
         {
@@ -6300,7 +6300,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
+                "packages": ["torch", "torchvision", "transformers", "pose-estimation"],
                 "cpu": {
                     "support": true
                 },
@@ -6335,7 +6335,7 @@
                     "support": true
                 }
             },
-            "tags": ["keypoints", "coco", "torch", "transformers"],
+            "tags": ["keypoints", "coco", "torch", "transformers", "pose-estimation"],
             "date_added": "2025-07-09 12:00:00"
         },
         {
@@ -6389,7 +6389,7 @@
                     "support": true
                 }
             },
-            "tags": ["keypoints", "coco", "torch", "transformers"],
+            "tags": ["keypoints", "coco", "torch", "transformers", "pose-estimation"],
             "date_added": "2025-07-09 12:00:00"
         },
         {
@@ -6416,7 +6416,7 @@
                     "support": true
                 }
             },
-            "tags": ["keypoints", "coco", "torch", "transformers"],
+            "tags": ["keypoints", "coco", "torch", "transformers", "pose-estimation"],
             "date_added": "2025-07-09 12:00:00"
         }
     ]
