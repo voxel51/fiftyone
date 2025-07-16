@@ -38,7 +38,7 @@ App
 - Added calendar picker support for `DateField` and `DateTimeField` inputs in
   the sidebar `#6120 <https://github.com/voxel51/fiftyone/pull/6120>`_
 - Polished the sidebar's slider UX to improve how we handle numeric precision.
-  `#6134 <https://github.com/voxel51/fiftyone/pull/6134>`_
+  `#6147 <https://github.com/voxel51/fiftyone/pull/6147>`_
 - Fixed: fully support frame patch embeddings in 
   :ref:`Embeddings panel <app-embeddings-panel>`. 
   `#6129 <https://github.com/voxel51/fiftyone/pull/6129>`_
