@@ -8,7 +8,7 @@ jobs:
   build-image:
     runs-on: ubuntu-latest
     permissions:
-      contents: 'write'
+      contents: 'read'
       id-token: 'write'
     strategy:
       matrix:
