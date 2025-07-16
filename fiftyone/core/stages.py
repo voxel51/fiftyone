@@ -8168,7 +8168,7 @@ class ToPatches(ViewStage):
             name = None
 
         try:
-            last_dataset = fod.load_dataset(name)
+            last_dataset = fod.load_dataset(name, reload=reload)
         except:
             last_dataset = None
 
@@ -8328,7 +8328,7 @@ class ToEvaluationPatches(ViewStage):
             name = None
 
         try:
-            last_dataset = fod.load_dataset(name)
+            last_dataset = fod.load_dataset(name, reload=reload)
         except:
             last_dataset = None
 
@@ -8501,7 +8501,7 @@ class ToClips(ViewStage):
             name = None
 
         try:
-            last_dataset = fod.load_dataset(name)
+            last_dataset = fod.load_dataset(name, reload=reload)
         except:
             last_dataset = None
 
@@ -8651,7 +8651,7 @@ class ToTrajectories(ViewStage):
             name = None
 
         try:
-            last_dataset = fod.load_dataset(name)
+            last_dataset = fod.load_dataset(name, reload=reload)
         except:
             last_dataset = None
 
@@ -8857,7 +8857,7 @@ class ToFrames(ViewStage):
             name = None
 
         try:
-            last_dataset = fod.load_dataset(name)
+            last_dataset = fod.load_dataset(name, reload=reload)
         except:
             last_dataset = None
 

@@ -12,6 +12,7 @@ import traceback
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
+import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.stages as fos
 from fiftyone.core.utils import run_sync_task
@@ -41,7 +42,7 @@ class OnPlotLoad(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
         """Loads an embeddings plot based on the current view."""
-        try :
+        try:
             return await run_sync_task(self._post_sync, data)
         except Exception as e:
             msg = "Unknown error occurred."
@@ -61,15 +62,21 @@ class OnPlotLoad(HTTPEndpoint):
         slices = data["slices"]
 
         try:
-            dataset = fosu.load_and_cache_dataset(dataset_name)
+            dataset = fod.load_dataset(dataset_name, reload=True)
             results = dataset.load_brain_results(brain_key)
         except Exception as e:
-            msg = f"Failed to load results for brain run with key '{brain_key}'."
+            msg = (
+                f"Failed to load results for brain run with key '{brain_key}'."
+            )
             error_message = str(e)
             stack = traceback.format_exc()
             logger.error(stack)
             ui_error = f"{msg} Try regenerating the results."
-            return {"error": ui_error, "details": error_message, "stack": stack}
+            return {
+                "error": ui_error,
+                "details": error_message,
+                "stack": stack,
+            }
 
         if results is None:
             msg = (
@@ -79,7 +86,7 @@ class OnPlotLoad(HTTPEndpoint):
             return {"error": msg}
 
         view = fosv.get_view(
-            dataset_name,
+            dataset,
             stages=stages,
             filters=filters,
             sample_filter=get_sample_filter(slices),
@@ -189,11 +196,11 @@ class EmbeddingsSelection(HTTPEndpoint):
         if not filters and not extended_stages and not extended_selection:
             return {"selected": None}
 
-        dataset = fosu.load_and_cache_dataset(dataset_name)
+        dataset = fod.load_dataset(dataset_name, reload=True)
         results = dataset.load_brain_results(brain_key)
 
         view = fosv.get_view(
-            dataset_name,
+            dataset,
             stages=stages,
             sample_filter=get_sample_filter(slices),
         )
@@ -329,7 +336,7 @@ class ColorByChoices(HTTPEndpoint):
         dataset_name = data["datasetName"]
         brain_key = data["brainKey"]
 
-        dataset = fosu.load_and_cache_dataset(dataset_name)
+        dataset = fod.load_dataset(dataset_name, reload=True)
         info = dataset.get_brain_info(brain_key)
 
         patches_field = info.config.patches_field

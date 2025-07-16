@@ -459,7 +459,6 @@ class Query(fosa.AggregateQuery):
         t.Union[Connection[SampleItem, str], QueryTimeout],
         gql.union("PaginateSamplesResponse"),
     ]:
-
         try:
             return await paginate_samples(
                 dataset,
@@ -513,8 +512,7 @@ class Query(fosa.AggregateQuery):
     @gql.field
     def saved_views(self, dataset_name: str) -> t.Optional[t.List[SavedView]]:
         try:
-            ds = fod.load_dataset(dataset_name)
-            ds.reload()  # reload to avoid singleton issues
+            ds = fod.load_dataset(dataset_name, reload=True)
             return [
                 SavedView.from_doc(view_doc)
                 for view_doc in ds._doc.saved_views
@@ -529,7 +527,7 @@ class Query(fosa.AggregateQuery):
         view_stages: BSONArray,
     ) -> SchemaResult:
         try:
-            ds = fod.load_dataset(dataset_name)
+            ds = fod.load_dataset(dataset_name, reload=True)
             if view_stages:
                 view = fov.DatasetView._build(ds, view_stages or [])
 
@@ -610,8 +608,11 @@ async def serialize_dataset(
         if not fod.dataset_exists(dataset_name):
             return None
 
-        dataset = fo.Dataset(dataset_name, _create=False, _force_load=True)
-        dataset.reload()
+        try:
+            dataset = fo.load_dataset(dataset_name, reload=True)
+        except fod.DatasetNotFoundError:
+            return None
+
         view_name = None
         try:
             doc = dataset._get_saved_view_doc(saved_view_slug, slug=True)
