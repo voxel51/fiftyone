@@ -35,7 +35,7 @@ jobs:
           gcloud auth configure-docker "${{ env.GCP_LOCATION }}-docker.pkg.dev" --quiet
       - name: Set Env Vars
         run: |
-          fo_version=$(grep -E 'VERSION.*=.*\".*\"$' ./setup.py | awk '{ print $3 }' | tr -d '"')
+          fo_version=$(python3 -c 'import re; f=open("./setup.py").read(); print(re.search(r"VERSION\s*=\s*\"([^\"]+)\"", f).group(1))')
           short_sha="$(git rev-parse --short HEAD)"
           echo "fo_version=$fo_version" >> "$GITHUB_ENV"
           echo "pyver=${{ matrix.python }}" >> "$GITHUB_ENV"
@@ -60,3 +60,4 @@ jobs:
           sbom: true
           tags: |
             ${{ env.GCP_LOCATION }}-docker.pkg.dev/${{ secrets.REPO_GCP_PROJECT }}/${{ env.GCP_DOCKER_REPOSITORY }}/fiftyone:${{ env.fo_version }}-${{ env.short_sha }}-python${{ env.pyver }}-${{ env.today }}
+
