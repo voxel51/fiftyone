@@ -8,10 +8,10 @@ import { ExecutionCallback } from "./types-internal";
 import { PanelEventError } from "@fiftyone/utilities";
 
 type HandlerOptions = {
-  params: { [name: string]: unknown };
+  params?: { [name: string]: unknown };
   operator: string;
   prompt?: boolean;
-  panelId: string;
+  panelId?: string;
   callback?: ExecutionCallback;
   currentPanelState?: any; // most current panel state
 };
@@ -26,11 +26,11 @@ type TriggerEventFn = (panelId: string, options: HandlerOptions) => void;
 
 /**
  * A hook that can be used to trigger an operator on a panel.
- * 
+ *
  * @returns A function that can be used to trigger an operator on a panel.
- * 
+ *
  * Example:
- * 
+ *
  * ```ts
  * const panelId = usePanelId();
  * const triggerEvent = usePanelEvent();
@@ -39,13 +39,13 @@ type TriggerEventFn = (panelId: string, options: HandlerOptions) => void;
  *   params: { param1: "value1" },
  * });
  * ```
- */   
+ */
 export default function usePanelEvent(): TriggerEventFn {
   const promptForOperator = usePromptOperatorInput();
   // notify is still used for missing operator
   const notify = useNotification();
   const { increment, decrement } = useActivePanelEventsCount("");
-  const {setPendingError} = usePendingPanelEventError();
+  const { setPendingError } = usePendingPanelEventError();
 
   return usePanelStateByIdCallback((panelId, panelState, args) =>
     handlePanelEvent(
@@ -151,8 +151,10 @@ export function handlePanelEvent(
   }
 }
 
-
-export function usePendingPanelEventError(): {setPendingError: (err: PendingError) => void, pendingError: PendingError} {
+export function usePendingPanelEventError(): {
+  setPendingError: (err: PendingError) => void;
+  pendingError: PendingError;
+} {
   const [pendingError, setPendingError] = useState<PendingError>(null);
 
   useEffect(() => {
@@ -160,9 +162,14 @@ export function usePendingPanelEventError(): {setPendingError: (err: PendingErro
       const { message, error, operator } = pendingError;
       setPendingError(null); // Clear the pending error
       const [operatorUri, eventName] = operator.split("#");
-      throw new PanelEventError(message, error?.stack || error?.message || String(error), operatorUri, eventName);
+      throw new PanelEventError(
+        message,
+        error?.stack || error?.message || String(error),
+        operatorUri,
+        eventName
+      );
     }
   }, [pendingError]);
 
-  return {setPendingError, pendingError};
+  return { setPendingError, pendingError };
 }
