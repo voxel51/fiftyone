@@ -21,6 +21,12 @@ import { getBrowserStorageEffectForKey } from "./customEffects";
 import { groupMediaTypesSet } from "./groups";
 import { State } from "./types";
 
+// Local GeoSelection type to avoid cross-package import issues
+export type GeoSelection = {
+  polygon: GeoJSON.Feature<GeoJSON.Polygon>;
+  field: string;
+};
+
 export const refresher = atom<number>({
   key: "refresher",
   default: 0,
@@ -242,10 +248,10 @@ export const similaritySorting = atom<boolean>({
 });
 
 export const extendedSelection = (() => {
-  let current = { selection: null };
+  let current: { selection?: string[] | null; geoSelection?: GeoSelection | null; scope?: string } = { selection: null };
   return graphQLSyncFragmentAtom<
     datasetFragment$key,
-    { selection: string[]; scope?: string }
+    { selection?: string[] | null; geoSelection?: GeoSelection | null; scope?: string }
   >(
     {
       fragments: [datasetFragment],
@@ -255,7 +261,6 @@ export const extendedSelection = (() => {
         if (previous && data.id !== previous?.id) {
           current = { selection: null };
         }
-
         return current;
       },
     },

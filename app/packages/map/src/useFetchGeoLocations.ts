@@ -2,7 +2,7 @@ import * as fos from "@fiftyone/state";
 import { getFetchFunction } from "@fiftyone/utilities";
 import { LRUCache } from "lru-cache";
 import React from "react";
-import { atom, useSetRecoilState } from "recoil";
+import { atom, useSetRecoilState, useRecoilValue } from "recoil";
 
 export type SampleLocationMap = {
   [key: string]: [number, number];
@@ -57,6 +57,10 @@ const useFetchGeoLocations = ({
 } => {
   const [loading, setLoading] = React.useState(false);
   const setSampleLocationMap = useSetRecoilState(sampleLocationMapAtom);
+  const extendedSelection = useRecoilValue(fos.extendedSelection);
+
+  // Use field from extendedSelection.geoSelection if present, otherwise fall back to path
+  const effectivePath = extendedSelection.geoSelection?.field || path;
 
   const key = React.useMemo(() => {
     return [
@@ -64,9 +68,9 @@ const useFetchGeoLocations = ({
       JSON.stringify(filters),
       JSON.stringify(view),
       JSON.stringify(extended),
-      path,
+      effectivePath,
     ].join("-");
-  }, [dataset, filters, view, path, extended]);
+  }, [dataset, filters, view, effectivePath, extended]);
 
   React.useEffect(() => {
     setLoading(true);
@@ -93,7 +97,7 @@ const useFetchGeoLocations = ({
       view,
       extended,
       dataset: dataset.name,
-      path,
+      path: effectivePath,
     })
       .then((res) => {
         geoLocationsCache.set(key, res);
@@ -105,7 +109,7 @@ const useFetchGeoLocations = ({
         geoLocationsCache.delete(key);
         setLoading(false);
       });
-  }, [key, dataset, filters, view, path, extended]);
+  }, [key, dataset, filters, view, effectivePath, extended]);
 
   return {
     loading,

@@ -4,6 +4,7 @@ import { Link, Selector, useTheme } from "@fiftyone/components";
 import { CenterFocusWeak, Close, Help } from "@mui/icons-material";
 import React from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
+import * as fos from "@fiftyone/state";
 import {
   activeField,
   geoFields,
@@ -14,6 +15,7 @@ import {
 import useEventHandler from "./useEventHandler";
 import { useExternalLink } from "@fiftyone/utilities";
 import { OperatorPlacements, types } from "@fiftyone/operators";
+import useMapSelection from "./useMapSelection";
 
 const useSearch = (search: string) => {
   const values = STYLES.filter((style) => style.includes(search));
@@ -35,6 +37,10 @@ const Options: React.FC<{
   const fields = useRecoilValue(geoFields);
   const [field, setActiveField] = useRecoilState(activeField);
   const hasMapSelection = useRecoilValue(hasSelection);
+  const [extendedSelection, setExtendedSelection] = useRecoilState(fos.extendedSelection);
+
+  // Use the map selection hook to get the current geo selection
+  const mapSelection = useMapSelection();
 
   const selectorStyle = {
     background: theme.neutral.softBg,
@@ -46,6 +52,23 @@ const Options: React.FC<{
     clearSelectionData();
     fitData();
   }, [clearSelectionData, fitData]);
+
+  // When the field changes, update both the activeField atom and geoSelection.field if present
+  const onFieldChange = React.useCallback(
+    (newField: string) => {
+      setActiveField(newField);
+      if (extendedSelection.geoSelection) {
+        setExtendedSelection({
+          ...extendedSelection,
+          geoSelection: {
+            ...extendedSelection.geoSelection,
+            field: newField,
+          },
+        });
+      }
+    },
+    [setActiveField, extendedSelection, setExtendedSelection]
+  );
 
   useEventHandler(window, "keydown", ({ key }: KeyboardEvent) => {
     switch (key) {
@@ -74,7 +97,7 @@ const Options: React.FC<{
           <Selector
             placeholder={"Field"}
             value={field}
-            onSelect={setActiveField}
+            onSelect={onFieldChange}
             useSearch={() => {
               return { values: fields };
             }}

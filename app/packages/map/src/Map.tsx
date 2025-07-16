@@ -9,7 +9,7 @@ import contains from "@turf/boolean-contains";
 import { debounce } from "lodash";
 import mapbox, { GeoJSONSource, LngLatBounds } from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import React from "react";
+import React, { useEffect } from "react";
 import Map, { Layer, MapRef, Source } from "react-map-gl";
 
 import { useRecoilState, useRecoilValue } from "recoil";
@@ -24,10 +24,10 @@ import useFetchGeoLocations, {
 import { useSetPanelCloseEffect } from "@fiftyone/spaces";
 import {
   useBeforeScreenshot,
-  useResetExtendedSelection,
 } from "@fiftyone/state";
 import { SELECTION_SCOPE } from "./constants";
 import Options from "./Options";
+import useMapSelection from "./useMapSelection";
 import {
   activeField,
   defaultSettings,
@@ -77,6 +77,7 @@ const Panel: React.FC<{}> = () => {
   const view = useRecoilValue(fos.view);
   const filters = useRecoilValue(fos.filters);
   const unFilteredExtended = useRecoilValue(fos.extendedStages);
+  const mapSelection = useMapSelection();
 
   const extended = React.useMemo(() => {
     return Object.fromEntries(
@@ -91,12 +92,15 @@ const Panel: React.FC<{}> = () => {
     ) as unknown as typeof fos.extendedStages;
   }, [unFilteredExtended]);
 
+  
+  const effectiveField = mapSelection.field || currentField;
+
   const { loading } = useFetchGeoLocations({
     dataset,
     filters,
     view,
     extended,
-    path: useRecoilValue(activeField),
+    path: effectiveField,
   });
   const sampleLocationMap = useRecoilValue(sampleLocationMapAtom);
 
@@ -106,10 +110,6 @@ const Panel: React.FC<{}> = () => {
   );
 
   const style = useRecoilValue(mapStyle);
-  const [{ selection }, setExtendedSelection] = useRecoilState(
-    fos.extendedSelection
-  );
-  const resetExtendedSelection = useResetExtendedSelection();
 
   const mapRef = React.useRef<MapRef>(null);
   const onResize = React.useMemo(
@@ -132,18 +132,9 @@ const Panel: React.FC<{}> = () => {
 
   const data = React.useMemo(() => {
     let source = sampleLocationMap;
-
-    if (selection) {
-      source = {};
-      for (const id of selection) {
-        if (sampleLocationMap[id]) {
-          source[id] = sampleLocationMap[id];
-        }
-      }
-    }
     return createSourceData(source);
-  }, [sampleLocationMap, selection]);
-
+  }, [sampleLocationMap, mapSelection.polygon]);
+  
   const onCreate = React.useCallback(
     (event) => {
       const {
@@ -166,25 +157,26 @@ const Panel: React.FC<{}> = () => {
         return;
       }
 
-      setExtendedSelection({
-        selection: Array.from(selected),
-        scope: SELECTION_SCOPE,
-      });
+      // Use the mapSelection hook to handle the polygon drawn event
+      handlePolygonDrawn(polygon as GeoJSON.Feature<GeoJSON.Polygon>, effectiveField);
     },
-    [data, setExtendedSelection]
+    [data, handlePolygonDrawn, effectiveField]
   );
-
   const bounds = React.useMemo(() => data && computeBounds(data), [data]);
 
-  const [draw] = React.useState(
-    () =>
-      new MapboxDraw({
-        displayControlsDefault: false,
-        defaultMode: "draw_polygon",
-      })
-  );
+  const drawRef = React.useRef<MapboxDraw>(null);
+  const draw = drawRef.current;
   const [mapError, setMapError] = React.useState(false);
 
+  useEffect(() => {
+    if (!drawRef.current) {
+      drawRef.current = new MapboxDraw({
+        displayControlsDefault: false,
+        defaultMode: "draw_polygon",
+      });
+    }
+  }, []);
+  
   const onLoad = React.useCallback(() => {
     const map = mapRef.current?.getMap();
     if (!map) return;
@@ -223,10 +215,11 @@ const Panel: React.FC<{}> = () => {
     () => Object.keys(sampleLocationMap).length,
     [sampleLocationMap]
   );
-
+  
   React.useEffect(() => {
     mapRef.current && data && fitBounds(mapRef.current, data);
   }, [data]);
+
 
   useBeforeScreenshot(() => {
     return new Promise((resolve) => {
@@ -236,11 +229,13 @@ const Panel: React.FC<{}> = () => {
       mapRef.current.setBearing(mapRef.current.getBearing());
     });
   });
-
+  
   const setPanelCloseEffect = useSetPanelCloseEffect();
   React.useEffect(() => {
-    setPanelCloseEffect(resetExtendedSelection);
-  }, []);
+    setPanelCloseEffect(resetOnPanelClose);
+  }, [setPanelCloseEffect, resetOnPanelClose]);
+
+  
 
   if (!settings.mapboxAccessToken) {
     return (
@@ -360,7 +355,7 @@ const Panel: React.FC<{}> = () => {
         fitSelectionData={() =>
           mapRef.current && fitBounds(mapRef.current, data)
         }
-        clearSelectionData={resetExtendedSelection}
+        clearSelectionData={clear}
       />
     </div>
   );
