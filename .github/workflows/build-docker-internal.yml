@@ -52,7 +52,7 @@ jobs:
             PYTHON_VERSION=${{ env.pyver }}
           context: .
           # Not doing multi-platform builds as the intent of this
-          # is for security scanning. 
+          # is for security scanning.
           # Multi-platform builds take an additional 10 minutes to build
           # and this seems like it would give us the same level of scanning
           # functionality.
