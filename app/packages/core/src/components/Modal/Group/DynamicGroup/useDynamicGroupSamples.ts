@@ -15,6 +15,8 @@ export const useDynamicGroupSamples = () => {
   const shouldRenderImavid = useRecoilValue(fos.shouldRenderImaVidLooker(true));
 
   const filter = useMemo(
+    // slice is how the group was accessed, i.e. from the grid
+    // modalSlice is the currently selected modal slice
     () => (slice ? { group: { slice, slices: [modalSlice] } } : {}),
     [slice, modalSlice]
   );
