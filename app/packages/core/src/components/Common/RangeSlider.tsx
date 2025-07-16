@@ -2,13 +2,18 @@ import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { DATE_FIELD, DATE_TIME_FIELD } from "@fiftyone/utilities";
 import { Slider as SliderUnstyled } from "@mui/material";
-import type { ChangeEvent } from "react";
-import React, { useLayoutEffect, useState } from "react";
+import React, {
+  ChangeEvent,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import type { RecoilState, RecoilValueReadOnly } from "recoil";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { getDateTimeRangeFormattersWithPrecision } from "../../utils/generic";
-import { getFormatter, getStep } from "./utils";
+import { getFormatter, getPrecision, getStep } from "./utils";
 
 const SliderContainer = styled.div`
   font-weight: bold;
@@ -114,7 +119,9 @@ type BaseSliderProps<T extends Range | number> = {
   color: string;
   value: T;
   onChange: (e: ChangeEvent<{}>, v: T) => void;
-  onCommit: (e: ChangeEvent<{}>, v: T) => void;
+  onCommit?: (e: ChangeEvent<{}>, v: T) => void;
+  onMinCommit?: (v: number) => void;
+  onMaxCommit?: (v: number) => void;
   persistValue?: boolean;
   showBounds?: boolean;
   fieldType?: string;
@@ -130,6 +137,8 @@ const BaseSlider = <T extends Range | number>({
   fieldType,
   onChange,
   onCommit,
+  onMinCommit,
+  onMaxCommit,
   persistValue = true,
   showBounds = true,
   value,
@@ -140,6 +149,9 @@ const BaseSlider = <T extends Range | number>({
   const theme = useTheme();
   const bounds = useRecoilValue(boundsAtom);
 
+  const dirtyMin = useRef(false);
+  const dirtyMax = useRef(false);
+
   const timeZone =
     fieldType && [DATE_FIELD, DATE_TIME_FIELD].includes(fieldType)
       ? useRecoilValue(fos.timeZone)
@@ -147,6 +159,14 @@ const BaseSlider = <T extends Range | number>({
   const [clicking, setClicking] = useState(false);
 
   const hasBounds = bounds.every((b) => b !== null);
+
+  // Update min/max when bounds change
+  useEffect(() => {
+    if (hasBounds && Array.isArray(value)) {
+      onMinCommit?.(bounds[0]);
+      onMaxCommit?.(bounds[1]);
+    }
+  }, [bounds]);
 
   if (!hasBounds) {
     return null;
@@ -200,11 +220,27 @@ const BaseSlider = <T extends Range | number>({
                 ? v.some((i, j) => i !== value[j])
                 : v !== value
             ) {
+              if (v instanceof Array) {
+                dirtyMin.current = dirtyMin.current || v[0] !== value[0];
+                dirtyMax.current = dirtyMax.current || v[1] !== value[1];
+              }
               onChange(e, v as T);
             }
           }}
           onChangeCommitted={(e, v) => {
-            onCommit(e, v as T);
+            if (v instanceof Array) {
+              if (dirtyMin.current) {
+                onMinCommit?.(v[0]);
+                dirtyMin.current = false;
+              }
+
+              if (dirtyMax.current) {
+                onMaxCommit?.(v[1]);
+                dirtyMax.current = false;
+              }
+            } else {
+              onCommit?.(e, v as T);
+            }
 
             setClicking(false);
           }}
@@ -280,7 +316,12 @@ type RangeSliderProps = {
   fieldType: string;
 } & Partial<BaseSliderProps<Range>>;
 
-export const RangeSlider = ({ valueAtom, ...rest }: RangeSliderProps) => {
+export const RangeSlider = ({
+  valueAtom,
+  boundsAtom,
+  fieldType,
+  ...rest
+}: RangeSliderProps) => {
   const [value, setValue] = useRecoilState(valueAtom);
   const [localValue, setLocalValue] = useState<Range>([null, null]);
   useLayoutEffect(() => {
@@ -288,12 +329,21 @@ export const RangeSlider = ({ valueAtom, ...rest }: RangeSliderProps) => {
       setLocalValue(value);
   }, [value]);
 
+  const bounds = useRecoilValue(boundsAtom);
+  // Restrict numeric precision to better represent the slider controls.
+  const precision = getPrecision(fieldType, bounds);
+
   return (
     <BaseSlider
       {...rest}
+      boundsAtom={boundsAtom}
+      fieldType={fieldType}
       onChange={(_, v: Range) => setLocalValue(v)}
-      onCommit={(_, v: Range) => {
-        setValue(v);
+      onMinCommit={(v) => {
+        setValue((prev) => [parseFloat(v.toFixed(precision)), prev[1]]);
+      }}
+      onMaxCommit={(v) => {
+        setValue((prev) => [prev[0], parseFloat(v.toFixed(precision))]);
       }}
       value={[...localValue]}
     />
