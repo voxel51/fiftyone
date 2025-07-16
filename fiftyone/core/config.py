@@ -280,6 +280,12 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_EXECUTION_CACHE_ENABLED",
             default=True,
         )
+        self.singleton_cache = self.parse_bool(
+            d,
+            "singleton_cache",
+            env_var="FIFTYONE_SINGLETON_CACHE",
+            default=True,
+        )
         self._init()
 
     @property
