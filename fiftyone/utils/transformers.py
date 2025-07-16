@@ -1157,7 +1157,7 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
         self._output_processor._boxes = boxes
 
         # Process outputs
-        return self._output_processor(outputs, image_sizes, self.confidence_thresh)
+        return self._output_processor(outputs, image_sizes, self.config.confidence_thresh)
 
     def predict(self, args):
         """Predict keypoints with optional detection boxes.
