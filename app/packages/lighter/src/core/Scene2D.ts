@@ -7,10 +7,17 @@ import { InteractionManager } from "../interaction/InteractionManager";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
 import type { Selectable } from "../selection/Selectable";
 import { SelectionManager } from "../selection/SelectionManager";
-import type { DrawStyle } from "../types";
+import type {
+  CanonicalMedia,
+  CoordinateSystem,
+  DrawStyle,
+  Spatial,
+} from "../types";
 import type { Command } from "../undo/Command";
 import { type Movable } from "../undo/MoveOverlayCommand";
 import { UndoRedoManager } from "../undo/UndoRedoManager";
+import { generateColorFromId } from "../utils/color";
+import { CoordinateSystem2D } from "./CoordinateSystem2D";
 import {
   OVERLAY_STATUS_ERROR,
   OVERLAY_STATUS_PAINTED,
@@ -22,33 +29,25 @@ import type { Scene2DConfig } from "./SceneConfig";
 
 /**
  * 2D scene that manages overlays, rendering, selection, and undo/redo operations.
+ * Now with simplified coordinate transformation using the new architecture.
  */
 export class Scene2D {
   private overlays = new Map<string, BaseOverlay>();
+  private spatialOverlays = new Map<string, BaseOverlay & Spatial>();
   private undoRedo = new UndoRedoManager();
   private overlayOrder: string[] = [];
   private renderingState = new RenderingStateManager();
   private interactionManager: InteractionManager;
   private selectionManager: SelectionManager;
+  private coordinateSystem: CoordinateSystem;
+  private canonicalMedia?: CanonicalMedia;
+  private canonicalMediaId?: string;
+  private unsubscribeCanonicalMedia?: () => void;
 
   // todo: hook up with fiftyone colorscheme
   private static getStyleFromId(id: string): DrawStyle {
-    // Create a hash from the overlay ID for deterministic color generation
-    let hash = 0;
-    for (let i = 0; i < id.length; i++) {
-      const char = id.charCodeAt(i);
-      hash = (hash << 5) - hash + char;
-      hash = hash & hash; // Convert to 32-bit integer
-    }
-
-    // Use hash to generate consistent HSL color
-    const hue = Math.abs(hash) % 360;
-    const saturation = 70;
-    const lightness = 50;
-
     return {
-      strokeStyle: `hsl(${hue}, ${saturation}%, ${lightness}%)`,
-      fillStyle: `hsl(${hue}, ${saturation}%, ${lightness}%)`,
+      strokeStyle: generateColorFromId(id, 70, 50),
       lineWidth: 2,
       opacity: 1,
     };
@@ -60,7 +59,11 @@ export class Scene2D {
    * @returns The draw style for the overlay.
    */
   private createOverlayStyle(overlay: BaseOverlay): DrawStyle {
-    const baseStyle = Scene2D.getStyleFromId(overlay.id);
+    const identifier =
+      overlay.label && "label" in overlay.label
+        ? (overlay.label.label as string)
+        : overlay.id;
+    const baseStyle = Scene2D.getStyleFromId(identifier);
 
     // Check if overlay is selectable and selected
     if (this.isSelectable(overlay) && overlay.isSelected()) {
@@ -76,6 +79,9 @@ export class Scene2D {
   }
 
   constructor(private readonly config: Scene2DConfig) {
+    // Initialize coordinate system
+    this.coordinateSystem = new CoordinateSystem2D();
+
     // Initialize selection manager
     this.selectionManager = new SelectionManager(config.eventBus);
 
@@ -99,6 +105,10 @@ export class Scene2D {
     overlay: BaseOverlay
   ): overlay is BaseOverlay & Selectable {
     return "isSelected" in overlay && "setSelected" in overlay;
+  }
+
+  private isSpatial(overlay: BaseOverlay): overlay is BaseOverlay & Spatial {
+    return "getRelativeBounds" in overlay && "setAbsoluteBounds" in overlay;
   }
 
   public async startRenderLoop(): Promise<void> {
@@ -125,7 +135,21 @@ export class Scene2D {
 
     // Add to internal tracking
     this.overlays.set(overlay.id, overlay);
-    this.overlayOrder.push(overlay.id);
+
+    // Check if overlay is spatial and track separately
+    if (this.isSpatial(overlay)) {
+      this.spatialOverlays.set(overlay.id, overlay);
+      // Update coordinates if canonical media is set
+      if (this.canonicalMedia) {
+        this.updateSpatialOverlayCoordinates(overlay);
+      }
+    }
+
+    if (overlay.id === this.canonicalMediaId) {
+      this.overlayOrder.unshift(overlay.id);
+    } else {
+      this.overlayOrder.push(overlay.id);
+    }
 
     // Register overlay with interaction manager
     this.interactionManager.addHandler(overlay);
@@ -159,6 +183,7 @@ export class Scene2D {
       overlay.destroy();
 
       this.overlays.delete(id);
+      this.spatialOverlays.delete(id);
       this.overlayOrder = this.overlayOrder.filter(
         (overlayId) => overlayId !== id
       );
@@ -201,17 +226,6 @@ export class Scene2D {
    */
   getAllOverlays(): BaseOverlay[] {
     return Array.from(this.overlays.values());
-  }
-
-  /**
-   * Gets overlays by tag.
-   * @param tag - The tag to filter by.
-   * @returns Array of overlays with the specified tag.
-   */
-  getOverlaysByTag(tag: string): BaseOverlay[] {
-    return this.getAllOverlays().filter((overlay) =>
-      overlay.tags.includes(tag)
-    );
   }
 
   /**
@@ -289,6 +303,7 @@ export class Scene2D {
     }
 
     this.overlays.clear();
+    this.spatialOverlays.clear();
     this.overlayOrder = [];
     this.renderingState.clearAll();
     this.interactionManager.clearHandlers();
@@ -304,6 +319,17 @@ export class Scene2D {
     this.undoRedo.clear();
     this.interactionManager.destroy();
     this.selectionManager.destroy();
+
+    // Clean up canonical media subscription
+    if (this.unsubscribeCanonicalMedia) {
+      this.unsubscribeCanonicalMedia();
+      this.unsubscribeCanonicalMedia = undefined;
+    }
+
+    // Destroy canonical media if it has a destroy method
+    if (this.canonicalMedia && "destroy" in this.canonicalMedia) {
+      (this.canonicalMedia as any).destroy();
+    }
   }
 
   // Selection management methods
@@ -376,6 +402,128 @@ export class Scene2D {
    */
   isOverlaySelected(id: string): boolean {
     return this.selectionManager.isSelected(id);
+  }
+
+  /**
+   * Sets the canonical media overlay for coordinate transformations.
+   * @param overlayOrMedia - The overlay or CanonicalMedia instance to set as canonical media.
+   */
+  setCanonicalMedia(overlayOrMedia: BaseOverlay & CanonicalMedia): void {
+    // Clean up previous subscription
+    if (this.unsubscribeCanonicalMedia) {
+      this.unsubscribeCanonicalMedia();
+      this.unsubscribeCanonicalMedia = undefined;
+    }
+
+    if ("getRenderedBounds" in overlayOrMedia) {
+      // It's an overlay that implements CanonicalMedia
+      const overlay = overlayOrMedia as BaseOverlay & CanonicalMedia;
+      this.canonicalMedia = overlay;
+      this.canonicalMediaId = overlay.id;
+
+      // Ensure the canonical media overlay is rendered first
+      this.ensureCanonicalMediaInBackground(overlay.id);
+    } else {
+      // It's a regular overlay that doesn't implement CanonicalMedia
+      throw new Error(
+        "Overlay must implement CanonicalMedia interface to be set as canonical media"
+      );
+    }
+
+    // Set up bounds change listener
+    this.unsubscribeCanonicalMedia = this.canonicalMedia.onBoundsChanged(
+      (bounds) => {
+        this.coordinateSystem.updateTransform(bounds);
+
+        // Update all spatial overlays
+        this.updateAllSpatialOverlays();
+      }
+    );
+
+    // Emit event for coordinate transformation updates
+    this.config.eventBus.emit({
+      type: LIGHTER_EVENTS.CANONICAL_MEDIA_CHANGED,
+      detail: { overlayId: this.canonicalMediaId || "custom" },
+    });
+  }
+
+  /**
+   * Ensures the canonical media overlay is at the beginning of the rendering order.
+   * @param overlayId - The ID of the canonical media overlay.
+   */
+  private ensureCanonicalMediaInBackground(overlayId: string): void {
+    // Remove the overlay from its current position in the order
+    this.overlayOrder = this.overlayOrder.filter((id) => id !== overlayId);
+
+    // Add it to the beginning (background)
+    this.overlayOrder.unshift(overlayId);
+  }
+
+  /**
+   * Gets the canonical media.
+   * @returns The canonical media, or undefined if not set.
+   */
+  getCanonicalMedia(): CanonicalMedia | undefined {
+    return this.canonicalMedia;
+  }
+
+  /**
+   * Gets the canonical media ID.
+   * @returns The canonical media overlay ID, or undefined if not set.
+   */
+  getCanonicalMediaId(): string | undefined {
+    return this.canonicalMediaId;
+  }
+
+  /**
+   * Converts relative coordinates to absolute coordinates based on canonical media.
+   * Uses the new coordinate system.
+   * @param relativeCoords - Array of relative coordinates [x, y, width, height] in [0,1] range.
+   * @returns Absolute coordinates in pixels (canvas space, including offset).
+   */
+  convertRelativeToAbsolute(relativeCoords: [number, number, number, number]): {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } {
+    const [relativeX, relativeY, relativeWidth, relativeHeight] =
+      relativeCoords;
+    return this.coordinateSystem.relativeToAbsolute({
+      x: relativeX,
+      y: relativeY,
+      width: relativeWidth,
+      height: relativeHeight,
+    });
+  }
+
+  /**
+   * Updates coordinates for all spatial overlays.
+   */
+  private updateAllSpatialOverlays(): void {
+    for (const overlay of this.spatialOverlays.values()) {
+      this.updateSpatialOverlayCoordinates(overlay);
+    }
+  }
+
+  /**
+   * Updates coordinates for a single spatial overlay.
+   */
+  private updateSpatialOverlayCoordinates(
+    overlay: BaseOverlay & Spatial
+  ): void {
+    const relativeBounds = overlay.getRelativeBounds();
+    const absoluteBounds =
+      this.coordinateSystem.relativeToAbsolute(relativeBounds);
+    overlay.setAbsoluteBounds(absoluteBounds);
+  }
+
+  /**
+   * Gets the container dimensions.
+   * @returns The container dimensions, or undefined if not available.
+   */
+  getContainerDimensions(): { width: number; height: number } | undefined {
+    return this.config.renderer.getContainerDimensions();
   }
 
   /**

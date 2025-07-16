@@ -2,16 +2,20 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import { BaseOverlay } from "./BaseOverlay";
 import type { Renderer2D } from "../renderer/Renderer2D";
-import type { Point, DrawStyle } from "../types";
 import type { Selectable } from "../selection/Selectable";
+import type { DrawStyle, Point, RawLookerLabel } from "../types";
+import { BaseOverlay } from "./BaseOverlay";
+
+export type ClassificationLabel = RawLookerLabel & {
+  label: string;
+};
 
 /**
  * Options for creating a classification overlay.
  */
 export interface ClassificationOptions {
-  label: string;
+  label: ClassificationLabel;
   confidence: number;
   position: Point;
   showConfidence?: boolean;
@@ -25,8 +29,10 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
   private isSelectedState = false;
 
   constructor(private options: ClassificationOptions) {
-    const id = `cls_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    super(id, "classification", ["classification", "label"]);
+    const id = `cls_${Date.now()}_${Math.random()
+      .toString(36)
+      .substring(2, 9)}`;
+    super(id, options.label);
   }
 
   render(renderer: Renderer2D, style: DrawStyle): void {
@@ -35,8 +41,10 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
     renderer.dispose(`${this.id}-selection`);
 
     const text = this.options.showConfidence
-      ? `${this.options.label} (${(this.options.confidence * 100).toFixed(1)}%)`
-      : this.options.label;
+      ? `${this.options.label.label} (${(this.options.confidence * 100).toFixed(
+          1
+        )}%)`
+      : this.options.label.label;
 
     // Create style with selection state
     const renderStyle: DrawStyle = {
@@ -109,7 +117,7 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
    * @returns The label text.
    */
   getLabel(): string {
-    return this.options.label;
+    return this.options.label.label;
   }
 
   /**
@@ -143,7 +151,7 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
    */
   getBounds(): { x: number; y: number; width: number; height: number } {
     // For classifications, we'll estimate bounds based on text size
-    const textLength = this.options.label.length;
+    const textLength = this.options.label.label.length;
     const estimatedWidth = Math.max(textLength * 8, 50); // Rough estimate
     const estimatedHeight = 20; // Standard text height
 

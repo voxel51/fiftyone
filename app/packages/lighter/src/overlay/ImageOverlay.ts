@@ -6,9 +6,14 @@ import { getSampleSrc } from "@fiftyone/state";
 import { EventBus, LIGHTER_EVENTS } from "../event/EventBus";
 import type { ImageSource, Renderer2D } from "../renderer/Renderer2D";
 import type { ResourceLoader } from "../resource/ResourceLoader";
-import type { Rect } from "../types";
+import type {
+  BoundedOverlay,
+  CanonicalMedia,
+  DrawStyle,
+  Rect,
+  Dimensions,
+} from "../types";
 import { BaseOverlay } from "./BaseOverlay";
-import type { DrawStyle } from "../types";
 
 /**
  * Options for creating an image overlay.
@@ -22,16 +27,23 @@ export interface ImageOptions {
 
 /**
  * Image overlay implementation for displaying sample images.
+ * Also implements CanonicalMedia for coordinate transformations.
  */
-export class ImageOverlay extends BaseOverlay {
+export class ImageOverlay
+  extends BaseOverlay
+  implements BoundedOverlay, CanonicalMedia
+{
   private texture?: ImageSource;
-  private originalDimensions?: { width: number; height: number };
+  private originalDimensions?: Dimensions;
   private currentBounds?: Rect;
   private resizeObserver?: ResizeObserver;
+  private boundsChangeCallbacks: ((bounds: Rect) => void)[] = [];
 
   constructor(private options: ImageOptions) {
-    const id = `image-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    super(id, "image", ["image", "background"]);
+    const id = `image-${Date.now()}-${Math.random()
+      .toString(36)
+      .substring(2, 9)}`;
+    super(id);
   }
 
   /**
@@ -88,6 +100,9 @@ export class ImageOverlay extends BaseOverlay {
 
     // Mark as dirty instead of triggering re-render
     this.markDirty();
+
+    // Notify bounds change callbacks
+    this.notifyBoundsChanged();
   }
 
   /**
@@ -204,6 +219,9 @@ export class ImageOverlay extends BaseOverlay {
           ? this.calculateAspectRatioBounds(bounds)
           : bounds;
 
+      // Update current bounds to reflect the actual rendered bounds
+      this.currentBounds = finalBounds;
+
       // Draw the image using the renderer
       renderer.drawImage(
         {
@@ -219,6 +237,9 @@ export class ImageOverlay extends BaseOverlay {
 
       // Emit overlay-loaded event using the common method
       this.emitLoaded();
+
+      // Notify bounds change callbacks after rendering
+      this.notifyBoundsChanged();
     } catch (error) {
       console.error("Failed to render image overlay:", error);
       this.emitError(error as Error);
@@ -268,6 +289,94 @@ export class ImageOverlay extends BaseOverlay {
     };
   }
 
+  // CanonicalMedia interface implementation
+
+  /**
+   * Get the original dimensions of the image.
+   */
+  getOriginalDimensions(): Dimensions {
+    return this.originalDimensions || { width: 1, height: 1 };
+  }
+
+  /**
+   * Get the current rendered bounds of the image in the canvas.
+   */
+  getRenderedBounds(): Rect {
+    return this.currentBounds || { x: 0, y: 0, width: 0, height: 0 };
+  }
+
+  /**
+   * Get the aspect ratio of the image.
+   */
+  getAspectRatio(): number {
+    const dims = this.getOriginalDimensions();
+    return dims.width / dims.height;
+  }
+
+  /**
+   * Register a callback for bounds changes.
+   * @returns Unsubscribe function
+   */
+  onBoundsChanged(callback: (bounds: Rect) => void): () => void {
+    this.boundsChangeCallbacks.push(callback);
+
+    // Immediately call with current bounds if available
+    if (this.currentBounds) {
+      callback(this.currentBounds);
+    }
+
+    return () => {
+      const index = this.boundsChangeCallbacks.indexOf(callback);
+      if (index > -1) {
+        this.boundsChangeCallbacks.splice(index, 1);
+      }
+    };
+  }
+
+  /**
+   * Force update the bounds calculation.
+   */
+  updateBounds(): void {
+    if (this.renderer) {
+      const containerDimensions = this.renderer.getContainerDimensions();
+      if (
+        containerDimensions &&
+        containerDimensions.width > 0 &&
+        containerDimensions.height > 0
+      ) {
+        const bounds = {
+          x: 0,
+          y: 0,
+          width: containerDimensions.width,
+          height: containerDimensions.height,
+        };
+
+        const finalBounds =
+          this.options.maintainAspectRatio !== false
+            ? this.calculateAspectRatioBounds(bounds)
+            : bounds;
+
+        this.currentBounds = finalBounds;
+        this.notifyBoundsChanged();
+      }
+    }
+  }
+
+  /**
+   * Notify all callbacks of bounds change.
+   */
+  private notifyBoundsChanged(): void {
+    if (!this.currentBounds) return;
+
+    this.boundsChangeCallbacks.forEach((callback) => {
+      try {
+        callback(this.currentBounds!);
+      } catch (error) {
+        console.error("Error in bounds change callback:", error);
+      }
+    });
+  }
+
   /**
    * Gets the image source URL.
    * @returns The image source URL.
@@ -285,14 +394,6 @@ export class ImageOverlay extends BaseOverlay {
   }
 
   /**
-   * Gets the original dimensions of the image.
-   * @returns The original width and height, if available.
-   */
-  getOriginalDimensions(): { width: number; height: number } | undefined {
-    return this.originalDimensions;
-  }
-
-  /**
    * Gets the current bounds of the image.
    * @returns The current bounds, if available.
    */
@@ -304,9 +405,19 @@ export class ImageOverlay extends BaseOverlay {
    * Updates the image bounds manually.
    * @param bounds - The new bounds for the image.
    */
-  updateBounds(bounds: Rect): void {
+  setBounds(bounds: Rect): void {
     this.currentBounds = bounds;
     this.markDirty();
+    this.notifyBoundsChanged();
+  }
+
+  /**
+   * Forces the overlay to recalculate and update its current bounds.
+   * This is useful when the container dimensions change and we need to ensure
+   * the bounds are updated for coordinate transformations.
+   */
+  forceUpdateBounds(): void {
+    this.updateBounds();
   }
 
   /**
@@ -317,5 +428,6 @@ export class ImageOverlay extends BaseOverlay {
       this.resizeObserver.disconnect();
       this.resizeObserver = undefined;
     }
+    this.boundsChangeCallbacks = [];
   }
 }
