@@ -89,7 +89,7 @@ export const aggregationQuery = graphQLSelectorFamily<
           extended && !root
             ? get(modal ? filterAtoms.modalFilters : filterAtoms.filters)
             : null,
-        groupId: !root && modal ? get(groupId) || null : null,
+        groupId: !root && modal ? null || null : null,
         hiddenLabels: !root ? get(selectors.hiddenLabelsArray) : [],
         paths,
         mixed,

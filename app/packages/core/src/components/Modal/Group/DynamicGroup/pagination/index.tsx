@@ -107,7 +107,9 @@ export const GroupElementsLinkBar = React.memo(() => {
     }
   }, [map, setCursor, deferred, setSample]);
 
-  const elementsCount = useRecoilValue(fos.dynamicGroupsElementCount(null));
+  const elementsCount = useRecoilValue(
+    fos.dynamicGroupsElementCount({ modal: true })
+  );
 
   const [isTextBoxEmpty, setIsTextBoxEmpty] = useState(false);
   const textBoxRef = useRef<HTMLInputElement>(null);
