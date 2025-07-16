@@ -2,7 +2,15 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import { getSampleSrc, Sample } from "@fiftyone/state";
+import { loadOverlays } from "@fiftyone/looker/src/overlays";
+import DetectionOverlay from "@fiftyone/looker/src/overlays/detection";
+import {
+  fieldSchema,
+  getSampleSrc,
+  Sample,
+  State,
+  useAssertedRecoilValue,
+} from "@fiftyone/state";
 import React, {
   useCallback,
   useEffect,
@@ -12,10 +20,15 @@ import React, {
 } from "react";
 import {
   BoundingBoxOptions,
+  BoundingBoxOverlay,
   ClassificationOptions,
+  ClassificationOverlay,
+  ImageOptions,
+  ImageOverlay,
   LIGHTER_EVENTS,
   overlayFactory,
 } from "../index";
+import { convertLegacyToLighterDetection } from "./looker-lighter-bridge";
 import { useLighterWithPixi } from "./useLighterWithPixi";
 import { useSceneSelectionState } from "./useSceneSelectionState";
 
@@ -73,32 +86,66 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
     setCanvasDimensions({ width: actualWidth, height: actualHeight });
   }, [canvasRef]);
 
+  const schema = useAssertedRecoilValue(
+    fieldSchema({ space: State.SPACE.SAMPLE })
+  );
+
   useEffect(() => {
-    if (isReady) {
-      const mediaUrl = getSampleSrc(sample.urls[0].url!);
-      addOverlay(
-        overlayFactory.create("image", {
-          src: mediaUrl,
-          maintainAspectRatio: true,
-        })
-      );
+    if (isReady && scene) {
+      const mediaUrl =
+        sample.urls.length > 0 ? getSampleSrc(sample.urls[0].url!) : null;
+
+      if (mediaUrl) {
+        const mediaOverlay = overlayFactory.create<ImageOptions, ImageOverlay>(
+          "image",
+          {
+            src: mediaUrl,
+            maintainAspectRatio: true,
+          }
+        );
+        addOverlay(mediaOverlay);
+
+        // Set the image overlay as canonical media for coordinate transformations
+        scene.setCanonicalMedia(mediaOverlay);
+      }
+
+      // Load and add overlays from the sample
+      const overlays = loadOverlays(sample.sample, schema, false);
+
+      for (const overlay of overlays) {
+        if (overlay instanceof DetectionOverlay) {
+          // Convert legacy overlay to lighter overlay with relative coordinates
+          const lighterOverlay = convertLegacyToLighterDetection(
+            overlay,
+            scene
+          );
+          addOverlay(lighterOverlay);
+        }
+      }
     }
-  }, [isReady, addOverlay, sample]);
+  }, [isReady, addOverlay, sample, scene, schema]); // Add scene and schema to dependencies
 
   const addRandomBoundingBox = useCallback(() => {
     if (canvasDimensions.width === 0 || canvasDimensions.height === 0) return;
 
-    const bbox = overlayFactory.create<BoundingBoxOptions>("bounding-box", {
-      bounds: {
-        x: Math.random() * canvasDimensions.width,
-        y: Math.random() * canvasDimensions.height,
-        width: 30 + Math.random() * 70,
-        height: 20 + Math.random() * 50,
-      },
-      label: `bbox-${overlayCount + 1}`,
-      draggable: true,
-      selectable: true,
-    });
+    const bbox = overlayFactory.create<BoundingBoxOptions, BoundingBoxOverlay>(
+      "bounding-box",
+      {
+        bounds: {
+          x: Math.random() * canvasDimensions.width,
+          y: Math.random() * canvasDimensions.height,
+          width: 30 + Math.random() * 70,
+          height: 20 + Math.random() * 50,
+        },
+        label: {
+          id: `bbox-${overlayCount + 1}`,
+          label: `bbox-${overlayCount + 1}`,
+          tags: [],
+        },
+        draggable: true,
+        selectable: true,
+      }
+    );
 
     addOverlay(bbox);
   }, [addOverlay, overlayCount, canvasDimensions]);
@@ -106,19 +153,23 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
   const addRandomClassification = useCallback(() => {
     if (canvasDimensions.width === 0 || canvasDimensions.height === 0) return;
 
-    const classification = overlayFactory.create<ClassificationOptions>(
-      "classification",
-      {
+    const classification = overlayFactory.create<
+      ClassificationOptions,
+      ClassificationOverlay
+    >("classification", {
+      label: {
+        id: `class-${overlayCount + 1}`,
         label: `class-${overlayCount + 1}`,
-        confidence: Math.random(),
-        position: {
-          x: Math.random() * canvasDimensions.width,
-          y: Math.random() * canvasDimensions.height,
-        },
-        showConfidence: true,
-        selectable: true,
-      }
-    );
+        tags: [],
+      },
+      confidence: Math.random(),
+      position: {
+        x: Math.random() * canvasDimensions.width,
+        y: Math.random() * canvasDimensions.height,
+      },
+      showConfidence: true,
+      selectable: true,
+    });
 
     addOverlay(classification);
   }, [addOverlay, overlayCount, canvasDimensions]);
@@ -146,23 +197,12 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
     [scene]
   );
 
-  const moveToPosition = useCallback(
-    (newX: number, newY: number) => {
-      if (!scene) return;
-      scene.getEventBus().emit({
-        type: LIGHTER_EVENTS.SPATIAL_MOVE,
-        detail: { newX, newY },
-      });
-    },
-    [scene]
-  );
-
   return (
     <div
       className={`lighter-sample-renderer ${className}`}
       style={{
         width: "100%",
-        height: "50%",
+        height: "80%",
         display: "flex",
         flexDirection: "column",
       }}

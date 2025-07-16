@@ -58,6 +58,8 @@ export const LIGHTER_EVENTS = {
   SPATIAL_RESIZE: "spatial-resize",
   /** Emitted to request position changes of overlays */
   SPATIAL_MOVE: "spatial-move",
+  /** Emitted when the canonical media overlay is changed */
+  CANONICAL_MEDIA_CHANGED: "canonical-media-changed",
 } as const;
 
 /**
@@ -169,6 +171,10 @@ export type OverlayEvent =
         newX: number;
         newY: number;
       };
+    }
+  | {
+      type: typeof LIGHTER_EVENTS.CANONICAL_MEDIA_CHANGED;
+      detail: { overlayId: string };
     };
 
 /**

@@ -2,40 +2,95 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import { BaseOverlay } from "./BaseOverlay";
-import type { Renderer2D } from "../renderer/Renderer2D";
-import type { Rect, DrawStyle, Point } from "../types";
 import { LIGHTER_EVENTS } from "../event/EventBus";
-import type { Movable } from "../undo/MoveOverlayCommand";
+import type { Renderer2D } from "../renderer/Renderer2D";
 import type { Selectable } from "../selection/Selectable";
+import type {
+  BoundedOverlay,
+  DrawStyle,
+  Point,
+  RawLookerLabel,
+  Rect,
+  Spatial,
+} from "../types";
+import type { Movable } from "../undo/MoveOverlayCommand";
+import { BaseOverlay } from "./BaseOverlay";
+
+export type BoundingBoxLabel = RawLookerLabel & {
+  label: string;
+};
 
 /**
  * Options for creating a bounding box overlay.
  */
 export interface BoundingBoxOptions {
-  bounds: Rect;
-  label?: string;
+  bounds?: Rect; // Optional absolute bounds (for testing... TODO: remove)
+  relativeBounds?: Rect; // Relative bounds [0,1]
+  label: BoundingBoxLabel;
   confidence?: number;
   draggable?: boolean;
   selectable?: boolean;
 }
 
 /**
- * Bounding box overlay implementation with drag support and selection.
+ * Bounding box overlay implementation with drag support, selection, and spatial coordinates.
  */
 export class BoundingBoxOverlay
   extends BaseOverlay
-  implements Movable, Selectable
+  implements Movable, Selectable, BoundedOverlay, Spatial
 {
   private isDraggable: boolean;
   private dragStartPoint?: Point;
   private dragStartBounds?: Rect;
   private isSelectedState = false;
+  private relativeBounds: Rect;
+  private absoluteBounds: Rect;
+  private _needsCoordinateUpdate = false;
 
   constructor(private options: BoundingBoxOptions) {
-    const id = `bbox_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    super(id, "bounding-box", ["detection", "bounding-box"]);
+    const id = `bbox_${Date.now()}_${Math.random()
+      .toString(36)
+      .substring(2, 9)}`;
+    super(id, options.label);
     this.isDraggable = options.draggable !== false; // Default to true
+
+    // Initialize bounds
+    if (options.relativeBounds) {
+      this.relativeBounds = { ...options.relativeBounds };
+      this.absoluteBounds = { x: 0, y: 0, width: 0, height: 0 }; // Will be set by scene
+      this._needsCoordinateUpdate = true;
+    } else if (options.bounds) {
+      // Backwards compatibility: if absolute bounds provided, use them
+      this.absoluteBounds = { ...options.bounds };
+      // Assume relative bounds are same as absolute for now (will be corrected by scene if needed)
+      this.relativeBounds = { ...options.bounds };
+    } else {
+      throw new Error("Either bounds or relativeBounds must be provided");
+    }
+  }
+
+  // Spatial interface implementation
+  getRelativeBounds(): Rect {
+    return { ...this.relativeBounds };
+  }
+
+  setAbsoluteBounds(bounds: Rect): void {
+    this.absoluteBounds = { ...bounds };
+    this._needsCoordinateUpdate = false;
+    this.markDirty();
+  }
+
+  getAbsoluteBounds(): Rect {
+    return { ...this.absoluteBounds };
+  }
+
+  needsCoordinateUpdate(): boolean {
+    return this._needsCoordinateUpdate;
+  }
+
+  markForCoordinateUpdate(): void {
+    this._needsCoordinateUpdate = true;
+    this.markDirty();
   }
 
   render(renderer: Renderer2D, style: DrawStyle): void {
@@ -51,18 +106,18 @@ export class BoundingBoxOverlay
       isSelected: this.isSelectedState,
     };
 
-    // Draw the bounding box
-    renderer.drawRect(this.options.bounds, renderStyle, this.id);
+    // Draw the bounding box using absolute bounds
+    renderer.drawRect(this.absoluteBounds, renderStyle, this.id);
 
     // Draw label if provided
     if (this.options.label) {
       const labelPosition = {
-        x: this.options.bounds.x,
-        y: this.options.bounds.y - 20, // Above the box
+        x: this.absoluteBounds.x,
+        y: this.absoluteBounds.y - 20, // Above the box
       };
 
       renderer.drawText(
-        this.options.label,
+        this.options.label.label,
         labelPosition,
         {
           fontColor: style.strokeStyle || "#000",
@@ -81,14 +136,23 @@ export class BoundingBoxOverlay
   // Movable interface implementation
   getPosition(): Point {
     return {
-      x: this.options.bounds.x,
-      y: this.options.bounds.y,
+      x: this.absoluteBounds.x,
+      y: this.absoluteBounds.y,
     };
   }
 
   setPosition(position: Point): void {
-    this.options.bounds.x = position.x;
-    this.options.bounds.y = position.y;
+    const deltaX = position.x - this.absoluteBounds.x;
+    const deltaY = position.y - this.absoluteBounds.y;
+
+    this.absoluteBounds.x = position.x;
+    this.absoluteBounds.y = position.y;
+
+    // Update relative bounds to maintain sync
+    // This is a simplified update - in a real implementation,
+    // you'd need the coordinate system to properly convert back
+    this.relativeBounds.x += deltaX;
+    this.relativeBounds.y += deltaY;
   }
 
   // Interaction handlers
@@ -97,7 +161,7 @@ export class BoundingBoxOverlay
 
     // Store drag start information
     this.dragStartPoint = point;
-    this.dragStartBounds = { ...this.options.bounds };
+    this.dragStartBounds = { ...this.absoluteBounds };
 
     return true; // Indicate we can handle this event
   }
@@ -110,8 +174,8 @@ export class BoundingBoxOverlay
       y: point.y - this.dragStartPoint.y,
     };
 
-    // Update bounds
-    this.options.bounds = {
+    // Update absolute bounds
+    this.absoluteBounds = {
       x: this.dragStartBounds.x + delta.x,
       y: this.dragStartBounds.y + delta.y,
       width: this.dragStartBounds.width,
@@ -155,19 +219,35 @@ export class BoundingBoxOverlay
   }
 
   /**
-   * Gets the bounding box bounds.
+   * Gets the bounding box bounds (absolute).
    * @returns The bounds of the bounding box.
    */
   getBounds(): Rect {
-    return this.options.bounds;
+    return this.getAbsoluteBounds();
   }
 
   /**
-   * Sets the bounding box bounds.
+   * Gets the current bounds of the bounding box (implements BoundedOverlay).
+   * @returns The current bounds of the bounding box.
+   */
+  getCurrentBounds(): Rect | undefined {
+    return this.getAbsoluteBounds();
+  }
+
+  /**
+   * Forces the overlay to recalculate and update its current bounds (implements BoundedOverlay).
+   * For bounding boxes, this marks it for coordinate update.
+   */
+  forceUpdateBounds(): void {
+    this.markForCoordinateUpdate();
+  }
+
+  /**
+   * Sets the bounding box bounds (absolute).
    * @param bounds - The new bounds.
    */
   setBounds(bounds: Rect): void {
-    this.options.bounds = bounds;
+    this.absoluteBounds = { ...bounds };
     this.markDirty();
   }
 
@@ -176,7 +256,7 @@ export class BoundingBoxOverlay
    * @returns The label text, if any.
    */
   getLabel(): string | undefined {
-    return this.options.label;
+    return this.options.label.label;
   }
 
   /**

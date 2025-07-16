@@ -7,7 +7,7 @@ import { LIGHTER_EVENTS } from "../event/EventBus";
 import type { InteractionHandler } from "../interaction/InteractionManager";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { ResourceLoader } from "../resource/ResourceLoader";
-import type { DrawStyle, Point } from "../types";
+import type { DrawStyle, Point, RawLookerLabel } from "../types";
 
 /**
  * Base abstract class for all overlays.
@@ -15,10 +15,8 @@ import type { DrawStyle, Point } from "../types";
 export abstract class BaseOverlay implements InteractionHandler {
   /** Unique identifier for the overlay. */
   readonly id: string;
-  /** Display name of the overlay. */
-  name: string;
-  /** Tags for categorizing the overlay. */
-  tags: string[];
+  /** Label (data model) of the overlay. */
+  readonly label: RawLookerLabel;
   /** Whether the overlay needs to be re-rendered. The render loop will check this and re-render the overlay if it is dirty.
    *
    * See also `markDirty` and `markClean`.
@@ -32,10 +30,9 @@ export abstract class BaseOverlay implements InteractionHandler {
   /** The resource loader for loading assets. */
   protected resourceLoader?: ResourceLoader;
 
-  constructor(id: string, name: string, tags: string[] = []) {
+  constructor(id: string, label: RawLookerLabel = null) {
     this.id = id;
-    this.name = name;
-    this.tags = tags;
+    this.label = label;
   }
 
   /**
@@ -129,7 +126,9 @@ export abstract class BaseOverlay implements InteractionHandler {
    * @returns A unique ID string.
    */
   protected generateId(prefix = "overlay"): string {
-    return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `${prefix}_${Date.now()}_${Math.random()
+      .toString(36)
+      .substring(2, 9)}`;
   }
 
   /**

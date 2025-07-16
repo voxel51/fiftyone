@@ -7,6 +7,7 @@ import type { EventBus } from "../event/EventBus";
 import { LIGHTER_EVENTS } from "../event/EventBus";
 import type { DrawStyle, Point, Rect, TextOptions } from "../types";
 import type { ImageOptions, ImageSource, Renderer2D } from "./Renderer2D";
+import { parseColorWithAlpha } from "../utils/color";
 
 /**
  * PixiJS v8 renderer
@@ -20,9 +21,9 @@ export class PixiRenderer2D implements Renderer2D {
 
   private resizeObserver?: ResizeObserver;
 
-  // Graphics and text containers
-  private graphicsContainer!: PIXI.Container;
-  private textContainer!: PIXI.Container;
+  // Container hierarchy for proper layering
+  private foregroundContainer!: PIXI.Container;
+  private backgroundContainer!: PIXI.Container;
 
   // Element tracking for disposal
   private elementMap = new Map<
@@ -65,7 +66,7 @@ export class PixiRenderer2D implements Renderer2D {
 
     await this.app.init({
       view: this.canvas,
-      antialias: false, // Disable for better performance on older devices
+      antialias: true,
       resolution: window.devicePixelRatio || 1,
       autoDensity: true,
       width: this.canvas.parentElement!.clientWidth,
@@ -75,12 +76,13 @@ export class PixiRenderer2D implements Renderer2D {
 
     this.stage = this.app.stage;
 
-    // Create containers for different types of elements
-    this.graphicsContainer = new PIXI.Container();
-    this.textContainer = new PIXI.Container();
+    // Create containers for proper layering hierarchy
+    this.foregroundContainer = new PIXI.Container();
+    this.backgroundContainer = new PIXI.Container();
 
-    this.stage.addChild(this.graphicsContainer);
-    this.stage.addChild(this.textContainer);
+    // Add containers to stage in proper layering order (background to foreground)
+    this.stage.addChild(this.backgroundContainer); // Background content (images, etc.)
+    this.stage.addChild(this.foregroundContainer); // Foreground content (graphics, text, overlays)
 
     this.isInitialized = true;
   }
@@ -119,7 +121,7 @@ export class PixiRenderer2D implements Renderer2D {
 
     // Apply stroke if specified
     if (style.strokeStyle) {
-      const { color, alpha } = this.parseColorWithAlpha(style.strokeStyle);
+      const { color, alpha } = parseColorWithAlpha(style.strokeStyle);
 
       if (style.dashPattern && style.dashPattern.length > 0) {
         // Draw dashed stroke using multiple line segments
@@ -145,7 +147,7 @@ export class PixiRenderer2D implements Renderer2D {
     if (style.isSelected) {
       const selectionColor = style.selectionColor || "#ff6600"; // Default orange
       const { color: selColor, alpha: selAlpha } =
-        this.parseColorWithAlpha(selectionColor);
+        parseColorWithAlpha(selectionColor);
 
       // Create selection border with dotted pattern
       const selectionGraphics = new PIXI.Graphics();
@@ -164,7 +166,7 @@ export class PixiRenderer2D implements Renderer2D {
       });
       selectionGraphics.stroke();
 
-      this.graphicsContainer.addChild(selectionGraphics);
+      this.foregroundContainer.addChild(selectionGraphics);
 
       // Track selection border separately for disposal
       if (id) {
@@ -172,7 +174,7 @@ export class PixiRenderer2D implements Renderer2D {
       }
     }
 
-    this.graphicsContainer.addChild(graphics);
+    this.foregroundContainer.addChild(graphics);
 
     // Track the element if an ID is provided
     if (id) {
@@ -214,7 +216,7 @@ export class PixiRenderer2D implements Renderer2D {
         pixiText.width + (options.padding || 0) * 2,
         pixiText.height + (options.padding || 0) * 2
       );
-      this.textContainer.addChild(background);
+      this.foregroundContainer.addChild(background);
 
       // Track background if ID is provided
       if (id) {
@@ -222,7 +224,7 @@ export class PixiRenderer2D implements Renderer2D {
       }
     }
 
-    this.textContainer.addChild(pixiText);
+    this.foregroundContainer.addChild(pixiText);
 
     // Track the text element if an ID is provided
     if (id) {
@@ -234,7 +236,7 @@ export class PixiRenderer2D implements Renderer2D {
     const graphics = new PIXI.Graphics();
 
     // In v8, use setStrokeStyle instead of lineStyle
-    const { color, alpha } = this.parseColorWithAlpha(
+    const { color, alpha } = parseColorWithAlpha(
       style.strokeStyle || "#000000"
     );
     graphics.setStrokeStyle({
@@ -246,7 +248,7 @@ export class PixiRenderer2D implements Renderer2D {
     graphics.moveTo(start.x, start.y);
     graphics.lineTo(end.x, end.y);
 
-    this.graphicsContainer.addChild(graphics);
+    this.foregroundContainer.addChild(graphics);
 
     // Track the element if an ID is provided
     if (id) {
@@ -376,7 +378,7 @@ export class PixiRenderer2D implements Renderer2D {
       }
     }
 
-    this.graphicsContainer.addChild(sprite);
+    this.backgroundContainer.addChild(sprite);
 
     // Track the element if an ID is provided
     if (id) {
@@ -385,105 +387,11 @@ export class PixiRenderer2D implements Renderer2D {
   }
 
   clear(): void {
-    // Clear graphics container efficiently
-    this.graphicsContainer.removeChildren();
-    this.textContainer.removeChildren();
+    this.foregroundContainer.removeChildren();
+    this.backgroundContainer.removeChildren();
     // Clear the element map as well
     this.elementMap.clear();
     this.resizeObserver?.disconnect();
-  }
-
-  private parseColorWithAlpha(color: string): { color: number; alpha: number } {
-    // Convert CSS color to PixiJS color format
-    if (color.startsWith("#")) {
-      const hex = parseInt(color.slice(1), 16);
-      const alpha = 1;
-      return { color: hex, alpha };
-    }
-
-    if (color.startsWith("rgb")) {
-      // Handle rgba and rgb formats
-      const match = color.match(
-        /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/
-      );
-      if (match) {
-        const [, r, g, b, a] = match;
-        const alpha = a ? parseFloat(a) : 1;
-        const hex = (parseInt(r) << 16) | (parseInt(g) << 8) | parseInt(b);
-        return { color: hex, alpha };
-      }
-    }
-
-    if (color.startsWith("hsl")) {
-      // Handle hsla and hsl formats
-      const match = color.match(
-        /hsla?\(([\d.]+),\s*(\d+)%,\s*(\d+)%(?:,\s*([\d.]+))?\)/
-      );
-      if (match) {
-        const [, h, s, l, a] = match;
-        const alpha = a ? parseFloat(a) : 1;
-        const rgb = this.hslToRgb(parseFloat(h), parseInt(s), parseInt(l));
-        const hex = (rgb.r << 16) | (rgb.g << 8) | rgb.b;
-        return { color: hex, alpha };
-      }
-    }
-
-    // Default to black
-    return { color: 0x000000, alpha: 1 };
-  }
-
-  private hslToRgb(
-    h: number,
-    s: number,
-    l: number
-  ): { r: number; g: number; b: number } {
-    // Normalize hue to 0-360
-    h = h % 360;
-    if (h < 0) h += 360;
-
-    // Normalize saturation and lightness to 0-1
-    s = Math.max(0, Math.min(100, s)) / 100;
-    l = Math.max(0, Math.min(100, l)) / 100;
-
-    const c = (1 - Math.abs(2 * l - 1)) * s;
-    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
-    const m = l - c / 2;
-
-    let r = 0,
-      g = 0,
-      b = 0;
-
-    if (h >= 0 && h < 60) {
-      r = c;
-      g = x;
-      b = 0;
-    } else if (h >= 60 && h < 120) {
-      r = x;
-      g = c;
-      b = 0;
-    } else if (h >= 120 && h < 180) {
-      r = 0;
-      g = c;
-      b = x;
-    } else if (h >= 180 && h < 240) {
-      r = 0;
-      g = x;
-      b = c;
-    } else if (h >= 240 && h < 300) {
-      r = x;
-      g = 0;
-      b = c;
-    } else if (h >= 300 && h < 360) {
-      r = c;
-      g = 0;
-      b = x;
-    }
-
-    return {
-      r: Math.round((r + m) * 255),
-      g: Math.round((g + m) * 255),
-      b: Math.round((b + m) * 255),
-    };
   }
 
   /**

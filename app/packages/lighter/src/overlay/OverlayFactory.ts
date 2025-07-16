@@ -52,12 +52,12 @@ export class OverlayFactory {
    * @returns The created overlay.
    * @throws Error if the overlay type is not registered.
    */
-  create<T = any>(type: string, opts: T): BaseOverlay {
+  create<T = any, R = BaseOverlay>(type: string, opts: T): R {
     const constructor = this.registry.get(type);
     if (!constructor) {
       throw new Error(`Overlay type '${type}' is not registered`);
     }
-    return constructor(opts);
+    return constructor(opts) as R;
   }
 
   /**

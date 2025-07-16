@@ -7,6 +7,7 @@ import { OverlayFactory } from "./overlay/OverlayFactory";
 // Core exports
 export { Scene2D } from "./core/Scene2D";
 export type { Scene2DConfig } from "./core/SceneConfig";
+export { CoordinateSystem2D } from "./core/CoordinateSystem2D";
 
 // Renderer exports
 export { PixiRenderer2D } from "./renderer/PixiRenderer2D";
@@ -58,4 +59,14 @@ export { PluginRegistry } from "./plugin/PluginRegistry";
 export * from "./react";
 
 // Common types
-export type { DrawStyle, Point, Rect, TextOptions } from "./types";
+export type {
+  DrawStyle,
+  Point,
+  Rect,
+  TextOptions,
+  Spatial,
+  CoordinateSystem,
+  CanonicalMedia,
+  TransformMatrix,
+  Dimensions,
+} from "./types";
