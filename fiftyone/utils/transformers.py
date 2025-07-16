@@ -1174,9 +1174,13 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
             Keypoints object per image if one detection box is provided,
             or a list of Keypoints objects for multiple detection boxes.
         """
-        # Store detection boxes if provided
-        self._detection_boxes = getattr(args, 'detection_boxes', None)
-
+        # Handle detection boxes if provided
+        if hasattr(args, 'detection_boxes'):
+            self._detection_boxes = args.detection_boxes
+        elif isinstance(args, dict) and 'detection_boxes' in args:
+            self._detection_boxes = args['detection_boxes']
+        else:
+            self._detection_boxes = None
         # Call parent predict which will invoke _predict
         return super().predict(args)
 
