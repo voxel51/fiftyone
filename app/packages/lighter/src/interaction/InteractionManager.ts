@@ -107,7 +107,7 @@ export class InteractionManager {
   private dragState?: DragState;
 
   // Selection management
-  private selectionManager?: SelectionManager;
+  private selectionManager: SelectionManager;
 
   // Configuration
   private readonly CLICK_THRESHOLD = 5; // pixels
@@ -122,21 +122,15 @@ export class InteractionManager {
     private canvas: HTMLCanvasElement,
     private eventBus: EventBus,
     undoRedoManager: UndoRedoManager,
+    selectionManager: SelectionManager,
     getOverlayById: (id: string) => BaseOverlay | undefined
   ) {
     this.undoRedoManager = undoRedoManager;
+    this.selectionManager = selectionManager;
     this.getOverlayById = getOverlayById;
     this.setupEventListeners();
     this.setupDragEventListeners();
     this.setupSpatialEventListeners();
-  }
-
-  /**
-   * Sets the selection manager for handling click-to-select functionality.
-   * @param selectionManager - The selection manager to use.
-   */
-  setSelectionManager(selectionManager: SelectionManager): void {
-    this.selectionManager = selectionManager;
   }
 
   private setupEventListeners(): void {
@@ -200,8 +194,7 @@ export class InteractionManager {
     deltaY: number;
   }): void {
     const targetIds =
-      detail.targetIds ||
-      (this.selectionManager ? this.selectionManager.getSelectedIds() : []);
+      detail.targetIds || this.selectionManager.getSelectedIds();
     for (const id of targetIds) {
       const overlay = this.getOverlayById(id);
       if (overlay && "getPosition" in overlay && "setPosition" in overlay) {
@@ -224,8 +217,7 @@ export class InteractionManager {
     deltaHeight: number;
   }): void {
     const targetIds =
-      detail.targetIds ||
-      (this.selectionManager ? this.selectionManager.getSelectedIds() : []);
+      detail.targetIds || this.selectionManager.getSelectedIds();
     for (const id of targetIds) {
       const overlay = this.getOverlayById(id);
       if (overlay && "getBounds" in overlay && "setBounds" in overlay) {
@@ -250,8 +242,7 @@ export class InteractionManager {
     newY: number;
   }): void {
     const targetIds =
-      detail.targetIds ||
-      (this.selectionManager ? this.selectionManager.getSelectedIds() : []);
+      detail.targetIds || this.selectionManager.getSelectedIds();
     for (const id of targetIds) {
       const overlay = this.getOverlayById(id);
       if (overlay && "setPosition" in overlay) {
@@ -441,12 +432,8 @@ export class InteractionManager {
         }
       }
 
-      // Handle selection if we have a selection manager and the handler is selectable
-      if (
-        this.selectionManager &&
-        handler &&
-        this.isSelectableHandler(handler)
-      ) {
+      // Handle selection if the handler is selectable
+      if (handler && this.isSelectableHandler(handler)) {
         const addToSelection = event.ctrlKey || event.metaKey; // Ctrl/Cmd+click to add to selection
         this.selectionManager.toggle(handler.id, addToSelection);
         event.preventDefault();
@@ -455,8 +442,8 @@ export class InteractionManager {
       else if (handler?.onClick?.(point, event)) {
         event.preventDefault();
       }
-      // If no handler was found and we have a selection manager, clear selection
-      else if (this.selectionManager && !handler) {
+      // If no handler was found, clear selection
+      else if (!handler) {
         this.selectionManager.clearSelection();
       }
 
