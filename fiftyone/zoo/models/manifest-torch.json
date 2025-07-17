@@ -6319,9 +6319,7 @@
                 "packages": [
                     "torch",
                     "torchvision",
-                    "transformers",
-                    "pillow",
-                    "scipy"
+                    "transformers"
                 ],
                 "cpu": {
                     "support": true
@@ -6358,9 +6356,7 @@
                 "packages": [
                     "torch",
                     "torchvision",
-                    "transformers",
-                    "pillow",
-                    "scipy"
+                    "transformers"
                 ],
                 "cpu": {
                     "support": true
@@ -6397,9 +6393,7 @@
                 "packages": [
                     "torch",
                     "torchvision",
-                    "transformers",
-                    "pillow",
-                    "scipy"
+                    "transformers"
                 ],
                 "cpu": {
                     "support": true
@@ -6436,9 +6430,7 @@
                 "packages": [
                     "torch",
                     "torchvision",
-                    "transformers",
-                    "pillow",
-                    "scipy"
+                    "transformers"
                 ],
                 "cpu": {
                     "support": true
@@ -6475,9 +6467,7 @@
                 "packages": [
                     "torch",
                     "torchvision",
-                    "transformers",
-                    "pillow",
-                    "scipy"
+                    "transformers"
                 ],
                 "cpu": {
                     "support": true
