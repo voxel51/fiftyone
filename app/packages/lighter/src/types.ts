@@ -79,7 +79,7 @@ export interface BoundedOverlay extends BaseOverlay {
  * These overlays store relative coordinates [0,1] and need coordinate transformation.
  */
 export interface Spatial {
-  /** Get relative coordinates [0-1] from data model */
+  /** Get relative coordinates [0-1rom data model */
   getRelativeBounds(): Rect;
 
   /** Set absolute coordinates in canvas space */
@@ -88,11 +88,17 @@ export interface Spatial {
   /** Get current absolute coordinates in canvas space */
   getAbsoluteBounds(): Rect;
 
+  /** Set relative coordinates [0-1rom data model */
+  setRelativeBounds(bounds: Rect): void;
+
   /** Check if overlay needs coordinate update */
   needsCoordinateUpdate(): boolean;
 
   /** Mark as needing coordinate update */
   markForCoordinateUpdate(): void;
+
+  /** Mark coordinate update as complete */
+  markCoordinateUpdateComplete(): void;
 }
 
 /**
