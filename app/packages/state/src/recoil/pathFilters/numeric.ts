@@ -374,15 +374,16 @@ export const helperFunction = (
   v = Number(v);
 
   if (exclude) {
-    if (start !== null && v >= start) {
-      return false;
+    // If both bounds are set, exclude only values within [start, end]
+    if (start !== null && end !== null) {
+      return !(v >= start && v <= end);
     }
 
-    if (end !== null && v <= end) {
-      return false;
+    if (start !== null) {
+      return v < start;
     }
 
-    return true;
+    return v > end;
   }
 
   if (start !== null && v < start) {
