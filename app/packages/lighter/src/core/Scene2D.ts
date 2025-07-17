@@ -41,6 +41,18 @@ export class Scene2D {
   private canonicalMediaId?: string;
   private unsubscribeCanonicalMedia?: () => void;
 
+  constructor(private readonly config: Scene2DConfig) {
+    this.coordinateSystem = new CoordinateSystem2D();
+    this.selectionManager = new SelectionManager(config.eventBus);
+    this.interactionManager = new InteractionManager(
+      config.canvas,
+      config.eventBus,
+      this.undoRedo,
+      this.selectionManager,
+      (id) => this.overlays.get(id)
+    );
+  }
+
   // TODO: hook up with fiftyone colorscheme
   private static getStyleFromId(id: string): DrawStyle {
     return {
@@ -73,25 +85,6 @@ export class Scene2D {
     }
 
     return baseStyle;
-  }
-
-  constructor(private readonly config: Scene2DConfig) {
-    // Initialize coordinate system
-    this.coordinateSystem = new CoordinateSystem2D();
-
-    // Initialize selection manager
-    this.selectionManager = new SelectionManager(config.eventBus);
-
-    // Initialize interaction manager
-    this.interactionManager = new InteractionManager(
-      config.canvas,
-      config.eventBus,
-      this.undoRedo,
-      (id) => this.overlays.get(id)
-    );
-
-    // Connect interaction manager with selection manager
-    this.interactionManager.setSelectionManager(this.selectionManager);
   }
 
   private isSelectable(
