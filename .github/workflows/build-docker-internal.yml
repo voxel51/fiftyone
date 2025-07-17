@@ -10,6 +10,7 @@ jobs:
 
   build-image:
     runs-on: ubuntu-latest
+    needs: [build-app]
     permissions:
       contents: 'read'
       id-token: 'write'
