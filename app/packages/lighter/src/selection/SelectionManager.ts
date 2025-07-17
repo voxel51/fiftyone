@@ -4,7 +4,6 @@
 
 import type { EventBus } from "../event/EventBus";
 import { LIGHTER_EVENTS } from "../event/EventBus";
-import type { Point } from "../types";
 import type { Selectable } from "./Selectable";
 
 /**
@@ -163,33 +162,6 @@ export class SelectionManager {
    */
   getSelectionCount(): number {
     return this.selectedOverlays.size;
-  }
-
-  /**
-   * Finds the best selectable overlay at a given point.
-   * Uses selection priority to choose between overlapping overlays.
-   * @param point - The point to test.
-   * @param overlays - Array of overlays to test (should implement both InteractionHandler and Selectable).
-   * @returns The best selectable overlay at the point, or undefined.
-   */
-  findSelectableAtPoint(
-    point: Point,
-    overlays: (Selectable & { containsPoint(point: Point): boolean })[]
-  ): Selectable | undefined {
-    const candidates = overlays.filter(
-      (overlay) =>
-        this.selectableOverlays.has(overlay.id) && overlay.containsPoint(point)
-    );
-
-    if (candidates.length === 0) return undefined;
-    if (candidates.length === 1) return candidates[0];
-
-    // Choose the overlay with highest selection priority
-    return candidates.reduce((best, current) =>
-      current.getSelectionPriority() > best.getSelectionPriority()
-        ? current
-        : best
-    );
   }
 
   private emitSelectionChanged(
