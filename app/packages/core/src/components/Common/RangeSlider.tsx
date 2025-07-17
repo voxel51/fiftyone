@@ -2,13 +2,7 @@ import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { DATE_FIELD, DATE_TIME_FIELD } from "@fiftyone/utilities";
 import { Slider as SliderUnstyled } from "@mui/material";
-import React, {
-  ChangeEvent,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { ChangeEvent, useLayoutEffect, useRef, useState } from "react";
 import type { RecoilState, RecoilValueReadOnly } from "recoil";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
@@ -159,14 +153,6 @@ const BaseSlider = <T extends Range | number>({
   const [clicking, setClicking] = useState(false);
 
   const hasBounds = bounds.every((b) => b !== null);
-
-  // Update min/max when bounds change
-  useEffect(() => {
-    if (hasBounds && Array.isArray(value)) {
-      onMinCommit?.(bounds[0]);
-      onMaxCommit?.(bounds[1]);
-    }
-  }, [bounds]);
 
   if (!hasBounds) {
     return null;
@@ -340,10 +326,14 @@ export const RangeSlider = ({
       fieldType={fieldType}
       onChange={(_, v: Range) => setLocalValue(v)}
       onMinCommit={(v) => {
-        setValue((prev) => [parseFloat(v.toFixed(precision)), prev[1]]);
+        const newMin =
+          v === bounds[0] ? null : parseFloat(v.toFixed(precision));
+        setValue((prev) => [newMin, prev[1]]);
       }}
       onMaxCommit={(v) => {
-        setValue((prev) => [prev[0], parseFloat(v.toFixed(precision))]);
+        const newMax =
+          v === bounds[1] ? null : parseFloat(v.toFixed(precision));
+        setValue((prev) => [prev[0], newMax]);
       }}
       value={[...localValue]}
     />
