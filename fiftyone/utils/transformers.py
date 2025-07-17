@@ -1092,8 +1092,7 @@ class FiftyOneTransformerForPoseEstimationConfig(FiftyOneTransformerConfig):
         ):
             d["name_or_path"] = DEFAULT_POSE_ESTIMATION_PATH
         super().__init__(d)
-
-
+        
 class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
     """FiftyOne wrapper around a ``transformers`` model for pose estimation.
     
@@ -1117,8 +1116,9 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
         super().__init__(config)
         self._output_processor.processor = self.transforms.processor
         self.transforms.return_image_sizes = True
+        self._detection_boxes = None
 
-    def _predict(self, images):
+    def _predict_all(self, images):
         """Perform pose estimation on images with optional detection boxes.
         
         This method handles the preprocessing requirement of models like VitPose
@@ -1144,7 +1144,7 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
             boxes = [[[0, 0, w, h]] for h, w in image_sizes]
 
         # Process images with boxes
-        processed = self.transforms(images=images, boxes=boxes, return_tensors="pt")
+        processed = self.transforms.processor(images, boxes=boxes, return_tensors="pt")
 
         # Move to device
         processed = {k: v.to(self.device) for k, v in processed.items()}
@@ -1158,32 +1158,6 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
 
         # Process outputs
         return self._output_processor(outputs, image_sizes, self.config.confidence_thresh)
-
-    def predict(self, args):
-        """Predict keypoints with optional detection boxes.
-
-        Args:
-            args: Prediction arguments containing:
-                - images: list of images to process
-                - detection_boxes (optional): list of detection boxes per image.
-                  Format: [[[x1, y1, x2, y2], ...], ...] where coordinates
-                  are in pixels. Each inner list contains boxes for one image.
-
-        Returns:
-            List of keypoints predictions for each image. Returns a single
-            Keypoints object per image if one detection box is provided,
-            or a list of Keypoints objects for multiple detection boxes.
-        """
-        # Handle detection boxes if provided
-        if hasattr(args, 'detection_boxes'):
-            self._detection_boxes = args.detection_boxes
-        elif isinstance(args, dict) and 'detection_boxes' in args:
-            self._detection_boxes = args['detection_boxes']
-        else:
-            self._detection_boxes = None
-        # Call parent predict which will invoke _predict
-        return super().predict(args)
-
 
 class FiftyOneTransformerForDepthEstimationConfig(FiftyOneTransformerConfig):
     """Configuration for a :class:`FiftyOneTransformerForDepthEstimation`.
