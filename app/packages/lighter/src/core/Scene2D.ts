@@ -28,12 +28,10 @@ import {
 import type { Scene2DConfig } from "./SceneConfig";
 
 /**
- * 2D scene that manages overlays, rendering, selection, and undo/redo operations.
- * Now with simplified coordinate transformation using the new architecture.
+ * 2D scene that manages overlays, rendering, selection, coordinate system, and undo/redo operations.
  */
 export class Scene2D {
   private overlays = new Map<string, BaseOverlay>();
-  private spatialOverlays = new Map<string, BaseOverlay & Spatial>();
   private undoRedo = new UndoRedoManager();
   private overlayOrder: string[] = [];
   private renderingState = new RenderingStateManager();
@@ -44,7 +42,7 @@ export class Scene2D {
   private canonicalMediaId?: string;
   private unsubscribeCanonicalMedia?: () => void;
 
-  // todo: hook up with fiftyone colorscheme
+  // TODO: hook up with fiftyone colorscheme
   private static getStyleFromId(id: string): DrawStyle {
     return {
       strokeStyle: generateColorFromId(id, 70, 50),
@@ -138,7 +136,6 @@ export class Scene2D {
 
     // Check if overlay is spatial and track separately
     if (this.isSpatial(overlay)) {
-      this.spatialOverlays.set(overlay.id, overlay);
       // Update coordinates if canonical media is set
       if (this.canonicalMedia) {
         this.updateSpatialOverlayCoordinates(overlay);
@@ -183,7 +180,6 @@ export class Scene2D {
       overlay.destroy();
 
       this.overlays.delete(id);
-      this.spatialOverlays.delete(id);
       this.overlayOrder = this.overlayOrder.filter(
         (overlayId) => overlayId !== id
       );
@@ -303,7 +299,6 @@ export class Scene2D {
     }
 
     this.overlays.clear();
-    this.spatialOverlays.clear();
     this.overlayOrder = [];
     this.renderingState.clearAll();
     this.interactionManager.clearHandlers();
@@ -501,8 +496,10 @@ export class Scene2D {
    * Updates coordinates for all spatial overlays.
    */
   private updateAllSpatialOverlays(): void {
-    for (const overlay of this.spatialOverlays.values()) {
-      this.updateSpatialOverlayCoordinates(overlay);
+    for (const overlay of this.overlays.values()) {
+      if (this.isSpatial(overlay)) {
+        this.updateSpatialOverlayCoordinates(overlay);
+      }
     }
   }
 
@@ -519,6 +516,22 @@ export class Scene2D {
   }
 
   /**
+   * Updates relative bounds for a spatial overlay based on its current absolute bounds.
+   * This is used when an overlay's position is changed and we need to update its relative coordinates.
+   * @param overlay - The spatial overlay to update.
+   */
+  private updateSpatialOverlayRelativeBounds(
+    overlay: BaseOverlay & Spatial
+  ): void {
+    const absoluteBounds = overlay.getAbsoluteBounds();
+    const relativeBounds =
+      this.coordinateSystem.absoluteToRelative(absoluteBounds);
+
+    // Update the overlays relative bounds
+    overlay.setRelativeBounds(relativeBounds);
+  }
+
+  /**
    * Gets the container dimensions.
    * @returns The container dimensions, or undefined if not available.
    */
@@ -530,6 +543,14 @@ export class Scene2D {
    * Renders a single frame.
    */
   private renderFrame(): void {
+    // Before rendering, update relative bounds for overlays that need it
+    for (const overlay of this.overlays.values()) {
+      if (this.isSpatial(overlay) && overlay.needsCoordinateUpdate()) {
+        this.updateSpatialOverlayRelativeBounds(overlay);
+        // Mark coordinate update as complete
+        overlay.markCoordinateUpdateComplete();
+      }
+    }
     for (const overlayId of this.overlayOrder) {
       this.renderOverlay(overlayId);
     }
@@ -543,7 +564,7 @@ export class Scene2D {
     const overlay = this.overlays.get(overlayId);
     const status = this.renderingState.getStatus(overlayId);
 
-    if (this.shouldRenderOverlay(overlay, status)) {
+    if (overlay && this.shouldRenderOverlay(overlay, status)) {
       this.executeOverlayRender(overlayId, overlay!);
     }
   }

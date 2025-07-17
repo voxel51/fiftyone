@@ -80,6 +80,11 @@ export class BoundingBoxOverlay
     this.markDirty();
   }
 
+  setRelativeBounds(bounds: Rect): void {
+    this.relativeBounds = { ...bounds };
+    this._needsCoordinateUpdate = false;
+  }
+
   getAbsoluteBounds(): Rect {
     return { ...this.absoluteBounds };
   }
@@ -91,6 +96,10 @@ export class BoundingBoxOverlay
   markForCoordinateUpdate(): void {
     this._needsCoordinateUpdate = true;
     this.markDirty();
+  }
+
+  markCoordinateUpdateComplete(): void {
+    this._needsCoordinateUpdate = false;
   }
 
   render(renderer: Renderer2D, style: DrawStyle): void {
@@ -129,7 +138,6 @@ export class BoundingBoxOverlay
       );
     }
 
-    // Emit overlay-loaded event using the common method
     this.emitLoaded();
   }
 
@@ -142,17 +150,16 @@ export class BoundingBoxOverlay
   }
 
   setPosition(position: Point): void {
-    const deltaX = position.x - this.absoluteBounds.x;
-    const deltaY = position.y - this.absoluteBounds.y;
-
+    // Update absolute bounds with new position
     this.absoluteBounds.x = position.x;
     this.absoluteBounds.y = position.y;
 
-    // Update relative bounds to maintain sync
-    // This is a simplified update - in a real implementation,
-    // you'd need the coordinate system to properly convert back
-    this.relativeBounds.x += deltaX;
-    this.relativeBounds.y += deltaY;
+    // Mark for coordinate update so the scene can properly convert
+    // absolute coordinates back to relative coordinates using the coordinate system
+    this.markForCoordinateUpdate();
+
+    // Mark as dirty to trigger re-render
+    this.markDirty();
   }
 
   // Interaction handlers

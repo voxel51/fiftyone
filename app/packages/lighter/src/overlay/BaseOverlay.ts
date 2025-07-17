@@ -13,9 +13,7 @@ import type { DrawStyle, Point, RawLookerLabel } from "../types";
  * Base abstract class for all overlays.
  */
 export abstract class BaseOverlay implements InteractionHandler {
-  /** Unique identifier for the overlay. */
   readonly id: string;
-  /** Label (data model) of the overlay. */
   readonly label: RawLookerLabel;
   /** Whether the overlay needs to be re-rendered. The render loop will check this and re-render the overlay if it is dirty.
    *
@@ -23,11 +21,8 @@ export abstract class BaseOverlay implements InteractionHandler {
    */
   protected isDirty: boolean = false;
 
-  /** The renderer instance. */
   protected renderer?: Renderer2D;
-  /** The event bus for communication. */
   protected eventBus?: EventBus;
-  /** The resource loader for loading assets. */
   protected resourceLoader?: ResourceLoader;
 
   constructor(id: string, label: RawLookerLabel = null) {
