@@ -1,12 +1,11 @@
 import { BaseState } from "@fiftyone/looker";
 import DetectionOverlay from "@fiftyone/looker/src/overlays/detection";
 import { BoundingBoxOptions, overlayFactory } from "..";
-import type { Scene2D } from "../core/Scene2D";
 import { BoundingBoxLabel } from "../overlay/BoundingBoxOverlay";
 
+// todo: this is temporary hack
 export const convertLegacyToLighterDetection = (
-  overlay: DetectionOverlay<BaseState>,
-  scene: Scene2D
+  overlay: DetectionOverlay<BaseState>
 ) => {
   // Get relative coordinates [0-1] from the legacy overlay
   const [relativeX, relativeY, relativeWidth, relativeHeight] =

@@ -115,10 +115,7 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
       for (const overlay of overlays) {
         if (overlay instanceof DetectionOverlay) {
           // Convert legacy overlay to lighter overlay with relative coordinates
-          const lighterOverlay = convertLegacyToLighterDetection(
-            overlay,
-            scene
-          );
+          const lighterOverlay = convertLegacyToLighterDetection(overlay);
           addOverlay(lighterOverlay);
         }
       }

@@ -14,7 +14,6 @@ import type {
   Spatial,
 } from "../types";
 import type { Command } from "../undo/Command";
-import { type Movable } from "../undo/MoveOverlayCommand";
 import { UndoRedoManager } from "../undo/UndoRedoManager";
 import { generateColorFromId } from "../utils/color";
 import { CoordinateSystem2D } from "./CoordinateSystem2D";
@@ -93,10 +92,6 @@ export class Scene2D {
 
     // Connect interaction manager with selection manager
     this.interactionManager.setSelectionManager(this.selectionManager);
-  }
-
-  private isMovable(overlay: BaseOverlay): overlay is BaseOverlay & Movable {
-    return "getPosition" in overlay && "setPosition" in overlay;
   }
 
   private isSelectable(
