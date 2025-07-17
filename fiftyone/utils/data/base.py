@@ -91,21 +91,23 @@ def map_values(sample_collection, path, map, progress=False):
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
-        field: the field or ``embedded.field.name`` to map
+        path: the field or ``embedded.field.name`` to map
         map: a dict mapping values to new values
-        progress (False): whether to render a progress bar (True/False),
-            use the default value ``fiftyone.config.show_progress_bars``
-            (None), or a progress callback function to invoke instead
+        progress (False): whether to render a progress bar (True/False), use
+            the default value ``fiftyone.config.show_progress_bars`` (None), or
+            a progress callback function to invoke instead
     """
     root = sample_collection._get_root_field(path)
 
     if sample_collection._edits_field(root):
-        _map_values_on_edited_field(sample_collection, path, map)
+        _map_values_on_edited_field(
+            sample_collection, path, map, progress=progress
+        )
     else:
         sample_collection.map_values(path, map).save(root)
 
 
-def _map_values_on_edited_field(sample_collection, path, map):
+def _map_values_on_edited_field(sample_collection, path, map, progress=False):
     inputs = list(map.keys())
 
     (
@@ -173,7 +175,7 @@ def _map_values_on_edited_field(sample_collection, path, map):
                     {id_key: did, "label_id": lid, "value": nval}
                 )
 
-        sample_collection.set_label_values(path, new_values)
+        sample_collection.set_label_values(path, new_values, progress=progress)
     else:
         if is_frame_field:
             _path, _ = sample_collection._handle_frame_field(path)
@@ -206,7 +208,9 @@ def _map_values_on_edited_field(sample_collection, path, map):
             for did, cval in zip(doc_ids, curr_values):
                 new_values[did] = map.get(cval, cval)
 
-        sample_collection.set_values(path, new_values, key_field=id_path)
+        sample_collection.set_values(
+            path, new_values, key_field=id_path, progress=progress
+        )
 
 
 def parse_images_dir(dataset_dir, recursive=True):

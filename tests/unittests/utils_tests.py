@@ -200,7 +200,6 @@ class MapValuesTests(unittest.TestCase):
         sample = fo.Sample(filepath="video.mp4")
         sample.frames[1] = fo.Frame()
         sample.frames[2] = fo.Frame(
-            filepath="image2.jpg",
             tags=["cat", "dog", "fox"],
             str_field="cat",
             animal=fo.Classification(label="cat"),
