@@ -487,13 +487,34 @@ export class InteractionManager {
 
   private findHandlerAtPoint(point: Point): InteractionHandler | undefined {
     // Find handlers in reverse order (topmost first)
+    // Note: this is a hack, we need a better z-order logic
+    const candidates: InteractionHandler[] = [];
     for (let i = this.handlers.length - 1; i >= 0; i--) {
       const handler = this.handlers[i];
       if (handler.containsPoint(point)) {
-        return handler;
+        candidates.push(handler);
       }
     }
-    return undefined;
+
+    if (candidates.length === 0) return undefined;
+    if (candidates.length === 1) return candidates[0];
+
+    // If multiple handlers found, prefer selectable ones with higher priority
+    const selectableCandidates = candidates.filter((handler) =>
+      this.isSelectableHandler(handler)
+    );
+
+    if (selectableCandidates.length > 0) {
+      // Choose the selectable overlay with highest selection priority
+      return selectableCandidates.reduce((best, current) => {
+        const bestPriority = (best as any).getSelectionPriority?.() || 0;
+        const currentPriority = (current as any).getSelectionPriority?.() || 0;
+        return currentPriority > bestPriority ? current : best;
+      });
+    }
+
+    // Fall back to the first candidate (topmost)
+    return candidates[0];
   }
 
   private getCanvasPoint(event: PointerEvent): Point {

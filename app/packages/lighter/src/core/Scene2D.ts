@@ -75,7 +75,7 @@ export class Scene2D {
     const baseStyle = Scene2D.getStyleFromId(identifier);
 
     // Check if overlay is selectable and selected
-    if (this.isSelectable(overlay) && overlay.isSelected()) {
+    if (this.typeGuards.isSelectable(overlay) && overlay.isSelected()) {
       return {
         ...baseStyle,
         isSelected: true,
@@ -87,15 +87,13 @@ export class Scene2D {
     return baseStyle;
   }
 
-  private isSelectable(
-    overlay: BaseOverlay
-  ): overlay is BaseOverlay & Selectable {
-    return "isSelected" in overlay && "setSelected" in overlay;
-  }
+  private readonly typeGuards = {
+    isSelectable: (overlay: BaseOverlay): overlay is BaseOverlay & Selectable =>
+      "isSelected" in overlay && "setSelected" in overlay,
 
-  private isSpatial(overlay: BaseOverlay): overlay is BaseOverlay & Spatial {
-    return "getRelativeBounds" in overlay && "setAbsoluteBounds" in overlay;
-  }
+    isSpatial: (overlay: BaseOverlay): overlay is BaseOverlay & Spatial =>
+      "getRelativeBounds" in overlay && "setAbsoluteBounds" in overlay,
+  };
 
   public async startRenderLoop(): Promise<void> {
     this.config.renderer.startRenderLoop(() => this.renderFrame());
@@ -113,38 +111,30 @@ export class Scene2D {
     this.renderingState.setStatus(overlay.id, OVERLAY_STATUS_PENDING);
     // Inject renderer into overlay
     overlay.setRenderer(this.config.renderer);
-
-    // Attach event bus
     overlay.attachEventBus(this.config.eventBus);
-
     overlay.setResourceLoader(this.config.resourceLoader);
 
     // Add to internal tracking
     this.overlays.set(overlay.id, overlay);
 
-    // Check if overlay is spatial and track separately
-    if (this.isSpatial(overlay)) {
-      // Update coordinates if canonical media is set
-      if (this.canonicalMedia) {
-        this.updateSpatialOverlayCoordinates(overlay);
-      }
+    // Update coordinates if spatial and canonical media is set
+    if (this.typeGuards.isSpatial(overlay) && this.canonicalMedia) {
+      this.updateSpatialOverlayCoordinates(overlay);
     }
 
+    // Set rendering order
     if (overlay.id === this.canonicalMediaId) {
       this.overlayOrder.unshift(overlay.id);
     } else {
       this.overlayOrder.push(overlay.id);
     }
 
-    // Register overlay with interaction manager
+    // Register with managers
     this.interactionManager.addHandler(overlay);
-
-    // Register overlay with selection manager if it's selectable
-    if (this.isSelectable(overlay)) {
+    if (this.typeGuards.isSelectable(overlay)) {
       this.selectionManager.addSelectable(overlay);
     }
 
-    // Emit overlay-added event when overlay is added to scene
     this.config.eventBus.emit({
       type: LIGHTER_EVENTS.OVERLAY_ADDED,
       detail: { id: overlay.id },
@@ -485,7 +475,7 @@ export class Scene2D {
    */
   private updateAllSpatialOverlays(): void {
     for (const overlay of this.overlays.values()) {
-      if (this.isSpatial(overlay)) {
+      if (this.typeGuards.isSpatial(overlay)) {
         this.updateSpatialOverlayCoordinates(overlay);
       }
     }
@@ -533,7 +523,10 @@ export class Scene2D {
   private renderFrame(): void {
     // Before rendering, update relative bounds for overlays that need it
     for (const overlay of this.overlays.values()) {
-      if (this.isSpatial(overlay) && overlay.needsCoordinateUpdate()) {
+      if (
+        this.typeGuards.isSpatial(overlay) &&
+        overlay.needsCoordinateUpdate()
+      ) {
         this.updateSpatialOverlayRelativeBounds(overlay);
         // Mark coordinate update as complete
         overlay.markCoordinateUpdateComplete();
