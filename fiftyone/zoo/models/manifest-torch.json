@@ -6303,12 +6303,6 @@
             "author": "Yansong Peng, et al.",
             "license": "Apache 2.0",
             "size_bytes": 14680064,
-            "manager": {
-                "type": "fiftyone.core.models.ModelManager",
-                "config": {
-                    "url": null
-                }
-            },
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
                 "config": {
@@ -6340,12 +6334,6 @@
             "author": "Yansong Peng, et al.",
             "license": "Apache 2.0",
             "size_bytes": 25165824,
-            "manager": {
-                "type": "fiftyone.core.models.ModelManager",
-                "config": {
-                    "url": null
-                }
-            },
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
                 "config": {
@@ -6377,12 +6365,6 @@
             "author": "Yansong Peng, et al.",
             "license": "Apache 2.0",
             "size_bytes": 31457280,
-            "manager": {
-                "type": "fiftyone.core.models.ModelManager",
-                "config": {
-                    "url": null
-                }
-            },
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
                 "config": {
@@ -6414,12 +6396,6 @@
             "author": "Yansong Peng, et al.",
             "license": "Apache 2.0",
             "size_bytes": 52428800,
-            "manager": {
-                "type": "fiftyone.core.models.ModelManager",
-                "config": {
-                    "url": null
-                }
-            },
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
                 "config": {
@@ -6451,12 +6427,6 @@
             "author": "Yansong Peng, et al.",
             "license": "Apache 2.0",
             "size_bytes": 128974848,
-            "manager": {
-                "type": "fiftyone.core.models.ModelManager",
-                "config": {
-                    "url": null
-                }
-            },
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
                 "config": {
