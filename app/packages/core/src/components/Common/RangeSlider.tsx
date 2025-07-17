@@ -326,10 +326,14 @@ export const RangeSlider = ({
       fieldType={fieldType}
       onChange={(_, v: Range) => setLocalValue(v)}
       onMinCommit={(v) => {
-        setValue((prev) => [parseFloat(v.toFixed(precision)), prev[1]]);
+        const newMin =
+          v === bounds[0] ? null : parseFloat(v.toFixed(precision));
+        setValue((prev) => [newMin, prev[1]]);
       }}
       onMaxCommit={(v) => {
-        setValue((prev) => [prev[0], parseFloat(v.toFixed(precision))]);
+        const newMax =
+          v === bounds[1] ? null : parseFloat(v.toFixed(precision));
+        setValue((prev) => [prev[0], newMax]);
       }}
       value={[...localValue]}
     />
