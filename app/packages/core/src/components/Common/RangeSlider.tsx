@@ -2,13 +2,7 @@ import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { DATE_FIELD, DATE_TIME_FIELD } from "@fiftyone/utilities";
 import { Slider as SliderUnstyled } from "@mui/material";
-import React, {
-  ChangeEvent,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { ChangeEvent, useLayoutEffect, useRef, useState } from "react";
 import type { RecoilState, RecoilValueReadOnly } from "recoil";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
@@ -159,14 +153,6 @@ const BaseSlider = <T extends Range | number>({
   const [clicking, setClicking] = useState(false);
 
   const hasBounds = bounds.every((b) => b !== null);
-
-  // Update min/max when bounds change
-  useEffect(() => {
-    if (hasBounds && Array.isArray(value)) {
-      onMinCommit?.(bounds[0]);
-      onMaxCommit?.(bounds[1]);
-    }
-  }, [bounds]);
 
   if (!hasBounds) {
     return null;
