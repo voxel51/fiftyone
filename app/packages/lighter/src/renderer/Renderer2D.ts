@@ -41,6 +41,16 @@ export interface ImageOptions {
 }
 
 /**
+ * Generic options for resource operations.
+ */
+export interface ResourceOptions {
+  opacity?: number;
+  rotation?: number; // in radians
+  scaleX?: number;
+  scaleY?: number;
+}
+
+/**
  * 2D renderer interface (merges backend and strategy responsibilities).
  */
 export interface Renderer2D {
@@ -70,6 +80,13 @@ export interface Renderer2D {
 
   // Element management
   dispose(id: string): void;
+
+  /**
+   * Update resource bounds directly without recreating the sprite to avoid flicker during resize
+   * @param id - The element ID.
+   * @param bounds - The new bounds for the resource.
+   */
+  updateResourceBounds(id: string, bounds: Rect): void;
 
   // Hit testing
   /**

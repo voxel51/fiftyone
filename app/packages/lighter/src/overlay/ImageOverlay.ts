@@ -159,7 +159,12 @@ export class ImageOverlay
   }
 
   async render(renderer: Renderer2D, style: DrawStyle): Promise<void> {
-    renderer.dispose(this.id);
+    // Only dispose if we don't have a texture yet or if the texture source changed
+    const needsDispose = !this.texture || this.texture.type !== "texture";
+
+    if (needsDispose) {
+      renderer.dispose(this.id);
+    }
 
     try {
       // If texture isn't loaded yet, try to load it now (fallback)
@@ -222,18 +227,25 @@ export class ImageOverlay
       // Update current bounds to reflect the actual rendered bounds
       this.currentBounds = finalBounds;
 
-      // Draw the image using the renderer
-      renderer.drawImage(
-        {
-          type: "texture",
-          texture: this.texture,
-        },
-        finalBounds,
-        {
-          opacity: this.options.opacity || 1,
-        },
-        this.id
-      );
+      if (needsDispose) {
+        console.log(">>>drawing image");
+        // Draw the image using the renderer (only if we disposed)
+        renderer.drawImage(
+          {
+            type: "texture",
+            texture: this.texture,
+          },
+          finalBounds,
+          {
+            opacity: this.options.opacity || 1,
+          },
+          this.id
+        );
+      } else {
+        console.log(">>>updating image");
+        // Update existing sprite properties directly to avoid flicker
+        renderer.updateResourceBounds(this.id, finalBounds);
+      }
 
       // Emit overlay-loaded event using the common method
       this.emitLoaded();
