@@ -1,0 +1,62 @@
+name: Build Internal Docker Images
+on:
+  workflow_dispatch: {}
+  schedule:
+    # 4:05AM On Thursdays for vuln assessments.
+    - cron: '5 4 * * 4'
+jobs:
+  build-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    strategy:
+      matrix:
+        python:
+          # A matrix in the event we want to add more
+          # python versions to this list.
+          - "3.11"
+    env:
+      GCP_DOCKER_REPOSITORY: dev-docker
+      GCP_LOCATION: us-central1
+    steps:
+      - name: Clone fiftyone
+        uses: actions/checkout@v4
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ secrets.REPO_GCP_PROJECT }}
+          service_account: ${{ secrets.REPO_GCP_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ secrets.REPO_GOOGLE_WORKLOAD_IDP }}
+      - name: Set Up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+      - name: Docker login
+        run: |
+          gcloud auth configure-docker "${{ env.GCP_LOCATION }}-docker.pkg.dev" --quiet
+      - name: Set Env Vars
+        run: |
+          fo_version=$(python3 -c 'import re; f=open("./setup.py").read(); print(re.search(r"VERSION\s*=\s*\"([^\"]+)\"", f).group(1))')
+          short_sha="$(git rev-parse --short HEAD)"
+          echo "fo_version=$fo_version" >> "$GITHUB_ENV"
+          echo "pyver=${{ matrix.python }}" >> "$GITHUB_ENV"
+          echo "short_sha=$short_sha" >> "$GITHUB_ENV"
+          echo "today=$(date +%Y%m%d)" >> "$GITHUB_ENV"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build and push internal image
+        uses: docker/build-push-action@v6
+        with:
+          build-args: |
+            BUILD_TYPE=released
+            FO_VERSION=${{ env.fo_version }}
+            PYTHON_VERSION=${{ env.pyver }}
+          context: .
+          # Not doing multi-platform builds as the intent of this
+          # is for security scanning.
+          # Multi-platform builds take an additional 10 minutes to build
+          # and this seems like it would give us the same level of scanning
+          # functionality.
+          push: true
+          sbom: true
+          tags: |
+            ${{ env.GCP_LOCATION }}-docker.pkg.dev/${{ secrets.REPO_GCP_PROJECT }}/${{ env.GCP_DOCKER_REPOSITORY }}/fiftyone:${{ env.fo_version }}-${{ env.short_sha }}-python${{ env.pyver }}-${{ env.today }}
