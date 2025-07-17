@@ -6,8 +6,8 @@ import * as PIXI from "pixi.js";
 import type { EventBus } from "../event/EventBus";
 import { LIGHTER_EVENTS } from "../event/EventBus";
 import type { DrawStyle, Point, Rect, TextOptions } from "../types";
-import type { ImageOptions, ImageSource, Renderer2D } from "./Renderer2D";
 import { parseColorWithAlpha } from "../utils/color";
+import type { ImageOptions, ImageSource, Renderer2D } from "./Renderer2D";
 
 /**
  * PixiJS v8 renderer
@@ -483,6 +483,20 @@ export class PixiRenderer2D implements Renderer2D {
       }
       this.elementMap.delete(`${id}-selection`);
       selectionElement.destroy({ children: true });
+    }
+  }
+
+  /**
+   * Update resource bounds directly without recreating the sprite to avoid flicker during resize
+   */
+  updateResourceBounds(id: string, bounds: Rect): void {
+    const element = this.elementMap.get(id);
+    if (element && element instanceof PIXI.Sprite) {
+      // Update sprite properties directly without recreating
+      element.x = bounds.x;
+      element.y = bounds.y;
+      element.width = bounds.width;
+      element.height = bounds.height;
     }
   }
 
