@@ -21,7 +21,7 @@ export const dynamicGroupsElementCount = selectorFamily({
             extended: false,
             modal,
             paths: [""],
-            useGroupId: false,
+            useSelection: false,
           })
         ).at(0)?.count ?? 0
       );

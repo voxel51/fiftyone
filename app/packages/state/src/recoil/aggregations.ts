@@ -49,7 +49,7 @@ export const aggregationQuery = graphQLSelectorFamily<
     mixed?: boolean;
     paths: string[];
     root?: boolean;
-    useGroupId?: boolean;
+    useSelection?: boolean;
   },
   Aggregation[]
 >({
@@ -67,14 +67,15 @@ export const aggregationQuery = graphQLSelectorFamily<
       modal,
       paths,
       root = false,
-      useGroupId = false,
+      useSelection = true,
     }) =>
     ({ get }) => {
       const dataset = get(selectors.datasetName);
       if (!dataset) return null;
 
       const useSidebarSampleId = !root && modal && !get(groupId) && !mixed;
-      const sampleIds = useSidebarSampleId ? [get(sidebarSampleId)] : [];
+      const sampleIds =
+        useSidebarSampleId && useSelection ? [get(sidebarSampleId)] : [];
 
       if (useSidebarSampleId && sampleIds[0] === null) {
         return null;
@@ -91,7 +92,7 @@ export const aggregationQuery = graphQLSelectorFamily<
           extended && !root
             ? get(modal ? filterAtoms.modalFilters : filterAtoms.filters)
             : null,
-        groupId: !root && modal && useGroupId ? get(groupId) || null : null,
+        groupId: !root && modal && useSelection ? get(groupId) || null : null,
         hiddenLabels: !root ? get(selectors.hiddenLabelsArray) : [],
         paths,
         mixed,
