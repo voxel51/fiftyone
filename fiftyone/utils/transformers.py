@@ -1444,11 +1444,10 @@ class TransformersPoseEstimationOutputProcessor(fout.OutputProcessor):
     @processor.setter
     def processor(self, processor):
         self._processor = processor
-        if self._processor is not None:
-            if hasattr(self._processor, "post_process_pose_estimation"):
-                self._pose_estimation_post_processor = (
-                    self._processor.post_process_pose_estimation
-                )
+        if self._processor is not None and hasattr(self._processor, "post_process_pose_estimation"):
+            self._pose_estimation_post_processor = (
+                self._processor.post_process_pose_estimation
+            )
     
     def __call__(self, output, image_sizes, confidence_thresh=None):
         if self._pose_estimation_post_processor is not None:
@@ -1536,7 +1535,7 @@ class TransformersPoseEstimationOutputProcessor(fout.OutputProcessor):
         heatmaps = output.heatmaps.detach().cpu()
         results = []
         
-        for batch_idx, heatmap in enumerate(heatmaps):
+        for heatmap in heatmaps:
             keypoint_list = []
             for kp_idx in range(heatmap.shape[0]):
                 # Get max location in heatmap
@@ -1577,7 +1576,6 @@ def _get_image_size(img):
         height, width = img.shape[:2]
 
     return height, width
-
 
 MODEL_TYPE_TO_CONFIG_CLASS = {
     "base-model": FiftyOneTransformerConfig,
