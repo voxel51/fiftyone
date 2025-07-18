@@ -3,12 +3,14 @@
  */
 
 // React components
+export { LighterControls } from "./LighterControls";
 export { LighterSampleRenderer } from "./LighterSampleRenderer";
 export type { LighterSampleRendererProps } from "./LighterSampleRenderer";
 
 // React hooks
-export { useLighterWithPixi as useLighter } from "./useLighterWithPixi";
-export type { LighterOptions } from "./useLighterWithPixi";
+export { useLighter } from "./useLighter";
+export { useLighterSetup } from "./useLighterSetup";
+export type { LighterOptions } from "./useLighterSetup";
 export { usePixiRenderer } from "./usePixiRenderer";
 export { usePixiResourceLoader } from "./usePixiResourceLoader";
 export { useSceneSelectionState } from "./useSceneSelectionState";
