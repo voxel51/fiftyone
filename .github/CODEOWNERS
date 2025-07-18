@@ -22,6 +22,7 @@
 /fiftyone/migrations/        @voxel51/backend-squad
 
 # Aloha Shirts care about versioning
+.github/                     @voxel51/aloha-shirts
 Dockerfile                   @voxel51/aloha-shirts
 setup.py                     @voxel51/aloha-shirts
 requirements.txt             @voxel51/aloha-shirts

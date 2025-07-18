@@ -146,14 +146,23 @@ class PluginDefinition(object):
     @property
     def server_path(self):
         """The default server path to the plugin."""
-        relpath = fou.safe_relpath(self.directory, fo.config.plugins_dir)
-        return "/" + os.path.join("plugins", relpath)
+        if self.builtin:
+            # For builtin plugins, compute path relative to the builtin plugins directory
+            relpath = fou.safe_relpath(self.directory, fpc.BUILTIN_PLUGINS_DIR)
+        else:
+            # For user plugins, compute path relative to the user's plugins directory
+            relpath = fou.safe_relpath(self.directory, fo.config.plugins_dir)
+        # Normalize OS path separators to URL-style forward slashes
+        normalized_relpath = relpath.replace(os.sep, "/")
+        return "/" + "/".join(["plugins", normalized_relpath])
 
     @property
     def js_bundle_server_path(self):
         """The default server path to the JS bundle."""
         if self.has_js:
-            return os.path.join(self.server_path, self.js_bundle)
+            # Normalize JS bundle path to URL-style forward slashes
+            normalized_js_bundle = self.js_bundle.replace(os.sep, "/")
+            return "/".join([self.server_path, normalized_js_bundle])
 
     @property
     def js_bundle_hash(self):

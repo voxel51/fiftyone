@@ -123,7 +123,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "sa-1b", "torch", "zero-shot"],
+            "tags": ["segment-anything", "sa-1b", "torch", "zero-shot", "transformer"],
             "date_added": "2023-05-12 11:40:51"
         },
         {
@@ -158,7 +158,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "sa-1b", "torch", "zero-shot"],
+            "tags": ["segment-anything", "sa-1b", "torch", "zero-shot", "transformer"],
             "date_added": "2023-05-12 11:40:51"
         },
         {
@@ -193,7 +193,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "sa-1b", "torch", "zero-shot"],
+            "tags": ["segment-anything", "sa-1b", "torch", "zero-shot", "transformer"],
             "date_added": "2023-05-12 11:40:51"
         },
         {
@@ -263,7 +263,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot"],
+            "tags": ["segment-anything", "torch", "zero-shot", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -298,7 +298,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot"],
+            "tags": ["segment-anything", "torch", "zero-shot", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -333,7 +333,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot"],
+            "tags": ["segment-anything", "torch", "zero-shot", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -367,7 +367,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video"],
+            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -402,7 +402,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video"],
+            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -437,7 +437,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video"],
+            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -472,7 +472,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video"],
+            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -511,7 +511,8 @@
                 "torch",
                 "zero-shot",
                 "video",
-                "med-SAM"
+                "med-SAM",
+                "transformer"
             ],
             "date_added": "2024-08-17 14:48:00"
         },
@@ -549,7 +550,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot"],
+            "tags": ["segment-anything", "torch", "zero-shot", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -586,7 +587,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot"],
+            "tags": ["segment-anything", "torch", "zero-shot", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -623,7 +624,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot"],
+            "tags": ["segment-anything", "torch", "zero-shot", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -660,7 +661,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot"],
+            "tags": ["segment-anything", "torch", "zero-shot", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -696,7 +697,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video"],
+            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -733,7 +734,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video"],
+            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -770,7 +771,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video"],
+            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -807,7 +808,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video"],
+            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -2628,7 +2629,8 @@
                 "embeddings",
                 "torch",
                 "clip",
-                "zero-shot"
+                "zero-shot",    
+                "transformer"
             ],
             "date_added": "2023-12-13 14:25:51"
         },
@@ -2993,6 +2995,40 @@
             "date_added": "2024-01-17 14:25:51"
         },
         {
+            "base_name": "owlvit-base-patch32-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Faster zero-shot object detector that finds any object you describe using larger image patches for efficiency.",
+            "source": "https://huggingface.co/docs/transformers/tasks/zero_shot_object_detection",
+            "author": "Thomas Wolf, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 1229149172,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "google/owlvit-base-patch32"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "detection",
+                "logits",
+                "embeddings",
+                "torch",
+                "transformers",
+                "zero-shot"
+            ],
+            "date_added": "2025-07-15 13:49:00"
+        },
+        {
             "base_name": "omdet-turbo-swin-tiny-torch",
             "base_filename": null,
             "version": null,
@@ -3072,7 +3108,8 @@
                 "embeddings",
                 "torch",
                 "clip",
-                "zero-shot"
+                "zero-shot",    
+                "transformer"
             ],
             "date_added": "2022-04-12 17:49:51"
         },
@@ -3104,7 +3141,7 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2"],
+            "tags": ["embeddings", "torch", "dinov2", "transformer"],
             "date_added": "2023-07-31 10:17:51"
         },
         {
@@ -3135,7 +3172,7 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2"],
+            "tags": ["embeddings", "torch", "dinov2", "transformer"],
             "date_added": "2023-07-31 10:17:51"
         },
         {
@@ -3166,7 +3203,7 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2"],
+            "tags": ["embeddings", "torch", "dinov2", "transformer"],
             "date_added": "2023-07-31 10:17:51"
         },
         {
@@ -3197,7 +3234,7 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2"],
+            "tags": ["embeddings", "torch", "dinov2", "transformer"],
             "date_added": "2023-07-31 10:17:51"
         },
         {
@@ -3228,7 +3265,7 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2"],
+            "tags": ["embeddings", "torch", "dinov2", "transformer"],
             "date_added": "2023-12-02 16:42:00"
         },
         {
@@ -3259,7 +3296,7 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2"],
+            "tags": ["embeddings", "torch", "dinov2", "transformer"],
             "date_added": "2023-12-02 16:42:00"
         },
         {
@@ -3290,7 +3327,7 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2"],
+            "tags": ["embeddings", "torch", "dinov2", "transformer"],
             "date_added": "2023-12-02 16:42:00"
         },
         {
@@ -3321,7 +3358,7 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2"],
+            "tags": ["embeddings", "torch", "dinov2", "transformer"],
             "date_added": "2023-12-02 16:42:00"
         },
         {
@@ -6286,167 +6323,302 @@
             ],
             "date_added": "2025-07-03 12:00:00"
         },
-        {
-            "base_name": "vitpose-base-torch",
-            "base_filename": null,
-            "version": null,
-            "description": "Vision Transformer for pose estimation with 90M parameters using standard ViT backbone. Detects 17 human keypoints through heatmap regression achieving 75.8 AP on COCO. Processes 256x192 images with hierarchical features for accurate joint localization.",
-            "source": "https://github.com/ViTAE-Transformer/ViTPose",
-            "author": "Yufei Xu, et al.",
-            "license": "Apache 2.0",
-            "size_bytes": 360007012,
-            "default_deployment_config_dict": {
-                "type": "fiftyone.utils.transformers.FiftyOneTransformerForPoseEstimation",
-                "config": {
-                    "name_or_path": "usyd-community/vitpose-base"
-                }
-            },
-            "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
-                "cpu": {
-                    "support": true
-                },
-                "gpu": {
-                    "support": true
-                }
-            },
-            "tags": ["keypoints", "coco", "torch", "transformers", "pose-estimation"],
-            "date_added": "2025-07-09 12:00:00"
-        },
-        {
-            "base_name": "vitpose-base-simple-torch",
-            "base_filename": null,
-            "version": null,
-            "description": "Simplified ViTPose with 90M parameters removing complex decoder components. Maintains 75.1 AP through direct heatmap prediction from transformer features. Streamlined architecture for easier deployment while preserving accuracy on human pose tasks.",
-            "source": "https://github.com/ViTAE-Transformer/ViTPose",
-            "author": "Yufei Xu, et al.",
-            "license": "Apache 2.0",
-            "size_bytes": 343673076,
-            "default_deployment_config_dict": {
-                "type": "fiftyone.utils.transformers.FiftyOneTransformerForPoseEstimation",
-                "config": {
-                    "name_or_path": "usyd-community/vitpose-base-simple"
-                }
-            },
-            "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
-                "cpu": {
-                    "support": true
-                },
-                "gpu": {
-                    "support": true
-                }
-            },
-            "tags": ["keypoints", "coco", "torch", "transformers"],
-            "date_added": "2025-07-09 12:00:00"
-        },
-        {
-            "base_name": "vitpose-plus-small-torch",
-            "base_filename": null,
-            "version": null,
-            "description": "Small ViTPose+ with 30M parameters using mixture-of-experts for multi-dataset training. Achieves 68.7 AP through dataset-specific adaptation. Lightweight MOE architecture enables efficient pose estimation across diverse human pose datasets.",
-            "source": "https://github.com/ViTAE-Transformer/ViTPose",
-            "author": "Yufei Xu, et al.",
-            "license": "Apache 2.0",
-            "size_bytes": 132619932,
-            "default_deployment_config_dict": {
-                "type": "fiftyone.utils.transformers.FiftyOneTransformerForPoseEstimation",
-                "config": {
-                    "name_or_path": "usyd-community/vitpose-plus-small"
-                }
-            },
-            "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
-                "cpu": {
-                    "support": true
-                },
-                "gpu": {
-                    "support": true
-                }
-            },
-            "tags": ["keypoints", "coco", "torch", "transformers", "pose-estimation"],
-            "date_added": "2025-07-09 12:00:00"
-        },
-        {
-            "base_name": "vitpose-plus-base-torch",
-            "base_filename": null,
-            "version": null,
-            "description": "Base ViTPose+ with 130M parameters implementing mixture-of-experts modules. Delivers 77.5 AP through dataset-aware routing. MOE design handles multiple pose datasets simultaneously while maintaining strong per-dataset performance.",
-            "source": "https://github.com/ViTAE-Transformer/ViTPose",
-            "author": "Yufei Xu, et al.",
-            "license": "Apache 2.0",
-            "size_bytes": 501627628,
-            "default_deployment_config_dict": {
-                "type": "fiftyone.utils.transformers.FiftyOneTransformerForPoseEstimation",
-                "config": {
-                    "name_or_path": "usyd-community/vitpose-plus-base"
-                }
-            },
-            "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
-                "cpu": {
-                    "support": true
-                },
-                "gpu": {
-                    "support": true
-                }
-            },
-            "tags": ["keypoints", "coco", "torch", "transformers"],
-            "date_added": "2025-07-09 12:00:00"
-        },
-        {
-            "base_name": "vitpose-plus-large-torch",
-            "base_filename": null,
-            "version": null,
-            "description": "Large ViTPose+ with 430M parameters scaling MOE architecture for superior accuracy. Achieves 78.3 AP on COCO through enhanced capacity. Mixture-of-experts enables specialization across pose datasets while maintaining unified architecture.",
-            "source": "https://github.com/ViTAE-Transformer/ViTPose",
-            "author": "Yufei Xu, et al.",
-            "license": "Apache 2.0",
-            "size_bytes": 1737705492,
-            "default_deployment_config_dict": {
-                "type": "fiftyone.utils.transformers.FiftyOneTransformerForPoseEstimation",
-                "config": {
-                    "name_or_path": "usyd-community/vitpose-plus-large"
-                }
-            },
-            "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
-                "cpu": {
-                    "support": true
-                },
-                "gpu": {
-                    "support": true
-                }
-            },
-            "tags": ["keypoints", "coco", "torch", "transformers", "pose-estimation"],
-            "date_added": "2025-07-09 12:00:00"
-        },
-        {
-            "base_name": "vitpose-plus-huge-torch",
-            "base_filename": null,
-            "version": null,
-            "description": "Huge ViTPose+ with 900M parameters maximizing MOE capacity for best performance. Delivers 78.9 AP through massive scale. Flagship mixture-of-experts model handling diverse pose datasets with dataset-specific optimization paths.",
-            "source": "https://github.com/ViTAE-Transformer/ViTPose",
-            "author": "Yufei Xu, et al.",
-            "license": "Apache 2.0",
-            "size_bytes": 3597730876,
-            "default_deployment_config_dict": {
-                "type": "fiftyone.utils.transformers.FiftyOneTransformerForPoseEstimation",
-                "config": {
-                    "name_or_path": "usyd-community/vitpose-plus-huge"
-                }
-            },
-            "requirements": {
-                "packages": ["torch", "torchvision", "transformers"],
-                "cpu": {
-                    "support": true
-                },
-                "gpu": {
-                    "support": true
-                }
-            },
-            "tags": ["keypoints", "coco", "torch", "transformers", "pose-estimation"],
-            "date_added": "2025-07-09 12:00:00"
+       {
+      "base_name": "vitpose-base-torch",
+      "base_filename": null,
+      "version": null,
+      "description": "Vision Transformer for pose estimation with 90M parameters using standard ViT backbone. Detects 17 human keypoints through heatmap regression achieving 75.8 AP on COCO. Processes 256x192 images with hierarchical features for accurate joint localization.",
+      "source": "https://github.com/ViTAE-Transformer/ViTPose",
+      "author": "Yufei Xu, et al.",
+      "license": "Apache 2.0",
+      "size_bytes": 360007012,
+      "default_deployment_config_dict": {
+        "type": "fiftyone.utils.transformers.FiftyOneTransformerForPoseEstimation",
+        "config": {
+          "name_or_path": "usyd-community/vitpose-base"
         }
-    ]
+      },
+      "requirements": {
+        "packages": ["torch", "torchvision", "transformers"],
+        "cpu": {
+          "support": true
+        },
+        "gpu": {
+          "support": true
+        }
+      },
+      "tags": ["keypoints", "coco", "torch", "transformers", "pose-estimation"],
+      "date_added": "2025-07-09 12:00:00"
+    },
+    {
+      "base_name": "vitpose-base-simple-torch",
+      "base_filename": null,
+      "version": null,
+      "description": "Simplified ViTPose with 90M parameters removing complex decoder components. Maintains 75.1 AP through direct heatmap prediction from transformer features. Streamlined architecture for easier deployment while preserving accuracy on human pose tasks.",
+      "source": "https://github.com/ViTAE-Transformer/ViTPose",
+      "author": "Yufei Xu, et al.",
+      "license": "Apache 2.0",
+      "size_bytes": 343673076,
+      "default_deployment_config_dict": {
+        "type": "fiftyone.utils.transformers.FiftyOneTransformerForPoseEstimation",
+        "config": {
+          "name_or_path": "usyd-community/vitpose-base-simple"
+        }
+      },
+      "requirements": {
+        "packages": ["torch", "torchvision", "transformers"],
+        "cpu": {
+          "support": true
+        },
+        "gpu": {
+          "support": true
+        }
+      },
+      "tags": ["keypoints", "coco", "torch", "transformers"],
+      "date_added": "2025-07-09 12:00:00"
+    },
+    {
+      "base_name": "vitpose-plus-small-torch",
+      "base_filename": null,
+      "version": null,
+      "description": "Small ViTPose+ with 30M parameters using mixture-of-experts for multi-dataset training. Achieves 68.7 AP through dataset-specific adaptation. Lightweight MOE architecture enables efficient pose estimation across diverse human pose datasets.",
+      "source": "https://github.com/ViTAE-Transformer/ViTPose",
+      "author": "Yufei Xu, et al.",
+      "license": "Apache 2.0",
+      "size_bytes": 132619932,
+      "default_deployment_config_dict": {
+        "type": "fiftyone.utils.transformers.FiftyOneTransformerForPoseEstimation",
+        "config": {
+          "name_or_path": "usyd-community/vitpose-plus-small"
+        }
+      },
+      "requirements": {
+        "packages": ["torch", "torchvision", "transformers"],
+        "cpu": {
+          "support": true
+        },
+        "gpu": {
+          "support": true
+        }
+      },
+      "tags": ["keypoints", "coco", "torch", "transformers", "pose-estimation"],
+      "date_added": "2025-07-09 12:00:00"
+    },
+    {
+      "base_name": "vitpose-plus-base-torch",
+      "base_filename": null,
+      "version": null,
+      "description": "Base ViTPose+ with 130M parameters implementing mixture-of-experts modules. Delivers 77.5 AP through dataset-aware routing. MOE design handles multiple pose datasets simultaneously while maintaining strong per-dataset performance.",
+      "source": "https://github.com/ViTAE-Transformer/ViTPose",
+      "author": "Yufei Xu, et al.",
+      "license": "Apache 2.0",
+      "size_bytes": 501627628,
+      "default_deployment_config_dict": {
+        "type": "fiftyone.utils.transformers.FiftyOneTransformerForPoseEstimation",
+        "config": {
+          "name_or_path": "usyd-community/vitpose-plus-base"
+        }
+      },
+      "requirements": {
+        "packages": ["torch", "torchvision", "transformers"],
+        "cpu": {
+          "support": true
+        },
+        "gpu": {
+          "support": true
+        }
+      },
+      "tags": ["keypoints", "coco", "torch", "transformers"],
+      "date_added": "2025-07-09 12:00:00"
+    },
+    {
+      "base_name": "vitpose-plus-large-torch",
+      "base_filename": null,
+      "version": null,
+      "description": "Large ViTPose+ with 430M parameters scaling MOE architecture for superior accuracy. Achieves 78.3 AP on COCO through enhanced capacity. Mixture-of-experts enables specialization across pose datasets while maintaining unified architecture.",
+      "source": "https://github.com/ViTAE-Transformer/ViTPose",
+      "author": "Yufei Xu, et al.",
+      "license": "Apache 2.0",
+      "size_bytes": 1737705492,
+      "default_deployment_config_dict": {
+        "type": "fiftyone.utils.transformers.FiftyOneTransformerForPoseEstimation",
+        "config": {
+          "name_or_path": "usyd-community/vitpose-plus-large"
+        }
+      },
+      "requirements": {
+        "packages": ["torch", "torchvision", "transformers"],
+        "cpu": {
+          "support": true
+        },
+        "gpu": {
+          "support": true
+        }
+      },
+      "tags": ["keypoints", "coco", "torch", "transformers", "pose-estimation"],
+      "date_added": "2025-07-09 12:00:00"
+    },
+    {
+      "base_name": "vitpose-plus-huge-torch",
+      "base_filename": null,
+      "version": null,
+      "description": "Huge ViTPose+ with 900M parameters maximizing MOE capacity for best performance. Delivers 78.9 AP through massive scale. Flagship mixture-of-experts model handling diverse pose datasets with dataset-specific optimization paths.",
+      "source": "https://github.com/ViTAE-Transformer/ViTPose",
+      "author": "Yufei Xu, et al.",
+      "license": "Apache 2.0",
+      "size_bytes": 3597730876,
+      "default_deployment_config_dict": {
+        "type": "fiftyone.utils.transformers.FiftyOneTransformerForPoseEstimation",
+        "config": {
+          "name_or_path": "usyd-community/vitpose-plus-huge"
+        }
+      },
+      "requirements": {
+        "packages": ["torch", "torchvision", "transformers"],
+        "cpu": {
+          "support": true
+        },
+        "gpu": {
+          "support": true
+        }
+      },
+      "tags": ["keypoints", "coco", "torch", "transformers", "pose-estimation"],
+      "date_added": "2025-07-09 12:00:00"
+    },
+    {
+      "base_name": "dfine-nano-coco-torch",
+      "base_filename": null,
+      "version": null,
+      "description": "D-FINE Nano from `D-FINE: Redefine Regression Task in DETRs as Fine-grained Distribution Refinement` trained on COCO. Ultra-lightweight real-time object detector.",
+      "source": "https://github.com/Peterande/D-FINE",
+      "author": "Yansong Peng, et al.",
+      "license": "Apache 2.0",
+      "size_bytes": 14680064,
+      "default_deployment_config_dict": {
+        "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
+        "config": {
+          "name_or_path": "ustc-community/dfine-nano-coco"
+        }
+      },
+      "requirements": {
+        "packages": ["torch", "torchvision", "transformers"],
+        "cpu": {
+          "support": true
+        },
+        "gpu": {
+          "support": true
+        }
+      },
+      "tags": ["detection", "coco", "torch", "transformers", "detr"],
+      "date_added": "2025-07-15 23:00:00"
+    },
+    {
+      "base_name": "dfine-small-coco-torch",
+      "base_filename": null,
+      "version": null,
+      "description": "D-FINE Small from `D-FINE: Redefine Regression Task in DETRs as Fine-grained Distribution Refinement` trained on COCO. Balanced real-time object detector.",
+      "source": "https://github.com/Peterande/D-FINE",
+      "author": "Yansong Peng, et al.",
+      "license": "Apache 2.0",
+      "size_bytes": 25165824,
+      "default_deployment_config_dict": {
+        "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
+        "config": {
+          "name_or_path": "ustc-community/dfine-small-coco"
+        }
+      },
+      "requirements": {
+        "packages": ["torch", "torchvision", "transformers"],
+        "cpu": {
+          "support": true
+        },
+        "gpu": {
+          "support": true
+        }
+      },
+      "tags": ["detection", "coco", "torch", "transformers", "detr"],
+      "date_added": "2025-07-15 23:00:00"
+    },
+    {
+      "base_name": "dfine-medium-coco-torch",
+      "base_filename": null,
+      "version": null,
+      "description": "D-FINE Medium from `D-FINE: Redefine Regression Task in DETRs as Fine-grained Distribution Refinement` trained on COCO. Mid-size real-time object detector.",
+      "source": "https://github.com/Peterande/D-FINE",
+      "author": "Yansong Peng, et al.",
+      "license": "Apache 2.0",
+      "size_bytes": 31457280,
+      "default_deployment_config_dict": {
+        "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
+        "config": {
+          "name_or_path": "ustc-community/dfine-medium-coco"
+        }
+      },
+      "requirements": {
+        "packages": ["torch", "torchvision", "transformers"],
+        "cpu": {
+          "support": true
+        },
+        "gpu": {
+          "support": true
+        }
+      },
+      "tags": ["detection", "coco", "torch", "transformers", "detr"],
+      "date_added": "2025-07-15 23:00:00"
+    },
+    {
+      "base_name": "dfine-large-coco-torch",
+      "base_filename": null,
+      "version": null,
+      "description": "D-FINE Large from `D-FINE: Redefine Regression Task in DETRs as Fine-grained Distribution Refinement` trained on COCO. Achieves 54.0% AP at 124 FPS on T4 GPU.",
+      "source": "https://github.com/Peterande/D-FINE",
+      "author": "Yansong Peng, et al.",
+      "license": "Apache 2.0",
+      "size_bytes": 52428800,
+      "default_deployment_config_dict": {
+        "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
+        "config": {
+          "name_or_path": "ustc-community/dfine-large-coco"
+        }
+      },
+      "requirements": {
+        "packages": ["torch", "torchvision", "transformers"],
+        "cpu": {
+          "support": true
+        },
+        "gpu": {
+          "support": true
+        }
+      },
+      "tags": ["detection", "coco", "torch", "transformers", "detr"],
+      "date_added": "2025-07-15 23:00:00"
+    },
+    {
+      "base_name": "dfine-xlarge-coco-torch",
+      "base_filename": null,
+      "version": null,
+      "description": "D-FINE XLarge from `D-FINE: Redefine Regression Task in DETRs as Fine-grained Distribution Refinement` trained on COCO. Achieves 55.8% AP at 78 FPS on T4 GPU.",
+      "source": "https://github.com/Peterande/D-FINE",
+      "author": "Yansong Peng, et al.",
+      "license": "Apache 2.0",
+      "size_bytes": 128974848,
+      "default_deployment_config_dict": {
+        "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
+        "config": {
+          "name_or_path": "ustc-community/dfine-xlarge-coco"
+        }
+      },
+      "requirements": {
+        "packages": ["torch", "torchvision", "transformers"],
+        "cpu": {
+          "support": true
+        },
+        "gpu": {
+          "support": true
+        }
+      },
+      "tags": ["detection", "coco", "torch", "transformers", "detr"],
+      "date_added": "2025-07-15 23:00:00"
+    }
+  ]
 }
