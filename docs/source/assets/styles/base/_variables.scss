@@ -65,6 +65,8 @@ $font-family-monospace: "Geist Mono", monospace;
 /* Light theme variables */
 html[data-theme="light"] {
   --pst-color-primary: #{$voxel-primary};
+  --pst-color-secondary: #{$voxel-primary};
+  --pst-color-secondary-highlight: #{$voxel-primary-hover};
   --pst-color-accent: #{$voxel-primary};
   --color-background: #{$voxel-background};
   --color-dropdown-background: #{$voxel-dropdown-background};
