@@ -21,17 +21,13 @@ import React, {
 } from "react";
 import { useRecoilValue } from "recoil";
 import {
-  BoundingBoxOptions,
-  BoundingBoxOverlay,
-  ClassificationOptions,
-  ClassificationOverlay,
   ImageOptions,
   ImageOverlay,
   LIGHTER_EVENTS,
   overlayFactory,
 } from "../index";
+import { LighterControls, useLighter, useLighterSetup } from "./index";
 import { convertLegacyToLighterDetection } from "./looker-lighter-bridge";
-import { useLighterWithPixi } from "./useLighterWithPixi";
 import { useSceneSelectionState } from "./useSceneSelectionState";
 
 /**
@@ -68,8 +64,11 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
     fos.lookerOptions({ modal: true, withFilter: false })
   );
 
-  const { scene, isReady, overlayCount, addOverlay, undo, redo } =
-    useLighterWithPixi(canvasRef, options);
+  // Setup the lighter instance
+  useLighterSetup(canvasRef, options);
+
+  // Get access to the lighter instance
+  const { scene, isReady, addOverlay } = useLighter();
 
   // Use the new selection state hook
   const { selectedOverlayIds, selectedBounds } = useSceneSelectionState(scene);
@@ -121,58 +120,6 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
     }
   }, [isReady, addOverlay, sample, scene, schema]); // Add scene and schema to dependencies
 
-  const addRandomBoundingBox = useCallback(() => {
-    if (canvasDimensions.width === 0 || canvasDimensions.height === 0) return;
-
-    const relativeBounds = [0.1, 0.1, 0.1, 0.1];
-
-    const bbox = overlayFactory.create<BoundingBoxOptions, BoundingBoxOverlay>(
-      "bounding-box",
-      {
-        label: {
-          id: `bbox-${overlayCount + 1}`,
-          label: `bbox-${overlayCount + 1}`,
-          tags: [],
-          bounding_box: relativeBounds,
-        },
-        relativeBounds: {
-          x: relativeBounds[0],
-          y: relativeBounds[1],
-          width: relativeBounds[2],
-          height: relativeBounds[3],
-        },
-        draggable: true,
-        selectable: true,
-      }
-    );
-
-    addOverlay(bbox);
-  }, [addOverlay, overlayCount, canvasDimensions]);
-
-  const addRandomClassification = useCallback(() => {
-    if (canvasDimensions.width === 0 || canvasDimensions.height === 0) return;
-
-    const classification = overlayFactory.create<
-      ClassificationOptions,
-      ClassificationOverlay
-    >("classification", {
-      label: {
-        id: `class-${overlayCount + 1}`,
-        label: `class-${overlayCount + 1}`,
-        tags: [],
-      },
-      confidence: Math.random(),
-      position: {
-        x: 0.1 * canvasDimensions.width,
-        y: 0.1 * canvasDimensions.height,
-      },
-      showConfidence: true,
-      selectable: true,
-    });
-
-    addOverlay(classification);
-  }, [addOverlay, overlayCount, canvasDimensions]);
-
   // Spatial manipulation functions
   const shiftPosition = useCallback(
     (deltaX: number, deltaY: number) => {
@@ -215,72 +162,7 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
       />
 
       <div style={{ padding: "8px", borderTop: "1px solid #ccc" }}>
-        {/* Overlay creation controls */}
-        <div style={{ marginBottom: "8px" }}>
-          <button
-            onClick={addRandomBoundingBox}
-            disabled={!isReady}
-            style={{
-              padding: "8px 16px",
-              background: "#007bff",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              cursor: isReady ? "pointer" : "not-allowed",
-              opacity: isReady ? 1 : 0.5,
-              marginRight: "8px",
-            }}
-          >
-            Add Random BBox
-          </button>
-          <button
-            onClick={addRandomClassification}
-            disabled={!isReady}
-            style={{
-              padding: "8px 16px",
-              background: "#28a745",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              cursor: isReady ? "pointer" : "not-allowed",
-              opacity: isReady ? 1 : 0.5,
-              marginRight: "8px",
-            }}
-          >
-            Add Random Classification
-          </button>
-          <button
-            onClick={undo}
-            style={{
-              padding: "8px 16px",
-              background: "#ffc107",
-              color: "black",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-              marginRight: "8px",
-            }}
-          >
-            Undo
-          </button>
-          <button
-            onClick={redo}
-            style={{
-              padding: "8px 16px",
-              background: "#17a2b8",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-              marginRight: "16px",
-            }}
-          >
-            Redo
-          </button>
-          <span style={{ fontFamily: "monospace" }}>
-            Overlays: {overlayCount} | Selected: {selectedOverlayIds.length}
-          </span>
-        </div>
+        <LighterControls />
 
         {/* Selection manipulation controls */}
         {selectedOverlayIds.length > 0 && (

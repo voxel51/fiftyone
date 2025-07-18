@@ -2474,6 +2474,7 @@ __metadata:
     pixi.js: "npm:^8.10.2"
     typescript: "npm:^5.8.3"
   peerDependencies:
+    jotai: "*"
     react: ^18.0.0
     react-dom: ^18.0.0
   languageName: unknown
@@ -5813,7 +5814,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/react@npm:*, @types/react@npm:^18.0.12, @types/react@npm:^18.0.9, @types/react@npm:^18.2.48":
+"@types/react@npm:*, @types/react@npm:^18.0.12, @types/react@npm:^18.2.48":
   version: 18.2.67
   resolution: "@types/react@npm:18.2.67"
   dependencies:
@@ -5824,7 +5825,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/react@npm:^18.2.0":
+"@types/react@npm:^18.0.9, @types/react@npm:^18.2.0":
   version: 18.3.23
   resolution: "@types/react@npm:18.3.23"
   dependencies:

@@ -5,9 +5,9 @@
 import { OverlayFactory } from "./overlay/OverlayFactory";
 
 // Core exports
+export { CoordinateSystem2D } from "./core/CoordinateSystem2D";
 export { Scene2D } from "./core/Scene2D";
 export type { Scene2DConfig } from "./core/SceneConfig";
-export { CoordinateSystem2D } from "./core/CoordinateSystem2D";
 
 // Renderer exports
 export { PixiRenderer2D } from "./renderer/PixiRenderer2D";
@@ -33,23 +33,22 @@ export { PixiResourceLoader } from "./resource/PixiResourceLoader";
 export type { ResourceLoader } from "./resource/ResourceLoader";
 
 // Event exports
-export { EventBus } from "./event/EventBus";
+export { EventBus, LIGHTER_EVENTS } from "./event/EventBus";
 export type { LighterEvent as OverlayEvent } from "./event/EventBus";
-export { LIGHTER_EVENTS } from "./event/EventBus";
 
 // Interaction exports
 export { InteractionManager } from "./interaction/InteractionManager";
 export type { InteractionHandler } from "./interaction/InteractionManager";
 
 // Selection exports
-export { SelectionManager } from "./selection/SelectionManager";
 export type { Selectable } from "./selection/Selectable";
+export { SelectionManager } from "./selection/SelectionManager";
 
 // Undo/Redo exports
 export type { Command } from "./undo/Command";
-export { UndoRedoManager } from "./undo/UndoRedoManager";
 export { MoveOverlayCommand } from "./undo/MoveOverlayCommand";
 export type { Movable } from "./undo/MoveOverlayCommand";
+export { UndoRedoManager } from "./undo/UndoRedoManager";
 
 // Plugin exports
 // TODO: PluginRegistry is currently unused - this needs to be hooked with fiftyone plugins
@@ -58,15 +57,18 @@ export { PluginRegistry } from "./plugin/PluginRegistry";
 // React exports
 export * from "./react";
 
+// State exports
+export * from "./state";
+
 // Common types
 export type {
+  CanonicalMedia,
+  CoordinateSystem,
+  Dimensions,
   DrawStyle,
   Point,
   Rect,
-  TextOptions,
   Spatial,
-  CoordinateSystem,
-  CanonicalMedia,
+  TextOptions,
   TransformMatrix,
-  Dimensions,
 } from "./types";
