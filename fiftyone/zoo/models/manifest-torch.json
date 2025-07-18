@@ -6293,6 +6293,161 @@
                 "rtdetr"
             ],
             "date_added": "2025-07-03 12:00:00"
+        },
+        {
+            "base_name": "dfine-nano-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "D-FINE Nano from `D-FINE: Redefine Regression Task in DETRs as Fine-grained Distribution Refinement` trained on COCO. Ultra-lightweight real-time object detector.",
+            "source": "https://github.com/Peterande/D-FINE",
+            "author": "Yansong Peng, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 14680064,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "ustc-community/dfine-nano-coco"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "coco", "torch", "transformers", "detr"],
+            "date_added": "2025-07-15 23:00:00"
+        },
+        {
+            "base_name": "dfine-small-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "D-FINE Small from `D-FINE: Redefine Regression Task in DETRs as Fine-grained Distribution Refinement` trained on COCO. Balanced real-time object detector.",
+            "source": "https://github.com/Peterande/D-FINE",
+            "author": "Yansong Peng, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 25165824,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "ustc-community/dfine-small-coco"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "coco", "torch", "transformers", "detr"],
+            "date_added": "2025-07-15 23:00:00"
+        },
+        {
+            "base_name": "dfine-medium-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "D-FINE Medium from `D-FINE: Redefine Regression Task in DETRs as Fine-grained Distribution Refinement` trained on COCO. Mid-size real-time object detector.",
+            "source": "https://github.com/Peterande/D-FINE",
+            "author": "Yansong Peng, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 31457280,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "ustc-community/dfine-medium-coco"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "coco", "torch", "transformers", "detr"],
+            "date_added": "2025-07-15 23:00:00"
+        },
+        {
+            "base_name": "dfine-large-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "D-FINE Large from `D-FINE: Redefine Regression Task in DETRs as Fine-grained Distribution Refinement` trained on COCO. Achieves 54.0% AP at 124 FPS on T4 GPU.",
+            "source": "https://github.com/Peterande/D-FINE",
+            "author": "Yansong Peng, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 52428800,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "ustc-community/dfine-large-coco"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "coco", "torch", "transformers", "detr"],
+            "date_added": "2025-07-15 23:00:00"
+        },
+        {
+            "base_name": "dfine-xlarge-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "D-FINE XLarge from `D-FINE: Redefine Regression Task in DETRs as Fine-grained Distribution Refinement` trained on COCO. Achieves 55.8% AP at 78 FPS on T4 GPU.",
+            "source": "https://github.com/Peterande/D-FINE",
+            "author": "Yansong Peng, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 128974848,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "ustc-community/dfine-xlarge-coco"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "coco", "torch", "transformers", "detr"],
+            "date_added": "2025-07-15 23:00:00"
         }
     ]
 }
