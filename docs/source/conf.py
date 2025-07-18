@@ -175,6 +175,8 @@ html_theme_options = {
     "navbar_center": ["navbar-links"],
     "navbar_end": ["book-a-demo"],
     "navbar_persistent": [],
+    "footer_start": ["copyright"],
+    "footer_end": ["footer-links"],
 }
 
 html_favicon = "_static/favicon/favicon.ico"
