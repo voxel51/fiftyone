@@ -124,23 +124,25 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
   const addRandomBoundingBox = useCallback(() => {
     if (canvasDimensions.width === 0 || canvasDimensions.height === 0) return;
 
+    const relativeBounds = [0.1, 0.1, 0.1, 0.1];
+
     const bbox = overlayFactory.create<BoundingBoxOptions, BoundingBoxOverlay>(
       "bounding-box",
       {
-        bounds: {
-          x: Math.random() * canvasDimensions.width,
-          y: Math.random() * canvasDimensions.height,
-          width: 30 + Math.random() * 70,
-          height: 20 + Math.random() * 50,
-        },
         label: {
           id: `bbox-${overlayCount + 1}`,
           label: `bbox-${overlayCount + 1}`,
           tags: [],
+          bounding_box: relativeBounds,
+        },
+        relativeBounds: {
+          x: relativeBounds[0],
+          y: relativeBounds[1],
+          width: relativeBounds[2],
+          height: relativeBounds[3],
         },
         draggable: true,
         selectable: true,
-        field: "bbox-test",
       }
     );
 
@@ -161,8 +163,8 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
       },
       confidence: Math.random(),
       position: {
-        x: Math.random() * canvasDimensions.width,
-        y: Math.random() * canvasDimensions.height,
+        x: 0.1 * canvasDimensions.width,
+        y: 0.1 * canvasDimensions.height,
       },
       showConfidence: true,
       selectable: true,
