@@ -1098,18 +1098,15 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
     
     Supports providing detection boxes to focus keypoint detection on specific
     regions of interest, such as bounding boxes from an object detector.
-
     Args:
         config: a `FiftyOneTransformerConfig`
     """
-
     def __init__(self, config):
         # override entry point
         if config.entrypoint_fcn is None:
             config.entrypoint_fcn = (
                 "transformers.VitPoseForPoseEstimation.from_pretrained"
             )
-
         # override output processor
         if config.output_processor_cls is None:
             config.output_processor_cls = "fiftyone.utils.transformers.TransformersPoseEstimationOutputProcessor"
@@ -1117,6 +1114,41 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
         self._output_processor.processor = self.transforms.processor
         self.transforms.return_image_sizes = True
         self._detection_boxes = None
+
+    def build_transforms(self, config):
+        """Override to ensure boxes are always provided for VitPose models"""
+        transforms, ragged_batches = super().build_transforms(config)
+        
+        class TransformsWithBoxes:
+            def __init__(self, original):
+                self.original = original
+                self.processor = original.processor
+                self.kwargs = getattr(original, 'kwargs', {})
+                self.return_image_sizes = getattr(original, 'return_image_sizes', False)
+                
+            def __call__(self, images):
+                if isinstance(images, dict) and 'boxes' in images:
+                    return self.original(images)
+                
+                boxes = []
+                for img in (images if isinstance(images, list) else [images]):
+                    if hasattr(img, 'shape'):
+                        h, w = img.shape[:2]
+                    elif hasattr(img, 'size'):
+                        w, h = img.size
+                    else:
+                        w, h = 640, 480
+                    boxes.append([[0, 0, w, h]])
+                
+                if not isinstance(images, list):
+                    boxes = boxes[0]
+                    
+                return self.processor(images, boxes=boxes, **self.kwargs)
+            
+            def __getattr__(self, name):
+                return getattr(self.original, name)
+        
+        return TransformsWithBoxes(transforms), ragged_batches
 
     def _predict_all(self, images):
         """Perform pose estimation on images with optional detection boxes.
@@ -1126,7 +1158,6 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
         """
         # Get detection boxes if provided
         detection_boxes = getattr(self, '_detection_boxes', None)
-
         # Get image sizes
         image_sizes = []
         for img in images:
@@ -1135,27 +1166,21 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
             else:
                 h, w = img.shape[:2]
             image_sizes.append((h, w))
-
         # Prepare boxes for preprocessing
         if detection_boxes is not None:
             boxes = detection_boxes
         else:
             # Default to full-image boxes
             boxes = [[[0, 0, w, h]] for h, w in image_sizes]
-
         # Process images with boxes
         processed = self.transforms.processor(images, boxes=boxes, return_tensors="pt")
-
         # Move to device
         processed = {k: v.to(self.device) for k, v in processed.items()}
-
         # Run model
         with torch.no_grad():
              outputs = self._model(**processed)
-
         # Pass boxes to output processor
         self._output_processor._boxes = boxes
-
         # Process outputs
         return self._output_processor(outputs, image_sizes, self.config.confidence_thresh)
 
