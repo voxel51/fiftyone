@@ -1156,6 +1156,11 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
         This method handles the preprocessing requirement of models like VitPose
         that need detection boxes during the image processing stage.
         """
+        # Handle dict input from DataLoader
+        if isinstance(images, dict):
+            # Extract the actual image tensor from the dict
+            images = images.get('pixel_values', images.get('images', images))
+        
         # Get detection boxes if provided
         detection_boxes = getattr(self, '_detection_boxes', None)
         # Get image sizes
