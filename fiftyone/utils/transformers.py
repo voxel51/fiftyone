@@ -1131,6 +1131,8 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
                     return self.original(images)
                 
                 boxes = []
+                is_single = not isinstance(images, list)
+                
                 for img in (images if isinstance(images, list) else [images]):
                     if hasattr(img, 'shape'):
                         h, w = img.shape[:2]
@@ -1140,8 +1142,8 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
                         w, h = 640, 480
                     boxes.append([[0, 0, w, h]])
                 
-                if not isinstance(images, list):
-                    boxes = boxes[0]
+                if is_single:
+                    boxes = [boxes[0]]
                     
                 return self.processor(images, boxes=boxes, **self.kwargs)
             
