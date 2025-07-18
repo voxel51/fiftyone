@@ -6329,7 +6329,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers", "pose-estimation"],
+                "packages": ["torch", "torchvision", "transformers"],
                 "cpu": {
                     "support": true
                 },
