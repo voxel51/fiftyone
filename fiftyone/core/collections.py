@@ -10664,7 +10664,7 @@ class SampleCollection(object):
         frame_labels_dir=None,
         pretty_print=False,
     ):
-        """Writes the colllection to disk in JSON format.
+        """Writes the collection to disk in JSON format.
 
         Args:
             json_path: the path to write the JSON
