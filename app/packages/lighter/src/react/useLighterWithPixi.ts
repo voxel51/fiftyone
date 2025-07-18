@@ -2,22 +2,29 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
+import { useLookerOptions } from "@fiftyone/state";
 import { useCallback, useEffect, useState } from "react";
 import {
   BaseOverlay,
   EventBus,
   globalPixiResourceLoader,
+  LIGHTER_EVENTS,
   overlayFactory,
   OverlayFactory,
   PixiRenderer2D,
   Scene2D,
 } from "../index";
 
+// TODO: Ultimately, we'll want to remove dependency on "looker" and create our own options type
+// This type extends what fos.useLookerOptions returns to maintain compatibility during transition
+export type LighterOptions = Partial<ReturnType<typeof useLookerOptions>>;
+
 /**
  * Hook for using the Lighter library in React components.
  */
 export const useLighterWithPixi = (
   canvasRef: React.RefObject<HTMLCanvasElement>,
+  options: LighterOptions,
   overlayFactoryInstance?: OverlayFactory
 ) => {
   const [scene, setScene] = useState<Scene2D | null>(null);
@@ -35,11 +42,19 @@ export const useLighterWithPixi = (
 
     const resourceLoaderInstance = globalPixiResourceLoader;
 
+    // Extract only the options we need for Scene2D
+    const sceneOptions = {
+      activePaths: options.activePaths,
+      showOverlays: options.showOverlays,
+      alpha: options.alpha,
+    };
+
     const sceneInstance = new Scene2D({
       canvas,
       renderer: rendererInstance,
       resourceLoader: resourceLoaderInstance,
       eventBus,
+      options: sceneOptions,
     });
 
     eventBus.on("overlay-added", (event) => {
@@ -71,6 +86,23 @@ export const useLighterWithPixi = (
     };
   }, [canvasRef]);
 
+  // Update scene options when they change
+  useEffect(() => {
+    if (scene && options) {
+      const sceneOptions = {
+        activePaths: options.activePaths,
+        showOverlays: options.showOverlays,
+        alpha: options.alpha,
+      };
+
+      // Emit event to trigger re-rendering pipeline
+      scene.dispatch({
+        type: LIGHTER_EVENTS.SCENE_OPTIONS_CHANGED,
+        detail: sceneOptions,
+      });
+    }
+  }, [scene, options.activePaths, options.showOverlays, options.alpha]);
+
   const addOverlay = useCallback(
     (overlay: BaseOverlay) => {
       if (scene) {
@@ -89,13 +121,6 @@ export const useLighterWithPixi = (
     },
     [scene]
   );
-
-  const clearOverlays = useCallback(() => {
-    if (scene) {
-      scene.clear();
-      setOverlayCount(0);
-    }
-  }, [scene]);
 
   const undo = useCallback(() => {
     if (scene && scene.canUndo()) {
@@ -123,11 +148,11 @@ export const useLighterWithPixi = (
     overlayCount,
     addOverlay,
     removeOverlay,
-    clearOverlays,
     undo,
     redo,
     canUndo,
     canRedo,
     overlayFactory: overlayFactoryInstance || overlayFactory,
+    options,
   };
 };

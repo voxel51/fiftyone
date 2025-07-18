@@ -34,7 +34,7 @@ export type { ResourceLoader } from "./resource/ResourceLoader";
 
 // Event exports
 export { EventBus } from "./event/EventBus";
-export type { OverlayEvent } from "./event/EventBus";
+export type { LighterEvent as OverlayEvent } from "./event/EventBus";
 export { LIGHTER_EVENTS } from "./event/EventBus";
 
 // Interaction exports

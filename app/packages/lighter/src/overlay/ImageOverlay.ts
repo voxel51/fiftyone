@@ -23,6 +23,7 @@ export interface ImageOptions {
   bounds?: Rect;
   opacity?: number;
   maintainAspectRatio?: boolean;
+  field?: string;
 }
 
 /**
@@ -43,7 +44,7 @@ export class ImageOverlay
     const id = `image-${Date.now()}-${Math.random()
       .toString(36)
       .substring(2, 9)}`;
-    super(id);
+    super(id, null, options.field);
   }
 
   /**
@@ -158,12 +159,16 @@ export class ImageOverlay
     }
   }
 
+  get containerId() {
+    return this.id;
+  }
+
   async render(renderer: Renderer2D, style: DrawStyle): Promise<void> {
     // Only dispose if we don't have a texture yet or if the texture source changed
     const needsDispose = !this.texture || this.texture.type !== "texture";
 
     if (needsDispose) {
-      renderer.dispose(this.id);
+      renderer.dispose(this.containerId);
     }
 
     try {
@@ -190,7 +195,6 @@ export class ImageOverlay
         if (this.texture && !this.originalDimensions) {
           const textureObj = this.texture.texture;
           if (textureObj && typeof textureObj === "object") {
-            // Handle different texture types
             if ("width" in textureObj && "height" in textureObj) {
               this.originalDimensions = {
                 width: (textureObj as any).width,
@@ -228,29 +232,19 @@ export class ImageOverlay
       this.currentBounds = finalBounds;
 
       if (needsDispose) {
-        console.log(">>>drawing image");
-        // Draw the image using the renderer (only if we disposed)
         renderer.drawImage(
-          {
-            type: "texture",
-            texture: this.texture,
-          },
+          this.texture!,
           finalBounds,
           {
             opacity: this.options.opacity || 1,
           },
-          this.id
+          this.containerId
         );
       } else {
-        console.log(">>>updating image");
-        // Update existing sprite properties directly to avoid flicker
-        renderer.updateResourceBounds(this.id, finalBounds);
+        renderer.updateResourceBounds(this.containerId, finalBounds);
       }
 
-      // Emit overlay-loaded event using the common method
       this.emitLoaded();
-
-      // Notify bounds change callbacks after rendering
       this.notifyBoundsChanged();
     } catch (error) {
       console.error("Failed to render image overlay:", error);

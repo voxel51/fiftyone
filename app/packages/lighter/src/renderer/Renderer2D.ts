@@ -62,47 +62,53 @@ export interface Renderer2D {
   stopRenderLoop(): void;
 
   // Drawing methods
-  drawRect(bounds: Rect, style: DrawStyle, id?: string): void;
+  drawRect(bounds: Rect, style: DrawStyle, containerId: string): void;
   drawText(
     text: string,
     position: Point,
-    options?: TextOptions,
-    id?: string
+    options: TextOptions | undefined,
+    containerId: string
   ): void;
-  drawLine(start: Point, end: Point, style: DrawStyle, id?: string): void;
+  drawLine(
+    start: Point,
+    end: Point,
+    style: DrawStyle,
+    containerId: string
+  ): void;
   drawImage(
     image: ImageSource,
     destination: Rect,
-    options?: ImageOptions,
-    id?: string
+    options: ImageOptions | undefined,
+    containerId: string
   ): void;
   clear(): void;
 
-  // Element management
-  dispose(id: string): void;
+  dispose(containerId: string): void;
+  hide(containerId: string): void;
+  show(containerId: string): void;
 
   /**
    * Update resource bounds directly without recreating the sprite to avoid flicker during resize
-   * @param id - The element ID.
+   * @param containerId - The container ID.
    * @param bounds - The new bounds for the resource.
    */
-  updateResourceBounds(id: string, bounds: Rect): void;
+  updateResourceBounds(containerId: string, bounds: Rect): void;
 
   // Hit testing
   /**
-   * Tests if a point intersects with a rendered element.
+   * Tests if a point intersects with a rendered container.
    * @param point - The point to test in canvas coordinates.
-   * @param id - Optional ID to test a specific element. If not provided, tests all elements.
-   * @returns True if the point intersects with the element(s).
+   * @param containerId - Optional container ID to test a specific group. If not provided, tests all containers.
+   * @returns True if the point intersects with the container.
    */
-  hitTest(point: Point, id?: string): boolean;
+  hitTest(point: Point, containerId?: string): boolean;
 
   /**
-   * Gets the bounds of a rendered element.
-   * @param id - The element ID.
-   * @returns The bounds of the element, or undefined if not found.
+   * Gets the bounds of a rendered container.
+   * @param containerId - The container ID.
+   * @returns The bounds of the container, or undefined if not found.
    */
-  getBounds(id: string): Rect | undefined;
+  getBounds(containerId: string): Rect | undefined;
 
   // Container information
   getContainerDimensions(): { width: number; height: number };

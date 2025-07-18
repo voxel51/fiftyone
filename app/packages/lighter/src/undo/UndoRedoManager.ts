@@ -5,7 +5,28 @@
 import type { Command } from "./Command";
 
 /**
- * Manages undo/redo operations.
+ * Manages undo/redo operations using the Command Pattern.
+ *
+ * This implementation follows the Command design pattern where each user action
+ * is encapsulated as a Command object that implements both execute() and undo()
+ * methods. The UndoRedoManager maintains two stacks:
+ *
+ * - undoStack: Contains executed commands that can be undone
+ * - redoStack: Contains undone commands that can be redone
+ *
+ * When a new command is executed:
+ * 1. The command is pushed onto the undoStack
+ * 2. The redoStack is cleared (since a new action invalidates the redo history)
+ *
+ * When undo is called:
+ * 1. The last command is popped from undoStack
+ * 2. The command's undo() method is called
+ * 3. The command is pushed onto redoStack
+ *
+ * When redo is called:
+ * 1. The last command is popped from redoStack
+ * 2. The command's execute() method is called
+ * 3. The command is pushed onto undoStack
  */
 export class UndoRedoManager {
   private undoStack: Command[] = [];

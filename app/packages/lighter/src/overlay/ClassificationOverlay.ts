@@ -20,6 +20,7 @@ export interface ClassificationOptions {
   position: Point;
   showConfidence?: boolean;
   selectable?: boolean;
+  field?: string; // Field path for z-ordering
 }
 
 /**
@@ -32,13 +33,16 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
     const id = `cls_${Date.now()}_${Math.random()
       .toString(36)
       .substring(2, 9)}`;
-    super(id, options.label);
+    super(id, options.label, options.field);
+  }
+
+  get containerId() {
+    return this.id;
   }
 
   render(renderer: Renderer2D, style: DrawStyle): void {
     // Dispose of old elements before creating new ones
-    renderer.dispose(this.id);
-    renderer.dispose(`${this.id}-selection`);
+    renderer.dispose(this.containerId);
 
     const text = this.options.showConfidence
       ? `${this.options.label.label} (${(this.options.confidence * 100).toFixed(
@@ -63,7 +67,7 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
         padding: 4,
         maxWidth: 200,
       },
-      this.id
+      this.containerId
     );
 
     // Draw selection border if selected
@@ -75,16 +79,13 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
         dashPattern: [5, 5],
         isSelected: true,
       };
-
-      // Draw a slightly larger border around the text
       const borderBounds = {
         x: bounds.x - 2,
         y: bounds.y - 2,
         width: bounds.width + 4,
         height: bounds.height + 4,
       };
-
-      renderer.drawRect(borderBounds, selectionStyle, `${this.id}-selection`);
+      renderer.drawRect(borderBounds, selectionStyle, this.containerId);
     }
 
     this.emitLoaded();

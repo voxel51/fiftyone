@@ -150,8 +150,9 @@ export class InteractionManager {
       passive: false,
     });
 
-    // Prevent context menu on right-click
-    this.canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+    document.addEventListener("keydown", this.handleKeyDown, {
+      passive: false,
+    });
   }
 
   private setupDragEventListeners(): void {
@@ -408,6 +409,47 @@ export class InteractionManager {
     }
   };
 
+  /**
+   * Handles keyboard events for undo/redo shortcuts.
+   * @param event - The keyboard event.
+   */
+  private handleKeyDown = (event: KeyboardEvent): void => {
+    // Check if we're in an input field - don't handle shortcuts there
+    const activeElement = document.activeElement;
+    if (
+      activeElement &&
+      (activeElement.tagName === "INPUT" ||
+        activeElement.tagName === "TEXTAREA" ||
+        (activeElement as HTMLElement).contentEditable === "true")
+    ) {
+      return;
+    }
+
+    // Handle undo: Ctrl+Z (or Cmd+Z on Mac)
+    if (
+      (event.ctrlKey || event.metaKey) &&
+      event.key === "z" &&
+      !event.shiftKey
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+      this.undoRedoManager.undo();
+      return;
+    }
+
+    // Handle redo: Ctrl+Y or Ctrl+Shift+Z (or Cmd+Y/Cmd+Shift+Z on Mac)
+    if (
+      (event.ctrlKey || event.metaKey) &&
+      ((event.key === "y" && !event.shiftKey) ||
+        (event.key === "z" && event.shiftKey))
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+      this.undoRedoManager.redo();
+      return;
+    }
+  };
+
   private handleClick(point: Point, event: PointerEvent, now: number): void {
     if (!this.clickStartPoint || !this.clickStartTime) return;
 
@@ -602,6 +644,7 @@ export class InteractionManager {
     this.canvas.removeEventListener("pointerup", this.handlePointerUp);
     this.canvas.removeEventListener("pointercancel", this.handlePointerCancel);
     this.canvas.removeEventListener("pointerleave", this.handlePointerLeave);
+    document.removeEventListener("keydown", this.handleKeyDown);
     this.clearHandlers();
   }
 }

@@ -154,6 +154,20 @@ interface Movable {
 -   Click detection and double-click handling
 -   Hover state management
 -   Integration with selection system
+-   Keyboard shortcuts for undo/redo operations
+
+**Keyboard Shortcuts**:
+
+-   **Undo**: `Ctrl+Z` (Windows/Linux) or `Cmd+Z` (Mac)
+-   **Redo**: `Ctrl+Y` or `Ctrl+Shift+Z` (Windows/Linux) or `Cmd+Y` or
+    `Cmd+Shift+Z` (Mac)
+
+**Features**:
+
+-   Automatic canvas focus when clicked
+-   Input field detection (shortcuts disabled in text inputs)
+-   Cross-platform modifier key support (Ctrl/Cmd)
+-   Event propagation prevention to avoid conflicts
 
 ### 6. Selection System
 
@@ -270,11 +284,34 @@ Canonical Media Bounds Change →
 -   **`usePixiRenderer`**: Renderer lifecycle
 -   **`usePixiResourceLoader`**: Resource loader management
 
+**Undo/Redo Support**:
+
+The `useLighterWithPixi` hook provides programmatic access to undo/redo
+operations:
+
+```typescript
+const { undo, redo, canUndo, canRedo } = useLighterWithPixi(canvasRef);
+
+// Programmatic undo/redo
+undo();
+redo();
+
+// Check if operations are available
+if (canUndo()) {
+    // Enable undo button
+}
+if (canRedo()) {
+    // Enable redo button
+}
+```
+
+Keyboard shortcuts are automatically enabled when using this hook.
+
 ### Component Pattern
 
 ```typescript
-const LighterSampleRenderer = ({ sample, width, height }) => {
-    const { scene, isReady, addOverlay } = useLighter(canvasRef);
+const LighterSampleRenderer = ({ sample, width, height, options }) => {
+    const { scene, isReady, addOverlay } = useLighter(canvasRef, options);
     const { selectedOverlayIds } = useSceneSelectionState(scene);
 
     // Sample loading and overlay creation

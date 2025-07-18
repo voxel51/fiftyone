@@ -2,7 +2,7 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import { EventBus, LIGHTER_EVENTS } from "../event/EventBus";
+import { EventBus, LIGHTER_EVENTS, type LighterEvent } from "../event/EventBus";
 import { InteractionManager } from "../interaction/InteractionManager";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
 import type { Selectable } from "../selection/Selectable";
@@ -24,21 +24,23 @@ import {
   OVERLAY_STATUS_PENDING,
   RenderingStateManager,
 } from "./RenderingStateManager";
-import type { Scene2DConfig } from "./SceneConfig";
+import type { Scene2DConfig, SceneOptions } from "./SceneConfig";
 
 /**
  * 2D scene that manages overlays, rendering, selection, coordinate system, and undo/redo operations.
  */
 export class Scene2D {
-  private overlays = new Map<string, BaseOverlay>();
-  private undoRedo = new UndoRedoManager();
-  private overlayOrder: string[] = [];
-  private renderingState = new RenderingStateManager();
-  private interactionManager: InteractionManager;
-  private selectionManager: SelectionManager;
-  private coordinateSystem: CoordinateSystem;
+  // Canonical media is the overlay that is used to define the coordinate system
   private canonicalMedia?: CanonicalMedia;
   private canonicalMediaId?: string;
+  private coordinateSystem: CoordinateSystem;
+  private interactionManager: InteractionManager;
+  private overlays = new Map<string, BaseOverlay>();
+  private overlayOrder: string[] = [];
+  private renderingState = new RenderingStateManager();
+  private sceneOptions?: SceneOptions;
+  private selectionManager: SelectionManager;
+  private undoRedo = new UndoRedoManager();
   private unsubscribeCanonicalMedia?: () => void;
 
   constructor(private readonly config: Scene2DConfig) {
@@ -51,6 +53,90 @@ export class Scene2D {
       this.selectionManager,
       (id) => this.overlays.get(id)
     );
+    this.sceneOptions = config.options;
+
+    // Listen for scene options changes to trigger re-rendering
+    config.eventBus.on(LIGHTER_EVENTS.SCENE_OPTIONS_CHANGED, (event) => {
+      console.log("SCENE_OPTIONS_CHANGED", event);
+      const { activePaths, showOverlays, alpha } = event.detail;
+      this.updateOptions({ activePaths, showOverlays, alpha });
+
+      // Mark all overlays as dirty to trigger re-rendering
+      this.overlays.forEach((overlay) => {
+        overlay.markDirty();
+      });
+    });
+  }
+
+  /**
+   * Updates the scene options and recalculates overlay order if needed.
+   * @param options - The new scene options.
+   */
+  updateOptions(options: SceneOptions): void {
+    this.sceneOptions = options;
+    this.recalculateOverlayOrder();
+  }
+
+  /**
+   * Recalculates the overlay rendering order based on activePaths.
+   * This implements the same z-ordering logic as the legacy looker system.
+   */
+  private recalculateOverlayOrder(): void {
+    const { activePaths } = this.sceneOptions || {};
+
+    if (!activePaths || activePaths.length === 0) {
+      // If no activePaths, maintain current order but ensure canonical media is first
+      this.overlayOrder = this.overlayOrder.filter((id) =>
+        this.overlays.has(id)
+      );
+      if (
+        this.canonicalMediaId &&
+        this.overlayOrder.includes(this.canonicalMediaId)
+      ) {
+        this.overlayOrder = [
+          this.canonicalMediaId,
+          ...this.overlayOrder.filter((id) => id !== this.canonicalMediaId),
+        ];
+      }
+      return;
+    }
+
+    // Create bins for each active field (same as legacy looker)
+    const bins: Record<string, string[]> = {};
+    activePaths.forEach((path) => {
+      bins[path] = [];
+    });
+
+    // Group overlays by their field
+    this.overlays.forEach((overlay, id) => {
+      if (overlay.field && bins[overlay.field]) {
+        bins[overlay.field].push(id);
+      }
+    });
+
+    // Build ordered array based on activePaths sequence
+    const ordered: string[] = [];
+
+    // Always put canonical media first if it exists
+    if (this.canonicalMediaId && this.overlays.has(this.canonicalMediaId)) {
+      ordered.push(this.canonicalMediaId);
+    }
+
+    // Add overlays in activePaths order
+    activePaths.forEach((path) => {
+      if (bins[path]) {
+        ordered.push(...bins[path]);
+      }
+    });
+
+    // Add any remaining overlays that don't have a field or aren't in activePaths
+    this.overlays.forEach((overlay, id) => {
+      if (!ordered.includes(id)) {
+        ordered.push(id);
+      }
+    });
+
+    this.overlayOrder = ordered;
   }
 
   // TODO: hook up with fiftyone colorscheme
@@ -74,17 +160,23 @@ export class Scene2D {
         : overlay.id;
     const baseStyle = Scene2D.getStyleFromId(identifier);
 
+    // Apply alpha from scene options if available
+    const finalStyle: DrawStyle = {
+      ...baseStyle,
+      opacity: this.sceneOptions?.alpha ?? baseStyle.opacity,
+    };
+
     // Check if overlay is selectable and selected
     if (this.typeGuards.isSelectable(overlay) && overlay.isSelected()) {
       return {
-        ...baseStyle,
+        ...finalStyle,
         isSelected: true,
         dashPattern: [5, 5], // Dashed pattern for selected overlays
         selectionColor: "#ff6600", // Orange selection color
       };
     }
 
-    return baseStyle;
+    return finalStyle;
   }
 
   private readonly typeGuards = {
@@ -122,12 +214,8 @@ export class Scene2D {
       this.updateSpatialOverlayCoordinates(overlay);
     }
 
-    // Set rendering order
-    if (overlay.id === this.canonicalMediaId) {
-      this.overlayOrder.unshift(overlay.id);
-    } else {
-      this.overlayOrder.push(overlay.id);
-    }
+    // Recalculate overlay order to maintain proper z-ordering
+    this.recalculateOverlayOrder();
 
     // Register with managers
     this.interactionManager.addHandler(overlay);
@@ -135,7 +223,7 @@ export class Scene2D {
       this.selectionManager.addSelectable(overlay);
     }
 
-    this.config.eventBus.emit({
+    this.dispatch({
       type: LIGHTER_EVENTS.OVERLAY_ADDED,
       detail: { id: overlay.id },
     });
@@ -165,7 +253,7 @@ export class Scene2D {
     }
 
     // Emit overlay-removed event
-    this.config.eventBus.emit({
+    this.dispatch({
       type: LIGHTER_EVENTS.OVERLAY_REMOVED,
       detail: { id },
     });
@@ -211,6 +299,15 @@ export class Scene2D {
   }
 
   /**
+   * Dispatches an event through the scene's event bus.
+   * This provides a cleaner API than scene.getEventBus().emit().
+   * @param event - The event to dispatch.
+   */
+  dispatch(event: LighterEvent): void {
+    this.config.eventBus.emit(event);
+  }
+
+  /**
    * Executes a command and adds it to the undo stack.
    * @param command - The command to execute.
    */
@@ -219,7 +316,7 @@ export class Scene2D {
     this.undoRedo.push(command);
 
     // Emit undo/redo event
-    this.config.eventBus.emit({
+    this.dispatch({
       type: LIGHTER_EVENTS.UNDO,
       detail: { commandId: command.id },
     });
@@ -231,7 +328,7 @@ export class Scene2D {
   undo(): void {
     const command = this.undoRedo.undo();
     if (command) {
-      this.config.eventBus.emit({
+      this.dispatch({
         type: LIGHTER_EVENTS.UNDO,
         detail: { commandId: command.id },
       });
@@ -244,7 +341,7 @@ export class Scene2D {
   redo(): void {
     const command = this.undoRedo.redo();
     if (command) {
-      this.config.eventBus.emit({
+      this.dispatch({
         type: LIGHTER_EVENTS.REDO,
         detail: { commandId: command.id },
       });
@@ -271,61 +368,64 @@ export class Scene2D {
    * Clears all overlays from the scene.
    */
   clear(): void {
-    // Call destroy on all overlays for proper cleanup
+    // Remove all overlays
     for (const overlay of this.overlays.values()) {
+      this.interactionManager.removeHandler(overlay);
       overlay.destroy();
     }
 
     this.overlays.clear();
     this.overlayOrder = [];
     this.renderingState.clearAll();
-    this.interactionManager.clearHandlers();
-    this.config.renderer.clear();
+    this.selectionManager.clearSelection();
+
+    // Emit clear event
+    this.dispatch({
+      type: LIGHTER_EVENTS.SELECTION_CLEARED,
+      detail: { previouslySelectedIds: [] },
+    });
   }
 
   /**
    * Destroys the scene and cleans up resources.
    */
   destroy(): void {
-    this.config.renderer.stopRenderLoop();
+    // Clear all overlays
     this.clear();
-    this.undoRedo.clear();
-    this.interactionManager.destroy();
-    this.selectionManager.destroy();
 
     // Clean up canonical media subscription
     if (this.unsubscribeCanonicalMedia) {
       this.unsubscribeCanonicalMedia();
-      this.unsubscribeCanonicalMedia = undefined;
     }
 
-    // Destroy canonical media if it has a destroy method
-    if (this.canonicalMedia && "destroy" in this.canonicalMedia) {
-      (this.canonicalMedia as any).destroy();
-    }
+    // Destroy managers
+    this.interactionManager.destroy();
+    this.selectionManager.destroy();
+    this.undoRedo.clear();
+
+    // Stop render loop
+    this.config.renderer.stopRenderLoop();
   }
-
-  // Selection management methods
 
   /**
    * Gets the selection manager.
-   * @returns The selection manager instance.
+   * @returns The selection manager.
    */
   getSelectionManager(): SelectionManager {
     return this.selectionManager;
   }
 
   /**
-   * Selects an overlay by ID.
+   * Selects an overlay.
    * @param id - The overlay ID to select.
-   * @param addToSelection - If true, adds to current selection.
+   * @param addToSelection - Whether to add to existing selection.
    */
   selectOverlay(id: string, addToSelection = false): void {
     this.selectionManager.select(id, addToSelection);
   }
 
   /**
-   * Deselects an overlay by ID.
+   * Deselects an overlay.
    * @param id - The overlay ID to deselect.
    */
   deselectOverlay(id: string): void {
@@ -333,24 +433,24 @@ export class Scene2D {
   }
 
   /**
-   * Toggles selection of an overlay by ID.
+   * Toggles the selection of an overlay.
    * @param id - The overlay ID to toggle.
-   * @param addToSelection - If true, adds to current selection when selecting.
-   * @returns The new selection state.
+   * @param addToSelection - Whether to add to existing selection.
+   * @returns True if the overlay is now selected.
    */
   toggleOverlaySelection(id: string, addToSelection = false): boolean {
     return this.selectionManager.toggle(id, addToSelection);
   }
 
   /**
-   * Clears all selections.
+   * Clears the current selection.
    */
   clearSelection(): void {
     this.selectionManager.clearSelection();
   }
 
   /**
-   * Gets the IDs of all selected overlays.
+   * Gets the IDs of selected overlays.
    * @returns Array of selected overlay IDs.
    */
   getSelectedOverlayIds(): string[] {
@@ -358,14 +458,14 @@ export class Scene2D {
   }
 
   /**
-   * Gets all selected overlays.
-   * @returns Array of selected overlay objects.
+   * Gets the selected overlays.
+   * @returns Array of selected overlays.
    */
   getSelectedOverlays(): BaseOverlay[] {
     return this.selectionManager
       .getSelectedIds()
-      .map((id) => this.overlays.get(id))
-      .filter((overlay): overlay is BaseOverlay => overlay !== undefined);
+      .map((id) => this.overlays.get(id)!)
+      .filter(Boolean);
   }
 
   /**
@@ -378,33 +478,18 @@ export class Scene2D {
   }
 
   /**
-   * Sets the canonical media overlay for coordinate transformations.
-   * @param overlayOrMedia - The overlay or CanonicalMedia instance to set as canonical media.
+   * Sets the canonical media overlay.
+   * @param overlayOrMedia - The overlay that represents the canonical media.
    */
   setCanonicalMedia(overlayOrMedia: BaseOverlay & CanonicalMedia): void {
-    // Clean up previous subscription
-    if (this.unsubscribeCanonicalMedia) {
-      this.unsubscribeCanonicalMedia();
-      this.unsubscribeCanonicalMedia = undefined;
-    }
+    this.canonicalMedia = overlayOrMedia;
+    this.canonicalMediaId = overlayOrMedia.id;
 
-    if ("getRenderedBounds" in overlayOrMedia) {
-      // It's an overlay that implements CanonicalMedia
-      const overlay = overlayOrMedia as BaseOverlay & CanonicalMedia;
-      this.canonicalMedia = overlay;
-      this.canonicalMediaId = overlay.id;
+    // Ensure canonical media is in the background
+    this.ensureCanonicalMediaInBackground(overlayOrMedia.id);
 
-      // Ensure the canonical media overlay is rendered first
-      this.ensureCanonicalMediaInBackground(overlay.id);
-    } else {
-      // It's a regular overlay that doesn't implement CanonicalMedia
-      throw new Error(
-        "Overlay must implement CanonicalMedia interface to be set as canonical media"
-      );
-    }
-
-    // Set up bounds change listener
-    this.unsubscribeCanonicalMedia = this.canonicalMedia.onBoundsChanged(
+    // Set up bounds change listener for coordinate system updates
+    this.unsubscribeCanonicalMedia = overlayOrMedia.onBoundsChanged(
       (bounds) => {
         this.coordinateSystem.updateTransform(bounds);
 
@@ -414,7 +499,7 @@ export class Scene2D {
     );
 
     // Emit event for coordinate transformation updates
-    this.config.eventBus.emit({
+    this.dispatch({
       type: LIGHTER_EVENTS.CANONICAL_MEDIA_CHANGED,
       detail: { overlayId: this.canonicalMediaId || "custom" },
     });
@@ -543,15 +628,28 @@ export class Scene2D {
    */
   private renderOverlay(overlayId: string): void {
     const overlay = this.overlays.get(overlayId);
+
+    if (!overlay) {
+      return;
+    }
+
     const status = this.renderingState.getStatus(overlayId);
 
     if (overlay && this.shouldRenderOverlay(overlay, status)) {
-      this.executeOverlayRender(overlayId, overlay!);
+      this.executeOverlayRender(overlayId, overlay);
+    }
+
+    if (this.shouldShowOverlay(overlay)) {
+      this.config.renderer.show(overlayId);
+    } else {
+      this.config.renderer.hide(overlayId);
     }
   }
 
   /**
-   * Determines if an overlay should be rendered.
+   * Determines if an overlay should be (re)rendered.
+   * Doesn't account for whether the overlay should be shown,
+   * which is handled in shouldShowOverlay and depends on activePaths.
    * @param overlay - The overlay to check.
    * @param status - The current rendering status.
    * @returns True if the overlay should be rendered.
@@ -564,6 +662,31 @@ export class Scene2D {
       overlay !== undefined &&
       (status === OVERLAY_STATUS_PENDING || overlay.getIsDirty())
     );
+  }
+
+  /**
+   * Determines if an overlay should be shown based on scene options.
+   * @param overlay - The overlay to check.
+   * @returns True if the overlay should be shown.
+   */
+  private shouldShowOverlay(overlay: BaseOverlay | undefined): boolean {
+    // We always show the canonical media
+    if (overlay?.id === this.canonicalMediaId) {
+      return true;
+    }
+
+    if (!overlay || this.sceneOptions?.showOverlays === false) {
+      return false;
+    }
+
+    // Check if overlay's field is in activePaths
+    if (this.sceneOptions?.activePaths && overlay.field) {
+      if (this.sceneOptions.activePaths.includes(overlay.field)) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   /**
