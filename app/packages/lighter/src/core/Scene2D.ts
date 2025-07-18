@@ -670,23 +670,16 @@ export class Scene2D {
    * @returns True if the overlay should be shown.
    */
   private shouldShowOverlay(overlay: BaseOverlay | undefined): boolean {
-    // We always show the canonical media
-    if (overlay?.id === this.canonicalMediaId) {
-      return true;
+    if (!overlay) return false;
+    if (overlay.id === this.canonicalMediaId) return true;
+    if (this.sceneOptions?.showOverlays === false) return false;
+
+    const activePaths = this.sceneOptions?.activePaths;
+    if (activePaths && overlay.field) {
+      return activePaths.includes(overlay.field);
     }
 
-    if (!overlay || this.sceneOptions?.showOverlays === false) {
-      return false;
-    }
-
-    // Check if overlay's field is in activePaths
-    if (this.sceneOptions?.activePaths && overlay.field) {
-      if (this.sceneOptions.activePaths.includes(overlay.field)) {
-        return true;
-      }
-    }
-
-    return false;
+    return true;
   }
 
   /**

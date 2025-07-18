@@ -19,19 +19,20 @@ import { BaseOverlay } from "./BaseOverlay";
 
 export type BoundingBoxLabel = RawLookerLabel & {
   label: string;
+  bounding_box: number[];
 };
 
 /**
  * Options for creating a bounding box overlay.
  */
 export interface BoundingBoxOptions {
-  bounds?: Rect; // Optional absolute bounds (for testing... TODO: remove)
-  relativeBounds?: Rect; // Relative bounds [0,1]
+  // Relative bounds [0,1]
+  relativeBounds?: Rect;
   label: BoundingBoxLabel;
   confidence?: number;
   draggable?: boolean;
   selectable?: boolean;
-  field: string;
+  field?: string;
 }
 
 /**
@@ -61,11 +62,6 @@ export class BoundingBoxOverlay
       this.relativeBounds = { ...options.relativeBounds };
       this.absoluteBounds = { x: 0, y: 0, width: 0, height: 0 }; // Will be set by scene
       this._needsCoordinateUpdate = true;
-    } else if (options.bounds) {
-      // Backwards compatibility: if absolute bounds provided, use them
-      this.absoluteBounds = { ...options.bounds };
-      // Assume relative bounds are same as absolute for now (will be corrected by scene if needed)
-      this.relativeBounds = { ...options.bounds };
     } else {
       throw new Error("Either bounds or relativeBounds must be provided");
     }
