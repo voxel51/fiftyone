@@ -1083,6 +1083,8 @@ class FiftyOneTransformerForPoseEstimationConfig(FiftyOneTransformerConfig):
     Args:
         model (None): a ``transformers`` model
         name_or_path (None): the name or path to a checkpoint file to load
+        detector_name (None): name of detector model from zoo for person detection
+        detector_confidence_thresh (0.5): minimum confidence for person detections
     """
 
     def __init__(self, d):
@@ -1093,6 +1095,13 @@ class FiftyOneTransformerForPoseEstimationConfig(FiftyOneTransformerConfig):
             d["name_or_path"] = DEFAULT_POSE_ESTIMATION_PATH
         super().__init__(d)
         
+        # Add detector configuration
+        self.detector_name = self.parse_string(d, "detector_name", default=None)
+        self.detector_confidence_thresh = self.parse_number(
+            d, "detector_confidence_thresh", default=0.5
+        )
+
+
 class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
     """FiftyOne wrapper around a ``transformers`` model for pose estimation.
     
@@ -1114,6 +1123,17 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
         self._output_processor.processor = self.transforms.processor
         self.transforms.return_image_sizes = True
         self._detection_boxes = None
+        
+        # Initialize detector if specified
+        self._detector = None
+        self._detector_confidence_thresh = config.detector_confidence_thresh
+        if config.detector_name:
+            import fiftyone.zoo as foz
+            # Use faster-rcnn as default if "default" is specified
+            detector_name = config.detector_name
+            if detector_name == "default":
+                detector_name = "faster-rcnn-resnet50-fpn-coco-torch"
+            self._detector = foz.load_zoo_model(detector_name)
 
     def _build_transforms(self, config):
         """Override to ensure boxes are always provided for VitPose models"""
@@ -1151,6 +1171,63 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
                 return getattr(self.original, name)
         
         return TransformsWithBoxes(transforms), ragged_batches
+
+    def _run_detector_on_images(self, images_pil):
+        """Run detector on PIL images and return person boxes.
+        
+        Args:
+            images_pil: list of PIL Images
+            
+        Returns:
+            list of lists of boxes, one list per image
+        """
+        all_detection_boxes = []
+        
+        for img_pil in images_pil:
+            if self._detector is not None:
+                # Run detector
+                detections = self._detector.predict(img_pil)
+                
+                # Extract person boxes
+                person_boxes = []
+                for det in detections.detections:
+                    if det.label == 'person' and det.confidence >= self._detector_confidence_thresh:
+                        x, y, w, h = det.bounding_box
+                        img_w, img_h = img_pil.size
+                        box = [x*img_w, y*img_h, (x+w)*img_w, (y+h)*img_h]
+                        person_boxes.append(box)
+                
+                # Use full image if no people detected
+                if not person_boxes:
+                    img_w, img_h = img_pil.size
+                    person_boxes = [[0, 0, img_w, img_h]]
+                    
+                all_detection_boxes.append(person_boxes)
+            else:
+                # No detector - use full image
+                img_w, img_h = img_pil.size
+                all_detection_boxes.append([[0, 0, img_w, img_h]])
+        
+        return all_detection_boxes
+
+    def predict(self, img):
+        """Predicts keypoints for the given image.
+        
+        Args:
+            img: an image as a numpy array or PIL Image
+            
+        Returns:
+            a :class:`fiftyone.core.labels.Keypoints` instance
+        """
+        if not isinstance(img, Image.Image):
+            img = Image.fromarray(img)
+        
+        # Run detector if configured
+        if self._detector is not None:
+            detection_boxes = self._run_detector_on_images([img])
+            self._detection_boxes = detection_boxes
+        
+        return super().predict(img)
 
     def _predict_all(self, images):
         """Perform pose estimation on images with optional detection boxes.
