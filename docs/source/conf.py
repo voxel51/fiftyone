@@ -179,6 +179,10 @@ html_theme_options = {
     "footer_end": ["footer-links"],
 }
 
+html_sidebars = {
+    "**": ["sidebar-nav"]
+}
+
 html_favicon = "_static/favicon/favicon.ico"
 
 # Add any paths that contain custom static files (such as style sheets) here,
