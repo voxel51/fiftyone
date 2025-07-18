@@ -27,6 +27,15 @@ import {
 import type { Scene2DConfig, SceneOptions } from "./SceneConfig";
 
 /**
+ * Interface for render callbacks that can be registered to run during the render loop.
+ */
+export interface RenderCallback {
+  id: string;
+  callback: () => void | Promise<void>;
+  phase: "before" | "after";
+}
+
+/**
  * 2D scene that manages overlays, rendering, selection, coordinate system, and undo/redo operations.
  */
 export class Scene2D {
@@ -42,6 +51,7 @@ export class Scene2D {
   private selectionManager: SelectionManager;
   private undoRedo = new UndoRedoManager();
   private unsubscribeCanonicalMedia?: () => void;
+  private renderCallbacks = new Map<string, RenderCallback>();
 
   constructor(private readonly config: Scene2DConfig) {
     this.coordinateSystem = new CoordinateSystem2D();
@@ -188,7 +198,63 @@ export class Scene2D {
   };
 
   public async startRenderLoop(): Promise<void> {
-    this.config.renderer.startRenderLoop(() => this.renderFrame());
+    this.config.renderer.startRenderLoop(async () => {
+      await this.renderFrame();
+    });
+  }
+
+  /**
+   * Registers a callback to be executed during the render loop.
+   * @param callback - The callback configuration.
+   * @returns A function to unregister the callback.
+   */
+  registerRenderCallback(
+    callback: Omit<RenderCallback, "id"> & { id?: string }
+  ): () => void {
+    const id = callback.id || `render-callback-${Date.now()}-${Math.random()}`;
+
+    const renderCallback: RenderCallback = {
+      id,
+      callback: callback.callback,
+      phase: callback.phase,
+    };
+
+    this.renderCallbacks.set(id, renderCallback);
+
+    // Return unregister function
+    return () => this.unregisterRenderCallback(id);
+  }
+
+  /**
+   * Unregisters a render callback by ID.
+   * @param id - The callback ID to unregister.
+   */
+  unregisterRenderCallback(id: string): void {
+    this.renderCallbacks.delete(id);
+  }
+
+  /**
+   * Executes render callbacks for a specific phase.
+   * @param phase - The phase to execute callbacks for.
+   */
+  private async executeRenderCallbacks(
+    phase: "before" | "after"
+  ): Promise<void> {
+    const callbacks = Array.from(this.renderCallbacks.values()).filter(
+      (callback) => callback.phase === phase
+    );
+
+    for (const callback of callbacks) {
+      try {
+        const result = callback.callback();
+        if (result instanceof Promise) {
+          await result;
+        }
+      } catch (error) {
+        console.error(`Error in render callback ${callback.id}:`, error);
+        // Continue with other callbacks even if one fails
+      }
+    }
   }
 
   /**
@@ -387,11 +453,21 @@ export class Scene2D {
   }
 
   /**
+   * Clears all render callbacks.
+   */
+  clearRenderCallbacks(): void {
+    this.renderCallbacks.clear();
+  }
+
+  /**
    * Destroys the scene and cleans up resources.
    */
   destroy(): void {
     // Clear all overlays
     this.clear();
+
+    // Clear render callbacks
+    this.clearRenderCallbacks();
 
     // Clean up canonical media subscription
     if (this.unsubscribeCanonicalMedia) {
@@ -605,7 +681,10 @@ export class Scene2D {
   /**
    * Renders a single frame.
    */
-  private renderFrame(): void {
+  private async renderFrame(): Promise<void> {
+    // Execute before-render callbacks
+    await this.executeRenderCallbacks("before");
+
     // Before rendering, update relative bounds for overlays that need it
     for (const overlay of this.overlays.values()) {
       if (
@@ -620,6 +699,9 @@ export class Scene2D {
     for (const overlayId of this.overlayOrder) {
       this.renderOverlay(overlayId);
     }
+
+    // Execute after-render callbacks
+    await this.executeRenderCallbacks("after");
   }
 
   /**

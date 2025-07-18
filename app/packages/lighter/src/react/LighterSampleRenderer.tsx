@@ -20,15 +20,9 @@ import React, {
   useState,
 } from "react";
 import { useRecoilValue } from "recoil";
-import {
-  ImageOptions,
-  ImageOverlay,
-  LIGHTER_EVENTS,
-  overlayFactory,
-} from "../index";
-import { LighterControls, useLighter, useLighterSetup } from "./index";
+import { ImageOptions, ImageOverlay, overlayFactory } from "../index";
+import { useLighter, useLighterSetup } from "./index";
 import { convertLegacyToLighterDetection } from "./looker-lighter-bridge";
-import { useSceneSelectionState } from "./useSceneSelectionState";
 
 /**
  * Props for the LighterSampleRenderer component.
@@ -69,9 +63,6 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
 
   // Get access to the lighter instance
   const { scene, isReady, addOverlay } = useLighter();
-
-  // Use the new selection state hook
-  const { selectedOverlayIds, selectedBounds } = useSceneSelectionState(scene);
 
   // Get actual canvas dimensions from parent container
   useLayoutEffect(() => {
@@ -120,35 +111,12 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
     }
   }, [isReady, addOverlay, sample, scene, schema]); // Add scene and schema to dependencies
 
-  // Spatial manipulation functions
-  const shiftPosition = useCallback(
-    (deltaX: number, deltaY: number) => {
-      if (!scene) return;
-      scene.dispatch({
-        type: LIGHTER_EVENTS.SPATIAL_SHIFT,
-        detail: { deltaX, deltaY },
-      });
-    },
-    [scene]
-  );
-
-  const resizeDimensions = useCallback(
-    (deltaWidth: number, deltaHeight: number) => {
-      if (!scene) return;
-      scene.dispatch({
-        type: LIGHTER_EVENTS.SPATIAL_RESIZE,
-        detail: { deltaWidth, deltaHeight },
-      });
-    },
-    [scene]
-  );
-
   return (
     <div
       className={`lighter-sample-renderer ${className}`}
       style={{
         width: "100%",
-        height: "80%",
+        height: "100%",
         display: "flex",
         flexDirection: "column",
       }}
@@ -160,150 +128,6 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
           flex: 1,
         }}
       />
-
-      <div style={{ padding: "8px", borderTop: "1px solid #ccc" }}>
-        <LighterControls />
-
-        {/* Selection manipulation controls */}
-        {selectedOverlayIds.length > 0 && (
-          <div
-            style={{
-              padding: "8px",
-              backgroundColor: "#000",
-              borderRadius: "4px",
-              border: "1px solid #dee2e6",
-            }}
-          >
-            <h4
-              style={{
-                margin: "0 0 8px 0",
-                fontSize: "14px",
-                fontWeight: "bold",
-              }}
-            >
-              Selected Overlay Controls ({selectedOverlayIds.length} selected)
-            </h4>
-
-            {/* Position controls */}
-            <div style={{ marginBottom: "8px" }}>
-              <label
-                style={{
-                  fontSize: "12px",
-                  fontWeight: "bold",
-                  marginRight: "8px",
-                }}
-              >
-                Position:
-              </label>
-              <button onClick={() => shiftPosition(-1, 0)} style={buttonStyle}>
-                ←
-              </button>
-              <button onClick={() => shiftPosition(1, 0)} style={buttonStyle}>
-                →
-              </button>
-              <button onClick={() => shiftPosition(0, -1)} style={buttonStyle}>
-                ↑
-              </button>
-              <button onClick={() => shiftPosition(0, 1)} style={buttonStyle}>
-                ↓
-              </button>
-              <button onClick={() => shiftPosition(-10, 0)} style={buttonStyle}>
-                ← 10
-              </button>
-              <button onClick={() => shiftPosition(10, 0)} style={buttonStyle}>
-                → 10
-              </button>
-              <button onClick={() => shiftPosition(0, -10)} style={buttonStyle}>
-                ↑ 10
-              </button>
-              <button onClick={() => shiftPosition(0, 10)} style={buttonStyle}>
-                ↓ 10
-              </button>
-            </div>
-
-            {/* Dimension controls (only for bounding boxes) */}
-            {selectedBounds && (
-              <div style={{ marginBottom: "8px" }}>
-                <label
-                  style={{
-                    fontSize: "12px",
-                    fontWeight: "bold",
-                    marginRight: "8px",
-                  }}
-                >
-                  Size:
-                </label>
-                <button
-                  onClick={() => resizeDimensions(-1, 0)}
-                  style={buttonStyle}
-                >
-                  W-
-                </button>
-                <button
-                  onClick={() => resizeDimensions(1, 0)}
-                  style={buttonStyle}
-                >
-                  W+
-                </button>
-                <button
-                  onClick={() => resizeDimensions(0, -1)}
-                  style={buttonStyle}
-                >
-                  H-
-                </button>
-                <button
-                  onClick={() => resizeDimensions(0, 1)}
-                  style={buttonStyle}
-                >
-                  H+
-                </button>
-                <button
-                  onClick={() => resizeDimensions(-10, 0)}
-                  style={buttonStyle}
-                >
-                  W-10
-                </button>
-                <button
-                  onClick={() => resizeDimensions(10, 0)}
-                  style={buttonStyle}
-                >
-                  W+10
-                </button>
-                <button
-                  onClick={() => resizeDimensions(0, -10)}
-                  style={buttonStyle}
-                >
-                  H-10
-                </button>
-                <button
-                  onClick={() => resizeDimensions(0, 10)}
-                  style={buttonStyle}
-                >
-                  H+10
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
     </div>
   );
-};
-// Styles
-const buttonStyle: React.CSSProperties = {
-  padding: "2px 6px",
-  margin: "0 2px",
-  fontSize: "11px",
-  border: "1px solid #ccc",
-  borderRadius: "2px",
-  backgroundColor: "#000",
-  cursor: "pointer",
-};
-
-const inputStyle: React.CSSProperties = {
-  width: "60px",
-  padding: "2px 4px",
-  fontSize: "12px",
-  border: "1px solid #ccc",
-  borderRadius: "2px",
 };
