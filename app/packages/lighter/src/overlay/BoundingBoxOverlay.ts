@@ -2,6 +2,7 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
+import { DEFAULT_TEXT_PADDING } from "../constants";
 import { LIGHTER_EVENTS } from "../event/EventBus";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { Selectable } from "../selection/Selectable";
@@ -30,6 +31,7 @@ export interface BoundingBoxOptions {
   confidence?: number;
   draggable?: boolean;
   selectable?: boolean;
+  field: string;
 }
 
 /**
@@ -51,7 +53,7 @@ export class BoundingBoxOverlay
     const id = `bbox_${Date.now()}_${Math.random()
       .toString(36)
       .substring(2, 9)}`;
-    super(id, options.label);
+    super(id, options.label, options.field);
     this.isDraggable = options.draggable !== false; // Default to true
 
     // Initialize bounds
@@ -102,12 +104,13 @@ export class BoundingBoxOverlay
     this._needsCoordinateUpdate = false;
   }
 
+  get containerId() {
+    return this.id;
+  }
+
   render(renderer: Renderer2D, style: DrawStyle): void {
     // Dispose of old elements before creating new ones
-    renderer.dispose(this.id);
-    if (this.options.label) {
-      renderer.dispose(`${this.id}-label`);
-    }
+    renderer.dispose(this.containerId);
 
     // Create style with selection state
     const renderStyle: DrawStyle = {
@@ -116,25 +119,42 @@ export class BoundingBoxOverlay
     };
 
     // Draw the bounding box using absolute bounds
-    renderer.drawRect(this.absoluteBounds, renderStyle, this.id);
+    renderer.drawRect(this.absoluteBounds, renderStyle, this.containerId);
 
     // Draw label if provided
     if (this.options.label) {
       const labelPosition = {
-        x: this.absoluteBounds.x,
-        y: this.absoluteBounds.y - 20, // Above the box
+        x: this.absoluteBounds.x + DEFAULT_TEXT_PADDING - 1,
+        y: this.absoluteBounds.y - 20,
       };
-
       renderer.drawText(
         this.options.label.label,
         labelPosition,
         {
-          fontColor: style.strokeStyle || "#000",
-          fontSize: 12,
-          backgroundColor: "rgba(255, 255, 255, 0.8)",
-          padding: 2,
+          fontColor: "#ffffff",
+          backgroundColor: style.fillStyle || style.strokeStyle || "#000",
         },
-        `${this.id}-label`
+        this.containerId
+      );
+    }
+
+    // Draw selection border if selected
+    if (this.isSelectedState) {
+      const selectionBounds = {
+        x: this.absoluteBounds.x - 2,
+        y: this.absoluteBounds.y - 2,
+        width: this.absoluteBounds.width + 4,
+        height: this.absoluteBounds.height + 4,
+      };
+      renderer.drawRect(
+        selectionBounds,
+        {
+          strokeStyle: style.selectionColor || "#ff6600",
+          lineWidth: 2,
+          dashPattern: [5, 5],
+          isSelected: true,
+        },
+        this.containerId
       );
     }
 

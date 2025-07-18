@@ -15,6 +15,7 @@ import type { DrawStyle, Point, RawLookerLabel } from "../types";
 export abstract class BaseOverlay implements InteractionHandler {
   readonly id: string;
   readonly label: RawLookerLabel;
+  readonly field?: string;
   /** Whether the overlay needs to be re-rendered. The render loop will check this and re-render the overlay if it is dirty.
    *
    * See also `markDirty` and `markClean`.
@@ -25,9 +26,10 @@ export abstract class BaseOverlay implements InteractionHandler {
   protected eventBus?: EventBus;
   protected resourceLoader?: ResourceLoader;
 
-  constructor(id: string, label: RawLookerLabel = null) {
+  constructor(id: string, label: RawLookerLabel = null, field?: string) {
     this.id = id;
     this.label = label;
+    this.field = field;
   }
 
   /**
@@ -91,6 +93,14 @@ export abstract class BaseOverlay implements InteractionHandler {
   }
 
   /**
+   * Gets the container ID for this overlay.
+   * @returns The container ID.
+   */
+  get containerId(): string {
+    return this.id;
+  }
+
+  /**
    * Emits an overlay-loaded event.
    */
   protected emitLoaded(): void {
@@ -144,7 +154,7 @@ export abstract class BaseOverlay implements InteractionHandler {
    */
   containsPoint(point: Point): boolean {
     if (!this.renderer) return false;
-    return this.renderer.hitTest(point, this.id);
+    return this.renderer.hitTest(point, this.containerId);
   }
 
   /**

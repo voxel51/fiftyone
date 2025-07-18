@@ -60,12 +60,14 @@ export const LIGHTER_EVENTS = {
   SPATIAL_MOVE: "spatial-move",
   /** Emitted when the canonical media overlay is changed */
   CANONICAL_MEDIA_CHANGED: "canonical-media-changed",
+  /** Emitted when scene options change (activePaths, showOverlays, alpha) */
+  SCENE_OPTIONS_CHANGED: "scene-options-changed",
 } as const;
 
 /**
  * Overlay events that can be emitted.
  */
-export type OverlayEvent =
+export type LighterEvent =
   | { type: typeof LIGHTER_EVENTS.OVERLAY_ADDED; detail: { id: string } }
   | { type: typeof LIGHTER_EVENTS.OVERLAY_LOADED; detail: { id: string } }
   | { type: typeof LIGHTER_EVENTS.OVERLAY_REMOVED; detail: { id: string } }
@@ -175,6 +177,14 @@ export type OverlayEvent =
   | {
       type: typeof LIGHTER_EVENTS.CANONICAL_MEDIA_CHANGED;
       detail: { overlayId: string };
+    }
+  | {
+      type: typeof LIGHTER_EVENTS.SCENE_OPTIONS_CHANGED;
+      detail: {
+        activePaths?: string[];
+        showOverlays?: boolean;
+        alpha?: number;
+      };
     };
 
 /**
@@ -185,7 +195,7 @@ export class EventBus extends EventTarget {
    * Emits an event.
    * @param event - The event to emit.
    */
-  emit(event: OverlayEvent): void {
+  emit(event: LighterEvent): void {
     const customEvent = new CustomEvent(event.type, { detail: event.detail });
     this.dispatchEvent(customEvent);
   }
@@ -195,7 +205,7 @@ export class EventBus extends EventTarget {
    * @param type - The event type to listen for.
    * @param listener - The event listener function.
    */
-  on(type: OverlayEvent["type"], listener: (e: CustomEvent) => void): void {
+  on(type: LighterEvent["type"], listener: (e: CustomEvent) => void): void {
     this.addEventListener(type, listener as EventListener);
   }
 
@@ -204,7 +214,7 @@ export class EventBus extends EventTarget {
    * @param type - The event type.
    * @param listener - The event listener function.
    */
-  off(type: OverlayEvent["type"], listener: (e: CustomEvent) => void): void {
+  off(type: LighterEvent["type"], listener: (e: CustomEvent) => void): void {
     this.removeEventListener(type, listener as EventListener);
   }
 }

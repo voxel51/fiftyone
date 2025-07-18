@@ -3,6 +3,7 @@
  */
 
 import * as PIXI from "pixi.js";
+import { DEFAULT_TEXT_PADDING } from "../constants";
 import type { EventBus } from "../event/EventBus";
 import { LIGHTER_EVENTS } from "../event/EventBus";
 import type { DrawStyle, Point, Rect, TextOptions } from "../types";
@@ -25,11 +26,8 @@ export class PixiRenderer2D implements Renderer2D {
   private foregroundContainer!: PIXI.Container;
   private backgroundContainer!: PIXI.Container;
 
-  // Element tracking for disposal
-  private elementMap = new Map<
-    string,
-    PIXI.Container | PIXI.Graphics | PIXI.Text | PIXI.Sprite
-  >();
+  // Container tracking for visibility management
+  private containers = new Map<string, PIXI.Container>();
 
   private isInitialized = false;
 
@@ -109,22 +107,15 @@ export class PixiRenderer2D implements Renderer2D {
     }
   }
 
-  drawRect(bounds: Rect, style: DrawStyle, id?: string): void {
+  drawRect(bounds: Rect, style: DrawStyle, containerId: string): void {
     const graphics = new PIXI.Graphics();
-
     graphics.rect(bounds.x, bounds.y, bounds.width, bounds.height);
-
-    // Apply fill if specified
     if (style.fillStyle) {
       graphics.fill(style.fillStyle);
     }
-
-    // Apply stroke if specified
     if (style.strokeStyle) {
       const { color, alpha } = parseColorWithAlpha(style.strokeStyle);
-
       if (style.dashPattern && style.dashPattern.length > 0) {
-        // Draw dashed stroke using multiple line segments
         this.drawDashedRect(graphics, bounds, {
           color,
           alpha: alpha * (style.opacity || 1),
@@ -132,7 +123,6 @@ export class PixiRenderer2D implements Renderer2D {
           dashPattern: style.dashPattern,
         });
       } else {
-        // Draw solid stroke
         const strokeOptions: PIXI.StrokeStyle = {
           width: style.lineWidth || 1,
           color: color,
@@ -142,100 +132,52 @@ export class PixiRenderer2D implements Renderer2D {
         graphics.stroke();
       }
     }
-
-    // Add selection highlight if selected
-    if (style.isSelected) {
-      const selectionColor = style.selectionColor || "#ff6600"; // Default orange
-      const { color: selColor, alpha: selAlpha } =
-        parseColorWithAlpha(selectionColor);
-
-      // Create selection border with dotted pattern
-      const selectionGraphics = new PIXI.Graphics();
-      selectionGraphics.rect(
-        bounds.x - 2,
-        bounds.y - 2,
-        bounds.width + 4,
-        bounds.height + 4
-      );
-      selectionGraphics.setStrokeStyle({
-        width: 2,
-        color: selColor,
-        alpha: selAlpha,
-        cap: "round",
-        join: "round",
-      });
-      selectionGraphics.stroke();
-
-      this.foregroundContainer.addChild(selectionGraphics);
-
-      // Track selection border separately for disposal
-      if (id) {
-        this.elementMap.set(`${id}-selection`, selectionGraphics);
-      }
-    }
-
-    this.foregroundContainer.addChild(graphics);
-
-    // Track the element if an ID is provided
-    if (id) {
-      this.elementMap.set(id, graphics);
-    }
+    this.addToContainer(graphics, containerId);
   }
 
   drawText(
     text: string,
     position: Point,
-    options?: TextOptions,
-    id?: string
+    options: TextOptions | undefined,
+    containerId: string
   ): void {
-    // Create text with performance optimizations
-    // In v8, Text constructor takes an object with text and style properties
     const textStyle = new PIXI.TextStyle({
       fontFamily: options?.font || "Arial",
-      fontSize: options?.fontSize || 12,
+      fontSize: options?.fontSize || 14,
       fill: options?.fontColor || "#000000",
       align: "left",
       wordWrap: true,
       wordWrapWidth: options?.maxWidth || 200,
     });
-
-    const pixiText = new PIXI.Text({
-      text,
-      style: textStyle,
-    });
+    const pixiText = new PIXI.Text({ text, style: textStyle });
     pixiText.x = position.x;
     pixiText.y = position.y;
 
-    // Add background if specified
+    const textBounds = pixiText.getLocalBounds();
+
     if (options?.backgroundColor) {
+      const padding = options.padding ?? DEFAULT_TEXT_PADDING;
       const background = new PIXI.Graphics();
-      background.fill(options.backgroundColor);
-      background.rect(
-        position.x - (options.padding || 0),
-        position.y - (options.padding || 0),
-        pixiText.width + (options.padding || 0) * 2,
-        pixiText.height + (options.padding || 0) * 2
-      );
-      this.foregroundContainer.addChild(background);
-
-      // Track background if ID is provided
-      if (id) {
-        this.elementMap.set(`${id}-background`, background);
-      }
+      background
+        .rect(
+          position.x - padding,
+          position.y - padding,
+          textBounds.width + padding * 2,
+          textBounds.height + padding * 2
+        )
+        .fill(options.backgroundColor);
+      this.addToContainer(background, containerId);
     }
-
-    this.foregroundContainer.addChild(pixiText);
-
-    // Track the text element if an ID is provided
-    if (id) {
-      this.elementMap.set(id, pixiText);
-    }
+    this.addToContainer(pixiText, containerId);
   }
 
-  drawLine(start: Point, end: Point, style: DrawStyle, id?: string): void {
+  drawLine(
+    start: Point,
+    end: Point,
+    style: DrawStyle,
+    containerId: string
+  ): void {
     const graphics = new PIXI.Graphics();
-
-    // In v8, use setStrokeStyle instead of lineStyle
     const { color, alpha } = parseColorWithAlpha(
       style.strokeStyle || "#000000"
     );
@@ -244,61 +186,43 @@ export class PixiRenderer2D implements Renderer2D {
       color: color,
       alpha: alpha * (style.opacity || 1),
     });
-
     graphics.moveTo(start.x, start.y);
     graphics.lineTo(end.x, end.y);
-
-    this.foregroundContainer.addChild(graphics);
-
-    // Track the element if an ID is provided
-    if (id) {
-      this.elementMap.set(id, graphics);
-    }
+    this.addToContainer(graphics, containerId);
   }
 
   drawImage(
     image: ImageSource,
     destination: Rect,
-    options?: ImageOptions,
-    id?: string
+    options: ImageOptions | undefined,
+    containerId: string
   ): void {
     let sprite: PIXI.Sprite;
-
     switch (image.type) {
       case "texture":
-        // Handle TextureLike objects (e.g., Pixi textures)
         if (image.texture) {
           sprite = new PIXI.Sprite(image.texture);
         } else {
-          console.warn("Texture source provided but no texture object found");
           return;
         }
         break;
-
       case "canvas":
-        // Handle HTMLCanvasElement
         if (image.canvas) {
           const texture = PIXI.Texture.from(image.canvas);
           sprite = new PIXI.Sprite(texture);
         } else {
-          console.warn("Canvas source provided but no canvas object found");
           return;
         }
         break;
-
       case "html-image":
-        // Handle HTMLImageElement
         if (image.src) {
           const texture = PIXI.Texture.from(image.src);
           sprite = new PIXI.Sprite(texture);
         } else {
-          console.warn("HTML image source provided but no src found");
           return;
         }
         break;
-
       case "image-data":
-        // Handle ImageData objects
         if (image.imageData) {
           const canvas = document.createElement("canvas");
           canvas.width = image.imageData.width;
@@ -309,88 +233,58 @@ export class PixiRenderer2D implements Renderer2D {
             const texture = PIXI.Texture.from(canvas);
             sprite = new PIXI.Sprite(texture);
           } else {
-            console.warn("Failed to get 2D context for ImageData");
             return;
           }
         } else {
-          console.warn(
-            "ImageData source provided but no imageData object found"
-          );
           return;
         }
         break;
-
       case "bitmap":
-        // Handle ImageBitmap objects
         if (image.bitmap) {
           const texture = PIXI.Texture.from(image.bitmap);
           sprite = new PIXI.Sprite(texture);
         } else {
-          console.warn("Bitmap source provided but no bitmap object found");
           return;
         }
         break;
-
       case "custom":
-        // Handle custom implementations
         if (image.custom) {
-          // Try to create texture from custom object
           try {
             const texture = PIXI.Texture.from(image.custom);
             sprite = new PIXI.Sprite(texture);
           } catch (error) {
-            console.warn(
-              "Failed to create texture from custom image source:",
-              error
-            );
             return;
           }
         } else {
-          console.warn("Custom source provided but no custom object found");
           return;
         }
         break;
-
       default:
-        console.warn(`Unsupported image source type: ${image.type}`);
         return;
     }
-
-    // Apply positioning and sizing
     sprite.x = destination.x;
     sprite.y = destination.y;
     sprite.width = destination.width;
     sprite.height = destination.height;
-
-    // Apply options
     if (options) {
       if (options.opacity !== undefined) {
         sprite.alpha = options.opacity;
       }
-
       if (options.rotation !== undefined) {
         sprite.rotation = options.rotation;
       }
-
       if (options.scaleX !== undefined || options.scaleY !== undefined) {
         sprite.scale.x = options.scaleX ?? 1;
         sprite.scale.y = options.scaleY ?? 1;
       }
     }
-
-    this.backgroundContainer.addChild(sprite);
-
-    // Track the element if an ID is provided
-    if (id) {
-      this.elementMap.set(id, sprite);
-    }
+    this.addToContainer(sprite, containerId);
   }
 
   clear(): void {
     this.foregroundContainer.removeChildren();
     this.backgroundContainer.removeChildren();
-    // Clear the element map as well
-    this.elementMap.clear();
+    this.containers.clear();
     this.resizeObserver?.disconnect();
   }
 
@@ -446,84 +340,105 @@ export class PixiRenderer2D implements Renderer2D {
     return this.canvas;
   }
 
-  // Add the dispose method
-  dispose(id: string): void {
-    const element = this.elementMap.get(id);
-    if (element) {
-      // Remove from parent container
-      if (element.parent) {
-        element.parent.removeChild(element);
-      }
-      // Remove from tracking map
-      this.elementMap.delete(id);
-
-      // If it's a sprite, destroy the texture to free memory
-      if (element instanceof PIXI.Sprite && element.texture) {
-        // element.texture.destroy(true);
-      }
-
-      // Destroy the element itself
-      element.destroy({ children: true });
+  /**
+   * Creates or gets a container for a given ID
+   * @param containerId - The container ID
+   * @returns The container for this ID
+   */
+  private getOrCreateContainer(containerId: string): PIXI.Container {
+    let container = this.containers.get(containerId);
+    if (!container) {
+      container = new PIXI.Container();
+      this.containers.set(containerId, container);
+      this.foregroundContainer.addChild(container);
     }
+    return container;
+  }
 
-    // Also dispose of related elements (like text backgrounds and selection borders)
-    const backgroundElement = this.elementMap.get(`${id}-background`);
-    if (backgroundElement) {
-      if (backgroundElement.parent) {
-        backgroundElement.parent.removeChild(backgroundElement);
-      }
-      this.elementMap.delete(`${id}-background`);
-      backgroundElement.destroy({ children: true });
+  /**
+   * Adds an element to the appropriate container
+   * @param element - The PIXI element to add
+   * @param containerId - The container ID this element belongs to
+   */
+  private addToContainer(
+    element: PIXI.Container | PIXI.Graphics | PIXI.Text | PIXI.Sprite,
+    containerId: string
+  ): void {
+    const container = this.getOrCreateContainer(containerId);
+    container.addChild(element);
+  }
+
+  dispose(containerId: string): void {
+    const container = this.containers.get(containerId);
+    if (container) {
+      container.destroy({ children: true });
+      this.containers.delete(containerId);
     }
+  }
 
-    const selectionElement = this.elementMap.get(`${id}-selection`);
-    if (selectionElement) {
-      if (selectionElement.parent) {
-        selectionElement.parent.removeChild(selectionElement);
-      }
-      this.elementMap.delete(`${id}-selection`);
-      selectionElement.destroy({ children: true });
+  /**
+   * Hide an overlay and all its elements
+   * @param containerId - The container ID to hide
+   */
+  hide(containerId: string): void {
+    const container = this.containers.get(containerId);
+    if (container) {
+      container.visible = false;
+    }
+  }
+
+  /**
+   * Show a previously hidden overlay and all its elements
+   * @param containerId - The container ID to show
+   */
+  show(containerId: string): void {
+    const container = this.containers.get(containerId);
+    if (container) {
+      container.visible = true;
     }
   }
 
   /**
    * Update resource bounds directly without recreating the sprite to avoid flicker during resize
    */
-  updateResourceBounds(id: string, bounds: Rect): void {
-    const element = this.elementMap.get(id);
-    if (element && element instanceof PIXI.Sprite) {
-      // Update sprite properties directly without recreating
-      element.x = bounds.x;
-      element.y = bounds.y;
-      element.width = bounds.width;
-      element.height = bounds.height;
+  updateResourceBounds(containerId: string, bounds: Rect): void {
+    const container = this.containers.get(containerId);
+    if (container) {
+      // Find the sprite in the container and update its bounds
+      for (const child of container.children) {
+        if (child instanceof PIXI.Sprite) {
+          child.x = bounds.x;
+          child.y = bounds.y;
+          child.width = bounds.width;
+          child.height = bounds.height;
+          break;
+        }
+      }
     }
   }
 
   // Hit testing methods
-  hitTest(point: Point, id?: string): boolean {
-    if (id) {
-      const element = this.elementMap.get(id);
-      if (element) {
-        return this.hitTestElement(element, point);
+  hitTest(point: Point, containerId?: string): boolean {
+    if (containerId) {
+      const container = this.containers.get(containerId);
+      if (container) {
+        return this.hitTestElement(container, point);
       }
       return false;
     }
-
-    // Test all elements if no ID specified (in reverse order for proper z-order)
-    const elements = Array.from(this.elementMap.values()).reverse();
-    for (const element of elements) {
-      if (this.hitTestElement(element, point)) {
+    // Test all containers if no ID specified
+    for (const container of this.containers.values()) {
+      if (this.hitTestElement(container, point)) {
         return true;
       }
     }
     return false;
   }
 
-  getBounds(id: string): Rect | undefined {
-    const element = this.elementMap.get(id);
-    if (element) {
-      const bounds = element.getBounds();
+  getBounds(containerId: string): Rect | undefined {
+    const container = this.containers.get(containerId);
+    if (container) {
+      const bounds = container.getBounds();
       return {
         x: bounds.x,
         y: bounds.y,

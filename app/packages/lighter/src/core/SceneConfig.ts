@@ -7,17 +7,26 @@ import type { Renderer2D } from "../renderer/Renderer2D";
 import type { ResourceLoader } from "../resource/ResourceLoader";
 
 /**
+ * Options for scene behavior and overlay management.
+ */
+export interface SceneOptions {
+  /** Array of field paths that determine overlay visibility and rendering order */
+  activePaths?: string[];
+  /** Whether to show overlays */
+  showOverlays?: boolean;
+  /** Opacity for overlays */
+  alpha?: number;
+}
+
+/**
  * Configuration for a 2D scene.
  *
  * The following can be imagined as being "injected" as dependencies.
  */
 export interface Scene2DConfig {
-  /** The canvas element to render to. */
   canvas: HTMLCanvasElement;
-  /** The renderer to use. */
   renderer: Renderer2D;
-  /** Resource loader for loading assets. */
   resourceLoader: ResourceLoader;
-  /** Event bus for communication. */
   eventBus: EventBus;
+  options?: SceneOptions;
 }

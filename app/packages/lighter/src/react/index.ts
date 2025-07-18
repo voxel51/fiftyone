@@ -8,6 +8,7 @@ export type { LighterSampleRendererProps } from "./LighterSampleRenderer";
 
 // React hooks
 export { useLighterWithPixi as useLighter } from "./useLighterWithPixi";
+export type { LighterOptions } from "./useLighterWithPixi";
 export { usePixiRenderer } from "./usePixiRenderer";
 export { usePixiResourceLoader } from "./usePixiResourceLoader";
 export { useSceneSelectionState } from "./useSceneSelectionState";

@@ -4,6 +4,7 @@
 
 import { loadOverlays } from "@fiftyone/looker/src/overlays";
 import DetectionOverlay from "@fiftyone/looker/src/overlays/detection";
+import * as fos from "@fiftyone/state";
 import {
   fieldSchema,
   getSampleSrc,
@@ -18,6 +19,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { useRecoilValue } from "recoil";
 import {
   BoundingBoxOptions,
   BoundingBoxOverlay,
@@ -62,15 +64,12 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
     height: height || 0,
   });
 
-  const {
-    scene,
-    isReady,
-    overlayCount,
-    addOverlay,
-    clearOverlays,
-    undo,
-    redo,
-  } = useLighterWithPixi(canvasRef);
+  const options = useRecoilValue(
+    fos.lookerOptions({ modal: true, withFilter: false })
+  );
+
+  const { scene, isReady, overlayCount, addOverlay, undo, redo } =
+    useLighterWithPixi(canvasRef, options);
 
   // Use the new selection state hook
   const { selectedOverlayIds, selectedBounds } = useSceneSelectionState(scene);
@@ -141,6 +140,7 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
         },
         draggable: true,
         selectable: true,
+        field: "bbox-test",
       }
     );
 
@@ -175,7 +175,7 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
   const shiftPosition = useCallback(
     (deltaX: number, deltaY: number) => {
       if (!scene) return;
-      scene.getEventBus().emit({
+      scene.dispatch({
         type: LIGHTER_EVENTS.SPATIAL_SHIFT,
         detail: { deltaX, deltaY },
       });
@@ -186,7 +186,7 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
   const resizeDimensions = useCallback(
     (deltaWidth: number, deltaHeight: number) => {
       if (!scene) return;
-      scene.getEventBus().emit({
+      scene.dispatch({
         type: LIGHTER_EVENTS.SPATIAL_RESIZE,
         detail: { deltaWidth, deltaHeight },
       });
@@ -207,7 +207,6 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
       <canvas
         ref={canvasRef}
         style={{
-          border: "1px solid #ccc",
           display: "block",
           flex: 1,
         }}
@@ -247,22 +246,6 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
             }}
           >
             Add Random Classification
-          </button>
-          <button
-            onClick={clearOverlays}
-            disabled={!isReady}
-            style={{
-              padding: "8px 16px",
-              background: "#6c757d",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              cursor: isReady ? "pointer" : "not-allowed",
-              opacity: isReady ? 1 : 0.5,
-              marginRight: "16px",
-            }}
-          >
-            Clear All
           </button>
           <button
             onClick={undo}
@@ -422,7 +405,6 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
     </div>
   );
 };
-
 // Styles
 const buttonStyle: React.CSSProperties = {
   padding: "2px 6px",

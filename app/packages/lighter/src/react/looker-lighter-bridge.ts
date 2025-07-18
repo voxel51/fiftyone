@@ -23,5 +23,6 @@ export const convertLegacyToLighterDetection = (
     },
     draggable: true,
     selectable: true,
+    field: overlay.field,
   });
 };
