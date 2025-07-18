@@ -1185,7 +1185,13 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
         processed = {k: v.to(self.device) for k, v in processed.items()}
         # Run model
         with torch.no_grad():
-             outputs = self._model(**processed)
+            # Check if model expects dataset_index (VitPose+ models)
+            import inspect
+            sig = inspect.signature(self._model.forward)
+            if 'dataset_index' in sig.parameters:
+                outputs = self._model(**processed, dataset_index=torch.tensor(0).to(self.device))
+            else:
+                outputs = self._model(**processed)
         # Pass boxes to output processor
         self._output_processor._boxes = boxes
         # Process outputs
