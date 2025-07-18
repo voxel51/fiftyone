@@ -1,16 +1,25 @@
 import { Add, Remove } from "@mui/icons-material";
-import React, { useState } from "react";
+import { atom, useAtom } from "jotai";
+import React from "react";
 import styled, { useTheme } from "styled-components";
+import { Column } from "./Components";
+import { Container } from "./Icons";
 
-const PlusMinusButton = ({ expanded }: { expanded: boolean }) =>
-  expanded ? <Remove /> : <Add />;
+const PlusMinusButton = ({
+  expanded,
+  toggle,
+}: {
+  expanded: boolean;
+  toggle: () => void;
+}) => {
+  const Component = expanded ? Remove : Add;
+
+  return <Component onClick={toggle} />;
+};
 
 const GroupHeader = styled.div`
-  border-bottom: 2px solid ${({ theme }) => theme.primary.softBorder};
-  border-top-left-radius: 3px;
-  border-top-right-radius: 3px;
-  padding: 3px 3px 3px 8px;
-  text-transform: uppercase;
+  border-radius: 3px;
+  padding: 0.5rem;
   display: flex;
   justify-content: space-between;
   vertical-align: middle;
@@ -32,15 +41,49 @@ const GroupDiv = styled.div`
   background: transparent;
   border: none;
   outline: none;
-  text-transform: uppercase;
   font-weight: bold;
   color: ${({ theme }) => theme.text.secondary};
 `;
 
-const Group = React.memo(({ name }: { name: string }) => {
-  const expanded = false;
-  const [hovering, setHovering] = useState(false);
+const Round = styled.div`
+  align-items: center;
+  border-radius: 1rem;
+  display: flex;
+  cursor: pointer;
+  flex-direction: column;
+  height: 2rem;
+  justify-content: center;
+  padding: 0.25rem;
+  width: 2rem;
 
+  &:hover {
+    background: ${({ theme }) => theme.background.level1};
+  }
+
+  &:hover path {
+    fill: ${({ theme }) => theme.text.primary};
+  }
+`;
+
+const Toggle = ({ name }: { name: string }) => {
+  const [expanded, setExpanded] = useAtom(getGroupAtom(name));
+
+  return (
+    <Round>
+      <PlusMinusButton
+        expanded={expanded}
+        toggle={() => setExpanded((cur) => !cur)}
+      />
+    </Round>
+  );
+};
+
+export const getGroupAtom = (name: string) =>
+  name === "Objects" ? objectsExpanded : primitivesExpanded;
+export const objectsExpanded = atom(false);
+export const primitivesExpanded = atom(false);
+
+const Group = React.memo(({ name }: { name: string }) => {
   const theme = useTheme();
 
   return (
@@ -54,17 +97,16 @@ const Group = React.memo(({ name }: { name: string }) => {
           <GroupDiv
             style={{
               flexGrow: 1,
-
               textOverflow: "ellipsis",
             }}
           >
             {name}
           </GroupDiv>
 
-          <span>7</span>
-          <span>
-            <PlusMinusButton expanded={expanded} />
-          </span>
+          <Column>
+            <Container>7</Container>
+            <Toggle name={name} />
+          </Column>
         </GroupHeader>
       </div>
     </div>

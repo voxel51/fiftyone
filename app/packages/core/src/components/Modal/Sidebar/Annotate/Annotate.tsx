@@ -4,6 +4,7 @@ import Sidebar from "../../../Sidebar";
 import Actions from "./Actions";
 import GroupEntry from "./GroupEntry";
 import ObjectItem from "./ObjectEntry";
+import useEntries from "./useEntries";
 
 const Annotate = () => {
   return (
@@ -25,16 +26,7 @@ const Annotate = () => {
 
           throw new Error("unexpected");
         }}
-        useEntries={() => {
-          return [
-            [
-              { kind: EntryKind.GROUP, name: "OBJECTS" },
-              { kind: EntryKind.LABEL, id: "" },
-              { kind: EntryKind.GROUP, name: "PRIMITIVES" },
-            ],
-            (entry) => {},
-          ];
-        }}
+        useEntries={useEntries}
       />
     </>
   );

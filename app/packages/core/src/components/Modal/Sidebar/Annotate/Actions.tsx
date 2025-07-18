@@ -1,3 +1,4 @@
+import { useTheme } from "@fiftyone/components";
 import React from "react";
 import styled from "styled-components";
 
@@ -27,7 +28,7 @@ const Container = styled.div`
   width: 2.5rem;
 
   &:hover {
-    background: ${({ theme }) => theme.neutral.softBg};
+    background: ${({ theme }) => theme.background.level1};
   }
 
   &:hover path {
@@ -37,6 +38,10 @@ const Container = styled.div`
 
 const Round = styled(Container)`
   border-radius: 1.25rem;
+
+  &:hover {
+    color: ${({ theme }) => theme.text.primary};
+  }
 `;
 
 const Square = styled(Container)`
@@ -45,7 +50,11 @@ const Square = styled(Container)`
 
 const Arrow = () => {
   return (
-    <Square>
+    <Square
+      onClick={() => {
+        alert("NAVIGATION");
+      }}
+    >
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="25"
@@ -53,9 +62,6 @@ const Arrow = () => {
         viewBox="0 0 25 26"
         fill="none"
         style={{ marginLeft: -3 }}
-        onClick={() => {
-          alert("NAVIGATION");
-        }}
       >
         <title>Navigation</title>
         <path
@@ -69,16 +75,17 @@ const Arrow = () => {
 
 const Move = () => {
   return (
-    <Square>
+    <Square
+      onClick={() => {
+        alert("Move");
+      }}
+    >
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="19"
         height="18"
         viewBox="0 0 19 18"
         fill="none"
-        onClick={() => {
-          alert("Move");
-        }}
       >
         <title>Move</title>
         <path
@@ -92,16 +99,17 @@ const Move = () => {
 
 const Classification = () => {
   return (
-    <Square>
+    <Square
+      onClick={() => {
+        alert("Classification");
+      }}
+    >
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="19"
         height="18"
         viewBox="0 0 19 18"
         fill="none"
-        onClick={() => {
-          alert("Classification");
-        }}
       >
         <title>Classification</title>
         <path
@@ -115,16 +123,17 @@ const Classification = () => {
 
 const Detection = () => {
   return (
-    <Square>
+    <Square
+      onClick={() => {
+        alert("Detection");
+      }}
+    >
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="19"
         height="18"
         viewBox="0 0 19 18"
         fill="none"
-        onClick={() => {
-          alert("Detection");
-        }}
       >
         <title>Detection</title>
         <path
@@ -138,16 +147,17 @@ const Detection = () => {
 
 const Undo = () => {
   return (
-    <Round>
+    <Round
+      onClick={() => {
+        alert("UNDO");
+      }}
+    >
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="13"
         height="12"
         viewBox="0 0 13 12"
         fill="none"
-        onClick={() => {
-          alert("UNDO");
-        }}
       >
         <title>Undo</title>
         <path
@@ -161,16 +171,17 @@ const Undo = () => {
 
 const Redo = () => {
   return (
-    <Round>
+    <Round
+      onClick={() => {
+        alert("REDO");
+      }}
+    >
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="13"
         height="12"
         viewBox="0 0 13 12"
         fill="none"
-        onClick={() => {
-          alert("REDO");
-        }}
       >
         <title>Redo</title>
         <path
@@ -184,13 +195,14 @@ const Redo = () => {
 
 const Schema = () => {
   return (
-    <Round style={{ width: "auto", height: "auto", padding: "0.25rem 0.5rem" }}>
+    <Round style={{ width: "auto", height: "auto", padding: "0.25rem 1rem" }}>
       Schema
     </Round>
   );
 };
 
 const Actions = () => {
+  const theme = useTheme();
   return (
     <>
       <ActionsDiv>
@@ -203,7 +215,10 @@ const Actions = () => {
         <Redo />
       </ActionsDiv>
       <ActionsDiv style={{ margin: "0 0.25rem", paddingBottom: "0.5rem" }}>
-        <div>Click labels to edit &bull; 24</div>
+        <div>
+          Click labels to edit{" "}
+          <span style={{ color: theme.background.level1 }}>&bull;</span> 24
+        </div>
         <Schema />
       </ActionsDiv>
     </>
