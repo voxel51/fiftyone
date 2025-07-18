@@ -11,6 +11,8 @@ $white: #ffffff;
 $black: #000000;
 $text-base: #181a1b;
 $text-secondary: #5d5e5f;
+$surface-background: #17191A;
+$linenos-background: #FFFFFF1A;
 
 // Spacing
 $navbar-spacing: 0.5rem;
@@ -75,6 +77,9 @@ html[data-theme="light"] {
   --pst-color-link: #{$text-base};
   --pst-color-link-hover: #{$text-secondary};
   --pst-color-inline-code: #{$text-base};
+
+  --pst-color-surface: #{$surface-background};
+  --pst-color-linenos-background: #{$linenos-background};
 }
 
 /* Dark theme variables */

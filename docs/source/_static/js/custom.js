@@ -172,29 +172,29 @@ function initSidebarToggle() {
 function initSlidingNavBar() {
   const navbarNav = document.querySelector('.navbar-header-items__center .navbar-nav') || document.querySelector('.navbar-nav');
   if (!navbarNav || window.innerWidth < 960) return;
-  
+
   const navItems = navbarNav.querySelectorAll('.nav-item');
   if (!navItems.length) return;
-  
+
   let slidingBar = navbarNav.querySelector('.sliding-bar-indicator');
   let barTimeout = null;
-  
+
   if (!slidingBar) {
     slidingBar = document.createElement('div');
     slidingBar.className = 'sliding-bar-indicator';
     slidingBar.style.cssText = `position: absolute; bottom: 0; left: 0; width: 0; height: 1px; background-color: #000; transition: all 0.3s ease; opacity: 0; z-index: 1; pointer-events: none;`;
     navbarNav.appendChild(slidingBar);
   }
-  
+
   const updateSlidingBar = (targetItem) => {
     if (barTimeout) {
       clearTimeout(barTimeout);
       barTimeout = null;
     }
-    
+
     const left = targetItem.offsetLeft;
     const width = targetItem.offsetWidth;
-    
+
     if (slidingBar.style.opacity === '0' || slidingBar.style.opacity === '') {
       slidingBar.style.transition = 'none';
       slidingBar.style.left = `${left}px`;
@@ -209,7 +209,7 @@ function initSlidingNavBar() {
       slidingBar.style.opacity = '1';
     }
   };
-  
+
   const scheduleHideBar = () => {
     if (barTimeout) clearTimeout(barTimeout);
     barTimeout = setTimeout(() => {
@@ -217,7 +217,7 @@ function initSlidingNavBar() {
       barTimeout = null;
     }, 500);
   };
-  
+
   navItems.forEach(navItem => navItem.addEventListener('mouseenter', () => updateSlidingBar(navItem)));
   navbarNav.addEventListener('mouseleave', scheduleHideBar);
   window.addEventListener('resize', () => { if (window.innerWidth < 960) slidingBar.style.opacity = '0'; });
@@ -226,11 +226,11 @@ function initSlidingNavBar() {
 /* Dropdown Delay System */
 function initDropdownDelay() {
   if (window.innerWidth < 960) return;
-  
+
   const dropdowns = document.querySelectorAll('.dropdown');
   let activeDropdown = null;
   let allTimeouts = new Map();
-  
+
   const toggleDropdownItems = (dropdownMenu, show) => {
     const items = dropdownMenu.querySelectorAll('.dropdown-item');
     items.forEach((item, index) => {
@@ -247,7 +247,7 @@ function initDropdownDelay() {
       }
     });
   };
-  
+
   const closeAllDropdowns = (except = null) => {
     dropdowns.forEach(dropdown => {
       if (dropdown !== except) {
@@ -266,18 +266,18 @@ function initDropdownDelay() {
       }
     });
   };
-  
+
   const showDropdown = (dropdown) => {
     if (activeDropdown && activeDropdown !== dropdown) {
       closeAllDropdowns(dropdown);
     }
-    
+
     const timeout = allTimeouts.get(dropdown);
     if (timeout) {
       clearTimeout(timeout);
       allTimeouts.delete(dropdown);
     }
-    
+
     activeDropdown = dropdown;
     const dropdownMenu = dropdown.querySelector('.dropdown-menu');
     if (dropdownMenu) {
@@ -288,7 +288,7 @@ function initDropdownDelay() {
       toggleDropdownItems(dropdownMenu, true);
     }
   };
-  
+
   const hideDropdown = (dropdown) => {
     const dropdownMenu = dropdown.querySelector('.dropdown-menu');
     if (dropdownMenu) {
@@ -299,30 +299,30 @@ function initDropdownDelay() {
     }
     if (activeDropdown === dropdown) activeDropdown = null;
   };
-  
+
   const scheduleHide = (dropdown) => {
     const existingTimeout = allTimeouts.get(dropdown);
     if (existingTimeout) clearTimeout(existingTimeout);
-    
+
     const newTimeout = setTimeout(() => {
       hideDropdown(dropdown);
       allTimeouts.delete(dropdown);
     }, 500);
-    
+
     allTimeouts.set(dropdown, newTimeout);
   };
-  
+
   dropdowns.forEach(dropdown => {
     dropdown.addEventListener('mouseenter', () => showDropdown(dropdown));
     dropdown.addEventListener('mouseleave', () => scheduleHide(dropdown));
-    
+
     const dropdownMenu = dropdown.querySelector('.dropdown-menu');
     if (dropdownMenu) {
       dropdownMenu.addEventListener('mouseenter', () => showDropdown(dropdown));
       dropdownMenu.addEventListener('mouseleave', () => scheduleHide(dropdown));
     }
   });
-  
+
   document.querySelectorAll('.navbar-header-items__center .nav-item').forEach(navItem => {
     if (!navItem.classList.contains('dropdown')) {
       navItem.addEventListener('mouseenter', () => {
@@ -333,12 +333,12 @@ function initDropdownDelay() {
       });
     }
   });
-  
+
   window.addEventListener('resize', () => {
     if (window.innerWidth < 960) {
       closeAllDropdowns();
       activeDropdown = null;
-      
+
       dropdowns.forEach(dropdown => {
         const dropdownMenu = dropdown.querySelector('.dropdown-menu');
         if (dropdownMenu) {
@@ -346,7 +346,7 @@ function initDropdownDelay() {
           dropdownMenu.style.visibility = '';
           dropdownMenu.style.transform = '';
           dropdownMenu.style.display = '';
-          
+
           const dropdownItems = dropdownMenu.querySelectorAll('.dropdown-item');
           dropdownItems.forEach(item => {
             item.style.opacity = '';
@@ -359,8 +359,28 @@ function initDropdownDelay() {
   });
 }
 
+function initCodeHighlight() {
+  document.querySelectorAll('.highlight').forEach(block => {
+    const linenos = block.querySelector('.linenos');
+
+    if (linenos) {
+      const allLineNos = block.querySelectorAll('.linenos');
+      let maxWidth = 0;
+      allLineNos.forEach(span => {
+        const w = span.offsetWidth;
+        if (w > maxWidth) maxWidth = w;
+      });
+
+      block.style.setProperty('--linenos-width', maxWidth + 'px');
+    } else {
+      block.style.removeProperty('--linenos-width');
+    }
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   initSidebarToggle();
   initSlidingNavBar();
   initDropdownDelay();
+  initCodeHighlight();
 });

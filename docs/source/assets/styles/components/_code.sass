@@ -1,3 +1,44 @@
 code.literal
   border: none
   font-size: 1em
+
+div.highlight
+  pre
+    border-radius: 8px
+    line-height: 1.5 !important
+
+    &::before
+      content: ''
+      position: absolute
+      top: 0
+      left: 0
+      width: var(--linenos-width, 0)
+      height: 100%
+      background-color: var(--pst-color-linenos-background)
+      border-right: 1px solid #FFFFFF33
+      pointer-events: none
+      z-index: 0
+
+    .nb, .mi, .kc, code.xref, a code, .fm, .ow, .nb, .nt, .nc, .k, .kn
+      color: #91C3F5 !important
+      text-decoration: none !important
+
+    .nf, .nn, .n, .p, .mf, .nb, .nd, .bp, .si, .sa, .se, .o
+      color: #FFFFFF !important
+
+    .s1, .s2, .ne, .m, .l, .vm, .nv
+      color: #C399FF !important
+
+    .linenos
+      color: #ECE8E4 !important
+      padding-right: 28px !important
+      padding-left: 0 !important
+
+  button.copybtn, button.copybtn:not(.success), button.copybtn:hover, button.copybtn:hover:not(.success)
+    top: 8px
+    right: 8px
+    color: #FFFFFFCC
+    background-color: #FFFFFF40
+    border-radius: 40px
+    height: 32px
+    width: 32px
