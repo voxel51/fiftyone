@@ -1115,7 +1115,7 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
         self.transforms.return_image_sizes = True
         self._detection_boxes = None
 
-    def build_transforms(self, config):
+    def _build_transforms(self, config):
         """Override to ensure boxes are always provided for VitPose models"""
         transforms, ragged_batches = super().build_transforms(config)
         
