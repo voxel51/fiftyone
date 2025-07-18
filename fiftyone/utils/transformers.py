@@ -367,8 +367,22 @@ class FiftyOneZeroShotTransformerConfig(FiftyOneTransformerConfig):
         self.class_prompts = self.parse_dict(d, "class_prompts", default=None)
 
     def _load_classes(self, d):
+        hf_classes = []
+        if self.hf_config.id2label is not None:
+            hf_classes = [
+                self.hf_config.id2label[i]
+                for i in range(len(self.hf_config.id2label))
+            ]
         if self.classes is None:
-            raise ValueError("Classes must be set for zero-shot models")
+            if hf_classes:
+                logger.warning(
+                    "No classes were set for the zero-shot model. Using the default classes from HuggingFace model."
+                )
+                self.classes = hf_classes
+            else:
+                logger.warning(
+                    "No classes were set for the zero-shot model and no default classes found in HuggingFace model configuration."
+                )
 
 
 class TransformerEmbeddingsMixin(EmbeddingsMixin):
