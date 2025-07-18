@@ -1117,7 +1117,7 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
 
     def _build_transforms(self, config):
         """Override to ensure boxes are always provided for VitPose models"""
-        transforms, ragged_batches = super().build_transforms(config)
+        transforms, ragged_batches = super()._build_transforms(config)
         
         class TransformsWithBoxes:
             def __init__(self, original):
