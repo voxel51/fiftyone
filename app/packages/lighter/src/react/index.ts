@@ -3,7 +3,6 @@
  */
 
 // React components
-export { LighterControls } from "./LighterControls";
 export { LighterSampleRenderer } from "./LighterSampleRenderer";
 export type { LighterSampleRendererProps } from "./LighterSampleRenderer";
 

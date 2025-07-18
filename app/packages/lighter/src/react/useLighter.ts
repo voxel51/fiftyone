@@ -3,7 +3,8 @@
  */
 
 import { useAtomValue } from "jotai";
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { RenderCallback } from "../core/Scene2D";
 import { overlayFactory } from "../index";
 import { BaseOverlay } from "../overlay/BaseOverlay";
 import { lighterSceneAtom } from "../state";
@@ -12,11 +13,47 @@ import { lighterSceneAtom } from "../state";
  * Hook for accessing the current lighter instance without side effects.
  * This hook provides access to the lighter scene and its methods from anywhere in the app.
  *
- * It's important to not have any side effects in this hook.
+ * It's very important to minimize side effects in this hook.
  */
 export const useLighter = () => {
   const scene = useAtomValue(lighterSceneAtom);
   const isReady = !!scene;
+  const registeredCallbacks = useRef<Set<() => void>>(new Set());
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+
+  // Cleanup registered callbacks when scene changes or component unmounts
+  useEffect(() => {
+    return () => {
+      // Unregister all callbacks when component unmounts or scene changes
+      registeredCallbacks.current.forEach((unregister) => unregister());
+      registeredCallbacks.current.clear();
+    };
+  }, [scene]);
+
+  // Update undo/redo state when scene changes
+  useEffect(() => {
+    if (scene) {
+      setCanUndo(scene.canUndo());
+      setCanRedo(scene.canRedo());
+    } else {
+      setCanUndo(false);
+      setCanRedo(false);
+    }
+  }, [scene]);
+
+  // Register render callback to update undo/redo state
+  useEffect(() => {
+    if (!scene) return;
+
+    return registerRenderCallback({
+      callback: () => {
+        setCanUndo(scene.canUndo());
+        setCanRedo(scene.canRedo());
+      },
+      phase: "after",
+    });
+  }, [scene]);
 
   const addOverlay = useCallback(
     (overlay: BaseOverlay) => {
@@ -48,13 +85,29 @@ export const useLighter = () => {
     }
   }, [scene]);
 
-  const canUndo = useCallback(() => {
-    return scene ? scene.canUndo() : false;
-  }, [scene]);
+  /**
+   * Registers a render callback that will be automatically cleaned up when the component unmounts.
+   * @param callback - The callback configuration.
+   * @returns A function to manually unregister the callback.
+   */
+  const registerRenderCallback = useCallback(
+    (callback: Omit<RenderCallback, "id"> & { id?: string }) => {
+      if (!scene) {
+        console.warn("Cannot register render callback: scene not ready");
+        return () => {}; // Return no-op function
+      }
 
-  const canRedo = useCallback(() => {
-    return scene ? scene.canRedo() : false;
-  }, [scene]);
+      const unregister = scene.registerRenderCallback(callback);
+      registeredCallbacks.current.add(unregister);
+
+      // Return a function that removes from our tracking and unregisters
+      return () => {
+        registeredCallbacks.current.delete(unregister);
+        unregister();
+      };
+    },
+    [scene]
+  );
 
   return {
     scene,
@@ -66,5 +119,6 @@ export const useLighter = () => {
     canUndo,
     canRedo,
     overlayFactory,
+    registerRenderCallback,
   };
 };
