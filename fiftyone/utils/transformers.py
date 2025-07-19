@@ -1240,22 +1240,67 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
             # Extract the actual image tensor from the dict
             images = images.get('pixel_values', images.get('images', images))
         
+        # Run detector if configured and no boxes provided
+        if self._detector is not None and self._detection_boxes is None:
+            # Convert to PIL images for detector
+            pil_images = []
+            imgs_to_process = images if isinstance(images, list) else [images]
+            
+            for img in imgs_to_process:
+                if isinstance(img, Image.Image):
+                    pil_images.append(img)
+                elif torch.is_tensor(img):
+                    # Remove all batch dimensions
+                    while len(img.shape) > 3:
+                        img = img[0]
+                    
+                    # Convert tensor to numpy and transpose
+                    img_np = img.cpu().numpy().transpose(1, 2, 0)  # C,H,W -> H,W,C
+                    
+                    # CRITICAL: Denormalize if normalized
+                    if hasattr(self.transforms, 'processor'):
+                        processor = self.transforms.processor
+                        if hasattr(processor, 'image_mean') and hasattr(processor, 'image_std'):
+                            mean = np.array(processor.image_mean)
+                            std = np.array(processor.image_std)
+                            img_np = img_np * std + mean
+                    
+                    # Convert to uint8
+                    img_np = np.clip(img_np * 255, 0, 255).astype('uint8')
+                    pil_images.append(Image.fromarray(img_np))
+                else:
+                    pil_images.append(Image.fromarray(img))
+            
+            # Run detector on all images
+            self._detection_boxes = self._run_detector_on_images(pil_images)
+        
         # Get detection boxes if provided
         detection_boxes = getattr(self, '_detection_boxes', None)
-        # Get image sizes
+        
+        # Get image sizes - FIX for tensor dimensions
         image_sizes = []
-        for img in images:
+        imgs_to_size = images if isinstance(images, list) else [images]
+        
+        for img in imgs_to_size:
             if isinstance(img, Image.Image):
                 w, h = img.size
             else:
-                h, w = img.shape[:2]
+                # Remove batch dimensions
+                while len(img.shape) > 3:
+                    img = img[0]
+                if len(img.shape) == 3:  # C, H, W format
+                    _, h, w = img.shape
+                else:
+                    h, w = img.shape[:2]
             image_sizes.append((h, w))
+        
         # Prepare boxes for preprocessing
         if detection_boxes is not None:
             boxes = detection_boxes
         else:
             # Default to full-image boxes
             boxes = [[[0, 0, w, h]] for h, w in image_sizes]
+        
         # Process images with boxes
         processed = self.transforms.processor(images, boxes=boxes, return_tensors="pt")
         # Move to device
@@ -1272,7 +1317,12 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
         # Pass boxes to output processor
         self._output_processor._boxes = boxes
         # Process outputs
-        return self._output_processor(outputs, image_sizes, self.config.confidence_thresh)
+        result = self._output_processor(outputs, image_sizes, self.config.confidence_thresh)
+        
+        # Clear detection boxes after use
+        self._detection_boxes = None
+        
+        return result
 
 class FiftyOneTransformerForDepthEstimationConfig(FiftyOneTransformerConfig):
     """Configuration for a :class:`FiftyOneTransformerForDepthEstimation`.
