@@ -531,7 +531,7 @@ class MigrationTests(unittest.TestCase):
         pkg_ver = foc.VERSION
         future_ver = str(int(pkg_ver[0]) + 1) + pkg_ver[1:]
 
-        # Uprading to a future version is not allowed
+        # Upgrading to a future version is not allowed
 
         with self.assertRaises(EnvironmentError):
             MigrationRunner(pkg_ver, future_ver)
