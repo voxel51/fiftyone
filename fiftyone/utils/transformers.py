@@ -1231,132 +1231,132 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
 
     def _predict_all(self, images):
         """Perform pose estimation on images with person detection.
-    
-    Args:
-        images: List of images, single image, or dict from DataLoader
-    
-    Returns:
-        List[Detections] for batch input, Detections for single image.
-        Each contains Detection objects with embedded keypoints per person.
-    """
-    # Track whether input is a batch to ensure correct output format
-    is_batch = isinstance(images, list)
-    
-    # Extract images from DataLoader dict format
-    if isinstance(images, dict):
-        images = images.get('pixel_values', images.get('images', images))
-        is_batch = True  # DataLoader always provides batches
-    
-    # Run person detection if needed
-    if self._detector is not None and self._detection_boxes is None:
-        # Convert all images to PIL format for the detector
-        pil_images = []
-        imgs_to_process = images if isinstance(images, list) else [images]
         
-        for img in imgs_to_process:
+        Args:
+            images: List of images, single image, or dict from DataLoader
+        
+        Returns:
+            List[Detections] for batch input, Detections for single image.
+            Each contains Detection objects with embedded keypoints per person.
+        """
+        # Track whether input is a batch to ensure correct output format
+        is_batch = isinstance(images, list)
+        
+        # Extract images from DataLoader dict format
+        if isinstance(images, dict):
+            images = images.get('pixel_values', images.get('images', images))
+            is_batch = True  # DataLoader always provides batches
+        
+        # Run person detection if needed
+        if self._detector is not None and self._detection_boxes is None:
+            # Convert all images to PIL format for the detector
+            pil_images = []
+            imgs_to_process = images if isinstance(images, list) else [images]
+            
+            for img in imgs_to_process:
+                if isinstance(img, Image.Image):
+                    pil_images.append(img)
+                elif torch.is_tensor(img):
+                    # Handle tensor inputs by converting to PIL
+                    while len(img.shape) > 3:
+                        img = img[0]  # Remove batch dimensions
+                    
+                    # Convert from CHW to HWC format
+                    img_np = img.cpu().numpy().transpose(1, 2, 0)
+                    
+                    # Denormalize using the processor's normalization parameters
+                    if hasattr(self.transforms, 'processor'):
+                        processor = self.transforms.processor
+                        if hasattr(processor, 'image_mean') and hasattr(processor, 'image_std'):
+                            mean = np.array(processor.image_mean)
+                            std = np.array(processor.image_std)
+                            img_np = img_np * std + mean
+                    
+                    # Convert to uint8 for PIL
+                    img_np = np.clip(img_np * 255, 0, 255).astype('uint8')
+                    pil_images.append(Image.fromarray(img_np))
+                else:
+                    # Assume numpy array
+                    pil_images.append(Image.fromarray(img))
+            
+            # Detect people in all images
+            self._detection_boxes = self._run_detector_on_images(pil_images)
+        
+        # Retrieve detection boxes (if available)
+        detection_boxes = getattr(self, '_detection_boxes', None)
+        
+        # Handle images with no detected people
+        if detection_boxes is not None:
+            empty_indices = [i for i, boxes in enumerate(detection_boxes) if not boxes]
+            
+            if empty_indices:
+                # Process images with and without people separately
+                results = []
+                imgs_list = images if isinstance(images, list) else [images]
+                
+                for i, img in enumerate(imgs_list):
+                    if i in empty_indices:
+                        # No people detected - return empty Detections
+                        results.append(fol.Detections(detections=[]))
+                    else:
+                        # Process image with detected people
+                        self._detection_boxes = [detection_boxes[i]]
+                        single_result = self._predict_all([img] if isinstance(images, list) else img)
+                        results.append(single_result[0] if isinstance(single_result, list) else single_result)
+                
+                # Clean up and return with correct format
+                self._detection_boxes = None
+                return results if is_batch else results[0]
+        
+        # Extract image dimensions for processing
+        image_sizes = []
+        imgs_to_size = images if isinstance(images, list) else [images]
+        
+        for img in imgs_to_size:
             if isinstance(img, Image.Image):
-                pil_images.append(img)
-            elif torch.is_tensor(img):
-                # Handle tensor inputs by converting to PIL
+                w, h = img.size
+            else:
+                # Handle tensor inputs
                 while len(img.shape) > 3:
                     img = img[0]  # Remove batch dimensions
-                
-                # Convert from CHW to HWC format
-                img_np = img.cpu().numpy().transpose(1, 2, 0)
-                
-                # Denormalize using the processor's normalization parameters
-                if hasattr(self.transforms, 'processor'):
-                    processor = self.transforms.processor
-                    if hasattr(processor, 'image_mean') and hasattr(processor, 'image_std'):
-                        mean = np.array(processor.image_mean)
-                        std = np.array(processor.image_std)
-                        img_np = img_np * std + mean
-                
-                # Convert to uint8 for PIL
-                img_np = np.clip(img_np * 255, 0, 255).astype('uint8')
-                pil_images.append(Image.fromarray(img_np))
+                if len(img.shape) == 3:  # CHW format
+                    _, h, w = img.shape
+                else:  # HW format
+                    h, w = img.shape[:2]
+            image_sizes.append((h, w))
+        
+        # Prepare bounding boxes for VitPose preprocessing
+        if detection_boxes is not None:
+            boxes = detection_boxes
+        else:
+            # Use full image as bounding box when no detector is available
+            boxes = [[[0, 0, w, h]] for h, w in image_sizes]
+        
+        # Preprocess images with bounding boxes
+        processed = self.transforms.processor(images, boxes=boxes, return_tensors="pt")
+        
+        # Move tensors to appropriate device
+        processed = {k: v.to(self.device) for k, v in processed.items()}
+        
+        # Run pose estimation model
+        with torch.no_grad():
+            # Check if model requires dataset_index parameter (VitPose+ models)
+            import inspect
+            sig = inspect.signature(self._model.forward)
+            if 'dataset_index' in sig.parameters:
+                outputs = self._model(**processed, dataset_index=torch.tensor(0).to(self.device))
             else:
-                # Assume numpy array
-                pil_images.append(Image.fromarray(img))
+                outputs = self._model(**processed)
         
-        # Detect people in all images
-        self._detection_boxes = self._run_detector_on_images(pil_images)
-    
-    # Retrieve detection boxes (if available)
-    detection_boxes = getattr(self, '_detection_boxes', None)
-    
-    # Handle images with no detected people
-    if detection_boxes is not None:
-        empty_indices = [i for i, boxes in enumerate(detection_boxes) if not boxes]
+        # Convert model outputs to FiftyOne format
+        self._output_processor._boxes = boxes
+        result = self._output_processor(outputs, image_sizes, self.config.confidence_thresh)
         
-        if empty_indices:
-            # Process images with and without people separately
-            results = []
-            imgs_list = images if isinstance(images, list) else [images]
-            
-            for i, img in enumerate(imgs_list):
-                if i in empty_indices:
-                    # No people detected - return empty Detections
-                    results.append(fol.Detections(detections=[]))
-                else:
-                    # Process image with detected people
-                    self._detection_boxes = [detection_boxes[i]]
-                    single_result = self._predict_all([img] if isinstance(images, list) else img)
-                    results.append(single_result[0] if isinstance(single_result, list) else single_result)
-            
-            # Clean up and return with correct format
-            self._detection_boxes = None
-            return results if is_batch else results[0]
-    
-    # Extract image dimensions for processing
-    image_sizes = []
-    imgs_to_size = images if isinstance(images, list) else [images]
-    
-    for img in imgs_to_size:
-        if isinstance(img, Image.Image):
-            w, h = img.size
-        else:
-            # Handle tensor inputs
-            while len(img.shape) > 3:
-                img = img[0]  # Remove batch dimensions
-            if len(img.shape) == 3:  # CHW format
-                _, h, w = img.shape
-            else:  # HW format
-                h, w = img.shape[:2]
-        image_sizes.append((h, w))
-    
-    # Prepare bounding boxes for VitPose preprocessing
-    if detection_boxes is not None:
-        boxes = detection_boxes
-    else:
-        # Use full image as bounding box when no detector is available
-        boxes = [[[0, 0, w, h]] for h, w in image_sizes]
-    
-    # Preprocess images with bounding boxes
-    processed = self.transforms.processor(images, boxes=boxes, return_tensors="pt")
-    
-    # Move tensors to appropriate device
-    processed = {k: v.to(self.device) for k, v in processed.items()}
-    
-    # Run pose estimation model
-    with torch.no_grad():
-        # Check if model requires dataset_index parameter (VitPose+ models)
-        import inspect
-        sig = inspect.signature(self._model.forward)
-        if 'dataset_index' in sig.parameters:
-            outputs = self._model(**processed, dataset_index=torch.tensor(0).to(self.device))
-        else:
-            outputs = self._model(**processed)
-    
-    # Convert model outputs to FiftyOne format
-    self._output_processor._boxes = boxes
-    result = self._output_processor(outputs, image_sizes, self.config.confidence_thresh)
-    
-    # Clean up temporary detection boxes
-    self._detection_boxes = None
-    
-    # Return with correct format (list for batches, single item otherwise)
-    return result if is_batch else result[0]
+        # Clean up temporary detection boxes
+        self._detection_boxes = None
+        
+        # Return with correct format (list for batches, single item otherwise)
+        return result if is_batch else result[0]
 
 class FiftyOneTransformerForDepthEstimationConfig(FiftyOneTransformerConfig):
     """Configuration for a :class:`FiftyOneTransformerForDepthEstimation`.
