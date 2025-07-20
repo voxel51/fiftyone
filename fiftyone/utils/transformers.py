@@ -1194,7 +1194,7 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
                     if det.label == 'person' and det.confidence >= self._detector_confidence_thresh:
                         x, y, w, h = det.bounding_box
                         img_w, img_h = img_pil.size
-                        box = [x*img_w, y*img_h, (x+w)*img_w, (y+h)*img_h]
+                        box = [x*img_w, y*img_h, w*img_w, h*img_h]
                         person_boxes.append(box)
                 
                 # Use full image if no people detected
