@@ -1199,8 +1199,7 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
                 
                 # Use full image if no people detected
                 if not person_boxes:
-                    img_w, img_h = img_pil.size
-                    person_boxes = [[0, 0, img_w, img_h]]
+                    person_boxes = []  # Return empty list, no pose estimation
                     
                 all_detection_boxes.append(person_boxes)
             else:
