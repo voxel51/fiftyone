@@ -21,6 +21,7 @@ from fiftyone.core.models import EmbeddingsMixin, PromptMixin
 from fiftyone.zoo.models import HasZooModel
 import fiftyone.utils.torch as fout
 
+
 fou.ensure_torch()
 import torch
 
@@ -1275,6 +1276,30 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
         
         # Get detection boxes if provided
         detection_boxes = getattr(self, '_detection_boxes', None)
+        
+        # Check for empty detections and handle them
+        if detection_boxes is not None:
+            # Check if any images have no detections
+            empty_indices = [i for i, boxes in enumerate(detection_boxes) if not boxes]
+            
+            if empty_indices:
+                # Handle images with and without detections separately
+                results = []
+                imgs_list = images if isinstance(images, list) else [images]
+                
+                for i, img in enumerate(imgs_list):
+                    if i in empty_indices:
+                        # No people detected - return empty Detections
+                        results.append(fol.Detections(detections=[]))
+                    else:
+                        # Process this image with detections
+                        self._detection_boxes = [detection_boxes[i]]
+                        single_result = self._predict_all([img] if isinstance(images, list) else img)
+                        results.append(single_result[0] if isinstance(single_result, list) else single_result)
+                
+                # Clear and return
+                self._detection_boxes = None
+                return results if isinstance(images, list) else results[0]
         
         # Get image sizes - FIX for tensor dimensions
         image_sizes = []
