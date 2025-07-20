@@ -1125,16 +1125,16 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
         self.transforms.return_image_sizes = True
         self._detection_boxes = None
         
-        # Initialize detector if specified
-        self._detector = None
+        # Initialize detector - always required for pose estimation
+        import fiftyone.zoo as foz
         self._detector_confidence_thresh = config.detector_confidence_thresh
-        if config.detector_name:
-            import fiftyone.zoo as foz
-            # Use faster-rcnn as default if "default" is specified
-            detector_name = config.detector_name
-            if detector_name == "default":
-                detector_name = "faster-rcnn-resnet50-fpn-coco-torch"
-            self._detector = foz.load_zoo_model(detector_name)
+        
+        # Always use a detector - default to faster-rcnn if not specified
+        detector_name = config.detector_name if config.detector_name else "faster-rcnn-resnet50-fpn-coco-torch"
+        if detector_name == "default":
+            detector_name = "faster-rcnn-resnet50-fpn-coco-torch"
+        
+        self._detector = foz.load_zoo_model(detector_name)
 
     def _build_transforms(self, config):
         """Override to ensure boxes are always provided for VitPose models"""
