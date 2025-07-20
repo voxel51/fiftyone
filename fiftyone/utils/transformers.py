@@ -1638,17 +1638,53 @@ class TransformersPoseEstimationOutputProcessor(fout.OutputProcessor):
         fo_results = []
         for img_idx, img_results in enumerate(results):
             if len(img_results) == 0:
-                fo_results.append(fol.Keypoints(keypoints=[]))
-            elif len(img_results) == 1:
-                keypoints = self._create_keypoints_from_detection(
-                    img_results[0], image_sizes[img_idx], confidence_thresh
-                )
-                fo_results.append(keypoints)
+                # No people - return empty Detections
+                fo_results.append(fol.Detections(detections=[]))
             else:
-                keypoints_list = self._create_keypoints_list_from_detections(
-                    img_results, image_sizes[img_idx], confidence_thresh
-                )
-                fo_results.append(keypoints_list)
+                # One or more people - return Detections with embedded keypoints
+                detections = []
+                h, w = image_sizes[img_idx]
+                
+                for det_idx, pose_dict in enumerate(img_results):
+                    # Get bounding box
+                    if img_idx < len(boxes) and det_idx < len(boxes[img_idx]):
+                        box = boxes[img_idx][det_idx]
+                        x, y, bw, bh = box
+                        bbox = [x/w, y/h, bw/w, bh/h]
+                    else:
+                        # Compute box from keypoints
+                        keypoints_array = pose_dict['keypoints']
+                        x_coords = [kp[0].item() for kp in keypoints_array]
+                        y_coords = [kp[1].item() for kp in keypoints_array]
+                        x_min, x_max = min(x_coords), max(x_coords)
+                        y_min, y_max = min(y_coords), max(y_coords)
+                        # Add some padding
+                        padding = 0.1
+                        x_min = max(0, x_min - padding * w)
+                        x_max = min(w, x_max + padding * w)
+                        y_min = max(0, y_min - padding * h)
+                        y_max = min(h, y_max + padding * h)
+                        bbox = [x_min/w, y_min/h, (x_max-x_min)/w, (y_max-y_min)/h]
+                    
+                    # Create keypoints
+                    keypoint_list = self._extract_keypoints(pose_dict, image_sizes[img_idx], confidence_thresh)
+                    keypoints_obj = fol.Keypoints(keypoints=keypoint_list)
+                    
+                    # Average confidence from keypoints
+                    if keypoint_list:
+                        avg_confidence = sum(kp.confidence[0] for kp in keypoint_list) / len(keypoint_list)
+                    else:
+                        avg_confidence = 0.0
+                    
+                    detection = fol.Detection(
+                        label="person",
+                        bounding_box=bbox,
+                        confidence=avg_confidence,
+                        keypoints=keypoints_obj
+                    )
+                    detections.append(detection)
+                
+                fo_results.append(fol.Detections(detections=detections))
         
         return fo_results
     
