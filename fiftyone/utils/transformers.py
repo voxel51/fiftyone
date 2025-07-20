@@ -1229,7 +1229,7 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
         
         return super().predict(img)
 
-   def _predict_all(self, images):
+    def _predict_all(self, images):
     """Perform pose estimation on images with person detection.
     
     Args:
