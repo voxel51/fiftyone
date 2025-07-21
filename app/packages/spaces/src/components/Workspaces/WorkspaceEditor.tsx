@@ -139,7 +139,7 @@ export default function WorkspaceEditor() {
                 SAVE_WORKSPACE_OPERATOR,
                 {
                   ...state,
-                  current_name: edit ? state.oldName : undefined,
+                  current_name: edit ? state.old_name : undefined,
                   spaces: await getSessionSpaces(),
                 },
                 {
@@ -148,15 +148,11 @@ export default function WorkspaceEditor() {
                       reset();
                       handleClose();
                       setStatus("");
-                      if (!edit) {
-                        executeOperator(
-                          LOAD_WORKSPACE_OPERATOR,
-                          {
-                            name: state.name,
-                          },
-                          { skipOutput: true }
-                        );
-                      }
+                      executeOperator(
+                        LOAD_WORKSPACE_OPERATOR,
+                        { name: state.name },
+                        { skipOutput: true }
+                      );
                     }
                   },
                   skipOutput: true,

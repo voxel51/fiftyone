@@ -48,6 +48,7 @@ import Actions from "./Actions";
 import Legends from "./Legends";
 import LoadingError from "./LoadingError";
 import { getSubsetDef } from "./utils";
+import { ErrorBoundary } from "@fiftyone/components";
 
 const CONFIGURE_SCENARIO_ACTION = "model_evaluation_configure_scenario";
 
@@ -390,25 +391,27 @@ export default function Scenarios(props) {
           />
         </Stack>
       </Stack>
-      {scenario && (
-        <Scenario
-          key={scenario}
-          id={scenario}
-          data={data}
-          loadScenario={loadScenario}
-          mode={mode}
-          loading={loadingScenario}
-          differenceMode={differenceMode}
-          evaluation={evaluation}
-          compareEvaluation={compareEvaluation}
-          selectedSubsets={selectedSubsets}
-          loadView={loadView}
-          onDelete={onDelete}
-          onEdit={onEdit}
-          readOnly={readOnly}
-          trackEvent={trackEvent}
-        />
-      )}
+      <ErrorBoundary>
+        {scenario && (
+          <Scenario
+            key={scenario}
+            id={scenario}
+            data={data}
+            loadScenario={loadScenario}
+            mode={mode}
+            loading={loadingScenario}
+            differenceMode={differenceMode}
+            evaluation={evaluation}
+            compareEvaluation={compareEvaluation}
+            selectedSubsets={selectedSubsets}
+            loadView={loadView}
+            onDelete={onDelete}
+            onEdit={onEdit}
+            readOnly={readOnly}
+            trackEvent={trackEvent}
+          />
+        )}
+      </ErrorBoundary>
     </Stack>
   );
 }
@@ -507,6 +510,18 @@ function Scenario(props) {
     if (compareScenario) {
       compareScenario = { ...compareScenario, subsets: selectedSubsets };
     }
+  }
+
+  if (scenario.subsets.length === 0) {
+    return (
+      <Stack
+        sx={{ minHeight: 300 }}
+        alignItems="center"
+        justifyContent="center"
+      >
+        <Typography>No subset defined</Typography>
+      </Stack>
+    );
   }
 
   return (
@@ -1188,6 +1203,12 @@ function ScenarioModelPerformanceChart(props) {
   const [subset, setSubset] = usePanelStatePartial(`${id}_mps`, subsets[0]);
   const subsetData = scenario.subsets_data[subset];
   const compareSubsetData = compareScenario?.subsets_data[subset];
+
+  // when subset is empty, do not render the chart
+  if (!subsetData) {
+    return <></>;
+  }
+
   const { metrics } = subsetData;
   const compareMetrics = compareSubsetData?.metrics;
   const { key, compareKey } = props.data?.view;
