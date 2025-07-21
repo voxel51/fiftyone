@@ -28,6 +28,8 @@ _NO_MATCH_ID = ""
 
 
 class _PatchView(fos.SampleView):
+    __slots__ = ()
+
     @property
     def _sample_id(self):
         return ObjectId(self._doc.sample_id)
@@ -62,7 +64,7 @@ class PatchView(_PatchView):
             filtered in this view
     """
 
-    pass
+    __slots__ = ()
 
 
 class EvaluationPatchView(_PatchView):
@@ -82,7 +84,7 @@ class EvaluationPatchView(_PatchView):
             filtered in this view
     """
 
-    pass
+    __slots__ = ()
 
 
 class _PatchesView(fov.DatasetView):
