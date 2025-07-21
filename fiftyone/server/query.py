@@ -605,9 +605,6 @@ async def serialize_dataset(
     update_last_loaded_at=False,
 ) -> Dataset:
     def run():
-        if not fod.dataset_exists(dataset_name):
-            return None
-
         try:
             dataset = fo.load_dataset(dataset_name, reload=True)
         except fod.DatasetNotFoundError:
