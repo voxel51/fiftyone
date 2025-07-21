@@ -1,0 +1,39 @@
+div.admonition
+  border: 0 !important
+  border-radius: 8px !important
+  padding: 24px !important
+  box-shadow: none !important
+
+  &.note
+    background-color: var(--pst-color-info-bg)
+
+    .admonition-title:after
+      background-image: url("../images/icons/info.svg")
+
+  .admonition-title
+    background-color: transparent !important
+    line-height: 1.2
+    padding-top: 0
+    padding-bottom: 10px
+    padding-left: 48px
+    position: relative
+
+  .admonition-title:after
+    content: "" !important
+    position: absolute
+    left: 0
+    top: 0
+    width: 32px
+    height: 32px
+    background-color: #6B705C
+    background-size: 16px
+    background-position: center
+    background-repeat: no-repeat
+    border-radius: 4px
+
+  p.admonition-title~*
+    margin-right: 0
+    margin-left: 2.4rem
+
+  > ol, > ul
+    margin-left: 2em

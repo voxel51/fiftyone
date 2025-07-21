@@ -448,7 +448,6 @@ function initTabsSlidingIndicator() {
         }
         setTimeout(() => {
           updateIndicator();
-          // Dar más tiempo para que la tab sea visible antes de recalcular
           setTimeout(initCodeHighlight, 50);
         }, 10);
       }, true);
@@ -469,7 +468,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(initCodeHighlight, 100);
   });
 
-  // Observer para detectar cuando elementos de código se vuelven visibles
   const codeObserver = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (entry.isIntersecting && entry.target.offsetWidth > 0) {
@@ -488,7 +486,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Observar todos los bloques de código
   document.querySelectorAll('.highlight').forEach(block => {
     codeObserver.observe(block);
   });
