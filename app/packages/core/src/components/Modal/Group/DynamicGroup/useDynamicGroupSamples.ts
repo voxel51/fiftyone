@@ -7,6 +7,7 @@ import { useRecoilValue } from "recoil";
 export const useDynamicGroupSamples = () => {
   const environment = useRelayEnvironment();
   const slice = useRecoilValue(fos.groupSlice);
+  const modalSlice = useRecoilValue(fos.modalGroupSlice);
   const view = useRecoilValue(fos.view);
   const dynamicGroup = useRecoilValue(fos.groupByFieldValue);
   const dataset = useRecoilValue(fos.datasetName);
@@ -14,8 +15,10 @@ export const useDynamicGroupSamples = () => {
   const shouldRenderImavid = useRecoilValue(fos.shouldRenderImaVidLooker(true));
 
   const filter = useMemo(
-    () => (slice ? { group: { slice, slices: [slice] } } : {}),
-    [slice]
+    // slice is how the group was accessed, i.e. from the grid
+    // modalSlice is the currently selected modal slice
+    () => (slice ? { group: { slice, slices: [modalSlice] } } : {}),
+    [slice, modalSlice]
   );
   const loadDynamicGroupSamples = useCallback(
     (cursor?: number) => {

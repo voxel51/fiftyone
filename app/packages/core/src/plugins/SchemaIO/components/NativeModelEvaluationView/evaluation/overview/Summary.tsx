@@ -157,7 +157,7 @@ export default function Summary(props) {
       property: "Incorrect",
       value: evaluationMetrics.num_incorrect,
       compareValue: compareEvaluationMetrics.num_incorrect,
-      lesserIsBetter: false,
+      lesserIsBetter: true,
       filterable: true,
       hide: !isNoneBinaryClassification,
     },
@@ -223,9 +223,13 @@ export default function Summary(props) {
           const zeroRatio = ratio === 0;
           const negativeRatio = ratio < 0;
           const ratioColor = positiveRatio
-            ? "#8BC18D"
+            ? lesserIsBetter
+              ? "#FF6464"
+              : "#8BC18D"
             : negativeRatio
-            ? "#FF6464"
+            ? lesserIsBetter
+              ? "#8BC18D"
+              : "#FF6464"
             : theme.palette.text.tertiary;
           const showTrophy = lesserIsBetter ? difference < 0 : difference > 0;
           const activeStyle: SxProps = {

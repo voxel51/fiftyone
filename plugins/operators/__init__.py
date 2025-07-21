@@ -8,6 +8,7 @@ Builtin operators.
 
 import json
 import os
+import logging
 
 from bson import ObjectId
 
@@ -19,6 +20,8 @@ import fiftyone.operators.types as types
 from fiftyone.core.odm.workspace import default_workspace_factory
 from .group_by import GroupBy
 from .model_evaluation import ConfigureScenario
+
+logger = logging.getLogger(__name__)
 
 
 class EditFieldInfo(foo.Operator):
@@ -2352,6 +2355,7 @@ class SaveWorkspace(foo.Operator):
         description = ctx.params.get("description", None)
         color = ctx.params.get("color", None)
         spaces = ctx.params.get("spaces", None)
+        old_name = ctx.params.get("old_name", None)
 
         curr_spaces = spaces is None
         if curr_spaces:
@@ -2366,6 +2370,12 @@ class SaveWorkspace(foo.Operator):
             color=color,
             overwrite=True,
         )
+
+        if old_name is not None and old_name != name:
+            try:
+                ctx.dataset.delete_workspace(old_name)
+            except Exception as e:
+                logger.warning(f"Failed to delete workspace '{old_name}': {e}")
 
         if curr_spaces:
             ctx.ops.set_spaces(name=name)
