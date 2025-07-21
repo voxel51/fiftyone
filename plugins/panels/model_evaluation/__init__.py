@@ -7,26 +7,27 @@ Model evaluation panel.
 """
 
 import os
-import fiftyone.utils.eval as foue
-import numpy as np
-import fiftyone.operators.types as types
-import fiftyone.core.view as fov
+from collections import Counter, defaultdict
 
-from collections import defaultdict, Counter
+import numpy as np
 from bson import ObjectId
+
+import fiftyone as fo
+import fiftyone.core.view as fov
+import fiftyone.operators.types as types
+import fiftyone.utils.eval as foue
 from fiftyone import ViewField as F
 from fiftyone.core.plots.plotly import _to_log_colorscale
+from fiftyone.operators.cache import execution_cache
 from fiftyone.operators.categories import Categories
 from fiftyone.operators.panel import Panel, PanelConfig
-from fiftyone.operators.cache import execution_cache
 from plugins.utils.model_evaluation import (
     get_dataset_id,
-    get_store,
     get_scenarios,
+    get_store,
     get_subsets_from_custom_code,
     set_scenarios,
 )
-
 
 STORE_NAME = "model_evaluation_panel_builtin"
 STATUS_LABELS = {
@@ -1207,14 +1208,14 @@ def _init_segmentation_results(dataset, results, gt_field):
         # Already initialized
         return
 
-    #
-    # Ensure the dataset singleton is cached so that subsequent callbacks on
-    # this panel will use the same `dataset` and hence `results`
-    #
+    if fo.config.singleton_cache:
+        #
+        # Ensure the dataset singleton is cached so that subsequent callbacks on
+        # this panel will use the same `dataset` and hence `results`
+        #
+        import fiftyone.server.utils as fosu
 
-    import fiftyone.server.utils as fosu
-
-    fosu.cache_dataset(dataset)
+        fosu.cache_dataset(dataset)
 
     #
     # `results.classes` and App callbacks could contain any of the

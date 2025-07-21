@@ -12,8 +12,9 @@ import cachetools
 from dacite import Config, from_dict as _from_dict
 from dacite.core import T
 from dacite.data import Data
-from deprecated import deprecated
 
+import fiftyone as fo
+import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 
 
@@ -21,9 +22,42 @@ _cache = cachetools.TTLCache(maxsize=10, ttl=900)  # ttl in seconds
 _dacite_config = Config(check_types=False)
 
 
-@deprecated(
-    "Marked for removal. Users of this function must use something else."
-)
+def load_and_cache_dataset(name):
+    """Loads the dataset with the given name and caches it.
+
+    This method is a wrapper around :func:`fiftyone.core.dataset.load_dataset`
+    that stores a reference to every dataset it loads in a TTL cache to ensure
+    that references to recently used datasets exist in memory so that dataset
+    objects aren't garbage collected between async calls.
+
+    It is desirable to avoid dataset objects being garbage collected because
+    datasets may be singletons and may have objects (eg brain results) that
+    are expensive to load cached on them.
+
+    Args:
+        name: the dataset name
+
+    Returns:
+        a :class:`fiftyone.core.dataset.Dataset`
+    """
+    if not fo.config.singleton_cache:
+        # If singleton cache is disabled, return the cached dataset if it exists
+        if name in _cache:
+            dataset = _cache[name]
+            dataset.reload()
+            return _cache[name]
+
+    dataset = fod.load_dataset(name, reload=True)
+
+    # Store reference in TTL cache to cache / defer garbage collection
+    # IMPORTANT: we don't return already cached objects here if singleton
+    # is enabled, because a dataset can be deleted and another created
+    # with the same name
+    _cache[name] = dataset
+
+    return dataset
+
+
 def cache_dataset(dataset):
     """Caches the given dataset.
 

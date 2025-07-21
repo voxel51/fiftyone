@@ -12,7 +12,6 @@ import traceback
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
-import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.stages as fos
 from fiftyone.core.utils import run_sync_task
@@ -62,7 +61,7 @@ class OnPlotLoad(HTTPEndpoint):
         slices = data["slices"]
 
         try:
-            dataset = fod.load_dataset(dataset_name, reload=True)
+            dataset = fosu.load_and_cache_dataset(dataset_name)
             results = dataset.load_brain_results(brain_key)
         except Exception as e:
             msg = (
@@ -196,7 +195,7 @@ class EmbeddingsSelection(HTTPEndpoint):
         if not filters and not extended_stages and not extended_selection:
             return {"selected": None}
 
-        dataset = fod.load_dataset(dataset_name, reload=True)
+        dataset = fosu.load_and_cache_dataset(dataset_name)
         results = dataset.load_brain_results(brain_key)
 
         view = fosv.get_view(
@@ -336,7 +335,7 @@ class ColorByChoices(HTTPEndpoint):
         dataset_name = data["datasetName"]
         brain_key = data["brainKey"]
 
-        dataset = fod.load_dataset(dataset_name, reload=True)
+        dataset = fosu.load_and_cache_dataset(dataset_name)
         info = dataset.get_brain_info(brain_key)
 
         patches_field = info.config.patches_field

@@ -6,6 +6,7 @@ Scenario plugin.
 |
 """
 
+import fiftyone as fo
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
 import fiftyone.core.fields as fof
@@ -1069,7 +1070,10 @@ class ConfigureScenario(foo.Operator):
         return [scenario.get("name") for _, scenario in scenarios.items()]
 
     def resolve_input(self, ctx):
-        cache_dataset(self.get_dataset(ctx))
+        # Force ctx.dataset to load and store dataset so it remains consistent.
+        d = self.get_dataset(ctx)
+        if fo.config.singleton_cache:
+            cache_dataset(d)
 
         inputs = types.Object()
 
