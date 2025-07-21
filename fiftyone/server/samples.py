@@ -102,7 +102,7 @@ async def paginate_samples(
     dynamic_group: t.Optional[BSON] = None,
     max_query_time: t.Optional[int] = None,
 ) -> Connection[t.Union[ImageSample, VideoSample], str]:
-    run = lambda reload: fosv.get_view(
+    run = lambda: fosv.get_view(
         dataset,
         stages=stages,
         filters=filters,
