@@ -489,7 +489,7 @@ export const extendedStagesUnsorted = selector({
           boundary: spatialSelection.polygon,
           location_field: spatialSelection.field,
           strict: true,
-          create_index: true,
+          create_index: false,
         },
       };
     }
