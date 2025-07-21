@@ -8,6 +8,8 @@ div.highlight
     border-radius: 8px
     line-height: 1.5 !important
     color: #FFFFFF
+    position: relative
+    overflow-x: auto
 
     &::before
       content: ''
@@ -19,7 +21,11 @@ div.highlight
       background-color: var(--pst-color-linenos-background)
       border-right: 1px solid #FFFFFF33
       pointer-events: none
-      z-index: 0
+      z-index: 1
+      min-width: var(--linenos-width, 0)
+      display: block
+      opacity: 1
+
 
     .nb, .mi, .kc, code.xref, a code, .fm, .ow, .nb, .nt, .nc, .k, .kn
       color: #91C3F5 !important

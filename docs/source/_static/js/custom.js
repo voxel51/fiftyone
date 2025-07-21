@@ -364,14 +364,30 @@ function initCodeHighlight() {
     const linenos = block.querySelector('.linenos');
 
     if (linenos) {
-      const allLineNos = block.querySelectorAll('.linenos');
-      let maxWidth = 0;
-      allLineNos.forEach(span => {
-        const w = span.offsetWidth;
-        if (w > maxWidth) maxWidth = w;
-      });
+      const isVisible = block.offsetWidth > 0 && block.offsetHeight > 0;
+      
+      if (isVisible) {
+        const allLineNos = block.querySelectorAll('.linenos');
+        let maxWidth = 0;
+        allLineNos.forEach(span => {
+          const w = span.offsetWidth;
+          if (w > maxWidth) maxWidth = w;
+        });
 
-      block.style.setProperty('--linenos-width', maxWidth + 'px');
+        block.style.setProperty('--linenos-width', maxWidth + 'px');
+      } else {
+        setTimeout(() => {
+          if (block.offsetWidth > 0) {
+            const allLineNos = block.querySelectorAll('.linenos');
+            let maxWidth = 0;
+            allLineNos.forEach(span => {
+              const w = span.offsetWidth;
+              if (w > maxWidth) maxWidth = w;
+            });
+            block.style.setProperty('--linenos-width', maxWidth + 'px');
+          }
+        }, 100);
+      }
     } else {
       block.style.removeProperty('--linenos-width');
     }
@@ -430,7 +446,11 @@ function initTabsSlidingIndicator() {
           event.stopImmediatePropagation();
           return false;
         }
-        setTimeout(updateIndicator, 10);
+        setTimeout(() => {
+          updateIndicator();
+          // Dar más tiempo para que la tab sea visible antes de recalcular
+          setTimeout(initCodeHighlight, 50);
+        }, 10);
       }, true);
     });
 
@@ -444,4 +464,32 @@ document.addEventListener('DOMContentLoaded', () => {
   initDropdownDelay();
   initCodeHighlight();
   initTabsSlidingIndicator();
+  
+  window.addEventListener('resize', () => {
+    setTimeout(initCodeHighlight, 100);
+  });
+
+  // Observer para detectar cuando elementos de código se vuelven visibles
+  const codeObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting && entry.target.offsetWidth > 0) {
+        const block = entry.target;
+        const linenos = block.querySelector('.linenos');
+        if (linenos) {
+          const allLineNos = block.querySelectorAll('.linenos');
+          let maxWidth = 0;
+          allLineNos.forEach(span => {
+            const w = span.offsetWidth;
+            if (w > maxWidth) maxWidth = w;
+          });
+          block.style.setProperty('--linenos-width', maxWidth + 'px');
+        }
+      }
+    });
+  });
+
+  // Observar todos los bloques de código
+  document.querySelectorAll('.highlight').forEach(block => {
+    codeObserver.observe(block);
+  });
 });
