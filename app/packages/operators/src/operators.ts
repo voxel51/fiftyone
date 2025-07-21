@@ -176,6 +176,14 @@ export class ExecutionContext {
     }
     this.executor.log(message);
   }
+  clone(): ExecutionContext {
+    return new ExecutionContext(
+      { ...this.params },
+      { ...this._currentContext },
+      { ...this.hooks },
+      this.executor
+    );
+  }
 }
 
 function isObjWithContent(obj: any) {

@@ -1,15 +1,16 @@
 import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
 import { cloneDeep, get, set } from "lodash";
-import React, { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import DynamicIO from "./components/DynamicIO";
 import { clearUseKeyStores, SchemaIOContext } from "./hooks";
-import { coerceValue } from "./utils";
+import { coerceValue, getLiteValue } from "./utils";
 
 export function SchemaIOComponent(props) {
   const { onChange, onPathChange, id, shouldClearUseKeyStores } = props;
   const stateRef = useRef({});
   const autoFocused = useRef(false);
   const schemaIOContext = { id };
+  const store = props.otherProps.store;
 
   useEffect(() => {
     return () => {
@@ -18,6 +19,19 @@ export function SchemaIOComponent(props) {
       }
     };
   }, []);
+
+  const onIOChangeLite = useCallback(
+    (path, value, schema) => {
+      if (!store.liteValues) {
+        store.liteValues = {};
+      }
+      const liteValue = getLiteValue(value, schema);
+      if (liteValue) {
+        store.liteValues[path] = liteValue;
+      }
+    },
+    [store]
+  );
 
   const onIOChange = useCallback(
     (path, value, schema, ancestors) => {
@@ -32,6 +46,8 @@ export function SchemaIOComponent(props) {
       if (onChange) {
         onChange(updatedState);
       }
+
+      onIOChangeLite(path, computedValue, schema);
 
       // propagate the change to all ancestors
       for (const ancestorPath in ancestors) {
@@ -49,7 +65,7 @@ export function SchemaIOComponent(props) {
 
       return updatedState;
     },
-    [onChange, onPathChange]
+    [onChange, onPathChange, onIOChangeLite]
   );
 
   return (

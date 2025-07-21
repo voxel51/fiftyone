@@ -1,8 +1,15 @@
 import { getFetchParameters } from "@fiftyone/utilities";
-import { debounce, DebounceSettings, memoize } from "lodash";
+import {
+  cloneDeep,
+  debounce,
+  DebounceSettings,
+  isEmpty,
+  memoize,
+  set,
+} from "lodash";
 import { KeyboardEventHandler } from "react";
-import { OperatorPromptType, PromptView, ValidationErrorsType } from "./types";
 import uuid from "react-uuid";
+import { OperatorPromptType, PromptView, ValidationErrorsType } from "./types";
 
 export function stringifyError(error, fallback?) {
   if (typeof error === "string") return error;
@@ -142,4 +149,20 @@ type MemoizedDebounceOptions = DebounceSettings & {
 
 export function generateOperatorSessionId() {
   return uuid();
+}
+
+export function optimizeCtx(ctx, store) {
+  const liteValues = store?.liteValues || {};
+  const originalParams = ctx.params || {};
+
+  if (isEmpty(liteValues) || isEmpty(originalParams)) return ctx;
+
+  const params = cloneDeep(originalParams);
+  for (const path in liteValues) {
+    set(params, path, liteValues[path]);
+  }
+  const optimizedCtx = ctx.clone();
+  optimizedCtx.params = params;
+
+  return optimizedCtx;
 }

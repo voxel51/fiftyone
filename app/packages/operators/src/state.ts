@@ -38,7 +38,7 @@ import {
 } from "./operators";
 import { OperatorPromptType, Places } from "./types";
 import { OperatorExecutorOptions } from "./types-internal";
-import { generateOperatorSessionId } from "./utils";
+import { generateOperatorSessionId, optimizeCtx } from "./utils";
 import { ValidationContext } from "./validation";
 
 export const promptingOperatorState = atom({
@@ -473,16 +473,22 @@ export const useOperatorPrompt = () => {
   const promptView = useMemo(() => {
     return inputFields?.view;
   }, [inputFields]);
+  const serializedParams = useMemo(() => {
+    return JSON.stringify(ctx.params);
+  }, [ctx.params]);
+  const storeRef = useRef({});
+  const store = storeRef.current;
 
   const resolveInput = useCallback(
     debounce(
       async (ctx) => {
         try {
+          const optimizedCtx = optimizeCtx(ctx, store);
           if (operator.config.resolveExecutionOptionsOnChange) {
-            execDetails.fetch(ctx);
+            execDetails.fetch(optimizedCtx);
           }
           const resolved =
-            cachedResolvedInput || (await operator.resolveInput(ctx));
+            cachedResolvedInput || (await operator.resolveInput(optimizedCtx));
 
           validateThrottled(ctx, resolved);
           if (resolved) {
@@ -505,7 +511,7 @@ export const useOperatorPrompt = () => {
   const resolveInputFields = useCallback(async () => {
     ctx.hooks = hooks;
     resolveInput(ctx);
-  }, [ctx, operatorName, hooks, JSON.stringify(ctx.params)]);
+  }, [ctx, operatorName, hooks, serializedParams]);
 
   const validate = useCallback((ctx, resolved) => {
     return new Promise<{
@@ -537,7 +543,7 @@ export const useOperatorPrompt = () => {
   useEffect(() => {
     if (executor.isExecuting || executor.hasExecuted) return;
     resolveInputFields();
-  }, [ctx.params, executor.isExecuting, executor.hasResultOrError]);
+  }, [serializedParams, executor.isExecuting]);
   const [validationErrors, setValidationErrors] = useState([]);
 
   const [outputFields, setOutputFields] = useState();
@@ -633,10 +639,9 @@ export const useOperatorPrompt = () => {
     notify,
   ]);
 
-  const pendingResolve = useMemo(
-    () => ctx.params != resolvedCtx?.params,
-    [ctx.params, resolvedCtx?.params]
-  );
+  const pendingResolve = useMemo(() => {
+    return serializedParams !== JSON.stringify(resolvedCtx?.params);
+  }, [serializedParams, resolvedCtx]);
   const resolving = pendingResolve || preparing;
 
   const submitOptions = useOperatorPromptSubmitOptions(
@@ -681,6 +686,7 @@ export const useOperatorPrompt = () => {
     submitOptions,
     promptView,
     resolvedIO,
+    store,
   };
 };
 
