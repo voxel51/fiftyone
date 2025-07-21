@@ -349,7 +349,7 @@ class FiftyOneConfig(EnvConfig):
 
         # Default no singleton cache for fiftyone app server
         if os.environ.get("FIFTYONE_SERVER", False):
-            self.singleton_cache = True
+            self.singleton_cache = False
 
         if self.timezone and self.timezone.lower() not in {"local", "utc"}:
             try:
