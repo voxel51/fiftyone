@@ -347,6 +347,10 @@ class FiftyOneConfig(EnvConfig):
                         e,
                     )
 
+        # Default no singleton cache for fiftyone app server
+        if os.environ.get("FIFTYONE_SERVER", False):
+            self.singleton_cache = True
+
         if self.timezone and self.timezone.lower() not in {"local", "utc"}:
             try:
                 pytz.timezone(self.timezone)
