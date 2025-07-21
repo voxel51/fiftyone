@@ -1229,7 +1229,7 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
         
         return super().predict(img)
 
-    def _predict_all(self, images):
+   def _predict_all(self, images):
         """Perform pose estimation on images with person detection.
         
         Args:
@@ -1332,32 +1332,63 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
             # Use full image as bounding box when no detector is available
             boxes = [[[0, 0, w, h]] for h, w in image_sizes]
         
-        # Preprocess images with bounding boxes
-        processed = self.transforms.processor(images, boxes=boxes, return_tensors="pt")
-        
-        # Move tensors to appropriate device
-        processed = {k: v.to(self.device) for k, v in processed.items()}
-        
-        # Run pose estimation model
-        with torch.no_grad():
-            # Check if model requires dataset_index parameter (VitPose+ models)
-            import inspect
-            sig = inspect.signature(self._model.forward)
-            if 'dataset_index' in sig.parameters:
-                outputs = self._model(**processed, dataset_index=torch.tensor(0).to(self.device))
-            else:
-                outputs = self._model(**processed)
-        
-        # Convert model outputs to FiftyOne format
-        self._output_processor._boxes = boxes
-        result = self._output_processor(outputs, image_sizes, self.config.confidence_thresh)
+        try:
+            # Preprocess images with bounding boxes
+            processed = self.transforms.processor(images, boxes=boxes, return_tensors="pt")
+            
+            # Move tensors to appropriate device
+            processed = {k: v.to(self.device) for k, v in processed.items()}
+            
+            # Run pose estimation model
+            with torch.no_grad():
+                # Check if model requires dataset_index parameter (VitPose+ models)
+                import inspect
+                sig = inspect.signature(self._model.forward)
+                if 'dataset_index' in sig.parameters:
+                    outputs = self._model(**processed, dataset_index=torch.tensor(0).to(self.device))
+                else:
+                    outputs = self._model(**processed)
+            
+            # Convert model outputs to FiftyOne format
+            self._output_processor._boxes = boxes
+            result = self._output_processor(outputs, image_sizes, self.config.confidence_thresh)
+            
+        except (RuntimeError, ValueError) as e:
+            # Fallback to individual processing when batch processing fails
+            results = []
+            imgs_list = images if isinstance(images, list) else [images]
+            
+            for i, img in enumerate(imgs_list):
+                # Ensure we have a box for this image
+                if detection_boxes and i < len(detection_boxes):
+                    img_boxes = [detection_boxes[i]]
+                else:
+                    img_boxes = [[[0, 0, image_sizes[i][1], image_sizes[i][0]]]]
+                
+                # Process single image
+                processed = self.transforms.processor([img], boxes=img_boxes, return_tensors="pt")
+                processed = {k: v.to(self.device) for k, v in processed.items()}
+                
+                with torch.no_grad():
+                    import inspect
+                    sig = inspect.signature(self._model.forward)
+                    if 'dataset_index' in sig.parameters:
+                        outputs = self._model(**processed, dataset_index=torch.tensor(0).to(self.device))
+                    else:
+                        outputs = self._model(**processed)
+                
+                self._output_processor._boxes = img_boxes
+                single_result = self._output_processor(outputs, [image_sizes[i]], self.config.confidence_thresh)
+                results.extend(single_result)
+            
+            result = results
         
         # Clean up temporary detection boxes
         self._detection_boxes = None
         
         # Return with correct format (list for batches, single item otherwise)
         return result if is_batch else result[0]
-
+       
 class FiftyOneTransformerForDepthEstimationConfig(FiftyOneTransformerConfig):
     """Configuration for a :class:`FiftyOneTransformerForDepthEstimation`.
 
