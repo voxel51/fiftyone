@@ -378,9 +378,70 @@ function initCodeHighlight() {
   });
 }
 
+/* Tabs Sliding Indicator */
+function initTabsSlidingIndicator() {
+  const tabLists = document.querySelectorAll('[role="tablist"]');
+  
+  tabLists.forEach(tabList => {
+    const tabs = tabList.querySelectorAll('.sphinx-tabs-tab');
+    if (!tabs.length) return;
+
+    let slidingIndicator = tabList.querySelector('.tabs-sliding-indicator');
+
+    if (!slidingIndicator) {
+      slidingIndicator = document.createElement('div');
+      slidingIndicator.className = 'tabs-sliding-indicator';
+      tabList.appendChild(slidingIndicator);
+    }
+
+    const updateIndicator = () => {
+      const activeTab = tabList.querySelector('.sphinx-tabs-tab[aria-selected="true"]');
+      if (activeTab) {
+        const left = activeTab.offsetLeft;
+        const width = activeTab.offsetWidth;
+
+        slidingIndicator.style.left = `${left}px`;
+        slidingIndicator.style.width = `${width}px`;
+        slidingIndicator.style.opacity = '1';
+      } else {
+        slidingIndicator.style.opacity = '0';
+      }
+    };
+
+    updateIndicator();
+
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'aria-selected') {
+          updateIndicator();
+        }
+      });
+    });
+
+    tabs.forEach(tab => {
+      observer.observe(tab, { attributes: true });
+    });
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', (event) => {
+        const isActive = tab.getAttribute('aria-selected') === 'true';
+        if (isActive) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          return false;
+        }
+        setTimeout(updateIndicator, 10);
+      }, true);
+    });
+
+    window.addEventListener('resize', updateIndicator);
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   initSidebarToggle();
   initSlidingNavBar();
   initDropdownDelay();
   initCodeHighlight();
+  initTabsSlidingIndicator();
 });
