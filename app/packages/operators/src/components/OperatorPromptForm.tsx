@@ -21,6 +21,7 @@ export function OperatorPromptForm({ operatorPrompt }) {
         data={operatorPrompt.promptingOperator.params}
         errors={operatorPrompt?.validationErrors || []}
         initialData={operatorPrompt.promptingOperator.initialParams}
+        store={operatorPrompt.store}
       />
     </Box>
   );

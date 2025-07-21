@@ -167,8 +167,31 @@ export function coerceValue(path, value, schema) {
   if (type === "array" && Array.isArray(value) && value.length === 0) {
     return null;
   }
+
   if (type === "string" && value === "") {
     return null;
   }
+
   return value;
+}
+
+export function isLiteSchema(schema: SchemaType) {
+  return schema?.view?.lite === true;
+}
+
+export function getLiteValue(value, schema) {
+  if (!isLiteSchema(schema)) return;
+
+  const { type, view } = schema;
+  if (view.component === "FileView") {
+    if (type === "object") {
+      if (!isNullish(value)) {
+        return { ...value, content: undefined };
+      }
+    } else {
+      console.warn(
+        `FileView lite mode is only supported for object type schemas, got ${type}`
+      );
+    }
+  }
 }
