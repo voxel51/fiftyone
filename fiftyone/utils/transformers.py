@@ -1657,6 +1657,14 @@ class TransformersDepthEstimatorOutputProcessor(fout.OutputProcessor):
         return [fol.Heatmap(map=o) for o in output]
 
 class TransformersPoseEstimationOutputProcessor(fout.OutputProcessor):
+    
+     COCO_KEYPOINT_NAMES = [
+        "nose", "left_eye", "right_eye", "left_ear", "right_ear",
+        "left_shoulder", "right_shoulder", "left_elbow", "right_elbow",
+        "left_wrist", "right_wrist", "left_hip", "right_hip",
+        "left_knee", "right_knee", "left_ankle", "right_ankle"
+    ]
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._processor = None
@@ -1780,15 +1788,18 @@ class TransformersPoseEstimationOutputProcessor(fout.OutputProcessor):
             y_norm = keypoints[i][1].item() / h
             conf = scores[i].item()
             
+            # Use COCO keypoint name if available, otherwise fall back to joint_i
+            keypoint_label = self.COCO_KEYPOINT_NAMES[i] if i < len(self.COCO_KEYPOINT_NAMES) else f"joint_{i}"
+            
             if confidence_thresh is None or conf >= confidence_thresh:
                 kp = fol.Keypoint(
-                    label=f"joint_{i}",
+                    label=keypoint_label,
                     points=[(x_norm, y_norm)],
                     confidence=[conf]
                 )
             else:
                 kp = fol.Keypoint(
-                    label=f"joint_{i}",
+                    label=keypoint_label,
                     points=[(float('nan'), float('nan'))],
                     confidence=[0.0]
                 )
@@ -1815,15 +1826,18 @@ class TransformersPoseEstimationOutputProcessor(fout.OutputProcessor):
                 x_norm = x_heatmap / w
                 y_norm = y_heatmap / h
                 
+                # Use COCO keypoint name if available, otherwise fall back to joint_kp_idx
+                keypoint_label = self.COCO_KEYPOINT_NAMES[kp_idx] if kp_idx < len(self.COCO_KEYPOINT_NAMES) else f"joint_{kp_idx}"
+                
                 if confidence_thresh is None or confidence >= confidence_thresh:
                     kp = fol.Keypoint(
-                        label=f"joint_{kp_idx}",
+                        label=keypoint_label,
                         points=[(x_norm.item(), y_norm.item())],
                         confidence=[confidence]
                     )
                 else:
                     kp = fol.Keypoint(
-                        label=f"joint_{kp_idx}",
+                        label=keypoint_label,
                         points=[(float('nan'), float('nan'))],
                         confidence=[0.0]
                     )
