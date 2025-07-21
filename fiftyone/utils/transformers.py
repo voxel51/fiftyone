@@ -1664,6 +1664,13 @@ class TransformersPoseEstimationOutputProcessor(fout.OutputProcessor):
         "left_wrist", "right_wrist", "left_hip", "right_hip",
         "left_knee", "right_knee", "left_ankle", "right_ankle"
     ]
+
+    COCO_SKELETON = [
+        [17, 15], [15, 13], [18, 16], [16, 14], [13, 14],
+        [7, 13], [8, 14], [7, 8], [7, 9], [8, 10],
+        [9, 11], [10, 12], [3, 4], [2, 3], [2, 4],
+        [3, 5], [4, 6], [5, 7], [6, 8]
+    ]
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -1741,7 +1748,7 @@ class TransformersPoseEstimationOutputProcessor(fout.OutputProcessor):
                     
                     # Create keypoints
                     keypoint_list = self._extract_keypoints(pose_dict, image_sizes[img_idx], confidence_thresh)
-                    keypoints_obj = fol.Keypoints(keypoints=keypoint_list)
+                    keypoints_obj = fol.Keypoints(keypoints=keypoint_list, skeleton=self.COCO_SKELETON)
                     
                     # Average confidence from keypoints
                     if keypoint_list:
