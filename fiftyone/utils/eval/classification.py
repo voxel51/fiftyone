@@ -123,10 +123,12 @@ def evaluate_classifications(
         progress=progress,
     )
     eval_method.compute_custom_metrics(samples, eval_key, results)
-    eval_method.save_run_results(samples, eval_key, results)
-    eval_method.add_fields_to_sidebar_group(
-        samples, eval_key, omit_fields=(pred_field, gt_field)
-    )
+
+    if eval_key is not None:
+        eval_method.save_run_results(samples, eval_key, results)
+        eval_method.add_fields_to_sidebar_group(
+            samples, eval_key, omit_fields=(pred_field, gt_field)
+        )
 
     return results
 
