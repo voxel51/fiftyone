@@ -319,10 +319,6 @@ class ConfigureScenario(foo.Operator):
     def render_empty_sample_distribution(
         self, ctx, inputs, params, description=None
     ):
-        scenario_type = self.get_scenario_type(params)
-        # NOTE: custom code validation happens at render_custom_code when exec() is called
-        is_invalid = scenario_type != ScenarioType.CUSTOM_CODE
-
         self.render_plot_preview_toggle(ctx, inputs)
 
         inputs.view(
@@ -353,6 +349,8 @@ class ConfigureScenario(foo.Operator):
                     },
                 },
             ),
+            invalid=True,
+            error_message="No values selected",
         )
 
     def get_label_attribute_path(self, params):
@@ -707,6 +705,8 @@ class ConfigureScenario(foo.Operator):
                 },
             },
         )
+        # Must at least select one subset
+        is_invalid = len(selected_values) < 1
 
         if with_description:
             stack.view(
@@ -733,6 +733,8 @@ class ConfigureScenario(foo.Operator):
                 default=True if label in selected_values else False,
                 label=formatted_label,
                 view=types.CheckboxView(space=4),
+                error_message="Please select at least one option.",
+                invalid=is_invalid,
             )
 
         stack.define_property(key, obj)
@@ -751,6 +753,7 @@ class ConfigureScenario(foo.Operator):
                     else "saved view"
                 )
             )
+
             self.render_empty_sample_distribution(
                 ctx,
                 inputs,
@@ -1106,6 +1109,7 @@ class ConfigureScenario(foo.Operator):
 
         if scenario_type == ScenarioType.CUSTOM_CODE:
             self.render_custom_code(ctx, inputs)
+
         if scenario_type == ScenarioType.LABEL_ATTRIBUTE:
             selected_scenario_field = ctx.params.get(
                 "scenario_label_attribute", None
