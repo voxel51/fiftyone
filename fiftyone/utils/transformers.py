@@ -1872,6 +1872,51 @@ class TransformersPoseEstimationOutputProcessor(fout.OutputProcessor):
             results.append(fol.Keypoints(keypoints=keypoint_list))
         
         return results
+
+class VitPoseOutputProcessor(TransformersPoseEstimationOutputProcessor):
+    """Output processor for VitPose models that extracts keypoints to top level.
+    
+    Processes pose estimation results by extracting keypoints from detected
+    persons and returning them as a single Keypoints object containing all
+    keypoints from all detected persons in the image.
+    
+    Args:
+        flatten_keypoints (True): whether to extract keypoints from detections
+            and return them as a top-level Keypoints object
+    """
+    
+    def __init__(self, *args, flatten_keypoints=True, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.flatten_keypoints = flatten_keypoints
+    
+    def __call__(self, output, image_sizes, confidence_thresh=None):
+        # Get the standard Detections output with embedded keypoints
+        detections_list = super().__call__(output, image_sizes, confidence_thresh)
+        
+        if not self.flatten_keypoints:
+            return detections_list
+        
+        # Extract keypoints from all detections and flatten to top level
+        results = []
+        for detections in detections_list:
+            if not detections.detections:
+                # No people detected - return empty Keypoints
+                results.append(fol.Keypoints(keypoints=[], skeleton=self.COCO_SKELETON))
+            else:
+                # Collect all keypoints from all detected people
+                all_keypoints = []
+                for detection in detections.detections:
+                    if hasattr(detection, 'keypoints') and detection.keypoints:
+                        # Add all keypoints from this person
+                        all_keypoints.extend(detection.keypoints.keypoints)
+                
+                # Return flattened keypoints with skeleton
+                results.append(fol.Keypoints(
+                    keypoints=all_keypoints, 
+                    skeleton=self.COCO_SKELETON
+                ))
+        
+        return results
             
 def _get_image_size(img):
     if isinstance(img, torch.Tensor):
