@@ -369,10 +369,8 @@ class FiftyOneZeroShotTransformerConfig(FiftyOneTransformerConfig):
     def _load_classes(self, d):
         if self.classes is None:
             if self.hf_config.id2label is not None:
-                self.classes = [
-                    self.hf_config.id2label[i]
-                    for i in range(len(self.hf_config.id2label))
-                ]
+                self.classes = list(self.hf_config.id2label.values())
+
                 logger.info(
                     f"Classes set to the default {len(self.classes)} classes in HuggingFace model configuration."
                 )
