@@ -1714,6 +1714,11 @@ class TransformersPoseEstimationOutputProcessor(fout.OutputProcessor):
         # Post-process outputs with boxes
         results = self._pose_estimation_post_processor(output, boxes=boxes)
         
+        # Model processes at fixed resolution (256x192 for VitPose)
+        # Need to scale back to original image dimensions
+        model_w = 256
+        model_h = 192
+        
         # Convert to FiftyOne format
         fo_results = []
         for img_idx, img_results in enumerate(results):
@@ -1725,17 +1730,25 @@ class TransformersPoseEstimationOutputProcessor(fout.OutputProcessor):
                 detections = []
                 h, w = image_sizes[img_idx]
                 
+                # Calculate scaling factors
+                scale_x = w / model_w
+                scale_y = h / model_h
+                
                 for det_idx, pose_dict in enumerate(img_results):
                     # Get bounding box
                     if img_idx < len(boxes) and det_idx < len(boxes[img_idx]):
                         box = boxes[img_idx][det_idx]
-                        x, y, bw, bh = box
+                        # Scale box coordinates back to original image space
+                        x = box[0] * scale_x
+                        y = box[1] * scale_y
+                        bw = box[2] * scale_x
+                        bh = box[3] * scale_y
                         bbox = [x/w, y/h, bw/w, bh/h]
                     else:
                         # Compute box from keypoints
                         keypoints_array = pose_dict['keypoints']
-                        x_coords = [kp[0].item() for kp in keypoints_array]
-                        y_coords = [kp[1].item() for kp in keypoints_array]
+                        x_coords = [kp[0].item() * scale_x for kp in keypoints_array]
+                        y_coords = [kp[1].item() * scale_y for kp in keypoints_array]
                         x_min, x_max = min(x_coords), max(x_coords)
                         y_min, y_max = min(y_coords), max(y_coords)
                         # Add some padding
@@ -1746,8 +1759,11 @@ class TransformersPoseEstimationOutputProcessor(fout.OutputProcessor):
                         y_max = min(h, y_max + padding * h)
                         bbox = [x_min/w, y_min/h, (x_max-x_min)/w, (y_max-y_min)/h]
                     
-                    # Create keypoints
-                    keypoint_list = self._extract_keypoints(pose_dict, image_sizes[img_idx], confidence_thresh)
+                    # Create keypoints (with scaling applied)
+                    keypoint_list = self._extract_keypoints(
+                        pose_dict, image_sizes[img_idx], confidence_thresh, 
+                        scale_x=scale_x, scale_y=scale_y
+                    )
                     keypoints_obj = fol.Keypoints(keypoints=keypoint_list, skeleton=self.COCO_SKELETON)
                     
                     # Average confidence from keypoints
@@ -1783,7 +1799,7 @@ class TransformersPoseEstimationOutputProcessor(fout.OutputProcessor):
             keypoints_list.append(kp_obj)
         return keypoints_list
     
-    def _extract_keypoints(self, pose_dict, image_size, confidence_thresh):
+    def _extract_keypoints(self, pose_dict, image_size, confidence_thresh, scale_x=1.0, scale_y=1.0):
         """Extract and normalize keypoints from a pose dictionary."""
         h, w = image_size
         keypoints = pose_dict['keypoints']
@@ -1791,8 +1807,11 @@ class TransformersPoseEstimationOutputProcessor(fout.OutputProcessor):
         
         keypoint_list = []
         for i in range(len(keypoints)):
-            x_norm = keypoints[i][0].item() / w
-            y_norm = keypoints[i][1].item() / h
+            # Apply scaling to get back to original image coordinates
+            x = keypoints[i][0].item() * scale_x
+            y = keypoints[i][1].item() * scale_y
+            x_norm = x / w
+            y_norm = y / h
             conf = scores[i].item()
             
             # Use COCO keypoint name if available, otherwise fall back to joint_i
