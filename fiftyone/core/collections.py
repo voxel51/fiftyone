@@ -13,6 +13,7 @@ from operator import itemgetter
 import fnmatch
 import itertools
 import logging
+import operator
 import os
 import random
 import string
@@ -2370,16 +2371,33 @@ class SampleCollection(object):
         """Sets the field or embedded field on each sample or frame in the
         collection to the given values.
 
-        When setting a sample field ``embedded.field.name``, this function is
-        an efficient implementation of the following loop::
+        You can use this method in two ways:
+
+        -   **Dict syntax (recommended):** provide ``values`` as a dict whose
+            keys specify the ``key_field`` values of the samples whose
+            ``field_name`` you want to set to the corresponding values
+        -   **List syntax:** provide ``values`` as a list, one for each sample
+            in the collection on which you are invoking this method
+
+        .. note::
+
+            The most performant strategy for setting large numbers of field
+            values is to use the dict syntax with ``key_field="id"`` when
+            setting sample fields and ``key_field="frames.id"`` when setting
+            frame fields. All other syntaxes internally convert to these IDs
+            before ultimately performing the updates.
+
+        When setting a sample field ``embedded.field.name`` via the list
+        ``values`` syntax, this function is an efficient implementation of the
+        following loop::
 
             for sample, value in zip(sample_collection, values):
                 sample.embedded.field.name = value
                 sample.save()
 
         When setting an embedded field that contains an array, say
-        ``embedded.array.field.name``, this function is an efficient
-        implementation of the following loop::
+        ``embedded.array.field.name``, via the list ``values`` syntax, this
+        function is an efficient implementation of the following loop::
 
             for sample, array_values in zip(sample_collection, values):
                 for doc, value in zip(sample.embedded.array, array_values):
@@ -2387,8 +2405,9 @@ class SampleCollection(object):
 
                 sample.save()
 
-        When setting a frame field ``frames.embedded.field.name``, this
-        function is an efficient implementation of the following loop::
+        When setting a frame field ``frames.embedded.field.name`` via the list
+        ``values`` syntax, this function is an efficient implementation of the
+        following loop::
 
             for sample, frame_values in zip(sample_collection, values):
                 for frame, value in zip(sample.frames.values(), frame_values):
@@ -2397,8 +2416,8 @@ class SampleCollection(object):
                 sample.save()
 
         When setting an embedded frame field that contains an array, say
-        ``frames.embedded.array.field.name``, this function is an efficient
-        implementation of the following loop::
+        ``frames.embedded.array.field.name``, via the list ``values`` syntax,
+        this function is an efficient implementation of the following loop::
 
             for sample, frame_values in zip(sample_collection, values):
                 for frame, array_values in zip(sample.frames.values(), frame_values):
@@ -2407,19 +2426,31 @@ class SampleCollection(object):
 
                 sample.save()
 
-        When ``values`` is a dict mapping keys in ``key_field`` to values, then
-        this function is an efficient implementation of the following loop::
+        When setting a sample field ``embedded.field.name`` via the dict
+        ``values`` syntax, this function is an efficient implementation of the
+        following loop::
 
             for key, value in values.items():
                 sample = sample_collection.one(F(key_field) == key)
                 sample.embedded.field.name = value
                 sample.save()
 
-        When setting frame fields using the dict ``values`` syntax, each value
-        in ``values`` may either be a list corresponding to the frames of the
-        sample matching the given key, or each value may itself be a dict
-        mapping frame numbers to values. In the latter case, this function
-        is an efficient implementation of the following loop::
+        When setting frame fields using the dict ``values`` syntax with a
+        frame-level ``key_field``, this function is an efficient implementation
+        of the following loop::
+
+            frames = sample_collection.to_frames(...)
+            for key, value in values.items():
+                frame = frames.one(F(key_field) == key)
+                frame.embedded.field.name = value
+                frame.save()
+
+        When setting `frame fields using the dict ``values`` syntax with a
+        sample-level ``key_field``, each value in ``values`` may either be a
+        list corresponding to the frames of the sample matching the given key,
+        or each value may itself be a dict mapping frame numbers to values. In
+        the latter case, this function is an efficient implementation of the
+        following loop::
 
             for key, frame_values in values.items():
                 sample = sample_collection.one(F(key_field) == key)
@@ -2429,23 +2460,30 @@ class SampleCollection(object):
 
                 sample.save()
 
-        You can also update list fields using the dict ``values`` syntax, in
+        You can also update list fields using the dict ``values`` syntaxes, in
         which case this method is an efficient implementation of the natural
         nested list modifications of the above sample/frame loops.
 
         The dual function of :meth:`set_values` is :meth:`values`, which can be
         used to efficiently extract the values of a field or embedded field of
-        all samples in a collection as lists of values in the same structure
-        expected by this method.
+        all samples in a collection as lists of values.
+
+        .. note::
+
+            If you are setting attributes of a nested list of labels, such as
+            attributes of the objects in a
+            :class:`fiftyone.core.labels.Detections` field, then consider using
+            :meth:`set_label_values` instead for greater efficiency.
 
         .. note::
 
             If the values you are setting can be described by a
             :class:`fiftyone.core.expressions.ViewExpression` applied to the
             existing dataset contents, then consider using :meth:`set_field` +
-            :meth:`save` for an even more efficient alternative to explicitly
-            iterating over the dataset or calling :meth:`values` +
-            :meth:`set_values` to perform the update in-memory.
+            :meth:`save() <fiftyone.core.view.DatasetView.save>` for an even
+            more efficient alternative to explicitly iterating over the dataset
+            or calling :meth:`values` + :meth:`set_values` to perform the
+            update in-memory.
 
         Examples::
 
@@ -2461,8 +2499,22 @@ class SampleCollection(object):
             # Create a new sample field
             #
 
+            # list syntax
             values = [random.random() for _ in range(len(dataset))]
+
             dataset.set_values("random", values)
+
+            print(dataset.bounds("random"))
+
+            #
+            # Edit a frame field
+            #
+
+            # dict syntax
+            sample_ids = dataset.values("id")
+            values = {id: random.random() for id in sample_ids}
+
+            dataset.set_values("random", values, key_field="id")
 
             print(dataset.bounds("random"))
 
@@ -2472,26 +2524,65 @@ class SampleCollection(object):
 
             view = dataset.filter_labels("predictions", F("confidence") < 0.06)
 
-            detections = view.values("predictions.detections")
-            for sample_detections in detections:
-                for detection in sample_detections:
-                    detection.tags.append("low_confidence")
+            # list syntax on a filtered view
+            tags = view.values("predictions.detections.tags")
+            for sample_tags in tags:
+                for detection_tags in sample_tags:
+                    detection_tags.append("low_confidence")
 
-            view.set_values("predictions.detections", detections)
+            view.set_values("predictions.detections.tags", tags)
 
-            print(dataset.count_label_tags())
+            print(view.count("predictions.detections"))  # 447
+            print(dataset.count_label_tags())  # 447
+
+            #
+            # Create a new frame field
+            #
+
+            dataset = foz.load_zoo_dataset("quickstart-video")
+
+            # list syntax
+            values = []
+            for sample in dataset:
+                values.append([random.random() for _ in sample.frames])
+
+            dataset.set_values("frames.random", values)
+
+            print(dataset.bounds("frames.random"))
+
+            #
+            # Edit a frame field
+            #
+
+            # dict syntax
+            frame_ids = dataset.values("frames.id", unwind=True)
+            values = {id: random.random() for id in frame_ids}
+
+            dataset.set_values("frames.random", values, key_field="frames.id")
+
+            print(dataset.bounds("frames.random"))
 
         Args:
             field_name: a field or ``embedded.field.name``
-            values: an iterable of values, one for each sample in the
-                collection. When setting frame fields, each element can either
-                be an iterable of values (one for each existing frame of the
-                sample) or a dict mapping frame numbers to values. If
-                ``field_name`` contains array fields, the corresponding
-                elements of ``values`` must be arrays of the same lengths. This
-                argument can also be a dict mapping keys to values (each value
-                as described previously), in which case the keys are used to
-                match samples by their ``key_field``
+            values: the field values to set, provided in either of the
+                following formats:
+
+                -   **list syntax**: an iterable of values, one for each sample
+                    in the collection. If ``field_name`` contains array fields,
+                    the corresponding elements of ``values`` must be arrays of
+                    the same lengths. When setting frame fields, each element
+                    can either be an iterable of values (one for each existing
+                    frame of the sample) or a dict mapping frame numbers to
+                    values
+                -   **dict syntax**: a dict whose keys specify the ``key_field``
+                    values of the samples for which to set ``field_name`` to
+                    the corresponding values. When setting frame fields, you
+                    can either provide a sample-level ``key_field``, in which
+                    case each corresponding value in ``values`` must be a list
+                    or dict of per-frame field values to set as described in
+                    the previous bullet, or you can provide a frame-level
+                    ``key_field``, in which case each key-value pair in
+                    ``values`` represents a per-frame update
             key_field (None): a key field to use when choosing which samples to
                 update when ``values`` is a dict
             skip_none (False): whether to treat None data in ``values`` as
@@ -2541,17 +2632,32 @@ class SampleCollection(object):
                 "(found: '%s')" % field_name
             )
 
+        is_frame_field = self._is_frame_field(field_name)
+
         if isinstance(values, dict):
             if key_field is None:
                 raise ValueError(
                     "You must provide a `key_field` when `values` is a dict"
                 )
 
-            _sample_ids, values = _parse_values_dict(self, key_field, values)
+            if self._is_frame_field(key_field):
+                if not is_frame_field:
+                    raise ValueError(
+                        f"You cannot use frame-level key field '{key_field}' "
+                        f"to set sample field '{field_name}'"
+                    )
 
-        is_frame_field = self._is_frame_field(field_name)
+                _frame_ids, values = _parse_values_dict(
+                    self, key_field, values
+                )
+                _frame_ids = [_frame_ids]
+                values = [values]
+            else:
+                _sample_ids, values = _parse_values_dict(
+                    self, key_field, values
+                )
 
-        if is_frame_field:
+        if is_frame_field and _frame_ids is None:
             _frame_ids, values = _parse_frame_values_dicts(
                 self, _sample_ids, values
             )
@@ -2680,6 +2786,19 @@ class SampleCollection(object):
         """Sets the fields of the specified labels in the collection to the
         given values.
 
+        You can use this method in two ways:
+
+        -   **List syntax (recommended):** provide a list of dicts of the form
+            ``{"sample_id": sample_id, "label_id": label_id, "value": value}``
+            specifying the sample IDs and label IDs of each label you want to
+            edit
+        -   **Dict syntax:** provide a dict mapping label IDs to values
+
+        .. note::
+
+            This method is most efficient when you use the list syntax, which
+            includes the sample/frame ID of each label that you are modifying.
+
         .. note::
 
             This method is appropriate when you have the IDs of the labels you
@@ -2700,6 +2819,22 @@ class SampleCollection(object):
 
             view = dataset.filter_labels("predictions", F("confidence") > 0.99)
 
+            # Option 1 (recommended): provide label IDs and sample IDs
+
+            values = []
+            sample_ids, label_ids = view.values(["id", "predictions.detections.id"])
+            for sid, lids in zip(sample_ids, label_ids):
+                for lid in lids:
+                    values.append({"sample_id": sid, "label_id": lid, "value": True})
+
+            dataset.set_label_values("predictions.detections.high_conf", values)
+
+            print(dataset.count("predictions.detections"))
+            print(len(values))
+            print(dataset.count_values("predictions.detections.high_conf"))
+
+            # Option 2: provide only label IDs
+
             label_ids = view.values("predictions.detections.id", unwind=True)
             values = {_id: True for _id in label_ids}
 
@@ -2711,7 +2846,15 @@ class SampleCollection(object):
 
         Args:
             field_name: a field or ``embedded.field.name``
-            values: a dict mapping label IDs to values
+            values: the label values to set, in one of the following formats:
+
+                -   a list of dicts of the form
+                    ``{"sample_id": sample_id, "label_id": label_id, "value": value}``
+                    when setting sample-level labels
+                -   a list of dicts of the form
+                    ``{"frame_id": frame_id, "label_id": label_id, "value": value}``
+                    when setting frame-level labels
+                -   a dict mapping label IDs to values
             skip_none (False): whether to treat None data in ``values`` as
                 missing data that should not be set
             dynamic (False): whether to declare dynamic attributes of embedded
@@ -2722,8 +2865,16 @@ class SampleCollection(object):
                 use the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
         """
+        if isinstance(values, list):
+            _values = [d["value"] for d in values]
+        else:
+            _values = values.values()
+
+        if not _values:
+            return
+
         field, _ = self._expand_schema_from_values(
-            field_name, values.values(), dynamic=dynamic, flat=True
+            field_name, _values, dynamic=dynamic, flat=True
         )
 
         if field is None:
@@ -2732,6 +2883,11 @@ class SampleCollection(object):
         if field is not None and field.read_only:
             raise ValueError("Cannot edit read-only field '%s'" % field_name)
 
+        label_field, root, is_list_field, _ = self._parse_label_attribute(
+            field_name
+        )
+        _root, _ = self._handle_frame_field(root)
+
         _field_name, is_frame_field, _, _, id_to_str = self._parse_field_name(
             field_name, omit_terminal_lists=True
         )
@@ -2739,54 +2895,20 @@ class SampleCollection(object):
         if field is None and id_to_str:
             field = fof.ObjectIdField()
 
-        label_field = _field_name.split(".", 1)[0]
-        if is_frame_field:
-            label_field = self._FRAMES_PREFIX + label_field
-
-        root, is_list_field = self._get_label_field_root(label_field)
-        label_id_path = root + ".id"
-        _root, _ = self._handle_frame_field(root)
-
-        id_map = {}
-
-        # We only need `view` to contain labels we actually want to process, so
-        # if the number of values is small enough that `select_labels()` may
-        # optimize, we use it
-        if len(values) <= 100000:
-            view = self.select_labels(ids=list(values), fields=label_field)
+        if isinstance(values, list):
+            id_key = "frame_id" if is_frame_field else "sample_id"
+            get_values = operator.itemgetter(id_key, "label_id", "value")
+            _ids, _label_ids, _values = zip(*map(get_values, values))
         else:
-            view = self
-
-        if is_frame_field:
-            frame_ids, label_ids = view.values(["frames._id", label_id_path])
-
-            if is_list_field:
-                for _fids, _flids in zip(frame_ids, label_ids):
-                    for _frame_id, _label_ids in zip(_fids, _flids):
-                        if _label_ids:
-                            for _label_id in _label_ids:
-                                id_map[_label_id] = _frame_id
-            else:
-                for _fids, _flids in zip(frame_ids, label_ids):
-                    for _frame_id, _label_id in zip(_fids, _flids):
-                        id_map[_label_id] = _frame_id
-        else:
-            sample_ids, label_ids = view.values(["_id", label_id_path])
-
-            if is_list_field:
-                for _sample_id, _label_ids in zip(sample_ids, label_ids):
-                    if _label_ids:
-                        for _label_id in _label_ids:
-                            id_map[_label_id] = _sample_id
-            else:
-                for _sample_id, _label_id in zip(sample_ids, label_ids):
-                    id_map[_label_id] = _sample_id
+            _label_ids, _values = zip(*values.items())
+            _ids = self._get_sample_ids_for_labels(label_field, _label_ids)
 
         if is_list_field:
             self._set_label_list_values(
                 _field_name,
-                values,
-                id_map,
+                _ids,
+                _label_ids,
+                _values,
                 _root,
                 field=field,
                 skip_none=skip_none,
@@ -2795,9 +2917,6 @@ class SampleCollection(object):
                 progress=progress,
             )
         else:
-            _label_ids, _values = zip(*values.items())
-            _ids = [id_map[label_id] for label_id in _label_ids]
-
             self._set_doc_values(
                 _field_name,
                 _ids,
@@ -2808,6 +2927,48 @@ class SampleCollection(object):
                 frames=is_frame_field,
                 progress=progress,
             )
+
+    def _get_sample_ids_for_labels(self, label_field, label_ids):
+        is_frame_field = self._is_frame_field(label_field)
+        root, is_list_field = self._get_label_field_root(label_field)
+        label_id_path = root + ".id"
+
+        # We only need `view` to contain labels we actually want to
+        # process, so if the number of values is small enough that
+        # `select_labels()` may optimize, we use it
+        if len(label_ids) <= 100000:
+            view = self.select_labels(ids=label_ids, fields=label_field)
+        else:
+            view = self
+
+        id_map = {}
+
+        if is_frame_field:
+            _frame_ids, _label_ids = view.values(["frames.id", label_id_path])
+
+            if is_list_field:
+                for _fids, _flids in zip(_frame_ids, _label_ids):
+                    for _frame_id, _lids in zip(_fids, _flids):
+                        if _lids:
+                            for _label_id in _lids:
+                                id_map[_label_id] = _frame_id
+            else:
+                for _fids, _flids in zip(_frame_ids, _label_ids):
+                    for _frame_id, _label_id in zip(_fids, _flids):
+                        id_map[_label_id] = _frame_id
+        else:
+            _sample_ids, _label_ids = view.values(["id", label_id_path])
+
+            if is_list_field:
+                for _sample_id, _lids in zip(_sample_ids, _label_ids):
+                    if _lids:
+                        for _label_id in _lids:
+                            id_map[_label_id] = _sample_id
+            else:
+                for _sample_id, _label_id in zip(_sample_ids, _label_ids):
+                    id_map[_label_id] = _sample_id
+
+        return [id_map[label_id] for label_id in label_ids]
 
     def _expand_schema_from_values(
         self,
@@ -3189,8 +3350,9 @@ class SampleCollection(object):
     def _set_label_list_values(
         self,
         field_name,
+        doc_ids,
+        label_ids,
         values,
-        id_map,
         list_field,
         field=None,
         skip_none=None,
@@ -3209,7 +3371,7 @@ class SampleCollection(object):
 
         ids = []
         ops = []
-        for label_id, value in values.items():
+        for doc_id, label_id, value in zip(doc_ids, label_ids, values):
             if value is None and skip_none:
                 continue
 
@@ -3218,11 +3380,10 @@ class SampleCollection(object):
                     field_name, field, value, validate=validate
                 )
 
-            _id = id_map[label_id]
-            ids.append(_id)
+            ids.append(doc_id)
             ops.append(
                 UpdateOne(
-                    {"_id": _id},
+                    {"_id": ObjectId(doc_id)},
                     {"$set": {path: value, "last_modified_at": now}},
                     array_filters=[{"label._id": ObjectId(label_id)}],
                 )
@@ -11412,11 +11573,14 @@ class SampleCollection(object):
 
         return False
 
-    def _is_label_field(self, field_name, label_type_or_types):
+    def _is_label_field(self, field_name, label_type_or_types=None):
         try:
             label_type = self._get_label_field_type(field_name)
         except:
             return False
+
+        if label_type_or_types is None:
+            return True
 
         if etau.is_container(label_type_or_types):
             label_type_or_types = tuple(label_type_or_types)
@@ -11456,6 +11620,28 @@ class SampleCollection(object):
             force_dict=force_dict,
             required=required,
         )
+
+    def _parse_label_attribute(self, label_path):
+        label_field, leaf = None, None
+
+        root = label_path
+        while True:
+            chunks = root.rsplit(".", 1)
+            if len(chunks) == 1:
+                break
+
+            root = chunks[0]
+            if self._is_label_field(root):
+                label_field = root
+                if leaf is None:
+                    leaf = label_path[len(root) + 1 :]
+
+        if label_field is not None:
+            root, is_list_field = self._get_label_field_root(label_field)
+        else:
+            root, is_list_field = None, None
+
+        return label_field, root, is_list_field, leaf
 
     def _get_db_fields_map(
         self, include_private=False, frames=False, reverse=False
@@ -11593,17 +11779,26 @@ class SampleCollection(object):
         schema = self.get_frame_field_schema()
         return dict(_iter_schema_label_fields(schema))
 
-    def _get_root_fields(self, fields):
+    def _get_root_field(self, path):
+        path, is_frame_field = self._handle_frame_field(path)
+        root = path.split(".", 1)[0]
+        if is_frame_field:
+            root = self._FRAMES_PREFIX + root
+
+        return root
+
+    def _get_root_fields(self, paths):
         root_fields = set()
-        for field in fields:
-            if self._has_frame_fields() and field.startswith(
+
+        for path in paths:
+            if self._has_frame_fields() and path.startswith(
                 self._FRAMES_PREFIX
             ):
                 # Converts `frames.root[.x.y]` to `frames.root`
-                root = ".".join(field.split(".", 2)[:2])
+                root = ".".join(path.split(".", 2)[:2])
             else:
                 # Converts `root[.x.y]` to `root`
-                root = field.split(".", 1)[0]
+                root = path.split(".", 1)[0]
 
             root_fields.add(root)
 
@@ -11833,6 +12028,19 @@ class SampleCollection(object):
             new_field=new_field,
             context=context,
         )
+
+    def _edits_field(self, path):
+        if not isinstance(self, fov.DatasetView):
+            return False
+
+        # pylint:disable=no-member
+        view = self
+        path, is_frame_field = view._handle_frame_field(path)
+        edited_paths = view._get_edited_fields(frames=is_frame_field)
+        if edited_paths is None:
+            return False
+
+        return any(p == path or p.startswith(path + ".") for p in edited_paths)
 
     def _get_values_by_id(self, path_or_expr, ids, link_field=None):
         is_list_field = False
@@ -12223,13 +12431,6 @@ def _parse_values_dict(sample_collection, key_field, values):
     if not values:
         return [], []
 
-    if key_field == "id":
-        return zip(*values.items())
-
-    if key_field == "_id":
-        sample_ids, values = zip(*values.items())
-        return [str(_id) for _id in sample_ids], values
-
     _key_field = key_field
     (
         key_field,
@@ -12239,14 +12440,16 @@ def _parse_values_dict(sample_collection, key_field, values):
         id_to_str,
     ) = sample_collection._parse_field_name(key_field)
 
-    if is_frame_field:
-        raise ValueError(
-            "Invalid key field '%s'; keys cannot be frame fields" % _key_field
-        )
+    if _key_field == "id" or (is_frame_field and _key_field == "frames.id"):
+        return zip(*values.items())
+
+    if _key_field == "_id" or (is_frame_field and _key_field == "frames._id"):
+        sample_ids, values = zip(*values.items())
+        return [str(_id) for _id in sample_ids], values
 
     if list_fields or other_list_fields:
         raise ValueError(
-            "Invalid key field '%s'; keys cannot be list fields" % _key_field
+            f"Invalid key field '{_key_field}'; keys cannot be list fields"
         )
 
     keys = list(values.keys())
@@ -12254,27 +12457,36 @@ def _parse_values_dict(sample_collection, key_field, values):
     if id_to_str:
         keys = [ObjectId(k) for k in keys]
 
-    view = sample_collection.mongo([{"$match": {key_field: {"$in": keys}}}])
-    id_map = {k: v for k, v in zip(*view.values([key_field, "id"]))}
+    if is_frame_field:
+        pipeline = sample_collection._root_dataset._unwind_frames_pipeline()
+    else:
+        pipeline = []
 
-    sample_ids = []
+    pipeline.append({"$match": {key_field: {"$in": keys}}})
+    view = sample_collection.mongo(pipeline)
+    id_map = {
+        k: v
+        for k, v in zip(*view.values([key_field, "id"], _allow_missing=True))
+    }
+
+    doc_ids = []
     bad_keys = []
     for key in keys:
-        sample_id = id_map.get(key, None)
-        if sample_id is not None:
-            sample_ids.append(sample_id)
+        doc_id = id_map.get(key, None)
+        if doc_id is not None:
+            doc_ids.append(doc_id)
         else:
             bad_keys.append(key)
 
     if bad_keys:
         raise ValueError(
             "Found %d keys (eg: %s) that do not match the '%s' field of any "
-            "samples" % (len(bad_keys), bad_keys[0], key_field)
+            "samples" % (len(bad_keys), bad_keys[0], _key_field)
         )
 
     values = list(values.values())
 
-    return sample_ids, values
+    return doc_ids, values
 
 
 def _parse_frame_values_dicts(sample_collection, sample_ids, values):
