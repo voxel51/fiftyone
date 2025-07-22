@@ -1118,8 +1118,8 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
                 "transformers.VitPoseForPoseEstimation.from_pretrained"
             )
         # override output processor
-        if config.output_processor_cls is None:
-            config.output_processor_cls = "fiftyone.utils.transformers.TransformersPoseEstimationOutputProcessor"
+            config.output_processor_cls = None
+            config.output_processor_cls = None
         super().__init__(config)
         self._output_processor.processor = self.transforms.processor
         self.transforms.return_image_sizes = True
