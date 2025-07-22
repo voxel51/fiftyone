@@ -121,16 +121,24 @@ fi
 
 echo "***** INSTALLING FIFTYONE-BRAIN *****"
 if [ ${SOURCE_BRAIN_INSTALL} = true ]; then
-    git clone https://github.com/voxel51/fiftyone-brain
-    cd fiftyone-brain
+    if [[ ! -d "fiftyone-brain" ]] && [[ ! -d "../fiftyone-brain" ]]; then
+        echo "Cloning FiftyOne Brain repository"
+        git clone https://github.com/voxel51/fiftyone-brain
+    fi
+    if [[ -d "../fiftyone-brain" ]]; then
+        cd ../fiftyone-brain
+    else
+        cd fiftyone-brain
+    fi
     if [ ${DEV_INSTALL} = true ]; then
+        echo "Performing dev install"
         bash install.bash -d
     else
+        echo "Performing install"
         pip install .
     fi
-    cd ..
+    cd -
 else
-    echo "Cloning FiftyOne Brain repository"
     pip install --upgrade fiftyone-brain
 fi
 
@@ -141,27 +149,33 @@ if [ ${DEV_INSTALL} = true ]; then
     pre-commit install
     pip install -e .
 else
+    echo "Performing install"
     pip install .
 fi
 
 if [ ${SOURCE_ETA_INSTALL} = true ]; then
-    echo "***** INSTALLING ETA *****"
-    if [[ ! -d "eta" ]]; then
+    echo "***** INSTALLING ETA FROM SOURCE *****"
+    if [[ ! -d "eta" ]] && [[ ! -d "../eta" ]]; then
         echo "Cloning ETA repository"
         git clone https://github.com/voxel51/eta
     fi
-    cd eta
+    if [[ -d "../eta" ]]; then
+        cd ../eta
+    else
+        cd eta
+    fi
     if [ ${DEV_INSTALL} = true ]; then
+        echo "Performing dev install"
         pip install -e .
     else
+        echo "Performing install"
         pip install .
     fi
     if [[ ! -f eta/config.json ]]; then
         echo "Installing default ETA config"
         cp config-example.json eta/config.json
     fi
-    cd ..
+    cd -
 fi
-
 
 echo "***** INSTALLATION COMPLETE *****"

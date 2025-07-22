@@ -15,4 +15,5 @@ export type OperatorExecutorOptions = {
   requestDelegation?: boolean;
   skipOutput?: boolean;
   callback?: ExecutionCallback;
+  skipErrorNotification?: boolean;
 };

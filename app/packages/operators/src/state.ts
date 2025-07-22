@@ -1006,6 +1006,45 @@ export function useOperatorBrowser() {
   };
 }
 
+/**
+ * @param uri - The URI of the operator to execute.
+ * @param handlers - The optional handlers for the operator.
+ * @returns An object containing the state of the operator execution.
+ * 
+ * Example:
+ * 
+ * ```ts
+ * const defaultParams = {
+ *   // default parameters of the operator
+ *   param1: "value1",
+ *   param2: "value2",
+ * };
+ * const paramOverrides = {
+ *   // override the parameters of the operator
+ *   param1: "value1-override",
+ * };
+ * const handlers = {
+ *   onSuccess: (result: OperatorResult, opts: OperatorExecutorOptions) => {
+ *     // do something with the success
+ *   },
+ *   onError: (error: OperatorResult, opts: OperatorExecutorOptions) => {
+ *     // do something with the error
+ *   }
+ * };
+ * const executor = useOperatorExecutor("my-operator", handlers);
+ * const myBtnCb = useCallback(() => {
+ *   const opts: OperatorExecutorOptions = {
+ *     skipErrorNotification: true,
+ *     callback: (result: OperatorResult, opts: OperatorExecutorOptions) => {
+ *       if (result.error) {
+ *         // do something with the error
+ *       }
+ *     }
+ *   };
+ *   executor.execute(paramOverrides, opts);
+ * }, [executor]);
+ * ```
+ */
 export function useOperatorExecutor(uri, handlers: any = {}) {
   uri = resolveOperatorURI(uri, { keepMethod: true });
 
@@ -1058,7 +1097,7 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
         setResult(result.result);
         setError(result.error);
         setIsDelegated(result.delegated);
-        if (result.error) {
+        if (result.error && !options?.skipErrorNotification) {
           handlers.onError?.(result, { ctx });
           notify({
             msg: result.errorMessage || `Operation failed: ${uri}`,
@@ -1103,8 +1142,6 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
     isDelegated,
   };
 }
-
-export function useExecutorQueue() {}
 
 export function useInvocationRequestQueue() {
   const ref = useRef<InvocationRequestQueue>();

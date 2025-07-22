@@ -17,7 +17,9 @@ import fiftyone.core.media as fom
 import fiftyone.core.storage as fos
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
+import fiftyone.utils.data as foud
 from fiftyone.core.odm.workspace import default_workspace_factory
+
 from .group_by import GroupBy
 from .model_evaluation import ConfigureScenario
 
@@ -172,7 +174,8 @@ class EditFieldValues(foo.Operator):
             for c in current:
                 _map[f(c)] = f(new)
 
-        target_view.map_values(path, _map).save()
+        foud.map_values(target_view, path, _map)
+
         ctx.trigger("reload_dataset")
 
 
