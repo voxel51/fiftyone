@@ -118,4 +118,4 @@ jobs:
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@v2
       - name: publish
-        run: gsutil -m rsync -dR docs-download gs://docs.voxel51.com
+        run: gsutil -m rsync -dR -x '^SBOMs/.*' docs-download gs://docs.voxel51.com

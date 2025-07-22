@@ -121,6 +121,7 @@ export function getMatrix(
 }
 
 export function getClasses(matrices, maskTargets?) {
+  if (!matrices) return [];
   const sortBy = "az";
   const classes = matrices[`${sortBy}_classes`];
   return classes.map((c) => {

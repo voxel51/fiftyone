@@ -106,7 +106,7 @@ export const workspaceEditorStateAtom = atom({
   key: "workspaceEditorState",
   default: {
     open: false,
-    oldName: "",
+    old_name: "",
     name: "",
     description: "",
     color: COLOR_OPTIONS[0].color,

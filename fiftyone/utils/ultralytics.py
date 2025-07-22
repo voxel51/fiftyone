@@ -91,7 +91,7 @@ def to_detections(results, confidence_thresh=None):
 
 def _to_detections(result, confidence_thresh=None):
     if result.boxes is None:
-        return None
+        return fol.Detections()
 
     classes = np.rint(result.boxes.cls.detach().cpu().numpy()).astype(int)
     boxes = result.boxes.xywhn.detach().cpu().numpy().astype(float)
@@ -143,7 +143,7 @@ def to_instances(results, confidence_thresh=None):
 
 def _to_instances(result, confidence_thresh=None):
     if result.masks is None:
-        return None
+        return fol.Detections()
 
     classes = np.rint(result.boxes.cls.detach().cpu().numpy()).astype(int)
     boxes = result.boxes.xywhn.detach().cpu().numpy().astype(float)
@@ -228,6 +228,7 @@ def _to_classifications(result, confidence_thresh=None, store_logits=False):
         )
         if store_logits:
             classification.logits = logits
+
     return classification
 
 
@@ -260,7 +261,8 @@ def obb_to_polylines(results, confidence_thresh=None, filled=False):
 
 def _obb_to_polylines(result, filled, confidence_thresh=None):
     if result.obb is None:
-        return None
+        return fol.Polylines()
+
     classes = np.rint(result.obb.cls.detach().cpu().numpy()).astype(int)
     confs = result.obb.conf.detach().cpu().numpy().astype(float)
     points = result.obb.xyxyxyxyn.detach().cpu().numpy()
@@ -281,6 +283,7 @@ def _obb_to_polylines(result, filled, confidence_thresh=None):
             filled=filled,
         )
         polylines.append(polyline)
+
     return fol.Polylines(polylines=polylines)
 
 
@@ -316,7 +319,7 @@ def to_polylines(results, confidence_thresh=None, tolerance=2, filled=True):
 
 def _to_polylines(result, tolerance, filled, confidence_thresh=None):
     if result.masks is None:
-        return None
+        return fol.Polylines()
 
     classes = np.rint(result.boxes.cls.detach().cpu().numpy()).astype(int)
     confs = result.boxes.conf.detach().cpu().numpy().astype(float)
@@ -382,7 +385,7 @@ def to_keypoints(results, confidence_thresh=None):
 
 def _to_keypoints(result, confidence_thresh=None):
     if result.keypoints is None:
-        return None
+        return fol.Keypoints()
 
     classes = np.rint(result.boxes.cls.detach().cpu().numpy()).astype(int)
     points = result.keypoints.xyn.detach().cpu().numpy().astype(float)
@@ -862,7 +865,8 @@ class UltralyticsDetectionOutputProcessor(
 
     def _parse_output(self, output, frame_size, confidence_thresh):
         if not output:
-            return None
+            return fol.Detections()
+
         detections = super()._parse_output(
             output, frame_size, confidence_thresh
         )

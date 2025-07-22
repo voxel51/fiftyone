@@ -136,6 +136,21 @@ class RegressionTests(unittest.TestCase):
         self.assertNotIn("eval2", dataset.get_field_schema())
 
     @drop_datasets
+    def test_evaluate_regressions_no_eval_key(self):
+        dataset = self._make_regression_dataset()
+
+        results = dataset.evaluate_regressions(
+            "predictions",
+            gt_field="ground_truth",
+            method="simple",
+        )
+
+        results.print_metrics()
+
+        metrics = results.metrics()
+        self.assertEqual(metrics["support"], 2)
+
+    @drop_datasets
     def test_evaluate_regressions_embedded_fields(self):
         dataset = self._make_regression_dataset()
 
@@ -573,6 +588,22 @@ class ClassificationTests(unittest.TestCase):
 
         self.assertNotIn("eval2", dataset.list_evaluations())
         self.assertNotIn("eval2", dataset.get_field_schema())
+
+    @drop_datasets
+    def test_evaluate_classifications_no_eval_key(self):
+        dataset = self._make_classification_dataset()
+
+        results = dataset.evaluate_classifications(
+            "predictions",
+            gt_field="ground_truth",
+            method="simple",
+        )
+
+        results.report()
+        results.print_report()
+
+        metrics = results.metrics()
+        self.assertEqual(metrics["support"], 3)
 
     @drop_datasets
     def test_evaluate_classifications_top_k(self):
@@ -2014,6 +2045,25 @@ class DetectionsTests(unittest.TestCase):
             detection["eval2"]
 
     @drop_datasets
+    def test_evaluate_detections_no_eval_key(self):
+        dataset = self._make_detections_dataset()
+
+        results = dataset.evaluate_detections(
+            "predictions",
+            gt_field="ground_truth",
+            method="coco",
+            compute_mAP=True,
+            classwise=True,  # don't allow matches w/ different classes
+        )
+
+        results.report()
+        results.print_report()
+        results.mAP()
+
+        metrics = results.metrics()
+        self.assertEqual(metrics["support"], 3)
+
+    @drop_datasets
     def test_evaluate_detections_embedded_fields(self):
         dataset = self._make_detections_dataset()
 
@@ -3063,6 +3113,26 @@ class SegmentationTests(unittest.TestCase):
         self.assertNotIn("eval2_accuracy", dataset.get_field_schema())
         self.assertNotIn("eval2_precision", dataset.get_field_schema())
         self.assertNotIn("eval2_recall", dataset.get_field_schema())
+
+    @drop_datasets
+    def test_evaluate_segmentations_no_eval_key(self):
+        dataset = self._make_segmentation_dataset()
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")  # suppress missing masks warning
+
+            results = dataset.evaluate_segmentations(
+                "predictions",
+                gt_field="ground_truth",
+                method="simple",
+                mask_targets={0: "background", 1: "cat", 2: "dog"},
+            )
+
+        results.report()
+        results.print_report()
+
+        metrics = results.metrics()
+        self.assertEqual(metrics["support"], 4)
 
     @drop_datasets
     def test_evaluate_segmentations_on_disk_simple(self):

@@ -123,7 +123,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "sa-1b", "torch", "zero-shot"],
+            "tags": ["segment-anything", "sa-1b", "torch", "zero-shot", "transformer"],
             "date_added": "2023-05-12 11:40:51"
         },
         {
@@ -158,7 +158,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "sa-1b", "torch", "zero-shot"],
+            "tags": ["segment-anything", "sa-1b", "torch", "zero-shot", "transformer"],
             "date_added": "2023-05-12 11:40:51"
         },
         {
@@ -193,7 +193,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "sa-1b", "torch", "zero-shot"],
+            "tags": ["segment-anything", "sa-1b", "torch", "zero-shot", "transformer"],
             "date_added": "2023-05-12 11:40:51"
         },
         {
@@ -263,7 +263,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot"],
+            "tags": ["segment-anything", "torch", "zero-shot", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -298,7 +298,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot"],
+            "tags": ["segment-anything", "torch", "zero-shot", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -333,7 +333,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot"],
+            "tags": ["segment-anything", "torch", "zero-shot", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -367,7 +367,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video"],
+            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -402,7 +402,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video"],
+            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -437,7 +437,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video"],
+            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -472,7 +472,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video"],
+            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -511,7 +511,8 @@
                 "torch",
                 "zero-shot",
                 "video",
-                "med-SAM"
+                "med-SAM",
+                "transformer"
             ],
             "date_added": "2024-08-17 14:48:00"
         },
@@ -549,7 +550,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot"],
+            "tags": ["segment-anything", "torch", "zero-shot", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -586,7 +587,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot"],
+            "tags": ["segment-anything", "torch", "zero-shot", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -623,7 +624,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot"],
+            "tags": ["segment-anything", "torch", "zero-shot", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -660,7 +661,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot"],
+            "tags": ["segment-anything", "torch", "zero-shot", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -696,7 +697,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video"],
+            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -733,7 +734,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video"],
+            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -770,7 +771,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video"],
+            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -807,7 +808,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video"],
+            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -2628,7 +2629,8 @@
                 "embeddings",
                 "torch",
                 "clip",
-                "zero-shot"
+                "zero-shot",    
+                "transformer"
             ],
             "date_added": "2023-12-13 14:25:51"
         },
@@ -2964,6 +2966,40 @@
             "date_added": "2024-01-17 14:25:51"
         },
         {
+            "base_name": "owlvit-base-patch32-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Faster zero-shot object detector that finds any object you describe using larger image patches for efficiency.",
+            "source": "https://huggingface.co/docs/transformers/tasks/zero_shot_object_detection",
+            "author": "Thomas Wolf, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 1229149172,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "google/owlvit-base-patch32"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "detection",
+                "logits",
+                "embeddings",
+                "torch",
+                "transformers",
+                "zero-shot"
+            ],
+            "date_added": "2025-07-15 13:49:00"
+        },
+        {
             "base_name": "omdet-turbo-swin-tiny-torch",
             "base_filename": null,
             "version": null,
@@ -3043,7 +3079,8 @@
                 "embeddings",
                 "torch",
                 "clip",
-                "zero-shot"
+                "zero-shot",    
+                "transformer"
             ],
             "date_added": "2022-04-12 17:49:51"
         },
@@ -3075,7 +3112,7 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2"],
+            "tags": ["embeddings", "torch", "dinov2", "transformer"],
             "date_added": "2023-07-31 10:17:51"
         },
         {
@@ -3106,7 +3143,7 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2"],
+            "tags": ["embeddings", "torch", "dinov2", "transformer"],
             "date_added": "2023-07-31 10:17:51"
         },
         {
@@ -3137,7 +3174,7 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2"],
+            "tags": ["embeddings", "torch", "dinov2", "transformer"],
             "date_added": "2023-07-31 10:17:51"
         },
         {
@@ -3168,7 +3205,7 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2"],
+            "tags": ["embeddings", "torch", "dinov2", "transformer"],
             "date_added": "2023-07-31 10:17:51"
         },
         {
@@ -3199,7 +3236,7 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2"],
+            "tags": ["embeddings", "torch", "dinov2", "transformer"],
             "date_added": "2023-12-02 16:42:00"
         },
         {
@@ -3230,7 +3267,7 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2"],
+            "tags": ["embeddings", "torch", "dinov2", "transformer"],
             "date_added": "2023-12-02 16:42:00"
         },
         {
@@ -3261,7 +3298,7 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2"],
+            "tags": ["embeddings", "torch", "dinov2", "transformer"],
             "date_added": "2023-12-02 16:42:00"
         },
         {
@@ -3292,7 +3329,7 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2"],
+            "tags": ["embeddings", "torch", "dinov2", "transformer"],
             "date_added": "2023-12-02 16:42:00"
         },
         {
@@ -6256,6 +6293,161 @@
                 "rtdetr"
             ],
             "date_added": "2025-07-03 12:00:00"
+        },
+        {
+            "base_name": "dfine-nano-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "D-FINE Nano from `D-FINE: Redefine Regression Task in DETRs as Fine-grained Distribution Refinement` trained on COCO. Ultra-lightweight real-time object detector.",
+            "source": "https://github.com/Peterande/D-FINE",
+            "author": "Yansong Peng, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 14680064,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "ustc-community/dfine-nano-coco"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "coco", "torch", "transformers", "detr"],
+            "date_added": "2025-07-15 23:00:00"
+        },
+        {
+            "base_name": "dfine-small-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "D-FINE Small from `D-FINE: Redefine Regression Task in DETRs as Fine-grained Distribution Refinement` trained on COCO. Balanced real-time object detector.",
+            "source": "https://github.com/Peterande/D-FINE",
+            "author": "Yansong Peng, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 25165824,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "ustc-community/dfine-small-coco"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "coco", "torch", "transformers", "detr"],
+            "date_added": "2025-07-15 23:00:00"
+        },
+        {
+            "base_name": "dfine-medium-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "D-FINE Medium from `D-FINE: Redefine Regression Task in DETRs as Fine-grained Distribution Refinement` trained on COCO. Mid-size real-time object detector.",
+            "source": "https://github.com/Peterande/D-FINE",
+            "author": "Yansong Peng, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 31457280,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "ustc-community/dfine-medium-coco"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "coco", "torch", "transformers", "detr"],
+            "date_added": "2025-07-15 23:00:00"
+        },
+        {
+            "base_name": "dfine-large-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "D-FINE Large from `D-FINE: Redefine Regression Task in DETRs as Fine-grained Distribution Refinement` trained on COCO. Achieves 54.0% AP at 124 FPS on T4 GPU.",
+            "source": "https://github.com/Peterande/D-FINE",
+            "author": "Yansong Peng, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 52428800,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "ustc-community/dfine-large-coco"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "coco", "torch", "transformers", "detr"],
+            "date_added": "2025-07-15 23:00:00"
+        },
+        {
+            "base_name": "dfine-xlarge-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "D-FINE XLarge from `D-FINE: Redefine Regression Task in DETRs as Fine-grained Distribution Refinement` trained on COCO. Achieves 55.8% AP at 78 FPS on T4 GPU.",
+            "source": "https://github.com/Peterande/D-FINE",
+            "author": "Yansong Peng, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 128974848,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "ustc-community/dfine-xlarge-coco"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "coco", "torch", "transformers", "detr"],
+            "date_added": "2025-07-15 23:00:00"
         }
     ]
 }

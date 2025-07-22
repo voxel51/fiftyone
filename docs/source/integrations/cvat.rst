@@ -1077,7 +1077,7 @@ supported values are:
     unexpected labels
 -   `"ignore"`: automatically ignore any unexpected labels
 -   ``"keep"``: automatically keep all unexpected labels in a field whose name
-    matches the the label type
+    matches the label type
 -   `"return"`: return a dict containing all unexpected labels, if any
 
 See :ref:`this section <cvat-unexpected-annotations>` for more details.
@@ -1531,7 +1531,7 @@ supported values are:
 -   `"prompt"` (**default**): present an interactive prompt to direct/discard
     unexpected labels
 -   ``"keep"``: automatically keep all unexpected labels in a field whose name
-    matches the the label type
+    matches the label type
 -   `"ignore"`: automatically ignore any unexpected labels
 -   `"return"`: return a dict containing all unexpected labels, if any
 
