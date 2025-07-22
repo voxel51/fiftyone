@@ -8168,7 +8168,9 @@ class ToPatches(ViewStage):
             name = None
 
         try:
-            last_dataset = fod.load_dataset(name, reload=reload)
+            # Always reload the main dataset, the `reload` parameter is for
+            #   reloading patches dataset
+            last_dataset = fod.load_dataset(name, reload=True)
         except:
             last_dataset = None
 
@@ -8328,7 +8330,9 @@ class ToEvaluationPatches(ViewStage):
             name = None
 
         try:
-            last_dataset = fod.load_dataset(name, reload=reload)
+            # Always reload the main dataset, the `reload` parameter is for
+            #   reloading evaluation patches dataset
+            last_dataset = fod.load_dataset(name, reload=True)
         except:
             last_dataset = None
 
@@ -8501,7 +8505,9 @@ class ToClips(ViewStage):
             name = None
 
         try:
-            last_dataset = fod.load_dataset(name, reload=reload)
+            # Always reload the main dataset, the `reload` parameter is for
+            #   reloading clips dataset
+            last_dataset = fod.load_dataset(name, reload=True)
         except:
             last_dataset = None
 
@@ -8651,7 +8657,9 @@ class ToTrajectories(ViewStage):
             name = None
 
         try:
-            last_dataset = fod.load_dataset(name, reload=reload)
+            # Always reload the main dataset, the `reload` parameter is for
+            #   reloading trajectories dataset
+            last_dataset = fod.load_dataset(name, reload=True)
         except:
             last_dataset = None
 
@@ -8857,7 +8865,9 @@ class ToFrames(ViewStage):
             name = None
 
         try:
-            last_dataset = fod.load_dataset(name, reload=reload)
+            # Always reload the main dataset, the `reload` parameter is for
+            #   reloading frames dataset
+            last_dataset = fod.load_dataset(name, reload=True)
         except:
             last_dataset = None
 
