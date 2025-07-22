@@ -1214,12 +1214,14 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
         """Predicts keypoints for the given image.
         
         Args:
-            img: an image as a numpy array or PIL Image
+            img: an image as a numpy array, PIL Image, or filepath string
             
         Returns:
             a :class:`fiftyone.core.labels.Keypoints` instance
         """
-        if not isinstance(img, Image.Image):
+        if isinstance(img, str):
+            img = Image.open(img)
+        elif not isinstance(img, Image.Image):
             img = Image.fromarray(img)
         
         # Run detector if configured
@@ -1385,6 +1387,27 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
         
         # Clean up temporary detection boxes
         self._detection_boxes = None
+        
+        # Ensure correct output type when flatten_keypoints=True
+        if (hasattr(self._output_processor, 'flatten_keypoints') and 
+            self._output_processor.flatten_keypoints and
+            hasattr(self._output_processor, 'COCO_SKELETON')):
+            
+            # Check if we got Detections that should be Keypoints
+            results_to_check = result if isinstance(result, list) else [result]
+            if all(isinstance(r, fol.Detections) for r in results_to_check):
+                # Convert Detections to Keypoints
+                converted = []
+                for detections in results_to_check:
+                    keypoints = []
+                    for det in detections.detections:
+                        if hasattr(det, 'keypoints') and det.keypoints:
+                            keypoints.extend(det.keypoints.keypoints)
+                    converted.append(fol.Keypoints(
+                        keypoints=keypoints,
+                        skeleton=self._output_processor.COCO_SKELETON
+                    ))
+                result = converted if isinstance(result, list) else converted[0]
         
         # Return with correct format (list for batches, single item otherwise)
         return result if is_batch else result[0]
