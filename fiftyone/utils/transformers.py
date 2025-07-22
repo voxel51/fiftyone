@@ -1353,7 +1353,7 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
             self._output_processor._boxes = boxes
             result = self._output_processor(outputs, image_sizes, self.config.confidence_thresh)
             
-        except (RuntimeError, ValueError) as e:
+        except (RuntimeError, ValueError):
             # Fallback to individual processing when batch processing fails
             results = []
             imgs_list = images if isinstance(images, list) else [images]
