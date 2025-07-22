@@ -368,7 +368,8 @@ class FiftyOneZeroShotTransformerConfig(FiftyOneTransformerConfig):
 
     def _load_classes(self, d):
         if self.classes is None:
-            raise ValueError("Classes must be set for zero-shot models")
+            if self.hf_config.id2label is not None:
+                self.classes = list(self.hf_config.id2label.values())
 
 
 class TransformerEmbeddingsMixin(EmbeddingsMixin):
