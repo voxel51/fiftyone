@@ -1,7 +1,7 @@
 import type { SerializableParam } from "recoil";
 import { selectorFamily } from "recoil";
 import { aggregationQuery } from "../aggregations";
-import { groupByFieldValue } from "../dynamicGroups";
+import { groupByFieldValue, isNestedDynamicGroup } from "../dynamicGroups";
 
 export const dynamicGroupsElementCount = selectorFamily({
   key: "dynamicGroupsElementCount",
@@ -22,6 +22,7 @@ export const dynamicGroupsElementCount = selectorFamily({
             modal,
             paths: [""],
             useSelection: false,
+            mixed: get(isNestedDynamicGroup) ? true : false,
           })
         ).at(0)?.count ?? 0
       );
