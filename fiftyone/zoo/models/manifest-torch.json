@@ -6338,6 +6338,10 @@
                 "name_or_path": "usyd-community/vitpose-base",
                 "transformers_processor_kwargs": {
                     "return_tensors": "pt"
+                },
+                "output_processor_cls": "fiftyone.utils.transformers.VitPoseOutputProcessor",
+                "output_processor_args": {
+                    "flatten_keypoints": true
                 }
             }
         },
@@ -6368,6 +6372,10 @@
                 "name_or_path": "usyd-community/vitpose-base-simple",
                 "transformers_processor_kwargs": {
                     "return_tensors": "pt"
+                },
+                "output_processor_cls": "fiftyone.utils.transformers.VitPoseOutputProcessor",
+                "output_processor_args": {
+                    "flatten_keypoints": true
                 }
             }
         },
@@ -6398,6 +6406,10 @@
                 "name_or_path": "usyd-community/vitpose-plus-small",
                 "transformers_processor_kwargs": {
                     "return_tensors": "pt"
+                },
+                "output_processor_cls": "fiftyone.utils.transformers.VitPoseOutputProcessor",
+                "output_processor_args": {
+                    "flatten_keypoints": true
                 }
             }
         },
@@ -6428,6 +6440,10 @@
                 "name_or_path": "usyd-community/vitpose-plus-base",
                 "transformers_processor_kwargs": {
                     "return_tensors": "pt"
+                },
+                "output_processor_cls": "fiftyone.utils.transformers.VitPoseOutputProcessor",
+                "output_processor_args": {
+                    "flatten_keypoints": true
                 }
             }
         },
@@ -6458,6 +6474,10 @@
                 "name_or_path": "usyd-community/vitpose-plus-large",
                 "transformers_processor_kwargs": {
                     "return_tensors": "pt"
+                },
+                "output_processor_cls": "fiftyone.utils.transformers.VitPoseOutputProcessor",
+                "output_processor_args": {
+                    "flatten_keypoints": true
                 }
             }
         },
@@ -6488,6 +6508,10 @@
                 "name_or_path": "usyd-community/vitpose-plus-huge",
                 "transformers_processor_kwargs": {
                     "return_tensors": "pt"
+                },
+                "output_processor_cls": "fiftyone.utils.transformers.VitPoseOutputProcessor",
+                "output_processor_args": {
+                    "flatten_keypoints": true
                 }
             }
         },
