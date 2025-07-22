@@ -565,18 +565,12 @@ export const MediaTypeFo3dComponent = () => {
         unionBoundingBox.min
       );
 
-      const maxSize = Math.max(
-        unionBoundingBoxSize.x,
-        unionBoundingBoxSize.y,
-        unionBoundingBoxSize.z
-      );
-
       const newCameraPosition = calculateCameraPositionForUpVector(
         unionBoundingBoxCenter,
         unionBoundingBoxSize,
         upVector,
-        maxSize * 3,
-        "pov"
+        2,
+        "top"
       );
 
       await cameraControlsRef.current.setLookAt(
