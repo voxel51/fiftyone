@@ -1170,9 +1170,9 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
         Returns:
             a list of :class:`fiftyone.core.labels.Keypoints`
         """
-        results = []
-        
-        for img in imgs:
+        # Phase 1: Detect people in all images and collect data
+        detection_data = []
+        for img_idx, img in enumerate(imgs):
             # Ensure PIL Image
             if isinstance(img, str):
                 img = Image.open(img)
@@ -1183,7 +1183,7 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
             
             img_width, img_height = img.size
             
-            # Step 1: Detect people
+            # Detect people
             detections = self._detector.predict(img)
             
             # Handle detectors that may return None when no objects are detected
@@ -1195,44 +1195,76 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
                     if d.label == "person" and d.confidence > self._detector_confidence_thresh
                 ]
             
-            if not person_detections:
-                # No people found
-                results.append(fol.Keypoints(keypoints=[], skeleton=self.COCO_SKELETON))
-                continue
-            
-            # Step 2: Estimate pose for each person
-            all_keypoints = []
-            
-            for detection in person_detections:
-                # Convert bbox to COCO format (absolute pixels)
+            detection_data.append({
+                'img': img,
+                'img_idx': img_idx,
+                'width': img_width,
+                'height': img_height,
+                'person_detections': person_detections
+            })
+        
+        # Phase 2: Collect all person crops for batch processing
+        batch_data = []
+        
+        for data in detection_data:
+            for detection in data['person_detections']:
                 x, y, w, h = detection.bounding_box
-                box_coco = [x * img_width, y * img_height, w * img_width, h * img_height]
+                box_coco = [x * data['width'], y * data['height'], 
+                           w * data['width'], h * data['height']]
                 
-                # Process with VitPose
-                inputs = self._transforms.processor(img, boxes=[[box_coco]], return_tensors="pt")
-                inputs = {k: v.to(self._device) for k, v in inputs.items()}
+                batch_data.append({
+                    'img': data['img'],
+                    'box': box_coco,
+                    'img_idx': data['img_idx'],
+                    'width': data['width'],
+                    'height': data['height']
+                })
+        
+        # Phase 3: Initialize results
+        results = [fol.Keypoints(keypoints=[], skeleton=self.COCO_SKELETON) for _ in imgs]
+        
+        # Phase 4: Batch process all people at once
+        if batch_data:
+            # Prepare batch inputs
+            batch_images = [item['img'] for item in batch_data]
+            batch_boxes = [[item['box']] for item in batch_data]
+            
+            # Process entire batch
+            inputs = self._transforms.processor(
+                batch_images, 
+                boxes=batch_boxes, 
+                return_tensors="pt"
+            )
+            inputs = {k: v.to(self._device) for k, v in inputs.items()}
+            
+            with torch.no_grad():
+                # Check if this is a mixture-of-experts model
+                if (hasattr(self._model.config, 'backbone_config') and 
+                    hasattr(self._model.config.backbone_config, 'num_experts') and 
+                    self._model.config.backbone_config.num_experts > 1):
+                    # Create batch of dataset indices for MoE models
+                    batch_size = inputs['pixel_values'].shape[0]
+                    outputs = self._model(
+                        pixel_values=inputs['pixel_values'],
+                        dataset_index=torch.zeros(batch_size, dtype=torch.long).to(self._device)  # 0 for COCO
+                    )
+                else:
+                    # Regular model call
+                    outputs = self._model(**inputs)
+            
+            # Post-process batch results
+            pose_results = self._transforms.processor.post_process_pose_estimation(
+                outputs, boxes=batch_boxes
+            )
+            
+            # Phase 5: Distribute results back to correct images
+            for batch_idx, (pose_result, data) in enumerate(zip(pose_results, batch_data)):
+                img_idx = data['img_idx']
+                img_width = data['width']
+                img_height = data['height']
                 
-                with torch.no_grad():
-                    # Check if this is a mixture-of-experts model
-                    if (hasattr(self._model.config, 'backbone_config') and 
-                        hasattr(self._model.config.backbone_config, 'num_experts') and 
-                        self._model.config.backbone_config.num_experts > 1):
-                        # Pass dataset_index for MoE models
-                        outputs = self._model(
-                            pixel_values=inputs['pixel_values'],
-                            dataset_index=torch.tensor([0]).to(self._device)  # 0 for COCO
-                        )
-                    else:
-                        # Regular model call
-                        outputs = self._model(**inputs)
-                
-                # Post-process
-                pose_results = self._transforms.processor.post_process_pose_estimation(
-                    outputs, boxes=[[box_coco]]
-                )
-                
-                if pose_results and pose_results[0]:
-                    for person_result in pose_results[0]:
+                if pose_result:
+                    for person_result in pose_result:
                         keypoints = person_result['keypoints']
                         scores = person_result['scores']
                         
@@ -1249,15 +1281,13 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
                             
                             confidence_value = float(score.item() if hasattr(score, 'item') else score)
                             
-                            all_keypoints.append(
+                            results[img_idx].keypoints.append(
                                 fol.Keypoint(
                                     label=self.COCO_KEYPOINT_NAMES[j],
                                     points=[(x_rel, y_rel)],
                                     confidence=[confidence_value]
                                 )
                             )
-            
-            results.append(fol.Keypoints(keypoints=all_keypoints, skeleton=self.COCO_SKELETON))
         
         return results
        
