@@ -19,6 +19,7 @@ operators:
   - delete_sample_field
   - delete_frame_field
   - create_index
+  - convert_index_to_unique
   - drop_index
   - create_summary_field
   - update_summary_field
