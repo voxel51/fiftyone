@@ -25,6 +25,7 @@ import fiftyone.utils.torch as fout
 fou.ensure_torch()
 import torch
 
+
 fou.ensure_package("transformers")
 import transformers
 
@@ -1097,320 +1098,152 @@ class FiftyOneTransformerForPoseEstimationConfig(FiftyOneTransformerConfig):
         super().__init__(d)
         
         # Add detector configuration
-        self.detector_name = self.parse_string(d, "detector_name", default=None)
+        self.detector_name = self.parse_string(d, "detector_name", default="faster-rcnn-resnet50-fpn-coco-torch")
         self.detector_confidence_thresh = self.parse_number(
-            d, "detector_confidence_thresh", default=0.5
+            d, "detector_confidence_thresh", default=0.8
         )
 
 
 class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
     """FiftyOne wrapper around a ``transformers`` model for pose estimation.
     
-    Supports providing detection boxes to focus keypoint detection on specific
-    regions of interest, such as bounding boxes from an object detector.
+    VitPose models require person detection as a first step, then estimate
+    keypoints within each detected person.
+    
     Args:
-        config: a `FiftyOneTransformerConfig`
+        config: a `FiftyOneTransformerForPoseEstimationConfig`
     """
+    
+    # COCO keypoint info
+    COCO_KEYPOINT_NAMES = [
+        "nose", "left_eye", "right_eye", "left_ear", "right_ear",
+        "left_shoulder", "right_shoulder", "left_elbow", "right_elbow", 
+        "left_wrist", "right_wrist", "left_hip", "right_hip",
+        "left_knee", "right_knee", "left_ankle", "right_ankle"
+    ]
+    
+    # COCO skeleton - using 1-indexed format that FiftyOne expects
+    COCO_SKELETON = [
+        [16, 14], [14, 12], [17, 15], [15, 13], [12, 13],
+        [6, 12], [7, 13], [6, 7], [6, 8], [7, 9],
+        [8, 10], [9, 11], [2, 3], [1, 2], [1, 3],
+        [2, 4], [3, 5], [4, 6], [5, 7]
+    ]
+    
     def __init__(self, config):
-        # override entry point
+        # Override entry point
         if config.entrypoint_fcn is None:
             config.entrypoint_fcn = (
                 "transformers.VitPoseForPoseEstimation.from_pretrained"
             )
-        # override output processor
-            config.output_processor_cls = None
-            config.output_processor_cls = None
+        
+        # IMPORTANT: Set these BEFORE calling super().__init__
+        config.output_processor_cls = None
+        config.output_processor = None
+        
         super().__init__(config)
-        self._output_processor.processor = self.transforms.processor
-        self.transforms.return_image_sizes = True
-        self._detection_boxes = None
         
-        # Initialize detector - always required for pose estimation
+        # Initialize person detector
         import fiftyone.zoo as foz
+        self._detector = foz.load_zoo_model(config.detector_name)
         self._detector_confidence_thresh = config.detector_confidence_thresh
-        
-        # Always use a detector - default to faster-rcnn if not specified
-        detector_name = config.detector_name if config.detector_name else "faster-rcnn-resnet50-fpn-coco-torch"
-        if detector_name == "default":
-            detector_name = "faster-rcnn-resnet50-fpn-coco-torch"
-        
-        self._detector = foz.load_zoo_model(detector_name)
-
+    
     def _build_transforms(self, config):
-        """Override to ensure boxes are always provided for VitPose models"""
-        transforms, ragged_batches = super()._build_transforms(config)
+        """Load the VitPose processor."""
+        if config.transforms_fcn is None:
+            config.transforms_fcn = "transformers.AutoProcessor.from_pretrained"
+        if config.transforms_args is None:
+            config.transforms_args = {}
+        config.transforms_args["pretrained_model_name_or_path"] = config.name_or_path
         
-        class TransformsWithBoxes:
-            def __init__(self, original):
-                self.original = original
-                self.processor = original.processor
-                self.kwargs = getattr(original, 'kwargs', {})
-                self.return_image_sizes = getattr(original, 'return_image_sizes', False)
-                
-            def __call__(self, images):
-                if isinstance(images, dict) and 'boxes' in images:
-                    return self.original(images)
-                
-                boxes = []
-                is_single = not isinstance(images, list)
-                
-                for img in (images if isinstance(images, list) else [images]):
-                    if hasattr(img, 'shape'):
-                        h, w = img.shape[:2]
-                    elif hasattr(img, 'size'):
-                        w, h = img.size
-                    else:
-                        w, h = 640, 480
-                    boxes.append([[0, 0, w, h]])
-                
-                if is_single:
-                    boxes = [boxes[0]]
-                    
-                return self.processor(images, boxes=boxes, **self.kwargs)
-            
-            def __getattr__(self, name):
-                return getattr(self.original, name)
-        
-        return TransformsWithBoxes(transforms), ragged_batches
-
-    def _run_detector_on_images(self, images_pil):
-        """Run detector on PIL images and return person boxes.
+        transforms = self._load_transforms(config)
+        return transforms, False  # ragged_batches = False
+    
+    def _predict_all(self, imgs):
+        """Perform pose estimation on images.
         
         Args:
-            images_pil: list of PIL Images
-            
-        Returns:
-            list of lists of boxes, one list per image
-        """
-        all_detection_boxes = []
-        
-        for img_pil in images_pil:
-            if self._detector is not None:
-                # Run detector
-                detections = self._detector.predict(img_pil)
-                
-                # Extract person boxes
-                person_boxes = []
-                for det in detections.detections:
-                    if det.label == 'person' and det.confidence >= self._detector_confidence_thresh:
-                        x, y, w, h = det.bounding_box
-                        img_w, img_h = img_pil.size
-                        box = [x*img_w, y*img_h, w*img_w, h*img_h]
-                        person_boxes.append(box)
-                
-                # Use full image if no people detected
-                if not person_boxes:
-                    person_boxes = []  # Return empty list, no pose estimation
-                    
-                all_detection_boxes.append(person_boxes)
-            else:
-                # No detector - use full image
-                img_w, img_h = img_pil.size
-                all_detection_boxes.append([[0, 0, img_w, img_h]])
-        
-        return all_detection_boxes
-
-    def predict(self, img):
-        """Predicts keypoints for the given image.
-        
-        Args:
-            img: an image as a numpy array, PIL Image, or filepath string
-            
-        Returns:
-            a :class:`fiftyone.core.labels.Keypoints` instance
-        """
-        if isinstance(img, str):
-            img = Image.open(img)
-        elif not isinstance(img, Image.Image):
-            img = Image.fromarray(img)
-        
-        # Run detector if configured
-        if self._detector is not None:
-            detection_boxes = self._run_detector_on_images([img])
-            self._detection_boxes = detection_boxes
-        
-        return super().predict(img)
-
-    def _predict_all(self, images):
-        """Perform pose estimation on images with person detection.
-        
-        Args:
-            images: List of images, single image, or dict from DataLoader
+            imgs: a list of images
         
         Returns:
-            List[Detections] for batch input, Detections for single image.
-            Each contains Detection objects with embedded keypoints per person.
+            a list of :class:`fiftyone.core.labels.Keypoints`
         """
-        # Track whether input is a batch to ensure correct output format
-        is_batch = isinstance(images, list)
+        if self.preprocess and self._transforms is not None:
+            # Apply any preprocessing transforms
+            imgs = [self._transforms(img) for img in imgs]
         
-        # Extract images from DataLoader dict format
-        if isinstance(images, dict):
-            images = images.get('pixel_values', images.get('images', images))
-            is_batch = True  # DataLoader always provides batches
+        results = []
         
-        # Run person detection if needed
-        if self._detector is not None and self._detection_boxes is None:
-            # Convert all images to PIL format for the detector
-            pil_images = []
-            imgs_to_process = images if isinstance(images, list) else [images]
+        for img in imgs:
+            # Ensure PIL Image
+            if torch.is_tensor(img):
+                img = F.to_pil_image(img)
+            elif isinstance(img, np.ndarray):
+                img = Image.fromarray(img)
             
-            for img in imgs_to_process:
-                if isinstance(img, Image.Image):
-                    pil_images.append(img)
-                elif torch.is_tensor(img):
-                    # Handle tensor inputs by converting to PIL
-                    while len(img.shape) > 3:
-                        img = img[0]  # Remove batch dimensions
-                    
-                    # Convert from CHW to HWC format
-                    img_np = img.cpu().numpy().transpose(1, 2, 0)
-                    
-                    # Denormalize using the processor's normalization parameters
-                    if hasattr(self.transforms, 'processor'):
-                        processor = self.transforms.processor
-                        if hasattr(processor, 'image_mean') and hasattr(processor, 'image_std'):
-                            mean = np.array(processor.image_mean)
-                            std = np.array(processor.image_std)
-                            img_np = img_np * std + mean
-                    
-                    # Convert to uint8 for PIL
-                    img_np = np.clip(img_np * 255, 0, 255).astype('uint8')
-                    pil_images.append(Image.fromarray(img_np))
-                else:
-                    # Assume numpy array
-                    pil_images.append(Image.fromarray(img))
+            img_width, img_height = img.size
             
-            # Detect people in all images
-            self._detection_boxes = self._run_detector_on_images(pil_images)
-        
-        # Retrieve detection boxes (if available)
-        detection_boxes = getattr(self, '_detection_boxes', None)
-        
-        # Handle images with no detected people
-        if detection_boxes is not None:
-            empty_indices = [i for i, boxes in enumerate(detection_boxes) if not boxes]
+            # Step 1: Detect people
+            detections = self._detector.predict(img)
+            person_detections = [
+                d for d in detections.detections 
+                if d.label == "person" and d.confidence > self._detector_confidence_thresh
+            ]
             
-            if empty_indices:
-                # Process images with and without people separately
-                results = []
-                imgs_list = images if isinstance(images, list) else [images]
+            if not person_detections:
+                # No people found
+                results.append(fol.Keypoints(keypoints=[], skeleton=self.COCO_SKELETON))
+                continue
+            
+            # Step 2: Estimate pose for each person
+            all_keypoints = []
+            
+            for detection in person_detections:
+                # Convert bbox to COCO format (absolute pixels)
+                x, y, w, h = detection.bounding_box
+                box_coco = [x * img_width, y * img_height, w * img_width, h * img_height]
                 
-                for i, img in enumerate(imgs_list):
-                    if i in empty_indices:
-                        # No people detected - return empty Detections
-                        results.append(fol.Detections(detections=[]))
-                    else:
-                        # Process image with detected people
-                        self._detection_boxes = [detection_boxes[i]]
-                        single_result = self._predict_all([img] if isinstance(images, list) else img)
-                        results.append(single_result[0] if isinstance(single_result, list) else single_result)
-                
-                # Clean up and return with correct format
-                self._detection_boxes = None
-                return results if is_batch else results[0]
-        
-        # Extract image dimensions for processing
-        image_sizes = []
-        imgs_to_size = images if isinstance(images, list) else [images]
-        
-        for img in imgs_to_size:
-            if isinstance(img, Image.Image):
-                w, h = img.size
-            else:
-                # Handle tensor inputs
-                while len(img.shape) > 3:
-                    img = img[0]  # Remove batch dimensions
-                if len(img.shape) == 3:  # CHW format
-                    _, h, w = img.shape
-                else:  # HW format
-                    h, w = img.shape[:2]
-            image_sizes.append((h, w))
-        
-        # Prepare bounding boxes for VitPose preprocessing
-        if detection_boxes is not None:
-            boxes = detection_boxes
-        else:
-            # Use full image as bounding box when no detector is available
-            boxes = [[[0, 0, w, h]] for h, w in image_sizes]
-        
-        try:
-            # Preprocess images with bounding boxes
-            processed = self.transforms.processor(images, boxes=boxes, return_tensors="pt")
-            
-            # Move tensors to appropriate device
-            processed = {k: v.to(self.device) for k, v in processed.items()}
-            
-            # Run pose estimation model
-            with torch.no_grad():
-                # Check if model requires dataset_index parameter (VitPose+ models)
-                import inspect
-                sig = inspect.signature(self._model.forward)
-                if 'dataset_index' in sig.parameters:
-                    outputs = self._model(**processed, dataset_index=torch.tensor(0).to(self.device))
-                else:
-                    outputs = self._model(**processed)
-            
-            # Convert model outputs to FiftyOne format
-            self._output_processor._boxes = boxes
-            result = self._output_processor(outputs, image_sizes, self.config.confidence_thresh)
-            
-        except (RuntimeError, ValueError):
-            # Fallback to individual processing when batch processing fails
-            results = []
-            imgs_list = images if isinstance(images, list) else [images]
-            
-            for i, img in enumerate(imgs_list):
-                # Ensure we have a box for this image
-                if detection_boxes and i < len(detection_boxes):
-                    img_boxes = [detection_boxes[i]]
-                else:
-                    img_boxes = [[[0, 0, image_sizes[i][1], image_sizes[i][0]]]]
-                
-                # Process single image
-                processed = self.transforms.processor([img], boxes=img_boxes, return_tensors="pt")
-                processed = {k: v.to(self.device) for k, v in processed.items()}
+                # Process with VitPose
+                inputs = self._transforms(img, boxes=[[box_coco]], return_tensors="pt")
+                inputs = {k: v.to(self._device) for k, v in inputs.items()}
                 
                 with torch.no_grad():
-                    import inspect
-                    sig = inspect.signature(self._model.forward)
-                    if 'dataset_index' in sig.parameters:
-                        outputs = self._model(**processed, dataset_index=torch.tensor(0).to(self.device))
-                    else:
-                        outputs = self._model(**processed)
+                    outputs = self._model(**inputs)
                 
-                self._output_processor._boxes = img_boxes
-                single_result = self._output_processor(outputs, [image_sizes[i]], self.config.confidence_thresh)
-                results.extend(single_result)
+                # Post-process
+                pose_results = self._transforms.post_process_pose_estimation(
+                    outputs, boxes=[[box_coco]]
+                )
+                
+                if pose_results and pose_results[0]:
+                    for person_result in pose_results[0]:
+                        keypoints = person_result['keypoints']
+                        scores = person_result['scores']
+                        
+                        # Convert to numpy if needed
+                        if isinstance(keypoints, torch.Tensor):
+                            keypoints = keypoints.cpu().numpy()
+                        if isinstance(scores, torch.Tensor):
+                            scores = scores.cpu().numpy()
+                        
+                        # Convert to FiftyOne format with relative coordinates
+                        for j, (kp, score) in enumerate(zip(keypoints, scores)):
+                            x_rel = float(kp[0]) / img_width
+                            y_rel = float(kp[1]) / img_height
+                            
+                            confidence_value = float(score.item() if hasattr(score, 'item') else score)
+                            
+                            all_keypoints.append(
+                                fol.Keypoint(
+                                    label=self.COCO_KEYPOINT_NAMES[j],
+                                    points=[(x_rel, y_rel)],
+                                    confidence=[confidence_value]
+                                )
+                            )
             
-            result = results
+            results.append(fol.Keypoints(keypoints=all_keypoints, skeleton=self.COCO_SKELETON))
         
-        # Clean up temporary detection boxes
-        self._detection_boxes = None
-        
-        # Ensure correct output type when flatten_keypoints=True
-        if (hasattr(self._output_processor, 'flatten_keypoints') and 
-            self._output_processor.flatten_keypoints and
-            hasattr(self._output_processor, 'COCO_SKELETON')):
-            
-            # Check if we got Detections that should be Keypoints
-            results_to_check = result if isinstance(result, list) else [result]
-            if all(isinstance(r, fol.Detections) for r in results_to_check):
-                # Convert Detections to Keypoints
-                converted = []
-                for detections in results_to_check:
-                    keypoints = []
-                    for det in detections.detections:
-                        if hasattr(det, 'keypoints') and det.keypoints:
-                            keypoints.extend(det.keypoints.keypoints)
-                    converted.append(fol.Keypoints(
-                        keypoints=keypoints,
-                        skeleton=self._output_processor.COCO_SKELETON
-                    ))
-                result = converted if isinstance(result, list) else converted[0]
-        
-        # Return with correct format (list for batches, single item otherwise)
-        return result if is_batch else result[0]
+        return results
        
 class FiftyOneTransformerForDepthEstimationConfig(FiftyOneTransformerConfig):
     """Configuration for a :class:`FiftyOneTransformerForDepthEstimation`.
