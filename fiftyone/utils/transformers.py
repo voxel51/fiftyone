@@ -25,9 +25,11 @@ import fiftyone.utils.torch as fout
 fou.ensure_torch()
 import torch
 
+from torchvision.transforms import functional as F
 
 fou.ensure_package("transformers")
 import transformers
+
 
 
 logger = logging.getLogger(__name__)
@@ -1168,9 +1170,6 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
         Returns:
             a list of :class:`fiftyone.core.labels.Keypoints`
         """
-        if self.preprocess and self._transforms is not None:
-            # Apply any preprocessing transforms
-            imgs = [self._transforms(img) for img in imgs]
         
         results = []
         
