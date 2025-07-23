@@ -1185,10 +1185,15 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
             
             # Step 1: Detect people
             detections = self._detector.predict(img)
-            person_detections = [
-                d for d in detections.detections 
-                if  d.label == "person" and d.confidence > self._detector_confidence_thresh
-            ]
+            
+            # Handle detectors that may return None when no objects are detected
+            if detections is None or not hasattr(detections, 'detections'):
+                person_detections = []
+            else:
+                person_detections = [
+                    d for d in detections.detections 
+                    if d.label == "person" and d.confidence > self._detector_confidence_thresh
+                ]
             
             if not person_detections:
                 # No people found
