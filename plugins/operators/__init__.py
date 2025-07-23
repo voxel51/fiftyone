@@ -1500,10 +1500,7 @@ class ConvertIndexToUnique(foo.Operator):
             collection_name = ctx.dataset._sample_collection_name
 
         index_info = ctx.dataset.get_index_information()[field]
-        key_pattern = {
-            field_name: direction
-            for field_name, direction in index_info["key"]
-        }
+        key_pattern = dict(index_info["key"])
 
         # Special sequence for converting to unique index
         # https://www.mongodb.com/docs/manual/core/index-unique/convert-to-unique/
