@@ -1175,7 +1175,9 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
         
         for img in imgs:
             # Ensure PIL Image
-            if torch.is_tensor(img):
+            if isinstance(img, str):
+                img = Image.open(img)
+            elif torch.is_tensor(img):
                 img = F.to_pil_image(img)
             elif isinstance(img, np.ndarray):
                 img = Image.fromarray(img)
