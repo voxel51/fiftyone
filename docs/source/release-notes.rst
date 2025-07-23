@@ -4276,8 +4276,7 @@ User roles
   `Collaborator <https://docs.voxel51.com/enterprise/roles_and_permissions.html#collaborator>`_
 - Added a new
   `Guest <https://docs.voxel51.com/enterprise/roles_and_permissions.html#guest>`_
-  role. Note that Guest is a view-only role and does not contribute to your
-  license count. You can add unlimited Guest users to your deployment!
+  role
 
 Homepage
 
