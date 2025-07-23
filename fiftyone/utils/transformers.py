@@ -1187,7 +1187,7 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
             detections = self._detector.predict(img)
             person_detections = [
                 d for d in detections.detections 
-                if d.label == "person" and d.confidence > self._detector_confidence_thresh
+                if  d.label == "person" and d.confidence > self._detector_confidence_thresh
             ]
             
             if not person_detections:
