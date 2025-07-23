@@ -1205,14 +1205,14 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
                 box_coco = [x * img_width, y * img_height, w * img_width, h * img_height]
                 
                 # Process with VitPose
-                inputs = self._transforms(img, boxes=[[box_coco]], return_tensors="pt")
+                inputs = self._transforms.processor(img, boxes=[[box_coco]], return_tensors="pt")
                 inputs = {k: v.to(self._device) for k, v in inputs.items()}
                 
                 with torch.no_grad():
                     outputs = self._model(**inputs)
                 
                 # Post-process
-                pose_results = self._transforms.post_process_pose_estimation(
+                pose_results = self._transforms.processor.post_process_pose_estimation(
                     outputs, boxes=[[box_coco]]
                 )
                 
