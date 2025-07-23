@@ -1170,7 +1170,6 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
         Returns:
             a list of :class:`fiftyone.core.labels.Keypoints`
         """
-        
         results = []
         
         for img in imgs:
@@ -1209,7 +1208,18 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
                 inputs = {k: v.to(self._device) for k, v in inputs.items()}
                 
                 with torch.no_grad():
-                    outputs = self._model(**inputs)
+                    # Check if this is a mixture-of-experts model
+                    if (hasattr(self._model.config, 'backbone_config') and 
+                        hasattr(self._model.config.backbone_config, 'num_experts') and 
+                        self._model.config.backbone_config.num_experts > 1):
+                        # Pass dataset_index for MoE models
+                        outputs = self._model(
+                            pixel_values=inputs['pixel_values'],
+                            dataset_index=torch.tensor([0]).to(self._device)  # 0 for COCO
+                        )
+                    else:
+                        # Regular model call
+                        outputs = self._model(**inputs)
                 
                 # Post-process
                 pose_results = self._transforms.processor.post_process_pose_estimation(
