@@ -1435,13 +1435,15 @@ class ConvertIndexToUnique(foo.Operator):
         indexes = ctx.dataset.get_index_information()
 
         if not indexes:
-            prop = inputs.str(
+            inputs.str(
                 "index_name",
                 label="This dataset has no non-unique indexes to update",
                 view=types.Warning(),
             )
-            prop.invalid = True
-            return
+            return types.Property(
+                inputs,
+                invalid=True,
+            )
 
         indexes = [
             i
