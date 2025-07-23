@@ -365,7 +365,7 @@ function initCodeHighlight() {
 
     if (linenos) {
       const isVisible = block.offsetWidth > 0 && block.offsetHeight > 0;
-      
+
       if (isVisible) {
         const allLineNos = block.querySelectorAll('.linenos');
         let maxWidth = 0;
@@ -397,7 +397,7 @@ function initCodeHighlight() {
 /* Tabs Sliding Indicator */
 function initTabsSlidingIndicator() {
   const tabLists = document.querySelectorAll('[role="tablist"]');
-  
+
   tabLists.forEach(tabList => {
     const tabs = tabList.querySelectorAll('.sphinx-tabs-tab');
     if (!tabs.length) return;
@@ -457,13 +457,57 @@ function initTabsSlidingIndicator() {
   });
 }
 
+/* Mobile Navigation Dropdown */
+function initMobileNavDropdown() {
+  const dropdownToggle = document.getElementById('mobile-nav-dropdown-toggle');
+  const dropdown = document.getElementById('mobile-nav-dropdown');
+
+  if (!dropdownToggle || !dropdown) {
+    return;
+  }
+
+  function openDropdown() {
+    dropdown.classList.add('open');
+    dropdownToggle.setAttribute('aria-expanded', 'true');
+    dropdown.setAttribute('aria-hidden', 'false');
+  }
+
+  function closeDropdown() {
+    dropdown.classList.remove('open');
+    dropdownToggle.setAttribute('aria-expanded', 'false');
+    dropdown.setAttribute('aria-hidden', 'true');
+  }
+
+  function toggleDropdown() {
+    const isOpen = dropdown.classList.contains('open');
+
+    if (isOpen) {
+      closeDropdown();
+    } else {
+      openDropdown();
+    }
+  }
+
+  dropdownToggle.addEventListener('click', function (e) {
+    e.preventDefault();
+    toggleDropdown();
+  });
+
+  document.addEventListener('click', function (e) {
+    if (!dropdownToggle.contains(e.target) && !dropdown.contains(e.target)) {
+      closeDropdown();
+    }
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   initSidebarToggle();
   initSlidingNavBar();
   initDropdownDelay();
   initCodeHighlight();
   initTabsSlidingIndicator();
-  
+  initMobileNavDropdown();
+
   window.addEventListener('resize', () => {
     setTimeout(initCodeHighlight, 100);
   });
