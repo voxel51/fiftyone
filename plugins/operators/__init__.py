@@ -1504,11 +1504,23 @@ class ConvertIndexToUnique(foo.Operator):
             field_name: direction
             for field_name, direction in index_info["key"]
         }
-        db.command(
-            "collMod",
-            collection_name,
-            index={"keyPattern": key_pattern, "prepareUnique": True},
-        )
+
+        # Special sequence for converting to unique index
+        # https://www.mongodb.com/docs/manual/core/index-unique/convert-to-unique/
+        try:
+            db.command(
+                "collMod",
+                collection_name,
+                index={"keyPattern": key_pattern, "prepareUnique": True},
+            )
+        except Exception as e:
+            result["status"] = "error"
+            result[
+                "message"
+            ] = "Unable to prepare collection for unique index conversion."
+            result["error"] = str(e)
+            return result
+
         try:
             db.command(
                 "collMod",
