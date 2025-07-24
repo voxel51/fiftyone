@@ -2445,7 +2445,7 @@ class SampleCollection(object):
                 frame.embedded.field.name = value
                 frame.save()
 
-        When setting `frame fields using the dict ``values`` syntax with a
+        When setting frame fields using the dict ``values`` syntax with a
         sample-level ``key_field``, each value in ``values`` may either be a
         list corresponding to the frames of the sample matching the given key,
         or each value may itself be a dict mapping frame numbers to values. In
