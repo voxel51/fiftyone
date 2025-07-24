@@ -1479,7 +1479,7 @@ class ConvertIndexToUnique(foo.Operator):
         dry_run_only = ctx.params.get("dry_run")
         result = {
             "field": field,
-            "dry_run": "True" if dry_run_only else "False",
+            "dry_run": str(bool(dry_run_only)),
             "status": None,
             "error": None,
         }
@@ -1488,85 +1488,102 @@ class ConvertIndexToUnique(foo.Operator):
             result["error"] = "No index name provided."
             return result
 
-        if field not in ctx.dataset.get_index_information():
+        if field not in (
+            all_index_info := ctx.dataset.get_index_information()
+        ):
             result["status"] = "error"
             result["error"] = f"Index '{field}' does not exist in the dataset."
             return result
 
-        db = ctx.dataset._sample_collection.database
-        if field.startswith(ctx.dataset._FRAMES_PREFIX):
-            collection_name = ctx.dataset._frames_collection_name
-        else:
-            collection_name = ctx.dataset._sample_collection_name
+        index_info = all_index_info[field]
 
-        index_info = ctx.dataset.get_index_information()[field]
+        db = ctx.dataset._sample_collection.database
+        collection_name = (
+            ctx.dataset._frames_collection_name
+            if field.startswith(ctx.dataset._FRAMES_PREFIX)
+            else ctx.dataset._sample_collection_name
+        )
+
         key_pattern = dict(index_info["key"])
 
         # Special sequence for converting to unique index
         # https://www.mongodb.com/docs/manual/core/index-unique/convert-to-unique/
-        try:
-            db.command(
-                "collMod",
-                collection_name,
-                index={"keyPattern": key_pattern, "prepareUnique": True},
-            )
-        except Exception as e:
-            result["status"] = "error"
-            result[
-                "message"
-            ] = "Unable to prepare collection for unique index conversion."
-            result["error"] = str(e)
+
+        # 1. Prepare the collection for unique index conversion
+        result = self._safe_collmod(
+            db,
+            collection_name,
+            dry_run=dry_run_only,
+            index_spec={"keyPattern": key_pattern, "prepareUnique": True},
+            error_result={
+                **result,
+                "message": "Unable to prepare collection for unique index conversion.",
+            },
+        )
+        if result.get("status") == "error":
             return result
 
-        try:
-            db.command(
-                "collMod",
-                collection_name,
-                index={
-                    "keyPattern": key_pattern,
-                    "unique": True,
-                },
-                dryRun=True,
-            )
-        except Exception as e:
-            result["status"] = "error"
-            result[
-                "message"
-            ] = "Error while checking for unique key violations."
-            result["error"] = str(e)
+        # 2. Check for unique key violations
+        result = self._safe_collmod(
+            db,
+            collection_name,
+            dry_run=dry_run_only,
+            index_spec={"keyPattern": key_pattern, "unique": True},
+            error_result={
+                **result,
+                "message": "Error while checking for unique key violations.",
+            },
+        )
 
         if dry_run_only or result["status"] == "error":
-            db.command(
-                "collMod",
+            # If dry run or error, restore the collection to its original state and return
+            return self._safe_collmod(
+                db,
                 collection_name,
-                index={"keyPattern": key_pattern, "prepareUnique": False},
-            )
-            if dry_run_only and result["status"] != "error":
-                result["status"] = "success"
-                result[
-                    "message"
-                ] = "Dry run completed successfully. No unique key violations exist currently."
-            return result
-
-        try:
-            db.command(
-                "collMod",
-                collection_name,
-                index={
-                    "keyPattern": key_pattern,
-                    "unique": True,
+                dry_run=dry_run_only,
+                index_spec={"keyPattern": key_pattern, "prepareUnique": False},
+                success_result={
+                    **result,
+                    "message": "Dry run completed successfully. No unique key violations exist currently.",
                 },
             )
-            result["status"] = "success"
-            result[
-                "message"
-            ] = f"Index '{field}' has been successfully made unique."
-        except Exception as e:
-            result["status"] = "error"
-            result["message"] = f"Error while making index '{field}' unique."
-            result["error"] = str(e)
 
-        return result
+        # 3. If no unique key violations, proceed to make the index unique
+        return self._safe_collmod(
+            db,
+            collection_name,
+            dry_run=False,
+            index_spec={"keyPattern": key_pattern, "unique": True},
+            success_result={
+                **result,
+                "message": f"Unique index conversion completed successfully for {field=}.",
+            },
+            error_result={
+                **result,
+                "message": f"Error while making index '{field}' unique.",
+            },
+        )
+
+    def _safe_collmod(
+        self,
+        db,
+        collection_name,
+        dry_run=False,
+        index_spec=None,
+        success_result=None,
+        error_result=None,
+    ):
+        try:
+            db.command(
+                "collMod", collection_name, index=index_spec, dryRun=dry_run
+            )
+            if success_result:
+                return {**success_result, "status": "success"}
+        except Exception as e:
+            # Raise exception for unexpected errors
+            if not error_result:
+                raise e
+            return {**error_result, "status": "error", "error": str(e)}
 
     def resolve_output(self, ctx):
         outputs = types.Object()
