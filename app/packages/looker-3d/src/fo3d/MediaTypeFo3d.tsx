@@ -85,6 +85,18 @@ const calculateCameraPositionForUpVector = (
   if (Math.abs(upDir.dot(worldForward)) > 0.999) {
     worldForward.set(1, 0, 0);
   }
+  // If Z is up, use -Y as world forward to ensure +X is on the right
+  if (upDir.equals(new Vector3(0, 0, 1))) {
+    worldForward.set(0, -1, 0);
+  }
+  // If Y is up, use Z as world forward to ensure +X is on the right
+  else if (upDir.equals(new Vector3(0, 1, 0))) {
+    worldForward.set(0, 0, 1);
+  }
+  // If X is up, use Y as world forward to ensure +Z is on the right (this is arbitrary)
+  else if (upDir.equals(new Vector3(1, 0, 0))) {
+    worldForward.set(0, 1, 0);
+  }
 
   // 2. project that forward into the horizontal plane (perp. to upDir)
   const proj = worldForward
