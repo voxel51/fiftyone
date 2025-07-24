@@ -13,7 +13,6 @@ from dacite import Config, from_dict as _from_dict
 from dacite.core import T
 from dacite.data import Data
 
-import fiftyone as fo
 import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 
