@@ -2673,7 +2673,7 @@
             "source": "https://huggingface.co/docs/transformers/tasks/image_classification",
             "author": "Thomas Wolf, et al.",
             "license": "Apache 2.0",
-            "size_bytes": null,
+            "size_bytes": 346351599,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
                 "config": {}
@@ -2822,7 +2822,7 @@
             "source": "https://huggingface.co/docs/transformers/tasks/zero_shot_image_classification",
             "author": "Thomas Wolf, et al.",
             "license": "Apache 2.0",
-            "size_bytes": null,
+            "size_bytes": 812762989,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForImageClassification",
                 "config": {
@@ -2892,7 +2892,7 @@
             "source": "https://huggingface.co/docs/transformers/en/tasks/mask_generation",
             "author": "Thomas Wolf, et al.",
             "license": "Apache 2.0",
-            "size_bytes": null,
+            "size_bytes": 223137427,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForSemanticSegmentation",
                 "config": {
