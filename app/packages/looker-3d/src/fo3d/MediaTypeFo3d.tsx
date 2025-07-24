@@ -75,10 +75,16 @@ const calculateCameraPositionForUpVector = (
     return center.clone().add(upDir.multiplyScalar(distance));
   }
 
-  // pov view - camera positioned at a 45-degree angle for more natural perspective
-  const angle = Math.PI / 4;
-  const verticalDist = Math.sin(angle) * distance;
-  const horizontalDist = Math.cos(angle) * distance;
+  // pov view - camera positioned at a ~5-degree angle for more natural perspective
+  const angle = Math.PI / 32;
+
+  // division by arbitrary numbers to make the camera position more natural for "automotive-centered" ego view
+  // note: this is not a perfect solution as it doesn't account for non-automotive scenes
+  // but "ego" view is a special case more natural to automotive scenes
+  // ideally we want three views, ego, top, and pov...
+  // for now we have only ego/pov + top
+  const verticalDist = Math.abs(Math.sin(angle) * distance) / 6;
+  const horizontalDist = Math.abs(Math.cos(angle) * distance) / 15;
 
   // 1. choose a world-forward direction (Y up ideally, else X)
   let worldForward = new Vector3(0, 1, 0);
@@ -105,8 +111,7 @@ const calculateCameraPositionForUpVector = (
     .normalize();
 
   // 3. build camera position: center + up‐offset + horizontal‐offset
-  return center
-    .clone()
+  return new Vector3(0, 0, 0)
     .add(upDir.multiplyScalar(verticalDist))
     .add(proj.multiplyScalar(horizontalDist));
 };
@@ -341,11 +346,10 @@ export const MediaTypeFo3dComponent = () => {
         sceneBoundingBox &&
         Math.abs(sceneBoundingBox.max.x) !== Number.POSITIVE_INFINITY
       ) {
-        const center = sceneBoundingBox.getCenter(new Vector3());
         const size = sceneBoundingBox.getSize(new Vector3());
 
         return calculateCameraPositionForUpVector(
-          center,
+          new Vector3(0, 0, 0),
           size,
           upVector,
           1.5,
@@ -424,20 +428,23 @@ export const MediaTypeFo3dComponent = () => {
         defaultCameraPosition.z,
       ] as const;
 
+      // note: for ego, we don't have look at at center of bounding box
+      // this is for the "automotive-centered" ego view
+      // and doesn't make too much sense for "ego view" of other scenes
+      let newLookAt: [number, number, number] = [0, 0, 0];
+
       if (view === "top") {
         newCameraPosition = [
           topCameraPosition.x,
           topCameraPosition.y,
           topCameraPosition.z,
         ];
-      }
 
-      const boundingBoxCenter = sceneBoundingBox.getCenter(new Vector3());
-      const newLookAt = [
-        boundingBoxCenter.x,
-        boundingBoxCenter.y,
-        boundingBoxCenter.z,
-      ] as const;
+        // for top view, we have look at at center of bounding box
+        const center = sceneBoundingBox.getCenter(new Vector3());
+
+        newLookAt = [center.x, center.y, center.z] as const;
+      }
 
       cameraControlsRef.current.setLookAt(
         ...newCameraPosition,
