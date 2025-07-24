@@ -1,9 +1,9 @@
 # fiftyone requirements
 -r common.txt
-pycocotools==2.0.10
-tensorflow==2.19.0
-torch==2.7.1
-torchvision==0.22.1
+pycocotools
+tensorflow
+torch
+torchvision
 typing_extensions==4.14.0
 
 # precommit requirements

@@ -27,27 +27,23 @@ Before building the docs locally, ensure you have:
 
 To build the documentation locally, follow these steps:
 
-1.  Perform a documentation-specific install of `fiftyone` from the root
-    directory using the `-o` (docs) flag:
+1.  Ensure documentation-specific requirements are installed:
 
-        ```shell
-        cd ..
-        bash install.bash -o
-        ```
+```shell
+cd ..
+pip install -r requirements/docs.txt
+```
 
 2.  To use the `fiftyone` repository to autogenerate docs, you need to add it
     to your `PYTHONPATH`:
 
-        ```shell
-        export PYTHONPATH=$PYTHONPATH:/path/to/fiftyone
-        ```
+```shell
+export PYTHONPATH=$PYTHONPATH:/path/to/fiftyone
+```
 
-        Replace `/path/to/fiftyone` with the absolute path to the root of the
-        fiftyone repo.
-
-        > **TIP:** To avoid running this every time you build the docs, add the
-        > previous line to your `~/.bashrc`, `~/.zshrc`, system path or the
-        > appropriate file for your shell.
+**Tip:** to avoid running this every time you build the docs, add the previous
+line to your `~/.bashrc`, `~/.zshrc`, system path or the appropriate file for
+your shell.
 
 ## Building
 
