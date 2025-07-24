@@ -596,23 +596,52 @@ export const MediaTypeFo3dComponent = () => {
       return;
     }
 
-    if (foScene?.cameraProps.lookAt?.length === 3) {
-      cameraControlsRef.current.setTarget(
-        foScene.cameraProps.lookAt[0],
-        foScene.cameraProps.lookAt[1],
-        foScene.cameraProps.lookAt[2],
-        false
-      );
+    // restore camera position and target from localStorage if it exists
+    const lastSavedCameraState =
+      window?.localStorage.getItem(CAMERA_POSITION_KEY);
+    let restored = false;
+    if (lastSavedCameraState) {
+      try {
+        const parsed = JSON.parse(lastSavedCameraState);
+        if (
+          parsed &&
+          Array.isArray(parsed.position) &&
+          parsed.position.length === 3 &&
+          Array.isArray(parsed.target) &&
+          parsed.target.length === 3
+        ) {
+          cameraControlsRef.current.setLookAt(
+            parsed.position[0],
+            parsed.position[1],
+            parsed.position[2],
+            parsed.target[0],
+            parsed.target[1],
+            parsed.target[2],
+            false
+          );
+          setSceneInitialized(true);
+          restored = true;
+        }
+      } catch {}
+    }
 
-      setSceneInitialized(true);
-
-      return;
-    } else {
-      onChangeView("pov", {
-        useAnimation: false,
-        ignoreLastSavedCameraPosition: false,
-        isFirstTime: true,
-      });
+    if (!restored) {
+      if (foScene?.cameraProps.lookAt?.length === 3) {
+        cameraControlsRef.current.setTarget(
+          foScene.cameraProps.lookAt[0],
+          foScene.cameraProps.lookAt[1],
+          foScene.cameraProps.lookAt[2],
+          false
+        );
+        setSceneInitialized(true);
+        return;
+      } else {
+        onChangeView("pov", {
+          useAnimation: false,
+          ignoreLastSavedCameraPosition: false,
+          isFirstTime: true,
+        });
+      }
     }
   }, [foScene, onChangeView, cameraControlsRef, cameraRef]);
 
@@ -694,7 +723,7 @@ export const MediaTypeFo3dComponent = () => {
         <AdaptiveEvents />
         {!autoRotate && <CameraControls ref={cameraControlsRef} />}
         {autoRotate && <OrbitControls autoRotate={autoRotate} makeDefault />}
-        <SceneControls scene={foScene} />
+        <SceneControls scene={foScene} cameraControlsRef={cameraControlsRef} />
         <Gizmos />
 
         {!isSceneInitialized && <SpinningCube />}
