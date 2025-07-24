@@ -13,6 +13,8 @@ $text-base: #181a1b;
 $text-secondary: #5d5e5f;
 $surface-background: #17191A;
 $linenos-background: #FFFFFF1A;
+$table-border: #E0DBD9;
+$table-border-internal: #E8E3E1;
 
 // Spacing
 $navbar-spacing: 0.5rem;
@@ -82,6 +84,12 @@ html[data-theme="light"] {
   --pst-color-linenos-background: #{$linenos-background};
 
   --pst-color-info-bg: #EEF6EF;	
+
+  --pst-color-table-heading-bg: transparent;
+  --pst-color-table-row-zebra-low-bg: transparent;
+  --pst-color-table-outer-border: #{$table-border};
+  --pst-color-table-inner-border: #{$table-border-internal};
+  --bs-table-color: #181a1b99;
 }
 
 /* Dark theme variables */
