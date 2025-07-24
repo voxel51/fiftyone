@@ -42,10 +42,10 @@ def load_and_cache_dataset(name):
     """
     if not fo.config.singleton_cache:
         # If singleton cache is disabled, return the cached dataset if it exists
-        if name in _cache:
-            dataset = _cache[name]
+        dataset = _cache.get(name)
+        if dataset:
             dataset.reload()
-            return _cache[name]
+            return dataset
 
     dataset = fod.load_dataset(name, reload=True)
 
