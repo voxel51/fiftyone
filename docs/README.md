@@ -19,6 +19,13 @@ Before building the docs locally, ensure you have:
     with the `-d` (dev mode) flag, as docs dependencies conflict with test
     dependencies.
 
+-   After activating your virtual environment, upgrade pip, setuptools, and
+    wheel to the latest versions to avoid build issues:
+
+    ```shell
+    python -m pip install --upgrade pip setuptools wheel
+    ```
+
 -   [pandoc](https://pandoc.org/installing.html) installed.
 
 -   A Unix-like shell environment to execute bash commands.
