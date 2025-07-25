@@ -1,0 +1,48 @@
+details.sd-dropdown.sd-card
+  box-shadow: none !important
+  border-bottom: 1px solid #00000010 !important
+  margin-bottom: 0 !important
+
+  summary.sd-summary-title.sd-card-header
+    background-color: #fff !important
+    border-left: 0 !important
+    font-weight: 600
+    padding: 16px 0px
+
+    &:hover
+      filter: brightness(1)
+
+      .sd-summary-state-marker.sd-summary-chevron-right
+        background-color: #00000020
+
+    .sd-summary-state-marker.sd-summary-chevron-right
+      background-color: #00000010
+      padding: 10px 12px
+      border-radius: 40px
+      height: 24px
+      width: 40px
+
+      svg
+        transform: rotate(90deg)
+        transition: 0.25s
+
+  div.sd-summary-content.sd-card-body
+    border: 0 !important
+    padding: 0
+    padding-bottom: 1rem
+
+  &:not(:has(+ details.sd-dropdown))
+    border-bottom: 0 !important
+    margin-bottom: 1rem !important
+
+  &:not(:has(+ details.sd-dropdown)):not(:first-of-type)
+    border-bottom: 0 !important
+    margin-bottom: 1rem !important
+
+  &[open]
+    summary.sd-summary-title.sd-card-header
+      .sd-summary-state-marker.sd-summary-chevron-right
+        transform: rotate(0deg)
+
+        svg
+          transform: rotate(270deg)

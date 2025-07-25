@@ -68,6 +68,7 @@ extensions = [
     "sphinx_copybutton",
     "sphinx_pushfeedback",
     "sphinx_docsearch",
+    "sphinx_design",
     "autodocsumm",
     "myst_parser",
 ]
