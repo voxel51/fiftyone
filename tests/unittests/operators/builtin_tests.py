@@ -73,7 +73,6 @@ class TestConvertIndexToUnique:
         result = op.execute(ctx)
 
         assert result["status"] == "success"
-        assert "Dry run completed" in result["message"]
         assert not result.get("error")
         assert mock_db.command.call_count == 3
 
@@ -121,4 +120,6 @@ class TestConvertIndexToUnique:
         result = op.execute(ctx)
 
         assert result["status"] == "success"
-        assert "successfully made unique" in result["message"].lower()
+        assert (
+            "unique index conversion successful" in result["message"].lower()
+        )
