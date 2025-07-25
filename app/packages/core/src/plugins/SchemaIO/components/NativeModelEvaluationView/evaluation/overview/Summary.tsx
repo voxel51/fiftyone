@@ -232,6 +232,8 @@ export default function Summary(props) {
               : "#FF6464"
             : theme.palette.text.tertiary;
           const showTrophy = lesserIsBetter ? difference < 0 : difference > 0;
+          const showCompareTrophy =
+            typeof difference === "number" && difference !== 0 && !showTrophy;
           const activeStyle: SxProps = {
             backgroundColor: theme.palette.voxel["500"],
             color: "#FFFFFF",
@@ -292,25 +294,29 @@ export default function Summary(props) {
                           <Typography color="text.tertiary">—</Typography>
                         )}
                       </Typography>
-
-                      {filterable && (
-                        <IconButton
-                          sx={{
-                            p: 0.25,
-                            borderRadius: 0.5,
-                            ...(active === "compare" ? activeStyle : {}),
-                          }}
-                          onClick={() => {
-                            loadView("field", {
-                              field: rowId,
-                              key: compareKey,
-                            });
-                          }}
-                          title="Load view"
-                        >
-                          <GridView sx={{ fontSize: 16 }} />
-                        </IconButton>
-                      )}
+                      <Stack direction="row" spacing={1}>
+                        {showCompareTrophy && (
+                          <Typography sx={{ fontSize: 12 }}>🏆</Typography>
+                        )}
+                        {filterable && (
+                          <IconButton
+                            sx={{
+                              p: 0.25,
+                              borderRadius: 0.5,
+                              ...(active === "compare" ? activeStyle : {}),
+                            }}
+                            onClick={() => {
+                              loadView("field", {
+                                field: rowId,
+                                key: compareKey,
+                              });
+                            }}
+                            title="Load view"
+                          >
+                            <GridView sx={{ fontSize: 16 }} />
+                          </IconButton>
+                        )}
+                      </Stack>
                     </Stack>
                   </TableCell>
                   <TableCell>
