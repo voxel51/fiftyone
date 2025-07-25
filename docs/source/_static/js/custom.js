@@ -470,12 +470,14 @@ function initMobileNavDropdown() {
     dropdown.classList.add('open');
     dropdownToggle.setAttribute('aria-expanded', 'true');
     dropdown.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = "hidden";
   }
 
   function closeDropdown() {
     dropdown.classList.remove('open');
     dropdownToggle.setAttribute('aria-expanded', 'false');
     dropdown.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = "";
   }
 
   function toggleDropdown() {

@@ -11,6 +11,30 @@ main
   h4
     font-weight: 600
 
+  div.tutorials-callout-container
+    .row
+      display: flex
+      flex-wrap: wrap
+      margin: 0
+
+      p:empty
+        display: none
+
+      .col-md-6
+        padding: 0px 15px
+
+        .text-container
+          display: flex
+          flex-direction: column
+          height: 100%
+
+          .body-paragraph
+            color: var(--pst-color-link-hover)
+
+  section
+    &>img, &>a>img
+      margin-bottom: 24px
+
 *:focus-visible
   box-shadow: none !important
   outline: none !important

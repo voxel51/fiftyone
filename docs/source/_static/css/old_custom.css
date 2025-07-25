@@ -1,8 +1,3 @@
-a.reference.external:after {
-  font: var(--fa-font-solid);
-  content: " \f08e";
-}
-
 .ui.tabular.menu .item {
   /* stop breaking tabs */
   width: unset;
@@ -564,28 +559,6 @@ a.with-right-arrow,
 
 .convert-recipes-table th:first-of-type {
   width: 50%;
-}
-
-/* social links on main page */
-
-.social-links #social-links-table {
-  width: 600px !important;
-  margin-bottom: 1.5rem;
-}
-
-.social-links #social-links-table th {
-  text-align: center !important;
-  border: 1px solid var(--bg-light-secondary);
-}
-
-.social-links img {
-  width: 32px !important;
-}
-
-@media only screen and (min-width: 320px) and (max-width: 850px) {
-  .social-links #social-links-table {
-    width: 100% !important;
-  }
 }
 
 .fo-notebook-links {
