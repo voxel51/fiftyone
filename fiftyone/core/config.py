@@ -222,6 +222,12 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_LOGGING_LEVEL",
             default="INFO",
         )
+        self.logging_format = self.parse_string(
+            d,
+            "logging_format",
+            env_var="FIFTYONE_LOGGING_FORMAT",
+            default="text",
+        )
         self._show_progress_bars = None  # declare
         self.show_progress_bars = self.parse_bool(
             d,
