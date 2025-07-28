@@ -46,7 +46,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "alexnet"
+                "alexnet",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -88,7 +89,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "resnet", "deeplabv3"],
+            "tags": ["segmentation", "coco", "torch", "resnet", "deeplabv3","official"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -123,7 +124,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "sa-1b", "torch", "zero-shot", "transformer"],
+            "tags": ["segment-anything", "sa-1b", "torch", "zero-shot", "transformer","official"],
             "date_added": "2023-05-12 11:40:51"
         },
         {
@@ -158,7 +159,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "sa-1b", "torch", "zero-shot", "transformer"],
+            "tags": ["segment-anything", "sa-1b", "torch", "zero-shot", "transformer","official"],
             "date_added": "2023-05-12 11:40:51"
         },
         {
@@ -263,7 +264,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "transformer"],
+            "tags": ["segment-anything", "torch", "zero-shot", "transformer","official"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -298,7 +299,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "transformer"],
+            "tags": ["segment-anything", "torch", "zero-shot", "transformer","official"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -333,7 +334,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "transformer"],
+            "tags": ["segment-anything", "torch", "zero-shot", "transformer","official"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -367,7 +368,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer"],
+            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer","official"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -402,7 +403,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer"],
+            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer","official"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -437,7 +438,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer"],
+            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer","official"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -512,7 +513,8 @@
                 "zero-shot",
                 "video",
                 "med-SAM",
-                "transformer"
+                "transformer",
+                "official"
             ],
             "date_added": "2024-08-17 14:48:00"
         },
@@ -587,7 +589,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "transformer"],
+            "tags": ["segment-anything", "torch", "zero-shot", "transformer","official"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -624,7 +626,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "transformer"],
+            "tags": ["segment-anything", "torch", "zero-shot", "transformer","official"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -661,7 +663,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "transformer"],
+            "tags": ["segment-anything", "torch", "zero-shot", "transformer","official"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -734,7 +736,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer"],
+            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer","official"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -771,7 +773,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer"],
+            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer","official"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -808,7 +810,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer"],
+            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer","official"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -849,7 +851,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "resnet", "deeplabv3"],
+            "tags": ["segmentation", "coco", "torch", "resnet", "deeplabv3","official"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -898,7 +900,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "densenet"
+                "densenet",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -998,7 +1001,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "densenet"
+                "densenet",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1048,7 +1052,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "densenet"
+                "densenet",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1088,7 +1093,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "faster-rcnn", "resnet"],
+            "tags": ["detection", "coco", "torch", "faster-rcnn", "resnet","official"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1129,7 +1134,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "fcn", "resnet"],
+            "tags": ["segmentation", "coco", "torch", "fcn", "resnet","official"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1170,7 +1175,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "fcn", "resnet"],
+            "tags": ["segmentation", "coco", "torch", "fcn", "resnet","official"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1219,7 +1224,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "googlenet"
+                "googlenet",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1268,7 +1274,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "inception"
+                "inception",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1334,7 +1341,7 @@
                     "support": true
                 }
             },
-            "tags": ["keypoints", "coco", "torch", "keypoint-rcnn", "resnet"],
+            "tags": ["keypoints", "coco", "torch", "keypoint-rcnn", "resnet","official"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1372,7 +1379,7 @@
                     "support": true
                 }
             },
-            "tags": ["instances", "coco", "torch", "mask-rcnn", "resnet"],
+            "tags": ["instances", "coco", "torch", "mask-rcnn", "resnet","official"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1421,7 +1428,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "mnasnet"
+                "mnasnet",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1471,7 +1479,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "mnasnet"
+                "mnasnet",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1521,7 +1530,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "mobilenet"
+                "mobilenet",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1571,7 +1581,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "resnet"
+                "resnet",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1621,7 +1632,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "resnet"
+                "resnet",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1671,7 +1683,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "resnet"
+                "resnet",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1721,7 +1734,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "resnet"
+                "resnet",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1771,7 +1785,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "resnet"
+                "resnet",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1821,7 +1836,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "resnext"
+                "resnext",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1960,7 +1976,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "shufflenet"
+                "shufflenet",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -2010,7 +2027,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "shufflenet"
+                "shufflenet",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -2095,7 +2113,7 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "imagenet", "torch", "squeezenet"],
+            "tags": ["classification", "imagenet", "torch", "squeezenet","official"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2144,7 +2162,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "vgg"
+                "vgg",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -2192,7 +2211,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "vgg"
+                "vgg",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -2242,7 +2262,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "vgg"
+                "vgg",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -2290,7 +2311,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "vgg"
+                "vgg",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -2340,7 +2362,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "vgg"
+                "vgg",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -2388,7 +2411,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "vgg"
+                "vgg",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -2438,7 +2462,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "vgg"
+                "vgg",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -2486,7 +2511,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "vgg"
+                "vgg",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -2536,7 +2562,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "wide-resnet"
+                "wide-resnet",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -2586,7 +2613,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "wide-resnet"
+                "wide-resnet",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -2661,7 +2689,8 @@
                 "logits",
                 "embeddings",
                 "torch",
-                "transformers"
+                "transformers",
+                "official"
             ],
             "date_added": "2024-01-17 14:25:51"
         },
@@ -2692,7 +2721,8 @@
                 "logits",
                 "embeddings",
                 "torch",
-                "transformers"
+                "transformers",
+                "official"
             ],
             "date_added": "2024-01-17 14:25:51"
         },
@@ -2723,7 +2753,8 @@
                 "logits",
                 "embeddings",
                 "torch",
-                "transformers"
+                "transformers",
+                "official"
             ],
             "date_added": "2024-01-17 14:25:51"
         },
@@ -2749,7 +2780,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "transformers"],
+            "tags": ["segmentation", "torch", "transformers", "official"],
             "date_added": "2024-01-17 14:25:51"
         },
         {
@@ -2810,7 +2841,8 @@
                 "embeddings",
                 "torch",
                 "transformers",
-                "zero-shot"
+                "zero-shot",
+                "official"
             ],
             "date_added": "2024-01-17 14:25:51"
         },
@@ -2848,7 +2880,8 @@
                 "embeddings",
                 "torch",
                 "transformers",
-                "zero-shot"
+                "zero-shot",
+                "official"
             ],
             "date_added": "2024-01-17 14:25:51"
         },
@@ -2880,7 +2913,8 @@
                 "embeddings",
                 "torch",
                 "transformers",
-                "zero-shot"
+                "zero-shot",
+                "official"
             ],
             "date_added": "2024-01-17 14:25:51"
         },
@@ -2927,7 +2961,8 @@
                 "embeddings",
                 "torch",
                 "transformers",
-                "zero-shot"
+                "zero-shot",
+                "official"
             ],
             "date_added": "2025-05-15 15:20:35"
         },
@@ -2961,7 +2996,8 @@
                 "embeddings",
                 "torch",
                 "transformers",
-                "zero-shot"
+                "zero-shot",
+                "official"
             ],
             "date_added": "2024-01-17 14:25:51"
         },
@@ -2995,7 +3031,8 @@
                 "embeddings",
                 "torch",
                 "transformers",
-                "zero-shot"
+                "zero-shot",
+                "official"
             ],
             "date_added": "2025-07-15 13:49:00"
         },
@@ -3029,7 +3066,8 @@
                 "embeddings",
                 "torch",
                 "transformers",
-                "zero-shot"
+                "zero-shot",
+                "official"
             ],
             "date_added": "2024-01-17 14:25:51"
         },
@@ -3080,7 +3118,8 @@
                 "torch",
                 "clip",
                 "zero-shot",    
-                "transformer"
+                "transformer",
+                "official"
             ],
             "date_added": "2022-04-12 17:49:51"
         },
@@ -3112,7 +3151,7 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2", "transformer"],
+            "tags": ["embeddings", "torch", "dinov2", "transformer", "official"],
             "date_added": "2023-07-31 10:17:51"
         },
         {
@@ -3143,7 +3182,7 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2", "transformer"],
+            "tags": ["embeddings", "torch", "dinov2", "transformer", "official"],
             "date_added": "2023-07-31 10:17:51"
         },
         {
@@ -3174,7 +3213,7 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2", "transformer"],
+            "tags": ["embeddings", "torch", "dinov2", "transformer", "official"],
             "date_added": "2023-07-31 10:17:51"
         },
         {
@@ -3205,7 +3244,7 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2", "transformer"],
+            "tags": ["embeddings", "torch", "dinov2", "transformer", "official"],
             "date_added": "2023-07-31 10:17:51"
         },
         {
@@ -3236,7 +3275,7 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2", "transformer"],
+            "tags": ["embeddings", "torch", "dinov2", "transformer", "official"],
             "date_added": "2023-12-02 16:42:00"
         },
         {
@@ -3267,7 +3306,7 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2", "transformer"],
+            "tags": ["embeddings", "torch", "dinov2", "transformer", "official"],
             "date_added": "2023-12-02 16:42:00"
         },
         {
@@ -3298,7 +3337,7 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2", "transformer"],
+            "tags": ["embeddings", "torch", "dinov2", "transformer", "official"],
             "date_added": "2023-12-02 16:42:00"
         },
         {
@@ -3329,7 +3368,7 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2", "transformer"],
+            "tags": ["embeddings", "torch", "dinov2", "transformer", "official"],
             "date_added": "2023-12-02 16:42:00"
         },
         {
@@ -3369,7 +3408,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2025-05-22 14:14:45"
         },
         {
@@ -3409,7 +3448,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2025-05-22 14:14:45"
         },
         {
@@ -3449,7 +3488,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2025-05-22 14:14:45"
         },
         {
@@ -3489,7 +3528,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2025-05-22 14:14:45"
         },
         {
@@ -3529,7 +3568,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -3569,7 +3608,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -3609,7 +3648,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -3649,7 +3688,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -3689,7 +3728,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -3729,7 +3768,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "yolo"],
+            "tags": ["segmentation", "coco", "torch", "yolo", "official"],
             "date_added": "2024-04-02 19:22:51"
         },
         {
@@ -3769,7 +3808,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "yolo"],
+            "tags": ["segmentation", "coco", "torch", "yolo", "official"],
             "date_added": "2024-04-02 19:22:51"
         },
         {
@@ -3809,7 +3848,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "yolo"],
+            "tags": ["segmentation", "coco", "torch", "yolo", "official"],
             "date_added": "2024-04-02 19:22:51"
         },
         {
@@ -3849,7 +3888,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "yolo"],
+            "tags": ["segmentation", "coco", "torch", "yolo", "official"],
             "date_added": "2024-04-02 19:22:51"
         },
         {
@@ -3889,7 +3928,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "yolo"],
+            "tags": ["segmentation", "coco", "torch", "yolo", "official"],
             "date_added": "2024-04-02 19:22:51"
         },
         {
@@ -3929,7 +3968,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -3969,7 +4008,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -4009,7 +4048,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "yolo"],
+            "tags": ["segmentation", "coco", "torch", "yolo", "official"],
             "date_added": "2024-04-02 19:22:51"
         },
         {
@@ -4049,7 +4088,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "yolo"],
+            "tags": ["segmentation", "coco", "torch", "yolo", "official"],
             "date_added": "2024-04-02 19:22:51"
         },
         {
@@ -4089,7 +4128,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2024-07-01 19:22:51"
         },
         {
@@ -4129,7 +4168,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2024-07-01 19:22:51"
         },
         {
@@ -4169,7 +4208,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2024-07-01 19:22:51"
         },
         {
@@ -4209,7 +4248,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2024-07-01 19:22:51"
         },
         {
@@ -4249,7 +4288,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2024-07-01 19:22:51"
         },
         {
@@ -4289,7 +4328,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2024-10-05 19:22:51"
         },
         {
@@ -4329,7 +4368,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2024-10-05 19:22:51"
         },
         {
@@ -4369,7 +4408,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2024-10-05 19:22:51"
         },
         {
@@ -4409,7 +4448,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2024-10-05 19:22:51"
         },
         {
@@ -4449,7 +4488,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2024-10-05 19:22:51"
         },
         {
@@ -4489,7 +4528,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "yolo"],
+            "tags": ["segmentation", "coco", "torch", "yolo", "official"],
             "date_added": "2024-10-05 19:22:51"
         },
         {
@@ -4529,7 +4568,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "yolo"],
+            "tags": ["segmentation", "coco", "torch", "yolo", "official"],
             "date_added": "2024-10-05 19:22:51"
         },
         {
@@ -4569,7 +4608,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "yolo"],
+            "tags": ["segmentation", "coco", "torch", "yolo", "official"],
             "date_added": "2024-10-05 19:22:51"
         },
         {
@@ -4609,7 +4648,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "yolo"],
+            "tags": ["segmentation", "coco", "torch", "yolo", "official"],
             "date_added": "2024-10-05 19:22:51"
         },
         {
@@ -4649,7 +4688,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "yolo"],
+            "tags": ["segmentation", "coco", "torch", "yolo", "official"],
             "date_added": "2024-10-05 19:22:51"
         },
         {
@@ -4689,7 +4728,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "yolo", "zero-shot"],
+            "tags": ["segmentation", "torch", "yolo", "zero-shot", "official"],
             "date_added": "2025-04-10 12:24:41"
         },
         {
@@ -4729,7 +4768,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "yolo", "zero-shot"],
+            "tags": ["segmentation", "torch", "yolo", "zero-shot", "official"],
             "date_added": "2025-04-10 12:24:41"
         },
         {
@@ -4769,7 +4808,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "yolo", "zero-shot"],
+            "tags": ["segmentation", "torch", "yolo", "zero-shot", "official"],
             "date_added": "2025-04-10 12:24:41"
         },
         {
@@ -4809,7 +4848,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "yolo", "zero-shot"],
+            "tags": ["segmentation", "torch", "yolo", "zero-shot", "official"],
             "date_added": "2025-04-10 12:24:41"
         },
         {
@@ -4849,7 +4888,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "yolo", "zero-shot"],
+            "tags": ["segmentation", "torch", "yolo", "zero-shot", "official"],
             "date_added": "2025-04-10 12:24:41"
         },
         {
@@ -4889,7 +4928,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "yolo", "zero-shot"],
+            "tags": ["segmentation", "torch", "yolo", "zero-shot", "official"],
             "date_added": "2025-04-10 12:24:41"
         },
         {
@@ -4929,7 +4968,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "transformer", "rtdetr"],
+            "tags": ["detection", "coco", "torch", "transformer", "rtdetr", "official"],
             "date_added": "2024-07-01 19:22:51"
         },
         {
@@ -4969,7 +5008,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "transformer", "rtdetr"],
+            "tags": ["detection", "coco", "torch", "transformer", "rtdetr", "official"],
             "date_added": "2024-07-01 19:22:51"
         },
         {
@@ -5009,7 +5048,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "torch", "yolo", "zero-shot"],
+            "tags": ["detection", "torch", "yolo", "zero-shot", "official"],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -5049,7 +5088,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "torch", "yolo", "zero-shot"],
+            "tags": ["detection", "torch", "yolo", "zero-shot", "official"],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -5089,7 +5128,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "torch", "yolo", "zero-shot"],
+            "tags": ["detection", "torch", "yolo", "zero-shot", "official"],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -5129,7 +5168,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "torch", "yolo", "zero-shot"],
+            "tags": ["detection", "torch", "yolo", "zero-shot", "official"],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -5169,7 +5208,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "torch", "yolo", "polylines", "obb"],
+            "tags": ["detection", "torch", "yolo", "polylines", "obb", "official"],
             "date_added": "2024-04-05 19:22:51"
         },
         {
@@ -5209,7 +5248,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "torch", "yolo", "polylines", "obb"],
+            "tags": ["detection", "torch", "yolo", "polylines", "obb", "official"],
             "date_added": "2024-04-05 19:22:51"
         },
         {
@@ -5249,7 +5288,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "torch", "yolo", "polylines", "obb"],
+            "tags": ["detection", "torch", "yolo", "polylines", "obb", "official"],
             "date_added": "2024-04-05 19:22:51"
         },
         {
@@ -5289,7 +5328,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "torch", "yolo", "polylines", "obb"],
+            "tags": ["detection", "torch", "yolo", "polylines", "obb", "official"],
             "date_added": "2024-04-05 19:22:51"
         },
         {
@@ -5329,7 +5368,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "torch", "yolo", "polylines", "obb"],
+            "tags": ["detection", "torch", "yolo", "polylines", "obb", "official"],
             "date_added": "2024-04-05 19:22:51"
         },
         {
@@ -5369,7 +5408,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "oiv7", "torch", "yolo"],
+            "tags": ["detection", "oiv7", "torch", "yolo", "official"],
             "date_added": "2024-05-20 19:22:51"
         },
         {
@@ -5409,7 +5448,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "oiv7", "torch", "yolo"],
+            "tags": ["detection", "oiv7", "torch", "yolo", "official"],
             "date_added": "2024-05-20 19:22:51"
         },
         {
@@ -5449,7 +5488,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "oiv7", "torch", "yolo"],
+            "tags": ["detection", "oiv7", "torch", "yolo", "official"],
             "date_added": "2024-05-20 19:22:51"
         },
         {
@@ -5489,7 +5528,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "oiv7", "torch", "yolo"],
+            "tags": ["detection", "oiv7", "torch", "yolo", "official"],
             "date_added": "2024-05-20 19:22:51"
         },
         {
@@ -5529,7 +5568,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "oiv7", "torch", "yolo"],
+            "tags": ["detection", "oiv7", "torch", "yolo", "official"],
             "date_added": "2024-05-20 19:22:51"
         },
         {
@@ -5558,7 +5597,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "torch", "yolo"],
+            "tags": ["detection", "torch", "yolo", "official"],
             "date_added": "2024-01-06 08:51:14"
         },
         {
@@ -5594,7 +5633,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2025-05-22 14:14:45"
         },
         {
@@ -5667,7 +5706,8 @@
                 "imagenet",
                 "torch",
                 "transformers",
-                "convnext"
+                "convnext",
+                "official"
             ],
             "date_added": "2025-06-30 12:00:00"
         },
@@ -5704,7 +5744,8 @@
                 "imagenet",
                 "torch",
                 "transformers",
-                "convnext"
+                "convnext",
+                "official"
             ],
             "date_added": "2025-06-30 12:00:00"
         },
@@ -5778,7 +5819,8 @@
                 "imagenet",
                 "torch",
                 "transformers",
-                "convnext"
+                "convnext",
+                "official"
             ],
             "date_added": "2025-06-30 12:00:00"
         },
@@ -5815,7 +5857,8 @@
                 "imagenet",
                 "torch",
                 "transformers",
-                "efficientnet"
+                "efficientnet",
+                "official"
             ],
             "date_added": "2025-06-30 12:00:00"
         },
@@ -5852,7 +5895,8 @@
                 "imagenet",
                 "torch",
                 "transformers",
-                "efficientnet"
+                "efficientnet",
+                "official"
             ],
             "date_added": "2025-06-30 12:00:00"
         },
@@ -5889,7 +5933,8 @@
                 "imagenet",
                 "torch",
                 "transformers",
-                "efficientnet"
+                "efficientnet",
+                "official"
             ],
             "date_added": "2025-06-30 12:00:00"
         },
@@ -5926,7 +5971,8 @@
                 "imagenet",
                 "torch",
                 "transformers",
-                "efficientnet"
+                "efficientnet",
+                "official"
             ],
             "date_added": "2025-06-30 12:00:00"
         },
@@ -5963,7 +6009,8 @@
                 "imagenet",
                 "torch",
                 "transformers",
-                "efficientnet"
+                "efficientnet",
+                "official"
             ],
             "date_added": "2025-06-30 12:00:00"
         },
@@ -6000,7 +6047,8 @@
                 "imagenet",
                 "torch",
                 "transformers",
-                "efficientnet"
+                "efficientnet",
+                "official"
             ],
             "date_added": "2025-06-30 12:00:00"
         },
@@ -6037,7 +6085,8 @@
                 "imagenet",
                 "torch",
                 "transformers",
-                "efficientnet"
+                "efficientnet",
+                "official"
             ],
             "date_added": "2025-06-30 12:00:00"
         },
@@ -6074,7 +6123,8 @@
                 "imagenet",
                 "torch",
                 "transformers",
-                "efficientnet"
+                "efficientnet",
+                "official"
             ],
             "date_added": "2025-06-30 12:00:00"
         },
@@ -6110,7 +6160,8 @@
                 "imagenet",
                 "torch",
                 "transformers",
-                "swin-transformer"
+                "swin-transformer",
+                "official"
             ],
             "date_added": "2025-07-02 12:00:00"
         },
@@ -6146,7 +6197,8 @@
                 "imagenet",
                 "torch",
                 "transformers",
-                "swin-transformer"
+                "swin-transformer",
+                "official"
             ],
             "date_added": "2025-07-02 12:00:00"
         },
@@ -6182,7 +6234,8 @@
                 "imagenet",
                 "torch",
                 "transformers",
-                "swin-transformer"
+                "swin-transformer",
+                "official"
             ],
             "date_added": "2025-07-02 12:00:00"
         },
@@ -6218,7 +6271,8 @@
                 "imagenet",
                 "torch",
                 "transformers",
-                "swin-transformer"
+                "swin-transformer",
+                "official"
             ],
             "date_added": "2025-07-02 12:00:00"
         },
@@ -6290,7 +6344,8 @@
                 "coco",
                 "torch",
                 "transformers",
-                "rtdetr"
+                "rtdetr",
+                "official"
             ],
             "date_added": "2025-07-03 12:00:00"
         },
@@ -6322,7 +6377,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "transformers", "detr"],
+            "tags": ["detection", "coco", "torch", "transformers", "detr", "official"],
             "date_added": "2025-07-15 23:00:00"
         },
         {
@@ -6353,7 +6408,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "transformers", "detr"],
+            "tags": ["detection", "coco", "torch", "transformers", "detr", "official"],
             "date_added": "2025-07-15 23:00:00"
         },
         {
@@ -6384,7 +6439,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "transformers", "detr"],
+            "tags": ["detection", "coco", "torch", "transformers", "detr", "official"],
             "date_added": "2025-07-15 23:00:00"
         },
         {
@@ -6415,7 +6470,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "transformers", "detr"],
+            "tags": ["detection", "coco", "torch", "transformers", "detr", "official"],
             "date_added": "2025-07-15 23:00:00"
         },
         {
@@ -6446,7 +6501,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "transformers", "detr"],
+            "tags": ["detection", "coco", "torch", "transformers", "detr", "official"],
             "date_added": "2025-07-15 23:00:00"
         }
     ]
