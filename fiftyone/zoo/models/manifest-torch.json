@@ -3000,6 +3000,41 @@
             "date_added": "2025-07-15 13:49:00"
         },
         {
+            "base_name": "owlvit-large-patch14-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Large OWL-ViT zero-shot object detector with ViT-L/14 backbone. Achieves higher accuracy than base models, especially for smaller objects.",
+            "source": "https://huggingface.co/google/owlvit-large-patch14",
+            "author": "Matthias Minderer, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 1735754597,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "google/owlvit-large-patch14"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "detection",
+                "logits",
+                "embeddings",
+                "torch",
+                "transformers",
+                "zero-shot",
+                "official"
+            ],
+            "date_added": "2025-07-28 15:25:00"
+        },
+        {
             "base_name": "omdet-turbo-swin-tiny-torch",
             "base_filename": null,
             "version": null,
