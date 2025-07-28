@@ -4498,32 +4498,65 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             raise ValueError("Cannot save view into a different dataset")
 
         view._set_name(name)
-        slug = self._validate_saved_view_name(name, overwrite=overwrite)
 
         now = datetime.utcnow()
 
-        view_doc = foo.SavedViewDocument(
-            dataset_id=self._doc.id,
-            name=name,
-            slug=slug,
-            description=description,
-            color=color,
-            view_stages=[
+        # Check if we're updating an existing view
+        existing_view_doc = None
+        if overwrite:
+            try:
+                # Targeted reload to get fresh view docs
+                self._doc.reload("saved_views")
+                existing_view_doc = self._get_saved_view_doc(name)
+            except ValueError as e:
+                # View doesn't exist yet, proceed with normal creation
+                pass
+
+        if existing_view_doc is not None:
+            # Update existing document in-place to preserve ID
+            if description is None:
+                description = existing_view_doc.description
+            if color is None:
+                color = existing_view_doc.color
+            existing_view_doc.view_stages = [
                 json_util.dumps(s)
                 for s in view._serialize(include_uuids=False)
-            ],
-            created_at=now,
-            last_modified_at=now,
-        )
-        view_doc.save(upsert=True)
+            ]
+            existing_view_doc.last_modified_at = now
+            existing_view_doc.save()
 
-        # Targeted reload of saved views for better concurrency safety.
-        # @todo improve list field updates in general so this isn't necessary
-        self._doc.reload("saved_views")
+            # Targeted reload of saved views for better concurrency safety.
+            # @todo improve list field updates in general so this isn't necessary
+            self._doc.reload("saved_views")
 
-        self._doc.saved_views.append(view_doc)
-        self._doc.last_modified_at = now
-        self._doc.save(virtual=True)
+            self._doc.last_modified_at = now
+            self._doc.save(virtual=True)
+        else:
+            # Create new view (validate name first)
+            slug = self._validate_saved_view_name(name, overwrite=overwrite)
+
+            view_doc = foo.SavedViewDocument(
+                dataset_id=self._doc.id,
+                name=name,
+                slug=slug,
+                description=description,
+                color=color,
+                view_stages=[
+                    json_util.dumps(s)
+                    for s in view._serialize(include_uuids=False)
+                ],
+                created_at=now,
+                last_modified_at=now,
+            )
+            view_doc.save()
+
+            # Targeted reload of saved views for better concurrency safety.
+            # @todo improve list field updates in general so this isn't necessary
+            self._doc.reload("saved_views")
+
+            self._doc.saved_views.append(view_doc)
+            self._doc.last_modified_at = now
+            self._doc.save(virtual=True)
 
     def get_saved_view_info(self, name):
         """Loads the editable information about the saved view with the given
@@ -4707,7 +4740,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                             f"'{slug}' in use by saved view '{clashing_name}'"
                         )
 
-                self.delete_saved_view(clashing_name)
+                # When overwrite=True, don't delete - let save_view handle the update
+                # The delete logic has been moved to save_view method for proper
+                # in-place updates
 
         return slug
 
