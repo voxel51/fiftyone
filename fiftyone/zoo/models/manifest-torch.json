@@ -5753,7 +5753,7 @@
             "source": "https://huggingface.co/facebook/convnext-xlarge-224-22k-1k",
             "author": "Zhuang Liu, et al.",
             "license": "Apache 2.0",
-            "size_bytes": 31647540445603633486,
+            "size_bytes": 1400917137,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
                 "config": {
