@@ -16,13 +16,20 @@ logger = logging.getLogger(__name__)
 
 
 @run_once
-def add_handler():
-    """Adds the default logging handler to FiftyOne's package-wide loggers."""
-    handler = logging.StreamHandler(stream=sys.stdout)
-    handler.setFormatter(logging.Formatter(fmt="%(message)s"))
+def add_handlers():
+    """Adds the default logging handlers to FiftyOne's package-wide loggers."""
+    stdout_handler = logging.StreamHandler(stream=sys.stdout)
+    stdout_handler.setFormatter(logging.Formatter(fmt="%(message)s"))
+    stdout_handler.addFilter(lambda r: r.levelno < logging.ERROR)
+
+    stderr_handler = logging.StreamHandler(stream=sys.stderr)
+    stderr_handler.setFormatter(logging.Formatter(fmt="%(message)s"))
+    stderr_handler.setLevel(logging.ERROR)
+    stderr_handler.addFilter(lambda r: r.levelno >= logging.ERROR)
 
     for _logger in _get_loggers():
-        _logger.addHandler(handler)
+        _logger.addHandler(stdout_handler)
+        _logger.addHandler(stderr_handler)
 
 
 def init_logging():
@@ -30,7 +37,7 @@ def init_logging():
 
     The logging level is set to ``fo.config.logging_level``.
     """
-    add_handler()
+    add_handlers()
     set_logging_level(_parse_logging_level())
 
 
