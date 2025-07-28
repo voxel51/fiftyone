@@ -74,8 +74,10 @@ html[data-theme="light"] {
   --pst-color-accent: #{$voxel-primary};
   --color-background: #{$voxel-background};
   --color-dropdown-background: #{$voxel-dropdown-background};
+  --pst-border-color: #{$voxel-border};
   
   --pst-color-text-base: #{$text-base};
+  --pst-color-text-secondary: #{$text-secondary};
   --pst-color-link: #{$text-base};
   --pst-color-link-hover: #{$text-secondary};
   --pst-color-inline-code: #{$text-base};

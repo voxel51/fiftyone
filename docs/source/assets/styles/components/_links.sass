@@ -73,3 +73,75 @@ a:hover
             a
               width: auto
               max-width: 280px
+
+// Notebook links
+.fo-notebook-links
+  margin-bottom: 1.5rem
+  width: 100%
+  display: flex
+  flex-direction: column
+  gap: 1rem
+
+  tbody
+    display: flex
+    flex-direction: column
+    width: 100%
+
+    tr
+      display: flex
+      flex-direction: column
+      width: 100%
+
+      td
+        padding: 0
+        border: none
+        text-align: center
+        margin-bottom: 1rem
+        display: block
+        width: 100%
+
+        a
+          display: inline-flex
+          align-items: center
+          justify-content: center
+          padding: 1rem 1.5rem
+          border: 1px solid var(--color-background)
+          border-radius: 12px
+          color: var(--pst-color-link)
+          font-weight: 500
+          transition: all 0.3s ease
+          text-decoration: none
+          width: 100%
+
+          &:hover
+            background-color: var(--color-background)
+
+        img
+          width: 24px
+          height: 24px
+          object-fit: contain
+          margin-right: 0.5rem
+
+  @media (min-width: 960px)
+    flex-direction: row
+    justify-content: center
+
+    tbody
+      flex-direction: row
+      width: auto
+
+      tr
+        display: flex
+        flex-direction: row
+        width: auto
+        gap: 32px
+
+        td
+          display: flex
+          margin-bottom: 0
+          width: auto
+
+          a
+            width: auto
+            max-width: 280px
+  

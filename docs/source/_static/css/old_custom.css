@@ -461,57 +461,6 @@ article.pytorch-article .reference.download.internal {
   margin-left: -3px;
 }
 
-/* tutorials cards */
-
-#tutorial-cards-container {
-  margin-bottom: 2rem;
-}
-
-#tutorial-cards-container .card.tutorials-card .tutorials-image img {
-  height: 100%;
-  width: 100%;
-  margin: 0%;
-}
-
-#tutorial-cards-container .card.tutorials-card:hover:after {
-  background-color: var(--color-primary);
-}
-
-#tutorial-cards-container .card.tutorials-card {
-  background-color: var(--bg-light-secondary);
-}
-
-#tutorial-cards-container .filter-btn {
-  color: var(--gray-neutral);
-  border: 1px solid var(--gray-neutral);
-}
-
-#tutorial-cards-container .filter-btn:hover {
-  color: var(--color-primary);
-  border: 1px solid var(--color-primary);
-}
-
-#tutorial-cards-container .all-tag-selected,
-#tutorial-cards-container .filter-btn.selected {
-  color: #ffffff;
-  background-color: var(--color-primary);
-  border: 1px solid var(--color-primary);
-}
-
-#tutorial-cards-container .all-tag-selected:hover,
-#tutorial-cards-container .filter-btn.selected:hover {
-  color: #ffffff;
-  border: 1px solid #ffffff;
-}
-
-#tutorial-cards-container .pagination .active .page {
-  background-color: var(--bg-light-secondary);
-}
-
-#tutorial-cards-container .pagination .page {
-  border: 1px solid var(--bg-light-secondary);
-}
-
 /* callout cards/button */
 
 article.pytorch-article .tutorials-callout-container {
@@ -559,46 +508,6 @@ a.with-right-arrow,
 
 .convert-recipes-table th:first-of-type {
   width: 50%;
-}
-
-.fo-notebook-links {
-  display: inline-block;
-  margin: 0 0 1rem 0 !important;
-}
-
-.fo-notebook-links tr {
-  background: 0;
-  border: 0;
-}
-
-.fo-notebook-links td {
-  padding-left: 0;
-  padding-right: 20px;
-}
-
-.fo-notebook-links a,
-.fo-notebook-links :link,
-.tfo-notebook-links :visited {
-  border-radius: 3px;
-  box-shadow: 0 1px 3px 0px #6c6c6d;
-  padding: 12px 17px;
-  transition: box-shadow 0.2s;
-}
-
-.fo-notebook-links td > a {
-  -webkit-box-align: center;
-  -ms-flex-align: center;
-  align-items: center;
-  display: -webkit-box;
-  display: -ms-flexbox;
-  display: flex;
-  color: #6c6c6d;
-}
-
-.fo-notebook-links img {
-  height: 32px;
-  width: 32px !important;
-  margin-right: 3px;
 }
 
 .integrations-logos {

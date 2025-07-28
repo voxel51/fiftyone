@@ -1,0 +1,77 @@
+.row
+  #tutorial-cards
+    width: 100%
+
+    .list
+      display: flex
+      flex-wrap: wrap
+
+      .col-md-6
+        padding: 16px
+
+    .pagination
+      padding: 8px 16px
+      border-radius: 8px
+      border: 1px solid var(--pst-border-color)
+      width: fit-content
+      margin: 0 auto
+
+      li
+        margin: 0 5px
+
+        a.page
+          display: flex
+          align-items: center
+          justify-content: center
+          text-decoration: none
+          height: 32px
+          width: 32px
+          border-radius: 4px
+          border: 1px solid var(--pst-border-color)
+
+        &.active
+          a.page
+            color: #fff
+            background-color: var(--pst-color-primary)
+            border: 1px solid var(--pst-color-primary)
+
+div.card.tutorials-card
+  border-radius: 8px
+  height: 100%
+
+  .card-body
+    padding: 0
+
+    .tutorials-image
+      overflow: hidden
+
+      img
+        width: 100%
+        height: 100%
+        object-fit: cover
+        border-radius: 8px 8px 0 0
+        transition: transform 0.3s ease-in-out
+
+        &:hover
+          transform: scale(1.05)
+
+    .tutorials-card-content
+      padding: 16px
+
+      .card-title-container
+        margin-bottom: 8px
+
+        strong
+          font-weight: 600
+
+      .card-summary
+        font-size: 14px
+        margin-bottom: 8px
+
+      .tags
+        font-size: 14px
+        margin-bottom: 0
+
+      .card-summary, .tags
+        font-size: 14px
+        color: var(--pst-color-text-secondary)
