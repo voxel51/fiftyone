@@ -2179,10 +2179,10 @@ class AnnotationBackend(foa.AnnotationMethod):
         nested structure::
 
             # Scalar fields
-            results[label_type][sample_id] = scalar
+            results[field_name][label_type][sample_id] = scalar
 
             # Label fields
-            results[label_type][sample_id][label_id] = label
+            results[label_field][label_type][sample_id][label_id] = label
 
         For video datasets, the returned labels dictionary should have the
         following nested structure::
@@ -2191,7 +2191,7 @@ class AnnotationBackend(foa.AnnotationMethod):
             results[label_type][sample_id][frame_id] = scalar
 
             # Label fields
-            results[label_type][sample_id][frame_id][label_id] = label
+            results[label_field][label_type][sample_id][frame_id][label_id] = label
 
         The valid values for ``label_type`` are:
 
