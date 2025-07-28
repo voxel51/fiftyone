@@ -75,15 +75,33 @@ const calculateCameraPositionForUpVector = (
     return center.clone().add(upDir.multiplyScalar(distance));
   }
 
-  // pov view - camera positioned at a 45-degree angle for more natural perspective
-  const angle = Math.PI / 4;
-  const verticalDist = Math.sin(angle) * distance;
-  const horizontalDist = Math.cos(angle) * distance;
+  // pov view - camera positioned at a ~5-degree angle for more natural perspective
+  const angle = Math.PI / 32;
+
+  // division by arbitrary numbers to make the camera position more natural for "automotive-centered" ego view
+  // note: this is not a perfect solution as it doesn't account for non-automotive scenes
+  // but "ego" view is a special case more natural to automotive scenes
+  // ideally we want three views, ego, top, and pov...
+  // for now we have only ego/pov + top
+  const verticalDist = Math.abs(Math.sin(angle) * distance) / 6;
+  const horizontalDist = Math.abs(Math.cos(angle) * distance) / 15;
 
   // 1. choose a world-forward direction (Y up ideally, else X)
   let worldForward = new Vector3(0, 1, 0);
   if (Math.abs(upDir.dot(worldForward)) > 0.999) {
     worldForward.set(1, 0, 0);
+  }
+  // If Z is up, use -Y as world forward to ensure +X is on the right
+  if (upDir.equals(new Vector3(0, 0, 1))) {
+    worldForward.set(0, -1, 0);
+  }
+  // If Y is up, use Z as world forward to ensure +X is on the right
+  else if (upDir.equals(new Vector3(0, 1, 0))) {
+    worldForward.set(0, 0, 1);
+  }
+  // If X is up, use Y as world forward to ensure +Z is on the right (this is arbitrary)
+  else if (upDir.equals(new Vector3(1, 0, 0))) {
+    worldForward.set(0, 1, 0);
   }
 
   // 2. project that forward into the horizontal plane (perp. to upDir)
@@ -93,8 +111,7 @@ const calculateCameraPositionForUpVector = (
     .normalize();
 
   // 3. build camera position: center + up‐offset + horizontal‐offset
-  return center
-    .clone()
+  return new Vector3(0, 0, 0)
     .add(upDir.multiplyScalar(verticalDist))
     .add(proj.multiplyScalar(horizontalDist));
 };
@@ -329,11 +346,10 @@ export const MediaTypeFo3dComponent = () => {
         sceneBoundingBox &&
         Math.abs(sceneBoundingBox.max.x) !== Number.POSITIVE_INFINITY
       ) {
-        const center = sceneBoundingBox.getCenter(new Vector3());
         const size = sceneBoundingBox.getSize(new Vector3());
 
         return calculateCameraPositionForUpVector(
-          center,
+          new Vector3(0, 0, 0),
           size,
           upVector,
           1.5,
@@ -412,20 +428,23 @@ export const MediaTypeFo3dComponent = () => {
         defaultCameraPosition.z,
       ] as const;
 
+      // note: for ego, we don't have look at at center of bounding box
+      // this is for the "automotive-centered" ego view
+      // and doesn't make too much sense for "ego view" of other scenes
+      let newLookAt: [number, number, number] = [0, 0, 0];
+
       if (view === "top") {
         newCameraPosition = [
           topCameraPosition.x,
           topCameraPosition.y,
           topCameraPosition.z,
         ];
-      }
 
-      const boundingBoxCenter = sceneBoundingBox.getCenter(new Vector3());
-      const newLookAt = [
-        boundingBoxCenter.x,
-        boundingBoxCenter.y,
-        boundingBoxCenter.z,
-      ] as const;
+        // for top view, we have look at at center of bounding box
+        const center = sceneBoundingBox.getCenter(new Vector3());
+
+        newLookAt = [center.x, center.y, center.z] as const;
+      }
 
       cameraControlsRef.current.setLookAt(
         ...newCameraPosition,
@@ -565,18 +584,12 @@ export const MediaTypeFo3dComponent = () => {
         unionBoundingBox.min
       );
 
-      const maxSize = Math.max(
-        unionBoundingBoxSize.x,
-        unionBoundingBoxSize.y,
-        unionBoundingBoxSize.z
-      );
-
       const newCameraPosition = calculateCameraPositionForUpVector(
         unionBoundingBoxCenter,
         unionBoundingBoxSize,
         upVector,
-        maxSize * 3,
-        "pov"
+        2,
+        "top"
       );
 
       await cameraControlsRef.current.setLookAt(
@@ -602,23 +615,52 @@ export const MediaTypeFo3dComponent = () => {
       return;
     }
 
-    if (foScene?.cameraProps.lookAt?.length === 3) {
-      cameraControlsRef.current.setTarget(
-        foScene.cameraProps.lookAt[0],
-        foScene.cameraProps.lookAt[1],
-        foScene.cameraProps.lookAt[2],
-        false
-      );
+    // restore camera position and target from localStorage if it exists
+    const lastSavedCameraState =
+      window?.localStorage.getItem(CAMERA_POSITION_KEY);
+    let restored = false;
+    if (lastSavedCameraState) {
+      try {
+        const parsed = JSON.parse(lastSavedCameraState);
+        if (
+          parsed &&
+          Array.isArray(parsed.position) &&
+          parsed.position.length === 3 &&
+          Array.isArray(parsed.target) &&
+          parsed.target.length === 3
+        ) {
+          cameraControlsRef.current.setLookAt(
+            parsed.position[0],
+            parsed.position[1],
+            parsed.position[2],
+            parsed.target[0],
+            parsed.target[1],
+            parsed.target[2],
+            false
+          );
+          setSceneInitialized(true);
+          restored = true;
+        }
+      } catch {}
+    }
 
-      setSceneInitialized(true);
-
-      return;
-    } else {
-      onChangeView("pov", {
-        useAnimation: false,
-        ignoreLastSavedCameraPosition: false,
-        isFirstTime: true,
-      });
+    if (!restored) {
+      if (foScene?.cameraProps.lookAt?.length === 3) {
+        cameraControlsRef.current.setTarget(
+          foScene.cameraProps.lookAt[0],
+          foScene.cameraProps.lookAt[1],
+          foScene.cameraProps.lookAt[2],
+          false
+        );
+        setSceneInitialized(true);
+        return;
+      } else {
+        onChangeView("pov", {
+          useAnimation: false,
+          ignoreLastSavedCameraPosition: false,
+          isFirstTime: true,
+        });
+      }
     }
   }, [foScene, onChangeView, cameraControlsRef, cameraRef]);
 
@@ -700,7 +742,7 @@ export const MediaTypeFo3dComponent = () => {
         <AdaptiveEvents />
         {!autoRotate && <CameraControls ref={cameraControlsRef} />}
         {autoRotate && <OrbitControls autoRotate={autoRotate} makeDefault />}
-        <SceneControls scene={foScene} />
+        <SceneControls scene={foScene} cameraControlsRef={cameraControlsRef} />
         <Gizmos />
 
         {!isSceneInitialized && <SpinningCube />}
