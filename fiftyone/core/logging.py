@@ -9,10 +9,20 @@ import logging
 import sys
 
 import fiftyone as fo
+from fiftyone.core.decorators import run_once
 
 
 logger = logging.getLogger(__name__)
-handler = None
+
+
+@run_once
+def add_handler():
+    """Adds the default logging handler to FiftyOne's package-wide loggers."""
+    handler = logging.StreamHandler(stream=sys.stdout)
+    handler.setFormatter(logging.Formatter(fmt="%(message)s"))
+
+    for _logger in _get_loggers():
+        _logger.addHandler(handler)
 
 
 def init_logging():
@@ -20,17 +30,8 @@ def init_logging():
 
     The logging level is set to ``fo.config.logging_level``.
     """
-    global handler
-
-    if handler is None:
-        handler = logging.StreamHandler(stream=sys.stdout)
-        handler.setFormatter(logging.Formatter(fmt="%(message)s"))
-
-        for logger in _get_loggers():
-            logger.addHandler(handler)
-
-    level = _parse_logging_level()
-    set_logging_level(level)
+    add_handler()
+    set_logging_level(_parse_logging_level())
 
 
 def get_logging_level():
