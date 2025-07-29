@@ -640,7 +640,7 @@ async def serialize_dataset(
 
         collection = dataset.view()
         if view is not None:
-            # unique id for for the relay global store
+            # unique id for the relay global store
             #
             # until a schema is with respect to a view and not a dataset this
             # is required
