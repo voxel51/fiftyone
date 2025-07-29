@@ -6,13 +6,13 @@ Logging utilities.
 |
 """
 
+import functools
 import json
 import logging
 import sys
 import time
 
 import fiftyone as fo
-from fiftyone.core.decorators import run_once
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ class JsonFormatter(logging.Formatter):
         return json.dumps(log_entry)
 
 
-@run_once
+@functools.cache  # has side effects, so only do it once
 def add_handlers():
     """Adds the default logging handlers to FiftyOne's package-wide loggers."""
     formatter = (
