@@ -25,7 +25,7 @@ class JsonFormatter(logging.Formatter):
     def format(self, record):
         log_entry = {
             "timestamp": f'{self.formatTime(record, "%Y-%m-%dT%H:%M:%S")}{record.msecs/1000:.3f}Z',
-            "level": record.levelname,
+            "severity": record.levelname,
             "message": record.getMessage(),
             "filename": record.filename,
             "lineno": record.lineno,
