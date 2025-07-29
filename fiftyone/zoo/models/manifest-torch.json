@@ -1177,7 +1177,7 @@
             "base_name": "googlenet-imagenet-torch",
             "base_filename": "googlenet-1378be20.pth",
             "version": null,
-            "description": "inception-v3-imagenet-torch",
+            "description": "Classic image classifier providing reliable categorization and features for various computer vision projects.",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Christian Szegedy, et al.",
             "license": "BSD 3-Clause",
