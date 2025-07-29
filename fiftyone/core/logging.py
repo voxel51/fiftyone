@@ -52,7 +52,6 @@ def add_handlers():
 
     stderr_handler = logging.StreamHandler(stream=sys.stderr)
     stderr_handler.setFormatter(formatter)
-    stderr_handler.setLevel(logging.ERROR)
     stderr_handler.addFilter(lambda r: r.levelno >= logging.ERROR)
 
     for _logger in _get_loggers():
