@@ -124,7 +124,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "sa-1b", "torch", "zero-shot", "transformer","official"],
+            "tags": ["segment-anything", "sa-1b", "torch", "zero-shot", "transformer", "official"],
             "date_added": "2023-05-12 11:40:51"
         },
         {
@@ -159,7 +159,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "sa-1b", "torch", "zero-shot", "transformer","official"],
+            "tags": ["segment-anything", "sa-1b", "torch", "zero-shot", "transformer", "official"],
             "date_added": "2023-05-12 11:40:51"
         },
         {
@@ -264,7 +264,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "transformer","official"],
+            "tags": ["segment-anything", "torch", "zero-shot", "transformer", "official"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -299,7 +299,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "transformer","official"],
+            "tags": ["segment-anything", "torch", "zero-shot", "transformer", "official"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -334,7 +334,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "transformer","official"],
+            "tags": ["segment-anything", "torch", "zero-shot", "transformer", "official"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -368,7 +368,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer","official"],
+            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer", "official"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -403,7 +403,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer","official"],
+            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer", "official"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -438,7 +438,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer","official"],
+            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer", "official"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -589,7 +589,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "transformer","official"],
+            "tags": ["segment-anything", "torch", "zero-shot", "transformer", "official"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -626,7 +626,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "transformer","official"],
+            "tags": ["segment-anything", "torch", "zero-shot", "transformer", "official"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -663,7 +663,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "transformer","official"],
+            "tags": ["segment-anything", "torch", "zero-shot", "transformer", "official"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -736,7 +736,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer","official"],
+            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer", "official"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -773,7 +773,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer","official"],
+            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer", "official"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -810,7 +810,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer","official"],
+            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer", "official"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -851,7 +851,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "resnet", "deeplabv3","official"],
+            "tags": ["segmentation", "coco", "torch", "resnet", "deeplabv3", "official"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1093,7 +1093,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "faster-rcnn", "resnet","official"],
+            "tags": ["detection", "coco", "torch", "faster-rcnn", "resnet", "official"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1134,7 +1134,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "fcn", "resnet","official"],
+            "tags": ["segmentation", "coco", "torch", "fcn", "resnet", "official"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1175,7 +1175,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "fcn", "resnet","official"],
+            "tags": ["segmentation", "coco", "torch", "fcn", "resnet", "official"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1341,7 +1341,7 @@
                     "support": true
                 }
             },
-            "tags": ["keypoints", "coco", "torch", "keypoint-rcnn", "resnet","official"],
+            "tags": ["keypoints", "coco", "torch", "keypoint-rcnn", "resnet", "official"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1379,7 +1379,7 @@
                     "support": true
                 }
             },
-            "tags": ["instances", "coco", "torch", "mask-rcnn", "resnet","official"],
+            "tags": ["instances", "coco", "torch", "mask-rcnn", "resnet", "official"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2113,7 +2113,7 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "imagenet", "torch", "squeezenet","official"],
+            "tags": ["classification", "imagenet", "torch", "squeezenet", "official"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
