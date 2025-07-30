@@ -4655,7 +4655,7 @@
         {
             "base_name": "yoloe11s-seg-torch",
             "base_filename": "yoloe-11s-seg.pt",
-            "description": "Model generating object outlines and boxes quickly for real-time applications",
+            "description": "Segments specified classes, generating object outlines and boxes for real-time applications",
             "source": "https://docs.ultralytics.com/models/yoloe",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
