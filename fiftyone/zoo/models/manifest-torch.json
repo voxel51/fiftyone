@@ -4853,9 +4853,9 @@
             "date_added": "2025-04-10 12:24:41"
         },
         {
-            "base_name": "Model outlining and boxing any object you describe without specific training",
+            "base_name": "yoloev8l-seg-torch",
             "base_filename": "yoloe-v8l-seg.pt",
-            "description": "YOLOEv8l Segmentation model",
+            "description": "Model outlining and boxing any object you describe without specific training",
             "source": "https://docs.ultralytics.com/models/yoloe",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
