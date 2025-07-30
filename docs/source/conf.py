@@ -14,6 +14,7 @@ import re
 import sys
 
 sys.path.insert(0, os.path.abspath("."))
+sys.path.insert(0, os.path.abspath("../extensions"))
 
 from custom_directives import (
     CustomButtonDirective,
@@ -70,6 +71,7 @@ extensions = [
     "sphinx_docsearch",
     "autodocsumm",
     "myst_parser",
+    "llms_txt",
 ]
 
 # Types of class members to generate documentation for.
