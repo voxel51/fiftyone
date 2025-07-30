@@ -3695,7 +3695,7 @@
         {
             "base_name": "yolov8n-seg-coco-torch",
             "base_filename": "yolov8n-seg-coco.pt",
-            "description": "High-accuracy detector for critical applications where precision matters most",
+            "description": "Edge-optimized model producing object outlines on devices with limited resources.",
             "source": "https://docs.ultralytics.com/models/yolov8/",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
