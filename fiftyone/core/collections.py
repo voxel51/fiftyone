@@ -3339,6 +3339,21 @@ class SampleCollection(object):
             progress=progress,
         )
 
+    def compute_annotation_schema(self, field_name):
+        """Compute the annotation schema for a field
+
+        Args:
+            field_name: the field to process
+
+        Raises:
+            ValueError: if the field does not exists or annotation for its
+            field type is not supported
+
+        Returns:
+            an annotation schema dictionary
+        """
+        return foua.compute_annotation_schema(self, field_name)
+
     def apply_model(
         self,
         model,
