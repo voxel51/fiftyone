@@ -5660,7 +5660,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch>=1.7.0", "torchvision>=0.8.1"],
+                "packages": ["torch>=1.7.0", "torchvision>=0.8.1", "ultralytics"],
                 "cpu": {
                     "support": true
                 },
