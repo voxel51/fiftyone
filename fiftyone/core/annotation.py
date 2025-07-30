@@ -99,7 +99,8 @@ def compute_annotation_schema(collection, field_name):
         - tags
 
     Args:
-        field_name: the field to process
+        collection: a :class:`SampleCollection`
+        field_name: the field name to process
 
     Raises:
         ValueError: if the field does not exists or annotation for its

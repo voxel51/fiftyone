@@ -3352,7 +3352,7 @@ class SampleCollection(object):
         Returns:
             an annotation schema dictionary
         """
-        return foua.compute_annotation_schema(self, field_name)
+        return foan.compute_annotation_schema(self, field_name)
 
     def apply_model(
         self,
