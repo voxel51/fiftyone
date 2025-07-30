@@ -3174,6 +3174,7 @@
                         "model": "dinov2_vits14"
                     },
                     "image_patch_size": 14,
+                    "image_min_dim": 14,
                     "embeddings_layer": "head"
                 }
             },
@@ -3205,6 +3206,7 @@
                         "model": "dinov2_vitb14"
                     },
                     "image_patch_size": 14,
+                    "image_min_dim": 14,
                     "embeddings_layer": "head"
                 }
             },
@@ -3236,6 +3238,7 @@
                         "model": "dinov2_vitl14"
                     },
                     "image_patch_size": 14,
+                    "image_min_dim": 14,
                     "embeddings_layer": "head"
                 }
             },
@@ -3267,6 +3270,7 @@
                         "model": "dinov2_vitg14"
                     },
                     "image_patch_size": 14,
+                    "image_min_dim": 14,
                     "embeddings_layer": "head"
                 }
             },
@@ -3298,6 +3302,7 @@
                         "model": "dinov2_vits14_reg"
                     },
                     "image_patch_size": 14,
+                    "image_min_dim": 14,
                     "embeddings_layer": "head"
                 }
             },
@@ -3329,6 +3334,7 @@
                         "model": "dinov2_vitb14_reg"
                     },
                     "image_patch_size": 14,
+                    "image_min_dim": 14,
                     "embeddings_layer": "head"
                 }
             },
@@ -3360,6 +3366,7 @@
                         "model": "dinov2_vitl14_reg"
                     },
                     "image_patch_size": 14,
+                    "image_min_dim": 14,
                     "embeddings_layer": "head"
                 }
             },
@@ -3391,6 +3398,7 @@
                         "model": "dinov2_vitg14_reg"
                     },
                     "image_patch_size": 14,
+                    "image_min_dim": 14,
                     "embeddings_layer": "head"
                 }
             },
