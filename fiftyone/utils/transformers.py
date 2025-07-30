@@ -21,11 +21,15 @@ from fiftyone.core.models import EmbeddingsMixin, PromptMixin
 from fiftyone.zoo.models import HasZooModel
 import fiftyone.utils.torch as fout
 
+
 fou.ensure_torch()
 import torch
 
+from torchvision.transforms import functional as F
+
 fou.ensure_package("transformers")
 import transformers
+
 
 
 logger = logging.getLogger(__name__)
@@ -36,6 +40,8 @@ DEFAULT_SEGMENTATION_PATH = "nvidia/segformer-b0-finetuned-ade-512-512"
 DEFAULT_DEPTH_ESTIMATION_PATH = "Intel/dpt-hybrid-midas"
 DEFAULT_ZERO_SHOT_CLASSIFICATION_PATH = "openai/clip-vit-large-patch14"
 DEFAULT_ZERO_SHOT_DETECTION_PATH = "google/owlvit-base-patch32"
+DEFAULT_POSE_ESTIMATION_PATH = "usyd-community/vitpose-base-simple"
+
 
 
 def convert_transformers_model(model, task=None, **kwargs):
@@ -122,6 +128,8 @@ def get_model_type(model, task=None):
             task = "semantic-segmentation"
         elif _is_transformer_for_depth_estimation(model):
             task = "depth-estimation"
+        elif _is_transformer_for_pose_estimation(model):
+            task = "pose-estimation"
         elif _is_transformer_base_model(model):
             task = "base-model"
         else:
@@ -1070,6 +1078,216 @@ class FiftyOneTransformerForSemanticSegmentation(FiftyOneTransformer):
         self.transforms.return_image_sizes = True
 
 
+class FiftyOneTransformerForPoseEstimationConfig(FiftyOneTransformerConfig):
+    """Configuration for a :class:`FiftyOneTransformerForPoseEstimation`.
+
+    Args:
+        model (None): a ``transformers`` model
+        name_or_path (None): the name or path to a checkpoint file to load
+        detector_name (None): name of detector model from zoo for person detection
+        detector_confidence_thresh (0.5): minimum confidence for person detections
+    """
+
+    def __init__(self, d):
+        if (
+            d.get("name_or_path", None) is None
+            and d.get("model", None) is None
+        ):
+            d["name_or_path"] = DEFAULT_POSE_ESTIMATION_PATH
+        super().__init__(d)
+        
+        # Add detector configuration
+        self.detector_name = self.parse_string(d, "detector_name", default="faster-rcnn-resnet50-fpn-coco-torch")
+        self.detector_confidence_thresh = self.parse_number(
+            d, "detector_confidence_thresh", default=0.8
+        )
+
+
+class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
+    """FiftyOne wrapper around a ``transformers`` model for pose estimation.
+    
+    VitPose models require person detection as a first step, then estimate
+    keypoints within each detected person.
+    
+    Args:
+        config: a `FiftyOneTransformerForPoseEstimationConfig`
+    """
+    
+    # COCO keypoint info
+    COCO_KEYPOINT_NAMES = [
+        "nose", "left_eye", "right_eye", "left_ear", "right_ear",
+        "left_shoulder", "right_shoulder", "left_elbow", "right_elbow", 
+        "left_wrist", "right_wrist", "left_hip", "right_hip",
+        "left_knee", "right_knee", "left_ankle", "right_ankle"
+    ]
+    
+    # COCO skeleton - using 1-indexed format that FiftyOne expects
+    COCO_SKELETON = [
+        [16, 14], [14, 12], [17, 15], [15, 13], [12, 13],
+        [6, 12], [7, 13], [6, 7], [6, 8], [7, 9],
+        [8, 10], [9, 11], [2, 3], [1, 2], [1, 3],
+        [2, 4], [3, 5], [4, 6], [5, 7]
+    ]
+    
+    def __init__(self, config):
+        # Override entry point
+        if config.entrypoint_fcn is None:
+            config.entrypoint_fcn = (
+                "transformers.VitPoseForPoseEstimation.from_pretrained"
+            )
+        
+        # IMPORTANT: Set these BEFORE calling super().__init__
+        config.output_processor_cls = None
+        config.output_processor = None
+        
+        super().__init__(config)
+        
+        # Initialize person detector
+        import fiftyone.zoo as foz
+        self._detector = foz.load_zoo_model(config.detector_name)
+        self._detector_confidence_thresh = config.detector_confidence_thresh
+    
+    def _build_transforms(self, config):
+        """Load the VitPose processor."""
+        if config.transforms_fcn is None:
+            config.transforms_fcn = "transformers.AutoProcessor.from_pretrained"
+        if config.transforms_args is None:
+            config.transforms_args = {}
+        config.transforms_args["pretrained_model_name_or_path"] = config.name_or_path
+        
+        transforms = self._load_transforms(config)
+        return transforms, False  # ragged_batches = False
+    
+    def _predict_all(self, imgs):
+        """Perform pose estimation on images.
+        
+        Args:
+            imgs: a list of images
+        
+        Returns:
+            a list of :class:`fiftyone.core.labels.Keypoints`
+        """
+        # Phase 1: Detect people in all images and collect data
+        detection_data = []
+        for img_idx, img in enumerate(imgs):
+            # Ensure PIL Image
+            if isinstance(img, str):
+                img = Image.open(img)
+            elif torch.is_tensor(img):
+                img = F.to_pil_image(img)
+            elif isinstance(img, np.ndarray):
+                img = Image.fromarray(img)
+            
+            img_width, img_height = img.size
+            
+            # Detect people
+            detections = self._detector.predict(img)
+            
+            # Handle detectors that may return None when no objects are detected
+            if detections is None or not hasattr(detections, 'detections'):
+                person_detections = []
+            else:
+                person_detections = [
+                    d for d in detections.detections 
+                    if d.label == "person" and d.confidence > self._detector_confidence_thresh
+                ]
+            
+            detection_data.append({
+                'img': img,
+                'img_idx': img_idx,
+                'width': img_width,
+                'height': img_height,
+                'person_detections': person_detections
+            })
+        
+        # Phase 2: Collect all person crops for batch processing
+        batch_data = []
+        
+        for data in detection_data:
+            for detection in data['person_detections']:
+                x, y, w, h = detection.bounding_box
+                box_coco = [x * data['width'], y * data['height'], 
+                           w * data['width'], h * data['height']]
+                
+                batch_data.append({
+                    'img': data['img'],
+                    'box': box_coco,
+                    'img_idx': data['img_idx'],
+                    'width': data['width'],
+                    'height': data['height']
+                })
+        
+        # Phase 3: Initialize results
+        results = [fol.Keypoints(keypoints=[], skeleton=self.COCO_SKELETON) for _ in imgs]
+        
+        # Phase 4: Batch process all people at once
+        if batch_data:
+            # Prepare batch inputs
+            batch_images = [item['img'] for item in batch_data]
+            batch_boxes = [[item['box']] for item in batch_data]
+            
+            # Process entire batch
+            inputs = self._transforms.processor(
+                batch_images, 
+                boxes=batch_boxes, 
+                return_tensors="pt"
+            )
+            inputs = {k: v.to(self._device) for k, v in inputs.items()}
+            
+            with torch.no_grad():
+                # Check if this is a mixture-of-experts model
+                if (hasattr(self._model.config, 'backbone_config') and 
+                    hasattr(self._model.config.backbone_config, 'num_experts') and 
+                    self._model.config.backbone_config.num_experts > 1):
+                    # Create batch of dataset indices for MoE models
+                    batch_size = inputs['pixel_values'].shape[0]
+                    outputs = self._model(
+                        pixel_values=inputs['pixel_values'],
+                        dataset_index=torch.zeros(batch_size, dtype=torch.long).to(self._device)  # 0 for COCO
+                    )
+                else:
+                    # Regular model call
+                    outputs = self._model(**inputs)
+            
+            # Post-process batch results
+            pose_results = self._transforms.processor.post_process_pose_estimation(
+                outputs, boxes=batch_boxes
+            )
+            
+            # Phase 5: Distribute results back to correct images
+            for batch_idx, (pose_result, data) in enumerate(zip(pose_results, batch_data)):
+                img_idx = data['img_idx']
+                img_width = data['width']
+                img_height = data['height']
+                
+                if pose_result:
+                    for person_result in pose_result:
+                        keypoints = person_result['keypoints']
+                        scores = person_result['scores']
+                        
+                        # Convert to numpy if needed
+                        if isinstance(keypoints, torch.Tensor):
+                            keypoints = keypoints.cpu().numpy()
+                        if isinstance(scores, torch.Tensor):
+                            scores = scores.cpu().numpy()
+                        
+                        # Convert to FiftyOne format with relative coordinates
+                        for j, (kp, score) in enumerate(zip(keypoints, scores)):
+                            x_rel = float(kp[0]) / img_width
+                            y_rel = float(kp[1]) / img_height
+                            
+                            confidence_value = float(score.item() if hasattr(score, 'item') else score)
+                            
+                            results[img_idx].keypoints.append(
+                                fol.Keypoint(
+                                    label=self.COCO_KEYPOINT_NAMES[j],
+                                    points=[(x_rel, y_rel)],
+                                    confidence=[confidence_value]
+                                )
+                            )
+        
+        return results
+       
 class FiftyOneTransformerForDepthEstimationConfig(FiftyOneTransformerConfig):
     """Configuration for a :class:`FiftyOneTransformerForDepthEstimation`.
 
@@ -1111,7 +1329,6 @@ class FiftyOneTransformerForDepthEstimation(FiftyOneTransformer):
         self._output_processor.processor = self.transforms.processor
         # ew
         self.transforms.return_image_sizes = True
-
 
 def _has_text_and_image_features(model):
     return hasattr(model.base_model, "get_image_features") and hasattr(
@@ -1169,6 +1386,8 @@ def _is_transformer_for_semantic_segmentation(model):
 def _is_transformer_for_depth_estimation(model):
     return "ForDepthEstimation" in _get_model_type_string(model)
 
+def _is_transformer_for_pose_estimation(model):
+    return "ForPoseEstimation" in _get_model_type_string(model)
 
 def _is_transformer_base_model(model):
     model_type = _get_model_type_string(model)
@@ -1335,8 +1554,7 @@ class TransformersDepthEstimatorOutputProcessor(fout.OutputProcessor):
         )
         output = output / np.max(output, axis=(1, 2), keepdims=True)
         return [fol.Heatmap(map=o) for o in output]
-
-
+            
 def _get_image_size(img):
     if isinstance(img, torch.Tensor):
         height, width = img.size()[-2:]
@@ -1347,7 +1565,6 @@ def _get_image_size(img):
 
     return height, width
 
-
 MODEL_TYPE_TO_CONFIG_CLASS = {
     "base-model": FiftyOneTransformerConfig,
     "image-classification": FiftyOneTransformerForImageClassificationConfig,
@@ -1357,6 +1574,7 @@ MODEL_TYPE_TO_CONFIG_CLASS = {
     "zero-shot-image-classification": FiftyOneZeroShotTransformerForImageClassificationConfig,
     "zero-shot-object-detection": FiftyOneZeroShotTransformerForObjectDetectionConfig,
     "zero-shot-semantic-segmentation": FiftyOneZeroShotTransformerForSemanticSegmentationConfig,
+    "pose-estimation": FiftyOneTransformerForPoseEstimationConfig,
 }
 
 MODEL_TYPE_TO_MODEL_CLASS = {
@@ -1368,4 +1586,5 @@ MODEL_TYPE_TO_MODEL_CLASS = {
     "zero-shot-image-classification": FiftyOneZeroShotTransformerForImageClassification,
     "zero-shot-object-detection": FiftyOneZeroShotTransformerForObjectDetection,
     "zero-shot-semantic-segmentation": FiftyOneZeroShotTransformerForSemanticSegmentation,
+    "pose-estimation": FiftyOneTransformerForPoseEstimation,
 }
