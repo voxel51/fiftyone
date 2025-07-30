@@ -3,6 +3,86 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.10.1
+--------------------------
+*Released July 21, 2025*
+
+Includes all updates from :ref:`FiftyOne 1.7.1 <release-notes-v1.7.1>`, plus:
+
+- Optimized the :ref:`pinned datasets widget <enterprise-pinned-datasets>`
+- Enhanced connection handling for HTTP requests, allowing faster failure and
+  more robust retry behavior after a successful connection has been
+  established
+- Changed the `sizeEstimate` fields on both datasets and dataset snapshots to
+  return a float indicating size in megabytes, rather than in bytes
+- Fixed an error that could prevent
+  :ref:`dataset snapshots <dataset_versioning>` from loading in the App in
+  certain contexts
+
+.. _release-notes-v1.7.1:
+
+FiftyOne 1.7.1
+--------------
+*Released July 21, 2025*
+
+App
+
+- Updated the :ref:`Scenario Analysis <app-scenario-analysis>` summary table to
+  correctly interpret and display metrics where a lower value is better, such
+  as the "Incorrect" metric
+  `#6111 <https://github.com/voxel51/fiftyone/pull/6111>`_
+- Improved error handling in :ref:`Scenario Analysis <app-scenario-analysis>`
+  when empty subsets are defined
+  `#6127 <https://github.com/voxel51/fiftyone/pull/6127>`_
+- Added calendar picker support for |DateField| and |DateTimeField| inputs in
+  the sidebar
+  `#6120 <https://github.com/voxel51/fiftyone/pull/6120>`_
+- Polished the sidebar's slider UX to improve how we handle numeric precision
+  `#6147 <https://github.com/voxel51/fiftyone/pull/6147>`_
+- The :ref:`Embeddings panel <app-embeddings-panel>` now supports
+  :ref:`frame patch views <frame-patches-views>`
+  `#6129 <https://github.com/voxel51/fiftyone/pull/6129>`_
+- Updated :ref:`custom color scheme <dataset-app-config-color-scheme>` to allow
+  `color_pool` to be optional
+  `#6128 <https://github.com/voxel51/fiftyone/pull/6128>`_
+- Fixed an issue where renaming a :ref:`saved workspace <app-workspaces>` would
+  create a new workspace instead
+  `#6125 <https://github.com/voxel51/fiftyone/pull/6125>`_
+- Fixed search results for `label tags` in the sidebar when 
+  :ref:`Query Performance <app-optimizing-query-performance>` is disabled 
+  `#6095 <https://github.com/voxel51/fiftyone/pull/6095>`_
+- Fixed an issue where the `useBrowserStorage` utility would persist an invalid
+  `undefined` value in localStorage
+  `#6116 <https://github.com/voxel51/fiftyone/pull/6116>`_
+
+Core
+
+- Improved handling of path resolution on Windows machines with multiple drives
+  `#6088 <https://github.com/voxel51/fiftyone/pull/6088>`_,
+  `#6136 <https://github.com/voxel51/fiftyone/pull/6136>`_
+- Fixed a recent regression that prevented calling evaluation methods like
+  :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
+  without providing an `eval_key`
+  `#6126 <https://github.com/voxel51/fiftyone/pull/6126>`_
+- Added a
+  :ref:`deprecation notice for Kubernetes 1.30 <deprecation-kubernetes-1.30>`
+  indicating support will end on July 11, 2025 and future releases may not be
+  compatible with this version
+  `#6132 <https://github.com/voxel51/fiftyone/pull/6132>`_
+
+Zoo
+
+- Improved semantics when performing inference with
+  :ref:`Ultralytics models <ultralytics-integration>` and no suitable objects
+  were found in an image
+  `#6131 <https://github.com/voxel51/fiftyone/pull/6131>`_
+- Fixed a bug that prevented applying models to image patches with
+  `num_workers>0` on macOS
+  `#6138 <https://github.com/voxel51/fiftyone/pull/6138>`_
+- Fixed a bug that would prevent extracting embeddings from zero-shot
+  transformer models with preprocessing disabled
+  `#6122 <https://github.com/voxel51/fiftyone/pull/6122>`_
+
 FiftyOne Enterprise 2.10.0
 --------------------------
 *Released July 1, 2025*
@@ -4196,8 +4276,7 @@ User roles
   `Collaborator <https://docs.voxel51.com/enterprise/roles_and_permissions.html#collaborator>`_
 - Added a new
   `Guest <https://docs.voxel51.com/enterprise/roles_and_permissions.html#guest>`_
-  role. Note that Guest is a view-only role and does not contribute to your
-  license count. You can add unlimited Guest users to your deployment!
+  role
 
 Homepage
 

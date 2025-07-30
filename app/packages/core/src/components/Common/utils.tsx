@@ -10,6 +10,28 @@ import React from "react";
 
 import { getDateTimeRangeFormattersWithPrecision } from "../../utils/generic";
 
+/**
+ * Get the format string for the given type and bounds.
+ *
+ * This string is compatible with the numeral library.
+ *
+ * @param fieldType Field type
+ * @param bounds Field bounds
+ * @return numeral-compatible format string
+ */
+const getNumeralFormat = (
+  fieldType: string,
+  bounds: [number, number]
+): string => {
+  const precision = getPrecision(fieldType, bounds);
+  if (precision > 0) {
+    const zeros = new Array(precision).fill("0").join("");
+    return `0.${zeros}a`;
+  } else {
+    return "0a";
+  }
+};
+
 export const getFormatter = (fieldType: string, timeZone: string, bounds) => {
   let hasTitle = false;
   let dtFormatters;
@@ -68,13 +90,8 @@ export const getFormatter = (fieldType: string, timeZone: string, bounds) => {
         );
       }
 
-      const str = numeral(v).format(
-        [INT_FIELD, FRAME_NUMBER_FIELD, FRAME_SUPPORT_FIELD].includes(fieldType)
-          ? "0a"
-          : bounds[1] - bounds[0] < 0.1
-          ? "0.0000a"
-          : "0.00a"
-      );
+      const format = getNumeralFormat(fieldType, bounds);
+      const str = numeral(v).format(format);
       return str === "NaN" ? v.toString() : str;
     },
   };
@@ -95,4 +112,32 @@ export const getStep = (
   }
 
   return step;
+};
+
+/**
+ * Get the recommended number of digits for the given type and bounds.
+ *
+ * @param fieldType Field type
+ * @param bounds Field bounds
+ * @return Recommended number of digits
+ */
+export const getPrecision = (
+  fieldType: string,
+  bounds: [number, number]
+): number => {
+  if ([DATE_TIME_FIELD, DATE_FIELD].includes(fieldType)) {
+    // float precision for date/datetime
+    return 7;
+  } else if (
+    [INT_FIELD, FRAME_NUMBER_FIELD, FRAME_SUPPORT_FIELD].includes(fieldType)
+  ) {
+    // no decimals for integers
+    return 0;
+  } else if (bounds[1] - bounds[0] < 0.1) {
+    // 4 decimals for small floats
+    return 4;
+  } else {
+    // 2 decimals for "normal"-sized floats
+    return 2;
+  }
 };

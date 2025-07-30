@@ -92,44 +92,42 @@ export const stringSearchResults = selectorFamily<
         };
       }
 
-      const noneCount = get(fos.noneCount({ path, modal, extended: false }));
-
       if (isLabelTag) {
         const labels = get(labelTagsCount({ modal, extended: false }));
-        data = {
-          count: labels.count,
+        return {
+          count: labels.count ?? 0,
           values: labels.results,
         };
-      } else {
-        data = await getFetchFunction()("POST", "/values", {
-          dataset: get(fos.datasetName),
-          view: get(fos.view),
-          path,
-          search,
-          selected: filter ? [] : selected,
-          filters: filter
-            ? {
-                [filter.path]: {
-                  exclude: get(stringExcludeAtom({ path, modal })),
-                  isMatching: get(isMatchingAtom({ path, modal })),
-                  values: [filter.value],
-                },
-              }
-            : get(pathSearchFilters({ modal, path })),
-          group_id: modal ? get(fos.groupId) || null : null,
-          mixed,
-          slice: get(fos.groupSlice),
-          slices: mixed ? null : get(fos.currentSlices(modal)), // when mixed, slice is not needed
-          sample_id:
-            modal && !get(fos.groupId) && !mixed
-              ? get(fos.modalSampleId)
-              : null,
-          ...sorting,
-        });
       }
+
+      data = await getFetchFunction()("POST", "/values", {
+        dataset: get(fos.datasetName),
+        view: get(fos.view),
+        path,
+        search,
+        selected: filter ? [] : selected,
+        filters: filter
+          ? {
+              [filter.path]: {
+                exclude: get(stringExcludeAtom({ path, modal })),
+                isMatching: get(isMatchingAtom({ path, modal })),
+                values: [filter.value],
+              },
+            }
+          : get(pathSearchFilters({ modal, path })),
+        group_id: modal ? get(fos.groupId) || null : null,
+        mixed,
+        slice: get(fos.groupSlice),
+        slices: mixed ? null : get(fos.currentSlices(modal)), // when mixed, slice is not needed
+        sample_id:
+          modal && !get(fos.groupId) && !mixed ? get(fos.modalSampleId) : null,
+        ...sorting,
+      });
 
       let { values, count } = data;
       count ??= 0;
+      const noneCount = get(fos.noneCount({ path, modal, extended: false }));
+
       if (noneCount > 0 && "None".includes(search)) {
         values = [...values, { value: null, count: noneCount }]
           .sort(nullSort(sorting))

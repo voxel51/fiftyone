@@ -9,6 +9,12 @@ FiftyOne singleton implementations.
 from collections import defaultdict
 import weakref
 
+import fiftyone.core.utils as fou
+
+# This is required to avoid circular imports, in order to get `fo.config` at
+#   runtime.
+fo = fou.lazy_import("fiftyone")
+
 
 class DatasetSingleton(type):
     """Singleton metaclass for :class:`fiftyone.core.dataset.Dataset`.
@@ -24,7 +30,16 @@ class DatasetSingleton(type):
         cls._instances = weakref.WeakValueDictionary()
         return cls
 
-    def __call__(cls, name=None, _create=True, *args, **kwargs):
+    def _make_instance(cls, name, _create, *args, **kwargs):
+        instance = cls.__new__(cls)
+        instance.__init__(name=name, _create=_create, *args, **kwargs)
+        return instance
+
+    def __call__(cls, name=None, _create=True, _reload=False, *args, **kwargs):
+        skip_cache = not fo.config.singleton_cache
+        if skip_cache:
+            return cls._make_instance(name, _create, *args, **kwargs)
+
         instance = cls._instances.pop(name, None)
 
         if (
@@ -33,8 +48,9 @@ class DatasetSingleton(type):
             or instance.deleted
             or instance.name is None
         ):
-            instance = cls.__new__(cls)
-            instance.__init__(name=name, _create=_create, *args, **kwargs)
+            instance = cls._make_instance(
+                name=name, _create=_create, *args, **kwargs
+            )
             name = instance.name  # `__init__` may have changed `name`
         else:
             try:
@@ -46,7 +62,11 @@ class DatasetSingleton(type):
                 return cls.__call__(
                     name=name, _create=_create, *args, **kwargs
                 )
+            if _reload:
+                instance.reload()
 
+        # If the singleton cache is enabled, we store the instance
+        #  so that it can be retrieved later
         cls._instances[name] = instance
 
         return instance
@@ -110,7 +130,8 @@ class SampleSingleton(DocumentSingleton):
         return cls
 
     def _register_instance(cls, obj):
-        cls._instances[obj._doc.collection_name][obj.id] = obj
+        if fo.config.singleton_cache:
+            cls._instances[obj._doc.collection_name][obj.id] = obj
 
     def _get_instance(cls, doc):
         try:
@@ -261,9 +282,10 @@ class FrameSingleton(DocumentSingleton):
         return cls
 
     def _register_instance(cls, obj):
-        cls._instances[obj._doc.collection_name][obj.sample_id][
-            obj.frame_number
-        ] = obj
+        if fo.config.singleton_cache:
+            cls._instances[obj._doc.collection_name][obj.sample_id][
+                obj.frame_number
+            ] = obj
 
     def _get_instance(cls, doc):
         try:

@@ -6484,7 +6484,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     "attributes": attributes,
                 }
 
-                if det.has_attribute("rotation"):
+                if det.has_attribute("rotation") and isinstance(
+                    det["rotation"], (int, float)
+                ):
                     shape["rotation"] = det["rotation"] or 0.0
 
                 curr_shapes.append(shape)

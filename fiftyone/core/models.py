@@ -1955,8 +1955,12 @@ def _make_patch_data_loader(
         dataset,
         batch_size=1,
         num_workers=num_workers,
-        collate_fn=lambda batch: batch[0],  # return patches directly
+        collate_fn=_patch_collate_fn,
     )
+
+
+def _patch_collate_fn(batch):
+    return batch[0]  # return patches directly
 
 
 def _parse_batch_size(batch_size, model, use_data_loader):

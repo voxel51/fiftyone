@@ -368,7 +368,8 @@ class FiftyOneZeroShotTransformerConfig(FiftyOneTransformerConfig):
 
     def _load_classes(self, d):
         if self.classes is None:
-            raise ValueError("Classes must be set for zero-shot models")
+            if self.hf_config.id2label is not None:
+                self.classes = list(self.hf_config.id2label.values())
 
 
 class TransformerEmbeddingsMixin(EmbeddingsMixin):
@@ -510,26 +511,22 @@ class ZeroShotTransformerEmbeddingsMixin(EmbeddingsMixin):
 
     @property
     def has_embeddings(self):
-        return _has_text_and_image_features(self._model)
+        return hasattr(self._model, "get_image_features")
 
     def embed(self, arg):
-        return self._embed(arg)[0]
+        return self.embed_all([arg])[0]
 
     def embed_all(self, args):
-        return self._embed(args)
-
-    def _embed(self, args):
-        # don't use the regular TransformerEmbeddingsMixin
-        # because doing the whole forward pass is slow
-        # and because HFT offer a cleaner way to do this
-        # via get_image_features
         if self.preprocess:
-            inputs = self.transforms.processor(images=args, return_tensors="pt")
+            args = {"images": args}
+            args = self.collate_fn(self.transforms(args))
+
         with torch.no_grad():
-            image_features = self._model.get_image_features(
-                **inputs.to(self._device)
+            for k, v in args.items():
+                args[k] = v.to(self.device)
+            return (
+                self._model.get_image_features(**args).detach().cpu().numpy()
             )
-        return image_features.cpu().numpy()
 
 
 class ZeroShotTransformerPromptMixin(PromptMixin):
