@@ -204,7 +204,7 @@
             "description": "Smallest image segmentation model offering instant results for mobile apps and embedded systems",
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
-            "license": "Apache 2.0,BSD 3-Clause",
+            "license": "Apache 2.0, BSD 3-Clause",
             "size_bytes": 155906050,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -239,7 +239,7 @@
             "description": "Fast image segmentation model that runs efficiently on laptops and edge computing devices",
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
-            "license": "Apache 2.0,BSD 3-Clause",
+            "license": "Apache 2.0, BSD 3-Clause",
             "size_bytes": 184309650,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -274,7 +274,7 @@
             "description": "Accurate image segmentation model for editing, labeling, and creative work with still pictures",
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
-            "license": "Apache 2.0,BSD 3-Clause",
+            "license": "Apache 2.0, BSD 3-Clause",
             "size_bytes": 323493298,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -309,7 +309,7 @@
             "description": "High-quality image segmenter producing detailed masks for demanding professional editing and annotation tasks",
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
-            "license": "Apache 2.0,BSD 3-Clause",
+            "license": "Apache 2.0, BSD 3-Clause",
             "size_bytes": 897952466,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -344,7 +344,7 @@
             "description": "Tiny video segmenter enabling real-time object tracking on phones and compact devices",
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
-            "license": "Apache 2.0,BSD 3-Clause",
+            "license": "Apache 2.0, BSD 3-Clause",
             "size_bytes": 155906050,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -378,7 +378,7 @@
             "description": "Quick video segmentation model delivering rapid object tracking on standard graphics cards",
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
-            "license": "Apache 2.0,BSD 3-Clause",
+            "license": "Apache 2.0, BSD 3-Clause",
             "size_bytes": 184309650,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -413,7 +413,7 @@
             "description": "Video segmentation model that tracks and outlines objects throughout clips for editing and analysis",
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
-            "license": "Apache 2.0,BSD 3-Clause",
+            "license": "Apache 2.0, BSD 3-Clause",
             "size_bytes": 323493298,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -448,7 +448,7 @@
             "description": "Advanced video segmenter providing fine object tracking throughout full videos for post-production work",
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
-            "license": "Apache 2.0,BSD 3-Clause",
+            "license": "Apache 2.0, BSD 3-Clause",
             "size_bytes": 897952466,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -525,7 +525,7 @@
             "description": "Enhanced mobile image segmenter for apps, augmented reality filters, and on-device processing",
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
-            "license": "Apache 2.0,BSD 3-Clause",
+            "license": "Apache 2.0, BSD 3-Clause",
             "size_bytes": 155906050,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -562,7 +562,7 @@
             "description": "Balanced updated segmenter combining speed and accuracy for edge device image processing",
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
-            "license": "Apache 2.0,BSD 3-Clause",
+            "license": "Apache 2.0, BSD 3-Clause",
             "size_bytes": 184416285,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -599,7 +599,7 @@
             "description": "Updated image segmenter with improved mask accuracy for everyday editing and dataset creation",
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
-            "license": "Apache 2.0,BSD 3-Clause",
+            "license": "Apache 2.0, BSD 3-Clause",
             "size_bytes": 323606802,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -636,7 +636,7 @@
             "description": "Large updated model offering even finer masks for high-resolution professional image workflows",
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
-            "license": "Apache 2.0,BSD 3-Clause",
+            "license": "Apache 2.0, BSD 3-Clause",
             "size_bytes": 898083611,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -673,7 +673,7 @@
             "description": "Upgraded mobile video segmenter for live effects on phones, wearables, and smart cameras",
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
-            "license": "Apache 2.0,BSD 3-Clause",
+            "license": "Apache 2.0, BSD 3-Clause",
             "size_bytes": 155906050,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -709,7 +709,7 @@
             "description": "Improved video segmenter maintaining quick performance on compact hardware while enhancing mask quality",
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
-            "license": "Apache 2.0,BSD 3-Clause",
+            "license": "Apache 2.0, BSD 3-Clause",
             "size_bytes": 184416285,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -746,7 +746,7 @@
             "description": "Enhanced video segmenter with better tracking quality for video analysis and scene understanding",
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
-            "license": "Apache 2.0,BSD 3-Clause",
+            "license": "Apache 2.0, BSD 3-Clause",
             "size_bytes": 323606802,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -783,7 +783,7 @@
             "description": "Large video model producing exceptionally detailed masks throughout long videos for intensive production",
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
-            "license": "Apache 2.0,BSD 3-Clause",
+            "license": "Apache 2.0, BSD 3-Clause",
             "size_bytes": 898083611,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
