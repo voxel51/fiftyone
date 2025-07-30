@@ -243,7 +243,7 @@ def _init_worker(
     # pylint:disable-next=protected-access
     food._disconnect()
 
-    dataset = fo.load_dataset(dataset_name)
+    dataset = fo.load_dataset(dataset_name, reload=True)
     if view_stages:
         # pylint:disable-next=protected-access
         process_sample_collection = fov.DatasetView._build(

@@ -198,7 +198,7 @@ class SetColorScheme:
             color_scheme.id = str(ObjectId())
 
         def run():
-            dataset = fo.load_dataset(dataset_name)
+            dataset = fo.load_dataset(dataset_name, reload=True)
             dataset.app_config.color_scheme = (
                 _to_odm_color_scheme(color_scheme) if color_scheme else None
             )
