@@ -216,17 +216,23 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_DEFAULT_APP_ADDRESS",
             default="localhost",
         )
-        self.logging_level = self.parse_string(
+        self.logging_destination = self.parse_string(
             d,
-            "logging_level",
-            env_var="FIFTYONE_LOGGING_LEVEL",
-            default="INFO",
+            "logging_destination",
+            env_var="FIFTYONE_LOGGING_DESTINATION",
+            default="stdout",
         )
         self.logging_format = self.parse_string(
             d,
             "logging_format",
             env_var="FIFTYONE_LOGGING_FORMAT",
             default="text",
+        )
+        self.logging_level = self.parse_string(
+            d,
+            "logging_level",
+            env_var="FIFTYONE_LOGGING_LEVEL",
+            default="INFO",
         )
         self._show_progress_bars = None  # declare
         self.show_progress_bars = self.parse_bool(

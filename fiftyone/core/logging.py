@@ -46,17 +46,24 @@ def add_handlers():
         else logging.Formatter(fmt="%(message)s")
     )
 
-    stdout_handler = logging.StreamHandler(stream=sys.stdout)
-    stdout_handler.setFormatter(formatter)
-    stdout_handler.addFilter(lambda r: r.levelno < logging.ERROR)
+    if fo.config.logging_destination == "stdout":
+        stdout_handler = logging.StreamHandler(stream=sys.stdout)
+        stdout_handler.setFormatter(formatter)
 
-    stderr_handler = logging.StreamHandler(stream=sys.stderr)
-    stderr_handler.setFormatter(formatter)
-    stderr_handler.addFilter(lambda r: r.levelno >= logging.ERROR)
+        for _logger in _get_loggers():
+            _logger.addHandler(stdout_handler)
+    elif fo.config.logging_destination == "stdout,stderr":
+        stdout_handler = logging.StreamHandler(stream=sys.stdout)
+        stdout_handler.setFormatter(formatter)
+        stdout_handler.addFilter(lambda r: r.levelno < logging.ERROR)
 
-    for _logger in _get_loggers():
-        _logger.addHandler(stdout_handler)
-        _logger.addHandler(stderr_handler)
+        stderr_handler = logging.StreamHandler(stream=sys.stderr)
+        stderr_handler.setFormatter(formatter)
+        stderr_handler.addFilter(lambda r: r.levelno >= logging.ERROR)
+
+        for _logger in _get_loggers():
+            _logger.addHandler(stdout_handler)
+            _logger.addHandler(stderr_handler)
 
 
 def init_logging():
