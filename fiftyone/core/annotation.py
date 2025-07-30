@@ -114,12 +114,11 @@ def compute_annotation_schema(collection, field_name):
         raise ValueError("only image datasets are supported")
 
     if field_name is None:
-        raise ValueError("should we allow a full schema computation?")
+        raise ValueError("field_name is required")
 
     field = collection.get_field(field_name)
     if field is None:
-        raise ValueError(f"field '{field_name} does not exist")
-
+        raise ValueError(f"field '{field_name}' does not exist")
     is_list = isinstance(field, fof.ListField)
     if is_list:
         field = field.field
