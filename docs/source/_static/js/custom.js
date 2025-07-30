@@ -62,8 +62,15 @@ $(function () {
   $(window).on("scroll", updateSidebar);
   $(".pytorch-right-menu").on("click", updateSidebar);
 
-  // Hide API docs classes and methods from toctree
-  $(window).on("load", function () {
-    $(".toctree-wrapper.compound li:has(> a.has-code)").hide();
-  });
+  // Mark first and last line numbers for proper styling
+  function markLineNumbers() {
+    $("pre").each(function () {
+      const $lineNumbers = $(this).find("span.linenos");
+      if ($lineNumbers.length > 0) {
+        $lineNumbers.first().addClass("first-linenos");
+        $lineNumbers.last().addClass("last-linenos");
+      }
+    });
+  }
+  markLineNumbers();
 });
