@@ -10,7 +10,7 @@ export function SchemaIOComponent(props) {
   const stateRef = useRef({});
   const autoFocused = useRef(false);
   const schemaIOContext = { id };
-  const store = props.otherProps.store;
+  const storeRef = useRef({ liteValues: {} });
 
   useEffect(() => {
     return () => {
@@ -20,19 +20,6 @@ export function SchemaIOComponent(props) {
     };
   }, []);
 
-  const onIOChangeLite = useCallback(
-    (path, value, schema) => {
-      if (!store.liteValues) {
-        store.liteValues = {};
-      }
-      const liteValue = getLiteValue(value, schema);
-      if (liteValue) {
-        store.liteValues[path] = liteValue;
-      }
-    },
-    [store]
-  );
-
   const onIOChange = useCallback(
     (path, value, schema, ancestors) => {
       const computedValue = coerceValue(path, value, schema);
@@ -40,14 +27,20 @@ export function SchemaIOComponent(props) {
       const updatedState = cloneDeep(currentState);
       set(updatedState, path, cloneDeep(computedValue));
       stateRef.current = updatedState;
-      if (onPathChange) {
-        onPathChange(path, computedValue, schema, updatedState);
-      }
-      if (onChange) {
-        onChange(updatedState);
+
+      const liteValue = getLiteValue(value, schema);
+      const store = storeRef.current;
+      if (liteValue) {
+        store.liteValues[path] = liteValue;
       }
 
-      onIOChangeLite(path, computedValue, schema);
+      if (onPathChange) {
+        onPathChange(path, computedValue, schema, updatedState, liteValue);
+      }
+
+      if (onChange) {
+        onChange(updatedState, store.liteValues);
+      }
 
       // propagate the change to all ancestors
       for (const ancestorPath in ancestors) {
@@ -65,7 +58,7 @@ export function SchemaIOComponent(props) {
 
       return updatedState;
     },
-    [onChange, onPathChange, onIOChangeLite]
+    [onChange, onPathChange]
   );
 
   return (
