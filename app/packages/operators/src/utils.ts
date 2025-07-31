@@ -151,8 +151,7 @@ export function generateOperatorSessionId() {
   return uuid();
 }
 
-export function optimizeCtx(ctx, store) {
-  const liteValues = store?.liteValues || {};
+export function optimizeCtx(ctx, liteValues) {
   const originalParams = ctx.params || {};
 
   if (isEmpty(liteValues) || isEmpty(originalParams)) return ctx;

@@ -476,14 +476,14 @@ export const useOperatorPrompt = () => {
   const serializedParams = useMemo(() => {
     return JSON.stringify(ctx.params);
   }, [ctx.params]);
-  const storeRef = useRef({});
-  const store = storeRef.current;
+  const liteValuesRef = useRef({});
 
   const resolveInput = useCallback(
     debounce(
       async (ctx) => {
         try {
-          const optimizedCtx = optimizeCtx(ctx, store);
+          const liteValues = liteValuesRef.current;
+          const optimizedCtx = optimizeCtx(ctx, liteValues);
           if (operator.config.resolveExecutionOptionsOnChange) {
             execDetails.fetch(optimizedCtx);
           }
@@ -580,6 +580,11 @@ export const useOperatorPrompt = () => {
         }
       }
   );
+
+  const setLiteValues = useCallback((liteValues) => {
+    liteValuesRef.current = liteValues;
+  }, []);
+
   const execute = useCallback(
     async (options = {}) => {
       setPreparing(true);
@@ -686,7 +691,7 @@ export const useOperatorPrompt = () => {
     submitOptions,
     promptView,
     resolvedIO,
-    store,
+    setLiteValues,
   };
 };
 
