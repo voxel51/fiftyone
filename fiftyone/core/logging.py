@@ -5,14 +5,65 @@ Logging utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
+import functools
+import json
 import logging
 import sys
+import time
 
 import fiftyone as fo
 
-
 logger = logging.getLogger(__name__)
-handler = None
+
+
+class JsonFormatter(logging.Formatter):
+    """Custom JSON formatting"""
+
+    converter = time.gmtime
+
+    def format(self, record):
+        log_entry = {
+            "timestamp": f'{self.formatTime(record, "%Y-%m-%dT%H:%M:%S")}{record.msecs/1000:.3f}Z',
+            "severity": record.levelname,
+            "message": record.getMessage(),
+            "filename": record.filename,
+            "lineno": record.lineno,
+        }
+
+        if record.exc_info:
+            log_entry["stacktrace"] = self.formatException(record.exc_info)
+
+        return json.dumps(log_entry)
+
+
+@functools.cache  # has side effects, so only do it once
+def add_handlers():
+    """Adds the default logging handlers to FiftyOne's package-wide loggers."""
+    formatter = (
+        JsonFormatter()
+        if fo.config.logging_format == "json"
+        else logging.Formatter(fmt="%(message)s")
+    )
+
+    if fo.config.logging_destination == "stdout":
+        stdout_handler = logging.StreamHandler(stream=sys.stdout)
+        stdout_handler.setFormatter(formatter)
+
+        for _logger in _get_loggers():
+            _logger.addHandler(stdout_handler)
+    elif fo.config.logging_destination == "stdout,stderr":
+        stdout_handler = logging.StreamHandler(stream=sys.stdout)
+        stdout_handler.setFormatter(formatter)
+        stdout_handler.addFilter(lambda r: r.levelno < logging.ERROR)
+
+        stderr_handler = logging.StreamHandler(stream=sys.stderr)
+        stderr_handler.setFormatter(formatter)
+        stderr_handler.addFilter(lambda r: r.levelno >= logging.ERROR)
+
+        for _logger in _get_loggers():
+            _logger.addHandler(stdout_handler)
+            _logger.addHandler(stderr_handler)
 
 
 def init_logging():
@@ -20,17 +71,8 @@ def init_logging():
 
     The logging level is set to ``fo.config.logging_level``.
     """
-    global handler
-
-    if handler is None:
-        handler = logging.StreamHandler(stream=sys.stdout)
-        handler.setFormatter(logging.Formatter(fmt="%(message)s"))
-
-        for logger in _get_loggers():
-            logger.addHandler(handler)
-
-    level = _parse_logging_level()
-    set_logging_level(level)
+    add_handlers()
+    set_logging_level(_parse_logging_level())
 
 
 def get_logging_level():

@@ -216,6 +216,18 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_DEFAULT_APP_ADDRESS",
             default="localhost",
         )
+        self.logging_destination = self.parse_string(
+            d,
+            "logging_destination",
+            env_var="FIFTYONE_LOGGING_DESTINATION",
+            default="stdout",
+        )
+        self.logging_format = self.parse_string(
+            d,
+            "logging_format",
+            env_var="FIFTYONE_LOGGING_FORMAT",
+            default="text",
+        )
         self.logging_level = self.parse_string(
             d,
             "logging_level",
