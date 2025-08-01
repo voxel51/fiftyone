@@ -53,7 +53,7 @@ INSTALL_REQUIRES = [
     "numpy",
     "packaging",
     "pandas",
-    "Pillow>=6.2",
+    "Pillow>=11.3.0",
     "plotly>=4.14",
     "pprintpp",
     "psutil",
