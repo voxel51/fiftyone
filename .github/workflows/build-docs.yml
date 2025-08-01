@@ -3,17 +3,17 @@ name: Build docs
 on:
   push:
     branches:
-      - develop
+      # - develop
       - docs-*
       - github-actions-*
-      - main
+      # - main
       - rel-*
       - release-*
       - release/*
     tags:
-      - v*
-      - docs-publish
       - dev-docs-publish
+      - docs-publish
+      - v*
     paths:
       - .github/workflows/build-docs.yml
       - docs/**
