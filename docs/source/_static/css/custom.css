@@ -327,7 +327,7 @@ span.linenos.last-linenos {
 
 .rst-content section > img,
 .rst-content section > a > img {
-  margin-bottom: 24px;
+  margin-bottom: 24px !important;
 }
 
 .rst-content .align-center {
