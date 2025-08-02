@@ -1,5 +1,4 @@
 name: Build docs
-
 on:
   push:
     branches:
@@ -44,15 +43,51 @@ jobs:
     env:
       FIFTYONE_DO_NOT_TRACK: true
     steps:
-      - name: Clone fiftyone
+      - name: Clone fiftyone for tag builds
+        if: github.ref_type == 'tag'
+        uses: actions/checkout@v4
+        with:
+          # Fetch full history for rev-parse to work
+          fetch-depth: 0
+      - name: Clone fiftyone for branch builds
+        if: github.ref_type == 'branch'
         uses: actions/checkout@v4
       - name: Get Branch Name
-        # This is somewhat redundant if we were triggered by a branch push
-        #   but it makes it work with tags too
         id: get_branch
-        run: TAG_COMMIT=$(git rev-parse ${{ github.ref }})
-          BRANCH_NAME=$(git branch -r --contains $TAG_COMMIT | head -n1 | cut -c3-)
-          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+        run: |
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            TAG_SHA=$(git rev-parse ${{ github.ref }})
+            case "${{ github.ref_name }}" in
+              docs-publish|v*)
+                MAIN_SHA=$(git rev-parse origin/main)
+                if [[ "${MAIN_SHA}" == "${TAG_SHA}" ]]; then
+                  echo "branch_name=main" >> "${GITHUB_OUTPUT}"
+                else
+                  echo "docs-publish should only be performed on 'main'"
+                  exit 1
+                fi
+                ;;
+              dev-docs-publish)
+                DEVELOP_SHA=$(git rev-parse origin/develop)
+                if [[ "${DEVELOP_SHA}" == "${TAG_SHA}" ]]; then
+                  echo "branch_name=develop" >> "${GITHUB_OUTPUT}"
+                else
+                  echo "dev-docs-publish should only be performed on 'develop'"
+                  exit 1
+                fi
+                ;;
+            esac
+          else
+            case "${{ github.ref_name }}" in
+              main|develop)
+                echo "branch_name=${{ github.ref_name }}" >> "${GITHUB_OUTPUT}"
+                ;;
+              *)
+                # use `main` because arbitrary branch names may not exist on `fiftyone-teams` or `eta`
+                echo "branch_name=main" >> "${GITHUB_OUTPUT}"
+                ;;
+            esac
+          fi
       - name: Checkout fiftyone-teams
         uses: actions/checkout@v4
         with:
@@ -107,11 +142,13 @@ jobs:
         with:
           name: docs
           path: docs/build/html/
+    outputs:
+      branch_name: ${{ steps.get_branch.outputs.branch_name}}
 
   publish:
     needs: [build]
     if: |
-      steps.get_branch.outputs.branch_name == 'origin/main' &&
+      needs.build.outputs.branch_name == 'main' &&
       (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/tags/docs-publish')
     runs-on: ubuntu-latest
     steps:
@@ -132,7 +169,7 @@ jobs:
   dev-publish:
     needs: [build]
     if: |
-      steps.get_branch.outputs.branch_name == 'origin/develop' &&
+      needs.build.outputs.branch_name == 'develop' &&
       github.ref == 'refs/tags/dev-docs-publish'
     runs-on: ubuntu-latest
     steps:
