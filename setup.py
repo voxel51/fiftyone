@@ -53,7 +53,8 @@ INSTALL_REQUIRES = [
     "numpy",
     "packaging",
     "pandas",
-    "Pillow>=11.3.0",
+    # Pillow 11.2.0 introduced CVE 2025-48379 that is fixed in 11.3.0
+    "Pillow>=6.2,!=11.2.*",
     "plotly>=4.14",
     "pprintpp",
     "psutil",
