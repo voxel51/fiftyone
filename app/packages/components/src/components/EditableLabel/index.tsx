@@ -1,11 +1,9 @@
 import {
   CancelOutlined,
-  Close,
   EditOutlined,
   SaveOutlined,
 } from "@mui/icons-material";
 import {
-  Box,
   CircularProgress,
   IconButton,
   Stack,
@@ -14,6 +12,7 @@ import {
   TypographyProps,
 } from "@mui/material";
 import React, { useState } from "react";
+import TooltipProvider from "../TooltipProvider";
 
 export default function EditableLabel(props: EditableLabelProps) {
   const {
@@ -23,6 +22,8 @@ export default function EditableLabel(props: EditableLabelProps) {
     labelProps = {},
     saving,
     showEditIcon = true,
+    disabled,
+    title,
   } = props;
   const [mode, setMode] = useState<"view" | "edit">("view");
   const [updatedLabel, setUpdatedLabel] = useState(label);
@@ -56,7 +57,7 @@ export default function EditableLabel(props: EditableLabelProps) {
                         e.preventDefault();
                         e.stopPropagation();
                         setMode("view");
-                        onCancel();
+                        onCancel?.();
                       }}
                     >
                       <CancelOutlined sx={{ fontSize: 16 }} />
@@ -81,16 +82,19 @@ export default function EditableLabel(props: EditableLabelProps) {
         />
       )}
       {mode === "view" && (
-        <IconButton
-          size="small"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setMode("edit");
-          }}
-        >
-          <EditOutlined sx={{ fontSize: 16 }} />
-        </IconButton>
+        <TooltipProvider title={title}>
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setMode("edit");
+            }}
+            disabled={disabled}
+          >
+            <EditOutlined sx={{ fontSize: 16 }} />
+          </IconButton>
+        </TooltipProvider>
       )}
     </Stack>
   );
@@ -99,9 +103,11 @@ export default function EditableLabel(props: EditableLabelProps) {
 type EditableLabelProps = {
   label: string;
   onSave: (newLabel: string) => void;
-  onCancel: () => void;
+  onCancel?: () => void;
   showEditIcon?: boolean;
   labelProps?: TypographyProps;
   saving?: boolean;
   mode?: "view" | "edit";
+  disabled?: boolean;
+  title?: string;
 };

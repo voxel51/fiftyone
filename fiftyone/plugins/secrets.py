@@ -26,6 +26,29 @@ class PluginSecretsResolver:
             cls._instance.client = _get_secrets_client()
         return cls._instance
 
+    def _validate_keys(
+        self, keys: typing.Union[str, typing.List[str]], operator_uri: str
+    ) -> Optional[typing.List[str]]:
+
+        secret_requirements = self._registered_secrets.get(operator_uri)
+        if not secret_requirements:
+            logging.error(
+                f"Cannot resolve secrets for unregistered operator `{operator_uri}`"
+            )
+            return None
+
+        if isinstance(keys, str):
+            keys = [keys]
+
+        if not all(key in secret_requirements for key in keys):
+            logging.error(
+                f"Cannot resolve secrets {keys} because they are not "
+                f"included in the plugin definition"
+            )
+            return None
+
+        return keys
+
     def register_operator(
         self, operator_uri: str, required_secrets: typing.List[str]
     ) -> None:
@@ -35,6 +58,29 @@ class PluginSecretsResolver:
         if not self._instance:
             self._instance = self.__new__(self.__class__)
         return self._instance.client
+
+    async def get_multiple(
+        self, keys: typing.List[str], operator_uri: str, **kwargs
+    ) -> typing.Dict[str, Optional[fois.ISecret]]:
+        """
+        Get the value of multiple secrets.
+        Args:
+            keys: list of secret keys
+            operator_uri: the operator URI
+            kwargs: additional keyword arguments to pass to the secrets
+            client for authentication if required
+
+        Returns:
+            A dictionary of secret keys and their values
+
+        """
+        # pylint: disable=no-member
+        valid_keys = self._validate_keys(keys, operator_uri)
+        if not valid_keys:
+            return None
+
+        resolved_secrets = await self.client.get_multiple(keys, **kwargs)
+        return resolved_secrets
 
     async def get_secret(
         self, key: str, operator_uri: str, **kwargs
@@ -49,20 +95,10 @@ class PluginSecretsResolver:
         """
         # pylint: disable=no-member
 
-        secret_requirements = self._registered_secrets.get(operator_uri, None)
+        valid_keys = self._validate_keys(key, operator_uri)
+        if not valid_keys:
+            return None
 
-        if not secret_requirements:
-            logging.error(
-                f"Cannot resolve secrets for unregistered "
-                f"operator`{operator_uri}` "
-            )
-            return None
-        if key not in secret_requirements:
-            logging.error(
-                f"Cannot resolve secret {key} because it is not "
-                f"included in the plugins definition "
-            )
-            return None
         resolved_secret = await self.client.get(key, **kwargs)
         return resolved_secret
 
@@ -79,19 +115,10 @@ class PluginSecretsResolver:
         """
         # pylint: disable=no-member
 
-        secret_requirements = self._registered_secrets.get(operator_uri, None)
-        if not secret_requirements:
-            logging.error(
-                f"Cannot resolve secrets for unregistered "
-                f"operator`{operator_uri}` "
-            )
+        valid_keys = self._validate_keys(key, operator_uri)
+        if not valid_keys:
             return None
-        if key not in secret_requirements:
-            logging.error(
-                f"Cannot resolve secret {key} because it is not "
-                f"included in the plugins definition "
-            )
-            return None
+
         return self.client.get_sync(key, **kwargs)
 
 

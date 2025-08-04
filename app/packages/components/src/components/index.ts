@@ -41,5 +41,6 @@ export { default as Tooltip } from "./Tooltip";
 export { default as Toast } from "./Toast";
 export { default as PanelCTA } from "./PanelCTA";
 export { default as EditableLabel } from "./EditableLabel";
+export { default as TooltipProvider } from "./TooltipProvider";
 
 export * from "./types";

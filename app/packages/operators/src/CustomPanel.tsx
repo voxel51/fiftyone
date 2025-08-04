@@ -36,7 +36,6 @@ export function CustomPanel(props: CustomPanelProps) {
     handlePanelStatePathChange,
     panelSchema,
     data,
-    onLoadError,
   } = useCustomPanelHooks(props);
   let pending = fos.useTimeout(PANEL_LOAD_TIMEOUT);
   const setPanelCloseEffect = useSetPanelCloseEffect();
@@ -56,35 +55,26 @@ export function CustomPanel(props: CustomPanelProps) {
     setLoading(count > 0);
   }, [setLoading, count]);
 
-  if (pending && !panelSchema && !onLoadError) {
+  if (pending && !panelSchema) {
     return <PanelSkeleton />;
   }
 
   if (!panelSchema)
     return (
       <CenteredStack spacing={1}>
-        {!onLoadError && (
-          <>
-            <SpinnerContainer>
-              <LoadingSpinner />
-            </SpinnerContainer>
-            <Typography variant="h5">Still loading...</Typography>
-            <Typography
-              variant="body1"
-              color="text.secondary"
-              style={{ textAlign: "center" }}
-            >
-              This panel is taking longer than expected to load.
-              <br />
-              You can continue to work with other panels while this loads.
-            </Typography>
-          </>
-        )}
-        {onLoadError && (
-          <Box maxWidth="95%">
-            <CodeBlock text={onLoadError} />
-          </Box>
-        )}
+        <SpinnerContainer>
+          <LoadingSpinner />
+        </SpinnerContainer>
+        <Typography variant="h5">Still loading...</Typography>
+        <Typography
+          variant="body1"
+          color="text.secondary"
+          style={{ textAlign: "center" }}
+        >
+          This panel is taking longer than expected to load.
+          <br />
+          You can continue to work with other panels while this loads.
+        </Typography>
       </CenteredStack>
     );
 
@@ -142,6 +132,7 @@ export function defineCustomPanel({
   on_change_group_slice,
   on_change_query_performance,
   on_change_spaces,
+  on_change_active_fields,
   panel_name,
   panel_label,
 }) {
@@ -163,6 +154,7 @@ export function defineCustomPanel({
         onChangeGroupSlice={on_change_group_slice}
         onChangeQueryPerformance={on_change_query_performance}
         onChangeSpaces={on_change_spaces}
+        onChangeActiveFields={on_change_active_fields}
         dimensions={dimensions}
         panelName={panel_name}
         panelLabel={panel_label}

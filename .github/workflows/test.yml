@@ -5,9 +5,16 @@ on: workflow_call
 jobs:
   test-app:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Enable corepack
+        run: corepack enable
+      - name: Prepare yarn 4
+        run: corepack prepare yarn@4.9.1 --activate
+
       - name: Cache
         id: node-cache
         uses: actions/cache@v4
@@ -24,6 +31,7 @@ jobs:
 
   test-python:
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
     env:
       FIFTYONE_DO_NOT_TRACK: true
     strategy:

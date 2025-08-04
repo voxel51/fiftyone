@@ -42,7 +42,6 @@ If you're looking to scale to production-grade, collaborative, cloud-native
 enterprise workloads, check out
 **[FiftyOne Enterprise](http://voxel51.com/enterprise)** 🚀
 
-![------------------------------------------------------------------](https://github.com/user-attachments/assets/fb0573d0-bb56-40ff-9ae1-a5e8f62f5f42)
 
 <div id='installation'/>
 
@@ -382,8 +381,6 @@ of FiftyOne.
 
 </details>
 
-![------------------------------------------------------------------](https://github.com/user-attachments/assets/fb0573d0-bb56-40ff-9ae1-a5e8f62f5f42)
-
 <div id='quickstart'>
 
 ## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> &nbsp; quickstart &nbsp; 🚀
@@ -412,7 +409,6 @@ Note that if you are running the above code in a script, you must include
 [this page](https://voxel51.com/docs/fiftyone/user_guide/app.html#creating-a-session)
 for more information.
 
-![------------------------------------------------------------------](https://github.com/user-attachments/assets/fb0573d0-bb56-40ff-9ae1-a5e8f62f5f42)
 
 <div id='key-features'>
 
@@ -460,8 +456,6 @@ https://github.com/user-attachments/assets/c7ed496d-0cf7-45d6-9853-e349f1abd6f8
 
 </div>
 
-![------------------------------------------------------------------](https://github.com/user-attachments/assets/fb0573d0-bb56-40ff-9ae1-a5e8f62f5f42)
-
 <div id='documentation'/>
 
 ## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> &nbsp; documentation &nbsp; 🪪
@@ -474,8 +468,6 @@ Full documentation for FiftyOne is available at
 
 </div>
 
-![------------------------------------------------------------------](https://github.com/user-attachments/assets/fb0573d0-bb56-40ff-9ae1-a5e8f62f5f42)
-
 <div id='fiftyone-teams'/>
 
 ## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> &nbsp; FiftyOne Enterprise &nbsp; 🏎️
@@ -484,7 +476,6 @@ Want to securely collaborate on billions of samples in the cloud and connect to
 your compute resources to automate your workflows? Check out
 [FiftyOne Enterprise](https://voxel51.com/enterprise).
 
-![------------------------------------------------------------------](https://github.com/user-attachments/assets/fb0573d0-bb56-40ff-9ae1-a5e8f62f5f42)
 
 <div id='faq'/>
 
@@ -501,8 +492,6 @@ free to [open an issue on GitHub](https://github.com/voxel51/fiftyone/issues)
 or contact us on [Discord](https://discord.gg/fiftyone-community).
 
 </div>
-
-![------------------------------------------------------------------](https://github.com/user-attachments/assets/fb0573d0-bb56-40ff-9ae1-a5e8f62f5f42)
 
 <div id='community'/>
 
@@ -521,8 +510,6 @@ and tag us with @Voxel51 and #FiftyOne** 🎊
 
 </div>
 
-![------------------------------------------------------------------](https://github.com/user-attachments/assets/fb0573d0-bb56-40ff-9ae1-a5e8f62f5f42)
-
 <div id='contributors'/>
 
 ## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> &nbsp; contributors &nbsp; 🧡
@@ -537,8 +524,6 @@ Special thanks to these amazing people for contributing to FiftyOne!
 <a href="https://github.com/voxel51/fiftyone/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=voxel51/fiftyone" />
 </a>
-
-![------------------------------------------------------------------](https://github.com/user-attachments/assets/fb0573d0-bb56-40ff-9ae1-a5e8f62f5f42)
 
 <div id='citation'/>
 

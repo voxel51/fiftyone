@@ -847,7 +847,7 @@ def test_classification_results_missing_data():
 
     results = dataset.evaluate_classifications("predictions")
 
-    # No row for "missing" GT labels, since these entires represent false
+    # No row for "missing" GT labels, since these entries represent false
     # positive predictions
     results.print_report()
 

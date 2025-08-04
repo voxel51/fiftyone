@@ -103,7 +103,7 @@ would with FiftyOne Open Source:
    * - Application
      - Workflows
    * - Data ingestion
-     - :ref:`Loading data into FiftyOne <loading-datasets>`
+     - :ref:`Importing data into FiftyOne <importing-datasets>`
    * - Data curation
      - | :ref:`Using the FiftyOne App <fiftyone-app>`
        | :ref:`Creating views into datasets <using-views>`

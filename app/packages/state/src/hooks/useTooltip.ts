@@ -34,8 +34,6 @@ export default function useTooltip() {
             const sampleId = snapshot.getLoadable(fos.pinned3DSample).getValue()
               .sample._id;
 
-            console.log(">>>sample id in 3d ", sampleId);
-
             selectiveRenderingEventBus.emit(
               new LabelHoveredEvent({
                 sampleId,

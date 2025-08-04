@@ -21,6 +21,7 @@ import eta.core.web as etaw
 
 import fiftyone as fo
 import fiftyone.core.models as fom
+import fiftyone.core.utils as fou
 from fiftyone.utils.github import GitHubRepository
 
 
@@ -589,9 +590,7 @@ def _parse_remote_model_parameters(model_name, model_path, ctx, params):
 
 def _import_zoo_module(model_dir):
     module_path = os.path.join(model_dir, "__init__.py")
-    module_name = os.path.relpath(model_dir, fo.config.model_zoo_dir).replace(
-        "/", "."
-    )
+    module_name = fou.get_module_name(model_dir, fo.config.model_zoo_dir)
     spec = importlib.util.spec_from_file_location(module_name, module_path)
     module = importlib.util.module_from_spec(spec)
     sys.modules[module.__name__] = module

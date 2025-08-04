@@ -8,7 +8,6 @@ import {
   PointLightHelper,
   SpotLightHelper,
 } from "three";
-import { PANEL_ORDER_LIGHTS } from "../constants";
 import { useFo3dContext } from "../fo3d/context";
 import type { FoScene } from "./use-fo3d";
 
@@ -101,8 +100,7 @@ export const useLightControls = (
 
   const [lightConfig] = useControls(
     () => ({
-      Lights: folder(lightLevaControls, {
-        order: PANEL_ORDER_LIGHTS,
+      "Scene.Lights": folder(lightLevaControls, {
         collapsed: true,
       }),
     }),

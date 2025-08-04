@@ -984,6 +984,215 @@ class PatchesTests(unittest.TestCase):
             )
         )
 
+    @drop_datasets
+    def test_patches_clone_indexes(self):
+        dataset = fo.Dataset()
+
+        sample = fo.Sample(
+            filepath="image1.png",
+            metadata=fo.ImageMetadata(size_bytes=51),
+            field="foo",
+            ground_truth=fo.Detections(detections=[fo.Detection(label="cat")]),
+        )
+
+        dataset.add_sample(sample)
+
+        dataset.create_index("metadata.size_bytes")
+        dataset.create_index("ground_truth.detections.label")
+        dataset.create_index([("ground_truth.detections.id", 1), ("field", 1)])
+
+        default_indexes = {
+            "id",
+            "sample_id",
+            "filepath",
+            "created_at",
+            "last_modified_at",
+        }
+
+        # Creating patches views does not include indexes by default
+        view = dataset.to_patches("ground_truth")
+
+        self.assertSetEqual(set(view.list_indexes()), default_indexes)
+
+        view = dataset.to_patches("ground_truth", include_indexes=[])
+
+        self.assertSetEqual(set(view.list_indexes()), default_indexes)
+
+        view = dataset.to_patches(
+            "ground_truth", other_fields="field", include_indexes=True
+        )
+        expected_indexes = default_indexes | {
+            "ground_truth.label",
+            "ground_truth._id_1_field_1",
+        }
+
+        self.assertSetEqual(set(view.list_indexes()), expected_indexes)
+
+        # Reloading preserves custom indexes
+        view.reload()
+
+        self.assertSetEqual(set(view.list_indexes()), expected_indexes)
+
+        # Indexes can be specified by prefix
+        view = dataset.to_patches(
+            "ground_truth",
+            other_fields="field",
+            include_indexes="ground_truth.detections",
+        )
+        expected_indexes = default_indexes | {
+            "ground_truth.label",
+            "ground_truth._id_1_field_1",
+        }
+
+        self.assertSetEqual(set(view.list_indexes()), expected_indexes)
+
+    @drop_datasets
+    def test_evaluation_patches_clone_indexes(self):
+        dataset = fo.Dataset()
+
+        sample = fo.Sample(
+            filepath="image.png",
+            field="foo",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="cat",
+                        bounding_box=[0.1, 0.1, 0.4, 0.4],
+                    )
+                ]
+            ),
+            predictions=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="cat",
+                        bounding_box=[0.11, 0.11, 0.4, 0.4],
+                        confidence=0.99,
+                    )
+                ]
+            ),
+        )
+
+        dataset.add_sample(sample)
+
+        dataset.evaluate_detections(
+            "predictions", gt_field="ground_truth", eval_key="eval"
+        )
+
+        dataset.create_index("metadata.size_bytes")
+        dataset.create_index("ground_truth.detections.label")
+        dataset.create_index([("ground_truth.detections.id", 1), ("field", 1)])
+
+        default_indexes = {
+            "id",
+            "sample_id",
+            "filepath",
+            "created_at",
+            "last_modified_at",
+        }
+
+        # Creating evaluation patches views does not include indexes by default
+        view = dataset.to_evaluation_patches("eval")
+
+        self.assertSetEqual(set(view.list_indexes()), default_indexes)
+
+        view = dataset.to_evaluation_patches("eval", include_indexes=[])
+
+        self.assertSetEqual(set(view.list_indexes()), default_indexes)
+
+        view = dataset.to_evaluation_patches(
+            "eval", other_fields="field", include_indexes=True
+        )
+        expected_indexes = default_indexes | {
+            "ground_truth.detections.label",
+            "ground_truth.detections._id_1_field_1",
+        }
+
+        self.assertSetEqual(set(view.list_indexes()), expected_indexes)
+
+        # Reloading preserves custom indexes
+        view.reload()
+
+        self.assertSetEqual(set(view.list_indexes()), expected_indexes)
+
+        # Indexes can be specified by prefix
+        view = dataset.to_evaluation_patches(
+            "eval",
+            other_fields="field",
+            include_indexes="ground_truth.detections",
+        )
+        expected_indexes = default_indexes | {
+            "ground_truth.detections.label",
+            "ground_truth.detections._id_1_field_1",
+        }
+
+        self.assertSetEqual(set(view.list_indexes()), expected_indexes)
+
+    @drop_datasets
+    def test_patches_delete_labels(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(filepath="image1.png")
+        sample2 = fo.Sample(
+            filepath="image2.png",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                    fo.Detection(label="rabbit"),
+                ]
+            ),
+            predictions=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                    fo.Detection(label="rabbit"),
+                ]
+            ),
+        )
+
+        dataset.add_samples([sample1, sample2])
+
+        view = dataset.to_patches("ground_truth")
+        patch = view.first()
+
+        labels = [
+            {
+                "label_id": patch.ground_truth.id,
+                "sample_id": patch.id,
+                "field": "ground_truth",
+            }
+        ]
+
+        view._delete_labels(labels)
+
+        self.assertEqual(len(view), 2)
+        self.assertEqual(dataset.count("ground_truth.detections"), 2)
+        self.assertEqual(dataset.count("predictions.detections"), 3)
+
+        view = dataset.to_patches("ground_truth", other_fields="predictions")
+        patch1 = view.first()
+        patch2 = view.last()
+
+        labels = [
+            {
+                "label_id": patch1.ground_truth.id,
+                "sample_id": patch1.id,
+                "field": "ground_truth",
+            },
+            {
+                "label_id": patch2.predictions.detections[0].id,
+                "sample_id": patch2.id,
+                "field": "predictions",
+            },
+        ]
+
+        view._delete_labels(labels)
+
+        self.assertEqual(len(view), 1)
+        self.assertEqual(view.count("predictions.detections"), 2)
+        self.assertEqual(dataset.count("ground_truth.detections"), 1)
+        self.assertEqual(dataset.count("predictions.detections"), 3)
+
 
 if __name__ == "__main__":
     fo.config.show_progress_bars = False

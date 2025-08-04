@@ -27,6 +27,24 @@ Before building the docs locally, ensure you have:
 
 To build the documentation locally, follow these steps:
 
+1. Install FiftyOne:
+
+```shell
+cd ..
+bash install.bash
+```
+
+2. Install documentation-specific requirements:
+
+```shell
+pip install -r requirements/docs.txt
+```
+
+3.  To use the `fiftyone` repository to autogenerate docs, you need to add it
+    to your `PYTHONPATH`:
+
+To build the documentation locally, follow these steps:
+
 1.  Perform a documentation-specific install of `fiftyone` from the root
     directory using the `-o` (docs) flag:
 
@@ -49,6 +67,10 @@ To build the documentation locally, follow these steps:
         > previous line to your `~/.bashrc`, `~/.zshrc`, system path or the
         > appropriate file for your shell.
 
+**Tip:** to avoid running this every time you build the docs, add the previous
+line to your `~/.bashrc`, `~/.zshrc`, system path or the appropriate file for
+your shell.
+
 ## Building
 
 You can build the docs from source by running the `generate_docs.bash` script
@@ -58,7 +80,7 @@ in this folder:
 bash docs/generate_docs.bash
 ```
 
-A couple noteable flags are supported:
+A couple notable flags are supported:
 
 -   `-c` performs a clean build by removing the `docs/build` folder beforehand.
     This is sometimes necessary to force updates, e.g. if you have edited a

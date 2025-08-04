@@ -1,9 +1,11 @@
 import * as foq from "@fiftyone/relay";
 import type { VariablesOf } from "react-relay";
+import type { SerializableParam } from "recoil";
 import { selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 import type { ResponseFrom } from "../utils";
 import { refresher } from "./atoms";
+import { config } from "./config";
 import * as filterAtoms from "./filters";
 import {
   currentSlices,
@@ -27,6 +29,12 @@ type Aggregation = Exclude<
   }
 >;
 
+export class AggregationQueryTimeout extends Error {
+  constructor(readonly queryTime: number) {
+    super();
+  }
+}
+
 /**
  * GraphQL Selector Family for Aggregations.
  * @param extended - Whether to use extended aggregations.
@@ -34,14 +42,14 @@ type Aggregation = Exclude<
 export const aggregationQuery = graphQLSelectorFamily<
   VariablesOf<foq.aggregationsQuery>,
   {
-    customView?: any;
+    dynamicGroup?: SerializableParam;
     extended: boolean;
     isQueryPerformance?: boolean;
     modal: boolean;
     mixed?: boolean;
     paths: string[];
-
     root?: boolean;
+    useSelection?: boolean;
   },
   Aggregation[]
 >({
@@ -52,22 +60,22 @@ export const aggregationQuery = graphQLSelectorFamily<
   query: foq.aggregation,
   variables:
     ({
-      customView = undefined,
+      dynamicGroup,
       extended,
       isQueryPerformance = undefined,
       mixed = false,
       modal,
       paths,
-
       root = false,
+      useSelection = true,
     }) =>
     ({ get }) => {
       const dataset = get(selectors.datasetName);
-
       if (!dataset) return null;
 
       const useSidebarSampleId = !root && modal && !get(groupId) && !mixed;
-      const sampleIds = useSidebarSampleId ? [get(sidebarSampleId)] : [];
+      const sampleIds =
+        useSidebarSampleId && useSelection ? [get(sidebarSampleId)] : [];
 
       if (useSidebarSampleId && sampleIds[0] === null) {
         return null;
@@ -78,24 +86,26 @@ export const aggregationQuery = graphQLSelectorFamily<
       const aggForm = {
         index: get(refresher),
         dataset,
+        dynamicGroup,
         extendedStages: root ? {} : get(selectors.extendedStagesNoSort),
         filters:
           extended && !root
             ? get(modal ? filterAtoms.modalFilters : filterAtoms.filters)
             : null,
-        groupId: !root && modal ? get(groupId) || null : null,
+        groupId: !root && modal && useSelection ? get(groupId) || null : null,
         hiddenLabels: !root ? get(selectors.hiddenLabelsArray) : [],
         paths,
         mixed,
         sampleIds,
         slices: mixed ? get(groupSlices) : get(currentSlices(modal)),
         slice: get(groupSlice),
-        view: customView ? customView : !root ? get(viewAtoms.view) : [],
+        view: !root ? get(viewAtoms.view) : [],
         queryPerformance:
           isQueryPerformance === undefined
             ? get(queryPerformance) && !modal
             : isQueryPerformance,
-        hint: get(activeIndex),
+        hint: dynamicGroup ? null : get(activeIndex),
+        maxQueryTime: get(queryPerformance) ? get(config).maxQueryTime : null,
       };
 
       return {
@@ -145,12 +155,18 @@ export const aggregation = selectorFamily({
         ? get(modalAggregationPaths({ path, mixed: params.mixed }))
         : get(schemaAtoms.filterFields(path));
 
-      return get(
+      const result = get(
         aggregations({
           ...params,
           paths,
         })
       ).find((data) => data.path === path);
+
+      if (result?.__typename === "AggregationQueryTimeout") {
+        throw new AggregationQueryTimeout(result.queryTime);
+      }
+
+      return result;
     },
 });
 

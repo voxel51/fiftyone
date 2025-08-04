@@ -1,5 +1,6 @@
 import { usePanelEvent } from "@fiftyone/operators";
 import { usePanelId } from "@fiftyone/spaces";
+import { formatValueAsNumber } from "@fiftyone/utilities";
 import { capitalize } from "lodash";
 import { useCallback } from "react";
 import { atom } from "recoil";
@@ -32,21 +33,13 @@ export function getNumericDifference(
 ) {
   if (typeof value === "number" && typeof compareValue === "number") {
     const difference = value - compareValue;
+    const sanitizedCompareValue = compareValue === 0 ? 1 : compareValue;
     if (percentage) {
-      const percentageDifference = (difference / compareValue) * 100;
-      return formatValue(percentageDifference, fractionDigits);
+      const percentageDifference = (difference / sanitizedCompareValue) * 100;
+      return formatValueAsNumber(percentageDifference, fractionDigits);
     }
-    return formatValue(difference, fractionDigits);
+    return formatValueAsNumber(difference, fractionDigits);
   }
-}
-
-export function formatValue(value: string | number, fractionDigits = 3) {
-  const numericValue =
-    typeof value === "number" ? value : parseFloat(value as string);
-  if (!isNaN(numericValue) && numericValue == value) {
-    return parseFloat(numericValue.toFixed(fractionDigits));
-  }
-  return value;
 }
 
 export function getMatrix(
@@ -54,14 +47,16 @@ export function getMatrix(
   config,
   maskTargets?,
   compareMaskTargets?,
-  plot?
+  plot?,
+  isCompare?
 ) {
   if (!matrices) return;
   const { sortBy = "az", limit } = config;
+  const colorscale_key_suffix = isCompare ? "colorscale_blues" : "colorscale";
   const parsedLimit = typeof limit === "number" ? limit : undefined;
   const originalClasses = matrices[`${sortBy}_classes`];
   const originalMatrix = matrices[`${sortBy}_matrix`];
-  const originalColorscale = matrices[`${sortBy}_colorscale`];
+  const originalColorscale = matrices[`${sortBy}_${colorscale_key_suffix}`];
   const chosenClasses = config?.classes;
   const hasChosenClasses =
     Array.isArray(chosenClasses) && chosenClasses?.length;
@@ -126,6 +121,7 @@ export function getMatrix(
 }
 
 export function getClasses(matrices, maskTargets?) {
+  if (!matrices) return [];
   const sortBy = "az";
   const classes = matrices[`${sortBy}_classes`];
   return classes.map((c) => {
@@ -191,6 +187,6 @@ export const openModelEvalDialog = atom<boolean>({
  * Contains the name and id of the selected evaluation.
  */
 export const selectedModelEvaluation = atom<string | null>({
-  key: "selectedEvalation",
+  key: "selectedModelEvaluation",
   default: null,
 });

@@ -1,7 +1,7 @@
 import React from "react";
 
 export default function ColorSquare(props: ColorSquareProps) {
-  const { color, styles = {} } = props;
+  const { color, styles = {}, ...otherProps } = props;
 
   return (
     <div
@@ -12,6 +12,7 @@ export default function ColorSquare(props: ColorSquareProps) {
         borderRadius: 2,
         ...styles,
       }}
+      {...otherProps}
     />
   );
 }
@@ -19,4 +20,4 @@ export default function ColorSquare(props: ColorSquareProps) {
 type ColorSquareProps = {
   color: string;
   styles?: React.CSSProperties;
-};
+} & React.HTMLAttributes<HTMLDivElement>;

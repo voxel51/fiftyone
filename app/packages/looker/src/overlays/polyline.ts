@@ -2,11 +2,17 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import { INFO_COLOR, TOLERANCE } from "../constants";
+import { isHoveringParticularLabelWithInstanceConfig } from "@fiftyone/state/src/jotai";
+import {
+  INFO_COLOR,
+  SELECTED_AND_HOVERED_COLOR,
+  TOLERANCE,
+} from "../constants";
 import { BaseState, Coordinates } from "../state";
 import { distanceFromLineSegment, getRenderedScale } from "../util";
 import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
 import { t } from "./util";
+import { getInstanceStrokeStyles } from "./util";
 
 interface PolylineLabel extends RegularLabel {
   points: Coordinates[][];
@@ -40,18 +46,35 @@ export default class PolylineOverlay<
 
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
     const color = this.getColor(state);
-
     const selected = this.isSelected(state);
+    const doesInstanceMatch =
+      this.label.instance?._id &&
+      isHoveringParticularLabelWithInstanceConfig(this.label.instance._id);
+
+    const { strokeColor, overlayStrokeColor, overlayDash } =
+      getInstanceStrokeStyles({
+        isSelected: selected,
+        getColor: () => color,
+        isHoveringInstance: !!doesInstanceMatch,
+        dashLength: state.dashLength,
+      });
 
     for (const path of this.label.points) {
       if (path.length < 2) {
         continue;
       }
 
-      this.strokePath(ctx, state, path, color, this.label.filled);
+      this.strokePath(ctx, state, path, strokeColor, this.label.filled);
 
-      if (selected) {
-        this.strokePath(ctx, state, path, INFO_COLOR, false, state.dashLength);
+      if (overlayStrokeColor && overlayDash) {
+        this.strokePath(
+          ctx,
+          state,
+          path,
+          overlayStrokeColor,
+          false,
+          overlayDash
+        );
       }
     }
   }

@@ -9,11 +9,33 @@ import os
 import unittest
 
 import fiftyone as fo
-from fiftyone.utils.torch import FiftyOneTorchDataset
+from fiftyone.utils.torch import GetItem
 
 
-def id_get_item(sample):
-    return sample["id"]
+class IdentityGetItem(GetItem):
+    def __init__(self, required_keys=["filepath"], **kwargs):
+        self._required_keys = required_keys
+        super().__init__(**kwargs)
+
+    def __call__(self, d):
+        return [d[k] for k in self.required_keys]
+
+    @property
+    def required_keys(self):
+        return self._required_keys
+
+
+class IntIdentityGetItem(GetItem):
+    def __init__(self, required_key="foo", **kwargs):
+        self._required_key = required_key
+        super().__init__(**kwargs)
+
+    def __call__(self, d):
+        return d[self._required_key] * 1
+
+    @property
+    def required_keys(self):
+        return [self._required_key]
 
 
 class ShortLivedDataset:
@@ -38,20 +60,21 @@ class ShortLivedDataset:
 class FiftyOneTorchDatasetTests(unittest.TestCase):
     def test_ids_correct(self):
         with ShortLivedDataset() as dataset:
-            torch_dataset = dataset.to_torch(id_get_item)
+            torch_dataset = dataset.to_torch(
+                IdentityGetItem(["id", "filepath"])
+            )
             self.assertEqual(
                 [torch_dataset.ids[i] for i in range(len(torch_dataset))],
                 dataset.values("id"),
             )
 
-    def test_cached_fields_correct(self):
+    def test_vectorize_correct(self):
         with ShortLivedDataset() as dataset:
-            cfs = ["filepath", "metadata"]
 
             torch_dataset = dataset.to_torch(
-                id_get_item, cache_field_names=cfs
+                IdentityGetItem(["id", "filepath"]), vectorize=True
             )
-            for cf in cfs:
+            for cf in ["filepath", "id"]:
                 self.assertTrue(
                     cf in torch_dataset.cached_fields,
                     f"Cached field {cf} not found in cached fields",
@@ -66,32 +89,10 @@ class FiftyOneTorchDatasetTests(unittest.TestCase):
                     f"Cached field {cf} not equal to dataset values",
                 )
 
-    def test_ids_correct_cached_fields(self):
+    def test_ids_correct_vectorize_no_ids(self):
         with ShortLivedDataset() as dataset:
             torch_dataset = dataset.to_torch(
-                id_get_item, cache_field_names=["filepath", "id"]
-            )
-            self.assertTrue(
-                "id" in torch_dataset.cached_fields,
-                "ID field not found in cached fields",
-            )
-            self.assertEqual(
-                [torch_dataset.ids[i] for i in range(len(torch_dataset))],
-                dataset.values("id"),
-            )
-            self.assertEqual(
-                [
-                    torch_dataset.cached_fields["id"][i]
-                    for i in range(len(torch_dataset))
-                ],
-                dataset.values("id"),
-                "ID field not equal to dataset values",
-            )
-
-    def test_ids_correct_cached_fields_no_ids(self):
-        with ShortLivedDataset() as dataset:
-            torch_dataset = dataset.to_torch(
-                id_get_item, cache_field_names=["filepath"]
+                IdentityGetItem(["filepath"]), vectorize=True
             )
             self.assertEqual(
                 [torch_dataset.ids[i] for i in range(len(torch_dataset))],
@@ -105,12 +106,12 @@ class FiftyOneTorchDatasetTests(unittest.TestCase):
 
     def test_getitems(self):
         with ShortLivedDataset(100) as dataset:
-            torch_dataset = dataset.to_torch(id_get_item)
+            torch_dataset = dataset.to_torch(IdentityGetItem(["id"]))
 
             indices = [12, 35, 66, 21, 4, 15]
 
             ids = dataset.values("id")
-            ids = [ids[i] for i in indices]
+            ids = [[ids[i]] for i in indices]
 
             _ids = torch_dataset.__getitems__(indices)
 
@@ -126,9 +127,7 @@ class FiftyOneTorchDatasetTests(unittest.TestCase):
                 sample["foo"] = 1 if i % 2 == 0 else None
                 sample.save()
 
-            def gi_foo(sample):
-                return sample["foo"] * 1
-
+            gi_foo = IntIdentityGetItem("foo")
             torch_dataset = dataset.to_torch(
                 gi_foo,
                 skip_failures=False,

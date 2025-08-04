@@ -99,7 +99,7 @@
             "source": "https://segment-anything.com",
             "author": "Alexander Kirillov, et al.",
             "license": "Apache 2.0",
-            "size_bytes": 732512,
+            "size_bytes": 375042383,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -123,7 +123,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "sa-1b", "torch", "zero-shot"],
+            "tags": ["segment-anything", "sa-1b", "torch", "zero-shot", "transformer"],
             "date_added": "2023-05-12 11:40:51"
         },
         {
@@ -134,7 +134,7 @@
             "source": "https://segment-anything.com",
             "author": "Alexander Kirillov, et al.",
             "license": "Apache 2.0",
-            "size_bytes": 5008896,
+            "size_bytes": 2564550879,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -158,7 +158,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "sa-1b", "torch", "zero-shot"],
+            "tags": ["segment-anything", "sa-1b", "torch", "zero-shot", "transformer"],
             "date_added": "2023-05-12 11:40:51"
         },
         {
@@ -169,7 +169,7 @@
             "source": "https://segment-anything.com",
             "author": "Alexander Kirillov, et al.",
             "license": "Apache 2.0",
-            "size_bytes": 2440480,
+            "size_bytes": 1249524607,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -193,7 +193,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "sa-1b", "torch", "zero-shot"],
+            "tags": ["segment-anything", "sa-1b", "torch", "zero-shot", "transformer"],
             "date_added": "2023-05-12 11:40:51"
         },
         {
@@ -220,7 +220,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -239,7 +239,7 @@
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
             "license": "Apache 2.0,BSD 3-Clause",
-            "size_bytes": 155906050,
+            "size_bytes": 184309650,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -255,7 +255,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -263,7 +263,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot"],
+            "tags": ["segment-anything", "torch", "zero-shot", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -274,7 +274,7 @@
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
             "license": "Apache 2.0,BSD 3-Clause",
-            "size_bytes": 155906050,
+            "size_bytes": 323493298,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -290,7 +290,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -298,7 +298,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot"],
+            "tags": ["segment-anything", "torch", "zero-shot", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -309,7 +309,7 @@
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
             "license": "Apache 2.0,BSD 3-Clause",
-            "size_bytes": 155906050,
+            "size_bytes": 897952466,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -325,7 +325,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -333,7 +333,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot"],
+            "tags": ["segment-anything", "torch", "zero-shot", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -359,7 +359,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -367,7 +367,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video"],
+            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -378,7 +378,7 @@
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
             "license": "Apache 2.0,BSD 3-Clause",
-            "size_bytes": 155906050,
+            "size_bytes": 184309650,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -394,7 +394,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -402,7 +402,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video"],
+            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -413,7 +413,7 @@
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
             "license": "Apache 2.0,BSD 3-Clause",
-            "size_bytes": 155906050,
+            "size_bytes": 323493298,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -429,7 +429,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -437,7 +437,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video"],
+            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -448,7 +448,7 @@
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
             "license": "Apache 2.0,BSD 3-Clause",
-            "size_bytes": 155906050,
+            "size_bytes": 897952466,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -464,7 +464,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -472,7 +472,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video"],
+            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -483,7 +483,7 @@
             "source": "https://github.com/MedicineToken/Medical-SAM2",
             "author": "Jiayuan Zhu, et al.",
             "license": "Apache 2.0",
-            "size_bytes": 155906050,
+            "size_bytes": 78078138,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -498,7 +498,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -511,7 +511,8 @@
                 "torch",
                 "zero-shot",
                 "video",
-                "med-SAM"
+                "med-SAM",
+                "transformer"
             ],
             "date_added": "2024-08-17 14:48:00"
         },
@@ -541,7 +542,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -549,7 +550,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot"],
+            "tags": ["segment-anything", "torch", "zero-shot", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -560,7 +561,7 @@
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
             "license": "Apache 2.0,BSD 3-Clause",
-            "size_bytes": 155906050,
+            "size_bytes": 184416285,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -578,7 +579,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -586,7 +587,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot"],
+            "tags": ["segment-anything", "torch", "zero-shot", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -597,7 +598,7 @@
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
             "license": "Apache 2.0,BSD 3-Clause",
-            "size_bytes": 155906050,
+            "size_bytes": 323606802,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -615,7 +616,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -623,7 +624,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot"],
+            "tags": ["segment-anything", "torch", "zero-shot", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -634,7 +635,7 @@
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
             "license": "Apache 2.0,BSD 3-Clause",
-            "size_bytes": 155906050,
+            "size_bytes": 898083611,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -652,7 +653,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -660,7 +661,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot"],
+            "tags": ["segment-anything", "torch", "zero-shot", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -688,7 +689,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -696,7 +697,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video"],
+            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -707,7 +708,7 @@
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
             "license": "Apache 2.0,BSD 3-Clause",
-            "size_bytes": 155906050,
+            "size_bytes": 184416285,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -725,7 +726,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -733,7 +734,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video"],
+            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -744,7 +745,7 @@
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
             "license": "Apache 2.0,BSD 3-Clause",
-            "size_bytes": 155906050,
+            "size_bytes": 323606802,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -762,7 +763,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -770,7 +771,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video"],
+            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -781,7 +782,7 @@
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
             "license": "Apache 2.0,BSD 3-Clause",
-            "size_bytes": 155906050,
+            "size_bytes": 898083611,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -799,7 +800,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision"],
+                "packages": ["torch", "torchvision", "sam2"],
                 "cpu": {
                     "support": true
                 },
@@ -807,7 +808,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video"],
+            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -1378,7 +1379,7 @@
             "base_name": "mnasnet0.5-imagenet-torch",
             "base_filename": "mnasnet0.5_top1_67.823-3ffadce67e.pth",
             "version": null,
-            "description": "MNASNet model from from `MnasNet: Platform-Aware Neural Architecture Search for Mobile <https://arxiv.org/abs/1807.11626>`_ with depth multiplier of 0.5 trained on ImageNet",
+            "description": "MNASNet model from `MnasNet: Platform-Aware Neural Architecture Search for Mobile <https://arxiv.org/abs/1807.11626>`_ with depth multiplier of 0.5 trained on ImageNet",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Mingxing Tan, et al.",
             "license": "BSD 3-Clause",
@@ -2628,7 +2629,8 @@
                 "embeddings",
                 "torch",
                 "clip",
-                "zero-shot"
+                "zero-shot",    
+                "transformer"
             ],
             "date_added": "2023-12-13 14:25:51"
         },
@@ -2641,6 +2643,37 @@
             "author": "Thomas Wolf, et al.",
             "license": "Apache 2.0",
             "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {}
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "logits",
+                "embeddings",
+                "torch",
+                "transformers"
+            ],
+            "date_added": "2024-01-17 14:25:51"
+        },
+        {
+            "base_name": "vit-base-patch16-224-imagenet-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Hugging Face Transformers model for image classification",
+            "source": "https://huggingface.co/docs/transformers/tasks/image_classification",
+            "author": "Thomas Wolf, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 346351599,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
                 "config": {}
@@ -2755,10 +2788,53 @@
             "size_bytes": null,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForImageClassification",
-                "config": {}
+                "config": {
+                    "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
+                    "transforms_args": {
+                        "use_fast": false
+                    }
+                }
             },
             "requirements": {
                 "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "logits",
+                "embeddings",
+                "torch",
+                "transformers",
+                "zero-shot"
+            ],
+            "date_added": "2024-01-17 14:25:51"
+        },
+        {
+            "base_name": "siglip-base-patch16-224-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Hugging Face Transformers model for zero-shot image classification",
+            "source": "https://huggingface.co/docs/transformers/tasks/zero_shot_image_classification",
+            "author": "Thomas Wolf, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 812762989,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "google/siglip2-base-patch16-224",
+                    "transformers_processor_kwargs": {
+                        "padding": "max_length",
+                        "max_length": 64
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers>=4.51"],
                 "cpu": {
                     "support": true
                 },
@@ -2791,6 +2867,155 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "detection",
+                "logits",
+                "embeddings",
+                "torch",
+                "transformers",
+                "zero-shot"
+            ],
+            "date_added": "2024-01-17 14:25:51"
+        },
+        {
+            "base_name": "group-vit-segmentation-transformer-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Hugging Face Transformers model for zero-shot semantic segmentation",
+            "source": "https://huggingface.co/docs/transformers/en/tasks/mask_generation",
+            "author": "Thomas Wolf, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 223137427,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForSemanticSegmentation",
+                "config": {
+                    "name_or_path": "nvidia/groupvit-gcc-yfcc",
+                    "entrypoint_fcn": "transformers.GroupViTModel.from_pretrained",
+                    "entrypoint_args": {
+                        "output_segmentation": true
+                    },
+                    "output_processor_args": {
+                        "logits_key": "segmentation_logits"
+                    },
+                    "transforms_args": {
+                        "use_fast": false
+                    },
+                    "transformers_processor_kwargs": {
+                        "padding": true,
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "segmentation",
+                "embeddings",
+                "torch",
+                "transformers",
+                "zero-shot"
+            ],
+            "date_added": "2025-05-15 15:20:35"
+        },
+        {
+            "base_name": "owlvit-base-patch16-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Hugging Face Transformers OWL-ViT",
+            "source": "https://huggingface.co/docs/transformers/tasks/zero_shot_object_detection",
+            "author": "Thomas Wolf, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "google/owlvit-base-patch16"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "detection",
+                "logits",
+                "embeddings",
+                "torch",
+                "transformers",
+                "zero-shot"
+            ],
+            "date_added": "2024-01-17 14:25:51"
+        },
+        {
+            "base_name": "owlvit-base-patch32-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Faster zero-shot object detector that finds any object you describe using larger image patches for efficiency.",
+            "source": "https://huggingface.co/docs/transformers/tasks/zero_shot_object_detection",
+            "author": "Thomas Wolf, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 1229149172,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "google/owlvit-base-patch32"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "detection",
+                "logits",
+                "embeddings",
+                "torch",
+                "transformers",
+                "zero-shot"
+            ],
+            "date_added": "2025-07-15 13:49:00"
+        },
+        {
+            "base_name": "omdet-turbo-swin-tiny-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Hugging Face Transformers OmDet-Turbo",
+            "source": "https://huggingface.co/docs/transformers/tasks/zero_shot_object_detection",
+            "author": "Thomas Wolf, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "omlab/omdet-turbo-swin-tiny-hf"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers>=4.51"],
                 "cpu": {
                     "support": true
                 },
@@ -2854,7 +3079,8 @@
                 "embeddings",
                 "torch",
                 "clip",
-                "zero-shot"
+                "zero-shot",    
+                "transformer"
             ],
             "date_added": "2022-04-12 17:49:51"
         },
@@ -2886,7 +3112,7 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2"],
+            "tags": ["embeddings", "torch", "dinov2", "transformer"],
             "date_added": "2023-07-31 10:17:51"
         },
         {
@@ -2917,7 +3143,7 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2"],
+            "tags": ["embeddings", "torch", "dinov2", "transformer"],
             "date_added": "2023-07-31 10:17:51"
         },
         {
@@ -2948,7 +3174,7 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2"],
+            "tags": ["embeddings", "torch", "dinov2", "transformer"],
             "date_added": "2023-07-31 10:17:51"
         },
         {
@@ -2979,7 +3205,7 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2"],
+            "tags": ["embeddings", "torch", "dinov2", "transformer"],
             "date_added": "2023-07-31 10:17:51"
         },
         {
@@ -3010,7 +3236,7 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2"],
+            "tags": ["embeddings", "torch", "dinov2", "transformer"],
             "date_added": "2023-12-02 16:42:00"
         },
         {
@@ -3041,7 +3267,7 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2"],
+            "tags": ["embeddings", "torch", "dinov2", "transformer"],
             "date_added": "2023-12-02 16:42:00"
         },
         {
@@ -3072,7 +3298,7 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2"],
+            "tags": ["embeddings", "torch", "dinov2", "transformer"],
             "date_added": "2023-12-02 16:42:00"
         },
         {
@@ -3103,32 +3329,39 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2"],
+            "tags": ["embeddings", "torch", "dinov2", "transformer"],
             "date_added": "2023-12-02 16:42:00"
         },
         {
             "base_name": "yolov5n-coco-torch",
+            "base_filename": "yolov5n-coco.pt",
             "description": "Ultralytics YOLOv5n model trained on COCO",
             "source": "https://pytorch.org/hub/ultralytics_yolov5",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
-            "size_bytes": 7936,
-            "default_deployment_config_dict": {
-                "type": "fiftyone.utils.torch.TorchImageModel",
+            "size_bytes": 5562759,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
-                    "entrypoint_fcn": "fiftyone.utils.torch.load_torch_hub_raw_model",
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov5nu.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
                     "entrypoint_args": {
-                        "repo_or_dir": "ultralytics/yolov5",
-                        "model": "yolov5n",
-                        "pretrained": true,
-                        "device": "cpu"
+                        "model": "yolov5nu.pt"
                     },
-                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
-                    "raw_inputs": true
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
                 }
             },
             "requirements": {
-                "packages": ["torch>=1.7.0", "torchvision>=0.8.1"],
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -3137,31 +3370,38 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo"],
-            "date_added": "2023-08-22 19:22:51"
+            "date_added": "2025-05-22 14:14:45"
         },
         {
             "base_name": "yolov5s-coco-torch",
+            "base_filename": "yolov5s-coco.pt",
             "description": "Ultralytics YOLOv5s model trained on COCO",
             "source": "https://pytorch.org/hub/ultralytics_yolov5",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
-            "size_bytes": 28928,
-            "default_deployment_config_dict": {
-                "type": "fiftyone.utils.torch.TorchImageModel",
+            "size_bytes": 18581255,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
-                    "entrypoint_fcn": "fiftyone.utils.torch.load_torch_hub_raw_model",
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov5su.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
                     "entrypoint_args": {
-                        "repo_or_dir": "ultralytics/yolov5",
-                        "model": "yolov5s",
-                        "pretrained": true,
-                        "device": "cpu"
+                        "model": "yolov5su.pt"
                     },
-                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
-                    "raw_inputs": true
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
                 }
             },
             "requirements": {
-                "packages": ["torch>=1.7.0", "torchvision>=0.8.1"],
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -3170,31 +3410,38 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo"],
-            "date_added": "2023-08-22 19:22:51"
+            "date_added": "2025-05-22 14:14:45"
         },
         {
             "base_name": "yolov5m-coco-torch",
+            "base_filename": "yolov5m-coco.pt",
             "description": "Ultralytics YOLOv5m model trained on COCO",
             "source": "https://pytorch.org/hub/ultralytics_yolov5",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
-            "size_bytes": 83872,
-            "default_deployment_config_dict": {
-                "type": "fiftyone.utils.torch.TorchImageModel",
+            "size_bytes": 50589507,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
-                    "entrypoint_fcn": "fiftyone.utils.torch.load_torch_hub_raw_model",
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov5mu.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
                     "entrypoint_args": {
-                        "repo_or_dir": "ultralytics/yolov5",
-                        "model": "yolov5m",
-                        "pretrained": true,
-                        "device": "cpu"
+                        "model": "yolov5mu.pt"
                     },
-                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
-                    "raw_inputs": true
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
                 }
             },
             "requirements": {
-                "packages": ["torch>=1.7.0", "torchvision>=0.8.1"],
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -3203,31 +3450,38 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo"],
-            "date_added": "2023-08-22 19:22:51"
+            "date_added": "2025-05-22 14:14:45"
         },
         {
             "base_name": "yolov5l-coco-torch",
+            "base_filename": "yolov5l-coco.pt",
             "description": "Ultralytics YOLOv5l model trained on COCO",
             "source": "https://pytorch.org/hub/ultralytics_yolov5",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
-            "size_bytes": 197504,
-            "default_deployment_config_dict": {
-                "type": "fiftyone.utils.torch.TorchImageModel",
+            "size_bytes": 106913919,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
-                    "entrypoint_fcn": "fiftyone.utils.torch.load_torch_hub_raw_model",
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov5lu.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
                     "entrypoint_args": {
-                        "repo_or_dir": "ultralytics/yolov5",
-                        "model": "yolov5l",
-                        "pretrained": true,
-                        "device": "cpu"
+                        "model": "yolov5lu.pt"
                     },
-                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
-                    "raw_inputs": true
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
                 }
             },
             "requirements": {
-                "packages": ["torch>=1.7.0", "torchvision>=0.8.1"],
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -3236,7 +3490,7 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo"],
-            "date_added": "2023-08-22 19:22:51"
+            "date_added": "2025-05-22 14:14:45"
         },
         {
             "base_name": "yolov8n-coco-torch",
@@ -3249,12 +3503,18 @@
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
-                    "url": "https://github.com/ultralytics/assets/releases/download/v8.1.0/yolov8n.pt"
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov8n.pt"
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolov8n.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -3287,8 +3547,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolov8s.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -3321,8 +3587,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolov8m.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -3355,8 +3627,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolov8l.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -3389,8 +3667,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolov8x.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -3423,8 +3707,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolov8n-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -3457,8 +3747,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolov8s-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -3491,8 +3787,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolov8m-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -3525,8 +3827,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolov8l-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -3559,8 +3867,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolov8x-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -3593,8 +3907,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolov9c.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -3627,8 +3947,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolov9e.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -3653,7 +3979,7 @@
             "source": "https://docs.ultralytics.com/models/yolov9/#__tabbed_1_2",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
-            "size_bytes": 112406113,
+            "size_bytes": 56474024,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -3661,8 +3987,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOSegmentationModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolov9c-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -3687,7 +4019,7 @@
             "source": "https://docs.ultralytics.com/models/yolov9/#__tabbed_1_2",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
-            "size_bytes": 243481823,
+            "size_bytes": 122214886,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -3695,8 +4027,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOSegmentationModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolov9e-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -3729,8 +4067,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolov10n.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -3763,8 +4107,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolov10s.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -3797,8 +4147,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolov10m.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -3831,8 +4187,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolov10l.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -3865,8 +4227,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolov10x.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -3899,8 +4267,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolo11n.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -3933,8 +4307,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolo11s.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -3967,8 +4347,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolo11m.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -4001,8 +4387,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolo11l.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -4035,8 +4427,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolo11x.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -4069,8 +4467,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOSegmentationModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolo11n-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -4103,8 +4507,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOSegmentationModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolo11s-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -4137,8 +4547,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOSegmentationModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolo11m-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -4171,8 +4587,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOSegmentationModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolo11l-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -4205,8 +4627,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOSegmentationModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolo11x-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -4239,8 +4667,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOSegmentationModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-11s-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -4273,8 +4707,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOSegmentationModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-11m-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -4307,8 +4747,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOSegmentationModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-11l-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -4341,8 +4787,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOSegmentationModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-v8s-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -4375,8 +4827,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOSegmentationModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-v8m-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -4401,7 +4859,7 @@
             "source": "https://docs.ultralytics.com/models/yoloe",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
-            "size_bytes": 70982416,
+            "size_bytes": 107405586,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -4409,8 +4867,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOSegmentationModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-v8l-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -4444,7 +4908,13 @@
             },
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.ultralytics.FiftyOneRTDETRModel",
-                "config": {}
+                "config": {
+                    "entrypoint_fcn": "ultralytics.RTDETR",
+                    "entrypoint_args": {
+                        "model": "rtdetr-l.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -4478,7 +4948,13 @@
             },
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.ultralytics.FiftyOneRTDETRModel",
-                "config": {}
+                "config": {
+                    "entrypoint_fcn": "ultralytics.RTDETR",
+                    "entrypoint_args": {
+                        "model": "rtdetr-x.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -4511,8 +4987,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolov8s-world.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -4545,8 +5027,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolov8m-world.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -4579,8 +5067,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolov8l-world.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -4613,8 +5107,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolov8x-world.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -4647,8 +5147,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOOBBModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolov8n-obb.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOBBOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -4681,8 +5187,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOOBBModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolov8s-obb.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOBBOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -4715,8 +5227,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOOBBModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolov8m-obb.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOBBOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -4749,8 +5267,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOOBBModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolov8l-obb.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOBBOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -4783,8 +5307,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOOBBModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolov8x-obb.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOBBOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -4809,7 +5339,7 @@
             "source": "https://docs.ultralytics.com/datasets/detect/open-images-v7",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
-            "size_bytes": 6534387,
+            "size_bytes": 7226939,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -4817,8 +5347,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolov8n-oiv7.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -4843,7 +5379,7 @@
             "source": "https://docs.ultralytics.com/datasets/detect/open-images-v7",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
-            "size_bytes": 22573363,
+            "size_bytes": 22986811,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -4851,8 +5387,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolov8s-oiv7.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -4877,7 +5419,7 @@
             "source": "https://docs.ultralytics.com/datasets/detect/open-images-v7",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
-            "size_bytes": 52117635,
+            "size_bytes": 52732835,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -4885,8 +5427,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolov8m-oiv7.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -4919,8 +5467,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolov8l-oiv7.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -4953,8 +5507,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolov8x-oiv7.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -5003,23 +5563,26 @@
         },
         {
             "base_name": "yolov5x-coco-torch",
+            "base_filename": "yolov5x-coco.pt",
             "description": "Ultralytics YOLOv5x model trained on COCO",
             "source": "https://pytorch.org/hub/ultralytics_yolov5",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
-            "size_bytes": 360496,
-            "default_deployment_config_dict": {
-                "type": "fiftyone.utils.torch.TorchImageModel",
+            "size_bytes": 195132283,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
-                    "entrypoint_fcn": "fiftyone.utils.torch.load_torch_hub_raw_model",
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov5xu.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
                     "entrypoint_args": {
-                        "repo_or_dir": "ultralytics/yolov5",
-                        "model": "yolov5x",
-                        "pretrained": true,
-                        "device": "cpu"
+                        "model": "yolov5xu.pt"
                     },
-                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
-                    "raw_inputs": true
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
                 }
             },
             "requirements": {
@@ -5032,7 +5595,859 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo"],
-            "date_added": "2023-08-22 19:22:51"
+            "date_added": "2025-05-22 14:14:45"
+        },
+        {
+            "base_name": "convnext-tiny-224-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Tiny modern CNN bridging traditional convolutions with transformer-inspired improvements",
+            "source": "https://huggingface.co/facebook/convnext-tiny-224",
+            "author": "Zhuang Liu, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 457742046,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "facebook/convnext-tiny-224",
+                    "channels_last": false,
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "convnext"
+            ],
+            "date_added": "2025-06-30 12:00:00"
+        },
+        {
+            "base_name": "convnext-small-224-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Small modernized CNN delivering strong accuracy through architectural innovations",
+            "source": "https://huggingface.co/facebook/convnext-small-224",
+            "author": "Zhuang Liu, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 402011374,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "facebook/convnext-small-224",
+                    "channels_last": false,
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "convnext"
+            ],
+            "date_added": "2025-06-30 12:00:00"
+        },
+        {
+            "base_name": "convnext-base-224-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Base modern CNN with transformer elements for robust visual understanding. From `A ConvNet for the 2020s <https://arxiv.org/abs/2201.03545>`_ trained on ImageNet-1k",
+            "source": "https://huggingface.co/facebook/convnext-base-224",
+            "author": "Zhuang Liu, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 1417939660,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "facebook/convnext-base-224",
+                    "channels_last": false,
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "convnext"
+            ],
+            "date_added": "2025-06-30 12:00:00"
+        },
+        {
+            "base_name": "convnext-large-224-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Large modern CNN demonstrating competitive performance with vision transformers",
+            "source": "https://huggingface.co/facebook/convnext-large-224",
+            "author": "Zhuang Liu, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 3164754044,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "facebook/convnext-large-224",
+                    "channels_last": false,
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "convnext"
+            ],
+            "date_added": "2025-06-30 12:00:00"
+        },
+        {
+            "base_name": "convnext-xlarge-224-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Extra-large modern CNN maximizing architectural improvements for top accuracy",
+            "source": "https://huggingface.co/facebook/convnext-xlarge-224-22k-1k",
+            "author": "Zhuang Liu, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 31647540445603633486,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "facebook/convnext-xlarge-224-22k-1k",
+                    "channels_last": false,
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "convnext"
+            ],
+            "date_added": "2025-06-30 12:00:00"
+        },
+        {
+            "base_name": "efficientnet-b0-imagenet-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Efficient image classifier optimized for mobile devices with excellent accuracy-efficiency tradeoff",
+            "source": "https://huggingface.co/google/efficientnet-b0",
+            "author": "Mingxing Tan and Quoc V. Le",
+            "license": "Apache 2.0",
+            "size_bytes": 85768446,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "google/efficientnet-b0",
+                    "channels_last": false,
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "efficientnet"
+            ],
+            "date_added": "2025-06-30 12:00:00"
+        },
+        {
+            "base_name": "efficientnet-b1-imagenet-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Scaled efficient classifier with improved accuracy for slightly larger computational budgets",
+            "source": "https://huggingface.co/google/efficientnet-b1",
+            "author": "Mingxing Tan and Quoc V. Le",
+            "license": "Apache 2.0",
+            "size_bytes": 126318898,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "google/efficientnet-b1",
+                    "channels_last": false,
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "efficientnet"
+            ],
+            "date_added": "2025-06-30 12:00:00"
+        },
+        {
+            "base_name": "efficientnet-b2-imagenet-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Balanced efficient model providing stronger performance while maintaining reasonable resource usage",
+            "source": "https://huggingface.co/google/efficientnet-b2",
+            "author": "Mingxing Tan and Quoc V. Le",
+            "license": "Apache 2.0",
+            "size_bytes": 147458738,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "google/efficientnet-b2",
+                    "channels_last": false,
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "efficientnet"
+            ],
+            "date_added": "2025-06-30 12:00:00"
+        },
+        {
+            "base_name": "efficientnet-b3-imagenet-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Mid-scale efficient classifier delivering high accuracy for versatile deployment scenarios",
+            "source": "https://huggingface.co/google/efficientnet-b3",
+            "author": "Mingxing Tan and Quoc V. Le",
+            "license": "Apache 2.0",
+            "size_bytes": 197807644,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "google/efficientnet-b3",
+                    "channels_last": false,
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "efficientnet"
+            ],
+            "date_added": "2025-06-30 12:00:00"
+        },
+        {
+            "base_name": "efficientnet-b4-imagenet-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Large efficient model with enhanced features for transfer learning applications",
+            "source": "https://huggingface.co/google/efficientnet-b4",
+            "author": "Mingxing Tan and Quoc V. Le",
+            "license": "Apache 2.0",
+            "size_bytes": 312276324,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "google/efficientnet-b4",
+                    "channels_last": false,
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "efficientnet"
+            ],
+            "date_added": "2025-06-30 12:00:00"
+        },
+        {
+            "base_name": "efficientnet-b5-imagenet-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "High-capacity efficient classifier prioritizing accuracy with available compute resources",
+            "source": "https://huggingface.co/google/efficientnet-b5",
+            "author": "Mingxing Tan and Quoc V. Le",
+            "license": "Apache 2.0",
+            "size_bytes": 489948742,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "google/efficientnet-b5",
+                    "channels_last": false,
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "efficientnet"
+            ],
+            "date_added": "2025-06-30 12:00:00"
+        },
+        {
+            "base_name": "efficientnet-b6-imagenet-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Extended efficient model approaching state-of-the-art accuracy on challenging datasets",
+            "source": "https://huggingface.co/google/efficientnet-b6",
+            "author": "Mingxing Tan and Quoc V. Le",
+            "license": "Apache 2.0",
+            "size_bytes": 693311678,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "google/efficientnet-b6",
+                    "channels_last": false,
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "efficientnet"
+            ],
+            "date_added": "2025-06-30 12:00:00"
+        },
+        {
+            "base_name": "efficientnet-b7-imagenet-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Maximum efficient classifier pushing performance boundaries while preserving efficiency principles",
+            "source": "https://huggingface.co/google/efficientnet-b7",
+            "author": "Mingxing Tan and Quoc V. Le",
+            "license": "Apache 2.0",
+            "size_bytes": 1067822754,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "google/efficientnet-b7",
+                    "channels_last": false,
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "efficientnet"
+            ],
+            "date_added": "2025-06-30 12:00:00"
+        },
+        {
+            "base_name": "swin-v2-tiny-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Tiny hierarchical transformer for efficient visual recognition on edge devices",
+            "source": "https://huggingface.co/microsoft/swinv2-tiny-patch4-window8-256",
+            "author": "Ze Liu, et al.",
+            "license": "MIT",
+            "size_bytes": 453919540,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "microsoft/swinv2-tiny-patch4-window8-256",
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "swin-transformer"
+            ],
+            "date_added": "2025-07-02 12:00:00"
+        },
+        {
+            "base_name": "swin-v2-small-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Small hierarchical transformer balancing efficiency and performance for practical use",
+            "source": "https://huggingface.co/microsoft/swinv2-small-patch4-window8-256",
+            "author": "Ze Liu, et al.",
+            "license": "MIT",
+            "size_bytes": 796233910,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "microsoft/swinv2-small-patch4-window8-256",
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "swin-transformer"
+            ],
+            "date_added": "2025-07-02 12:00:00"
+        },
+        {
+            "base_name": "swin-v2-base-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Base hierarchical transformer delivering strong results across vision tasks",
+            "source": "https://huggingface.co/microsoft/swinv2-base-patch4-window8-256",
+            "author": "Ze Liu, et al.",
+            "license": "MIT",
+            "size_bytes": 1407282936,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "microsoft/swinv2-base-patch4-window8-256",
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "swin-transformer"
+            ],
+            "date_added": "2025-07-02 12:00:00"
+        },
+        {
+            "base_name": "swin-v2-large-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Large hierarchical transformer with enhanced capacity for demanding applications",
+            "source": "https://huggingface.co/microsoft/swinv2-large-patch4-window12to16-192to256-22kto1k-ft",
+            "author": "Ze Liu, et al.",
+            "license": "MIT",
+            "size_bytes": 3148420002,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "microsoft/swinv2-large-patch4-window12to16-192to256-22kto1k-ft",
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "swin-transformer"
+            ],
+            "date_added": "2025-07-02 12:00:00"
+        },
+        {
+            "base_name": "rtdetr-v2-s-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Lightweight real-time object detector optimized for speed on edge devices",
+            "source": "https://huggingface.co/PekingU/rtdetr_v2_r18vd",
+            "author": "Wenyu Lv, et al.",
+            "license": "Apache-2.0",
+            "size_bytes": 161820194,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "PekingU/rtdetr_v2_r18vd",
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "transformers",
+                "rtdetr"
+            ],
+            "date_added": "2025-07-03 12:00:00"
+        },
+        {
+            "base_name": "rtdetr-v2-m-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Balanced real-time object detector offering improved accuracy for production use",
+            "source": "https://huggingface.co/PekingU/rtdetr_v2_r50vd",
+            "author": "Wenyu Lv, et al.",
+            "license": "Apache-2.0",
+            "size_bytes": 344364318,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "PekingU/rtdetr_v2_r50vd",
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "transformers",
+                "rtdetr"
+            ],
+            "date_added": "2025-07-03 12:00:00"
+        },
+        {
+            "base_name": "dfine-nano-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "D-FINE Nano from `D-FINE: Redefine Regression Task in DETRs as Fine-grained Distribution Refinement` trained on COCO. Ultra-lightweight real-time object detector.",
+            "source": "https://github.com/Peterande/D-FINE",
+            "author": "Yansong Peng, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 14680064,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "ustc-community/dfine-nano-coco"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "coco", "torch", "transformers", "detr"],
+            "date_added": "2025-07-15 23:00:00"
+        },
+        {
+            "base_name": "dfine-small-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "D-FINE Small from `D-FINE: Redefine Regression Task in DETRs as Fine-grained Distribution Refinement` trained on COCO. Balanced real-time object detector.",
+            "source": "https://github.com/Peterande/D-FINE",
+            "author": "Yansong Peng, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 25165824,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "ustc-community/dfine-small-coco"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "coco", "torch", "transformers", "detr"],
+            "date_added": "2025-07-15 23:00:00"
+        },
+        {
+            "base_name": "dfine-medium-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "D-FINE Medium from `D-FINE: Redefine Regression Task in DETRs as Fine-grained Distribution Refinement` trained on COCO. Mid-size real-time object detector.",
+            "source": "https://github.com/Peterande/D-FINE",
+            "author": "Yansong Peng, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 31457280,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "ustc-community/dfine-medium-coco"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "coco", "torch", "transformers", "detr"],
+            "date_added": "2025-07-15 23:00:00"
+        },
+        {
+            "base_name": "dfine-large-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "D-FINE Large from `D-FINE: Redefine Regression Task in DETRs as Fine-grained Distribution Refinement` trained on COCO. Achieves 54.0% AP at 124 FPS on T4 GPU.",
+            "source": "https://github.com/Peterande/D-FINE",
+            "author": "Yansong Peng, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 52428800,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "ustc-community/dfine-large-coco"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "coco", "torch", "transformers", "detr"],
+            "date_added": "2025-07-15 23:00:00"
+        },
+        {
+            "base_name": "dfine-xlarge-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "D-FINE XLarge from `D-FINE: Redefine Regression Task in DETRs as Fine-grained Distribution Refinement` trained on COCO. Achieves 55.8% AP at 78 FPS on T4 GPU.",
+            "source": "https://github.com/Peterande/D-FINE",
+            "author": "Yansong Peng, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 128974848,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "ustc-community/dfine-xlarge-coco"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "coco", "torch", "transformers", "detr"],
+            "date_added": "2025-07-15 23:00:00"
         }
     ]
 }

@@ -2,6 +2,7 @@ import { useFont, useTheme } from "@fiftyone/components";
 import { Leva as LevaOptions } from "leva";
 import { createPortal } from "react-dom";
 import { useRecoilState } from "recoil";
+import { useHotkey } from "../hooks";
 import { isLevaConfigPanelOnAtom } from "../state";
 
 export const LEVA_CONTAINER_ID = "fo-leva-container";
@@ -12,6 +13,15 @@ export const Leva = () => {
 
   const [isLevaPanelOn, setIsLevaPanelOn] = useRecoilState(
     isLevaConfigPanelOnAtom
+  );
+
+  useHotkey(
+    "KeyR",
+    () => {
+      setIsLevaPanelOn((prev) => !prev);
+    },
+    [],
+    { useTransaction: false }
   );
 
   return createPortal(
@@ -41,7 +51,7 @@ export const Leva = () => {
       fill
       titleBar={{
         drag: false,
-        title: "Render Preferences",
+        title: "Render Preferences (R)",
       }}
       hideCopyButton
       collapsed={{

@@ -1,3 +1,4 @@
+import { formatValueAsNumber } from "@fiftyone/utilities";
 import { ArrowDropDown, ArrowDropUp, GridView } from "@mui/icons-material";
 import {
   IconButton,
@@ -10,13 +11,12 @@ import {
   Typography,
   useTheme,
 } from "@mui/material";
-import React from "react";
+import { get } from "lodash";
 import ColorSquare from "../../components/ColorSquare";
 import EvaluationTable from "../../components/EvaluationTable";
 import { COMPARE_KEY_COLOR, KEY_COLOR } from "../../constants";
-import { formatValue, getNumericDifference } from "../../utils";
+import { getNumericDifference } from "../../utils";
 import { useActiveFilter } from "./utils";
-import { get } from "lodash";
 
 export default function Summary(props) {
   const { name, compareKey, loadView, evaluation, compareEvaluation } = props;
@@ -157,7 +157,7 @@ export default function Summary(props) {
       property: "Incorrect",
       value: evaluationMetrics.num_incorrect,
       compareValue: compareEvaluationMetrics.num_incorrect,
-      lesserIsBetter: false,
+      lesserIsBetter: true,
       filterable: true,
       hide: !isNoneBinaryClassification,
     },
@@ -223,9 +223,13 @@ export default function Summary(props) {
           const zeroRatio = ratio === 0;
           const negativeRatio = ratio < 0;
           const ratioColor = positiveRatio
-            ? "#8BC18D"
+            ? lesserIsBetter
+              ? "#FF6464"
+              : "#8BC18D"
             : negativeRatio
-            ? "#FF6464"
+            ? lesserIsBetter
+              ? "#8BC18D"
+              : "#FF6464"
             : theme.palette.text.tertiary;
           const showTrophy = lesserIsBetter ? difference < 0 : difference > 0;
           const activeStyle: SxProps = {
@@ -246,7 +250,7 @@ export default function Summary(props) {
                 >
                   <Typography>
                     {value ? (
-                      formatValue(value)
+                      formatValueAsNumber(value)
                     ) : (
                       <Typography color="text.tertiary">—</Typography>
                     )}
@@ -283,7 +287,7 @@ export default function Summary(props) {
                     >
                       <Typography>
                         {compareValue ? (
-                          formatValue(compareValue)
+                          formatValueAsNumber(compareValue)
                         ) : (
                           <Typography color="text.tertiary">—</Typography>
                         )}

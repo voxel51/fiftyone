@@ -28,6 +28,11 @@ export const LOOKER3D_HELP_ITEMS = [
   { shortcut: "F", title: "Full-screen", detail: "Toggle full-screen" },
   { shortcut: "J", title: "Json ", detail: "Toggle JSON view" },
   { shortcut: "I", title: "FO3D ", detail: "Toggle FO3D JSON view" },
+  {
+    shortcut: "R",
+    title: "Render Preferences",
+    detail: "Toggle render preferences",
+  },
   { shortcut: "?", title: "Display help", detail: "Display this help window" },
   { shortcut: "ESC", title: "Escape ", detail: "Escape the current context" },
 ];

@@ -16,8 +16,8 @@ const test = base.extend<{
   sidebar: async ({ page }, use) => {
     await use(new SidebarPom(page));
   },
-  gridActionsRow: async ({ eventUtils, page }, use) => {
-    await use(new GridActionsRowPom(page, eventUtils));
+  gridActionsRow: async ({ page }, use) => {
+    await use(new GridActionsRowPom(page));
   },
 });
 

@@ -74,11 +74,17 @@ jobs:
           echo "Installing docs requirements"
           pip install -r requirements/docs.txt
           echo "Installing fiftyone-teams requirements"
-          pip install -r fiftyone-teams/requirements/common.txt
+          pip install ./fiftyone-teams
           echo "Installing fiftyone-brain and fiftyone-db"
           pip install fiftyone-brain fiftyone-db
           echo "Installing fiftyone"
           pip install .
+
+      - name: Enable corepack
+        run: corepack enable
+      - name: Prepare yarn 4
+        run: corepack prepare yarn@4.9.1 --activate
+
       - name: Cache Node Modules
         id: node-cache
         uses: actions/cache@v4
@@ -116,4 +122,4 @@ jobs:
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@v2
       - name: publish
-        run: gsutil -m rsync -dR docs-download gs://docs.voxel51.com
+        run: gsutil -m rsync -dR -x '^SBOMs/.*' docs-download gs://docs.voxel51.com

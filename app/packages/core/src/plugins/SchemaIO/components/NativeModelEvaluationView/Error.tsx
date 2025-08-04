@@ -1,6 +1,5 @@
 import { West } from "@mui/icons-material";
 import { Box, Button, Card, Stack, Typography } from "@mui/material";
-import React from "react";
 import ErrorIcon from "./ErrorIcon";
 
 export default function Error(props: ErrorProps) {

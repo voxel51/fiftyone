@@ -1,4 +1,5 @@
 import { useAnalyticsInfo } from "@fiftyone/analytics";
+import { Markdown } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { debounce } from "lodash";
 import React, {
@@ -37,9 +38,8 @@ import {
 } from "./operators";
 import { OperatorPromptType, Places } from "./types";
 import { OperatorExecutorOptions } from "./types-internal";
-import { ValidationContext } from "./validation";
-import { Markdown } from "@fiftyone/components";
 import { generateOperatorSessionId } from "./utils";
+import { ValidationContext } from "./validation";
 
 export const promptingOperatorState = atom({
   key: "promptingOperator",
@@ -94,6 +94,7 @@ export const usePromptOperatorInput = () => {
 const globalContextSelector = selector({
   key: "globalContext",
   get: ({ get }) => {
+    const modal = !!get(fos.modal);
     const datasetName = get(fos.datasetName);
     const view = get(fos.view);
     const extended = get(fos.extendedStages);
@@ -106,6 +107,7 @@ const globalContextSelector = selector({
     const queryPerformance = get(fos.queryPerformance);
     const spaces = get(fos.sessionSpaces);
     const workspaceName = spaces?._name;
+    const activeFields = get(fos.activeFields({ modal }));
 
     return {
       datasetName,
@@ -120,6 +122,7 @@ const globalContextSelector = selector({
       queryPerformance,
       spaces,
       workspaceName,
+      activeFields,
     };
   },
 });
@@ -163,6 +166,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     queryPerformance,
     spaces,
     workspaceName,
+    activeFields,
   } = curCtx;
   const [analyticsInfo] = useAnalyticsInfo();
   const promptingOperator = useRecoilValue(promptingOperatorState);
@@ -186,6 +190,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
         spaces,
         workspaceName,
         promptId,
+        activeFields,
       },
       hooks
     );
@@ -205,6 +210,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     spaces,
     workspaceName,
     promptId,
+    activeFields,
   ]);
 
   return ctx;
@@ -456,7 +462,7 @@ export const useOperatorPrompt = () => {
   const hooks = operator.useHooks(ctx);
   const executor = useOperatorExecutor(promptingOperator.operatorName);
   const [inputFields, setInputFields] = useState();
-  const [resolving, setResolving] = useState(false);
+  const [preparing, setPreparing] = useState(false);
   const [resolvedCtx, setResolvedCtx] = useState(null);
   const [resolvedIO, setResolvedIO] = useState({ input: null, output: null });
   const notify = fos.useNotification();
@@ -472,7 +478,6 @@ export const useOperatorPrompt = () => {
     debounce(
       async (ctx) => {
         try {
-          setResolving(true);
           if (operator.config.resolveExecutionOptionsOnChange) {
             execDetails.fetch(ctx);
           }
@@ -490,7 +495,6 @@ export const useOperatorPrompt = () => {
           resolveTypeError.current = e;
           setInputFields(null);
         }
-        setResolving(false);
         setResolvedCtx(ctx);
       },
       operator.isRemote ? RESOLVE_TYPE_TTL : 0,
@@ -572,12 +576,15 @@ export const useOperatorPrompt = () => {
   );
   const execute = useCallback(
     async (options = {}) => {
+      setPreparing(true);
       const resolved =
         cachedResolvedInput || (await operator.resolveInput(ctx));
       const { invalid } = await validate(ctx, resolved);
       if (invalid) {
         return;
       }
+      setPreparing(false);
+      setResolvedCtx(ctx);
       executor.execute(promptingOperator.params, {
         ...options,
         ...promptingOperator.options,
@@ -630,6 +637,7 @@ export const useOperatorPrompt = () => {
     () => ctx.params != resolvedCtx?.params,
     [ctx.params, resolvedCtx?.params]
   );
+  const resolving = pendingResolve || preparing;
 
   const submitOptions = useOperatorPromptSubmitOptions(
     operator.uri,
@@ -669,7 +677,6 @@ export const useOperatorPrompt = () => {
     executorError,
     resolveError,
     resolving,
-    pendingResolve,
     execDetails,
     submitOptions,
     promptView,
@@ -999,6 +1006,45 @@ export function useOperatorBrowser() {
   };
 }
 
+/**
+ * @param uri - The URI of the operator to execute.
+ * @param handlers - The optional handlers for the operator.
+ * @returns An object containing the state of the operator execution.
+ * 
+ * Example:
+ * 
+ * ```ts
+ * const defaultParams = {
+ *   // default parameters of the operator
+ *   param1: "value1",
+ *   param2: "value2",
+ * };
+ * const paramOverrides = {
+ *   // override the parameters of the operator
+ *   param1: "value1-override",
+ * };
+ * const handlers = {
+ *   onSuccess: (result: OperatorResult, opts: OperatorExecutorOptions) => {
+ *     // do something with the success
+ *   },
+ *   onError: (error: OperatorResult, opts: OperatorExecutorOptions) => {
+ *     // do something with the error
+ *   }
+ * };
+ * const executor = useOperatorExecutor("my-operator", handlers);
+ * const myBtnCb = useCallback(() => {
+ *   const opts: OperatorExecutorOptions = {
+ *     skipErrorNotification: true,
+ *     callback: (result: OperatorResult, opts: OperatorExecutorOptions) => {
+ *       if (result.error) {
+ *         // do something with the error
+ *       }
+ *     }
+ *   };
+ *   executor.execute(paramOverrides, opts);
+ * }, [executor]);
+ * ```
+ */
 export function useOperatorExecutor(uri, handlers: any = {}) {
   uri = resolveOperatorURI(uri, { keepMethod: true });
 
@@ -1051,7 +1097,7 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
         setResult(result.result);
         setError(result.error);
         setIsDelegated(result.delegated);
-        if (result.error) {
+        if (result.error && !options?.skipErrorNotification) {
           handlers.onError?.(result, { ctx });
           notify({
             msg: result.errorMessage || `Operation failed: ${uri}`,
@@ -1096,8 +1142,6 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
     isDelegated,
   };
 }
-
-export function useExecutorQueue() {}
 
 export function useInvocationRequestQueue() {
   const ref = useRef<InvocationRequestQueue>();

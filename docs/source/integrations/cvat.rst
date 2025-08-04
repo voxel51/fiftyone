@@ -60,7 +60,7 @@ ____________
 The basic workflow to use CVAT to add or edit labels on your FiftyOne datasets
 is as follows:
 
-1) Load a :ref:`labeled or unlabeled dataset <loading-datasets>` into FiftyOne
+1) :ref:`Load a dataset <importing-datasets>` into FiftyOne
 
 2) Explore the dataset using the :ref:`App <fiftyone-app>` or
    :ref:`dataset views <using-views>` to locate either unlabeled samples that
@@ -179,11 +179,6 @@ FiftyOne:
 
 Setup
 _____
-
-.. warning::
-
-   This integration currently only
-   `supports CVAT server versions <= 2.30 <https://github.com/voxel51/fiftyone/issues/5771>`_.
 
 FiftyOne supports both `app.cvat.ai <https://app.cvat.ai>`_ and
 `self-hosted servers <https://opencv.github.io/cvat/docs/administration/basics/installation/>`_.
@@ -1082,7 +1077,7 @@ supported values are:
     unexpected labels
 -   `"ignore"`: automatically ignore any unexpected labels
 -   ``"keep"``: automatically keep all unexpected labels in a field whose name
-    matches the the label type
+    matches the label type
 -   `"return"`: return a dict containing all unexpected labels, if any
 
 See :ref:`this section <cvat-unexpected-annotations>` for more details.
@@ -1536,7 +1531,7 @@ supported values are:
 -   `"prompt"` (**default**): present an interactive prompt to direct/discard
     unexpected labels
 -   ``"keep"``: automatically keep all unexpected labels in a field whose name
-    matches the the label type
+    matches the label type
 -   `"ignore"`: automatically ignore any unexpected labels
 -   `"return"`: return a dict containing all unexpected labels, if any
 
@@ -2043,7 +2038,7 @@ attributes between annotation runs.
 Using CVAT groups
 -----------------
 
-The CVAT UI provides a way to group objects together both visually and though
+The CVAT UI provides a way to group objects together both visually and through
 a group id in the API.
 
 You can configure CVAT annotation runs so that the state of the group id is

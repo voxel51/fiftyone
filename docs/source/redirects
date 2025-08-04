@@ -6,6 +6,11 @@
 #   from/broken/page2.ext to/existing/page2.ext
 #
 
+# Introduced in v2.9.0
+user_guide/dataset_creation/index.rst  user_guide/import_datasets.rst
+user_guide/dataset_creation/datasets.rst  user_guide/import_datasets.rst
+user_guide/dataset_creation/samples.rst  user_guide/sample_parsers.rst
+
 # Introduced in v2.7.0
 teams/data_lens.rst enterprise/data_lens.rst
 teams/data_quality.rst enterprise/data_quality.rst

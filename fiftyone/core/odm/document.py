@@ -354,7 +354,7 @@ class MongoEngineBaseDocument(SerializableDocument):
         if len(chunks) > 1:
             doc = self.get_field(chunks[0])
 
-            # handle sytnax: sample["field.0.attr"] = value
+            # handle syntax: sample["field.0.attr"] = value
             if isinstance(doc, (mongoengine.base.BaseList, fof.ListField)):
                 chunks = chunks[1].split(".", 1)
                 doc = doc[int(chunks[0])]
@@ -805,6 +805,13 @@ class Document(BaseDocument, mongoengine.Document):
             last_modified_at = datetime.utcnow()
 
         self.last_modified_at = last_modified_at
+        self.save(virtual=True)
+
+    def _update_last_deletion_at(self, last_deletion_at=None):
+        if last_deletion_at is None:
+            last_deletion_at = datetime.utcnow()
+
+        self.last_deletion_at = last_deletion_at
         self.save(virtual=True)
 
     def _do_updates(self, _id, updates, upsert):

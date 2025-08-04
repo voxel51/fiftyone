@@ -469,7 +469,7 @@ Runs page
 All users with at least **Can View** access to a dataset can visit the Runs
 page by clicking on the "Runs" tab.
 
-On the Runs page, you will see a table with a list of delgated operations.
+On the Runs page, you will see a table with a list of delegated operations.
 Admins can choose whether to view operations for all datasets or only the
 current dataset, while non-admins can only view operations associated with the
 current dataset.

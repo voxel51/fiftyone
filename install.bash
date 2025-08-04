@@ -52,6 +52,35 @@ NODE_VERSION=22.14.0
 OS=$(uname -s)
 ARCH=$(uname -m)
 
+# Do this first so pip installs with a built app
+if [ ${BUILD_APP} = true ]; then
+    echo "***** INSTALLING FIFTYONE-APP *****"
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.37.2/install.sh | bash
+    export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
+    nvm install ${NODE_VERSION}
+    nvm use ${NODE_VERSION}
+    if ! command -v yarn &> /dev/null; then
+        npm -g install yarn
+    else
+        echo "yarn is already installed, skipping installation"
+    fi
+    if [ -f ~/.bashrc ]; then
+        source ~/.bashrc
+    elif [ -f ~/.bash_profile ]; then
+        source ~/.bash_profile
+    else
+        echo "WARNING: unable to locate a bash profile to 'source'; you may need to start a new shell"
+    fi
+    cd app
+    echo "Building the App. This will take a minute or two..."
+    corepack enable
+    corepack prepare yarn --activate
+    yarn install > /dev/null 2>&1
+    yarn build
+    cd ..
+fi
+
 if [ ${SCRATCH_MONGODB_INSTALL} = true ]; then
     echo "***** INSTALLING MONGODB FROM SCRATCH *****"
     MONGODB_VERSION=6.0.5
@@ -99,16 +128,24 @@ fi
 
 echo "***** INSTALLING FIFTYONE-BRAIN *****"
 if [ ${SOURCE_BRAIN_INSTALL} = true ]; then
-    git clone https://github.com/voxel51/fiftyone-brain
-    cd fiftyone-brain
+    if [[ ! -d "fiftyone-brain" ]] && [[ ! -d "../fiftyone-brain" ]]; then
+        echo "Cloning FiftyOne Brain repository"
+        git clone https://github.com/voxel51/fiftyone-brain
+    fi
+    if [[ -d "../fiftyone-brain" ]]; then
+        cd ../fiftyone-brain
+    else
+        cd fiftyone-brain
+    fi
     if [ ${DEV_INSTALL} = true ]; then
+        echo "Performing dev install"
         bash install.bash -d
     else
+        echo "Performing install"
         pip install .
     fi
-    cd ..
+    cd -
 else
-    echo "Cloning FiftyOne Brain repository"
     pip install --upgrade fiftyone-brain
 fi
 
@@ -123,54 +160,33 @@ elif [ ${DOCS_INSTALL} = true ]; then
     pip install -r requirements/docs.txt
     pip install -e .
 else
-    pip install -r requirements.txt
+    echo "Performing install"
     pip install .
 fi
 
 if [ ${SOURCE_ETA_INSTALL} = true ]; then
-    echo "***** INSTALLING ETA *****"
-    if [[ ! -d "eta" ]]; then
+    echo "***** INSTALLING ETA FROM SOURCE *****"
+    if [[ ! -d "eta" ]] && [[ ! -d "../eta" ]]; then
         echo "Cloning ETA repository"
         git clone https://github.com/voxel51/eta
     fi
-    cd eta
+    if [[ -d "../eta" ]]; then
+        cd ../eta
+    else
+        cd eta
+    fi
     if [ ${DEV_INSTALL} = true ]; then
+        echo "Performing dev install"
         pip install -e .
     else
+        echo "Performing install"
         pip install .
     fi
     if [[ ! -f eta/config.json ]]; then
         echo "Installing default ETA config"
         cp config-example.json eta/config.json
     fi
-    cd ..
-fi
-
-# Do this last since `source` can exit Python virtual environments
-if [ ${BUILD_APP} = true ]; then
-    echo "***** INSTALLING FIFTYONE-APP *****"
-    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.37.2/install.sh | bash
-    export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
-    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
-    nvm install ${NODE_VERSION}
-    nvm use ${NODE_VERSION}
-    if ! command -v yarn &> /dev/null; then
-        npm -g install yarn
-    else
-        echo "yarn is already installed, skipping installation"
-    fi
-    if [ -f ~/.bashrc ]; then
-        source ~/.bashrc
-    elif [ -f ~/.bash_profile ]; then
-        source ~/.bash_profile
-    else
-        echo "WARNING: unable to locate a bash profile to 'source'; you may need to start a new shell"
-    fi
-    cd app
-    echo "Building the App. This will take a minute or two..."
-    yarn install > /dev/null 2>&1
-    yarn build
-    cd ..
+    cd -
 fi
 
 echo "***** INSTALLATION COMPLETE *****"

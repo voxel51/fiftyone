@@ -870,12 +870,13 @@ of the FiftyOne Enterprise client to use:
 
 **Runtime**
 
-Lambda/GCFs cannot use services, so you must disable the media the cache by
-setting the following runtime environment variable:
+Lambda/GCFs cannot use services, so you must disable the media the cache cleanup
+service by setting the following runtime environment variable.
 
 .. code-block:: shell
 
-    export FIFTYONE_MEDIA_CACHE_SIZE_BYTES=-1  # disable media cache
+    # `-1` disables the media cache garbage collection (and cache size is unlimited).
+    export FIFTYONE_MEDIA_CACHE_SIZE_BYTES=-1
 
 From there, you can configure your database URI and any necessary cloud storage
 credentials via runtime environment variables as you normally would, eg:

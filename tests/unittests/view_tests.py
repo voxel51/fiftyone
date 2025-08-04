@@ -1245,6 +1245,140 @@ class SetValuesTests(unittest.TestCase):
         self.assertListEqual(labels[1][:2], ["cat", "dog"])
         self.assertListEqual(labels[2][:3], ["cat", "dog", "rabbit"])
 
+    def test_set_values_frames_dicts_with_label_lists(self):
+        sample1 = fo.Sample(filepath="video1.mp4")
+        sample1.frames[1] = fo.Frame()
+
+        sample2 = fo.Sample(filepath="video.mp4")
+        sample2.frames[1] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                    fo.Detection(label="cat"),
+                ]
+            )
+        )
+        sample2.frames[2] = fo.Frame()
+        sample2.frames[3] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="dog"),
+                    fo.Detection(label="cat"),
+                ]
+            )
+        )
+        sample2.frames[4] = fo.Frame(ground_truth=fo.Detections())
+        sample2.frames[5] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="dog"),
+                ]
+            )
+        )
+        sample2.frames[7] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                ]
+            )
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2])
+
+        # Test empty
+
+        empty_values = {sample2.id: {4: []}}
+
+        # Here we're verifying that this does NOT raise an error like:
+        #   "unable to determine a field type from empty/None values"
+        # because dynamic attributes aren't required to be declared
+        dataset.set_values(
+            "frames.ground_truth.detections.is_cat",
+            empty_values,
+            key_field="id",
+        )
+
+        # Test setting values for some (but not all) frames
+
+        values = {
+            sample2.id: {
+                1: [True, False, True],
+                4: [],
+                7: [True],
+            }
+        }
+
+        dataset.set_values(
+            "frames.ground_truth.detections.is_cat",
+            values,
+            key_field="id",
+        )
+
+        values = dataset.values("frames.ground_truth.detections.is_cat")
+
+        self.assertListEqual(
+            values,
+            [
+                [None],
+                [
+                    [True, False, True],
+                    None,
+                    [None, None],
+                    [],
+                    [None],
+                    [True],
+                ],
+            ],
+        )
+
+    def test_set_values_frame_ids(self):
+        sample1 = fo.Sample(filepath="video1.mp4")
+        frame11 = fo.Frame()
+        sample1.frames[1] = frame11
+
+        sample2 = fo.Sample(filepath="video2.mp4")
+        frame21 = fo.Frame(foo="bar")
+        frame22 = fo.Frame()
+        frame23 = fo.Frame(foo="baz")
+        sample2.frames[1] = frame21
+        sample2.frames[2] = frame22
+        sample2.frames[3] = frame23
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2])
+
+        values = {frame11.id: "spam", frame23.id: "eggs"}
+
+        dataset.set_values("frames.foo", values, key_field="frames.id")
+
+        self.assertDictEqual(
+            dataset.count_values("frames.foo"),
+            {"bar": 1, "spam": 1, "eggs": 1, None: 1},
+        )
+
+    def test_set_values_frame_key_field(self):
+        sample1 = fo.Sample(filepath="video1.mp4")
+        sample1.frames[1] = fo.Frame(frame_id=11)
+
+        sample2 = fo.Sample(filepath="video2.mp4")
+        sample2.frames[1] = fo.Frame(frame_id=21, foo="bar")
+        sample2.frames[2] = fo.Frame(frame_id=22)
+        sample2.frames[3] = fo.Frame(frame_id=23, foo="baz")
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2])
+
+        values = {11: "spam", 23: "eggs"}
+
+        dataset.set_values("frames.foo", values, key_field="frames.frame_id")
+
+        self.assertDictEqual(
+            dataset.count_values("frames.foo"),
+            {"bar": 1, "spam": 1, "eggs": 1, None: 1},
+        )
+
     def test_set_values_dataset(self):
         n = len(self.dataset)
 
@@ -1864,8 +1998,10 @@ class SetLabelValuesTests(unittest.TestCase):
         dataset = _make_classification_dataset()
 
         view = dataset.match(F("label.label") == "cat")
-        cat_ids = set(view.values("label.id"))
 
+        # dict syntax
+
+        cat_ids = set(view.values("label.id"))
         values = {_id: True for _id in cat_ids}
 
         dataset.set_label_values("label.is_cat1", values)
@@ -1899,13 +2035,39 @@ class SetLabelValuesTests(unittest.TestCase):
         cats_view = dataset.filter_labels("label", F("is_cat3") == True)
         self.assertListEqual(cats_view.distinct("label.label"), ["cat"])
 
+        # list syntax
+
+        ids, label_ids = view.values(["id", "label.id"])
+
+        values = []
+        for sid, lid in zip(ids, label_ids):
+            values.append({"sample_id": sid, "label_id": lid, "value": True})
+
+        dataset.set_label_values("label.is_cat4", values)
+        schema = dataset.get_field_schema(flat=True)
+
+        self.assertNotIn("label.is_cat4", schema)
+        self.assertDictEqual(
+            dataset.count_values("label.is_cat4"), {True: 1, None: 4}
+        )
+
+        dataset.set_label_values("label.is_cat5", values, dynamic=True)
+        schema = dataset.get_field_schema(flat=True)
+
+        self.assertIn("label.is_cat5", schema)
+        self.assertDictEqual(
+            dataset.count_values("label.is_cat5"), {True: 1, None: 4}
+        )
+
     @drop_datasets
     def test_set_label_list_values(self):
         dataset = _make_labels_dataset()
 
         view = dataset.filter_labels("labels", F("label") == "cat")
-        cat_ids = set(view.values("labels.classifications.id", unwind=True))
 
+        # dict syntax
+
+        cat_ids = set(view.values("labels.classifications.id", unwind=True))
         values = {_id: True for _id in cat_ids}
 
         dataset.set_label_values("labels.classifications.is_cat1", values)
@@ -1949,13 +2111,46 @@ class SetLabelValuesTests(unittest.TestCase):
             ["cat"],
         )
 
+        # list syntax
+
+        ids, label_ids = view.values(["id", "labels.classifications.id"])
+
+        values = []
+        for sid, lids in zip(ids, label_ids):
+            for lid in lids:
+                values.append(
+                    {"sample_id": sid, "label_id": lid, "value": True}
+                )
+
+        dataset.set_label_values("labels.classifications.is_cat4", values)
+        schema = dataset.get_field_schema(flat=True)
+
+        self.assertNotIn("labels.classifications.is_cat4", schema)
+        self.assertDictEqual(
+            dataset.count_values("labels.classifications.is_cat4"),
+            {True: 2, None: 4},
+        )
+
+        dataset.set_label_values(
+            "labels.classifications.is_cat5", values, dynamic=True
+        )
+        schema = dataset.get_field_schema(flat=True)
+
+        self.assertIn("labels.classifications.is_cat5", schema)
+        self.assertDictEqual(
+            dataset.count_values("labels.classifications.is_cat5"),
+            {True: 2, None: 4},
+        )
+
     @drop_datasets
     def test_set_frame_label_values(self):
         dataset = _make_frame_classification_dataset()
 
         view = dataset.match_frames(F("label.label") == "cat")
-        cat_ids = set(view.values("frames.label.id", unwind=True))
 
+        # dict syntax
+
+        cat_ids = set(view.values("frames.label.id", unwind=True))
         values = {_id: True for _id in cat_ids}
 
         dataset.set_label_values("frames.label.is_cat1", values)
@@ -1991,15 +2186,46 @@ class SetLabelValuesTests(unittest.TestCase):
         cats_view = dataset.filter_labels("frames.label", F("is_cat3") == True)
         self.assertListEqual(cats_view.distinct("frames.label.label"), ["cat"])
 
+        # list syntax
+
+        frame_ids, label_ids = view.values(
+            ["frames.id", "frames.label.id"], unwind=-1
+        )
+
+        values = []
+        for fids, lids in zip(frame_ids, label_ids):
+            for fid, lid in zip(fids, lids):
+                values.append(
+                    {"frame_id": fid, "label_id": lid, "value": True}
+                )
+
+        dataset.set_label_values("frames.label.is_cat4", values)
+        schema = dataset.get_frame_field_schema(flat=True)
+
+        self.assertNotIn("label.is_cat4", schema)
+        self.assertDictEqual(
+            dataset.count_values("frames.label.is_cat4"), {True: 1, None: 3}
+        )
+
+        dataset.set_label_values("frames.label.is_cat5", values, dynamic=True)
+        schema = dataset.get_frame_field_schema(flat=True)
+
+        self.assertIn("label.is_cat5", schema)
+        self.assertDictEqual(
+            dataset.count_values("frames.label.is_cat5"), {True: 1, None: 3}
+        )
+
     @drop_datasets
     def test_set_frame_label_list_values(self):
         dataset = _make_frame_labels_dataset()
 
         view = dataset.filter_labels("frames.labels", F("label") == "cat")
+
+        # dict syntax
+
         cat_ids = set(
             view.values("frames.labels.classifications.id", unwind=True)
         )
-
         values = {_id: True for _id in cat_ids}
 
         dataset.set_label_values(
@@ -2049,6 +2275,41 @@ class SetLabelValuesTests(unittest.TestCase):
         self.assertListEqual(
             cats_view.distinct("frames.labels.classifications.label"),
             ["cat"],
+        )
+
+        # list syntax
+
+        frame_ids, label_ids = view.values(
+            ["frames.id", "frames.labels.classifications.id"], unwind=-1
+        )
+
+        values = []
+        for fids, lids in zip(frame_ids, label_ids):
+            for fid, lid in zip(fids, lids):
+                values.append(
+                    {"frame_id": fid, "label_id": lid, "value": True}
+                )
+
+        dataset.set_label_values(
+            "frames.labels.classifications.is_cat4", values
+        )
+        schema = dataset.get_frame_field_schema(flat=True)
+
+        self.assertNotIn("labels.classifications.is_cat4", schema)
+        self.assertDictEqual(
+            dataset.count_values("frames.labels.classifications.is_cat4"),
+            {True: 2, None: 4},
+        )
+
+        dataset.set_label_values(
+            "frames.labels.classifications.is_cat5", values, dynamic=True
+        )
+        schema = dataset.get_frame_field_schema(flat=True)
+
+        self.assertIn("labels.classifications.is_cat5", schema)
+        self.assertDictEqual(
+            dataset.count_values("frames.labels.classifications.is_cat5"),
+            {True: 2, None: 4},
         )
 
     def test_set_values_last_modified_at(self):
@@ -5052,6 +5313,94 @@ class ViewStageTests(unittest.TestCase):
         dataset.add_samples(samples)
 
         return (dataset, [s.id for s in samples])
+
+
+class FullCollectionTests(unittest.TestCase):
+    @drop_datasets
+    def test_is_full_collection(self):
+        samples = [
+            fo.Sample(
+                filepath="image1.jpg",
+                ground_truth=fo.Detections(
+                    detections=[fo.Detection(label="cat")]
+                ),
+            ),
+            fo.Sample(
+                filepath="image2.jpg",
+                ground_truth=fo.Detections(
+                    detections=[fo.Detection(label="dog")]
+                ),
+            ),
+            fo.Sample(filepath="image3.jpg"),
+        ]
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
+
+        self.assertTrue(dataset._is_full_collection())
+
+        view = dataset.view()
+
+        self.assertTrue(view._is_full_collection())
+
+        view = dataset.limit(2)
+
+        self.assertFalse(view._is_full_collection())
+
+        patches = dataset.to_patches("ground_truth")
+
+        self.assertTrue(patches._is_full_collection())
+
+        view = patches.view()
+
+        self.assertTrue(view._is_full_collection())
+
+        view = patches.limit(2)
+
+        self.assertFalse(view._is_full_collection())
+
+    @drop_datasets
+    def test_is_full_collection_group(self):
+        dataset = fo.Dataset()
+        dataset.add_group_field("group_field", default="left")
+
+        group1 = fo.Group()
+        group2 = fo.Group()
+
+        samples = [
+            fo.Sample(
+                filepath="left-image1.jpg",
+                group_field=group1.element("left"),
+            ),
+            fo.Sample(
+                filepath="right-image1.jpg",
+                group_field=group1.element("right"),
+            ),
+            fo.Sample(
+                filepath="left-image2.jpg",
+                group_field=group2.element("left"),
+            ),
+            fo.Sample(
+                filepath="right-image2.jpg",
+                group_field=group2.element("right"),
+            ),
+        ]
+
+        dataset.add_samples(samples)
+
+        self.assertFalse(dataset._is_full_collection())
+
+        view = dataset.select_group_slices()
+
+        self.assertTrue(view._is_full_collection())
+
+        view = dataset.select_group_slices(media_type="image")
+
+        self.assertFalse(view._is_full_collection())
+
+        view = dataset.limit(1)
+
+        self.assertFalse(view._is_full_collection())
 
 
 if __name__ == "__main__":

@@ -98,6 +98,7 @@ export type RawContext = {
   spaces: SpaceNodeJSON;
   workspaceName: string;
   promptId: string | null;
+  activeFields: string[];
 };
 
 export class ExecutionContext {
@@ -155,6 +156,9 @@ export class ExecutionContext {
   public get promptId(): string | null {
     return this._currentContext.promptId;
   }
+  public get activeFields(): string[] {
+    return this._currentContext.activeFields;
+  }
   getCurrentPanelId(): string | null {
     return this.params.panel_id || this.currentPanel?.id || null;
   }
@@ -188,6 +192,25 @@ export class OperatorResult {
     public delegated: boolean = false,
     public errorMessage: string = null
   ) {}
+
+  static create(options: {
+    operator?: Operator;
+    result?: object;
+    executor?: Executor;
+    error?: string;
+    delegated?: boolean;
+    errorMessage?: string;
+  } = {}): OperatorResult {
+    return new OperatorResult(
+      options.operator || null,
+      options.result || {},
+      options.executor || null,
+      options.error || null,
+      options.delegated || false,
+      options.errorMessage || null
+    );
+  }
+
   hasOutputContent() {
     if (this.delegated) return false;
     return isObjWithContent(this.result) || isObjWithContent(this.error);
@@ -570,6 +593,7 @@ async function executeOperatorAsGenerator(
       spaces: currentContext.spaces,
       workspace_name: currentContext.workspaceName,
       prompt_id: ctx.promptId,
+      active_fields: ctx.activeFields,
     },
     "json-stream"
   );
@@ -737,6 +761,7 @@ export async function executeOperatorWithContext(
           spaces: currentContext.spaces,
           workspace_name: currentContext.workspaceName,
           prompt_id: ctx.promptId,
+          active_fields: ctx.activeFields,
         }
       );
       result = serverResult.result;
@@ -808,6 +833,7 @@ type CurrentContext = {
   };
   state: any;
   delegationTarget?: string;
+  activeFields: string[];
 };
 
 export async function resolveRemoteType(
@@ -844,6 +870,7 @@ export async function resolveRemoteType(
       spaces: currentContext.spaces,
       workspace_name: currentContext.workspaceName,
       prompt_id: ctx.promptId,
+      active_fields: ctx.activeFields,
     }
   );
 
@@ -921,6 +948,7 @@ export async function resolveExecutionOptions(
       query_performance: currentContext.queryPerformance,
       spaces: currentContext.spaces,
       workspace_name: currentContext.workspaceName,
+      active_fields: ctx.activeFields,
     }
   );
 
@@ -955,6 +983,7 @@ export async function fetchRemotePlacements(ctx: ExecutionContext) {
       query_performance: currentContext.queryPerformance,
       spaces: currentContext.spaces,
       workspace_name: currentContext.workspaceName,
+      active_fields: ctx.activeFields,
     }
   );
   if (result && result.error) {

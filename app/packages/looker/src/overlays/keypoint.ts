@@ -14,6 +14,7 @@ import {
 import { distance, distanceFromLineSegment, multiply } from "../util";
 import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
 import { t } from "./util";
+import { isHoveringParticularLabelWithInstanceConfig } from "@fiftyone/state/src/jotai";
 
 interface KeypointLabel extends RegularLabel {
   points: [NONFINITE, NONFINITE][];
@@ -42,6 +43,9 @@ export default class KeypointOverlay<
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
     const color = this.getColor(state);
     const selected = this.isSelected(state);
+    const doesInstanceMatch =
+      this.label.instance?._id &&
+      isHoveringParticularLabelWithInstanceConfig(this.label.instance._id);
     ctx.lineWidth = 0;
 
     const skeleton = getSkeleton(this.field, state);
@@ -71,7 +75,7 @@ export default class KeypointOverlay<
         continue;
       }
 
-      ctx.fillStyle = pointColor(i);
+      ctx.fillStyle = doesInstanceMatch ? INFO_COLOR : pointColor(i);
       ctx.beginPath();
       const [x, y] = t(state, ...point);
       ctx.arc(

@@ -992,6 +992,16 @@ a |Sample| that has not been added to a |Dataset|:
     print(sample.id)
     # None
 
+The :meth:`last_deletion_at <fiftyone.core.dataset.Dataset.last_deletion_at>`
+property of a |Dataset| tracks the datetime that a sample was last deleted
+from the dataset:
+
+.. code-block:: python
+    :linenos:
+
+    print(dataset.last_deletion_at)
+    # datetime.datetime(2025, 5, 4, 21, 0, 52, 942511)
+
 .. _using-fields:
 
 Fields
@@ -2111,6 +2121,189 @@ some workflows when it is available.
 
 Dates and datetimes
 ___________________
+
+.. _builtin-datetime-fields:
+
+Builtin datetime fields
+-----------------------
+
+Datasets and samples have various builtin datetime fields that are
+automatically updated when certain events occur.
+
+The
+:attr:`Dataset.last_loaded_at <fiftyone.core.dataset.Dataset.last_loaded_at>`
+property tracks the datetime that the dataset was last loaded:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    print(dataset.last_loaded_at)
+    # 2025-05-04 21:00:45.559520
+
+The
+:attr:`Dataset.last_modified_at <fiftyone.core.dataset.Dataset.last_modified_at>`
+property tracks the datetime that dataset-level metadata was last modified,
+including:
+
+-   when properties such as
+    :attr:`name <fiftyone.core.dataset.Dataset.name>`,
+    :attr:`persistent <fiftyone.core.dataset.Dataset.persistent>`,
+    :attr:`tags <fiftyone.core.dataset.Dataset.tags>`,
+    :attr:`description <fiftyone.core.dataset.Dataset.description>`,
+    :attr:`info <fiftyone.core.dataset.Dataset.info>`, and
+    :attr:`app_config <fiftyone.core.dataset.Dataset.app_config>` are edited
+-   when fields are added or deleted from the dataset's schema
+-   when group slices are added or deleted from the dataset's schema
+-   when saved views or workspaces are added, edited, or deleted
+-   when annotation, brain, evaluation, or custom runs are added, edited, or
+    deleted
+
+.. code-block:: python
+    :linenos:
+
+    last_modified_at1 = dataset.last_modified_at
+
+    dataset.name = "still-quickstart"
+
+    last_modified_at2 = dataset.last_modified_at
+    assert last_modified_at2 > last_modified_at1
+
+    dataset.app_config.sidebar_groups = ...
+    dataset.save()
+
+    last_modified_at3 = dataset.last_modified_at
+    assert last_modified_at3 > last_modified_at2
+
+    dataset.add_sample_field("foo", fo.StringField)
+
+    last_modified_at4 = dataset.last_modified_at
+    assert last_modified_at4 > last_modified_at3
+
+.. note::
+
+    The
+    :attr:`Dataset.last_modified_at <fiftyone.core.dataset.Dataset.last_modified_at>`
+    property is **not** updated when samples are added, edited, or deleted from
+    a dataset.
+
+    Use the methods described below to ascertain this information.
+
+All samples have a builtin ``last_modified_at`` field that automatically tracks
+the datetime that each sample was last modified:
+
+.. code-block:: python
+    :linenos:
+
+    sample = dataset.first()
+    last_modified_at1 = sample.last_modified_at
+
+    sample.foo = "bar"
+    sample.save()
+
+    last_modified_at2 = sample.last_modified_at
+    assert last_modified_at2 > last_modified_at1
+
+The ``last_modified_at`` field is indexed by default, which means you can
+efficiently check when a dataset's samples were last modified via
+:meth:`max() <fiftyone.core.collections.SampleCollection.max>`:
+
+.. code-block:: python
+    :linenos:
+
+    last_modified_at1 = dataset.max("last_modified_at")
+
+    dataset.add_samples(...)
+
+    last_modified_at2 = dataset.max("last_modified_at")
+    assert last_modified_at2 > last_modified_at1
+
+    dataset.set_field("foo", "spam").save()
+
+    last_modified_at3 = dataset.max("last_modified_at")
+    assert last_modified_at3 > last_modified_at2
+
+The
+:attr:`Dataset.last_deletion_at <fiftyone.core.dataset.Dataset.last_deletion_at>`
+property tracks the datetime that a sample was last deleted
+from the dataset:
+
+.. code-block:: python
+    :linenos:
+
+    last_deletion_at1 = dataset.last_deletion_at
+
+    dataset.delete_samples(...)
+
+    last_deletion_a2 = dataset.last_deletion_at
+    assert last_deletion_a2 > last_deletion_at1
+
+**Video datasets**
+
+The frames of :ref:`video datasets <video-datasets>` also have a builtin
+``last_modified_at`` field that automatically tracks the datetime that each
+frame was last modified:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-video")
+
+    sample = dataset.first()
+    frame = sample.frames.first()
+    last_modified_at1 = frame.last_modified_at
+
+    frame["foo"] = "bar"
+    frame.save()
+
+    last_modified_at2 = frame.last_modified_at
+    assert last_modified_at2 > last_modified_at1
+
+The ``last_modified_at`` frame field is indexed by default, which means you can
+efficiently check when a dataset's frames were last modified via
+:meth:`max() <fiftyone.core.collections.SampleCollection.max>`:
+
+.. code-block:: python
+    :linenos:
+
+    last_modified_at1 = dataset.max("frames.last_modified_at")
+
+    dataset.add_samples(...)
+
+    last_modified_at2 = dataset.max("frames.last_modified_at")
+    assert last_modified_at2 > last_modified_at1
+
+    dataset.set_field("frames.foo", "spam").save()
+
+    last_modified_at3 = dataset.max("last_modified_at")
+    assert last_modified_at3 > last_modified_at2
+
+When frames are deleted from a dataset, the ``last_modified_at`` field of the
+parent samples are automatically updated:
+
+.. code-block:: python
+    :linenos:
+
+    sample = dataset.first()
+    last_modified_at1 = sample.last_modified_at
+
+    del sample.frames[1]
+    sample.save()
+
+    last_modified_at2 = sample.last_modified_at
+    assert last_modified_at2 > last_modified_at1
+
+.. _custom-datetime-fields:
+
+Custom datetime fields
+----------------------
 
 You can store date information in FiftyOne datasets by populating fields with
 `date` or `datetime` values:
@@ -4342,7 +4535,7 @@ _________________________
 If you work with collections of related fields that you would like to organize
 under a single top-level field, you can achieve this by defining and using
 custom |EmbeddedDocument| and |DynamicEmbeddedDocument| classes to populate
-your datasetes.
+your datasets.
 
 Using custom embedded document classes enables you to access your data using
 the same object-oriented interface enjoyed by FiftyOne's
@@ -4964,7 +5157,7 @@ serializes the scene into an FO3D file.
 
     print(dataset.media_type)  # 3d
 
-To modify an exising scene, load it via
+To modify an existing scene, load it via
 :meth:`Scene.from_fo3d() <fiftyone.core.threed.Scene.from_fo3d>`, perform any
 necessary updates, and then re-write it to disk:
 
@@ -5583,9 +5776,8 @@ which samples to merge:
     Did you know? You can use
     :meth:`merge_dir() <fiftyone.core.dataset.Dataset.merge_dir>` to directly
     merge the contents of a dataset on disk into an existing FiftyOne
-    dataset without first
-    :ref:`loading it <loading-datasets-from-disk>` into a temporary dataset and
-    then using
+    dataset without first :ref:`loading it <importing-datasets>` into a
+    temporary dataset and then using
     :meth:`merge_samples() <fiftyone.core.dataset.Dataset.merge_samples>` to
     perform the merge.
 
@@ -5611,13 +5803,31 @@ copy of a dataset:
     # The source dataset is unaffected
     assert "new_field" not in dataset.get_field_schema()
 
-Dataset clones contain deep copies of all samples and dataset-level information
-in the source dataset. The source *media files*, however, are not copied.
+Dataset clones contain deep copies of all samples and dataset-level metadata
+such as runs, saved views, and workspaces from the source dataset. The source
+*media files*, however, are not copied.
 
 .. note::
 
     Did you know? You can also
     :ref:`clone specific subsets <saving-and-cloning-views>` of your datasets.
+
+By default, cloned datasets also retain all
+:ref:`custom indexes <app-optimizing-query-performance>` that you've created on
+the source collection, but you can control this by passing the optional
+`include_indexes` parameter to
+:meth:`clone() <fiftyone.core.dataset.Dataset.clone>`:
+
+.. code-block:: python
+    :linenos:
+
+    dataset.create_index("ground_truth.detections.label")
+
+    # Do not retain custom indexes on the cloned dataset
+    dataset2 = dataset.clone(include_indexes=False)
+
+    # Only include specific custom indexes
+    dataset2 = dataset.clone(include_indexes=["ground_truth.detections.label"])
 
 .. _batch-updates:
 
@@ -5806,7 +6016,7 @@ in a collection and saving the sample edits:
 By default,
 :meth:`update_samples() <fiftyone.core.collections.SampleCollection.update_samples>`
 leverages a multiprocessing pool to parallelize the work across a number of
-workers, resulting in signficant performance improvements over the equivalent
+workers, resulting in significant performance improvements over the equivalent
 :meth:`iter_samples(autosave=True) <fiftyone.core.dataset.Dataset.iter_samples>`
 syntax:
 
@@ -5928,7 +6138,7 @@ applying a function to each sample, and returning the results as a generator.
 By default,
 :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
 leverages a multiprocessing pool to parallelize the work across a number of
-workers, resulting in signficant performance improvements over the equivalent
+workers, resulting in significant performance improvements over the equivalent
 :meth:`iter_samples() <fiftyone.core.dataset.Dataset.iter_samples>` syntax:
 
 .. code-block:: python
@@ -6039,26 +6249,60 @@ batch operation:
 .. code-block:: python
     :linenos:
 
-    # Delete the field we added earlier
-    dataset.delete_sample_field("random")
+    import random
 
-    # Equivalent way to populate the field on each sample in the dataset
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Two ways to populate a `random` field on each sample in the dataset
+
+    # Dict syntax (recommended): provide a dict mapping sample IDs to values
+    values = {id: random.random() for id in dataset.values("id")}
+    dataset.set_values("random", values, key_field="id")
+
+    print(dataset.bounds("random"))
+    # (0.0028, 0.9925)
+
+    # List syntax: provide one value for each sample in the dataset
     values = [random.random() for _ in range(len(dataset))]
     dataset.set_values("random", values)
 
-    print(dataset.count("random"))  # 50
-    print(dataset.bounds("random")) # (0.0041, 0.9973)
+    print(dataset.bounds("random"))
+    # (0.0055, 0.9996)
+
+When applicable, using
+:meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
+is more efficient than performing the equivalent operation via an explicit
+iteration over the |Dataset| because it avoids the need to read |Sample|
+instances into memory and sequentially save them.
+
+As demonstrated above, you can use
+:meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
+in two ways:
+
+-   **Dict syntax (recommended):** provide values as a dict whose keys specify
+    the ``key_field`` values of the samples whose field you want to set to the
+    corresponding values
+-   **List syntax:** provide values as a list, one for each sample in the
+    collection on which you are invoking this method
 
 .. note::
 
-    When possible, using
-    :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
-    is often more efficient than performing the equivalent operation via an
-    explicit iteration over the |Dataset| because it avoids the need to read
-    |Sample| instances into memory and sequentially save them.
+    The most performant strategy for setting large numbers of field values is
+    to use the dict syntax with ``key_field="id"`` when setting sample fields
+    and ``key_field="frames.id"`` when setting frame fields. All other syntaxes
+    internally convert to these IDs before ultimately performing the updates.
 
-Similarly, you can edit nested sample fields of a |Dataset| by iterating over
-the dataset and editing the necessary data:
+You can also use
+:meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>` to
+optimize more complex operations, such as editing attributes of specific
+object detections in a nested list.
+
+Consider the following loop, which adds a tag to all low confidence predictions
+in a field:
 
 .. code-block:: python
     :linenos:
@@ -6074,7 +6318,7 @@ the dataset and editing the necessary data:
     print(dataset.count_label_tags())
     # {'low_confidence': 447}
 
-However, an equivalent and often more efficient approach is to use
+An equivalent but more efficient approach is to use
 :meth:`values() <fiftyone.core.collections.SampleCollection.values>` to
 extract the slice of data you wish to modify and then use
 :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>` to
@@ -6086,21 +6330,52 @@ save the updated data in a single batch operation:
     # Remove the tags we added in the previous variation
     dataset.untag_labels("low_confidence")
 
-    # Load all predicted detections
-    # This is a list of lists of `Detection` instances for each sample
-    detections = dataset.values("predictions.detections")
+    # Load the tags for all low confidence detections
+    view = dataset.filter_labels("predictions", F("confidence") < 0.06)
+    tags = view.values("predictions.detections.tags")
 
-    # Add a tag to all low confidence detections
-    for sample_detections in detections:
-        for detection in sample_detections:
-            if detection.confidence < 0.06:
-                detection.tags.append("low_confidence")
+    # Add the 'low_confidence' tag to each detection's tags list
+    for sample_tags in tags:
+        for detection_tags in sample_tags:
+            detection_tags.append("low_confidence")
 
-    # Save the updated predictions
-    dataset.set_values("predictions.detections", detections)
+    # Save the updated tags
+    view.set_values("predictions.detections.tags", tags)
 
     print(dataset.count_label_tags())
     # {'low_confidence': 447}
+
+You can also use
+:meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>` to
+perform batch updates to frame-level fields:
+
+.. code-block:: python
+    :linenos:
+
+    import random
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-video")
+
+    # Dict syntax (recommended): provide a dict mapping frame IDs to values
+    frame_ids = dataset.values("frames.id", unwind=True)
+    values = {id: random.random() for id in frame_ids}
+
+    dataset.set_values("frames.random", values, key_field="frames.id")
+    print(dataset.bounds("frames.random"))
+    # (0.00013, 0.9993)
+
+    # List syntax: provide lists of lists of values, each list containing a
+    # value for each frame in that sample of the dataset
+    values = []
+    for sample in dataset:
+        values.append([random.random() for _ in sample.frames])
+
+    dataset.set_values("frames.random", values)
+    print(dataset.bounds("frames.random"))
+    # (0.00055, 0.9995)
 
 .. _set-label-values:
 
@@ -6111,18 +6386,52 @@ Often when working with |Label| fields, the edits you want to make may be
 naturally represented as a mapping between label IDs and corresponding
 attribute values to set on each |Label| instance. In such cases, you can use
 :meth:`set_label_values() <fiftyone.core.collections.SampleCollection.set_label_values>`
-to conveniently perform the updates:
+to efficiently perform the updates:
 
 .. code-block:: python
     :linenos:
 
-    # Grab some random label IDs
-    view = dataset.take(5, seed=51)
-    label_ids = view.values("predictions.detections.id", unwind=True)
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
 
-    # Populate a `random` attribute on all labels
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Grab some labels
+    view = dataset.limit(5).filter_labels("predictions", F("confidence") > 0.5)
+
+    # Two ways to populate a `random` attribute on each label
+
+    # List syntax (recommended): provide sample IDs and label IDs
+    values = []
+    for sid, lids in zip(*view.values(["id", "predictions.detections.id"])):
+        for lid in lids:
+            values.append({"sample_id": sid, "label_id": lid, "value": True})
+
+    dataset.set_label_values("predictions.detections.random", values)
+
+    print(dataset.count_values("predictions.detections.random"))
+    # {True: 25, None: 5595}
+
+    # Dict syntax: provide only label IDs
+    label_ids = view.values("predictions.detections.id", unwind=True)
     values = {_id: True for _id in label_ids}
     dataset.set_label_values("predictions.detections.random", values)
 
     print(dataset.count_values("predictions.detections.random"))
-    # {True: 111, None: 5509}
+    # {True: 25, None: 5595}
+
+As demonstrated above, you can use
+:meth:`set_label_values() <fiftyone.core.collections.SampleCollection.set_label_values>`
+in two ways:
+
+-   **List syntax (recommended):** provide a list of dicts of the form
+    ``{"sample_id": sample_id, "label_id": label_id, "value": value}``
+    specifying the sample IDs and label IDs of each label you want to edit
+-   **Dict syntax:** provide a dict mapping label IDs to values
+
+.. note::
+
+    :meth:`set_label_values() <fiftyone.core.collections.SampleCollection.set_label_values>`
+    is most efficient when you use the list syntax for values that includes
+    the sample/frame ID of each label that you are modifying.

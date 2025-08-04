@@ -16,7 +16,7 @@ def simulate_event(panel, mock_ctx, event_name):
     panel.execute(mock_ctx)
 
 
-class TestPanel(Panel):
+class MockPanel(Panel):
     @property
     def config(self):
         return PanelConfig(name="test_panel", label="Test Panel")
@@ -46,7 +46,7 @@ def mock_ctx():
 
 @pytest.fixture
 def panel():
-    return TestPanel()
+    return MockPanel()
 
 
 def test_panel_initialization(panel):

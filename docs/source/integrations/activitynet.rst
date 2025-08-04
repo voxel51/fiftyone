@@ -233,7 +233,7 @@ method provides builtin support for running
 
 ActivityNet-style evaluation is the default method when evaluating
 |TemporalDetections| labels, but you can also explicitly request it by setting
-the ``method`` parameter to ``"actvitynet"``.
+the ``method`` parameter to ``"activitynet"``.
 
 .. note::
 

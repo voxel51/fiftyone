@@ -38,7 +38,7 @@ FiftyOne datasets and use this to query your data is as follows:
 
 1)  Configure a MongoDB Atlas cluster
 
-2)  Load a :ref:`dataset <loading-datasets>` into FiftyOne
+2)  :ref:`Load a dataset <importing-datasets>` into FiftyOne
 
 3)  Compute embedding vectors for samples or patches in your dataset, or select
     a model to use to generate embeddings

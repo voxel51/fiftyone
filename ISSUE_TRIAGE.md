@@ -46,7 +46,7 @@ You should assign a priority to each issue you triage.
 
 ## Label relevant areas
 
-Assign one more labels for relevant areas. As a principle, we aim to have the
+Assign one or more labels for relevant areas. As a principle, we aim to have the
 minimal set of labels needed to help route issues and PRs to appropriate
 contributors.
 

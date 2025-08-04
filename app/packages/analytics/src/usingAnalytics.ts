@@ -116,10 +116,6 @@ export class Analytics {
 
     this._lastEventTimestamps[name] = now;
 
-    if (this._debug) {
-      console.log("track", name, properties);
-    }
-
     if (!this._segment) return;
     let opts;
     if (this._disableUrlTracking) {
@@ -127,6 +123,9 @@ export class Analytics {
     }
     if (this._version) {
       opts = { ...opts, version: this._version };
+    }
+    if (this._debug) {
+      console.log("track", name, properties);
     }
     this._segment.track(name, properties, opts);
   }
@@ -138,6 +137,9 @@ export class Analytics {
   identify(userId: string, traits?: {}) {
     if (!this._segment) return;
     traits = this.redact(traits);
+    if (this._debug) {
+      console.log("identify", userId, traits);
+    }
     this._segment.identify(userId, traits);
   }
 

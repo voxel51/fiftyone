@@ -18,7 +18,7 @@ import {
   DispatchEvent,
 } from "../../state";
 
-import { getHashLabel } from "../../overlays/util";
+import { getHashLabelColorByInstance } from "../../overlays/util";
 import {
   LabelHoveredEvent,
   LabelUnhoveredEvent,
@@ -296,7 +296,7 @@ export function getAssignedColor({
         ? (param as string)
         : isPrimitive
         ? value
-        : getHashLabel(param as RegularLabel)
+        : getHashLabelColorByInstance(param as RegularLabel)
     );
   }
 

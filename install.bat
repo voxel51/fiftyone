@@ -38,6 +38,17 @@ SHIFT
 GOTO parse
 :endparse
 
+:: Do this first so pip installs with a built app
+if %BUILD_APP%==true (
+  echo ***** INSTALLING FIFTYONE-APP *****
+  :: TODO - Add nvm and yarn installs
+  cd app
+  echo "Building the App. This will take a minute or two..."
+  call yarn install > nul 2>&1
+  call yarn build:win32
+  cd ..
+)
+
 IF %USE_FIFTY_ONE_DB%==true (
   echo ***** INSTALLING FIFTYONE-DB *****
   pip install fiftyone-db
@@ -47,15 +58,26 @@ IF %USE_FIFTY_ONE_DB%==true (
 
 echo ***** INSTALLING FIFTYONE-BRAIN *****
 IF %SOURCE_BRAIN_INSTALL%==true (
-  echo Cloning FiftyOne Brain repository
-  git clone https://github.com/voxel51/fiftyone-brain
-  cd fiftyone-brain
+  if not exist "fiftyone-brain\" (
+    if not exist "..\fiftyone-brain\" (
+      echo Cloning FiftyOne Brain repository
+      git clone https://github.com/voxel51/fiftyone-brain
+    )
+  )
+  pushd .
+  if exist "..\fiftyone-brain\" (
+    cd ..\fiftyone-brain
+  ) else (
+    cd fiftyone-brain
+  )
   IF %DEV_INSTALL%==true (
+    echo Performing dev install
     CALL install.bat -d
   ) else (
+    echo Performing install
     pip install .
   )
-  cd ..
+  popd
 ) else (
   pip install --upgrade fiftyone-brain
 )
@@ -71,33 +93,37 @@ IF %DEV_INSTALL%==true (
   pip install -r requirements/docs.txt
   pip install -e .
 ) else (
+  echo Performing install
   pip install -r requirements.txt
   pip install .
 )
 
 IF %SOURCE_ETA_INSTALL%==true (
-  echo ***** INSTALLING ETA *****
+  echo ***** INSTALLING ETA FROM SOURCE *****
   if not exist "eta\" (
-    echo Cloning ETA repository
-    git clone https://github.com/voxel51/eta
+    if not exist "..\eta\" (
+      echo Cloning ETA repository
+      git clone https://github.com/voxel51/eta
+    )
   )
-  cd eta
-  pip install .
+  pushd .
+  if exist "..\eta\" (
+    cd ..\eta
+  ) else (
+    cd eta
+  )
+  IF %DEV_INSTALL%==true (
+    echo Performing dev install
+    pip install .
+  ) else (
+    echo Performing install
+    pip install .
+  )
   if not exist "eta\config.json" (
     echo "Installing default ETA config"
     xcopy /y ".\config-example.json" ".\eta\config.*"
   )
-  cd ..
-)
-
-if %BUILD_APP%==true (
-  echo ***** INSTALLING FIFTYONE-APP *****
-  :: TODO - Add nvm and yarn installs
-  cd app
-  echo "Building the App. This will take a minute or two..."
-  call yarn install > /dev/null 2>&1
-  call yarn build:win32
-  cd ..
+  popd
 )
 
 echo ***** INSTALLATION COMPLETE *****

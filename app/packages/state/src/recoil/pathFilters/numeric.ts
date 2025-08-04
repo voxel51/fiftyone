@@ -4,9 +4,9 @@ import * as fos from "../atoms";
 import * as visibilityAtoms from "../attributeVisibility";
 import * as filterAtoms from "../filters";
 import * as pathData from "../pathData";
+import { queryPerformance } from "../queryPerformance";
 import type { Range } from "../utils";
 import { isFilterDefault } from "./utils";
-import { queryPerformance } from "../queryPerformance";
 
 export interface NumericFilter {
   range: Range;
@@ -332,17 +332,19 @@ type DatetimeValue = {
   _cls: "DateTime";
 };
 
-const helperFunction = (
+export const helperFunction = (
   value: DatetimeValue | number | string | null,
   exclude: boolean,
-  start: number,
-  end: number,
-  none: boolean,
-  inf: boolean,
-  ninf: boolean,
-  nan: boolean
+  start: number | null,
+  end: number | null,
+  none?: boolean,
+  inf?: boolean,
+  ninf?: boolean,
+  nan?: boolean
 ) => {
-  const noRange = start === null || end === null;
+  if (start === null && end === null) {
+    return true;
+  }
 
   if (nan && value === "nan") {
     return !exclude;
@@ -360,28 +362,39 @@ const helperFunction = (
     return !exclude;
   }
 
+  let v = value;
   if (
-    typeof value !== "string" &&
-    typeof value !== "number" &&
-    Number(value?.datetime)
+    typeof v !== "string" &&
+    typeof v !== "number" &&
+    v?.datetime !== undefined
   ) {
-    const time = value.datetime;
-    return noRange
-      ? true
-      : exclude
-      ? Number(time) < start || Number(time) > end
-      : Number(time) >= start && Number(time) <= end;
+    v = v.datetime;
   }
 
-  if (typeof Number(value) === "number") {
-    return noRange
-      ? true
-      : exclude
-      ? Number(value) < start || Number(value) > end
-      : Number(value) >= start && Number(value) <= end;
+  v = Number(v);
+
+  if (exclude) {
+    // If both bounds are set, exclude only values within [start, end]
+    if (start !== null && end !== null) {
+      return !(v >= start && v <= end);
+    }
+
+    if (start !== null) {
+      return v < start;
+    }
+
+    return v > end;
   }
 
-  return false;
+  if (start !== null && v < start) {
+    return false;
+  }
+
+  if (end !== null && v > end) {
+    return false;
+  }
+
+  return true;
 };
 
 // this is where the final filtering for looker occurs in the App

@@ -1632,9 +1632,9 @@ class RemoteZooDataset(ZooDataset):
 
     def _import_module(self, dataset_dir):
         module_path = os.path.join(dataset_dir, "__init__.py")
-        module_name = os.path.relpath(
+        module_name = fou.get_module_name(
             dataset_dir, fo.config.dataset_zoo_dir
-        ).replace("/", ".")
+        )
         spec = importlib.util.spec_from_file_location(module_name, module_path)
         module = importlib.util.module_from_spec(spec)
         sys.modules[module.__name__] = module

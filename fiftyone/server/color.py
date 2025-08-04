@@ -96,7 +96,7 @@ class ColorBy(Enum):
 @gql.type
 class ColorScheme:
     id: gql.ID = gql.field(default_factory=lambda: str(ObjectId()))
-    color_pool: t.List[str]
+    color_pool: t.Optional[t.List[str]] = None
     color_by: t.Optional[ColorBy] = None
     fields: t.Optional[t.List[CustomizeColor]] = None
     label_tags: t.Optional[LabelTagColor] = None

@@ -9,8 +9,8 @@ const test = base.extend<{
   histogram: HistogramPom;
   panel: GridPanelPom;
 }>({
-  actionsRow: async ({ page, eventUtils }, use) => {
-    await use(new GridActionsRowPom(page, eventUtils));
+  actionsRow: async ({ page }, use) => {
+    await use(new GridActionsRowPom(page));
   },
   histogram: async ({ page, eventUtils }, use) => {
     await use(new HistogramPom(page, eventUtils));

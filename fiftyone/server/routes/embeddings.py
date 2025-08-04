@@ -5,8 +5,9 @@ FiftyOne Server ``/embeddings`` route.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-
+import logging
 import itertools
+import traceback
 
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
@@ -20,6 +21,7 @@ import fiftyone.server.utils as fosu
 import fiftyone.server.view as fosv
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
 
+logger = logging.getLogger(__name__)
 
 MAX_CATEGORIES = 100
 COLOR_BY_TYPES = (
@@ -39,7 +41,16 @@ class OnPlotLoad(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
         """Loads an embeddings plot based on the current view."""
-        return await run_sync_task(self._post_sync, data)
+        try:
+            return await run_sync_task(self._post_sync, data)
+        except Exception as e:
+            msg = "Unknown error occurred."
+            error_message = str(e)
+            stack = traceback.format_exc()
+            logger.error(msg)
+            logger.error(error_message)
+            logger.error(stack)
+            return {"error": msg, "details": error_message, "stack": stack}
 
     def _post_sync(self, data):
         dataset_name = data["datasetName"]
@@ -48,16 +59,23 @@ class OnPlotLoad(HTTPEndpoint):
         filters = data.get("filters", None)
         label_field = data["labelField"]
         slices = data["slices"]
-        dataset = fosu.load_and_cache_dataset(dataset_name)
 
         try:
+            dataset = fosu.load_and_cache_dataset(dataset_name)
             results = dataset.load_brain_results(brain_key)
-        except:
+        except Exception as e:
             msg = (
-                "Failed to load results for brain run with key '%s'. Try "
-                "regenerating the results"
-            ) % brain_key
-            return {"error": msg}
+                f"Failed to load results for brain run with key '{brain_key}'."
+            )
+            error_message = str(e)
+            stack = traceback.format_exc()
+            logger.error(stack)
+            ui_error = f"{msg} Try regenerating the results."
+            return {
+                "error": ui_error,
+                "details": error_message,
+                "stack": stack,
+            }
 
         if results is None:
             msg = (
@@ -73,11 +91,11 @@ class OnPlotLoad(HTTPEndpoint):
             sample_filter=get_sample_filter(slices),
         )
 
-        is_patches_view = view._is_patches
-
         patches_field = results.config.patches_field
-        is_patches_plot = patches_field is not None
         points_field = results.config.points_field
+
+        is_patches_view = view._is_patches
+        is_patches_plot = patches_field is not None
 
         # Determines which points from `results` are in `view`, which are the
         # only points we want to display in the embeddings plot
@@ -105,19 +123,20 @@ class OnPlotLoad(HTTPEndpoint):
 
         # Color by data
         if label_field:
-            if is_patches_view and not is_patches_plot:
-                # Must use the root dataset in order to retrieve colors for the
-                # plot, which is linked to samples, not patches
-                view = view._root_dataset
+            if is_patches_view:
+                root_view = _strip_patches_view(view)
 
-            if is_patches_view and is_patches_plot:
-                # `label_field` is always provided with respect to root
-                # dataset, so we must translate for patches views
-                _, root = dataset._get_label_field_path(patches_field)
-                leaf = label_field[len(root) + 1 :]
-                _, label_field = view._get_label_field_path(
-                    patches_field, leaf
-                )
+                if is_patches_plot:
+                    # `label_field` is always provided with respect to the root
+                    # view, so we must translate it to the patches view
+                    _, root = root_view._get_label_field_path(patches_field)
+                    leaf = label_field[len(root) + 1 :]
+                    _, label_field = view._get_label_field_path(
+                        patches_field, leaf
+                    )
+                else:
+                    # The plot is linked to samples, not patches
+                    view = root_view
 
             labels = view._get_values_by_id(
                 label_field, ids, link_field=patches_field
@@ -315,18 +334,26 @@ class ColorByChoices(HTTPEndpoint):
 
     def _post_sync(self, data):
         dataset_name = data["datasetName"]
-        brain_key = data["brainKey"]
+        stages = data["view"]
+        slices = data["slices"]
+        patches_field = data["patchesField"]  # patches field of plot, or None
 
-        dataset = fosu.load_and_cache_dataset(dataset_name)
-        info = dataset.get_brain_info(brain_key)
+        view = fosv.get_view(
+            dataset_name,
+            stages=stages,
+            sample_filter=get_sample_filter(slices),
+        )
 
-        patches_field = info.config.patches_field
         is_patches_plot = patches_field is not None
+        is_patches_view = view._is_patches
 
-        schema = dataset.get_field_schema(flat=True)
+        if is_patches_view:
+            view = _strip_patches_view(view)
+
+        schema = view.get_field_schema(flat=True)
 
         if is_patches_plot:
-            _, root = dataset._get_label_field_path(patches_field)
+            _, root = view._get_label_field_path(patches_field)
             root += "."
             schema = {k: v for k, v in schema.items() if k.startswith(root)}
 
@@ -374,3 +401,15 @@ def _add_to_trace(traces, style, points, id, sample_id, label, selected):
             "selected": selected,
         }
     )
+
+
+def _strip_patches_view(view):
+    if not view._is_patches:
+        return view
+
+    stages = view._base_view._all_stages[:-1]
+    view = view._root_dataset.view()
+    for stage in stages:
+        view = view.add_stage(stage)
+
+    return view

@@ -14,6 +14,7 @@ import re
 import sys
 
 sys.path.insert(0, os.path.abspath("."))
+sys.path.insert(0, os.path.abspath("../extensions"))
 
 from custom_directives import (
     CustomButtonDirective,
@@ -71,6 +72,7 @@ extensions = [
     "sphinx_design",
     "autodocsumm",
     "myst_parser",
+    "llms_txt",
 ]
 
 # Types of class members to generate documentation for.
@@ -246,7 +248,7 @@ pushfeedback_feedback_button_text = "Feedback"
 # -- Options for sphinx-docsearch --------------------------------------------
 docsearch_app_id = os.environ.get("DOCSEARCH_APP_ID", "8ZYQ0G7IMC")
 docsearch_api_key = os.environ.get("DOCSEARCH_API_KEY", "")
-docsearch_index_name = os.environ.get("DOCSEARCH_API_KEY", "voxel51")
+docsearch_index_name = os.environ.get("DOCSEARCH_INDEX_NAME", "voxel51")
 docsearch_container = "#searchbox"
 
 # -- Custom app setup --------------------------------------------------------

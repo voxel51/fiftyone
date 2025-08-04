@@ -1,6 +1,8 @@
+import { useTrackEvent } from "@fiftyone/analytics";
+import { Plot } from "@fiftyone/components/src/components/Plot";
 import { usePanelEvent } from "@fiftyone/operators";
-import { usePanelId } from "@fiftyone/spaces";
-import { isNullish } from "@fiftyone/utilities";
+import { usePanelId, usePanelStatePartial } from "@fiftyone/spaces";
+import { formatValueAsNumber, isNullish } from "@fiftyone/utilities";
 import {
   Autorenew,
   DragHandle,
@@ -25,7 +27,9 @@ import {
   Typography,
   useTheme,
 } from "@mui/material";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { atom, useRecoilState } from "recoil";
+import AlertView from "../../../AlertView";
 import ConfusionMatrixConfig from "../../components/ConfusionMatrixConfig";
 import CreateScenario from "../../components/CreateScenario";
 import Difference from "../../components/Difference";
@@ -39,15 +43,12 @@ import {
   SECONDARY_KEY_COLOR,
   TERTIARY_KEY_COLOR,
 } from "../../constants";
-import EvaluationPlot from "../../EvaluationPlot";
-import { formatValue, getClasses, getMatrix } from "../../utils";
+import { getClasses, getMatrix } from "../../utils";
 import Actions from "./Actions";
 import Legends from "./Legends";
-import { getSubsetDef } from "./utils";
-import { atom, useRecoilState } from "recoil";
 import LoadingError from "./LoadingError";
-import AlertView from "../../../AlertView";
-import { useTrackEvent } from "@fiftyone/analytics";
+import { getSubsetDef } from "./utils";
+import { ErrorBoundary } from "@fiftyone/components";
 
 const CONFIGURE_SCENARIO_ACTION = "model_evaluation_configure_scenario";
 
@@ -76,32 +77,58 @@ export default function Scenarios(props) {
     deleteScenario,
     loadView,
   } = props;
-  const { scenarios } = evaluation;
-  const [scenario, setScenario] = useState(getDefaultScenario(scenarios));
-  const [selectedSubsets, setSelectedSubsets] = useState(["all"]);
+  const { scenarios } = data;
   const promptOperator = usePanelEvent();
   const panelId = usePanelId();
-  const [mode, setMode] = useState("charts");
-  const [differenceMode, setDifferenceMode] = useState("percentage");
   const [loadingScenario, setLoadingScenario] = useState(false);
   const [loading, setLoading] = useState(false);
   const evaluationInfo = evaluation.info;
   const evaluationConfig = evaluationInfo.config;
   const { key, compareKey, id: eval_id } = data?.view;
+  const trackEvent = useTrackEvent();
+  const [scenario, setScenario] = usePanelStatePartial(
+    `${key}_scenario`,
+    getDefaultScenario(scenarios)
+  );
+  const [mode, setMode] = usePanelStatePartial(
+    `${key}_scenario_mode`,
+    "charts"
+  );
+  const [selectedSubsets, setSelectedSubsets] = usePanelStatePartial(
+    `${key}_scenario_subsets`,
+    ["all"]
+  );
+  const [differenceMode, setDifferenceMode] = usePanelStatePartial(
+    `${key}_scenario_difference_mode`,
+    "percentage"
+  );
+
+  const updateScenario = useCallback(
+    (scenarioId: string) => {
+      setScenario(scenarioId);
+      setSelectedSubsets(["all"]);
+    },
+    [setScenario, setSelectedSubsets]
+  );
+
   const fullScenario = data?.[`scenario_${scenario}_${key}`] || {};
   const subsets = fullScenario?.subsets || [];
-  const scenarioChanges = data?.[`scenario_${scenario}_changes`] || [];
-  const trackEvent = useTrackEvent();
-
+  const scenarioChanges = useMemo(
+    () => data?.[`scenario_${scenario}_changes`] || [],
+    [data, scenario]
+  );
   const scenariosArray = scenarios ? Object.values(scenarios) : [];
   const scenariosIds = Object.keys(scenarios);
   const readOnly = !data.permissions?.can_delete_scenario;
+  const canCreate = data.permissions?.can_create_scenario;
+  const canEdit = data.permissions?.can_edit_scenario;
+  const canDelete = data.permissions?.can_delete_scenario;
 
   useEffect(() => {
     if (!scenario) {
-      setScenario(getDefaultScenario(scenarios));
+      updateScenario(getDefaultScenario(scenarios));
     }
-  }, [scenario, setScenario, scenarios]);
+  }, [scenario, updateScenario, scenarios]);
 
   const onDelete = useCallback(() => {
     setLoading(true);
@@ -114,7 +141,7 @@ export default function Scenarios(props) {
         (id) => id !== scenario
       );
       if (firstNonDeletedScenario) {
-        setScenario(firstNonDeletedScenario);
+        updateScenario(firstNonDeletedScenario);
       }
       loadScenarios(() => {
         // todo@im: need to find a better way to do this
@@ -130,6 +157,7 @@ export default function Scenarios(props) {
     scenario,
     scenariosIds,
     trackEvent,
+    updateScenario,
   ]);
 
   const onEdit = useCallback(() => {
@@ -218,7 +246,7 @@ export default function Scenarios(props) {
             size="small"
             value={scenario}
             onChange={(e) => {
-              setScenario(e.target.value as string);
+              updateScenario(e.target.value as string);
             }}
             color="secondary"
             ghost
@@ -250,11 +278,11 @@ export default function Scenarios(props) {
                 );
               }}
             >
-              <MenuItem value="ratio" key="ratio">
+              <MenuItem value="numeric" key="numeric">
                 <ListItemIcon>
                   <DragHandle />
                 </ListItemIcon>
-                <Typography>Ratio</Typography>
+                <Typography>Count</Typography>
               </MenuItem>
               <MenuItem value="percentage" key="percentage">
                 <ListItemIcon>
@@ -332,9 +360,14 @@ export default function Scenarios(props) {
             color="secondary"
             onClick={() => {
               setLoadingScenario(true);
-              loadScenario(scenario, undefined, () => {
-                setLoadingScenario(false);
-              });
+              loadScenario(
+                scenario,
+                undefined,
+                () => {
+                  setLoadingScenario(false);
+                },
+                true
+              );
             }}
           >
             <Autorenew />
@@ -344,34 +377,41 @@ export default function Scenarios(props) {
             loadScenarios={loadScenarios}
             gt_field={evaluationConfig.gt_field}
             onAdd={(id) => {
-              setScenario(id);
+              updateScenario(id);
             }}
             evalKey={key}
             compareKey={compareKey}
-            readOnly={readOnly}
+            canCreate={canCreate}
           />
-          <Actions onDelete={onDelete} onEdit={onEdit} readOnly={readOnly} />
+          <Actions
+            onDelete={onDelete}
+            onEdit={onEdit}
+            canEdit={canEdit}
+            canDelete={canDelete}
+          />
         </Stack>
       </Stack>
-      {scenario && (
-        <Scenario
-          key={scenario}
-          id={scenario}
-          data={data}
-          loadScenario={loadScenario}
-          mode={mode}
-          loading={loadingScenario}
-          differenceMode={differenceMode}
-          evaluation={evaluation}
-          compareEvaluation={compareEvaluation}
-          selectedSubsets={selectedSubsets}
-          loadView={loadView}
-          onDelete={onDelete}
-          onEdit={onEdit}
-          readOnly={readOnly}
-          trackEvent={trackEvent}
-        />
-      )}
+      <ErrorBoundary>
+        {scenario && (
+          <Scenario
+            key={scenario}
+            id={scenario}
+            data={data}
+            loadScenario={loadScenario}
+            mode={mode}
+            loading={loadingScenario}
+            differenceMode={differenceMode}
+            evaluation={evaluation}
+            compareEvaluation={compareEvaluation}
+            selectedSubsets={selectedSubsets}
+            loadView={loadView}
+            onDelete={onDelete}
+            onEdit={onEdit}
+            readOnly={readOnly}
+            trackEvent={trackEvent}
+          />
+        )}
+      </ErrorBoundary>
     </Stack>
   );
 }
@@ -472,6 +512,18 @@ function Scenario(props) {
     }
   }
 
+  if (scenario.subsets.length === 0) {
+    return (
+      <Stack
+        sx={{ minHeight: 300 }}
+        alignItems="center"
+        justifyContent="center"
+      >
+        <Typography>No subset defined</Typography>
+      </Stack>
+    );
+  }
+
   return (
     <Stack>
       {scenarioChanges && (
@@ -523,6 +575,7 @@ function PredictionStatisticsTable(props) {
   const { subsets, subsets_data } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
   const { key, compareKey } = data?.view;
+  const width = getWidth(props);
 
   return (
     <Stack>
@@ -530,10 +583,10 @@ function PredictionStatisticsTable(props) {
       <EvaluationTable variant="card" size="medium">
         <TableHead>
           <TableRow>
-            <TableCell>Subset</TableCell>
-            <TableCell>{key}</TableCell>
-            {compareKey && <TableCell>{compareKey}</TableCell>}
-            {compareKey && <TableCell>Difference</TableCell>}
+            <TableCell sx={{ width }}>Subset</TableCell>
+            <TableCell sx={{ width }}>{key}</TableCell>
+            {compareKey && <TableCell sx={{ width }}>{compareKey}</TableCell>}
+            {compareKey && <TableCell sx={{ width }}>Difference</TableCell>}
           </TableRow>
         </TableHead>
         {subsets.map((subset) => {
@@ -631,14 +684,12 @@ function PredictionStatisticsTable(props) {
                         compareValue={compareMetrics.fp}
                         mode={differenceMode}
                         arrow
-                        lesserIsBetter
                       />
                       <Difference
                         value={metrics.fn}
                         compareValue={compareMetrics.fn}
                         mode={differenceMode}
                         arrow
-                        lesserIsBetter
                       />
                     </Stack>
                   ) : (
@@ -685,10 +736,11 @@ function SelectSubset(props) {
 
 function ModelPerformanceMetricsTable(props) {
   const { scenario, compareScenario, data, differenceMode } = props;
-  const { subsets, subsets_data } = scenario;
+  const { subsets, subsets_data, id } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
-  const [subset, setSubset] = useState(subsets[0]);
+  const [subset, setSubset] = usePanelStatePartial(`${id}_mpts`, subsets[0]);
   const { key, compareKey } = data?.view;
+  const width = getWidth(props);
 
   return (
     <Stack>
@@ -703,10 +755,10 @@ function ModelPerformanceMetricsTable(props) {
       <EvaluationTable variant="card" size="medium">
         <TableHead>
           <TableRow>
-            <TableCell>Metric</TableCell>
-            <TableCell>{key}</TableCell>
-            {compareKey && <TableCell>{compareKey}</TableCell>}
-            {compareKey && <TableCell>Difference</TableCell>}
+            <TableCell sx={{ width }}>Metric</TableCell>
+            <TableCell sx={{ width }}>{key}</TableCell>
+            {compareKey && <TableCell sx={{ width }}>{compareKey}</TableCell>}
+            {compareKey && <TableCell sx={{ width }}>Difference</TableCell>}
           </TableRow>
         </TableHead>
         {MODEL_PERFORMANCE_METRICS.map(({ label, key }) => {
@@ -720,7 +772,7 @@ function ModelPerformanceMetricsTable(props) {
               <TableCell>{label}</TableCell>
               <TableCell>
                 <Stack direction="row" spacing={1}>
-                  <Typography>{formatValue(value)} </Typography>
+                  <Typography>{formatValueAsNumber(value)} </Typography>
                   <Difference
                     value={value}
                     compareValue={compareMetrics?.[key]}
@@ -733,7 +785,7 @@ function ModelPerformanceMetricsTable(props) {
                   {compareMetrics ? (
                     <Stack direction="row" spacing={1}>
                       <Typography>
-                        {formatValue(compareMetrics[key])}
+                        {formatValueAsNumber(compareMetrics[key])}
                       </Typography>
                       <Difference
                         value={compareMetrics[key]}
@@ -754,7 +806,6 @@ function ModelPerformanceMetricsTable(props) {
                       compareValue={compareMetrics[key]}
                       mode={differenceMode}
                       arrow
-                      lesserIsBetter
                     />
                   ) : (
                     <CircularProgress size={16} />
@@ -785,8 +836,10 @@ function ConfidenceDistributionTable(props) {
   const { key, compareKey } = data?.view;
   const { subsets, subsets_data } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
-  const [metric, setMetric] = useState("avg");
+  const [metric, setMetric] = usePanelStatePartial("cdt_mode", "avg");
   const metricLabel = CONFIDENCE_DISTRIBUTION_METRICS[metric].label;
+  const width = getWidth(props);
+  const lesserIsBetter = metric === "std";
 
   return (
     <Stack>
@@ -794,7 +847,7 @@ function ConfidenceDistributionTable(props) {
         <Typography>Confidence Distribution</Typography>
         <EvaluationSelect
           size="small"
-          defaultValue="avg"
+          defaultValue={metric}
           onChange={(e) => {
             setMetric(e.target.value);
           }}
@@ -812,16 +865,18 @@ function ConfidenceDistributionTable(props) {
       <EvaluationTable variant="card" size="medium">
         <TableHead>
           <TableRow>
-            <TableCell>Subset</TableCell>
-            <TableCell>
+            <TableCell sx={{ width }}>Subset</TableCell>
+            <TableCell sx={{ width }}>
               {key} ({metricLabel})
             </TableCell>
             {compareKey && (
-              <TableCell>
+              <TableCell sx={{ width }}>
                 {compareKey} ({metricLabel})
               </TableCell>
             )}
-            {compareKey && <TableCell>Difference ({metricLabel})</TableCell>}
+            {compareKey && (
+              <TableCell sx={{ width }}>Difference ({metricLabel})</TableCell>
+            )}
           </TableRow>
         </TableHead>
         {subsets.map((subset) => {
@@ -836,12 +891,13 @@ function ConfidenceDistributionTable(props) {
               <TableCell>
                 <Stack direction="row" spacing={1}>
                   <Typography>
-                    {formatValue(confidence_distribution[metric])}
+                    {formatValueAsNumber(confidence_distribution[metric])}
                   </Typography>
                   <Difference
                     value={confidence_distribution[metric]}
                     compareValue={compareConfidenceDistribution?.[metric]}
                     mode="trophy"
+                    lesserIsBetter={lesserIsBetter}
                   />
                 </Stack>
               </TableCell>
@@ -850,12 +906,15 @@ function ConfidenceDistributionTable(props) {
                   {compareSubsetsData ? (
                     <Stack direction="row" spacing={1}>
                       <Typography>
-                        {formatValue(compareConfidenceDistribution[metric])}
+                        {formatValueAsNumber(
+                          compareConfidenceDistribution[metric]
+                        )}
                       </Typography>
                       <Difference
                         value={compareConfidenceDistribution[metric]}
                         compareValue={confidence_distribution[metric]}
                         mode="trophy"
+                        lesserIsBetter={lesserIsBetter}
                       />
                     </Stack>
                   ) : (
@@ -871,7 +930,6 @@ function ConfidenceDistributionTable(props) {
                       compareValue={compareConfidenceDistribution[metric]}
                       mode={differenceMode}
                       arrow
-                      lesserIsBetter
                     />
                   ) : (
                     <CircularProgress size={16} />
@@ -953,7 +1011,7 @@ function PredictionStatisticsChart(props) {
   const { scenario, compareScenario, loadView, trackEvent } = props;
   const { subsets, subsets_data } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
-  const [metric, setMetric] = useState("all");
+  const [metric, setMetric] = usePanelStatePartial("ps_metric", "all");
   const showAllMetric = metric === "all";
   const { key, compareKey } = props.data?.view || {};
 
@@ -993,6 +1051,7 @@ function PredictionStatisticsChart(props) {
       type: "bar",
       offsetgroup: 0,
       marker: { color: KEY_COLOR },
+      hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
     };
 
     const fpTrace = {
@@ -1003,6 +1062,7 @@ function PredictionStatisticsChart(props) {
       type: "bar",
       offsetgroup: 0,
       marker: { color: SECONDARY_KEY_COLOR },
+      hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
     };
     const fnTrace = {
       x: subsets,
@@ -1012,6 +1072,7 @@ function PredictionStatisticsChart(props) {
       type: "bar",
       offsetgroup: 0,
       marker: { color: TERTIARY_KEY_COLOR },
+      hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
     };
 
     const compareTPTrace = {
@@ -1023,6 +1084,7 @@ function PredictionStatisticsChart(props) {
       type: "bar",
       offsetgroup: 1,
       marker: { color: COMPARE_KEY_COLOR },
+      hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
     };
 
     const compareFPTrace = {
@@ -1034,6 +1096,7 @@ function PredictionStatisticsChart(props) {
       type: "bar",
       offsetgroup: 1,
       marker: { color: COMPARE_KEY_SECONDARY_COLOR },
+      hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
     };
 
     const compareFNTrace = {
@@ -1045,6 +1108,7 @@ function PredictionStatisticsChart(props) {
       type: "bar",
       offsetgroup: 1,
       marker: { color: COMPARE_KEY_TERTIARY_COLOR },
+      hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
     };
     plotData = [tpTrace, fpTrace, fnTrace];
     if (compareSubsetsData) {
@@ -1102,12 +1166,13 @@ function PredictionStatisticsChart(props) {
         </EvaluationSelect>
       </Stack>
 
-      <EvaluationPlot
+      <Plot
         data={plotData}
         layout={showAllMetric ? { barmode: "stack" } : {}}
         onClick={({ points }) => {
           const firstPoint = points[0];
-          const { id, isCompare } = firstPoint.data;
+          const { id } = firstPoint.data;
+          const isCompare = firstPoint?.fullData?._input?.isCompare;
           const subset = firstPoint.x;
           const subsetDef = getSubsetDef(scenario, subset);
           trackEvent("evaluation_plot_click", {
@@ -1115,20 +1180,35 @@ function PredictionStatisticsChart(props) {
             subsetDef,
             plotName: "prediction_statistics",
           });
-          loadView("field", { field: id, subset_def: subsetDef });
+          loadView("field", {
+            field: id,
+            subset_def: subsetDef,
+            key: isCompare ? compareKey : undefined,
+          });
         }}
       />
-      <Legends prediction={showAllMetric} {...getLegendProps(props)} />
+      <Legends
+        prediction={showAllMetric}
+        {...getLegendProps(props)}
+        compareKey={compareKey}
+      />
     </Stack>
   );
 }
 
 function ScenarioModelPerformanceChart(props) {
+  const theme = useTheme();
   const { scenario, compareScenario } = props;
-  const { subsets } = scenario;
-  const [subset, setSubset] = useState(subsets[0]);
+  const { subsets, id } = scenario;
+  const [subset, setSubset] = usePanelStatePartial(`${id}_mps`, subsets[0]);
   const subsetData = scenario.subsets_data[subset];
   const compareSubsetData = compareScenario?.subsets_data[subset];
+
+  // when subset is empty, do not render the chart
+  if (!subsetData) {
+    return <></>;
+  }
+
   const { metrics } = subsetData;
   const compareMetrics = compareSubsetData?.metrics;
   const { key, compareKey } = props.data?.view;
@@ -1150,6 +1230,8 @@ function ScenarioModelPerformanceChart(props) {
       fill: "toself",
       name: key,
       marker: { color: KEY_COLOR },
+      hoveron: "points",
+      hovertemplate: PLOT_TOOLTIP_TEMPLATES.radial,
     },
   ];
 
@@ -1170,6 +1252,8 @@ function ScenarioModelPerformanceChart(props) {
       fill: "toself",
       name: compareKey,
       marker: { color: COMPARE_KEY_COLOR },
+      hoveron: "points",
+      hovertemplate: PLOT_TOOLTIP_TEMPLATES.radial,
     });
   }
   return (
@@ -1182,11 +1266,11 @@ function ScenarioModelPerformanceChart(props) {
           setSelected={setSubset}
         />
       </Stack>
-      <EvaluationPlot
+      <Plot
         data={plotData}
         layout={{
           polar: {
-            bgcolor: "#272727",
+            bgcolor: theme.palette.background.card,
             radialaxis: {
               visible: true,
             },
@@ -1199,12 +1283,15 @@ function ScenarioModelPerformanceChart(props) {
 }
 
 function ConfusionMatrixChart(props) {
-  const { scenario, compareScenario, loadView, trackEvent } = props;
-  const { subsets } = scenario;
-  const [subset, setSubset] = useState(subsets[0]);
+  const { scenario, compareScenario, loadView, trackEvent, data } = props;
+  const { subsets, id } = scenario;
+  const compareKey = data?.view?.compareKey;
+  const [subset, setSubset] = usePanelStatePartial(`${id}_cms`, subsets[0]);
   const subsetData = scenario.subsets_data[subset];
   const compareSubsetData = compareScenario?.subsets_data[subset];
-  const [config, setConfig] = useState({ log: true });
+  const [config, setConfig] = usePanelStatePartial(`${subset}_matrix_config`, {
+    log: true,
+  });
   const evaluationMaskTargets = props.evaluation?.mask_targets || {};
   const compareEvaluationMaskTargets =
     props.compareEvaluation?.mask_targets || {};
@@ -1225,6 +1312,7 @@ function ConfusionMatrixChart(props) {
           config,
           evaluationMaskTargets,
           compareEvaluationMaskTargets,
+          true,
           true
         )?.plot,
       ]
@@ -1243,6 +1331,7 @@ function ConfusionMatrixChart(props) {
             setSelected={setSubset}
           />
           <ConfusionMatrixConfig
+            key={subset}
             config={config}
             onSave={setConfig}
             classes={classes}
@@ -1252,7 +1341,7 @@ function ConfusionMatrixChart(props) {
 
       <Stack direction="row" spacing={1}>
         <Stack sx={{ width: comparePlotData ? "50%" : "100%" }}>
-          <EvaluationPlot
+          <Plot
             data={plotData}
             onClick={({ points }) => {
               const firstPoint = points[0];
@@ -1268,11 +1357,54 @@ function ConfusionMatrixChart(props) {
                 subset_def: subsetDef,
               });
             }}
+            tooltip={(event: any) => {
+              const [point] = event.points;
+              const x = point.x;
+              const y = point.y;
+              const z = point.z;
+              return {
+                data: [
+                  { label: "Count", value: z },
+                  { label: "predicted", value: x },
+                  { label: "truth", value: y },
+                ],
+              };
+            }}
           />
         </Stack>
         {comparePlotData && (
           <Stack sx={{ width: "50%" }}>
-            <EvaluationPlot data={comparePlotData} />
+            <Plot
+              data={comparePlotData}
+              onClick={({ points }) => {
+                const firstPoint = points[0];
+                const subsetDef = getSubsetDef(scenario, subset);
+                trackEvent("evaluation_plot_click", {
+                  id: scenario.id,
+                  subsetDef,
+                  plotName: "confusion_matrix",
+                });
+                loadView("matrix", {
+                  x: firstPoint.x,
+                  y: firstPoint.y,
+                  subset_def: subsetDef,
+                  key: compareKey,
+                });
+              }}
+              tooltip={(event: any) => {
+                const [point] = event.points;
+                const x = point.x;
+                const y = point.y;
+                const z = point.z;
+                return {
+                  data: [
+                    { label: "Count", value: z },
+                    { label: "predicted", value: x },
+                    { label: "truth", value: y },
+                  ],
+                };
+              }}
+            />
           </Stack>
         )}
       </Stack>
@@ -1286,10 +1418,10 @@ function ConfidenceDistributionChart(props) {
   const { subsets, subsets_data } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
   const { key, compareKey } = props.data?.view;
-  const [mode, setMode] = useState("overview");
+  const [mode, setMode] = usePanelStatePartial("cd_mode", "overview");
   const isOverview = mode === "overview";
 
-  const plotData = [];
+  const plotData: any = [];
 
   if (!isOverview) {
     const y = [];
@@ -1298,61 +1430,114 @@ function ConfidenceDistributionChart(props) {
       const { confidence_distribution } = subsetData;
       y.push(confidence_distribution[mode]);
     }
-    plotData.push({ x: subsets, y, type: "bar", name: key });
+    plotData.push({
+      x: subsets,
+      y,
+      type: "bar",
+      name: key,
+      marker: { color: KEY_COLOR },
+    });
     if (compareSubsetsData) {
       const compareY = [];
-      for (const subset in compareSubsetsData) {
+      for (const subset of subsets) {
         const subsetData = compareSubsetsData[subset];
         const { confidence_distribution } = subsetData;
         compareY.push(confidence_distribution[mode]);
       }
-      plotData.push({ x: subsets, y: compareY, type: "bar", name: compareKey });
+      plotData.push({
+        x: subsets,
+        y: compareY,
+        type: "bar",
+        name: compareKey,
+        marker: { color: COMPARE_KEY_COLOR },
+      });
     }
   } else {
     if (compareSubsetsData) {
       const x = [];
-      const y = [];
-      const compareX = [];
-      const compareY = [];
-      for (const subset in subsets_data) {
+      const q1 = [];
+      const median = [];
+      const q3 = [];
+      const lowerfence = [];
+      const upperfence = [];
+      const compareQ1 = [];
+      const compareMedian = [];
+      const compareQ3 = [];
+      const compareLowerfence = [];
+      const compareUpperfence = [];
+
+      for (const subset of subsets) {
         const subsetData = subsets_data[subset];
         const compareSubsetData = compareSubsetsData[subset];
-        const { confidences } = subsetData;
-        const compareConfidences = compareSubsetData.confidences;
-        const subsetX = new Array(confidences.length).fill(subset);
-        const compareSubsetX = new Array(compareConfidences.length).fill(
-          subset
+        const { confidence_distribution } = subsetData;
+        const compareConfidenceDistribution =
+          compareSubsetData.confidence_distribution;
+        x.push(subset);
+        lowerfence.push(confidence_distribution.min);
+        q1.push(confidence_distribution.avg - confidence_distribution.std);
+        median.push(confidence_distribution.avg);
+        q3.push(confidence_distribution.avg + confidence_distribution.std);
+        upperfence.push(confidence_distribution.max);
+
+        compareLowerfence.push(compareConfidenceDistribution.min);
+        compareQ1.push(
+          compareConfidenceDistribution.avg - compareConfidenceDistribution.std
         );
-        x.push(...subsetX);
-        y.push(...confidences);
-        compareX.push(...compareSubsetX);
-        compareY.push(...compareConfidences);
+        compareMedian.push(compareConfidenceDistribution.avg);
+        compareQ3.push(
+          compareConfidenceDistribution.avg + compareConfidenceDistribution.std
+        );
+        compareUpperfence.push(compareConfidenceDistribution.max);
       }
-      const subsetA = {
-        y,
+      plotData.push({
+        type: "box",
         x,
-        name: key,
+        q1,
+        median,
+        q3,
+        lowerfence,
+        upperfence,
         marker: { color: KEY_COLOR },
+      });
+      plotData.push({
         type: "box",
-      };
-      const subsetB = {
-        y: compareY,
-        x: compareX,
-        name: compareKey,
+        x,
+        q1: compareQ1,
+        median: compareMedian,
+        q3: compareQ3,
+        lowerfence: compareLowerfence,
+        upperfence: compareUpperfence,
         marker: { color: COMPARE_KEY_COLOR },
-        type: "box",
-      };
-      plotData.push(subsetA, subsetB);
+      });
     } else {
-      for (const subset in subsets_data) {
+      const x = [];
+      const q1 = [];
+      const median = [];
+      const q3 = [];
+      const lowerfence = [];
+      const upperfence = [];
+
+      for (const subset of subsets) {
         const subsetData = subsets_data[subset];
-        plotData.push({
-          y: subsetData.confidences,
-          name: subset,
-          type: "box",
-          marker: { color: KEY_COLOR },
-        });
+        const { confidence_distribution } = subsetData;
+        x.push(subset);
+        lowerfence.push(confidence_distribution.min);
+        q1.push(confidence_distribution.avg - confidence_distribution.std);
+        median.push(confidence_distribution.avg);
+        q3.push(confidence_distribution.avg + confidence_distribution.std);
+        upperfence.push(confidence_distribution.max);
       }
+
+      plotData.push({
+        type: "box",
+        x,
+        q1,
+        median,
+        q3,
+        lowerfence,
+        upperfence,
+        marker: { color: KEY_COLOR },
+      });
     }
   }
 
@@ -1381,9 +1566,33 @@ function ConfidenceDistributionChart(props) {
         </EvaluationSelect>
       </Stack>
 
-      <EvaluationPlot
+      <Plot
         data={plotData}
         layout={compareSubsetsData ? { boxmode: "group" } : {}}
+        tooltip={
+          isOverview
+            ? (event: any) => {
+                const [point] = event.points;
+
+                const min = formatValueAsNumber(point.lowerfence);
+                const max = formatValueAsNumber(point.upperfence);
+                const q1 = formatValueAsNumber(point.q1);
+                const q3 = formatValueAsNumber(point.q3);
+                const mean = formatValueAsNumber(point.median);
+                const label = point.x;
+                return {
+                  label,
+                  data: [
+                    { label: "Minimum", value: min },
+                    { label: "Maximum", value: max },
+                    { label: "Q1", value: q1 },
+                    { label: "Mean", value: mean },
+                    { label: "Q3", value: q3 },
+                  ],
+                };
+              }
+            : undefined
+        }
       />
 
       <Legends {...getLegendProps(props)} />
@@ -1395,7 +1604,10 @@ function MetricPerformanceChart(props) {
   const { scenario, compareScenario, loadView, trackEvent } = props;
   const { subsets, subsets_data } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
-  const [metric, setMetric] = useState("average_confidence");
+  const [metric, setMetric] = usePanelStatePartial(
+    "mp_mode",
+    "average_confidence"
+  );
   const { key, compareKey } = props.data?.view;
 
   const y = subsets.map((subset) => {
@@ -1404,7 +1616,14 @@ function MetricPerformanceChart(props) {
   });
 
   const plotData = [
-    { x: subsets, y, type: "bar", name: key, marker: { color: KEY_COLOR } },
+    {
+      x: subsets,
+      y,
+      type: "bar",
+      name: key,
+      marker: { color: KEY_COLOR },
+      hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
+    },
   ];
   if (compareSubsetsData) {
     const compareY = subsets.map((subset) => {
@@ -1417,6 +1636,7 @@ function MetricPerformanceChart(props) {
       type: "bar",
       name: compareKey,
       marker: { color: COMPARE_KEY_COLOR },
+      hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
     });
   }
 
@@ -1441,7 +1661,7 @@ function MetricPerformanceChart(props) {
           })}
         </EvaluationSelect>
       </Stack>
-      <EvaluationPlot
+      <Plot
         data={plotData}
         onClick={({ points }) => {
           const subset = points[0]?.x;
@@ -1462,7 +1682,7 @@ function MetricPerformanceChart(props) {
 
 function SubsetDistributionChart(props) {
   const { scenario, compareScenario, loadView, trackEvent } = props;
-  const { subsets, subsets_data } = scenario;
+  const { subsets, subsets_data, type } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
   const { key, compareKey } = props.data?.view;
 
@@ -1472,7 +1692,14 @@ function SubsetDistributionChart(props) {
   });
 
   const plotData = [
-    { x: subsets, y, type: "bar", name: key, marker: { color: KEY_COLOR } },
+    {
+      x: subsets,
+      y,
+      type: "bar",
+      name: key,
+      marker: { color: KEY_COLOR },
+      hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
+    },
   ];
   if (compareSubsetsData) {
     const compareY = subsets.map((subset) => {
@@ -1485,13 +1712,14 @@ function SubsetDistributionChart(props) {
       type: "bar",
       name: compareKey,
       marker: { color: COMPARE_KEY_COLOR },
+      hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
     });
   }
 
   return (
     <Stack>
       <Typography>Subset Distribution</Typography>
-      <EvaluationPlot
+      <Plot
         data={plotData}
         onClick={({ points }) => {
           const subset = points[0]?.x;
@@ -1503,6 +1731,10 @@ function SubsetDistributionChart(props) {
             plotName: "subset_distribution",
           });
           return loadView("subset", { subset_def: subsetDef });
+        }}
+        layout={{
+          xaxis: { title: { text: X_AXIS_TITLES[type] } },
+          yaxis: { title: { text: "Label Instances" } },
         }}
       />
       <Legends {...getLegendProps(props)} />
@@ -1521,3 +1753,20 @@ function getLegendProps(props) {
   const { key, compareKey } = props.data?.view || {};
   return { primaryKey: key, compareKey };
 }
+
+function getWidth(props) {
+  const { compareKey } = props.data?.view || {};
+  return compareKey ? "25%" : "50%";
+}
+
+const X_AXIS_TITLES = {
+  view: "Saved view",
+  label_attribute: "Attribute value",
+  sample_field: "Field value",
+  custom_code: "Subset",
+};
+
+const PLOT_TOOLTIP_TEMPLATES = {
+  bar: "<b>%{fullData.name}</b><br>" + "x: %{x}<br>" + "y: %{y}<extra></extra>",
+  radial: "%{fullData.name} %{theta}: %{r}<extra></extra>",
+};

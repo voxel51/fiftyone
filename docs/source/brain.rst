@@ -1730,7 +1730,7 @@ structures like `COCO <https://cocodataset.org/#home>`_.
 **Output**: A dictionary mapping IDs of samples with exact duplicates to lists
 of IDs of the duplicates for the corresponding sample
 
-**What to expect**: Exact duplicates analysis uses filehases to identify
+**What to expect**: Exact duplicates analysis uses filehashes to identify
 duplicate data, regardless of whether they are stored under the same or
 different filepaths in your dataset.
 

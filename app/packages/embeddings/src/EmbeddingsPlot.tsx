@@ -58,9 +58,6 @@ export function EmbeddingsPlot({
     [hasSelection]
   );
 
-  if (error) {
-    return <Loading>{error.message}</Loading>;
-  }
   if (labelSelectorLoading || isLoading || !traces)
     return <Loading>Pixelating...</Loading>;
   const data = tracesToData(
