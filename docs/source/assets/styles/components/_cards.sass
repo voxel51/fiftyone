@@ -7,11 +7,14 @@
       flex-wrap: wrap
 
       .col-md-6
-        &:nth-child(odd)
-          padding: 0 16px 16px 0
+        padding: 16px 0
 
-        &:nth-child(even)
-          padding: 0 0 16px 16px
+        @media (min-width: 768px)
+          &:nth-child(odd)
+            padding: 0 16px 16px 0
+
+          &:nth-child(even)
+            padding: 0 0 16px 16px
 
     .pagination
       padding: 8px 16px

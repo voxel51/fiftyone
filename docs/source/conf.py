@@ -183,7 +183,7 @@ html_theme_options = {
 }
 
 html_sidebars = {
-    "**": ["sidebar-nav"]
+    "**": ["searchbox.html", "sidebar-nav"]
 }
 
 html_favicon = "_static/favicon/favicon.ico"
@@ -195,11 +195,10 @@ html_static_path = ["_static"]
 
 # These paths are either relative to html_static_path
 # or fully qualified paths (eg. https://...)
-html_css_files = ["css/voxel51-website.css", "css/custom.css", "css/old_custom.css"]
+html_css_files = ["css/voxel51-website.css", "css/custom.css"]
 html_js_files = [
     "https://cdn.jsdelivr.net/npm/list.js@2.3.1/dist/list.min.js",
     "js/custom.js",
-    "js/old_custom.js",
     "js/tutorial-filters.js"
 ]
 
