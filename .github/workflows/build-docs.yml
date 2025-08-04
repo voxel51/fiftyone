@@ -1,17 +1,16 @@
 name: Build docs
-
 on:
   push:
     branches:
-      # - develop
+      - docs-*
+      - github-actions-*
       - rel-*
       - release-*
       - release/*
-      - docs-*
-      - github-actions-*
     tags:
-      - v*
+      - dev-docs-publish
       - docs-publish
+      - v*
     paths:
       - .github/workflows/build-docs.yml
       - docs/**
@@ -44,15 +43,58 @@ jobs:
     env:
       FIFTYONE_DO_NOT_TRACK: true
     steps:
-      - name: Clone fiftyone
+      - name: Clone fiftyone for tag builds
+        if: github.ref_type == 'tag'
         uses: actions/checkout@v4
+        with:
+          # Fetch full history for rev-parse to work
+          fetch-depth: 0
+      - name: Clone fiftyone for branch builds
+        if: github.ref_type == 'branch'
+        uses: actions/checkout@v4
+      - name: Get Branch Name
+        id: get_branch
+        run: |
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            TAG_SHA=$(git rev-parse ${{ github.ref }})
+            case "${{ github.ref_name }}" in
+              docs-publish|v*)
+                MAIN_SHA=$(git rev-parse origin/main)
+                if [[ "${MAIN_SHA}" == "${TAG_SHA}" ]]; then
+                  echo "branch_name=main" >> "${GITHUB_OUTPUT}"
+                else
+                  echo "docs-publish should only be performed on 'main'"
+                  exit 1
+                fi
+                ;;
+              dev-docs-publish)
+                DEVELOP_SHA=$(git rev-parse origin/develop)
+                if [[ "${DEVELOP_SHA}" == "${TAG_SHA}" ]]; then
+                  echo "branch_name=develop" >> "${GITHUB_OUTPUT}"
+                else
+                  echo "dev-docs-publish should only be performed on 'develop'"
+                  exit 1
+                fi
+                ;;
+            esac
+          else
+            case "${{ github.ref_name }}" in
+              main|develop)
+                echo "branch_name=${{ github.ref_name }}" >> "${GITHUB_OUTPUT}"
+                ;;
+              *)
+                # use `main` because arbitrary branch names may not exist on `fiftyone-teams` or `eta`
+                echo "branch_name=main" >> "${GITHUB_OUTPUT}"
+                ;;
+            esac
+          fi
       - name: Checkout fiftyone-teams
         uses: actions/checkout@v4
         with:
           repository: voxel51/fiftyone-teams
           path: fiftyone-teams
           token: ${{ secrets.RO_FOT_FG_PAT }}
-          ref: main
+          ref: ${{ steps.get_branch.outputs.branch_name }}
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -62,7 +104,7 @@ jobs:
           pip install --upgrade pip setuptools wheel build
       - name: Install ETA from source
         run: |
-          git clone https://github.com/voxel51/eta eta --depth 1 --branch develop
+          git clone https://github.com/voxel51/eta eta --depth 1 --branch "${{ steps.get_branch.outputs.branch_name }}"
           cd eta
           python -Im build
           pip install ./dist/*.whl
@@ -100,10 +142,14 @@ jobs:
         with:
           name: docs
           path: docs/build/html/
+    outputs:
+      branch_name: ${{ steps.get_branch.outputs.branch_name}}
 
   publish:
     needs: [build]
-    if: (startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, 'rc')) || github.ref == 'refs/tags/docs-publish'
+    if: |
+      needs.build.outputs.branch_name == 'main' &&
+      (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/tags/docs-publish')
     runs-on: ubuntu-latest
     steps:
       - name: Download docs
@@ -119,3 +165,24 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
       - name: publish
         run: gsutil -m rsync -dR -x '^SBOMs/.*' docs-download gs://docs.voxel51.com
+
+  dev-publish:
+    needs: [build]
+    if: |
+      needs.build.outputs.branch_name == 'develop' &&
+      github.ref == 'refs/tags/dev-docs-publish'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download docs
+        uses: actions/download-artifact@v4
+        with:
+          name: docs
+          path: docs-download/
+      - name: Authorize gcloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: "${{ secrets.DOCS_GCP_CREDENTIALS }}"
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+      - name: publish
+        run: gsutil -m rsync -dR docs-download gs://docs.dev.voxel51.com
