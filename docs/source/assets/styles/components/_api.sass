@@ -1,4 +1,6 @@
 dl[class]:not(.option-list, .field-list, .footnote, .glossary, .simple)
+  margin-bottom: 2rem
+
   dt.field-odd, dt.field-even
     background-color: transparent
 
@@ -48,5 +50,6 @@ a.reference
     &:hover
       color: var(--pst-color-link-hover)
 
-.toctree-wrapper.compound li:has(> a.has-code)
-  display: none
+.toctree-wrapper.compound
+  li:has(> a > code)
+    display: none

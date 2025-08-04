@@ -1,9 +1,13 @@
 footer.bd-footer
-  padding: 48px 0 64px 0
+  padding: 48px 0 
   background-color: #000
   color: #ffffff66
   font-size: 14px
   font-weight: 500
+  border-top: 0
+
+  @media (min-width: 768px)
+    padding: 48px 0 64px 0
 
   a
     color: #ffffff66
@@ -26,7 +30,6 @@ footer.bd-footer
 
     @media (min-width: 768px)
       flex-direction: row
-      align-items: center
 
     .logo__image
       height: 32px
@@ -54,7 +57,7 @@ footer.bd-footer
     margin-top: 48px
     padding-top: 24px
     border-top: 1px solid #181a1b
-    grid-template-columns: repeat(2, 1fr)
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     column-gap: 16px
     row-gap: 48px
 
@@ -70,6 +73,7 @@ footer.bd-footer
 
       div
         color: #ffffff
+        width: fit-content
 
       a
         color: #ffffff99
@@ -83,6 +87,8 @@ footer.bd-footer
       display: flex
       gap: 8px
       grid-column: span 4
+      flex-wrap: wrap
+      align-content: flex-start
 
       @media (min-width: 768px)
         grid-column: span 2
@@ -92,7 +98,7 @@ footer.bd-footer
         width: 42px
         color: #ffffff
         border-radius: 50%
-        background-color: #ffffff40
+        background-color: #313435
         display: flex
         align-items: center
         justify-content: center

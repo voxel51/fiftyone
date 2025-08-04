@@ -11,10 +11,10 @@ $white: #ffffff;
 $black: #000000;
 $text-base: #181a1b;
 $text-secondary: #5d5e5f;
-$surface-background: #17191A;
-$linenos-background: #FFFFFF1A;
-$table-border: #E0DBD9;
-$table-border-internal: #E8E3E1;
+$surface-background: #17191a;
+$linenos-background: #ffffff1a;
+$table-border: #e0dbd9;
+$table-border-internal: #e8e3e1;
 
 // Spacing
 $navbar-spacing: 0.5rem;
@@ -44,7 +44,7 @@ $tablet: 768px;
 $desktop: 991.98px;
 
 // Fonts
-$font-family-base: "Geist","Geist Fallback", sans-serif;
+$font-family-base: "Geist", "Geist Fallback", sans-serif;
 $font-family-monospace: "Geist Mono", monospace;
 
 :root {
@@ -75,24 +75,25 @@ html[data-theme="light"] {
   --color-background: #{$voxel-background};
   --color-dropdown-background: #{$voxel-dropdown-background};
   --pst-border-color: #{$voxel-border};
-  
+
   --pst-color-text-base: #{$text-base};
   --pst-color-text-secondary: #{$text-secondary};
   --pst-color-link: #{$text-base};
   --pst-color-link-hover: #{$text-secondary};
   --pst-color-inline-code: #{$text-base};
+  --pst-headerlink-color: #{$text-secondary};
 
-  --pst-color-surface: #F0EBE9;
+  --pst-color-surface: #f0ebe9;
   --pst-color-linenos-background: #{$linenos-background};
 
-  --pst-color-info-bg: #EEF6EF;
-  --pst-color-warning-bg: #FFF8E1;
-  --pst-color-danger-bg: #FDECEA;
-  --pst-color-success-bg: #E6F4EA;
-  --pst-color-info-icon: #6B705C;
-  --pst-color-warning-icon: #F9A825;
-  --pst-color-danger-icon: #C62828;
-  --pst-color-success-icon: #2E7D32;
+  --pst-color-info-bg: #eef6ef;
+  --pst-color-warning-bg: #fff8e1;
+  --pst-color-danger-bg: #fdecea;
+  --pst-color-success-bg: #e6f4ea;
+  --pst-color-info-icon: #6b705c;
+  --pst-color-warning-icon: #f9a825;
+  --pst-color-danger-icon: #c62828;
+  --pst-color-success-icon: #2e7d32;
 
   --pst-color-table-heading-bg: transparent;
   --pst-color-table-row-zebra-low-bg: transparent;
@@ -103,5 +104,4 @@ html[data-theme="light"] {
 
 /* Dark theme variables */
 html[data-theme="dark"] {
-
 }

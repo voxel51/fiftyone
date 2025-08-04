@@ -1,6 +1,26 @@
 a:hover
   text-decoration-thickness: 1px
 
+a.headerlink
+  user-select: none
+  cursor: pointer
+  font-size: 0
+  line-height: 0
+
+  &::before
+    content: ""
+    display: inline-block
+    background-image: url("../images/icons/link-icon.svg")
+    background-size: contain
+    background-repeat: no-repeat
+    background-position: center
+    width: 16px
+    height: 16px
+
+h1 > a.headerlink::before, h2 > a.headerlink::before
+  width: 24px
+  height: 24px
+
 // Social links styling
 .social-links
   margin-bottom: 1.5rem
@@ -33,7 +53,7 @@ a:hover
             display: inline-flex
             align-items: center
             justify-content: center
-            padding: 1rem 1.5rem
+            padding: 1rem
             border: 1px solid var(--color-background)
             border-radius: 12px
             color: var(--pst-color-link)
@@ -104,7 +124,7 @@ a:hover
           display: inline-flex
           align-items: center
           justify-content: center
-          padding: 1rem 1.5rem
+          padding: 1rem
           border: 1px solid var(--color-background)
           border-radius: 12px
           color: var(--pst-color-link)
