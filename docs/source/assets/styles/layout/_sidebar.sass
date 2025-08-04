@@ -77,7 +77,7 @@
           &.active
             box-shadow: none
 
-            &::before
+            &:not(:has(+ ul .nav-link.active))::before
               content: ''
               display: block
               width: 8px

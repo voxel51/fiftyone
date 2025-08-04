@@ -3,13 +3,25 @@ code.literal
   font-size: 1em
   background-color: #f3f4f5
 
+div.nbinput.container
+  div.input_area
+    border: 0
+
+    div.highlight > pre
+      padding: 1rem
+
+div.nboutput.container
+  div.output_area
+    div.highlight > pre
+      color: #000000
+
 div.highlight
   pre
     border-radius: 8px
     line-height: 1.5 !important
-    color: #FFFFFF
     position: relative
     overflow-x: auto
+    border: 0
 
     &::before
       content: ''
@@ -26,27 +38,26 @@ div.highlight
       display: block
       opacity: 1
 
-
     .nb, .mi, .kc, code.xref, a code, .fm, .ow, .nb, .nt, .nc, .k, .kn
-      color: #91C3F5 !important
+      color: #1E5AA5 !important
       text-decoration: none !important
 
-    .nf, .nn, .n, .p, .mf, .nb, .nd, .bp, .si, .sa, .se, .o
-      color: #FFFFFF !important
-
     .s1, .s2, .ne, .m, .l, .vm, .nv
-      color: #C399FF !important
+      color: #7A3BBF !important
 
     .linenos
-      color: #ECE8E4 !important
       padding-right: 28px !important
       padding-left: 0 !important
 
   button.copybtn, button.copybtn:not(.success), button.copybtn:hover, button.copybtn:hover:not(.success)
     top: 8px
     right: 8px
-    color: #FFFFFFCC
+    color: #000000CC
     background-color: #FFFFFF40
     border-radius: 40px
     height: 32px
     width: 32px
+
+blockquote
+  border-color: var(--pst-color-primary)
+  background-color: transparent

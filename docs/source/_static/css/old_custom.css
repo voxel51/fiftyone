@@ -4,11 +4,6 @@
   margin: unset;
 }
 
-article.pytorch-article pre,
-span.pre {
-  background-color: var(--bg-light-secondary);
-}
-
 article.pytorch-article .wy-table-responsive table tbody .row-odd {
   background-color: var(--bg-light-secondary);
 }

@@ -11,6 +11,37 @@
   &:hover
     background-color: color-mix(in oklab, var(--pst-color-link) 90%,transparent) !important
     text-decoration: none
+  
+.sd-btn.sd-btn-primary.book-a-demo
+  display: flex
+  align-items: center
+  flex-direction: row
+  padding: 3px 4px
+  position: relative
+
+  .arrow
+    background-color: #fa5300
+    border-radius: 50%
+    display: flex
+    align-items: center
+    justify-content: center
+    width: 34px
+    height: 34px
+    transition: all 0.15s ease
+    transform: translateX(0)
+
+  .text
+    letter-spacing: -0.01em
+    line-height: 1.3
+    padding: 0px 16px
+    transition: all 0.15s ease
+    transform: translateX(0)
+
+  &:hover
+    .arrow
+      transform: translate3d(116.22px, 0px, 0px)
+    .text
+      transform: translate3d(-34px, 0px, 0px)
 
 .arrow 
   svg
@@ -56,4 +87,7 @@
 
   &:hover:before
     background-color: var(--pst-color-link)
+
+.DocSearch-Button
+  height: 40px
 

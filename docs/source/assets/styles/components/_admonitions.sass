@@ -4,11 +4,33 @@ div.admonition
   padding: 24px !important
   box-shadow: none !important
 
-  &.note
+  &.note, &.tip, &.hint, &.important
     background-color: var(--pst-color-info-bg)
 
     .admonition-title:after
       background-image: url("../images/icons/info.svg")
+      background-color: var(--pst-color-info-icon)
+
+  &.warning, &.caution, &.attention
+    background-color: var(--pst-color-warning-bg)
+
+    .admonition-title:after
+      background-image: url("../images/icons/warning.svg")
+      background-color: var(--pst-color-warning-icon)
+  
+  &.danger, &.error
+    background-color: var(--pst-color-danger-bg)
+
+    .admonition-title:after
+      background-image: url("../images/icons/danger.svg")
+      background-color: var(--pst-color-danger-icon)
+
+  &.success
+    background-color: var(--pst-color-success-bg)
+
+    .admonition-title:after
+      background-image: url("../images/icons/success.svg")
+      background-color: var(--pst-color-success-icon)
 
   .admonition-title
     background-color: transparent !important
@@ -25,7 +47,6 @@ div.admonition
     top: 0
     width: 32px
     height: 32px
-    background-color: #6B705C
     background-size: 16px
     background-position: center
     background-repeat: no-repeat

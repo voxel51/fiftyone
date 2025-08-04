@@ -82,10 +82,17 @@ html[data-theme="light"] {
   --pst-color-link-hover: #{$text-secondary};
   --pst-color-inline-code: #{$text-base};
 
-  --pst-color-surface: #{$surface-background};
+  --pst-color-surface: #F0EBE9;
   --pst-color-linenos-background: #{$linenos-background};
 
-  --pst-color-info-bg: #EEF6EF;	
+  --pst-color-info-bg: #EEF6EF;
+  --pst-color-warning-bg: #FFF8E1;
+  --pst-color-danger-bg: #FDECEA;
+  --pst-color-success-bg: #E6F4EA;
+  --pst-color-info-icon: #6B705C;
+  --pst-color-warning-icon: #F9A825;
+  --pst-color-danger-icon: #C62828;
+  --pst-color-success-icon: #2E7D32;
 
   --pst-color-table-heading-bg: transparent;
   --pst-color-table-row-zebra-low-bg: transparent;
