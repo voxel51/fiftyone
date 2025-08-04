@@ -67,3 +67,20 @@ $(function () {
   $(window).on("scroll", updateSidebar);
   $(".pytorch-right-menu").on("click", updateSidebar);
 });
+
+document.addEventListener("DOMContentLoaded", function () {
+  var script = document.createElement("script");
+  script.src = "https://widget.kapa.ai/kapa-widget.bundle.js";
+  script.setAttribute(
+    "data-website-id",
+    "eb6a5a18-9704-41fc-9351-cae28372e763"
+  );
+  script.setAttribute("data-project-name", "Voxel51");
+  script.setAttribute("data-project-color", "#212529");
+  script.setAttribute(
+    "data-project-logo",
+    "https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png"
+  );
+  script.async = true;
+  document.head.appendChild(script);
+});
