@@ -3803,7 +3803,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "yolo", "official"],
+            "tags": ["instances", "coco", "torch", "yolo", "official"],
             "date_added": "2024-04-02 19:22:51"
         },
         {
@@ -3843,7 +3843,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "yolo", "official"],
+            "tags": ["instances", "coco", "torch", "yolo", "official"],
             "date_added": "2024-04-02 19:22:51"
         },
         {
@@ -3883,7 +3883,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "yolo", "official"],
+            "tags": ["instances", "coco", "torch", "yolo", "official"],
             "date_added": "2024-04-02 19:22:51"
         },
         {
@@ -3923,7 +3923,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "yolo", "official"],
+            "tags": ["instances", "coco", "torch", "yolo", "official"],
             "date_added": "2024-04-02 19:22:51"
         },
         {
@@ -3963,7 +3963,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "yolo", "official"],
+            "tags": ["instances", "coco", "torch", "yolo", "official"],
             "date_added": "2024-04-02 19:22:51"
         },
         {
@@ -4083,7 +4083,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "yolo", "official"],
+            "tags": ["instances", "coco", "torch", "yolo", "official"],
             "date_added": "2024-04-02 19:22:51"
         },
         {
@@ -4123,7 +4123,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "yolo", "official"],
+            "tags": ["instances", "coco", "torch", "yolo", "official"],
             "date_added": "2024-04-02 19:22:51"
         },
         {
@@ -4563,7 +4563,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "yolo", "official"],
+            "tags": ["instances", "coco", "torch", "yolo", "official"],
             "date_added": "2024-10-05 19:22:51"
         },
         {
@@ -4603,7 +4603,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "yolo", "official"],
+            "tags": ["instances", "coco", "torch", "yolo", "official"],
             "date_added": "2024-10-05 19:22:51"
         },
         {
@@ -4643,7 +4643,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "yolo", "official"],
+            "tags": ["instances", "coco", "torch", "yolo", "official"],
             "date_added": "2024-10-05 19:22:51"
         },
         {
@@ -4683,7 +4683,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "yolo", "official"],
+            "tags": ["instances", "coco", "torch", "yolo", "official"],
             "date_added": "2024-10-05 19:22:51"
         },
         {
@@ -4723,7 +4723,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "yolo", "official"],
+            "tags": ["instances", "coco", "torch", "yolo", "official"],
             "date_added": "2024-10-05 19:22:51"
         },
         {
@@ -4763,7 +4763,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "yolo", "zero-shot", "official"],
+            "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
             "date_added": "2025-04-10 12:24:41"
         },
         {
@@ -4803,7 +4803,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "yolo", "zero-shot", "official"],
+            "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
             "date_added": "2025-04-10 12:24:41"
         },
         {
@@ -4843,7 +4843,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "yolo", "zero-shot", "official"],
+            "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
             "date_added": "2025-04-10 12:24:41"
         },
         {
@@ -4923,7 +4923,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "yolo", "zero-shot", "official"],
+            "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
             "date_added": "2025-04-10 12:24:41"
         },
         {
@@ -4963,7 +4963,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "yolo", "zero-shot", "official"],
+            "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
             "date_added": "2025-04-10 12:24:41"
         },
         {
