@@ -310,7 +310,7 @@ def available_patterns():
 
 
 def fill_patterns(string):
-    """Fills the patterns in in the given string.
+    """Fills the patterns in the given string.
 
     Use :meth:`available_patterns` to see the available patterns that can be
     used.

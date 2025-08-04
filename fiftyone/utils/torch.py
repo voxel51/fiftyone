@@ -1402,7 +1402,7 @@ class DetectorOutputProcessor(OutputProcessor):
 
 
 class InstanceSegmenterOutputProcessor(OutputProcessor):
-    """Output processor for instance segementers.
+    """Output processor for instance segmenters.
 
     Args:
         classes (None): the list of class labels for the model
@@ -1595,7 +1595,7 @@ class KeypointDetectorOutputProcessor(OutputProcessor):
 
 
 class SemanticSegmenterOutputProcessor(OutputProcessor):
-    """Output processor for semantic segementers.
+    """Output processor for semantic segmenters.
 
     Args:
         classes (None): the list of class labels for the model. This parameter

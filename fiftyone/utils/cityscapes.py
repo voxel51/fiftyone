@@ -56,7 +56,7 @@ def parse_cityscapes_dataset(
             gtBbox_cityPersons_trainval.zip     # optional
 
     Args:
-        source_dir: the directory continaining the manually downloaded
+        source_dir: the directory containing the manually downloaded
             Cityscapes files
         dataset_dir: the directory in which to build the output dataset
         scratch_dir: a scratch directory to use for temporary files
@@ -66,7 +66,7 @@ def parse_cityscapes_dataset(
             (False), or only if the ZIP file exists (None)
         coarse_annos (None): whether to load the coarse annotations (True), or
             not (False), or only if the ZIP file exists (None)
-        person_annos (None): whether to load the personn detections (True), or
+        person_annos (None): whether to load the person detections (True), or
             not (False), or only if the ZIP file exists (None)
 
     Raises:

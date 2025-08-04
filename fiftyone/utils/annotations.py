@@ -2318,7 +2318,7 @@ class AnnotationResults(foa.AnnotationResults):
 
     @property
     def _is_frames(self):
-        """Whether this annotation run was perfromed on a frames view."""
+        """Whether this annotation run was performed on a frames view."""
         return "_frames" in self.id_map
 
     def _finalize_id_map(self):

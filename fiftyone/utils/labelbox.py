@@ -377,7 +377,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         project-level role.
 
         If the user is not a member of the project's parent organization, an
-        email invitivation will be sent.
+        email invitation will be sent.
 
         Args:
             project: the ``labelbox.schema.project.Project``
