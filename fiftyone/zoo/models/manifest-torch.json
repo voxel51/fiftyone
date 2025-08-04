@@ -6538,6 +6538,168 @@
             },
             "tags": ["detection", "coco", "torch", "transformers", "detr", "official"],
             "date_added": "2025-07-15 23:00:00"
+        },
+        {
+            "base_name": "segformer-b0-ade20k-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Efficient transformer-based semantic segmentation model for scene parsing with 150 classes",
+            "source": "https://huggingface.co/nvidia/segformer-b0-finetuned-ade-512-512",
+            "author": "Enze Xie, et al.",
+            "license": "MIT",
+            "size_bytes": 15012832,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForSemanticSegmentation",
+                "config": {
+                    "name_or_path": "nvidia/segformer-b0-finetuned-ade-512-512"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["segmentation", "torch", "segformer", "official"],
+            "date_added": "2025-08-04 12:34:17"
+        },
+        {
+            "base_name": "segformer-b1-ade20k-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Balanced SegFormer model providing good accuracy-efficiency tradeoff for scene understanding",
+            "source": "https://huggingface.co/nvidia/segformer-b1-finetuned-ade-512-512",
+            "author": "Enze Xie, et al.",
+            "license": "MIT",
+            "size_bytes": 54865248,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForSemanticSegmentation",
+                "config": {
+                    "name_or_path": "nvidia/segformer-b1-finetuned-ade-512-512"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["segmentation", "torch", "segformer", "official"],
+            "date_added": "2025-08-04 12:34:20"
+        },
+        {
+            "base_name": "segformer-b2-ade20k-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Medium-sized SegFormer delivering enhanced segmentation quality for complex scenes",
+            "source": "https://huggingface.co/nvidia/segformer-b2-finetuned-ade-512-512",
+            "author": "Enze Xie, et al.",
+            "license": "MIT",
+            "size_bytes": 109854048,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForSemanticSegmentation",
+                "config": {
+                    "name_or_path": "nvidia/segformer-b2-finetuned-ade-512-512"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["segmentation", "torch", "segformer", "official"],
+            "date_added": "2025-08-04 12:34:22"
+        },
+        {
+            "base_name": "segformer-b3-ade20k-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Larger SegFormer model with improved accuracy for detailed semantic segmentation",
+            "source": "https://huggingface.co/nvidia/segformer-b3-finetuned-ade-512-512",
+            "author": "Enze Xie, et al.",
+            "license": "MIT",
+            "size_bytes": 189357408,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForSemanticSegmentation",
+                "config": {
+                    "name_or_path": "nvidia/segformer-b3-finetuned-ade-512-512"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["segmentation", "torch", "segformer", "official"],
+            "date_added": "2025-08-04 12:34:24"
+        },
+        {
+            "base_name": "segformer-b4-ade20k-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "High-capacity SegFormer achieving excellent results on challenging segmentation tasks",
+            "source": "https://huggingface.co/nvidia/segformer-b4-finetuned-ade-512-512",
+            "author": "Enze Xie, et al.",
+            "license": "MIT",
+            "size_bytes": 256439648,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForSemanticSegmentation",
+                "config": {
+                    "name_or_path": "nvidia/segformer-b4-finetuned-ade-512-512"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["segmentation", "torch", "segformer", "official"],
+            "date_added": "2025-08-04 12:34:25"
+        },
+        {
+            "base_name": "segformer-b5-ade20k-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Largest SegFormer model delivering the best semantic segmentation performance in its family",
+            "source": "https://huggingface.co/nvidia/segformer-b5-finetuned-ade-640-640",
+            "author": "Enze Xie, et al.",
+            "license": "MIT",
+            "size_bytes": 338840928,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForSemanticSegmentation",
+                "config": {
+                    "name_or_path": "nvidia/segformer-b5-finetuned-ade-640-640"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["segmentation", "torch", "segformer", "official"],
+            "date_added": "2025-08-04 12:34:27"
         }
     ]
 }
