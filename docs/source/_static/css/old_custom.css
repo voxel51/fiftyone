@@ -272,8 +272,8 @@ table.highlighttable td.code pre {
 
 /* tweaks copied from sphinx-rtd-theme */
 
-.rst-content .section > img,
-.rst-content .section > a > img {
+.rst-content section > img,
+.rst-content section > a > img {
   margin-bottom: 24px;
 }
 

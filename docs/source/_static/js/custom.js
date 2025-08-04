@@ -359,37 +359,16 @@ function initDropdownDelay() {
   });
 }
 
-function initCodeHighlight() {
-  document.querySelectorAll('.highlight').forEach(block => {
-    const linenos = block.querySelector('.linenos');
+/* Mark Line Numbers */
+function markLineNumbers() {
+  const preElements = document.querySelectorAll("pre");
 
-    if (linenos) {
-      const isVisible = block.offsetWidth > 0 && block.offsetHeight > 0;
+  preElements.forEach(pre => {
+    const lineNumbers = pre.querySelectorAll("span.linenos");
 
-      if (isVisible) {
-        const allLineNos = block.querySelectorAll('.linenos');
-        let maxWidth = 0;
-        allLineNos.forEach(span => {
-          const w = span.offsetWidth;
-          if (w > maxWidth) maxWidth = w;
-        });
-
-        block.style.setProperty('--linenos-width', maxWidth + 'px');
-      } else {
-        setTimeout(() => {
-          if (block.offsetWidth > 0) {
-            const allLineNos = block.querySelectorAll('.linenos');
-            let maxWidth = 0;
-            allLineNos.forEach(span => {
-              const w = span.offsetWidth;
-              if (w > maxWidth) maxWidth = w;
-            });
-            block.style.setProperty('--linenos-width', maxWidth + 'px');
-          }
-        }, 100);
-      }
-    } else {
-      block.style.removeProperty('--linenos-width');
+    if (lineNumbers.length > 0) {
+      lineNumbers[0].classList.add("first-linenos");
+      lineNumbers[lineNumbers.length - 1].classList.add("last-linenos");
     }
   });
 }
@@ -448,7 +427,6 @@ function initTabsSlidingIndicator() {
         }
         setTimeout(() => {
           updateIndicator();
-          setTimeout(initCodeHighlight, 50);
         }, 10);
       }, true);
     });
@@ -506,33 +484,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initSidebarToggle();
   initSlidingNavBar();
   initDropdownDelay();
-  initCodeHighlight();
+  markLineNumbers();
   initTabsSlidingIndicator();
   initMobileNavDropdown();
-
-  window.addEventListener('resize', () => {
-    setTimeout(initCodeHighlight, 100);
-  });
-
-  const codeObserver = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting && entry.target.offsetWidth > 0) {
-        const block = entry.target;
-        const linenos = block.querySelector('.linenos');
-        if (linenos) {
-          const allLineNos = block.querySelectorAll('.linenos');
-          let maxWidth = 0;
-          allLineNos.forEach(span => {
-            const w = span.offsetWidth;
-            if (w > maxWidth) maxWidth = w;
-          });
-          block.style.setProperty('--linenos-width', maxWidth + 'px');
-        }
-      }
-    });
-  });
-
-  document.querySelectorAll('.highlight').forEach(block => {
-    codeObserver.observe(block);
-  });
 });
