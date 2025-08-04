@@ -95,10 +95,21 @@ def set_logging_level(level):
 
 
 def _get_loggers():
-    return [
+    loggers = [
         logging.getLogger("fiftyone"),
         logging.getLogger("eta"),
     ]
+    if fo.config.debug_loggers:
+        try:
+            for debug_logger in fo.config.debug_loggers.split(","):
+                loggers.append(logging.getLogger(debug_logger.strip()))
+        except Exception as e:
+            logger.error(
+                "Failed to add debug loggers `%s`: %s."
+                % fo.config.debug_loggers,
+                e,
+            )
+    return loggers
 
 
 def _parse_logging_level():
