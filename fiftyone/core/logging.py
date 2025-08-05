@@ -110,8 +110,9 @@ def _get_loggers():
                     loggers.append(logging.getLogger(logger_name))
         except Exception as e:
             logger.error(
-                "Failed to add debug loggers `%s`: %s."
-                % (fo.config.logging_debug_targets, e)
+                "Failed to add debug loggers `%s`: %s.",
+                fo.config.logging_debug_targets,
+                e,
             )
     return loggers
 
