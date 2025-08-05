@@ -119,6 +119,7 @@ def _get_loggers():
                 if logger_name := debug_logger.strip():
                     loggers.append(logging.getLogger(logger_name))
         except Exception as e:
+            # Note that invalid names will not raise an exception
             logger.warning(
                 "Failed to parse logging debug targets '%s': %s",
                 fo.config.logging_debug_targets,
