@@ -1,3 +1,4 @@
+import { CameraControls } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { folder, useControls } from "leva";
 import { useMemo, useRef } from "react";
@@ -9,7 +10,13 @@ import { useFo3dContext } from "../context";
 import { getOrthonormalAxis } from "../utils";
 import { Lights } from "./lights/Lights";
 
-export const SceneControls = ({ scene }: { scene: FoScene }) => {
+export const SceneControls = ({
+  scene,
+  cameraControlsRef,
+}: {
+  scene: FoScene;
+  cameraControlsRef?: React.RefObject<CameraControls>;
+}) => {
   const {
     upVector,
     setUpVector,
@@ -26,19 +33,24 @@ export const SceneControls = ({ scene }: { scene: FoScene }) => {
 
   const lastCameraUpdateRef = useRef(0);
 
-  // save every half second to avoid excessive writes
-  const CAMERA_UPDATE_INTERVAL = 500;
+  // save every quarter second to avoid excessive writes
+  const CAMERA_UPDATE_INTERVAL = 250;
 
   useFrame((state) => {
     const now = Date.now();
-
+    const cameraControls = cameraControlsRef?.current;
     if (
       state.camera &&
+      cameraControls &&
       now - lastCameraUpdateRef.current > CAMERA_UPDATE_INTERVAL
     ) {
+      const cameraState = {
+        position: state.camera.position.toArray(),
+        target: cameraControls.getTarget(new Vector3()).toArray(),
+      };
       window?.localStorage.setItem(
         CAMERA_POSITION_KEY,
-        JSON.stringify(state.camera.position.toArray())
+        JSON.stringify(cameraState)
       );
       lastCameraUpdateRef.current = now;
     }

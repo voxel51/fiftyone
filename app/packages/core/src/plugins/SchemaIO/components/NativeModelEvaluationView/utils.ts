@@ -190,3 +190,48 @@ export const selectedModelEvaluation = atom<string | null>({
   key: "selectedModelEvaluation",
   default: null,
 });
+
+export function getEvaluationType(evaluation) {
+  const config = evaluation?.info?.config;
+  const method = config?.method;
+  const type = config?.type;
+  if (type === "classification") {
+    return method === "binary"
+      ? "binary_classification"
+      : "multiclass_classification";
+  }
+  return type;
+}
+
+export function getInapplicableMetrics(evaluation) {
+  const type = getEvaluationType(evaluation);
+
+  const isObjectDetection = type === "detection";
+  const isSegmentation = type === "segmentation";
+  const isMulticlassClassification = type === "multiclass_classification";
+
+  const inapplicableMetrics: string[] = [];
+
+  if (isSegmentation) {
+    inapplicableMetrics.push(
+      "prediction_statistics",
+      "confidence_distribution",
+      "average_confidence",
+      "tp",
+      "fp",
+      "fn"
+    );
+  }
+
+  if (!isObjectDetection) {
+    inapplicableMetrics.push("iou", "mAP", "mAR");
+  }
+
+  if (isMulticlassClassification) {
+    inapplicableMetrics.push("tp", "fp", "fn");
+  } else {
+    inapplicableMetrics.push("correct", "incorrect");
+  }
+
+  return inapplicableMetrics;
+}

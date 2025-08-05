@@ -219,7 +219,7 @@ The following fields are available:
     +------------------------------+-----------+-----------------------------------------------------------------------------+
     | `operators`                  |           | A list of operator names registered by the plugin, if any                   |
     +------------------------------+-----------+-----------------------------------------------------------------------------+
-    | `panels`                     |           | A list of panel names registered by the plugin, if any                       |
+    | `panels`                     |           | A list of panel names registered by the plugin, if any                      |
     +------------------------------+-----------+-----------------------------------------------------------------------------+
     | `secrets`                    |           | A list of secret keys that may be used by the plugin, if any                |
     +------------------------------+-----------+-----------------------------------------------------------------------------+
@@ -2603,7 +2603,7 @@ Here's an example of caching a sample using custom serialization:
     See the :func:`execution_cache <fiftyone.operators.cache.execution_cache>`
     documentation for more details.
 
-.. _panel-saved-workspaces
+.. _panel-saved-workspaces:
 
 Saved workspaces
 ----------------

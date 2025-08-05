@@ -3,6 +3,98 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.10.2
+--------------------------
+*Released Aug 5, 2025*
+
+Includes all updates from :ref:`FiftyOne 1.7.2 <release-notes-v1.7.2>`, plus:
+
+- Fixed security vulnerabilities in `form-data`, `next`, and `@babel/runtime`
+  libraries.
+
+.. _release-notes-v1.7.2:
+
+FiftyOne 1.7.2
+--------------
+*Released Aug 5, 2025*
+
+Core
+
+- Added a new syntax to
+  :meth:`set_label_values() <fiftyone.core.collections.SampleCollection.set_label_values>`
+  that allows users to provide sample IDs in addition to label IDs for each
+  update, for efficiency.
+  `#6149 <https://github.com/voxel51/fiftyone/pull/6149>`_
+- Added a new syntax to
+  :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
+  where users can update frame fields by directly providing a mapping from
+  frame IDs to values.
+  `#6149 <https://github.com/voxel51/fiftyone/pull/6149>`_
+- Added a new `fiftyone.utils.data.map_values()` utility that performs the same
+  operation as
+  :meth:`SampleCollection.map_values() <fiftyone.core.collections.SampleCollection.map_values>`
+  but it immediately saves the mapped values to the database rather than creating a view.
+  `#6149 <https://github.com/voxel51/fiftyone/pull/6149>`_
+- Added support for signed URLs when using GCS impersonated credentials and
+  identity pool credentials (WIF). 
+  `#658 <https://github.com/voxel51/eta/pull/658>`_
+
+Labels
+
+- Fixed: The builtin `edit_field_values` operator can now safely be applied to
+  views that filter label fields.
+  `#6149 <https://github.com/voxel51/fiftyone/pull/6149>`_
+- Fixed a bug with :ref:`CVAT <cvat-integration>` rotation attribute of 3d
+  labels.
+  `#6163 <https://github.com/voxel51/fiftyone/pull/6163>`_
+
+App
+
+- Introduced tooltip behavior for PLY files similar to PCD files in
+  :ref:`3D visualizer <app-3d-visualizer>`.
+  `#6202 <https://github.com/voxel51/fiftyone/pull/6202>`_
+- Fixed: PLY point clouds were not always rendering in
+  :ref:`3D visualizer <app-3d-visualizer>`.
+  `#6202 <https://github.com/voxel51/fiftyone/pull/6202>`_
+- Improved top and ego view heuristics in
+  :ref:`3D visualizer <app-3d-visualizer>`, improving consistency.
+  `#6168 <https://github.com/voxel51/fiftyone/pull/6168>`_
+- Fixed a bug where camera `lookAt` wasn't being persisted across navigations.
+  `#6168 <https://github.com/voxel51/fiftyone/pull/6168>`_
+- Fixed a bug with the crop view of 3D labels.
+  `#6168 <https://github.com/voxel51/fiftyone/pull/6168>`_
+- Fixed: Image-based video playback now correctly renders segmentation maps
+  during playback. `#6165 <https://github.com/voxel51/fiftyone/pull/6165>`_
+
+Model Evaluation
+
+- Display a trophy icon, when applicable, for the compare evaluation summary in
+  the "overview" tab of the
+  :ref:`Model Evaluation panel <app-model-evaluation-panel>`.
+  `#6189 <https://github.com/voxel51/fiftyone/pull/6189>`_
+- Fixed: :ref:`Scenario Analysis <app-scenario-analysis>` tab loads for
+  segmentation evaluations.
+  `#6188 <https://github.com/voxel51/fiftyone/pull/6188>`_
+
+Plugins
+
+- Fixed a bug that caused file inputs to be submitted multiple times.
+  `#6164 <https://github.com/voxel51/fiftyone/pull/6164>`_
+
+Zoo
+
+- Fixed `#6156 <https://github.com/voxel51/fiftyone/issues/6156>`_: setting
+  classes for zero-shot models in Hugging Face
+  :ref:`transformers <huggingface-transformers>` integration is now optional.
+  `#6159 <https://github.com/voxel51/fiftyone/pull/6159>`_
+
+Security
+
+- Upgraded `pillow` to mitigate
+  `CVE-2025-48379 <https://www.cve.org/CVERecord?id=CVE-2025-48379>`_
+  vulnerability. `#6216 <https://github.com/voxel51/fiftyone/pull/6216>`_
+
+
 FiftyOne Enterprise 2.10.1
 --------------------------
 *Released July 21, 2025*
