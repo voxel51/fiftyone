@@ -25,11 +25,11 @@
     {% endif %}
     {% if theme_navbar_end or theme_navbar_persistent %}
     <div class="navbar-header-items__end">
-      {% for navbar_item in theme_navbar_persistent %}
+      <!--{% for navbar_item in theme_navbar_persistent %}
         <div class="navbar-item navbar-persistent--container">
           {% include navbar_item %}
         </div>
-      {% endfor %}
+      {% endfor %} -->
       {% for navbar_item in theme_navbar_end %}
         <div class="navbar-item">{% include navbar_item %}</div>
       {% endfor %}
@@ -37,11 +37,11 @@
     {% endif %}
   </div>
   {# A search button to show up only on mobile #}
-  {% for navbar_item in theme_navbar_persistent %}
+  <!-- {% for navbar_item in theme_navbar_persistent %}
     <div class="navbar-persistent--mobile">
       {%- include navbar_item %}
     </div>
-  {% endfor %}
+  {% endfor %} -->
 
   {% if not remove_sidebar_secondary and secondary_sidebar_items %}
     <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="{{ _('On this page') }}">
@@ -60,6 +60,7 @@
   <div class="mobile-nav-dropdown__content">
     {% if sidebars %}
       <div class="sidebar-primary-items__start sidebar-primary__section">
+        {% set search_mobile = true %}
         {%- for sidebartemplate in sidebars %}
           <div class="sidebar-primary-item{% if sidebartemplate == 'sidebar-collapse.html' %} pst-sidebar-collapse{% endif %}">{%- include sidebartemplate %}</div>
         {%- endfor %}

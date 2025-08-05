@@ -3,7 +3,12 @@ code.literal
   font-size: 1em
   background-color: #f3f4f5
 
+p .code .pre
+    font-size: 15px
+
 div.nbinput.container
+  margin-bottom: 1.15rem
+
   div.input_area
     border: 0
 
@@ -11,6 +16,8 @@ div.nbinput.container
       padding: 1rem
 
 div.nboutput.container
+  margin-bottom: 1.15rem
+
   div.output_area
     div.highlight > pre
       color: #000000
@@ -35,7 +42,7 @@ div.highlight
       color: #7A3BBF !important
 
     span.linenos
-      background-color: #f8f8f8 !important
+      background-color: var(--color-background) !important
       margin-right: 1em
       display: inline-block
       min-width: 4em

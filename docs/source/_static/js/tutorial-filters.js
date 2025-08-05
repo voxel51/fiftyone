@@ -127,7 +127,7 @@ $(document).ready(function () {
   window.filterTags.bind();
 
   // Tutorial cards functionality
-  $(".tutorials-card").on("click", function () {
+  $(document).on("click", ".tutorials-card", function () {
     window.location = $(this).attr("link");
   });
 

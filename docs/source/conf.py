@@ -49,7 +49,7 @@ if setup_version != foc.VERSION:
 # -- Project information -----------------------------------------------------
 
 project = "FiftyOne"
-copyright = foc.COPYRIGHT
+copyright = foc.COPYRIGHT.rsplit('.', 1)[0]
 author = foc.AUTHOR
 release = foc.VERSION
 
@@ -183,7 +183,7 @@ html_theme_options = {
 }
 
 html_sidebars = {
-    "**": ["searchbox.html", "sidebar-nav"]
+    "**": ["algolia.html", "sidebar-nav"]
 }
 
 html_favicon = "_static/favicon/favicon.ico"
@@ -205,20 +205,28 @@ html_js_files = [
 # Prevent RST source files from being included in output
 html_copy_source = False
 
-html_context = {
-    # https://pydata-sphinx-theme.readthedocs.io/en/stable/user_guide/light-dark.html#configure-default-theme-mode
-    "default_mode": "light",
-}
 
 # -- Options for pushfeedback extension ---------------------------------------
 pushfeedback_project = "1nx7ekqhts"
 pushfeedback_feedback_button_text = "Feedback"
+pushfeedback_button_position = "center-right"
+pushfeedback_modal_position = "sidebar-right"
 
 # -- Options for sphinx-docsearch --------------------------------------------
 docsearch_app_id = os.environ.get("DOCSEARCH_APP_ID", "8ZYQ0G7IMC")
 docsearch_api_key = os.environ.get("DOCSEARCH_API_KEY", "")
 docsearch_index_name = os.environ.get("DOCSEARCH_INDEX_NAME", "voxel51")
 docsearch_container = "#searchbox"
+
+# -- Options for theme -------------------------------------------------------
+html_context = {
+    # https://pydata-sphinx-theme.readthedocs.io/en/stable/user_guide/light-dark.html#configure-default-theme-mode
+    "default_mode": "light",
+    "docsearch_app_id": docsearch_app_id,
+    "docsearch_api_key": docsearch_api_key,
+    "docsearch_index_name": docsearch_index_name,
+}
+
 
 # -- Custom app setup --------------------------------------------------------
 

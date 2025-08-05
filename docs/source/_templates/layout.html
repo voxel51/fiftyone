@@ -15,183 +15,6 @@
 <link rel="apple-touch-icon" sizes="256x256" href="/_static/favicon/favicon-256.png" />
 <link rel="apple-touch-icon" sizes="512x512" href="/_static/favicon/favicon-512.png" />
 
-{% endblock %} {% block custom_header %}
-<div class="container-fluid header-holder tutorials-header" id="header-holder">
-  <nav id="nav__main" class="nav__main">
-    <div class="nav__main__logo">
-      <a href="{{link_home}}">
-        <img
-          src="https://voxel51.com/images/logo/voxel51-logo-horz-color-600dpi.png"
-        />
-      </a>
-    </div>
-
-    <div class="nav__spacer desktop_only"></div>
-
-    <div id="nav__main__mobilebutton--on">
-      <a href="javascript:void(0);" onclick="navMobileButton()">
-        <i class="fa-solid fa-bars"></i>
-      </a>
-    </div>
-
-    <div id="nav__main__mobilebutton--off">
-      <a href="javascript:void(0);" onclick="navMobileButton()">
-        <i class="fa-solid fa-times"></i>
-      </a>
-    </div>
-
-    <div id="nav__main__items">
-      <div class="nav__item nav__dropdown">
-        <div class="nav__dropdown__trigger">Products</div>
-        <div class="nav__item nav__dropdown__menu has-arrows">
-          <div class="arrow-up--light-primary arrow-left20"></div>
-          <ul>
-            <li><a href="{{link_fiftyone}}">Open Source</a></li>
-            <li><a href="{{link_fiftyone_enterprise}}">Enterprise</a></li>
-            <li><a href="{{link_usecases}}">Use Cases</a></li>
-            <li><a href="{{link_success_stories}}">Success Stories</a></li>
-          </ul>
-        </div>
-      </div>
-
-      <div class="nav__item nav__dropdown">
-        <div class="nav__dropdown__trigger">Learn</div>
-        <div class="nav__item nav__dropdown__menu has-arrows">
-          <div class="arrow-up--light-primary arrow-left20"></div>
-          <ul>
-            <li><a href="{{link_voxel51_discord}}">Discord</a></li>
-            <li><a href="{{link_voxel51_blog}}">Blog</a></li>
-            <li><a href="{{link_events}}">Events</a></li>
-          </ul>
-        </div>
-      </div>
-
-      <div class="nav__item">
-        <a href="{{link_docs_fiftyone}}">Docs</a>
-      </div>
-
-      <div class="nav__item nav__dropdown">
-        <div class="nav__dropdown__trigger">Company</div>
-        <div class="nav__item nav__dropdown__menu has-arrows">
-          <div class="arrow-up--light-primary arrow-left20"></div>
-          <ul>
-            <li><a href="{{link_ourstory}}">About Us</a></li>
-            <li><a href="{{link_voxel51_jobs}}">Careers</a></li>
-            <li><a href="{{link_talk_to_sales}}">Talk to Sales</a></li>
-          </ul>
-        </div>
-      </div>
-
-      <div class="nav__item mobile_only">
-        <a href="{{link_voxel51_github}}fiftyone">GitHub</a>
-      </div>
-
-      <div class="nav__item desktop_only" id="octocat">
-        <!-- https://buttons.github.io -->
-        <a
-          class="github-button"
-          href="https://github.com/voxel51/fiftyone"
-          data-color-scheme="no-preference: dark_high_contrast; light: dark_high_contrast; dark: dark_high_contrast;"
-          data-size="large"
-          data-show-count="true"
-          aria-label="Star voxel51/fiftyone on GitHub"
-          >Star</a
-        >
-      </div>
-
-      <div class="nav__item full_nav_only">
-        <a class="button-primary" href="{{link_workshop}}" target="_blank"
-          >Schedule a workshop</a
-        >
-      </div>
-    </div>
-  </nav>
-</div>
-{% endblock %} {% block custom_mobile_menu %} {# delete PyTorch's menu because
-our own is reused on mobile #} {% endblock %} {% block menu %} {{
-toctree(maxdepth=10, collapse=True, includehidden=True, titles_only=True) }} {%
-endblock %} {% block custom_footer %}
-<footer class="footer-wrapper" id="docs-tutorials-resources">
-  <div class="footer pytorch-container">
-    <div class="footer__logo">
-      <a href="{{link_home}}"
-        ><img
-          src="https://voxel51.com/images/logo/voxel51-logo-horz-color-600dpi.png"
-      /></a>
-    </div>
-
-    <div class="footer__address">
-      {{address_main_line1}}<br />
-      {{address_main_line2}}<br />
-      <a href="mailto:{{email_info}}">{{email_info}}</a>
-    </div>
-
-    <!--
-    <div class="footer__contact">
-      <a href="mailto:{{email_info}}">{{email_info}}</a>
-    </div>
-    -->
-
-    <div class="footer__links">
-      <div class="footer__links--col2">
-        <p class="nav__item--brand">Products</p>
-        <a href="{{link_fiftyone}}">Open Source</a>
-        <a href="{{link_fiftyone_enterprise}}">Enterprise</a>
-        <a href="{{link_usecases}}">Use Cases</a>
-        <a href="{{link_success_stories}}">Success Stories</a>
-      </div>
-      <div class="footer__links--col3">
-        <p class="nav__item--brand">Resources</p>
-        <a href="{{link_voxel51_blog}}">Blog</a>
-        <a href="{{link_docs_fiftyone}}">Docs</a>
-        <a href="{{link_voxel51_github}}">GitHub</a>
-        <a href="{{link_voxel51_discord}}">Discord</a>
-        <a href="{{link_ourstory}}">About Us</a>
-        <a href="{{link_events}}">Events</a>
-        <a href="{{link_voxel51_jobs}}">Careers</a>
-        <a href="{{link_press}}">Press</a>
-      </div>
-    </div>
-
-    <div class="footer__icons">
-      <ul class="list-inline">
-        <li>
-          <a href="{{link_voxel51_linkedin}}">
-            <i class="fa-brands fa-linkedin"></i>
-          </a>
-        </li>
-        <li>
-          <a href="{{link_voxel51_github}}">
-            <i class="fa-brands fa-github"></i>
-          </a>
-        </li>
-        <li>
-          <a href="{{link_voxel51_twitter}}">
-            <i class="fa-brands fa-twitter"></i>
-          </a>
-        </li>
-        <li>
-          <a href="{{link_voxel51_facebook}}">
-            <i class="fa-brands fa-facebook"></i>
-          </a>
-        </li>
-      </ul>
-    </div>
-
-    <div class="footer__copyright">
-      <ul class="list-inline">
-        <li>&copy; 2025 Voxel51 Inc.</li>
-        <li>
-          <a href="{{link_privacypolicy}}">Privacy Policy</a>
-        </li>
-        <li>
-          <a href="{{link_termsofservice}}">Terms of Service</a>
-        </li>
-      </ul>
-    </div>
-  </div>
-</footer>
-
 <!-- https://buttons.github.io -->
 <script async defer src="https://buttons.github.io/buttons.js" ></script>
 
@@ -204,33 +27,6 @@ endblock %} {% block custom_footer %}
   }
   gtag("js", new Date());
   gtag("config", "G-XD15NFRY3M");
-</script>
-
-<script>
-  function open_modal(modal_id, modal_closer_id) {
-    // Get the modal
-    let the_modal = document.getElementById(modal_id);
-
-    the_modal.style.display = "flex";
-    document.body.style.overflow = "hidden";
-
-    let the_modal_closer = document.getElementById(modal_closer_id);
-
-    // When the user clicks on <span> (x), close the modal
-    the_modal_closer &&
-      (the_modal_closer.onclick = function () {
-        the_modal.style.display = "none";
-      });
-
-    // When the user clicks anywhere outside of the modal, close it
-    window.onclick = function (event) {
-      if (event.target == the_modal) {
-        the_modal.style.display = "none";
-        document.body.style.overflow = "unset";
-        window.onclick = undefined;
-      }
-    };
-  }
 </script>
 
 <!-- bigpicture.io -->
@@ -305,3 +101,81 @@ endblock %} {% block custom_footer %}
   bigPicture.init("1646");
 </script>
 {% endblock %}
+
+
+{%- block content %}
+  {# A tiny helper pixel to detect if we've scrolled #}
+  <div id="pst-scroll-pixel-helper"></div>
+  <div id="pst-search-dialog"></div>
+  {%- if theme_back_to_top_button %}
+  {# the scroll to top button #}
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    {{- _("Back to top") -}}
+  </button>
+  {%- endif %}
+
+  {% include "sections/announcement.html" %}
+
+  {% block docs_navbar %}
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+      {%- include "sections/header.html" %}
+    </header>
+  {% endblock docs_navbar %}
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      {# Primary sidebar #}
+      {# If we have no sidebar TOC, pop the TOC component from the sidebars list #}
+      {% if suppress_sidebar_toctree(includehidden=theme_sidebar_includehidden | tobool) %}
+        {% set sidebars = sidebars | reject("in", ["sidebar-collapse.html", "sidebar-nav-bs.html"]) | list %}
+      {% endif %}
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar{% if not sidebars %} hide-on-wide{% endif %}">
+        {% include "sections/sidebar-primary.html" %}
+      </div>
+      {# Using an ID here so that the skip-link works #}
+      <main id="main-content" class="bd-main" role="main">
+        {# Main content area #}
+        {% block docs_main %}
+          <div class="bd-content">
+            <div class="bd-article-container">
+              {# Article header #}
+              <div class="bd-header-article d-print-none">{% include "sections/header-article.html" %}</div>
+              {# Article content #}
+              {% block docs_body %}
+                <article class="bd-article">
+                  {% block body %}{% endblock %}
+                </article>
+              {% endblock docs_body %}
+              {# Article Footer #}
+              {% if theme_article_footer_items %}
+                <footer class="bd-footer-article">
+                  {% include "sections/footer-article.html" %}
+                </footer>
+              {% endif %}
+              {# prev-next buttons #}
+              {% if theme_show_prev_next %}
+                <footer class="prev-next-footer d-print-none">
+                  {% include "components/prev-next.html" %}
+                </footer>
+              {% endif %}
+            </div>
+            {# Secondary sidebar #}
+            {% block docs_toc %}
+              {% if not remove_sidebar_secondary %}
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc">{% include "sections/sidebar-secondary.html" %}</div>
+              {% endif %}
+            {% endblock docs_toc %}
+          </div>
+          <footer class="bd-footer-content">
+            {% include "sections/footer-content.html" %}
+          </footer>
+        {% endblock docs_main %}
+      </main>
+    </div>
+  </div>
+  {# Scripts placed at the end of the page to cut down on time to first content #}
+  {%- block scripts_end %}{{ _webpack.body_post() }}{%- endblock scripts_end %}
+{%- endblock content %}

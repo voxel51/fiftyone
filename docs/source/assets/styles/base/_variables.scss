@@ -62,7 +62,7 @@ $font-family-monospace: "Geist Mono", monospace;
   --pst-font-weight-heading: 500;
 
   --sd-color-primary: #{$voxel-primary};
-  --feedback-primary-color: #{$text-base};
+  --feedback-primary-color: #{$text-base} !important;
   --docsearch-primary-color: #{$voxel-primary};
 }
 
@@ -83,7 +83,7 @@ html[data-theme="light"] {
   --pst-color-inline-code: #{$text-base};
   --pst-headerlink-color: #{$text-secondary};
 
-  --pst-color-surface: #f0ebe9;
+  --pst-color-surface: #f3f4f5;
   --pst-color-linenos-background: #{$linenos-background};
 
   --pst-color-info-bg: #eef6ef;
