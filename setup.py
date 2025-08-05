@@ -13,7 +13,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "1.7.1"
+VERSION = "1.7.2"
 
 
 def get_version():
@@ -53,7 +53,8 @@ INSTALL_REQUIRES = [
     "numpy",
     "packaging",
     "pandas",
-    "Pillow>=6.2",
+    # Pillow 11.2.0 introduced CVE 2025-48379 that is fixed in 11.3.0
+    "Pillow>=6.2,!=11.2.*",
     "plotly>=4.14",
     "pprintpp",
     "psutil",
@@ -79,7 +80,7 @@ INSTALL_REQUIRES = [
     # internal packages
     "fiftyone-brain>=0.21.2,<0.22",
     "fiftyone-db>=0.4,<2.0",
-    "voxel51-eta>=0.14.2,<0.15",
+    "voxel51-eta>=0.14.3,<0.15",
 ]
 
 

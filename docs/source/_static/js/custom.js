@@ -9,6 +9,7 @@ $(function () {
     10;
 
   let lastSection = undefined;
+  let suppressNextScroll = false;
 
   function updateSidebar(e) {
     let currentSection = undefined;
@@ -16,6 +17,10 @@ $(function () {
     if (e.target && e.target.href && e.target.href.indexOf("#") >= 0) {
       currentSection = e.target.href.split("#").pop();
       clicked = true;
+      suppressNextScroll = true;
+    } else if (suppressNextScroll) {
+      suppressNextScroll = false;
+      return;
     } else {
       for (let i = sections.length - 1; i >= 0; i--) {
         if (

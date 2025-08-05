@@ -224,6 +224,8 @@ class Object(BaseType):
         Args:
             name: the name of the property
             view (None): the :class:`View` of the property
+            lite (False): whether to use the lite version of the file. When True, the content of the
+                file in not included in resolve_input params, only the metadata is included.
         """
         return self.define_property(name, UploadedFile(), **kwargs)
 
@@ -1618,6 +1620,9 @@ class FileView(View):
             exceeds the max size
         types (None): a string containing the comma-separated file types to
             accept
+        lite (False): whether to use the lite version of the file. When True, the content of the
+            file in not included, only the metadata is included in resolve_input params. Must be
+            used in conjunction with a property of type :class:`UploadedFile` .
     """
 
     def __init__(self, **kwargs):

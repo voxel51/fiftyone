@@ -86,7 +86,8 @@ export const scenarioCardStyles = {
     color: "#FFC59B",
   },
   emptyState: {
-    height: 433,
+    minHeight: 433,
+    width: "100%",
     display: "flex",
     flexDirection: "column",
     justifyContent: "center",
