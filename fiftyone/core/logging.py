@@ -42,20 +42,28 @@ class JsonFormatter(logging.Formatter):
 
 
 @functools.cache  # has side effects, so only do it once
-def add_handlers():
-    """Adds the default logging handlers to FiftyOne's package-wide loggers."""
+def add_handlers(log_level):
+    """Adds the default logging handlers to FiftyOne's package-wide loggers.
+
+    Args:
+        log_level: a ``logging`` level used to configure the loggers
+    """
     formatter = (
         JsonFormatter()
         if fo.config.logging_format == "json"
         else logging.Formatter(fmt="%(message)s")
     )
 
+    loggers = _get_loggers()
+
     if fo.config.logging_destination == "stdout":
         stdout_handler = logging.StreamHandler(stream=sys.stdout)
         stdout_handler.setFormatter(formatter)
 
-        for _logger in _get_loggers():
+        for _logger in loggers:
             _logger.addHandler(stdout_handler)
+            _logger.setLevel(log_level)
+
     elif fo.config.logging_destination == "stdout,stderr":
         stdout_handler = logging.StreamHandler(stream=sys.stdout)
         stdout_handler.setFormatter(formatter)
@@ -65,9 +73,12 @@ def add_handlers():
         stderr_handler.setFormatter(formatter)
         stderr_handler.addFilter(lambda r: r.levelno >= logging.ERROR)
 
-        for _logger in _get_loggers():
+        for _logger in loggers:
             _logger.addHandler(stdout_handler)
             _logger.addHandler(stderr_handler)
+            _logger.setLevel(log_level)
+
+    logger.debug("Added handlers to loggers: %s", loggers)
 
 
 def init_logging():
@@ -75,8 +86,7 @@ def init_logging():
 
     The logging level is set to ``fo.config.logging_level``.
     """
-    add_handlers()
-    set_logging_level(_parse_logging_level())
+    add_handlers(_parse_logging_level())
 
 
 def get_logging_level():
@@ -109,11 +119,12 @@ def _get_loggers():
                 if logger_name := debug_logger.strip():
                     loggers.append(logging.getLogger(logger_name))
         except Exception as e:
-            logger.error(
-                "Failed to add debug loggers `%s`: %s.",
+            logger.warning(
+                "Failed to parse logging debug targets '%s': %s",
                 fo.config.logging_debug_targets,
                 e,
             )
+
     return loggers
 
 
