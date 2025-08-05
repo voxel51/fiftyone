@@ -206,38 +206,8 @@ html_js_files = [
 html_copy_source = False
 
 html_context = {
-    "address_main_line1": "330 E Liberty St",
-    "address_main_line2": "Ann Arbor, MI 48104",
-    "phone_main": "+1 734-519-0955",
-    "email_info": "info@voxel51.com",
-    # Links - copied from website config
-    "link_blog": "https://voxel51.com/blog/",
-    "link_contactus": "mailto:solutions@voxel51.com?subject=[Voxel51]%20Contact%20us",
-    "link_docs_fiftyone": "https://docs.voxel51.com/",
-    "link_fiftyone": "https://voxel51.com/fiftyone/",
-    "link_fiftyone_enterprise": "https://voxel51.com/enterprise/",
-    "link_usecases": "https://voxel51.com/computer-vision-use-cases/",
-    "link_success_stories": "https://voxel51.com/success-stories/",
-    "link_talk_to_sales": "https://voxel51.com/talk-to-sales/",
-    "link_workshop": "https://voxel51.com/book-a-demo/",
-    "link_fiftyone_tutorials": "https://docs.voxel51.com/tutorials/index.html",
-    "link_fiftyone_examples": "https://github.com/voxel51/fiftyone-examples",
-    "link_fiftyone_quickstart": "https://colab.research.google.com/github/voxel51/fiftyone-examples/blob/master/examples/quickstart.ipynb",
-    "link_home": "https://voxel51.com/",
-    "link_ourstory": "https://voxel51.com/ourstory/",
-    "link_events": "https://voxel51.com/computer-vision-events/",
-    "link_voxel51_jobs": "https://voxel51.com/jobs/",
-    "link_press": "https://voxel51.com/press/",
-    "link_privacypolicy": "https://voxel51.com/privacy/",
-    "link_termsofservice": "https://voxel51.com/terms/",
-    "link_voxel51_facebook": "https://www.facebook.com/voxel51/",
-    "link_voxel51_github": "https://github.com/voxel51/",
-    "link_voxel51_linkedin": "https://www.linkedin.com/company/voxel51/",
-    "link_voxel51_discord": "https://community.voxel51.com",
-    "link_voxel51_slack": "https://slack.voxel51.com",
-    "link_voxel51_twitter": "https://twitter.com/voxel51",
-    "link_voxel51_blog": "https://voxel51.com/blog/",
-    "og_image": "https://voxel51.com/wp-content/uploads/2024/03/3.24_webpages_Home_AV.png",
+    # https://pydata-sphinx-theme.readthedocs.io/en/stable/user_guide/light-dark.html#configure-default-theme-mode
+    "default_mode": "light",
 }
 
 # -- Options for pushfeedback extension ---------------------------------------
