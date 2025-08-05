@@ -25,10 +25,14 @@
     display: flex
     align-items: center
     justify-content: center
-    width: 34px
-    height: 34px
+    width: 42px
+    height: 42px
     transition: all 0.15s ease
     transform: translateX(0)
+
+    @media (min-width: 960px)
+      width: 34px
+      height: 34px
 
   .text
     letter-spacing: -0.01em
@@ -41,7 +45,10 @@
     .arrow
       transform: translate3d(116.22px, 0px, 0px)
     .text
-      transform: translate3d(-34px, 0px, 0px)
+      transform: translate3d(-42px, 0px, 0px)
+
+      @media (min-width: 960px)
+        transform: translate3d(-34px, 0px, 0px)
 
 .arrow 
   svg
