@@ -26,9 +26,12 @@ class JsonFormatter(logging.Formatter):
         log_entry = {
             "timestamp": f'{self.formatTime(record, "%Y-%m-%dT%H:%M:%S")}{record.msecs/1000:.3f}Z',
             "severity": record.levelname,
+            "level": record.levelno,
+            "logger": record.name,
             "message": record.getMessage(),
             "filename": record.filename,
             "lineno": record.lineno,
+            "function": record.funcName,
         }
 
         if record.exc_info:
@@ -107,8 +110,7 @@ def _get_loggers():
         except Exception as e:
             logger.error(
                 "Failed to add debug loggers `%s`: %s."
-                % fo.config.debug_loggers,
-                e,
+                % (fo.config.debug_loggers, e)
             )
     return loggers
 
