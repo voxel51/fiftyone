@@ -43,29 +43,9 @@ pip install -r requirements/docs.txt
 3.  To use the `fiftyone` repository to autogenerate docs, you need to add it
     to your `PYTHONPATH`:
 
-To build the documentation locally, follow these steps:
-
-1.  Perform a documentation-specific install of `fiftyone` from the root
-    directory using the `-o` (docs) flag:
-
-        ```shell
-        cd ..
-        bash install.bash -o
-        ```
-
-2.  To use the `fiftyone` repository to autogenerate docs, you need to add it
-    to your `PYTHONPATH`:
-
-        ```shell
-        export PYTHONPATH=$PYTHONPATH:/path/to/fiftyone
-        ```
-
-        Replace `/path/to/fiftyone` with the absolute path to the root of the
-        fiftyone repo.
-
-        > **TIP:** To avoid running this every time you build the docs, add the
-        > previous line to your `~/.bashrc`, `~/.zshrc`, system path or the
-        > appropriate file for your shell.
+```shell
+export PYTHONPATH=$PYTHONPATH:/path/to/fiftyone
+```
 
 **Tip:** to avoid running this every time you build the docs, add the previous
 line to your `~/.bashrc`, `~/.zshrc`, system path or the appropriate file for
@@ -127,7 +107,7 @@ components of our style when you commit changes.
 
 ### Themes
 
-Theme files are located in the `docs/theme` folder. However, you should prefer
+This extends the theme `pydata_sphinx_theme`. However, you should prefer
 to make changes in the following locations instead of the theme itself whenever
 possible:
 
@@ -141,18 +121,12 @@ possible:
     to add a block prefixed with `custom_` to the theme template, then override
     that block locally
 
-To work on the theme JavaScript (not `custom.js`), you will need to install a
-couple dependencies for the build process:
+### Complie CSS
 
-```sh
-cd docs/theme
-yarn install
+To compile Sass styles into CSS for the documentation:
+
+```shell
+make css
 ```
 
-A few commands are available:
-
--   `yarn build` bundles all JS files into the single file expected by the
-    theme
--   `yarn deploy` builds and copies this file into the built documentation
-    (which avoids the need to run `generate_docs.bash` again)
--   `yarn watch` re-runs `yarn deploy` whenever a JS source file changes
+This command compiles the Sass files located in `docs/source/assets/styles/` and outputs the compiled CSS to `docs/source/_static/custom.css`.
