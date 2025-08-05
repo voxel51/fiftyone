@@ -5,6 +5,7 @@ PyTorch utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import functools
 import itertools
 import logging
@@ -1017,6 +1018,8 @@ class TorchImageModel(
         elif config.image_dim:
             transforms.append(torchvision.transforms.Resize(config.image_dim))
         elif config.image_patch_size:
+            if config.image_min_dim:
+                transforms.append(MinResize(config.image_min_dim))
             transforms.append(PatchSize(config.image_patch_size))
         else:
             if config.image_min_size:
