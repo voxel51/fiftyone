@@ -32,6 +32,7 @@ class JsonFormatter(logging.Formatter):
             "filename": record.filename,
             "lineno": record.lineno,
             "function": record.funcName,
+            "fiftyone_version": fo.__version__,
         }
 
         if record.exc_info:
@@ -102,15 +103,15 @@ def _get_loggers():
         logging.getLogger("fiftyone"),
         logging.getLogger("eta"),
     ]
-    if fo.config.debug_loggers:
+    if fo.config.logging_debug_targets:
         try:
-            for debug_logger in fo.config.debug_loggers.split(","):
+            for debug_logger in fo.config.logging_debug_targets.split(","):
                 if logger_name := debug_logger.strip():
                     loggers.append(logging.getLogger(logger_name))
         except Exception as e:
             logger.error(
                 "Failed to add debug loggers `%s`: %s."
-                % (fo.config.debug_loggers, e)
+                % (fo.config.logging_debug_targets, e)
             )
     return loggers
 

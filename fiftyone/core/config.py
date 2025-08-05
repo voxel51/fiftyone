@@ -236,10 +236,10 @@ class FiftyOneConfig(EnvConfig):
         )
         # comma-separated list of non-FiftyOne debug loggers,
         # e.g. "pymongo.command,hypercorn.access"
-        self.debug_loggers = self.parse_string(
+        self.logging_debug_targets = self.parse_string(
             d,
-            "debug_loggers",
-            env_var="DEBUG_LOGGERS",
+            "logging_debug_loggers",
+            env_var="FIFTYONE_LOGGING_DEBUG_TARGETS",
             default="",
         )
         self._show_progress_bars = None  # declare
