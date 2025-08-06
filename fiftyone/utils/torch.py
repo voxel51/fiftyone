@@ -1623,8 +1623,19 @@ class SemanticSegmenterOutputProcessor(OutputProcessor):
         Returns:
             a list of :class:`fiftyone.core.labels.Segmentation` instances
         """
-        probs = output["out"].detach().cpu().numpy()
+        out = output["out"].detach().cpu()
+        if not (torch.all(out >= 0.0) and torch.all(out <= 1.0)):
+            probs = out.softmax(dim=1).numpy()
+        else:
+            probs = out.numpy()
         masks = probs.argmax(axis=1)
+        confidence_thresh = kwargs.pop("confidence_thresh", None)
+        confidence_thresh = confidence_thresh if confidence_thresh else 0
+        conf_mask = masks > confidence_thresh
+        masks[~conf_mask] = -1
+
+        # Increment class index by 1 since 0 is reserved for background in the app.
+        masks += 1
         return [fol.Segmentation(mask=mask) for mask in masks]
 
 
