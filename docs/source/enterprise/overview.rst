@@ -22,63 +22,63 @@ Here's a high-level overview of the capabilities that FiftyOne Enterprise brings
 
 .. raw:: html
 
-    </table><table class="docutils align-center">
+    </table><table class="table">
     <thead>
     <tr class="row-odd"><th class="head stub"></th>
-    <th class="head" style="text-align: center"><p>FiftyOne Enterprise</p></th>
-    <th class="head" style="text-align: center"><p>FiftyOne Open Source</p></th>
+    <th class="head"><p>FiftyOne Enterprise</p></th>
+    <th class="head"><p>FiftyOne Open Source</p></th>
     </tr>
     </thead>
     <tbody>
     <tr class="row-even"><th class="stub"><p>Curate Datasets</p></th>
-    <td style="text-align: center"><p><a class="reference internal" href="https://voxel51.com/images/icons/checkmark.svg"><img alt="check" height="20pt" src="https://voxel51.com/images/icons/checkmark.svg" width="20pt" /></a></p></td>
-    <td style="text-align: center"><p><a class="reference internal" href="https://voxel51.com/images/icons/checkmark.svg"><img alt="check" height="20pt" src="https://voxel51.com/images/icons/checkmark.svg" width="20pt" /></a></p></td>
+    <td><div class="check-icon"><img alt="check" src="/_static/images/icons/checkmark.svg" /></div></td>
+    <td><div class="check-icon"><img alt="check" src="/_static/images/icons/checkmark.svg" /></div></td>
     </tr>
-    <tr class="row-odd", style="border-top: 1px solid #cacaca"><th class="stub"><p>Evaluate Models</p></th>
-    <td style="text-align: center"><p><a class="reference internal" href="https://voxel51.com/images/icons/checkmark.svg"><img alt="check" height="20pt" src="https://voxel51.com/images/icons/checkmark.svg" width="20pt" /></a></p></td>
-    <td style="text-align: center"><p><a class="reference internal" href="https://voxel51.com/images/icons/checkmark.svg"><img alt="check" height="20pt" src="https://voxel51.com/images/icons/checkmark.svg" width="20pt" /></a></p></td>
+    <tr class="row-odd"><th class="stub"><p>Evaluate Models</p></th>
+    <td><div class="check-icon"><img alt="check" src="/_static/images/icons/checkmark.svg" /></div></td>
+    <td><div class="check-icon"><img alt="check" src="/_static/images/icons/checkmark.svg" /></div></td>
     </tr>
-    <tr class="row-even", style="border-top: 1px solid #cacaca"><th class="stub"><p>Find Mistakes</p></th>
-    <td style="text-align: center"><p><a class="reference internal" href="https://voxel51.com/images/icons/checkmark.svg"><img alt="check" height="20pt" src="https://voxel51.com/images/icons/checkmark.svg" width="20pt" /></a></p></td>
-    <td style="text-align: center"><p><a class="reference internal" href="https://voxel51.com/images/icons/checkmark.svg"><img alt="check" height="20pt" src="https://voxel51.com/images/icons/checkmark.svg" width="20pt" /></a></p></td>
+    <tr class="row-even"><th class="stub"><p>Find Mistakes</p></th>
+    <td><div class="check-icon"><img alt="check" src="/_static/images/icons/checkmark.svg" /></div></td>
+    <td><div class="check-icon"><img alt="check" src="/_static/images/icons/checkmark.svg" /></div></td>
     </tr>
-    <tr class="row-odd", style="border-top: 1px solid #cacaca"><th class="stub"><p>Visualize Embeddings</p></th>
-    <td style="text-align: center"><p><a class="reference internal" href="https://voxel51.com/images/icons/checkmark.svg"><img alt="check" height="20pt" src="https://voxel51.com/images/icons/checkmark.svg" width="20pt" /></a></p></td>
-    <td style="text-align: center"><p><a class="reference internal" href="https://voxel51.com/images/icons/checkmark.svg"><img alt="check" height="20pt" src="https://voxel51.com/images/icons/checkmark.svg" width="20pt" /></a></p></td>
+    <tr class="row-odd"><th class="stub"><p>Visualize Embeddings</p></th>
+    <td><div class="check-icon"><img alt="check" src="/_static/images/icons/checkmark.svg" /></div></td>
+    <td><div class="check-icon"><img alt="check" src="/_static/images/icons/checkmark.svg" /></div></td>
     </tr>
-    <tr class="row-even", style="border-top: 1px solid #cacaca"><th class="stub"><p>Deployment</p></th>
-    <td style="text-align: center"><p>Multi-user, on-premise,<br>private/public cloud</p></td>
-    <td style="text-align: center"><p>Local, Single user</p></td>
+    <tr class="row-even"><th class="stub"><p>Deployment</p></th>
+    <td><p>Multi-user, on-premise,<br>private/public cloud</p></td>
+    <td><p>Local, Single user</p></td>
     </tr>
-    <tr class="row-odd", style="border-top: 1px solid #cacaca"><th class="stub"><p>Dataset Management</p></th>
-    <td style="text-align: center"><p><a class="reference internal" href="https://voxel51.com/images/icons/checkmark.svg"><img alt="check" height="20pt" src="https://voxel51.com/images/icons/checkmark.svg" width="20pt" /></a></p></td>
-    <td style="text-align: center"></td>
+    <tr class="row-odd"><th class="stub"><p>Dataset Management</p></th>
+    <td><div class="check-icon"><img alt="check" src="/_static/images/icons/checkmark.svg" /></div></td>
+    <td></td>
     </tr>
-    <tr class="row-even", style="border-top: 1px solid #cacaca"><th class="stub"><p>User Permissions</p></th>
-    <td style="text-align: center"><p><a class="reference internal" href="https://voxel51.com/images/icons/checkmark.svg"><img alt="check" height="20pt" src="https://voxel51.com/images/icons/checkmark.svg" width="20pt" /></a></p></td>
-    <td style="text-align: center"></td>
+    <tr class="row-even"><th class="stub"><p>User Permissions</p></th>
+    <td><div class="check-icon"><img alt="check" src="/_static/images/icons/checkmark.svg" /></div></td>
+    <td></td>
     </tr>
-    <tr class="row-odd", style="border-top: 1px solid #cacaca"><th class="stub"><p>Dataset Permissions</p></th>
-    <td style="text-align: center"><p><a class="reference internal" href="https://voxel51.com/images/icons/checkmark.svg"><img alt="check" height="20pt" src="https://voxel51.com/images/icons/checkmark.svg" width="20pt" /></a></p></td>
-    <td style="text-align: center"></td>
+    <tr class="row-odd"><th class="stub"><p>Dataset Permissions</p></th>
+    <td><div class="check-icon"><img alt="check" src="/_static/images/icons/checkmark.svg" /></div></td>
+    <td></td>
     </tr>
-    <tr class="row-even", style="border-top: 1px solid #cacaca"><th class="stub"><p>Dataset Versioning</p></th>
-    <td style="text-align: center"><p><a class="reference internal" href="https://voxel51.com/images/icons/checkmark.svg"><img alt="check" height="20pt" src="https://voxel51.com/images/icons/checkmark.svg" width="20pt" /></a></p></td>
-    <td style="text-align: center"></td>
+    <tr class="row-even"><th class="stub"><p>Dataset Versioning</p></th>
+    <td><div class="check-icon"><img alt="check" src="/_static/images/icons/checkmark.svg" /></div></td>
+    <td></td>
     </tr>
-    <tr class="row-odd", style="border-top: 1px solid #cacaca"><th class="stub"><p>SSO</p></th>
-    <td style="text-align: center"><p><a class="reference internal" href="https://voxel51.com/images/icons/checkmark.svg"><img alt="check" height="20pt" src="https://voxel51.com/images/icons/checkmark.svg" width="20pt" /></a></p></td>
-    <td style="text-align: center"></td>
+    <tr class="row-odd"><th class="stub"><p>SSO</p></th>
+    <td><div class="check-icon"><img alt="check" src="/_static/images/icons/checkmark.svg" /></div></td>
+    <td></td>
     </tr>
-    <tr class="row-even", style="border-top: 1px solid #cacaca"><th class="stub"><p>Enterprise Support</p></th>
-    <td style="text-align: center"><p><a class="reference internal" href="https://voxel51.com/images/icons/checkmark.svg"><img alt="check" height="20pt" src="https://voxel51.com/images/icons/checkmark.svg" width="20pt" /></a></p></td>
-    <td style="text-align: center"><p>Discord Community</p></td>
+    <tr class="row-even"><th class="stub"><p>Enterprise Support</p></th>
+    <td><div class="check-icon"><img alt="check" src="/_static/images/icons/checkmark.svg" /></div></td>
+    <td><p>Discord Community</p></td>
     </tr>
-    <tr class="row-odd", style="border-top: 1px solid #cacaca"><th class="stub"><p>Licensing</p></th>
-    <td style="text-align: center"><p>Unlimited data, flexible<br>user-based licensing</p></td>
+    <tr class="row-odd"><th class="stub"><p>Licensing</p></th>
+    <td><p>Unlimited data, flexible<br>user-based licensing</p></td>
     </div>
     </td>
-    <td style="text-align: center"><p>Apache 2.0</p></td>
+    <td><p>Apache 2.0</p></td>
     </tr>
     </tbody>
     </table>

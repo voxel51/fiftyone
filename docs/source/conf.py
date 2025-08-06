@@ -14,6 +14,7 @@ import re
 import sys
 
 sys.path.insert(0, os.path.abspath("."))
+sys.path.insert(0, os.path.abspath("../extensions"))
 
 from custom_directives import (
     CustomButtonDirective,
@@ -48,7 +49,7 @@ if setup_version != foc.VERSION:
 # -- Project information -----------------------------------------------------
 
 project = "FiftyOne"
-copyright = foc.COPYRIGHT
+copyright = foc.COPYRIGHT.rsplit('.', 1)[0]
 author = foc.AUTHOR
 release = foc.VERSION
 
@@ -62,11 +63,16 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.intersphinx",
     "sphinx.ext.napoleon",
+    "sphinxcontrib.jquery",
     "nbsphinx",
     "sphinx_tabs.tabs",
     "sphinx_copybutton",
+    "sphinx_pushfeedback",
+    "sphinx_docsearch",
+    "sphinx_design",
     "autodocsumm",
     "myst_parser",
+    "llms_txt",
 ]
 
 # Types of class members to generate documentation for.
@@ -161,13 +167,35 @@ intersphinx_mapping = {
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = "pytorch_sphinx_theme"
-html_theme_path = ["../theme"]
+html_logo = "_static/images/voxel51-logo.svg"
+
+html_theme = "pydata_sphinx_theme"
 html_theme_options = {
-    "pytorch_project": "docs",
+    "navbar_start": ["navbar-logo"],
+    "navbar_center": ["navbar-links"],
+    "navbar_end": ["book-a-demo"],
+    "navbar_persistent": [],
+    "footer_start": ["copyright"],
+    "footer_end": ["footer-links"],
+    # Navbar links
+    "link_docs_fiftyone": "https://docs.voxel51.com/",
+    "link_fiftyone": "https://voxel51.com/fiftyone/",
+    "link_fiftyone_enterprise": "https://voxel51.com/enterprise/",
+    "link_usecases": "https://voxel51.com/computer-vision-use-cases/",
+    "link_success_stories": "https://voxel51.com/success-stories/",
+    "link_talk_to_sales": "https://voxel51.com/talk-to-sales/",
+    "link_ourstory": "https://voxel51.com/ourstory/",
+    "link_events": "https://voxel51.com/computer-vision-events/",
+    "link_voxel51_jobs": "https://voxel51.com/jobs/",
+    "link_voxel51_discord": "https://community.voxel51.com",
+    "link_voxel51_blog": "https://voxel51.com/blog/",
 }
 
-html_favicon = "favicon.ico"
+html_sidebars = {
+    "**": ["algolia.html", "sidebar-nav"]
+}
+
+html_favicon = "_static/favicon/favicon.ico"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -177,45 +205,37 @@ html_static_path = ["_static"]
 # These paths are either relative to html_static_path
 # or fully qualified paths (eg. https://...)
 html_css_files = ["css/voxel51-website.css", "css/custom.css"]
-html_js_files = ["js/voxel51-website.js", "js/custom.js"]
+html_js_files = [
+    "https://cdn.jsdelivr.net/npm/list.js@2.3.1/dist/list.min.js",
+    "js/custom.js",
+    "js/tutorial-filters.js"
+]
 
 # Prevent RST source files from being included in output
 html_copy_source = False
 
+
+# -- Options for pushfeedback extension ---------------------------------------
+pushfeedback_project = "1nx7ekqhts"
+pushfeedback_feedback_button_text = "Feedback"
+pushfeedback_button_position = "center-right"
+pushfeedback_modal_position = "sidebar-right"
+
+# -- Options for sphinx-docsearch --------------------------------------------
+docsearch_app_id = os.environ.get("DOCSEARCH_APP_ID", "8ZYQ0G7IMC")
+docsearch_api_key = os.environ.get("DOCSEARCH_API_KEY", "")
+docsearch_index_name = os.environ.get("DOCSEARCH_INDEX_NAME", "voxel51")
+docsearch_container = "#searchbox"
+
+# -- Options for theme -------------------------------------------------------
 html_context = {
-    "address_main_line1": "330 E Liberty St",
-    "address_main_line2": "Ann Arbor, MI 48104",
-    "phone_main": "+1 734-519-0955",
-    "email_info": "info@voxel51.com",
-    # Links - copied from website config
-    "link_blog": "https://voxel51.com/blog/",
-    "link_contactus": "mailto:solutions@voxel51.com?subject=[Voxel51]%20Contact%20us",
-    "link_docs_fiftyone": "https://docs.voxel51.com/",
-    "link_fiftyone": "https://voxel51.com/fiftyone/",
-    "link_fiftyone_enterprise": "https://voxel51.com/enterprise/",
-    "link_usecases": "https://voxel51.com/computer-vision-use-cases/",
-    "link_success_stories": "https://voxel51.com/success-stories/",
-    "link_talk_to_sales": "https://voxel51.com/talk-to-sales/",
-    "link_workshop": "https://voxel51.com/book-a-demo/",
-    "link_fiftyone_tutorials": "https://docs.voxel51.com/tutorials/index.html",
-    "link_fiftyone_examples": "https://github.com/voxel51/fiftyone-examples",
-    "link_fiftyone_quickstart": "https://colab.research.google.com/github/voxel51/fiftyone-examples/blob/master/examples/quickstart.ipynb",
-    "link_home": "https://voxel51.com/",
-    "link_ourstory": "https://voxel51.com/ourstory/",
-    "link_events": "https://voxel51.com/computer-vision-events/",
-    "link_voxel51_jobs": "https://voxel51.com/jobs/",
-    "link_press": "https://voxel51.com/press/",
-    "link_privacypolicy": "https://voxel51.com/privacy/",
-    "link_termsofservice": "https://voxel51.com/terms/",
-    "link_voxel51_facebook": "https://www.facebook.com/voxel51/",
-    "link_voxel51_github": "https://github.com/voxel51/",
-    "link_voxel51_linkedin": "https://www.linkedin.com/company/voxel51/",
-    "link_voxel51_discord": "https://community.voxel51.com",
-    "link_voxel51_slack": "https://slack.voxel51.com",
-    "link_voxel51_twitter": "https://twitter.com/voxel51",
-    "link_voxel51_blog": "https://voxel51.com/blog/",
-    "og_image": "https://voxel51.com/wp-content/uploads/2024/03/3.24_webpages_Home_AV.png",
+    # https://pydata-sphinx-theme.readthedocs.io/en/stable/user_guide/light-dark.html#configure-default-theme-mode
+    "default_mode": "light",
+    "docsearch_app_id": docsearch_app_id,
+    "docsearch_api_key": docsearch_api_key,
+    "docsearch_index_name": docsearch_index_name,
 }
+
 
 # -- Custom app setup --------------------------------------------------------
 

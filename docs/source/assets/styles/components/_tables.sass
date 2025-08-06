@@ -1,0 +1,42 @@
+.table
+  border: 0
+  margin-bottom: 2.5rem
+  width: 100%
+  
+  .check-icon
+    background-color: var(--pst-color-primary)
+    display: flex
+    align-items: center
+    height: 18px
+    border-radius: 40px
+    width: 100%
+    margin-top: 3px
+
+    &.secondary
+      background-color: var(--pst-color-text-base)
+
+    img
+      height: 10px
+      width: 10px
+      margin: 0 6px
+      color: #fff
+      filter: brightness(0) saturate(100%) invert(100%)
+  
+  thead
+    tr
+      border-bottom: 1px solid var(--pst-color-table-outer-border)
+
+      th
+        font-weight: 600
+
+  tbody
+    color: var(--bs-table-color)
+
+    tr
+      border-bottom: 1px solid var(--pst-color-table-inner-border)
+
+      th
+        font-weight: 400
+
+  td~td, td~th, th~td, th~th
+    border-left: 0
