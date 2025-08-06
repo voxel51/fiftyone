@@ -963,10 +963,17 @@ class TorchImageModel(
             mask_targets_path = fou.fill_patterns(config.mask_targets_path)
             return etal.load_labels_map(mask_targets_path)
 
-        if config.classes:
-            mask_targets = {
-                idx + 1: val for idx, val in enumerate(config.classes)
-            }
+        if self.classes and config.output_processor_args:
+            if config.output_processor_args.get("no_background_cls", False):
+                mask_targets = {
+                    idx + 1: val for idx, val in enumerate(self.classes)
+                }
+            else:
+                # Class at index 0 is treated as background class.
+                # This class is neither visualized in the app nor used in evaluate_segmentations.
+                mask_targets = {
+                    idx: val for idx, val in enumerate(self.classes)
+                }
             return mask_targets
 
         return None
