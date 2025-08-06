@@ -64,7 +64,7 @@ export const Logs = () => {
   }
 
   return (
-    <LogContainer>
+    <LogContainer data-cy="looker3d-logs-action-bar">
       {indicatorIcon}
       <Typography
         variant="caption"

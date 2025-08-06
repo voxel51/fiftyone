@@ -7,11 +7,15 @@ Model evaluation panel.
 """
 
 import os
-from collections import Counter, defaultdict
+import traceback
 
+import fiftyone.utils.eval as foue
 import numpy as np
-from bson import ObjectId
+import fiftyone.operators.types as types
+import fiftyone.core.view as fov
 
+from bson import ObjectId
+from collections import Counter, defaultdict
 import fiftyone as fo
 import fiftyone.core.view as fov
 import fiftyone.operators.types as types
@@ -43,7 +47,7 @@ ENABLE_CACHING = (
     os.environ.get("FIFTYONE_DISABLE_EVALUATION_CACHING") not in TRUTHY_VALUES
 )
 CACHE_TTL = 30 * 24 * 60 * 60  # 30 days in seconds
-CACHE_VERSION = "v1.0.0"
+CACHE_VERSION = "v2.0.0"
 SUPPORTED_EVALUATION_TYPES = ["classification", "detection", "segmentation"]
 
 
@@ -65,6 +69,16 @@ class EvaluationPanel(Panel):
             return str(dataset._doc.evaluations[eval_key].id)
         except Exception as e:
             return None
+
+    def get_evaluation_type(self, config):
+        evaluation_type = config.type
+        evaluation_method = config.method
+        if evaluation_type == "classification":
+            if evaluation_method == "binary":
+                return "binary_classification"
+            else:
+                return "multiclass_classification"
+        return evaluation_type
 
     def get_permissions(self, ctx):
         return {
@@ -141,6 +155,17 @@ class EvaluationPanel(Panel):
         return total / count if count > 0 else None
 
     def get_confidence_distribution(self, confidences):
+        count = len(confidences)
+
+        if count == 0:
+            return {
+                "avg": None,
+                "min": None,
+                "max": None,
+                "median": None,
+                "std": None,
+            }
+
         return {
             "avg": self.get_avg_confidence(confidences),
             "min": min(confidences),
@@ -153,8 +178,8 @@ class EvaluationPanel(Panel):
         count = 0
         total = 0
         for metrics in per_class_metrics.values():
-            count += 1
             if "iou" in metrics:
+                count += 1
                 total += metrics["iou"]
         return total / count if count > 0 else None
 
@@ -509,8 +534,8 @@ class EvaluationPanel(Panel):
             and info.config.method != "binary"
         ):
             (
-                metrics["num_correct"],
-                metrics["num_incorrect"],
+                metrics["correct"],
+                metrics["incorrect"],
             ) = self.get_correct_incorrect(results)
 
         return {
@@ -899,6 +924,13 @@ class EvaluationPanel(Panel):
             metrics["mAP"] = self.get_map(results)
             metrics["mAR"] = self.get_mar(results)
             metrics["iou"] = self.get_avg_iou(per_class_metrics)
+            evaluation_type = self.get_evaluation_type(info.config)
+            if evaluation_type == "multiclass_classification":
+                (
+                    metrics["correct"],
+                    metrics["incorrect"],
+                ) = self.get_correct_incorrect(results)
+
             return {
                 "metrics": metrics,
                 "distribution": len(results.ytrue_ids),
@@ -1148,7 +1180,7 @@ class EvaluationPanel(Panel):
                 )
                 ctx.panel.set_state("scenario_loading", False)
         except Exception as e:
-            print("error", e)
+            traceback.print_exc()
             ctx.panel.set_state("scenario_loading", False)
             msg = f"We couldn't load this scenario because the underlying data has changed or been removed. To continue your analysis you can,"
             ctx.panel.set_state(
@@ -1157,6 +1189,7 @@ class EvaluationPanel(Panel):
                     "code": "scenario_load_error",
                     "error": msg,
                     "id": scenario_id,
+                    "trace": traceback.format_exc(),
                 },
             )
 

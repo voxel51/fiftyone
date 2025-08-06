@@ -82,6 +82,7 @@ export const ActionBar = ({
     components.push(
       <SetViewButton
         key="set-top-view"
+        dataCy="looker-3d-set-top-view"
         onChangeView={() => {
           window.dispatchEvent(new CustomEvent(SET_TOP_VIEW_EVENT));
         }}
@@ -94,6 +95,7 @@ export const ActionBar = ({
     components.push(
       <SetViewButton
         key="set-ego-view"
+        dataCy="looker-3d-set-ego-view"
         onChangeView={() => {
           window.dispatchEvent(new CustomEvent(SET_EGO_VIEW_EVENT));
         }}

@@ -1,15 +1,16 @@
 import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
 import { cloneDeep, get, set } from "lodash";
-import React, { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import DynamicIO from "./components/DynamicIO";
 import { clearUseKeyStores, SchemaIOContext } from "./hooks";
-import { coerceValue } from "./utils";
+import { coerceValue, getLiteValue } from "./utils";
 
 export function SchemaIOComponent(props) {
   const { onChange, onPathChange, id, shouldClearUseKeyStores } = props;
   const stateRef = useRef({});
   const autoFocused = useRef(false);
   const schemaIOContext = { id };
+  const storeRef = useRef({ liteValues: {} });
 
   useEffect(() => {
     return () => {
@@ -26,11 +27,19 @@ export function SchemaIOComponent(props) {
       const updatedState = cloneDeep(currentState);
       set(updatedState, path, cloneDeep(computedValue));
       stateRef.current = updatedState;
-      if (onPathChange) {
-        onPathChange(path, computedValue, schema, updatedState);
+
+      const liteValue = getLiteValue(value, schema);
+      const store = storeRef.current;
+      if (liteValue) {
+        store.liteValues[path] = liteValue;
       }
+
+      if (onPathChange) {
+        onPathChange(path, computedValue, schema, updatedState, liteValue);
+      }
+
       if (onChange) {
-        onChange(updatedState);
+        onChange(updatedState, store.liteValues);
       }
 
       // propagate the change to all ancestors

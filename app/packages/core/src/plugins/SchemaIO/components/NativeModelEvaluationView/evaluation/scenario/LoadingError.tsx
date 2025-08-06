@@ -1,18 +1,15 @@
-import { TooltipProvider } from "@fiftyone/components";
+import { CodeBlock, TooltipProvider } from "@fiftyone/components";
 import ErrorOutlineOutlinedIcon from "@mui/icons-material/ErrorOutlineOutlined";
 import { Box, Stack, Typography } from "@mui/material";
 import Button from "../../../Button";
 import { scenarioCardStyles } from "../../styles";
+import { useState } from "react";
 
-interface Props {
-  code: "scenario_load_error";
-  description: string;
-  onDelete: () => void;
-  onEdit: () => void;
-  readOnly: boolean;
-}
-export default function LoadingError(props: Props) {
-  const { code, description, onDelete, onEdit, readOnly } = props;
+export default function LoadingError(props: LoadingErrorProps) {
+  const { code, error, trace, onDelete, onEdit, readOnly } = props;
+
+  const [showTrace, setShowTrace] = useState(false);
+
   const title =
     code === "scenario_load_error" ? "Scenario data unavailable" : "Error";
 
@@ -22,7 +19,7 @@ export default function LoadingError(props: Props) {
         <ErrorOutlineOutlinedIcon sx={{ color: "#FFC48B", fontSize: "3rem" }} />
         <Typography sx={scenarioCardStyles.emptyStateText}>{title}</Typography>
         <Typography sx={scenarioCardStyles.emptyStateDescription}>
-          {description}
+          {error}
         </Typography>
         <Stack direction="row" spacing={1}>
           <TooltipProvider
@@ -53,8 +50,34 @@ export default function LoadingError(props: Props) {
               Delete Scenario
             </Button>
           </TooltipProvider>
+          {trace && (
+            <Button
+              variant="outlined"
+              size="medium"
+              onClick={() => {
+                setShowTrace(!showTrace);
+              }}
+            >
+              {showTrace ? "Hide" : "Show"} Technical Trace
+            </Button>
+          )}
         </Stack>
+        {showTrace && trace && (
+          <Box sx={{ width: "50%" }}>
+            <CodeBlock text={trace} language="python" />
+          </Box>
+        )}
       </Stack>
     </Box>
   );
 }
+
+type LoadingErrorProps = {
+  code: "scenario_load_error";
+  error: string;
+  id: string;
+  trace: string;
+  onDelete: () => void;
+  onEdit: () => void;
+  readOnly: boolean;
+};

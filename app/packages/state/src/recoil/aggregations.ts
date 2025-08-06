@@ -81,7 +81,8 @@ export const aggregationQuery = graphQLSelectorFamily<
         return null;
       }
 
-      mixed = mixed || get(groupStatistics(modal)) === "group";
+      mixed =
+        (mixed || get(groupStatistics(modal)) === "group") && useSelection;
 
       const aggForm = {
         index: get(refresher),
@@ -97,7 +98,11 @@ export const aggregationQuery = graphQLSelectorFamily<
         paths,
         mixed,
         sampleIds,
-        slices: mixed ? get(groupSlices) : get(currentSlices(modal)),
+        slices: !useSelection
+          ? get(groupSlice)
+          : mixed
+          ? get(groupSlices)
+          : get(currentSlices(modal)),
         slice: get(groupSlice),
         view: !root ? get(viewAtoms.view) : [],
         queryPerformance:
