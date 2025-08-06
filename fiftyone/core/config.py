@@ -238,7 +238,7 @@ class FiftyOneConfig(EnvConfig):
         # e.g. "pymongo.command,hypercorn.access"
         self.logging_debug_targets = self.parse_string(
             d,
-            "logging_debug_loggers",
+            "logging_debug_targets",
             env_var="FIFTYONE_LOGGING_DEBUG_TARGETS",
             default="",
         )
