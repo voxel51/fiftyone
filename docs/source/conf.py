@@ -167,9 +167,6 @@ intersphinx_mapping = {
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-
-html_context = {"default_mode": "light"}
-
 html_logo = "_static/images/voxel51-logo.svg"
 
 html_theme = "pydata_sphinx_theme"
@@ -180,6 +177,18 @@ html_theme_options = {
     "navbar_persistent": [],
     "footer_start": ["copyright"],
     "footer_end": ["footer-links"],
+    # Navbar links
+    "link_docs_fiftyone": "https://docs.voxel51.com/",
+    "link_fiftyone": "https://voxel51.com/fiftyone/",
+    "link_fiftyone_enterprise": "https://voxel51.com/enterprise/",
+    "link_usecases": "https://voxel51.com/computer-vision-use-cases/",
+    "link_success_stories": "https://voxel51.com/success-stories/",
+    "link_talk_to_sales": "https://voxel51.com/talk-to-sales/",
+    "link_ourstory": "https://voxel51.com/ourstory/",
+    "link_events": "https://voxel51.com/computer-vision-events/",
+    "link_voxel51_jobs": "https://voxel51.com/jobs/",
+    "link_voxel51_discord": "https://community.voxel51.com",
+    "link_voxel51_blog": "https://voxel51.com/blog/",
 }
 
 html_sidebars = {

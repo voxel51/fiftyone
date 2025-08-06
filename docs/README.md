@@ -121,7 +121,7 @@ possible:
     to add a block prefixed with `custom_` to the theme template, then override
     that block locally
 
-### Complie CSS
+### Compile CSS
 
 To compile Sass styles into CSS for the documentation:
 

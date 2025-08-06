@@ -61,7 +61,7 @@ if [ ${BUILD_APP} = true ]; then
     nvm install ${NODE_VERSION}
     nvm use ${NODE_VERSION}
     if ! command -v yarn &> /dev/null; then
-        npm -g install yarn
+        npm install -g yarn
     else
         echo "yarn is already installed, skipping installation"
     fi

@@ -6,9 +6,6 @@ import os
 from sphinx.application import Sphinx
 from sphinx.util import logging
 
-logger = logging.getLogger(__name__)
-
-
 class LLMSTxtGenerator:
     def __init__(self, app: Sphinx):
         self.app = app
@@ -36,7 +33,7 @@ class LLMSTxtGenerator:
                 ):
                     return node.get("content", "")
         except Exception:
-            pass
+            self.logger.debug(f"Failed to get description for {target_doc}")
         return ""
 
     def scan_document_structure(
@@ -45,6 +42,7 @@ class LLMSTxtGenerator:
         try:
             document_tree = sphinx_env.get_doctree(doc_name)
         except Exception:
+            self.logger.debug(f"Failed to get doctree for {doc_name}")
             return
 
         if not document_tree:
