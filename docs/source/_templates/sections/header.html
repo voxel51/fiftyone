@@ -1,0 +1,71 @@
+{% if theme_navbar_start or theme_navbar_center or theme_navbar_end or theme_navbar_persistent %}
+<div class="bd-header__inner bd-page-width">
+  <button id="sidebar-toggle-primary" class="pst-navbar-icon sidebar-toggle primary-sidebar-toggle" aria-label="{{ _('Site navigation') }}">
+    <span class="primary-toggle-text">Menu</span>
+    <div class="primary-toggle-icon">
+      <div class="line1"></div>
+      <div class="line2"></div>
+    </div>
+  </button>
+  {% set navbar_start, navbar_class, navbar_align = navbar_align_class() %}
+  {% if theme_navbar_start %}
+  <div class="{{ navbar_start }} navbar-header-items__start">
+    {% for navbar_item in theme_navbar_start %}
+      <div class="navbar-item">{% include navbar_item %}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  <div class="{{ navbar_class }} navbar-header-items">
+    {% if theme_navbar_center %}
+    <div class="{{ navbar_align }} navbar-header-items__center">
+      {% for navbar_item in theme_navbar_center %}
+        <div class="navbar-item">{% include navbar_item %}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% if theme_navbar_end or theme_navbar_persistent %}
+    <div class="navbar-header-items__end">
+      <!--{% for navbar_item in theme_navbar_persistent %}
+        <div class="navbar-item navbar-persistent--container">
+          {% include navbar_item %}
+        </div>
+      {% endfor %} -->
+      {% for navbar_item in theme_navbar_end %}
+        <div class="navbar-item">{% include navbar_item %}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  {# A search button to show up only on mobile #}
+  <!-- {% for navbar_item in theme_navbar_persistent %}
+    <div class="navbar-persistent--mobile">
+      {%- include navbar_item %}
+    </div>
+  {% endfor %} -->
+
+  {% if not remove_sidebar_secondary and secondary_sidebar_items %}
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="{{ _('On this page') }}">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  {% endif %}
+</div>
+<div class="bd-header__inner bd-page-width sub-header">
+    <button class="sub-header-item" id="mobile-nav-dropdown-toggle" aria-expanded="false" aria-controls="mobile-nav-dropdown">
+      <span class="sub-header-item-text" id="breadcrumb-path">Table of Contents</span>
+      {% set source = pathto("_static/images/icons/mobile-dropdown-icon.svg", 1) %}
+      <img src="{{ source }}" alt="dropdown" class="aroww dropdown-arrow">
+    </button>
+</div>
+<div id="mobile-nav-dropdown" class="mobile-nav-dropdown" aria-hidden="true">
+  <div class="mobile-nav-dropdown__content">
+    {% if sidebars %}
+      <div class="sidebar-primary-items__start sidebar-primary__section">
+        {% set search_mobile = true %}
+        {%- for sidebartemplate in sidebars %}
+          <div class="sidebar-primary-item{% if sidebartemplate == 'sidebar-collapse.html' %} pst-sidebar-collapse{% endif %}">{%- include sidebartemplate %}</div>
+        {%- endfor %}
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}

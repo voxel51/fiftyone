@@ -1,0 +1,95 @@
+/* Primary Sidebar Modal */
+.bd-container
+  .bd-container__inner
+    dialog.bd-sidebar::backdrop
+      background-color: transparent
+      top: var(--pst-header-height)
+      opacity: 0
+
+    dialog.bd-sidebar-primary
+      border-top: 1px solid var(--color-background)
+      height: calc(100vh - var(--pst-header-height))
+      width: 100%
+      max-width: 100%
+      top: var(--pst-header-height)
+      background-color: var(--pst-color-on-background)
+      padding: 20px
+      transition: none
+
+      .sidebar-header-items__center, .dropdown-nav-container
+        .navbar-nav, .dropdown-items-container
+          align-items: normal
+
+          .nav-item
+            height: 57px
+            border-radius: 8px
+            padding-inline: 16px
+            background-color: var(--color-background)
+            margin-inline: 0px
+            margin-bottom: 4px
+            display: flex
+            align-items: center
+            justify-content: space-between
+
+      .sidebar-header-items__end
+        .navbar-item
+          margin-top: 28px
+
+          .sd-btn
+            display: flex
+            align-items: center
+            height: 50px
+
+      .sidebar-primary-items__start
+        display: none
+
+
+/* Primary Sidebar */
+.bd-sidebar-primary
+  border: 0
+  padding: 1rem 1rem 1rem
+
+
+/* Secondary Sidebar */
+.sidebar-secondary-item
+  border: 0
+
+  .page-toc.tocsection.onthispage
+    font-size: 14px
+    font-weight: 500
+    margin-bottom: 20px
+    line-height: 1
+
+  .page-toc 
+    ul
+      li
+        a.nav-link
+          color: var(--pst-color-text-base)
+          font-weight: 500
+          border-radius: 8px
+          position: relative
+          padding-left: 8px
+          margin-left: -8px
+
+          &:hover
+            color: var(--pst-color-text-base)
+            text-decoration: none
+
+          &.active
+            box-shadow: none
+
+            &:not(:has(+ ul .nav-link.active))::before
+              content: ''
+              display: block
+              width: 8px
+              height: 8px
+              background-color: var(--pst-color-primary)
+              border-radius: 50%
+              position: absolute
+              left: -8px
+              top: 50%
+              transform: translateY(-50%)
+        
+@media (min-width: 960px)
+  dialog.bd-sidebar-primary
+    display: none

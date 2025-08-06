@@ -1,0 +1,69 @@
+main
+  p
+    line-height: 1.5
+
+  h1
+    line-height: 1.1
+    word-break: break-word
+
+  h2, h3, h4, h5, h6
+    line-height: 1.2
+    word-break: break-word
+
+  h4
+    font-weight: 600
+
+  div.tutorials-callout-container
+    margin-bottom: 24px
+    .row
+      display: flex
+      flex-wrap: wrap
+      margin: 0
+
+      p:empty
+        display: none
+
+      .col-md-6
+        padding: 16px 0
+
+        @media (min-width: 768px)
+          &:nth-child(even)
+            padding: 0 16px 16px 0
+
+          &:nth-child(odd)
+            padding: 0 0 16px 16px
+
+        .text-container
+          display: flex
+          flex-direction: column
+          height: 100%
+          padding: 10px 0px
+
+          .body-paragraph
+            color: var(--pst-color-link-hover)
+            flex: 1
+
+          p:has(.btn.with-right-arrow.callout-button)
+            margin-top: auto
+
+          div:has(img)
+            flex: 1
+            display: flex
+            align-items: center
+
+            img
+              width: 100%
+              height: 250px
+              object-fit: cover
+
+  section
+    &>img, &>a>img
+      margin-bottom: 24px
+
+*:focus-visible
+  box-shadow: none !important
+  outline: none !important
+
+@media (min-width: 960px)
+  .bd-page-width
+    max-width: 82.5rem

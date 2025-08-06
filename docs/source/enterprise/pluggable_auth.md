@@ -333,7 +333,7 @@ above) or by directly visiting `https://<YOUR_FIFTYONE_TEAMS_URL>/cas/api-doc`
 
 ## Configuration
 
-<table>
+<table class="table">
   <tr>
    <td><strong>Setting</strong>
    </td>
@@ -454,7 +454,7 @@ async function Hook(context) {
 
 ### Actionable Triggers
 
-<table>
+<table class="table">
   <tr>
    <td><strong>Trigger</strong>
    </td>
@@ -507,7 +507,7 @@ async function Hook(context) {
 
 **Event-Only Triggers**
 
-<table>
+<table class="table">
   <tr>
    <td><strong>Trigger</strong>
    </td>
@@ -536,7 +536,7 @@ async function Hook(context) {
 
 **JavaScript Hooks Contextual Parameters**
 
-<table>
+<table class="table">
   <tr>
    <td>
     <strong>Parameter</strong>
@@ -665,7 +665,7 @@ async function Hook(context) {
 
 **Services**
 
-<table>
+<table class="table">
   <tr>
    <td><strong>Service</strong>
    </td>
