@@ -963,6 +963,12 @@ class TorchImageModel(
             mask_targets_path = fou.fill_patterns(config.mask_targets_path)
             return etal.load_labels_map(mask_targets_path)
 
+        if config.classes:
+            mask_targets = {
+                idx + 1: val for idx, val in enumerate(config.classes)
+            }
+            return mask_targets
+
         return None
 
     def _parse_skeleton(self, config):
@@ -1603,10 +1609,12 @@ class SemanticSegmenterOutputProcessor(OutputProcessor):
     Args:
         classes (None): the list of class labels for the model. This parameter
             is not used
+        no_background_cls (False): if true, class indices are incremented by 1 in the mask
     """
 
-    def __init__(self, classes=None):
+    def __init__(self, classes=None, no_background_cls=False):
         self.classes = classes
+        self.no_background_cls = no_background_cls
 
     def __call__(self, output, *args, **kwargs):
         """Parses the model output.
@@ -1629,13 +1637,15 @@ class SemanticSegmenterOutputProcessor(OutputProcessor):
         else:
             probs = out.numpy()
         masks = probs.argmax(axis=1)
-        confidence_thresh = kwargs.pop("confidence_thresh", None)
-        confidence_thresh = confidence_thresh if confidence_thresh else 0
-        conf_mask = masks > confidence_thresh
-        masks[~conf_mask] = -1
+        if self.no_background_cls:
+            # Increment class index by 1 since 0 is reserved for background in the app.
+            masks += 1
 
-        # Increment class index by 1 since 0 is reserved for background in the app.
-        masks += 1
+        confidence_thresh = kwargs.pop("confidence_thresh", None)
+        if confidence_thresh:
+            confidence = probs.max(axis=1)
+            conf_mask = confidence > confidence_thresh
+            masks[~conf_mask] = 0
         return [fol.Segmentation(mask=mask) for mask in masks]
 
 

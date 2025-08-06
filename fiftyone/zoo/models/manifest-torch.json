@@ -2769,7 +2769,11 @@
             "size_bytes": null,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForSemanticSegmentation",
-                "config": {}
+                "config": {
+                    "output_processor_args": {
+                        "no_background_cls": true
+                    }
+                }
             },
             "requirements": {
                 "packages": ["torch", "torchvision", "transformers"],
@@ -2936,7 +2940,8 @@
                         "output_segmentation": true
                     },
                     "output_processor_args": {
-                        "logits_key": "segmentation_logits"
+                        "logits_key": "segmentation_logits",
+                        "no_background_cls": true
                     },
                     "transforms_args": {
                         "use_fast": false
