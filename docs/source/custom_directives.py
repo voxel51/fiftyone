@@ -72,21 +72,25 @@ class CustomCardItemDirective(Directive):
 _CUSTOM_CARD_TEMPLATE = """
 .. raw:: html
 
-    <div class="col-md-12 tutorials-card-container" data-tags={tags}>
+    <div class="col-md-6 tutorials-card-container" data-tags={tags}>
 
     <div class="card tutorials-card" link={link}>
 
     <div class="card-body">
 
+    <div class="tutorials-image">{image}</div>
+    
+    <div class="tutorials-card-content">
+
     <div class="card-title-container">
-        <h4>{header}</h4>
+        <strong>{header}</strong>
     </div>
 
     <p class="card-summary">{description}</p>
 
     <p class="tags">{tags}</p>
-
-    <div class="tutorials-image">{image}</div>
+    
+    </div>
 
     </div>
 
