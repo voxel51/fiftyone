@@ -1,0 +1,123 @@
+{% if theme_footer_start or theme_footer_center or theme_footer_end %}
+<div class="bd-footer__inner bd-page-width">
+  <div class="footer-logo">
+    <img src="{{ pathto('_static/voxel51-logo.svg', 1) }}" class="logo__image only-light" alt="Voxel51">
+    <a href="https://voxel51.com/sales" target="_blank" class="sd-btn sd-btn-primary book-a-demo" rel="noopener noreferrer">
+      <div class="arrow">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="size-3">
+        <path stroke="currentColor" stroke-width="1.5" d="M1.458 11.995h20.125M11.52 22.063 21.584 12 11.521 1.937" vector-effect="non-scaling-stroke"></path>
+      </svg>
+      </div>
+      <div class="text">Talk to a CV expert</div>
+    </a>
+  </div>
+  <div class="footer-links">
+    <div class="footer-links__item">
+      <div>Product</div>
+      <a href="https://voxel51.com/annotation">Data Annotation</a>
+      <a href="https://voxel51.com/curation">Data Curation</a>
+      <a href="https://voxel51.com/evaluation">Model Evaluation</a>
+      <a href="https://voxel51.com/integrations">Integrations</a>
+      <a href="https://voxel51.com/plugins">Plugins</a>
+      <a href="https://voxel51.com/pricing">Pricing</a>
+    </div>
+    <div class="footer-links__item">
+      <div>Solutions</div>
+      <a href="https://voxel51.com/industries/agriculture">Agriculture</a>
+      <a href="https://voxel51.com/industries/autonomous-vehicles-systems">Autonomous Systems</a>
+      <a href="https://voxel51.com/industries/defense">Defense</a>
+      <a href="https://voxel51.com/industries/healthcare">Healthcare</a>
+      <a href="https://voxel51.com/industries/manufacturing">Manufacturing</a>
+      <a href="https://voxel51.com/industries/retail">Retail</a>
+      <a href="https://voxel51.com/industries/robotics">Robotics</a>
+      <a href="https://voxel51.com/industries/security">Security</a>
+    </div>
+    <div class="footer-links__item">
+      <div>Developers</div>
+      <a href="https://docs.voxel51.com/">Documentation</a>
+      <a href="https://voxel51.com/events">Events &amp; Meetups</a>
+      <a href="https://voxel51.com/learn">Learning Hub</a>
+      <a href="https://voxel51.com/glossary">Computer Vision Glossary</a>
+      <a href="https://voxel51.com/community">Community</a>
+    </div>
+    <div class="footer-links__item">
+      <div>Resources</div>
+      <a href="https://voxel51.com/blog">Blog</a>
+      <a href="https://voxel51.com/customers">Customer Stories</a>
+      <a href="https://docs.voxel51.com/model_zoo/models.html">Model Zoo</a>
+      <a href="https://docs.voxel51.com/dataset_zoo/datasets.html">Dataset Zoo</a>
+      <a href="https://voxel51.com/research">CV Research</a>
+    </div>
+    <div class="footer-links__item">
+      <div>Company</div>
+      <a href="https://voxel51.com/about">About Voxel51</a>
+      <a href="https://voxel51.com/careers">Careers</a>
+      <a href="https://voxel51.com/press">Press</a>
+    </div>
+    <div class="social-icons">
+      <a aria-label="Discord" href="https://community.voxel51.com/">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+          <path fill="currentColor" fill-rule="evenodd" d="m14.963 2.978.731.144c1.141.227 2.267.559 3.362.997l1.402.56.482.193.12.505 2.696 11.322.202.851-.816.314-7.01 2.696-1.02.392-.3-1.05-.87-3.05h-3.884l-.871 3.05-.3 1.05-1.02-.392-7.01-2.696-.816-.314.203-.851L2.939 5.377l.12-.505.482-.192 1.402-.561c1.095-.438 2.22-.77 3.362-.997l.731-.144.348.659L10.103 5h3.793l.72-1.363.347-.66ZM6.608 16.852H17.39v-2H6.608v2ZM7 12V9h2v3H7Zm8-3v3h2V9h-2Z" clip-rule="evenodd"></path>
+        </svg>
+      </a>
+      <a aria-label="Linkedin" href="https://www.linkedin.com/company/voxel51/">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+          <path fill="currentColor" fill-rule="evenodd" d="M2 1.5H1v6h6v-6H2ZM2 9H1v14h6V9H2Zm7 0h7a7 7 0 0 1 7 7v7h-6v-6a2 2 0 0 0-2-2v8H9V9Z" clip-rule="evenodd"></path>
+        </svg>
+      </a>
+      <a aria-label="Twitter" href="https://x.com/voxel51">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+          <path fill="currentColor" d="m.75 2 8.417 11.223L.368 23h3.364l6.964-7.738L16.5 23H23l-8.758-11.678L22.632 2h-3.364l-6.555 7.284L7.25 2H.75Z"></path>
+        </svg>
+      </a>
+      <a aria-label="Youtube" href="https://www.youtube.com/@voxel51">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+          <path fill="currentColor" fill-rule="evenodd" d="M0 8a6 6 0 0 1 6-6h12a6 6 0 0 1 6 6v8a6 6 0 0 1-6 6H6a6 6 0 0 1-6-6V8Zm8.494-.09a.5.5 0 0 1 .752-.432l7.012 4.09a.5.5 0 0 1 0 .864l-7.012 4.09a.5.5 0 0 1-.752-.432V7.91Z" clip-rule="evenodd"></path>
+        </svg>
+      </a>
+    </div>
+  </div>
+  <div class="footer-items">
+    {% if theme_footer_start %}
+      <div class="footer-items__start">
+        {% for item in theme_footer_start %}
+          <div class="footer-item">{% include item %}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+    {% if theme_footer_center %}
+      <div class="footer-items__center">
+        {% for item in theme_footer_center %}
+          <div class="footer-item">{% include item %}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+    {% if theme_footer_end %}
+      <div class="footer-items__end">
+        {% for item in theme_footer_end %}
+          <div class="footer-item">{% include item %}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Workaround for mobile search: Sphinx extension only supports a single search box-->
+<script>
+    window.addEventListener('DOMContentLoaded', function () {
+    docsearch({
+        container: '#searchbox-mobile',
+        appId: '{{ theme_docsearch_app_id }}',
+        apiKey: '{{ theme_docsearch_api_key }}',
+        indexName: '{{ theme_docsearch_index_name }}',
+    });
+
+    document.addEventListener('keydown', function (event) {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+    });
+  });
+</script>
+{% endif %}

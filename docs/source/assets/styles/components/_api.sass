@@ -1,0 +1,55 @@
+dl[class]:not(.option-list, .field-list, .footnote, .glossary, .simple)
+  margin-bottom: 2rem
+
+  dt.field-odd, dt.field-even
+    background-color: transparent
+
+  dd
+    margin-left: 4rem
+
+    &.field-odd, &.field-even
+      margin-left: 2rem
+
+dt.sig.sig-object
+  position: relative
+  margin-bottom: 12px
+  font-style: normal
+  font-weight: 400
+  padding: 8px
+
+  &:has(> em:first-child)
+    padding: 8px 50px 8px 64px
+
+  span.pre
+    padding: 2px 6px
+    font-weight: 400
+    font-style: normal
+    font-size: 1rem
+
+  em
+    font-style: normal
+    font-size: 1rem
+
+    &.property
+      position: absolute
+      left: 0.5rem
+      margin-top: 2px
+
+dl.property, dl.attribute, dl.method
+  dt.sig.sig-object
+    padding: 8px
+
+    em.property
+      position: static
+
+a.reference
+  code
+    color: var(--pst-color-link)
+    font-weight: 400
+
+    &:hover
+      color: var(--pst-color-link-hover)
+
+.toctree-wrapper.compound
+  li:has(> a > code)
+    display: none
