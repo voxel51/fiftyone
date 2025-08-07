@@ -38,20 +38,21 @@ def resolve_target_view_inputs(
     depend on the current context and the provided flags.
 
     The choices include:
+
     - Entire dataset (if the current view is not a generated view)
     - Base view (if the current view is a generated view such as
-        :class:`fiftyone.core.clips.ClipsView`, :class:`fiftyone.core.video.FramesView`,
-        or :class:`fiftyone.core.patches.PatchesView`), which is the semantic
-        equivalent of "entire dataset" for these views. The base view is the
-        view from which the generated view was created. For example,
-        ``dataset.limit(51).to_frames("ground_truth").limit(10)`` has a base
-        view of ``dataset.limit(51)``.
+      :class:`fiftyone.core.clips.ClipsView`, :class:`fiftyone.core.video.FramesView`,
+      or :class:`fiftyone.core.patches.PatchesView`), which is the semantic
+      equivalent of "entire dataset" for these views. The base view is the
+      view from which the generated view was created. For example,
+      ``dataset.limit(51).to_frames("ground_truth").limit(10)`` has a base
+      view of ``dataset.limit(51).to_frames("ground_truth")``
     - Dataset view (if ``allow_dataset_view`` is ``True``)
     - Current view (if the current view is different from the dataset view)
     - Selected samples (if ``allow_selected_samples`` is ``True`` and there are
-        selected samples)
+      selected samples)
     - Selected labels (if ``allow_selected_labels`` is ``True`` and there are
-        selected labels)
+      selected labels)
 
     If there's no view or selected items, the only option is entire dataset,
     so no input will be created and "DATASET" will be returned.
@@ -82,7 +83,7 @@ def resolve_target_view_inputs(
 
             def resolve_inputs(self, ctx):
                 inputs = types.Object()
-                target_view = foo.input_utils.resolve_target_view_inputs(
+                target_view = foo.resolve_target_view_inputs(
                     ctx,
                     inputs
                 )
@@ -97,7 +98,7 @@ def resolve_target_view_inputs(
                 print("Sample collection size", len(target_view))
 
     Args:
-        ctx:    the operator's :class:`fiftyone.operators.executor.ExecutionContext`
+        ctx: the operator's :class:`fiftyone.operators.executor.ExecutionContext`
         inputs: the operator inputs object, of type
             :class:`fiftyone.operators.types.Property`, to which to add the
             target view input
@@ -188,7 +189,7 @@ def resolve_target_view_inputs(
         if has_base_view:
             # If the view is generated (clips, frames, patches, etc.), then the
             # equivalent semantics of "entire dataset" is to process all
-            # patches in the base view
+            # items in the base view
             target_choices.add_choice(
                 constants.ViewTarget.BASE_VIEW,
                 label=base_view_label,
