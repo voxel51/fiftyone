@@ -189,4 +189,4 @@ jobs:
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@v2
       - name: publish
-        run: gsutil -m rsync -dR docs-download gs://docs.dev.voxel51.com
+        run: gsutil -m rsync -dR -x '^robots.txt' docs-download gs://docs.dev.voxel51.com
