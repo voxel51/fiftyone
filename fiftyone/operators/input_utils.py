@@ -32,7 +32,7 @@ def resolve_target_view_inputs(
     selected_labels_label="Selected labels",
     selected_labels_description=None,
 ):
-    f"""Creates and resolves a target view input for an operator.
+    """Creates and resolves a target view input for an operator.
 
     This function adds an enum input to the provided ``inputs`` object that
     allows the user to select which view to process. The available choices
