@@ -10,10 +10,7 @@ import asyncio
 import collections
 import inspect
 import logging
-import os
 import traceback
-
-from typing import Optional
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
@@ -21,6 +18,7 @@ import fiftyone.core.media as fom
 import fiftyone.core.odm.utils as focu
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
+from fiftyone.operators import constants
 from fiftyone.operators.decorators import coroutine_timeout
 from fiftyone.operators.message import GeneratedMessage, MessageType
 from fiftyone.operators.operations import Operations
@@ -604,7 +602,11 @@ class ExecutionContext(object):
 
         return self._view
 
-    def target_view(self, param_name="view_target"):
+    def target_view(
+        self,
+        param_name="view_target",
+        default_target=constants.ViewTarget.CURRENT_VIEW,
+    ):
         """The target :class:`fiftyone.core.view.DatasetView` for the operator
         being executed.
 
@@ -615,11 +617,20 @@ class ExecutionContext(object):
         Returns:
             a :class:`fiftyone.core.collections.SampleCollection`
         """
-        target = self.params.get(param_name, None)
-        if target == "SELECTED_SAMPLES":
-            return self.view.select(self.selected)
-        if target == "DATASET":
+        target = self.params.get(param_name, default_target)
+        if target == constants.ViewTarget.CURRENT_VIEW:
+            return self.view
+        if target == constants.ViewTarget.DATASET:
             return self.dataset
+        if target == constants.ViewTarget.BASE_VIEW:
+            return self.view._base_view
+        if target == constants.ViewTarget.SELECTED_SAMPLES:
+            return self.view.select(self.selected)
+        if target == constants.ViewTarget.SELECTED_LABELS:
+            return self.view.select_labels(self.selected_labels)
+        if target == constants.ViewTarget.DATASET_VIEW:
+            return self.dataset.view()
+
         return self.view
 
     @property
