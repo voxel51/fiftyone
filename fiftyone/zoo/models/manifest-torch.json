@@ -4891,7 +4891,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "yolo", "zero-shot", "official"],
+            "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
             "date_added": "2025-04-10 12:24:41"
         },
         {
