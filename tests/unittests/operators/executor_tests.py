@@ -1,8 +1,11 @@
 import unittest
 
+import bson
 import pytest
 from unittest.mock import patch
 
+import fiftyone as fo
+from fiftyone.operators import constants
 import fiftyone.operators.types as types
 from fiftyone.operators.operator import Operator
 from fiftyone.operators.executor import (
@@ -17,7 +20,10 @@ class TestOperatorExecutionContext(unittest.TestCase):
     def test_execution_context(self):
         request_params = {
             "dataset_name": "test_dataset",
-            "params": {"name": "Jon"},
+            "params": {
+                "name": "Jon",
+                "target_view": constants.ViewTarget.CURRENT_VIEW,
+            },
             "view": [
                 {
                     "_cls": "fiftyone.core.stages.Limit",
@@ -72,6 +78,48 @@ class TestOperatorExecutionContext(unittest.TestCase):
         self.assertEqual(delegated_ctx.requesting_delegated_execution, True)
         self.assertEqual(delegated_ctx.delegation_target, "scheduler-one")
         self.assertIsNone(delegated_ctx.num_distributed_tasks)
+
+    def test_target_view(self):
+        ds = fo.Dataset(persistent=True)
+        view = ds.limit(3)
+        selected = bson.ObjectId()
+        selected_label = bson.ObjectId()
+        try:
+            tests = [
+                (constants.ViewTarget.CURRENT_VIEW, view),
+                (constants.ViewTarget.DATASET, ds),
+                (constants.ViewTarget.DATASET_VIEW, ds.view()),
+                (
+                    constants.ViewTarget.SELECTED_SAMPLES,
+                    view.select([selected]),
+                ),
+                ("TESTING_DEFAULT", view),
+            ]
+            for target_view, expected_view in tests:
+                request_params = {
+                    "dataset_name": ds.name,
+                    "dataset_id": str(ds._doc.id),
+                    "params": {
+                        "name": "Jon",
+                        "view_target": target_view,
+                    },
+                    "view": [
+                        {
+                            "_cls": "fiftyone.core.stages.Limit",
+                            "kwargs": [["limit", 3]],
+                        }
+                    ],
+                    "selected": [selected],
+                    "selected_labels": [selected_label],
+                }
+                ctx = ExecutionContext(
+                    operator_uri="test_operator",
+                    request_params=request_params,
+                )
+                target = ctx.target_view()
+                self.assertEqual(target, expected_view)
+        finally:
+            ds.delete()
 
 
 ECHO_URI = "@voxel51/operators/echo"

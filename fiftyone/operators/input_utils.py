@@ -211,7 +211,7 @@ def resolve_target_view_inputs(
                 constants.ViewTarget.SELECTED_SAMPLES,
                 has_selected_samples,
                 selected_samples_label,
-                selected_labels_description,
+                selected_samples_description,
             ),
             (
                 constants.ViewTarget.SELECTED_LABELS,
