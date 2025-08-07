@@ -493,6 +493,7 @@ us at support@voxel51.com.
    FiftyOne Enterprise 🚀 <enterprise/index>
    Installation <getting_started/install>
    Environments <environments/index>
+   Getting Started Guides <getting_started_guides/index>
    Tutorials <tutorials/index>
    Recipes <recipes/index>
    Cheat Sheets <cheat_sheets/index>
