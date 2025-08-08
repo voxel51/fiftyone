@@ -122,17 +122,17 @@ nbsphinx_prolog = """
     <table class="fo-notebook-links" align="left">
         <td>
             <a target="_blank" href="https://colab.research.google.com/github/voxel51/fiftyone/blob/%s/docs/source/{{ env.doc2path(env.docname, base=None) }}">
-                <img src="../_static/images/icons/colab-logo-256px.png"> &nbsp; Run in Google Colab
+                <img src="https://cdn.voxel51.com/colab-logo-256px.png"> &nbsp; Run in Google Colab
             </a>
         </td>
         <td>
             <a target="_blank" href="https://github.com/voxel51/fiftyone/blob/%s/docs/source/{{ env.doc2path(env.docname, base=None) }}">
-                <img src="../_static/images/icons/github-logo-256px.png"> &nbsp; View source on GitHub
+                <img src="https://cdn.voxel51.com/github-logo-256px.png"> &nbsp; View source on GitHub
             </a>
         </td>
         <td>
             <a target="_blank" href="https://raw.githubusercontent.com/voxel51/fiftyone/%s/docs/source/{{ env.doc2path(env.docname, base=None) }}" download>
-                <img src="../_static/images/icons/cloud-icon-256px.png"> &nbsp; Download notebook
+                <img src="https://cdn.voxel51.com/cloud-icon-256px.png"> &nbsp; Download notebook
             </a>
         </td>
     </table>
