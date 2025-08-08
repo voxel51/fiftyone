@@ -97,6 +97,7 @@ html[data-theme="light"] {
 
   --pst-color-table-heading-bg: transparent;
   --pst-color-table-row-zebra-low-bg: transparent;
+  --pst-color-table-row-zebra-high-bg: #{$voxel-dropdown-background};
   --pst-color-table-outer-border: #{$table-border};
   --pst-color-table-inner-border: #{$table-border-internal};
   --bs-table-color: #181a1b99;
