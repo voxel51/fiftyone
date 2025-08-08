@@ -57,7 +57,7 @@ Each notebook contains the necessary `pip install` commands at the beginning, so
 
 **System Requirements**
 
-- **Operating System:** Linux (Ubuntu 24.04), macOS
+- **Operating System:** Linux (Ubuntu 24.04), macOS (Run All (only the sam2 section doesn’t work))
 - **Python:** 3.10 recommended for compatibility
 - **Memory:** 16GB RAM recommended for large datasets
 - **Storage:** 10GB free space for nuScenes dataset
