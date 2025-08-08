@@ -2,6 +2,8 @@
   border: 0
   margin-bottom: 2.5rem
   width: 100%
+  table-layout: fixed
+  overflow-wrap: break-word
   
   .check-icon
     background-color: var(--pst-color-primary)
@@ -40,3 +42,14 @@
 
   td~td, td~th, th~td, th~th
     border-left: 0
+
+  span.pre
+    word-break: break-word
+    word-wrap: break-word
+    white-space: pre-wrap
+
+  code
+    word-break: break-word
+    word-wrap: break-word
+    white-space: pre-wrap
+    display: inline-block
