@@ -1872,3 +1872,65 @@ main section > a > img {
     display: none;
   }
 }
+
+.guides-card {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  height: 100%;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.guides-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.guides-card .card-body {
+  display: flex;
+  flex-direction: column;
+  padding: 1rem 1.5rem 1.5rem;
+}
+
+.guides-card .card-title {
+  color: #2c3e50;
+  font-weight: 600;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
+}
+
+.guides-card .card-text {
+  flex-grow: 1;
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 15px;
+  line-height: 1.4;
+}
+
+.guides-card .badge {
+  font-size: 11px;
+  margin-right: 5px;
+  padding: 4px 10px;
+  background: #181a1b;
+  color: #fff;
+  border-radius: 6px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.guides-card .btn-outline-primary {
+  background-color: var(--pst-color-primary);
+  color: #fff;
+  border-color: var(--pst-color-primary);
+  font-weight: 600;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.guides-card .btn-outline-primary:hover,
+.guides-card .btn-outline-primary:focus {
+  background-color: #fff;
+  color: var(--pst-color-primary);
+  border-color: var(--pst-color-primary);
+}
