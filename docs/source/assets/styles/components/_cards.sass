@@ -84,3 +84,66 @@ div.card.tutorials-card
       .card-summary, .tags
         font-size: 14px
         color: var(--pst-color-text-secondary)
+
+.guides-card
+  border: 1px solid #e0e0e0
+  border-radius: 8px
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1)
+  height: 100%
+  transition: transform 0.2s ease, box-shadow 0.2s ease
+
+  &:hover
+    transform: translateY(-2px)
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15)
+
+  .card-body
+    display: flex
+    flex-direction: column
+    padding: 1rem 1.5rem 1.5rem
+
+  .card-title
+    color: #2c3e50
+    font-weight: 600
+    margin-top: 0.5rem
+    margin-bottom: 0.5rem
+    font-size: 1.1rem
+
+  .card-text
+    flex-grow: 1
+    color: #666
+    font-size: 14px
+    margin-bottom: 15px
+    line-height: 1.4
+
+  .badge
+    font-size: 11px
+    margin-right: 5px
+    padding: 4px 10px
+    background: #181a1b
+    color: #fff
+    border-radius: 6px
+    font-weight: 600
+    letter-spacing: 0.04em
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08)
+
+  .btn-outline-primary
+    background-color: var(--pst-color-primary)
+    color: #fff
+    border-color: var(--pst-color-primary)
+    font-weight: 600
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1)
+
+    &:hover,
+    &:focus
+      background-color: #fff
+      color: var(--pst-color-primary)
+      border-color: var(--pst-color-primary)
+
+  .d-flex.align-items-center
+    justify-content: space-between
+
+    .badge
+      width: 48%
+      text-align: center
+      display: inline-block
+      margin-right: 0
