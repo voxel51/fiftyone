@@ -76,6 +76,7 @@ def test_init_(
         l for l in err.splitlines() if l.strip()
     ]
     if logging_format == "json":
+        # JSON format has additional fields
         for line in lines:
             parsed = json_util.loads(line)
             assert isinstance(parsed, dict)
@@ -88,6 +89,7 @@ def test_init_(
                 logging, logging_level
             )
     else:
+        # Text format only has the message
         for msg in expected[logging_level]:
             assert msg in lines
             num_logs += 1
