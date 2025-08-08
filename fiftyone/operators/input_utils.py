@@ -168,7 +168,13 @@ def resolve_target_view_inputs(
 
     # Determine which target views are available
     has_base_view = isinstance(
-        ctx.view, (clips.ClipsView, patches.PatchesView, video.FramesView)
+        ctx.view,
+        (
+            clips.ClipsView,
+            patches.EvaluationPatchesView,
+            patches.PatchesView,
+            video.FramesView,
+        ),
     )
     if has_base_view:
         has_view = ctx.view != ctx.view._base_view
@@ -233,8 +239,8 @@ def resolve_target_view_inputs(
                 target_choices.add_choice(
                     target_view, label=label, description=description
                 )
-            if default_target is None:
-                default_target = target_view
+                if default_target is None:
+                    default_target = target_view
 
         inputs.enum(
             param_name,
