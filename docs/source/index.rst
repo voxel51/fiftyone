@@ -59,6 +59,61 @@ failure modes, finding annotation mistakes, and much more!
     :button_text: Install FiftyOne!
     :button_link: getting_started/install.html
 
+Where to Begin?
+===============
+
+Ready to dive into FiftyOne? Choose a guided learning experience tailored 
+to your use case:
+
+.. raw:: html
+
+    <div class="row getting-started-cards">
+
+.. customguidescard::
+    :title: Medical Imaging Guide
+    :description: Explore medical imaging workflows with DICOM, CT scans, and volumetric data.
+    :level: Beginner
+    :time: 15-25 min
+    :link: getting_started_guides/medical_imaging/index.html
+.. customguidescard::
+    :title: Self-Driving Guide
+    :description: Dive into autonomous vehicle data workflows with sensor fusion and trajectory analysis.
+    :level: Beginner
+    :time: 20-30 min
+    :link: getting_started_guides/self_driving/index.html
+.. customguidescard::
+    :title: Model Evaluation Guide
+    :description: Comprehensive model evaluation workflows with advanced analysis techniques.
+    :level: Beginner
+    :time: 15-25 min
+    :link: getting_started_guides/model_evaluation/index.html
+
+.. raw:: html
+
+    </div>
+
+.. raw:: html
+
+    <div class="text-center" style="margin: 1rem 0 2rem 0;">
+        <a href="getting_started_guides/index.html" class="sd-btn sd-btn-primary" style="font-size: 1rem; padding: 12px 24px;">
+            Explore All Getting Started Guides
+        </a>
+    </div>
+
+
+Not sure where to start? Take our quick assessment:
+
+**Working with object detection?** → :doc:`Explore the Object Detection Guide <getting_started_guides/object_detection/index>`
+
+**Have medical imaging data?** → :doc:`Begin with Medical Imaging Guide <getting_started_guides/medical_imaging/index>`
+
+**Working on autonomous vehicles?** → :doc:`Jump to Self-Driving Guide <getting_started_guides/self_driving/index>`
+
+**Need 3D computer vision?** → :doc:`Explore 3D Visual AI Guide <getting_started_guides/threed_visual_ai/index>`
+
+**Want to evaluate model performance?** → :doc:`Start with Model Evaluation Guide <getting_started_guides/model_evaluation/index>`
+
+
 FiftyOne integrates naturally with your favorite tools. Click on a logo to
 learn how:
 

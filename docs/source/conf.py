@@ -21,6 +21,7 @@ from custom_directives import (
     CustomCalloutItemDirective,
     CustomCardItemDirective,
     CustomImageLinkDirective,
+    CustomGuidesCardDirective,
 )
 from redirects import generate_redirects
 
@@ -271,3 +272,4 @@ def setup(app):
     app.add_directive("customcalloutitem", CustomCalloutItemDirective)
     app.add_directive("customcarditem", CustomCardItemDirective)
     app.add_directive("customimagelink", CustomImageLinkDirective)
+    app.add_directive("customguidescard", CustomGuidesCardDirective)
