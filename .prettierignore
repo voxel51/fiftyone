@@ -4,3 +4,4 @@ app/packages/spotlight
 voxel51-website.js
 **/__generated__
 **/dist
+docs/source/_static/css/custom.css
