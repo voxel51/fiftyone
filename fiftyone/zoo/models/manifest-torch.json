@@ -6708,6 +6708,105 @@
             },
             "tags": ["segmentation", "torch", "segformer", "official"],
             "date_added": "2025-08-04 12:34:27"
+        },
+        {
+            "base_name": "llmdet-tiny-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Lightweight open‑vocabulary detector that finds any object you describe in images without class‑specific training.",
+            "source": "https://huggingface.co/iSEE-Laboratory/llmdet_tiny",
+            "author": "iSEE Laboratory",
+            "license": "Apache 2.0",
+            "size_bytes": 692015412,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "iSEE-Laboratory/llmdet_tiny"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "detection",
+                "torch",
+                "transformers",
+                "zero-shot",
+                "official"
+            ],
+            "date_added": "2025-08-11 15:00:08"
+        },
+        {
+            "base_name": "llmdet-base-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Balanced open‑vocabulary detector that recognizes objects from natural‑language prompts with strong accuracy",
+            "source": "https://huggingface.co/iSEE-Laboratory/llmdet_base",
+            "author": "iSEE Laboratory",
+            "license": "Apache 2.0",
+            "size_bytes": 936057092,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "iSEE-Laboratory/llmdet_base"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "detection",
+                "torch",
+                "transformers",
+                "zero-shot",
+                "official"
+            ],
+            "date_added": "2025-08-11 15:00:08"
+        },
+        {
+            "base_name": "llmdet-large-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "High‑accuracy open‑vocabulary detector that reliably finds objects you describe in complex scenes",
+            "source": "https://huggingface.co/iSEE-Laboratory/llmdet_large",
+            "author": "iSEE Laboratory",
+            "license": "Apache 2.0",
+            "size_bytes": 1376363740,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "iSEE-Laboratory/llmdet_large"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "detection",
+                "torch",
+                "transformers",
+                "zero-shot",
+                "official"
+            ],
+            "date_added": "2025-08-11 15:00:08"
         }
     ]
 }
