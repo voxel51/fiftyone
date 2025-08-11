@@ -631,7 +631,7 @@ class ExecutionContext(object):
         if target == constants.ViewTarget.DATASET_VIEW:
             return self.dataset.view()
 
-        return self.view
+        return self.dataset
 
     @property
     def has_custom_view(self):

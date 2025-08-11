@@ -30,7 +30,7 @@ class TestResolveOperatorTargetViewInputs(unittest.TestCase):
                 request_params=request_params,
             )
             inputs = types.Object()
-            res = foo.input_utils.resolve_target_view_inputs(
+            res = foo.input_utils.resolve_target_view_input(
                 ctx,
                 inputs,
                 action_description="Borks",
@@ -91,7 +91,7 @@ class TestResolveOperatorTargetViewInputs(unittest.TestCase):
                 request_params=request_params,
             )
             inputs = types.Object()
-            res = foo.input_utils.resolve_target_view_inputs(
+            res = foo.input_utils.resolve_target_view_input(
                 ctx,
                 inputs,
                 allow_selected_labels=True,
@@ -124,7 +124,7 @@ class TestResolveOperatorTargetViewInputs(unittest.TestCase):
             inputs = types.Object()
 
             #####
-            res = foo.input_utils.resolve_target_view_inputs(
+            res = foo.input_utils.resolve_target_view_input(
                 ctx,
                 inputs,
                 action_description="Borks",

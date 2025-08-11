@@ -9,7 +9,7 @@ from fiftyone.core import clips, patches, video
 from fiftyone.operators import constants, types
 
 
-def resolve_target_view_inputs(
+def resolve_target_view_input(
     ctx,
     inputs,
     param_name="view_target",
@@ -58,14 +58,14 @@ def resolve_target_view_inputs(
     so no input will be created and "DATASET" will be returned.
 
     The resolved target view can be accessed in the operator's
-    :meth:`execute() <fiftyone.operators.operator.Operator.execute>` method
-    via ``ctx.target_view()``.
+    :meth:`execute() <fiftyone.operators.Operator.execute>` method
+    via :meth:`ctx.target_view() <fiftyone.operators.ExecutionContext.target_view>`.
 
     The target view descriptions are generated based on the provided
     ``action_description`` and the various description parameters. If a
     description parameter is not ``None``, it will be used as the description
     for the corresponding target view choice. Otherwise, a default description
-    will be generated such as f"{action_description} the entire dataset".
+    will be generated such as ``f"{action_description} the entire dataset"``.
 
 
     Examples::
@@ -81,9 +81,9 @@ def resolve_target_view_inputs(
                     dynamic=True,
                 )
 
-            def resolve_inputs(self, ctx):
+            def resolve_input(self, ctx):
                 inputs = types.Object()
-                target_view = foo.resolve_target_view_inputs(
+                target_view = foo.resolve_target_view_input(
                     ctx,
                     inputs
                 )
@@ -98,48 +98,53 @@ def resolve_target_view_inputs(
                 print("Sample collection size", len(target_view))
 
     Args:
-        ctx: the operator's :class:`fiftyone.operators.executor.ExecutionContext`
+        ctx: the operator's :class:`fiftyone.operators.ExecutionContext`
         inputs: the operator inputs object, of type
             :class:`fiftyone.operators.types.Property`, to which to add the
             target view input
-        param_name (target_view): the name of the parameter to add to ``inputs``
-            for the target view input field
-        action_description (Process): a short description of the action being
-            performed, used to generate default descriptions for the various
-            target views
-        allow_selected_samples (True): whether to allow the "selected samples"
-            target view
-        allow_selected_labels (False): whether to allow the "selected labels"
-            target view
-        allow_dataset_view (False): whether to allow the "dataset view" target
-            view
-        default_target (None): the default target view to select if multiple
-            choices are available. If ``None``, one will be chosen based on the
-            available choices in the following order of preference:
-            dataset view, current view, selected samples, selected labels
-        dataset_label (Entire dataset): the label for the "entire dataset"
-            target view
-        dataset_description (None): the description for the "entire dataset" target
-            view. If ``None``, a default description is generated
-        base_view_label (Base view): the label for the "base view" target view
-        base_view_description (None): the description for the "base view" target
-            view. If ``None``, a default description is generated
-        current_view_label (Current view): the label for the "current view"
-            target view
-        current_view_description (None): the description for the "current view"
-            target view. If ``None``, a default description is generated
-        dataset_view_label (Dataset): the label for the "dataset view" target
-            view
-        dataset_view_description (None): the description for the "dataset view"
-            target view. If ``None``, a default description is generated
-        selected_samples_label (Selected samples): the label for the "selected
+        param_name (``target_view``): the name of the parameter to add to
+            ``inputs`` for the target view input field
+        action_description (``Process``): a short description of the action
+            being performed, used to generate default descriptions for the
+            various target views
+        allow_selected_samples (``True``): whether to allow the "selected
             samples" target view
-        selected_samples_description (None): the description for the "selected
-            samples" target view. If ``None``, a default description is generated
-        selected_labels_label (Selected labels): the label for the "selected
+        allow_selected_labels (``False``): whether to allow the "selected
             labels" target view
-        selected_labels_description (None): the description for the "selected
-            labels" target view. If ``None``, a default description is generated
+        allow_dataset_view (``False``): whether to allow the "dataset view" target
+            view
+        default_target (``None``): the default target view to select if
+            multipl choices are available. If ``None``, one will be chosen
+            based on the available choices in the following order of
+            preference: dataset view, current view, selected samples, selected
+            labels
+        dataset_label (``Entire dataset``): the label for the "entire dataset"
+            target view
+        dataset_description (``None``): the description for the "entire
+            dataset" target view. If ``None``, a default description is
+            generated
+        base_view_label (``Base view``): the label for the "base view" target
+            view
+        base_view_description (``None``): the description for the "base view"
+            target view. If ``None``, a default description is generated
+        current_view_label (``Current view``): the label for the "current
+            view" target view
+        current_view_description (``None``): the description for the "current
+            view" target view. If ``None``, a default description is generated
+        dataset_view_label (``Dataset``): the label for the "dataset view"
+            target view
+        dataset_view_description (``None``): the description for the "dataset
+            view" target view. If ``None``, a default description is generated
+        selected_samples_label (``Selected samples``): the label for the
+            "selected samples" target view
+        selected_samples_description (``None``): the description for the
+            "selected samples" target view. If ``None``, a default description
+            is generated
+        selected_labels_label (``Selected labels``): the label for the
+            "selected labels" target view
+        selected_labels_description (``None``): the description for the
+            "selected labels" target view. If ``None``, a default description
+            is generated
 
     Returns:
         the resolved target view, one of
