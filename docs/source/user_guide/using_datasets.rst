@@ -5143,7 +5143,7 @@ serializes the scene into an FO3D file.
     sphere1.default_material.color = "red"
 
     sphere2 = fo.SphereGeometry("sphere2", radius=2.0)
-    sphere2.position = [-1, 0, 0]
+    sphere2.position = [1, 0, 0]
     sphere2.default_material.color = "blue"
 
     scene.add(mesh, sphere1, sphere2)
