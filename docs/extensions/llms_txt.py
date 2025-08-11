@@ -6,6 +6,7 @@ import os
 from sphinx.application import Sphinx
 from sphinx.util import logging
 
+
 class LLMSTxtGenerator:
     def __init__(self, app: Sphinx):
         self.app = app

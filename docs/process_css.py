@@ -12,7 +12,10 @@ def process_css():
     output_dir = current_dir / "source/_static/css"
 
     try:
-        sass.compile(dirname=(str(source_dir), str(output_dir)), output_style="compressed")
+        sass.compile(
+            dirname=(str(source_dir), str(output_dir)),
+            output_style="compressed",
+        )
 
         main_css = output_dir / "main.css"
         custom_css = output_dir / "custom.css"

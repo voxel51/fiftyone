@@ -16,19 +16,19 @@ function initSidebarToggle() {
   };
 
   const convertDropdownItemsToNavItems = (dropdownItems) => {
-    const tempDiv = document.createElement('div');
+    const tempDiv = document.createElement("div");
     tempDiv.innerHTML = dropdownItems;
 
-    const listItems = tempDiv.querySelectorAll('li');
-    listItems.forEach(li => {
-      const navItem = document.createElement('div');
-      navItem.className = 'nav-item';
+    const listItems = tempDiv.querySelectorAll("li");
+    listItems.forEach((li) => {
+      const navItem = document.createElement("div");
+      navItem.className = "nav-item";
       navItem.innerHTML = li.innerHTML;
       li.parentNode.replaceChild(navItem, li);
     });
 
-    const ulElements = tempDiv.querySelectorAll('ul');
-    ulElements.forEach(ul => {
+    const ulElements = tempDiv.querySelectorAll("ul");
+    ulElements.forEach((ul) => {
       while (ul.firstChild) {
         ul.parentNode.insertBefore(ul.firstChild, ul);
       }
@@ -48,18 +48,26 @@ function initSidebarToggle() {
       </svg>
     `;
 
-    const dropdownItems = primaryDialog.querySelectorAll('div.nav-item.dropdown');
+    const dropdownItems = primaryDialog.querySelectorAll(
+      "div.nav-item.dropdown"
+    );
 
-    dropdownItems.forEach(navItem => {
-      const dropdownToggle = navItem.querySelector('a.nav-link.dropdown-toggle');
+    dropdownItems.forEach((navItem) => {
+      const dropdownToggle = navItem.querySelector(
+        "a.nav-link.dropdown-toggle"
+      );
       if (dropdownToggle) {
-        const existingIcon = dropdownToggle.parentNode.querySelector('.dropdown-arrow');
+        const existingIcon =
+          dropdownToggle.parentNode.querySelector(".dropdown-arrow");
         if (!existingIcon) {
-          const iconContainer = document.createElement('span');
-          iconContainer.className = 'arrow dropdown-arrow';
+          const iconContainer = document.createElement("span");
+          iconContainer.className = "arrow dropdown-arrow";
           iconContainer.innerHTML = svgContent;
 
-          dropdownToggle.parentNode.insertBefore(iconContainer, dropdownToggle.nextSibling);
+          dropdownToggle.parentNode.insertBefore(
+            iconContainer,
+            dropdownToggle.nextSibling
+          );
         }
       }
     });
@@ -90,9 +98,9 @@ function initSidebarToggle() {
 
     primaryDialog.innerHTML = dropdownHTML;
 
-    const backBtn = primaryDialog.querySelector('.dropdown-back-btn');
+    const backBtn = primaryDialog.querySelector(".dropdown-back-btn");
     if (backBtn) {
-      backBtn.addEventListener('click', async () => {
+      backBtn.addEventListener("click", async () => {
         if (originalSidebarContent) {
           primaryDialog.innerHTML = originalSidebarContent;
           await addDropdownIcons();
@@ -106,23 +114,23 @@ function initSidebarToggle() {
     const primaryDialog = document.getElementById("pst-primary-sidebar-modal");
     if (!primaryDialog) return;
 
-    const dropdowns = primaryDialog.querySelectorAll('.nav-item.dropdown');
+    const dropdowns = primaryDialog.querySelectorAll(".nav-item.dropdown");
 
-    dropdowns.forEach(dropdown => {
-      const toggle = dropdown.querySelector('.dropdown-toggle');
-      const menu = dropdown.querySelector('.dropdown-menu');
+    dropdowns.forEach((dropdown) => {
+      const toggle = dropdown.querySelector(".dropdown-toggle");
+      const menu = dropdown.querySelector(".dropdown-menu");
 
       if (!toggle || !menu) return;
 
       const newDropdown = dropdown.cloneNode(true);
       dropdown.parentNode.replaceChild(newDropdown, dropdown);
 
-      newDropdown.addEventListener('click', (event) => {
+      newDropdown.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
 
-        const dropdownToggle = newDropdown.querySelector('.dropdown-toggle');
-        const dropdownMenu = newDropdown.querySelector('.dropdown-menu');
+        const dropdownToggle = newDropdown.querySelector(".dropdown-toggle");
+        const dropdownMenu = newDropdown.querySelector(".dropdown-menu");
 
         if (dropdownToggle && dropdownMenu) {
           const dropdownItems = dropdownMenu.innerHTML;
@@ -142,10 +150,10 @@ function initSidebarToggle() {
     event.stopPropagation();
 
     if (toggleIcon) {
-      toggleIcon.classList.toggle('active');
+      toggleIcon.classList.toggle("active");
 
-      const isExpanded = primaryToggle.getAttribute('aria-expanded') === 'true';
-      primaryToggle.setAttribute('aria-expanded', !isExpanded);
+      const isExpanded = primaryToggle.getAttribute("aria-expanded") === "true";
+      primaryToggle.setAttribute("aria-expanded", !isExpanded);
     }
 
     if (primaryDialog) {
@@ -170,18 +178,20 @@ function initSidebarToggle() {
 
 /* Sliding Navbar */
 function initSlidingNavBar() {
-  const navbarNav = document.querySelector('.navbar-header-items__center .navbar-nav') || document.querySelector('.navbar-nav');
+  const navbarNav =
+    document.querySelector(".navbar-header-items__center .navbar-nav") ||
+    document.querySelector(".navbar-nav");
   if (!navbarNav || window.innerWidth < 960) return;
 
-  const navItems = navbarNav.querySelectorAll('.nav-item');
+  const navItems = navbarNav.querySelectorAll(".nav-item");
   if (!navItems.length) return;
 
-  let slidingBar = navbarNav.querySelector('.sliding-bar-indicator');
+  let slidingBar = navbarNav.querySelector(".sliding-bar-indicator");
   let barTimeout = null;
 
   if (!slidingBar) {
-    slidingBar = document.createElement('div');
-    slidingBar.className = 'sliding-bar-indicator';
+    slidingBar = document.createElement("div");
+    slidingBar.className = "sliding-bar-indicator";
     slidingBar.style.cssText = `position: absolute; bottom: 0; left: 0; width: 0; height: 1px; background-color: #000; transition: all 0.3s ease; opacity: 0; z-index: 1; pointer-events: none;`;
     navbarNav.appendChild(slidingBar);
   }
@@ -195,73 +205,77 @@ function initSlidingNavBar() {
     const left = targetItem.offsetLeft;
     const width = targetItem.offsetWidth;
 
-    if (slidingBar.style.opacity === '0' || slidingBar.style.opacity === '') {
-      slidingBar.style.transition = 'none';
+    if (slidingBar.style.opacity === "0" || slidingBar.style.opacity === "") {
+      slidingBar.style.transition = "none";
       slidingBar.style.left = `${left}px`;
       slidingBar.style.width = `${width}px`;
       requestAnimationFrame(() => {
-        slidingBar.style.transition = 'all 0.3s ease';
-        slidingBar.style.opacity = '1';
+        slidingBar.style.transition = "all 0.3s ease";
+        slidingBar.style.opacity = "1";
       });
     } else {
       slidingBar.style.left = `${left}px`;
       slidingBar.style.width = `${width}px`;
-      slidingBar.style.opacity = '1';
+      slidingBar.style.opacity = "1";
     }
   };
 
   const scheduleHideBar = () => {
     if (barTimeout) clearTimeout(barTimeout);
     barTimeout = setTimeout(() => {
-      slidingBar.style.opacity = '0';
+      slidingBar.style.opacity = "0";
       barTimeout = null;
     }, 500);
   };
 
-  navItems.forEach(navItem => navItem.addEventListener('mouseenter', () => updateSlidingBar(navItem)));
-  navbarNav.addEventListener('mouseleave', scheduleHideBar);
-  window.addEventListener('resize', () => { if (window.innerWidth < 960) slidingBar.style.opacity = '0'; });
+  navItems.forEach((navItem) =>
+    navItem.addEventListener("mouseenter", () => updateSlidingBar(navItem))
+  );
+  navbarNav.addEventListener("mouseleave", scheduleHideBar);
+  window.addEventListener("resize", () => {
+    if (window.innerWidth < 960) slidingBar.style.opacity = "0";
+  });
 }
 
 /* Dropdown Delay System */
 function initDropdownDelay() {
   if (window.innerWidth < 960) return;
 
-  const dropdowns = document.querySelectorAll('.dropdown');
+  const dropdowns = document.querySelectorAll(".dropdown");
   let activeDropdown = null;
   let allTimeouts = new Map();
 
   const toggleDropdownItems = (dropdownMenu, show) => {
-    const items = dropdownMenu.querySelectorAll('.dropdown-item');
+    const items = dropdownMenu.querySelectorAll(".dropdown-item");
     items.forEach((item, index) => {
       if (show) {
         setTimeout(() => {
-          item.style.opacity = '1';
-          item.style.transform = 'translateY(0)';
-          item.style.animation = 'fadeInUp 0.3s ease-out forwards';
+          item.style.opacity = "1";
+          item.style.transform = "translateY(0)";
+          item.style.animation = "fadeInUp 0.3s ease-out forwards";
         }, index * 30);
       } else {
-        item.style.opacity = '0';
-        item.style.transform = 'translateY(10px)';
-        item.style.animation = 'none';
+        item.style.opacity = "0";
+        item.style.transform = "translateY(10px)";
+        item.style.animation = "none";
       }
     });
   };
 
   const closeAllDropdowns = (except = null) => {
-    dropdowns.forEach(dropdown => {
+    dropdowns.forEach((dropdown) => {
       if (dropdown !== except) {
         const timeout = allTimeouts.get(dropdown);
         if (timeout) {
           clearTimeout(timeout);
           allTimeouts.delete(dropdown);
         }
-        const dropdownMenu = dropdown.querySelector('.dropdown-menu');
+        const dropdownMenu = dropdown.querySelector(".dropdown-menu");
         if (dropdownMenu) {
           toggleDropdownItems(dropdownMenu, false);
-          dropdownMenu.style.opacity = '0';
-          dropdownMenu.style.visibility = 'hidden';
-          dropdownMenu.style.transform = 'translateY(-10px) scale(0.95)';
+          dropdownMenu.style.opacity = "0";
+          dropdownMenu.style.visibility = "hidden";
+          dropdownMenu.style.transform = "translateY(-10px) scale(0.95)";
         }
       }
     });
@@ -279,23 +293,23 @@ function initDropdownDelay() {
     }
 
     activeDropdown = dropdown;
-    const dropdownMenu = dropdown.querySelector('.dropdown-menu');
+    const dropdownMenu = dropdown.querySelector(".dropdown-menu");
     if (dropdownMenu) {
-      dropdownMenu.style.opacity = '1';
-      dropdownMenu.style.visibility = 'visible';
-      dropdownMenu.style.transform = 'translateY(0) scale(1)';
-      dropdownMenu.style.display = 'block';
+      dropdownMenu.style.opacity = "1";
+      dropdownMenu.style.visibility = "visible";
+      dropdownMenu.style.transform = "translateY(0) scale(1)";
+      dropdownMenu.style.display = "block";
       toggleDropdownItems(dropdownMenu, true);
     }
   };
 
   const hideDropdown = (dropdown) => {
-    const dropdownMenu = dropdown.querySelector('.dropdown-menu');
+    const dropdownMenu = dropdown.querySelector(".dropdown-menu");
     if (dropdownMenu) {
       toggleDropdownItems(dropdownMenu, false);
-      dropdownMenu.style.opacity = '0';
-      dropdownMenu.style.visibility = 'hidden';
-      dropdownMenu.style.transform = 'translateY(-10px) scale(0.95)';
+      dropdownMenu.style.opacity = "0";
+      dropdownMenu.style.visibility = "hidden";
+      dropdownMenu.style.transform = "translateY(-10px) scale(0.95)";
     }
     if (activeDropdown === dropdown) activeDropdown = null;
   };
@@ -312,46 +326,48 @@ function initDropdownDelay() {
     allTimeouts.set(dropdown, newTimeout);
   };
 
-  dropdowns.forEach(dropdown => {
-    dropdown.addEventListener('mouseenter', () => showDropdown(dropdown));
-    dropdown.addEventListener('mouseleave', () => scheduleHide(dropdown));
+  dropdowns.forEach((dropdown) => {
+    dropdown.addEventListener("mouseenter", () => showDropdown(dropdown));
+    dropdown.addEventListener("mouseleave", () => scheduleHide(dropdown));
 
-    const dropdownMenu = dropdown.querySelector('.dropdown-menu');
+    const dropdownMenu = dropdown.querySelector(".dropdown-menu");
     if (dropdownMenu) {
-      dropdownMenu.addEventListener('mouseenter', () => showDropdown(dropdown));
-      dropdownMenu.addEventListener('mouseleave', () => scheduleHide(dropdown));
+      dropdownMenu.addEventListener("mouseenter", () => showDropdown(dropdown));
+      dropdownMenu.addEventListener("mouseleave", () => scheduleHide(dropdown));
     }
   });
 
-  document.querySelectorAll('.navbar-header-items__center .nav-item').forEach(navItem => {
-    if (!navItem.classList.contains('dropdown')) {
-      navItem.addEventListener('mouseenter', () => {
-        if (activeDropdown) {
-          closeAllDropdowns();
-          activeDropdown = null;
-        }
-      });
-    }
-  });
+  document
+    .querySelectorAll(".navbar-header-items__center .nav-item")
+    .forEach((navItem) => {
+      if (!navItem.classList.contains("dropdown")) {
+        navItem.addEventListener("mouseenter", () => {
+          if (activeDropdown) {
+            closeAllDropdowns();
+            activeDropdown = null;
+          }
+        });
+      }
+    });
 
-  window.addEventListener('resize', () => {
+  window.addEventListener("resize", () => {
     if (window.innerWidth < 960) {
       closeAllDropdowns();
       activeDropdown = null;
 
-      dropdowns.forEach(dropdown => {
-        const dropdownMenu = dropdown.querySelector('.dropdown-menu');
+      dropdowns.forEach((dropdown) => {
+        const dropdownMenu = dropdown.querySelector(".dropdown-menu");
         if (dropdownMenu) {
-          dropdownMenu.style.opacity = '';
-          dropdownMenu.style.visibility = '';
-          dropdownMenu.style.transform = '';
-          dropdownMenu.style.display = '';
+          dropdownMenu.style.opacity = "";
+          dropdownMenu.style.visibility = "";
+          dropdownMenu.style.transform = "";
+          dropdownMenu.style.display = "";
 
-          const dropdownItems = dropdownMenu.querySelectorAll('.dropdown-item');
-          dropdownItems.forEach(item => {
-            item.style.opacity = '';
-            item.style.transform = '';
-            item.style.animation = '';
+          const dropdownItems = dropdownMenu.querySelectorAll(".dropdown-item");
+          dropdownItems.forEach((item) => {
+            item.style.opacity = "";
+            item.style.transform = "";
+            item.style.animation = "";
           });
         }
       });
@@ -363,7 +379,7 @@ function initDropdownDelay() {
 function markLineNumbers() {
   const preElements = document.querySelectorAll("pre");
 
-  preElements.forEach(pre => {
+  preElements.forEach((pre) => {
     const lineNumbers = pre.querySelectorAll("span.linenos");
 
     if (lineNumbers.length > 0) {
@@ -377,29 +393,31 @@ function markLineNumbers() {
 function initTabsSlidingIndicator() {
   const tabLists = document.querySelectorAll('[role="tablist"]');
 
-  tabLists.forEach(tabList => {
-    const tabs = tabList.querySelectorAll('.sphinx-tabs-tab');
+  tabLists.forEach((tabList) => {
+    const tabs = tabList.querySelectorAll(".sphinx-tabs-tab");
     if (!tabs.length) return;
 
-    let slidingIndicator = tabList.querySelector('.tabs-sliding-indicator');
+    let slidingIndicator = tabList.querySelector(".tabs-sliding-indicator");
 
     if (!slidingIndicator) {
-      slidingIndicator = document.createElement('div');
-      slidingIndicator.className = 'tabs-sliding-indicator';
+      slidingIndicator = document.createElement("div");
+      slidingIndicator.className = "tabs-sliding-indicator";
       tabList.appendChild(slidingIndicator);
     }
 
     const updateIndicator = () => {
-      const activeTab = tabList.querySelector('.sphinx-tabs-tab[aria-selected="true"]');
+      const activeTab = tabList.querySelector(
+        '.sphinx-tabs-tab[aria-selected="true"]'
+      );
       if (activeTab) {
         const left = activeTab.offsetLeft;
         const width = activeTab.offsetWidth;
 
         slidingIndicator.style.left = `${left}px`;
         slidingIndicator.style.width = `${width}px`;
-        slidingIndicator.style.opacity = '1';
+        slidingIndicator.style.opacity = "1";
       } else {
-        slidingIndicator.style.opacity = '0';
+        slidingIndicator.style.opacity = "0";
       }
     };
 
@@ -407,59 +425,66 @@ function initTabsSlidingIndicator() {
 
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
-        if (mutation.type === 'attributes' && mutation.attributeName === 'aria-selected') {
+        if (
+          mutation.type === "attributes" &&
+          mutation.attributeName === "aria-selected"
+        ) {
           updateIndicator();
         }
       });
     });
 
-    tabs.forEach(tab => {
+    tabs.forEach((tab) => {
       observer.observe(tab, { attributes: true });
     });
 
-    tabs.forEach(tab => {
-      tab.addEventListener('click', (event) => {
-        const isActive = tab.getAttribute('aria-selected') === 'true';
-        if (isActive) {
-          event.preventDefault();
-          event.stopImmediatePropagation();
-          return false;
-        }
-        setTimeout(() => {
-          updateIndicator();
-        }, 10);
-      }, true);
+    tabs.forEach((tab) => {
+      tab.addEventListener(
+        "click",
+        (event) => {
+          const isActive = tab.getAttribute("aria-selected") === "true";
+          if (isActive) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            return false;
+          }
+          setTimeout(() => {
+            updateIndicator();
+          }, 10);
+        },
+        true
+      );
     });
 
-    window.addEventListener('resize', updateIndicator);
+    window.addEventListener("resize", updateIndicator);
   });
 }
 
 /* Mobile Navigation Dropdown */
 function initMobileNavDropdown() {
-  const dropdownToggle = document.getElementById('mobile-nav-dropdown-toggle');
-  const dropdown = document.getElementById('mobile-nav-dropdown');
+  const dropdownToggle = document.getElementById("mobile-nav-dropdown-toggle");
+  const dropdown = document.getElementById("mobile-nav-dropdown");
 
   if (!dropdownToggle || !dropdown) {
     return;
   }
 
   function openDropdown() {
-    dropdown.classList.add('open');
-    dropdownToggle.setAttribute('aria-expanded', 'true');
-    dropdown.setAttribute('aria-hidden', 'false');
+    dropdown.classList.add("open");
+    dropdownToggle.setAttribute("aria-expanded", "true");
+    dropdown.setAttribute("aria-hidden", "false");
     document.body.style.overflow = "hidden";
   }
 
   function closeDropdown() {
-    dropdown.classList.remove('open');
-    dropdownToggle.setAttribute('aria-expanded', 'false');
-    dropdown.setAttribute('aria-hidden', 'true');
+    dropdown.classList.remove("open");
+    dropdownToggle.setAttribute("aria-expanded", "false");
+    dropdown.setAttribute("aria-hidden", "true");
     document.body.style.overflow = "";
   }
 
   function toggleDropdown() {
-    const isOpen = dropdown.classList.contains('open');
+    const isOpen = dropdown.classList.contains("open");
 
     if (isOpen) {
       closeDropdown();
@@ -468,19 +493,19 @@ function initMobileNavDropdown() {
     }
   }
 
-  dropdownToggle.addEventListener('click', function (e) {
+  dropdownToggle.addEventListener("click", function (e) {
     e.preventDefault();
     toggleDropdown();
   });
 
-  document.addEventListener('click', function (e) {
+  document.addEventListener("click", function (e) {
     if (!dropdownToggle.contains(e.target) && !dropdown.contains(e.target)) {
       closeDropdown();
     }
   });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener("DOMContentLoaded", () => {
   initSidebarToggle();
   initSlidingNavBar();
   initDropdownDelay();
