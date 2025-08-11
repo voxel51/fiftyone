@@ -1617,11 +1617,15 @@ class SemanticSegmenterOutputProcessor(OutputProcessor):
         classes (None): the list of class labels for the model. This parameter
             is not used
         no_background_cls (False): if true, class indices are incremented by 1 in the mask
+        has_softmax_out (True): if false, softmax is applied to output predictions.
     """
 
-    def __init__(self, classes=None, no_background_cls=False):
+    def __init__(
+        self, classes=None, no_background_cls=False, has_softmax_out=True
+    ):
         self.classes = classes
         self.no_background_cls = no_background_cls
+        self.has_softmax_out = has_softmax_out
 
     def __call__(self, output, *args, **kwargs):
         """Parses the model output.
@@ -1638,11 +1642,11 @@ class SemanticSegmenterOutputProcessor(OutputProcessor):
         Returns:
             a list of :class:`fiftyone.core.labels.Segmentation` instances
         """
-        out = output["out"].detach().cpu()
-        if not (torch.all(out >= 0.0) and torch.all(out <= 1.0)):
-            probs = out.softmax(dim=1).numpy()
-        else:
-            probs = out.numpy()
+        out = output["out"]
+        if not self.has_softmax_out:
+            out = out.softmax(dim=1)
+        probs = out.detach().cpu().numpy()
+
         masks = probs.argmax(axis=1)
         if self.no_background_cls:
             # Increment class index by 1 since 0 is reserved for background in the app.
