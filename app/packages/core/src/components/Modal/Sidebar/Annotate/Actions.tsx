@@ -26,6 +26,7 @@ const Container = styled.div`
   justify-content: center;
   padding: 0.25rem;
   width: 2.5rem;
+  color: ${({ theme }) => theme.text.secondary};
 
   &:hover {
     background: ${({ theme }) => theme.background.level1};
@@ -41,6 +42,20 @@ const Round = styled(Container)`
 
   &:hover {
     color: ${({ theme }) => theme.text.primary};
+  }
+`;
+
+export const RoundButton = styled(Round)`
+  width: auto;
+  height: auto;
+  padding: 0.25rem 1rem;
+  flex-direction: row;
+  column-gap: 1rem;
+`;
+
+export const RoundButtonWhite = styled(RoundButton)`
+  &:hover path {
+    fill: ${({ theme }) => theme.text.primary};
   }
 `;
 
@@ -194,11 +209,7 @@ const Redo = () => {
 };
 
 const Schema = () => {
-  return (
-    <Round style={{ width: "auto", height: "auto", padding: "0.25rem 1rem" }}>
-      Schema
-    </Round>
-  );
+  return <RoundButton>Schema</RoundButton>;
 };
 
 const Actions = () => {

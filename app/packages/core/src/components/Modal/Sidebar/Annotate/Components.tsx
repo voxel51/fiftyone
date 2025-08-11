@@ -16,7 +16,7 @@ const Container = styled.div`
   width: 2.5rem;
 
   &:hover {
-    background: ${({ theme }) => theme.background.level1};
+    background: ${({ theme }) => theme.action.active};
   }
 
   &:hover path {

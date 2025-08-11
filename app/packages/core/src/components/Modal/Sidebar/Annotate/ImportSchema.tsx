@@ -1,8 +1,10 @@
 import { MuiButton, MuiIconFont } from "@fiftyone/components";
 import { InfoOutlined } from "@mui/icons-material";
 import { Alert, Typography } from "@mui/material";
+import { useSetAtom } from "jotai";
 import React from "react";
 import styled from "styled-components";
+import { showSchemaManager } from "./state";
 
 const Container = styled.div`
   flex: 1;
@@ -15,7 +17,8 @@ const Container = styled.div`
 `;
 
 const ImportSchema = () => {
-  const canManage = false;
+  const canManage = true;
+  const showSchemaModal = useSetAtom(showSchemaManager);
   return (
     <Container>
       <MuiIconFont
@@ -37,7 +40,7 @@ const ImportSchema = () => {
         variant="contained"
         color="primary"
         disabled={!canManage}
-        onClick={() => alert("import schema")}
+        onClick={() => showSchemaModal(true)}
       >
         Import schema
       </MuiButton>
