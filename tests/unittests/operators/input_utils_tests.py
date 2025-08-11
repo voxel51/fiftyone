@@ -1,9 +1,5 @@
 import unittest
 
-import bson
-import pytest
-from unittest.mock import patch
-
 import fiftyone as fo
 import fiftyone.operators as foo
 from fiftyone.operators import types

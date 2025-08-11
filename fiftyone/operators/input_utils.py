@@ -114,7 +114,7 @@ def resolve_target_view_input(
         allow_dataset_view (``False``): whether to allow the "dataset view" target
             view
         default_target (``None``): the default target view to select if
-            multipl choices are available. If ``None``, one will be chosen
+            multiple choices are available. If ``None``, one will be chosen
             based on the available choices in the following order of
             preference: dataset view, current view, selected samples, selected
             labels
