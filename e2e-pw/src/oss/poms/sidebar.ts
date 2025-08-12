@@ -253,11 +253,11 @@ class SidebarAsserter {
     await expect(this.sb.field(fieldName)).toBeHidden();
   }
 
-  async assertFilterIsVisibile(fieldName: string, filterType: "categorical") {
+  async assertFilterIsVisible(fieldName: string, filterType: "categorical") {
     await expect(this.sb.filter(fieldName, filterType)).toBeVisible();
   }
 
-  async assertSidebarGroupIsVisibile(groupName: string) {
+  async assertSidebarGroupIsVisible(groupName: string) {
     await expect(this.sb.groupField(groupName)).toBeVisible();
   }
 
