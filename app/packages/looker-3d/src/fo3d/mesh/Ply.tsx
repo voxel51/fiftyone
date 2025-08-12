@@ -37,10 +37,12 @@ const PlyWithPointsMaterial = ({
   name,
   geometry,
   defaultMaterial,
+  quaternion,
 }: {
   name: string;
   geometry: BufferGeometry;
   defaultMaterial: FoMeshMaterial;
+  quaternion: Quaternion;
 }) => {
   const { pointCloudSettings, setHoverMetadata } = useFo3dContext();
   const [currentHoveredPoint, setCurrentHoveredPoint] = useRecoilState(
@@ -61,7 +63,8 @@ const PlyWithPointsMaterial = ({
     name,
     geometry,
     overrideMaterial,
-    pointsContainerRef
+    pointsContainerRef,
+    quaternion
   );
 
   const mesh = useMemo(() => new Points(geometry), [geometry]);
@@ -270,6 +273,7 @@ export const Ply = ({
           name={name}
           geometry={geometry}
           defaultMaterial={defaultMaterial}
+          quaternion={quaternion}
         />
       );
     }
