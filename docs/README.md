@@ -107,8 +107,8 @@ components of our style when you commit changes.
 
 ### Themes
 
-This extends the theme `pydata_sphinx_theme`. However, you should prefer
-to make changes in the following locations instead of the theme itself whenever
+This extends the theme `pydata_sphinx_theme`. However, you should prefer to
+make changes in the following locations instead of the theme itself whenever
 possible:
 
 -   `docs/source/_static` contains `custom.css` and `custom.js` files, where
@@ -129,4 +129,5 @@ To compile Sass styles into CSS for the documentation:
 make css
 ```
 
-This command compiles the Sass files located in `docs/source/assets/styles/` and outputs the compiled CSS to `docs/source/_static/custom.css`.
+This command compiles the Sass files located in `docs/source/assets/styles/`
+and outputs the compiled CSS to `docs/source/_static/custom.css`.
