@@ -64,7 +64,13 @@ export const Pcd = ({
     isColormapModalOpen,
     setIsColormapModalOpen,
     handleColormapSave,
-  } = usePcdMaterial(name, points.geometry, defaultMaterial, pcdContainerRef);
+  } = usePcdMaterial(
+    name,
+    points.geometry,
+    defaultMaterial,
+    pcdContainerRef,
+    quaternion
+  );
 
   const pointerMoveHandler = useMemo(
     () => (e: ThreeEvent<MouseEvent>) => {

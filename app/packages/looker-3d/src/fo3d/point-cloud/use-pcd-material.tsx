@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import type { BufferGeometry } from "three";
+import type { BufferGeometry, Quaternion } from "three";
 import {
   SHADE_BY_CUSTOM,
   SHADE_BY_HEIGHT,
@@ -58,7 +58,8 @@ export const usePcdMaterial = (
   name: string,
   geometry: BufferGeometry,
   defaultMaterial: PcdAsset["defaultMaterial"],
-  pcdContainerRef: React.RefObject<any>
+  pcdContainerRef: React.RefObject<any>,
+  quaternion?: Quaternion
 ) => {
   const { upVector, pluginSettings } = useFo3dContext();
 
@@ -138,23 +139,27 @@ export const usePcdMaterial = (
   const pointsMaterial = useMemo(() => {
     // to trigger rerender
     const key = `${name}-${opacity}-${pointSize}-${isPointSizeAttenuated}-${shadeBy}-${customColor}-${minMaxCoordinates}-${minIntensity}-${maxIntensity}-${upVector}-${
-      colorMap ? JSON.stringify(colorMap) : ""
-    }-${activeThreshold ? JSON.stringify(activeThreshold) : ""}`;
+      quaternion
+        ? JSON.stringify([
+            quaternion.x,
+            quaternion.y,
+            quaternion.z,
+            quaternion.w,
+          ])
+        : ""
+    }-${colorMap ? JSON.stringify(colorMap) : ""}-${
+      activeThreshold ? JSON.stringify(activeThreshold) : ""
+    }`;
 
     switch (shadeBy) {
       case SHADE_BY_HEIGHT:
-        /**
-         * FIX ME: while `pointsMaterial` respects `upVector` in shade-by-height, it disregards rotation / translation / scale
-         * applied to the pcd. This is because the shader is applied to the points, not the pcd container.
-         *
-         * The behavior is undefined if the pcd is rotated / translated / scaled.
-         */
         return (
           <ShadeByHeight
             colorMap={colorMap}
             min={minMaxCoordinates?.at(0) ?? 0}
             max={minMaxCoordinates?.at(1) ?? 100}
             upVector={upVector}
+            quaternion={quaternion}
             key={key}
             pointSize={pointSize}
             opacity={opacity}
@@ -251,6 +256,7 @@ export const usePcdMaterial = (
     maxIntensity,
     geometry,
     upVector,
+    quaternion,
     opacity,
     name,
     colorMap,
