@@ -1642,10 +1642,10 @@ class SemanticSegmenterOutputProcessor(OutputProcessor):
         Returns:
             a list of :class:`fiftyone.core.labels.Segmentation` instances
         """
-        out = output["out"]
+        out = output["out"].detach().cpu()
         if not self.has_softmax_out:
             out = out.softmax(dim=1)
-        probs = out.detach().cpu().numpy()
+        probs = out.numpy()
 
         masks = probs.argmax(axis=1)
         if self.no_background_cls:
