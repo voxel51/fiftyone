@@ -1,7 +1,5 @@
 import { getSampleSrc } from "@fiftyone/state";
-import { ThreeEvent } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRecoilState } from "recoil";
 import {
   type BufferGeometry,
   Mesh,
@@ -18,9 +16,9 @@ import type {
 } from "../../hooks";
 import { useFoLoader } from "../../hooks/use-fo-loaders";
 import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";
-import { currentHoveredPointAtom } from "../../state";
-import { useFo3dContext } from "../context";
+import { usePointCloudHover } from "../../hooks/use-point-cloud-hover";
 import { HoveredPointMarker } from "../components/HoveredPointMarker";
+import { useFo3dContext } from "../context";
 import { usePcdMaterial } from "../point-cloud/use-pcd-material";
 import { getBasePathForTextures, getResolvedUrlForFo3dAsset } from "../utils";
 
@@ -48,11 +46,6 @@ const PlyWithPointsMaterial = ({
   position: Vector3;
   scale: Vector3;
 }) => {
-  const { pointCloudSettings, setHoverMetadata } = useFo3dContext();
-  const [currentHoveredPoint, setCurrentHoveredPoint] = useRecoilState(
-    currentHoveredPointAtom
-  );
-
   const overrideMaterial = {
     shadingMode: "height",
     customColor: defaultMaterial["color"] ?? "#ffffff",
@@ -73,80 +66,23 @@ const PlyWithPointsMaterial = ({
 
   const mesh = useMemo(() => new Points(geometry), [geometry]);
 
-  const pointerMoveHandler = useMemo(
-    () => (e: ThreeEvent<MouseEvent>) => {
-      const idx = e.index;
-      if (idx === undefined) return;
+  const { hoverProps, currentHoveredPoint } = usePointCloudHover({
+    geometry,
+    assetName: name,
+    shadingMode,
+    position,
+    quaternion,
+    scale,
+  });
 
-      const md: Record<string, any> = { index: idx };
-
-      if (geometry.hasAttribute("rgb")) {
-        const colorAttr = geometry.getAttribute("rgb");
-
-        md.rgb = [
-          colorAttr.getX(idx),
-          colorAttr.getY(idx),
-          colorAttr.getZ(idx),
-        ];
-      }
-
-      if (geometry.hasAttribute("position")) {
-        const posAttr = geometry.getAttribute("position");
-        const localPosition = new Vector3(
-          posAttr.getX(idx),
-          posAttr.getY(idx),
-          posAttr.getZ(idx)
-        );
-        md.coord = [localPosition.x, localPosition.y, localPosition.z];
-
-        // transform the local position to world position using the ply's transformation
-        const worldPosition = localPosition.clone();
-        worldPosition.applyQuaternion(quaternion);
-        worldPosition.multiply(scale);
-        worldPosition.add(position);
-
-        setCurrentHoveredPoint(worldPosition);
-      }
-
-      // dynamically handle all other attributes
-      Object.keys(geometry.attributes).forEach((attr) => {
-        if (attr === "rgb" || attr === "position") return;
-        md[attr] = geometry.attributes[attr].getX(idx);
-      });
-
-      setHoverMetadata({
-        assetName: name,
-        renderModeDescriptor: shadingMode,
-        attributes: md,
-      });
-    },
-    [geometry, setHoverMetadata, shadingMode, name, quaternion, position, scale]
-  );
-
-  const hoverProps = useMemo(() => {
-    if (!pointCloudSettings.enableTooltip) return {};
-
-    return {
-      // fires on *every* intersected point
-      onPointerMove: pointerMoveHandler,
-      onPointerOut: () => {
-        setCurrentHoveredPoint(null);
-      },
-    };
-  }, [pointCloudSettings.enableTooltip, pointerMoveHandler]);
-
-  useEffect(() => {
-    return () => {
-      setCurrentHoveredPoint(null);
-    };
-  }, [pointerMoveHandler]);
+  const { setHoverMetadata } = useFo3dContext();
 
   useEffect(() => {
     setHoverMetadata((prev) => ({
       ...prev,
       renderModeDescriptor: shadingMode,
     }));
-  }, [shadingMode, setHoverMetadata]);
+  }, [shadingMode]);
 
   if (!geometry || !pointsMaterial) {
     return null;
