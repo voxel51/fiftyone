@@ -1,5 +1,6 @@
 import { useTrackEvent } from "@fiftyone/analytics";
 import { Dialog } from "@fiftyone/components";
+import { useTriggerPanelEvent } from "@fiftyone/operators";
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import { editingFieldAtom, useMutation } from "@fiftyone/state";
 import { EditNote, ExpandMore } from "@mui/icons-material";
@@ -20,7 +21,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useSetRecoilState } from "recoil";
 import Error from "../../Error";
 import EvaluationNotes from "../../EvaluationNotes";
-import { useTriggerEvent } from "../../utils";
 import ClassPerformance from "./ClassPerformance";
 import ConfusionMatrices from "./ConfusionMatrices";
 import MetricPerformance from "./MetricPerformance";
@@ -81,7 +81,7 @@ export default function Overview(props) {
     }
   }, [compareEvaluation, compareKey]);
 
-  const triggerEvent = useTriggerEvent();
+  const triggerEvent = useTriggerPanelEvent();
   const setEditingField = useSetRecoilState(editingFieldAtom);
 
   const trackEvent = useTrackEvent();
