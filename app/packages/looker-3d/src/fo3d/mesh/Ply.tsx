@@ -38,7 +38,7 @@ const PlyWithPointsMaterial = ({
   quaternion,
   position,
   scale,
-  vextexColorsAvailable,
+  vertexColorsAvailable,
 }: {
   name: string;
   geometry: BufferGeometry;
@@ -46,7 +46,7 @@ const PlyWithPointsMaterial = ({
   quaternion: Quaternion;
   position: Vector3;
   scale: Vector3;
-  vextexColorsAvailable: boolean;
+  vertexColorsAvailable: boolean;
 }) => {
   const overrideMaterial = {
     shadingMode: "height",
@@ -64,7 +64,7 @@ const PlyWithPointsMaterial = ({
     overrideMaterial,
     pointsContainerRef,
     quaternion,
-    vextexColorsAvailable
+    vertexColorsAvailable
   );
 
   const mesh = useMemo(() => new Points(geometry), [geometry]);
@@ -229,7 +229,7 @@ export const Ply = ({
           quaternion={quaternion}
           position={position}
           scale={scale}
-          vextexColorsAvailable={isUsingVertexColors}
+          vertexColorsAvailable={isUsingVertexColors}
         />
       );
     }

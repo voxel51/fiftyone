@@ -56,8 +56,10 @@ export const usePointCloudHover = ({
 
         // transform the local position to world position using the transformation
         const worldPosition = localPosition.clone();
-        worldPosition.applyQuaternion(quaternion);
+
+        // make sure it's TRS (scale, rotate, translate)
         worldPosition.multiply(scale);
+        worldPosition.applyQuaternion(quaternion);
         worldPosition.add(position);
 
         setCurrentHoveredPoint(worldPosition);

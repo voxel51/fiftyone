@@ -60,7 +60,7 @@ export const usePcdMaterial = (
   defaultMaterial: PcdAsset["defaultMaterial"],
   pcdContainerRef: React.RefObject<any>,
   quaternion?: Quaternion,
-  vextexColorsAvailable: boolean = false
+  vertexColorsAvailable: boolean = false
 ) => {
   const { upVector, pluginSettings } = useFo3dContext();
 
@@ -212,7 +212,7 @@ export const usePcdMaterial = (
             size={isPointSizeAttenuated ? pointSize / 1000 : pointSize / 2}
             opacity={opacity}
             sizeAttenuation={isPointSizeAttenuated}
-            vertexColors={Boolean(vextexColorsAvailable)}
+            vertexColors={Boolean(vertexColorsAvailable)}
           />
         );
 
