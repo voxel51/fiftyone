@@ -38,11 +38,15 @@ const PlyWithPointsMaterial = ({
   geometry,
   defaultMaterial,
   quaternion,
+  position,
+  scale,
 }: {
   name: string;
   geometry: BufferGeometry;
   defaultMaterial: FoMeshMaterial;
   quaternion: Quaternion;
+  position: Vector3;
+  scale: Vector3;
 }) => {
   const { pointCloudSettings, setHoverMetadata } = useFo3dContext();
   const [currentHoveredPoint, setCurrentHoveredPoint] = useRecoilState(
@@ -88,10 +92,20 @@ const PlyWithPointsMaterial = ({
 
       if (geometry.hasAttribute("position")) {
         const posAttr = geometry.getAttribute("position");
-        md.coord = [posAttr.getX(idx), posAttr.getY(idx), posAttr.getZ(idx)];
-        setCurrentHoveredPoint(
-          new Vector3(posAttr.getX(idx), posAttr.getY(idx), posAttr.getZ(idx))
+        const localPosition = new Vector3(
+          posAttr.getX(idx),
+          posAttr.getY(idx),
+          posAttr.getZ(idx)
         );
+        md.coord = [localPosition.x, localPosition.y, localPosition.z];
+
+        // transform the local position to world position using the ply's transformation
+        const worldPosition = localPosition.clone();
+        worldPosition.applyQuaternion(quaternion);
+        worldPosition.multiply(scale);
+        worldPosition.add(position);
+
+        setCurrentHoveredPoint(worldPosition);
       }
 
       // dynamically handle all other attributes
@@ -106,7 +120,7 @@ const PlyWithPointsMaterial = ({
         attributes: md,
       });
     },
-    [geometry, setHoverMetadata, shadingMode, name]
+    [geometry, setHoverMetadata, shadingMode, name, quaternion, position, scale]
   );
 
   const hoverProps = useMemo(() => {
@@ -274,6 +288,8 @@ export const Ply = ({
           geometry={geometry}
           defaultMaterial={defaultMaterial}
           quaternion={quaternion}
+          position={position}
+          scale={scale}
         />
       );
     }
@@ -302,6 +318,9 @@ export const Ply = ({
     isPcd,
     name,
     defaultMaterial,
+    position,
+    scale,
+    quaternion,
   ]);
 
   if (!mesh) {

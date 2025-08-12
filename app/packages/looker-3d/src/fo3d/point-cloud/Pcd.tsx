@@ -91,10 +91,20 @@ export const Pcd = ({
 
       if (points.geometry.hasAttribute("position")) {
         const posAttr = points.geometry.getAttribute("position");
-        md.coord = [posAttr.getX(idx), posAttr.getY(idx), posAttr.getZ(idx)];
-        setCurrentHoveredPoint(
-          new Vector3(posAttr.getX(idx), posAttr.getY(idx), posAttr.getZ(idx))
+        const localPosition = new Vector3(
+          posAttr.getX(idx),
+          posAttr.getY(idx),
+          posAttr.getZ(idx)
         );
+        md.coord = [localPosition.x, localPosition.y, localPosition.z];
+
+        // transform the local position to world position using the pcd's transformation
+        const worldPosition = localPosition.clone();
+        worldPosition.applyQuaternion(quaternion);
+        worldPosition.multiply(scale);
+        worldPosition.add(position);
+
+        setCurrentHoveredPoint(worldPosition);
       }
 
       // dynamically handle all other attributes
@@ -109,7 +119,7 @@ export const Pcd = ({
         attributes: md,
       });
     },
-    [points, setHoverMetadata, shadingMode]
+    [points, setHoverMetadata, shadingMode, quaternion, scale, position]
   );
 
   const hoverProps = useMemo(() => {
