@@ -77,7 +77,7 @@ class DatasetSampleDocument(DatasetMixin, Document):
     this class.
     """
 
-    meta = {"abstract": True}
+    meta = {"abstract": True, "strict": False}
 
     _is_frames_doc = False
 
