@@ -1,21 +1,22 @@
 import { useCursor } from "@react-three/drei";
 import { useMemo, useState } from "react";
-import type * as THREE from "three";
+import * as THREE from "three";
 import { use3dLabelColor } from "../hooks/use-3d-label-color";
 import { useSimilarLabels3d } from "../hooks/use-similar-labels-3d";
 import { Line } from "./line";
+import { createFilledPolygonMeshes } from "./polygon-fill-utils";
 import type { OverlayProps } from "./shared";
 
 export interface PolyLineProps extends OverlayProps {
   points3d: THREE.Vector3Tuple[][];
   filled: boolean;
-  closed: boolean;
+  // we ignore closed for now
+  closed?: boolean;
 }
 
 export const Polyline = ({
   opacity,
   filled,
-  closed,
   rotation,
   points3d,
   color,
@@ -25,14 +26,11 @@ export const Polyline = ({
   label,
 }: PolyLineProps) => {
   const { onPointerOver, onPointerOut, ...restEventHandlers } = useMemo(() => {
-    return {
-      ...tooltip.getMeshProps(label),
-    };
+    return { ...tooltip.getMeshProps(label) };
   }, [tooltip, label]);
 
   const [isPolylineHovered, setIsPolylineHovered] = useState(false);
   const isSimilarLabelHovered = useSimilarLabels3d(label);
-
   useCursor(isPolylineHovered);
 
   const strokeAndFillColor = use3dLabelColor({
@@ -44,11 +42,11 @@ export const Polyline = ({
 
   const lines = useMemo(
     () =>
-      points3d.map((points) => (
+      points3d.map((pts, i) => (
         <Line
-          key={`polyline-${label._id}-${points3d[0][0]}`}
+          key={`polyline-${label._id}-${i}`}
           rotation={rotation}
-          points={points}
+          points={pts}
           opacity={opacity}
           color={strokeAndFillColor}
           label={label}
@@ -57,10 +55,48 @@ export const Polyline = ({
     [points3d, rotation, opacity, strokeAndFillColor, label]
   );
 
-  if (filled) {
-    // @todo: filled not yet supported
-    // @todo: closed prop not used
-    return null;
+  const filledMeshes = useMemo(() => {
+    if (!filled) return null;
+
+    const material = new THREE.MeshBasicMaterial({
+      color: strokeAndFillColor,
+      opacity,
+      transparent: true,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+
+    const meshes = createFilledPolygonMeshes(points3d, material);
+
+    if (!meshes) return null;
+
+    return meshes.map((mesh, idx) => (
+      <primitive
+        key={`filled-${label._id}-${idx}`}
+        object={mesh}
+        rotation={rotation as unknown as THREE.Euler}
+      />
+    ));
+  }, [filled, points3d, rotation, strokeAndFillColor, opacity, label._id]);
+
+  if (filled && filledMeshes) {
+    return (
+      <group
+        onPointerOver={() => {
+          setIsPolylineHovered(true);
+          onPointerOver();
+        }}
+        onPointerOut={() => {
+          setIsPolylineHovered(false);
+          onPointerOut();
+        }}
+        onClick={onClick}
+        {...restEventHandlers}
+      >
+        {filledMeshes}
+        {lines}
+      </group>
+    );
   }
 
   return (
