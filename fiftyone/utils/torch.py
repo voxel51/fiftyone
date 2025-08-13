@@ -963,7 +963,11 @@ class TorchImageModel(
             mask_targets_path = fou.fill_patterns(config.mask_targets_path)
             return etal.load_labels_map(mask_targets_path)
 
-        if self.classes and config.output_processor_args:
+        if (
+            hasattr(self, "_classes")
+            and self._classes is not None
+            and config.output_processor_args
+        ):
             if config.output_processor_args.get("no_background_cls", False):
                 mask_targets = {
                     idx + 1: val for idx, val in enumerate(self.classes)
