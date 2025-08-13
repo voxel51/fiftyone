@@ -45,7 +45,7 @@ export function usePlotSelection() {
       scope: SELECTION_SCOPE,
     });
     if (lassoPoints) {
-      // TODO: this handleSelected is called without lassoPoints in some unkown cases
+      // TODO: this handleSelected is called without lassoPoints in some unknown cases
       setLassoPoints(lassoPoints);
     }
     if (selectedResults === null) {

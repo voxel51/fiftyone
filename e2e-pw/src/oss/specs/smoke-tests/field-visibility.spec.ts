@@ -77,17 +77,17 @@ test.describe.serial("field visibility", () => {
 
   test("show metadata works", async ({ fieldVisibility }) => {
     await fieldVisibility.openFieldVisibilityModal();
-    await fieldVisibility.asserter.assertMetadataInvisibile();
+    await fieldVisibility.asserter.assertMetadataInVisible();
     await fieldVisibility.toggleShowMetadata();
-    await fieldVisibility.asserter.assertMetadataVisibile();
+    await fieldVisibility.asserter.assertMetadataVisible();
   });
 
   test("show metadata works for nested fields", async ({ fieldVisibility }) => {
     await fieldVisibility.openFieldVisibilityModal();
-    await fieldVisibility.asserter.assertMetadataInvisibile("metadata.width");
+    await fieldVisibility.asserter.assertMetadataInVisible("metadata.width");
     await fieldVisibility.toggleShowNestedFields();
     await fieldVisibility.toggleShowMetadata();
-    await fieldVisibility.asserter.assertMetadataVisibile("metadata.width");
+    await fieldVisibility.asserter.assertMetadataVisible("metadata.width");
   });
 
   test("reset works", async ({ fieldVisibility, sidebar }) => {
@@ -111,7 +111,7 @@ test.describe.serial("field visibility", () => {
   }) => {
     await fieldVisibility.openFieldVisibilityModal();
     await fieldVisibility.openTab("Filter rule");
-    await fieldVisibility.asserter.assertFilterRuleExamplesVisibile();
+    await fieldVisibility.asserter.assertFilterRuleExamplesVisible();
   });
 
   test("non-matching filter rule shows default paths as results", async ({
@@ -161,7 +161,7 @@ test.describe.serial("field visibility", () => {
     fieldVisibility,
     sidebar,
   }) => {
-    await sidebar.asserter.assertSidebarGroupIsVisibile("labels");
+    await sidebar.asserter.assertSidebarGroupIsVisible("labels");
     await sidebar.asserter.assertFieldsInSidebar([
       "predictions",
       "ground_truth",
@@ -176,7 +176,7 @@ test.describe.serial("field visibility", () => {
     await sidebar.asserter.assertSidebarGroupIsHidden("labels");
 
     await fieldVisibility.clearFieldVisibilityChanges();
-    await sidebar.asserter.assertSidebarGroupIsVisibile("labels");
+    await sidebar.asserter.assertSidebarGroupIsVisible("labels");
     await sidebar.asserter.assertFieldsInSidebar([
       "predictions",
       "ground_truth",

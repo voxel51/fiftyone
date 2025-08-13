@@ -242,12 +242,12 @@ class FieldVisibilityAsserter {
     expect(fields.length).toBeGreaterThan(allParentPaths.length);
   }
 
-  async assertMetadataInvisibile(path: string = "ground_truth") {
+  async assertMetadataInVisible(path: string = "ground_truth") {
     const fieldInfoContainer = this.fv.getFieldInfoContainer(path);
     await expect(fieldInfoContainer).toBeHidden();
   }
 
-  async assertMetadataVisibile(path: string = "ground_truth") {
+  async assertMetadataVisible(path: string = "ground_truth") {
     const fieldInfoContainer = this.fv.getFieldInfoContainer(path);
     await expect(fieldInfoContainer).toBeVisible();
     await expect(
@@ -255,7 +255,7 @@ class FieldVisibilityAsserter {
     ).toBeVisible();
   }
 
-  async assertFilterRuleExamplesVisibile() {
+  async assertFilterRuleExamplesVisible() {
     await expect(this.fv.filterRuleContainer).toBeVisible();
   }
 
