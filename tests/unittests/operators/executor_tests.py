@@ -94,6 +94,7 @@ class TestOperatorExecutionContext(unittest.TestCase):
                     view.select([selected]),
                 ),
                 ("TESTING_DEFAULT", ds),
+                (None, ds),
             ]
             for target_view, expected_view in tests:
                 request_params = {

@@ -16,6 +16,7 @@ import fiftyone as fo
 import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
 import fiftyone.core.odm.utils as focu
+import fiftyone.core.stages as focs
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 from fiftyone.operators import constants
@@ -605,7 +606,6 @@ class ExecutionContext(object):
     def target_view(
         self,
         param_name="view_target",
-        default_target=constants.ViewTarget.CURRENT_VIEW,
     ):
         """The target :class:`fiftyone.core.view.DatasetView` for the operator
         being executed.
@@ -617,7 +617,15 @@ class ExecutionContext(object):
         Returns:
             a :class:`fiftyone.core.collections.SampleCollection`
         """
-        target = self.params.get(param_name, default_target)
+        target = self.params.get(param_name)
+        if not target:
+            has_generated_view, _ = self.has_generated_view
+            target = (
+                constants.ViewTarget.BASE_VIEW
+                if has_generated_view
+                else constants.ViewTarget.DATASET
+            )
+
         if target == constants.ViewTarget.CURRENT_VIEW:
             return self.view
         if target == constants.ViewTarget.DATASET:
@@ -633,18 +641,43 @@ class ExecutionContext(object):
 
         return self.dataset
 
+    # Alias for common reversal
+    view_target = target_view
+
+    @property
+    def has_generated_view(self):
+        """Whether the context's view is a generated view
+
+        Returns: a tuple of ``(bool, bool)`` indicating whether the context's
+            view is a generated view, and whether it has additional filters
+        """
+        stages = self.request_params.get("view", None)
+        generated_view_stages = {
+            focs.ToClips.__name__,
+            focs.ToEvaluationPatches.__name__,
+            focs.ToFrames.__name__,
+            focs.ToPatches.__name__,
+        }
+        for idx, stage in enumerate(stages or []):
+            if stage.get("_cls") in generated_view_stages:
+                has_filters = bool(self.request_params.get("filters", None))
+                has_extended = bool(self.request_params.get("extended", None))
+                has_more_stages = len(stages[idx + 1 :]) > 0
+                has_additional_filters = (
+                    has_filters or has_extended or has_more_stages
+                )
+                return True, has_additional_filters
+
+        return False, False
+
     @property
     def has_custom_view(self):
         """Whether the operator has a custom view."""
-        stages = self.request_params.get("view", None)
-        filters = self.request_params.get("filters", None)
-        extended = self.request_params.get("extended", None)
-        has_stages = stages is not None and stages != [] and stages != {}
-        has_filters = filters is not None and filters != [] and filters != {}
-        has_extended = (
-            extended is not None and extended != [] and extended != {}
-        )
-        return has_stages or has_filters or has_extended
+        has_stages = bool(self.request_params.get("view", None))
+        has_filters = bool(self.request_params.get("filters", None))
+        has_extended = bool(self.request_params.get("extended", None))
+        has_saved_view = bool(self.request_params.get("view_name", None))
+        return has_stages or has_filters or has_extended or has_saved_view
 
     @property
     def spaces(self):

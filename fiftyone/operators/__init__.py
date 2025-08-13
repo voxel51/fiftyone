@@ -19,7 +19,6 @@ from .executor import (
     ExecutionContext,
     ExecutionOptions,
 )
-from .input_utils import resolve_target_view_input
 from .utils import ProgressHandler, is_new
 from .panel import Panel, PanelConfig
 from .store import ExecutionStore

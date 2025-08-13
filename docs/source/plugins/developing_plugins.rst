@@ -1132,7 +1132,7 @@ pattern to your operators.
 
 The input form element for choosing the target view
 can be created via the
-:meth:`resolve_target_view_input() <fiftyone.operators.resolve_target_view_input>`
+:meth:`inputs.view_target() <fiftyone.operators.types.Object.view_target>`
 function, which you can call from within your operator's
 :meth:`resolve_input() <fiftyone.operators.Operator.resolve_input>`
 function.
@@ -1172,7 +1172,7 @@ The choices include:
 +--------------------------+----------------------------------------------------------------------------------+
 
 If there's no view or selected items, the only option is entire dataset,
-so no input will be created and "DATASET" will be returned.
+so no choice is presented to the user.
 
 The target view descriptions are generated based on the provided
 ``action_description`` and the various description parameters. If a
@@ -1198,10 +1198,7 @@ give the user the choice of target view:
 
         def resolve_input(self, ctx):
             inputs = types.Object()
-            target_view = foo.resolve_target_view_input(
-                ctx,
-                inputs
-            )
+            inputs.view_target(ctx)
 
             return types.Property(
                 inputs, view=types.View(label="Target View Operator")
