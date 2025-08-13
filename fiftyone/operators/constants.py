@@ -10,7 +10,7 @@ FiftyOne operator constants.
 class ViewTarget:
     """Choices for target view that an operator should operate on
 
-    See :meth:`fiftyone.operators.resolve_target_view_input` for details.
+    See :meth:`fiftyone.operators.types.ViewTargetProperty` for details.
     """
 
     BASE_VIEW = "BASE_VIEW"
