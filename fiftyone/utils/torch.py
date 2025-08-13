@@ -1655,7 +1655,7 @@ class SemanticSegmenterOutputProcessor(OutputProcessor):
         confidence_thresh = kwargs.pop("confidence_thresh", None)
         if confidence_thresh:
             confidence = probs.max(axis=1)
-            conf_mask = confidence > confidence_thresh
+            conf_mask = confidence >= confidence_thresh
             masks[~conf_mask] = 0
         return [fol.Segmentation(mask=mask) for mask in masks]
 
