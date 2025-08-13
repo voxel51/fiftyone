@@ -963,6 +963,23 @@ class TorchImageModel(
             mask_targets_path = fou.fill_patterns(config.mask_targets_path)
             return etal.load_labels_map(mask_targets_path)
 
+        if (
+            hasattr(self, "_classes")
+            and self._classes is not None
+            and config.output_processor_args
+        ):
+            if config.output_processor_args.get("no_background_cls", False):
+                mask_targets = {
+                    idx + 1: val for idx, val in enumerate(self.classes)
+                }
+            else:
+                # Class at index 0 is treated as background class.
+                # This class is neither visualized in the app nor used in evaluate_segmentations.
+                mask_targets = {
+                    idx: val for idx, val in enumerate(self.classes)
+                }
+            return mask_targets
+
         return None
 
     def _parse_skeleton(self, config):
@@ -1603,10 +1620,16 @@ class SemanticSegmenterOutputProcessor(OutputProcessor):
     Args:
         classes (None): the list of class labels for the model. This parameter
             is not used
+        no_background_cls (False): if true, class indices are incremented by 1 in the mask
+        has_softmax_out (True): if false, softmax is applied to output predictions.
     """
 
-    def __init__(self, classes=None):
+    def __init__(
+        self, classes=None, no_background_cls=False, has_softmax_out=True
+    ):
         self.classes = classes
+        self.no_background_cls = no_background_cls
+        self.has_softmax_out = has_softmax_out
 
     def __call__(self, output, *args, **kwargs):
         """Parses the model output.
@@ -1623,8 +1646,21 @@ class SemanticSegmenterOutputProcessor(OutputProcessor):
         Returns:
             a list of :class:`fiftyone.core.labels.Segmentation` instances
         """
-        probs = output["out"].detach().cpu().numpy()
+        out = output["out"].detach().cpu()
+        if not self.has_softmax_out:
+            out = out.softmax(dim=1)
+        probs = out.numpy()
+
         masks = probs.argmax(axis=1)
+        if self.no_background_cls:
+            # Increment class index by 1 since 0 is reserved for background in the app.
+            masks += 1
+
+        confidence_thresh = kwargs.pop("confidence_thresh", None)
+        if confidence_thresh:
+            confidence = probs.max(axis=1)
+            conf_mask = confidence >= confidence_thresh
+            masks[~conf_mask] = 0
         return [fol.Segmentation(mask=mask) for mask in masks]
 
 
