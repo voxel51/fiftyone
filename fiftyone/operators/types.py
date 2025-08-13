@@ -663,7 +663,7 @@ class Object(BaseType):
         selected_samples_description=None,
         selected_labels_label="Selected labels",
         selected_labels_description=None,
-        **_,
+        **kwargs,
     ):
         """Defines a view target input property.
 
@@ -804,6 +804,7 @@ class Object(BaseType):
             selected_samples_description=selected_samples_description,
             selected_labels_label=selected_labels_label,
             selected_labels_description=selected_labels_description,
+            **kwargs,
         )
         self.add_property(name, _property)
         return _property
