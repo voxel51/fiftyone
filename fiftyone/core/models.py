@@ -5,6 +5,8 @@ FiftyOne models.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
+from concurrent.futures import ThreadPoolExecutor
 import contextlib
 import inspect
 import logging
@@ -47,6 +49,20 @@ _ALLOWED_PATCH_TYPES = (
     fol.Polyline,
     fol.Polylines,
 )
+
+
+@contextlib.contextmanager
+def futures(*, max_workers, skip_failures=False, warning="Async failure"):
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        _futures = []
+        yield lambda *args: _futures.append(executor.submit(*args))
+        for future in _futures:
+            try:
+                future.result()
+            except Exception as e:
+                if not skip_failures:
+                    raise e
+                logger.warning(warning, e)
 
 
 def apply_model(
@@ -457,48 +473,56 @@ def _apply_image_model_data_loader(
     else:
         samples = samples.select_fields()
 
+    def save_batch(sample_batch, labels_batch):
+        for sample, labels in zip(sample_batch, labels_batch):
+            if filename_maker is not None:
+                _export_arrays(labels, sample.filepath, filename_maker)
+
+            sample.add_labels(
+                labels,
+                label_field=label_field,
+                confidence_thresh=confidence_thresh,
+            )
+            ctx.save(sample)
+
     with contextlib.ExitStack() as context:
         pb = context.enter_context(fou.ProgressBar(samples, progress=progress))
         ctx = context.enter_context(foc.SaveContext(samples))
 
-        for sample_batch, imgs in zip(
-            fou.iter_batches(samples, batch_size),
-            data_loader,
-        ):
-            try:
-                if isinstance(imgs, Exception):
-                    raise imgs
+        with futures(
+            max_workers=1,
+            skip_failures=skip_failures,
+            warning="Async failure labeling batches",
+        ) as submit:
+            for sample_batch, imgs in zip(
+                fou.iter_batches(samples, batch_size),
+                data_loader,
+            ):
+                try:
+                    if isinstance(imgs, Exception):
+                        raise imgs
 
-                if needs_samples:
-                    labels_batch = model.predict_all(
-                        imgs, samples=sample_batch
+                    if needs_samples:
+                        labels_batch = model.predict_all(
+                            imgs, samples=sample_batch
+                        )
+                    else:
+                        labels_batch = model.predict_all(imgs)
+
+                    submit(save_batch, sample_batch, labels_batch)
+
+                except Exception as e:
+                    if not skip_failures:
+                        raise e
+
+                    logger.warning(
+                        "Batch: %s - %s\nError: %s\n",
+                        sample_batch[0].id,
+                        sample_batch[-1].id,
+                        e,
                     )
-                else:
-                    labels_batch = model.predict_all(imgs)
 
-                for sample, labels in zip(sample_batch, labels_batch):
-                    if filename_maker is not None:
-                        _export_arrays(labels, sample.filepath, filename_maker)
-
-                    sample.add_labels(
-                        labels,
-                        label_field=label_field,
-                        confidence_thresh=confidence_thresh,
-                    )
-                    ctx.save(sample)
-
-            except Exception as e:
-                if not skip_failures:
-                    raise e
-
-                logger.warning(
-                    "Batch: %s - %s\nError: %s\n",
-                    sample_batch[0].id,
-                    sample_batch[-1].id,
-                    e,
-                )
-
-            pb.update(len(sample_batch))
+                pb.update(len(sample_batch))
 
 
 def _apply_image_model_to_frames_single(
