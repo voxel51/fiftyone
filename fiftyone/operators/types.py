@@ -9,6 +9,8 @@ FiftyOne operator types.
 import enum
 from textwrap import dedent
 
+from fiftyone.operators import constants
+
 
 class BaseType(object):
     """Base class for all types."""
@@ -639,46 +641,172 @@ class Object(BaseType):
         clone.properties = self.properties.copy()
         return clone
 
-    def view_target(self, ctx, name="view_target", view_type=None, **kwargs):
-        """Defines a view target property.
+    def view_target(
+        self,
+        ctx,
+        name="view_target",
+        view_type=None,
+        action_description="Process",
+        default_target=None,
+        allow_selected_samples=True,
+        allow_selected_labels=False,
+        allow_dataset_view=False,
+        base_view_label="Base view",
+        base_view_description=None,
+        current_view_label="Current view",
+        current_view_description=None,
+        dataset_label="Entire dataset",
+        dataset_description=None,
+        dataset_view_label="Dataset",
+        dataset_view_description=None,
+        selected_samples_label="Selected samples",
+        selected_samples_description=None,
+        selected_labels_label="Selected labels",
+        selected_labels_description=None,
+        **kwargs,
+    ):
+        """Defines a view target input property.
+
+        This property has an enum input that allows the user to select which view
+        to process. The available choices depend on the current context and the
+        provided flags.
+
+        The choices include:
+
+        - Entire dataset (if the current view is not a generated view)
+        - Base view (if the current view is a generated view such as
+          :class:`fiftyone.core.clips.ClipsView`, :class:`fiftyone.core.video.FramesView`,
+          or :class:`fiftyone.core.patches.PatchesView`), which is the semantic
+          equivalent of "entire dataset" for these views. The base view is the
+          view from which the generated view was created. For example,
+          ``dataset.limit(51).to_frames("ground_truth").limit(10)`` has a base
+          view of ``dataset.limit(51).to_frames("ground_truth")``
+        - Dataset view (if ``allow_dataset_view`` is ``True``)
+        - Current view (if the current view is different from the dataset view)
+        - Selected samples (if ``allow_selected_samples`` is ``True`` and there are
+          selected samples)
+        - Selected labels (if ``allow_selected_labels`` is ``True`` and there are
+          selected labels)
+
+        If there's no view or selected items, the only option is entire dataset,
+        so the view target selector is hidden and "DATASET" will be returned.
+
+        The resolved target view can be accessed in the operator's
+        :meth:`execute() <fiftyone.operators.Operator.execute>` method
+        via :meth:`ctx.target_view() <fiftyone.operators.ExecutionContext.target_view>`.
+
+        The target view descriptions are generated based on the provided
+        ``action_description`` and the various description parameters. If a
+        description parameter is not ``None``, it will be used as the
+        description for the corresponding target view choice. Otherwise, a
+        default description will be generated such as
+        ``f"{action_description} the entire dataset"``.
+
 
         Examples::
 
-            import fiftyone.operators.types as types
+            import fiftyone.operators as foo
 
-            #
-            # in resolve_input()
-            #
+            class MyTargetViewOperator(foo.Operator):
+                @property
+                def config(self):
+                    return foo.OperatorConfig(
+                        name="target_view_operator",
+                        label="Testing Target View Operator",
+                        dynamic=True,
+                    )
 
-            inputs = types.Object()
+                def resolve_input(self, ctx):
+                    inputs = types.Object()
 
-            vt = inputs.view_target(ctx)
+                    view_target_prop = inputs.view_target(ctx)
 
-            # or add the property directly
-            # vt = types.ViewTargetProperty(ctx)
-            # inputs.add_property("view_target", vt)
+                    return types.Property(
+                        inputs, view=types.View(label="Target View Operator")
+                    )
 
-            return types.Property(inputs)
+                def execute(self, ctx):
+                    target_view = ctx.target_view()
+                    # Do something with the target view
+                    print("Sample collection size", len(target_view))
 
-            #
-            # in execute()
-            #
+            Args:
+                ctx: the operator's :class:`fiftyone.operators.ExecutionContext`
+                name(view_target): the name of the view target property
+                view_type (RadioGroup): the view type to use (RadioGroup, Dropdown,
+                    etc.)
+                default_target (None): the default target view to select if
+                    multiple choices are available. If ``None`` or
+                    ``default_target`` is not an available choice, the most
+                    targeted / selective available choice is chosen.
+                action_description (Process): a short description of the action
+                    being performed, used to generate default descriptions for the
+                    various target views
+                allow_selected_samples (True): whether to allow the "selected
+                    samples" target view
+                allow_selected_labels (False): whether to allow the "selected
+                    labels" target view
+                allow_dataset_view (False): whether to allow the "dataset view"
+                    target view
+                base_view_label (Base view): the label for the "base view" target
+                    view
+                base_view_description (None): the description for the "base view"
+                    target view. If ``None``, a default description is generated
+                current_view_label (Current view): the label for the "current
+                    view" target view
+                current_view_description (None): the description for the "current
+                    view" target view. If ``None``, a default description is
+                    generated
+                dataset_label (Entire dataset): the label for the "entire dataset"
+                    target view
+                dataset_description (None): the description for the "entire
+                    dataset" target view. If ``None``, a default description is
+                    generated
+                dataset_view_label (Dataset): the label for the "dataset view"
+                    target view
+                dataset_view_description (None): the description for the "dataset
+                    view" target view. If ``None``, a default description is
+                    generated
+                selected_samples_label (Selected samples): the label for the
+                    "selected samples" target view
+                selected_samples_description (None): the description for the
+                    "selected samples" target view. If ``None``, a default
+                    description is generated
+                selected_labels_label (Selected labels): the label for the
+                    "selected labels" target view
+                selected_labels_description (None): the description for the
+                    "selected labels" target view. If ``None``, a default
+                    description is generated
 
-            target_view = ctx.target_view()
-
-        Args:
-            ctx: the :class:`fiftyone.operators.ExecutionContext`
-            name: the name of the property
-            view_type (RadioGroup): the view type to use (RadioGroup, Dropdown,
-                etc.)
-
-        Returns:
-            a :class:`ViewTargetProperty`
+            Returns:
+                a :class:`ViewTargetProperty`
         """
         view_type = view_type or RadioGroup
-        property = ViewTargetProperty(ctx, view_type)
-        self.add_property(name, property)
-        return property
+
+        _property = ViewTargetProperty(
+            ctx,
+            view_type,
+            action_description=action_description,
+            allow_selected_samples=allow_selected_samples,
+            allow_selected_labels=allow_selected_labels,
+            allow_dataset_view=allow_dataset_view,
+            default_target=default_target,
+            base_view_label=base_view_label,
+            base_view_description=base_view_description,
+            current_view_label=current_view_label,
+            current_view_description=current_view_description,
+            dataset_label=dataset_label,
+            dataset_description=dataset_description,
+            dataset_view_label=dataset_view_label,
+            dataset_view_description=dataset_view_description,
+            selected_samples_label=selected_samples_label,
+            selected_samples_description=selected_samples_description,
+            selected_labels_label=selected_labels_label,
+            selected_labels_description=selected_labels_description,
+            **kwargs,
+        )
+        self.add_property(name, _property)
+        return _property
 
     def to_json(self):
         """Converts the object definition to JSON.
@@ -2411,99 +2539,355 @@ class ViewTargetOptions(object):
     """Represents the options for a :class:`ViewTargetProperty`.
 
     Attributes:
-        entire_dataset: a :class:`Choice` for the entire dataset
-        current_view: a :class:`Choice` for the current view
-        selected_samples: a :class:`Choice` for the selected samples
+        choices_view: a :class:`Choices` for the view target choices
     """
 
-    def __init__(self, choices_view, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(
+        self,
+        choices_view,
+        action_description="Process",
+        include_base_view=False,
+        include_current_view=False,
+        include_dataset=True,
+        include_dataset_view=False,
+        include_selected_labels=False,
+        include_selected_samples=False,
+        dataset_label="Entire dataset",
+        dataset_description=None,
+        base_view_label="Base view",
+        base_view_description=None,
+        current_view_label="Current view",
+        current_view_description=None,
+        dataset_view_label="Dataset",
+        dataset_view_description=None,
+        selected_samples_label="Selected samples",
+        selected_samples_description=None,
+        selected_labels_label="Selected labels",
+        selected_labels_description=None,
+        **_,
+    ):
+        """
+        Args:
+            action_description (Process): a short description of the action
+                being performed, used to generate default descriptions for the
+                various target views
+            include_base_view (False): whether to include "base view"
+                as an option
+            include_current_view (False): whether to include "current view"
+                as an option
+            include_dataset (True): whether to include "entire dataset"
+                as an option
+            include_dataset_view (False): whether to include "dataset view"
+                as an option
+            include_selected_samples (True): whether to allow "selected
+                samples" as an option
+            include_selected_labels (False): whether to allow the "selected
+                labels" target view
+            base_view_label (Base view): the label for the "base view" target
+                view
+            base_view_description (None): the description for the "base view"
+                target view. If ``None``, a default description is generated
+            current_view_label (Current view): the label for the "current
+                view" target view
+            current_view_description (None): the description for the "current
+                view" target view. If ``None``, a default description is
+                generated
+            dataset_label (Entire dataset): the label for the "entire dataset"
+                target view
+            dataset_description (None): the description for the "entire
+                dataset" target view. If ``None``, a default description is
+                generated
+            dataset_view_label (Dataset): the label for the "dataset view"
+                target view
+            dataset_view_description (None): the description for the "dataset
+                view" target view. If ``None``, a default description is
+                generated
+            selected_samples_label (Selected samples): the label for the
+                "selected samples" target view
+            selected_samples_description (None): the description for the
+                "selected samples" target view. If ``None``, a default
+                description is generated
+            selected_labels_label (Selected labels): the label for the
+                "selected labels" target view
+            selected_labels_description (None): the description for the
+                "selected labels" target view. If ``None``, a default
+                description is generated
+        """
+        super().__init__()
+
+        # Resolve descriptions for the various target views
+        action_description = action_description or "Process"
+        dataset_description = (
+            dataset_description or f"{action_description} the entire dataset"
+        )
+        base_view_description = (
+            base_view_description or f"{action_description} the base view"
+        )
+        current_view_description = (
+            current_view_description
+            or f"{action_description} the current view"
+        )
+        dataset_view_description = (
+            dataset_view_description
+            or f"{action_description} the dataset view"
+        )
+        selected_samples_description = selected_samples_description or (
+            f"{action_description} only the selected samples"
+        )
+        selected_labels_description = selected_labels_description or (
+            f"{action_description} only the selected labels"
+        )
+
         self.choices_view = choices_view
-        self.entire_dataset = Choice(
-            "DATASET",
-            label="Entire dataset",
-            description="Run on the entire dataset",
-            include=False,
-        )
-        self.current_view = Choice(
-            "CURRENT_VIEW",
-            label="Current view",
-            description="Run on the current view",
-            include=False,
-        )
-        self.selected_samples = Choice(
-            "SELECTED_SAMPLES",
-            label="Selected samples",
-            description="Run on the selected samples",
-            include=False,
-        )
-        [
-            choices_view.append(choice)
-            for choice in [
-                self.entire_dataset,
-                self.current_view,
-                self.selected_samples,
-            ]
+
+        # Add all choices to the view target selector in order,
+        #   included based on the provided params
+        choice_order = [
+            (
+                constants.ViewTarget.DATASET,
+                include_dataset,
+                dataset_label,
+                dataset_description,
+            ),
+            (
+                constants.ViewTarget.BASE_VIEW,
+                include_base_view,
+                base_view_label,
+                base_view_description,
+            ),
+            (
+                constants.ViewTarget.DATASET_VIEW,
+                include_dataset_view,
+                dataset_view_label,
+                dataset_view_description,
+            ),
+            (
+                constants.ViewTarget.CURRENT_VIEW,
+                include_current_view,
+                current_view_label,
+                current_view_description,
+            ),
+            (
+                constants.ViewTarget.SELECTED_SAMPLES,
+                include_selected_samples,
+                selected_samples_label,
+                selected_samples_description,
+            ),
+            (
+                constants.ViewTarget.SELECTED_LABELS,
+                include_selected_labels,
+                selected_labels_label,
+                selected_labels_description,
+            ),
         ]
+        for target_view, include, label, description in choice_order:
+            self.choices_view.add_choice(
+                target_view,
+                label=label,
+                description=description,
+                include=include,
+            )
 
     def values(self):
         return self.choices_view.values()
 
 
 class ViewTargetProperty(Property):
-    """Displays a view target selector.
+    """Property that displays a view target selector.
+
+    This property has an enum input that allows the user to select which view
+    to process. The available choices depend on the current context and the
+    provided flags.
+
+    The choices include:
+
+    - Entire dataset (if the current view is not a generated view)
+    - Base view (if the current view is a generated view such as
+      :class:`fiftyone.core.clips.ClipsView`, :class:`fiftyone.core.video.FramesView`,
+      or :class:`fiftyone.core.patches.PatchesView`), which is the semantic
+      equivalent of "entire dataset" for these views. The base view is the
+      view from which the generated view was created. For example,
+      ``dataset.limit(51).to_frames("ground_truth").limit(10)`` has a base
+      view of ``dataset.limit(51).to_frames("ground_truth")``
+    - Dataset view (if ``allow_dataset_view`` is ``True``)
+    - Current view (if the current view is different from the dataset view)
+    - Selected samples (if ``allow_selected_samples`` is ``True`` and there are
+      selected samples)
+    - Selected labels (if ``allow_selected_labels`` is ``True`` and there are
+      selected labels)
+
+    If there's no view or selected items, the only option is entire dataset,
+    so the view target selector is hidden and "DATASET" will be returned.
+
+    The resolved target view can be accessed in the operator's
+    :meth:`execute() <fiftyone.operators.Operator.execute>` method
+    via :meth:`ctx.target_view() <fiftyone.operators.ExecutionContext.target_view>`.
+
+    The target view descriptions are generated based on the provided
+    ``action_description`` and the various description parameters. If a
+    description parameter is not ``None``, it will be used as the
+    description for the corresponding target view choice. Otherwise, a
+    default description will be generated such as
+    ``f"{action_description} the entire dataset"``.
+
 
     Examples::
 
-        import fiftyone.operators.types as types
+        import fiftyone.operators as foo
 
-        # in resolve_input
-        inputs = types.Object()
-        vt = inputs.view_target(ctx)
-        # or add the property directly
-        # vt = types.ViewTargetProperty(ctx)
-        # inputs.add_property("view_target", vt)
-        return types.Property(inputs)
+        class MyTargetViewOperator(foo.Operator):
+            @property
+            def config(self):
+                return foo.OperatorConfig(
+                    name="target_view_operator",
+                    label="Testing Target View Operator",
+                    dynamic=True,
+                )
 
-        # in execute()
-        target_view = ctx.target_view()
+            def resolve_input(self, ctx):
+                inputs = types.Object()
+
+                view_target_prop = inputs.view_target(ctx)
+
+                return types.Property(
+                    inputs, view=types.View(label="Target View Operator")
+                )
+
+            def execute(self, ctx):
+                target_view = ctx.target_view()
+                # Do something with the target view
+                print("Sample collection size", len(target_view))
 
     Attributes:
         options: a :class:`ViewTargetOptions` instance
-
-    Args:
-        ctx: the :class:`fiftyone.operators.ExecutionContext`
-        view_type (RadioGroup): the type of view to use (RadioGroup or Dropdown)
     """
 
-    def __init__(self, ctx, view_type=RadioGroup, **kwargs):
-        choice_view = view_type()
-        options = ViewTargetOptions(choice_view)
+    def __init__(
+        self,
+        ctx,
+        view_type=RadioGroup,
+        action_description="Process",
+        allow_selected_samples=True,
+        allow_selected_labels=False,
+        allow_dataset_view=False,
+        default_target=None,
+        dataset_label="Entire dataset",
+        dataset_description=None,
+        base_view_label="Base view",
+        base_view_description=None,
+        current_view_label="Current view",
+        current_view_description=None,
+        dataset_view_label="Dataset",
+        dataset_view_description=None,
+        selected_samples_label="Selected samples",
+        selected_samples_description=None,
+        selected_labels_label="Selected labels",
+        selected_labels_description=None,
+        **kwargs,
+    ):
+        """Initializes instance
 
+        Args:
+            ctx: the operator's :class:`fiftyone.operators.ExecutionContext`
+            view_type (RadioGroup): the view type to use (RadioGroup, Dropdown,
+                etc.)
+            default_target (None): the default target view to select if
+                multiple choices are available. If ``None``, one will be chosen
+                based on the available choices in the following order of
+                preference: dataset view, current view, selected samples,
+                selected labels
+            action_description (Process): a short description of the action
+                being performed, used to generate default descriptions for the
+                various target views
+            allow_selected_samples (True): whether to allow the "selected
+                samples" target view
+            allow_selected_labels (False): whether to allow the "selected
+                labels" target view
+            allow_dataset_view (False): whether to allow the "dataset view"
+                target view
+            base_view_label (Base view): the label for the "base view" target
+                view
+            base_view_description (None): the description for the "base view"
+                target view. If ``None``, a default description is generated
+            current_view_label (Current view): the label for the "current
+                view" target view
+            current_view_description (None): the description for the "current
+                view" target view. If ``None``, a default description is
+                generated
+            dataset_label (Entire dataset): the label for the "entire dataset"
+                target view
+            dataset_description (None): the description for the "entire
+                dataset" target view. If ``None``, a default description is
+                generated
+            dataset_view_label (Dataset): the label for the "dataset view"
+                target view
+            dataset_view_description (None): the description for the "dataset
+                view" target view. If ``None``, a default description is
+                generated
+            selected_samples_label (Selected samples): the label for the
+                "selected samples" target view
+            selected_samples_description (None): the description for the
+                "selected samples" target view. If ``None``, a default
+                description is generated
+            selected_labels_label (Selected labels): the label for the
+                "selected labels" target view
+            selected_labels_description (None): the description for the
+                "selected labels" target view. If ``None``, a default
+                description is generated
+        """
+
+        # Determine which target views are available
+        has_base_view = ctx.has_generated_view
+
+        if has_base_view:
+            has_custom_view = ctx.has_custom_generated_view
+        else:
+            has_custom_view = ctx.has_custom_view
+        has_selected_samples = allow_selected_samples and bool(ctx.selected)
+        has_selected_labels = allow_selected_labels and bool(
+            ctx.selected_labels
+        )
+
+        # Create choice view with proper choices included
+        choice_view = view_type(label="Target view")
+        options = ViewTargetOptions(
+            choice_view,
+            action_description=action_description,
+            include_base_view=has_base_view,
+            include_current_view=has_custom_view,
+            include_dataset=not has_base_view,
+            include_dataset_view=allow_dataset_view,
+            include_selected_labels=has_selected_labels,
+            include_selected_samples=has_selected_samples,
+            base_view_label=base_view_label,
+            base_view_description=base_view_description,
+            current_view_label=current_view_label,
+            current_view_description=current_view_description,
+            dataset_label=dataset_label,
+            dataset_description=dataset_description,
+            dataset_view_label=dataset_view_label,
+            dataset_view_description=dataset_view_description,
+            selected_samples_label=selected_samples_label,
+            selected_samples_description=selected_samples_description,
+            selected_labels_label=selected_labels_label,
+            selected_labels_description=selected_labels_description,
+        )
         self._options = options
-
-        # Entire dataset is always an option
-        default_target = options.entire_dataset.value
-        options.entire_dataset.include = True
-
-        has_custom_view = ctx.has_custom_view
-        if has_custom_view:
-            options.current_view.include = True
-            default_target = options.current_view.value
-
-        has_selected = bool(ctx.selected)
-        if has_selected:
-            options.selected_samples.include = True
-            default_target = options.selected_samples.value
 
         _type = Enum(options.values())
 
+        if not default_target or default_target not in options.values():
+            default_target = options.values()[-1]  # last option
+
         # Only 1 option so no need for a radio group, just hide it.
         if len(options.values()) == 1:
-            choice_view = HiddenView(read_only=True)
+            choice_view = HiddenView(read_only=False)
 
         super().__init__(
-            _type, default=default_target, view=choice_view, **kwargs
+            _type,
+            default=default_target,
+            view=choice_view,
+            **kwargs,
         )
 
     @property
