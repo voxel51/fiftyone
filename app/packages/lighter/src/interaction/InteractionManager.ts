@@ -476,8 +476,8 @@ export class InteractionManager {
 
       // Handle selection if the handler is selectable
       if (handler && this.isSelectableHandler(handler)) {
-        const addToSelection = event.ctrlKey || event.metaKey; // Ctrl/Cmd+click to add to selection
-        this.selectionManager.toggle(handler.id, addToSelection, event);
+        const isSpecialKeyPressed = event.ctrlKey || event.metaKey;
+        this.selectionManager.toggle(handler.id, !isSpecialKeyPressed, event);
         event.preventDefault();
       }
       // Otherwise, handle regular click
