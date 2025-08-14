@@ -8,15 +8,11 @@
   width: 100%
   padding: 3px 4px
 
-  @media (min-width: 768px)
-    background-color: var(--docsearch-searchbox-background)
-    border-radius: 40px
-    border: 0
-    padding: 3px 4px
+  @media (min-width: 960px)
+    min-width: 180px
 
     &:hover, &:active, &:focus
       box-shadow: none
-      background-color: var(--docsearch-searchbox-background)
 
     .DocSearch-Search-Icon
       color: var(--pst-color-text-base)
@@ -25,6 +21,7 @@
       line-height: 1.3
       font-size: 14px
       letter-spacing: -0.01em
+      padding: 0 16px 0 8px
 
     svg
       margin: 7px
