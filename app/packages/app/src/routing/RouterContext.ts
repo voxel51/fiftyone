@@ -87,7 +87,7 @@ export const createRouter = <T extends OperationType>(
           environment,
           routes,
           location: location as FiftyOneLocation,
-          hard: false,
+          hard: true,
           handleError,
         });
       } catch (e) {
