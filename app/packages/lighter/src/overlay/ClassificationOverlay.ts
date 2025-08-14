@@ -15,12 +15,13 @@ export type ClassificationLabel = RawLookerLabel & {
  * Options for creating a classification overlay.
  */
 export interface ClassificationOptions {
+  sampleId: string;
   label: ClassificationLabel;
   confidence: number;
   position: Point;
   showConfidence?: boolean;
   selectable?: boolean;
-  field?: string; // Field path for z-ordering
+  field?: string;
 }
 
 /**
@@ -33,7 +34,7 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
     const id = `cls_${Date.now()}_${Math.random()
       .toString(36)
       .substring(2, 9)}`;
-    super(id, options.label, options.field);
+    super(id, options.sampleId, options.label, options.field);
   }
 
   get containerId() {

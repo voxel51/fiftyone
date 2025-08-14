@@ -2,7 +2,7 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import { EventBus, LIGHTER_EVENTS, type LighterEvent } from "../event/EventBus";
+import { LIGHTER_EVENTS, type LighterEvent } from "../event/EventBus";
 import { InteractionManager } from "../interaction/InteractionManager";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
 import type { Selectable } from "../selection/Selectable";
@@ -357,16 +357,28 @@ export class Scene2D {
   }
 
   /**
-   * Gets the event bus for the scene.
-   * @returns The event bus.
+   * Registers an event listener on the scene's event bus.
+   *
+   * @param type - The event type to listen for.
+   * @param listener - The event listener function.
    */
-  getEventBus(): EventBus {
-    return this.config.eventBus;
+  on(type: LighterEvent["type"], listener: (e: CustomEvent) => void): void {
+    this.config.eventBus.on(type, listener);
+  }
+
+  /**
+   * Removes an event listener from the scene's event bus.
+   *
+   * @param type - The event type.
+   * @param listener - The event listener function.
+   */
+  off(type: LighterEvent["type"], listener: (e: CustomEvent) => void): void {
+    this.config.eventBus.off(type, listener);
   }
 
   /**
    * Dispatches an event through the scene's event bus.
-   * This provides a cleaner API than scene.getEventBus().emit().
+   *
    * @param event - The event to dispatch.
    */
   dispatch(event: LighterEvent): void {

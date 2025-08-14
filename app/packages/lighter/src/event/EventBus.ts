@@ -136,7 +136,7 @@ export type LighterEvent =
     }
   | {
       type: typeof LIGHTER_EVENTS.OVERLAY_SELECT;
-      detail: { id: string; point: Point };
+      detail: { id: string; point: Point; isShiftPressed?: boolean };
     }
   | {
       type: typeof LIGHTER_EVENTS.OVERLAY_DESELECT;

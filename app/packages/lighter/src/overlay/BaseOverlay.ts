@@ -14,6 +14,7 @@ import type { DrawStyle, Point, RawLookerLabel } from "../types";
  */
 export abstract class BaseOverlay implements InteractionHandler {
   readonly id: string;
+  readonly sampleId: string;
   readonly label: RawLookerLabel;
   readonly field?: string;
   /** Whether the overlay needs to be re-rendered. The render loop will check this and re-render the overlay if it is dirty.
@@ -26,8 +27,14 @@ export abstract class BaseOverlay implements InteractionHandler {
   protected eventBus?: EventBus;
   protected resourceLoader?: ResourceLoader;
 
-  constructor(id: string, label: RawLookerLabel = null, field?: string) {
+  constructor(
+    id: string,
+    sampleId: string,
+    label: RawLookerLabel = null,
+    field?: string
+  ) {
     this.id = id;
+    this.sampleId = sampleId;
     this.label = label;
     this.field = field;
   }

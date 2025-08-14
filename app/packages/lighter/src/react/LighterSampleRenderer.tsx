@@ -12,13 +12,7 @@ import {
   State,
   useAssertedRecoilValue,
 } from "@fiftyone/state";
-import React, {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { ImageOptions, ImageOverlay, overlayFactory } from "../index";
 import { useLighter, useLighterSetup } from "./index";
@@ -104,7 +98,10 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
       for (const overlay of overlays) {
         if (overlay instanceof DetectionOverlay) {
           // Convert legacy overlay to lighter overlay with relative coordinates
-          const lighterOverlay = convertLegacyToLighterDetection(overlay);
+          const lighterOverlay = convertLegacyToLighterDetection(
+            overlay,
+            sample.id
+          );
           addOverlay(lighterOverlay);
         }
       }

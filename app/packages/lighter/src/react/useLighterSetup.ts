@@ -13,6 +13,7 @@ import {
   Scene2D,
 } from "../index";
 import { lighterSceneAtom } from "../state";
+import { useBridge } from "./useBridge";
 
 // TODO: Ultimately, we'll want to remove dependency on "looker" and create our own options type
 // This type extends what fos.useLookerOptions returns to maintain compatibility during transition
@@ -29,6 +30,9 @@ export const useLighterSetup = (
   options: LighterOptions
 ) => {
   const [scene, setScene] = useAtom(lighterSceneAtom);
+
+  // this is the bridge between FiftyOne state management system and Lighter
+  useBridge(scene);
 
   useEffect(() => {
     if (!canvasRef.current) return;

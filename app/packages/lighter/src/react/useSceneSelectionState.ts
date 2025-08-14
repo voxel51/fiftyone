@@ -15,8 +15,6 @@ export function useSceneSelectionState(scene: Scene2D | null) {
   useEffect(() => {
     if (!scene) return;
 
-    const eventBus = scene.getEventBus();
-
     const handleSelectionChanged = (event: Event) => {
       const selectedIds = scene.getSelectedOverlayIds();
       setSelectedOverlayIds(selectedIds);
@@ -35,24 +33,12 @@ export function useSceneSelectionState(scene: Scene2D | null) {
       }
     };
 
-    eventBus.addEventListener(
-      LIGHTER_EVENTS.SELECTION_CHANGED,
-      handleSelectionChanged
-    );
-    eventBus.addEventListener(
-      LIGHTER_EVENTS.SELECTION_CLEARED,
-      handleSelectionChanged
-    );
+    scene.on(LIGHTER_EVENTS.SELECTION_CHANGED, handleSelectionChanged);
+    scene.on(LIGHTER_EVENTS.SELECTION_CLEARED, handleSelectionChanged);
 
     return () => {
-      eventBus.removeEventListener(
-        LIGHTER_EVENTS.SELECTION_CHANGED,
-        handleSelectionChanged
-      );
-      eventBus.removeEventListener(
-        LIGHTER_EVENTS.SELECTION_CLEARED,
-        handleSelectionChanged
-      );
+      scene.off(LIGHTER_EVENTS.SELECTION_CHANGED, handleSelectionChanged);
+      scene.off(LIGHTER_EVENTS.SELECTION_CLEARED, handleSelectionChanged);
     };
   }, [scene]);
 
