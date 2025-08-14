@@ -9,16 +9,21 @@ import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import FileCopyIcon from "@mui/icons-material/FileCopy";
 import SelectAllIcon from "@mui/icons-material/SelectAll";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
+import DownloadIcon from "@mui/icons-material/Download";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import {
   Alert,
   Box,
   BoxProps,
+  Button,
   Checkbox,
   Fab,
   FormControl,
   FormControlLabel,
   FormLabel,
   IconButton,
+  Menu,
+  MenuItem,
   Paper,
   Popover,
   Radio,
@@ -247,6 +252,11 @@ const ControlContainer = ({
   onAddItem,
   onEditLayoutClick,
   onPasteClick,
+  onExportItems,
+  onExportAsPNG,
+  handleExportMenuOpen,
+  handleExportMenuClose,
+  exportMenuAnchor,
   isEditMode,
   autoLayout,
   editLayoutOpen,
@@ -307,6 +317,52 @@ const ControlContainer = ({
           onPasteClick
         )}
       />
+      <Box sx={{ display: "flex", alignItems: "center" }}>
+        <ButtonView
+          {...createButtonViewProps(
+            {
+              type: "object",
+              view: {
+                icon: "download",
+                label: "Export",
+                variant: "square",
+              },
+            },
+            handleExportMenuOpen
+          )}
+        />
+      </Box>
+      <Menu
+        anchorEl={exportMenuAnchor}
+        open={Boolean(exportMenuAnchor)}
+        onClose={handleExportMenuClose}
+        anchorOrigin={{
+          vertical: "bottom",
+          horizontal: "left",
+        }}
+        transformOrigin={{
+          vertical: "top",
+          horizontal: "left",
+        }}
+      >
+        <MenuItem
+          onClick={() => {
+            onExportItems();
+            handleExportMenuClose();
+          }}
+        >
+          Export as JSON
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            onExportAsPNG();
+            handleExportMenuClose();
+          }}
+        >
+          Export as PNG
+        </MenuItem>
+      </Menu>
+
       {editLayoutOpen && !selectedItemId && (
         <Alert severity="info">
           {autoLayout && (
@@ -335,7 +391,6 @@ export default function DashboardView(props: ViewPropsType) {
   const allow_deletion = schema.view.allow_deletion;
   const allow_edit = schema.view.allow_edit;
   const allowMutation = allow_edit || allow_deletion;
-  const configPath = schema.view.config_path || "items_config";
   const dataPath = schema.view.data_path || "items_config";
   const [panelState, setPanelState] = usePanelState();
 
@@ -387,7 +442,10 @@ export default function DashboardView(props: ViewPropsType) {
 
   const onDuplicateItem = useCallback(
     ({ id, path }) => {
-      const originalItem = getFromPath(panelState?.state, `${dataPath}.${id}`);
+      const originalItem = getFromPath(
+        (panelState as any)?.state,
+        `${dataPath}.${id}`
+      );
       const newId = `${id}-copy`;
       if (schema.view.on_duplicate_item) {
         triggerPanelEvent(panelId, {
@@ -408,7 +466,10 @@ export default function DashboardView(props: ViewPropsType) {
 
   const onCopyItem = useCallback(
     ({ id, path }) => {
-      const value = getFromPath(panelState?.state, `${dataPath}.${id}`);
+      const value = getFromPath(
+        (panelState as any)?.state,
+        `${dataPath}.${id}`
+      );
       console.log({ id, path, panelState });
       if (value) {
         try {
@@ -429,6 +490,45 @@ export default function DashboardView(props: ViewPropsType) {
     },
     [panelState, dataPath]
   );
+
+  const onExportItems = useCallback(() => {
+    try {
+      // Create the export data structure
+      const exportData = {
+        panelState,
+        metadata: {
+          exportDate: new Date().toISOString(),
+          dataPath: dataPath,
+        },
+      };
+
+      // Convert to JSON string
+      const jsonString = JSON.stringify(exportData, null, 2);
+
+      // Create blob and download
+      const blob = new Blob([jsonString], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+
+      // Create download link
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `dashboard-export-${
+        new Date().toISOString().split("T")[0]
+      }.json`;
+
+      // Trigger download
+      document.body.appendChild(link);
+      link.click();
+
+      // Cleanup
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      console.log("Dashboard items and config exported successfully");
+    } catch (error) {
+      console.error("Error exporting dashboard items:", error);
+    }
+  }, [panelState, dataPath]);
 
   // Unified paste handler that works in both edit mode and when dashboard is empty
   const handlePaste = useCallback(async () => {
@@ -480,6 +580,9 @@ export default function DashboardView(props: ViewPropsType) {
   const [anchorEl, setAnchorEl] = useState(null);
   const [customLayout, setCustomLayout] = useState(schema.view.items || []);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [exportMenuAnchor, setExportMenuAnchor] = useState<null | HTMLElement>(
+    null
+  );
 
   // Detect platform for keyboard shortcut display
   const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
@@ -539,6 +642,78 @@ export default function DashboardView(props: ViewPropsType) {
     setAnchorEl(event.currentTarget);
   };
 
+  const handleExportMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setExportMenuAnchor(event.currentTarget);
+  };
+
+  const handleExportMenuClose = () => {
+    setExportMenuAnchor(null);
+  };
+
+  const onExportAsPNG = useCallback(async () => {
+    try {
+      // Temporarily switch to non-edit mode for clean capture
+      const wasInEditMode = isEditMode;
+      if (isEditMode) {
+        setIsEditMode(false);
+        // Wait for the UI to update
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
+      // Find the dashboard container element - look for the specific dashboard container
+      const dashboardElement = document.querySelector(
+        '[data-dashboard-container="true"]'
+      ) as HTMLElement;
+
+      if (!dashboardElement) {
+        console.error("Dashboard container not found");
+        return;
+      }
+
+      // Use html2canvas to capture the dashboard
+      const html2canvas = (await import("html2canvas")).default;
+      const canvas = await html2canvas(dashboardElement, {
+        backgroundColor: "#ffffff",
+        scale: 2, // Higher resolution
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        width: dashboardElement.scrollWidth,
+        height: dashboardElement.scrollHeight,
+      });
+
+      // Convert canvas to blob
+      canvas.toBlob((blob) => {
+        if (blob) {
+          // Create download link
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = `dashboard-${
+            new Date().toISOString().split("T")[0]
+          }.png`;
+
+          // Trigger download
+          document.body.appendChild(link);
+          link.click();
+
+          // Cleanup
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+
+          console.log("Dashboard exported as PNG successfully");
+        }
+      }, "image/png");
+
+      // Restore edit mode if it was enabled
+      if (wasInEditMode) {
+        setIsEditMode(true);
+      }
+    } catch (error) {
+      console.error("Error exporting dashboard as PNG:", error);
+    }
+  }, [isEditMode, setIsEditMode]);
+
   const handleDuplicateItem = useCallback(
     (event) => {
       // duplicate an item from the clipboard
@@ -595,7 +770,7 @@ export default function DashboardView(props: ViewPropsType) {
 
         // Copy the selected item to clipboard
         const value = getFromPath(
-          panelState?.state,
+          (panelState as any)?.state,
           `${dataPath}.${selectedItemId}`
         );
         if (value) {
@@ -811,6 +986,7 @@ export default function DashboardView(props: ViewPropsType) {
   return (
     <>
       <Box
+        data-dashboard-container="true"
         sx={{ height: layout?.height, overflowY: "auto", overflowX: "hidden" }}
         onClick={(e) => {
           // Deselect when clicking on the background (only in edit mode)
@@ -823,6 +999,11 @@ export default function DashboardView(props: ViewPropsType) {
           onAddItem={onAddItem}
           onEditLayoutClick={handleEditLayoutClick}
           onPasteClick={handlePaste}
+          onExportItems={onExportItems}
+          onExportAsPNG={onExportAsPNG}
+          handleExportMenuOpen={handleExportMenuOpen}
+          handleExportMenuClose={handleExportMenuClose}
+          exportMenuAnchor={exportMenuAnchor}
           isEditMode={isEditMode}
           autoLayout={autoLayout}
           editLayoutOpen={Boolean(anchorEl)}
