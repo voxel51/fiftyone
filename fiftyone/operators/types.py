@@ -736,10 +736,9 @@ class Object(BaseType):
                 view_type (RadioGroup): the view type to use (RadioGroup, Dropdown,
                     etc.)
                 default_target (None): the default target view to select if
-                    multiple choices are available. If ``None``, one will be chosen
-                    based on the available choices in the following order of
-                    preference: dataset view, current view, selected samples,
-                    selected labels
+                    multiple choices are available. If ``None`` or
+                    ``default_target`` is not an available choice, the most
+                    targeted / selective available choice is chosen.
                 action_description (Process): a short description of the action
                     being performed, used to generate default descriptions for the
                     various target views
@@ -2641,7 +2640,7 @@ class ViewTargetOptions(object):
 
         self.choices_view = choices_view
 
-        # Add all choices to the view target selector in preference order,
+        # Add all choices to the view target selector in order,
         #   included based on the provided params
         choice_order = [
             (
@@ -2838,10 +2837,10 @@ class ViewTargetProperty(Property):
         """
 
         # Determine which target views are available
-        has_base_view, has_additional_filters = ctx.has_generated_view
+        has_base_view = ctx.has_generated_view
 
         if has_base_view:
-            has_custom_view = has_additional_filters
+            has_custom_view = ctx.has_custom_generated_view
         else:
             has_custom_view = ctx.has_custom_view
         has_selected_samples = allow_selected_samples and bool(ctx.selected)

@@ -522,6 +522,8 @@ class ExecutionContext(object):
         self._secrets = {}
         self._secrets_client = PluginSecretsResolver()
         self._required_secret_keys = required_secrets
+        self._has_generated_view = None
+        self._has_custom_generated_view = None
 
         self._prompt_id = request_params.get("prompt_id", None)
 
@@ -619,10 +621,9 @@ class ExecutionContext(object):
         """
         target = self.params.get(param_name)
         if not target:
-            has_generated_view, _ = self.has_generated_view
             target = (
                 constants.ViewTarget.BASE_VIEW
-                if has_generated_view
+                if self.has_generated_view
                 else constants.ViewTarget.DATASET
             )
 
@@ -641,23 +642,23 @@ class ExecutionContext(object):
 
         return self.dataset
 
-    # Alias for common reversal
+    # Alias for common word reversal
     view_target = target_view
 
-    @property
-    def has_generated_view(self):
-        """Whether the context's view is a generated view
-
-        Returns: a tuple of ``(bool, bool)`` indicating whether the context's
-            view is a generated view, and whether it has additional filters
-        """
+    def _init_has_generated_view(self):
         stages = self.request_params.get("view", None)
         generated_view_stages = {
-            focs.ToClips.__name__,
-            focs.ToEvaluationPatches.__name__,
-            focs.ToFrames.__name__,
-            focs.ToPatches.__name__,
+            f"{stage_class.__module__}.{stage_class.__name__}"
+            for stage_class in (
+                focs.ToClips,
+                focs.ToEvaluationPatches,
+                focs.ToFrames,
+                focs.ToPatches,
+            )
         }
+
+        self._has_generated_view = self._has_custom_generated_view = False
+
         for idx, stage in enumerate(stages or []):
             if stage.get("_cls") in generated_view_stages:
                 has_filters = bool(self.request_params.get("filters", None))
@@ -666,9 +667,37 @@ class ExecutionContext(object):
                 has_additional_filters = (
                     has_filters or has_extended or has_more_stages
                 )
-                return True, has_additional_filters
+                self._has_generated_view = True
+                self._has_custom_generated_view = has_additional_filters
+                break
 
-        return False, False
+    @property
+    def has_generated_view(self):
+        """Whether the context's view is a generated view
+
+        This method inspects the request params only and does not actually
+        load the view. Therefore, it may be inaccurate for saved views.
+
+        Returns: ``True`` if the context's view is a generated view
+        """
+        if self._has_generated_view is None:
+            self._init_has_generated_view()
+        return self._has_generated_view
+
+    @property
+    def has_custom_generated_view(self):
+        """Whether the context's view is a generated view AND it has
+        additional filters.
+
+        This method inspects the request params only and does not actually
+        load the view. Therefore, it may be inaccurate for saved views.
+
+        Returns: ``True`` if the context's view is a generated view and
+            it has additional filters on top of the base view
+        """
+        if self._has_custom_generated_view is None:
+            self._init_has_generated_view()
+        return self._has_custom_generated_view
 
     @property
     def has_custom_view(self):
