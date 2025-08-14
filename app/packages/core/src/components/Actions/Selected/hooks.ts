@@ -1,3 +1,4 @@
+import { useLighter } from "@fiftyone/lighter";
 import type { Lookers } from "@fiftyone/looker";
 import type { State } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
@@ -57,15 +58,34 @@ export const useSelectVisible = (
   visibleAtom?: RecoilValueReadOnly<fos.State.SelectedLabel[]> | null,
   visible?: fos.State.SelectedLabel[]
 ) => {
+  const { scene } = useLighter();
+
   return useRecoilCallback(({ snapshot, set }) => async () => {
     const selected = await snapshot.getPromise(fos.selectedLabelMap);
 
-    set(fos.selectedLabelMap, {
-      ...selected,
-      ...toLabelMap(
-        visibleAtom ? await snapshot.getPromise(visibleAtom) : visible || []
-      ),
-    });
+    if (scene) {
+      try {
+        const visibleSelectableOverlayIds =
+          scene.getVisibleSelectableOverlayIds();
+
+        if (visibleSelectableOverlayIds.length > 0) {
+          scene.clearSelection();
+
+          visibleSelectableOverlayIds.forEach((overlayId) => {
+            scene.selectOverlay(overlayId, true);
+          });
+        }
+      } catch (error) {
+        console.warn("Failed to select overlays in lighter scene:", error);
+      }
+    } else {
+      set(fos.selectedLabelMap, {
+        ...selected,
+        ...toLabelMap(
+          visibleAtom ? await snapshot.getPromise(visibleAtom) : visible || []
+        ),
+      });
+    }
   });
 };
 

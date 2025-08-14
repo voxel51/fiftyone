@@ -357,6 +357,45 @@ export class Scene2D {
   }
 
   /**
+   * Gets all visible overlays in the scene.
+   * @returns Array of visible overlays.
+   */
+  getVisibleOverlays(): BaseOverlay[] {
+    return Array.from(this.overlays.values()).filter((overlay) =>
+      this.shouldShowOverlay(overlay)
+    );
+  }
+
+  /**
+   * Gets all visible overlay IDs in the scene.
+   * @returns Array of visible overlay IDs.
+   */
+  getVisibleOverlayIds(): string[] {
+    return Array.from(this.overlays.values())
+      .filter((overlay) => this.shouldShowOverlay(overlay))
+      .map((overlay) => overlay.id);
+  }
+
+  /**
+   * Gets all visible selectable overlays in the scene.
+   * @returns Array of visible selectable overlays.
+   */
+  getVisibleSelectableOverlays(): BaseOverlay[] {
+    return Array.from(this.overlays.values()).filter(
+      (overlay) =>
+        this.shouldShowOverlay(overlay) && this.typeGuards.isSelectable(overlay)
+    );
+  }
+
+  /**
+   * Gets all visible selectable overlay IDs in the scene.
+   * @returns Array of visible selectable overlay IDs.
+   */
+  getVisibleSelectableOverlayIds(): string[] {
+    return this.getVisibleSelectableOverlays().map((overlay) => overlay.id);
+  }
+
+  /**
    * Registers an event listener on the scene's event bus.
    *
    * @param type - The event type to listen for.

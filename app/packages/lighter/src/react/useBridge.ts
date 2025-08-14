@@ -32,7 +32,9 @@ export const useBridge = (scene: Scene2D | null) => {
             isShiftPressed: isShiftPressed || false,
           },
         };
-        onSelectLabel(selectEvent);
+        // punting to next tick to avoid race condition
+        // hacky but this is how useOnSelectLabel is implemented :(
+        setTimeout(() => onSelectLabel(selectEvent), 0);
       }
     };
 
@@ -51,7 +53,9 @@ export const useBridge = (scene: Scene2D | null) => {
             isShiftPressed: false,
           },
         };
-        onSelectLabel(selectEvent);
+        // punting to next tick to avoid race condition
+        // hacky but this is how useOnSelectLabel is implemented :(
+        setTimeout(() => onSelectLabel(selectEvent), 0);
       }
     };
 
