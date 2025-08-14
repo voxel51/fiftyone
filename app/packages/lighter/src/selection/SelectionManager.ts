@@ -36,8 +36,9 @@ export class SelectionManager {
    * Selects an overlay.
    * @param id - The ID of the overlay to select.
    * @param addToSelection - If true, adds to current selection. If false, replaces selection.
+   * @param event - Optional pointer event for shift key detection.
    */
-  select(id: string, addToSelection = false): void {
+  select(id: string, addToSelection = false, event?: PointerEvent): void {
     const overlay = this.selectableOverlays.get(id);
     if (!overlay) return;
 
@@ -56,7 +57,12 @@ export class SelectionManager {
     // Emit selection event
     this.eventBus.emit({
       type: LIGHTER_EVENTS.OVERLAY_SELECT,
-      detail: { id, point: { x: 0, y: 0 } }, // Point not relevant for programmatic selection
+      detail: {
+        id,
+        // point not relevant yet
+        point: { x: 0, y: 0 },
+        isShiftPressed: event?.shiftKey || false,
+      },
     });
 
     this.emitSelectionChanged([id], []);
@@ -90,15 +96,16 @@ export class SelectionManager {
    * Toggles the selection state of an overlay.
    * @param id - The ID of the overlay to toggle.
    * @param addToSelection - If true, adds to current selection when selecting.
+   * @param event - Optional pointer event for shift key detection.
    * @returns The new selection state.
    */
-  toggle(id: string, addToSelection = false): boolean {
+  toggle(id: string, addToSelection = false, event?: PointerEvent): boolean {
     const isSelected = this.selectedOverlays.has(id);
     if (isSelected) {
       this.deselect(id);
       return false;
     } else {
-      this.select(id, addToSelection);
+      this.select(id, addToSelection, event);
       return true;
     }
   }

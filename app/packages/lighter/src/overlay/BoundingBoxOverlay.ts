@@ -26,6 +26,7 @@ export type BoundingBoxLabel = RawLookerLabel & {
  * Options for creating a bounding box overlay.
  */
 export interface BoundingBoxOptions {
+  sampleId: string;
   // Relative bounds [0,1]
   relativeBounds?: Rect;
   label: BoundingBoxLabel;
@@ -54,7 +55,7 @@ export class BoundingBoxOverlay
     const id = `bbox_${Date.now()}_${Math.random()
       .toString(36)
       .substring(2, 9)}`;
-    super(id, options.label, options.field);
+    super(id, options.sampleId, options.label, options.field);
     this.isDraggable = options.draggable !== false; // Default to true
 
     // Initialize bounds
