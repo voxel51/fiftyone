@@ -40,6 +40,7 @@ import { ButtonView } from ".";
 import { getPath, getProps } from "../utils";
 import { ObjectSchemaType, ViewPropsType } from "../utils/types";
 import DynamicIO from "./DynamicIO";
+import DashboardPNGExport from "./DashboardPNGExport";
 import { get, get as getFromPath } from "lodash";
 
 // Helper function to create minimal ButtonView props
@@ -652,34 +653,52 @@ export default function DashboardView(props: ViewPropsType) {
 
   const onExportAsPNG = useCallback(async () => {
     try {
-      // Temporarily switch to non-edit mode for clean capture
-      const wasInEditMode = isEditMode;
-      if (isEditMode) {
-        setIsEditMode(false);
-        // Wait for the UI to update
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
+      // Create a temporary container for the PNG export
+      const exportContainer = document.createElement("div");
+      exportContainer.style.position = "absolute";
+      exportContainer.style.left = "-9999px";
+      exportContainer.style.top = "-9999px";
+      exportContainer.style.zIndex = "-1";
+      document.body.appendChild(exportContainer);
 
-      // Find the dashboard container element - look for the specific dashboard container
-      const dashboardElement = document.querySelector(
-        '[data-dashboard-container="true"]'
-      ) as HTMLElement;
+      // Create a React root and render the PNG export component
+      const { createRoot } = await import("react-dom/client");
+      const { RecoilRoot } = await import("recoil");
+      const { ThemeProvider } = await import("@fiftyone/components");
+      const root = createRoot(exportContainer);
 
-      if (!dashboardElement) {
-        console.error("Dashboard container not found");
-        return;
-      }
+      // Render the PNG export component with necessary providers
+      root.render(
+        <RecoilRoot>
+          <ThemeProvider>
+            <DashboardPNGExport
+              schema={schema as ObjectSchemaType}
+              data={data}
+              path={path}
+              layout={layout}
+              autoLayout={autoLayout}
+              layoutMode={layoutMode}
+              numRows={numRows}
+              numCols={numCols}
+              customLayout={customLayout}
+            />
+          </ThemeProvider>
+        </RecoilRoot>
+      );
 
-      // Use html2canvas to capture the dashboard
+      // Wait for the component to render and plots to load
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // Use html2canvas to capture the export container
       const html2canvas = (await import("html2canvas")).default;
-      const canvas = await html2canvas(dashboardElement, {
+      const canvas = await html2canvas(exportContainer, {
         backgroundColor: "#ffffff",
         scale: 2, // Higher resolution
         useCORS: true,
         allowTaint: true,
         logging: false,
-        width: dashboardElement.scrollWidth,
-        height: dashboardElement.scrollHeight,
+        width: exportContainer.scrollWidth,
+        height: exportContainer.scrollHeight,
       });
 
       // Convert canvas to blob
@@ -705,14 +724,13 @@ export default function DashboardView(props: ViewPropsType) {
         }
       }, "image/png");
 
-      // Restore edit mode if it was enabled
-      if (wasInEditMode) {
-        setIsEditMode(true);
-      }
+      // Cleanup the temporary container
+      root.unmount();
+      document.body.removeChild(exportContainer);
     } catch (error) {
       console.error("Error exporting dashboard as PNG:", error);
     }
-  }, [isEditMode, setIsEditMode]);
+  }, [schema, data, path, layout]);
 
   const handleDuplicateItem = useCallback(
     (event) => {
@@ -1021,7 +1039,6 @@ export default function DashboardView(props: ViewPropsType) {
           onNumRowsChange={handleNumRowsChange}
           numCols={numCols}
           onNumColsChange={handleNumColsChange}
-          onSaveLayout={handleSaveLayout}
           isEditMode={isEditMode}
         />
         <GridLayout
@@ -1036,9 +1053,6 @@ export default function DashboardView(props: ViewPropsType) {
           draggableHandle=".drag-handle"
           isDraggable={isEditMode}
           isResizable={isEditMode}
-          resizeHandle={(axis, ref) => {
-            return <DashboardItemResizeHandle axis={axis} ref={ref} />;
-          }}
         >
           {propertiesAsArray.map((property) => {
             const { id } = property;
