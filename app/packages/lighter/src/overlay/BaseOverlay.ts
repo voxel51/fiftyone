@@ -75,7 +75,10 @@ export abstract class BaseOverlay implements InteractionHandler {
    * @param renderer - The renderer to use for drawing.
    * @param style - The drawing style to apply.
    */
-  abstract render(renderer: Renderer2D, style: DrawStyle): void | Promise<void>;
+  abstract render(
+    renderer: Renderer2D,
+    style: DrawStyle | null
+  ): void | Promise<void>;
 
   /**
    * Marks the overlay as dirty, indicating it needs to be re-rendered.
