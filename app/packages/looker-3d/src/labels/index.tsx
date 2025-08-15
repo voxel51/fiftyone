@@ -21,7 +21,11 @@ import { useRecoilState, useRecoilValue } from "recoil";
 import { PANEL_ORDER_LABELS } from "../constants";
 import { usePathFilter } from "../hooks";
 import { type Looker3dSettings, defaultPluginSettings } from "../settings";
-import { cuboidLabelLineWidthAtom, polylineLabelLineWidthAtom } from "../state";
+import {
+  cuboidLabelLineWidthAtom,
+  polylineLabelLineWidthAtom,
+  showIndexAtom,
+} from "../state";
 import { toEulerFromDegreesArray } from "../utils";
 import { Cuboid, type CuboidProps } from "./cuboid";
 import { type OverlayLabel, load3dOverlays } from "./loader";
@@ -49,6 +53,7 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
   const [polylineWidth, setPolylineWidth] = useRecoilState(
     polylineLabelLineWidthAtom
   );
+  const [showIndex, setShowIndex] = useRecoilState(showIndexAtom);
   const selectedLabels = useRecoilValue(fos.selectedLabelMap);
   const tooltip = fos.useTooltip();
   const labelAlpha = colorScheme.opacity;
@@ -74,6 +79,13 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
         setPolylineWidth(value);
       },
     },
+    showIndex: {
+      value: showIndex,
+      label: `Show Index`,
+      onChange: (value: boolean) => {
+        setShowIndex(value);
+      },
+    },
   };
 
   const [labelConfig] = useControls(
@@ -83,7 +95,7 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
         collapsed: true,
       }),
     }),
-    [setCuboidLineWidth, setPolylineWidth]
+    [setCuboidLineWidth, setPolylineWidth, setShowIndex]
   );
 
   const handleSelect = useCallback(
