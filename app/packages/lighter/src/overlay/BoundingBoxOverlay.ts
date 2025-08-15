@@ -52,11 +52,12 @@ export class BoundingBoxOverlay
   private _needsCoordinateUpdate = false;
 
   constructor(private options: BoundingBoxOptions) {
-    const id = `bbox_${Date.now()}_${Math.random()
-      .toString(36)
-      .substring(2, 9)}`;
+    const id =
+      options.label["_id"] ??
+      options.label.id ??
+      `bbox_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     super(id, options.sampleId, options.label, options.field);
-    this.isDraggable = options.draggable !== false; // Default to true
+    this.isDraggable = options.draggable !== false;
 
     // Initialize bounds
     if (options.relativeBounds) {

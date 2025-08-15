@@ -31,9 +31,10 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
   private isSelectedState = false;
 
   constructor(private options: ClassificationOptions) {
-    const id = `cls_${Date.now()}_${Math.random()
-      .toString(36)
-      .substring(2, 9)}`;
+    const id =
+      options.label["_id"] ??
+      options.label.id ??
+      `cls_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     super(id, options.sampleId, options.label, options.field);
   }
 

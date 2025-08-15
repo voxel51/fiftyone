@@ -136,11 +136,16 @@ export type LighterEvent =
     }
   | {
       type: typeof LIGHTER_EVENTS.OVERLAY_SELECT;
-      detail: { id: string; point: Point; isShiftPressed?: boolean };
+      detail: {
+        id: string;
+        point: Point;
+        isShiftPressed?: boolean;
+        isBridgeLogicHandled?: boolean;
+      };
     }
   | {
       type: typeof LIGHTER_EVENTS.OVERLAY_DESELECT;
-      detail: { id: string };
+      detail: { id: string; isBridgeLogicHandled?: boolean };
     }
   | {
       type: typeof LIGHTER_EVENTS.SELECTION_CHANGED;
@@ -148,7 +153,10 @@ export type LighterEvent =
     }
   | {
       type: typeof LIGHTER_EVENTS.SELECTION_CLEARED;
-      detail: { previouslySelectedIds: string[] };
+      detail: {
+        previouslySelectedIds: string[];
+        isBridgeLogicHandled?: boolean;
+      };
     }
   | {
       type: typeof LIGHTER_EVENTS.SPATIAL_SHIFT;

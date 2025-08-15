@@ -9,10 +9,17 @@ import { useRecoilCallback, useRecoilValue } from "recoil";
 import { toLabelMap } from "./utils";
 
 export const useClearSelectedLabels = (close) => {
+  const { scene } = useLighter();
+
   return useRecoilCallback(
     ({ set }) =>
       async () => {
+        if (scene) {
+          scene.clearSelection({ isBridgeLogicHandled: true });
+        }
+
         set(fos.selectedLabels, []);
+
         close();
       },
     []
@@ -69,23 +76,23 @@ export const useSelectVisible = (
           scene.getVisibleSelectableOverlayIds();
 
         if (visibleSelectableOverlayIds.length > 0) {
-          scene.clearSelection();
+          scene.clearSelection({ isBridgeLogicHandled: true });
 
           visibleSelectableOverlayIds.forEach((overlayId) => {
-            scene.selectOverlay(overlayId, true);
+            scene.selectOverlay(overlayId, { isBridgeLogicHandled: true });
           });
         }
       } catch (error) {
         console.warn("Failed to select overlays in lighter scene:", error);
       }
-    } else {
-      set(fos.selectedLabelMap, {
-        ...selected,
-        ...toLabelMap(
-          visibleAtom ? await snapshot.getPromise(visibleAtom) : visible || []
-        ),
-      });
     }
+
+    set(fos.selectedLabelMap, {
+      ...selected,
+      ...toLabelMap(
+        visibleAtom ? await snapshot.getPromise(visibleAtom) : visible || []
+      ),
+    });
   });
 };
 
@@ -110,7 +117,13 @@ export const useUnselectVisible = (
   visibleIdsAtom?: RecoilValueReadOnly<Set<string>>,
   visibleIds?: Set<string>
 ) => {
+  const { scene } = useLighter();
+
   return useRecoilCallback(({ snapshot, set }) => async () => {
+    if (scene) {
+      scene.clearSelection({ isBridgeLogicHandled: true });
+    }
+
     const selected = await snapshot.getPromise(fos.selectedLabels);
     const result = visibleIdsAtom
       ? await snapshot.getPromise(visibleIdsAtom)

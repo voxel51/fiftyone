@@ -7,6 +7,22 @@ import { LIGHTER_EVENTS } from "../event/EventBus";
 import type { Selectable } from "./Selectable";
 
 /**
+ * Options for selection operations.
+ */
+export interface SelectionOptions {
+  /**
+   * An optional pointer event that triggered the selection.
+   */
+  event?: PointerEvent;
+
+  /**
+   * When true, any logic associated with this event will not be handled
+   * by lighter's bridge.
+   */
+  isBridgeLogicHandled?: boolean;
+}
+
+/**
  * Manages selection state for overlays in a scene.
  */
 export class SelectionManager {
@@ -35,26 +51,19 @@ export class SelectionManager {
   /**
    * Selects an overlay.
    * @param id - The ID of the overlay to select.
-   * @param addToSelection - If true, adds to current selection. If false, replaces selection.
-   * @param event - Optional pointer event for shift key detection.
+   * @param options - Optional selection options.
    */
-  select(id: string, addToSelection = false, event?: PointerEvent): void {
+  select(id: string, options: SelectionOptions = {}): void {
+    const { event, isBridgeLogicHandled = false } = options;
     const overlay = this.selectableOverlays.get(id);
     if (!overlay) return;
 
     const wasSelected = this.selectedOverlays.has(id);
     if (wasSelected) return; // Already selected
 
-    // If not adding to selection, clear current selection first
-    if (!addToSelection && this.selectedOverlays.size > 0) {
-      this.clearSelection();
-    }
-
-    // Select the overlay
     this.selectedOverlays.add(id);
     overlay.setSelected(true);
 
-    // Emit selection event
     this.eventBus.emit({
       type: LIGHTER_EVENTS.OVERLAY_SELECT,
       detail: {
@@ -62,6 +71,7 @@ export class SelectionManager {
         // point not relevant yet
         point: { x: 0, y: 0 },
         isShiftPressed: event?.shiftKey || false,
+        isBridgeLogicHandled,
       },
     });
 
@@ -71,22 +81,22 @@ export class SelectionManager {
   /**
    * Deselects an overlay.
    * @param id - The ID of the overlay to deselect.
+   * @param options - Optional selection options.
    */
-  deselect(id: string): void {
+  deselect(id: string, options: SelectionOptions = {}): void {
+    const { isBridgeLogicHandled = false } = options;
     const overlay = this.selectableOverlays.get(id);
     if (!overlay) return;
 
     const wasSelected = this.selectedOverlays.has(id);
     if (!wasSelected) return; // Not selected
 
-    // Deselect the overlay
     this.selectedOverlays.delete(id);
     overlay.setSelected(false);
 
-    // Emit deselection event
     this.eventBus.emit({
       type: LIGHTER_EVENTS.OVERLAY_DESELECT,
-      detail: { id },
+      detail: { id, isBridgeLogicHandled },
     });
 
     this.emitSelectionChanged([], [id]);
@@ -95,25 +105,26 @@ export class SelectionManager {
   /**
    * Toggles the selection state of an overlay.
    * @param id - The ID of the overlay to toggle.
-   * @param addToSelection - If true, adds to current selection when selecting.
-   * @param event - Optional pointer event for shift key detection.
+   * @param options - Optional selection options.
    * @returns The new selection state.
    */
-  toggle(id: string, addToSelection = false, event?: PointerEvent): boolean {
+  toggle(id: string, options: SelectionOptions = {}): boolean {
     const isSelected = this.selectedOverlays.has(id);
     if (isSelected) {
-      this.deselect(id);
+      this.deselect(id, options);
       return false;
     } else {
-      this.select(id, addToSelection, event);
+      this.select(id, options);
       return true;
     }
   }
 
   /**
    * Clears all selections.
+   * @param options - Optional selection options.
    */
-  clearSelection(): void {
+  clearSelection(options: SelectionOptions = {}): void {
+    const { isBridgeLogicHandled = false } = options;
     const previouslySelected = Array.from(this.selectedOverlays);
     if (previouslySelected.length === 0) return;
 
@@ -127,10 +138,12 @@ export class SelectionManager {
 
     this.selectedOverlays.clear();
 
-    // Emit clear event
     this.eventBus.emit({
       type: LIGHTER_EVENTS.SELECTION_CLEARED,
-      detail: { previouslySelectedIds: previouslySelected },
+      detail: {
+        previouslySelectedIds: previouslySelected,
+        isBridgeLogicHandled,
+      },
     });
 
     this.emitSelectionChanged([], previouslySelected);

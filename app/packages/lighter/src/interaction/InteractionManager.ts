@@ -476,8 +476,7 @@ export class InteractionManager {
 
       // Handle selection if the handler is selectable
       if (handler && this.isSelectableHandler(handler)) {
-        const isSpecialKeyPressed = event.ctrlKey || event.metaKey;
-        this.selectionManager.toggle(handler.id, !isSpecialKeyPressed, event);
+        this.selectionManager.toggle(handler.id, { event });
         event.preventDefault();
       }
       // Otherwise, handle regular click

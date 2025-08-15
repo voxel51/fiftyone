@@ -25,6 +25,7 @@ import {
   RenderingStateManager,
 } from "./RenderingStateManager";
 import type { Scene2DConfig, SceneOptions } from "./SceneConfig";
+import type { SelectionOptions } from "../selection/SelectionManager";
 
 /**
  * Interface for render callbacks that can be registered to run during the render loop.
@@ -545,35 +546,37 @@ export class Scene2D {
   /**
    * Selects an overlay.
    * @param id - The overlay ID to select.
-   * @param addToSelection - Whether to add to existing selection.
+   * @param options - Optional selection options.
    */
-  selectOverlay(id: string, addToSelection = false): void {
-    this.selectionManager.select(id, addToSelection);
+  selectOverlay(id: string, options?: SelectionOptions): void {
+    this.selectionManager.select(id, options);
   }
 
   /**
    * Deselects an overlay.
    * @param id - The overlay ID to deselect.
+   * @param options - Optional selection options.
    */
-  deselectOverlay(id: string): void {
-    this.selectionManager.deselect(id);
+  deselectOverlay(id: string, options?: SelectionOptions): void {
+    this.selectionManager.deselect(id, options);
   }
 
   /**
    * Toggles the selection of an overlay.
    * @param id - The overlay ID to toggle.
-   * @param addToSelection - Whether to add to existing selection.
+   * @param options - Optional selection options.
    * @returns True if the overlay is now selected.
    */
-  toggleOverlaySelection(id: string, addToSelection = false): boolean {
-    return this.selectionManager.toggle(id, addToSelection);
+  toggleOverlaySelection(id: string, options?: SelectionOptions): boolean {
+    return this.selectionManager.toggle(id, options);
   }
 
   /**
    * Clears the current selection.
+   * @param options - Optional selection options.
    */
-  clearSelection(): void {
-    this.selectionManager.clearSelection();
+  clearSelection(options?: SelectionOptions): void {
+    this.selectionManager.clearSelection(options);
   }
 
   /**
