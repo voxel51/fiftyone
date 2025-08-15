@@ -5,7 +5,7 @@ import {
 } from "@fiftyone/relay";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
 import { useCallback } from "react";
-import { DefaultValue, RecoilState, atom, selector } from "recoil";
+import { AtomOptions, DefaultValue, RecoilState, atom, selector } from "recoil";
 import { State } from "./recoil";
 
 export const GRID_SPACES_DEFAULT = {
@@ -95,6 +95,7 @@ type Setter = <K extends SetterKeys>(key: K, value: Session[K]) => void;
 type SessionAtomOptions<K extends keyof Session> = {
   key: K;
   default?: Session[K];
+  effects?: AtomOptions<Session[K]>["effects"];
 };
 
 let sessionRef: Session;
@@ -134,6 +135,7 @@ export function sessionAtom<K extends keyof Session>(
   const value = atom<Session[K]>({
     ...options,
     effects: [
+      ...(options.effects || []),
       ({ setSelf, trigger }) => {
         const assertValue = () => {
           if (
