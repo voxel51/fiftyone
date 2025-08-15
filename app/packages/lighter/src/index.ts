@@ -43,6 +43,7 @@ export type { InteractionHandler } from "./interaction/InteractionManager";
 // Selection exports
 export type { Selectable } from "./selection/Selectable";
 export { SelectionManager } from "./selection/SelectionManager";
+export type { SelectionOptions } from "./selection/SelectionManager";
 
 // Undo/Redo exports
 export type { Command } from "./undo/Command";
