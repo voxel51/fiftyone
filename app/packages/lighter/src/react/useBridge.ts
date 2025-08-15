@@ -2,9 +2,14 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import { selectedLabels, useOnSelectLabel } from "@fiftyone/state";
+import {
+  colorScheme,
+  colorSeed,
+  selectedLabels,
+  useOnSelectLabel,
+} from "@fiftyone/state";
 import { useEffect } from "react";
-import { useRecoilCallback } from "recoil";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 import { LIGHTER_EVENTS, Scene2D } from "../index";
 
 /**
@@ -16,6 +21,8 @@ import { LIGHTER_EVENTS, Scene2D } from "../index";
  */
 export const useBridge = (scene: Scene2D | null) => {
   const onSelectLabel = useOnSelectLabel();
+  const currentColorScheme = useRecoilValue(colorScheme);
+  const currentColorSeed = useRecoilValue(colorSeed);
 
   const getSelectedLabels = useRecoilCallback(
     ({ snapshot }) =>
@@ -25,8 +32,12 @@ export const useBridge = (scene: Scene2D | null) => {
     []
   );
 
-  // this effect is for (1) above,
-  // listening to certain events from "FiftyOne state" world and reacting to them.
+  /**
+   * These effects are for (1) above,
+   * i.e., listening to events from "FiftyOne state" world and reacting to them.
+   */
+
+  // Effect to run during scene initialization
   useEffect(() => {
     if (!scene) {
       return;
@@ -43,8 +54,30 @@ export const useBridge = (scene: Scene2D | null) => {
     return () => {};
   }, [scene, getSelectedLabels]);
 
-  // this effect is for (2) above,
-  // triggering certain events into "FiftyOne state" world based on user interactions in Lighter.
+  // Effect to update scene with color scheme changes
+  useEffect(() => {
+    if (!scene) {
+      return;
+    }
+
+    // Update the scene's color mapping context
+    scene.updateColorMappingContext({
+      colorScheme: currentColorScheme,
+      seed: currentColorSeed,
+    });
+
+    // Mark all overlays as dirty to trigger re-rendering with new colors
+    scene.getAllOverlays().forEach((overlay) => {
+      overlay.markDirty();
+    });
+  }, [scene, currentColorScheme, currentColorSeed]);
+
+  /**
+   * These effects are for (2) above,
+   * i.e., triggering certain events into "FiftyOne state" world based on user interactions in Lighter.
+   */
+
+  // Effect to handle overlay selection
   useEffect(() => {
     if (!scene || !onSelectLabel) {
       return;

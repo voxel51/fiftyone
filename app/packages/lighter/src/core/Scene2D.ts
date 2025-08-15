@@ -6,6 +6,7 @@ import { LIGHTER_EVENTS, type LighterEvent } from "../event/EventBus";
 import { InteractionManager } from "../interaction/InteractionManager";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
 import type { Selectable } from "../selection/Selectable";
+import type { SelectionOptions } from "../selection/SelectionManager";
 import { SelectionManager } from "../selection/SelectionManager";
 import type {
   CanonicalMedia,
@@ -16,6 +17,8 @@ import type {
 import type { Command } from "../undo/Command";
 import { UndoRedoManager } from "../undo/UndoRedoManager";
 import { generateColorFromId } from "../utils/color";
+import type { ColorMappingContext } from "../utils/colorMapping";
+import { getOverlayColor } from "../utils/colorMapping";
 import { CoordinateSystem2D } from "./CoordinateSystem2D";
 import {
   OVERLAY_STATUS_ERROR,
@@ -25,7 +28,6 @@ import {
   RenderingStateManager,
 } from "./RenderingStateManager";
 import type { Scene2DConfig, SceneOptions } from "./SceneConfig";
-import type { SelectionOptions } from "../selection/SelectionManager";
 
 /**
  * Interface for render callbacks that can be registered to run during the render loop.
@@ -53,6 +55,7 @@ export class Scene2D {
   private undoRedo = new UndoRedoManager();
   private unsubscribeCanonicalMedia?: () => void;
   private renderCallbacks = new Map<string, RenderCallback>();
+  private colorMappingContext?: ColorMappingContext;
 
   constructor(private readonly config: Scene2DConfig) {
     this.coordinateSystem = new CoordinateSystem2D();
@@ -77,6 +80,22 @@ export class Scene2D {
         overlay.markDirty();
       });
     });
+  }
+
+  /**
+   * Updates the color mapping context used for overlay coloring.
+   * @param context - The new color mapping context.
+   */
+  updateColorMappingContext(context: ColorMappingContext): void {
+    this.colorMappingContext = context;
+  }
+
+  /**
+   * Gets the current color mapping context.
+   * @returns The current color mapping context or undefined if not set.
+   */
+  getColorMappingContext(): ColorMappingContext | undefined {
+    return this.colorMappingContext;
   }
 
   /**
@@ -150,26 +169,36 @@ export class Scene2D {
     this.overlayOrder = ordered;
   }
 
-  // TODO: hook up with fiftyone colorscheme
-  private static getStyleFromId(id: string): DrawStyle {
-    return {
-      strokeStyle: generateColorFromId(id, 70, 50),
-      lineWidth: 2,
-      opacity: 1,
-    };
-  }
-
   /**
-   * Creates a style for an overlay, including selection-specific properties.
+   * Creates a style for an overlay using FiftyOne's color scheme system.
    * @param overlay - The overlay to create a style for.
    * @returns The draw style for the overlay.
    */
-  private createOverlayStyle(overlay: BaseOverlay): DrawStyle {
-    const identifier =
-      overlay.label && "label" in overlay.label
-        ? (overlay.label.label as string)
-        : overlay.id;
-    const baseStyle = Scene2D.getStyleFromId(identifier);
+  private createOverlayStyle(overlay: BaseOverlay): DrawStyle | null {
+    if (overlay.id === this.canonicalMediaId) {
+      // we don't have "style" for the canonical media (like, image overlay)
+      return null;
+    }
+
+    let strokeStyle: string;
+
+    // Use FiftyOne color scheme if available, otherwise fallback to simple ID-based color
+    if (this.colorMappingContext) {
+      strokeStyle = getOverlayColor(overlay, this.colorMappingContext);
+    } else {
+      // Fallback to simple ID-based color generation
+      const identifier =
+        overlay.label && "label" in overlay.label
+          ? (overlay.label.label as string)
+          : overlay.id;
+      strokeStyle = generateColorFromId(identifier, 70, 50);
+    }
+
+    const baseStyle: DrawStyle = {
+      strokeStyle,
+      lineWidth: 2,
+      opacity: 1,
+    };
 
     // Apply alpha from scene options if available
     const finalStyle: DrawStyle = {
