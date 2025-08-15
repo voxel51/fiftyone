@@ -1,14 +1,15 @@
 import { useTheme } from "@fiftyone/components";
 import type { ImageLooker } from "@fiftyone/looker";
+import { isNativeMediaType } from "@fiftyone/looker/src/util";
 import * as fos from "@fiftyone/state";
 import React, { useMemo } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
+import { LighterSampleRenderer } from "../../../../lighter/src";
 import { ImaVidLookerReact } from "./ImaVidLooker";
+import { MetadataLooker } from "./MetadataLooker";
 import { VideoLookerReact } from "./VideoLooker";
 import useLooker from "./use-looker";
 import { useImageModalSelectiveRendering } from "./use-modal-selective-rendering";
-import { isNativeMediaType } from "@fiftyone/looker/src/util";
-import { MetadataLooker } from "./MetadataLooker";
 
 export const useShowOverlays = () => {
   return useRecoilCallback(({ set }) => async (event: CustomEvent) => {
@@ -27,11 +28,18 @@ export const useClearSelectedLabels = () => {
 
 interface LookerProps {
   sample: fos.ModalSample;
+
+  // note: this is a hack we're using while migrating to lighter
+  // a lot of components depend on lighterRef being defined (see `useVisibleSampleLabels` for example)
+  // we'll remove this once we've migrated to lighter
+  // `ghost` means looker will render but with width and height set to 0
+  ghost?: boolean;
 }
 
 const ModalLookerNoTimeline = React.memo((props: LookerProps) => {
   const { id, ref, looker } = useLooker<ImageLooker>(props);
   const theme = useTheme();
+
   useImageModalSelectiveRendering(id, looker);
 
   return (
@@ -40,8 +48,8 @@ const ModalLookerNoTimeline = React.memo((props: LookerProps) => {
       id={id}
       data-cy="modal-looker-container"
       style={{
-        width: "100%",
-        height: "100%",
+        width: props.ghost ? 0 : "100%",
+        height: props.ghost ? 0 : "100%",
         background: theme.background.level2,
         position: "relative",
       }}
@@ -82,7 +90,12 @@ export const ModalLooker = React.memo(
     if (
       isNativeMediaType(sample.sample.media_type ?? sample.sample._media_type)
     ) {
-      return <ModalLookerNoTimeline sample={sample} />;
+      return (
+        <>
+          <LighterSampleRenderer sample={sample} />
+          <ModalLookerNoTimeline sample={sample} ghost />
+        </>
+      );
     }
 
     return <MetadataLooker sample={sample} />;
