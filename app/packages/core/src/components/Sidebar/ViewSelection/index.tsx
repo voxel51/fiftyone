@@ -43,6 +43,7 @@ export default function ViewSelection() {
   const [savedViewParam, setViewName] = useRecoilState(fos.viewName);
   const setEditView = useSetRecoilState(viewDialogContent);
   const resetView = useResetRecoilState(fos.view);
+  const setView = fos.useSetView();
   const [viewSearch, setViewSearch] = useRecoilState<string>(viewSearchTerm);
 
   const disabled = canEditSavedViews.enabled !== true;
@@ -93,7 +94,15 @@ export default function ViewSelection() {
         (v) => v.slug === selected.slug
       )?.[0];
       if (potentialView) {
-        setSelected(potentialView as fos.DatasetViewOption);
+        const viewChanged =
+          potentialView.id !== selected.id ||
+          JSON.stringify(potentialView.viewStages) !==
+            JSON.stringify(selected.viewStages) ||
+          potentialView.label !== selected.label;
+
+        if (viewChanged) {
+          setSelected(potentialView as fos.DatasetViewOption);
+        }
       }
     }
   }, [searchData, selected]);
@@ -138,14 +147,36 @@ export default function ViewSelection() {
           setSelected(fos.DEFAULT_SELECTED);
         }
       }
-    } else {
-      // no view param
-      if (selected && selected.slug !== fos.DEFAULT_SELECTED.slug) {
-        setSelected(fos.DEFAULT_SELECTED);
-        // do not reset view to [] again. The viewbar sets it once.
-      }
     }
   }, [savedViewParam]);
+
+  // Sync the selected saved view's stages with the active view
+  useEffect(() => {
+    if (
+      selected &&
+      selected.id !== fos.DEFAULT_SELECTED.id &&
+      selected.viewStages &&
+      selected.viewStages.length > 0
+    ) {
+      try {
+        const parsedStages = selected.viewStages.map((stage: any) => {
+          if (typeof stage === "string") {
+            return JSON.parse(stage);
+          }
+          return stage;
+        });
+
+        setView(parsedStages);
+      } catch (error) {
+        console.log("Error parsing viewStages", {
+          error,
+          viewStages: selected.viewStages,
+        });
+      }
+    } else if (selected && selected.id === fos.DEFAULT_SELECTED.id) {
+      setView([]);
+    }
+  }, [selected, setView]);
 
   useEffect(() => {
     const callback = (event: KeyboardEvent) => {
