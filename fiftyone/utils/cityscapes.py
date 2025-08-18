@@ -6,6 +6,7 @@ Utilities for working with the
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 import os
 
@@ -21,11 +22,11 @@ import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 import fiftyone.types as fot
 
-
 logger = logging.getLogger(__name__)
 
 
 _IMAGES_ZIP = "leftImg8bit_trainvaltest.zip"
+_TRAINEXTRA_IMAGES_ZIP = "leftImg8bit_trainextra.zip"
 _FINE_ANNOS_ZIP = "gtFine_trainvaltest.zip"
 _COARSE_ANNOS_ZIP = "gtCoarse.zip"
 _PERSON_ANNOS_ZIP = "gtBbox_cityPersons_trainval.zip"
@@ -51,9 +52,10 @@ def parse_cityscapes_dataset(
 
         source_dir/
             leftImg8bit_trainvaltest.zip
-            gtFine_trainvaltest.zip             # optional
-            gtCoarse.zip                        # optional
-            gtBbox_cityPersons_trainval.zip     # optional
+            leftImg8bit_trainextra.zip        # optional, for train_extra split
+            gtFine_trainvaltest.zip           # optional
+            gtCoarse.zip                      # optional
+            gtBbox_cityPersons_trainval.zip   # optional
 
     Args:
         source_dir: the directory containing the manually downloaded
@@ -61,7 +63,7 @@ def parse_cityscapes_dataset(
         dataset_dir: the directory in which to build the output dataset
         scratch_dir: a scratch directory to use for temporary files
         splits: a list of splits to parse. Supported values are
-            ``(train, test, validation)``
+            ``(train, test, validation, train_extra)``
         fine_annos (None): whether to load the fine annotations (True), or not
             (False), or only if the ZIP file exists (None)
         coarse_annos (None): whether to load the coarse annotations (True), or
@@ -74,6 +76,7 @@ def parse_cityscapes_dataset(
     """
     (
         images_zip_path,
+        trainextra_images_zip_path,  # Add this line
         fine_annos_zip_path,
         coarse_annos_zip_path,
         person_annos_zip_path,
@@ -81,7 +84,26 @@ def parse_cityscapes_dataset(
 
     _splits = [_parse_split(s) for s in splits]
 
-    images_dir = _extract_images(images_zip_path, scratch_dir)
+    images_dir = _extract_archive(
+        images_zip_path, scratch_dir, "images", "leftImg8bit"
+    )
+
+    # Extract trainextra images if needed
+    if trainextra_images_zip_path and "train_extra" in splits:
+        if fine_annos and not coarse_annos:
+            logger.warning(
+                "Cityscapes only provides coarse annotations for the "
+                "train_extra split.\n"
+                "No annotations will be loaded for train_extra split. "
+            )
+        trainextra_images_dir = _extract_archive(
+            trainextra_images_zip_path,
+            scratch_dir,
+            "trainextra-images",
+            "leftImg8bit",
+        )
+    else:
+        trainextra_images_dir = None
 
     if fine_annos_zip_path:
         fine_annos_dir = _extract_fine_annos(fine_annos_zip_path, scratch_dir)
@@ -104,14 +126,27 @@ def parse_cityscapes_dataset(
 
     for split, _split in zip(splits, _splits):
         split_dir = os.path.join(dataset_dir, split)
-        _export_split(
-            _split,
-            split_dir,
-            images_dir,
-            fine_annos_dir,
-            coarse_annos_dir,
-            person_annos_dir,
-        )
+
+        # Use trainextra_images_dir for train_extra split,
+        # otherwise use images_dir
+        if split == "train_extra" and trainextra_images_dir:
+            _export_split(
+                _split,
+                split_dir,
+                trainextra_images_dir,
+                fine_annos_dir,
+                coarse_annos_dir,
+                person_annos_dir,
+            )
+        else:
+            _export_split(
+                _split,
+                split_dir,
+                images_dir,
+                fine_annos_dir,
+                coarse_annos_dir,
+                person_annos_dir,
+            )
 
 
 def _parse_source_dir(source_dir, fine_annos, coarse_annos, person_annos):
@@ -135,6 +170,13 @@ def _parse_source_dir(source_dir, fine_annos, coarse_annos, person_annos):
         )
 
     images_zip_path = os.path.join(source_dir, _IMAGES_ZIP)
+
+    # Add support for trainextra images zip
+    trainextra_images_zip_path = None
+    if _TRAINEXTRA_IMAGES_ZIP in files:
+        trainextra_images_zip_path = os.path.join(
+            source_dir, _TRAINEXTRA_IMAGES_ZIP
+        )
 
     if fine_annos is None:
         fine_annos = _FINE_ANNOS_ZIP in files
@@ -180,6 +222,7 @@ def _parse_source_dir(source_dir, fine_annos, coarse_annos, person_annos):
 
     return (
         images_zip_path,
+        trainextra_images_zip_path,  # Add this line
         fine_annos_zip_path,
         coarse_annos_zip_path,
         person_annos_zip_path,
@@ -202,10 +245,10 @@ def _parse_split(split):
     if split == "validation":
         return "val"
 
-    if split not in ("test", "train"):
+    if split not in ("test", "train", "train_extra"):
         raise ValueError(
             "Invalid split '%s''; supported values are %s"
-            % (split, ("train", "test", "validation"))
+            % (split, ("train", "test", "validation", "train_extra"))
         )
 
     return split
@@ -288,15 +331,15 @@ def _export_split(
     dataset.delete()
 
 
-def _extract_images(images_zip_path, scratch_dir):
-    tmp_dir = os.path.join(scratch_dir, "images")
-    images_dir = os.path.join(tmp_dir, "leftImg8bit")
+def _extract_archive(zip_path, scratch_dir, subdir_name, target_subdir):
+    tmp_dir = os.path.join(scratch_dir, subdir_name)
+    target_dir = os.path.join(tmp_dir, target_subdir)
 
-    if not os.path.isdir(images_dir):
-        logger.info("Extracting images...")
-        etau.extract_zip(images_zip_path, outdir=tmp_dir, delete_zip=False)
+    if not os.path.isdir(target_dir):
+        logger.info(f"Extracting {subdir_name}...")
+        etau.extract_zip(zip_path, outdir=tmp_dir, delete_zip=False)
 
-    return images_dir
+    return target_dir
 
 
 def _extract_fine_annos(fine_annos_zip_path, scratch_dir):
