@@ -1,12 +1,14 @@
 import { MuiButton } from "@fiftyone/components";
+import { useSetAtom } from "jotai";
 import React from "react";
 import styled from "styled-components";
+import { showModal } from "../state";
 
 const Container = styled.div`
   width: 100%;
   display: flex;
   justify-content: space-between;
-  border-top: 1px solid ${({ theme }) => theme.primary.plainBorder};
+  border-top: 1px solid ${({ theme }) => theme.divider};
   align-items: center;
   position: absolute;
   bottom: 0;
@@ -17,6 +19,7 @@ const Container = styled.div`
 `;
 
 const Footer = () => {
+  const close = useSetAtom(showModal);
   return (
     <Container>
       <MuiButton
@@ -26,11 +29,7 @@ const Footer = () => {
       >
         Cancel
       </MuiButton>
-      <MuiButton
-        variant="contained"
-        color="primary"
-        onClick={() => alert("Done")}
-      >
+      <MuiButton variant="contained" color="primary" onClick={close}>
         Done
       </MuiButton>
     </Container>

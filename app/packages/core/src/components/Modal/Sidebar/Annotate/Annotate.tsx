@@ -1,5 +1,5 @@
 import { EntryKind } from "@fiftyone/state";
-import { useAtomValue } from "jotai";
+import { atom, useAtomValue } from "jotai";
 import React from "react";
 import Sidebar from "../../../Sidebar";
 import Actions from "./Actions";
@@ -7,17 +7,12 @@ import GroupEntry from "./GroupEntry";
 import ImportSchema from "./ImportSchema";
 import ObjectItem from "./ObjectEntry";
 import SchemaManager from "./SchemaManager";
-import { showSchemaManager } from "./state";
+import { activePaths, showModal } from "./state";
 import useEntries from "./useEntries";
 
-const Annotate = () => {
-  const showSchemaModal = useAtomValue(showSchemaManager);
-  return (
-    <>
-      <ImportSchema />
-      {showSchemaModal && <SchemaManager />}
-    </>
-  );
+const showImportPage = atom((get) => !get(activePaths).length);
+
+const AnnotateSidebar = () => {
   return (
     <>
       <Actions />
@@ -39,6 +34,18 @@ const Annotate = () => {
         }}
         useEntries={useEntries}
       />
+    </>
+  );
+};
+
+const Annotate = () => {
+  const showSchemaModal = useAtomValue(showModal);
+  const showImport = useAtomValue(showImportPage);
+
+  return (
+    <>
+      {showImport ? <ImportSchema /> : <AnnotateSidebar />}
+      {showSchemaModal && <SchemaManager />}
     </>
   );
 };

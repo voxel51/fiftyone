@@ -1,10 +1,9 @@
 import { MuiButton, MuiIconFont } from "@fiftyone/components";
 import { InfoOutlined } from "@mui/icons-material";
 import { Alert, Typography } from "@mui/material";
-import { useSetAtom } from "jotai";
 import React from "react";
 import styled from "styled-components";
-import { showSchemaManager } from "./state";
+import useShowModal from "./useShowModal";
 
 const Container = styled.div`
   flex: 1;
@@ -18,7 +17,7 @@ const Container = styled.div`
 
 const ImportSchema = () => {
   const canManage = true;
-  const showSchemaModal = useSetAtom(showSchemaManager);
+  const showModal = useShowModal();
   return (
     <Container>
       <MuiIconFont
@@ -33,14 +32,14 @@ const ImportSchema = () => {
         Annotate faster than ever
       </Typography>
       <Typography color="secondary" textAlign="center" sx={{ marginBottom: 2 }}>
-        Import your dataset schema to access and edit labels, set up attributes,
-        and start annotating right away.
+        Import your annnotation schemas to access and edit labels, set up
+        attributes, and start annotating right away.
       </Typography>
       <MuiButton
         variant="contained"
         color="primary"
         disabled={!canManage}
-        onClick={() => showSchemaModal(true)}
+        onClick={showModal}
       >
         Import schema
       </MuiButton>

@@ -1,8 +1,10 @@
 import { MuiButton, MuiIconFont } from "@fiftyone/components";
 import { ArrowForward } from "@mui/icons-material";
 import { Typography } from "@mui/material";
+import { useSetAtom } from "jotai";
 import React from "react";
 import styled from "styled-components";
+import { activeSchemaTab } from "../state";
 
 const Container = styled.div`
   flex: 1;
@@ -11,6 +13,8 @@ const Container = styled.div`
   justify-content: center;
   align-items: center;
   padding: 1rem;
+  margin: -2rem;
+  overflow: scroll;
   position: relative;
   & * {
     max-width: 200px;
@@ -18,6 +22,7 @@ const Container = styled.div`
 `;
 
 const NoActiveSchema = () => {
+  const setTab = useSetAtom(activeSchemaTab);
   return (
     <Container>
       <MuiIconFont
@@ -29,12 +34,16 @@ const NoActiveSchema = () => {
         name={"draw"}
       />
       <Typography variant="h6" textAlign="center">
-        No active schema yet
+        No active schemas yet
       </Typography>
       <Typography color="secondary" textAlign="center" sx={{ marginBottom: 2 }}>
-        Select fields that you’d like to import as schema for annotation
+        Select fields that you’d like to add schemas to for annotation
       </Typography>
-      <MuiButton variant="contained" color="primary" onClick={null}>
+      <MuiButton
+        variant="contained"
+        color="primary"
+        onClick={() => setTab("other")}
+      >
         Select fields to import <ArrowForward />
       </MuiButton>
     </Container>

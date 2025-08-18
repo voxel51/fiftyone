@@ -1,25 +1,34 @@
-import { Add, Close as CloseIcon, West } from "@mui/icons-material";
+import { West as BackIcon, Close as CloseIcon } from "@mui/icons-material";
 import { Typography } from "@mui/material";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import React, { useMemo } from "react";
 import { createPortal } from "react-dom";
 import styled from "styled-components";
-import { RoundButton } from "../Actions";
-import {
-  activeSchemaTab,
-  editingAnnotationFieldSchema,
-  showSchemaManager,
-} from "../state";
+import { activeSchemaTab, currentPath, schema, showModal } from "../state";
 import ActiveSchema from "./ActiveSchema";
 import { ItemLeft } from "./Components";
 import EditAnnotationFieldSchema from "./EditAnnotationFieldSchema";
 import FieldsTabs from "./FieldsTabs";
 import OtherFields from "./OtherFields";
 
-const Close = styled(CloseIcon)`
-  height: 3rem;
+const Back = styled(BackIcon)`
+  cursor: pointer;
+  height: 3rem !important;
   padding: 0.5rem;
-  width: 3rem;
+  width: 3rem !important;
+
+  &:hover {
+    background: ${({ theme }) => theme.background.level1};
+    border-radius: 1.5rem;
+    color: ${({ theme }) => theme.text.primary};
+  }
+`;
+
+const Close = styled(CloseIcon)`
+  cursor: pointer;
+  height: 3rem !important;
+  padding: 0.5rem;
+  width: 3rem !important;
 
   &:hover {
     background: ${({ theme }) => theme.background.level1};
@@ -62,11 +71,57 @@ export const Header = styled.div`
   height: 36px;
 `;
 
-const NewField = styled(RoundButton)`
-  &:hover path {
-    fill: ${({ theme }) => theme.text.primary};
+const Heading = () => {
+  const [field, setField] = useAtom(currentPath);
+  const type = useAtomValue(schema(field ?? ""))?.type;
+  if (!field) {
+    return <Typography variant="h5">Schema manager</Typography>;
   }
-`;
+
+  return (
+    <ItemLeft>
+      <Back color="secondary" onClick={() => setField(null)} />
+      <Typography variant="h5">{field}</Typography>
+      <Typography color="secondary" variant="h5">
+        {type}
+      </Typography>
+    </ItemLeft>
+  );
+};
+
+const Subheading = () => {
+  const field = useAtomValue(currentPath);
+
+  if (field) {
+    return null;
+  }
+
+  return (
+    <>
+      <Typography color="secondary" padding="1rem 0">
+        Import schemas to get started with Annotation
+      </Typography>
+      <Header style={{ margin: "1rem 0" }}>
+        <FieldsTabs />
+      </Header>
+    </>
+  );
+};
+
+const Page = () => {
+  const field = useAtomValue(currentPath);
+  const tab = useAtomValue(activeSchemaTab);
+
+  if (field) {
+    return <EditAnnotationFieldSchema />;
+  }
+
+  if (tab === "active") {
+    return <ActiveSchema />;
+  }
+
+  return <OtherFields />;
+};
 
 const Modal = () => {
   const element = useMemo(() => {
@@ -76,58 +131,23 @@ const Modal = () => {
     }
     return el;
   }, []);
-  const toggle = useSetAtom(showSchemaManager);
-  const tab = useAtomValue(activeSchemaTab);
-  const [field, setField] = useAtom(editingAnnotationFieldSchema);
+  const close = useSetAtom(showModal);
 
   return createPortal(
-    <Background onClick={() => toggle(false)}>
+    <Background onClick={close}>
       <Container onClick={(e) => e.stopPropagation()}>
         <Header>
-          {field ? (
-            <ItemLeft>
-              <West
-                color="secondary"
-                style={{ cursor: "pointer", height: "2rem", width: "2rem" }}
-                onClick={() => setField(null)}
-              />
-              <Typography variant="h5">Edit schema</Typography>
-            </ItemLeft>
-          ) : (
-            <Typography variant="h5">Schema manager</Typography>
-          )}
-
+          <Heading />
           <Close
             color="secondary"
-            style={{ cursor: "pointer", height: "3rem", width: "3rem" }}
-            onClick={() => toggle(false)}
+            style={{ height: "3rem", width: "3rem" }}
+            onClick={close}
           />
         </Header>
 
-        {!field && (
-          <>
-            <Typography color="secondary" padding="1rem 0">
-              Import schema to get started with Annotation
-            </Typography>
-            <Header style={{ margin: "1rem 0" }}>
-              <FieldsTabs />
-              {tab === "active" && (
-                <NewField>
-                  <Add />
-                  New field
-                </NewField>
-              )}
-            </Header>
-          </>
-        )}
+        <Subheading />
 
-        {field ? (
-          <EditAnnotationFieldSchema />
-        ) : tab === "active" ? (
-          <ActiveSchema />
-        ) : (
-          <OtherFields />
-        )}
+        <Page />
       </Container>
     </Background>,
     element
