@@ -42,6 +42,7 @@ import { ObjectSchemaType, ViewPropsType } from "../utils/types";
 import DynamicIO from "./DynamicIO";
 import DashboardPNGExport from "./DashboardPNGExport";
 import { get, get as getFromPath } from "lodash";
+import "./DashboardResizeHandles.css";
 
 // Helper function to create minimal ButtonView props
 const createButtonViewProps = (schema, onClick) => ({
@@ -54,26 +55,74 @@ const createButtonViewProps = (schema, onClick) => ({
   onClick,
 });
 
-function useHasClipboardData() {
+function useClipboardData() {
   const [hasClipboardData, setHasClipboardData] = useState(false);
-  useEffect(() => {
-    navigator.clipboard.readText().then((text) => {
-      try {
-        const item = JSON.parse(text);
-        if (typeof item === "object" && item !== null) {
-          setHasClipboardData(true);
-        } else {
-          setHasClipboardData(false);
-        }
-      } catch (error) {
+
+  const checkClipboard = useCallback(async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      console.log("Clipboard content:", text);
+      const item = JSON.parse(text);
+      console.log("Parsed item:", item);
+      if (typeof item === "object" && item !== null) {
+        console.log("Setting hasClipboardData to true");
+        setHasClipboardData(true);
+      } else {
+        console.log("Setting hasClipboardData to false - not an object");
         setHasClipboardData(false);
       }
-    });
+    } catch (error) {
+      console.log("Setting hasClipboardData to false - error:", error);
+      setHasClipboardData(false);
+    }
   }, []);
-  return hasClipboardData;
+
+  useEffect(() => {
+    // Initial check
+    checkClipboard();
+
+    // Listen for clipboard changes
+    const handleClipboardChange = () => {
+      console.log("Clipboard changed, checking content...");
+      checkClipboard();
+    };
+
+    // Check clipboard when window gains focus (user might have copied something)
+    const handleFocus = () => {
+      checkClipboard();
+    };
+
+    // Add event listeners
+    if ("clipboard" in navigator && "addEventListener" in navigator.clipboard) {
+      navigator.clipboard.addEventListener(
+        "clipboardchange",
+        handleClipboardChange
+      );
+    }
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      if (
+        "clipboard" in navigator &&
+        "removeEventListener" in navigator.clipboard
+      ) {
+        navigator.clipboard.removeEventListener(
+          "clipboardchange",
+          handleClipboardChange
+        );
+      }
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [checkClipboard]);
+
+  return {
+    hasClipboardData,
+    setHasClipboardData,
+    triggerCheck: checkClipboard,
+  };
 }
 
-const AddItemCTA = ({ onAdd, onPaste, view }) => {
+const AddItemCTA = ({ onAdd, onPaste, view, clipboardData }) => {
   const header = view?.cta_title || "No items yet";
   const body =
     view?.cta_body ||
@@ -84,7 +133,7 @@ const AddItemCTA = ({ onAdd, onPaste, view }) => {
   // Detect platform for keyboard shortcut display
   const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
   const shortcutKey = isMac ? "⌘V" : "Ctrl+V";
-  const hasClipboardData = useHasClipboardData();
+  const { hasClipboardData } = clipboardData;
 
   return (
     <Box
@@ -263,7 +312,9 @@ const ControlContainer = ({
   editLayoutOpen,
   shortcutKey,
   selectedItemId,
+  clipboardData,
 }) => {
+  const { hasClipboardData } = clipboardData;
   if (!isEditMode) {
     return null;
   }
@@ -305,19 +356,21 @@ const ControlContainer = ({
           onEditLayoutClick
         )}
       />
-      <ButtonView
-        {...createButtonViewProps(
-          {
-            type: "object",
-            view: {
-              icon: "content_paste",
-              label: `Paste (${shortcutKey})`,
-              variant: "square",
+      {hasClipboardData && (
+        <ButtonView
+          {...createButtonViewProps(
+            {
+              type: "object",
+              view: {
+                icon: "content_paste",
+                label: `Paste (${shortcutKey})`,
+                variant: "square",
+              },
             },
-          },
-          onPasteClick
-        )}
-      />
+            onPasteClick
+          )}
+        />
+      )}
       <Box sx={{ display: "flex", alignItems: "center" }}>
         <ButtonView
           {...createButtonViewProps(
@@ -395,6 +448,9 @@ export default function DashboardView(props: ViewPropsType) {
   const dataPath = schema.view.data_path || "items_config";
   const [panelState, setPanelState] = usePanelState();
 
+  // Shared clipboard state
+  const clipboardData = useClipboardData();
+
   for (const property in properties) {
     propertiesAsArray.push({ id: property, ...properties[property] });
   }
@@ -465,7 +521,7 @@ export default function DashboardView(props: ViewPropsType) {
     ]
   );
 
-  const onCopyItem = useCallback(
+  const copyItemToClipboard = useCallback(
     ({ id, path }) => {
       const value = getFromPath(
         (panelState as any)?.state,
@@ -481,16 +537,26 @@ export default function DashboardView(props: ViewPropsType) {
               : String(value);
 
           // Copy to clipboard
-          navigator.clipboard.writeText(valueToCopy).catch((err) => {
-            console.error("Failed to copy to clipboard:", err);
-          });
+          console.log("Copying to clipboard:", valueToCopy);
+          navigator.clipboard
+            .writeText(valueToCopy)
+            .then(() => {
+              console.log("Copy successful");
+              // Set clipboard state directly since we know we just copied valid data
+              clipboardData.setHasClipboardData(true);
+            })
+            .catch((err) => {
+              console.error("Failed to copy to clipboard:", err);
+            });
         } catch (error) {
           console.error("Error copying item to clipboard:", error);
         }
       }
     },
-    [panelState, dataPath]
+    [panelState, dataPath, clipboardData]
   );
+
+  const onCopyItem = copyItemToClipboard;
 
   const onExportItems = useCallback(() => {
     try {
@@ -786,30 +852,11 @@ export default function DashboardView(props: ViewPropsType) {
         console.log("Copy key combination detected for selected item");
         event.preventDefault();
 
-        // Copy the selected item to clipboard
-        const value = getFromPath(
-          (panelState as any)?.state,
-          `${dataPath}.${selectedItemId}`
-        );
-        if (value) {
-          try {
-            const valueToCopy =
-              typeof value === "object"
-                ? JSON.stringify(value, null, 2)
-                : String(value);
-
-            navigator.clipboard
-              .writeText(valueToCopy)
-              .then(() => {
-                console.log("Item copied to clipboard successfully");
-              })
-              .catch((err) => {
-                console.error("Failed to copy to clipboard:", err);
-              });
-          } catch (error) {
-            console.error("Error copying item to clipboard:", error);
-          }
-        }
+        // Use the shared copy function
+        copyItemToClipboard({
+          id: selectedItemId,
+          path: getPath(path, selectedItemId),
+        });
         return;
       }
 
@@ -997,7 +1044,12 @@ export default function DashboardView(props: ViewPropsType) {
       return null;
     }
     return (
-      <AddItemCTA onAdd={onAddItem} onPaste={handlePaste} view={schema.view} />
+      <AddItemCTA
+        onAdd={onAddItem}
+        onPaste={handlePaste}
+        view={schema.view}
+        clipboardData={clipboardData}
+      />
     );
   }
 
@@ -1027,6 +1079,7 @@ export default function DashboardView(props: ViewPropsType) {
           editLayoutOpen={Boolean(anchorEl)}
           shortcutKey={shortcutKey}
           selectedItemId={selectedItemId}
+          clipboardData={clipboardData}
         />
         <LayoutPopover
           anchorEl={anchorEl}
@@ -1049,7 +1102,9 @@ export default function DashboardView(props: ViewPropsType) {
           cols={COLS}
           rowHeight={ROW_HEIGHT} // Dynamic row height
           width={GRID_WIDTH}
-          resizeHandles={autoLayout || !isEditMode ? [] : ["e", "w", "n", "s"]}
+          resizeHandles={
+            !isEditMode ? [] : ["e", "w", "n", "s", "se", "sw", "ne", "nw"]
+          }
           draggableHandle=".drag-handle"
           isDraggable={isEditMode}
           isResizable={isEditMode}
@@ -1073,16 +1128,20 @@ export default function DashboardView(props: ViewPropsType) {
                   "item",
                   baseItemProps
                 )}
+                className={
+                  selectedItemId === id && isEditMode ? "selected" : ""
+                }
                 sx={{
                   ...baseItemProps.sx,
                   border:
                     selectedItemId === id && isEditMode
-                      ? "2px dotted #ff6d04"
+                      ? "3px solid #ff6d04"
                       : "2px solid transparent",
                   borderRadius:
-                    selectedItemId === id && isEditMode ? "4px" : "0px",
+                    selectedItemId === id && isEditMode ? "6px" : "0px",
                   transition: "all 0.2s ease",
                   boxSizing: "border-box",
+                  position: "relative",
                 }}
               >
                 <DragHandle
@@ -1213,66 +1272,6 @@ export default function DashboardView(props: ViewPropsType) {
     </>
   );
 }
-
-const DashboardItemResizeHandle = forwardRef((props, ref) => {
-  const theme = useTheme();
-  const { axis } = props;
-
-  const axisSx = AXIS_SX[axis] || {};
-
-  return (
-    <Typography
-      ref={ref}
-      sx={{
-        ...axisSx,
-        position: "absolute",
-        borderColor: theme.neutral.plainColor,
-        opacity: 0,
-        transition: "opacity 0.25s",
-        "&:hover": {
-          opacity: 1,
-        },
-      }}
-      aria-label={`Resize ${axis}`}
-      {...props}
-    />
-  );
-});
-
-const AXIS_SX = {
-  e: {
-    height: "100%",
-    right: 0,
-    top: 0,
-    borderRight: "2px solid",
-    cursor: "ew-resize",
-    pl: 1,
-  },
-  w: {
-    height: "100%",
-    left: 0,
-    top: 0,
-    borderLeft: "2px solid",
-    cursor: "ew-resize",
-    pr: 1,
-  },
-  s: {
-    width: "100%",
-    bottom: 0,
-    left: 0,
-    borderBottom: "2px solid",
-    cursor: "ns-resize",
-    pt: 1,
-  },
-  n: {
-    width: "100%",
-    top: 0,
-    left: 0,
-    borderTop: "2px solid",
-    cursor: "ns-resize",
-    pb: 1,
-  },
-};
 
 function sortPropertiesByCustomLayout(properties, customLayout) {
   const customLayoutMap = customLayout.reduce((acc, item) => {

@@ -1,0 +1,138 @@
+/* Make react-grid-layout resize handles more visible */
+.react-resizable-handle {
+  background-color: rgba(255, 109, 4, 0.3) !important;
+  border: 2px solid #ff6d04 !important;
+  border-radius: 2px !important;
+  transition: all 0.2s ease !important;
+  opacity: 0 !important;
+}
+
+/* Hide the default ::after content */
+.react-resizable-handle::after {
+  display: none !important;
+}
+
+.react-resizable-handle:hover {
+  background-color: rgba(255, 109, 4, 0.5) !important;
+}
+
+/* Show handles only for selected items */
+.react-grid-item.ui-draggable-dragging .react-resizable-handle,
+.react-grid-item.ui-resizable-resizing .react-resizable-handle,
+.react-grid-item.selected .react-resizable-handle {
+  opacity: 1 !important;
+}
+
+/* Make edge handles circles to match corner dots */
+.react-resizable-handle.react-resizable-handle-e {
+  background-color: #ff6d04 !important;
+  border: 2px solid white !important;
+  border-radius: 50% !important;
+  width: 12px !important;
+  height: 12px !important;
+  right: -6px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+}
+
+.react-resizable-handle.react-resizable-handle-w {
+  background-color: #ff6d04 !important;
+  border: 2px solid white !important;
+  border-radius: 50% !important;
+  width: 12px !important;
+  height: 12px !important;
+  left: -6px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+}
+
+.react-resizable-handle.react-resizable-handle-n {
+  background-color: #ff6d04 !important;
+  border: 2px solid white !important;
+  border-radius: 50% !important;
+  width: 12px !important;
+  height: 12px !important;
+  top: -6px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+}
+
+.react-resizable-handle.react-resizable-handle-s {
+  background-color: #ff6d04 !important;
+  border: 2px solid white !important;
+  border-radius: 50% !important;
+  width: 12px !important;
+  height: 12px !important;
+  bottom: -6px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+}
+
+.react-resizable-handle.react-resizable-handle-e:hover,
+.react-resizable-handle.react-resizable-handle-w:hover,
+.react-resizable-handle.react-resizable-handle-n:hover,
+.react-resizable-handle.react-resizable-handle-s:hover {
+  background-color: #ff8533 !important;
+  transform: scale(1.2) !important;
+}
+
+/* Make corner dots bigger */
+.react-resizable-handle.react-resizable-handle-se {
+  background-color: #ff6d04 !important;
+  border: 2px solid white !important;
+  border-radius: 50% !important;
+  width: 16px !important;
+  height: 16px !important;
+  right: -8px !important;
+  bottom: -8px !important;
+}
+
+.react-resizable-handle.react-resizable-handle-se:hover {
+  background-color: #ff8533 !important;
+  transform: scale(1.2) !important;
+}
+
+.react-resizable-handle.react-resizable-handle-sw {
+  background-color: #ff6d04 !important;
+  border: 2px solid white !important;
+  border-radius: 50% !important;
+  width: 16px !important;
+  height: 16px !important;
+  left: -8px !important;
+  bottom: -8px !important;
+}
+
+.react-resizable-handle.react-resizable-handle-sw:hover {
+  background-color: #ff8533 !important;
+  transform: scale(1.2) !important;
+}
+
+.react-resizable-handle.react-resizable-handle-ne {
+  background-color: #ff6d04 !important;
+  border: 2px solid white !important;
+  border-radius: 50% !important;
+  width: 16px !important;
+  height: 16px !important;
+  right: -8px !important;
+  top: -8px !important;
+}
+
+.react-resizable-handle.react-resizable-handle-ne:hover {
+  background-color: #ff8533 !important;
+  transform: scale(1.2) !important;
+}
+
+.react-resizable-handle.react-resizable-handle-nw {
+  background-color: #ff6d04 !important;
+  border: 2px solid white !important;
+  border-radius: 50% !important;
+  width: 16px !important;
+  height: 16px !important;
+  left: -8px !important;
+  top: -8px !important;
+}
+
+.react-resizable-handle.react-resizable-handle-nw:hover {
+  background-color: #ff8533 !important;
+  transform: scale(1.2) !important;
+}
