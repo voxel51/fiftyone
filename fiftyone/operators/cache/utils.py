@@ -24,7 +24,7 @@ def resolve_cache_info(
     key_fn,
     func,
     *,
-    residency="transient",
+    residency="hybrid",
     operator_scoped=False,
     user_scoped=False,
     prompt_scoped=False,
