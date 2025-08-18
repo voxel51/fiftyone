@@ -136,3 +136,11 @@
   background-color: #ff8533 !important;
   transform: scale(1.2) !important;
 }
+
+/* Override react-grid-layout placeholder color */
+.react-grid-placeholder {
+  background-color: #e0e0e0 !important;
+  border: 2px dashed #bdbdbd !important;
+  border-radius: 4px !important;
+  opacity: 0.5 !important;
+}
