@@ -87,7 +87,7 @@ export const createRouter = <T extends OperationType>(
           environment,
           routes,
           location: location as FiftyOneLocation,
-          hard: true,
+          hard: location.state.event !== "modal",
           handleError,
         });
       } catch (e) {
