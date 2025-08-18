@@ -3,7 +3,7 @@ import { Box, Typography } from "@mui/material";
 import { useTheme } from "@fiftyone/components";
 import DynamicIO from "./DynamicIO";
 import { ObjectSchemaType, ViewPropsType } from "../utils/types";
-import { getPath } from "../utils";
+import { getPath, getProps } from "../utils";
 
 interface DashboardPNGExportProps {
   schema: ObjectSchemaType;
@@ -33,12 +33,12 @@ export default function DashboardPNGExport({
   const { properties } = schema;
   const propertiesAsArray = [];
 
-  // Convert properties to array
+  // Convert properties to array (same as DashboardView)
   for (const property in properties) {
     propertiesAsArray.push({ id: property, ...properties[property] });
   }
 
-  // Calculate layout dimensions (same logic as DashboardView)
+  // Use EXACTLY the same calculations as DashboardView
   const NUM_ITEMS = propertiesAsArray.length;
   const MIN_ITEM_WIDTH = 400;
   const MIN_ITEM_HEIGHT = 300;
@@ -66,7 +66,7 @@ export default function DashboardPNGExport({
     ROWS = 1;
   }
 
-  // Sort properties by custom layout (same logic as DashboardView)
+  // Sort properties by custom layout (same as DashboardView)
   const orderedProperties = sortPropertiesByCustomLayout(
     propertiesAsArray,
     customLayout
@@ -85,15 +85,19 @@ export default function DashboardPNGExport({
   });
   const gridLayout = customLayout.length > 0 ? customLayout : defaultLayout;
 
-  // Calculate grid dimensions
-  const ITEM_WIDTH = GRID_WIDTH / COLS;
-  const ITEM_HEIGHT = ROW_HEIGHT;
-  const HEADER_HEIGHT = 40;
-  const PLOT_MARGIN = 10;
-  const CONTAINER_PADDING = 20;
+  // Create grid layout map (same as DashboardView)
+  const gridLayoutById = gridLayout.reduce((layout, item) => {
+    layout[item.i] = item;
+    return layout;
+  }, {});
 
+  // Calculate total dimensions based on react-grid-layout logic
+  const GRID_MARGIN = 8; // Same as DashboardView margin={[8, 8]}
+  const CONTAINER_PADDING = 16;
+
+  // Calculate total height like react-grid-layout does
   const totalHeight =
-    CONTAINER_PADDING * 2 + ROWS * (ITEM_HEIGHT + PLOT_MARGIN) - PLOT_MARGIN;
+    CONTAINER_PADDING * 2 + ROWS * ROW_HEIGHT + (ROWS - 1) * GRID_MARGIN;
   const totalWidth = GRID_WIDTH;
 
   return (
@@ -102,26 +106,28 @@ export default function DashboardPNGExport({
       sx={{
         width: totalWidth,
         height: totalHeight,
-        backgroundColor:
-          theme.background?.level0 ||
-          theme.palette?.background?.default ||
-          "#2a2a2a",
-        padding: CONTAINER_PADDING,
+        backgroundColor: theme.background?.level1 || "#f5f5f5",
+        padding: 16,
         position: "relative",
       }}
     >
-      {gridLayout.map((layoutItem) => {
-        const property = propertiesAsArray.find((p) => p.id === layoutItem.i);
-        if (!property) return null;
-
+      {orderedProperties.map((property) => {
         const { id } = property;
         const value = data?.[id];
         const label = property.view?.layout?.title || value?.name || id;
         const itemPath = getPath(path, id);
+        const propertyIsPlotlyView = isPlotlyView(property);
+        const propertyLayout = { ...gridLayoutById[id], COLS, ROWS };
 
-        // Calculate position based on grid layout
-        const left = layoutItem.x * ITEM_WIDTH;
-        const top = layoutItem.y * (ITEM_HEIGHT + PLOT_MARGIN);
+        // Get the layout item for this property
+        const layoutItem = gridLayoutById[id];
+        if (!layoutItem) return null;
+
+        // Calculate position exactly like react-grid-layout does
+        const left = layoutItem.x * (GRID_WIDTH / COLS + GRID_MARGIN);
+        const top = layoutItem.y * (ROW_HEIGHT + GRID_MARGIN);
+        const width = layoutItem.w * (GRID_WIDTH / COLS) - GRID_MARGIN;
+        const height = layoutItem.h * ROW_HEIGHT - GRID_MARGIN;
 
         return (
           <Box
@@ -130,54 +136,45 @@ export default function DashboardPNGExport({
               position: "absolute",
               left,
               top,
-              width: layoutItem.w * ITEM_WIDTH - PLOT_MARGIN,
-              height: layoutItem.h * ITEM_HEIGHT + HEADER_HEIGHT,
+              width,
+              height,
+              border: "2px solid transparent",
+              borderRadius: "0px",
+              boxSizing: "border-box",
               display: "flex",
               flexDirection: "column",
-              border: `1px solid ${
-                theme.divider || theme.palette?.divider || "#e0e0e0"
-              }`,
-              borderRadius: 1,
-              overflow: "hidden",
             }}
           >
-            {/* Plot Title */}
+            {/* Drag Handle (simplified for PNG) */}
             <Box
               sx={{
-                height: HEADER_HEIGHT,
-                padding: "8px 16px",
-                backgroundColor:
-                  theme.background?.level1 ||
-                  theme.palette?.background?.default ||
-                  "#f5f5f5",
-                borderBottom: `1px solid ${
-                  theme.divider || theme.palette?.divider || "#e0e0e0"
-                }`,
+                height: "35px",
+                backgroundColor: theme.background?.header || "#ffffff",
+                color: theme.text?.secondary || "#666",
+                padding: "4px",
                 display: "flex",
+                justifyContent: "space-between",
                 alignItems: "center",
+                borderBottom: `1px solid ${theme.divider || "#e0e0e0"}`,
               }}
             >
               <Typography
-                variant="subtitle1"
                 sx={{
-                  fontWeight: 500,
-                  color:
-                    theme.text?.primary ||
-                    theme.palette?.text?.primary ||
-                    "#000000",
+                  marginLeft: 3,
+                  fontSize: "16px",
+                  color: theme.text?.secondary || "#666",
                 }}
               >
                 {label}
               </Typography>
             </Box>
 
-            {/* Plot Content */}
+            {/* Plot Content - same height calculation as DashboardView */}
             <Box
               sx={{
-                width: "100%",
-                height: layoutItem.h * ITEM_HEIGHT,
-                overflow: "hidden",
-                position: "relative",
+                height: "calc(100% - 35px)",
+                overflow: propertyIsPlotlyView ? "hidden" : "auto",
+                flex: 1,
               }}
             >
               <DynamicIO
@@ -186,6 +183,7 @@ export default function DashboardPNGExport({
                 data={data?.[id]}
                 parentSchema={schema}
                 relativePath={id}
+                relativeLayout={propertyLayout}
                 errors={{}}
                 onChange={() => {}}
                 otherProps={{}}
@@ -209,4 +207,8 @@ function sortPropertiesByCustomLayout(properties, customLayout) {
     const bIndex = customLayoutMap[b.id]?.y * 100 + customLayoutMap[b.id]?.x;
     return aIndex - bIndex;
   });
+}
+
+function isPlotlyView(schema) {
+  return schema?.view?.name === "PlotlyView";
 }

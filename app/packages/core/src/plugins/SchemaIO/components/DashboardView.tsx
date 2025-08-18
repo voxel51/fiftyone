@@ -1127,6 +1127,7 @@ export default function DashboardView(props: ViewPropsType) {
           cols={COLS}
           rowHeight={ROW_HEIGHT} // Dynamic row height
           width={GRID_WIDTH}
+          margin={[8, 8]} // Reduce vertical and horizontal margins to 8px
           resizeHandles={
             !isEditMode ? [] : ["e", "w", "n", "s", "se", "sw", "ne", "nw"]
           }
