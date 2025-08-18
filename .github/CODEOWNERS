@@ -27,3 +27,6 @@ Dockerfile                   @voxel51/aloha-shirts
 setup.py                     @voxel51/aloha-shirts
 requirements.txt             @voxel51/aloha-shirts
 requirements/                @voxel51/aloha-shirts
+
+# Documentation
+/docs/                       @voxel51/dev-rel
