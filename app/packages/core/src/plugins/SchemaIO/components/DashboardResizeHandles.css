@@ -23,116 +23,69 @@
   opacity: 1 !important;
 }
 
-/* Make edge handles circles to match corner dots */
-.react-resizable-handle.react-resizable-handle-e {
+/* All resize handles - same size and color */
+.react-resizable-handle.react-resizable-handle-e,
+.react-resizable-handle.react-resizable-handle-w,
+.react-resizable-handle.react-resizable-handle-n,
+.react-resizable-handle.react-resizable-handle-s,
+.react-resizable-handle.react-resizable-handle-se,
+.react-resizable-handle.react-resizable-handle-sw,
+.react-resizable-handle.react-resizable-handle-ne,
+.react-resizable-handle.react-resizable-handle-nw {
   background-color: #ff6d04 !important;
-  border: 2px solid white !important;
   border-radius: 50% !important;
   width: 12px !important;
   height: 12px !important;
+}
+
+/* Position edge handles */
+.react-resizable-handle.react-resizable-handle-e {
   right: -6px !important;
   top: 50% !important;
   transform: translateY(-50%) !important;
 }
 
 .react-resizable-handle.react-resizable-handle-w {
-  background-color: #ff6d04 !important;
-  border: 2px solid white !important;
-  border-radius: 50% !important;
-  width: 12px !important;
-  height: 12px !important;
   left: -6px !important;
   top: 50% !important;
   transform: translateY(-50%) !important;
 }
 
 .react-resizable-handle.react-resizable-handle-n {
-  background-color: #ff6d04 !important;
-  border: 2px solid white !important;
-  border-radius: 50% !important;
-  width: 12px !important;
-  height: 12px !important;
   top: -6px !important;
   left: 50% !important;
   transform: translateX(-50%) !important;
 }
 
 .react-resizable-handle.react-resizable-handle-s {
-  background-color: #ff6d04 !important;
-  border: 2px solid white !important;
-  border-radius: 50% !important;
-  width: 12px !important;
-  height: 12px !important;
   bottom: -6px !important;
   left: 50% !important;
   transform: translateX(-50%) !important;
 }
 
-.react-resizable-handle.react-resizable-handle-e:hover,
-.react-resizable-handle.react-resizable-handle-w:hover,
-.react-resizable-handle.react-resizable-handle-n:hover,
-.react-resizable-handle.react-resizable-handle-s:hover {
-  background-color: #ff8533 !important;
-  transform: scale(1.2) !important;
-}
-
-/* Make corner dots bigger */
+/* Position corner handles */
 .react-resizable-handle.react-resizable-handle-se {
-  background-color: #ff6d04 !important;
-  border: 2px solid white !important;
-  border-radius: 50% !important;
-  width: 16px !important;
-  height: 16px !important;
-  right: -8px !important;
-  bottom: -8px !important;
-}
-
-.react-resizable-handle.react-resizable-handle-se:hover {
-  background-color: #ff8533 !important;
-  transform: scale(1.2) !important;
+  right: -6px !important;
+  bottom: -6px !important;
 }
 
 .react-resizable-handle.react-resizable-handle-sw {
-  background-color: #ff6d04 !important;
-  border: 2px solid white !important;
-  border-radius: 50% !important;
-  width: 16px !important;
-  height: 16px !important;
-  left: -8px !important;
-  bottom: -8px !important;
-}
-
-.react-resizable-handle.react-resizable-handle-sw:hover {
-  background-color: #ff8533 !important;
-  transform: scale(1.2) !important;
+  left: -6px !important;
+  bottom: -6px !important;
 }
 
 .react-resizable-handle.react-resizable-handle-ne {
-  background-color: #ff6d04 !important;
-  border: 2px solid white !important;
-  border-radius: 50% !important;
-  width: 16px !important;
-  height: 16px !important;
-  right: -8px !important;
-  top: -8px !important;
-}
-
-.react-resizable-handle.react-resizable-handle-ne:hover {
-  background-color: #ff8533 !important;
-  transform: scale(1.2) !important;
+  right: -6px !important;
+  top: -6px !important;
 }
 
 .react-resizable-handle.react-resizable-handle-nw {
-  background-color: #ff6d04 !important;
-  border: 2px solid white !important;
-  border-radius: 50% !important;
-  width: 16px !important;
-  height: 16px !important;
-  left: -8px !important;
-  top: -8px !important;
+  left: -6px !important;
+  top: -6px !important;
 }
 
-.react-resizable-handle.react-resizable-handle-nw:hover {
+/* Hover effect for all handles */
+.react-resizable-handle:hover {
   background-color: #ff8533 !important;
   transform: scale(1.2) !important;
 }
