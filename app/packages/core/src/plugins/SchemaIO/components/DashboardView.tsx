@@ -717,87 +717,6 @@ export default function DashboardView(props: ViewPropsType) {
     setExportMenuAnchor(null);
   };
 
-  const onExportAsPNG = useCallback(async () => {
-    try {
-      // Create a temporary container for the PNG export
-      const exportContainer = document.createElement("div");
-      exportContainer.style.position = "absolute";
-      exportContainer.style.left = "-9999px";
-      exportContainer.style.top = "-9999px";
-      exportContainer.style.zIndex = "-1";
-      document.body.appendChild(exportContainer);
-
-      // Create a React root and render the PNG export component
-      const { createRoot } = await import("react-dom/client");
-      const { RecoilRoot } = await import("recoil");
-      const { ThemeProvider } = await import("@fiftyone/components");
-      const root = createRoot(exportContainer);
-
-      // Render the PNG export component with necessary providers
-      root.render(
-        <RecoilRoot>
-          <ThemeProvider>
-            <DashboardPNGExport
-              schema={schema as ObjectSchemaType}
-              data={data}
-              path={path}
-              layout={layout}
-              autoLayout={autoLayout}
-              layoutMode={layoutMode}
-              numRows={numRows}
-              numCols={numCols}
-              customLayout={customLayout}
-            />
-          </ThemeProvider>
-        </RecoilRoot>
-      );
-
-      // Wait for the component to render and plots to load
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Use html2canvas to capture the export container
-      const html2canvas = (await import("html2canvas")).default;
-      const canvas = await html2canvas(exportContainer, {
-        backgroundColor: "#ffffff",
-        scale: 2, // Higher resolution
-        useCORS: true,
-        allowTaint: true,
-        logging: false,
-        width: exportContainer.scrollWidth,
-        height: exportContainer.scrollHeight,
-      });
-
-      // Convert canvas to blob
-      canvas.toBlob((blob) => {
-        if (blob) {
-          // Create download link
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement("a");
-          link.href = url;
-          link.download = `dashboard-${
-            new Date().toISOString().split("T")[0]
-          }.png`;
-
-          // Trigger download
-          document.body.appendChild(link);
-          link.click();
-
-          // Cleanup
-          document.body.removeChild(link);
-          URL.revokeObjectURL(url);
-
-          console.log("Dashboard exported as PNG successfully");
-        }
-      }, "image/png");
-
-      // Cleanup the temporary container
-      root.unmount();
-      document.body.removeChild(exportContainer);
-    } catch (error) {
-      console.error("Error exporting dashboard as PNG:", error);
-    }
-  }, [schema, data, path, layout]);
-
   const handleDuplicateItem = useCallback(
     (event) => {
       // duplicate an item from the clipboard
@@ -1006,6 +925,98 @@ export default function DashboardView(props: ViewPropsType) {
     };
   });
   const gridLayout = customLayout || defaultLayout;
+
+  const onExportAsPNG = useCallback(async () => {
+    try {
+      // Create a temporary container for the PNG export
+      const exportContainer = document.createElement("div");
+      exportContainer.style.position = "absolute";
+      exportContainer.style.left = "-9999px";
+      exportContainer.style.top = "-9999px";
+      exportContainer.style.zIndex = "-1";
+      document.body.appendChild(exportContainer);
+
+      // Create a React root and render the PNG export component
+      const { createRoot } = await import("react-dom/client");
+      const { RecoilRoot } = await import("recoil");
+      const { ThemeProvider } = await import("@fiftyone/components");
+      const root = createRoot(exportContainer);
+
+      // Render the PNG export component with necessary providers
+      // Use gridLayout instead of customLayout to include unsaved changes
+      root.render(
+        <RecoilRoot>
+          <ThemeProvider>
+            <DashboardPNGExport
+              schema={schema as ObjectSchemaType}
+              data={data}
+              path={path}
+              layout={layout}
+              autoLayout={autoLayout}
+              layoutMode={layoutMode}
+              numRows={numRows}
+              numCols={numCols}
+              customLayout={gridLayout}
+            />
+          </ThemeProvider>
+        </RecoilRoot>
+      );
+
+      // Wait for the component to render and plots to load
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // Use html2canvas to capture the export container
+      const html2canvas = (await import("html2canvas")).default;
+      const canvas = await html2canvas(exportContainer, {
+        backgroundColor: "#2a2a2a",
+        scale: 2, // Higher resolution
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        width: exportContainer.scrollWidth,
+        height: exportContainer.scrollHeight,
+      });
+
+      // Convert canvas to blob
+      canvas.toBlob((blob) => {
+        if (blob) {
+          // Create download link
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = `dashboard-${
+            new Date().toISOString().split("T")[0]
+          }.png`;
+
+          // Trigger download
+          document.body.appendChild(link);
+          link.click();
+
+          // Cleanup
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+
+          console.log("Dashboard exported as PNG successfully");
+        }
+      }, "image/png");
+
+      // Cleanup the temporary container
+      root.unmount();
+      document.body.removeChild(exportContainer);
+    } catch (error) {
+      console.error("Error exporting dashboard as PNG:", error);
+    }
+  }, [
+    schema,
+    data,
+    path,
+    layout,
+    autoLayout,
+    layoutMode,
+    numRows,
+    numCols,
+    gridLayout,
+  ]);
 
   const DragHandle = styled(Box)<{
     isSelected?: boolean;

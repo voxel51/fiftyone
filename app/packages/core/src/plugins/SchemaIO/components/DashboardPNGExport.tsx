@@ -94,7 +94,7 @@ export default function DashboardPNGExport({
 
   const totalHeight =
     CONTAINER_PADDING * 2 + ROWS * (ITEM_HEIGHT + PLOT_MARGIN) - PLOT_MARGIN;
-  const totalWidth = CONTAINER_PADDING * 2 + GRID_WIDTH;
+  const totalWidth = GRID_WIDTH;
 
   return (
     <Box
@@ -102,7 +102,10 @@ export default function DashboardPNGExport({
       sx={{
         width: totalWidth,
         height: totalHeight,
-        backgroundColor: "#ffffff",
+        backgroundColor:
+          theme.background?.level0 ||
+          theme.palette?.background?.default ||
+          "#2a2a2a",
         padding: CONTAINER_PADDING,
         position: "relative",
       }}
