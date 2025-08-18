@@ -55,7 +55,7 @@ Each notebook contains the necessary `pip install` commands at the beginning, so
 
 **System Requirements**
 
-- **Operating System:** Linux (Ubuntu 24.04), macOS
+- **Operating System:** Linux (Ubuntu 24.04)
 - **Python:** 3.10, 3.11
 - **Memory:** 8GB RAM recommended for segmentation operations
 - **Storage:** 2GB free space for segmentation datasets
