@@ -1108,6 +1108,20 @@ export default function DashboardView(props: ViewPropsType) {
         <GridLayout
           onLayoutChange={(layout) => {
             setCustomLayout(layout);
+            // Force Plotly plots to resize after layout changes
+            setTimeout(() => {
+              if (window.Plotly) {
+                const plotlyDivs = document.querySelectorAll(".js-plotly-plot");
+                plotlyDivs.forEach((div) => {
+                  if (div && window.Plotly) {
+                    window.Plotly.relayout(div as HTMLElement, {
+                      width: div.clientWidth,
+                      height: div.clientHeight,
+                    });
+                  }
+                });
+              }
+            }, 100); // Small delay to ensure DOM has updated
           }}
           layout={gridLayout}
           cols={COLS}
