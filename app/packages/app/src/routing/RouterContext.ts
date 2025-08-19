@@ -80,16 +80,22 @@ export const createRouter = <T extends OperationType>(
     [Subscription<T>, (() => void) | undefined]
   >();
 
-  const update = (location: FiftyOneLocation, action?: Action, attach?: Resource<Entry<T>>) => {
+  const update = (
+    location: FiftyOneLocation,
+    action?: Action,
+    attach?: Resource<Entry<T>>
+  ) => {
     currentEntryResource.load().then(({ cleanup }) => {
       try {
-        nextCurrentEntryResource =attach ?? getEntryResource({
-          environment,
-          routes,
-          location: location as FiftyOneLocation,
-          hard: location.state.event !== "modal",
-          handleError,
-        });
+        nextCurrentEntryResource =
+          attach ??
+          getEntryResource({
+            environment,
+            routes,
+            location: location as FiftyOneLocation,
+            hard: location.state.event !== "modal",
+            handleError,
+          });
       } catch (e) {
         if (e instanceof Resource) {
           // skip the page change if a resource is thrown
@@ -153,7 +159,11 @@ export const createRouter = <T extends OperationType>(
           location: history.location as FiftyOneLocation,
           routes,
         });
-        update(history.location as FiftyOneLocation, undefined, currentEntryResource);
+        update(
+          history.location as FiftyOneLocation,
+          undefined,
+          currentEntryResource
+        );
       }
       return currentEntryResource.load();
     },
@@ -226,7 +236,6 @@ const makeGetEntryResource = <T extends OperationType>() => {
       throw currentResource;
     }
 
-
     let route: RouteDefinition<T>;
     let matchResult: MatchPathResult<T> | undefined = undefined;
     for (let index = 0; index < routes.length; index++) {
@@ -248,7 +257,7 @@ const makeGetEntryResource = <T extends OperationType>() => {
       throw new NotFoundError({ path: location.pathname });
     }
 
-    const fetchPolicy = hard   ? "network-only" : "store-or-network";
+    const fetchPolicy = hard ? "network-only" : "store-or-network";
 
     currentLocation = location;
     currentResource = new Resource(() => {
