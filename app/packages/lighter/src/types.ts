@@ -155,3 +155,16 @@ export interface CanonicalMedia {
   /** Force update bounds calculation */
   updateBounds(): void;
 }
+
+/**
+ * Interface for overlays that can be hovered and show tooltips.
+ */
+export interface Hoverable {
+  /** Get tooltip information for this overlay */
+  getTooltipInfo(): {
+    color: string;
+    field: string;
+    label: any;
+    type: string;
+  } | null;
+}

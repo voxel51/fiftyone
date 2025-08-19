@@ -13,3 +13,4 @@ export type { LighterOptions } from "./useLighterSetup";
 export { usePixiRenderer } from "./usePixiRenderer";
 export { usePixiResourceLoader } from "./usePixiResourceLoader";
 export { useSceneSelectionState } from "./useSceneSelectionState";
+export { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";

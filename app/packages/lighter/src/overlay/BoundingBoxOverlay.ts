@@ -9,6 +9,7 @@ import type { Selectable } from "../selection/Selectable";
 import type {
   BoundedOverlay,
   DrawStyle,
+  Hoverable,
   Point,
   RawLookerLabel,
   Rect,
@@ -41,7 +42,7 @@ export interface BoundingBoxOptions {
  */
 export class BoundingBoxOverlay
   extends BaseOverlay
-  implements Movable, Selectable, BoundedOverlay, Spatial
+  implements Movable, Selectable, BoundedOverlay, Spatial, Hoverable
 {
   private isDraggable: boolean;
   private dragStartPoint?: Point;
@@ -328,5 +329,20 @@ export class BoundingBoxOverlay
   getSelectionPriority(): number {
     // Bounding boxes have medium priority (higher than images, lower than points)
     return 10;
+  }
+
+  // Hoverable interface implementation
+  getTooltipInfo(): {
+    color: string;
+    field: string;
+    label: any;
+    type: string;
+  } | null {
+    return {
+      color: "#ff6b6b", // This should come from the overlay's style (owned by Scene2D)
+      field: this.field || "unknown",
+      label: this.label,
+      type: "Detection",
+    };
   }
 }
