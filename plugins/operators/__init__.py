@@ -1416,6 +1416,202 @@ class CreateIndex(foo.Operator):
         ctx.dataset.create_index(field_name, unique=unique, wait=False)
 
 
+class ConvertIndexToUnique(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="convert_index_to_unique",  # Must match what's in fiftyone.yml
+            label="Convert an existing index to unique",
+            description="Convert an existing non-unique index to a unique index in the dataset if possible or identify any unique key violations that would occur.",
+            allow_immediate_execution=True,
+            allow_delegated_execution=True,
+            default_choice_to_delegated=False,
+        )
+
+    def resolve_input(self, ctx):
+        import re
+
+        inputs = types.Object()
+        indexes = ctx.dataset.get_index_information()
+
+        if not indexes:
+            inputs.str(
+                "index_name",
+                label="This dataset has no non-unique indexes to update",
+                view=types.Warning(),
+            )
+            return types.Property(
+                inputs,
+                invalid=True,
+            )
+
+        indexes = [
+            i
+            for i, v in indexes.items()
+            if not re.match(r"\.?id$", i) and "unique" not in v
+        ]
+
+        index_selector = types.DropdownView()
+        for key in indexes:
+            index_selector.add_choice(key, label=key)
+
+        inputs.str(
+            "index_name",
+            label="Index",
+            description="The existing index to make unique",
+            view=index_selector,
+            required=True,
+        )
+        inputs.bool(
+            "dry_run",
+            required=False,
+            default=False,
+            label="Check for unique key violations only (dry run)",
+        )
+
+        return types.Property(
+            inputs,
+            view=types.View(label="Convert existing index to unique"),
+        )
+
+    def execute(self, ctx):
+        field = ctx.params.get("index_name")
+        dry_run_only = ctx.params.get("dry_run")
+        result = {
+            "field": field,
+            "dry_run": str(bool(dry_run_only)),
+            "status": None,
+            "error": None,
+        }
+        if not field:
+            result["status"] = "error"
+            result["error"] = "No index name provided."
+            return result
+
+        if field not in (
+            all_index_info := ctx.dataset.get_index_information()
+        ):
+            result["status"] = "error"
+            result["error"] = f"Index '{field}' does not exist in the dataset."
+            return result
+
+        index_info = all_index_info[field]
+
+        db = ctx.dataset._sample_collection.database
+        collection_name = (
+            ctx.dataset._frames_collection_name
+            if field.startswith(ctx.dataset._FRAMES_PREFIX)
+            else ctx.dataset._sample_collection_name
+        )
+
+        key_pattern = dict(index_info["key"])
+
+        # Special sequence for converting to unique index
+        # https://www.mongodb.com/docs/manual/core/index-unique/convert-to-unique/
+
+        # 1. Prepare the collection for unique index conversion
+        err_result = self._safe_collmod(
+            db,
+            collection_name,
+            index_spec={"keyPattern": key_pattern, "prepareUnique": True},
+            error_msg="Unable to prepare collection for unique index conversion.",
+        )
+        if err_result:
+            return {**result, **err_result}
+
+        # 2. Check for unique key violations
+        err_result = self._safe_collmod(
+            db,
+            collection_name,
+            dry_run=dry_run_only,
+            index_spec={"keyPattern": key_pattern, "unique": True},
+            error_msg="Error while checking for unique key violations.",
+        )
+
+        if dry_run_only or err_result:
+            # If dry run or error, restore the collection to its original state and return
+            self._safe_collmod(
+                db,
+                collection_name,
+                index_spec={"keyPattern": key_pattern, "prepareUnique": False},
+            )
+            if err_result:
+                return {**result, **err_result}
+            return {
+                **result,
+                "status": "success",
+                "message": "No unique key violations found.",
+            }
+
+        # 3. If no unique key violations, proceed to make the index unique
+        err_result = self._safe_collmod(
+            db,
+            collection_name,
+            dry_run=False,
+            index_spec={"keyPattern": key_pattern, "unique": True},
+            error_msg=f"Error while making index '{field}' unique.",
+        )
+        if err_result:
+            # If error, restore the collection to its original state and return
+            self._safe_collmod(
+                db,
+                collection_name,
+                index_spec={"keyPattern": key_pattern, "prepareUnique": False},
+            )
+            return {**result, **err_result}
+        return {
+            **result,
+            "status": "success",
+            "message": "Unique index conversion successful.",
+        }
+
+    def _safe_collmod(
+        self,
+        db,
+        collection_name,
+        dry_run=None,
+        index_spec=None,
+        error_msg=None,
+    ):
+        try:
+            db.command(
+                "collMod", collection_name, index=index_spec, dryRun=dry_run
+            )
+        except Exception as e:
+            # Raise exception for unexpected errors
+            if not error_msg:
+                raise e
+            return {"message": error_msg, "status": "error", "error": str(e)}
+
+    def resolve_output(self, ctx):
+        outputs = types.Object()
+        outputs.str(
+            "field",
+            label="Field",
+            description="The name of the index that was processed",
+        )
+        outputs.str(
+            "message", label="Message", description="The status message"
+        )
+        outputs.str(
+            "status", label="Status", description="The status of the operation"
+        )
+        outputs.bool(
+            "dry_run",
+            label="Dry run",
+            description="Check for unique key violations only (dry run)",
+        )
+        outputs.str(
+            "error",
+            label="Error",
+            description="Any error that occurred during the operation",
+        )
+        return types.Property(
+            outputs,
+            view=types.View(label="Results"),
+        )
+
+
 class DropIndex(foo.Operator):
     @property
     def config(self):
@@ -2723,6 +2919,7 @@ def register(p):
     p.register(DeleteSampleField)
     p.register(DeleteFrameField)
     p.register(CreateIndex)
+    p.register(ConvertIndexToUnique)
     p.register(DropIndex)
     p.register(CreateSummaryField)
     p.register(UpdateSummaryField)
