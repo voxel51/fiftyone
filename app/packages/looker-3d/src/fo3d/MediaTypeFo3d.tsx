@@ -279,7 +279,7 @@ export const MediaTypeFo3dComponent = () => {
     );
   }, [sceneBoundingBox, upVector]);
 
-  const overridenCameraPosition = useRecoilValue(cameraPositionAtom);
+  const overriddenCameraPosition = useRecoilValue(cameraPositionAtom);
 
   const lastSavedCameraPosition = useMemo(() => {
     const lastSavedCameraPosition =
@@ -304,11 +304,11 @@ export const MediaTypeFo3dComponent = () => {
         return DEFAULT_CAMERA_POSITION();
       }
 
-      if (overridenCameraPosition?.length === 3) {
+      if (overriddenCameraPosition?.length === 3) {
         return new Vector3(
-          overridenCameraPosition[0],
-          overridenCameraPosition[1],
-          overridenCameraPosition[2]
+          overriddenCameraPosition[0],
+          overriddenCameraPosition[1],
+          overriddenCameraPosition[2]
         );
       }
 
@@ -361,7 +361,7 @@ export const MediaTypeFo3dComponent = () => {
     },
     [
       settings,
-      overridenCameraPosition,
+      overriddenCameraPosition,
       isParsingFo3d,
       foScene,
       sceneBoundingBox,
