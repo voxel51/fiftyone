@@ -2,9 +2,10 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
+import { LIGHTER_EVENTS } from "../event/EventBus";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { Selectable } from "../selection/Selectable";
-import type { DrawStyle, Point, RawLookerLabel } from "../types";
+import type { DrawStyle, Hoverable, Point, RawLookerLabel } from "../types";
 import { BaseOverlay } from "./BaseOverlay";
 
 export type ClassificationLabel = RawLookerLabel & {
@@ -27,7 +28,10 @@ export interface ClassificationOptions {
 /**
  * Classification overlay implementation with selection support.
  */
-export class ClassificationOverlay extends BaseOverlay implements Selectable {
+export class ClassificationOverlay
+  extends BaseOverlay
+  implements Selectable, Hoverable
+{
   private isSelectedState = false;
 
   constructor(private options: ClassificationOptions) {
@@ -187,5 +191,41 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
    */
   shouldShowConfidence(): boolean {
     return this.options.showConfidence ?? false;
+  }
+
+  getTooltipInfo(): {
+    color: string;
+    field: string;
+    label: any;
+    type: string;
+    coordinates?: Point;
+  } | null {
+    return {
+      color: "#4ecdc4", // This should come from the overlay's style
+      field: this.field || "unknown",
+      label: this.label,
+      type: "Classification",
+      coordinates: this.options.position,
+    };
+  }
+
+  onHoverEnter(point: Point, event: PointerEvent): boolean {
+    // Emit hover event
+    this.eventBus?.emit({
+      type: LIGHTER_EVENTS.OVERLAY_HOVER,
+      detail: { id: this.id, point },
+    });
+
+    return true;
+  }
+
+  onHoverLeave(point: Point, event: PointerEvent): boolean {
+    // Emit unhover event
+    this.eventBus?.emit({
+      type: LIGHTER_EVENTS.OVERLAY_UNHOVER,
+      detail: { id: this.id, point },
+    });
+
+    return true;
   }
 }

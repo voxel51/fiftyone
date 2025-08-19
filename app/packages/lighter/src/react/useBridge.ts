@@ -11,6 +11,7 @@ import {
 import { useEffect } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { LIGHTER_EVENTS, Scene2D } from "../index";
+import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
 
 /**
  * Hook that bridges FiftyOne state management system with Lighter.
@@ -23,6 +24,8 @@ export const useBridge = (scene: Scene2D | null) => {
   const onSelectLabel = useOnSelectLabel();
   const currentColorScheme = useRecoilValue(colorScheme);
   const currentColorSeed = useRecoilValue(colorSeed);
+
+  useLighterTooltipEventHandler(scene);
 
   const getSelectedLabels = useRecoilCallback(
     ({ snapshot }) =>
