@@ -99,8 +99,8 @@ def compute_annotation_schema(collection, field_name):
         - tags
 
     Args:
-        collection: a :class:`SampleCollection`
-        field_name: the field name to process
+        collection: a :class:`fiftyone.core.collections.SampleCollection`
+        field_name: a field name or ``embedded.field.name`` to process
 
     Raises:
         ValueError: if the field does not exists or annotation for its
@@ -108,7 +108,6 @@ def compute_annotation_schema(collection, field_name):
 
     Returns:
         an annotation schema dictionary
-
     """
     if collection.media_type != fom.IMAGE:
         raise ValueError("only image datasets are supported")

@@ -3340,10 +3340,22 @@ class SampleCollection(object):
         )
 
     def compute_annotation_schema(self, field_name):
-        """Compute the annotation schema for a field
+        """Compute the annotation schema for a collection's field
+
+        An annotation schema is defined by a type. A field type and an annotation
+        type informs the annotation form type and allowed values
+
+        Annotation types are:
+            - checkbox
+            - input
+            - select
+            - radio
+            - text
+            - tags
 
         Args:
-            field_name: the field to process
+            collection: a :class:`fiftyone.core.collections.SampleCollection`
+            field_name: a field name or ``embedded.field.name`` to process
 
         Raises:
             ValueError: if the field does not exists or annotation for its
