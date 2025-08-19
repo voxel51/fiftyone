@@ -145,6 +145,30 @@ def validate_video_collection(sample_collection):
         )
 
 
+def validate_grouped_non_dynamic_collection(sample_collection):
+    """Validates that the provided samples are a grouped
+    :class:`fiftyone.core.collections.SampleCollection`.
+
+    Args:
+        sample_collection: a sample collection
+
+    Raises:
+        ValueError: if the provided samples are not grouped
+        :class:`fiftyone.core.collections.SampleCollection`
+    """
+    validate_collection(sample_collection)
+
+    if sample_collection.media_type != fom.GROUP:
+        if sample_collection._is_dynamic_groups:
+            raise ValueError(
+                "This method does not support dynamic group views"
+            )
+        raise ValueError(
+            "Expected collection to have media type %s; found %s"
+            % (fom.GROUP, sample_collection.media_type)
+        )
+
+
 def validate_non_grouped_collection(sample_collection):
     """Validates that the provided samples are a
     :class:`fiftyone.core.collections.SampleCollection` that is *not* grouped.

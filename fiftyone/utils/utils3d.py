@@ -13,10 +13,14 @@ import warnings
 
 import numpy as np
 import scipy.spatial as sp
+from scipy.spatial.transform import Rotation as R
+from typing import Tuple, List, Any, Union
+from dataclasses import dataclass
 
 import eta.core.numutils as etan
 import eta.core.utils as etau
 
+import fiftyone as fo
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
@@ -28,9 +32,13 @@ import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 import fiftyone.utils.data as foud
 import fiftyone.utils.image as foui
+import fiftyone.core.validation as fov
+from fiftyone import Dataset
 
 o3d = fou.lazy_import("open3d", callback=lambda: fou.ensure_package("open3d"))
-
+pyq = fou.lazy_import(
+    "pyquaternion", callback=lambda: fou.ensure_package("pyquaternion")
+)
 
 logger = logging.getLogger(__name__)
 
@@ -100,6 +108,21 @@ _PLANE_THICKNESS_EPSILON = 0.000001
 _POINT_IN_FRONT_OF_PLANE = 1
 _POINT_ON_PLANE = 0
 _POINT_BEHIND_PLANE = -1
+
+TransformationType = Tuple[
+    Union[list[float], np.ndarray],  # translation
+    Union[list[list[float]], np.ndarray],  # rotation matrix
+]
+
+
+@dataclass
+class Cuboid2D:
+    corners_2d: np.ndarray
+    corners_3d: np.ndarray
+    instance: fo.Instance
+    label: str
+    confidence: float
+    index: int
 
 
 # References
@@ -415,6 +438,277 @@ def _compute_intersection_points(box1, box2):
             intersection_points.append(point_w)
 
     return intersection_points
+
+
+def rpy_to_quaternion(euler_rpy: List[float]):
+    """Converts Euler angles in roll-pitch-yaw order to a quaternion.
+
+    Args:
+        euler_rpy: a list of Euler angles in roll-pitch-yaw order
+    Returns:
+        A quaternion representing the rotation.
+    """
+    roll, pitch, yaw = euler_rpy
+    rot = R.from_euler("zyx", [yaw, pitch, roll])
+    qx, qy, qz, qw = rot.as_quat()
+    return pyq.Quaternion(qw, qx, qy, qz)
+
+
+def multiple_coordinate_transform(
+    points: List[float],
+    euler_rpy: List[float],
+    transformation_sequence: TransformationType,
+    source_to_target: List[bool] = None,
+) -> Tuple[List[float], List[float]]:
+    """
+    Applies a sequence of 3D coordinate frame transformations to a point and its orientation.
+    Each transformation consists of a translation vector and a rotation matrix, applied in the
+    order provided. The orientation is updated at each step using quaternion multiplication.
+    Args:
+        points: A 3-element list representing the (x, y, z) coordinates of the point.
+        euler_rpy: A 3-element list of Euler angles [roll, pitch, yaw] in radians.
+        transformation_sequence: A list of (translation, rotation) tuples, where:
+            - translation: 3-element list or (3,) np.ndarray representing (tx, ty, tz).
+            - rotation: (3, 3) list of lists or np.ndarray representing a rotation matrix.
+        source_to_target: Optional list of booleans, one per transformation.
+            True means apply the transform from source → target.
+            False means apply the inverse transform (target → source).
+            Defaults to all True.
+    Returns:
+        A tuple of:
+            - Transformed 3D point as a list [x, y, z].
+            - Updated orientation as Euler angles [roll, pitch, yaw] in radians.
+    """
+    if source_to_target is None:
+        source_to_target = [True] * len(transformation_sequence)
+    rot_quaternion = rpy_to_quaternion(euler_rpy)
+    points = np.array(points)
+    for (translation, rotation), to_target in zip(
+        transformation_sequence, source_to_target
+    ):
+        points, rot_quaternion = single_coordinate_transform(
+            points,
+            rot_quaternion,
+            (np.array(translation), np.array(rotation)),
+            to_target,
+        )
+    yaw, pitch, roll = rot_quaternion.yaw_pitch_roll
+    return points.tolist(), [roll, pitch, yaw]
+
+
+def single_coordinate_transform(
+    points: np.ndarray,
+    rot_quaternion: Any,
+    transformation: Tuple[np.ndarray, np.ndarray],
+    source_to_target: bool = True,
+) -> Tuple[np.ndarray, Any]:
+    """
+    Applies a single 3D coordinate frame transformation to a point and its orientation.
+
+    The transformation consists of a translation vector and a rotation matrix. The orientation
+    is updated using quaternion multiplication.
+
+    Args:
+        points: A 3-element np.ndarray representing the (x, y, z) coordinates of the point.
+        rot_quaternion: A pyquaternion.Quaternion representing the current orientation.
+        transformation: A tuple containing:
+            - translation: 3-element np.ndarray representing (tx, ty, tz).
+            - rotation_matrix: (3, 3) np.ndarray representing a rotation matrix.
+        source_to_target: If True, applies the transform from source → target.
+            If False, applies the inverse transform (target → source).
+    Returns:
+        A tuple of:
+            - Transformed 3D point as a np.ndarray [x, y, z].
+            - Updated orientation as a pyquaternion.Quaternion.
+    """
+    transform_translation, transform_rot_matrix = transformation
+    transform_quaternion = pyq.Quaternion(matrix=transform_rot_matrix)
+    if source_to_target:
+        transformed_points = (
+            np.dot(transform_quaternion.rotation_matrix, points)
+            + transform_translation
+        )
+        final_orientation = transform_quaternion * rot_quaternion
+    else:
+        transformed_points = np.dot(
+            transform_quaternion.inverse.rotation_matrix,
+            points - transform_translation,
+        )
+        final_orientation = transform_quaternion.inverse * rot_quaternion
+    return transformed_points, final_orientation
+
+
+def corners_from_euler(
+    location: List[float], rotation: List[float], dimension: List[float]
+) -> np.ndarray:
+    """Computes the 3D corners of a cuboid given its location, rotation, and dimensions.
+    Args:
+        location: a 3-element list or np.ndarray representing the (x, y, z) location of the cuboid
+        rotation: a 3-element list or np.ndarray representing the (roll, pitch, yaw) rotation in radians
+        dimension: a 3-element list or np.ndarray representing the (length, width, height) of the cuboid
+    Returns:
+        A 3x8 np.ndarray containing the 3D coordinates of the cuboid's corners.
+    """
+    l, w, h = dimension
+    roll, pitch, yaw = rotation
+    rot = R.from_euler("zyx", [yaw, pitch, roll])  # yaw-pitch-roll order
+    rotation_matrix = rot.as_matrix()
+    x_corners = l / 2 * np.array([1, 1, 1, 1, -1, -1, -1, -1])
+    y_corners = w / 2 * np.array([1, -1, -1, 1, 1, -1, -1, 1])
+    z_corners = h / 2 * np.array([1, 1, -1, -1, 1, 1, -1, -1])
+    corners = np.vstack((x_corners, y_corners, z_corners))
+    corners = np.dot(rotation_matrix, corners)
+    location = np.array(location).reshape(3, 1)
+    corners += location
+    return corners
+
+
+def project_3d_to_2d(
+    points: np.ndarray, camera_intrinsics: np.ndarray, normalize=True
+) -> np.ndarray:
+    """Projects 3D detection points to 2D using the given camera intrinsics assuming a pinhole camera.
+    The expected axis orientation is as follows-
+        - x-axis -> points right in the image plane
+        - y-axis -> points down in the image plane
+        - z-axis -> points forward from the camera
+    Args:
+        points: a 3xN np.ndarray containing the 3D coordinates of the points to be projected
+        camera_intrinsics: a 3x3 or 4x4 np.ndarray representing the camera intrinsics matrix
+        normalize (True): whether to normalize the projected points by their z-coordinate
+    Returns:
+        A 3xN np.ndarray containing the projected 2D coordinates of the points.
+        If `normalize` is True, the points are normalized by their z-coordinate.
+    """
+    assert camera_intrinsics.shape[0] <= 4
+    assert camera_intrinsics.shape[1] <= 4
+    assert points.shape[0] == 3
+    cam_int_pad = np.eye(4)
+    cam_int_pad[
+        : camera_intrinsics.shape[0], : camera_intrinsics.shape[1]
+    ] = camera_intrinsics
+    nbr_points = points.shape[1]
+    # Do operation in homogenous coordinates.
+    points = np.concatenate((points, np.ones((1, nbr_points))))
+    points = np.dot(cam_int_pad, points)
+    points = points[:3, :]
+    if normalize:
+        points = points / points[2:3, :].repeat(3, 0).reshape(3, nbr_points)
+    return points
+
+
+def point_in_front_of_camera(
+    corners_img: np.ndarray,
+    corners_3d: np.ndarray,
+    imsize: Tuple[int, int],
+    distance_threshold: float = 0.1,
+) -> bool:
+    """Checks if the input corners are visible in the image and in front of the camera.
+    Args:
+        corners_img: a 3x8 np.ndarray containing the projected 2D coordinates of a cuboid's corners
+        corners_3d: a 3x8 np.ndarray containing the 3D coordinates of the cuboid's corners
+        imsize: a tuple (width, height) of the image dimensions
+        distance_threshold: a float representing the minimum distance in meters for a corner to be considered in front of the camera
+    Returns:
+        True if all corners are visible in the image and at least one corner is in front of the camera, False otherwise.
+    """
+    visible = np.logical_and(
+        corners_img[0, :] > 0, corners_img[0, :] < imsize[0]
+    )
+    visible = np.logical_and(visible, corners_img[1, :] < imsize[1])
+    visible = np.logical_and(visible, corners_img[1, :] > 0)
+    visible = np.logical_and(visible, corners_3d[2, :] > 1)
+    in_front = corners_3d[2, :] > distance_threshold
+    return all(visible) and all(in_front)
+
+
+def convert_3d_labels_to_2d(
+    dataset: Dataset,
+    camera_slice_name: str,
+    lidar_slice_name: str,
+    in_field: str,
+    out_field: str,
+    transformations: TransformationType,
+    camera_intrinsics: np.ndarray,
+    source_to_target: List[bool] = None,
+    batch_size: int = 1000,
+    progress: bool = True,
+):
+    """Converts 3D labels to 2D labels using the given camera intrinsics."""
+    # fov.validate_grouped_non_dynamic_collection(dataset)
+    fov.validate_collection_label_fields(dataset, in_field, fol.Detections)
+    lidar_slice = dataset.select_group_slices(lidar_slice_name)
+    camera_slice = dataset.select_group_slices(camera_slice_name)
+    camera_slice.compute_metadata()
+    view_3d_label = lidar_slice.select_fields(in_field, "group")
+    values_2d_label = {}
+    count = 0
+    with view_3d_label.save_context() as context:
+        for sample in view_3d_label.iter_samples(progress=progress):
+            detections_3d = sample[in_field]
+            if detections_3d is None or len(detections_3d.detections) == 0:
+                return None
+            group = dataset.get_group(sample.group.id)
+            cam_sample_id = group[camera_slice_name].id
+            width, height = (
+                camera_slice[cam_sample_id].metadata.width,
+                camera_slice[cam_sample_id].metadata.height,
+            )
+            polylines = []
+            added_instance = False
+            for det_idx, det in enumerate(detections_3d.detections):
+                points_cam, rotation_cam = multiple_coordinate_transform(
+                    det.location,
+                    det.rotation,
+                    transformations,
+                    source_to_target,
+                )
+                if "instance" in det:
+                    instance = det.instance
+                else:
+                    added_instance = True
+                    instance = fo.Instance()
+                    sample[in_field].detections[det_idx]["instance"] = instance
+                corners_3d_cam = corners_from_euler(
+                    points_cam, rotation_cam, det.dimensions
+                )
+                corners_2d_cam = project_3d_to_2d(
+                    corners_3d_cam, camera_intrinsics, normalize=True
+                )[:2, :]
+                if not point_in_front_of_camera(
+                    corners_2d_cam, corners_3d_cam, (width, height)
+                ):
+                    continue
+                front = [
+                    (
+                        corners_2d_cam[0][i] / width,
+                        corners_2d_cam[1][i] / height,
+                    )
+                    for i in range(4)
+                ]
+                back = [
+                    (
+                        corners_2d_cam[0][i] / width,
+                        corners_2d_cam[1][i] / height,
+                    )
+                    for i in range(4, 8)
+                ]
+                polyline = fo.Polyline.from_cuboid(
+                    vertices=front + back,
+                    label=det.label,
+                    confidence=det.confidence,
+                    instance=det.instance,
+                    index=det.index,
+                )
+                polylines.append(polyline)
+            values_2d_label[cam_sample_id] = fol.Polylines(polylines=polylines)
+            if added_instance:
+                context.save(sample)
+            count += 1
+            if count % batch_size == 0:
+                dataset.set_values(out_field, values_2d_label, key_field="id")
+                values_2d_label.clear()
+    if values_2d_label != {}:
+        dataset.set_values(out_field, values_2d_label, key_field="id")
 
 
 class OrthographicProjectionMetadata(DynamicEmbeddedDocument, fol._HasMedia):
