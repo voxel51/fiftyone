@@ -1337,7 +1337,7 @@ class ClassifierOutputProcessor(OutputProcessor):
         preds = []
         for prediction, score, _logits in zip(predictions, scores, logits):
             if confidence_thresh is not None and score < confidence_thresh:
-                classification = None
+                classification = fol.Classification()
             else:
                 classification = fol.Classification(
                     label=self.classes[prediction],
