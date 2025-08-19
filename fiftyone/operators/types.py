@@ -2795,10 +2795,9 @@ class ViewTargetProperty(Property):
             view_type (RadioGroup): the view type to use (RadioGroup, Dropdown,
                 etc.)
             default_target (None): the default target view to select if
-                multiple choices are available. If ``None``, one will be chosen
-                based on the available choices in the following order of
-                preference: dataset view, current view, selected samples,
-                selected labels
+                multiple choices are available. If ``None`` or
+                ``default_target`` is not an available choice, the most
+                targeted / selective available choice is chosen.
             action_description (Process): a short description of the action
                 being performed, used to generate default descriptions for the
                 various target views
@@ -2881,8 +2880,11 @@ class ViewTargetProperty(Property):
 
         _type = Enum(options.values())
 
-        if not default_target or default_target not in options.values():
-            default_target = options.values()[-1]  # last option
+        vals = options.values()
+        if not default_target or default_target not in vals:
+            default_target = (
+                vals[-1] if vals else constants.ViewTarget.DATASET
+            )  # last option or safe fallback
 
         # Only 1 option so no need for a radio group, just hide it.
         if len(options.values()) <= 1:

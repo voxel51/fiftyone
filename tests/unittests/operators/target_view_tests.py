@@ -29,7 +29,7 @@ class TestResolveOperatorTargetViewInputs(unittest.TestCase):
                     }
                 ],
                 "selected": ["sample_id_one"],
-                "selected_labels": ["label_id_one"],
+                "selected_labels": [{"label_id": "label_id_one"}],
             }
             ctx = foo.ExecutionContext(
                 operator_uri="test_operator",
@@ -115,6 +115,7 @@ class TestResolveOperatorTargetViewInputs(unittest.TestCase):
                 prop.options.values(), [foo.constants.ViewTarget.DATASET]
             )
             self.assertIsInstance(prop.view, types.HiddenView)
+            self.assertEqual(ctx, ds)
         finally:
             ds.delete()
 
@@ -131,7 +132,7 @@ class TestResolveOperatorTargetViewInputs(unittest.TestCase):
                     }
                 ],
                 "selected": ["sample_id_one"],
-                "selected_labels": ["label_id_one"],
+                "selected_labels": [{"label_id": "label_id_one"}],
             }
             ctx = foo.ExecutionContext(
                 operator_uri="test_operator",

@@ -522,8 +522,6 @@ class ExecutionContext(object):
         self._secrets = {}
         self._secrets_client = PluginSecretsResolver()
         self._required_secret_keys = required_secrets
-        self._has_generated_view = None
-        self._has_custom_generated_view = None
 
         self._prompt_id = request_params.get("prompt_id", None)
 
@@ -626,7 +624,9 @@ class ExecutionContext(object):
         if not target:
             target = (
                 constants.ViewTarget.BASE_VIEW
-                if self.view._is_generated  # pylint: disable=protected-access
+                if (
+                    self.view and self.view._is_generated
+                )  # pylint: disable=protected-access
                 else constants.ViewTarget.DATASET
             )
 
@@ -635,7 +635,7 @@ class ExecutionContext(object):
         if target == constants.ViewTarget.DATASET:
             return self.dataset
         if target == constants.ViewTarget.BASE_VIEW:
-            return self.view._base_view
+            return self.view._base_view  # pylint: disable=protected-access
         if target == constants.ViewTarget.SELECTED_SAMPLES:
             return self.view.select(self.selected)
         if target == constants.ViewTarget.SELECTED_LABELS:
