@@ -80,10 +80,10 @@ export const createRouter = <T extends OperationType>(
     [Subscription<T>, (() => void) | undefined]
   >();
 
-  const update = (location: FiftyOneLocation, action?: Action) => {
+  const update = (location: FiftyOneLocation, action?: Action, attach?: Resource<Entry<T>>) => {
     currentEntryResource.load().then(({ cleanup }) => {
       try {
-        nextCurrentEntryResource = getEntryResource({
+        nextCurrentEntryResource =attach ?? getEntryResource({
           environment,
           routes,
           location: location as FiftyOneLocation,
@@ -145,7 +145,6 @@ export const createRouter = <T extends OperationType>(
     },
 
     load(hard = false) {
-      const runUpdate = !currentEntryResource || hard;
       if (!currentEntryResource || hard) {
         currentEntryResource = getEntryResource({
           environment,
@@ -154,8 +153,8 @@ export const createRouter = <T extends OperationType>(
           location: history.location as FiftyOneLocation,
           routes,
         });
+        update(history.location as FiftyOneLocation, undefined, currentEntryResource);
       }
-      runUpdate && update(history.location as FiftyOneLocation);
       return currentEntryResource.load();
     },
 
@@ -227,6 +226,7 @@ const makeGetEntryResource = <T extends OperationType>() => {
       throw currentResource;
     }
 
+
     let route: RouteDefinition<T>;
     let matchResult: MatchPathResult<T> | undefined = undefined;
     for (let index = 0; index < routes.length; index++) {
@@ -248,7 +248,7 @@ const makeGetEntryResource = <T extends OperationType>() => {
       throw new NotFoundError({ path: location.pathname });
     }
 
-    const fetchPolicy = hard ? "network-only" : "store-or-network";
+    const fetchPolicy = hard   ? "network-only" : "store-or-network";
 
     currentLocation = location;
     currentResource = new Resource(() => {
