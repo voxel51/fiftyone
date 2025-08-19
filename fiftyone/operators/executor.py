@@ -620,10 +620,13 @@ class ExecutionContext(object):
             a :class:`fiftyone.core.collections.SampleCollection`
         """
         target = self.params.get(param_name)
+
+        # If no target is specified, default to the base view if the
+        #   current view is generated, otherwise default to the entire dataset
         if not target:
             target = (
                 constants.ViewTarget.BASE_VIEW
-                if self.has_generated_view
+                if self.view._is_generated  # pylint: disable=protected-access
                 else constants.ViewTarget.DATASET
             )
 
@@ -644,60 +647,6 @@ class ExecutionContext(object):
 
     # Alias for common word reversal
     view_target = target_view
-
-    def _init_has_generated_view(self):
-        stages = self.request_params.get("view", None)
-        generated_view_stages = {
-            f"{stage_class.__module__}.{stage_class.__name__}"
-            for stage_class in (
-                focs.ToClips,
-                focs.ToEvaluationPatches,
-                focs.ToFrames,
-                focs.ToPatches,
-            )
-        }
-
-        self._has_generated_view = self._has_custom_generated_view = False
-
-        for idx, stage in enumerate(stages or []):
-            if stage.get("_cls") in generated_view_stages:
-                has_filters = bool(self.request_params.get("filters", None))
-                has_extended = bool(self.request_params.get("extended", None))
-                has_more_stages = len(stages[idx + 1 :]) > 0
-                has_additional_filters = (
-                    has_filters or has_extended or has_more_stages
-                )
-                self._has_generated_view = True
-                self._has_custom_generated_view = has_additional_filters
-                break
-
-    @property
-    def has_generated_view(self):
-        """Whether the context's view is a generated view
-
-        This method inspects the request params only and does not actually
-        load the view. Therefore, it may be inaccurate for saved views.
-
-        Returns: ``True`` if the context's view is a generated view
-        """
-        if self._has_generated_view is None:
-            self._init_has_generated_view()
-        return self._has_generated_view
-
-    @property
-    def has_custom_generated_view(self):
-        """Whether the context's view is a generated view AND it has
-        additional filters.
-
-        This method inspects the request params only and does not actually
-        load the view. Therefore, it may be inaccurate for saved views.
-
-        Returns: ``True`` if the context's view is a generated view and
-            it has additional filters on top of the base view
-        """
-        if self._has_custom_generated_view is None:
-            self._init_has_generated_view()
-        return self._has_custom_generated_view
 
     @property
     def has_custom_view(self):
