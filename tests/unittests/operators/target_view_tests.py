@@ -115,7 +115,7 @@ class TestResolveOperatorTargetViewInputs(unittest.TestCase):
                 prop.options.values(), [foo.constants.ViewTarget.DATASET]
             )
             self.assertIsInstance(prop.view, types.HiddenView)
-            self.assertEqual(ctx, ds)
+            self.assertEqual(ctx.target_view(), ds)
         finally:
             ds.delete()
 
