@@ -188,7 +188,9 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
             h, w = img.size(1), img.size(2)
 
             boxes = [d.bounding_box for d in detections.detections]
-            boxes_xyxy = [fosam._to_abs_box(box, w, h) for box in boxes]
+            boxes_xyxy = np.array(
+                [fosam._to_abs_box(box, w, h) for box in boxes]
+            )
             sam_boxes = np.round(boxes_xyxy).astype(int)
             input_boxes = torch.tensor(
                 boxes_xyxy, device=sam2_predictor.device
