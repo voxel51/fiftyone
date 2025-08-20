@@ -14,7 +14,7 @@ import warnings
 import numpy as np
 import scipy.spatial as sp
 from scipy.spatial.transform import Rotation as R
-from typing import Tuple, List, Any, Union
+from typing import Any, Dict, List, Tuple, Union
 from dataclasses import dataclass
 
 import eta.core.numutils as etan
@@ -458,7 +458,7 @@ def multiple_coordinate_transform(
     points: List[float],
     euler_rpy: List[float],
     transformation_sequence: TransformationType,
-    source_to_target: List[bool] = None,
+    forward_transform_flags: List[bool] = None,
 ) -> Tuple[List[float], List[float]]:
     """
     Applies a sequence of 3D coordinate frame transformations to a point and its orientation.
@@ -470,7 +470,7 @@ def multiple_coordinate_transform(
         transformation_sequence: A list of (translation, rotation) tuples, where:
             - translation: 3-element list or (3,) np.ndarray representing (tx, ty, tz).
             - rotation: (3, 3) list of lists or np.ndarray representing a rotation matrix.
-        source_to_target: Optional list of booleans, one per transformation.
+        forward_transform_flags: Optional list of booleans, one per transformation.
             True means apply the transform from source → target.
             False means apply the inverse transform (target → source).
             Defaults to all True.
@@ -479,18 +479,19 @@ def multiple_coordinate_transform(
             - Transformed 3D point as a list [x, y, z].
             - Updated orientation as Euler angles [roll, pitch, yaw] in radians.
     """
-    if source_to_target is None:
-        source_to_target = [True] * len(transformation_sequence)
+    if forward_transform_flags is None:
+        forward_transform_flags = [True] * len(transformation_sequence)
+    assert len(transformation_sequence) == len(forward_transform_flags)
     rot_quaternion = rpy_to_quaternion(euler_rpy)
     points = np.array(points)
-    for (translation, rotation), to_target in zip(
-        transformation_sequence, source_to_target
+    for (translation, rotation), forward_transform in zip(
+        transformation_sequence, forward_transform_flags
     ):
         points, rot_quaternion = single_coordinate_transform(
             points,
             rot_quaternion,
             (np.array(translation), np.array(rotation)),
-            to_target,
+            forward_transform,
         )
     yaw, pitch, roll = rot_quaternion.yaw_pitch_roll
     return points.tolist(), [roll, pitch, yaw]
@@ -500,7 +501,7 @@ def single_coordinate_transform(
     points: np.ndarray,
     rot_quaternion: Any,
     transformation: Tuple[np.ndarray, np.ndarray],
-    source_to_target: bool = True,
+    forward_transform: bool = True,
 ) -> Tuple[np.ndarray, Any]:
     """
     Applies a single 3D coordinate frame transformation to a point and its orientation.
@@ -514,8 +515,8 @@ def single_coordinate_transform(
         transformation: A tuple containing:
             - translation: 3-element np.ndarray representing (tx, ty, tz).
             - rotation_matrix: (3, 3) np.ndarray representing a rotation matrix.
-        source_to_target: If True, applies the transform from source → target.
-            If False, applies the inverse transform (target → source).
+        forward_transform: If True, applies the forward transform.
+            If False, applies the inverse transform.
     Returns:
         A tuple of:
             - Transformed 3D point as a np.ndarray [x, y, z].
@@ -523,7 +524,7 @@ def single_coordinate_transform(
     """
     transform_translation, transform_rot_matrix = transformation
     transform_quaternion = pyq.Quaternion(matrix=transform_rot_matrix)
-    if source_to_target:
+    if forward_transform:
         transformed_points = (
             np.dot(transform_quaternion.rotation_matrix, points)
             + transform_translation
@@ -622,93 +623,163 @@ def point_in_front_of_camera(
 
 
 def convert_3d_labels_to_2d(
-    dataset: Dataset,
+    dataset: fo.Dataset,
     camera_slice_name: str,
     lidar_slice_name: str,
     in_field: str,
     out_field: str,
-    transformations: TransformationType,
-    camera_intrinsics: np.ndarray,
-    source_to_target: List[bool] = None,
+    transformations: Dict[str, TransformationType],
+    camera_intrinsics: Dict[str, np.ndarray],
+    forward_transform_flags: Dict[str, List[bool]] = None,
     batch_size: int = 1000,
     progress: bool = True,
 ):
-    """Converts 3D labels to 2D labels using the given camera intrinsics."""
-    # fov.validate_grouped_non_dynamic_collection(dataset)
+    """High-level orchestration of 3D → 2D label conversion."""
+    fov.validate_grouped_non_dynamic_collection(dataset)
     fov.validate_collection_label_fields(dataset, in_field, fol.Detections)
     lidar_slice = dataset.select_group_slices(lidar_slice_name)
     camera_slice = dataset.select_group_slices(camera_slice_name)
     camera_slice.compute_metadata()
-    view_3d_label = lidar_slice.select_fields(in_field, "group")
     values_2d_label = {}
     count = 0
+    view_3d_label = lidar_slice.select_fields(in_field, "group")
     with view_3d_label.save_context() as context:
         for sample in view_3d_label.iter_samples(progress=progress):
-            detections_3d = sample[in_field]
-            if detections_3d is None or len(detections_3d.detections) == 0:
-                return None
+            transforms = transformations.get(sample.id, None)
+            forward_flags = (
+                forward_transform_flags.get(sample.id)
+                if forward_transform_flags
+                else None
+            )
+            intrinsics = camera_intrinsics.get(sample.id, None)
+            if transforms is None or intrinsics is None:
+                print(
+                    f"Skipping sample {sample.id} because transformations or camera intrinsics are missing"
+                )
+                continue
             group = dataset.get_group(sample.group.id)
             cam_sample_id = group[camera_slice_name].id
             width, height = (
                 camera_slice[cam_sample_id].metadata.width,
                 camera_slice[cam_sample_id].metadata.height,
             )
-            polylines = []
-            added_instance = False
-            for det_idx, det in enumerate(detections_3d.detections):
-                points_cam, rotation_cam = multiple_coordinate_transform(
-                    det.location,
-                    det.rotation,
-                    transformations,
-                    source_to_target,
+            if width is None or height is None:
+                print(
+                    f"Skipping sample {sample.id} because camera metadata is missing. Please compute metadata for this sample first."
                 )
-                if "instance" in det:
-                    instance = det.instance
-                else:
-                    added_instance = True
-                    instance = fo.Instance()
-                    sample[in_field].detections[det_idx]["instance"] = instance
-                corners_3d_cam = corners_from_euler(
-                    points_cam, rotation_cam, det.dimensions
+                continue
+            polylines, added_instance = _process_sample(
+                sample,
+                in_field,
+                transforms,
+                forward_flags,
+                intrinsics,
+                width,
+                height,
+            )
+            if polylines:
+                values_2d_label[cam_sample_id] = fol.Polylines(
+                    polylines=polylines
                 )
-                corners_2d_cam = project_3d_to_2d(
-                    corners_3d_cam, camera_intrinsics, normalize=True
-                )[:2, :]
-                if not point_in_front_of_camera(
-                    corners_2d_cam, corners_3d_cam, (width, height)
-                ):
-                    continue
-                front = [
-                    (
-                        corners_2d_cam[0][i] / width,
-                        corners_2d_cam[1][i] / height,
-                    )
-                    for i in range(4)
-                ]
-                back = [
-                    (
-                        corners_2d_cam[0][i] / width,
-                        corners_2d_cam[1][i] / height,
-                    )
-                    for i in range(4, 8)
-                ]
-                polyline = fo.Polyline.from_cuboid(
-                    vertices=front + back,
-                    label=det.label,
-                    confidence=det.confidence,
-                    instance=det.instance,
-                    index=det.index,
-                )
-                polylines.append(polyline)
-            values_2d_label[cam_sample_id] = fol.Polylines(polylines=polylines)
             if added_instance:
                 context.save(sample)
             count += 1
             if count % batch_size == 0:
                 dataset.set_values(out_field, values_2d_label, key_field="id")
                 values_2d_label.clear()
-    if values_2d_label != {}:
+    if values_2d_label:
         dataset.set_values(out_field, values_2d_label, key_field="id")
+
+
+def _process_sample(
+    sample,
+    in_field: str,
+    transforms: TransformationType,
+    forward_flags: List[bool],
+    intrinsics: np.ndarray,
+    width: int,
+    height: int,
+):
+    """
+    Process all detections in a single sample and return polylines.
+    Returns: (List[Polyline], added_instance_flag)
+    """
+    detections_3d = sample[in_field]
+    if detections_3d is None:
+        return [], False
+    if len(detections_3d.detections) == 0:
+        return [], False
+    polylines = []
+    added_instance = False
+    for det_idx, det in enumerate(detections_3d.detections):
+        ply, added_instance = _process_detection_to_ply(
+            det,
+            transforms,
+            forward_flags,
+            intrinsics,
+            width,
+            height,
+            sample,
+            in_field,
+            det_idx,
+            added_instance,
+        )
+        if ply:
+            polylines.append(ply)
+    return polylines, added_instance
+
+
+def _process_detection_to_ply(
+    det,
+    transforms,
+    forward_flags,
+    intrinsics,
+    width: int,
+    height: int,
+    sample,
+    in_field,
+    det_idx: int,
+    added_instance: bool,
+):
+    """Convert a single 3D detection to a 2D Polyline."""
+
+    if any(v is None for v in [det.location, det.rotation, det.dimensions]):
+        print(
+            f"Skipping detection (id={det.id}) in sample {sample.id} "
+            "because location, rotation, or dimensions is missing"
+        )
+        return None, added_instance
+    points_cam, rotation_cam = multiple_coordinate_transform(
+        det.location, det.rotation, transforms, forward_flags
+    )
+    if getattr(det, "instance", None) is None:
+        added_instance = True
+        det.instance = fo.Instance()
+        sample[in_field].detections[det_idx]["instance"] = det.instance
+    corners_3d_cam = corners_from_euler(
+        points_cam, rotation_cam, det.dimensions
+    )
+    corners_2d_cam = project_3d_to_2d(
+        corners_3d_cam, intrinsics, normalize=True
+    )[:2, :]
+    if not point_in_front_of_camera(
+        corners_2d_cam, corners_3d_cam, (width, height)
+    ):
+        return None, added_instance
+    ply_corners = [
+        (corners_2d_cam[0][i] / width, corners_2d_cam[1][i] / height)
+        for i in range(8)
+    ]
+    return (
+        fo.Polyline.from_cuboid(
+            vertices=ply_corners,
+            label=det.label,
+            confidence=det.confidence,
+            instance=det.instance,
+            index=det.index,
+        ),
+        added_instance,
+    )
 
 
 class OrthographicProjectionMetadata(DynamicEmbeddedDocument, fol._HasMedia):
