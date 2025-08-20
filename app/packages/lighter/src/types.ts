@@ -167,4 +167,13 @@ export interface Hoverable {
     label: any;
     type: string;
   } | null;
+
+  /** Handle hover enter event */
+  onHoverEnter?(point: Point, event: PointerEvent): boolean;
+
+  /** Handle hover leave event */
+  onHoverLeave?(point: Point, event: PointerEvent): boolean;
+
+  /** Handle hover move event */
+  onHoverMove?(point: Point, event: PointerEvent): boolean;
 }

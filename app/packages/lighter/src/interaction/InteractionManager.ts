@@ -73,6 +73,14 @@ export interface InteractionHandler {
   onHoverLeave?(point: Point, event: PointerEvent): boolean;
 
   /**
+   * Handle hover move event.
+   * @param point - The point where the event occurred.
+   * @param event - The original pointer event.
+   * @returns True if the event was handled.
+   */
+  onHoverMove?(point: Point, event: PointerEvent): boolean;
+
+  /**
    * Check if this handler can handle events at the given point.
    * @param point - The point to test.
    * @returns True if this handler can handle events at the point.
@@ -298,6 +306,8 @@ export class InteractionManager {
   private handlePointerMove = (event: PointerEvent): void => {
     const point = this.getCanvasPoint(event);
 
+    this.handleHover(point, event, this.isDragging);
+
     if (this.dragHandler && !this.isDragging) {
       // Check if we've moved enough to start dragging
       if (this.clickStartPoint) {
@@ -336,9 +346,6 @@ export class InteractionManager {
       }
 
       event.preventDefault();
-    } else {
-      // Handle hover
-      this.handleHover(point, event);
     }
   };
 
@@ -493,22 +500,50 @@ export class InteractionManager {
     }
   }
 
-  private handleHover(point: Point, event: PointerEvent): void {
+  private handleHover(
+    point: Point,
+    event: PointerEvent,
+    isDragging: boolean
+  ): void {
     const handler = this.findHandlerAtPoint(point);
 
-    if (handler !== this.hoveredHandler) {
-      // Leave previous handler
+    // If we are dragging, we should not handle hover
+    if (isDragging) {
       if (this.hoveredHandler) {
         this.hoveredHandler.onHoverLeave?.(point, event);
+        this.hoveredHandler = undefined;
       }
-
-      // Enter new handler
-      if (handler) {
-        handler.onHoverEnter?.(point, event);
-      }
-
-      this.hoveredHandler = handler;
+      return;
     }
+
+    // If we are not hovering on an overlay, don't handle hover at all
+    if (!handler) {
+      if (this.hoveredHandler) {
+        this.hoveredHandler.onHoverLeave?.(point, event);
+        this.hoveredHandler = undefined;
+      }
+      return;
+    }
+
+    if (this.hoveredHandler && this.hoveredHandler !== handler) {
+      this.hoveredHandler.onHoverLeave?.(point, event);
+    }
+
+    if (handler && this.hoveredHandler !== handler) {
+      handler.onHoverEnter?.(point, event);
+    }
+
+    if (this.hoveredHandler === handler) {
+      handler.onHoverMove?.(point, event);
+
+      // Emit hover move event for tooltip updates
+      this.eventBus.emit({
+        type: LIGHTER_EVENTS.OVERLAY_HOVER_MOVE,
+        detail: { id: (handler as any).id, point },
+      });
+    }
+
+    this.hoveredHandler = handler;
   }
 
   private isDoubleClick(point: Point, now: number): boolean {

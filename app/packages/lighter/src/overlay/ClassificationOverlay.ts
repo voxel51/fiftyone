@@ -228,4 +228,13 @@ export class ClassificationOverlay
 
     return true;
   }
+
+  onHoverMove(point: Point, event: PointerEvent): boolean {
+    this.eventBus?.emit({
+      type: LIGHTER_EVENTS.OVERLAY_HOVER_MOVE,
+      detail: { id: this.id, point },
+    });
+
+    return true;
+  }
 }

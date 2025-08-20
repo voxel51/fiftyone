@@ -225,7 +225,6 @@ export class BoundingBoxOverlay
   }
 
   onHoverEnter(point: Point, event: PointerEvent): boolean {
-    // Emit hover event
     this.eventBus?.emit({
       type: LIGHTER_EVENTS.OVERLAY_HOVER,
       detail: { id: this.id, point },
@@ -235,9 +234,17 @@ export class BoundingBoxOverlay
   }
 
   onHoverLeave(point: Point, event: PointerEvent): boolean {
-    // Emit unhover event
     this.eventBus?.emit({
       type: LIGHTER_EVENTS.OVERLAY_UNHOVER,
+      detail: { id: this.id, point },
+    });
+
+    return true;
+  }
+
+  onHoverMove(point: Point, event: PointerEvent): boolean {
+    this.eventBus?.emit({
+      type: LIGHTER_EVENTS.OVERLAY_HOVER_MOVE,
       detail: { id: this.id, point },
     });
 
