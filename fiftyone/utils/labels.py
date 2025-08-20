@@ -1207,7 +1207,7 @@ def _get_filepath(sample_or_frame, sample):
         return sample.filepath
 
 
-def convert_3d_labels_to_2d(
+def detections_3d_to_polylines_2d(
     dataset: fo.Dataset,
     camera_slice_name: str,
     lidar_slice_name: str,
