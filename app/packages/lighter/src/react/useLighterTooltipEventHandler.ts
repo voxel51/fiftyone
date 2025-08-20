@@ -33,7 +33,12 @@ export const useLighterTooltipEventHandler = (scene: Scene2D | null) => {
               set(fos.tooltipDetail, tooltipInfo);
 
               if (!isTooltipLocked && point) {
-                tooltip.setCoords([point.x, point.y]);
+                // offset by canvas bounds to get tooltip coordinates
+                const rect = scene.getCanvasBounds();
+                const clientX = point.x + rect.left;
+                const clientY = point.y + rect.top;
+
+                tooltip.setCoords([clientX, clientY]);
               }
             }
           }
