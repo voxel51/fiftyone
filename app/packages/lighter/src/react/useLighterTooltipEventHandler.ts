@@ -3,7 +3,7 @@
  */
 
 import * as fos from "@fiftyone/state";
-import { useCallback, useEffect } from "react";
+import { useEffect } from "react";
 import { useRecoilCallback } from "recoil";
 import { LIGHTER_EVENTS, Scene2D } from "../index";
 import type { Hoverable } from "../types";
@@ -44,34 +44,35 @@ export const useLighterTooltipEventHandler = (scene: Scene2D | null) => {
     [tooltip]
   );
 
-  const handler = useCallback(
-    (scene: Scene2D) => {
-      const handleHover = (event: CustomEvent) => {
-        tooltipEventHandler(event, scene);
-      };
-
-      const handleUnhover = (event: CustomEvent) => {
-        tooltipEventHandler(event, scene);
-      };
-
-      scene.on(LIGHTER_EVENTS.OVERLAY_HOVER, handleHover);
-      scene.on(LIGHTER_EVENTS.OVERLAY_UNHOVER, handleUnhover);
-
-      return () => {
-        scene.off(LIGHTER_EVENTS.OVERLAY_HOVER, handleHover);
-        scene.off(LIGHTER_EVENTS.OVERLAY_UNHOVER, handleUnhover);
-      };
-    },
-    [tooltipEventHandler]
-  );
-
   useEffect(() => {
     if (!scene) {
       return;
     }
 
-    return handler(scene);
-  }, [scene, handler]);
+    console.log(">>> here in useEffect of tooltip event handler <<<");
+
+    const handleHover = (event: CustomEvent) => {
+      tooltipEventHandler(event, scene);
+    };
+
+    const handleUnhover = (event: CustomEvent) => {
+      tooltipEventHandler({ ...event, detail: null }, scene);
+    };
+
+    const handleHoverMove = (event: CustomEvent) => {
+      tooltipEventHandler(event, scene);
+    };
+
+    scene.on(LIGHTER_EVENTS.OVERLAY_HOVER, handleHover);
+    scene.on(LIGHTER_EVENTS.OVERLAY_UNHOVER, handleUnhover);
+    scene.on(LIGHTER_EVENTS.OVERLAY_HOVER_MOVE, handleHoverMove);
+
+    return () => {
+      scene.off(LIGHTER_EVENTS.OVERLAY_HOVER, handleHover);
+      scene.off(LIGHTER_EVENTS.OVERLAY_UNHOVER, handleUnhover);
+      scene.off(LIGHTER_EVENTS.OVERLAY_HOVER_MOVE, handleHoverMove);
+    };
+  }, [scene, tooltipEventHandler]);
 };
 
 /**

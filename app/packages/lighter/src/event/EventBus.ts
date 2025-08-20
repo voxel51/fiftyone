@@ -44,6 +44,8 @@ export const LIGHTER_EVENTS = {
   OVERLAY_HOVER: "overlay-hover",
   /** Emitted when an overlay is no longer hovered */
   OVERLAY_UNHOVER: "overlay-unhover",
+  /** Emitted when the mouse moves while hovering over an overlay */
+  OVERLAY_HOVER_MOVE: "overlay-hover-move",
   /** Emitted when an overlay is selected */
   OVERLAY_SELECT: "overlay-select",
   /** Emitted when an overlay is deselected */
@@ -132,6 +134,10 @@ export type LighterEvent =
     }
   | {
       type: typeof LIGHTER_EVENTS.OVERLAY_UNHOVER;
+      detail: { id: string; point: Point };
+    }
+  | {
+      type: typeof LIGHTER_EVENTS.OVERLAY_HOVER_MOVE;
       detail: { id: string; point: Point };
     }
   | {
