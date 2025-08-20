@@ -112,7 +112,7 @@
     });
 
     document.addEventListener('keydown', function (event) {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+      if (event.key === '/') {
         event.preventDefault();
         event.stopImmediatePropagation();
       }
