@@ -296,7 +296,7 @@ def _parse_assets(scene, scene_path, cache=None):
                 asset_size += metadata.size_bytes
                 continue
 
-        tasks.append((None, asset_path, fom.MIXED, cache))
+        tasks.append((None, asset_path, fom.MIXED, cache, True, False))
 
     results = []
     if len(tasks) <= 1:
