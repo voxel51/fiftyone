@@ -1,4 +1,9 @@
-import { Dataset, Snackbar, Starter, QueryPerformanceToast } from "@fiftyone/core";
+import {
+  Dataset,
+  QueryPerformanceToast,
+  Snackbar,
+  Starter,
+} from "@fiftyone/core";
 import "@fiftyone/embeddings";
 import "@fiftyone/map";
 import { OperatorCore } from "@fiftyone/operators";
