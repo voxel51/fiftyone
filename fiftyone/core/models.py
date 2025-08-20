@@ -480,21 +480,21 @@ def _apply_image_model_data_loader(
     else:
         samples = samples.select_fields()
 
-    def save_batch(sample_batch, labels_batch):
-        for sample, labels in zip(sample_batch, labels_batch):
-            if filename_maker is not None:
-                _export_arrays(labels, sample.filepath, filename_maker)
-
-            sample.add_labels(
-                labels,
-                label_field=label_field,
-                confidence_thresh=confidence_thresh,
-            )
-            ctx.save(sample)
-
     with contextlib.ExitStack() as context:
         pb = context.enter_context(fou.ProgressBar(samples, progress=progress))
         ctx = context.enter_context(foc.SaveContext(samples))
+
+        def save_batch(sample_batch, labels_batch):
+            for sample, labels in zip(sample_batch, labels_batch):
+                if filename_maker is not None:
+                    _export_arrays(labels, sample.filepath, filename_maker)
+
+                sample.add_labels(
+                    labels,
+                    label_field=label_field,
+                    confidence_thresh=confidence_thresh,
+                )
+                ctx.save(sample)
 
         with futures(
             max_workers=1,
