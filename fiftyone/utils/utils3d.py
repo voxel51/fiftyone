@@ -637,12 +637,15 @@ def convert_3d_labels_to_2d(
     """High-level orchestration of 3D → 2D label conversion."""
     fov.validate_grouped_non_dynamic_collection(dataset)
     fov.validate_collection_label_fields(dataset, in_field, fol.Detections)
+
     lidar_slice = dataset.select_group_slices(lidar_slice_name)
     camera_slice = dataset.select_group_slices(camera_slice_name)
     camera_slice.compute_metadata()
+
     values_2d_label = {}
     count = 0
     view_3d_label = lidar_slice.select_fields(in_field, "group")
+
     with view_3d_label.save_context() as context:
         for sample in view_3d_label.iter_samples(progress=progress):
             transforms = transformations.get(sample.id, None)
@@ -652,23 +655,27 @@ def convert_3d_labels_to_2d(
                 else None
             )
             intrinsics = camera_intrinsics.get(sample.id, None)
+
             if transforms is None or intrinsics is None:
-                print(
+                logger.warning(
                     f"Skipping sample {sample.id} because transformations or camera intrinsics are missing"
                 )
                 continue
+
             group = dataset.get_group(sample.group.id)
             cam_sample_id = group[camera_slice_name].id
             width, height = (
                 camera_slice[cam_sample_id].metadata.width,
                 camera_slice[cam_sample_id].metadata.height,
             )
+
             if width is None or height is None:
-                print(
+                logger.warning(
                     f"Skipping sample {sample.id} because camera metadata is missing. Please compute metadata for this sample first."
                 )
                 continue
-            polylines, added_instance = _process_sample(
+
+            polylines, added_instance = _process_3d_sample(
                 sample,
                 in_field,
                 transforms,
@@ -683,15 +690,17 @@ def convert_3d_labels_to_2d(
                 )
             if added_instance:
                 context.save(sample)
+
             count += 1
             if count % batch_size == 0:
                 dataset.set_values(out_field, values_2d_label, key_field="id")
                 values_2d_label.clear()
+
     if values_2d_label:
         dataset.set_values(out_field, values_2d_label, key_field="id")
 
 
-def _process_sample(
+def _process_3d_sample(
     sample,
     in_field: str,
     transforms: TransformationType,
@@ -705,12 +714,15 @@ def _process_sample(
     Returns: (List[Polyline], added_instance_flag)
     """
     detections_3d = sample[in_field]
+
     if detections_3d is None:
         return [], False
     if len(detections_3d.detections) == 0:
         return [], False
+
     polylines = []
     added_instance = False
+
     for det_idx, det in enumerate(detections_3d.detections):
         ply, added_instance = _process_detection_to_ply(
             det,
@@ -726,6 +738,7 @@ def _process_sample(
         )
         if ply:
             polylines.append(ply)
+
     return polylines, added_instance
 
 
@@ -744,11 +757,12 @@ def _process_detection_to_ply(
     """Convert a single 3D detection to a 2D Polyline."""
 
     if any(v is None for v in [det.location, det.rotation, det.dimensions]):
-        print(
+        logger.warning(
             f"Skipping detection (id={det.id}) in sample {sample.id} "
             "because location, rotation, or dimensions is missing"
         )
         return None, added_instance
+
     points_cam, rotation_cam = multiple_coordinate_transform(
         det.location, det.rotation, transforms, forward_flags
     )
@@ -756,12 +770,14 @@ def _process_detection_to_ply(
         added_instance = True
         det.instance = fo.Instance()
         sample[in_field].detections[det_idx]["instance"] = det.instance
+
     corners_3d_cam = corners_from_euler(
         points_cam, rotation_cam, det.dimensions
     )
     corners_2d_cam = project_3d_to_2d(
         corners_3d_cam, intrinsics, normalize=True
     )[:2, :]
+
     if not point_in_front_of_camera(
         corners_2d_cam, corners_3d_cam, (width, height)
     ):
@@ -770,6 +786,7 @@ def _process_detection_to_ply(
         (corners_2d_cam[0][i] / width, corners_2d_cam[1][i] / height)
         for i in range(8)
     ]
+
     return (
         fo.Polyline.from_cuboid(
             vertices=ply_corners,
