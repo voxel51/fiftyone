@@ -6,6 +6,7 @@ Model Zoo.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import numpy as np
 
 import eta.core.utils as etau
@@ -257,7 +258,8 @@ class SegmentAnythingModel(fout.TorchSamplesMixin, fout.TorchImageModel):
             h, w = img.size(1), img.size(2)
 
             boxes = [d.bounding_box for d in detections.detections]
-            sam_boxes = np.array([_to_sam_box(box, w, h) for box in boxes])
+            boxes_xyxy = np.array([_to_abs_box(box, w, h) for box in boxes])
+            sam_boxes = np.round(boxes_xyxy).astype(int)
             input_boxes = torch.tensor(sam_boxes, device=sam_predictor.device)
             transformed_boxes = sam_predictor.transform.apply_boxes_torch(
                 input_boxes, (h, w)
@@ -279,7 +281,9 @@ class SegmentAnythingModel(fout.TorchSamplesMixin, fout.TorchImageModel):
             )
             outputs.append(
                 {
-                    "boxes": input_boxes,
+                    "boxes": torch.tensor(
+                        boxes_xyxy, device=sam_predictor.device
+                    ),
                     "labels": labels,
                     "masks": masks,
                     "scores": scores,
@@ -391,7 +395,7 @@ def _to_sam_points(points, w, h, keypoint):
     return scaled_points.astype(np.float32), labels.astype(np.uint32)
 
 
-def _to_sam_box(box, w, h):
+def _to_abs_box(box, w, h):
     new_box = np.copy(np.array(box))
     new_box[0] *= w
     new_box[2] *= w
@@ -399,7 +403,7 @@ def _to_sam_box(box, w, h):
     new_box[3] *= h
     new_box[2] += new_box[0]
     new_box[3] += new_box[1]
-    return np.round(new_box).astype(int)
+    return new_box
 
 
 def _mask_to_box(mask):
