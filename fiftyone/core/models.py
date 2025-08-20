@@ -72,6 +72,22 @@ def futures(*, max_workers, skip_failures=False, warning="Async failure"):
                 logger.warning(warning, exc_info=True)
 
 
+@contextlib.contextmanager
+def handle_batch_error(skip_failures, sample_batch):
+    try:
+        yield
+    except Exception as e:
+        if not skip_failures:
+            raise e
+
+        logger.warning(
+            "Batch: %s - %s\nError: %s\n",
+            sample_batch[0].id,
+            sample_batch[-1].id,
+            e,
+        )
+
+
 def apply_model(
     samples,
     model,
@@ -485,16 +501,17 @@ def _apply_image_model_data_loader(
         ctx = context.enter_context(foc.SaveContext(samples))
 
         def save_batch(sample_batch, labels_batch):
-            for sample, labels in zip(sample_batch, labels_batch):
-                if filename_maker is not None:
-                    _export_arrays(labels, sample.filepath, filename_maker)
+            with handle_batch_error(skip_failures, sample_batch):
+                for sample, labels in zip(sample_batch, labels_batch):
+                    if filename_maker is not None:
+                        _export_arrays(labels, sample.filepath, filename_maker)
 
-                sample.add_labels(
-                    labels,
-                    label_field=label_field,
-                    confidence_thresh=confidence_thresh,
-                )
-                ctx.save(sample)
+                    sample.add_labels(
+                        labels,
+                        label_field=label_field,
+                        confidence_thresh=confidence_thresh,
+                    )
+                    ctx.save(sample)
 
         with futures(
             max_workers=1,
@@ -505,7 +522,7 @@ def _apply_image_model_data_loader(
                 fou.iter_batches(samples, batch_size),
                 data_loader,
             ):
-                try:
+                with handle_batch_error(skip_failures, sample_batch):
                     if isinstance(imgs, Exception):
                         raise imgs
 
@@ -517,17 +534,6 @@ def _apply_image_model_data_loader(
                         labels_batch = model.predict_all(imgs)
 
                     submit(save_batch, sample_batch, labels_batch)
-
-                except Exception as e:
-                    if not skip_failures:
-                        raise e
-
-                    logger.warning(
-                        "Batch: %s - %s\nError: %s\n",
-                        sample_batch[0].id,
-                        sample_batch[-1].id,
-                        e,
-                    )
 
                 pb.update(len(sample_batch))
 
