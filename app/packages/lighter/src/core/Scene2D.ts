@@ -99,6 +99,25 @@ export class Scene2D {
   }
 
   /**
+   * Gets the canvas element used by this scene.
+   *
+   * This is a dangerous method that should only be used when you absolutely need the canvas element.
+   * @returns The HTMLCanvasElement.
+   */
+  getCanvasDangerously(): HTMLCanvasElement {
+    return this.config.canvas;
+  }
+
+  /**
+   * Gets the canvas bounding rectangle for coordinate conversion.
+   * This is a safer alternative to getCanvas() when you only need the bounds.
+   * @returns The DOMRect of the canvas element.
+   */
+  getCanvasBounds(): DOMRect {
+    return this.config.canvas.getBoundingClientRect();
+  }
+
+  /**
    * Updates the scene options and recalculates overlay order if needed.
    * @param options - The new scene options.
    */
