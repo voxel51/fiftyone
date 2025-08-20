@@ -634,7 +634,28 @@ def convert_3d_labels_to_2d(
     batch_size: int = 1000,
     progress: bool = True,
 ):
-    """High-level orchestration of 3D → 2D label conversion."""
+    """High-level orchestration of 3D → 2D label conversion. Processes the in_field
+    on the `lidar_slice_name` slice of the grouped dataset, converts the labels to 2D
+    polylines and saves them in the out_field on the `camera_slice_name` slice.
+    Args:
+        dataset: the :class:`fiftyone.core.dataset.Dataset` to convert
+        camera_slice_name: the name of the camera slice in the dataset
+        lidar_slice_name: the name of the LiDAR slice in the dataset
+        in_field: the name of the field containing 3D labels to convert
+        out_field: the name of the field to store converted 2D labels
+        transformations: a dict mapping sample IDs to transformation tuples
+            (translation, rotation) for each sample in the dataset.
+            Translation is a 3-element list or np.ndarray, and rotation is a
+            (3, 3) list of lists or np.ndarray representing a rotation matrix.
+        camera_intrinsics: a dict mapping sample IDs to camera intrinsics matrices
+            for each sample in the dataset. The matrix can be a 3x3 or 4x4
+            np.ndarray.
+        forward_transform_flags: a dict mapping sample IDs to lists of booleans
+            indicating whether to apply forward or inverse transformations for each
+            transform in the list of transformations for each sample
+        batch_size (1000): number of samples to process in each batch
+        progress (True): whether to show a progress bar during processing
+    """
     fov.validate_grouped_non_dynamic_collection(dataset)
     fov.validate_collection_label_fields(dataset, in_field, fol.Detections)
 
@@ -710,7 +731,7 @@ def _process_3d_sample(
     height: int,
 ):
     """
-    Process all detections in a single sample and return polylines.
+    Process all 3D detections in a single sample and return polylines.
     Returns: (List[Polyline], added_instance_flag)
     """
     detections_3d = sample[in_field]
