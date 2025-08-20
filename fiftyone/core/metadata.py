@@ -391,7 +391,11 @@ def compute_metadata(
 
     if num_workers <= 1:
         _compute_metadata(
-            sample_collection, overwrite=overwrite, progress=progress
+            sample_collection,
+            overwrite=overwrite,
+            progress=progress,
+            skip_failures=skip_failures,
+            warn_failures=warn_failures,
         )
     else:
         _compute_metadata_multi(
@@ -399,6 +403,8 @@ def compute_metadata(
             num_workers,
             overwrite=overwrite,
             progress=progress,
+            skip_failures=skip_failures,
+            warn_failures=warn_failures,
         )
 
     if skip_failures and not warn_failures:
@@ -469,7 +475,12 @@ def get_image_info(f):
 
 
 def _compute_metadata(
-    sample_collection, overwrite=False, batch_size=1000, progress=None
+    sample_collection,
+    overwrite=False,
+    batch_size=1000,
+    progress=None,
+    skip_failures=True,
+    warn_failures=False,
 ):
     if not overwrite:
         sample_collection = sample_collection.exists("metadata", False)
@@ -487,7 +498,14 @@ def _compute_metadata(
 
     cache = {}
     values = {}
-    inputs = zip(ids, filepaths, media_types, itertools.repeat(cache))
+    inputs = zip(
+        ids,
+        filepaths,
+        media_types,
+        itertools.repeat(cache),
+        itertools.repeat(skip_failures),
+        itertools.repeat(warn_failures),
+    )
 
     try:
         with fou.ProgressBar(total=num_samples, progress=progress) as pb:
@@ -509,6 +527,8 @@ def _compute_metadata_multi(
     overwrite=False,
     batch_size=1000,
     progress=None,
+    skip_failures=True,
+    warn_failures=False,
 ):
     if not overwrite:
         sample_collection = sample_collection.exists("metadata", False)
@@ -526,7 +546,14 @@ def _compute_metadata_multi(
 
     cache = {}
     values = {}
-    inputs = zip(ids, filepaths, media_types, itertools.repeat(cache))
+    inputs = zip(
+        ids,
+        filepaths,
+        media_types,
+        itertools.repeat(cache),
+        itertools.repeat(skip_failures),
+        itertools.repeat(warn_failures),
+    )
 
     try:
         with multiprocessing.dummy.Pool(processes=num_workers) as pool:
@@ -545,19 +572,29 @@ def _compute_metadata_multi(
 
 
 def _do_compute_metadata(args):
-    sample_id, filepath, media_type, cache = args
+    sample_id, filepath, media_type, cache, skip_failures, warn_failures = args
     metadata = _compute_sample_metadata(
-        filepath, media_type, skip_failures=True, cache=cache
+        filepath,
+        media_type,
+        skip_failures=skip_failures,
+        cache=cache,
+        warn_failures=warn_failures,
     )
     return sample_id, metadata
 
 
 def _compute_sample_metadata(
-    filepath, media_type, skip_failures=False, cache=None
+    filepath, media_type, skip_failures=False, cache=None, warn_failures=False
 ):
     try:
         return _get_metadata(filepath, media_type, cache=cache)
-    except:
+    except Exception as e:
+        if warn_failures:
+            logger.warning(
+                "Failed to compute sample metadata for sample '%s' due to: %s",
+                filepath,
+                e,
+            )
         if skip_failures:
             return None
         raise
