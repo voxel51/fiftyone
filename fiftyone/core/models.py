@@ -55,7 +55,14 @@ _ALLOWED_PATCH_TYPES = (
 def futures(*, max_workers, skip_failures=False, warning="Async failure"):
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         _futures = []
-        yield lambda *args: _futures.append(executor.submit(*args))
+
+        def submit(*args, **kwargs):
+            future = executor.submit(*args, **kwargs)
+            _futures.append(future)
+            return future
+
+        yield submit
+
         for future in _futures:
             try:
                 future.result()
