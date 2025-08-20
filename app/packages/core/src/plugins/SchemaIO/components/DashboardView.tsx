@@ -1,19 +1,29 @@
+import React, { useEffect } from "react";
 import { useTheme } from "@fiftyone/components";
 import usePanelEvent from "@fiftyone/operators/src/usePanelEvent";
-import { usePanelId } from "@fiftyone/spaces";
+import { usePanelId, usePanelState } from "@fiftyone/spaces";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import EditIcon from "@mui/icons-material/Edit";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import FileCopyIcon from "@mui/icons-material/FileCopy";
+import SelectAllIcon from "@mui/icons-material/SelectAll";
+import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
+import DownloadIcon from "@mui/icons-material/Download";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import {
   Alert,
   Box,
   BoxProps,
+  Button,
   Checkbox,
   Fab,
   FormControl,
   FormControlLabel,
   FormLabel,
   IconButton,
+  Menu,
+  MenuItem,
   Paper,
   Popover,
   Radio,
@@ -30,13 +40,101 @@ import { ButtonView } from ".";
 import { getPath, getProps } from "../utils";
 import { ObjectSchemaType, ViewPropsType } from "../utils/types";
 import DynamicIO from "./DynamicIO";
+import DashboardPNGExport from "./DashboardPNGExport";
+import { get, get as getFromPath } from "lodash";
+import "./DashboardResizeHandles.css";
 
-const AddItemCTA = ({ onAdd, view }) => {
+// Helper function to create minimal ButtonView props
+const createButtonViewProps = (schema, onClick) => ({
+  schema,
+  path: "",
+  errors: {},
+  onChange: () => {},
+  relativePath: "",
+  otherProps: {},
+  onClick,
+});
+
+function useClipboardData() {
+  const [hasClipboardData, setHasClipboardData] = useState(false);
+
+  const checkClipboard = useCallback(async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      console.log("Clipboard content:", text);
+      const item = JSON.parse(text);
+      console.log("Parsed item:", item);
+      if (typeof item === "object" && item !== null) {
+        console.log("Setting hasClipboardData to true");
+        setHasClipboardData(true);
+      } else {
+        console.log("Setting hasClipboardData to false - not an object");
+        setHasClipboardData(false);
+      }
+    } catch (error) {
+      console.log("Setting hasClipboardData to false - error:", error);
+      setHasClipboardData(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Initial check
+    checkClipboard();
+
+    // Listen for clipboard changes
+    const handleClipboardChange = () => {
+      console.log("Clipboard changed, checking content...");
+      checkClipboard();
+    };
+
+    // Check clipboard when window gains focus (user might have copied something)
+    const handleFocus = () => {
+      checkClipboard();
+    };
+
+    // Add event listeners
+    if ("clipboard" in navigator && "addEventListener" in navigator.clipboard) {
+      navigator.clipboard.addEventListener(
+        "clipboardchange",
+        handleClipboardChange
+      );
+    }
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      if (
+        "clipboard" in navigator &&
+        "removeEventListener" in navigator.clipboard
+      ) {
+        navigator.clipboard.removeEventListener(
+          "clipboardchange",
+          handleClipboardChange
+        );
+      }
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [checkClipboard]);
+
+  return {
+    hasClipboardData,
+    setHasClipboardData,
+    triggerCheck: checkClipboard,
+  };
+}
+
+const AddItemCTA = ({ onAdd, onPaste, view, clipboardData }) => {
   const header = view?.cta_title || "No items yet";
   const body =
     view?.cta_body ||
     "Add items to this dashboard to start exploring, plotting, and sharing.";
   const cta_button_label = view?.cta_button_label || "Add Item";
+  const paste_button_label = view?.paste_button_label || "Paste Plot";
+
+  // Detect platform for keyboard shortcut display
+  const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+  const shortcutKey = isMac ? "⌘V" : "Ctrl+V";
+  const { hasClipboardData } = clipboardData;
+
   return (
     <Box
       sx={{
@@ -67,17 +165,35 @@ const AddItemCTA = ({ onAdd, view }) => {
             {body}
           </Typography>
         </Box>
-        <Box>
+        <Box sx={{ display: "flex", gap: 1, flexDirection: "column" }}>
           <ButtonView
-            onClick={onAdd}
-            schema={{
-              view: {
-                variant: "contained",
-                icon: "add",
-                label: cta_button_label,
+            {...createButtonViewProps(
+              {
+                type: "object",
+                view: {
+                  variant: "contained",
+                  icon: "add",
+                  label: cta_button_label,
+                },
               },
-            }}
+              onAdd
+            )}
           />
+          {onPaste && hasClipboardData && (
+            <ButtonView
+              {...createButtonViewProps(
+                {
+                  type: "object",
+                  view: {
+                    variant: "square",
+                    icon: "content_paste",
+                    label: paste_button_label,
+                  },
+                },
+                onPaste
+              )}
+            />
+          )}
         </Box>
       </Paper>
     </Box>
@@ -185,10 +301,21 @@ const LayoutPopover = ({
 const ControlContainer = ({
   onAddItem,
   onEditLayoutClick,
+  onPasteClick,
+  onDeleteSelected,
+  onExportItems,
+  onExportAsPNG,
+  handleExportMenuOpen,
+  handleExportMenuClose,
+  exportMenuAnchor,
   isEditMode,
   autoLayout,
   editLayoutOpen,
+  shortcutKey,
+  selectedItemIds,
+  clipboardData,
 }) => {
+  const { hasClipboardData } = clipboardData;
   if (!isEditMode) {
     return null;
   }
@@ -205,24 +332,123 @@ const ControlContainer = ({
       }}
     >
       <ButtonView
-        onClick={onAddItem}
-        schema={{
-          view: {
-            icon: "add",
-            label: "Add item",
+        {...createButtonViewProps(
+          {
+            type: "object",
+            view: {
+              icon: "add",
+              label: "Add item",
+              variant: "square",
+            },
           },
-        }}
+          onAddItem
+        )}
       />
       <ButtonView
-        onClick={onEditLayoutClick}
-        schema={{
-          view: {
-            icon: "edit",
-            label: "Edit layout",
+        {...createButtonViewProps(
+          {
+            type: "object",
+            view: {
+              icon: "edit",
+              label: "Layout",
+              variant: "square",
+            },
           },
-        }}
+          onEditLayoutClick
+        )}
       />
-      {editLayoutOpen && (
+      {hasClipboardData && (
+        <ButtonView
+          {...createButtonViewProps(
+            {
+              type: "object",
+              view: {
+                icon: "content_paste",
+                label: `Paste (${shortcutKey})`,
+                variant: "square",
+              },
+            },
+            onPasteClick
+          )}
+        />
+      )}
+      {selectedItemIds.size > 0 && (
+        <>
+          <ButtonView
+            {...createButtonViewProps(
+              {
+                type: "object",
+                view: {
+                  icon: "delete",
+                  label: "Delete selected",
+                  variant: "square",
+                },
+              },
+              onDeleteSelected
+            )}
+          />
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.secondary",
+              fontSize: "0.8rem",
+              marginLeft: 1,
+              padding: "4px 8px",
+              backgroundColor: "action.hover",
+              borderRadius: 1,
+            }}
+          >
+            {selectedItemIds.size} selected
+          </Typography>
+        </>
+      )}
+      <Box sx={{ display: "flex", alignItems: "center" }}>
+        <ButtonView
+          {...createButtonViewProps(
+            {
+              type: "object",
+              view: {
+                icon: "download",
+                label: "Export",
+                variant: "square",
+              },
+            },
+            handleExportMenuOpen
+          )}
+        />
+      </Box>
+      <Menu
+        anchorEl={exportMenuAnchor}
+        open={Boolean(exportMenuAnchor)}
+        onClose={handleExportMenuClose}
+        anchorOrigin={{
+          vertical: "bottom",
+          horizontal: "left",
+        }}
+        transformOrigin={{
+          vertical: "top",
+          horizontal: "left",
+        }}
+      >
+        <MenuItem
+          onClick={() => {
+            onExportItems();
+            handleExportMenuClose();
+          }}
+        >
+          Export as JSON
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            onExportAsPNG();
+            handleExportMenuClose();
+          }}
+        >
+          Export as PNG
+        </MenuItem>
+      </Menu>
+
+      {editLayoutOpen && selectedItemIds.size === 0 && (
         <Alert severity="info">
           {autoLayout && (
             <Typography>
@@ -250,6 +476,11 @@ export default function DashboardView(props: ViewPropsType) {
   const allow_deletion = schema.view.allow_deletion;
   const allow_edit = schema.view.allow_edit;
   const allowMutation = allow_edit || allow_deletion;
+  const dataPath = schema.view.data_path || "items_config";
+  const [panelState, setPanelState] = usePanelState();
+
+  // Shared clipboard state
+  const clipboardData = useClipboardData();
 
   for (const property in properties) {
     propertiesAsArray.push({ id: property, ...properties[property] });
@@ -258,10 +489,16 @@ export default function DashboardView(props: ViewPropsType) {
   const panelId = usePanelId();
   const triggerPanelEvent = usePanelEvent();
 
+  // Selection state - now supports multiple items
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(
+    new Set()
+  );
+
   const onEditItem = useCallback(
     ({ id, path }) => {
       if (schema.view.on_edit_item) {
         triggerPanelEvent(panelId, {
+          panelId,
           operator: schema.view.on_edit_item,
           params: { id, path },
         });
@@ -274,6 +511,7 @@ export default function DashboardView(props: ViewPropsType) {
     ({ id, path }) => {
       if (schema.view.on_remove_item) {
         triggerPanelEvent(panelId, {
+          panelId,
           operator: schema.view.on_remove_item,
           params: { id, path },
         });
@@ -285,10 +523,270 @@ export default function DashboardView(props: ViewPropsType) {
   const onAddItem = useCallback(() => {
     if (schema.view.on_add_item) {
       triggerPanelEvent(panelId, {
+        panelId,
         operator: schema.view.on_add_item,
+        params: {},
       });
     }
   }, [panelId, props, schema.view.on_add_item, triggerPanelEvent]);
+
+  const onDuplicateItem = useCallback(
+    ({ id, path }) => {
+      const originalItem = getFromPath(
+        (panelState as any)?.state,
+        `${dataPath}.${id}`
+      );
+      const newId = `${id}-copy`;
+      if (schema.view.on_duplicate_item) {
+        triggerPanelEvent(panelId, {
+          panelId,
+          operator: schema.view.on_duplicate_item,
+          params: { id: newId, plot_config: originalItem },
+        });
+      }
+    },
+    [
+      panelId,
+      panelState,
+      dataPath,
+      schema.view.on_duplicate_item,
+      triggerPanelEvent,
+    ]
+  );
+
+  const copyItemsToClipboard = useCallback(
+    (ids?: string[]) => {
+      const itemsToCopy = ids || Array.from(selectedItemIds);
+
+      if (itemsToCopy.length === 0) {
+        console.log("No items selected to copy");
+        return;
+      }
+
+      try {
+        // Get all selected items from the panel state
+        const plotList = [];
+        for (const id of itemsToCopy) {
+          const value = getFromPath(
+            (panelState as any)?.state,
+            `${dataPath}.${id}`
+          );
+          if (value) {
+            plotList.push(value);
+          }
+        }
+
+        if (plotList.length > 0) {
+          // Convert the items to a string representation as an array
+          const valueToCopy = JSON.stringify(plotList, null, 2);
+
+          // Copy to clipboard
+          console.log("Copying items to clipboard:", valueToCopy);
+          navigator.clipboard
+            .writeText(valueToCopy)
+            .then(() => {
+              console.log("Copy successful");
+              // Set clipboard state directly since we know we just copied valid data
+              clipboardData.setHasClipboardData(true);
+            })
+            .catch((err) => {
+              console.error("Failed to copy to clipboard:", err);
+            });
+        }
+      } catch (error) {
+        console.error("Error copying items to clipboard:", error);
+      }
+    },
+    [panelState, dataPath, clipboardData, selectedItemIds]
+  );
+
+  // Backward compatibility for single item copy
+  const copyItemToClipboard = useCallback(
+    ({ id, path }) => {
+      copyItemsToClipboard([id]);
+    },
+    [copyItemsToClipboard]
+  );
+
+  const onCopyItem = copyItemToClipboard;
+
+  const onExportItems = useCallback(() => {
+    try {
+      // Create the export data structure
+      const exportData = {
+        panelState,
+        metadata: {
+          exportDate: new Date().toISOString(),
+          dataPath: dataPath,
+        },
+      };
+
+      // Convert to JSON string
+      const jsonString = JSON.stringify(exportData, null, 2);
+
+      // Create blob and download
+      const blob = new Blob([jsonString], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+
+      // Create download link
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `dashboard-export-${
+        new Date().toISOString().split("T")[0]
+      }.json`;
+
+      // Trigger download
+      document.body.appendChild(link);
+      link.click();
+
+      // Cleanup
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      console.log("Dashboard items and config exported successfully");
+    } catch (error) {
+      console.error("Error exporting dashboard items:", error);
+    }
+  }, [panelState, dataPath]);
+
+  // Unified paste handler that works in both edit mode and when dashboard is empty
+  const handlePaste = useCallback(async () => {
+    console.log("handlePaste called");
+    try {
+      const clipboardData = await navigator.clipboard.readText();
+      console.log("Clipboard data received:", clipboardData);
+      let items;
+      try {
+        items = JSON.parse(clipboardData);
+        console.log("Parsed items:", items);
+      } catch (error) {
+        console.error("Error parsing clipboard data:", error);
+        return;
+      }
+
+      if (items && schema.view.on_duplicate_item) {
+        // Convert items to a list format
+        let plotList = [];
+
+        if (Array.isArray(items)) {
+          // Array format - use as is
+          plotList = items;
+        } else if (typeof items === "object") {
+          // Object format - check if it's a single item or multiple items
+          const itemKeys = Object.keys(items);
+          if (itemKeys.length === 1 && !items[itemKeys[0]].view) {
+            // Single item - wrap in array
+            plotList = [items];
+          } else {
+            // Multiple items - convert object values to array
+            plotList = Object.values(items);
+          }
+        }
+
+        // Call the operator once with the list of plots
+        if (plotList.length > 0) {
+          console.log("Pasting", plotList.length, "items");
+          triggerPanelEvent(panelId, {
+            panelId,
+            operator: schema.view.on_duplicate_item,
+            params: { plot_configs: plotList },
+          });
+        }
+      } else {
+        console.log("Missing items or on_duplicate_item operator:", {
+          items: !!items,
+          on_duplicate_item: !!schema.view.on_duplicate_item,
+        });
+      }
+    } catch (error) {
+      console.error("Error reading clipboard:", error);
+    }
+  }, [panelId, schema.view.on_duplicate_item, triggerPanelEvent]);
+
+  // Selection handlers - now support multiple selection
+  const handleItemSelect = useCallback(
+    (id: string, event?: React.MouseEvent) => {
+      setSelectedItemIds((prev) => {
+        const newSet = new Set(prev);
+        if (event?.ctrlKey || event?.metaKey) {
+          // Ctrl/Cmd+click toggles selection
+          if (newSet.has(id)) {
+            newSet.delete(id);
+          } else {
+            newSet.add(id);
+          }
+        } else if (event?.shiftKey && prev.size > 0) {
+          // Shift+click for range selection
+          const items = propertiesAsArray.map((p) => p.id);
+          const lastSelected = Array.from(prev).pop();
+          const lastIndex = items.indexOf(lastSelected);
+          const currentIndex = items.indexOf(id);
+          const start = Math.min(lastIndex, currentIndex);
+          const end = Math.max(lastIndex, currentIndex);
+          for (let i = start; i <= end; i++) {
+            newSet.add(items[i]);
+          }
+        } else {
+          // Regular click selects only this item
+          newSet.clear();
+          newSet.add(id);
+        }
+        return newSet;
+      });
+    },
+    [propertiesAsArray]
+  );
+
+  const handleItemDeselect = useCallback(() => {
+    setSelectedItemIds(new Set());
+  }, []);
+
+  const handleItemToggle = useCallback((id: string) => {
+    setSelectedItemIds((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  }, []);
+
+  const deleteSelectedItems = useCallback(() => {
+    if (selectedItemIds.size === 0) {
+      console.log("No items selected to delete");
+      return;
+    }
+
+    // Check if we have a multi-remove operator, otherwise fall back to individual deletes
+    if (schema.view.on_remove_items) {
+      // Use multi-remove operator
+      triggerPanelEvent(panelId, {
+        panelId,
+        operator: schema.view.on_remove_items,
+        params: { ids: Array.from(selectedItemIds) },
+      });
+    } else {
+      // Fall back to individual deletes
+      let i = 0;
+      for (const id of selectedItemIds) {
+        onCloseItem({
+          id: id,
+          path: getPath(path, id),
+        });
+      }
+    }
+    handleItemDeselect(); // Clear selection after deletion
+  }, [
+    selectedItemIds,
+    onCloseItem,
+    path,
+    handleItemDeselect,
+    schema.view.on_remove_items,
+    triggerPanelEvent,
+    panelId,
+  ]);
 
   const auto_layout_default = schema.view.auto_layout === false ? false : true;
   const [autoLayout, setAutoLayout] = useState(auto_layout_default);
@@ -298,6 +796,13 @@ export default function DashboardView(props: ViewPropsType) {
   const [anchorEl, setAnchorEl] = useState(null);
   const [customLayout, setCustomLayout] = useState(schema.view.items || []);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [exportMenuAnchor, setExportMenuAnchor] = useState<null | HTMLElement>(
+    null
+  );
+
+  // Detect platform for keyboard shortcut display
+  const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+  const shortcutKey = isMac ? "⌘ + V" : "Ctrl + V";
 
   const handleAutoLayoutChange = (event) => {
     const { checked } = event.target;
@@ -305,6 +810,7 @@ export default function DashboardView(props: ViewPropsType) {
     const operator = schema.view.on_auto_layout_change;
     if (operator) {
       triggerPanelEvent(panelId, {
+        panelId,
         operator,
         params: { auto_layout: checked },
       });
@@ -336,6 +842,7 @@ export default function DashboardView(props: ViewPropsType) {
   const handleSaveLayout = () => {
     if (schema.view.on_save_layout) {
       triggerPanelEvent(panelId, {
+        panelId,
         operator: schema.view.on_save_layout,
         params: {
           items: customLayout,
@@ -351,6 +858,202 @@ export default function DashboardView(props: ViewPropsType) {
     setAnchorEl(event.currentTarget);
   };
 
+  const handleExportMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setExportMenuAnchor(event.currentTarget);
+  };
+
+  const handleExportMenuClose = () => {
+    setExportMenuAnchor(null);
+  };
+
+  const handleDuplicateItem = useCallback(
+    (event) => {
+      // duplicate items from the clipboard
+      navigator.clipboard
+        .readText()
+        .then((clipboardData) => {
+          let items;
+          try {
+            items = JSON.parse(clipboardData);
+          } catch (error) {
+            console.error("Error parsing clipboard data:", error);
+            return;
+          }
+          if (items && schema.view.on_duplicate_item) {
+            // Convert items to a list format
+            let plotList = [];
+
+            if (Array.isArray(items)) {
+              // Array format - use as is
+              plotList = items;
+            } else if (typeof items === "object") {
+              // Object format - check if it's a single item or multiple items
+              const itemKeys = Object.keys(items);
+              if (itemKeys.length === 1 && !items[itemKeys[0]].view) {
+                // Single item - wrap in array
+                plotList = [items];
+              } else {
+                // Multiple items - convert object values to array
+                plotList = Object.values(items);
+              }
+            }
+
+            // Call the operator once with the list of plots
+            if (plotList.length > 0) {
+              console.log("Duplicating", plotList.length, "items");
+              triggerPanelEvent(panelId, {
+                panelId,
+                operator: schema.view.on_duplicate_item,
+                params: { plot_configs: plotList },
+              });
+            }
+          }
+        })
+        .catch((error) => {
+          console.error("Error reading clipboard:", error);
+        });
+    },
+    [panelId, schema.view.on_duplicate_item, triggerPanelEvent]
+  );
+
+  // Keyboard event listener for Cmd+V / Ctrl+V to trigger paste and Escape to deselect
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      console.log(
+        "Key pressed:",
+        event.key,
+        "Ctrl:",
+        event.ctrlKey,
+        "Meta:",
+        event.metaKey,
+        "isEditMode:",
+        isEditMode,
+        "propertiesAsArray.length:",
+        propertiesAsArray.length
+      );
+
+      // Check if Cmd+C (Mac) or Ctrl+C (Windows/Linux) is pressed to copy selected items
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        event.key === "c" &&
+        isEditMode &&
+        selectedItemIds.size > 0
+      ) {
+        console.log("Copy key combination detected for selected items");
+        event.preventDefault();
+
+        // Use the shared copy function for all selected items
+        copyItemsToClipboard();
+        return;
+      }
+
+      // Check if Cmd+V (Mac) or Ctrl+V (Windows/Linux) is pressed
+      if ((event.metaKey || event.ctrlKey) && event.key === "v") {
+        console.log("Paste key combination detected");
+        // Allow paste in both edit mode and when dashboard is empty
+        if (isEditMode || propertiesAsArray.length === 0) {
+          console.log(
+            "Paste conditions met, preventing default and calling handlePaste"
+          );
+          event.preventDefault();
+
+          // Inline paste logic to avoid dependency issues
+          (async () => {
+            try {
+              const clipboardData = await navigator.clipboard.readText();
+              console.log("Clipboard data received:", clipboardData);
+              let items;
+              try {
+                items = JSON.parse(clipboardData);
+                console.log("Parsed items:", items);
+              } catch (error) {
+                console.error("Error parsing clipboard data:", error);
+                return;
+              }
+
+              if (items && schema.view.on_duplicate_item) {
+                // Convert items to a list format
+                let plotList = [];
+
+                if (Array.isArray(items)) {
+                  // Array format - use as is
+                  plotList = items;
+                } else if (typeof items === "object") {
+                  // Object format - check if it's a single item or multiple items
+                  const itemKeys = Object.keys(items);
+                  if (itemKeys.length === 1 && !items[itemKeys[0]].view) {
+                    // Single item - wrap in array
+                    plotList = [items];
+                  } else {
+                    // Multiple items - convert object values to array
+                    plotList = Object.values(items);
+                  }
+                }
+
+                // Call the operator once with the list of plots
+                if (plotList.length > 0) {
+                  console.log("Pasting", plotList.length, "items");
+                  triggerPanelEvent(panelId, {
+                    panelId,
+                    operator: schema.view.on_duplicate_item,
+                    params: { plot_configs: plotList },
+                  });
+                }
+              } else {
+                console.log("Missing items or on_duplicate_item operator:", {
+                  items: !!items,
+                  on_duplicate_item: !!schema.view.on_duplicate_item,
+                });
+              }
+            } catch (error) {
+              console.error("Error reading clipboard:", error);
+            }
+          })();
+        } else {
+          console.log(
+            "Paste conditions not met - isEditMode:",
+            isEditMode,
+            "propertiesAsArray.length:",
+            propertiesAsArray.length
+          );
+        }
+      }
+      // Check if Delete or Backspace is pressed to delete selected items (only in edit mode)
+      if (
+        (event.key === "Delete" || event.key === "Backspace") &&
+        isEditMode &&
+        selectedItemIds.size > 0
+      ) {
+        deleteSelectedItems();
+      }
+      // Check if Escape is pressed to deselect (only in edit mode)
+      if (event.key === "Escape" && isEditMode) {
+        handleItemDeselect();
+      }
+    };
+
+    // Add event listener
+    document.addEventListener("keydown", handleKeyDown);
+
+    // Cleanup
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [
+    isEditMode,
+    propertiesAsArray.length,
+    handleItemDeselect,
+    selectedItemIds,
+    onCloseItem,
+    path,
+    schema.view.on_duplicate_item,
+    triggerPanelEvent,
+    panelId,
+    panelState,
+    dataPath,
+    copyItemsToClipboard,
+  ]);
+
   const handleClosePopover = () => {
     setAnchorEl(null);
   };
@@ -358,6 +1061,8 @@ export default function DashboardView(props: ViewPropsType) {
   const toggleEditMode = () => {
     if (isEditMode) {
       handleSaveLayout();
+      // Clear selection when exiting edit mode
+      handleItemDeselect();
     }
     setIsEditMode(!isEditMode);
   };
@@ -406,14 +1111,121 @@ export default function DashboardView(props: ViewPropsType) {
   });
   const gridLayout = customLayout || defaultLayout;
 
-  const DragHandle = styled(Box)(({ theme }) => ({
-    cursor: "move",
+  const onExportAsPNG = useCallback(async () => {
+    try {
+      // Create a temporary container for the PNG export
+      const exportContainer = document.createElement("div");
+      exportContainer.style.position = "absolute";
+      exportContainer.style.left = "-9999px";
+      exportContainer.style.top = "-9999px";
+      exportContainer.style.zIndex = "-1";
+      document.body.appendChild(exportContainer);
+
+      // Create a React root and render the PNG export component
+      const { createRoot } = await import("react-dom/client");
+      const { RecoilRoot } = await import("recoil");
+      const { ThemeProvider } = await import("@fiftyone/components");
+      const root = createRoot(exportContainer);
+
+      // Render the PNG export component with necessary providers
+      // Use gridLayout instead of customLayout to include unsaved changes
+      root.render(
+        <RecoilRoot>
+          <ThemeProvider>
+            <DashboardPNGExport
+              schema={schema as ObjectSchemaType}
+              data={data}
+              path={path}
+              layout={layout}
+              autoLayout={autoLayout}
+              layoutMode={layoutMode}
+              numRows={numRows}
+              numCols={numCols}
+              customLayout={gridLayout}
+            />
+          </ThemeProvider>
+        </RecoilRoot>
+      );
+
+      // Wait for the component to render and plots to load
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // Use html2canvas to capture the export container
+      const html2canvas = (await import("html2canvas")).default;
+      const canvas = await html2canvas(exportContainer, {
+        backgroundColor: "#2a2a2a",
+        scale: 2, // Higher resolution
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        width: exportContainer.scrollWidth,
+        height: exportContainer.scrollHeight,
+      });
+
+      // Convert canvas to blob
+      canvas.toBlob((blob) => {
+        if (blob) {
+          // Create download link
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = `dashboard-${
+            new Date().toISOString().split("T")[0]
+          }.png`;
+
+          // Trigger download
+          document.body.appendChild(link);
+          link.click();
+
+          // Cleanup
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+
+          console.log("Dashboard exported as PNG successfully");
+        }
+      }, "image/png");
+
+      // Cleanup the temporary container
+      root.unmount();
+      document.body.removeChild(exportContainer);
+    } catch (error) {
+      console.error("Error exporting dashboard as PNG:", error);
+    }
+  }, [
+    schema,
+    data,
+    path,
+    layout,
+    autoLayout,
+    layoutMode,
+    numRows,
+    numCols,
+    gridLayout,
+  ]);
+
+  const DragHandle = styled(Box)<{
+    isSelected?: boolean;
+    isEditMode?: boolean;
+  }>(({ theme, isSelected, isEditMode }) => ({
+    cursor: isEditMode && isSelected ? "move" : "pointer",
     backgroundColor: theme.palette.background.default,
     color: theme.palette.text.secondary,
     padding: theme.spacing(0.25),
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
+    position: "relative",
+    transition: "all 0.2s ease",
+    "&:hover": {
+      backgroundColor: theme.palette.action.hover,
+      transform: isSelected ? "none" : "translateY(-1px)",
+      boxShadow: isSelected ? "none" : theme.shadows[1],
+    },
+    "&:active": {
+      transform: isSelected ? "none" : "translateY(0px)",
+    },
+    // Add subtle border when not in edit mode to indicate it's interactive
+    // border: !isEditMode ? "1px solid #5d5e5f" : "none",
   }));
 
   const gridLayoutById = useMemo(() => {
@@ -427,20 +1239,44 @@ export default function DashboardView(props: ViewPropsType) {
     if (!allow_addition) {
       return null;
     }
-    return <AddItemCTA onAdd={onAddItem} view={schema.view} />;
+    return (
+      <AddItemCTA
+        onAdd={onAddItem}
+        onPaste={handlePaste}
+        view={schema.view}
+        clipboardData={clipboardData}
+      />
+    );
   }
 
   return (
     <>
       <Box
+        data-dashboard-container="true"
         sx={{ height: layout?.height, overflowY: "auto", overflowX: "hidden" }}
+        onClick={(e) => {
+          // Deselect when clicking on the background (only in edit mode)
+          if (e.target === e.currentTarget && isEditMode) {
+            handleItemDeselect();
+          }
+        }}
       >
         <ControlContainer
           onAddItem={onAddItem}
           onEditLayoutClick={handleEditLayoutClick}
+          onPasteClick={handlePaste}
+          onDeleteSelected={deleteSelectedItems}
+          onExportItems={onExportItems}
+          onExportAsPNG={onExportAsPNG}
+          handleExportMenuOpen={handleExportMenuOpen}
+          handleExportMenuClose={handleExportMenuClose}
+          exportMenuAnchor={exportMenuAnchor}
           isEditMode={isEditMode}
           autoLayout={autoLayout}
           editLayoutOpen={Boolean(anchorEl)}
+          shortcutKey={shortcutKey}
+          selectedItemIds={selectedItemIds}
+          clipboardData={clipboardData}
         />
         <LayoutPopover
           anchorEl={anchorEl}
@@ -453,24 +1289,37 @@ export default function DashboardView(props: ViewPropsType) {
           onNumRowsChange={handleNumRowsChange}
           numCols={numCols}
           onNumColsChange={handleNumColsChange}
-          onSaveLayout={handleSaveLayout}
           isEditMode={isEditMode}
         />
         <GridLayout
           onLayoutChange={(layout) => {
             setCustomLayout(layout);
+            // Force Plotly plots to resize after layout changes
+            setTimeout(() => {
+              if (window.Plotly) {
+                const plotlyDivs = document.querySelectorAll(".js-plotly-plot");
+                plotlyDivs.forEach((div) => {
+                  if (div && window.Plotly) {
+                    window.Plotly.relayout(div as HTMLElement, {
+                      width: div.clientWidth,
+                      height: div.clientHeight,
+                    });
+                  }
+                });
+              }
+            }, 100); // Small delay to ensure DOM has updated
           }}
           layout={gridLayout}
           cols={COLS}
           rowHeight={ROW_HEIGHT} // Dynamic row height
           width={GRID_WIDTH}
-          resizeHandles={autoLayout || !isEditMode ? [] : ["e", "w", "n", "s"]}
+          margin={[8, 8]} // Reduce vertical and horizontal margins to 8px
+          resizeHandles={
+            !isEditMode ? [] : ["e", "w", "n", "s", "se", "sw", "ne", "nw"]
+          }
           draggableHandle=".drag-handle"
           isDraggable={isEditMode}
           isResizable={isEditMode}
-          resizeHandle={(axis, ref) => {
-            return <DashboardItemResizeHandle axis={axis} ref={ref} />;
-          }}
         >
           {propertiesAsArray.map((property) => {
             const { id } = property;
@@ -491,9 +1340,54 @@ export default function DashboardView(props: ViewPropsType) {
                   "item",
                   baseItemProps
                 )}
+                className={
+                  selectedItemIds.has(id) && isEditMode ? "selected" : ""
+                }
+                sx={{
+                  ...baseItemProps.sx,
+                  border:
+                    selectedItemIds.has(id) && isEditMode
+                      ? "3px solid #ff6d04"
+                      : "2px solid transparent",
+                  borderRadius:
+                    selectedItemIds.has(id) && isEditMode ? "6px" : "0px",
+                  transition: "all 0.2s ease",
+                  boxSizing: "border-box",
+                  position: "relative",
+                }}
               >
-                <DragHandle className="drag-handle">
-                  <Typography>{label}</Typography>
+                <DragHandle
+                  className={
+                    isEditMode && selectedItemIds.has(id) ? "drag-handle" : ""
+                  }
+                  isSelected={selectedItemIds.has(id)}
+                  isEditMode={isEditMode}
+                  onClick={(e) => {
+                    if (!e.defaultPrevented && !e.isPropagationStopped()) {
+                      if (!isEditMode && allowMutation) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setIsEditMode(true);
+                        handleItemSelect(id);
+                      }
+                      if (isEditMode) {
+                        handleItemSelect(id, e);
+                      }
+                    }
+                  }}
+                  onMouseDown={(e) => {
+                    // Only prevent default if this item is selected (to allow dragging)
+                    if (
+                      e.target === e.currentTarget &&
+                      selectedItemIds.has(id)
+                    ) {
+                      e.preventDefault();
+                    }
+                  }}
+                >
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <Typography sx={{ marginLeft: 3 }}>{label}</Typography>
+                  </Box>
                   {isEditMode && (
                     <Box>
                       {allow_edit && (
@@ -509,6 +1403,30 @@ export default function DashboardView(props: ViewPropsType) {
                           <EditIcon />
                         </IconButton>
                       )}
+                      <IconButton
+                        size="small"
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDuplicateItem({ id, path: getPath(path, id) });
+                        }}
+                        sx={{ color: theme.text.secondary }}
+                        title="Duplicate item"
+                      >
+                        <FileCopyIcon />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onCopyItem({ id, path: getPath(path, id) });
+                        }}
+                        sx={{ color: theme.text.secondary }}
+                        title="Copy item"
+                      >
+                        <ContentCopyIcon />
+                      </IconButton>
                       {allow_deletion && (
                         <IconButton
                           size="small"
@@ -560,66 +1478,6 @@ export default function DashboardView(props: ViewPropsType) {
     </>
   );
 }
-
-const DashboardItemResizeHandle = forwardRef((props, ref) => {
-  const theme = useTheme();
-  const { axis } = props;
-
-  const axisSx = AXIS_SX[axis] || {};
-
-  return (
-    <Typography
-      ref={ref}
-      sx={{
-        ...axisSx,
-        position: "absolute",
-        borderColor: theme.neutral.plainColor,
-        opacity: 0,
-        transition: "opacity 0.25s",
-        "&:hover": {
-          opacity: 1,
-        },
-      }}
-      aria-label={`Resize ${axis}`}
-      {...props}
-    />
-  );
-});
-
-const AXIS_SX = {
-  e: {
-    height: "100%",
-    right: 0,
-    top: 0,
-    borderRight: "2px solid",
-    cursor: "ew-resize",
-    pl: 1,
-  },
-  w: {
-    height: "100%",
-    left: 0,
-    top: 0,
-    borderLeft: "2px solid",
-    cursor: "ew-resize",
-    pr: 1,
-  },
-  s: {
-    width: "100%",
-    bottom: 0,
-    left: 0,
-    borderBottom: "2px solid",
-    cursor: "ns-resize",
-    pt: 1,
-  },
-  n: {
-    width: "100%",
-    top: 0,
-    left: 0,
-    borderTop: "2px solid",
-    cursor: "ns-resize",
-    pb: 1,
-  },
-};
 
 function sortPropertiesByCustomLayout(properties, customLayout) {
   const customLayoutMap = customLayout.reduce((acc, item) => {
