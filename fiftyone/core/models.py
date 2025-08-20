@@ -62,7 +62,7 @@ def futures(*, max_workers, skip_failures=False, warning="Async failure"):
             except Exception as e:
                 if not skip_failures:
                     raise e
-                logger.warning(warning, e)
+                logger.warning(warning, exc_info=True)
 
 
 def apply_model(
