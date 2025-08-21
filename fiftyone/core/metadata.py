@@ -552,8 +552,6 @@ def _compute_metadata(
         filepaths,
         media_types,
         itertools.repeat(cache),
-        itertools.repeat(skip_failures),
-        itertools.repeat(warn_failures),
     )
 
     try:
@@ -564,8 +562,6 @@ def _compute_metadata(
                     filepath,
                     media_type,
                     cache,
-                    skip_failures,
-                    warn_failures,
                 ) = args
                 metadata = _compute_sample_metadata(
                     filepath,
