@@ -87,7 +87,7 @@ Here's the basic recipe for working with remotely-sourced zoo datasets:
     You can delete the local copy of a remotely-sourced zoo dataset (or
     individual split(s) of it) via
     :meth:`delete_zoo_dataset() <fiftyone.zoo.datasets.delete_zoo_dataset>`
-    by providing either the datasets's name or the remote source from which
+    by providing either the datasets name or the remote source from which
     you downloaded it:
 
     .. code-block:: python
@@ -141,7 +141,7 @@ Here's the basic recipe for working with remotely-sourced zoo datasets:
     You can delete the local copy of a remotely-sourced zoo dataset (or
     individual split(s) of it) via
     :ref:`fiftyone zoo datasets delete <cli-fiftyone-zoo-datasets-delete>`
-    by providing either the datasets's name or the remote source from which
+    by providing either the datasets name or the remote source from which
     you downloaded it:
 
     .. code-block:: shell
