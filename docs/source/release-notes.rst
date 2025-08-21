@@ -5315,7 +5315,7 @@ Core
 - Updated the implementation of
   :meth:`Detection.to_polyline() <fiftyone.core.labels.Detection.to_polyline>`
   so that all attributes are included rather than just ETA-supported ones
-- Added support for including empty labels labels via an `include_missing`
+- Added support for including empty labels via an `include_missing`
   keyword argument in
   :func:`add_yolo_labels() <fiftyone.utils.yolo.add_yolo_labels>`
 - Added a
