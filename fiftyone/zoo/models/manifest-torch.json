@@ -7236,7 +7236,7 @@
                 }
             },
             "tags": ["segmentation", "torch", "segformer", "official"],
-            "training_data": [{"name": "ADE20K", "url": "https://groups.csail.mit.edu/vision/datasets/ADE20K/"}],
+            "training_data": [{"name": "ADE20K", "url": "https://github.com/CSAILVision/ADE20K"}],
             "date_added": "2025-08-04 12:34:17"
         },
         {
@@ -7268,7 +7268,7 @@
                 }
             },
             "tags": ["segmentation", "torch", "segformer", "official"],
-            "training_data": [{"name": "ADE20K", "url": "https://groups.csail.mit.edu/vision/datasets/ADE20K/"}],
+            "training_data": [{"name": "ADE20K", "url": "https://github.com/CSAILVision/ADE20K"}],
             "date_added": "2025-08-04 12:34:20"
         },
         {
@@ -7300,7 +7300,7 @@
                 }
             },
             "tags": ["segmentation", "torch", "segformer", "official"],
-            "training_data": [{"name": "ADE20K", "url": "https://groups.csail.mit.edu/vision/datasets/ADE20K/"}],
+            "training_data": [{"name": "ADE20K", "url": "https://github.com/CSAILVision/ADE20K"}],
             "date_added": "2025-08-04 12:34:22"
         },
         {
@@ -7332,7 +7332,7 @@
                 }
             },
             "tags": ["segmentation", "torch", "segformer", "official"],
-            "training_data": [{"name": "ADE20K", "url": "https://groups.csail.mit.edu/vision/datasets/ADE20K/"}],
+            "training_data": [{"name": "ADE20K", "url": "https://github.com/CSAILVision/ADE20K"}],
             "date_added": "2025-08-04 12:34:24"
         },
         {
@@ -7364,7 +7364,7 @@
                 }
             },
             "tags": ["segmentation", "torch", "segformer", "official"],
-            "training_data": [{"name": "ADE20K", "url": "https://groups.csail.mit.edu/vision/datasets/ADE20K/"}],
+            "training_data": [{"name": "ADE20K", "url": "https://github.com/CSAILVision/ADE20K"}],
             "date_added": "2025-08-04 12:34:25"
         },
         {
@@ -7396,7 +7396,7 @@
                 }
             },
             "tags": ["segmentation", "torch", "segformer", "official"],
-            "training_data": [{"name": "ADE20K", "url": "https://groups.csail.mit.edu/vision/datasets/ADE20K/"}],
+            "training_data": [{"name": "ADE20K", "url": "https://github.com/CSAILVision/ADE20K"}],
             "date_added": "2025-08-04 12:34:27"
         }
     ]
