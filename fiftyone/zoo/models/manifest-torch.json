@@ -49,7 +49,7 @@
                 "alexnet",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1065,7 +1065,7 @@
                 "densenet",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1116,7 +1116,7 @@
                 "torch",
                 "densenet"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1168,7 +1168,7 @@
                 "densenet",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1220,7 +1220,7 @@
                 "densenet",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1423,7 +1423,7 @@
                 "googlenet",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1474,7 +1474,7 @@
                 "inception",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1645,7 +1645,7 @@
                 "mnasnet",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1697,7 +1697,7 @@
                 "mnasnet",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1749,7 +1749,7 @@
                 "mobilenet",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1801,7 +1801,7 @@
                 "resnet",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1853,7 +1853,7 @@
                 "resnet",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1905,7 +1905,7 @@
                 "resnet",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1957,7 +1957,7 @@
                 "resnet",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2009,7 +2009,7 @@
                 "resnet",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2061,7 +2061,7 @@
                 "resnext",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2112,7 +2112,7 @@
                 "torch",
                 "resnext"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2204,7 +2204,7 @@
                 "shufflenet",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2256,7 +2256,7 @@
                 "shufflenet",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2299,7 +2299,7 @@
                 }
             },
             "tags": ["classification", "imagenet", "torch", "squeezenet"],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2348,7 +2348,7 @@
                 "squeezenet",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2400,7 +2400,7 @@
                 "vgg",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2450,7 +2450,7 @@
                 "vgg",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2502,7 +2502,7 @@
                 "vgg",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2552,7 +2552,7 @@
                 "vgg",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2604,7 +2604,7 @@
                 "vgg",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2654,7 +2654,7 @@
                 "vgg",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2706,7 +2706,7 @@
                 "vgg",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2756,7 +2756,7 @@
                 "vgg",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2808,7 +2808,7 @@
                 "wide-resnet",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2860,7 +2860,7 @@
                 "wide-resnet",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2971,7 +2971,7 @@
                 "transformers",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2024-01-17 14:25:51"
         },
         {
@@ -6332,7 +6332,7 @@
                 "transformers",
                 "convnext"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2025-06-30 12:00:00"
         },
         {
@@ -6371,7 +6371,7 @@
                 "convnext",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2025-06-30 12:00:00"
         },
         {
@@ -6410,7 +6410,7 @@
                 "convnext",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2025-06-30 12:00:00"
         },
         {
@@ -6448,7 +6448,7 @@
                 "transformers",
                 "convnext"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2025-06-30 12:00:00"
         },
         {
@@ -6490,11 +6490,11 @@
             "training_data": [
                             {
                                             "name": "ImageNet-22K",
-                                            "url": "https://www.image-net.org"
+                                            "url": "https://www.image-net.org/download.php"
                             },
                             {
                                             "name": "ImageNet-1K",
-                                            "url": "https://www.image-net.org"
+                                            "url": "https://www.image-net.org/download.php"
                             }
             ],
             "date_added": "2025-06-30 12:00:00"
@@ -6535,7 +6535,7 @@
                 "efficientnet",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2025-06-30 12:00:00"
         },
         {
@@ -6574,7 +6574,7 @@
                 "efficientnet",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2025-06-30 12:00:00"
         },
         {
@@ -6613,7 +6613,7 @@
                 "efficientnet",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2025-06-30 12:00:00"
         },
         {
@@ -6652,7 +6652,7 @@
                 "efficientnet",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2025-06-30 12:00:00"
         },
         {
@@ -6691,7 +6691,7 @@
                 "efficientnet",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2025-06-30 12:00:00"
         },
         {
@@ -6730,7 +6730,7 @@
                 "efficientnet",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2025-06-30 12:00:00"
         },
         {
@@ -6769,7 +6769,7 @@
                 "efficientnet",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2025-06-30 12:00:00"
         },
         {
@@ -6808,7 +6808,7 @@
                 "efficientnet",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2025-06-30 12:00:00"
         },
         {
@@ -6846,7 +6846,7 @@
                 "swin-transformer",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2025-07-02 12:00:00"
         },
         {
@@ -6884,7 +6884,7 @@
                 "swin-transformer",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2025-07-02 12:00:00"
         },
         {
@@ -6922,7 +6922,7 @@
                 "swin-transformer",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2025-07-02 12:00:00"
         },
         {
@@ -6960,7 +6960,7 @@
                 "swin-transformer",
                 "official"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org"}],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2025-07-02 12:00:00"
         },
         {
