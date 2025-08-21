@@ -281,9 +281,7 @@ class SegmentAnythingModel(fout.TorchSamplesMixin, fout.TorchImageModel):
             )
             outputs.append(
                 {
-                    "boxes": torch.tensor(
-                        boxes_xyxy, device=sam_predictor.device
-                    ),
+                    "boxes": torch.tensor(boxes_xyxy),
                     "labels": labels,
                     "masks": masks,
                     "scores": scores,

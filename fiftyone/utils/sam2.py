@@ -192,9 +192,6 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
                 [fosam._to_abs_box(box, w, h) for box in boxes]
             )
             sam_boxes = np.round(boxes_xyxy).astype(int)
-            input_boxes = torch.tensor(
-                boxes_xyxy, device=sam2_predictor.device
-            )
 
             labels = torch.tensor(
                 [
@@ -214,7 +211,7 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
                 masks = np.expand_dims(masks, axis=0)
             outputs.append(
                 {
-                    "boxes": input_boxes,
+                    "boxes": torch.tensor(boxes_xyxy),
                     "labels": labels,
                     "masks": torch.tensor(masks, device=sam2_predictor.device),
                     "scores": torch.tensor(
