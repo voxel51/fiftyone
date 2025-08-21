@@ -275,7 +275,7 @@ Here are two example dataset YAML files:
 
         name: voxel51/caltech101
         type: dataset
-        author: Fei-Fei1 Li, Marco Andreeto, Marc'Aurelio Ranzato, Pietro Perona
+        author: Fei-Fei Li, Marco Andreeto, Marc'Aurelio Ranzato, Pietro Perona
         version: 1.0.0
         url: https://github.com/voxel51/caltech101
         source: https://data.caltech.edu/records/mzrjq-6wc02
