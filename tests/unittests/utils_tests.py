@@ -12,6 +12,7 @@ import time
 import unittest
 from unittest.mock import MagicMock, patch
 
+import pytest
 from bson import ObjectId
 from bson import json_util
 import numpy as np
@@ -951,6 +952,65 @@ class ProgressBarTests(unittest.TestCase):
         self._test_correct_value(
             progress=False, global_progress=False, quiet=False, expected=True
         )
+
+
+class RecommendProcessPoolWorkersTests(unittest.TestCase):
+    @patch.object(fou.multiprocessing, "current_process")
+    def test_daemon(self, current_process_mock):
+        current_process_mock.daemon = True
+        self.assertEqual(fou.recommend_process_pool_workers(8, 4), 0)
+
+    def test_explicit(self):
+        # Uses explicitly passed workers
+        self.assertEqual(fou.recommend_process_pool_workers(8, 4), 8)
+
+        # Negative number coerced to 0
+        self.assertEqual(fou.recommend_process_pool_workers(-1), 0)
+
+        # Number is capped by config
+        with patch.object(fo.config, "max_process_pool_workers", 2):
+            self.assertEqual(fou.recommend_process_pool_workers(8, 4), 2)
+
+    def test_default_from_config(self):
+        # Uses default from config
+        with patch.object(fo.config, "default_process_pool_workers", 4):
+            self.assertEqual(
+                fou.recommend_process_pool_workers(default_num_workers=8), 4
+            )
+
+            # Number is capped by config
+            with patch.object(fo.config, "max_process_pool_workers", 2):
+                self.assertEqual(fou.recommend_process_pool_workers(), 2)
+
+    def test_default_passed_in(self):
+        # Uses default passed in
+        self.assertEqual(
+            fou.recommend_process_pool_workers(default_num_workers=8), 8
+        )
+
+        # Number is capped by config
+        with patch.object(fo.config, "max_process_pool_workers", 2):
+            self.assertEqual(
+                fou.recommend_process_pool_workers(default_num_workers=8), 2
+            )
+
+    @patch.object(fou.multiprocessing, "cpu_count")
+    def test_cpucount(self, cpu_count_mock):
+        cpu_count_mock.return_value = 10
+        self.assertEqual(fou.recommend_process_pool_workers(), 10)
+
+        # Number is capped by config
+        with patch.object(fo.config, "max_process_pool_workers", 2):
+            self.assertEqual(fou.recommend_process_pool_workers(), 2)
+
+    @patch.object(fou.multiprocessing, "cpu_count")
+    def test_cpucount_exception(self, cpu_count_mock):
+        cpu_count_mock.side_effect = ValueError
+        self.assertEqual(fou.recommend_process_pool_workers(), 4)
+
+        # Number is capped by config
+        with patch.object(fo.config, "max_process_pool_workers", 2):
+            self.assertEqual(fou.recommend_process_pool_workers(), 2)
 
 
 if __name__ == "__main__":

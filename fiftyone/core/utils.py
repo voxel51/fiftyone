@@ -2909,14 +2909,22 @@ def recommend_process_pool_workers(num_workers=None, default_num_workers=None):
             # 3. System CPU count
             num_workers = (
                 fo.config.default_process_pool_workers
-                or default_num_workers
-                or multiprocessing.cpu_count()
+                if fo.config.default_process_pool_workers is not None
+                else (
+                    default_num_workers
+                    if default_num_workers is not None
+                    else multiprocessing.cpu_count()
+                )
             )
-    except:
+    except Exception as e:
+        logger.debug(
+            "recommend_process_pool_workers: falling back to 4", exc_info=True
+        )
         num_workers = 4
 
     if fo.config.max_process_pool_workers is not None:
         num_workers = min(num_workers, fo.config.max_process_pool_workers)
+    num_workers = max(num_workers, 0)
 
     return num_workers
 
