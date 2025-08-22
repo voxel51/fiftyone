@@ -2876,7 +2876,10 @@ def recommend_thread_pool_workers(num_workers=None):
 def recommend_process_pool_workers(num_workers=None, default_num_workers=None):
     """Recommends a number of workers for a process pool.
 
-    If this process is a daemon, the number of workers is 0.
+    If the number is 0, that means no multiprocessing is recommended.
+
+    If this process is a daemon, the number of workers is 0 since child
+    processes are disallowed in this context.
 
     If ``num_workers`` is None, the following order is used to determine the
     number of workers:
@@ -2893,9 +2896,10 @@ def recommend_process_pool_workers(num_workers=None, default_num_workers=None):
             ``num_workers`` is None and no configured default is set
 
     Returns:
-        a number of workers
+        a number of workers. 0 means no multiprocessing
     """
     try:
+        # "daemonic processes are not allowed to have children"
         if multiprocessing.current_process().daemon:
             num_workers = 0
         elif num_workers is None:

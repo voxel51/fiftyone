@@ -53,7 +53,7 @@ class ProcessMapper(fomm.LocalMapper):
         batch_size: Optional[int] = None,
         **__,
     ):
-        num_workers = max(1, fou.recommend_process_pool_workers(num_workers))
+        num_workers = fou.recommend_process_pool_workers(num_workers)
 
         return super(ProcessMapper, cls).create(
             config=config,

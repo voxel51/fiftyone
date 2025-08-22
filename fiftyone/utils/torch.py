@@ -1672,7 +1672,8 @@ def recommend_num_workers(num_workers=None):
         the recommended number of workers
     """
     if sys.platform.startswith("win"):
-        # Windows tends to have multiprocessing issues, so default to 0 workers
+        # Windows tends to have multiprocessing issues, especially with Torch,
+        # so default to 0 workers
         # https://github.com/voxel51/fiftyone/issues/1531
         # https://stackoverflow.com/q/20222534
         return 0
@@ -1680,7 +1681,7 @@ def recommend_num_workers(num_workers=None):
     try:
         default = multiprocessing.cpu_count() // 2
     except:
-        default = None
+        default = 4
 
     return fou.recommend_process_pool_workers(
         num_workers, default_num_workers=default
