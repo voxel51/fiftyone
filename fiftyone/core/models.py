@@ -52,7 +52,9 @@ _ALLOWED_PATCH_TYPES = (
 
 
 @contextlib.contextmanager
-def futures(*, max_workers, skip_failures=False, warning="Async failure"):
+def _async_executor(
+    *, max_workers, skip_failures=False, warning="Async failure"
+):
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         _futures = []
 
@@ -514,7 +516,7 @@ def _apply_image_model_data_loader(
                     )
                     ctx.save(sample)
 
-        with futures(
+        with _async_executor(
             max_workers=1,
             skip_failures=skip_failures,
             warning="Async failure labeling batches",
