@@ -1086,7 +1086,7 @@ def _convert_velodyne_to_pcd(
     etau.ensure_dir(pcd_dir)
 
     logger.info("Converting Velodyne scans to PCD format...")
-    num_workers = fou.recommend_process_pool_workers(num_workers)
+    num_workers = max(1, fou.recommend_process_pool_workers(num_workers))
     with fou.ProgressBar(total=len(inputs)) as pb:
         with fou.get_multiprocessing_context().Pool(
             processes=num_workers
