@@ -73,7 +73,7 @@ def futures(*, max_workers, skip_failures=False, warning="Async failure"):
 
 
 @contextlib.contextmanager
-def handle_batch_error(skip_failures, sample_batch):
+def _handle_batch_error(skip_failures, sample_batch):
     try:
         yield
     except Exception as e:
@@ -502,7 +502,7 @@ def _apply_image_model_data_loader(
         ctx = context.enter_context(foc.SaveContext(samples))
 
         def save_batch(sample_batch, labels_batch):
-            with handle_batch_error(skip_failures, sample_batch):
+            with _handle_batch_error(skip_failures, sample_batch):
                 for sample, labels in zip(sample_batch, labels_batch):
                     if filename_maker is not None:
                         _export_arrays(labels, sample.filepath, filename_maker)
@@ -523,7 +523,7 @@ def _apply_image_model_data_loader(
                 fou.iter_batches(samples, batch_size),
                 data_loader,
             ):
-                with handle_batch_error(skip_failures, sample_batch):
+                with _handle_batch_error(skip_failures, sample_batch):
                     if isinstance(imgs, Exception):
                         raise imgs
 
