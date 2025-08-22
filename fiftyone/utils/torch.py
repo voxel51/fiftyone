@@ -1664,7 +1664,7 @@ class SemanticSegmenterOutputProcessor(OutputProcessor):
         return [fol.Segmentation(mask=mask) for mask in masks]
 
 
-def recommend_num_workers():
+def recommend_num_workers(num_workers=None):
     """Recommend a number of workers for running a
     :class:`torch:torch.utils.data.DataLoader`.
 
@@ -1678,9 +1678,13 @@ def recommend_num_workers():
         return 0
 
     try:
-        return multiprocessing.cpu_count() // 2
+        default = multiprocessing.cpu_count() // 2
     except:
-        return 4
+        default = None
+
+    return fou.recommend_process_pool_workers(
+        num_workers, default_num_workers=default
+    )
 
 
 def _to_bytes_array(strs):
