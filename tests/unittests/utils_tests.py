@@ -957,7 +957,7 @@ class ProgressBarTests(unittest.TestCase):
 class RecommendProcessPoolWorkersTests(unittest.TestCase):
     @patch.object(fou.multiprocessing, "current_process")
     def test_daemon(self, current_process_mock):
-        current_process_mock.daemon = True
+        current_process_mock.return_value.daemon = True
         self.assertEqual(fou.recommend_process_pool_workers(8, 4), 0)
 
     def test_explicit(self):
