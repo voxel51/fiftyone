@@ -85,6 +85,7 @@ def handle_batch_error(skip_failures, sample_batch):
             sample_batch[0].id,
             sample_batch[-1].id,
             e,
+            exc_info=True,
         )
 
 
