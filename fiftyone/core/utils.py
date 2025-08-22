@@ -2916,12 +2916,13 @@ def recommend_process_pool_workers(num_workers=None, default_num_workers=None):
                     else multiprocessing.cpu_count()
                 )
             )
-    except Exception as e:
+    except Exception:
         logger.debug(
             "recommend_process_pool_workers: falling back to 4", exc_info=True
         )
         num_workers = 4
 
+    num_workers = int(num_workers)
     if fo.config.max_process_pool_workers is not None:
         num_workers = min(num_workers, fo.config.max_process_pool_workers)
     num_workers = max(num_workers, 0)
