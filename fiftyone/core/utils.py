@@ -2961,12 +2961,10 @@ def get_cpu_count():
     if sys.platform == "linux":
         try:
             with open("/sys/fs/cgroup/cpu.max") as f:
-                cpu_max = f.read().strip()
+                quota, period = f.read().strip().split()
                 # max means no limit so we fall back to other methods
-                if cpu_max != "max":
-                    quota, period = cpu_max.split()
-                    if period != "0":
-                        return max(1, int(int(quota) / int(period)))
+                if quota != "max" and period != "0":
+                    return max(1, int(int(quota) / int(period)))
         except Exception:
             pass
 
@@ -2974,7 +2972,7 @@ def get_cpu_count():
     # process can actually use than cpu_count()
     # https://docs.python.org/3/library/os.html#os.process_cpu_count
     try:
-        return multiprocessing.process_cpu_count()
+        return os.process_cpu_count()
     except AttributeError:
         pass
 
