@@ -427,6 +427,50 @@ continue with other work. Meanwhile, all datasets have a
 browse a history of all delegated operations that have been run on the dataset
 and their status.
 
+.. _enterprise-do-distributed-execution:
+
+Distributed execution
+_____________________
+
+.. versionadded:: 2.11.0
+
+FiftyOne Enterprise supports distributed execution of delegated operations
+across multiple workers in an orchestrator.
+
+.. note::
+    If you are an operator author wanting to add support for distributed
+    execution, see the reference guide
+    :ref:`here <writing-distributed-operators>`.
+
+When you schedule a distributable delegated operation from the App, you can
+choose how many tasks to split the operation into. The dataset or target view
+will be split up into that number of tasks. Each task will be executed
+independently on a separate worker in your chosen orchestrator, allowing you
+to scale out the execution of large operations across many machines.
+
+If you choose a number of tasks *T* less than the deployment's maximum, the
+operation will complete up to *T* times faster!
+
+.. image:: /images/plugins/operators/distributed/selecting-num-tasks.png
+
+You may want to split an operation into many tasks if you are working with
+a large dataset or if the operation is computationally intensive. This is
+perfectly acceptable, however, the operation speedup you achieve will be
+limited by the deployment maximum and number of workers in your orchestrator.
+
+In the example below, we have chosen 100 tasks, but the deployment maximum
+is 9. This means that at most 9 tasks can be executed in parallel.
+
+.. note::
+
+    Contact your Voxel51 support team to scale your deployment's compute
+    capacity!
+
+.. image:: /images/plugins/operators/distributed/tasks-greater-than-limit.png
+
+Hit "Schedule" and the operation will be scheduled for distributed execution.
+Now you can check on its status in the :ref:`Runs page <enterprise-runs-page>`.
+
 .. _enterprise-delegated-orchestrator:
 
 Configuring your orchestrator(s)
@@ -435,15 +479,30 @@ ________________________________
 FiftyOne Enterprise offers a builtin orchestrator that is configured as part of
 your team's deployment with a default level of compute capacity.
 
-It is also possible to connect your FiftyOne Enterprise deployment to an externally
-managed workflow orchestration tool (`Airflow <https://airflow.apache.org>`_,
-`Flyte <https://flyte.org>`_,
-`Spark <https://www.databricks.com/product/spark>`_, etc).
+As of FiftyOne Enterprise 2.11.0, there is builtin support for scheduling
+delegated operations on-demand in supported external compute platforms. This
+means only using expensive compute resources when they're actually needed!
+Platforms currently supported include:
+
+- `Databricks <https://www.databricks.com/>`_
+- `Anyscale <https://www.anyscale.com/>`_
+
+Administrators can see more information about configuring these orchestrators
+in the
+`deployment guide <https://github.com/voxel51/fiftyone-teams-app-deploy/blob/main/docs/configuring-on-demand-orchestrator.md>`_.
+
+It is also possible to connect your FiftyOne Enterprise deployment to other
+externally managed workflow orchestration tools such as:
+`Airflow <https://airflow.apache.org>`_, `Flyte <https://flyte.org>`_,
+`Spark <https://spark.apache.org/>`_, etc. These platforms will have less
+builtin support and must have a continually running worker pool that can accept
+tasks from your deployment (i.e., not on-demand).
 
 .. note::
 
     Contact your Voxel51 support team to scale your deployment's compute
-    capacity or if you'd like to use an external orchestrator.
+    capacity, for more information about on-demand compute integrations,
+    or if you'd like to use another external orchestrator.
 
 .. _enterprise-managing-delegated-operations:
 
@@ -496,11 +555,10 @@ Delegated operations can have one of 5 potential statuses:
 
 .. note::
 
-    FiftyOne Enterprise offers a builtin orchestrator that is configured as
-    part of your team's deployment with a default level of execution quota.
+    Distributed operations have a computed status based on the statuses of
+    their individual tasks. For example, a distributed operation is considered
+    "Completed" only when all of its tasks have completed successfully.
 
-    Contact your Voxel51 support team to discuss running more jobs in parallel,
-    or if you'd like to use an external orchestrator.
 
 .. image:: /images/plugins/operators/runs/runs_statuses.png
 
@@ -664,6 +722,30 @@ delegated operation, including its inputs, outputs, logs, and errors.
 You can visit the Run page for a run by clicking on the run in the runs table,
 the Pinned runs section, or the Recent runs widgets.
 
+.. _enterprise-run-page-children:
+
+Children
+^^^^^^^^
+
+.. versionadded:: 2.11.0
+
+If a distributable delegated operation was scheduled with multiple tasks,
+then it's considered to be a "parent". The Run page will include a Children
+tab that allows you to see the status of each individual child task in a
+tabular format similar to the main Runs page:
+
+.. image:: /images/plugins/operators/runs/run_children.png
+
+You are given options to sort, search, and filter the list of tasks as you
+would on the main Runs page. You can also click on any task in the table to
+visit its own Run page.
+
+.. note::
+
+    You can mark a child task as failed, but you cannot re-run or delete a
+    child task individually.
+
+
 .. _enterprise-run-page-input:
 
 Input
@@ -761,9 +843,9 @@ two deployment configurations we support for the
 
 .. note::
 
-    If you are using a third-party orchestrator like Airflow, simply configure
-    your orchestrator to store logs to a persistent location and then report
-    this path for each run via the `log_path` argument.
+    If you are using a third-party orchestrator, it can be configured
+    similarly to upload logs, in addition to a ``run_link`` that can be
+    added to each run to link back to the external run details page.
 
 .. _enterprise-run-page-view:
 
@@ -774,3 +856,5 @@ The View tab on the Run page lets you see the specific view (which could be the
 full dataset) on which the operation was performed:
 
 .. image:: /images/plugins/operators/runs/run_view.png
+
+.. _enterprise-child-run-page:

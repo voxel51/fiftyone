@@ -16,7 +16,7 @@ Before building the docs locally, ensure you have:
     created specifically for documentation.
 
     **Note:** Do **NOT** use the same environment where you ran `install.bash`
-    with the `-d` (dev mode) flag, as docs dependencies conflict with test
+    with the `-d` (dev mode) flag, as docs dependencies may conflict with test
     dependencies.
 
 -   [pandoc](https://pandoc.org/installing.html) installed.
@@ -40,8 +40,8 @@ bash install.bash
 pip install -r requirements/docs.txt
 ```
 
-3.  To use the `fiftyone` repository to autogenerate docs, you need to add it
-    to your `PYTHONPATH`:
+3. To use the `fiftyone` repository to autogenerate docs, you need to add it to
+   your `PYTHONPATH`:
 
 ```shell
 export PYTHONPATH=$PYTHONPATH:/path/to/fiftyone
