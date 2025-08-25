@@ -502,6 +502,13 @@ def _apply_image_model_data_loader(
     with contextlib.ExitStack() as context:
         pb = context.enter_context(fou.ProgressBar(samples, progress=progress))
         ctx = context.enter_context(foc.SaveContext(samples))
+        submit = context.enter_context(
+            _async_executor(
+                max_workers=1,
+                skip_failures=skip_failures,
+                warning="Async failure labeling batches",
+            )
+        )
 
         def save_batch(sample_batch, labels_batch):
             with _handle_batch_error(skip_failures, sample_batch):
@@ -516,29 +523,24 @@ def _apply_image_model_data_loader(
                     )
                     ctx.save(sample)
 
-        with _async_executor(
-            max_workers=1,
-            skip_failures=skip_failures,
-            warning="Async failure labeling batches",
-        ) as submit:
-            for sample_batch, imgs in zip(
-                fou.iter_batches(samples, batch_size),
-                data_loader,
-            ):
-                with _handle_batch_error(skip_failures, sample_batch):
-                    if isinstance(imgs, Exception):
-                        raise imgs
+        for sample_batch, imgs in zip(
+            fou.iter_batches(samples, batch_size),
+            data_loader,
+        ):
+            with _handle_batch_error(skip_failures, sample_batch):
+                if isinstance(imgs, Exception):
+                    raise imgs
 
-                    if needs_samples:
-                        labels_batch = model.predict_all(
-                            imgs, samples=sample_batch
-                        )
-                    else:
-                        labels_batch = model.predict_all(imgs)
+                if needs_samples:
+                    labels_batch = model.predict_all(
+                        imgs, samples=sample_batch
+                    )
+                else:
+                    labels_batch = model.predict_all(imgs)
 
-                    submit(save_batch, sample_batch, labels_batch)
+                submit(save_batch, sample_batch, labels_batch)
 
-                pb.update(len(sample_batch))
+            pb.update(len(sample_batch))
 
 
 def _apply_image_model_to_frames_single(
