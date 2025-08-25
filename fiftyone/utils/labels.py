@@ -1220,9 +1220,11 @@ def detections_3d_to_cuboids_2d(
     camera_model: Callable = fou3d.pinhole_projector,
     progress: bool = True,
 ):
-    """High-level orchestration of 3D → 2D label conversion. Processes the in_field
-    on the `lidar_slice_name` slice of the grouped dataset, converts the labels to 2D
-    polylines and saves them in the out_field on the `camera_slice_name` slice.
+    """High-level orchestration of 3D → 2D label conversion. Processes the `in_field`
+    on the `lidar_slice_name` slice of a grouped dataset, uses the transformations 
+    and camera intrinsics to converts the labels to 2D polylines and saves them in 
+    the `out_field` on the `camera_slice_name` slice.
+    
     Args:
         dataset: the :class:`fiftyone.core.dataset.Dataset` to convert
         camera_slice_name: the name of the camera slice in the dataset

@@ -109,20 +109,10 @@ _POINT_IN_FRONT_OF_PLANE = 1
 _POINT_ON_PLANE = 0
 _POINT_BEHIND_PLANE = -1
 
-TransformationType = Tuple[
+TransformationType = List[Tuple[
     Union[list[float], np.ndarray],  # translation
     Union[list[list[float]], np.ndarray],  # rotation matrix
-]
-
-
-@dataclass
-class Cuboid2D:
-    corners_2d: np.ndarray
-    corners_3d: np.ndarray
-    instance: fo.Instance
-    label: str
-    confidence: float
-    index: int
+]]
 
 
 # References
@@ -464,6 +454,7 @@ def multiple_coordinate_transform(
     Applies a sequence of 3D coordinate frame transformations to a point and its orientation.
     Each transformation consists of a translation vector and a rotation matrix, applied in the
     order provided. The orientation is updated at each step using quaternion multiplication.
+
     Args:
         points: A 3-element list representing the (x, y, z) coordinates of the point.
         euler_rpy: A 3-element list of Euler angles [roll, pitch, yaw] in radians.
@@ -474,10 +465,10 @@ def multiple_coordinate_transform(
             True means apply the transform from source → target.
             False means apply the inverse transform (target → source).
             Defaults to all True.
+
     Returns:
-        A tuple of:
-            - Transformed 3D point as a list [x, y, z].
-            - Updated orientation as Euler angles [roll, pitch, yaw] in radians.
+        - Transformed 3D point as a list [x, y, z].
+        - Updated orientation as Euler angles [roll, pitch, yaw] in radians.
     """
     if forward_transform_flags is None:
         forward_transform_flags = [True] * len(transformation_sequence)
@@ -517,10 +508,10 @@ def single_coordinate_transform(
             - rotation_matrix: (3, 3) np.ndarray representing a rotation matrix.
         forward_transform: If True, applies the forward transform.
             If False, applies the inverse transform.
+
     Returns:
-        A tuple of:
-            - Transformed 3D point as a np.ndarray [x, y, z].
-            - Updated orientation as a pyquaternion.Quaternion.
+        - Transformed 3D point as a np.ndarray [x, y, z].
+        - Updated orientation as a pyquaternion.Quaternion.
     """
     transform_translation, transform_rot_matrix = transformation
     transform_quaternion = pyq.Quaternion(matrix=transform_rot_matrix)
@@ -543,10 +534,12 @@ def corners_from_euler(
     location: List[float], rotation: List[float], dimension: List[float]
 ) -> np.ndarray:
     """Computes the 3D corners of a cuboid given its location, rotation, and dimensions.
+
     Args:
         location: a 3-element list or np.ndarray representing the (x, y, z) location of the cuboid
         rotation: a 3-element list or np.ndarray representing the (roll, pitch, yaw) rotation in radians
         dimension: a 3-element list or np.ndarray representing the (length, width, height) of the cuboid
+
     Returns:
         A 3x8 np.ndarray containing the 3D coordinates of the cuboid's corners.
     """
@@ -568,13 +561,14 @@ def pinhole_projector(
     points: np.ndarray, cam_params: Dict, normalize=True
 ) -> np.ndarray:
     """Projects 3D detection points to 2D using the given camera intrinsics assuming a pinhole camera.
-    The expected axis orientation is as follows-
-        - x-axis -> points right in the image plane
-        - y-axis -> points down in the image plane
-        - z-axis -> points forward from the camera
+
+    The following orientation is assumed- x axis points to the right in the image plane, y axis points 
+    down in the image plane and z axis points forward from the camera.
+
     Args:
         points: a 3xN np.ndarray containing the 3D coordinates of the points to be projected
-        camera_intrinsics: a 3x3 or 4x4 np.ndarray representing the camera intrinsics matrix
+        cam_params: a dict containing the key 'intrinsics' that maps to
+        a 3x3 or 4x4 np.ndarray representing the camera intrinsics matrix
         normalize (True): whether to normalize the projected points by their z-coordinate
     Returns:
         A 3xN np.ndarray containing the projected 2D coordinates of the points.
@@ -605,13 +599,15 @@ def point_in_front_of_camera(
     distance_threshold: float = 0.1,
 ) -> bool:
     """Checks if the input corners are visible in the image and in front of the camera.
+
     Args:
         corners_img: a 3x8 np.ndarray containing the projected 2D coordinates of a cuboid's corners
         corners_3d: a 3x8 np.ndarray containing the 3D coordinates of the cuboid's corners
         imsize: a tuple (width, height) of the image dimensions
         distance_threshold: a float representing the minimum distance in meters for a corner to be considered in front of the camera
+
     Returns:
-        True if all corners are visible in the image and at least one corner is in front of the camera, False otherwise.
+        True if all corners are visible in the image and all corners are in front of the camera, False otherwise.
     """
     visible = np.logical_and(
         corners_img[0, :] > 0, corners_img[0, :] < imsize[0]
