@@ -1096,7 +1096,7 @@ values and any other aspects of the
             # We found a similarity config; render some inputs specific to that
             inputs.bool(
                 "upgrade",
-                label"Compute visualization",
+                label="Compute visualization",
                 description="Generate an embeddings visualization for this index?",
                 view=types.CheckboxView(),
             )
@@ -1446,6 +1446,11 @@ multiple workers to speed up execution on large datasets. This is not
 supported in FiftyOne Open Source, but operator authors can still utilize
 the distributed execution paradigm so that their operators can be run in
 a distributed fashion when deployed in Enterprise.
+
+.. note::
+    In FiftyOne Open Source, the ``allow_distributed_execution`` flag is
+    ignored at runtime. Use it to declare intent in your operator, and the
+    capability will be honored when the operator runs in Enterprise
 
 There are really two requirements for supporting distributed execution and
 they are both quite simple!

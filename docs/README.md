@@ -55,8 +55,8 @@ To build the documentation locally, follow these steps:
     ```
 
 **Tip:** to avoid running this every time you build the docs, add the previous
-line to your `~/.bashrc`, `~/.zshrc`, system path or the appropriate file for
-your shell.
+line to your `~/.bashrc`, `~/.zshrc`, or the appropriate shell profile for your
+environment.
 
 ## Building
 
