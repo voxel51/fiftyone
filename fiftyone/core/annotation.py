@@ -8,7 +8,6 @@ Annotation runs framework.
 
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
-import fiftyone.core.media as fom
 from fiftyone.core.runs import (
     BaseRun,
     BaseRunConfig,
@@ -109,9 +108,6 @@ def compute_annotation_schema(collection, field_name):
     Returns:
         an annotation schema dictionary
     """
-    if collection.media_type != fom.IMAGE:
-        raise ValueError("only image datasets are supported")
-
     if field_name is None:
         raise ValueError("field_name is required")
 
@@ -134,7 +130,9 @@ def compute_annotation_schema(collection, field_name):
             return {"default": None, "type": "input"}
 
     if is_list:
-        raise ValueError(f"unsupported annotation field {field}")
+        raise ValueError(
+            f"unsupported annotation field {field}; only StringField lists are supported"
+        )
 
     if isinstance(field, fof.BooleanField):
         return {
@@ -157,16 +155,6 @@ def compute_annotation_schema(collection, field_name):
 
     if not isinstance(field, fof.EmbeddedDocumentField):
         raise ValueError(f"unsupported annotation field {field}")
-
-    if not field.document_type in (
-        fol.Classification,
-        fol.Classifications,
-        fol.Detection,
-        fol.Detections,
-    ):
-        raise ValueError(
-            f"unsupported annotation document type {field.document_type}"
-        )
 
     _type = str(field.document_type.__name__).lower()
     if issubclass(field.document_type, fol._HasLabelList):
