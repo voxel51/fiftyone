@@ -924,7 +924,7 @@ class TorchImageModel(
             if isinstance(output, torch.Tensor):
                 output = output.detach().cpu()
 
-            return output
+            return output, (width, height)
 
         if self.has_logits:
             self._output_processor.store_logits = self.store_logits
@@ -1922,11 +1922,12 @@ class FiftyOneTorchDataset(Dataset):
 
         res = []
         for i, d in enumerate(batch):
-            d["_id"] = _ids[i]
             if isinstance(d, Exception):
                 res.append(d)
             else:
-                res.append(self._get_item(d))
+                _processed = self._get_item(d)
+                _processed.update({"_id": _ids[i]})
+                res.append(_processed)
 
         return res
 

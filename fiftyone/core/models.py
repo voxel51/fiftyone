@@ -37,8 +37,8 @@ fout = fou.lazy_import("fiftyone.utils.torch")
 foutr = fou.lazy_import("fiftyone.utils.transformers")
 fouu = fou.lazy_import("fiftyone.utils.ultralytics")
 
-from fiftyone.core.ray.base import ActorPoolContext
-from fiftyone.core.ray.writers import LabelWriter
+foray = fou.lazy_import("fiftyone.core.ray.base")
+foray_writers = fou.lazy_import("fiftyone.core.ray.writers")
 
 logger = logging.getLogger(__name__)
 
@@ -462,7 +462,16 @@ def _apply_image_model_data_loader(
     with contextlib.ExitStack() as context:
         pb = context.enter_context(fou.ProgressBar(samples, progress=progress))
         output_processor = model._output_processor
-        ctx = context.enter_context(ActorPoolContext(samples, LabelWriter))
+        ctx = context.enter_context(
+            foray.ActorPoolContext(
+                samples,
+                foray_writers.LabelWriter,
+                num_workers=16,
+                label_field=label_field,
+                confidence_thresh=confidence_thresh,
+                post_processor=output_processor,
+            )
+        )
         context.enter_context(fou.SetAttributes(model, _output_processor=None))
 
         for sample_batch, imgs in zip(

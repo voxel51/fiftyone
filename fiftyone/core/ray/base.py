@@ -22,7 +22,6 @@ def deserialize_samples(serialized_samples):
     return dataset
 
 
-@ray.remote()
 class FiftyOneActor:
     """Class for FiftyOne Ray actors.
 
@@ -46,18 +45,20 @@ class ActorPoolContext:
         num_workers (int): the number of workers in the pool
     """
 
-    def __init__(self, samples, actor_type, num_workers=4):
+    def __init__(self, samples, actor_type, *args, num_workers=4, **kwargs):
         super().__init__()
         self.serialized_samples_ref = ray.put(serialize_samples(samples))
         self.num_workers = num_workers
         self.actor_type = actor_type
-
-    def __enter__(self):
         self.actors = [
-            self.actor_type.remote(self.serialized_samples_ref)
+            self.actor_type.remote(
+                self.serialized_samples_ref, *args, **kwargs
+            )
             for _ in range(self.num_workers)
         ]
         self.pool = ray.util.ActorPool(self.actors)
+
+    def __enter__(self):
         return self
 
     def __exit__(self, *args):

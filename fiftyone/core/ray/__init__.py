@@ -1,3 +1,4 @@
 import ray
 
-ray.init()
+if not ray.is_initialized():
+    ray.init()
