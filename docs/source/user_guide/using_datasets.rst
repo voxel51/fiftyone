@@ -4347,6 +4347,8 @@ The example code below demonstrates how to perform this projection using FiftyOn
    from fiftyone.utils.labels import detections_3d_to_cuboids_2d
    import numpy as np
 
+   dataset = fo.load_dataset("your_grouped_dataset")
+
    # Example transformation: Assume that for all samples, the same transformation is applied
    # A 90 degree rotation around the x axis to align the point cloud and camera coordinate systems with 0 translation
    rotation = np.array([[1, 0, 0],
@@ -4370,7 +4372,6 @@ The example code below demonstrates how to perform this projection using FiftyOn
    # - point cloud slice named "lidar_top"
    # - 3D detections stored in the "lidar_detections" field
    # The projected 2D cuboids will be stored in the "cuboids_2d" field
-   dataset = fo.load_dataset("your_grouped_dataset")
 
    detections_3d_to_cuboids_2d(
        dataset,
@@ -5547,7 +5548,7 @@ Refer to the
 documentation for available parameters to customize the projections.
 
 .. note::
-    
+
     Did you know? You can use the :ref:`inbuilt projection <projecting-3d-detections>`
     capabilities in FiftyOne to visualize 3D bounding boxes of 3D slices in grouped 
     datasets on 2D images.
