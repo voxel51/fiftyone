@@ -13,6 +13,7 @@ export type OverlayLabel = {
   label?: string;
   sampleId?: string;
   _cls: string;
+  index?: number;
 
   /**
    * Unlike id, instanceId is not guaranteed to be unique across samples.
