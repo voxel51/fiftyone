@@ -1253,7 +1253,7 @@ def detections_3d_to_cuboids_2d(
 
     values_2d_label = {}
     count = 0
-    view_3d_label = lidar_slice.select_fields(in_field, "group")
+    view_3d_label = lidar_slice.select_fields([in_field, "group"])
 
     with view_3d_label.save_context() as context:
         for sample in view_3d_label.iter_samples(progress=progress):
