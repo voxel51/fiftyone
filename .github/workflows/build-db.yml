@@ -86,7 +86,7 @@ jobs:
       - name: Clone fiftyone
         uses: actions/checkout@v5
       - name: Download fiftyone-db
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: dist-sdist
           path: downloads
@@ -111,7 +111,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/db-v')
     steps:
       - name: Download
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: downloads
       - name: Install dependencies
