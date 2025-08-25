@@ -486,8 +486,9 @@ def _apply_image_model_data_loader(
             )
         )
 
-        def save_batch(sample_batch, labels_batch):
+        def save_batch(sample_batch, model, output, image_sizes):
             with _handle_batch_error(skip_failures, sample_batch):
+                labels_batch = model.postprocess(output, image_sizes)
                 for sample, labels in zip(sample_batch, labels_batch):
                     if filename_maker is not None:
                         _export_arrays(labels, sample.filepath, filename_maker)
@@ -507,14 +508,15 @@ def _apply_image_model_data_loader(
                 if isinstance(imgs, Exception):
                     raise imgs
 
+                image_sizes = imgs.pop("fo_image_size", [(None, None)])
                 if needs_samples:
-                    labels_batch = model.predict_all(
+                    output = model.preprocess_and_forward_pass(
                         imgs, samples=sample_batch
                     )
                 else:
-                    labels_batch = model.predict_all(imgs)
+                    output = model.preprocess_and_forward_pass(imgs)
 
-                submit(save_batch, sample_batch, labels_batch)
+                submit(save_batch, sample_batch, model, output, image_sizes)
 
             pb.update(len(sample_batch))
 

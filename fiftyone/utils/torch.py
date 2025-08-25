@@ -865,6 +865,20 @@ class TorchImageModel(
 
         return self._predict_all(imgs)[0]
 
+    def preprocess_and_forward_pass(self, imgs):
+        return self._preprocess_and_forward_pass(imgs)
+
+    def _preprocess_and_forward_pass(self, imgs):
+        raise NotImplementedError(
+            "subclasses must implement _preprocess_and_forward_pass()"
+        )
+
+    def postprocess(self, output, image_sizes):
+        return self._postprocess(output, image_sizes)
+
+    def _postprocess(self, output, image_sizes):
+        raise NotImplementedError("subclasses must implement _postprocess()")
+
     def predict_all(self, imgs):
         """Performs prediction on the given batch of images.
 
