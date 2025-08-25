@@ -52,29 +52,6 @@ _ALLOWED_PATCH_TYPES = (
 
 
 @contextlib.contextmanager
-def _async_executor(
-    *, max_workers, skip_failures=False, warning="Async failure"
-):
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        _futures = []
-
-        def submit(*args, **kwargs):
-            future = executor.submit(*args, **kwargs)
-            _futures.append(future)
-            return future
-
-        yield submit
-
-        for future in _futures:
-            try:
-                future.result()
-            except Exception as e:
-                if not skip_failures:
-                    raise e
-                logger.warning(warning, exc_info=True)
-
-
-@contextlib.contextmanager
 def _handle_batch_error(skip_failures, sample_batch):
     try:
         yield
@@ -503,7 +480,7 @@ def _apply_image_model_data_loader(
         pb = context.enter_context(fou.ProgressBar(samples, progress=progress))
         ctx = context.enter_context(foc.SaveContext(samples))
         submit = context.enter_context(
-            _async_executor(
+            fou.async_executor(
                 max_workers=1,
                 skip_failures=skip_failures,
                 warning="Async failure labeling batches",

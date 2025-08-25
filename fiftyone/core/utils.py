@@ -3143,3 +3143,26 @@ def validate_hex_color(value):
 
 
 fos = lazy_import("fiftyone.core.storage")
+
+
+@contextmanager
+def async_executor(
+    *, max_workers, skip_failures=False, warning="Async failure"
+):
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        _futures = []
+
+        def submit(*args, **kwargs):
+            future = executor.submit(*args, **kwargs)
+            _futures.append(future)
+            return future
+
+        yield submit
+
+        for future in _futures:
+            try:
+                future.result()
+            except Exception as e:
+                if not skip_failures:
+                    raise e
+                logger.warning(warning, exc_info=True)
