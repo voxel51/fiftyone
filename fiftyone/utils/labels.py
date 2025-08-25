@@ -1235,13 +1235,15 @@ def detections_3d_to_cuboids_2d(
             (translation, rotation) for each sample in the dataset.
             Translation is a 3-element list or np.ndarray, and rotation is a
             (3, 3) list of lists or np.ndarray representing a rotation matrix.
-        camera_intrinsics: a dict mapping sample IDs to camera intrinsics matrices
-            for each sample in the dataset. The matrix can be a 3x3 or 4x4
-            np.ndarray.
+        camera_params: a dict mapping sample IDs to camera parameters dict which
+        contains the keys required by the camera_model for each sample in the dataset.
         forward_transform_flags: a dict mapping sample IDs to lists of booleans
             indicating whether to apply forward or inverse transformations for each
             transform in the list of transformations for each sample
         batch_size (1000): number of samples to process in each batch
+        camera_model (fou3d.pinhole_projector): a callable that takes 3D points
+            in the camera coordinate system and the camera parameters dict
+            and returns the projected 2D points in pixel coordinates
         progress (True): whether to show a progress bar during processing
     """
     fov.validate_grouped_non_dynamic_collection(dataset)
