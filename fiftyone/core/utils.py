@@ -2893,6 +2893,51 @@ def recommend_process_pool_workers(num_workers=None):
     return num_workers
 
 
+def get_cpu_count():
+    """Returns the number of CPUs available to the current process.
+
+    Returns:
+        the number of CPUs available to this process
+    """
+
+    # On Linux we can use cgroup to get a more accurate count of the
+    # available CPUs in some environments such as kubernetes where it will
+    # specify the CPU limit for the container
+    # 50000 100000 -> 500m CPU.
+    if sys.platform == "linux":
+        try:
+            with open("/sys/fs/cgroup/cpu.max") as f:
+                quota, period = f.read().strip().split()
+                # max means no limit so we fall back to other methods
+                if quota != "max" and period != "0":
+                    return max(1, int(int(quota) / int(period)))
+        except Exception:
+            pass
+
+    # Python >= 3.13 adds this function which is more accurate to what the
+    # process can actually use than cpu_count()
+    # https://docs.python.org/3/library/os.html#os.process_cpu_count
+    try:
+        return os.process_cpu_count()
+    except AttributeError:
+        pass
+
+    # On Linux if python < 3.13, we can manually check the affinity which
+    # tells us the number of CPUs available to the process rather than the
+    # total number of CPUs in the system
+    try:
+        return len(os.sched_getaffinity(0))
+    except AttributeError:
+        pass
+
+    # Getting CPU count is not implemented on this platform so fall back to
+    # just 1
+    try:
+        return multiprocessing.cpu_count()
+    except NotImplementedError:
+        return 1
+
+
 sync_task_executor = None
 
 
