@@ -739,14 +739,10 @@ class BaseClassificationResults(BaseEvaluationResults):
             self.ytrue, self.ypred, labels=labels, weights=self.weights
         )
 
-        precision, recall, fscore, _ = skm.precision_recall_fscore_support(
-            self.ytrue,
-            self.ypred,
+        precision, recall, fscore = self._precision_recall_fscore(
             average=average,
             labels=labels,
             beta=beta,
-            sample_weight=self.weights,
-            zero_division=0,
         )
 
         support = _compute_support(
@@ -891,6 +887,18 @@ class BaseClassificationResults(BaseEvaluationResults):
             return np.asarray(classes)
 
         return np.array([c for c in self.classes if c != self.missing])
+
+    def _precision_recall_fscore(self, labels, average, beta=1.0):
+        precision, recall, fscore, _ = skm.precision_recall_fscore_support(
+            self.ytrue,
+            self.ypred,
+            average=average,
+            labels=labels,
+            beta=beta,
+            sample_weight=self.weights,
+            zero_division=0,
+        )
+        return precision, recall, fscore
 
     def _confusion_matrix(
         self,

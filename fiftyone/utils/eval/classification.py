@@ -5,6 +5,7 @@ Classification evaluation.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from copy import deepcopy
 import inspect
 import itertools
@@ -900,6 +901,26 @@ class BinaryClassificationResults(ClassificationResults):
             backend=backend,
             **kwargs,
         )
+
+    def metrics(self, classes=None, average="binary", beta=1.0):
+        return super().metrics(classes, average, beta)
+
+    def _precision_recall_fscore(self, labels, average, beta=1.0):
+        if average == "binary":
+            pos_label = self._pos_label
+        else:
+            pos_label = 1  # set to sklearn default to suppress warning
+        precision, recall, fscore, _ = skm.precision_recall_fscore_support(
+            self.ytrue,
+            self.ypred,
+            average=average,
+            labels=labels,
+            beta=beta,
+            sample_weight=self.weights,
+            zero_division=0,
+            pos_label=pos_label,
+        )
+        return precision, recall, fscore
 
     def _parse_classes(self, classes):
         if classes is not None:
