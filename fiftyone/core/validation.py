@@ -159,13 +159,13 @@ def validate_grouped_non_dynamic_collection(sample_collection):
     validate_collection(sample_collection)
 
     if sample_collection.media_type != fom.GROUP:
-        if sample_collection._is_dynamic_groups:
-            raise ValueError(
-                "This method does not support dynamic group views"
-            )
         raise ValueError(
             "Expected collection to have media type %s; found %s"
             % (fom.GROUP, sample_collection.media_type)
+        )
+    if sample_collection._is_dynamic_groups:
+        raise ValueError(
+            "This method does not support dynamic group views"
         )
 
 
