@@ -479,6 +479,20 @@ ________________________________
 FiftyOne Enterprise offers a builtin orchestrator that is configured as part of
 your team's deployment with a default level of compute capacity.
 
+.. note::
+
+    Contact your Voxel51 support team to scale your deployment's compute
+    capacity, for more information about on-demand compute integrations,
+    or if you'd like to use another external orchestrator.
+
+On-demand compute
+-----------------
+
+.. note::
+
+    This feature is currently in **beta** and its API or functionality may
+    change in future releases.
+
 As of FiftyOne Enterprise 2.11.0, there is builtin support for scheduling
 delegated operations on-demand in supported external compute platforms. This
 means only using expensive compute resources when they're actually needed!
@@ -491,18 +505,15 @@ Administrators can see more information about configuring these orchestrators
 in the
 `deployment guide <https://github.com/voxel51/fiftyone-teams-app-deploy/blob/main/docs/configuring-on-demand-orchestrator.md>`_.
 
+External orchestrators
+----------------------
+
 It is also possible to connect your FiftyOne Enterprise deployment to other
 externally managed workflow orchestration tools such as:
 `Airflow <https://airflow.apache.org>`_, `Flyte <https://flyte.org>`_,
 `Spark <https://spark.apache.org/>`_, etc. These platforms will have less
 builtin support and must have a continually running worker pool that can accept
 tasks from your deployment (i.e., not on-demand).
-
-.. note::
-
-    Contact your Voxel51 support team to scale your deployment's compute
-    capacity, for more information about on-demand compute integrations,
-    or if you'd like to use another external orchestrator.
 
 .. _enterprise-managing-delegated-operations:
 
