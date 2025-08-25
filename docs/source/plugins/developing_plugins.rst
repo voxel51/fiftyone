@@ -1454,7 +1454,7 @@ Allow distributed
 ^^^^^^^^^^^^^^^^^
 
 To allow your operator to be executed in a distributed fashion, you must set
-the `allow_distributed` flag to `True` in the
+the `allow_distributed_execution` flag to `True` in the
 :ref:`operator's config <operator-config>`:
 
 .. code-block:: python
@@ -1519,7 +1519,7 @@ This can be achieved via one of two ways:
     the data, in any order, the operator cannot perform any pre or post
     processing outside of the ``ctx.view``. That is, the operator execution
     must be a so-called
-    :ref:`embarrassingly parallel problem<https://en.wikipedia.org/wiki/Embarrassingly_parallel>`.
+    `embarrassingly parallel problem <https://en.wikipedia.org/wiki/Embarrassingly_parallel>`_.
 
 .. _operator-execution:
 

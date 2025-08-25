@@ -31,8 +31,3 @@ sphinx-copybutton==0.5.2
 sphinxcontrib-jquery==4.1
 sphinx-pushfeedback==0.1.7
 sphinx-docsearch==0.1.0
-
-# fiftyone-teams docs requirements
-backoff==2.2.1
-lz4==4.4.4
-websocket==0.2.1

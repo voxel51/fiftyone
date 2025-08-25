@@ -449,7 +449,8 @@ independently on a separate worker in your chosen orchestrator, allowing you
 to scale out the execution of large operations across many machines.
 
 If you choose a number of tasks *T* less than the deployment's maximum, the
-operation will complete up to *T* times faster!
+operation can complete up to *T* times faster, if resources are available
+and tasks are balanced!
 
 .. image:: /images/plugins/operators/distributed/selecting-num-tasks.png
 
@@ -867,5 +868,3 @@ The View tab on the Run page lets you see the specific view (which could be the
 full dataset) on which the operation was performed:
 
 .. image:: /images/plugins/operators/runs/run_view.png
-
-.. _enterprise-child-run-page:
