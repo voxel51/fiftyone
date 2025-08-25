@@ -883,7 +883,8 @@ class TorchImageModel(
             of dicts of :class:`fiftyone.core.labels.Label` instances
             containing the predictions
         """
-        return self._predict_all(imgs)
+        ids = imgs.pop("_id", None)
+        return ids, self._predict_all(imgs)
 
     def _predict_all(self, imgs):
         if self._preprocess and self._transforms is not None:
@@ -921,7 +922,7 @@ class TorchImageModel(
 
         if self._output_processor is None:
             if isinstance(output, torch.Tensor):
-                output = output.detach().cpu().numpy()
+                output = output.detach().cpu()
 
             return output
 
@@ -1913,13 +1914,15 @@ class FiftyOneTorchDataset(Dataset):
         return self.__getitems__([idx])[0]
 
     def __getitems__(self, indices):
+        _ids = [self.ids[idx] for idx in indices]
         if self.vectorize:
             batch = self._prepare_batch_vectorized(indices)
         else:
             batch = self._prepare_batch_db(indices)
 
         res = []
-        for d in batch:
+        for i, d in enumerate(batch):
+            d["_id"] = _ids[i]
             if isinstance(d, Exception):
                 res.append(d)
             else:

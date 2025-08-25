@@ -37,6 +37,8 @@ fout = fou.lazy_import("fiftyone.utils.torch")
 foutr = fou.lazy_import("fiftyone.utils.transformers")
 fouu = fou.lazy_import("fiftyone.utils.ultralytics")
 
+from fiftyone.core.ray.base import ActorPoolContext
+from fiftyone.core.ray.writers import LabelWriter
 
 logger = logging.getLogger(__name__)
 
@@ -459,7 +461,9 @@ def _apply_image_model_data_loader(
 
     with contextlib.ExitStack() as context:
         pb = context.enter_context(fou.ProgressBar(samples, progress=progress))
-        ctx = context.enter_context(foc.SaveContext(samples))
+        output_processor = model._output_processor
+        ctx = context.enter_context(ActorPoolContext(samples, LabelWriter))
+        context.enter_context(fou.SetAttributes(model, _output_processor=None))
 
         for sample_batch, imgs in zip(
             fou.iter_batches(samples, batch_size),
@@ -470,22 +474,13 @@ def _apply_image_model_data_loader(
                     raise imgs
 
                 if needs_samples:
-                    labels_batch = model.predict_all(
+                    ids, labels_batch = model.predict_all(
                         imgs, samples=sample_batch
                     )
                 else:
-                    labels_batch = model.predict_all(imgs)
+                    ids, labels_batch = model.predict_all(imgs)
 
-                for sample, labels in zip(sample_batch, labels_batch):
-                    if filename_maker is not None:
-                        _export_arrays(labels, sample.filepath, filename_maker)
-
-                    sample.add_labels(
-                        labels,
-                        label_field=label_field,
-                        confidence_thresh=confidence_thresh,
-                    )
-                    ctx.save(sample)
+                ctx.submit(ids, labels_batch)
 
             except Exception as e:
                 if not skip_failures:
