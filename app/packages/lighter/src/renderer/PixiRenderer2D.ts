@@ -9,6 +9,7 @@ import { LIGHTER_EVENTS } from "../event/EventBus";
 import type { DrawStyle, Point, Rect, TextOptions } from "../types";
 import { parseColorWithAlpha } from "../utils/color";
 import type { ImageOptions, ImageSource, Renderer2D } from "./Renderer2D";
+import { DashLine } from "./pixi-renderer-utils/dashed-line";
 
 /**
  * PixiJS v8 renderer
@@ -85,53 +86,55 @@ export class PixiRenderer2D implements Renderer2D {
     this.isInitialized = true;
   }
 
+  private tick = () => {
+    if (this.isRunning && this.renderLoop) this.renderLoop();
+  };
+
   startRenderLoop(onFrame: () => void): void {
     if (this.isRunning) return;
 
     this.isRunning = true;
     this.renderLoop = onFrame;
 
-    this.app.ticker.add((ticker) => {
-      if (this.isRunning && this.renderLoop) {
-        this.renderLoop();
-      }
-    });
+    this.app.ticker.add(this.tick);
   }
 
   stopRenderLoop(): void {
     this.isRunning = false;
     this.renderLoop = undefined;
 
-    if (this.app.ticker) {
-      this.app.ticker.stop();
-    }
+    this.app.ticker.remove(this.tick);
   }
 
   drawRect(bounds: Rect, style: DrawStyle, containerId: string): void {
     const graphics = new PIXI.Graphics();
-    graphics.rect(bounds.x, bounds.y, bounds.width, bounds.height);
+
     if (style.fillStyle) {
+      graphics.rect(bounds.x, bounds.y, bounds.width, bounds.height);
       graphics.fill(style.fillStyle);
     }
+
     if (style.strokeStyle) {
       const { color, alpha } = parseColorWithAlpha(style.strokeStyle);
       if (style.dashPattern && style.dashPattern.length > 0) {
-        this.drawDashedRect(graphics, bounds, {
-          color,
-          alpha: alpha * (style.opacity || 1),
-          width: style.lineWidth || 1,
-          dashPattern: style.dashPattern,
-        });
-      } else {
-        const strokeOptions: PIXI.StrokeStyle = {
+        const dashLine = new DashLine(graphics, {
+          dash: style.dashPattern,
           width: style.lineWidth || 1,
           color: color,
           alpha: alpha * (style.opacity || 1),
-        };
-        graphics.setStrokeStyle(strokeOptions);
+        });
+        dashLine.drawRect(bounds.x, bounds.y, bounds.width, bounds.height);
+      } else {
+        graphics.rect(bounds.x, bounds.y, bounds.width, bounds.height);
+        graphics.setStrokeStyle({
+          width: style.lineWidth || 1,
+          color: color,
+          alpha: alpha * (style.opacity || 1),
+        });
         graphics.stroke();
       }
     }
+
     this.addToContainer(graphics, containerId);
   }
 
@@ -181,13 +184,28 @@ export class PixiRenderer2D implements Renderer2D {
     const { color, alpha } = parseColorWithAlpha(
       style.strokeStyle || "#000000"
     );
-    graphics.setStrokeStyle({
-      width: style.lineWidth || 1,
-      color: color,
-      alpha: alpha * (style.opacity || 1),
-    });
-    graphics.moveTo(start.x, start.y);
-    graphics.lineTo(end.x, end.y);
+
+    if (style.dashPattern && style.dashPattern.length > 0) {
+      const dashLine = new DashLine(graphics, {
+        dash: style.dashPattern,
+        width: style.lineWidth || 1,
+        color: color,
+        alpha: alpha * (style.opacity || 1),
+      });
+      dashLine.moveTo(start.x, start.y);
+      dashLine.lineTo(end.x, end.y);
+    } else {
+      // Use solid line implementation
+      graphics.setStrokeStyle({
+        width: style.lineWidth || 1,
+        color: color,
+        alpha: alpha * (style.opacity || 1),
+      });
+      graphics.moveTo(start.x, start.y);
+      graphics.lineTo(end.x, end.y);
+      graphics.stroke();
+    }
+
     this.addToContainer(graphics, containerId);
   }
 
@@ -465,113 +483,5 @@ export class PixiRenderer2D implements Renderer2D {
       point.y >= bounds.y &&
       point.y <= bounds.y + bounds.height
     );
-  }
-
-  private drawDashedRect(
-    graphics: PIXI.Graphics,
-    bounds: Rect,
-    style: {
-      color: number;
-      alpha: number;
-      width: number;
-      dashPattern: number[];
-    }
-  ): void {
-    const { color, alpha, width, dashPattern } = style;
-    const dashLength = dashPattern[0];
-    const gapLength = dashPattern[1];
-
-    // Set stroke style for dashed lines
-    graphics.setStrokeStyle({
-      width,
-      color,
-      alpha,
-      cap: "round",
-      join: "round",
-    });
-
-    // Draw dashed top line
-    this.drawDashedLine(
-      graphics,
-      bounds.x,
-      bounds.y,
-      bounds.x + bounds.width,
-      bounds.y,
-      dashLength,
-      gapLength
-    );
-
-    // Draw dashed right line
-    this.drawDashedLine(
-      graphics,
-      bounds.x + bounds.width,
-      bounds.y,
-      bounds.x + bounds.width,
-      bounds.y + bounds.height,
-      dashLength,
-      gapLength
-    );
-
-    // Draw dashed bottom line
-    this.drawDashedLine(
-      graphics,
-      bounds.x + bounds.width,
-      bounds.y + bounds.height,
-      bounds.x,
-      bounds.y + bounds.height,
-      dashLength,
-      gapLength
-    );
-
-    // Draw dashed left line
-    this.drawDashedLine(
-      graphics,
-      bounds.x,
-      bounds.y + bounds.height,
-      bounds.x,
-      bounds.y,
-      dashLength,
-      gapLength
-    );
-
-    // Apply the stroke to all dashed lines
-    graphics.stroke();
-  }
-
-  private drawDashedLine(
-    graphics: PIXI.Graphics,
-    x1: number,
-    y1: number,
-    x2: number,
-    y2: number,
-    dashLength: number,
-    gapLength: number
-  ): void {
-    const dx = x2 - x1;
-    const dy = y2 - y1;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    const unitX = dx / distance;
-    const unitY = dy / distance;
-
-    let currentDistance = 0;
-    let isDrawing = true;
-
-    while (currentDistance < distance) {
-      const segmentLength = isDrawing ? dashLength : gapLength;
-      const nextDistance = Math.min(currentDistance + segmentLength, distance);
-
-      if (isDrawing) {
-        const startX = x1 + unitX * currentDistance;
-        const startY = y1 + unitY * currentDistance;
-        const endX = x1 + unitX * nextDistance;
-        const endY = y1 + unitY * nextDistance;
-
-        graphics.moveTo(startX, startY);
-        graphics.lineTo(endX, endY);
-      }
-
-      currentDistance = nextDistance;
-      isDrawing = !isDrawing;
-    }
   }
 }

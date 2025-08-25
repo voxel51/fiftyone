@@ -7,6 +7,7 @@ import type { Renderer2D } from "../renderer/Renderer2D";
 import type { Selectable } from "../selection/Selectable";
 import type { DrawStyle, Hoverable, Point, RawLookerLabel } from "../types";
 import { BaseOverlay } from "./BaseOverlay";
+import { getSimpleStrokeStyles } from "../utils/colorMapping";
 
 export type ClassificationLabel = RawLookerLabel & {
   label: string;
@@ -42,6 +43,10 @@ export class ClassificationOverlay
     super(id, options.sampleId, options.label, options.field);
   }
 
+  getOverlayType(): string {
+    return "ClassificationOverlay";
+  }
+
   get containerId() {
     return this.id;
   }
@@ -56,11 +61,11 @@ export class ClassificationOverlay
         )}%)`
       : this.options.label.label;
 
-    // Create style with selection state
-    const renderStyle: DrawStyle = {
-      ...style,
+    const { overlayStrokeColor, overlayDash } = getSimpleStrokeStyles({
       isSelected: this.isSelectedState,
-    };
+      strokeColor: style.strokeStyle || "#000000",
+      dashLength: 8,
+    });
 
     // Draw the classification text
     renderer.drawText(
@@ -77,21 +82,23 @@ export class ClassificationOverlay
     );
 
     // Draw selection border if selected
-    if (this.isSelectedState) {
+    if (overlayStrokeColor && overlayDash) {
       const bounds = this.getBounds();
-      const selectionStyle: DrawStyle = {
-        strokeStyle: style.selectionColor || "#ff6600",
-        lineWidth: 2,
-        dashPattern: [5, 5],
-        isSelected: true,
-      };
       const borderBounds = {
         x: bounds.x - 2,
         y: bounds.y - 2,
         width: bounds.width + 4,
         height: bounds.height + 4,
       };
-      renderer.drawRect(borderBounds, selectionStyle, this.containerId);
+      renderer.drawRect(
+        borderBounds,
+        {
+          strokeStyle: overlayStrokeColor,
+          lineWidth: 2,
+          dashPattern: [overlayDash, overlayDash],
+        },
+        this.containerId
+      );
     }
 
     this.emitLoaded();
@@ -112,11 +119,6 @@ export class ClassificationOverlay
   toggleSelected(): boolean {
     this.setSelected(!this.isSelectedState);
     return this.isSelectedState;
-  }
-
-  getSelectionPriority(): number {
-    // Classifications have high priority (smaller, more specific targets)
-    return 15;
   }
 
   /**

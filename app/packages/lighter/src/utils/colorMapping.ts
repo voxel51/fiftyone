@@ -94,3 +94,74 @@ export function getOverlayColor(
   // Default fallback
   return getColor(colorPool, seed, path);
 }
+
+/**
+ * Gets stroke styles for overlays with instances.
+ * Four possible cases when label.instance is defined:
+ * 1. Label is neither selected nor hovered: default color
+ * 2. Label is hovered: white stroke
+ * 3. Label is selected: stroke with dash of white and default color
+ * 4. Label is selected and hovered: stroke with dash of orange and default color
+ */
+export function getInstanceStrokeStyles({
+  isSelected,
+  strokeColor,
+  isHovered,
+  dashLength = 8,
+}: {
+  isSelected: boolean;
+  strokeColor: string;
+  isHovered: boolean;
+  dashLength?: number;
+}) {
+  const INFO_COLOR = "#ffffff";
+  const SELECTED_AND_HOVERED_COLOR = "#ff6f61";
+
+  // Main stroke color
+  let finalStrokeColor = strokeColor;
+  let overlayStrokeColor: string | null = null;
+  let overlayDash: number | null = null;
+
+  if (isHovered && !isSelected) {
+    finalStrokeColor = INFO_COLOR;
+  }
+
+  if (isSelected && isHovered) {
+    overlayStrokeColor = SELECTED_AND_HOVERED_COLOR;
+    overlayDash = dashLength;
+  } else if (isSelected) {
+    overlayStrokeColor = INFO_COLOR;
+    overlayDash = dashLength;
+  }
+
+  return { strokeColor: finalStrokeColor, overlayStrokeColor, overlayDash };
+}
+
+/**
+ * Gets stroke styles for overlays without instances.
+ * Only two states:
+ * 1. Selected: overlay a dashed white stroke on top of the main stroke
+ * 2. All other states (including hover): do nothing
+ */
+export function getSimpleStrokeStyles({
+  isSelected,
+  strokeColor,
+  dashLength = 8,
+}: {
+  isSelected: boolean;
+  strokeColor: string;
+  dashLength?: number;
+}) {
+  const INFO_COLOR = "#ffffff";
+
+  let overlayStrokeColor: string | null = null;
+  let overlayDash: number | null = null;
+
+  if (isSelected) {
+    // Add white dashed overlay stroke
+    overlayStrokeColor = INFO_COLOR;
+    overlayDash = dashLength;
+  }
+
+  return { strokeColor, overlayStrokeColor, overlayDash };
+}

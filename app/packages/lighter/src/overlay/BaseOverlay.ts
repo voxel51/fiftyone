@@ -103,6 +103,16 @@ export abstract class BaseOverlay implements InteractionHandler {
   }
 
   /**
+   * Gets the overlay type identifier.
+   * Used for type-specific behavior.
+   * @returns The overlay type identifier.
+   */
+  getOverlayType(): string {
+    // Default to class name - can be overridden by subclasses
+    return this.constructor.name;
+  }
+
+  /**
    * Gets the container ID for this overlay.
    * @returns The container ID.
    */

@@ -16,11 +16,16 @@ import type {
   Spatial,
 } from "../types";
 import type { Movable } from "../undo/MoveOverlayCommand";
+import {
+  getInstanceStrokeStyles,
+  getSimpleStrokeStyles,
+} from "../utils/colorMapping";
 import { BaseOverlay } from "./BaseOverlay";
 
 export type BoundingBoxLabel = RawLookerLabel & {
   label: string;
   bounding_box: number[];
+  confidence?: number;
 };
 
 /**
@@ -50,6 +55,8 @@ export class BoundingBoxOverlay
   private isSelectedState = false;
   private relativeBounds: Rect;
   private absoluteBounds: Rect;
+  private isHoveredState = false;
+
   private _needsCoordinateUpdate = false;
 
   constructor(private options: BoundingBoxOptions) {
@@ -68,6 +75,10 @@ export class BoundingBoxOverlay
     } else {
       throw new Error("Either bounds or relativeBounds must be provided");
     }
+  }
+
+  getOverlayType(): string {
+    return "BoundingBoxOverlay";
   }
 
   // Spatial interface implementation
@@ -111,47 +122,69 @@ export class BoundingBoxOverlay
     // Dispose of old elements before creating new ones
     renderer.dispose(this.containerId);
 
-    // Create style with selection state
-    const renderStyle: DrawStyle = {
+    // Check if this label has an instance to determine stroke styling
+    const hasInstance = this.options.label.instance?._id !== undefined;
+
+    // Get stroke styles based on whether the label has an instance
+    const { strokeColor, overlayStrokeColor, overlayDash } = hasInstance
+      ? getInstanceStrokeStyles({
+          isSelected: this.isSelectedState,
+          strokeColor: style.strokeStyle || "#000000",
+          isHovered: this.isHoveredState,
+          dashLength: 8,
+        })
+      : getSimpleStrokeStyles({
+          isSelected: this.isSelectedState,
+          strokeColor: style.strokeStyle || "#ffffff",
+          dashLength: 8,
+        });
+
+    const mainStrokeStyle = {
       ...style,
+      strokeStyle: strokeColor,
       isSelected: this.isSelectedState,
     };
 
-    // Draw the bounding box using absolute bounds
-    renderer.drawRect(this.absoluteBounds, renderStyle, this.containerId);
+    if (!style.dashPattern && overlayStrokeColor && overlayDash) {
+    } else if (style.dashPattern) {
+      mainStrokeStyle.dashPattern = style.dashPattern;
+    }
 
-    // Draw label if provided
-    if (this.options.label) {
-      const labelPosition = {
-        x: this.absoluteBounds.x + DEFAULT_TEXT_PADDING - 1,
-        y: this.absoluteBounds.y - 20,
-      };
-      renderer.drawText(
-        this.options.label.label,
-        labelPosition,
+    renderer.drawRect(this.absoluteBounds, mainStrokeStyle, this.containerId);
+
+    if (overlayStrokeColor && overlayDash) {
+      renderer.drawRect(
+        this.absoluteBounds,
         {
-          fontColor: "#ffffff",
-          backgroundColor: style.fillStyle || style.strokeStyle || "#000",
+          strokeStyle: overlayStrokeColor,
+          lineWidth: style.lineWidth || 2, // Make overlay stroke slightly thicker
+          dashPattern: [overlayDash, overlayDash],
         },
         this.containerId
       );
     }
 
-    // Draw selection border if selected
-    if (this.isSelectedState) {
-      const selectionBounds = {
-        x: this.absoluteBounds.x - 2,
-        y: this.absoluteBounds.y - 2,
-        width: this.absoluteBounds.width + 4,
-        height: this.absoluteBounds.height + 4,
+    if (this.options.label) {
+      const labelPosition = {
+        x: this.absoluteBounds.x + DEFAULT_TEXT_PADDING - 1,
+        y: this.absoluteBounds.y - 20,
       };
-      renderer.drawRect(
-        selectionBounds,
+
+      let textToDraw = this.options.label.label;
+
+      if (
+        typeof this.options.label.confidence !== "undefined" &&
+        !isNaN(this.options.label.confidence)
+      ) {
+        textToDraw += ` (${this.options.label.confidence.toFixed(2)})`;
+      }
+
+      renderer.drawText(
+        textToDraw,
+        labelPosition,
         {
-          strokeStyle: style.selectionColor || "#ff6600",
-          lineWidth: 2,
-          dashPattern: [5, 5],
-          isSelected: true,
+          fontColor: "#ffffff",
+          backgroundColor: style.fillStyle || style.strokeStyle || "#000",
         },
         this.containerId
       );
@@ -225,6 +258,10 @@ export class BoundingBoxOverlay
   }
 
   onHoverEnter(point: Point, event: PointerEvent): boolean {
+    this.isHoveredState = true;
+    this.markDirty();
+
+    // Emit event to trigger re-ordering
     this.eventBus?.emit({
       type: LIGHTER_EVENTS.OVERLAY_HOVER,
       detail: { id: this.id, point },
@@ -234,6 +271,10 @@ export class BoundingBoxOverlay
   }
 
   onHoverLeave(point: Point, event: PointerEvent): boolean {
+    this.isHoveredState = false;
+    this.markDirty();
+
+    // Emit event to trigger re-ordering
     this.eventBus?.emit({
       type: LIGHTER_EVENTS.OVERLAY_UNHOVER,
       detail: { id: this.id, point },
@@ -331,11 +372,6 @@ export class BoundingBoxOverlay
   toggleSelected(): boolean {
     this.setSelected(!this.isSelectedState);
     return this.isSelectedState;
-  }
-
-  getSelectionPriority(): number {
-    // Bounding boxes have medium priority (higher than images, lower than points)
-    return 10;
   }
 
   // Hoverable interface implementation

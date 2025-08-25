@@ -9,9 +9,9 @@ import type { ResourceLoader } from "../resource/ResourceLoader";
 import type {
   BoundedOverlay,
   CanonicalMedia,
+  Dimensions,
   DrawStyle,
   Rect,
-  Dimensions,
 } from "../types";
 import { BaseOverlay } from "./BaseOverlay";
 
@@ -45,6 +45,10 @@ export class ImageOverlay
       .toString(36)
       .substring(2, 9)}`;
     super(id, null, options.field);
+  }
+
+  getOverlayType(): string {
+    return "ImageOverlay";
   }
 
   /**
