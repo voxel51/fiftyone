@@ -251,7 +251,11 @@ class SceneMetadata(Metadata):
         """
         if scene_path.startswith("http"):
             return cls._build_for_url(
-                scene_path, mime_type=mime_type, cache=_cache
+                scene_path,
+                mime_type=mime_type,
+                cache=_cache,
+                skip_failures=skip_failures,
+                warn_failures=warn_failures,
             )
 
         return cls._build_for_local(
@@ -293,7 +297,14 @@ class SceneMetadata(Metadata):
         )
 
     @classmethod
-    def _build_for_url(cls, scene_path, mime_type=None, cache=None):
+    def _build_for_url(
+        cls,
+        scene_path,
+        mime_type=None,
+        cache=None,
+        skip_failures=True,
+        warn_failures=True,
+    ):
         # Unclear how asset paths should be handled; the rest of the library is
         # not equipped to handle URL asset paths
         raise ValueError("Scene URLs are not currently supported")
