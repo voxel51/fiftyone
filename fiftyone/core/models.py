@@ -6,7 +6,6 @@ FiftyOne models.
 |
 """
 
-from concurrent.futures import ThreadPoolExecutor
 import contextlib
 import inspect
 import logging
