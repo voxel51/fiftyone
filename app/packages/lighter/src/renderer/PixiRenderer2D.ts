@@ -467,21 +467,43 @@ export class PixiRenderer2D implements Renderer2D {
     return undefined;
   }
 
-  private hitTestElement(element: PIXI.Container, point: Point): boolean {
-    // Check if element is visible and interactive
-    if (!element.visible || element.alpha <= 0) {
+  private hitTestElement(container: PIXI.Container, point: Point): boolean {
+    if (!container.visible || container.alpha <= 0) {
       return false;
     }
 
-    // Get global bounds (already in screen coordinates)
-    const bounds = element.getBounds();
+    // note: container's bound is not necessarily the same as the children's bounds
+    // example: a bounding box with a small text label on top (not width of box)
 
-    // Simple bounds check
-    return (
-      point.x >= bounds.x &&
-      point.x <= bounds.x + bounds.width &&
-      point.y >= bounds.y &&
-      point.y <= bounds.y + bounds.height
-    );
+    // if container has children, hit test with children
+    // if not, bounds = container's bounds
+
+    const children = container.children;
+
+    if (children.length > 0) {
+      for (const child of children) {
+        const bounds = child.getBounds();
+
+        if (
+          point.x >= bounds.x &&
+          point.x <= bounds.x + bounds.width &&
+          point.y >= bounds.y &&
+          point.y <= bounds.y + bounds.height
+        ) {
+          return true;
+        }
+      }
+
+      return false;
+    } else {
+      const bounds = container.getBounds();
+
+      return (
+        point.x >= bounds.x &&
+        point.x <= bounds.x + bounds.width &&
+        point.y >= bounds.y &&
+        point.y <= bounds.y + bounds.height
+      );
+    }
   }
 }
