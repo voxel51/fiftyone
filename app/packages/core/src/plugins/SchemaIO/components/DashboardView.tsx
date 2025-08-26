@@ -61,18 +61,13 @@ function useClipboardData() {
   const checkClipboard = useCallback(async () => {
     try {
       const text = await navigator.clipboard.readText();
-      console.log("Clipboard content:", text);
       const item = JSON.parse(text);
-      console.log("Parsed item:", item);
       if (typeof item === "object" && item !== null) {
-        console.log("Setting hasClipboardData to true");
         setHasClipboardData(true);
       } else {
-        console.log("Setting hasClipboardData to false - not an object");
         setHasClipboardData(false);
       }
     } catch (error) {
-      console.log("Setting hasClipboardData to false - error:", error);
       setHasClipboardData(false);
     }
   }, []);
@@ -83,7 +78,6 @@ function useClipboardData() {
 
     // Listen for clipboard changes
     const handleClipboardChange = () => {
-      console.log("Clipboard changed, checking content...");
       checkClipboard();
     };
 
@@ -302,6 +296,7 @@ const ControlContainer = ({
   onAddItem,
   onEditLayoutClick,
   onPasteClick,
+  onSelectAll,
   onDeleteSelected,
   onExportItems,
   onExportAsPNG,
@@ -314,6 +309,7 @@ const ControlContainer = ({
   shortcutKey,
   selectedItemIds,
   clipboardData,
+  hasMultipleItems,
 }) => {
   const { hasClipboardData } = clipboardData;
   if (!isEditMode) {
@@ -369,6 +365,21 @@ const ControlContainer = ({
               },
             },
             onPasteClick
+          )}
+        />
+      )}
+      {hasMultipleItems && (
+        <ButtonView
+          {...createButtonViewProps(
+            {
+              type: "object",
+              view: {
+                icon: "select_all",
+                label: "Select all",
+                variant: "square",
+              },
+            },
+            onSelectAll
           )}
         />
       )}
@@ -536,12 +547,11 @@ export default function DashboardView(props: ViewPropsType) {
         (panelState as any)?.state,
         `${dataPath}.${id}`
       );
-      const newId = `${id}-copy`;
       if (schema.view.on_duplicate_item) {
         triggerPanelEvent(panelId, {
           panelId,
           operator: schema.view.on_duplicate_item,
-          params: { id: newId, plot_config: originalItem },
+          params: { plot_configs: [originalItem] },
         });
       }
     },
@@ -554,61 +564,14 @@ export default function DashboardView(props: ViewPropsType) {
     ]
   );
 
-  const copyItemsToClipboard = useCallback(
-    (ids?: string[]) => {
-      const itemsToCopy = ids || Array.from(selectedItemIds);
-
-      if (itemsToCopy.length === 0) {
-        console.log("No items selected to copy");
-        return;
-      }
-
-      try {
-        // Get all selected items from the panel state
-        const plotList = [];
-        for (const id of itemsToCopy) {
-          const value = getFromPath(
-            (panelState as any)?.state,
-            `${dataPath}.${id}`
-          );
-          if (value) {
-            plotList.push(value);
-          }
-        }
-
-        if (plotList.length > 0) {
-          // Convert the items to a string representation as an array
-          const valueToCopy = JSON.stringify(plotList, null, 2);
-
-          // Copy to clipboard
-          console.log("Copying items to clipboard:", valueToCopy);
-          navigator.clipboard
-            .writeText(valueToCopy)
-            .then(() => {
-              console.log("Copy successful");
-              // Set clipboard state directly since we know we just copied valid data
-              clipboardData.setHasClipboardData(true);
-            })
-            .catch((err) => {
-              console.error("Failed to copy to clipboard:", err);
-            });
-        }
-      } catch (error) {
-        console.error("Error copying items to clipboard:", error);
-      }
-    },
-    [panelState, dataPath, clipboardData, selectedItemIds]
-  );
-
-  // Backward compatibility for single item copy
-  const copyItemToClipboard = useCallback(
-    ({ id, path }) => {
-      copyItemsToClipboard([id]);
-    },
-    [copyItemsToClipboard]
-  );
-
-  const onCopyItem = copyItemToClipboard;
+  const safeParseJSON = (jsonString: string) => {
+    try {
+      return JSON.parse(jsonString);
+    } catch (error) {
+      console.error("Error parsing JSON:", error);
+      return null;
+    }
+  };
 
   const onExportItems = useCallback(() => {
     try {
@@ -642,8 +605,6 @@ export default function DashboardView(props: ViewPropsType) {
       // Cleanup
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-
-      console.log("Dashboard items and config exported successfully");
     } catch (error) {
       console.error("Error exporting dashboard items:", error);
     }
@@ -651,55 +612,39 @@ export default function DashboardView(props: ViewPropsType) {
 
   // Unified paste handler that works in both edit mode and when dashboard is empty
   const handlePaste = useCallback(async () => {
-    console.log("handlePaste called");
+    console.log("DEBUG: Starting paste operation");
+    setIsPasting(true);
     try {
-      const clipboardData = await navigator.clipboard.readText();
-      console.log("Clipboard data received:", clipboardData);
-      let items;
-      try {
-        items = JSON.parse(clipboardData);
-        console.log("Parsed items:", items);
-      } catch (error) {
-        console.error("Error parsing clipboard data:", error);
-        return;
-      }
+      const rawClipboardData = await navigator.clipboard.readText();
+      let clipboardData = safeParseJSON(rawClipboardData);
+      let plotConfigs = clipboardData.plots;
+      let layout = clipboardData.layout;
+      let auto_layout = clipboardData.auto_layout;
 
-      if (items && schema.view.on_duplicate_item) {
-        // Convert items to a list format
-        let plotList = [];
-
-        if (Array.isArray(items)) {
-          // Array format - use as is
-          plotList = items;
-        } else if (typeof items === "object") {
-          // Object format - check if it's a single item or multiple items
-          const itemKeys = Object.keys(items);
-          if (itemKeys.length === 1 && !items[itemKeys[0]].view) {
-            // Single item - wrap in array
-            plotList = [items];
-          } else {
-            // Multiple items - convert object values to array
-            plotList = Object.values(items);
-          }
-        }
-
-        // Call the operator once with the list of plots
-        if (plotList.length > 0) {
-          console.log("Pasting", plotList.length, "items");
-          triggerPanelEvent(panelId, {
-            panelId,
-            operator: schema.view.on_duplicate_item,
-            params: { plot_configs: plotList },
-          });
-        }
-      } else {
-        console.log("Missing items or on_duplicate_item operator:", {
-          items: !!items,
-          on_duplicate_item: !!schema.view.on_duplicate_item,
+      if (plotConfigs && plotConfigs.length > 0) {
+        triggerPanelEvent(panelId, {
+          panelId,
+          operator: schema.view.on_duplicate_item,
+          params: {
+            plot_configs: plotConfigs,
+            layout: layout,
+            auto_layout: auto_layout,
+          },
+          callback: (result) => {
+            console.log("DEBUG: Paste result:", plotConfigs);
+            if (auto_layout !== undefined) {
+              setAutoLayout(auto_layout);
+            }
+            if (layout && layout.length > 0) {
+              console.log("DEBUG: Setting custom layout:", layout);
+              setCustomLayout(layout);
+            }
+            setIsPasting(false);
+          },
         });
       }
     } catch (error) {
-      console.error("Error reading clipboard:", error);
+      console.error("Error pasting items:", error);
     }
   }, [panelId, schema.view.on_duplicate_item, triggerPanelEvent]);
 
@@ -753,9 +698,19 @@ export default function DashboardView(props: ViewPropsType) {
     });
   }, []);
 
+  const selectAllItems = useCallback(() => {
+    if (propertiesAsArray.length === 0) {
+      return;
+    }
+
+    // Enter edit mode if not already in edit mode
+    setIsEditMode(true);
+
+    setSelectedItemIds(new Set(propertiesAsArray.map((p) => p.id)));
+  }, [propertiesAsArray]);
+
   const deleteSelectedItems = useCallback(() => {
     if (selectedItemIds.size === 0) {
-      console.log("No items selected to delete");
       return;
     }
 
@@ -795,6 +750,7 @@ export default function DashboardView(props: ViewPropsType) {
   const [layoutMode, setLayoutMode] = useState("columns");
   const [anchorEl, setAnchorEl] = useState(null);
   const [customLayout, setCustomLayout] = useState(schema.view.items || []);
+  const [isPasting, setIsPasting] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [exportMenuAnchor, setExportMenuAnchor] = useState<null | HTMLElement>(
     null
@@ -803,6 +759,112 @@ export default function DashboardView(props: ViewPropsType) {
   // Detect platform for keyboard shortcut display
   const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
   const shortcutKey = isMac ? "⌘ + V" : "Ctrl + V";
+
+  const copyItemsToClipboard = useCallback(
+    (ids?: string[]) => {
+      const itemsToCopy = ids || Array.from(selectedItemIds);
+
+      if (itemsToCopy.length === 0) {
+        return;
+      }
+
+      try {
+        // Get all selected items from the panel state
+        const plotList = [];
+        const layoutList = [];
+
+        for (const id of itemsToCopy) {
+          const value = getFromPath(
+            (panelState as any)?.state,
+            `${dataPath}.${id}`
+          );
+          if (value) {
+            plotList.push(value);
+
+            // Get layout information for this item from customLayout
+            const layoutItem = customLayout.find((item) => item.i === id);
+            if (layoutItem) {
+              layoutList.push({
+                id: id,
+                x: layoutItem.x,
+                y: layoutItem.y,
+                w: layoutItem.w,
+                h: layoutItem.h,
+              });
+            }
+          }
+        }
+
+        if (plotList.length > 0) {
+          // Always include layout information if we have it, regardless of selection size
+          let valueToCopy;
+          if (layoutList.length > 0) {
+            // Include layout information when we have layout data
+            valueToCopy = JSON.stringify(
+              {
+                plots: plotList,
+                layout: layoutList,
+                auto_layout: autoLayout, // Include current auto-layout setting
+                metadata: {
+                  copiedAt: new Date().toISOString(),
+                  totalPlots: plotList.length,
+                  includesLayout: true,
+                },
+              },
+              null,
+              2
+            );
+          } else {
+            // Just copy the plots without layout, but still include auto-layout setting
+            valueToCopy = JSON.stringify(
+              {
+                plots: plotList,
+                auto_layout: autoLayout, // Include current auto-layout setting
+                metadata: {
+                  copiedAt: new Date().toISOString(),
+                  totalPlots: plotList.length,
+                  includesLayout: false,
+                },
+              },
+              null,
+              2
+            );
+          }
+
+          // Copy to clipboard
+          navigator.clipboard
+            .writeText(valueToCopy)
+            .then(() => {
+              // Set clipboard state directly since we know we just copied valid data
+              clipboardData.setHasClipboardData(true);
+            })
+            .catch((err) => {
+              console.error("Failed to copy to clipboard:", err);
+            });
+        }
+      } catch (error) {
+        console.error("Error copying items to clipboard:", error);
+      }
+    },
+    [
+      panelState,
+      dataPath,
+      clipboardData,
+      selectedItemIds,
+      customLayout,
+      propertiesAsArray,
+    ]
+  );
+
+  // Backward compatibility for single item copy
+  const copyItemToClipboard = useCallback(
+    ({ id, path }) => {
+      copyItemsToClipboard([id]);
+    },
+    [copyItemsToClipboard]
+  );
+
+  const onCopyItem = copyItemToClipboard;
 
   const handleAutoLayoutChange = (event) => {
     const { checked } = event.target;
@@ -866,71 +928,24 @@ export default function DashboardView(props: ViewPropsType) {
     setExportMenuAnchor(null);
   };
 
-  const handleDuplicateItem = useCallback(
-    (event) => {
-      // duplicate items from the clipboard
-      navigator.clipboard
-        .readText()
-        .then((clipboardData) => {
-          let items;
-          try {
-            items = JSON.parse(clipboardData);
-          } catch (error) {
-            console.error("Error parsing clipboard data:", error);
-            return;
-          }
-          if (items && schema.view.on_duplicate_item) {
-            // Convert items to a list format
-            let plotList = [];
-
-            if (Array.isArray(items)) {
-              // Array format - use as is
-              plotList = items;
-            } else if (typeof items === "object") {
-              // Object format - check if it's a single item or multiple items
-              const itemKeys = Object.keys(items);
-              if (itemKeys.length === 1 && !items[itemKeys[0]].view) {
-                // Single item - wrap in array
-                plotList = [items];
-              } else {
-                // Multiple items - convert object values to array
-                plotList = Object.values(items);
-              }
-            }
-
-            // Call the operator once with the list of plots
-            if (plotList.length > 0) {
-              console.log("Duplicating", plotList.length, "items");
-              triggerPanelEvent(panelId, {
-                panelId,
-                operator: schema.view.on_duplicate_item,
-                params: { plot_configs: plotList },
-              });
-            }
-          }
-        })
-        .catch((error) => {
-          console.error("Error reading clipboard:", error);
-        });
-    },
-    [panelId, schema.view.on_duplicate_item, triggerPanelEvent]
-  );
-
   // Keyboard event listener for Cmd+V / Ctrl+V to trigger paste and Escape to deselect
   useEffect(() => {
     const handleKeyDown = (event) => {
-      console.log(
-        "Key pressed:",
-        event.key,
-        "Ctrl:",
-        event.ctrlKey,
-        "Meta:",
-        event.metaKey,
-        "isEditMode:",
-        isEditMode,
-        "propertiesAsArray.length:",
-        propertiesAsArray.length
-      );
+      // Check if Cmd+A (Mac) or Ctrl+A (Windows/Linux) is pressed to select all items
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        event.key === "a" &&
+        propertiesAsArray.length > 0
+      ) {
+        event.preventDefault();
+
+        // Select all items and enter edit mode if not already in edit mode
+        if (!isEditMode) {
+          setIsEditMode(true);
+        }
+        setSelectedItemIds(new Set(propertiesAsArray.map((p) => p.id)));
+        return;
+      }
 
       // Check if Cmd+C (Mac) or Ctrl+C (Windows/Linux) is pressed to copy selected items
       if (
@@ -939,7 +954,6 @@ export default function DashboardView(props: ViewPropsType) {
         isEditMode &&
         selectedItemIds.size > 0
       ) {
-        console.log("Copy key combination detected for selected items");
         event.preventDefault();
 
         // Use the shared copy function for all selected items
@@ -949,73 +963,10 @@ export default function DashboardView(props: ViewPropsType) {
 
       // Check if Cmd+V (Mac) or Ctrl+V (Windows/Linux) is pressed
       if ((event.metaKey || event.ctrlKey) && event.key === "v") {
-        console.log("Paste key combination detected");
         // Allow paste in both edit mode and when dashboard is empty
         if (isEditMode || propertiesAsArray.length === 0) {
-          console.log(
-            "Paste conditions met, preventing default and calling handlePaste"
-          );
           event.preventDefault();
-
-          // Inline paste logic to avoid dependency issues
-          (async () => {
-            try {
-              const clipboardData = await navigator.clipboard.readText();
-              console.log("Clipboard data received:", clipboardData);
-              let items;
-              try {
-                items = JSON.parse(clipboardData);
-                console.log("Parsed items:", items);
-              } catch (error) {
-                console.error("Error parsing clipboard data:", error);
-                return;
-              }
-
-              if (items && schema.view.on_duplicate_item) {
-                // Convert items to a list format
-                let plotList = [];
-
-                if (Array.isArray(items)) {
-                  // Array format - use as is
-                  plotList = items;
-                } else if (typeof items === "object") {
-                  // Object format - check if it's a single item or multiple items
-                  const itemKeys = Object.keys(items);
-                  if (itemKeys.length === 1 && !items[itemKeys[0]].view) {
-                    // Single item - wrap in array
-                    plotList = [items];
-                  } else {
-                    // Multiple items - convert object values to array
-                    plotList = Object.values(items);
-                  }
-                }
-
-                // Call the operator once with the list of plots
-                if (plotList.length > 0) {
-                  console.log("Pasting", plotList.length, "items");
-                  triggerPanelEvent(panelId, {
-                    panelId,
-                    operator: schema.view.on_duplicate_item,
-                    params: { plot_configs: plotList },
-                  });
-                }
-              } else {
-                console.log("Missing items or on_duplicate_item operator:", {
-                  items: !!items,
-                  on_duplicate_item: !!schema.view.on_duplicate_item,
-                });
-              }
-            } catch (error) {
-              console.error("Error reading clipboard:", error);
-            }
-          })();
-        } else {
-          console.log(
-            "Paste conditions not met - isEditMode:",
-            isEditMode,
-            "propertiesAsArray.length:",
-            propertiesAsArray.length
-          );
+          handlePaste();
         }
       }
       // Check if Delete or Backspace is pressed to delete selected items (only in edit mode)
@@ -1109,7 +1060,12 @@ export default function DashboardView(props: ViewPropsType) {
       minH: Math.ceil(MIN_ITEM_HEIGHT / (GRID_HEIGHT / ROWS)), // Minimum height in grid units
     };
   });
-  const gridLayout = customLayout || defaultLayout;
+
+  const gridLayout = useMemo(() => {
+    const layout = customLayout || defaultLayout;
+    console.log("DEBUG: Final computed gridLayout:", layout);
+    return layout;
+  }, [customLayout, defaultLayout]);
 
   const onExportAsPNG = useCallback(async () => {
     try {
@@ -1180,8 +1136,6 @@ export default function DashboardView(props: ViewPropsType) {
           // Cleanup
           document.body.removeChild(link);
           URL.revokeObjectURL(url);
-
-          console.log("Dashboard exported as PNG successfully");
         }
       }, "image/png");
 
@@ -1235,6 +1189,36 @@ export default function DashboardView(props: ViewPropsType) {
     }, {});
   }, [gridLayout]);
 
+  const handleLayoutChange = useCallback(
+    (layout) => {
+      // Skip layout changes during paste operations
+      if (isPasting) {
+        console.log("DEBUG: Skipping onLayoutChange during paste operation");
+        return;
+      }
+
+      setCustomLayout(layout);
+
+      // Force Plotly plots to resize after layout changes
+      setTimeout(() => {
+        if (window.Plotly) {
+          const plotlyDivs = document.querySelectorAll(".js-plotly-plot");
+          plotlyDivs.forEach((div) => {
+            if (div && window.Plotly) {
+              window.Plotly.relayout(div as HTMLElement, {
+                width: div.clientWidth,
+                height: div.clientHeight,
+              });
+            }
+          });
+        }
+      }, 100); // Small delay to ensure DOM has updated
+    },
+    [isPasting, setCustomLayout]
+  );
+
+  console.log("propertiesAsArray", propertiesAsArray);
+
   if (!propertiesAsArray.length) {
     if (!allow_addition) {
       return null;
@@ -1265,6 +1249,7 @@ export default function DashboardView(props: ViewPropsType) {
           onAddItem={onAddItem}
           onEditLayoutClick={handleEditLayoutClick}
           onPasteClick={handlePaste}
+          onSelectAll={selectAllItems}
           onDeleteSelected={deleteSelectedItems}
           onExportItems={onExportItems}
           onExportAsPNG={onExportAsPNG}
@@ -1277,6 +1262,7 @@ export default function DashboardView(props: ViewPropsType) {
           shortcutKey={shortcutKey}
           selectedItemIds={selectedItemIds}
           clipboardData={clipboardData}
+          hasMultipleItems={propertiesAsArray.length > 1}
         />
         <LayoutPopover
           anchorEl={anchorEl}
@@ -1291,178 +1277,164 @@ export default function DashboardView(props: ViewPropsType) {
           onNumColsChange={handleNumColsChange}
           isEditMode={isEditMode}
         />
-        <GridLayout
-          onLayoutChange={(layout) => {
-            setCustomLayout(layout);
-            // Force Plotly plots to resize after layout changes
-            setTimeout(() => {
-              if (window.Plotly) {
-                const plotlyDivs = document.querySelectorAll(".js-plotly-plot");
-                plotlyDivs.forEach((div) => {
-                  if (div && window.Plotly) {
-                    window.Plotly.relayout(div as HTMLElement, {
-                      width: div.clientWidth,
-                      height: div.clientHeight,
-                    });
-                  }
-                });
-              }
-            }, 100); // Small delay to ensure DOM has updated
-          }}
-          layout={gridLayout}
-          cols={COLS}
-          rowHeight={ROW_HEIGHT} // Dynamic row height
-          width={GRID_WIDTH}
-          margin={[8, 8]} // Reduce vertical and horizontal margins to 8px
-          resizeHandles={
-            !isEditMode ? [] : ["e", "w", "n", "s", "se", "sw", "ne", "nw"]
-          }
-          draggableHandle=".drag-handle"
-          isDraggable={isEditMode}
-          isResizable={isEditMode}
-        >
-          {propertiesAsArray.map((property) => {
-            const { id } = property;
-            const value = data?.[id];
-            const label = property.view?.layout?.title || value?.name || id;
-            const itemPath = getPath(path, id);
-            const baseItemProps: BoxProps = {
-              sx: { padding: 0.25, position: "relative" },
-            };
-            const propertyIsPlotlyView = isPlotlyView(property);
-            const propertyLayout = { ...gridLayoutById[id], COLS, ROWS };
+        {!isPasting && (
+          <GridLayout
+            onLayoutChange={handleLayoutChange}
+            layout={gridLayout}
+            cols={COLS}
+            rowHeight={ROW_HEIGHT} // Dynamic row height
+            width={GRID_WIDTH}
+            margin={[8, 8]} // Reduce vertical and horizontal margins to 8px
+            resizeHandles={
+              !isEditMode ? [] : ["e", "w", "n", "s", "se", "sw", "ne", "nw"]
+            }
+            draggableHandle=".drag-handle"
+            isDraggable={isEditMode}
+            isResizable={isEditMode}
+          >
+            {propertiesAsArray.map((property) => {
+              const { id } = property;
+              const value = data?.[id];
+              const label = property.view?.layout?.title || value?.name || id;
+              const itemPath = getPath(path, id);
+              const baseItemProps: BoxProps = {
+                sx: { padding: 0.25, position: "relative" },
+              };
+              const propertyIsPlotlyView = isPlotlyView(property);
+              const propertyLayout = { ...gridLayoutById[id], COLS, ROWS };
 
-            return (
-              <Box
-                key={id}
-                {...getProps(
-                  { ...props, schema: property },
-                  "item",
-                  baseItemProps
-                )}
-                className={
-                  selectedItemIds.has(id) && isEditMode ? "selected" : ""
-                }
-                sx={{
-                  ...baseItemProps.sx,
-                  border:
-                    selectedItemIds.has(id) && isEditMode
-                      ? "3px solid #ff6d04"
-                      : "2px solid transparent",
-                  borderRadius:
-                    selectedItemIds.has(id) && isEditMode ? "6px" : "0px",
-                  transition: "all 0.2s ease",
-                  boxSizing: "border-box",
-                  position: "relative",
-                }}
-              >
-                <DragHandle
-                  className={
-                    isEditMode && selectedItemIds.has(id) ? "drag-handle" : ""
-                  }
-                  isSelected={selectedItemIds.has(id)}
-                  isEditMode={isEditMode}
-                  onClick={(e) => {
-                    if (!e.defaultPrevented && !e.isPropagationStopped()) {
-                      if (!isEditMode && allowMutation) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setIsEditMode(true);
-                        handleItemSelect(id);
-                      }
-                      if (isEditMode) {
-                        handleItemSelect(id, e);
-                      }
-                    }
-                  }}
-                  onMouseDown={(e) => {
-                    // Only prevent default if this item is selected (to allow dragging)
-                    if (
-                      e.target === e.currentTarget &&
-                      selectedItemIds.has(id)
-                    ) {
-                      e.preventDefault();
-                    }
-                  }}
-                >
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <Typography sx={{ marginLeft: 3 }}>{label}</Typography>
-                  </Box>
-                  {isEditMode && (
-                    <Box>
-                      {allow_edit && (
-                        <IconButton
-                          size="small"
-                          onMouseDown={(e) => e.stopPropagation()}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onEditItem({ id, path: getPath(path, id) });
-                          }}
-                          sx={{ color: theme.text.secondary }}
-                        >
-                          <EditIcon />
-                        </IconButton>
-                      )}
-                      <IconButton
-                        size="small"
-                        onMouseDown={(e) => e.stopPropagation()}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDuplicateItem({ id, path: getPath(path, id) });
-                        }}
-                        sx={{ color: theme.text.secondary }}
-                        title="Duplicate item"
-                      >
-                        <FileCopyIcon />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        onMouseDown={(e) => e.stopPropagation()}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onCopyItem({ id, path: getPath(path, id) });
-                        }}
-                        sx={{ color: theme.text.secondary }}
-                        title="Copy item"
-                      >
-                        <ContentCopyIcon />
-                      </IconButton>
-                      {allow_deletion && (
-                        <IconButton
-                          size="small"
-                          onMouseDown={(e) => e.stopPropagation()}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onCloseItem({ id, path: getPath(path, id) });
-                          }}
-                          sx={{ color: theme.text.secondary }}
-                        >
-                          <CloseIcon />
-                        </IconButton>
-                      )}
-                    </Box>
-                  )}
-                </DragHandle>
+              return (
                 <Box
+                  key={id}
+                  {...getProps(
+                    { ...props, schema: property },
+                    "item",
+                    baseItemProps
+                  )}
+                  className={
+                    selectedItemIds.has(id) && isEditMode ? "selected" : ""
+                  }
                   sx={{
-                    height: "calc(100% - 35px)",
-                    overflow: propertyIsPlotlyView ? "hidden" : "auto",
+                    ...baseItemProps.sx,
+                    border:
+                      selectedItemIds.has(id) && isEditMode
+                        ? "3px solid #ff6d04"
+                        : "2px solid transparent",
+                    borderRadius:
+                      selectedItemIds.has(id) && isEditMode ? "6px" : "0px",
+                    transition: "all 0.2s ease",
+                    boxSizing: "border-box",
+                    position: "relative",
                   }}
                 >
-                  <DynamicIO
-                    {...props}
-                    schema={property}
-                    path={itemPath}
-                    data={data?.[id]}
-                    parentSchema={schema}
-                    relativePath={id}
-                    relativeLayout={propertyLayout}
-                  />
+                  <DragHandle
+                    className={
+                      isEditMode && selectedItemIds.has(id) ? "drag-handle" : ""
+                    }
+                    isSelected={selectedItemIds.has(id)}
+                    isEditMode={isEditMode}
+                    onClick={(e) => {
+                      if (!e.defaultPrevented && !e.isPropagationStopped()) {
+                        if (!isEditMode && allowMutation) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setIsEditMode(true);
+                          handleItemSelect(id);
+                        }
+                        if (isEditMode) {
+                          handleItemSelect(id, e);
+                        }
+                      }
+                    }}
+                    onMouseDown={(e) => {
+                      // Only prevent default if this item is selected (to allow dragging)
+                      if (
+                        e.target === e.currentTarget &&
+                        selectedItemIds.has(id)
+                      ) {
+                        e.preventDefault();
+                      }
+                    }}
+                  >
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <Typography sx={{ marginLeft: 3 }}>{label}</Typography>
+                    </Box>
+                    {isEditMode && (
+                      <Box>
+                        {allow_edit && (
+                          <IconButton
+                            size="small"
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEditItem({ id, path: getPath(path, id) });
+                            }}
+                            sx={{ color: theme.text.secondary }}
+                          >
+                            <EditIcon />
+                          </IconButton>
+                        )}
+                        <IconButton
+                          size="small"
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDuplicateItem({ id, path: getPath(path, id) });
+                          }}
+                          sx={{ color: theme.text.secondary }}
+                          title="Duplicate item"
+                        >
+                          <FileCopyIcon />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onCopyItem({ id, path: getPath(path, id) });
+                          }}
+                          sx={{ color: theme.text.secondary }}
+                          title="Copy item"
+                        >
+                          <ContentCopyIcon />
+                        </IconButton>
+                        {allow_deletion && (
+                          <IconButton
+                            size="small"
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onCloseItem({ id, path: getPath(path, id) });
+                            }}
+                            sx={{ color: theme.text.secondary }}
+                          >
+                            <CloseIcon />
+                          </IconButton>
+                        )}
+                      </Box>
+                    )}
+                  </DragHandle>
+                  <Box
+                    sx={{
+                      height: "calc(100% - 35px)",
+                      overflow: propertyIsPlotlyView ? "hidden" : "auto",
+                    }}
+                  >
+                    <DynamicIO
+                      {...props}
+                      schema={property}
+                      path={itemPath}
+                      data={data?.[id]}
+                      parentSchema={schema}
+                      relativePath={id}
+                      relativeLayout={propertyLayout}
+                    />
+                  </Box>
                 </Box>
-              </Box>
-            );
-          })}
-        </GridLayout>
+              );
+            })}
+          </GridLayout>
+        )}
       </Box>
       {allowMutation && (
         <Fab
