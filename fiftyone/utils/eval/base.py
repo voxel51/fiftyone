@@ -888,7 +888,8 @@ class BaseClassificationResults(BaseEvaluationResults):
 
         return np.array([c for c in self.classes if c != self.missing])
 
-    def _precision_recall_fscore(self, labels, average, beta=1.0):
+    def _precision_recall_fscore(self, labels, average, beta):
+        pos_label = getattr(self, "_pos_label", None)
         precision, recall, fscore, _ = skm.precision_recall_fscore_support(
             self.ytrue,
             self.ypred,
@@ -897,6 +898,7 @@ class BaseClassificationResults(BaseEvaluationResults):
             beta=beta,
             sample_weight=self.weights,
             zero_division=0,
+            pos_label=pos_label if average == "binary" else None,
         )
         return precision, recall, fscore
 
