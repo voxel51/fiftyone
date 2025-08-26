@@ -945,6 +945,12 @@ FiftyOne Enterprise
 box with a connected compute cluster for executing delegated operations at
 scale.
 
+.. note::
+
+    [ Beta ] FiftyOne Enterprise now supports on-demand compute via Databricks
+    and Anyscale. In order to configure an orchestrator for your Databricks or
+    Anyscale compute, consult your FiftyOne Enterprise Helm Chart docs.
+
 This powerful feature allows users to install/build plugins that execute
 potentially long-running tasks in the background while users continue with
 other work in the App.
