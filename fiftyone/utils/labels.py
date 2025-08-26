@@ -18,6 +18,7 @@ import fiftyone.core.validation as fov
 import fiftyone.utils.iou as foui
 import fiftyone.utils.utils3d as fou3d
 from fiftyone import ViewField as F
+from fiftyone.core.collections import SampleCollection
 
 logger = logging.getLogger(__name__)
 
@@ -1208,7 +1209,7 @@ def _get_filepath(sample_or_frame, sample):
 
 
 def detections_3d_to_cuboids_2d(
-    dataset: fo.SampleCollection,
+    dataset: SampleCollection,
     camera_slice_name: str,
     lidar_slice_name: str,
     in_field: str,
@@ -1226,24 +1227,28 @@ def detections_3d_to_cuboids_2d(
     the `out_field` on the `camera_slice_name` slice.
 
     Args:
-        dataset: the :class:`fiftyone.core.dataset.Dataset` to convert
+        dataset: a
+            :class:`fiftyone.core.collections.SampleCollection`
         camera_slice_name: the name of the camera slice in the dataset
         lidar_slice_name: the name of the LiDAR slice in the dataset
-        in_field: the name of the field containing 3D labels to convert
-        out_field: the name of the field to store converted 2D labels
+        in_field: the name of the :class:`fiftyone.core.labels.Detection` field
+            containing 3D labels to convert
+        out_field: the name of the :class:`fiftyone.core.labels.Polylines`
+            field to populate with 2D cuboids
         transformations: a dict mapping sample IDs to transformation tuples
             (translation, rotation) for each sample in the dataset.
             Translation is a 3-element list or np.ndarray, and rotation is a
             (3, 3) list of lists or np.ndarray representing a rotation matrix.
         camera_params: a dict mapping sample IDs to camera parameters dict which
-        contains the keys required by the camera_model for each sample in the dataset.
+            contains the keys required by the camera_model for each sample in
+            the dataset.
         forward_transform_flags: a dict mapping sample IDs to lists of booleans
-            indicating whether to apply forward or inverse transformations for each
-            transform in the list of transformations for each sample
+            indicating whether to apply forward or inverse transformations for
+            each transform in the list of transformations for each sample
         batch_size (1000): number of samples to process in each batch
         camera_model (fou3d.pinhole_projector): a callable that takes 3D points
-            in the camera coordinate system and the camera parameters dict
-            and returns the projected 2D points in pixel coordinates
+            in the camera coordinate system and the camera parameters dict and
+            returns the projected 2D points in pixel coordinates
         progress (True): whether to show a progress bar during processing
     """
     fov.validate_grouped_non_dynamic_collection(dataset)

@@ -4279,66 +4279,83 @@ new field on your dataset:
 Projecting 3D detections to 2D
 ------------------------------
 
-FiftyOne provides functionality through `detections_3d_to_cuboids_2d <fiftyone.utils.labels.detections_3d_to_cuboids_2d>` 
-to project 3D object detections into 2D images as polylines. This functionality is specific to grouped datasets with 
-multiple modalities such as images and point clouds. 
+FiftyOne provides functionality through 
+:meth:`detections_3d_to_cuboids_2d <fiftyone.utils.labels.detections_3d_to_cuboids_2d>` 
+to project 3D object detections into 2D images as polylines. This functionality
+is specific to grouped datasets with multiple modalities such as images and
+point clouds. 
 
-The 3D detections (``in_field``) should be stored in a field of type :ref:`Detection <3d-detections>` with the 
-necessary attributes such as ``location``, ``dimensions``, and ``rotation`` populated. You need to provide the 
-following additional information for the projections:
+The 3D detections (``in_field``) should be stored in a field of type
+:ref:`Detection <3d-detections>` with the necessary attributes such as
+``location``, ``dimensions``, and ``rotation`` populated. You need to provide
+the following additional information for the projections:
 
-- **Coordinate transformation data** used to convert 3D bounding boxes from the point cloud coordinate system into 
-  the camera coordinate system.
+- **Coordinate transformation data** used to convert 3D bounding boxes from the
+  point cloud coordinate system into the camera coordinate system.
   
-  - Represented as a dictionary mapping sample IDs to a list of transformation tuples.
+  - Represented as a dictionary mapping sample IDs to a list of transformation
+    tuples.
   - Each transformation is a ``(translation, rotation)`` tuple, where:
   
-    - ``translation``: a 3-element vector (``list[float]`` or ``np.ndarray``) specifying the translation in 3D space
-    - ``rotation``: a 3x3 rotation matrix (``list[float]`` or ``np.ndarray``) specifying the orientation 
+    - ``translation``: a 3-element vector (``list[float]`` or ``np.ndarray``)
+      specifying the translation in 3D space
+    - ``rotation``: a 3x3 rotation matrix (``list[float]`` or ``np.ndarray``)
+      specifying the orientation 
 
-- **[Optional] Forward flags** indicating whether to apply the corresponding transformation in the forward direction 
-  (from point cloud to camera) or in the inverse direction (from camera to point cloud).
+- **[Optional] Forward flags** indicating whether to apply the corresponding
+  transformation in the forward direction (from point cloud to camera) or in the
+  inverse direction (from camera to point cloud).
   
-  - Represented as a dictionary mapping sample IDs to a list of boolean flags. The length of the list must match the 
-    number of transformations for the sample.
-  - If not provided, all transformations are assumed to be applied in the forward direction.
+  - Represented as a dictionary mapping sample IDs to a list of boolean flags.
+    The length of the list must match the number of transformations for the
+    sample.
+  - If not provided, all transformations are assumed to be applied in the
+    forward direction.
 
-- **Camera model** used to account for camera intrinsics and lens distortion during 3D-to-2D projection.
+- **Camera model** used to account for camera intrinsics and lens distortion
+  during 3D-to-2D projection.
   
-  - Specified via the ``camera_model`` argument, which accepts a projection function with the signature:
+  - Specified via the ``camera_model`` argument, which accepts a projection
+    function with the signature:
   
     .. code-block:: python
 
        projection_function(points3d: np.ndarray, camera_params: dict) -> np.ndarray
 
     - ``points3d``: an ``(N, 3)`` NumPy array of 3D points to be projected
-    - ``camera_params``: a dictionary of camera parameters required by the projection function
+    - ``camera_params``: a dictionary of camera parameters required by the
+      projection function
 
-  FiftyOne provides a pinhole camera model via the :meth:`utils3d.pinhole_projector <fiftyone.utils.utils3d.pinhole_projector>` 
+  FiftyOne provides a pinhole camera model via the
+  :meth:`utils3d.pinhole_projector <fiftyone.utils.utils3d.pinhole_projector>`
   function, which is used by default if no camera model is specified.
 
   .. note::
-     For the pinhole camera model, the following orientation is assumed:
 
+     For the pinhole camera model, the following orientation is assumed:
      - x axis points to the right in the image plane
      - y axis points down in the image plane
      - z axis points forward from the camera
 
-     To use the pinhole camera model, you must ensure that your 3D boxes are oriented in the same way, 
-     likely by applying an additional rotation transformation.
+     To use the pinhole camera model, you must ensure that your 3D boxes are
+     oriented in the same way, likely by applying an additional rotation
+     transformation.
 
 - **Camera parameter data** to project the 3D boxes onto the 2D image plane.
   
-  - Represented as a dictionary mapping sample IDs to dicts with the keys required by the camera model you are using.
-  - For example, for the default pinhole camera model, the dictionary should contain the key ``intrinsics``, 
-    which is a 3x3 ``np.ndarray`` camera intrinsics matrix of the form::
+  - Represented as a dictionary mapping sample IDs to dicts with the keys
+    required by the camera model you are using.
+  - For example, for the default pinhole camera model, the dictionary should
+    contain the key ``intrinsics``, which is a 3x3 ``np.ndarray`` camera
+    intrinsics matrix of the form::
 
        [[fx,  0, cx],
         [ 0, fy, cy],
         [ 0,  0,  1]]
 
 
-The example code below demonstrates how to perform this projection using FiftyOne:
+The example code below demonstrates how to perform this projection using
+FiftyOne:
 
 .. code-block:: python
    :linenos:
@@ -4349,15 +4366,17 @@ The example code below demonstrates how to perform this projection using FiftyOn
 
    dataset = fo.load_dataset("your_grouped_dataset")
 
-   # Example transformation: Assume that for all samples, the same transformation is applied
-   # A 90 degree rotation around the x axis to align the point cloud and camera coordinate systems with 0 translation
+   # Example transformation: Assume that for all samples, the same
+   # transformation is applied. A 90 degree rotation around the x axis to align
+   # the point cloud and camera coordinate systems with 0 translation
    rotation = np.array([[1, 0, 0],
                         [0, 0, -1],
                         [0, 1, 0]])
    translation = np.array([0, 0, 0])
    transformations = {sample.id: [(translation, rotation)] for sample in dataset}
 
-   # Example camera parameters: Assume that for all samples, the same camera intrinsics are used
+   # Example camera parameters: Assume that for all samples, the same camera
+   # intrinsics are used
    camera_params = {
        sample.id: {
            "intrinsics": np.array([[1000, 0, 512],

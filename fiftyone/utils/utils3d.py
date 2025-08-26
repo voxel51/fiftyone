@@ -437,7 +437,7 @@ def rpy_to_quaternion(euler_rpy: List[float]):
 
     Args:
         euler_rpy: a list of Euler angles in roll-pitch-yaw order
-        
+
     Returns:
         A quaternion representing the rotation.
     """
@@ -454,20 +454,26 @@ def multiple_coordinate_transform(
     forward_transform_flags: List[bool] = None,
 ) -> Tuple[List[float], List[float]]:
     """
-    Applies a sequence of 3D coordinate frame transformations to a point and its orientation.
-    Each transformation consists of a translation vector and a rotation matrix, applied in the
-    order provided. The orientation is updated at each step using quaternion multiplication.
+    Applies a sequence of 3D coordinate frame transformations to a point and its
+    orientation. Each transformation consists of a translation vector and a
+    rotation matrix, applied in the order provided. The orientation is updated
+    at each step using quaternion multiplication.
 
     Args:
-        points: A 3-element list representing the (x, y, z) coordinates of the point.
-        euler_rpy: A 3-element list of Euler angles [roll, pitch, yaw] in radians.
-        transformation_sequence: A list of (translation, rotation) tuples, where:
-            - translation: 3-element list or (3,) np.ndarray representing (tx, ty, tz).
-            - rotation: (3, 3) list of lists or np.ndarray representing a rotation matrix.
-        forward_transform_flags: Optional list of booleans, one per transformation.
-            True means apply the transform from source → target.
-            False means apply the inverse transform (target → source).
-            Defaults to all True.
+        points: A 3-element list representing the (x, y, z) coordinates of the
+        point.
+        euler_rpy: A 3-element list of Euler angles [roll, pitch, yaw] in
+        radians.
+        transformation_sequence: A list of (translation, rotation) tuples,
+        where:
+            - translation: 3-element list or (3,) np.ndarray representing (tx,
+              ty, tz).
+            - rotation: (3, 3) list of lists or np.ndarray representing a
+              rotation matrix.
+        forward_transform_flags: Optional list of booleans, one per
+        transformation. True means apply the transform from source → target.
+        False means apply the inverse transform (target → source). Defaults to
+        all True.
 
     Returns:
         - Transformed 3D point as a list [x, y, z].
@@ -498,19 +504,22 @@ def single_coordinate_transform(
     forward_transform: bool = True,
 ) -> Tuple[np.ndarray, Any]:
     """
-    Applies a single 3D coordinate frame transformation to a point and its orientation.
+    Applies a single 3D coordinate frame transformation to a point and its
+    orientation.
 
-    The transformation consists of a translation vector and a rotation matrix. The orientation
-    is updated using quaternion multiplication.
+    The transformation consists of a translation vector and a rotation matrix.
+    The orientation is updated using quaternion multiplication.
 
     Args:
-        points: A 3-element np.ndarray representing the (x, y, z) coordinates of the point.
-        rot_quaternion: A pyquaternion.Quaternion representing the current orientation.
+        points: A 3-element np.ndarray representing the (x, y, z) coordinates of
+        the point.
+        rot_quaternion: A pyquaternion.Quaternion representing the current
+        orientation.
         transformation: A tuple containing:
             - translation: 3-element np.ndarray representing (tx, ty, tz).
             - rotation_matrix: (3, 3) np.ndarray representing a rotation matrix.
-        forward_transform: If True, applies the forward transform.
-            If False, applies the inverse transform.
+        forward_transform: If True, applies the forward transform. If False,
+        applies the inverse transform.
 
     Returns:
         - Transformed 3D point as a np.ndarray [x, y, z].
@@ -536,12 +545,16 @@ def single_coordinate_transform(
 def corners_from_euler(
     location: List[float], rotation: List[float], dimension: List[float]
 ) -> np.ndarray:
-    """Computes the 3D corners of a cuboid given its location, rotation, and dimensions.
+    """Computes the 3D corners of a cuboid given its location, rotation, and
+    dimensions.
 
     Args:
-        location: a 3-element list or np.ndarray representing the (x, y, z) location of the cuboid
-        rotation: a 3-element list or np.ndarray representing the (roll, pitch, yaw) rotation in radians
-        dimension: a 3-element list or np.ndarray representing the (length, width, height) of the cuboid
+        location: a 3-element list or np.ndarray representing the (x, y, z)
+        location of the cuboid
+        rotation: a 3-element list or np.ndarray representing the (roll, pitch,
+        yaw) rotation in radians
+        dimension: a 3-element list or np.ndarray representing the (length,
+        width, height) of the cuboid
 
     Returns:
         A 3x8 np.ndarray containing the 3D coordinates of the cuboid's corners.
@@ -563,16 +576,20 @@ def corners_from_euler(
 def pinhole_projector(
     points: np.ndarray, cam_params: Dict, normalize=True
 ) -> np.ndarray:
-    """Projects 3D detection points to 2D using the given camera intrinsics assuming a pinhole camera.
+    """Projects 3D detection points to 2D using the given camera intrinsics
+    assuming a pinhole camera.
 
-    The following orientation is assumed- x axis points to the right in the image plane, y axis points
-    down in the image plane and z axis points forward from the camera.
+    The following orientation is assumed- x axis points to the right in the
+    image plane, y axis points down in the image plane and z axis points forward
+    from the camera.
 
     Args:
-        points: a 3xN np.ndarray containing the 3D coordinates of the points to be projected
-        cam_params: a dict containing the key 'intrinsics' that maps to
-        a 3x3 or 4x4 np.ndarray representing the camera intrinsics matrix
-        normalize (True): whether to normalize the projected points by their z-coordinate
+        points: a 3xN np.ndarray containing the 3D coordinates of the points
+        cam_params: a dict containing the key 'intrinsics' that maps to a 3x3 or
+        4x4 np.ndarray representing the camera intrinsics matrix
+        normalize (True): whether to normalize the projected points by their
+        z-coordinate
+
     Returns:
         A 3xN np.ndarray containing the projected 2D coordinates of the points.
         If `normalize` is True, the points are normalized by their z-coordinate.
@@ -601,16 +618,21 @@ def point_in_front_of_camera(
     imsize: Tuple[int, int],
     distance_threshold: float = 0.1,
 ) -> bool:
-    """Checks if the input corners are visible in the image and in front of the camera.
+    """Checks if the input corners are visible in the image and in front of the
+    camera.
 
     Args:
-        corners_img: a 3x8 np.ndarray containing the projected 2D coordinates of a cuboid's corners
-        corners_3d: a 3x8 np.ndarray containing the 3D coordinates of the cuboid's corners
+        corners_img: a 3x8 np.ndarray containing the projected 2D coordinates of
+        a cuboid's corners
+        corners_3d: a 3x8 np.ndarray containing the 3D coordinates of the
+        cuboid's corners
         imsize: a tuple (width, height) of the image dimensions
-        distance_threshold: a float representing the minimum distance in meters for a corner to be considered in front of the camera
+        distance_threshold: a float representing the minimum distance in meters
+        for a corner to be considered in front of the camera
 
     Returns:
-        True if all corners are visible in the image and all corners are in front of the camera, False otherwise.
+        True if all corners are visible in the image and all corners are in
+        front of the camera, False otherwise.
     """
     visible = np.logical_and(
         corners_img[0, :] > 0, corners_img[0, :] < imsize[0]
@@ -633,8 +655,8 @@ class OrthographicProjectionMetadata(DynamicEmbeddedDocument, fol._HasMedia):
             plane
         normal (None): the normal vector of the plane onto which the projection
             was performed. If not specified, ``[0, 0, 1]`` is assumed
-        width: the width of the image, in pixels
-        height: the height of the image, in pixels
+        width: the width of the image, in pixels height: the height of the
+        image, in pixels
     """
 
     _MEDIA_FIELD = "filepath"
@@ -686,9 +708,9 @@ def get_scene_asset_paths(
     """Extracts all asset paths for the specified 3D scenes.
 
     Args:
-        scene_paths: an iterable of ``.fo3d`` paths
-        abs_paths (False): whether to return absolute paths
-        skip_failures (True): whether to gracefully continue without raising an
+        scene_paths: an iterable of ``.fo3d`` paths abs_paths (False): whether
+        to return absolute paths skip_failures (True): whether to gracefully
+        continue without raising an
             error if metadata cannot be computed for a file
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
