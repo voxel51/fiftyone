@@ -201,10 +201,7 @@ Deprecations
 
 - FiftyOne no longer supports versions older than MongoDB 6.0; users with
   MongoDB 5 or older are advised to upgrade their instance. 
-  `#6091 <https://github.com/voxel51/fiftyone/pull/6091>`_
-- `fiftyone-db` no longer supports MongoDB version 5.x; it now only supports
-  versions 6.0+ and has removed support for Debian 9 or older. 
-  `#5984 <https://github.com/voxel51/fiftyone/pull/5984>`_
+  `#6091 <https://github.com/voxel51/fiftyone/pull/6091>`_, `#5984 <https://github.com/voxel51/fiftyone/pull/5984>`_  
 
 
 FiftyOne Enterprise 2.10.2
