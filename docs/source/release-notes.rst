@@ -146,7 +146,7 @@ Docs
   `#6237 <https://github.com/voxel51/fiftyone/pull/6237>`_
 - Added comprehensive :ref:`Getting Started Guides
   <getting_started_guides/index>` for Detection, Medical Imaging, Model
-  Evalulation, Self Driving, and 3D Visual AI. 
+  Evaluation, Self-Driving, and 3D Visual AI. 
   `#5967 <https://github.com/voxel51/fiftyone/pull/5967>`_
 - Added the Kapa AI agent widget to the documentation site to assist users with
   AI-powered support. `#6218 <https://github.com/voxel51/fiftyone/pull/6218>`_
