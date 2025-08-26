@@ -6,7 +6,13 @@ import * as PIXI from "pixi.js";
 import { DEFAULT_TEXT_PADDING } from "../constants";
 import type { EventBus } from "../event/EventBus";
 import { LIGHTER_EVENTS } from "../event/EventBus";
-import type { DrawStyle, Point, Rect, TextOptions } from "../types";
+import type {
+  Dimensions2D,
+  DrawStyle,
+  Point,
+  Rect,
+  TextOptions,
+} from "../types";
 import { parseColorWithAlpha } from "../utils/color";
 import type { ImageOptions, ImageSource, Renderer2D } from "./Renderer2D";
 import { DashLine } from "./pixi-renderer-utils/dashed-line";
@@ -143,7 +149,7 @@ export class PixiRenderer2D implements Renderer2D {
     position: Point,
     options: TextOptions | undefined,
     containerId: string
-  ): void {
+  ): Dimensions2D {
     const textStyle = new PIXI.TextStyle({
       fontFamily: options?.font || "Arial",
       fontSize: options?.fontSize || 14,
@@ -158,6 +164,9 @@ export class PixiRenderer2D implements Renderer2D {
 
     const textBounds = pixiText.getLocalBounds();
 
+    const finalHeight = options?.height || textBounds.height;
+    const finalWidth = textBounds.width;
+
     if (options?.backgroundColor) {
       const padding = options.padding ?? DEFAULT_TEXT_PADDING;
       const background = new PIXI.Graphics();
@@ -165,13 +174,15 @@ export class PixiRenderer2D implements Renderer2D {
         .rect(
           position.x - padding,
           position.y - padding,
-          textBounds.width + padding * 2,
-          textBounds.height + padding * 2
+          finalWidth + padding * 2,
+          finalHeight + padding * 2
         )
         .fill(options.backgroundColor);
       this.addToContainer(background, containerId);
     }
     this.addToContainer(pixiText, containerId);
+
+    return { width: finalWidth, height: finalHeight };
   }
 
   drawLine(

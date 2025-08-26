@@ -49,6 +49,7 @@ export interface TextOptions {
   backgroundColor?: string;
   padding?: number;
   maxWidth?: number;
+  height?: number;
 }
 
 /**
@@ -118,6 +119,11 @@ export interface Dimensions {
   width: number;
   height: number;
 }
+
+/**
+ * 2D dimensions type alias for width and height.
+ */
+export type Dimensions2D = { width: number; height: number };
 
 /**
  * Coordinate system for transforming between relative and absolute coordinates.

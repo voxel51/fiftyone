@@ -3,7 +3,13 @@
  */
 
 import { EventBus } from "../event/EventBus";
-import type { DrawStyle, Point, Rect, TextOptions } from "../types";
+import type {
+  DrawStyle,
+  Point,
+  Rect,
+  TextOptions,
+  Dimensions2D,
+} from "../types";
 
 /**
  * Types of image sources that can be rendered.
@@ -68,7 +74,7 @@ export interface Renderer2D {
     position: Point,
     options: TextOptions | undefined,
     containerId: string
-  ): void;
+  ): Dimensions2D;
   drawLine(
     start: Point,
     end: Point,

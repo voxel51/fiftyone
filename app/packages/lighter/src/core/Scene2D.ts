@@ -215,7 +215,7 @@ export class Scene2D {
 
     const baseStyle: DrawStyle = {
       strokeStyle,
-      lineWidth: 2,
+      lineWidth: STROKE_WIDTH,
       opacity: 1,
     };
 
