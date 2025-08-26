@@ -133,7 +133,8 @@ export default class DetectionOverlay<
 
     !state.config.thumbnail && this.drawLabelText(ctx, state);
 
-    if (this.label.dimensions && this.label.location) {
+    if (this.label.convexHull) {
+      // only fill 3d when 'convexHull' is defined
       this.fillRectFor3d(ctx, state, strokeColor);
     } else {
       this.strokeRect(ctx, state, strokeColor);
