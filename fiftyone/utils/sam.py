@@ -257,8 +257,8 @@ class SegmentAnythingModel(fout.TorchSamplesMixin, fout.TorchImageModel):
             sam_predictor.set_image(inp)
             h, w = img.size(1), img.size(2)
 
-            boxes = [d.bounding_box for d in detections.detections]
-            boxes_xyxy = np.array([_to_abs_box(box, w, h) for box in boxes])
+            boxes = np.array([d.bounding_box for d in detections.detections])
+            boxes_xyxy = _to_abs_boxes(boxes, w, h)
             sam_boxes = np.round(boxes_xyxy).astype(int)
             input_boxes = torch.tensor(sam_boxes, device=sam_predictor.device)
             transformed_boxes = sam_predictor.transform.apply_boxes_torch(
@@ -393,15 +393,20 @@ def _to_sam_points(points, w, h, keypoint):
     return scaled_points.astype(np.float32), labels.astype(np.uint32)
 
 
-def _to_abs_box(box, w, h):
-    new_box = np.copy(np.array(box))
-    new_box[0] *= w
-    new_box[2] *= w
-    new_box[1] *= h
-    new_box[3] *= h
-    new_box[2] += new_box[0]
-    new_box[3] += new_box[1]
-    return new_box
+def _to_abs_boxes(boxes, img_width, img_height, chunk_size=1e6):
+    boxes_xyxy = np.copy(boxes)
+    num_boxes = len(boxes)
+
+    for start in range(0, num_boxes, int(chunk_size)):
+        end = min(start + int(chunk_size), num_boxes)
+        boxes_xyxy[start:end, 2] += boxes_xyxy[start:end, 0]
+        boxes_xyxy[start:end, 3] += boxes_xyxy[start:end, 1]
+        boxes_xyxy[start:end, 0] *= img_width
+        boxes_xyxy[start:end, 2] *= img_width
+        boxes_xyxy[start:end, 1] *= img_height
+        boxes_xyxy[start:end, 3] *= img_height
+
+    return boxes_xyxy
 
 
 def _mask_to_box(mask):

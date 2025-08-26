@@ -187,10 +187,8 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
             sam2_predictor.set_image(inp)
             h, w = img.size(1), img.size(2)
 
-            boxes = [d.bounding_box for d in detections.detections]
-            boxes_xyxy = np.array(
-                [fosam._to_abs_box(box, w, h) for box in boxes]
-            )
+            boxes = np.array([d.bounding_box for d in detections.detections])
+            boxes_xyxy = fosam._to_abs_boxes(boxes, w, h)
             sam_boxes = np.round(boxes_xyxy).astype(int)
 
             labels = torch.tensor(
@@ -400,12 +398,13 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
                     ann_obj_id = current_obj_idx
                     current_obj_idx += 1
                 classes_obj_id_map[ann_obj_id] = detection.label
-                box_xyxy = fosam._to_abs_box(
-                    detection.bounding_box,
+                box_xyxy = fosam._to_abs_boxes(
+                    np.array([detection.bounding_box]),
                     self._curr_frame_width,
                     self._curr_frame_height,
+                    chunk_size=1,
                 )
-                box = np.round(box_xyxy).astype(int)
+                box = np.round(box_xyxy.squeeze(axis=0)).astype(int)
                 _, _, _ = self.model.add_new_points_or_box(
                     inference_state=inference_state,
                     frame_idx=frame_idx,
