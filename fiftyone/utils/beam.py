@@ -306,7 +306,9 @@ def beam_export(
             :meth:`fiftyone.core.collections.SampleCollection.export`
     """
     if options is None:
-        num_workers = min(num_shards, fou.recommend_process_pool_workers())
+        num_workers = max(
+            1, min(num_shards, fou.recommend_process_pool_workers())
+        )
         options = PipelineOptions(
             runner="direct",
             direct_num_workers=num_workers,
@@ -493,8 +495,7 @@ def beam_map(
         ids = sample_collection.values("id")
         n = len(ids)
 
-    if num_workers is None:
-        num_workers = fou.recommend_process_pool_workers()
+    num_workers = max(1, fou.recommend_process_pool_workers(num_workers))
 
     # Must cap size of select(ids) stages
     if batch_method == "id":
