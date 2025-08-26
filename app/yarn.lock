@@ -2570,7 +2570,7 @@ __metadata:
     "@typescript-eslint/eslint-plugin": "npm:^6.0.0"
     "@typescript-eslint/parser": "npm:^6.0.0"
     eslint: "npm:^8.0.0"
-    pixi.js: "npm:^8.10.2"
+    pixi.js: "npm:^8.12.0"
     typescript: "npm:^5.8.3"
   peerDependencies:
     jotai: "*"
@@ -9212,10 +9212,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"earcut@npm:^3.0.0, earcut@npm:^3.0.1":
+"earcut@npm:^3.0.0":
   version: 3.0.1
   resolution: "earcut@npm:3.0.1"
   checksum: 10/92786b5a35276a099eb2545bd7183e31a8ddd34f0d24d26eb26a280bcf7d35dcf5a01cd8712343bfbe504849229d01ff4771aa4ed0d8d900083afaa01d732b5c
+  languageName: node
+  linkType: hard
+
+"earcut@npm:^3.0.2":
+  version: 3.0.2
+  resolution: "earcut@npm:3.0.2"
+  checksum: 10/08374619e9510f3d669438c292153ec5c31a0ebac058bd03dab04c5b341e0fd2d91794681a1128321a49651ee55822ebb7bda5f8a35de636c4e3b0b27fa39a84
   languageName: node
   linkType: hard
 
@@ -15477,21 +15484,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"pixi.js@npm:^8.10.2":
-  version: 8.10.2
-  resolution: "pixi.js@npm:8.10.2"
+"pixi.js@npm:^8.12.0":
+  version: 8.12.0
+  resolution: "pixi.js@npm:8.12.0"
   dependencies:
     "@pixi/colord": "npm:^2.9.6"
     "@types/css-font-loading-module": "npm:^0.0.12"
     "@types/earcut": "npm:^3.0.0"
     "@webgpu/types": "npm:^0.1.40"
     "@xmldom/xmldom": "npm:^0.8.10"
-    earcut: "npm:^3.0.1"
+    earcut: "npm:^3.0.2"
     eventemitter3: "npm:^5.0.1"
     gifuct-js: "npm:^2.1.2"
     ismobilejs: "npm:^1.1.1"
     parse-svg-path: "npm:^0.1.2"
-  checksum: 10/0accd742b361fc40f2cd5fdf0da11c1e2ad95310109966c4398d1fab9c80bfa745ebdc59844891df53d248437a120fba3d30450f6dafc4371b07559aa0d327d5
+  checksum: 10/dd37a70b1793c16ea9ad33c98f2b89880c9590fb6aae86dddd34a4b4dfb3bb6f2f3740aaf9ee2a077a06be82497bad27106c56451083e9148997d951fa92fdc1
   languageName: node
   linkType: hard
 
