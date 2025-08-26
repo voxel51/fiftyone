@@ -134,7 +134,7 @@ def handle_dataset_change(
         initializer: an app initializer
     """
     try:
-        state.dataset = fod.load_dataset(initializer.dataset)
+        state.dataset = fod.load_dataset(initializer.dataset, reload=True)
         state.group_id = None
         state.group_slice = state.dataset.group_slice
         state.sample_id = None

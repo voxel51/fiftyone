@@ -14,21 +14,25 @@ import numpy as np
 import fiftyone.operators.types as types
 import fiftyone.core.view as fov
 
-from collections import defaultdict, Counter
 from bson import ObjectId
+from collections import Counter, defaultdict
+import fiftyone as fo
+import fiftyone.core.view as fov
+import fiftyone.operators.types as types
+import fiftyone.server.utils as fosu
+import fiftyone.utils.eval as foue
 from fiftyone import ViewField as F
 from fiftyone.core.plots.plotly import _to_log_colorscale
+from fiftyone.operators.cache import execution_cache
 from fiftyone.operators.categories import Categories
 from fiftyone.operators.panel import Panel, PanelConfig
-from fiftyone.operators.cache import execution_cache
 from plugins.utils.model_evaluation import (
     get_dataset_id,
-    get_store,
     get_scenarios,
+    get_store,
     get_subsets_from_custom_code,
     set_scenarios,
 )
-
 
 STORE_NAME = "model_evaluation_panel_builtin"
 STATUS_LABELS = {
@@ -56,6 +60,9 @@ class EvaluationPanel(Panel):
             icon="ssid_chart",
             category=Categories.ANALYZE,
         )
+
+    def get_dataset(self, ctx):
+        return fosu.cache_dataset(ctx.dataset)
 
     def get_evaluation_id(self, dataset, eval_key):
         try:
@@ -107,6 +114,9 @@ class EvaluationPanel(Panel):
         return self.get_permissions(ctx).get("can__scenario", False)
 
     def on_load(self, ctx):
+        # ensures that evaluation results will be cached + reused
+        dataset = self.get_dataset(ctx)
+
         store = get_store(ctx)
         statuses = store.get("statuses") or {}
         notes = store.get("notes") or {}
@@ -114,15 +124,13 @@ class EvaluationPanel(Panel):
         # To start, on load we populate the first menu with our current datasets evaluation keys
         view_state = ctx.panel.get_state("view") or {}
         evaluations = []
-        for key in ctx.dataset.list_evaluations():
-            if self.has_evaluation_results(ctx.dataset, key):
+        for key in dataset.list_evaluations():
+            if self.has_evaluation_results(dataset, key):
                 evaluation = {
                     "key": key,
-                    "id": self.get_evaluation_id(ctx.dataset, key),
-                    "type": ctx.dataset.get_evaluation_info(key).config.type,
-                    "method": ctx.dataset.get_evaluation_info(
-                        key
-                    ).config.method,
+                    "id": self.get_evaluation_id(dataset, key),
+                    "type": dataset.get_evaluation_info(key).config.type,
+                    "method": dataset.get_evaluation_info(key).config.method,
                 }
                 evaluations.append(evaluation)
         ctx.panel.set_state("evaluations", evaluations)
@@ -489,10 +497,11 @@ class EvaluationPanel(Panel):
         ctx.panel.set_data(f"scenarios", scenarios)
 
     def get_evaluation_data(self, ctx):
+        dataset = self.get_dataset(ctx)
         view_state = ctx.panel.get_state("view") or {}
         eval_key = view_state.get("key")
         computed_eval_key = ctx.params.get("key", eval_key)
-        info = ctx.dataset.get_evaluation_info(computed_eval_key)
+        info = dataset.get_evaluation_info(computed_eval_key)
         evaluation_type = info.config.type
         serialized_info = info.serialize()
         if evaluation_type not in SUPPORTED_EVALUATION_TYPES:
@@ -502,13 +511,13 @@ class EvaluationPanel(Panel):
             )
             return
 
-        results = ctx.dataset.load_evaluation_results(computed_eval_key)
+        results = dataset.load_evaluation_results(computed_eval_key)
         gt_field = info.config.gt_field
         mask_targets = None
 
         if evaluation_type == "segmentation":
-            mask_targets = _get_mask_targets(ctx.dataset, gt_field)
-            _init_segmentation_results(ctx.dataset, results, gt_field)
+            mask_targets = _get_mask_targets(dataset, gt_field)
+            _init_segmentation_results(dataset, results, gt_field)
 
         metrics = results.metrics()
         per_class_metrics = self.get_per_class_metrics(info, results)
@@ -652,6 +661,7 @@ class EvaluationPanel(Panel):
         # ctx.panel.state.view = "eval"
 
     def load_view(self, ctx):
+        dataset = self.get_dataset(ctx)
         view_type = ctx.params.get("type", None)
 
         if view_type == "clear":
@@ -663,8 +673,8 @@ class EvaluationPanel(Panel):
 
         eval_key = view_state.get("key")
         eval_key = view_options.get("key", eval_key)
-        eval_view = ctx.dataset.load_evaluation_view(eval_key)
-        info = ctx.dataset.get_evaluation_info(eval_key)
+        eval_view = dataset.load_evaluation_view(eval_key)
+        info = dataset.get_evaluation_info(eval_key)
         pred_field = info.config.pred_field
         gt_field = info.config.gt_field
 
@@ -672,7 +682,7 @@ class EvaluationPanel(Panel):
         pred_field2 = None
         gt_field2 = None
         if eval_key2:
-            info2 = ctx.dataset.get_evaluation_info(eval_key2)
+            info2 = dataset.get_evaluation_info(eval_key2)
             pred_field2 = info2.config.pred_field
             if info2.config.gt_field != gt_field:
                 gt_field2 = info2.config.gt_field
@@ -731,12 +741,12 @@ class EvaluationPanel(Panel):
                     expr = F(f"{eval_key}") == field
                     view = eval_view.match(expr)
         elif info.config.type == "detection":
-            _, gt_root = ctx.dataset._get_label_field_path(gt_field)
-            _, pred_root = ctx.dataset._get_label_field_path(pred_field)
+            _, gt_root = dataset._get_label_field_path(gt_field)
+            _, pred_root = dataset._get_label_field_path(pred_field)
             if gt_field2 is not None:
-                _, gt_root2 = ctx.dataset._get_label_field_path(gt_field2)
+                _, gt_root2 = dataset._get_label_field_path(gt_field2)
             if pred_field2 is not None:
-                _, pred_root2 = ctx.dataset._get_label_field_path(pred_field2)
+                _, pred_root2 = dataset._get_label_field_path(pred_field2)
 
             if view_type == "class":
                 # All GT/predictions of class `x`
@@ -803,8 +813,8 @@ class EvaluationPanel(Panel):
                         pred_field, F(eval_key) == field, only_matches=True
                     )
         elif info.config.type == "segmentation":
-            results = ctx.dataset.load_evaluation_results(eval_key)
-            _init_segmentation_results(ctx.dataset, results, gt_field)
+            results = dataset.load_evaluation_results(eval_key)
+            _init_segmentation_results(dataset, results, gt_field)
             if results.ytrue_ids is None or results.ypred_ids is None:
                 # Legacy format segmentations
                 return
@@ -813,22 +823,20 @@ class EvaluationPanel(Panel):
                 if gt_field2 is None:
                     gt_field2 = gt_field
 
-                results2 = ctx.dataset.load_evaluation_results(eval_key2)
-                _init_segmentation_results(ctx.dataset, results2, gt_field2)
+                results2 = dataset.load_evaluation_results(eval_key2)
+                _init_segmentation_results(dataset, results2, gt_field2)
                 if results2.ytrue_ids is None or results2.ypred_ids is None:
                     # Legacy format segmentations
                     return
             else:
                 results2 = None
 
-            _, gt_id = ctx.dataset._get_label_field_path(gt_field, "_id")
-            _, pred_id = ctx.dataset._get_label_field_path(pred_field, "_id")
+            _, gt_id = dataset._get_label_field_path(gt_field, "_id")
+            _, pred_id = dataset._get_label_field_path(pred_field, "_id")
             if gt_field2 is not None:
-                _, gt_id2 = ctx.dataset._get_label_field_path(gt_field2, "_id")
+                _, gt_id2 = dataset._get_label_field_path(gt_field2, "_id")
             if pred_field2 is not None:
-                _, pred_id2 = ctx.dataset._get_label_field_path(
-                    pred_field2, "_id"
-                )
+                _, pred_id2 = dataset._get_label_field_path(pred_field2, "_id")
 
             if view_type == "class":
                 # All GT/predictions that contain class `x`
@@ -879,6 +887,7 @@ class EvaluationPanel(Panel):
             ctx.ops.set_view(view)
 
     def load_compare_evaluation_results(self, ctx):
+        dataset = self.get_dataset(ctx)
         base_model_key = (
             ctx.params.get("panel_state", {}).get("view", {}).get("key", None)
         )
@@ -891,8 +900,8 @@ class EvaluationPanel(Panel):
         if base_model_key is None:
             raise ValueError("No base model key provided")
 
-        eval_a_results = ctx.dataset.load_evaluation_results(base_model_key)
-        eval_b_results = ctx.dataset.load_evaluation_results(compare_model_key)
+        eval_a_results = dataset.load_evaluation_results(base_model_key)
+        eval_b_results = dataset.load_evaluation_results(compare_model_key)
 
         return (
             base_model_key,
@@ -933,11 +942,12 @@ class EvaluationPanel(Panel):
             }
 
     def get_scenario_data(self, ctx, scenario):
+        dataset = self.get_dataset(ctx)
         view_state = ctx.panel.get_state("view") or {}
         eval_key = view_state.get("key")
         computed_eval_key = ctx.params.get("key", eval_key)
-        results = ctx.dataset.load_evaluation_results(computed_eval_key)
-        info = ctx.dataset.get_evaluation_info(computed_eval_key)
+        results = dataset.load_evaluation_results(computed_eval_key)
+        info = dataset.get_evaluation_info(computed_eval_key)
         scenario_type = scenario.get("type", None)
         scenario_data = scenario.copy()
         scenario_data["subsets_data"] = {}
@@ -1237,15 +1247,6 @@ def _init_segmentation_results(dataset, results, gt_field):
     if getattr(results, "_classes_map", None):
         # Already initialized
         return
-
-    #
-    # Ensure the dataset singleton is cached so that subsequent callbacks on
-    # this panel will use the same `dataset` and hence `results`
-    #
-
-    import fiftyone.server.utils as fosu
-
-    fosu.cache_dataset(dataset)
 
     #
     # `results.classes` and App callbacks could contain any of the

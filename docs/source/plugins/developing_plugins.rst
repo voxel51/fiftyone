@@ -953,6 +953,9 @@ execution:
             allow_delegated_execution=True/False,    # default False
             default_choice_to_delegated=True/False,  # default False
             resolve_execution_options_on_change=None,
+
+            # If delegated, whether the operator supports distributed execution
+            allow_distributed_execution=True/False,  # default False
         )
 
 .. _operator-execution-context:
@@ -1093,7 +1096,7 @@ values and any other aspects of the
             # We found a similarity config; render some inputs specific to that
             inputs.bool(
                 "upgrade",
-                label"Compute visualization",
+                label="Compute visualization",
                 description="Generate an embeddings visualization for this index?",
                 view=types.CheckboxView(),
             )
@@ -1117,6 +1120,103 @@ the property will automatically be marked as `invalid=True`. The operator's
     :meth:`resolve_input() <fiftyone.operators.operator.Operator.resolve_input>`
     or else the form may take too long to render, especially for dynamic inputs
     where the method is called after every user input.
+
+.. _operator-target-view:
+
+Operator inputs: target view
+----------------------------
+
+.. versionadded:: 1.8.0
+
+A common pattern is to allow users to choose whether an operator should be
+applied to the entire dataset, just the current view, or some other subset of
+samples. As of v1.8.0, FiftyOne has a builtin utility for applying this
+pattern to your operators.
+
+The input form element for choosing the target view
+can be created via the
+:meth:`inputs.view_target() <fiftyone.operators.types.Object.view_target>`
+function, which you can call from within your operator's
+:meth:`resolve_input() <fiftyone.operators.Operator.resolve_input>`
+function.
+
+The resolved target view can be accessed in the operator's
+:meth:`execute() <fiftyone.operators.Operator.execute>` method
+via :meth:`ctx.target_view() <fiftyone.operators.ExecutionContext.target_view>`.
+
+The available choices the user will have for the target view depend on the
+current context and the provided flags.
+
+The choices include:
+
++--------------------------+----------------------------------------------------------------------------------+
+| Choice                   | Description                                                                      |
++==========================+==================================================================================+
+| DATASET                  | The entire dataset, if the current view is not a generated view                  |
++--------------------------+----------------------------------------------------------------------------------+
+| BASE_VIEW                | The base view, if the current view is a generated view such as                   |
+|                          | :class:`fiftyone.core.clips.ClipsView`, :class:`fiftyone.core.video.FramesView`, |
+|                          | or :class:`fiftyone.core.patches.PatchesView`. Base view is the semantic         |
+|                          | equivalent of "entire dataset" for these views. The base view is the view from   |
+|                          | which the generated view was created. For example,                               |
+|                          | ``dataset.limit(51).to_frames("ground_truth").limit(10)`` has a base view of     |
+|                          | ``dataset.limit(51).to_frames("ground_truth")``                                  |
++--------------------------+----------------------------------------------------------------------------------+
+| DATASET_VIEW             | The dataset view (``ctx.dataset.view()``), if ``allow_dataset_view`` is ``True`` |
+|                          | . Note this is unlikely to be useful in the average case, so it defaults to off  |
++--------------------------+----------------------------------------------------------------------------------+
+| CURRENT_VIEW             | The current view, if the current view is different from the dataset view         |
++--------------------------+----------------------------------------------------------------------------------+
+| SELECTED_SAMPLES         | The currently selected samples, if ``allow_selected_samples`` is ``True`` and    |
+|                          | there are selected samples                                                       |
++--------------------------+----------------------------------------------------------------------------------+
+| SELECTED_LABELS          | The currently selected labels, if ``allow_selected_labels`` is ``True`` and      |
+|                          | there are selected labels                                                        |
++--------------------------+----------------------------------------------------------------------------------+
+
+If there's no view or selected items, the only option is entire dataset,
+so no choice is presented to the user.
+
+The target view descriptions are generated based on the provided
+``action_description`` and the various description parameters. If a
+description parameter is not ``None``, it will be used as the description
+for the corresponding target view choice. Otherwise, a default description
+will be generated such as ``f"{action_description} the entire dataset"``.
+
+Here is a simple example of an operator that uses the target view pattern to
+give the user the choice of target view:
+
+.. code-block:: python
+
+    import fiftyone.operators as foo
+
+    class MyTargetViewOperator(foo.Operator):
+        @property
+        def config(self):
+            return foo.OperatorConfig(
+                name="target_view_operator",
+                label="Testing Target View Operator",
+                dynamic=True,
+            )
+
+        def resolve_input(self, ctx):
+            inputs = types.Object()
+            inputs.view_target(ctx)
+
+            return types.Property(
+                inputs, view=types.View(label="Target View Operator")
+            )
+
+        def execute(self, ctx):
+            target_view = ctx.target_view()
+            # Do something with the target view
+            print("Sample collection size", len(target_view))
+
+And here is a screenshot of the target view input in the FiftyOne app when
+applied to a compute metadata operator:
+
+.. image:: /images/plugins/operators/examples/operator-target-view.png
+    :align: center
 
 .. _operator-delegated-execution:
 
@@ -1332,6 +1432,99 @@ as `label` values using the pattern shown below:
         # Automatically report all `fiftyone` logging messages
         with foo.ProgressHandler(ctx, logger=logging.getLogger("fiftyone")):
             foz.load_zoo_dataset(name, persistent=True)
+
+.. _writing-distributed-operators:
+
+Distributed execution
+~~~~~~~~~~~~~~~~~~~~~
+
+.. versionadded:: 1.8.0
+
+In FiftyOne Enterprise, delegated operations can be executed in a
+:ref:`distributed <enterprise-do-distributed-execution>` fashion across
+multiple workers to speed up execution on large datasets. This is not
+supported in FiftyOne Open Source, but operator authors can still utilize
+the distributed execution paradigm so that their operators can be run in
+a distributed fashion when deployed in Enterprise.
+
+.. note::
+    In FiftyOne Open Source, the ``allow_distributed_execution`` flag is
+    ignored at runtime. Use it to declare intent in your operator, and the
+    capability will be honored when the operator runs in Enterprise
+
+There are really two requirements for supporting distributed execution and
+they are both quite simple!
+
+Allow distributed
+^^^^^^^^^^^^^^^^^
+
+To allow your operator to be executed in a distributed fashion, you must set
+the `allow_distributed_execution` flag to `True` in the
+:ref:`operator's config <operator-config>`:
+
+.. code-block:: python
+    :linenos:
+
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="my_distributed_operator",
+            label="My Distributed Operator",
+            allow_delegated_execution=True,
+            allow_immediate_execution=True,
+            default_choice_to_delegated=True,
+            dynamic=True,
+            allow_distributed_execution=True,
+        )
+
+Utilize distributed execution
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To utilize distributed execution, you must ensure the operator is using the
+proper dataset view in its
+:meth:`execute() <fiftyone.operators.Operator.execute>` method. This way, the
+task splits will be respected by child tasks, while non-distributed execution
+will also work as expected.
+
+This can be achieved via one of two ways:
+
+1.  Always use ``ctx.view`` within ``execute()``. This is the simplest
+    approach and works well if your operator only ever uses the user's current
+    view.
+
+    For example:
+
+    .. code-block:: python
+       :linenos:
+
+       def execute(self, ctx):
+           # Use ctx.view as the basis for your computation
+           num_samples = len(ctx.view)
+           ...
+2.  **[Recommended]** Use
+    :meth:`ctx.target_view() <fiftyone.operators.ExecutionContext.target_view>`
+    if your operator is using the :ref:`target view pattern <operator-target-view>`.
+    This is the recommended approach since it is likely that your users will
+    want to choose the target view when executing the operator.
+
+    For example:
+
+    .. code-block:: python
+       :linenos:
+
+       def execute(self, ctx):
+           # Use ctx.target_view() as the basis for your computation
+           target_view = ctx.target_view()
+           num_samples = len(target_view)
+           ...
+
+.. warning::
+
+    Since the operator may be executed multiple times, each on a subset of
+    the data, in any order, the operator cannot perform any pre or post
+    processing outside of the ``ctx.view``. That is, the operator execution
+    must be a so-called
+    `embarrassingly parallel problem <https://en.wikipedia.org/wiki/Embarrassingly_parallel>`_.
 
 .. _operator-execution:
 

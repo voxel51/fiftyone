@@ -310,7 +310,7 @@ def available_patterns():
 
 
 def fill_patterns(string):
-    """Fills the patterns in in the given string.
+    """Fills the patterns in the given string.
 
     Use :meth:`available_patterns` to see the available patterns that can be
     used.
@@ -2873,22 +2873,59 @@ def recommend_thread_pool_workers(num_workers=None):
     return num_workers
 
 
-def recommend_process_pool_workers(num_workers=None):
+def recommend_process_pool_workers(num_workers=None, default_num_workers=None):
     """Recommends a number of workers for a process pool.
 
-    If a ``fo.config.max_process_pool_workers`` is set, this limit is applied.
+    If the number is 0, that means no multiprocessing is recommended.
+
+    If this process is a daemon, the number of workers is 0 since child
+    processes are disallowed in this context.
+
+    If ``num_workers`` is None, the following order is used to determine the
+    number of workers:
+
+    - The configured (``fo.config``) default number of workers
+    - The passed-in default number of workers (``default_num_workers``)
+    - The system CPU count
+
+    If ``fo.config.max_process_pool_workers`` is set, this limit is applied.
 
     Args:
         num_workers (None): a suggested number of workers
+        default_num_workers (None): a default number of workers to use if
+            ``num_workers`` is None and no configured default is set
 
     Returns:
-        a number of workers
+        a number of workers. 0 means no multiprocessing
     """
-    if num_workers is None:
-        num_workers = multiprocessing.cpu_count()
+    try:
+        # "daemonic processes are not allowed to have children"
+        if multiprocessing.current_process().daemon:
+            num_workers = 0
+        elif num_workers is None:
+            # Order:
+            # 1. Configured default
+            # 2. Passed-in default
+            # 3. System CPU count
+            num_workers = (
+                fo.config.default_process_pool_workers
+                if fo.config.default_process_pool_workers is not None
+                else (
+                    default_num_workers
+                    if default_num_workers is not None
+                    else multiprocessing.cpu_count()
+                )
+            )
+    except Exception:
+        logger.debug(
+            "recommend_process_pool_workers: falling back to 4", exc_info=True
+        )
+        num_workers = 4
 
+    num_workers = int(num_workers)
     if fo.config.max_process_pool_workers is not None:
         num_workers = min(num_workers, fo.config.max_process_pool_workers)
+    num_workers = max(num_workers, 0)
 
     return num_workers
 

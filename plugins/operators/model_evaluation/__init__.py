@@ -6,10 +6,11 @@ Scenario plugin.
 |
 """
 
+import fiftyone as fo
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
 import fiftyone.core.fields as fof
-from fiftyone.server.utils import cache_dataset
+import fiftyone.server.utils as fosu
 from fiftyone.operators.cache import execution_cache
 
 from bson import ObjectId
@@ -36,10 +37,6 @@ MAX_SAMPLES_FOR_DEFAULT_PREVIEW = 25000
 PROMPT_SCOPED_CACHE_TTL = 60 * 60  # 1 hour
 
 
-def dataset_serialize_deserialize(dataset):
-    return dataset
-
-
 class ConfigureScenario(foo.Operator):
     # tracks the last view type opened
     last_view_type_used = None
@@ -53,18 +50,13 @@ class ConfigureScenario(foo.Operator):
             unlisted=True,
         )
 
-    @execution_cache(
-        prompt_scoped=True,
-        residency="ephemeral",
-        serialize=dataset_serialize_deserialize,
-        deserialize=dataset_serialize_deserialize,
-        ttl=PROMPT_SCOPED_CACHE_TTL,
-    )
+    # we use `fosu.cache_dataset()` rather than `@execution_cache` here so that
+    # the cached dataset can be reused outside of the current prompt session
     def get_dataset(self, ctx):
         """
         Returns the dataset for the current context.
         """
-        return ctx.dataset
+        return fosu.cache_dataset(ctx.dataset)
 
     @execution_cache(
         prompt_scoped=True, residency="ephemeral", ttl=PROMPT_SCOPED_CACHE_TTL
@@ -196,13 +188,8 @@ class ConfigureScenario(foo.Operator):
 
         return key
 
-    @execution_cache(
-        prompt_scoped=True,
-        residency="ephemeral",
-        serialize=dataset_serialize_deserialize,
-        deserialize=dataset_serialize_deserialize,
-        ttl=PROMPT_SCOPED_CACHE_TTL,
-    )
+    # there is no need to use `@execution_cache` here because evaluation
+    # results are cached on the dataset, which is cached by `get_dataset()`
     def get_evaluations_results(self, ctx):
         """
         Returns the evaluation results for the current context.
@@ -1072,7 +1059,8 @@ class ConfigureScenario(foo.Operator):
         return [scenario.get("name") for _, scenario in scenarios.items()]
 
     def resolve_input(self, ctx):
-        cache_dataset(self.get_dataset(ctx))
+        # force `ctx.dataset` to be cached
+        _ = self.get_dataset(ctx)
 
         inputs = types.Object()
 

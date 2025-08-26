@@ -10,5 +10,6 @@ export type ShaderProps = {
   isPointSizeAttenuated: boolean;
   opacity?: number;
   upVector?: THREE.Vector3;
+  quaternion?: THREE.Quaternion;
   pcdType?: "intensity" | "rgb";
 };

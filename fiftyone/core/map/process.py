@@ -53,16 +53,7 @@ class ProcessMapper(fomm.LocalMapper):
         batch_size: Optional[int] = None,
         **__,
     ):
-        if multiprocessing.current_process().daemon:
-            num_workers = 1
-        elif num_workers is None:
-            num_workers = (
-                config.default_process_pool_workers
-                or fou.recommend_process_pool_workers()
-            )
-
-        if config.max_process_pool_workers is not None:
-            num_workers = min(num_workers, config.max_process_pool_workers)
+        num_workers = fou.recommend_process_pool_workers(num_workers)
 
         return super(ProcessMapper, cls).create(
             config=config,
@@ -243,7 +234,7 @@ def _init_worker(
     # pylint:disable-next=protected-access
     food._disconnect()
 
-    dataset = fo.load_dataset(dataset_name)
+    dataset = fo.load_dataset(dataset_name, reload=True)
     if view_stages:
         # pylint:disable-next=protected-access
         process_sample_collection = fov.DatasetView._build(

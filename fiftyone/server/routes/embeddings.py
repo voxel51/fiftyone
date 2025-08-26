@@ -85,7 +85,7 @@ class OnPlotLoad(HTTPEndpoint):
             return {"error": msg}
 
         view = fosv.get_view(
-            dataset_name,
+            dataset,
             stages=stages,
             filters=filters,
             sample_filter=get_sample_filter(slices),
@@ -200,7 +200,7 @@ class EmbeddingsSelection(HTTPEndpoint):
         results = dataset.load_brain_results(brain_key)
 
         view = fosv.get_view(
-            dataset_name,
+            dataset,
             stages=stages,
             sample_filter=get_sample_filter(slices),
         )

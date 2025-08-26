@@ -189,7 +189,7 @@ class SingleProcessSynchronizationTests(unittest.TestCase):
 
 class ScopedObjectsSynchronizationTests(unittest.TestCase):
     """Tests ensuring that when a dataset or samples in a dataset are modified,
-    those changes are passed on the the database and can be seen in different
+    those changes are passed on the database and can be seen in different
     scopes (or processes!).
     """
 

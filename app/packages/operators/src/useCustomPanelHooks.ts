@@ -1,5 +1,5 @@
 import { debounce, merge, mergeWith } from "lodash";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { usePanelState, useSetCustomPanelState } from "@fiftyone/spaces";
 import { DimensionsType, useUnboundState } from "@fiftyone/state";
@@ -47,7 +47,6 @@ export interface CustomPanelHooks {
   data: unknown;
   panelSchema: unknown;
   loaded: boolean;
-  onLoadError?: string;
 }
 
 function useCtxChangePanelEvent(loaded, panelId, value, operator) {
@@ -83,18 +82,36 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
 
   const onLoad = useCallback(() => {
     if (props.onLoad && !isLoaded) {
-      executeOperator(
-        props.onLoad,
-        { panel_id: panelId, panel_state: panelState?.state },
-        {
-          callback(result) {
-            const { error: onLoadError } = result;
-            setPanelStateLocal((s) => ({ ...s, onLoadError, loaded: true }));
-          },
-        }
-      );
+      triggerPanelEvent(panelId, {
+        operator: props.onLoad,
+        params: { panel_id: panelId, panel_state: panelState?.state },
+        callback: (result) => {
+          // Only set loaded if there's no error
+          if (!result?.error) {
+            setPanelStateLocal((s) => ({ ...s, loaded: true }));
+          }
+        },
+      });
     }
-  }, [props.onLoad, panelId, panelState?.state, isLoaded, setPanelStateLocal]);
+  }, [
+    props.onLoad,
+    panelId,
+    panelState?.state,
+    isLoaded,
+    setPanelStateLocal,
+    triggerPanelEvent,
+  ]);
+
+  useEffect(() => {
+    onLoad();
+  }, [
+    panelId,
+    onLoad,
+    props.onUnLoad,
+    isLoaded,
+    setPanelStateLocal,
+    triggerPanelEvent,
+  ]);
   useCtxChangePanelEvent(
     isLoaded,
     panelId,
@@ -161,17 +178,6 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
     props.onChangeActiveFields
   );
 
-  useEffect(() => {
-    onLoad();
-  }, [
-    panelId,
-    onLoad,
-    props.onUnLoad,
-    isLoaded,
-    setPanelStateLocal,
-    triggerPanelEvent,
-  ]);
-
   const handlePanelStateChangeOpDebounced = useMemo(() => {
     return debounce(
       (state, onChange, panelId) => {
@@ -234,7 +240,6 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
     handlePanelStatePathChange: handlePanelStatePathChangeDebounced,
     data,
     panelSchema,
-    onLoadError: panelStateLocal?.onLoadError,
   };
 }
 

@@ -102,27 +102,18 @@ async def paginate_samples(
     dynamic_group: t.Optional[BSON] = None,
     max_query_time: t.Optional[int] = None,
 ) -> Connection[t.Union[ImageSample, VideoSample], str]:
-    run = lambda reload: fosv.get_view(
+    run = lambda: fosv.get_view(
         dataset,
         stages=stages,
         filters=filters,
         pagination_data=pagination_data,
         extended_stages=extended_stages,
         sample_filter=sample_filter,
-        reload=reload,
         sort_by=sort_by,
         desc=desc,
         dynamic_group=dynamic_group,
     )
-    if after is None:
-        # first page, force dataset reload
-        view = await run_sync_task(run, True)
-    else:
-        # not first page, optimistically skip dataset reload
-        try:
-            view = await run_sync_task(run, False)
-        except:
-            view = await run_sync_task(run, True)
+    view = await run_sync_task(run)
 
     if after is None:
         after = "-1"
@@ -240,7 +231,6 @@ def _needs_full_lookup(view: SampleCollection):
         return False
 
     for stage in view._stages:
-
         if isinstance(
             stage,
             (

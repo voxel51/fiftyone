@@ -4,7 +4,7 @@
             "base_name": "alexnet-imagenet-torch",
             "base_filename": "alexnet-owt-4df8aa71.pth",
             "version": null,
-            "description": "AlexNet model architecture from `One weird trick for parallelizing convolutional neural networks <https://arxiv.org/abs/1404.5997>`_ trained on ImageNet",
+            "description": "Classic neural network that recognizes images and helped launch the deep learning revolution",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Alex Krizhevsky",
             "license": "BSD 3-Clause",
@@ -46,7 +46,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "alexnet"
+                "alexnet",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -54,7 +55,7 @@
             "base_name": "deeplabv3-resnet101-coco-torch",
             "base_filename": "deeplabv3_resnet101_coco-586e9e4e.pth",
             "version": null,
-            "description": "DeepLabV3 model from `Rethinking Atrous Convolution for Semantic Image Segmentation <https://arxiv.org/abs/1706.05587>`_ with ResNet-101 backbone trained on COCO",
+            "description": "Labels everyday objects in images pixel by pixel for general scene understanding and analysis",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Liang-Chieh Chen, et al.",
             "license": "BSD 3-Clause",
@@ -73,6 +74,9 @@
                         "weights": "DeepLabV3_ResNet101_Weights.DEFAULT"
                     },
                     "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor",
+                    "output_processor_args": {
+                        "has_softmax_out": false
+                    },
                     "mask_targets_path": "{{eta-resources}}/voc-labels.txt",
                     "image_dim": 520,
                     "image_mean": [0.485, 0.456, 0.406],
@@ -88,14 +92,21 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "resnet", "deeplabv3"],
+            "tags": [
+                "segmentation",
+                "coco",
+                "torch",
+                "resnet",
+                "deeplabv3",
+                "official"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "segment-anything-vitb-torch",
             "base_filename": "sam_vit_b_01ec64.pth",
             "version": null,
-            "description": "Segment Anything Model (SAM) from `Segment Anything <https://arxiv.org/abs/2304.02643>`_ with ViT-B/16 backbone trained on SA-1B",
+            "description": "Interactive segmentation tool that instantly outlines any object you point to or describe",
             "source": "https://segment-anything.com",
             "author": "Alexander Kirillov, et al.",
             "license": "Apache 2.0",
@@ -123,14 +134,21 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "sa-1b", "torch", "zero-shot"],
+            "tags": [
+                "segment-anything",
+                "sa-1b",
+                "torch",
+                "zero-shot",
+                "transformer",
+                "official"
+            ],
             "date_added": "2023-05-12 11:40:51"
         },
         {
             "base_name": "segment-anything-vith-torch",
             "base_filename": "sam_vit_h_4b8939.pth",
             "version": null,
-            "description": "Segment Anything Model (SAM) from `Segment Anything <https://arxiv.org/abs/2304.02643>`_ with ViT-H/16 backbone trained on SA-1B",
+            "description": "Highest quality segmentation model creating extremely detailed masks for research and large-scale annotation projects",
             "source": "https://segment-anything.com",
             "author": "Alexander Kirillov, et al.",
             "license": "Apache 2.0",
@@ -158,14 +176,21 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "sa-1b", "torch", "zero-shot"],
+            "tags": [
+                "segment-anything",
+                "sa-1b",
+                "torch",
+                "zero-shot",
+                "transformer",
+                "official"
+            ],
             "date_added": "2023-05-12 11:40:51"
         },
         {
             "base_name": "segment-anything-vitl-torch",
             "base_filename": "sam_vit_l_0b3195.pth",
             "version": null,
-            "description": "Segment Anything Model (SAM) from `Segment Anything <https://arxiv.org/abs/2304.02643>`_ with ViT-L/16 backbone trained on SA-1B",
+            "description": "Large segmentation model producing finer object outlines for professional editing and labeling workflows",
             "source": "https://segment-anything.com",
             "author": "Alexander Kirillov, et al.",
             "license": "Apache 2.0",
@@ -193,17 +218,23 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "sa-1b", "torch", "zero-shot"],
+            "tags": [
+                "segment-anything",
+                "sa-1b",
+                "torch",
+                "zero-shot",
+                "transformer"
+            ],
             "date_added": "2023-05-12 11:40:51"
         },
         {
             "base_name": "segment-anything-2-hiera-tiny-image-torch",
             "base_filename": "sam2_hiera_tiny_image.pt",
             "version": null,
-            "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
+            "description": "Smallest image segmentation model offering instant results for mobile apps and embedded systems",
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
-            "license": "Apache 2.0,BSD 3-Clause",
+            "license": "Apache 2.0, BSD 3-Clause",
             "size_bytes": 155906050,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -235,10 +266,10 @@
             "base_name": "segment-anything-2-hiera-small-image-torch",
             "base_filename": "sam2_hiera_small_image.pt",
             "version": null,
-            "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
+            "description": "Fast image segmentation model that runs efficiently on laptops and edge computing devices",
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
-            "license": "Apache 2.0,BSD 3-Clause",
+            "license": "Apache 2.0, BSD 3-Clause",
             "size_bytes": 184309650,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -263,17 +294,23 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot"],
+            "tags": [
+                "segment-anything",
+                "torch",
+                "zero-shot",
+                "transformer",
+                "official"
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
             "base_name": "segment-anything-2-hiera-base-plus-image-torch",
             "base_filename": "sam2_hiera_base_plus_image.pt",
             "version": null,
-            "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
+            "description": "Accurate image segmentation model for editing, labeling, and creative work with still pictures",
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
-            "license": "Apache 2.0,BSD 3-Clause",
+            "license": "Apache 2.0, BSD 3-Clause",
             "size_bytes": 323493298,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -298,17 +335,23 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot"],
+            "tags": [
+                "segment-anything",
+                "torch",
+                "zero-shot",
+                "transformer",
+                "official"
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
             "base_name": "segment-anything-2-hiera-large-image-torch",
             "base_filename": "sam2_hiera_large_image.pt",
             "version": null,
-            "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
+            "description": "High-quality image segmenter producing detailed masks for demanding professional editing and annotation tasks",
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
-            "license": "Apache 2.0,BSD 3-Clause",
+            "license": "Apache 2.0, BSD 3-Clause",
             "size_bytes": 897952466,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -333,17 +376,23 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot"],
+            "tags": [
+                "segment-anything",
+                "torch",
+                "zero-shot",
+                "transformer",
+                "official"
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
             "base_name": "segment-anything-2-hiera-tiny-video-torch",
             "base_filename": "sam2_hiera_tiny_video.pt",
             "version": null,
-            "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
+            "description": "Tiny video segmenter enabling real-time object tracking on phones and compact devices",
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
-            "license": "Apache 2.0,BSD 3-Clause",
+            "license": "Apache 2.0, BSD 3-Clause",
             "size_bytes": 155906050,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -367,17 +416,24 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video"],
+            "tags": [
+                "segment-anything",
+                "torch",
+                "zero-shot",
+                "video",
+                "transformer",
+                "official"
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
             "base_name": "segment-anything-2-hiera-small-video-torch",
             "base_filename": "sam2_hiera_small_video.pt",
             "version": null,
-            "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
+            "description": "Quick video segmentation model delivering rapid object tracking on standard graphics cards",
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
-            "license": "Apache 2.0,BSD 3-Clause",
+            "license": "Apache 2.0, BSD 3-Clause",
             "size_bytes": 184309650,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -402,17 +458,24 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video"],
+            "tags": [
+                "segment-anything",
+                "torch",
+                "zero-shot",
+                "video",
+                "transformer",
+                "official"
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
             "base_name": "segment-anything-2-hiera-base-plus-video-torch",
             "base_filename": "sam2_hiera_base_plus_video.pt",
             "version": null,
-            "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
+            "description": "Video segmentation model that tracks and outlines objects throughout clips for editing and analysis",
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
-            "license": "Apache 2.0,BSD 3-Clause",
+            "license": "Apache 2.0, BSD 3-Clause",
             "size_bytes": 323493298,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -437,17 +500,24 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video"],
+            "tags": [
+                "segment-anything",
+                "torch",
+                "zero-shot",
+                "video",
+                "transformer",
+                "official"
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
             "base_name": "segment-anything-2-hiera-large-video-torch",
             "base_filename": "sam2_hiera_large_video.pt",
             "version": null,
-            "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
+            "description": "Advanced video segmenter providing fine object tracking throughout full videos for post-production work",
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
-            "license": "Apache 2.0,BSD 3-Clause",
+            "license": "Apache 2.0, BSD 3-Clause",
             "size_bytes": 897952466,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -472,14 +542,20 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video"],
+            "tags": [
+                "segment-anything",
+                "torch",
+                "zero-shot",
+                "video",
+                "transformer"
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
             "base_name": "med-sam-2-video-torch",
             "base_filename": "med-sam-2_pretrain.pth",
             "version": null,
-            "description": "Fine-tuned SAM2-hiera-tiny model from `Medical SAM 2 - Segment Medical Images as Video via Segment Anything Model 2 <https://arxiv.org/abs/2408.00874>`_",
+            "description": "Medical segmentation tool that outlines organs and structures in medical videos and 3D scans",
             "source": "https://github.com/MedicineToken/Medical-SAM2",
             "author": "Jiayuan Zhu, et al.",
             "license": "Apache 2.0",
@@ -511,7 +587,9 @@
                 "torch",
                 "zero-shot",
                 "video",
-                "med-SAM"
+                "med-SAM",
+                "transformer",
+                "official"
             ],
             "date_added": "2024-08-17 14:48:00"
         },
@@ -519,10 +597,10 @@
             "base_name": "segment-anything-2.1-hiera-tiny-image-torch",
             "base_filename": "sam2.1_hiera_tiny_image.pt",
             "version": null,
-            "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
+            "description": "Enhanced mobile image segmenter for apps, augmented reality filters, and on-device processing",
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
-            "license": "Apache 2.0,BSD 3-Clause",
+            "license": "Apache 2.0, BSD 3-Clause",
             "size_bytes": 155906050,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -549,17 +627,17 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot"],
+            "tags": ["segment-anything", "torch", "zero-shot", "transformer"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
             "base_name": "segment-anything-2.1-hiera-small-image-torch",
             "base_filename": "sam2.1_hiera_small_image.pt",
             "version": null,
-            "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
+            "description": "Balanced updated segmenter combining speed and accuracy for edge device image processing",
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
-            "license": "Apache 2.0,BSD 3-Clause",
+            "license": "Apache 2.0, BSD 3-Clause",
             "size_bytes": 184416285,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -586,17 +664,23 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot"],
+            "tags": [
+                "segment-anything",
+                "torch",
+                "zero-shot",
+                "transformer",
+                "official"
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
             "base_name": "segment-anything-2.1-hiera-base-plus-image-torch",
             "base_filename": "sam2.1_hiera_base_plus_image.pt",
             "version": null,
-            "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
+            "description": "Updated image segmenter with improved mask accuracy for everyday editing and dataset creation",
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
-            "license": "Apache 2.0,BSD 3-Clause",
+            "license": "Apache 2.0, BSD 3-Clause",
             "size_bytes": 323606802,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -623,17 +707,23 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot"],
+            "tags": [
+                "segment-anything",
+                "torch",
+                "zero-shot",
+                "transformer",
+                "official"
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
             "base_name": "segment-anything-2.1-hiera-large-image-torch",
             "base_filename": "sam2.1_hiera_large_image.pt",
             "version": null,
-            "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
+            "description": "Large updated model offering even finer masks for high-resolution professional image workflows",
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
-            "license": "Apache 2.0,BSD 3-Clause",
+            "license": "Apache 2.0, BSD 3-Clause",
             "size_bytes": 898083611,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -660,17 +750,23 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot"],
+            "tags": [
+                "segment-anything",
+                "torch",
+                "zero-shot",
+                "transformer",
+                "official"
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
             "base_name": "segment-anything-2.1-hiera-tiny-video-torch",
             "base_filename": "sam2.1_hiera_tiny_video.pt",
             "version": null,
-            "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
+            "description": "Upgraded mobile video segmenter for live effects on phones, wearables, and smart cameras",
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
-            "license": "Apache 2.0,BSD 3-Clause",
+            "license": "Apache 2.0, BSD 3-Clause",
             "size_bytes": 155906050,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -696,17 +792,23 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video"],
+            "tags": [
+                "segment-anything",
+                "torch",
+                "zero-shot",
+                "video",
+                "transformer"
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
             "base_name": "segment-anything-2.1-hiera-small-video-torch",
             "base_filename": "sam2.1_hiera_small_video.pt",
             "version": null,
-            "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
+            "description": "Improved video segmenter maintaining quick performance on compact hardware while enhancing mask quality",
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
-            "license": "Apache 2.0,BSD 3-Clause",
+            "license": "Apache 2.0, BSD 3-Clause",
             "size_bytes": 184416285,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -733,17 +835,24 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video"],
+            "tags": [
+                "segment-anything",
+                "torch",
+                "zero-shot",
+                "video",
+                "transformer",
+                "official"
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
             "base_name": "segment-anything-2.1-hiera-base-plus-video-torch",
             "base_filename": "sam2.1_hiera_base_plus_video.pt",
             "version": null,
-            "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
+            "description": "Enhanced video segmenter with better tracking quality for video analysis and scene understanding",
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
-            "license": "Apache 2.0,BSD 3-Clause",
+            "license": "Apache 2.0, BSD 3-Clause",
             "size_bytes": 323606802,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -770,17 +879,24 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video"],
+            "tags": [
+                "segment-anything",
+                "torch",
+                "zero-shot",
+                "video",
+                "transformer",
+                "official"
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
             "base_name": "segment-anything-2.1-hiera-large-video-torch",
             "base_filename": "sam2.1_hiera_large_video.pt",
             "version": null,
-            "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
+            "description": "Large video model producing exceptionally detailed masks throughout long videos for intensive production",
             "source": "https://ai.meta.com/sam2/",
             "author": "Nikhila Ravi, et al.",
-            "license": "Apache 2.0,BSD 3-Clause",
+            "license": "Apache 2.0, BSD 3-Clause",
             "size_bytes": 898083611,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -807,14 +923,21 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video"],
+            "tags": [
+                "segment-anything",
+                "torch",
+                "zero-shot",
+                "video",
+                "transformer",
+                "official"
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
             "base_name": "deeplabv3-resnet50-coco-torch",
             "base_filename": "deeplabv3_resnet50_coco-cd0a2569.pth",
             "version": null,
-            "description": "DeepLabV3 model from `Rethinking Atrous Convolution for Semantic Image Segmentation <https://arxiv.org/abs/1706.05587>`_ with ResNet-50 backbone trained on COCO",
+            "description": "Faster version that quickly identifies and labels objects in images for real-time applications",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Liang-Chieh Chen, et al.",
             "license": "BSD 3-Clause",
@@ -833,6 +956,9 @@
                         "weights": "DeepLabV3_ResNet50_Weights.DEFAULT"
                     },
                     "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor",
+                    "output_processor_args": {
+                        "has_softmax_out": false
+                    },
                     "mask_targets_path": "{{eta-resources}}/voc-labels.txt",
                     "image_dim": 520,
                     "image_mean": [0.485, 0.456, 0.406],
@@ -848,14 +974,21 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "resnet", "deeplabv3"],
+            "tags": [
+                "segmentation",
+                "coco",
+                "torch",
+                "resnet",
+                "deeplabv3",
+                "official"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "densenet121-imagenet-torch",
             "base_filename": "densenet121-a639ec97.pth",
             "version": null,
-            "description": "Densenet-121 model from `Densely Connected Convolutional Networks <https://arxiv.org/pdf/1608.06993.pdf>`_ trained on ImageNet",
+            "description": "Compact yet powerful classifier that delivers strong results while using minimal computational resources",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Gao Huang, et al.",
             "license": "BSD 3-Clause",
@@ -897,7 +1030,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "densenet"
+                "densenet",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -905,7 +1039,7 @@
             "base_name": "densenet161-imagenet-torch",
             "base_filename": "densenet161-8d451a50.pth",
             "version": null,
-            "description": "Densenet-161 model from `Densely Connected Convolutional Networks <https://arxiv.org/pdf/1608.06993.pdf>`_ trained on ImageNet",
+            "description": "Dense network that achieves high accuracy for image classification and adapts well to new tasks",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Gao Huang, et al.",
             "license": "BSD 3-Clause",
@@ -955,7 +1089,7 @@
             "base_name": "densenet169-imagenet-torch",
             "base_filename": "densenet169-b2777c0a.pth",
             "version": null,
-            "description": "Densenet-169 model from `Densely Connected Convolutional Networks <https://arxiv.org/pdf/1608.06993.pdf>`_ trained on ImageNet",
+            "description": "Deeper variant offering improved accuracy while remaining efficient enough for practical deployment",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Gao Huang, et al.",
             "license": "BSD 3-Clause",
@@ -997,7 +1131,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "densenet"
+                "densenet",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1005,7 +1140,7 @@
             "base_name": "densenet201-imagenet-torch",
             "base_filename": "densenet201-c1103571.pth",
             "version": null,
-            "description": "Densenet-201 model from `Densely Connected Convolutional Networks <https://arxiv.org/pdf/1608.06993.pdf>`_ trained on ImageNet",
+            "description": "Extra-deep model providing the most detailed features for complex image understanding tasks",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Gao Huang, et al.",
             "license": "BSD 3-Clause",
@@ -1047,7 +1182,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "densenet"
+                "densenet",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1055,7 +1191,7 @@
             "base_name": "faster-rcnn-resnet50-fpn-coco-torch",
             "base_filename": "fasterrcnn_resnet50_fpn_coco-258fb6c6.pth",
             "version": null,
-            "description": "Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ with ResNet-50 FPN backbone trained on COCO",
+            "description": "Multi-scale object finder that accurately detects both small and large items in images",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Shaoqing Ren, et al.",
             "license": "BSD 3-Clause",
@@ -1087,14 +1223,21 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "faster-rcnn", "resnet"],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "faster-rcnn",
+                "resnet",
+                "official"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "fcn-resnet101-coco-torch",
             "base_filename": "fcn_resnet101_coco-7ecb50ca.pth",
             "version": null,
-            "description": "FCN model from `Fully Convolutional Networks for Semantic Segmentation <https://arxiv.org/abs/1411.4038>`_ with ResNet-101 backbone trained on COCO",
+            "description": "Creates detailed pixel-level labels for images, identifying and outlining twenty-one different object categories",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Jonathan Long, et al.",
             "license": "BSD 3-Clause",
@@ -1113,6 +1256,9 @@
                         "weights": "FCN_ResNet101_Weights.DEFAULT"
                     },
                     "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor",
+                    "output_processor_args": {
+                        "has_softmax_out": false
+                    },
                     "mask_targets_path": "{{eta-resources}}/voc-labels.txt",
                     "image_dim": 520,
                     "image_mean": [0.485, 0.456, 0.406],
@@ -1128,14 +1274,21 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "fcn", "resnet"],
+            "tags": [
+                "segmentation",
+                "coco",
+                "torch",
+                "fcn",
+                "resnet",
+                "official"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "fcn-resnet50-coco-torch",
             "base_filename": "fcn_resnet50_coco-1167a1af.pth",
             "version": null,
-            "description": "FCN model from `Fully Convolutional Networks for Semantic Segmentation <https://arxiv.org/abs/1411.4038>`_ with ResNet-50 backbone trained on COCO",
+            "description": "Fast image labeler that quickly identifies and outlines objects for interactive editing and annotation",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Jonathan Long, et al.",
             "license": "BSD 3-Clause",
@@ -1154,6 +1307,9 @@
                         "weights": "FCN_ResNet50_Weights.DEFAULT"
                     },
                     "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor",
+                    "output_processor_args": {
+                        "has_softmax_out": false
+                    },
                     "mask_targets_path": "{{eta-resources}}/voc-labels.txt",
                     "image_dim": 520,
                     "image_mean": [0.485, 0.456, 0.406],
@@ -1169,14 +1325,21 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "fcn", "resnet"],
+            "tags": [
+                "segmentation",
+                "coco",
+                "torch",
+                "fcn",
+                "resnet",
+                "official"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "googlenet-imagenet-torch",
             "base_filename": "googlenet-1378be20.pth",
             "version": null,
-            "description": "GoogLeNet (Inception v1) model from `Going Deeper with Convolutions <https://arxiv.org/abs/1409.4842>`_ trained on ImageNet",
+            "description": "Classic image classifier providing reliable categorization and features for various computer vision projects.",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Christian Szegedy, et al.",
             "license": "BSD 3-Clause",
@@ -1218,7 +1381,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "googlenet"
+                "googlenet",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1226,7 +1390,7 @@
             "base_name": "inception-v3-imagenet-torch",
             "base_filename": "inception_v3_google-1a9a5a14.pth",
             "version": null,
-            "description": "Inception v3 model from `Rethinking the Inception Architecture for Computer Vision <https://arxiv.org/abs/1512.00567>`_ trained on ImageNet",
+            "description": "Efficient image classifier delivering accurate results with useful features for transfer learning applications",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Christian Szegedy, et al.",
             "license": "BSD 3-Clause",
@@ -1267,7 +1431,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "inception"
+                "inception",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1275,7 +1440,7 @@
             "base_name": "keypoint-rcnn-resnet50-fpn-coco-torch",
             "base_filename": "keypointrcnn_resnet50_fpn_coco-fc266e95.pth",
             "version": null,
-            "description": "Keypoint R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ with ResNet-50 FPN backbone trained on COCO",
+            "description": "Finds people in images and maps their body joints for pose estimation and motion analysis",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Kaiming He, et al.",
             "license": "BSD 3-Clause",
@@ -1333,14 +1498,21 @@
                     "support": true
                 }
             },
-            "tags": ["keypoints", "coco", "torch", "keypoint-rcnn", "resnet"],
+            "tags": [
+                "keypoints",
+                "coco",
+                "torch",
+                "keypoint-rcnn",
+                "resnet",
+                "official"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "mask-rcnn-resnet50-fpn-coco-torch",
             "base_filename": "maskrcnn_resnet50_fpn_coco-bf2d0c1e.pth",
             "version": null,
-            "description": "Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ with ResNet-50 FPN backbone trained on COCO",
+            "description": "Multi-scale object outliner using advanced architecture for accurate segmentation across different object sizes",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Kaiming He, et al.",
             "license": "BSD 3-Clause",
@@ -1371,14 +1543,21 @@
                     "support": true
                 }
             },
-            "tags": ["instances", "coco", "torch", "mask-rcnn", "resnet"],
+            "tags": [
+                "instances",
+                "coco",
+                "torch",
+                "mask-rcnn",
+                "resnet",
+                "official"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "mnasnet0.5-imagenet-torch",
             "base_filename": "mnasnet0.5_top1_67.823-3ffadce67e.pth",
             "version": null,
-            "description": "MNASNet model from `MnasNet: Platform-Aware Neural Architecture Search for Mobile <https://arxiv.org/abs/1807.11626>`_ with depth multiplier of 0.5 trained on ImageNet",
+            "description": "Ultra-lightweight image classifier designed by AI for running directly on phones and IoT devices",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Mingxing Tan, et al.",
             "license": "BSD 3-Clause",
@@ -1420,7 +1599,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "mnasnet"
+                "mnasnet",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1428,7 +1608,7 @@
             "base_name": "mnasnet1.0-imagenet-torch",
             "base_filename": "mnasnet1.0_top1_73.512-f206786ef8.pth",
             "version": null,
-            "description": "MNASNet model from `MnasNet: Platform-Aware Neural Architecture Search for Mobile <https://arxiv.org/abs/1807.11626>`_ with depth multiplier of 1.0 trained on ImageNet",
+            "description": "Mobile-optimized classifier balancing size and accuracy for efficient on-device image recognition",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Mingxing Tan, et al.",
             "license": "BSD 3-Clause",
@@ -1470,7 +1650,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "mnasnet"
+                "mnasnet",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1478,7 +1659,7 @@
             "base_name": "mobilenet-v2-imagenet-torch",
             "base_filename": "mobilenet_v2-b0353104.pth",
             "version": null,
-            "description": "MobileNetV2 model from `MobileNetV2: Inverted Residuals and Linear Bottlenecks <https://arxiv.org/abs/1801.04381>`_ trained on ImageNet",
+            "description": "Mobile-friendly image classifier optimized for quick training and deployment on resource-limited devices",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Mark Sandler, et al.",
             "license": "BSD 3-Clause",
@@ -1520,7 +1701,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "mobilenet"
+                "mobilenet",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1528,7 +1710,7 @@
             "base_name": "resnet101-imagenet-torch",
             "base_filename": "resnet101-5d3b4d8f.pth",
             "version": null,
-            "description": "ResNet-101 model from `Deep Residual Learning for Image Recognition <https://arxiv.org/abs/1512.03385>`_ trained on ImageNet",
+            "description": "Deep image recognition model delivering high accuracy for demanding classification and analysis tasks",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Kaiming He, et al.",
             "license": "BSD 3-Clause",
@@ -1570,7 +1752,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "resnet"
+                "resnet",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1578,7 +1761,7 @@
             "base_name": "resnet152-imagenet-torch",
             "base_filename": "resnet152-b121ed2d.pth",
             "version": null,
-            "description": "ResNet-152 model from `Deep Residual Learning for Image Recognition <https://arxiv.org/abs/1512.03385>`_ trained on ImageNet",
+            "description": "Very deep classifier providing the richest visual features for precision-critical image understanding applications",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Kaiming He, et al.",
             "license": "BSD 3-Clause",
@@ -1620,7 +1803,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "resnet"
+                "resnet",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1628,7 +1812,7 @@
             "base_name": "resnet18-imagenet-torch",
             "base_filename": "resnet18-5c106cde.pth",
             "version": null,
-            "description": "ResNet-18 model from `Deep Residual Learning for Image Recognition <https://arxiv.org/abs/1512.03385>`_ trained on ImageNet",
+            "description": "Lightweight image classifier designed for fast recognition on phones and other resource-limited devices",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Kaiming He, et al.",
             "license": "BSD 3-Clause",
@@ -1670,7 +1854,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "resnet"
+                "resnet",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1678,7 +1863,7 @@
             "base_name": "resnet34-imagenet-torch",
             "base_filename": "resnet34-333f7ec4.pth",
             "version": null,
-            "description": "ResNet-34 model from `Deep Residual Learning for Image Recognition <https://arxiv.org/abs/1512.03385>`_ trained on ImageNet",
+            "description": "Balanced image classifier offering good accuracy and speed for everyday computer vision needs",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Kaiming He, et al.",
             "license": "BSD 3-Clause",
@@ -1720,7 +1905,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "resnet"
+                "resnet",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1728,7 +1914,7 @@
             "base_name": "resnet50-imagenet-torch",
             "base_filename": "resnet50-19c8e357.pth",
             "version": null,
-            "description": "ResNet-50 model from `Deep Residual Learning for Image Recognition <https://arxiv.org/abs/1512.03385>`_ trained on ImageNet",
+            "description": "Most popular image recognition backbone widely used as starting point for custom vision projects",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Kaiming He, et al.",
             "license": "BSD 3-Clause",
@@ -1770,7 +1956,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "resnet"
+                "resnet",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1778,7 +1965,7 @@
             "base_name": "resnext101-32x8d-imagenet-torch",
             "base_filename": "resnext101_32x8d-8ba56ff5.pth",
             "version": null,
-            "description": "ResNeXt-101 32x8d model from `Aggregated Residual Transformations for Deep Neural Networks <https://arxiv.org/abs/1611.05431>`_ trained on ImageNet",
+            "description": "Powerful image classifier with enhanced capacity for handling complex visual recognition challenges effectively",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Saining Xie, et al.",
             "license": "BSD 3-Clause",
@@ -1820,7 +2007,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "resnext"
+                "resnext",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1828,7 +2016,7 @@
             "base_name": "resnext50-32x4d-imagenet-torch",
             "base_filename": "resnext50_32x4d-7cdf4587.pth",
             "version": null,
-            "description": "ResNeXt-50 32x4d model from `Aggregated Residual Transformations for Deep Neural Networks <https://arxiv.org/abs/1611.05431>`_ trained on ImageNet",
+            "description": "Efficient advanced classifier delivering strong accuracy with reasonable computing requirements for practical deployments",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Saining Xie, et al.",
             "license": "BSD 3-Clause",
@@ -1878,7 +2066,7 @@
             "base_name": "retinanet-resnet50-fpn-coco-torch",
             "base_filename": "retinanet_resnet50_fpn_coco-eeacb38b.pth",
             "version": null,
-            "description": "RetinaNet model from `Focal Loss for Dense Object Detection <https://arxiv.org/abs/1708.02002>`_ with ResNet-50 FPN backbone trained on COCO",
+            "description": "Fast object detector that quickly finds and boxes eighty common items in any image",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Tsung-Yi Lin, et al.",
             "license": "BSD 3-Clause",
@@ -1917,7 +2105,7 @@
             "base_name": "shufflenetv2-0.5x-imagenet-torch",
             "base_filename": "shufflenetv2_x0.5-f707e7126e.pth",
             "version": null,
-            "description": "ShuffleNetV2 model from `ShuffleNet V2: Practical Guidelines for Efficient CNN Architecture Design <https://arxiv.org/abs/1807.11164>`_ with 0.5x output channels trained on ImageNet",
+            "description": "Ultra-small image classifier for tiny devices with very limited power and memory",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Ningning Ma, et al.",
             "license": "BSD 3-Clause",
@@ -1959,7 +2147,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "shufflenet"
+                "shufflenet",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1967,7 +2156,7 @@
             "base_name": "shufflenetv2-1.0x-imagenet-torch",
             "base_filename": "shufflenetv2_x1-5666bf0f80.pth",
             "version": null,
-            "description": "ShuffleNetV2 model from `ShuffleNet V2: Practical Guidelines for Efficient CNN Architecture Design <https://arxiv.org/abs/1807.11164>`_ with 1.0x output channels trained on ImageNet",
+            "description": "Mobile image classifier that works efficiently on phones with modest computing resources",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Ningning Ma, et al.",
             "license": "BSD 3-Clause",
@@ -2009,7 +2198,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "shufflenet"
+                "shufflenet",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -2017,7 +2207,7 @@
             "base_name": "squeezenet-1.1-imagenet-torch",
             "base_filename": "squeezenet1_1-f364aa15.pth",
             "version": null,
-            "description": "SqueezeNet 1.1 model from `the official SqueezeNet repo <https://github.com/forresti/SqueezeNet/tree/master/SqueezeNet_v1.1>`_ trained on ImageNet",
+            "description": "Tiny image classifier that fits in just five megabytes for embedded devices",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Forrest Iandola",
             "license": "BSD 2-Clause",
@@ -2059,7 +2249,7 @@
             "base_name": "squeezenet-imagenet-torch",
             "base_filename": "squeezenet1_0-a815701f.pth",
             "version": null,
-            "description": "SqueezeNet model from `SqueezeNet: AlexNet-level accuracy with 50x fewer parameters and <0.5MB model size <https://arxiv.org/abs/1602.07360>`_ trained on ImageNet",
+            "description": "Ultra-compact image classifier perfect for severely resource-constrained hardware and applications",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Forrest Iandola",
             "license": "BSD 2-Clause",
@@ -2094,14 +2284,20 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "imagenet", "torch", "squeezenet"],
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "squeezenet",
+                "official"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "vgg11-bn-imagenet-torch",
             "base_filename": "vgg11_bn-6002323d.pth",
             "version": null,
-            "description": "VGG-11 model from `Very Deep Convolutional Networks for Large-Scale Image Recognition <https://arxiv.org/abs/1409.1556>`_ with batch normalization trained on ImageNet",
+            "description": "Classic image classifier with stable training useful for various computer vision projects",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Karen Simonyan, et al.",
             "license": "BSD 3-Clause",
@@ -2143,7 +2339,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "vgg"
+                "vgg",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -2151,7 +2348,7 @@
             "base_name": "vgg11-imagenet-torch",
             "base_filename": "vgg11-bbd30ac9.pth",
             "version": null,
-            "description": "VGG-11 model from `Very Deep Convolutional Networks for Large-Scale Image Recognition <https://arxiv.org/abs/1409.1556>`_ trained on ImageNet",
+            "description": "Simple baseline image classifier valuable for research experimentation and learning purposes",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Karen Simonyan, et al.",
             "license": "BSD 3-Clause",
@@ -2191,7 +2388,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "vgg"
+                "vgg",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -2199,7 +2397,7 @@
             "base_name": "vgg13-bn-imagenet-torch",
             "base_filename": "vgg13_bn-abd245e5.pth",
             "version": null,
-            "description": "VGG-13 model from `Very Deep Convolutional Networks for Large-Scale Image Recognition <https://arxiv.org/abs/1409.1556>`_ with batch normalization trained on ImageNet",
+            "description": "Deeper classic classifier providing stable training process and solid accuracy results overall",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Karen Simonyan, et al.",
             "license": "BSD 3-Clause",
@@ -2241,7 +2439,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "vgg"
+                "vgg",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -2249,7 +2448,7 @@
             "base_name": "vgg13-imagenet-torch",
             "base_filename": "vgg13-c768596a.pth",
             "version": null,
-            "description": "VGG-13 model from `Very Deep Convolutional Networks for Large-Scale Image Recognition <https://arxiv.org/abs/1409.1556>`_ trained on ImageNet",
+            "description": "Straightforward image classifier valued for easy experimentation and model compression studies",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Karen Simonyan, et al.",
             "license": "BSD 3-Clause",
@@ -2289,7 +2488,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "vgg"
+                "vgg",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -2297,7 +2497,7 @@
             "base_name": "vgg16-bn-imagenet-torch",
             "base_filename": "vgg16_bn-6c64b313.pth",
             "version": null,
-            "description": "VGG-16 model from `Very Deep Convolutional Networks for Large-Scale Image Recognition <https://arxiv.org/abs/1409.1556>`_ with batch normalization trained on ImageNet",
+            "description": "Popular feature extractor widely used for detection, style transfer, and medical imaging",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Karen Simonyan, et al.",
             "license": "BSD 3-Clause",
@@ -2339,7 +2539,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "vgg"
+                "vgg",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -2347,7 +2548,7 @@
             "base_name": "vgg16-imagenet-torch",
             "base_filename": "vgg16-397923af.pth",
             "version": null,
-            "description": "VGG-16 model from `Very Deep Convolutional Networks for Large-Scale Image Recognition <https://arxiv.org/abs/1409.1556>`_ trained on ImageNet",
+            "description": "PyTorch version of the popular classifier ready for modern deep learning workflows",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Karen Simonyan, et al.",
             "license": "BSD 3-Clause",
@@ -2387,7 +2588,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "vgg"
+                "vgg",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -2395,7 +2597,7 @@
             "base_name": "vgg19-bn-imagenet-torch",
             "base_filename": "vgg19_bn-c79401a0.pth",
             "version": null,
-            "description": "VGG-19 model from `Very Deep Convolutional Networks for Large-Scale Image Recognition <https://arxiv.org/abs/1409.1556>`_ with batch normalization trained on ImageNet",
+            "description": "Deep classic model providing rich features for style transfer and interpretability analysis",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Karen Simonyan, et al.",
             "license": "BSD 3-Clause",
@@ -2437,7 +2639,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "vgg"
+                "vgg",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -2445,7 +2648,7 @@
             "base_name": "vgg19-imagenet-torch",
             "base_filename": "vgg19-dcbb9e9d.pth",
             "version": null,
-            "description": "VGG-19 model from `Very Deep Convolutional Networks for Large-Scale Image Recognition <https://arxiv.org/abs/1409.1556>`_ trained on ImageNet",
+            "description": "Deep image classifier delivering detailed features for creative applications and research projects",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Karen Simonyan, et al.",
             "license": "BSD 3-Clause",
@@ -2485,7 +2688,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "vgg"
+                "vgg",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -2493,7 +2697,7 @@
             "base_name": "wide-resnet101-2-imagenet-torch",
             "base_filename": "wide_resnet101_2-32ee1156.pth",
             "version": null,
-            "description": "Wide ResNet-101-2 model from `Wide Residual Networks <https://arxiv.org/abs/1605.07146>`_ trained on ImageNet",
+            "description": "Extra-wide deep classifier for high-precision image recognition and advanced transfer learning tasks",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Sergey Zagoruyko, et al.",
             "license": "BSD 3-Clause",
@@ -2535,7 +2739,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "wide-resnet"
+                "wide-resnet",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -2543,7 +2748,7 @@
             "base_name": "wide-resnet50-2-imagenet-torch",
             "base_filename": "wide_resnet50_2-95faca4d.pth",
             "version": null,
-            "description": "Wide ResNet-50-2 model from `Wide Residual Networks <https://arxiv.org/abs/1605.07146>`_ trained on ImageNet",
+            "description": "Wide classifier offering stronger accuracy and better features for adapting to new tasks",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Sergey Zagoruyko, et al.",
             "license": "BSD 3-Clause",
@@ -2585,7 +2790,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "wide-resnet"
+                "wide-resnet",
+                "official"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -2593,7 +2799,7 @@
             "base_name": "open-clip-torch",
             "base_filename": null,
             "version": null,
-            "description": "OPEN CLIP text/image encoder from `Learning Transferable Visual Models From Natural Language Supervision <https://arxiv.org/abs/2103.00020>`_ trained on 400M text-image pairs",
+            "description": "Connects images with text descriptions enabling search by words and automatic content filtering systems",
             "source": "https://github.com/mlfoundations/open_clip",
             "author": "Gabriel Ilharco, et al.",
             "license": "MIT",
@@ -2628,7 +2834,8 @@
                 "embeddings",
                 "torch",
                 "clip",
-                "zero-shot"
+                "zero-shot",
+                "transformer"
             ],
             "date_added": "2023-12-13 14:25:51"
         },
@@ -2636,7 +2843,7 @@
             "base_name": "classification-transformer-torch",
             "base_filename": null,
             "version": null,
-            "description": "Hugging Face Transformers model for image classification",
+            "description": "Vision transformer for image classification and custom fine-tuning on specialized datasets",
             "source": "https://huggingface.co/docs/transformers/tasks/image_classification",
             "author": "Thomas Wolf, et al.",
             "license": "Apache 2.0",
@@ -2659,7 +2866,8 @@
                 "logits",
                 "embeddings",
                 "torch",
-                "transformers"
+                "transformers",
+                "official"
             ],
             "date_added": "2024-01-17 14:25:51"
         },
@@ -2667,11 +2875,11 @@
             "base_name": "vit-base-patch16-224-imagenet-torch",
             "base_filename": null,
             "version": null,
-            "description": "Hugging Face Transformers model for image classification",
+            "description": "Modern image classifier that recognizes objects and provides useful features for various computer vision tasks",
             "source": "https://huggingface.co/docs/transformers/tasks/image_classification",
             "author": "Thomas Wolf, et al.",
             "license": "Apache 2.0",
-            "size_bytes": null,
+            "size_bytes": 346351599,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
                 "config": {}
@@ -2690,7 +2898,8 @@
                 "logits",
                 "embeddings",
                 "torch",
-                "transformers"
+                "transformers",
+                "official"
             ],
             "date_added": "2024-01-17 14:25:51"
         },
@@ -2698,7 +2907,7 @@
             "base_name": "detection-transformer-torch",
             "base_filename": null,
             "version": null,
-            "description": "Hugging Face Transformers model for object detection",
+            "description": "Modern object detector that finds items in images without needing complex post-processing steps",
             "source": "https://huggingface.co/docs/transformers/tasks/object_detection",
             "author": "Thomas Wolf, et al.",
             "license": "Apache 2.0",
@@ -2721,7 +2930,8 @@
                 "logits",
                 "embeddings",
                 "torch",
-                "transformers"
+                "transformers",
+                "official"
             ],
             "date_added": "2024-01-17 14:25:51"
         },
@@ -2736,7 +2946,12 @@
             "size_bytes": null,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForSemanticSegmentation",
-                "config": {}
+                "config": {
+                    "output_processor_args": {
+                        "no_background_cls": true,
+                        "has_softmax_out": false
+                    }
+                }
             },
             "requirements": {
                 "packages": ["torch", "torchvision", "transformers"],
@@ -2747,7 +2962,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "transformers"],
+            "tags": ["segmentation", "torch", "transformers", "official"],
             "date_added": "2024-01-17 14:25:51"
         },
         {
@@ -2779,7 +2994,7 @@
             "base_name": "zero-shot-classification-transformer-torch",
             "base_filename": null,
             "version": null,
-            "description": "Hugging Face Transformers model for zero-shot image classification",
+            "description": "Finds any object you name in images without requiring training on those specific items",
             "source": "https://huggingface.co/docs/transformers/tasks/zero_shot_image_classification",
             "author": "Thomas Wolf, et al.",
             "license": "Apache 2.0",
@@ -2808,7 +3023,8 @@
                 "embeddings",
                 "torch",
                 "transformers",
-                "zero-shot"
+                "zero-shot",
+                "official"
             ],
             "date_added": "2024-01-17 14:25:51"
         },
@@ -2820,7 +3036,7 @@
             "source": "https://huggingface.co/docs/transformers/tasks/zero_shot_image_classification",
             "author": "Thomas Wolf, et al.",
             "license": "Apache 2.0",
-            "size_bytes": null,
+            "size_bytes": 812762989,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForImageClassification",
                 "config": {
@@ -2846,7 +3062,8 @@
                 "embeddings",
                 "torch",
                 "transformers",
-                "zero-shot"
+                "zero-shot",
+                "official"
             ],
             "date_added": "2024-01-17 14:25:51"
         },
@@ -2878,7 +3095,8 @@
                 "embeddings",
                 "torch",
                 "transformers",
-                "zero-shot"
+                "zero-shot",
+                "official"
             ],
             "date_added": "2024-01-17 14:25:51"
         },
@@ -2890,7 +3108,7 @@
             "source": "https://huggingface.co/docs/transformers/en/tasks/mask_generation",
             "author": "Thomas Wolf, et al.",
             "license": "Apache 2.0",
-            "size_bytes": null,
+            "size_bytes": 223137427,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForSemanticSegmentation",
                 "config": {
@@ -2900,7 +3118,9 @@
                         "output_segmentation": true
                     },
                     "output_processor_args": {
-                        "logits_key": "segmentation_logits"
+                        "logits_key": "segmentation_logits",
+                        "no_background_cls": true,
+                        "has_softmax_out": false
                     },
                     "transforms_args": {
                         "use_fast": false
@@ -2925,7 +3145,8 @@
                 "embeddings",
                 "torch",
                 "transformers",
-                "zero-shot"
+                "zero-shot",
+                "official"
             ],
             "date_added": "2025-05-15 15:20:35"
         },
@@ -2933,7 +3154,7 @@
             "base_name": "owlvit-base-patch16-torch",
             "base_filename": null,
             "version": null,
-            "description": "Hugging Face Transformers OWL-ViT",
+            "description": "Finds any object you name in pictures using 16x16 image patches without needing specific training for those items",
             "source": "https://huggingface.co/docs/transformers/tasks/zero_shot_object_detection",
             "author": "Thomas Wolf, et al.",
             "license": "Apache 2.0",
@@ -2959,15 +3180,86 @@
                 "embeddings",
                 "torch",
                 "transformers",
-                "zero-shot"
+                "zero-shot",
+                "official"
             ],
             "date_added": "2024-01-17 14:25:51"
+        },
+        {
+            "base_name": "owlvit-base-patch32-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Finds any object you name in pictures using efficient 32x32 image patches without needing specific training",
+            "source": "https://huggingface.co/docs/transformers/tasks/zero_shot_object_detection",
+            "author": "Thomas Wolf, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 1229149172,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "google/owlvit-base-patch32"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "detection",
+                "logits",
+                "embeddings",
+                "torch",
+                "transformers",
+                "zero-shot",
+                "official"
+            ],
+            "date_added": "2025-07-15 13:49:00"
+        },
+        {
+            "base_name": "owlvit-large-patch14-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Large OWL-ViT zero-shot object detector with ViT-L/14 backbone. Achieves higher accuracy than base models, especially for smaller objects.",
+            "source": "https://huggingface.co/google/owlvit-large-patch14",
+            "author": "Matthias Minderer, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 1735754597,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "google/owlvit-large-patch14"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "detection",
+                "logits",
+                "embeddings",
+                "torch",
+                "transformers",
+                "zero-shot",
+                "official"
+            ],
+            "date_added": "2025-07-28 15:25:00"
         },
         {
             "base_name": "omdet-turbo-swin-tiny-torch",
             "base_filename": null,
             "version": null,
-            "description": "Hugging Face Transformers OmDet-Turbo",
+            "description": "Real-time detector that finds any object you describe in words, perfect for live video analysis",
             "source": "https://huggingface.co/docs/transformers/tasks/zero_shot_object_detection",
             "author": "Thomas Wolf, et al.",
             "license": "Apache 2.0",
@@ -2993,7 +3285,8 @@
                 "embeddings",
                 "torch",
                 "transformers",
-                "zero-shot"
+                "zero-shot",
+                "official"
             ],
             "date_added": "2024-01-17 14:25:51"
         },
@@ -3001,7 +3294,7 @@
             "base_name": "clip-vit-base32-torch",
             "base_filename": "CLIP-ViT-B-32.pt",
             "version": null,
-            "description": "CLIP text/image encoder from `Learning Transferable Visual Models From Natural Language Supervision <https://arxiv.org/abs/2103.00020>`_ trained on 400M text-image pairs",
+            "description": "Understands both images and text together, enabling search and classification using natural language descriptions",
             "source": "https://github.com/openai/CLIP",
             "author": "Alec Radford, et al.",
             "license": "MIT",
@@ -3043,13 +3336,15 @@
                 "embeddings",
                 "torch",
                 "clip",
-                "zero-shot"
+                "zero-shot",
+                "transformer",
+                "official"
             ],
             "date_added": "2022-04-12 17:49:51"
         },
         {
             "base_name": "dinov2-vits14-torch",
-            "description": "DINOv2: Learning Robust Visual Features without Supervision. Model: ViT-S/14 distilled",
+            "description": "Small model enabling image search and similarity matching directly on mobile devices",
             "source": "https://github.com/facebookresearch/dinov2",
             "author": "Maxime Oquab, et al.",
             "license": "Apache 2.0",
@@ -3063,6 +3358,7 @@
                         "model": "dinov2_vits14"
                     },
                     "image_patch_size": 14,
+                    "image_min_dim": 14,
                     "embeddings_layer": "head"
                 }
             },
@@ -3075,12 +3371,18 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2"],
+            "tags": [
+                "embeddings",
+                "torch",
+                "dinov2",
+                "transformer",
+                "official"
+            ],
             "date_added": "2023-07-31 10:17:51"
         },
         {
             "base_name": "dinov2-vitb14-torch",
-            "description": "DINOv2: Learning Robust Visual Features without Supervision. Model: ViT-B/14 distilled",
+            "description": "Creates searchable image fingerprints for finding similar pictures and organizing large photo collections",
             "source": "https://github.com/facebookresearch/dinov2",
             "author": "Maxime Oquab, et al.",
             "license": "Apache 2.0",
@@ -3094,6 +3396,7 @@
                         "model": "dinov2_vitb14"
                     },
                     "image_patch_size": 14,
+                    "image_min_dim": 14,
                     "embeddings_layer": "head"
                 }
             },
@@ -3106,12 +3409,18 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2"],
+            "tags": [
+                "embeddings",
+                "torch",
+                "dinov2",
+                "transformer",
+                "official"
+            ],
             "date_added": "2023-07-31 10:17:51"
         },
         {
             "base_name": "dinov2-vitl14-torch",
-            "description": "DINOv2: Learning Robust Visual Features without Supervision. Model: ViT-L/14 distilled",
+            "description": "Large model that creates detailed image fingerprints for advanced search and automatic grouping",
             "source": "https://github.com/facebookresearch/dinov2",
             "author": "Maxime Oquab, et al.",
             "license": "Apache 2.0",
@@ -3125,6 +3434,7 @@
                         "model": "dinov2_vitl14"
                     },
                     "image_patch_size": 14,
+                    "image_min_dim": 14,
                     "embeddings_layer": "head"
                 }
             },
@@ -3137,12 +3447,18 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2"],
+            "tags": [
+                "embeddings",
+                "torch",
+                "dinov2",
+                "transformer",
+                "official"
+            ],
             "date_added": "2023-07-31 10:17:51"
         },
         {
             "base_name": "dinov2-vitg14-torch",
-            "description": "DINOv2: Learning Robust Visual Features without Supervision. Model: ViT-g/14",
+            "description": "Powerful image search engine that handles enormous photo collections with rich detail extraction",
             "source": "https://github.com/facebookresearch/dinov2",
             "author": "Maxime Oquab, et al.",
             "license": "Apache 2.0",
@@ -3156,6 +3472,7 @@
                         "model": "dinov2_vitg14"
                     },
                     "image_patch_size": 14,
+                    "image_min_dim": 14,
                     "embeddings_layer": "head"
                 }
             },
@@ -3168,12 +3485,18 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2"],
+            "tags": [
+                "embeddings",
+                "torch",
+                "dinov2",
+                "transformer",
+                "official"
+            ],
             "date_added": "2023-07-31 10:17:51"
         },
         {
             "base_name": "dinov2-vits14-reg-torch",
-            "description": "DINOv2: Learning Robust Visual Features without Supervision. Model: ViT-S/14 distilled",
+            "description": "Compact stable model for image search that runs efficiently on phones and edge devices",
             "source": "https://github.com/facebookresearch/dinov2",
             "author": "Maxime Oquab, et al.",
             "license": "Apache 2.0",
@@ -3187,6 +3510,7 @@
                         "model": "dinov2_vits14_reg"
                     },
                     "image_patch_size": 14,
+                    "image_min_dim": 14,
                     "embeddings_layer": "head"
                 }
             },
@@ -3199,12 +3523,18 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2"],
+            "tags": [
+                "embeddings",
+                "torch",
+                "dinov2",
+                "transformer",
+                "official"
+            ],
             "date_added": "2023-12-02 16:42:00"
         },
         {
             "base_name": "dinov2-vitb14-reg-torch",
-            "description": "DINOv2: Learning Robust Visual Features without Supervision. Model: ViT-B/14 distilled",
+            "description": "Enhanced image search model that resists noise and errors for more reliable similarity matching",
             "source": "https://github.com/facebookresearch/dinov2",
             "author": "Maxime Oquab, et al.",
             "license": "Apache 2.0",
@@ -3218,6 +3548,7 @@
                         "model": "dinov2_vitb14_reg"
                     },
                     "image_patch_size": 14,
+                    "image_min_dim": 14,
                     "embeddings_layer": "head"
                 }
             },
@@ -3230,12 +3561,18 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2"],
+            "tags": [
+                "embeddings",
+                "torch",
+                "dinov2",
+                "transformer",
+                "official"
+            ],
             "date_added": "2023-12-02 16:42:00"
         },
         {
             "base_name": "dinov2-vitl14-reg-torch",
-            "description": "DINOv2: Learning Robust Visual Features without Supervision. Model: ViT-L/14 distilled",
+            "description": "Large stable model for finding and grouping similar images across big databases reliably",
             "source": "https://github.com/facebookresearch/dinov2",
             "author": "Maxime Oquab, et al.",
             "license": "Apache 2.0",
@@ -3249,6 +3586,7 @@
                         "model": "dinov2_vitl14_reg"
                     },
                     "image_patch_size": 14,
+                    "image_min_dim": 14,
                     "embeddings_layer": "head"
                 }
             },
@@ -3261,12 +3599,18 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2"],
+            "tags": [
+                "embeddings",
+                "torch",
+                "dinov2",
+                "transformer",
+                "official"
+            ],
             "date_added": "2023-12-02 16:42:00"
         },
         {
             "base_name": "dinov2-vitg14-reg-torch",
-            "description": "DINOv2: Learning Robust Visual Features without Supervision. Model: ViT-g/14",
+            "description": "Highest-capacity dinov2 search model with maximum stability for finding images across massive diverse datasets",
             "source": "https://github.com/facebookresearch/dinov2",
             "author": "Maxime Oquab, et al.",
             "license": "Apache 2.0",
@@ -3280,6 +3624,7 @@
                         "model": "dinov2_vitg14_reg"
                     },
                     "image_patch_size": 14,
+                    "image_min_dim": 14,
                     "embeddings_layer": "head"
                 }
             },
@@ -3292,13 +3637,19 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2"],
+            "tags": [
+                "embeddings",
+                "torch",
+                "dinov2",
+                "transformer",
+                "official"
+            ],
             "date_added": "2023-12-02 16:42:00"
         },
         {
             "base_name": "yolov5n-coco-torch",
             "base_filename": "yolov5n-coco.pt",
-            "description": "Ultralytics YOLOv5n model trained on COCO",
+            "description": "Lightweight detector for edge devices needing basic object detection capabilities",
             "source": "https://pytorch.org/hub/ultralytics_yolov5",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -3332,13 +3683,13 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2025-05-22 14:14:45"
         },
         {
             "base_name": "yolov5s-coco-torch",
             "base_filename": "yolov5s-coco.pt",
-            "description": "Ultralytics YOLOv5s model trained on COCO",
+            "description": "Real-time detector delivering good results with minimal computational requirements",
             "source": "https://pytorch.org/hub/ultralytics_yolov5",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -3372,13 +3723,13 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2025-05-22 14:14:45"
         },
         {
             "base_name": "yolov5m-coco-torch",
             "base_filename": "yolov5m-coco.pt",
-            "description": "Ultralytics YOLOv5m model trained on COCO",
+            "description": "Real-time detector balancing good accuracy with fast processing speeds",
             "source": "https://pytorch.org/hub/ultralytics_yolov5",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -3412,13 +3763,13 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2025-05-22 14:14:45"
         },
         {
             "base_name": "yolov5l-coco-torch",
             "base_filename": "yolov5l-coco.pt",
-            "description": "Ultralytics YOLOv5l model trained on COCO",
+            "description": "Real-time detector producing accurate results quickly for demanding vision applications",
             "source": "https://pytorch.org/hub/ultralytics_yolov5",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -3452,13 +3803,13 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2025-05-22 14:14:45"
         },
         {
             "base_name": "yolov8n-coco-torch",
             "base_filename": "yolov8n-coco.pt",
-            "description": "Ultralytics YOLOv8n model trained on COCO",
+            "description": "Edge-optimized detector recognizing common objects on resource-limited devices effectively",
             "source": "https://docs.ultralytics.com/models/yolov8/",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -3492,13 +3843,13 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2024-03-11 19:22:51"
         },
         {
             "base_name": "yolov8s-coco-torch",
             "base_filename": "yolov8s-coco.pt",
-            "description": "Ultralytics YOLOv8s model trained on COCO",
+            "description": "Detector offering fast performance on mid-range graphics cards and processors",
             "source": "https://docs.ultralytics.com/models/yolov8/",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -3532,13 +3883,13 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2024-03-11 19:22:51"
         },
         {
             "base_name": "yolov8m-coco-torch",
             "base_filename": "yolov8m-coco.pt",
-            "description": "Ultralytics YOLOv8m model trained on COCO",
+            "description": "Detector balancing speed and accuracy for everyday object detection needs",
             "source": "https://docs.ultralytics.com/models/yolov8/",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -3572,13 +3923,13 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2024-03-11 19:22:51"
         },
         {
             "base_name": "yolov8l-coco-torch",
             "base_filename": "yolov8l-coco.pt",
-            "description": "Ultralytics YOLOv8l model trained on COCO",
+            "description": "Real-time detector with advanced architecture for improved object finding in complex scenes",
             "source": "https://docs.ultralytics.com/models/yolov8/",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -3612,13 +3963,13 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2024-03-11 19:22:51"
         },
         {
             "base_name": "yolov8x-coco-torch",
             "base_filename": "yolov8x-coco.pt",
-            "description": "Ultralytics YOLOv8x model trained on COCO",
+            "description": "High-accuracy detector for critical applications where precision matters most",
             "source": "https://docs.ultralytics.com/models/yolov8/",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -3652,13 +4003,13 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2024-03-11 19:22:51"
         },
         {
             "base_name": "yolov8n-seg-coco-torch",
             "base_filename": "yolov8n-seg-coco.pt",
-            "description": "Ultralytics YOLOv8n Segmentation model trained on COCO",
+            "description": "Edge-optimized model producing object outlines on devices with limited resources.",
             "source": "https://docs.ultralytics.com/models/yolov8/",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -3692,13 +4043,13 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "yolo"],
+            "tags": ["instances", "coco", "torch", "yolo", "official"],
             "date_added": "2024-04-02 19:22:51"
         },
         {
             "base_name": "yolov8s-seg-coco-torch",
             "base_filename": "yolov8s-seg-coco.pt",
-            "description": "Ultralytics YOLOv8s Segmentation model trained on COCO",
+            "description": "Fast model creating object masks for real-time image segmentation needs",
             "source": "https://docs.ultralytics.com/models/yolov8/",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -3732,13 +4083,13 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "yolo"],
+            "tags": ["instances", "coco", "torch", "yolo", "official"],
             "date_added": "2024-04-02 19:22:51"
         },
         {
             "base_name": "yolov8m-seg-coco-torch",
             "base_filename": "yolov8m-seg-coco.pt",
-            "description": "Ultralytics YOLOv8m Segmentation model trained on COCO",
+            "description": "Generates object masks with good balance of speed and quality",
             "source": "https://docs.ultralytics.com/models/yolov8/",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -3772,13 +4123,13 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "yolo"],
+            "tags": ["instances", "coco", "torch", "yolo", "official"],
             "date_added": "2024-04-02 19:22:51"
         },
         {
             "base_name": "yolov8l-seg-coco-torch",
             "base_filename": "yolov8l-seg-coco.pt",
-            "description": "Ultralytics YOLOv8l Segmentation model trained on COCO",
+            "description": "Creates precise object outlines for detailed image editing and analysis tasks",
             "source": "https://docs.ultralytics.com/models/yolov8/",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -3812,13 +4163,13 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "yolo"],
+            "tags": ["instances", "coco", "torch", "yolo", "official"],
             "date_added": "2024-04-02 19:22:51"
         },
         {
             "base_name": "yolov8x-seg-coco-torch",
             "base_filename": "yolov8x-seg-coco.pt",
-            "description": "Ultralytics YOLOv8x Segmentation model trained on COCO",
+            "description": "High-accuracy model generating detailed object outlines for demanding professional applications",
             "source": "https://docs.ultralytics.com/models/yolov8/",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -3852,13 +4203,13 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "yolo"],
+            "tags": ["instances", "coco", "torch", "yolo", "official"],
             "date_added": "2024-04-02 19:22:51"
         },
         {
             "base_name": "yolov9c-coco-torch",
             "base_filename": "yolov9c-coco.pt",
-            "description": "YOLOv9-C model trained on COCO",
+            "description": "Detector enhanced with transformer technology for improved object finding capabilities",
             "source": "https://docs.ultralytics.com/models/yolov9/",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -3892,13 +4243,13 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2024-03-11 19:22:51"
         },
         {
             "base_name": "yolov9e-coco-torch",
             "base_filename": "yolov9e-coco.pt",
-            "description": "YOLOv9-E model trained on COCO",
+            "description": "Advanced detector with transformer backbone delivering superior accuracy for complex scenes",
             "source": "https://docs.ultralytics.com/models/yolov9/",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -3932,13 +4283,13 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2024-03-11 19:22:51"
         },
         {
             "base_name": "yolov9c-seg-coco-torch",
             "base_filename": "yolov9c-seg-coco.pt",
-            "description": "YOLOv9-C Segmentation model trained on COCO",
+            "description": "Compact model producing both masks and boxes with transformer-enhanced accuracy",
             "source": "https://docs.ultralytics.com/models/yolov9/#__tabbed_1_2",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -3972,13 +4323,13 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "yolo"],
+            "tags": ["instances", "coco", "torch", "yolo", "official"],
             "date_added": "2024-04-02 19:22:51"
         },
         {
             "base_name": "yolov9e-seg-coco-torch",
             "base_filename": "yolov9e-seg-coco.pt",
-            "description": "YOLOv9-E Segmentation model trained on COCO",
+            "description": "Advanced model creating precise object outlines using enhanced transformer architecture",
             "source": "https://docs.ultralytics.com/models/yolov9/#__tabbed_1_2",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -4012,13 +4363,13 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "yolo"],
+            "tags": ["instances", "coco", "torch", "yolo", "official"],
             "date_added": "2024-04-02 19:22:51"
         },
         {
             "base_name": "yolov10n-coco-torch",
             "base_filename": "yolov10n-coco.pt",
-            "description": "YOLOv10-N model trained on COCO",
+            "description": "Edge-optimized detector for devices with minimal computing resources available",
             "source": "https://docs.ultralytics.com/models/yolov10/",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -4052,13 +4403,13 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2024-07-01 19:22:51"
         },
         {
             "base_name": "yolov10s-coco-torch",
             "base_filename": "yolov10s-coco.pt",
-            "description": "YOLOv10-S model trained on COCO",
+            "description": "Fast lightweight detector suitable for systems with limited GPU capabilities and memory",
             "source": "https://docs.ultralytics.com/models/yolov10/",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -4092,13 +4443,13 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2024-07-01 19:22:51"
         },
         {
             "base_name": "yolov10m-coco-torch",
             "base_filename": "yolov10m-coco.pt",
-            "description": "YOLOv10-M model trained on COCO",
+            "description": "Balanced detector providing good accuracy and speed for general-purpose object detection tasks",
             "source": "https://docs.ultralytics.com/models/yolov10/",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -4132,13 +4483,13 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2024-07-01 19:22:51"
         },
         {
             "base_name": "yolov10l-coco-torch",
             "base_filename": "yolov10l-coco.pt",
-            "description": "YOLOv10-L model trained on COCO",
+            "description": "Object detector with special optimizations for even faster inference on modern hardware",
             "source": "https://docs.ultralytics.com/models/yolov10/",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -4172,13 +4523,13 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2024-07-01 19:22:51"
         },
         {
             "base_name": "yolov10x-coco-torch",
             "base_filename": "yolov10x-coco.pt",
-            "description": "YOLOv10-X model trained on COCO",
+            "description": "High-accuracy detector for demanding object detection applications and research",
             "source": "https://docs.ultralytics.com/models/yolov10/",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -4212,13 +4563,13 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2024-07-01 19:22:51"
         },
         {
             "base_name": "yolo11n-coco-torch",
             "base_filename": "yolo11n-coco.pt",
-            "description": "YOLO11-N model trained on COCO",
+            "description": "Object detector designed specifically for phones and other edge computing devices",
             "source": "https://docs.ultralytics.com/models/yolov11/",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -4252,13 +4603,13 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2024-10-05 19:22:51"
         },
         {
             "base_name": "yolo11s-coco-torch",
             "base_filename": "yolo11s-coco.pt",
-            "description": "YOLO11-S model trained on COCO",
+            "description": "Fast object detector ideal for systems with limited graphics processing power",
             "source": "https://docs.ultralytics.com/models/yolov11/",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -4292,13 +4643,13 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2024-10-05 19:22:51"
         },
         {
             "base_name": "yolo11m-coco-torch",
             "base_filename": "yolo11m-coco.pt",
-            "description": "YOLO11-M model trained on COCO",
+            "description": "Object detector offering good balance between speed and accuracy for most applications",
             "source": "https://docs.ultralytics.com/models/yolov11/",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -4332,13 +4683,13 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2024-10-05 19:22:51"
         },
         {
             "base_name": "yolo11l-coco-torch",
             "base_filename": "yolo11l-coco.pt",
-            "description": "YOLO11-L model trained on COCO",
+            "description": "Real-time object detector balancing high accuracy with fast processing speeds effectively",
             "source": "https://docs.ultralytics.com/models/yolov11/",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -4372,13 +4723,13 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2024-10-05 19:22:51"
         },
         {
             "base_name": "yolo11x-coco-torch",
             "base_filename": "yolo11x-coco.pt",
-            "description": "YOLO11-X model trained on COCO",
+            "description": "Object detector prioritizing accuracy over processing speed for critical applications",
             "source": "https://docs.ultralytics.com/models/yolov11/",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -4412,13 +4763,13 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2024-10-05 19:22:51"
         },
         {
             "base_name": "yolo11n-seg-coco-torch",
             "base_filename": "yolo11n-seg-coco.pt",
-            "description": "YOLO11-N Segmentation model trained on COCO",
+            "description": "Edge model producing object outlines directly on phones and edge devices",
             "source": "https://docs.ultralytics.com/models/yolo11/#__tabbed_1_2",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -4452,13 +4803,13 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "yolo"],
+            "tags": ["instances", "coco", "torch", "yolo", "official"],
             "date_added": "2024-10-05 19:22:51"
         },
         {
             "base_name": "yolo11s-seg-coco-torch",
             "base_filename": "yolo11s-seg-coco.pt",
-            "description": "YOLO11-S Segmentation model trained on COCO",
+            "description": "Model creating object masks quickly for real-time segmentation applications",
             "source": "https://docs.ultralytics.com/models/yolo11/#__tabbed_1_2",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -4492,13 +4843,13 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "yolo"],
+            "tags": ["instances", "coco", "torch", "yolo", "official"],
             "date_added": "2024-10-05 19:22:51"
         },
         {
             "base_name": "yolo11m-seg-coco-torch",
             "base_filename": "yolo11m-seg-coco.pt",
-            "description": "YOLO11-M Segmentation model trained on COCO",
+            "description": "Model generating object masks efficiently for everyday segmentation tasks",
             "source": "https://docs.ultralytics.com/models/yolo11/#__tabbed_1_2",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -4532,13 +4883,13 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "yolo"],
+            "tags": ["instances", "coco", "torch", "yolo", "official"],
             "date_added": "2024-10-05 19:22:51"
         },
         {
             "base_name": "yolo11l-seg-coco-torch",
             "base_filename": "yolo11l-seg-coco.pt",
-            "description": "YOLO11-L Segmentation model trained on COCO",
+            "description": "Model creating detailed object outlines for precise image editing and analysis",
             "source": "https://docs.ultralytics.com/models/yolo11/#__tabbed_1_2",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -4572,13 +4923,13 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "yolo"],
+            "tags": ["instances", "coco", "torch", "yolo", "official"],
             "date_added": "2024-10-05 19:22:51"
         },
         {
             "base_name": "yolo11x-seg-coco-torch",
             "base_filename": "yolo11x-seg-coco.pt",
-            "description": "YOLO11-X Segmentation model trained on COCO",
+            "description": "Model delivering high-quality object outlines for professional workflows",
             "source": "https://docs.ultralytics.com/models/yolo11/#__tabbed_1_2",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -4612,13 +4963,13 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "yolo"],
+            "tags": ["instances", "coco", "torch", "yolo", "official"],
             "date_added": "2024-10-05 19:22:51"
         },
         {
             "base_name": "yoloe11s-seg-torch",
             "base_filename": "yoloe-11s-seg.pt",
-            "description": "YOLOE11-S Segmentation model",
+            "description": "Segments specified classes, generating object outlines and boxes for real-time applications",
             "source": "https://docs.ultralytics.com/models/yoloe",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -4652,13 +5003,13 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "yolo", "zero-shot"],
+            "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
             "date_added": "2025-04-10 12:24:41"
         },
         {
             "base_name": "yoloe11m-seg-torch",
             "base_filename": "yoloe-11m-seg.pt",
-            "description": "YOLOE11-M Segmentation model",
+            "description": "Model producing masks and boxes for objects described in natural language",
             "source": "https://docs.ultralytics.com/models/yoloe",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -4692,13 +5043,13 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "yolo", "zero-shot"],
+            "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
             "date_added": "2025-04-10 12:24:41"
         },
         {
             "base_name": "yoloe11l-seg-torch",
             "base_filename": "yoloe-11l-seg.pt",
-            "description": "YOLOE11-L Segmentation model",
+            "description": "Real-time model creating both object outlines and boxes for any described item",
             "source": "https://docs.ultralytics.com/models/yoloe",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -4732,13 +5083,13 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "yolo", "zero-shot"],
+            "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
             "date_added": "2025-04-10 12:24:41"
         },
         {
             "base_name": "yoloev8s-seg-torch",
             "base_filename": "yoloe-v8s-seg.pt",
-            "description": "YOLOEv8s Segmentation model",
+            "description": "Compact model producing outlines for objects described in words on edge devices",
             "source": "https://docs.ultralytics.com/models/yoloe",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -4772,13 +5123,13 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "yolo", "zero-shot"],
+            "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
             "date_added": "2025-04-10 12:24:41"
         },
         {
             "base_name": "yoloev8m-seg-torch",
             "base_filename": "yoloe-v8m-seg.pt",
-            "description": "YOLOEv8m Segmentation model",
+            "description": "Model creating masks for any object type you name in text",
             "source": "https://docs.ultralytics.com/models/yoloe",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -4812,13 +5163,13 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "yolo", "zero-shot"],
+            "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
             "date_added": "2025-04-10 12:24:41"
         },
         {
             "base_name": "yoloev8l-seg-torch",
             "base_filename": "yoloe-v8l-seg.pt",
-            "description": "YOLOEv8l Segmentation model",
+            "description": "Model outlining and boxing any object you describe without specific training",
             "source": "https://docs.ultralytics.com/models/yoloe",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -4852,13 +5203,13 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "yolo", "zero-shot"],
+            "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
             "date_added": "2025-04-10 12:24:41"
         },
         {
             "base_name": "rtdetr-l-coco-torch",
             "base_filename": "rtdetr-l-coco.pt",
-            "description": "RT-DETR-l model trained on COCO",
+            "description": "Modern real-time object detector that finds items without complex post-processing for responsive applications",
             "source": "https://docs.ultralytics.com/models/rtdetr/",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -4892,13 +5243,20 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "transformer", "rtdetr"],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "transformer",
+                "rtdetr",
+                "official"
+            ],
             "date_added": "2024-07-01 19:22:51"
         },
         {
             "base_name": "rtdetr-x-coco-torch",
             "base_filename": "rtdetr-x-coco.pt",
-            "description": "RT-DETR-x model trained on COCO",
+            "description": "High-capacity object detector delivering very precise results at speeds suitable for production use",
             "source": "https://docs.ultralytics.com/models/rtdetr/",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -4932,13 +5290,20 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "transformer", "rtdetr"],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "transformer",
+                "rtdetr",
+                "official"
+            ],
             "date_added": "2024-07-01 19:22:51"
         },
         {
             "base_name": "yolov8s-world-torch",
             "base_filename": "yolov8s-world.pt",
-            "description": "YOLOv8s-World model",
+            "description": "Lightweight detector finding objects based on text descriptions for edge applications",
             "source": "https://docs.ultralytics.com/models/yolo-world/",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -4972,13 +5337,13 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "torch", "yolo", "zero-shot"],
+            "tags": ["detection", "torch", "yolo", "zero-shot", "official"],
             "date_added": "2024-03-11 19:22:51"
         },
         {
             "base_name": "yolov8m-world-torch",
             "base_filename": "yolov8m-world.pt",
-            "description": "YOLOv8m-World model",
+            "description": "Detector understanding text descriptions to find matching objects in images",
             "source": "https://docs.ultralytics.com/models/yolo-world/",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -5012,13 +5377,13 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "torch", "yolo", "zero-shot"],
+            "tags": ["detection", "torch", "yolo", "zero-shot", "official"],
             "date_added": "2024-03-11 19:22:51"
         },
         {
             "base_name": "yolov8l-world-torch",
             "base_filename": "yolov8l-world.pt",
-            "description": "YOLOv8l-World model",
+            "description": "Finds and boxes any object you describe using natural language prompts",
             "source": "https://docs.ultralytics.com/models/yolo-world/",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -5052,13 +5417,13 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "torch", "yolo", "zero-shot"],
+            "tags": ["detection", "torch", "yolo", "zero-shot", "official"],
             "date_added": "2024-03-11 19:22:51"
         },
         {
             "base_name": "yolov8x-world-torch",
             "base_filename": "yolov8x-world.pt",
-            "description": "YOLOv8x-World model",
+            "description": "Open-vocabulary detector with high accuracy for text-based object finding",
             "source": "https://docs.ultralytics.com/models/yolo-world/",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -5092,13 +5457,13 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "torch", "yolo", "zero-shot"],
+            "tags": ["detection", "torch", "yolo", "zero-shot", "official"],
             "date_added": "2024-03-11 19:22:51"
         },
         {
             "base_name": "yolov8n-obb-dotav1-torch",
             "base_filename": "yolov8n-obb.pt",
-            "description": "YOLOv8n Oriented Bounding Box model",
+            "description": "Lightweight detector for finding rotated objects in aerial imagery on edge hardware",
             "source": "https://docs.ultralytics.com/tasks/obb/",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -5132,13 +5497,20 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "torch", "yolo", "polylines", "obb"],
+            "tags": [
+                "detection",
+                "torch",
+                "yolo",
+                "polylines",
+                "obb",
+                "official"
+            ],
             "date_added": "2024-04-05 19:22:51"
         },
         {
             "base_name": "yolov8s-obb-dotav1-torch",
             "base_filename": "yolov8s-obb.pt",
-            "description": "YOLOv8s Oriented Bounding Box model",
+            "description": "Efficiently finds rotated objects in aerial photos for mapping and analysis tasks",
             "source": "https://docs.ultralytics.com/tasks/obb/",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -5172,13 +5544,20 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "torch", "yolo", "polylines", "obb"],
+            "tags": [
+                "detection",
+                "torch",
+                "yolo",
+                "polylines",
+                "obb",
+                "official"
+            ],
             "date_added": "2024-04-05 19:22:51"
         },
         {
             "base_name": "yolov8m-obb-dotav1-torch",
             "base_filename": "yolov8m-obb.pt",
-            "description": "YOLOv8m Oriented Bounding Box model",
+            "description": "Finds rotated bounding boxes in aerial images for mapping and surveillance applications",
             "source": "https://docs.ultralytics.com/tasks/obb/",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -5212,13 +5591,20 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "torch", "yolo", "polylines", "obb"],
+            "tags": [
+                "detection",
+                "torch",
+                "yolo",
+                "polylines",
+                "obb",
+                "official"
+            ],
             "date_added": "2024-04-05 19:22:51"
         },
         {
             "base_name": "yolov8l-obb-dotav1-torch",
             "base_filename": "yolov8l-obb.pt",
-            "description": "YOLOv8l Oriented Bounding Box model",
+            "description": "Specialized detector that finds rotated objects in aerial and satellite imagery accurately",
             "source": "https://docs.ultralytics.com/tasks/obb/",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -5252,13 +5638,20 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "torch", "yolo", "polylines", "obb"],
+            "tags": [
+                "detection",
+                "torch",
+                "yolo",
+                "polylines",
+                "obb",
+                "official"
+            ],
             "date_added": "2024-04-05 19:22:51"
         },
         {
             "base_name": "yolov8x-obb-dotav1-torch",
             "base_filename": "yolov8x-obb.pt",
-            "description": "YOLOv8x Oriented Bounding Box model",
+            "description": "High-precision detector for rotated objects in aerial and satellite imagery analysis",
             "source": "https://docs.ultralytics.com/tasks/obb/",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -5292,13 +5685,20 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "torch", "yolo", "polylines", "obb"],
+            "tags": [
+                "detection",
+                "torch",
+                "yolo",
+                "polylines",
+                "obb",
+                "official"
+            ],
             "date_added": "2024-04-05 19:22:51"
         },
         {
             "base_name": "yolov8n-oiv7-torch",
             "base_filename": "yolov8n-oiv7.pt",
-            "description": "Ultralytics YOLOv8n model trained on Open Images v7",
+            "description": "Edge-friendly detector recognizing hundreds of object categories on resource-limited devices effectively",
             "source": "https://docs.ultralytics.com/datasets/detect/open-images-v7",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -5332,13 +5732,13 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "oiv7", "torch", "yolo"],
+            "tags": ["detection", "oiv7", "torch", "yolo", "official"],
             "date_added": "2024-05-20 19:22:51"
         },
         {
             "base_name": "yolov8s-oiv7-torch",
             "base_filename": "yolov8s-oiv7.pt",
-            "description": "Ultralytics YOLOv8s model trained on Open Images v7",
+            "description": "Compact detector recognizing diverse object types across many different image categories",
             "source": "https://docs.ultralytics.com/datasets/detect/open-images-v7",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -5372,13 +5772,13 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "oiv7", "torch", "yolo"],
+            "tags": ["detection", "oiv7", "torch", "yolo", "official"],
             "date_added": "2024-05-20 19:22:51"
         },
         {
             "base_name": "yolov8m-oiv7-torch",
             "base_filename": "yolov8m-oiv7.pt",
-            "description": "Ultralytics YOLOv8m model trained Open Images v7",
+            "description": "Versatile detector recognizing hundreds of different object types across varied image domains",
             "source": "https://docs.ultralytics.com/datasets/detect/open-images-v7",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -5412,13 +5812,13 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "oiv7", "torch", "yolo"],
+            "tags": ["detection", "oiv7", "torch", "yolo", "official"],
             "date_added": "2024-05-20 19:22:51"
         },
         {
             "base_name": "yolov8l-oiv7-torch",
             "base_filename": "yolov8l-oiv7.pt",
-            "description": "Ultralytics YOLOv8l model trained Open Images v7",
+            "description": "General-purpose detector trained on diverse images recognizing over six hundred object categories",
             "source": "https://docs.ultralytics.com/datasets/detect/open-images-v7",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -5452,13 +5852,13 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "oiv7", "torch", "yolo"],
+            "tags": ["detection", "oiv7", "torch", "yolo", "official"],
             "date_added": "2024-05-20 19:22:51"
         },
         {
             "base_name": "yolov8x-oiv7-torch",
             "base_filename": "yolov8x-oiv7.pt",
-            "description": "Ultralytics YOLOv8x model trained Open Images v7",
+            "description": "Accurate general detector recognizing over six hundred different object types",
             "source": "https://docs.ultralytics.com/datasets/detect/open-images-v7",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -5492,14 +5892,14 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "oiv7", "torch", "yolo"],
+            "tags": ["detection", "oiv7", "torch", "yolo", "official"],
             "date_added": "2024-05-20 19:22:51"
         },
         {
             "base_name": "yolo-nas-torch",
             "base_filename": null,
             "version": null,
-            "description": "YOLO-NAS is an open-source training library for advanced computer vision models. It specializes in accuracy and efficiency, supporting tasks like object detection",
+            "description": "AI-designed detector family offering three model variants for diverse deployment scenarios",
             "source": "https://github.com/Deci-AI/super-gradients",
             "author": "Shay Aharon, et al.",
             "license": "Apache 2.0",
@@ -5521,13 +5921,13 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "torch", "yolo"],
+            "tags": ["detection", "torch", "yolo", "official"],
             "date_added": "2024-01-06 08:51:14"
         },
         {
             "base_name": "yolov5x-coco-torch",
             "base_filename": "yolov5x-coco.pt",
-            "description": "Ultralytics YOLOv5x model trained on COCO",
+            "description": "High-accuracy detector offering top precision for applications where quality is critical",
             "source": "https://pytorch.org/hub/ultralytics_yolov5",
             "author": "Glenn Jocher, et al.",
             "license": "AGPL-3.0",
@@ -5549,7 +5949,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch>=1.7.0", "torchvision>=0.8.1"],
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -5557,8 +5961,1071 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "yolo"],
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
             "date_added": "2025-05-22 14:14:45"
+        },
+        {
+            "base_name": "convnext-tiny-224-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Tiny modern CNN bridging traditional convolutions with transformer-inspired improvements",
+            "source": "https://huggingface.co/facebook/convnext-tiny-224",
+            "author": "Zhuang Liu, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 457742046,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "facebook/convnext-tiny-224",
+                    "channels_last": false,
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "convnext"
+            ],
+            "date_added": "2025-06-30 12:00:00"
+        },
+        {
+            "base_name": "convnext-small-224-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Small modernized CNN delivering strong accuracy through architectural innovations",
+            "source": "https://huggingface.co/facebook/convnext-small-224",
+            "author": "Zhuang Liu, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 402011374,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "facebook/convnext-small-224",
+                    "channels_last": false,
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "convnext",
+                "official"
+            ],
+            "date_added": "2025-06-30 12:00:00"
+        },
+        {
+            "base_name": "convnext-base-224-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Base modern CNN with transformer elements for robust visual understanding",
+            "source": "https://huggingface.co/facebook/convnext-base-224",
+            "author": "Zhuang Liu, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 1417939660,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "facebook/convnext-base-224",
+                    "channels_last": false,
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "convnext",
+                "official"
+            ],
+            "date_added": "2025-06-30 12:00:00"
+        },
+        {
+            "base_name": "convnext-large-224-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Large modern CNN demonstrating competitive performance with vision transformers",
+            "source": "https://huggingface.co/facebook/convnext-large-224",
+            "author": "Zhuang Liu, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 3164754044,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "facebook/convnext-large-224",
+                    "channels_last": false,
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "convnext"
+            ],
+            "date_added": "2025-06-30 12:00:00"
+        },
+        {
+            "base_name": "convnext-xlarge-224-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Extra-large modern CNN maximizing architectural improvements for top accuracy",
+            "source": "https://huggingface.co/facebook/convnext-xlarge-224-22k-1k",
+            "author": "Zhuang Liu, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 1400917137,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "facebook/convnext-xlarge-224-22k-1k",
+                    "channels_last": false,
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "convnext",
+                "official"
+            ],
+            "date_added": "2025-06-30 12:00:00"
+        },
+        {
+            "base_name": "efficientnet-b0-imagenet-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Efficient image classifier optimized for mobile devices with excellent accuracy-efficiency tradeoff",
+            "source": "https://huggingface.co/google/efficientnet-b0",
+            "author": "Mingxing Tan and Quoc V. Le",
+            "license": "Apache 2.0",
+            "size_bytes": 85768446,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "google/efficientnet-b0",
+                    "channels_last": false,
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "efficientnet",
+                "official"
+            ],
+            "date_added": "2025-06-30 12:00:00"
+        },
+        {
+            "base_name": "efficientnet-b1-imagenet-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Scaled efficient classifier with improved accuracy for slightly larger computational budgets",
+            "source": "https://huggingface.co/google/efficientnet-b1",
+            "author": "Mingxing Tan and Quoc V. Le",
+            "license": "Apache 2.0",
+            "size_bytes": 126318898,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "google/efficientnet-b1",
+                    "channels_last": false,
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "efficientnet",
+                "official"
+            ],
+            "date_added": "2025-06-30 12:00:00"
+        },
+        {
+            "base_name": "efficientnet-b2-imagenet-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Balanced efficient model providing stronger performance while maintaining reasonable resource usage",
+            "source": "https://huggingface.co/google/efficientnet-b2",
+            "author": "Mingxing Tan and Quoc V. Le",
+            "license": "Apache 2.0",
+            "size_bytes": 147458738,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "google/efficientnet-b2",
+                    "channels_last": false,
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "efficientnet",
+                "official"
+            ],
+            "date_added": "2025-06-30 12:00:00"
+        },
+        {
+            "base_name": "efficientnet-b3-imagenet-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Mid-scale efficient classifier delivering high accuracy for versatile deployment scenarios",
+            "source": "https://huggingface.co/google/efficientnet-b3",
+            "author": "Mingxing Tan and Quoc V. Le",
+            "license": "Apache 2.0",
+            "size_bytes": 197807644,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "google/efficientnet-b3",
+                    "channels_last": false,
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "efficientnet",
+                "official"
+            ],
+            "date_added": "2025-06-30 12:00:00"
+        },
+        {
+            "base_name": "efficientnet-b4-imagenet-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Large efficient model with enhanced features for transfer learning applications",
+            "source": "https://huggingface.co/google/efficientnet-b4",
+            "author": "Mingxing Tan and Quoc V. Le",
+            "license": "Apache 2.0",
+            "size_bytes": 312276324,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "google/efficientnet-b4",
+                    "channels_last": false,
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "efficientnet",
+                "official"
+            ],
+            "date_added": "2025-06-30 12:00:00"
+        },
+        {
+            "base_name": "efficientnet-b5-imagenet-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "High-capacity efficient classifier prioritizing accuracy with available compute resources",
+            "source": "https://huggingface.co/google/efficientnet-b5",
+            "author": "Mingxing Tan and Quoc V. Le",
+            "license": "Apache 2.0",
+            "size_bytes": 489948742,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "google/efficientnet-b5",
+                    "channels_last": false,
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "efficientnet",
+                "official"
+            ],
+            "date_added": "2025-06-30 12:00:00"
+        },
+        {
+            "base_name": "efficientnet-b6-imagenet-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Extended efficient model approaching state-of-the-art accuracy on challenging datasets",
+            "source": "https://huggingface.co/google/efficientnet-b6",
+            "author": "Mingxing Tan and Quoc V. Le",
+            "license": "Apache 2.0",
+            "size_bytes": 693311678,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "google/efficientnet-b6",
+                    "channels_last": false,
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "efficientnet",
+                "official"
+            ],
+            "date_added": "2025-06-30 12:00:00"
+        },
+        {
+            "base_name": "efficientnet-b7-imagenet-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Maximum efficient classifier pushing performance boundaries while preserving efficiency principles",
+            "source": "https://huggingface.co/google/efficientnet-b7",
+            "author": "Mingxing Tan and Quoc V. Le",
+            "license": "Apache 2.0",
+            "size_bytes": 1067822754,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "google/efficientnet-b7",
+                    "channels_last": false,
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "efficientnet",
+                "official"
+            ],
+            "date_added": "2025-06-30 12:00:00"
+        },
+        {
+            "base_name": "swin-v2-tiny-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Tiny hierarchical transformer for efficient visual recognition on edge devices",
+            "source": "https://huggingface.co/microsoft/swinv2-tiny-patch4-window8-256",
+            "author": "Ze Liu, et al.",
+            "license": "MIT",
+            "size_bytes": 453919540,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "microsoft/swinv2-tiny-patch4-window8-256",
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "swin-transformer",
+                "official"
+            ],
+            "date_added": "2025-07-02 12:00:00"
+        },
+        {
+            "base_name": "swin-v2-small-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Small hierarchical transformer balancing efficiency and performance for practical use",
+            "source": "https://huggingface.co/microsoft/swinv2-small-patch4-window8-256",
+            "author": "Ze Liu, et al.",
+            "license": "MIT",
+            "size_bytes": 796233910,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "microsoft/swinv2-small-patch4-window8-256",
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "swin-transformer",
+                "official"
+            ],
+            "date_added": "2025-07-02 12:00:00"
+        },
+        {
+            "base_name": "swin-v2-base-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Base hierarchical transformer delivering strong results across vision tasks",
+            "source": "https://huggingface.co/microsoft/swinv2-base-patch4-window8-256",
+            "author": "Ze Liu, et al.",
+            "license": "MIT",
+            "size_bytes": 1407282936,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "microsoft/swinv2-base-patch4-window8-256",
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "swin-transformer",
+                "official"
+            ],
+            "date_added": "2025-07-02 12:00:00"
+        },
+        {
+            "base_name": "swin-v2-large-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Large hierarchical transformer with enhanced capacity for demanding applications",
+            "source": "https://huggingface.co/microsoft/swinv2-large-patch4-window12to16-192to256-22kto1k-ft",
+            "author": "Ze Liu, et al.",
+            "license": "MIT",
+            "size_bytes": 3148420002,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "microsoft/swinv2-large-patch4-window12to16-192to256-22kto1k-ft",
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "transformers",
+                "swin-transformer",
+                "official"
+            ],
+            "date_added": "2025-07-02 12:00:00"
+        },
+        {
+            "base_name": "rtdetr-v2-s-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Lightweight real-time object detector optimized for speed on edge devices",
+            "source": "https://huggingface.co/PekingU/rtdetr_v2_r18vd",
+            "author": "Wenyu Lv, et al.",
+            "license": "Apache-2.0",
+            "size_bytes": 161820194,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "PekingU/rtdetr_v2_r18vd",
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "coco", "torch", "transformers", "rtdetr"],
+            "date_added": "2025-07-03 12:00:00"
+        },
+        {
+            "base_name": "rtdetr-v2-m-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Balanced real-time object detector offering improved accuracy for production use",
+            "source": "https://huggingface.co/PekingU/rtdetr_v2_r50vd",
+            "author": "Wenyu Lv, et al.",
+            "license": "Apache-2.0",
+            "size_bytes": 344364318,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "PekingU/rtdetr_v2_r50vd",
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "transformers",
+                "rtdetr",
+                "official"
+            ],
+            "date_added": "2025-07-03 12:00:00"
+        },
+        {
+            "base_name": "dfine-nano-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "D-FINE Nano from `D-FINE: Redefine Regression Task in DETRs as Fine-grained Distribution Refinement` trained on COCO. Ultra-lightweight real-time object detector.",
+            "source": "https://github.com/Peterande/D-FINE",
+            "author": "Yansong Peng, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 14680064,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "ustc-community/dfine-nano-coco"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "transformers",
+                "detr",
+                "official"
+            ],
+            "date_added": "2025-07-15 23:00:00"
+        },
+        {
+            "base_name": "dfine-small-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "D-FINE Small from `D-FINE: Redefine Regression Task in DETRs as Fine-grained Distribution Refinement` trained on COCO. Balanced real-time object detector.",
+            "source": "https://github.com/Peterande/D-FINE",
+            "author": "Yansong Peng, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 25165824,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "ustc-community/dfine-small-coco"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "transformers",
+                "detr",
+                "official"
+            ],
+            "date_added": "2025-07-15 23:00:00"
+        },
+        {
+            "base_name": "dfine-medium-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "D-FINE Medium from `D-FINE: Redefine Regression Task in DETRs as Fine-grained Distribution Refinement` trained on COCO. Mid-size real-time object detector.",
+            "source": "https://github.com/Peterande/D-FINE",
+            "author": "Yansong Peng, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 31457280,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "ustc-community/dfine-medium-coco"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "transformers",
+                "detr",
+                "official"
+            ],
+            "date_added": "2025-07-15 23:00:00"
+        },
+        {
+            "base_name": "dfine-large-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "D-FINE Large from `D-FINE: Redefine Regression Task in DETRs as Fine-grained Distribution Refinement` trained on COCO. Achieves 54.0% AP at 124 FPS on T4 GPU.",
+            "source": "https://github.com/Peterande/D-FINE",
+            "author": "Yansong Peng, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 52428800,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "ustc-community/dfine-large-coco"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "transformers",
+                "detr",
+                "official"
+            ],
+            "date_added": "2025-07-15 23:00:00"
+        },
+        {
+            "base_name": "dfine-xlarge-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "D-FINE XLarge from `D-FINE: Redefine Regression Task in DETRs as Fine-grained Distribution Refinement` trained on COCO. Achieves 55.8% AP at 78 FPS on T4 GPU.",
+            "source": "https://github.com/Peterande/D-FINE",
+            "author": "Yansong Peng, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 128974848,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "ustc-community/dfine-xlarge-coco"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "transformers",
+                "detr",
+                "official"
+            ],
+            "date_added": "2025-07-15 23:00:00"
+        },
+        {
+            "base_name": "segformer-b0-ade20k-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Efficient transformer-based semantic segmentation model for scene parsing with 150 classes",
+            "source": "https://huggingface.co/nvidia/segformer-b0-finetuned-ade-512-512",
+            "author": "Enze Xie, et al.",
+            "license": "MIT",
+            "size_bytes": 15012832,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForSemanticSegmentation",
+                "config": {
+                    "name_or_path": "nvidia/segformer-b0-finetuned-ade-512-512",
+                    "output_processor_args": {
+                        "no_background_cls": true,
+                        "has_softmax_out": false
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["segmentation", "torch", "segformer", "official"],
+            "date_added": "2025-08-04 12:34:17"
+        },
+        {
+            "base_name": "segformer-b1-ade20k-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Balanced SegFormer model providing good accuracy-efficiency tradeoff for scene understanding",
+            "source": "https://huggingface.co/nvidia/segformer-b1-finetuned-ade-512-512",
+            "author": "Enze Xie, et al.",
+            "license": "MIT",
+            "size_bytes": 54865248,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForSemanticSegmentation",
+                "config": {
+                    "name_or_path": "nvidia/segformer-b1-finetuned-ade-512-512",
+                    "output_processor_args": {
+                        "no_background_cls": true,
+                        "has_softmax_out": false
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["segmentation", "torch", "segformer", "official"],
+            "date_added": "2025-08-04 12:34:20"
+        },
+        {
+            "base_name": "segformer-b2-ade20k-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Medium-sized SegFormer delivering enhanced segmentation quality for complex scenes",
+            "source": "https://huggingface.co/nvidia/segformer-b2-finetuned-ade-512-512",
+            "author": "Enze Xie, et al.",
+            "license": "MIT",
+            "size_bytes": 109854048,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForSemanticSegmentation",
+                "config": {
+                    "name_or_path": "nvidia/segformer-b2-finetuned-ade-512-512",
+                    "output_processor_args": {
+                        "no_background_cls": true,
+                        "has_softmax_out": false
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["segmentation", "torch", "segformer", "official"],
+            "date_added": "2025-08-04 12:34:22"
+        },
+        {
+            "base_name": "segformer-b3-ade20k-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Larger SegFormer model with improved accuracy for detailed semantic segmentation",
+            "source": "https://huggingface.co/nvidia/segformer-b3-finetuned-ade-512-512",
+            "author": "Enze Xie, et al.",
+            "license": "MIT",
+            "size_bytes": 189357408,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForSemanticSegmentation",
+                "config": {
+                    "name_or_path": "nvidia/segformer-b3-finetuned-ade-512-512",
+                    "output_processor_args": {
+                        "no_background_cls": true,
+                        "has_softmax_out": false
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["segmentation", "torch", "segformer", "official"],
+            "date_added": "2025-08-04 12:34:24"
+        },
+        {
+            "base_name": "segformer-b4-ade20k-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "High-capacity SegFormer achieving excellent results on challenging segmentation tasks",
+            "source": "https://huggingface.co/nvidia/segformer-b4-finetuned-ade-512-512",
+            "author": "Enze Xie, et al.",
+            "license": "MIT",
+            "size_bytes": 256439648,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForSemanticSegmentation",
+                "config": {
+                    "name_or_path": "nvidia/segformer-b4-finetuned-ade-512-512",
+                    "output_processor_args": {
+                        "no_background_cls": true,
+                        "has_softmax_out": false
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["segmentation", "torch", "segformer", "official"],
+            "date_added": "2025-08-04 12:34:25"
+        },
+        {
+            "base_name": "segformer-b5-ade20k-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Largest SegFormer model delivering the best semantic segmentation performance in its family",
+            "source": "https://huggingface.co/nvidia/segformer-b5-finetuned-ade-640-640",
+            "author": "Enze Xie, et al.",
+            "license": "MIT",
+            "size_bytes": 338840928,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForSemanticSegmentation",
+                "config": {
+                    "name_or_path": "nvidia/segformer-b5-finetuned-ade-640-640",
+                    "output_processor_args": {
+                        "no_background_cls": true,
+                        "has_softmax_out": false
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["segmentation", "torch", "segformer", "official"],
+            "date_added": "2025-08-04 12:34:27"
         }
     ]
 }

@@ -536,11 +536,11 @@ def _dense_iou(gt, pred, gt_crowd=False):
     Returns:
         the IoU, in ``[0, 1]``
     """
-    gt_mask = gt.mask
+    gt_mask = gt.get_mask()
     gt_bb = gt.bounding_box  # x,y,w,h of box
     gt_mask_h, gt_mask_w = gt_mask.shape
 
-    pred_mask = pred.mask
+    pred_mask = pred.get_mask()
     pred_bb = pred.bounding_box  # x,y,w,h of box
     pred_mask_h, pred_mask_w = pred_mask.shape
 

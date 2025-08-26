@@ -10296,10 +10296,10 @@ class SampleCollection(object):
                     direct/discard unexpected labels
                 -   ``"ignore"``: automatically ignore any unexpected labels
                 -   ``"keep"``: automatically keep all unexpected labels in a
-                    field whose name matches the the label type
+                    field whose name matches the label type
                 -   ``"return"``: return a dict containing all unexpected
                     labels, or ``None`` if there aren't any
-            cleanup (False): whether to delete any informtation regarding this
+            cleanup (False): whether to delete any information regarding this
                 run from the annotation backend after loading the annotations
             progress (None): whether to render a progress bar (True/False), use
                 the default value ``fiftyone.config.show_progress_bars``
@@ -10843,7 +10843,7 @@ class SampleCollection(object):
         frame_labels_dir=None,
         pretty_print=False,
     ):
-        """Writes the colllection to disk in JSON format.
+        """Writes the collection to disk in JSON format.
 
         Args:
             json_path: the path to write the JSON

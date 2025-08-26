@@ -14,7 +14,7 @@ export default function useExtendedStageEffect() {
   const setOverrideStage = useSetRecoilState(
     fos.extendedSelectionOverrideStage
   );
-  const { selection } = useRecoilValue(fos.extendedSelection);
+  const { selection, spatialSelection } = useRecoilValue(fos.extendedSelection);
   const getCurrentDataset = useRecoilCallback(({ snapshot }) => async () => {
     return snapshot.getPromise(fos.datasetName);
   });
@@ -41,6 +41,9 @@ export default function useExtendedStageEffect() {
       }).then(async (res) => {
         const currentDataset = await getCurrentDataset();
         if (currentDataset !== datasetName) return;
+        if (spatialSelection) {
+          return;
+        }
         setOverrideStage({
           [res._cls]: res.kwargs,
         });

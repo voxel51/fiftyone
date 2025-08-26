@@ -127,7 +127,7 @@ def download_activitynet_split(
 class ActivityNetDatasetImporter(
     foud.FiftyOneTemporalDetectionDatasetImporter
 ):
-    """Class for importing AcitivityNet dataset splits downloaded via
+    """Class for importing ActivityNet dataset splits downloaded via
     :meth:`download_activitynet_split`.
 
     Args:

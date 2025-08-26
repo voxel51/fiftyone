@@ -91,12 +91,14 @@ const Panel: React.FC<{}> = () => {
     ) as unknown as typeof fos.extendedStages;
   }, [unFilteredExtended]);
 
+  const currentField = useRecoilValue(activeField);
+
   const { loading } = useFetchGeoLocations({
     dataset,
     filters,
     view,
     extended,
-    path: useRecoilValue(activeField),
+    path: currentField,
   });
   const sampleLocationMap = useRecoilValue(sampleLocationMapAtom);
 
@@ -168,6 +170,10 @@ const Panel: React.FC<{}> = () => {
 
       setExtendedSelection({
         selection: Array.from(selected),
+        spatialSelection: {
+          polygon: polygon.geometry.coordinates,
+          field: currentField,
+        },
         scope: SELECTION_SCOPE,
       });
     },

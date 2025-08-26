@@ -68,7 +68,7 @@ def download_youtube_videos(
         ]
 
     You can also use the optional ``ext`` and ``resolution`` arguments to
-    specify a deisred video codec and resolution to download, if possible.
+    specify a desired video codec and resolution to download, if possible.
 
     YouTube videos are regularly taken down. Therefore, this method provides an
     optional ``max_videos`` argument that you can use in conjunction with

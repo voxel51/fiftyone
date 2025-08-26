@@ -17,7 +17,11 @@ export default function LabelValueView(props) {
           {label || schema?.id}:
         </Typography>
         <Typography {...getComponentProps(props, "value")}>
-          {(data || defaultValue)?.toString() || "No value provided"}
+          {data != null
+            ? data.toString()
+            : defaultValue != null
+            ? defaultValue.toString()
+            : "No value provided"}
         </Typography>
       </Stack>
     </Box>

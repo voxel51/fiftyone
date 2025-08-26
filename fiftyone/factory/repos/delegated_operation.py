@@ -189,11 +189,11 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                 )
             )
 
-        if "group_id_1" not in index_names:
+        if "parent_id_1" not in index_names:
             indices_to_create.append(
                 IndexModel(
-                    [("group_id", pymongo.ASCENDING)],
-                    name="group_id_1",
+                    [("parent_id", pymongo.ASCENDING)],
+                    name="parent_id_1",
                 )
             )
 
@@ -209,7 +209,6 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
 
         op.delegation_target = kwargs.get("delegation_target", None)
         op.metadata = kwargs.get("metadata") or {}
-        op.num_partitions = kwargs.get("num_partitions", None)
 
         context = None
         if isinstance(op.context, dict):
@@ -218,25 +217,20 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             )
         elif isinstance(op.context, ExecutionContext):
             context = op.context
-        if not op.dataset_id:
-            # For consistency, set the dataset_id using the
-            # ExecutionContext.dataset
-            # rather than calling load_dataset() on a potentially stale
-            # dataset_name in the request_params
-            try:
-                op.dataset_id = context.dataset._doc.id
-            except:
-                # If we can't resolve the dataset_id, it is possible the
-                # dataset doesn't exist (deleted/being created). However,
-                # it's also possible that future operators can run
-                # dataset-less, so don't raise an error here and just log it
-                # in case we need to debug later.
-                logger.debug("Could not resolve dataset_id for operation. ")
-        elif op.dataset_id:
-            # If the dataset_id is provided, we set it in the request_params
-            # to ensure that the operation is executed on the correct dataset
-            context.request_params["dataset_id"] = str(op.dataset_id)
-            context.request_params["dataset_name"] = context.dataset.name
+
+        # For consistency, set the dataset_id using the
+        # ExecutionContext.dataset
+        # rather than calling load_dataset() on a potentially stale
+        # dataset_name in the request_params
+        try:
+            op.dataset_id = context.dataset._doc.id
+        except:
+            # If we can't resolve the dataset_id, it is possible the
+            # dataset doesn't exist (deleted/being created). However,
+            # it's also possible that future operators can run
+            # dataset-less, so don't raise an error here and just log it
+            # in case we need to debug later.
+            logger.debug("Could not resolve dataset_id for operation. ")
 
         op.context = context
         doc = self._collection.insert_one(op.to_pymongo())
@@ -384,25 +378,6 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             update=update,
             return_document=pymongo.ReturnDocument.AFTER,
         )
-
-        if (
-            doc
-            and doc.get("num_partitions")
-            and run_state is ExecutionRunState.FAILED
-        ):
-            # If a parent operation is failed, also mark the children as failed
-            self._collection.update_many(
-                {
-                    "group_id": doc["_id"],
-                    "run_state": {"$nin": ["failed", "completed"]},
-                },
-                {
-                    "$set": {
-                        **update["$set"],
-                        "result": {"error": "parent operation failed"},
-                    }
-                },
-            )
 
         return (
             DelegatedOperationDocument().from_pymongo(doc)

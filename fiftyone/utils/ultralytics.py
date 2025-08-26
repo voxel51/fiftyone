@@ -191,7 +191,7 @@ def to_classifications(results, confidence_thresh=None, store_logits=False):
 
     Args:
         results: a single or list of ``ultralytics.engine.results.Results``
-        confidence_thresh (None): a confidence threshold to filter clasifications
+        confidence_thresh (None): a confidence threshold to filter classifications
 
     Returns:
         a single or list of :class:`fiftyone.core.labels.Classification`

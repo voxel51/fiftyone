@@ -25,13 +25,11 @@ def load_and_cache_dataset(name):
     """Loads the dataset with the given name and caches it.
 
     This method is a wrapper around :func:`fiftyone.core.dataset.load_dataset`
-    that stores a reference to every dataset it loads in a TTL cache to ensure
-    that references to recently used datasets exist in memory so that dataset
-    objects aren't garbage collected between async calls.
-
-    It is desirable to avoid dataset objects being garbage collected because
-    datasets are singletons and may have objects (eg brain results) that are
-    expensive to load cached on them.
+    that stores a reference to every dataset it loads in a TTL cache so that
+    subsequent calls to this method can return the cached dataset object rather
+    than reloading it. This is useful in situations where expensive objects
+    (eg brain results) are cached on the dataset and we want to avoid reloading
+    them.
 
     Args:
         name: the dataset name
@@ -39,29 +37,46 @@ def load_and_cache_dataset(name):
     Returns:
         a :class:`fiftyone.core.dataset.Dataset`
     """
-    dataset = fod.load_dataset(name)
-
-    # Store reference in TTL cache to defer garbage collection
-    # IMPORTANT: we don't return already cached objects here because a dataset
-    # can be deleted and another created with the same name
-    _cache[name] = dataset
-
-    return dataset
+    return _cache_dataset(name)
 
 
 def cache_dataset(dataset):
-    """Caches the given dataset.
+    """Returns a cached version of the given dataset.
 
-    This method ensures that subsequent calls to
-    :func:`fiftyone.core.dataset.load_dataset` in async calls will return this
-    dataset singleton.
+    If this dataset has already been cached, then the cached copy will be
+    returned. Otherwise, the provided dataset will be inserted into the cache
+    and then returned.
 
-    See :meth:`load_and_cache_dataset` for additional details.
+    See :func:`load_and_cache_dataset` for more context.
 
     Args:
         dataset: a :class:`fiftyone.core.dataset.Dataset`
+
+    Returns:
+        a :class:`fiftyone.core.dataset.Dataset`
     """
-    _cache[dataset.name] = dataset
+    return _cache_dataset(dataset.name, dataset=dataset)
+
+
+def _cache_dataset(name, dataset=None):
+    _dataset = _cache.get(name)
+
+    if _dataset is not None:
+        try:
+            _dataset.reload()
+            return _dataset
+        except:
+            # dataset was deleted
+            pass
+
+    if dataset is not None:
+        _dataset = dataset
+    else:
+        _dataset = fod.load_dataset(name, reload=True)
+
+    _cache[name] = _dataset
+
+    return _dataset
 
 
 def change_sample_tags(sample_collection, changes):

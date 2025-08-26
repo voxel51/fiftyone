@@ -39,7 +39,7 @@
                     ]
                 }
             },
-            "tags": ["segmentation", "cityscapes", "tf", "deeplabv3"],
+            "tags": ["segmentation", "cityscapes", "tf", "deeplabv3", "legacy"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -81,7 +81,7 @@
                     ]
                 }
             },
-            "tags": ["segmentation", "cityscapes", "tf", "deeplabv3"],
+            "tags": ["segmentation", "cityscapes", "tf", "deeplabv3", "legacy"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -122,7 +122,7 @@
                     "packages": ["tensorflow-gpu>=1.14,<2"]
                 }
             },
-            "tags": ["detection", "coco", "tf1", "efficientdet"],
+            "tags": ["detection", "coco", "tf1", "efficientdet", "legacy"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -163,7 +163,7 @@
                     "packages": ["tensorflow-gpu>=1.14,<2"]
                 }
             },
-            "tags": ["detection", "coco", "tf1", "efficientdet"],
+            "tags": ["detection", "coco", "tf1", "efficientdet", "legacy"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -204,7 +204,7 @@
                     "packages": ["tensorflow-gpu>=1.14,<2"]
                 }
             },
-            "tags": ["detection", "coco", "tf1", "efficientdet"],
+            "tags": ["detection", "coco", "tf1", "efficientdet", "legacy"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -245,7 +245,7 @@
                     "packages": ["tensorflow-gpu>=1.14,<2"]
                 }
             },
-            "tags": ["detection", "coco", "tf1", "efficientdet"],
+            "tags": ["detection", "coco", "tf1", "efficientdet", "legacy"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -286,7 +286,7 @@
                     "packages": ["tensorflow-gpu>=1.14,<2"]
                 }
             },
-            "tags": ["detection", "coco", "tf1", "efficientdet"],
+            "tags": ["detection", "coco", "tf1", "efficientdet", "legacy"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -327,7 +327,7 @@
                     "packages": ["tensorflow-gpu>=1.14,<2"]
                 }
             },
-            "tags": ["detection", "coco", "tf1", "efficientdet"],
+            "tags": ["detection", "coco", "tf1", "efficientdet", "legacy"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -368,7 +368,7 @@
                     "packages": ["tensorflow-gpu>=1.14,<2"]
                 }
             },
-            "tags": ["detection", "coco", "tf1", "efficientdet"],
+            "tags": ["detection", "coco", "tf1", "efficientdet", "legacy"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -461,7 +461,8 @@
                 "tf",
                 "faster-rcnn",
                 "inception",
-                "resnet"
+                "resnet",
+                "legacy"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -582,7 +583,7 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf", "faster-rcnn"],
+            "tags": ["detection", "coco", "tf", "faster-rcnn", "legacy"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -622,7 +623,7 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf", "faster-rcnn", "resnet"],
+            "tags": ["detection", "coco", "tf", "faster-rcnn", "resnet", "legacy"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -662,7 +663,7 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf", "faster-rcnn", "resnet"],
+            "tags": ["detection", "coco", "tf", "faster-rcnn", "resnet", "legacy"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -742,7 +743,7 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf", "faster-rcnn", "resnet"],
+            "tags": ["detection", "coco", "tf", "faster-rcnn", "resnet", "legacy"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -836,7 +837,8 @@
                 "logits",
                 "imagenet",
                 "tf1",
-                "inception"
+                "inception",
+                "legacy"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -964,7 +966,7 @@
                     ]
                 }
             },
-            "tags": ["instances", "coco", "tf", "mask-rcnn", "resnet"],
+            "tags": ["instances", "coco", "tf", "mask-rcnn", "resnet", "legacy"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1004,7 +1006,7 @@
                     ]
                 }
             },
-            "tags": ["instances", "coco", "tf", "mask-rcnn", "resnet"],
+            "tags": ["instances", "coco", "tf", "mask-rcnn", "resnet", "legacy"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1097,7 +1099,8 @@
                 "logits",
                 "imagenet",
                 "tf1",
-                "resnet"
+                "resnet",
+                "legacy"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1144,7 +1147,8 @@
                 "logits",
                 "imagenet",
                 "tf1",
-                "resnet"
+                "resnet",
+                "legacy"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1185,7 +1189,7 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf", "rfcn", "resnet"],
+            "tags": ["detection", "coco", "tf", "rfcn", "resnet", "legacy"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1265,7 +1269,7 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf", "ssd", "mobilenet"],
+            "tags": ["detection", "coco", "tf", "ssd", "mobilenet", "legacy"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1305,7 +1309,7 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf", "ssd", "mobilenet"],
+            "tags": ["detection", "coco", "tf", "ssd", "mobilenet", "legacy"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1345,7 +1349,7 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf", "ssd", "resnet"],
+            "tags": ["detection", "coco", "tf", "ssd", "resnet", "legacy"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1390,7 +1394,8 @@
                 "logits",
                 "imagenet",
                 "tf1",
-                "vgg"
+                "vgg",
+                "legacy"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1430,7 +1435,7 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "tags": ["detection", "coco", "tf1", "yolo"],
+            "tags": ["detection", "coco", "tf1", "yolo", "legacy"],
             "date_added": "2020-12-11 13:45:51"
         },
         {

@@ -587,7 +587,7 @@ def compute_orthographic_projection_images(
 
             -   a dict mapping values in ``[0, 1]`` to ``(R, G, B)`` tuples in
                 ``[0, 255]``
-            -   a list of of ``(R, G, B)`` tuples in ``[0, 255]`` that cover
+            -   a list of ``(R, G, B)`` tuples in ``[0, 255]`` that cover
                 ``[0, 1]`` linearly spaced
         subsampling_rate (None): an optional unsigned int that, if provided,
             defines a uniform subsampling rate. The selected point indices are
@@ -709,7 +709,7 @@ def compute_orthographic_projection_image(
 
             -   a dict mapping values in ``[0, 1]`` to ``(R, G, B)`` tuples in
                 ``[0, 255]``
-            -   a list of of ``(R, G, B)`` tuples in ``[0, 255]`` that cover
+            -   a list of ``(R, G, B)`` tuples in ``[0, 255]`` that cover
                 ``[0, 1]`` linearly spaced
         subsampling_rate (None): an unsigned ``int`` that, if defined,
             defines a uniform subsampling rate. The selected point indices are

@@ -354,7 +354,7 @@ on the installer to run it, and follow the steps in the installer.
 -   Activate the environment typing this in the command line window
     `fiftyone_env\Scripts\activate`
 -   After activation, your command prompt should change and show the name of
-    the virtual environment `(fiftyon_env) C:\path\to\your\project`
+    the virtual environment `(fiftyone_env) C:\path\to\your\project`
 
 #### 5. Install FFmpeg (optional)
 

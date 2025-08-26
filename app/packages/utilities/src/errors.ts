@@ -159,3 +159,28 @@ export class ServerError extends NetworkError {
     };
   }
 }
+
+export class OperatorError extends AppError {
+  constructor(
+    public message: string,
+    public stack: string,
+    public operator: string
+  ) {
+    super({ name: "Uncaught Operator Error" }, message);
+    this.stack = stack;
+    // operator uri w/ out any method path
+    this.operator = operator;
+  }
+}
+
+export class PanelEventError extends OperatorError {
+  constructor(
+    public message: string,
+    public stack: string,
+    public operator: string,
+    public event: any
+  ) {
+    super(message, stack, operator);
+    this.event = event;
+  }
+}

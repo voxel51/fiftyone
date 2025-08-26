@@ -3687,12 +3687,12 @@ class PluginsListCommand(Command):
 
 
 def _print_plugins_list(enabled, builtin, names_only):
-    plugin_defintions = fop.list_plugins(
+    plugin_definitions = fop.list_plugins(
         enabled=enabled, builtin=builtin, shadowed="all"
     )
 
     if names_only:
-        for pd in plugin_defintions:
+        for pd in plugin_definitions:
             print(pd.name)
 
         return
@@ -3700,7 +3700,7 @@ def _print_plugins_list(enabled, builtin, names_only):
     enabled_plugins = set(fop.list_enabled_plugins())
 
     shadowed_paths = set()
-    for pd in plugin_defintions:
+    for pd in plugin_definitions:
         if pd.shadow_paths:
             shadowed_paths.update(pd.shadow_paths)
 
@@ -3713,7 +3713,7 @@ def _print_plugins_list(enabled, builtin, names_only):
         "directory",
     ]
     rows = []
-    for pd in plugin_defintions:
+    for pd in plugin_definitions:
         shadowed = pd.directory in shadowed_paths
         enabled = (pd.builtin or pd.name in enabled_plugins) and not shadowed
         rows.append(

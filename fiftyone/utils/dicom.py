@@ -120,7 +120,7 @@ class DICOMSampleParser(foud.LabeledImageSampleParser):
 class DICOMDatasetImporter(
     foud.LabeledImageDatasetImporter, foud.ImportPathsMixin
 ):
-    """Importer for DICOM datasets datasets stored on disk.
+    """Importer for DICOM datasets stored on disk.
 
     See :ref:`this page <DICOMDataset-import>` for format details.
 

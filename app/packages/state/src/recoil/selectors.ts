@@ -472,13 +472,26 @@ export const similarityMethods = selector<{
 export const extendedStagesUnsorted = selector({
   key: "extendedStagesUnsorted",
   get: ({ get }) => {
-    const sampleIds = get(atoms.extendedSelection)?.selection;
+    const extendedSelection = get(atoms.extendedSelection);
+    const sampleIds = extendedSelection?.selection;
+    const spatialSelection = extendedSelection?.spatialSelection;
     const extendedSelectionOverrideStage = get(
       atoms.extendedSelectionOverrideStage
     );
 
     if (extendedSelectionOverrideStage) {
       return extendedSelectionOverrideStage;
+    }
+
+    if (spatialSelection) {
+      return {
+        "fiftyone.core.stages.GeoWithin": {
+          boundary: spatialSelection.polygon,
+          location_field: spatialSelection.field,
+          strict: true,
+          create_index: false,
+        },
+      };
     }
     return {
       "fiftyone.core.stages.Select":

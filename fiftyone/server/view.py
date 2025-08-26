@@ -43,11 +43,10 @@ async def load_view(
     form: Optional[ExtendedViewForm] = None,
     view_name: Optional[str] = None,
 ) -> foc.SampleCollection:
-
     form = form if form else ExtendedViewForm()
 
     def run() -> foc.SampleCollection:
-        dataset = fod.load_dataset(dataset_name)
+        dataset = fod.load_dataset(dataset_name, reload=True)
         if view_name:
             view = dataset.load_saved_view(view_name)
             if serialized_view:
@@ -119,10 +118,7 @@ def get_view(
 
     def run(dataset, stages):
         if isinstance(dataset, str):
-            dataset = fod.load_dataset(dataset)
-
-        if reload:
-            dataset.reload()
+            dataset = fod.load_dataset(dataset, reload=reload)
 
         if view_name is not None:
             return dataset.load_saved_view(view_name)
@@ -236,7 +232,6 @@ def get_extended_view(
 
     for stage in view._stages:
         if isinstance(stage, fosg.GroupBy):
-
             view = view.mongo(
                 [{"$addFields": {"_group": stage._get_group_expr(view)[0]}}]
             )

@@ -94,6 +94,12 @@ FiftyOne supports the configuration options described below:
 +----------------------------------+-------------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `do_not_track`                   | `FIFTYONE_DO_NOT_TRACK`                   | `False`                       | Controls whether UUID based import and App usage events are tracked.                   |
 +----------------------------------+-------------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `logging_destination`            | `FIFTYONE_LOGGING_DESTINATION`            | `stdout`                      | Controls FiftyOne's package-wide logging destination. Can be either ``stdout`` to send |
+|                                  |                                           |                               | all logs to stdout, or ``stdout,stderr`` to log errors to stderr and everything below  |
+|                                  |                                           |                               | an error to stdout.                                                                    |
++----------------------------------+-------------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `logging_format`                 | `FIFTYONE_LOGGING_FORMAT`                 | `text`                        | Controls FiftyOne's package-wide logging format. Can be either ``text`` or ``json``.   |
++----------------------------------+-------------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `logging_level`                  | `FIFTYONE_LOGGING_LEVEL`                  | `INFO`                        | Controls FiftyOne's package-wide logging level. Can be any valid ``logging`` level as  |
 |                                  |                                           |                               | a string: ``DEBUG, INFO, WARNING, ERROR, CRITICAL``.                                   |
 +----------------------------------+-------------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
@@ -137,6 +143,10 @@ FiftyOne supports the configuration options described below:
 | `show_progress_bars`             | `FIFTYONE_SHOW_PROGRESS_BARS`             | `True`                        | Controls whether progress bars are printed to the terminal when performing             |
 |                                  |                                           |                               | operations such reading/writing large datasets or activating FiftyOne                  |
 |                                  |                                           |                               | Brain methods on datasets.                                                             |
++----------------------------------+-------------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `singleton_cache`                | `FIFTYONE_SINGLETON_CACHE`                | `True`                        | Whether to treat :class:`Dataset <fiftyone.core.dataset.Dataset>`,                     |
+|                                  |                                           |                               | :class:`Sample <fiftyone.core.sample.Sample>`, and                                     |
+|                                  |                                           |                               | :class:`Frame <fiftyone.core.frame.Frame>` instances as singletons.                    |
 +----------------------------------+-------------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `timezone`                       | `FIFTYONE_TIMEZONE`                       | `None`                        | An optional timezone string. If provided, all datetimes read from FiftyOne datasets    |
 |                                  |                                           |                               | will be expressed in this timezone. See :ref:`this section <configuring-timezone>` for |
@@ -201,6 +211,7 @@ and the CLI:
             "plugins_dir": null,
             "requirement_error_level": 0,
             "show_progress_bars": true,
+            "singleton_cache": true,
             "timezone": null
         }
 
@@ -254,6 +265,7 @@ and the CLI:
             "plugins_dir": null,
             "requirement_error_level": 0,
             "show_progress_bars": true,
+            "singleton_cache": true,
             "timezone": null
         }
 
@@ -426,7 +438,7 @@ python package.
 Using a different MongoDB version
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-FiftyOne is designed for **MongoDB v5.0 or later**.
+FiftyOne is designed for **MongoDB v6.0 or later**.
 
 If you wish to connect FiftyOne to a MongoDB database whose version is not
 explicitly supported, you will also need to set the `database_validation`

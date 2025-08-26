@@ -89,7 +89,9 @@ class Mutation(SetColorScheme):
         info: Info,
     ) -> bool:
         state = get_state()
-        state.dataset = fod.load_dataset(name) if name is not None else None
+        state.dataset = (
+            fod.load_dataset(name, reload=True) if name is not None else None
+        )
 
         state.color_scheme = build_color_scheme(
             None, state.dataset, state.config
@@ -218,7 +220,7 @@ class Mutation(SetColorScheme):
             return None
 
         result_view = None
-        ds = fod.load_dataset(dataset_name)
+        ds = fod.load_dataset(dataset_name, reload=True)
         state.dataset = ds
 
         # Create the view using the saved view doc if loading a saved view
@@ -232,7 +234,7 @@ class Mutation(SetColorScheme):
         # Otherwise, build the view using the params
         if result_view is None:
             result_view = await get_view(
-                dataset_name,
+                ds,
                 stages=view if view else None,
                 filters=form.filters if form else None,
                 extended_stages=form.extended if form else None,
@@ -290,7 +292,7 @@ class Mutation(SetColorScheme):
         dataset = state.dataset
         use_state = dataset is not None
         if dataset is None:
-            dataset = fod.load_dataset(dataset_name)
+            dataset = fod.load_dataset(dataset_name, reload=True)
 
         if dataset is None:
             raise ValueError(
@@ -313,7 +315,6 @@ class Mutation(SetColorScheme):
             view_name, result_view, description=description, color=color
         )
         if use_state:
-            dataset.reload()
             state.view = dataset.load_saved_view(view_name)
             await dispatch_event(subscription, fose.StateUpdate(state=state))
 
@@ -341,7 +342,7 @@ class Mutation(SetColorScheme):
                 view_name,
             )
 
-        dataset = fod.load_dataset(dataset_name)
+        dataset = fod.load_dataset(dataset_name, reload=True)
         if not dataset:
             raise ValueError(f"No dataset found with name {dataset_name}")
 
@@ -379,16 +380,16 @@ class Mutation(SetColorScheme):
         """Updates the editable fields of a saved view
 
         Args:
+            view_name: name of the existing saved view
             subscription: str identifier used for syncing App state
             session: str identifier use for syncing App state
-            view_name: name of the existing saved view
             updated_info: input type with values only for fields requiring
-            update
-
+                update
+            dataset_name: name of the dataset to which the saved view belongs
         """
         state = get_state()
         if state is None or state.dataset is None:
-            dataset = fod.load_dataset(dataset_name)
+            dataset = fod.load_dataset(dataset_name, reload=True)
         else:
             dataset = state.dataset
 
@@ -402,7 +403,7 @@ class Mutation(SetColorScheme):
                 "%s",
                 view_name,
             )
-        dataset.reload()
+
         current_name = (
             updated_info["name"]
             if "name" in updated_info and updated_info["name"] is not None
@@ -441,7 +442,7 @@ class Mutation(SetColorScheme):
         state = get_state()
         dataset = state.dataset
         if dataset is None:
-            dataset = fod.load_dataset(dataset_name)
+            dataset = fod.load_dataset(dataset_name, reload=True)
 
         try:
             view = dataset.select_fields(meta_filter=meta_filter)

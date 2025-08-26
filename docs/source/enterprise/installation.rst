@@ -130,16 +130,6 @@ Replace ``X.Y.Z`` with the proper version
 
     poetry add --source fiftyone-enterprise fiftyone==X.Y.Z
 
-.. note::
-
-    Due to an `unresolved misalignment <https://github.com/python-poetry/poetry/issues/4046>`_
-    with ``poetry`` and a FiftyOne dependency, ``kaleido``, you must add it
-    to your own dependencies as well:
-
-    .. code-block::
-
-        poetry add kaleido==0.2.1
-
 You should then see snippets in the ``pyproject.toml`` file like the following
 (the ``priority`` line will be different for ``poetry<v1.5``):
 
