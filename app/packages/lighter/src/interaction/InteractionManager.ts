@@ -16,6 +16,8 @@ import { UndoRedoManager } from "../undo/UndoRedoManager";
  * Interface for objects that can handle interaction events.
  */
 export interface InteractionHandler {
+  readonly id: string;
+
   /**
    * Handle pointer down event.
    * @param point - The point where the event occurred.
@@ -111,6 +113,8 @@ export class InteractionManager {
   private lastClickTime = 0;
   private lastClickPoint?: Point;
 
+  private canonicalMediaId?: string;
+
   // Drag state management
   private dragState?: DragState;
 
@@ -139,6 +143,14 @@ export class InteractionManager {
     this.setupEventListeners();
     this.setupDragEventListeners();
     this.setupSpatialEventListeners();
+  }
+
+  /**
+   * Set the canonical media id.
+   * @param id - The id of the canonical media.
+   */
+  public setCanonicalMediaId(id: string): void {
+    this.canonicalMediaId = id;
   }
 
   private setupEventListeners(): void {
@@ -507,6 +519,20 @@ export class InteractionManager {
   ): void {
     const handler = this.findHandlerAtPoint(point);
 
+    if (!handler) {
+      return;
+    }
+
+    if (handler.id !== this.canonicalMediaId) {
+      if (isDragging) {
+        this.canvas.style.cursor = "grab";
+      } else {
+        this.canvas.style.cursor = "pointer";
+      }
+    } else {
+      this.canvas.style.cursor = "default";
+    }
+
     // If we are dragging, we should not handle hover
     if (isDragging) {
       if (this.hoveredHandler) {
@@ -539,7 +565,7 @@ export class InteractionManager {
       // Emit hover move event for tooltip updates
       this.eventBus.emit({
         type: LIGHTER_EVENTS.OVERLAY_HOVER_MOVE,
-        detail: { id: (handler as any).id, point },
+        detail: { id: handler.id, point },
       });
     }
 
@@ -611,8 +637,8 @@ export class InteractionManager {
       "id" in handler &&
       "getPosition" in handler &&
       "setPosition" in handler &&
-      typeof (handler as any).getPosition === "function" &&
-      typeof (handler as any).setPosition === "function"
+      typeof handler.getPosition === "function" &&
+      typeof handler.setPosition === "function"
     );
   }
 
@@ -625,7 +651,7 @@ export class InteractionManager {
     return (
       "id" in handler &&
       "isSelected" in handler &&
-      typeof (handler as any).isSelected === "function"
+      typeof handler.isSelected === "function"
     );
   }
 

@@ -663,6 +663,8 @@ export class Scene2D {
     this.canonicalMedia = overlayOrMedia;
     this.canonicalMediaId = overlayOrMedia.id;
 
+    this.interactionManager.setCanonicalMediaId(overlayOrMedia.id);
+
     // Ensure canonical media is in the background
     this.ensureCanonicalMediaInBackground(overlayOrMedia.id);
 
