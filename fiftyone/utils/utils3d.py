@@ -109,10 +109,12 @@ _POINT_IN_FRONT_OF_PLANE = 1
 _POINT_ON_PLANE = 0
 _POINT_BEHIND_PLANE = -1
 
-TransformationType = List[Tuple[
-    Union[list[float], np.ndarray],  # translation
-    Union[list[list[float]], np.ndarray],  # rotation matrix
-]]
+TransformationType = List[
+    Tuple[
+        Union[list[float], np.ndarray],  # translation
+        Union[list[list[float]], np.ndarray],  # rotation matrix
+    ]
+]
 
 
 # References
@@ -435,6 +437,7 @@ def rpy_to_quaternion(euler_rpy: List[float]):
 
     Args:
         euler_rpy: a list of Euler angles in roll-pitch-yaw order
+        
     Returns:
         A quaternion representing the rotation.
     """
@@ -562,7 +565,7 @@ def pinhole_projector(
 ) -> np.ndarray:
     """Projects 3D detection points to 2D using the given camera intrinsics assuming a pinhole camera.
 
-    The following orientation is assumed- x axis points to the right in the image plane, y axis points 
+    The following orientation is assumed- x axis points to the right in the image plane, y axis points
     down in the image plane and z axis points forward from the camera.
 
     Args:
