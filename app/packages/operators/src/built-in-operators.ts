@@ -23,7 +23,7 @@ import {
   useRecoilValue,
   useSetRecoilState,
 } from "recoil";
-import { useOperatorExecutor } from ".";
+import { useOperatorExecutor, usePanelClientEvent } from ".";
 import useRefetchableSavedViews from "../../core/src/hooks/useRefetchableSavedViews";
 import registerPanel from "./Panel/register";
 import {
@@ -37,7 +37,6 @@ import {
 } from "./operators";
 import { useShowOperatorIO } from "./state";
 import usePanelEvent from "./usePanelEvent";
-import { Clear } from "@mui/icons-material";
 
 //
 // BUILT-IN OPERATORS
@@ -1502,6 +1501,29 @@ class ToggleSidebar extends Operator {
   }
 }
 
+class TriggerPanelClientEvent extends Operator {
+  _builtIn = true;
+  get config() {
+    return new OperatorConfig({
+      name: "trigger_panel_client_event",
+      label: "Trigger panel client event",
+    });
+  }
+  useHooks() {
+    const { trigger } = usePanelClientEvent();
+    return {
+      trigger: (params) => {
+        const panelId = params.panel_id;
+        trigger(params.event, params?.params, panelId);
+      },
+    };
+  }
+  async execute(ctx: ExecutionContext) {
+    const { hooks, params } = ctx;
+    hooks.trigger(params);
+  }
+}
+
 export function registerBuiltInOperators() {
   try {
     _registerBuiltInOperator(CopyViewAsJSON);
@@ -1559,6 +1581,7 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(HideSidebar);
     _registerBuiltInOperator(ToggleSidebar);
     _registerBuiltInOperator(ClearActiveFields);
+    _registerBuiltInOperator(TriggerPanelClientEvent);
   } catch (e) {
     console.error("Error registering built-in operators");
     console.error(e);
