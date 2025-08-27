@@ -29,3 +29,4 @@ export {
 } from "./state";
 export * as types from "./types";
 export { default as usePanelEvent } from "./usePanelEvent";
+export * from "./Panel/hooks";
