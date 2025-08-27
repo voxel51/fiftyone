@@ -3,7 +3,12 @@
  */
 
 import * as PIXI from "pixi.js";
-import { DEFAULT_TEXT_PADDING } from "../constants";
+import {
+  DEFAULT_TEXT_PADDING,
+  FONT_FAMILY,
+  FONT_SIZE,
+  FONT_WEIGHT,
+} from "../constants";
 import type { EventBus } from "../event/EventBus";
 import { LIGHTER_EVENTS } from "../event/EventBus";
 import type {
@@ -151,8 +156,9 @@ export class PixiRenderer2D implements Renderer2D {
     containerId: string
   ): Dimensions2D {
     const textStyle = new PIXI.TextStyle({
-      fontFamily: options?.font || "Arial",
-      fontSize: options?.fontSize || 14,
+      fontFamily: options?.font || FONT_FAMILY,
+      fontSize: options?.fontSize || FONT_SIZE,
+      fontWeight: FONT_WEIGHT,
       fill: options?.fontColor || "#000000",
       align: "left",
       wordWrap: true,
