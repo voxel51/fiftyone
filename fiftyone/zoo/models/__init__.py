@@ -510,6 +510,32 @@ class ZooModel(etam.Model):
         "See https://docs.voxel51.com/user_guide/config.html for details."
     )
 
+    def attributes(self):
+        """Returns the list of class attributes that will be serialized."""
+        attrs = super().attributes()
+        attrs.append("training_data")
+        return attrs
+
+    @classmethod
+    def from_dict(cls, d, subdir=None):
+        """Constructs a ZooModel from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+            subdir (optional): a subdirectory for the model
+
+        Returns:
+            a ZooModel instance
+        """
+        model = super().from_dict(d, subdir=subdir)
+
+        if "training_data" in d:
+            model.training_data = d["training_data"]
+        else:
+            model.training_data = None
+
+        return model
+
 
 class RemoteZooModel(ZooModel):
     def __init__(self, *args, **kwargs):
