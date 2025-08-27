@@ -45,6 +45,10 @@ class PanelOne(Panel):
             params={"run_data": {"name": "My Run One"}},
         )
 
+    def set_samples_count(self, ctx):
+        params = {"count": ctx.view.count()}
+        ctx.panel.trigger("set_samples_count", params)
+
     def render(self, ctx):
         panel = types.Object()
         return types.Property(
@@ -57,6 +61,7 @@ class PanelOne(Panel):
                 set_count=self.set_count,
                 load_run_manual=self.load_run_manual,
                 load_run_recoil=self.load_run_recoil,
+                set_samples_count=self.set_samples_count,
             ),
         )
 
