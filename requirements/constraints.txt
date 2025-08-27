@@ -1,0 +1,2 @@
+# https://www.cve.org/CVERecord?id=CVE-2025-50181
+urllib3>=2.5.0

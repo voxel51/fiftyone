@@ -8,6 +8,11 @@
 # voxel51.com
 #
 
+# common install command which enforces transitive constraints
+pip-install() {
+    pip install -c requirements/constraints.txt "$@"
+}
+
 # Show usage information
 usage() {
     echo "Usage:  bash $0 [-h] [-b] [-d] [-e] [-m] [-p]
@@ -123,7 +128,7 @@ if [ ${SCRATCH_MONGODB_INSTALL} = true ]; then
     cd -
 else
     echo "***** INSTALLING FIFTYONE-DB *****"
-    pip install fiftyone-db
+    pip-install fiftyone-db
 fi
 
 echo "***** INSTALLING FIFTYONE-BRAIN *****"
@@ -142,26 +147,26 @@ if [ ${SOURCE_BRAIN_INSTALL} = true ]; then
         bash install.bash -d
     else
         echo "Performing install"
-        pip install .
+        pip-install .
     fi
     cd -
 else
-    pip install --upgrade fiftyone-brain
+    pip-install --upgrade fiftyone-brain
 fi
 
 echo "***** INSTALLING FIFTYONE *****"
 if [ ${DEV_INSTALL} = true ]; then
     echo "Performing dev install"
-    pip install -r requirements/dev.txt
+    pip-install -r requirements/dev.txt
     pre-commit install
-    pip install -e .
+    pip-install -e .
 elif [ ${DOCS_INSTALL} = true ]; then
     echo "Performing docs install"
-    pip install -r requirements/docs.txt
-    pip install -e .
+    pip-install -r requirements/docs.txt
+    pip-install -e .
 else
     echo "Performing install"
-    pip install .
+    pip-install .
 fi
 
 if [ ${SOURCE_ETA_INSTALL} = true ]; then
@@ -177,10 +182,10 @@ if [ ${SOURCE_ETA_INSTALL} = true ]; then
     fi
     if [ ${DEV_INSTALL} = true ]; then
         echo "Performing dev install"
-        pip install -e .
+        pip-install -e .
     else
         echo "Performing install"
-        pip install .
+        pip-install .
     fi
     if [[ ! -f eta/config.json ]]; then
         echo "Installing default ETA config"

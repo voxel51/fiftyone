@@ -51,7 +51,7 @@ if %BUILD_APP%==true (
 
 IF %USE_FIFTY_ONE_DB%==true (
   echo ***** INSTALLING FIFTYONE-DB *****
-  pip install fiftyone-db
+  pip install -c requirements/constraints.txt fiftyone-db
 ) else (
   echo ***** USING LOCAL MONGODB *****
 )
@@ -75,27 +75,27 @@ IF %SOURCE_BRAIN_INSTALL%==true (
     CALL install.bat -d
   ) else (
     echo Performing install
-    pip install .
+    pip install -c requirements/constraints.txt .
   )
   popd
 ) else (
-  pip install --upgrade fiftyone-brain
+  pip install -c requirements/constraints.txt --upgrade fiftyone-brain
 )
 
 echo ***** INSTALLING FIFTYONE *****
 IF %DEV_INSTALL%==true (
   echo Performing dev install
-  pip install -r requirements/dev.txt
+  pip install -c requirements/constraints.txt -r requirements/dev.txt
   pre-commit install
-  pip install .
+  pip install -c requirements/constraints.txt .
 ) else if %DOCS_INSTALL%==true (
   echo Performing docs install
-  pip install -r requirements/docs.txt
-  pip install -e .
+  pip install -c requirements/constraints.txt -r requirements/docs.txt
+  pip install -c requirements/constraints.txt -e .
 ) else (
   echo Performing install
-  pip install -r requirements.txt
-  pip install .
+  pip install -c requirements/constraints.txt -r requirements.txt
+  pip install -c requirements/constraints.txt .
 )
 
 IF %SOURCE_ETA_INSTALL%==true (
@@ -114,10 +114,10 @@ IF %SOURCE_ETA_INSTALL%==true (
   )
   IF %DEV_INSTALL%==true (
     echo Performing dev install
-    pip install .
+    pip install -c requirements/constraints.txt .
   ) else (
     echo Performing install
-    pip install .
+    pip install -c requirements/constraints.txt .
   )
   if not exist "eta\config.json" (
     echo "Installing default ETA config"
