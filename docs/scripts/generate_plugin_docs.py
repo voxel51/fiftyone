@@ -512,7 +512,7 @@ Explore the latest breakthroughs and enhance your workflows with these powerful 
             plugin_slug = (
                 plugin_name.lower().replace("-", "_").replace(" ", "_")
             )
-            filename = f"plugins_ecosystem/{plugin_slug}.md"
+            filename = f"{plugin_slug}.md"
             rst_content += f"   {plugin_name} <{filename}>\n"
 
         rst_content += """
