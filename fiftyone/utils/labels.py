@@ -1209,112 +1209,134 @@ def _get_filepath(sample_or_frame, sample):
 
 
 def detections_3d_to_cuboids_2d(
-    dataset: SampleCollection,
+    sample_collection: SampleCollection,
     camera_slice_name: str,
-    lidar_slice_name: str,
+    spatial_slice_name: str,
     in_field: str,
     out_field: str,
     transformations: Dict[str, fou3d.TransformationType],
     camera_params: Dict[str, Dict[str, Any]],
     forward_transform_flags: Dict[str, List[bool]] = None,
-    batch_size: int = 1000,
     camera_model: Callable = fou3d.pinhole_projector,
+    transformation_key_field: str = "id",
+    camera_key_field: str = "id",
+    batch_size: int = 1000,
     progress: bool = None,
 ):
     """High-level orchestration of 3D → 2D label conversion. Processes the `in_field`
-    on the `lidar_slice_name` slice of a grouped dataset, uses the transformations
+    on the `spatial_slice_name` slice of a grouped sample_collection, uses the transformations
     and camera intrinsics to converts the labels to 2D polylines and saves them in
     the `out_field` on the `camera_slice_name` slice.
 
     Args:
-        dataset: a
+        sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
-        camera_slice_name: the name of the camera slice in the dataset
-        lidar_slice_name: the name of the LiDAR slice in the dataset
+        camera_slice_name: the name of the camera slice in the sample_collection
+        spatial_slice_name: the name of the spatial slice in the sample_collection
         in_field: the name of the :class:`fiftyone.core.labels.Detection` field
             containing 3D labels to convert
         out_field: the name of the :class:`fiftyone.core.labels.Polylines`
             field to populate with 2D cuboids
-        transformations: a dict mapping sample IDs to transformation tuples
-            (translation, rotation) for each sample in the dataset.
-            Translation is a 3-element list or np.ndarray, and rotation is a
-            (3, 3) list of lists or np.ndarray representing a rotation matrix.
-        camera_params: a dict mapping sample IDs to camera parameters dict which
-            contains the keys required by the camera_model for each sample in
-            the dataset.
-        forward_transform_flags: a dict mapping sample IDs to lists of booleans
-            indicating whether to apply forward or inverse transformations for
-            each transform in the list of transformations for each sample
-        batch_size (1000): number of samples to process in each batch
+        transformations: a dict mapping `transformation_key_field` to
+            transformation tuples (translation, rotation) for each sample in the
+            sample_collection. Translation is a 3-element list or np.ndarray,
+            and rotation is a (3, 3) list of lists or np.ndarray representing a
+            rotation matrix.
+        camera_params: a dict mapping `camera_key_field` to camera parameters
+            dict which contains the keys required by the camera_model for each
+            sample in the sample_collection.
+        forward_transform_flags: a dict mapping `transformation_key_field` to
+            lists of booleans indicating whether to apply forward or inverse
+            transformations for each transform in the list of transformations
+            for each sample
         camera_model (fou3d.pinhole_projector): a callable that takes 3D points
             in the camera coordinate system and the camera parameters dict and
             returns the projected 2D points in pixel coordinates
-        progress (True): whether to show a progress bar during processing
+        transformation_key_field ("id"): the key field to use for looking up
+            transformations for each sample
+        camera_key_field ("id"): the key field to use for looking up camera
+            parameters for each camera sample
+        batch_size (1000): number of samples to process in each batch
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
-    fov.validate_grouped_non_dynamic_collection(dataset)
-    fov.validate_collection_label_fields(dataset, in_field, fol.Detections)
+    fov.validate_grouped_non_dynamic_collection(sample_collection)
+    fov.validate_collection_label_fields(
+        sample_collection, in_field, fol.Detections
+    )
 
-    lidar_slice = dataset.select_group_slices(lidar_slice_name)
-    camera_slice = dataset.select_group_slices(camera_slice_name)
-    camera_slice.compute_metadata()
+    camera_slice = sample_collection.select_group_slices(camera_slice_name)
+    camera_slice.compute_metadata(progress=progress)
 
     values_2d_label = {}
     count = 0
-    view_3d_label = lidar_slice.select_fields([in_field, "group"])
 
-    with view_3d_label.save_context() as context:
-        for sample in view_3d_label.iter_samples(progress=progress):
-            transforms = transformations.get(sample.id, None)
-            forward_flags = (
-                forward_transform_flags.get(sample.id)
-                if forward_transform_flags
-                else None
+    for group in sample_collection.select_fields(in_field).iter_groups(
+        group_slices=[spatial_slice_name, camera_slice_name],
+        progress=progress,
+        autosave=True,
+    ):
+        spatial_sample = group[spatial_slice_name]
+        camera_sample = group[camera_slice_name]
+        spatial_key = spatial_sample[transformation_key_field]
+        camera_key = camera_sample[camera_key_field]
+        transforms = transformations.get(spatial_key, None)
+        forward_flags = (
+            forward_transform_flags.get(spatial_key)
+            if forward_transform_flags
+            else None
+        )
+        cam_params = camera_params.get(camera_key, None)
+
+        if transforms is None:
+            logger.warning(
+                f"Skipping sample {spatial_sample.id} because transformations are missing"
             )
-            cam_params = camera_params.get(sample.id, None)
+            continue
+        if cam_params is None:
+            logger.warning(
+                f"Skipping camera sample {camera_sample.id} because camera parameters are missing"
+            )
+            continue
 
-            if transforms is None or cam_params is None:
-                logger.warning(
-                    f"Skipping sample {sample.id} because transformations or camera intrinsics are missing"
-                )
-                continue
+        width, height = (
+            camera_slice[camera_sample.id].metadata.width,
+            camera_slice[camera_sample.id].metadata.height,
+        )
 
-            group = dataset.get_group(sample.group.id)
-            cam_sample_id = group[camera_slice_name].id
-            width, height = (
-                camera_slice[cam_sample_id].metadata.width,
-                camera_slice[cam_sample_id].metadata.height,
+        if width is None or height is None:
+            logger.warning(
+                f"Skipping camera sample {camera_sample.id} because camera metadata is missing. Please compute metadata for this sample first."
+            )
+            continue
+
+        polylines = _process_3d_sample(
+            spatial_sample,
+            in_field,
+            transforms,
+            forward_flags,
+            cam_params,
+            camera_model,
+            width,
+            height,
+        )
+        if polylines:
+            values_2d_label[camera_sample.id] = fol.Polylines(
+                polylines=polylines
             )
 
-            if width is None or height is None:
-                logger.warning(
-                    f"Skipping sample {sample.id} because camera metadata is missing. Please compute metadata for this sample first."
-                )
-                continue
-
-            polylines, added_instance = _process_3d_sample(
-                sample,
-                in_field,
-                transforms,
-                forward_flags,
-                cam_params,
-                camera_model,
-                width,
-                height,
+        count += 1
+        if count % batch_size == 0:
+            sample_collection.set_values(
+                out_field, values_2d_label, key_field="id"
             )
-            if polylines:
-                values_2d_label[cam_sample_id] = fol.Polylines(
-                    polylines=polylines
-                )
-            if added_instance:
-                context.save(sample)
-
-            count += 1
-            if count % batch_size == 0:
-                dataset.set_values(out_field, values_2d_label, key_field="id")
-                values_2d_label.clear()
+            values_2d_label.clear()
 
     if values_2d_label:
-        dataset.set_values(out_field, values_2d_label, key_field="id")
+        sample_collection.set_values(
+            out_field, values_2d_label, key_field="id"
+        )
 
 
 def _process_3d_sample(
@@ -1339,10 +1361,9 @@ def _process_3d_sample(
         return [], False
 
     polylines = []
-    added_instance = False
 
-    for det_idx, det in enumerate(detections_3d.detections):
-        ply, added_instance = _process_detection_to_ply(
+    for _, det in enumerate(detections_3d.detections):
+        ply = _process_detection_to_ply(
             det,
             transforms,
             forward_flags,
@@ -1351,14 +1372,11 @@ def _process_3d_sample(
             width,
             height,
             sample,
-            in_field,
-            det_idx,
-            added_instance,
         )
         if ply:
             polylines.append(ply)
 
-    return polylines, added_instance
+    return polylines
 
 
 def _process_detection_to_ply(
@@ -1370,9 +1388,6 @@ def _process_detection_to_ply(
     width: int,
     height: int,
     sample,
-    in_field,
-    det_idx: int,
-    added_instance: bool,
 ):
     """Convert a single 3D detection to a 2D Polyline."""
 
@@ -1381,7 +1396,7 @@ def _process_detection_to_ply(
             f"Skipping detection (id={det.id}) in sample {sample.id} "
             "because location, rotation, or dimensions is missing"
         )
-        return None, added_instance
+        return None
 
     points_cam, rotation_cam = fou3d.multiple_coordinate_transform(
         det.location, det.rotation, transforms, forward_flags
@@ -1389,7 +1404,6 @@ def _process_detection_to_ply(
     if getattr(det, "instance", None) is None:
         added_instance = True
         det.instance = fo.Instance()
-        sample[in_field].detections[det_idx]["instance"] = det.instance
 
     corners_3d_cam = fou3d.corners_from_euler(
         points_cam, rotation_cam, det.dimensions
@@ -1399,19 +1413,16 @@ def _process_detection_to_ply(
     if not fou3d.point_in_front_of_camera(
         corners_2d_cam, corners_3d_cam, (width, height)
     ):
-        return None, added_instance
+        return None
     ply_corners = [
         (corners_2d_cam[0][i] / width, corners_2d_cam[1][i] / height)
         for i in range(8)
     ]
 
-    return (
-        fo.Polyline.from_cuboid(
-            vertices=ply_corners,
-            label=det.label,
-            confidence=det.confidence,
-            instance=det.instance,
-            index=det.index,
-        ),
-        added_instance,
+    return fo.Polyline.from_cuboid(
+        vertices=ply_corners,
+        label=det.label,
+        confidence=det.confidence,
+        instance=det.instance,
+        index=det.index,
     )
