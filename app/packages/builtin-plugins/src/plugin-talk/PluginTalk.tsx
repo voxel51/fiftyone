@@ -1,3 +1,4 @@
+import { usePanelStatePartial } from "@fiftyone/spaces";
 import { Stack, Tab, Tabs } from "@mui/material";
 import Four from "./Four";
 import One from "./One";
@@ -5,7 +6,7 @@ import Three from "./Three";
 import Two from "./Two";
 
 export default function PluginTalk(props) {
-  const [tab, setTab] = useState("one");
+  const [tab, setTab] = usePanelStatePartial("tab", "one");
 
   return (
     <Stack>
