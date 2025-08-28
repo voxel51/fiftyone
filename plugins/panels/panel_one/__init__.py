@@ -21,11 +21,45 @@ class PanelOne(Panel):
         )
 
     def on_load(self, ctx):
-        pass
+        ctx.panel.set_state("counts.first", 0)
+        ctx.panel.set_data("counts.second", 0)
+
+    def increment(self, ctx):
+        count = ctx.panel.get_state("counts.first")
+        ctx.panel.set_state("counts.first", count + 1)
+
+    def decrement(self, ctx):
+        count = ctx.panel.get_state("counts.first")
+        ctx.panel.set_state("counts.first", count - 1)
+
+    def set_count(self, ctx):
+        count = ctx.params.get("count", None)
+        ctx.panel.set_data("counts.second", count)
+
+    def load_run_manual(self, ctx):
+        return {"run_data": {"name": "My Run One"}}
+
+    def load_run_recoil(self, ctx):
+        ctx.trigger(
+            "@voxel51/operators/set_panel_one_state",
+            params={"run_data": {"name": "My Run One"}},
+        )
 
     def render(self, ctx):
         panel = types.Object()
         return types.Property(
             panel,
-            view=types.View(component="CustomViewOne", composite_view=True),
+            view=types.View(
+                component="CustomViewOne",
+                composite_view=True,
+                increment=self.increment,
+                decrement=self.decrement,
+                set_count=self.set_count,
+                load_run_manual=self.load_run_manual,
+                load_run_recoil=self.load_run_recoil,
+            ),
         )
+
+
+#  to aceces it panel event
+# to sync with fuftyone session
