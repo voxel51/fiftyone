@@ -4,7 +4,7 @@ import {
   registerOperator,
 } from "@fiftyone/operators";
 import { useSetRecoilState } from "recoil";
-import { panelOneStateAtom } from "./recoil";
+import { panelOneStateAtom } from "./state";
 
 export class SetPanelOneState extends Operator {
   get config() {

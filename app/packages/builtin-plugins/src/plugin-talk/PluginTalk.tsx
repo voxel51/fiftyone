@@ -1,11 +1,10 @@
 import { Stack, Tab, Tabs } from "@mui/material";
-import { useState } from "react";
-import One from "./One";
-import Two from "./Two";
-import Three from "./Three";
 import Four from "./Four";
+import One from "./One";
+import Three from "./Three";
+import Two from "./Two";
 
-export default function CustomViewOne(props) {
+export default function PluginTalk(props) {
   const [tab, setTab] = useState("one");
 
   return (

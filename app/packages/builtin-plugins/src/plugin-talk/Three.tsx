@@ -2,7 +2,7 @@ import { CodeBlock } from "@fiftyone/components";
 import { useTriggerPanelEvent } from "@fiftyone/operators";
 import { Box, Button, Typography } from "@mui/material";
 import { useRecoilValue } from "recoil";
-import { panelOneStateAtom } from "./recoil";
+import { panelOneStateAtom } from "./state";
 
 export default function Three(props) {
   const { schema } = props;

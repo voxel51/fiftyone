@@ -13,14 +13,9 @@ export default function One(props) {
   const secondCount = data?.counts?.second ?? "Second count is not provided";
 
   const [panelState, setPanelState] = usePanelState();
-  const [panelData] = usePanelState(undefined, undefined, true);
-
-  console.log(">>> panelState:", panelState);
-  console.log(">>> panelData:", panelData);
 
   return (
     <Box>
-      <Typography variant="h4">Example One</Typography>
       <Button
         onClick={() => {
           triggerEvent(increment);

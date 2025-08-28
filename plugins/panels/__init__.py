@@ -7,9 +7,9 @@ Builtin panels.
 """
 
 from .model_evaluation import EvaluationPanel
-from .panel_one import PanelOne
+from .plugin_talk import PluginTalk
 
 
 def register(p):
     p.register(EvaluationPanel)
-    p.register(PanelOne)
+    p.register(PluginTalk)

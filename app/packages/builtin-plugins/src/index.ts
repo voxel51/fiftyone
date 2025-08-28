@@ -1,1 +1,1 @@
-import "./custom-view-one";
+import "./plugin-talk";

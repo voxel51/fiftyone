@@ -1,11 +1,11 @@
 import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
-import CustomViewOne from "./CustomViewOne";
-import "./RecoilStateOp";
+import PluginTalk from "./PluginTalk";
+import "./RecoilStateOperator";
 
 registerComponent({
-  name: "CustomViewOne",
-  label: "CustomViewOne",
-  component: CustomViewOne,
+  name: "PluginTalk",
+  label: "PluginTalk",
+  component: PluginTalk,
   type: PluginComponentType.Component,
   activator: () => true,
 });

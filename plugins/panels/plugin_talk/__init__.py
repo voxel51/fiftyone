@@ -11,13 +11,13 @@ from fiftyone.operators.panel import Panel, PanelConfig
 import fiftyone.operators.types as types
 
 
-class PanelOne(Panel):
+class PluginTalk(Panel):
     @property
     def config(self):
         return PanelConfig(
-            name="panel_one",
-            label="Panel One",
-            icon="looks_one",
+            name="plugin_talk",
+            label="Plugin Talk",
+            icon="school",
         )
 
     def on_load(self, ctx):
@@ -54,7 +54,7 @@ class PanelOne(Panel):
         return types.Property(
             panel,
             view=types.View(
-                component="CustomViewOne",
+                component="PluginTalk",
                 composite_view=True,
                 increment=self.increment,
                 decrement=self.decrement,
@@ -64,7 +64,3 @@ class PanelOne(Panel):
                 set_samples_count=self.set_samples_count,
             ),
         )
-
-
-#  to aceces it panel event
-# to sync with fuftyone session
