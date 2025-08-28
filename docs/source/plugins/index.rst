@@ -126,6 +126,7 @@ App? Just open the :ref:`Embeddings panel <app-embeddings-panel>`:
    :hidden:
 
    Overview <self>
+   Plugins Ecosystem <plugins_ecosystem/index>
    Using plugins <using_plugins>
    Developing plugins <developing_plugins>
    API reference <api/plugins>
