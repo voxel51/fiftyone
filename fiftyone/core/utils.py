@@ -3143,3 +3143,45 @@ def validate_hex_color(value):
 
 
 fos = lazy_import("fiftyone.core.storage")
+
+
+@contextmanager
+def async_executor(
+    *, max_workers, skip_failures=False, warning="Async failure"
+):
+    """
+    Context manager that provides a function for submitting tasks to a thread
+    pool executor. All tasks are joined when the context is exited.
+
+    Example:
+
+        with async_executor(max_workers=4) as submit:
+            for item in items:
+                submit(process_item, item)
+
+    Args:
+        max_workers: the maximum number of workers to use
+        skip_failures (False): whether to skip exceptions raised by tasks
+        warning ("Async failure"): the warning message to log if a task
+            raises an exception and ``skip_failures == True``
+
+    Raises:
+        Exception: if a task raises an exception and ``skip_failures == False``
+    """
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        _futures = []
+
+        def submit(*args, **kwargs):
+            future = executor.submit(*args, **kwargs)
+            _futures.append(future)
+            return future
+
+        yield submit
+
+        for future in _futures:
+            try:
+                future.result()
+            except Exception as e:
+                if not skip_failures:
+                    raise e
+                logger.warning(warning, exc_info=True)
