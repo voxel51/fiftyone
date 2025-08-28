@@ -1237,7 +1237,7 @@ def detections_3d_to_cuboids_2d(
             containing 3D labels to convert
         out_field: the name of the :class:`fiftyone.core.labels.Polylines`
             field to populate with 2D cuboids
-        transformations: a dict mapping `transformation_key_field` to
+        transformations: a dict mapping `transformation_key_field` to a list of
             transformation tuples (translation, rotation) for each sample in the
             sample_collection. Translation is a 3-element list or np.ndarray,
             and rotation is a (3, 3) list of lists or np.ndarray representing a
