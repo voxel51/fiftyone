@@ -1219,6 +1219,18 @@ def _compute_image_embeddings_data_loader(
         pb = context.enter_context(fou.ProgressBar(samples, progress=progress))
         if embeddings_field is not None:
             ctx = context.enter_context(foc.SaveContext(samples))
+        submit = context.enter_context(
+            fou.async_executor(
+                max_workers=1,
+                skip_failures=skip_failures,
+                warning="Async failure saving embeddings",
+            )
+        )
+
+        def save_batch(sample_batch, embeddings_batch):
+            for sample, embedding in zip(sample_batch, embeddings_batch):
+                sample[embeddings_field] = embedding
+                ctx.save(sample)
 
         for sample_batch, imgs in zip(
             fou.iter_batches(samples, batch_size),
@@ -1244,9 +1256,7 @@ def _compute_image_embeddings_data_loader(
                 )
 
             if embeddings_field is not None:
-                for sample, embedding in zip(sample_batch, embeddings_batch):
-                    sample[embeddings_field] = embedding
-                    ctx.save(sample)
+                submit(save_batch, sample_batch, embeddings_batch)
             else:
                 embeddings.extend(embeddings_batch)
 
