@@ -4398,7 +4398,7 @@ FiftyOne:
    detections_3d_to_cuboids_2d(
        dataset,
        camera_slice_name="camera_front",
-       lidar_slice_name="lidar_top",
+       spatial_slice_name="lidar_top",
        in_field="lidar_detections",
        out_field="cuboids_2d",
        transformations=transformations,
