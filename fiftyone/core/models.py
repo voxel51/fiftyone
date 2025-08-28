@@ -1231,10 +1231,11 @@ def _compute_image_embeddings_data_loader(
         )
 
         def save_batch(sample_batch, embeddings_batch):
-            for sample, embedding in zip(sample_batch, embeddings_batch):
-                sample[embeddings_field] = embedding
-                if ctx:
-                    ctx.save(sample)
+            with _handle_batch_error(skip_failures, sample_batch):
+                for sample, embedding in zip(sample_batch, embeddings_batch):
+                    sample[embeddings_field] = embedding
+                    if ctx:
+                        ctx.save(sample)
 
         for sample_batch, imgs in zip(
             fou.iter_batches(samples, batch_size),
