@@ -681,7 +681,17 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
             )
 
         else:
-            return output
+            for k, v in output.items():
+                if isinstance(v, torch.Tensor):
+                    output[k] = v.detach().cpu()
+                elif isinstance(v, (tuple, list)):
+                    output[k] = [
+                        i.detach().cpu()
+                        for i in v
+                        if isinstance(i, torch.Tensor)
+                    ]
+
+            return output, image_sizes
 
     def _forward_pass(self, args):
         return self._model(
@@ -709,6 +719,10 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
         keys = batch[0].keys()
         res = {}
         for k in keys:
+            if not isinstance(batch[0][k], (torch.Tensor, np.ndarray)):
+                # not a tensor, just return the list
+                res[k] = [b[k] for b in batch]
+                continue
             # Gather shapes for dimension analysis
             shapes = [b[k].shape for b in batch]
             # Find the max size in each dimension
