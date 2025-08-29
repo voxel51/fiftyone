@@ -4400,8 +4400,8 @@ FiftyOne:
 
    detections_3d_to_cuboids_2d(
        dataset,
-       camera_slice_name="camera_slice",
        spatial_slice_name="spatial_slice",
+       camera_slice_name="camera_slice",
        in_field="detections_3d",
        out_field="cuboids_2d",
        transformations=transformations,

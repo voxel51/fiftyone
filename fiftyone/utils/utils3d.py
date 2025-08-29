@@ -19,7 +19,6 @@ from typing import Any, Dict, List, Tuple, Union
 import eta.core.numutils as etan
 import eta.core.utils as etau
 
-import fiftyone as fo
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
@@ -611,6 +610,7 @@ def point_in_front_of_camera(
     corners_3d: np.ndarray,
     imsize: Tuple[int, int],
     distance_threshold: float = 0.1,
+    safety_threshold: float = 0.1,
 ) -> bool:
     """Checks if the input corners are visible in the image and in front of the
     camera.
@@ -622,7 +622,9 @@ def point_in_front_of_camera(
             cuboid's corners
         imsize: a tuple (width, height) of the image dimensions
         distance_threshold: a float representing the minimum distance in meters
-        for a corner to be considered in front of the camera
+            for a corner to be considered in front of the camera
+        safety_threshold: a float representing the minimum safety distance in meters
+            for a corner to be considered safe
 
     Returns:
         True if all corners are visible in the image and all corners are in
@@ -633,7 +635,7 @@ def point_in_front_of_camera(
     )
     visible = np.logical_and(visible, corners_img[1, :] < imsize[1])
     visible = np.logical_and(visible, corners_img[1, :] > 0)
-    visible = np.logical_and(visible, corners_3d[2, :] > 1)
+    visible = np.logical_and(visible, corners_3d[2, :] > safety_threshold)
     in_front = corners_3d[2, :] > distance_threshold
     return all(visible) and all(in_front)
 

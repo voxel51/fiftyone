@@ -6,7 +6,7 @@ Label utilities.
 |
 """
 import eta.core.utils as etau
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List, Optional
 import logging
 import numpy as np
 
@@ -1209,8 +1209,8 @@ def _get_filepath(sample_or_frame, sample):
 
 def detections_3d_to_cuboids_2d(
     sample_collection: SampleCollection,
-    camera_slice_name: str,
     spatial_slice_name: str,
+    camera_slice_name: str,
     in_field: str,
     out_field: str,
     transformations: Dict[str, fou3d.TransformationType],
@@ -1224,14 +1224,14 @@ def detections_3d_to_cuboids_2d(
 ):
     """High-level orchestration of 3D → 2D label conversion. Processes the `in_field`
     on the `spatial_slice_name` slice of a grouped sample_collection, uses the transformations
-    and camera intrinsics to converts the labels to 2D polylines and saves them in
+    and camera intrinsics to convert the labels to 2D polylines and saves them in
     the `out_field` on the `camera_slice_name` slice.
 
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
-        camera_slice_name: the name of the camera slice in the sample_collection
         spatial_slice_name: the name of the spatial slice in the sample_collection
+        camera_slice_name: the name of the camera slice in the sample_collection
         in_field: the name of the :class:`fiftyone.core.labels.Detection` field
             containing 3D labels to convert
         out_field: the name of the :class:`fiftyone.core.labels.Polylines`
@@ -1343,7 +1343,7 @@ def _process_3d_sample(
     sample,
     in_field: str,
     transforms: fou3d.TransformationType,
-    forward_flags: List[bool],
+    forward_flags: Optional[List[bool]],
     cam_params: np.ndarray,
     camera_model: Callable,
     width: int,
@@ -1382,7 +1382,7 @@ def _process_3d_sample(
 def _process_detection_to_ply(
     det,
     transforms: fou3d.TransformationType,
-    forward_flags: List[bool],
+    forward_flags: Optional[List[bool]],
     cam_params: Dict[str, Any],
     camera_model: Callable,
     width: int,
