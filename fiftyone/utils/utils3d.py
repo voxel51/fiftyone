@@ -31,8 +31,6 @@ import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 import fiftyone.utils.data as foud
 import fiftyone.utils.image as foui
-import fiftyone.core.validation as fov
-from fiftyone import Dataset
 
 o3d = fou.lazy_import("open3d", callback=lambda: fou.ensure_package("open3d"))
 pyq = fou.lazy_import(
