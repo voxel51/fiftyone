@@ -4369,37 +4369,40 @@ FiftyOne:
    # Example transformation: Assume that for all samples, the same
    # transformation is applied. A 90 degree rotation around the x axis to align
    # the point cloud and camera coordinate systems with 0 translation
-   dataset.group_slice = "spatial_slice_name"
+   dataset.group_slice = "spatial_slice"
    rotation = np.array([[1, 0, 0],
                         [0, 0, -1],
                         [0, 1, 0]])
    translation = np.array([0, 0, 0])
-   transformations = {sample.id: [(translation, rotation)] for sample in dataset}
 
    # Example camera parameters: Assume that for all samples, the same camera
    # intrinsics are used. Note that camera_params has to use camera slice fields
    # as keys
-   dataset.group_slice = "camera_slice_name"
-   camera_params = {
-       sample.id: {
-           "intrinsics": np.array([[1000, 0, 512],
-                                   [0, 1000, 384],
-                                   [0, 0, 1]])
-       }
-       for sample in dataset
-   }
+   intrinsics = np.array([[1000, 0, 512],
+                          [0, 1000, 384],
+                          [0, 0, 1]])
+
+   transformations = {}
+   camera_params = {}
+   for group in dataset.iter_groups(): 
+      lidar_sample = group["spatial_slice"]
+      transformations[lidar_sample.id] = [(translation, rotation)]
+      camera_sample = group["camera_slice"]
+      camera_params[camera_sample.id] = {
+          "intrinsics": intrinsics
+      }
 
    # Assuming a grouped dataset with image and point cloud modalities
-   # - image slice named "camera_front"
-   # - point cloud slice named "lidar_top"
-   # - 3D detections stored in the "lidar_detections" field
+   # - image slice named "camera_slice"
+   # - point cloud slice named "spatial_slice"
+   # - 3D detections stored in the "detections_3d" field
    # The projected 2D cuboids will be stored in the "cuboids_2d" field
 
    detections_3d_to_cuboids_2d(
        dataset,
-       camera_slice_name="camera_front",
-       spatial_slice_name="lidar_top",
-       in_field="lidar_detections",
+       camera_slice_name="camera_slice",
+       spatial_slice_name="spatial_slice",
+       in_field="detections_3d",
        out_field="cuboids_2d",
        transformations=transformations,
        camera_params=camera_params,
