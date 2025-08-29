@@ -265,7 +265,16 @@
                 }
             },
             "tags": ["segment-anything", "torch", "zero-shot"],
-            "training_data": [{"name": "SA-1B", "url": "https://segment-anything.com/dataset/index.html"}],
+            "training_data": [
+                            {
+                                            "name": "SA-V",
+                                            "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                            },
+                            {
+                                            "name": "SA-1B",
+                                            "url": "https://segment-anything.com/dataset/index.html"
+                            }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -307,7 +316,16 @@
                 "transformer",
                 "official"
             ],
-            "training_data": [{"name": "SA-1B", "url": "https://segment-anything.com/dataset/index.html"}],
+            "training_data": [
+                            {
+                                            "name": "SA-V",
+                                            "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                            },
+                            {
+                                            "name": "SA-1B",
+                                            "url": "https://segment-anything.com/dataset/index.html"
+                            }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -349,7 +367,16 @@
                 "transformer",
                 "official"
             ],
-            "training_data": [{"name": "SA-1B", "url": "https://segment-anything.com/dataset/index.html"}],
+            "training_data": [
+                            {
+                                            "name": "SA-V",
+                                            "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                            },
+                            {
+                                            "name": "SA-1B",
+                                            "url": "https://segment-anything.com/dataset/index.html"
+                            }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -391,7 +418,16 @@
                 "transformer",
                 "official"
             ],
-            "training_data": [{"name": "SA-1B", "url": "https://segment-anything.com/dataset/index.html"}],
+            "training_data": [
+                            {
+                                            "name": "SA-V",
+                                            "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                            },
+                            {
+                                            "name": "SA-1B",
+                                            "url": "https://segment-anything.com/dataset/index.html"
+                            }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -433,7 +469,16 @@
                 "transformer",
                 "official"
             ],
-            "training_data": [{"name": "SA-1B", "url": "https://segment-anything.com/dataset/index.html"}],
+            "training_data": [
+                            {
+                                            "name": "SA-V",
+                                            "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                            },
+                            {
+                                            "name": "SA-1B",
+                                            "url": "https://segment-anything.com/dataset/index.html"
+                            }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -476,7 +521,16 @@
                 "transformer",
                 "official"
             ],
-            "training_data": [{"name": "SA-1B", "url": "https://segment-anything.com/dataset/index.html"}],
+            "training_data": [
+                            {
+                                            "name": "SA-V",
+                                            "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                            },
+                            {
+                                            "name": "SA-1B",
+                                            "url": "https://segment-anything.com/dataset/index.html"
+                            }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -519,7 +573,16 @@
                 "transformer",
                 "official"
             ],
-            "training_data": [{"name": "SA-1B", "url": "https://segment-anything.com/dataset/index.html"}],
+            "training_data": [
+                            {
+                                            "name": "SA-V",
+                                            "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                            },
+                            {
+                                            "name": "SA-1B",
+                                            "url": "https://segment-anything.com/dataset/index.html"
+                            }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -561,7 +624,16 @@
                 "video",
                 "transformer"
             ],
-            "training_data": [{"name": "SA-1B", "url": "https://segment-anything.com/dataset/index.html"}],
+            "training_data": [
+                            {
+                                            "name": "SA-V",
+                                            "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                            },
+                            {
+                                            "name": "SA-1B",
+                                            "url": "https://segment-anything.com/dataset/index.html"
+                            }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -651,7 +723,16 @@
                 }
             },
             "tags": ["segment-anything", "torch", "zero-shot", "transformer"],
-            "training_data": [{"name": "SA-1B", "url": "https://segment-anything.com/dataset/index.html"}],
+            "training_data": [
+                            {
+                                            "name": "SA-V",
+                                            "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                            },
+                            {
+                                            "name": "SA-1B",
+                                            "url": "https://segment-anything.com/dataset/index.html"
+                            }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -695,7 +776,16 @@
                 "transformer",
                 "official"
             ],
-            "training_data": [{"name": "SA-1B", "url": "https://segment-anything.com/dataset/index.html"}],
+            "training_data": [
+                            {
+                                            "name": "SA-V",
+                                            "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                            },
+                            {
+                                            "name": "SA-1B",
+                                            "url": "https://segment-anything.com/dataset/index.html"
+                            }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -739,7 +829,16 @@
                 "transformer",
                 "official"
             ],
-            "training_data": [{"name": "SA-1B", "url": "https://segment-anything.com/dataset/index.html"}],
+            "training_data": [
+                            {
+                                            "name": "SA-V",
+                                            "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                            },
+                            {
+                                            "name": "SA-1B",
+                                            "url": "https://segment-anything.com/dataset/index.html"
+                            }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -783,7 +882,16 @@
                 "transformer",
                 "official"
             ],
-            "training_data": [{"name": "SA-1B", "url": "https://segment-anything.com/dataset/index.html"}],
+            "training_data": [
+                            {
+                                            "name": "SA-V",
+                                            "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                            },
+                            {
+                                            "name": "SA-1B",
+                                            "url": "https://segment-anything.com/dataset/index.html"
+                            }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -826,7 +934,16 @@
                 "video",
                 "transformer"
             ],
-            "training_data": [{"name": "SA-1B", "url": "https://segment-anything.com/dataset/index.html"}],
+            "training_data": [
+                            {
+                                            "name": "SA-V",
+                                            "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                            },
+                            {
+                                            "name": "SA-1B",
+                                            "url": "https://segment-anything.com/dataset/index.html"
+                            }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -871,7 +988,16 @@
                 "transformer",
                 "official"
             ],
-            "training_data": [{"name": "SA-1B", "url": "https://segment-anything.com/dataset/index.html"}],
+            "training_data": [
+                            {
+                                            "name": "SA-V",
+                                            "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                            },
+                            {
+                                            "name": "SA-1B",
+                                            "url": "https://segment-anything.com/dataset/index.html"
+                            }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -916,7 +1042,16 @@
                 "transformer",
                 "official"
             ],
-            "training_data": [{"name": "SA-1B", "url": "https://segment-anything.com/dataset/index.html"}],
+            "training_data": [
+                            {
+                                            "name": "SA-V",
+                                            "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                            },
+                            {
+                                            "name": "SA-1B",
+                                            "url": "https://segment-anything.com/dataset/index.html"
+                            }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -961,7 +1096,16 @@
                 "transformer",
                 "official"
             ],
-            "training_data": [{"name": "SA-1B", "url": "https://segment-anything.com/dataset/index.html"}],
+            "training_data": [
+                            {
+                                            "name": "SA-V",
+                                            "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                            },
+                            {
+                                            "name": "SA-1B",
+                                            "url": "https://segment-anything.com/dataset/index.html"
+                            }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
