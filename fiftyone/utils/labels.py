@@ -1214,7 +1214,7 @@ def detections_3d_to_cuboids_2d(
     out_field: str,
     transformations: Dict[str, fou3d.TransformationType],
     camera_params: Dict[str, Dict[str, Any]],
-    forward_transform_flags: Dict[str, List[bool]] = None,
+    forward_transform_flags: Optional[Dict[str, List[bool]]] = None,
     camera_model: Callable = fou3d.pinhole_projector,
     transformation_key_field: str = "id",
     camera_key_field: str = "id",
@@ -1246,10 +1246,10 @@ def detections_3d_to_cuboids_2d(
             an ``"intrinsics"`` 3x3 (or 4x4) matrix if using the default pinhole
             camera model; additional keys such as distortion parameters may be
             provided depending on the model
-        forward_transform_flags: a dict mapping `transformation_key_field` to
-            lists of booleans indicating whether to apply forward or inverse
-            transformations for each transform in the list of transformations
-            for each sample
+        forward_transform_flags: an optional dict mapping
+            `transformation_key_field` to lists of booleans indicating whether
+            to apply forward or inverse transformations for each transform in
+            the list of transformations for each sample
         camera_model (fou3d.pinhole_projector): a callable that takes 3D points
             in the camera coordinate system and the camera parameters dict and
             returns the projected 2D points in pixel coordinates
