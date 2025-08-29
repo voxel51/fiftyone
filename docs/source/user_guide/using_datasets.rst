@@ -4293,8 +4293,8 @@ the following additional information for the projections:
 - **Coordinate transformation data** used to convert 3D bounding boxes from the
   point cloud coordinate system into the camera coordinate system.
   
-  - Represented as a dictionary mapping the key field of the spatial slice
-    (defaults to sample id) to a list of transformation tuples.
+  - Represented as a dictionary mapping the key field (defaults to sample id) of
+    the spatial slice to a list of transformation tuples.
   - Each transformation is a ``(translation, rotation)`` tuple, where:
   
     - ``translation``: a 3-element vector (``list[float]`` or ``np.ndarray``)
@@ -4306,9 +4306,9 @@ the following additional information for the projections:
   transformation in the forward direction (from point cloud to camera) or in the
   inverse direction (from camera to point cloud).
   
-  - Represented as a dictionary mapping the key field of the spatial slice
-    (defaults to sample id) to a list of boolean flags. The length of the list
-    must match the number of transformations for the sample.
+  - Represented as a dictionary mapping the key field (defaults to sample id) of
+    the spatial slice to a list of boolean flags. The length of the list must
+    match the number of transformations for the sample.
   - If not provided, all transformations are assumed to be applied in the
     forward direction.
 

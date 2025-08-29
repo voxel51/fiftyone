@@ -10,7 +10,6 @@ from typing import Any, Callable, Dict, List
 import logging
 import numpy as np
 
-import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
@@ -1307,7 +1306,8 @@ def detections_3d_to_cuboids_2d(
 
         if width is None or height is None:
             logger.warning(
-                f"Skipping camera sample {camera_sample.id} because camera metadata is missing. Please compute metadata for this sample first."
+                f"Skipping camera sample {camera_sample.id} because camera metadata is missing."
+                "Please compute metadata for this sample first."
             )
             continue
 
@@ -1351,14 +1351,14 @@ def _process_3d_sample(
 ):
     """
     Process all 3D detections in a single sample and return polylines.
-    Returns: (List[Polyline], added_instance_flag)
+    Returns: List[Polyline]
     """
     detections_3d = sample[in_field]
 
     if detections_3d is None:
-        return [], False
+        return []
     if len(detections_3d.detections) == 0:
-        return [], False
+        return []
 
     polylines = []
 
@@ -1402,8 +1402,7 @@ def _process_detection_to_ply(
         det.location, det.rotation, transforms, forward_flags
     )
     if getattr(det, "instance", None) is None:
-        added_instance = True
-        det.instance = fo.Instance()
+        det.instance = fol.Instance()
 
     corners_3d_cam = fou3d.corners_from_euler(
         points_cam, rotation_cam, det.dimensions
@@ -1419,7 +1418,7 @@ def _process_detection_to_ply(
         for i in range(8)
     ]
 
-    return fo.Polyline.from_cuboid(
+    return fol.Polyline.from_cuboid(
         vertices=ply_corners,
         label=det.label,
         confidence=det.confidence,
