@@ -15,7 +15,6 @@ import numpy as np
 import scipy.spatial as sp
 from scipy.spatial.transform import Rotation as R
 from typing import Any, Dict, List, Tuple, Union
-from dataclasses import dataclass
 
 import eta.core.numutils as etan
 import eta.core.utils as etau
