@@ -949,7 +949,8 @@ scale.
 
     [ Beta ] FiftyOne Enterprise now supports on-demand compute via Databricks
     and Anyscale. In order to configure an orchestrator for your Databricks or
-    Anyscale compute, consult your FiftyOne Enterprise Helm Chart docs.
+    Anyscale compute, administrators should consult the
+    `deployment guide <https://github.com/voxel51/fiftyone-teams-app-deploy/blob/main/docs/configuring-on-demand-orchestrator.md>`_
 
 This powerful feature allows users to install/build plugins that execute
 potentially long-running tasks in the background while users continue with
