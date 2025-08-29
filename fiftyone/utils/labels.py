@@ -1220,12 +1220,13 @@ def detections_3d_to_cuboids_2d(
     transformation_key_field: str = "id",
     camera_key_field: str = "id",
     batch_size: int = 1000,
-    progress: bool = None,
+    progress=None,
 ):
-    """High-level orchestration of 3D → 2D label conversion. Processes the `in_field`
-    on the `spatial_slice_name` slice of a grouped sample_collection, uses the transformations
-    and camera intrinsics to convert the labels to 2D polylines and saves them in
-    the `out_field` on the `camera_slice_name` slice.
+    """High-level orchestration of 3D → 2D label conversion. Processes the
+    `in_field` on the `spatial_slice_name` slice of a grouped sample
+    collection, uses the transformations and camera parameters to convert the
+    labels to 2D polylines, and save them to the `out_field` on the
+    `camera_slice_name` slice.
 
     Args:
         sample_collection: a
@@ -1241,9 +1242,11 @@ def detections_3d_to_cuboids_2d(
             sample_collection. Translation is a 3-element list or np.ndarray,
             and rotation is a (3, 3) list of lists or np.ndarray representing a
             rotation matrix.
-        camera_params: a dict mapping `camera_key_field` to camera parameters
-            dict which contains the keys required by the camera_model for each
-            sample in the sample_collection.
+        camera_params: a dict mapping `camera_key_field` to per-camera
+            parameter dicts required by `camera_model`. Each dict must include
+            an ``"intrinsics"`` 3x3 (or 4x4) matrix if using the default pinhole
+            camera model; additional keys such as distortion parameters may be
+            provided depending on the model
         forward_transform_flags: a dict mapping `transformation_key_field` to
             lists of booleans indicating whether to apply forward or inverse
             transformations for each transform in the list of transformations
@@ -1280,13 +1283,13 @@ def detections_3d_to_cuboids_2d(
         camera_sample = group[camera_slice_name]
         spatial_key = spatial_sample[transformation_key_field]
         camera_key = camera_sample[camera_key_field]
-        transforms = transformations.get(spatial_key, None)
+        transforms = transformations.get(spatial_key)
         forward_flags = (
             forward_transform_flags.get(spatial_key)
             if forward_transform_flags
             else None
         )
-        cam_params = camera_params.get(camera_key, None)
+        cam_params = camera_params.get(camera_key)
 
         if transforms is None:
             logger.warning(
@@ -1300,8 +1303,8 @@ def detections_3d_to_cuboids_2d(
             continue
 
         width, height = (
-            camera_slice[camera_sample.id].metadata.width,
-            camera_slice[camera_sample.id].metadata.height,
+            camera_sample.metadata.width,
+            camera_sample.metadata.height,
         )
 
         if width is None or height is None:
@@ -1344,7 +1347,7 @@ def _process_3d_sample(
     in_field: str,
     transforms: fou3d.TransformationType,
     forward_flags: Optional[List[bool]],
-    cam_params: np.ndarray,
+    cam_params: Dict[str, Any],
     camera_model: Callable,
     width: int,
     height: int,

@@ -474,7 +474,10 @@ def multiple_coordinate_transform(
     """
     if forward_transform_flags is None:
         forward_transform_flags = [True] * len(transformation_sequence)
-    assert len(transformation_sequence) == len(forward_transform_flags)
+    if len(transformation_sequence) != len(forward_transform_flags):
+        raise ValueError(
+            "transformation_sequence and forward_transform_flags must have equal lengths"
+        )
     rot_quaternion = rpy_to_quaternion(euler_rpy)
     points = np.array(points)
     for (translation, rotation), forward_transform in zip(
@@ -584,13 +587,17 @@ def pinhole_projector(
             z-coordinate
 
     Returns:
-        A 3xN np.ndarray containing the projected 2D coordinates of the points.
+        A 2xN np.ndarray containing the projected 2D coordinates of the points.
         If `normalize` is True, the points are normalized by their z-coordinate.
     """
-    camera_intrinsics = cam_params.get("intrinsics", None)
-    assert camera_intrinsics.shape[0] <= 4
-    assert camera_intrinsics.shape[1] <= 4
-    assert points.shape[0] == 3
+    camera_intrinsics = cam_params.get("intrinsics")
+    if camera_intrinsics is None:
+        raise ValueError("camera_params['intrinsics'] is required")
+    camera_intrinsics = np.asarray(camera_intrinsics)
+    if camera_intrinsics.shape[0] > 4 or camera_intrinsics.shape[1] > 4:
+        raise ValueError("intrinsics must be 3x3 or 4x4")
+    if points.shape[0] != 3:
+        raise ValueError("points must be a 3xN array")
     cam_int_pad = np.eye(4)
     cam_int_pad[
         : camera_intrinsics.shape[0], : camera_intrinsics.shape[1]
@@ -616,7 +623,7 @@ def point_in_front_of_camera(
     camera.
 
     Args:
-        corners_img: a 3x8 np.ndarray containing the projected 2D coordinates of
+        corners_img: a 2x8 np.ndarray containing the projected 2D coordinates of
             a cuboid's corners
         corners_3d: a 3x8 np.ndarray containing the 3D coordinates of the
             cuboid's corners
