@@ -8,7 +8,6 @@ Label utilities.
 import eta.core.utils as etau
 from typing import Any, Callable, Dict, List, Optional
 import logging
-import numpy as np
 
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
@@ -1225,7 +1224,7 @@ def detections_3d_to_cuboids_2d(
     """High-level orchestration of 3D → 2D label conversion. Processes the
     `in_field` on the `spatial_slice_name` slice of a grouped sample
     collection, uses the transformations and camera parameters to convert the
-    labels to 2D polylines, and save them to the `out_field` on the
+    labels to 2D polylines, and saves them to the `out_field` on the
     `camera_slice_name` slice.
 
     Args:
