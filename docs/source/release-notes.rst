@@ -5,7 +5,7 @@ FiftyOne Release Notes
 
 FiftyOne Enterprise 2.11.0
 --------------------------
-*Released Aug 26, 2025*
+*Released Sep 2, 2025*
 
 Includes all updates from :ref:`FiftyOne 1.8.0 <release-notes-v1.8.0>`, plus:
 
@@ -27,9 +27,6 @@ Includes all updates from :ref:`FiftyOne 1.8.0 <release-notes-v1.8.0>`, plus:
   following
   :ref:`these instructions <writing-distributed-operators>`. More advanced
   distribution support coming soon.
-- Disabled app server in-memory cache by default, as it is not compatible with
-  running multiple app server instances. Re-enable by setting
-  `fo.config.singleton_cache=True`.
 - Fixed `sizeEstimate` fields on datasets and dataset snapshots to return
   floats indicating size in megabytes instead of bytes, preventing GraphQL
   errors with large estimates.
@@ -47,6 +44,7 @@ Logging
 Dependencies
 
 - Updated `urllib3` dependency to resolve CVE-2025-50181
+- Updated `sha.js` dependency to resolve CVE-2025-9288
 - Pinned libssl-dev, libssl3, and openssl to `3.0.16` at image build time to
   avoid issues caused by ssl `3.0.17`.
 
@@ -55,7 +53,7 @@ Dependencies
 
 FiftyOne 1.8.0
 --------------
-*Released Aug 26, 2025*
+*Released Sep 2, 2025*
 
 App
 
@@ -65,6 +63,10 @@ App
   tooltip hover coordinates account for asset-level transformations, PLY point
   clouds that have vertex normals render with correct shading.
   `#6254 <https://github.com/voxel51/fiftyone/pull/6254>`_
+- The in-memory cache is now disabled in the App by default. It can be
+  re-enabled by setting `fo.config.singleton_cache=True` or disabled elsewhere
+  by setting `fo.config.singleton_cache=False`.
+  `#6161 <https://github.com/voxel51/fiftyone/pull/6161>`_
 
 Plugins
 
