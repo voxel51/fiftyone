@@ -166,7 +166,7 @@ jobs:
         with:
           credentials_json: "${{ secrets.DOCS_GCP_CREDENTIALS }}"
       - name: Set up gcloud
-        uses: google-github-actions/setup-gcloud@v2
+        uses: google-github-actions/setup-gcloud@v3
       - name: publish
         run: gsutil -m rsync -dR -x '^SBOMs/.*' docs-download gs://docs.voxel51.com
 
@@ -187,6 +187,6 @@ jobs:
         with:
           credentials_json: "${{ secrets.DOCS_GCP_CREDENTIALS }}"
       - name: Set up gcloud
-        uses: google-github-actions/setup-gcloud@v2
+        uses: google-github-actions/setup-gcloud@v3
       - name: publish
         run: gsutil -m rsync -dR -x '^robots.txt' docs-download gs://docs.dev.voxel51.com
