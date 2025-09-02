@@ -2406,7 +2406,7 @@
         {
             "base_name": "squeezenet-1.1-imagenet-torch",
             "base_filename": "squeezenet1_1-f364aa15.pth",
-            "version": null,
+            "version": "1.1",
             "description": "Tiny image classifier that fits in just five megabytes for embedded devices",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Forrest Iandola",
@@ -2449,7 +2449,7 @@
         {
             "base_name": "squeezenet-imagenet-torch",
             "base_filename": "squeezenet1_0-a815701f.pth",
-            "version": null,
+            "version": "1.0",
             "description": "Ultra-compact image classifier perfect for severely resource-constrained hardware and applications",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Forrest Iandola",
