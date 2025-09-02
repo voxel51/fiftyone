@@ -598,12 +598,13 @@ def pinhole_projector(
         raise ValueError("intrinsics must be 3x3 or 4x4")
     if points.shape[0] != 3:
         raise ValueError("points must be a 3xN array")
+
     cam_int_pad = np.eye(4)
     cam_int_pad[
         : camera_intrinsics.shape[0], : camera_intrinsics.shape[1]
     ] = camera_intrinsics
     nbr_points = points.shape[1]
-    # Do operation in homogenous coordinates.
+
     points = np.concatenate((points, np.ones((1, nbr_points))))
     points = np.dot(cam_int_pad, points)
     points = points[:3, :]
