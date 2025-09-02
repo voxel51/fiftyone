@@ -1324,21 +1324,7 @@ def detections_3d_to_cuboids_2d(
             height,
         )
         if polylines:
-            values_2d_label[camera_sample.id] = fol.Polylines(
-                polylines=polylines
-            )
-
-        count += 1
-        if count % batch_size == 0:
-            sample_collection.set_values(
-                out_field, values_2d_label, key_field="id"
-            )
-            values_2d_label.clear()
-
-    if values_2d_label:
-        sample_collection.set_values(
-            out_field, values_2d_label, key_field="id"
-        )
+            camera_sample[out_field] = fol.Polylines(polylines=polylines)
 
 
 def _process_3d_sample(
@@ -1364,7 +1350,7 @@ def _process_3d_sample(
 
     polylines = []
 
-    for _, det in enumerate(detections_3d.detections):
+    for det in detections_3d.detections:
         ply = _process_detection_to_ply(
             det,
             transforms,
