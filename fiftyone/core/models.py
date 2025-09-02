@@ -485,7 +485,9 @@ def _apply_image_model_data_loader(
                 warning="Async failure labeling batches",
             )
         )
-        output_processor = model._output_processor
+        output_processor = getattr(
+            model, "_output_processor", lambda output, *_, **__: output
+        )
         context.enter_context(fou.SetAttributes(model, _output_processor=None))
 
         def save_batch(sample_batch, output, image_sizes):
