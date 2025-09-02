@@ -654,31 +654,34 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
                     for _k, _v in self._last_output[k].items()
                 }
 
-    def _preprocess_and_forward_pass(self, args):
+    def _predict_all(self, args):
         if self.preprocess:
             args = self.collate_fn(self.transforms(args))
+
+        # this line is the only difference between this and the base class
+        # we should consolidate this function once post processing is properly
+        # removed out of torchimagemodel
+        image_sizes = args.pop("fo_image_size", [(None, None)])
 
         for k, v in args.items():
             args[k] = v.to(self.device)
 
         output = self._forward_pass(args)
-        self.last_output = output
-        return output
 
-    def _postprocess(self, output, image_sizes):
+        # now there is another difference
+        # should maybe consider adding callbacks of some sort
+        # this just opens more ways for the user to mess up
+        self.last_output = output
+
         if self._output_processor is not None:
             return self._output_processor(
                 output,
                 image_sizes,
                 confidence_thresh=self.config.confidence_thresh,
             )
+
         else:
             return output
-
-    def _predict_all(self, args):
-        image_sizes = args.pop("fo_image_size", [(None, None)])
-        output = self._preprocess_and_forward_pass(args)
-        return self._postprocess(output, image_sizes)
 
     def _forward_pass(self, args):
         return self._model(
@@ -946,12 +949,6 @@ class FiftyOneZeroShotTransformerForObjectDetection(
         self.transforms.return_image_sizes = True
         self.transforms.text = self.text_prompts
         self.transforms.text_per_image = True
-
-    def _preprocess_and_forward_pass(self, args):
-        return FiftyOneTransformer._preprocess_and_forward_pass(self, args)
-
-    def _postprocess(self, output, image_sizes):
-        return FiftyOneTransformer._postprocess(self, output, image_sizes)
 
     def _predict_all(self, args):
         # we can skip injecting the text prompts here
