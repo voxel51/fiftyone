@@ -3153,7 +3153,7 @@ def async_executor(
     Context manager that provides a function for submitting tasks to a thread
     pool executor. All tasks are joined when the context is exited.
 
-    Example:
+    Example::
 
         with async_executor(max_workers=4) as submit:
             for item in items:
