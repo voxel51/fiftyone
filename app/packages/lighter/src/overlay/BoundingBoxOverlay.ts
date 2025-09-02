@@ -2,13 +2,17 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import { DEFAULT_TEXT_PADDING } from "../constants";
+import {
+  DEFAULT_TEXT_PADDING,
+  LABEL_ARCHETYPE_PRIORITY,
+  STROKE_WIDTH,
+} from "../constants";
+import { CONTAINS } from "../core/Scene2D";
 import { LIGHTER_EVENTS } from "../event/EventBus";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { Selectable } from "../selection/Selectable";
 import type {
   BoundedOverlay,
-  DrawStyle,
   Hoverable,
   Point,
   RawLookerLabel,
@@ -20,6 +24,7 @@ import {
   getInstanceStrokeStyles,
   getSimpleStrokeStyles,
 } from "../utils/colorMapping";
+import { distanceFromLineSegment } from "../utils/geometry";
 import { BaseOverlay } from "./BaseOverlay";
 
 export type BoundingBoxLabel = RawLookerLabel & {
@@ -58,6 +63,7 @@ export class BoundingBoxOverlay
   private isHoveredState = false;
 
   private _needsCoordinateUpdate = false;
+  private textBounds?: Rect;
 
   constructor(private options: BoundingBoxOptions) {
     const id =
@@ -118,9 +124,13 @@ export class BoundingBoxOverlay
     return this.id;
   }
 
-  render(renderer: Renderer2D, style: DrawStyle): void {
+  protected renderImpl(renderer: Renderer2D): void {
     // Dispose of old elements before creating new ones
     renderer.dispose(this.containerId);
+
+    const style = this.currentStyle;
+
+    if (!style) return;
 
     // Check if this label has an instance to determine stroke styling
     const hasInstance = this.options.label.instance?._id !== undefined;
@@ -157,7 +167,7 @@ export class BoundingBoxOverlay
         this.absoluteBounds,
         {
           strokeStyle: overlayStrokeColor,
-          lineWidth: style.lineWidth || 2, // Make overlay stroke slightly thicker
+          lineWidth: style.lineWidth,
           dashPattern: [overlayDash, overlayDash],
         },
         this.containerId
@@ -179,7 +189,8 @@ export class BoundingBoxOverlay
         textToDraw += ` (${this.options.label.confidence.toFixed(2)})`;
       }
 
-      renderer.drawText(
+      // Draw text and store the dimensions for accurate header detection
+      const textDimensions = renderer.drawText(
         textToDraw,
         labelPosition,
         {
@@ -188,6 +199,13 @@ export class BoundingBoxOverlay
         },
         this.containerId
       );
+
+      this.textBounds = {
+        x: labelPosition.x,
+        y: labelPosition.y,
+        width: textDimensions.width,
+        height: textDimensions.height,
+      };
     }
 
     this.emitLoaded();
@@ -259,7 +277,6 @@ export class BoundingBoxOverlay
 
   onHoverEnter(point: Point, event: PointerEvent): boolean {
     this.isHoveredState = true;
-    this.markDirty();
 
     // Emit event to trigger re-ordering
     this.eventBus?.emit({
@@ -272,7 +289,6 @@ export class BoundingBoxOverlay
 
   onHoverLeave(point: Point, event: PointerEvent): boolean {
     this.isHoveredState = false;
-    this.markDirty();
 
     // Emit event to trigger re-ordering
     this.eventBus?.emit({
@@ -357,6 +373,110 @@ export class BoundingBoxOverlay
     return this.isDraggable;
   }
 
+  /**
+   * Gets the containment level for ordering purposes.
+   * @param point - The point to test.
+   * @returns The containment level (NONE = 0, CONTENT = 1, BORDER = 2).
+   */
+  getContainmentLevel(point: Point): CONTAINS {
+    const drawnBounds = this.getDrawnBBox();
+
+    // console.log(">>>ct: Drawn bounds are ", drawnBounds);
+    // console.log(">>>ct: Text bounds are ", this.textBounds);
+    // console.log(">>>ct: Point is ", point);
+
+    // Check if point is inside the main bounding box
+    if (this.isPointInRect(point, drawnBounds)) {
+      return CONTAINS.CONTENT;
+    }
+
+    // Check if point is in the label text area (header)
+    if (this.textBounds && this.isPointInRect(point, this.textBounds)) {
+      return CONTAINS.BORDER;
+    }
+
+    return CONTAINS.NONE;
+  }
+
+  /**
+   * Gets the distance from this overlay to a mouse point.
+   * @param point - The mouse point.
+   * @returns The distance to the point.
+   */
+  getMouseDistance(point: Point): number {
+    // If point is in header, return 0 (highest priority)
+    if (this.textBounds && this.isPointInRect(point, this.textBounds)) {
+      return 0;
+    }
+
+    // Get the drawn bounding box
+    const drawnBounds = this.getDrawnBBox();
+
+    // Calculate distance to each edge of the bounding box
+    const distances = [
+      distanceFromLineSegment(
+        point,
+        { x: drawnBounds.x, y: drawnBounds.y },
+        { x: drawnBounds.x + drawnBounds.width, y: drawnBounds.y }
+      ),
+      distanceFromLineSegment(
+        point,
+        { x: drawnBounds.x + drawnBounds.width, y: drawnBounds.y },
+        {
+          x: drawnBounds.x + drawnBounds.width,
+          y: drawnBounds.y + drawnBounds.height,
+        }
+      ),
+      distanceFromLineSegment(
+        point,
+        {
+          x: drawnBounds.x + drawnBounds.width,
+          y: drawnBounds.y + drawnBounds.height,
+        },
+        { x: drawnBounds.x, y: drawnBounds.y + drawnBounds.height }
+      ),
+      distanceFromLineSegment(
+        point,
+        { x: drawnBounds.x, y: drawnBounds.y + drawnBounds.height },
+        { x: drawnBounds.x, y: drawnBounds.y }
+      ),
+    ];
+
+    return Math.min(...distances);
+  }
+
+  /**
+   * Gets the drawn bounding box, accounting for stroke width.
+   * Similar to looker's getDrawnBBox method.
+   * @returns The drawn bounding box with stroke width expansion.
+   */
+  private getDrawnBBox(): Rect {
+    const bounds = this.absoluteBounds;
+    const strokeWidth = this.getCurrentStyle()?.lineWidth ?? STROKE_WIDTH;
+
+    return {
+      x: bounds.x - strokeWidth,
+      y: bounds.y - strokeWidth,
+      width: bounds.width + strokeWidth * 2,
+      height: bounds.height + strokeWidth * 2,
+    };
+  }
+
+  /**
+   * Checks if a point is inside a rectangle.
+   * @param point - The point to test.
+   * @param rect - The rectangle to test against.
+   * @returns True if the point is inside the rectangle.
+   */
+  private isPointInRect(point: Point, rect: Rect): boolean {
+    return (
+      point.x >= rect.x &&
+      point.y >= rect.y &&
+      point.x <= rect.x + rect.width &&
+      point.y <= rect.y + rect.height
+    );
+  }
+
   // Selectable interface implementation
   isSelected(): boolean {
     return this.isSelectedState;
@@ -372,6 +492,10 @@ export class BoundingBoxOverlay
   toggleSelected(): boolean {
     this.setSelected(!this.isSelectedState);
     return this.isSelectedState;
+  }
+
+  getSelectionPriority(): number {
+    return LABEL_ARCHETYPE_PRIORITY.BOUNDING_BOX;
   }
 
   // Hoverable interface implementation

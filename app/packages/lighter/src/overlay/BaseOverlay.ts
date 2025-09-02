@@ -2,6 +2,7 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
+import { CONTAINS } from "../core/Scene2D";
 import type { EventBus } from "../event/EventBus";
 import { LIGHTER_EVENTS } from "../event/EventBus";
 import type { InteractionHandler } from "../interaction/InteractionManager";
@@ -26,6 +27,7 @@ export abstract class BaseOverlay implements InteractionHandler {
   protected renderer?: Renderer2D;
   protected eventBus?: EventBus;
   protected resourceLoader?: ResourceLoader;
+  protected currentStyle?: DrawStyle;
 
   constructor(
     id: string,
@@ -75,10 +77,26 @@ export abstract class BaseOverlay implements InteractionHandler {
    * @param renderer - The renderer to use for drawing.
    * @param style - The drawing style to apply.
    */
-  abstract render(
-    renderer: Renderer2D,
-    style: DrawStyle | null
-  ): void | Promise<void>;
+  render(renderer: Renderer2D, style: DrawStyle | null): void | Promise<void> {
+    // Store the current style for use in other methods
+    this.currentStyle = style || undefined;
+
+    this.renderImpl(renderer);
+  }
+
+  /**
+   * Abstract method for subclasses to implement their specific rendering logic.
+   * @param renderer - The renderer to use for drawing.
+   */
+  protected abstract renderImpl(renderer: Renderer2D): void | Promise<void>;
+
+  /**
+   * Gets the current draw style used for this overlay.
+   * @returns The current draw style, or undefined if not yet rendered.
+   */
+  protected getCurrentStyle(): DrawStyle | undefined {
+    return this.currentStyle;
+  }
 
   /**
    * Marks the overlay as dirty, indicating it needs to be re-rendered.
@@ -175,6 +193,33 @@ export abstract class BaseOverlay implements InteractionHandler {
   containsPoint(point: Point): boolean {
     if (!this.renderer) return false;
     return this.renderer.hitTest(point, this.containerId);
+  }
+
+  /**
+   * Gets the containment level for ordering purposes.
+   * @param point - The point to test.
+   * @returns The containment level (NONE = 0, CONTENT = 1, BORDER = 2).
+   */
+  getContainmentLevel(point: Point): CONTAINS {
+    return CONTAINS.NONE;
+  }
+
+  /**
+   * Gets the distance from this overlay to a mouse point.
+   * @param point - The mouse point.
+   * @returns The distance to the point.
+   */
+  getMouseDistance(point: Point): number {
+    // Default implementation - subclasses should override for more accurate distance calculation
+    if (!this.renderer) return Infinity;
+
+    const bounds = this.renderer.getBounds(this.containerId);
+    if (!bounds) return Infinity;
+
+    const centerX = bounds.x + bounds.width / 2;
+    const centerY = bounds.y + bounds.height / 2;
+
+    return Math.sqrt((point.x - centerX) ** 2 + (point.y - centerY) ** 2);
   }
 
   /**

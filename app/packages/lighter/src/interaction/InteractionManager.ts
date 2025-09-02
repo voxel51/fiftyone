@@ -118,8 +118,8 @@ export class InteractionManager {
   // Drag state management
   private dragState?: DragState;
 
-  // Selection management
   private selectionManager: SelectionManager;
+  private undoRedoManager: UndoRedoManager;
 
   // Configuration
   private readonly CLICK_THRESHOLD = 5; // pixels
@@ -127,8 +127,9 @@ export class InteractionManager {
   private readonly DOUBLE_CLICK_TIME_THRESHOLD = 500; // ms
   private readonly DOUBLE_CLICK_DISTANCE_THRESHOLD = 10; // pixels
 
-  private undoRedoManager: UndoRedoManager;
   private getOverlayById: (id: string) => BaseOverlay | undefined;
+
+  private currentPixelCoordinates?: Point;
 
   constructor(
     private canvas: HTMLCanvasElement,
@@ -140,6 +141,7 @@ export class InteractionManager {
     this.undoRedoManager = undoRedoManager;
     this.selectionManager = selectionManager;
     this.getOverlayById = getOverlayById;
+
     this.setupEventListeners();
     this.setupDragEventListeners();
     this.setupSpatialEventListeners();
@@ -151,6 +153,17 @@ export class InteractionManager {
    */
   public setCanonicalMediaId(id: string): void {
     this.canonicalMediaId = id;
+  }
+
+  /**
+   * Get the current pixel coordinates.
+   * This is the raw pixel coordinates where mouse cursor is,
+   * but the reference system is the canvas.
+   *
+   * @returns The current pixel coordinates or undefined.
+   */
+  public getPixelCoordinates(): Point | undefined {
+    return this.currentPixelCoordinates;
   }
 
   private setupEventListeners(): void {
@@ -225,9 +238,7 @@ export class InteractionManager {
           x: currentPos.x + detail.deltaX,
           y: currentPos.y + detail.deltaY,
         });
-        if ("markDirty" in overlay) {
-          (overlay as any).markDirty();
-        }
+        overlay.markDirty();
       }
     }
   }
@@ -250,9 +261,7 @@ export class InteractionManager {
           width: Math.max(1, currentBounds.width + detail.deltaWidth),
           height: Math.max(1, currentBounds.height + detail.deltaHeight),
         });
-        if ("markDirty" in overlay) {
-          (overlay as any).markDirty();
-        }
+        overlay.markDirty();
       }
     }
   }
@@ -272,9 +281,7 @@ export class InteractionManager {
           x: detail.newX,
           y: detail.newY,
         });
-        if ("markDirty" in overlay) {
-          (overlay as any).markDirty();
-        }
+        overlay.markDirty();
       }
     }
   }
@@ -316,16 +323,16 @@ export class InteractionManager {
   };
 
   private handlePointerMove = (event: PointerEvent): void => {
-    const point = this.getCanvasPoint(event);
+    this.currentPixelCoordinates = this.getCanvasPoint(event);
 
-    this.handleHover(point, event, this.isDragging);
+    this.handleHover(this.currentPixelCoordinates, event, this.isDragging);
 
     if (this.dragHandler && !this.isDragging) {
       // Check if we've moved enough to start dragging
       if (this.clickStartPoint) {
         const distance = Math.sqrt(
-          Math.pow(point.x - this.clickStartPoint.x, 2) +
-            Math.pow(point.y - this.clickStartPoint.y, 2)
+          Math.pow(this.currentPixelCoordinates.x - this.clickStartPoint.x, 2) +
+            Math.pow(this.currentPixelCoordinates.y - this.clickStartPoint.y, 2)
         );
 
         if (distance > this.CLICK_THRESHOLD) {
@@ -336,20 +343,20 @@ export class InteractionManager {
 
     if (this.isDragging && this.dragHandler) {
       // Handle drag move
-      this.dragHandler.onPointerMove?.(point, event);
+      this.dragHandler.onPointerMove?.(this.currentPixelCoordinates, event);
 
       // Emit drag move event with delta information
       if (this.dragState) {
         const delta = {
-          x: point.x - this.dragState.startPoint.x,
-          y: point.y - this.dragState.startPoint.y,
+          x: this.currentPixelCoordinates.x - this.dragState.startPoint.x,
+          y: this.currentPixelCoordinates.y - this.dragState.startPoint.y,
         };
 
         this.eventBus.emit({
           type: LIGHTER_EVENTS.OVERLAY_DRAG_MOVE,
           detail: {
             id: this.dragState.overlay.id,
-            currentPoint: point,
+            currentPoint: this.currentPixelCoordinates,
             delta,
             startPosition: this.dragState.startPosition,
             currentPosition: this.dragState.overlay.getPosition(),
@@ -706,5 +713,48 @@ export class InteractionManager {
     this.canvas.removeEventListener("pointerleave", this.handlePointerLeave);
     document.removeEventListener("keydown", this.handleKeyDown);
     this.clearHandlers();
+  }
+
+  /**
+   * Reorders handlers to match the overlay order.
+   * Handlers for overlays that appear later in the overlay order should be processed first for interaction.
+   * This maintains strict coupling between overlay rendering order and interaction priority.
+   *
+   * The coupling ensures that:
+   * 1. Overlays rendered on top (later in overlayOrder) are processed first for interaction
+   * 2. When overlay order changes, interaction priority changes accordingly
+   * 3. The visual z-order matches the interaction z-order
+   *
+   * @param overlayOrder - Array of overlay IDs in the desired order (from bottom to top).
+   */
+  reorderHandlers(overlayOrder: string[]): void {
+    // Create a map of overlay ID to handler for quick lookup
+    const handlerMap = new Map<string, InteractionHandler>();
+    for (const handler of this.handlers) {
+      handlerMap.set(handler.id, handler);
+    }
+
+    // Reorder handlers to match overlay order (reverse for interaction priority)
+    const reorderedHandlers: InteractionHandler[] = [];
+
+    // Process overlay order from bottom to top, but add handlers in reverse order
+    // so that topmost overlays (later in overlayOrder) are processed first for interaction
+    // for (let i = overlayOrder.length - 1; i >= 0; i--) {
+    for (let i = 0; i < overlayOrder.length; i++) {
+      const overlayId = overlayOrder[i];
+      const handler = handlerMap.get(overlayId);
+      if (handler) {
+        reorderedHandlers.push(handler);
+      }
+    }
+
+    // Add any remaining handlers that weren't in the overlay order
+    for (const handler of this.handlers) {
+      if (!overlayOrder.includes(handler.id)) {
+        reorderedHandlers.push(handler);
+      }
+    }
+
+    this.handlers = reorderedHandlers;
   }
 }

@@ -2,12 +2,13 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
+import { FONT_SIZE, LABEL_ARCHETYPE_PRIORITY } from "../constants";
 import { LIGHTER_EVENTS } from "../event/EventBus";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { Selectable } from "../selection/Selectable";
-import type { DrawStyle, Hoverable, Point, RawLookerLabel } from "../types";
-import { BaseOverlay } from "./BaseOverlay";
+import type { Hoverable, Point, RawLookerLabel } from "../types";
 import { getSimpleStrokeStyles } from "../utils/colorMapping";
+import { BaseOverlay } from "./BaseOverlay";
 
 export type ClassificationLabel = RawLookerLabel & {
   label: string;
@@ -51,9 +52,12 @@ export class ClassificationOverlay
     return this.id;
   }
 
-  render(renderer: Renderer2D, style: DrawStyle): void {
+  protected renderImpl(renderer: Renderer2D): void {
     // Dispose of old elements before creating new ones
     renderer.dispose(this.containerId);
+
+    const style = this.getCurrentStyle();
+    if (!style) return;
 
     const text = this.options.showConfidence
       ? `${this.options.label.label} (${(this.options.confidence * 100).toFixed(
@@ -73,7 +77,7 @@ export class ClassificationOverlay
       this.options.position,
       {
         fontColor: style.strokeStyle || "#000",
-        fontSize: 14,
+        fontSize: FONT_SIZE,
         backgroundColor: "rgba(255, 255, 255, 0.9)",
         padding: 4,
         maxWidth: 200,
@@ -119,6 +123,10 @@ export class ClassificationOverlay
   toggleSelected(): boolean {
     this.setSelected(!this.isSelectedState);
     return this.isSelectedState;
+  }
+
+  getSelectionPriority(): number {
+    return LABEL_ARCHETYPE_PRIORITY.CLASSIFICATION;
   }
 
   /**

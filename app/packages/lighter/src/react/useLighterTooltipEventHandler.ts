@@ -18,7 +18,6 @@ export const useLighterTooltipEventHandler = (scene: Scene2D | null) => {
   const tooltipEventHandler = useRecoilCallback(
     ({ snapshot, set }) =>
       (event: CustomEvent, scene: Scene2D) => {
-        console.log(">>> here in tooltip event handler <<<");
         const isTooltipLocked = snapshot
           .getLoadable(fos.isTooltipLocked)
           .getValue();

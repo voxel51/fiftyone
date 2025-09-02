@@ -2,6 +2,12 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
+export const LABEL_ARCHETYPE_PRIORITY = {
+  CLASSIFICATION: 15,
+  BOUNDING_BOX: 10,
+  IMAGE: 0,
+};
+
 /**
  * Default padding for text backgrounds
  */

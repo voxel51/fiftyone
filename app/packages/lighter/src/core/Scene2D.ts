@@ -2,6 +2,7 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
+import { STROKE_WIDTH } from "../constants";
 import { LIGHTER_EVENTS, type LighterEvent } from "../event/EventBus";
 import { InteractionManager } from "../interaction/InteractionManager";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
@@ -12,6 +13,7 @@ import type {
   CanonicalMedia,
   CoordinateSystem,
   DrawStyle,
+  Point,
   Spatial,
 } from "../types";
 import type { Command } from "../undo/Command";
@@ -28,6 +30,51 @@ import {
   RenderingStateManager,
 } from "./RenderingStateManager";
 import type { Scene2DConfig, SceneOptions } from "./SceneConfig";
+
+/**
+ * Const enum for point containment levels.
+ */
+export const enum CONTAINS {
+  NONE = 0,
+  CONTENT = 1,
+  BORDER = 2,
+}
+
+/**
+ * Interface for overlay ordering state.
+ */
+export interface OverlayOrderState {
+  /** Current pixel coordinates */
+  pixelCoordinates?: Point;
+  /** Current rotation angle */
+  rotate: number;
+  /** Whether to only show hovered labels */
+  onlyShowHoveredLabel?: boolean;
+  /** Whether this is a thumbnail view */
+  thumbnail?: boolean;
+}
+
+/**
+ * Interface for overlay ordering options.
+ */
+export interface OverlayOrderOptions {
+  /** Array of field paths that determine overlay visibility and rendering order */
+  activePaths?: string[];
+  /** Whether to only show hovered labels */
+  onlyShowHoveredLabel?: boolean;
+  /** Whether this is a thumbnail view */
+  thumbnail?: boolean;
+}
+
+/**
+ * Result of overlay ordering calculation.
+ */
+export interface OverlayOrderResult {
+  /** Ordered array of overlay IDs */
+  orderedIds: string[];
+  /** Applied rotation index */
+  rotation: number;
+}
 
 /**
  * Interface for render callbacks that can be registered to run during the render loop.
@@ -56,6 +103,8 @@ export class Scene2D {
   private unsubscribeCanonicalMedia?: () => void;
   private renderCallbacks = new Map<string, RenderCallback>();
   private colorMappingContext?: ColorMappingContext;
+  private overlayOrderOptions: OverlayOrderOptions = {};
+  private rotation: number = 0;
 
   constructor(private readonly config: Scene2DConfig) {
     this.coordinateSystem = new CoordinateSystem2D();
@@ -71,7 +120,6 @@ export class Scene2D {
 
     // Listen for scene options changes to trigger re-rendering
     config.eventBus.on(LIGHTER_EVENTS.SCENE_OPTIONS_CHANGED, (event) => {
-      console.log("SCENE_OPTIONS_CHANGED", event);
       const { activePaths, showOverlays, alpha } = event.detail;
       this.updateOptions({ activePaths, showOverlays, alpha });
 
@@ -80,6 +128,91 @@ export class Scene2D {
         overlay.markDirty();
       });
     });
+
+    // Listen for mouse movement on canvas
+    // config.canvas.addEventListener("mousemove", () => {
+    //   // Only recalculate if the cursor is over a non-canonical overlay
+    //   if (this.shouldRecalculateOverlayOrder()) {
+    //     this.recalculateOverlayOrder();
+    //   }
+    // });
+
+    // Listen for keyboard events for rotation controls
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        this.rotatePrevious();
+      } else if (event.key === "ArrowDown") {
+        event.preventDefault();
+        this.rotateNext();
+      }
+    });
+  }
+
+  /**
+   * Updates the overlay ordering options.
+   * @param options - The new ordering options.
+   */
+  updateOverlayOrderOptions(options: OverlayOrderOptions): void {
+    this.overlayOrderOptions = { ...this.overlayOrderOptions, ...options };
+  }
+
+  /**
+   * Calculates the interactive overlay order based on current state and options.
+   * @param overlays - Map of overlay ID to overlay instance.
+   * @param canonicalMediaId - ID of the canonical media overlay.
+   * @param state - Current overlay ordering state.
+   * @returns The calculated overlay order result.
+   */
+  calculateOverlayOrder(
+    overlays: Map<string, BaseOverlay>,
+    canonicalMediaId?: string,
+    state?: OverlayOrderState
+  ): OverlayOrderResult {
+    const { activePaths, onlyShowHoveredLabel, thumbnail } =
+      this.overlayOrderOptions;
+
+    // Handle case with no active paths
+    if (!activePaths || activePaths.length === 0) {
+      return this.handleNoActivePaths(overlays, canonicalMediaId);
+    }
+
+    // Create bins for each active field
+    const bins = this.createFieldBins(overlays, activePaths);
+
+    // Build initial ordered array based on activePaths sequence
+    let ordered = this.buildInitialOrder(
+      bins,
+      activePaths,
+      canonicalMediaId,
+      overlays
+    );
+
+    // Add remaining overlays that don't have a field or aren't in activePaths
+    ordered = this.addRemainingOverlays(ordered, overlays);
+
+    // Apply interactive reordering if we have cursor coordinates and state
+    if (state?.pixelCoordinates && !thumbnail) {
+      return this.applyInteractiveReordering(
+        ordered,
+        overlays,
+        state,
+        onlyShowHoveredLabel
+      );
+    }
+
+    // If no interactive reordering, apply rotation to the entire ordered array
+    const rotation = state?.rotate || 0;
+    console.log(">>>rotation is ", rotation);
+    const [rotatedIds, appliedRotation] = this.rotateOverlays(
+      ordered,
+      rotation
+    );
+
+    return {
+      orderedIds: rotatedIds,
+      rotation: appliedRotation,
+    };
   }
 
   /**
@@ -91,11 +224,301 @@ export class Scene2D {
   }
 
   /**
+   * Handles the case when there are no active paths.
+   */
+  private handleNoActivePaths(
+    overlays: Map<string, BaseOverlay>,
+    canonicalMediaId?: string
+  ): OverlayOrderResult {
+    const ordered = Array.from(overlays.keys());
+
+    // Ensure canonical media is first if it exists
+    if (canonicalMediaId && overlays.has(canonicalMediaId)) {
+      const filtered = ordered.filter((id) => id !== canonicalMediaId);
+      return {
+        orderedIds: [canonicalMediaId, ...filtered],
+        rotation: 0,
+      };
+    }
+
+    return {
+      orderedIds: ordered,
+      rotation: 0,
+    };
+  }
+
+  /**
+   * Creates bins for each active field.
+   */
+  private createFieldBins(
+    overlays: Map<string, BaseOverlay>,
+    activePaths: string[]
+  ): Record<string, string[]> {
+    const bins: Record<string, string[]> = {};
+
+    // Initialize bins
+    activePaths.forEach((path) => {
+      bins[path] = [];
+    });
+
+    // Group overlays by their field
+    overlays.forEach((overlay, id) => {
+      if (overlay.field && bins[overlay.field]) {
+        bins[overlay.field].push(id);
+      }
+    });
+
+    return bins;
+  }
+
+  /**
+   * Builds the initial ordered array based on activePaths sequence.
+   */
+  private buildInitialOrder(
+    bins: Record<string, string[]>,
+    activePaths: string[],
+    canonicalMediaId?: string,
+    overlays?: Map<string, BaseOverlay>
+  ): string[] {
+    const ordered: string[] = [];
+
+    // Always put canonical media first if it exists
+    if (canonicalMediaId && overlays?.has(canonicalMediaId)) {
+      ordered.push(canonicalMediaId);
+    }
+
+    // Add overlays in activePaths order
+    activePaths.forEach((path) => {
+      if (bins[path]) {
+        ordered.push(...bins[path]);
+      }
+    });
+
+    return ordered;
+  }
+
+  /**
+   * Adds remaining overlays that don't have a field or aren't in activePaths.
+   */
+  private addRemainingOverlays(
+    ordered: string[],
+    overlays: Map<string, BaseOverlay>
+  ): string[] {
+    const result = [...ordered];
+
+    overlays.forEach((overlay, id) => {
+      if (!result.includes(id)) {
+        result.push(id);
+      }
+    });
+
+    return result;
+  }
+
+  /**
+   * Applies interactive reordering based on mouse position and hover state.
+   */
+  private applyInteractiveReordering(
+    ordered: string[],
+    overlays: Map<string, BaseOverlay>,
+    state: OverlayOrderState,
+    onlyShowHoveredLabel?: boolean
+  ): OverlayOrderResult {
+    console.log(">>>applyInteractiveReordering", state);
+    const { pixelCoordinates, rotate } = state;
+    if (!pixelCoordinates) {
+      return {
+        orderedIds: ordered,
+        rotation: rotate,
+      };
+    }
+    const { x, y } = pixelCoordinates;
+
+    // Find overlays that contain the mouse point
+    let contained = ordered
+      .map((id) => overlays.get(id))
+      .filter((overlay): overlay is BaseOverlay => {
+        if (!overlay) return false;
+        return this.containsPoint(overlay, { x, y }) > CONTAINS.NONE;
+      })
+      // .sort((a, b) => {
+      //   const distanceA = this.getMouseDistance(a, { x, y });
+      //   const distanceB = this.getMouseDistance(b, { x, y });
+      //   return distanceA - distanceB;
+      // })
+      .map((overlay) => overlay.id);
+
+    // Find overlays that don't contain the mouse point
+    const outside = ordered.filter((id) => {
+      const overlay = overlays.get(id);
+      if (!overlay) return false;
+      return this.containsPoint(overlay, { x, y }) === CONTAINS.NONE;
+    });
+
+    // Apply rotation if needed
+    let newRotate = rotate;
+    if (rotate !== 0) {
+      [contained, newRotate] = this.rotateOverlays(contained, rotate);
+    }
+
+    // Handle hover-only mode
+    if (onlyShowHoveredLabel) {
+      return {
+        orderedIds: contained.length > 0 ? [contained[0]] : [],
+        rotation: newRotate,
+      };
+    }
+
+    return {
+      orderedIds: [...contained, ...outside],
+      rotation: newRotate,
+    };
+  }
+
+  /**
+   * Checks if an overlay contains a point.
+   */
+  private containsPoint(overlay: BaseOverlay, point: Point): CONTAINS {
+    const level = overlay.getContainmentLevel(point);
+
+    if (
+      overlay.getOverlayType() !== "ImageOverlay" &&
+      overlay.label &&
+      "label" in overlay.label &&
+      overlay.label.label === "airplane" &&
+      !("confidence" in overlay.label && overlay.label.confidence)
+    ) {
+      console.log(">>>level is ", level);
+    }
+    return level;
+  }
+
+  /**
+   * Gets the distance from an overlay to a mouse point.
+   */
+  private getMouseDistance(overlay: BaseOverlay, point: Point): number {
+    return overlay.getMouseDistance(point);
+  }
+
+  /**
+   * Applies rotation to overlay ordering.
+   * This cycles through overlapping overlays when multiple overlays are at the same point.
+   * @param overlays - Array of overlay IDs to rotate.
+   * @param rotate - Rotation index (how many positions to shift).
+   * @returns Tuple of [rotated overlays, applied rotation].
+   */
+  private rotateOverlays(
+    overlays: string[],
+    rotate: number
+  ): [string[], number] {
+    if (overlays.length === 0) {
+      return [overlays, 0];
+    }
+
+    // Limit rotation to array length to prevent out-of-bounds
+    const limitedRotation = Math.min(rotate, overlays.length - 1);
+
+    // Rotate the array by shifting elements
+    const rotated = [
+      ...overlays.slice(limitedRotation),
+      ...overlays.slice(0, limitedRotation),
+    ];
+
+    return [rotated, limitedRotation];
+  }
+
+  /**
    * Gets the current color mapping context.
    * @returns The current color mapping context or undefined if not set.
    */
   getColorMappingContext(): ColorMappingContext | undefined {
     return this.colorMappingContext;
+  }
+
+  /**
+   * Rotates the overlay order forward (next overlay becomes first).
+   */
+  rotateNext(): void {
+    const previousOrder = [...this.overlayOrder];
+    this.rotation++;
+
+    this.recalculateOverlayOrder();
+
+    if (this.hasOrderChanged(previousOrder)) {
+      this.markOverlaysForRotation();
+      this.emitHoverEventForCurrentPosition();
+    } else {
+      this.rotation--;
+    }
+  }
+
+  /**
+   * Rotates the overlay order backward (previous overlay becomes first).
+   */
+  rotatePrevious(): void {
+    const previousOrder = [...this.overlayOrder];
+    this.rotation = Math.max(0, this.rotation - 1);
+
+    this.recalculateOverlayOrder();
+
+    if (this.hasOrderChanged(previousOrder)) {
+      this.markOverlaysForRotation();
+      this.emitHoverEventForCurrentPosition();
+    }
+  }
+
+  /**
+   * Gets the current rotation index.
+   * @returns The current rotation index.
+   */
+  getRotation(): number {
+    return this.rotation;
+  }
+
+  /**
+   * Emits a hover event for the topmost overlay at the current mouse position.
+   * This is called after rotation to ensure the correct overlay is highlighted.
+   */
+  private emitHoverEventForCurrentPosition(): void {
+    const pixelCoordinates = this.interactionManager.getPixelCoordinates();
+    if (!pixelCoordinates) {
+      return;
+    }
+
+    // Find the topmost overlay at the current mouse position
+    const topmostOverlay = this.findOverlayAtPoint(pixelCoordinates);
+
+    if (topmostOverlay && topmostOverlay.id !== this.canonicalMediaId) {
+      // Emit hover event with the current mouse position
+      this.dispatch({
+        type: LIGHTER_EVENTS.OVERLAY_HOVER,
+        detail: {
+          id: topmostOverlay.id,
+          point: pixelCoordinates,
+        },
+      });
+    }
+  }
+
+  /**
+   * Checks if the overlay order has changed compared to a previous order.
+   * @param previousOrder - The previous overlay order to compare against.
+   * @returns True if the order has changed, false otherwise.
+   */
+  private hasOrderChanged(previousOrder: string[]): boolean {
+    // If lengths are different, order has changed
+    if (previousOrder.length !== this.overlayOrder.length) {
+      return true;
+    }
+
+    // Check if any overlay ID is in a different position
+    for (let i = 0; i < previousOrder.length; i++) {
+      if (previousOrder[i] !== this.overlayOrder[i]) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   /**
@@ -127,65 +550,99 @@ export class Scene2D {
   }
 
   /**
-   * Recalculates the overlay rendering order based on activePaths.
-   * This implements the same z-ordering logic as the legacy looker system.
+   * Determines if overlay order should be recalculated based on cursor position.
+   * Only recalculates if the cursor is over a non-canonical overlay.
+   * @returns True if overlay order should be recalculated.
    */
-  private recalculateOverlayOrder(): void {
-    const { activePaths } = this.sceneOptions || {};
+  private shouldRecalculateOverlayOrder(): boolean {
+    const pixelCoordinates = this.interactionManager.getPixelCoordinates();
+    if (!pixelCoordinates) {
+      return false;
+    }
 
-    if (!activePaths || activePaths.length === 0) {
-      // If no activePaths, maintain current order but ensure canonical media is first
-      this.overlayOrder = this.overlayOrder.filter((id) =>
-        this.overlays.has(id)
-      );
-      if (
-        this.canonicalMediaId &&
-        this.overlayOrder.includes(this.canonicalMediaId)
-      ) {
-        this.overlayOrder = [
-          this.canonicalMediaId,
-          ...this.overlayOrder.filter((id) => id !== this.canonicalMediaId),
-        ];
-      }
+    // Find the overlay at the current cursor position
+    const overlayAtCursor = this.findOverlayAtPoint(pixelCoordinates);
+
+    // Only recalculate if we're over a non-canonical overlay
+    return (
+      overlayAtCursor !== undefined &&
+      overlayAtCursor.id !== this.canonicalMediaId
+    );
+  }
+
+  /**
+   * Marks overlays that need re-rendering due to rotation changes.
+   * Only marks overlays that are under the mouse cursor since rotation only affects those.
+   */
+  private markOverlaysForRotation(): void {
+    const pixelCoordinates = this.interactionManager.getPixelCoordinates();
+    if (!pixelCoordinates) {
       return;
     }
 
-    // Create bins for each active field (same as legacy looker)
-    const bins: Record<string, string[]> = {};
-    activePaths.forEach((path) => {
-      bins[path] = [];
-    });
-
-    // Group overlays by their field
-    this.overlays.forEach((overlay, id) => {
-      if (overlay.field && bins[overlay.field]) {
-        bins[overlay.field].push(id);
+    // Only mark overlays that are under the mouse cursor
+    for (const overlayId of this.overlayOrder) {
+      const overlay = this.overlays.get(overlayId);
+      if (overlay && overlay.getContainmentLevel(pixelCoordinates) > 0) {
+        overlay.markDirty();
       }
-    });
-
-    // Build ordered array based on activePaths sequence
-    const ordered: string[] = [];
-
-    // Always put canonical media first if it exists
-    if (this.canonicalMediaId && this.overlays.has(this.canonicalMediaId)) {
-      ordered.push(this.canonicalMediaId);
     }
+  }
 
-    // Add overlays in activePaths order
-    activePaths.forEach((path) => {
-      if (bins[path]) {
-        ordered.push(...bins[path]);
+  /**
+   * Finds the overlay at the given point.
+   * @param point - The point to check.
+   * @returns The overlay at the point, or undefined if none found.
+   */
+  private findOverlayAtPoint(point: Point): BaseOverlay | undefined {
+    // Check overlays in reverse order (topmost first)
+    for (let i = this.overlayOrder.length - 1; i >= 0; i--) {
+      const overlayId = this.overlayOrder[i];
+      const overlay = this.overlays.get(overlayId);
+      if (overlay && overlay.getContainmentLevel(point) > 0) {
+        return overlay;
       }
-    });
+    }
+    return undefined;
+  }
 
-    // Add any remaining overlays that don't have a field or aren't in activePaths
-    this.overlays.forEach((overlay, id) => {
-      if (!ordered.includes(id)) {
-        ordered.push(id);
-      }
-    });
+  /**
+   * Recalculates the overlay rendering order based on activePaths and interactive state.
+   * This implements the same z-ordering logic as the legacy looker system with interactive reordering.
+   *
+   * IMPORTANT: This method maintains strict coupling between overlay order and interaction handler order.
+   * When overlay order changes, the interaction manager's handler order is automatically updated
+   * to ensure that overlays rendered on top are processed first for interaction events.
+   */
+  private recalculateOverlayOrder(): void {
+    const { activePaths, showOverlays, alpha } = this.sceneOptions || {};
 
-    this.overlayOrder = ordered;
+    // Update the overlay order options
+    this.overlayOrderOptions = {
+      activePaths,
+      onlyShowHoveredLabel: false, // TODO: Add this option to SceneOptions
+      thumbnail: false, // TODO: Add this option to SceneOptions
+    };
+
+    // Get current interaction state for ordering
+    const orderState: OverlayOrderState = {
+      pixelCoordinates: this.interactionManager.getPixelCoordinates(),
+      rotate: this.rotation,
+      onlyShowHoveredLabel: false, // TODO: Add this option to SceneOptions
+      thumbnail: false, // TODO: Add this option to SceneOptions
+    };
+
+    // Calculate the new order using the overlay order manager
+    const result = this.calculateOverlayOrder(
+      this.overlays,
+      this.canonicalMediaId,
+      orderState
+    );
+
+    this.overlayOrder = result.orderedIds;
+
+    // Reorder handlers to match the new overlay order
+    this.interactionManager.reorderHandlers(this.overlayOrder);
   }
 
   /**
@@ -329,14 +786,14 @@ export class Scene2D {
       this.updateSpatialOverlayCoordinates(overlay);
     }
 
-    // Recalculate overlay order to maintain proper z-ordering
-    this.recalculateOverlayOrder();
-
-    // Register with managers
+    // Register with managers first
     this.interactionManager.addHandler(overlay);
     if (this.typeGuards.isSelectable(overlay)) {
       this.selectionManager.addSelectable(overlay);
     }
+
+    // Recalculate overlay order to maintain proper z-ordering
+    this.recalculateOverlayOrder();
 
     this.dispatch({
       type: LIGHTER_EVENTS.OVERLAY_ADDED,
@@ -386,6 +843,9 @@ export class Scene2D {
     }
 
     this.overlayOrder = validIds;
+
+    // Reorder handlers to match the new overlay order
+    this.interactionManager.reorderHandlers(this.overlayOrder);
   }
 
   /**
@@ -543,6 +1003,8 @@ export class Scene2D {
     this.overlays.clear();
     this.overlayOrder = [];
     this.renderingState.clearAll();
+
+    this.interactionManager.clearHandlers();
     this.selectionManager.clearSelection();
 
     // Emit clear event
@@ -695,6 +1157,9 @@ export class Scene2D {
 
     // Add it to the beginning (background)
     this.overlayOrder.unshift(overlayId);
+
+    // Reorder handlers to match the new overlay order
+    this.interactionManager.reorderHandlers(this.overlayOrder);
   }
 
   /**

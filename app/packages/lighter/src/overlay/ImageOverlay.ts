@@ -10,7 +10,6 @@ import type {
   BoundedOverlay,
   CanonicalMedia,
   Dimensions,
-  DrawStyle,
   Rect,
 } from "../types";
 import { BaseOverlay } from "./BaseOverlay";
@@ -44,7 +43,7 @@ export class ImageOverlay
     const id = `image-${Date.now()}-${Math.random()
       .toString(36)
       .substring(2, 9)}`;
-    super(id, null, options.field);
+    super(id, "", null, options.field);
   }
 
   getOverlayType(): string {
@@ -167,7 +166,7 @@ export class ImageOverlay
     return this.id;
   }
 
-  async render(renderer: Renderer2D, style: DrawStyle): Promise<void> {
+  protected async renderImpl(renderer: Renderer2D): Promise<void> {
     // Only dispose if we don't have a texture yet or if the texture source changed
     const needsDispose = !this.texture || this.texture.type !== "texture";
 
