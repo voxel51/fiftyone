@@ -5,7 +5,7 @@ FiftyOne Release Notes
 
 FiftyOne Enterprise 2.11.0
 --------------------------
-*Released Sep 2, 2025*
+*Released Sep 3, 2025*
 
 Includes all updates from :ref:`FiftyOne 1.8.0 <release-notes-v1.8.0>`, plus:
 
@@ -30,6 +30,7 @@ Includes all updates from :ref:`FiftyOne 1.8.0 <release-notes-v1.8.0>`, plus:
 - Fixed `sizeEstimate` fields on datasets and dataset snapshots to return
   floats indicating size in megabytes instead of bytes, preventing GraphQL
   errors with large estimates.
+- Fixed a memory leak in the server.
 
 Logging
 
@@ -53,7 +54,7 @@ Dependencies
 
 FiftyOne 1.8.0
 --------------
-*Released Sep 2, 2025*
+*Released Sep 3, 2025*
 
 App
 
