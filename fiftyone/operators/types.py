@@ -808,6 +808,9 @@ class Object(BaseType):
         self.add_property(name, _property)
         return _property
 
+    # Alias for common word reversal
+    target_view = view_target
+
     def to_json(self):
         """Converts the object definition to JSON.
 
@@ -2792,10 +2795,9 @@ class ViewTargetProperty(Property):
             view_type (RadioGroup): the view type to use (RadioGroup, Dropdown,
                 etc.)
             default_target (None): the default target view to select if
-                multiple choices are available. If ``None``, one will be chosen
-                based on the available choices in the following order of
-                preference: dataset view, current view, selected samples,
-                selected labels
+                multiple choices are available. If ``None`` or
+                ``default_target`` is not an available choice, the most
+                targeted / selective available choice is chosen.
             action_description (Process): a short description of the action
                 being performed, used to generate default descriptions for the
                 various target views
@@ -2837,12 +2839,14 @@ class ViewTargetProperty(Property):
         """
 
         # Determine which target views are available
-        has_base_view = ctx.has_generated_view
-
+        has_base_view = (
+            ctx.view._is_generated  # pylint: disable=protected-access
+        )
         if has_base_view:
-            has_custom_view = ctx.has_custom_generated_view
+            has_view = ctx.view != ctx.view._base_view
         else:
-            has_custom_view = ctx.has_custom_view
+            has_view = ctx.view != ctx.dataset.view()
+
         has_selected_samples = allow_selected_samples and bool(ctx.selected)
         has_selected_labels = allow_selected_labels and bool(
             ctx.selected_labels
@@ -2854,7 +2858,7 @@ class ViewTargetProperty(Property):
             choice_view,
             action_description=action_description,
             include_base_view=has_base_view,
-            include_current_view=has_custom_view,
+            include_current_view=has_view,
             include_dataset=not has_base_view,
             include_dataset_view=allow_dataset_view,
             include_selected_labels=has_selected_labels,
@@ -2876,11 +2880,14 @@ class ViewTargetProperty(Property):
 
         _type = Enum(options.values())
 
-        if not default_target or default_target not in options.values():
-            default_target = options.values()[-1]  # last option
+        vals = options.values()
+        if not default_target or default_target not in vals:
+            default_target = (
+                vals[-1] if vals else constants.ViewTarget.DATASET
+            )  # last option or safe fallback
 
         # Only 1 option so no need for a radio group, just hide it.
-        if len(options.values()) == 1:
+        if len(options.values()) <= 1:
             choice_view = HiddenView(read_only=False)
 
         super().__init__(
