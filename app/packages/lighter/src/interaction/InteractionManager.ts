@@ -32,7 +32,7 @@ export interface InteractionHandler {
    * @param event - The original pointer event.
    * @returns True if the event was handled.
    */
-  onPointerMove?(point: Point, event: PointerEvent): boolean;
+  onDrag?(point: Point, event: PointerEvent): boolean;
 
   /**
    * Handle pointer up event.
@@ -343,7 +343,7 @@ export class InteractionManager {
 
     if (this.isDragging && this.dragHandler) {
       // Handle drag move
-      this.dragHandler.onPointerMove?.(this.currentPixelCoordinates, event);
+      this.dragHandler.onDrag?.(this.currentPixelCoordinates, event);
 
       // Emit drag move event with delta information
       if (this.dragState) {
@@ -527,55 +527,83 @@ export class InteractionManager {
     const handler = this.findHandlerAtPoint(point);
 
     if (!handler) {
+      this.hoveredHandler = undefined;
       return;
     }
 
-    if (handler.id !== this.canonicalMediaId) {
-      if (isDragging) {
-        this.canvas.style.cursor = "grab";
-      } else {
-        this.canvas.style.cursor = "pointer";
-      }
-    } else {
+    // If we are hovering on the canonical media, and coming from some other overlay,
+    // emit *all* unhover event + particular overlay unhover event
+    if (handler.id === this.canonicalMediaId) {
       this.canvas.style.cursor = "default";
+
+      if (this.hoveredHandler) {
+        this.eventBus?.emit({
+          type: LIGHTER_EVENTS.OVERLAY_UNHOVER,
+          detail: { id: this.hoveredHandler.id, point },
+        });
+
+        this.eventBus?.emit({
+          type: LIGHTER_EVENTS.OVERLAY_ALL_UNHOVER,
+          detail: { point },
+        });
+      }
+
+      this.hoveredHandler = undefined;
+
+      return;
     }
 
-    // If we are dragging, we should not handle hover
+    if (isDragging) {
+      this.canvas.style.cursor = "grab";
+    } else {
+      this.canvas.style.cursor = "pointer";
+    }
+
+    // If we are dragging, we should unhover the previous one
     if (isDragging) {
       if (this.hoveredHandler) {
         this.hoveredHandler.onHoverLeave?.(point, event);
+        this.eventBus?.emit({
+          type: LIGHTER_EVENTS.OVERLAY_UNHOVER,
+          detail: { id: this.hoveredHandler.id, point },
+        });
         this.hoveredHandler = undefined;
       }
       return;
     }
 
-    // If we are not hovering on an overlay, don't handle hover at all
-    if (!handler) {
-      if (this.hoveredHandler) {
-        this.hoveredHandler.onHoverLeave?.(point, event);
-        this.hoveredHandler = undefined;
-      }
-      return;
-    }
-
+    // If we are hovering on a different overlay, unhover the previous one
     if (this.hoveredHandler && this.hoveredHandler !== handler) {
       this.hoveredHandler.onHoverLeave?.(point, event);
+      this.eventBus?.emit({
+        type: LIGHTER_EVENTS.OVERLAY_UNHOVER,
+        detail: { id: this.hoveredHandler.id, point },
+      });
+      this.hoveredHandler = undefined;
+      return;
     }
 
+    // If we are hovering on a new overlay, hover the new one
     if (handler && this.hoveredHandler !== handler) {
       handler.onHoverEnter?.(point, event);
+
+      this.eventBus?.emit({
+        type: LIGHTER_EVENTS.OVERLAY_HOVER,
+        detail: { id: handler.id, point },
+      });
     }
 
+    // If we are hovering on the same overlay, move the hover
     if (this.hoveredHandler === handler) {
       handler.onHoverMove?.(point, event);
 
-      // Emit hover move event for tooltip updates
       this.eventBus.emit({
         type: LIGHTER_EVENTS.OVERLAY_HOVER_MOVE,
         detail: { id: handler.id, point },
       });
     }
 
+    // Update the hovered handler
     this.hoveredHandler = handler;
   }
 
@@ -594,12 +622,19 @@ export class InteractionManager {
     );
   }
 
-  private findHandlerAtPoint(point: Point): InteractionHandler | undefined {
+  private findHandlerAtPoint(
+    point: Point,
+    skipCanonicalMedia: boolean = false
+  ): InteractionHandler | undefined {
     // Find handlers in reverse order (topmost first)
     // Note: this is a hack, we need a better z-order logic
     const candidates: InteractionHandler[] = [];
     for (let i = this.handlers.length - 1; i >= 0; i--) {
       const handler = this.handlers[i];
+      if (skipCanonicalMedia && handler.id === this.canonicalMediaId) {
+        continue;
+      }
+
       if (handler.containsPoint(point)) {
         candidates.push(handler);
       }

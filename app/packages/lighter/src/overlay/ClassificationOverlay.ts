@@ -3,7 +3,6 @@
  */
 
 import { FONT_SIZE, LABEL_ARCHETYPE_PRIORITY } from "../constants";
-import { LIGHTER_EVENTS } from "../event/EventBus";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { Selectable } from "../selection/Selectable";
 import type { Hoverable, Point, RawLookerLabel } from "../types";
@@ -217,34 +216,5 @@ export class ClassificationOverlay
       type: "Classification",
       coordinates: this.options.position,
     };
-  }
-
-  onHoverEnter(point: Point, event: PointerEvent): boolean {
-    // Emit hover event
-    this.eventBus?.emit({
-      type: LIGHTER_EVENTS.OVERLAY_HOVER,
-      detail: { id: this.id, point },
-    });
-
-    return true;
-  }
-
-  onHoverLeave(point: Point, event: PointerEvent): boolean {
-    // Emit unhover event
-    this.eventBus?.emit({
-      type: LIGHTER_EVENTS.OVERLAY_UNHOVER,
-      detail: { id: this.id, point },
-    });
-
-    return true;
-  }
-
-  onHoverMove(point: Point, event: PointerEvent): boolean {
-    this.eventBus?.emit({
-      type: LIGHTER_EVENTS.OVERLAY_HOVER_MOVE,
-      detail: { id: this.id, point },
-    });
-
-    return true;
   }
 }

@@ -44,6 +44,8 @@ export const LIGHTER_EVENTS = {
   OVERLAY_HOVER: "overlay-hover",
   /** Emitted when an overlay is no longer hovered */
   OVERLAY_UNHOVER: "overlay-unhover",
+  /** Emitted when all overlays are unhovered */
+  OVERLAY_ALL_UNHOVER: "overlay-all-unhover",
   /** Emitted when the mouse moves while hovering over an overlay */
   OVERLAY_HOVER_MOVE: "overlay-hover-move",
   /** Emitted when an overlay is selected */
@@ -137,6 +139,10 @@ export type LighterEvent =
       detail: { id: string; point: Point };
     }
   | {
+      type: typeof LIGHTER_EVENTS.OVERLAY_ALL_UNHOVER;
+      detail: { point: Point };
+    }
+  | {
       type: typeof LIGHTER_EVENTS.OVERLAY_HOVER_MOVE;
       detail: { id: string; point: Point };
     }
@@ -218,9 +224,21 @@ export class EventBus extends EventTarget {
    * Registers an event listener.
    * @param type - The event type to listen for.
    * @param listener - The event listener function.
+   * @param abortController - The abort controller to use for the event listener.
+   * Calling `abort` on this will remove the event listener.
    */
-  on(type: LighterEvent["type"], listener: (e: CustomEvent) => void): void {
-    this.addEventListener(type, listener as EventListener);
+  on(
+    type: LighterEvent["type"],
+    listener: (e: CustomEvent) => void,
+    abortController?: AbortController
+  ): void {
+    if (abortController) {
+      this.addEventListener(type, listener as EventListener, {
+        signal: abortController.signal,
+      });
+    } else {
+      this.addEventListener(type, listener as EventListener);
+    }
   }
 
   /**

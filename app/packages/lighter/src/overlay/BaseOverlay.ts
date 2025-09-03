@@ -18,6 +18,9 @@ export abstract class BaseOverlay implements InteractionHandler {
   readonly sampleId: string;
   readonly label: RawLookerLabel;
   readonly field?: string;
+
+  protected isHoveredState = false;
+
   /** Whether the overlay needs to be re-rendered. The render loop will check this and re-render the overlay if it is dirty.
    *
    * See also `markDirty` and `markClean`.
@@ -223,6 +226,43 @@ export abstract class BaseOverlay implements InteractionHandler {
   }
 
   /**
+   * Handle hover enter event.
+   * Override in subclasses to implement custom behavior.
+   * @param point - The point where the event occurred.
+   * @param event - The original pointer event.
+   * @returns True if the event was handled.
+   */
+  onHoverEnter(point: Point, event: PointerEvent): boolean {
+    this.isHoveredState = true;
+
+    return true;
+  }
+
+  /**
+   * Handle hover leave event.
+   * Override in subclasses to implement custom behavior.
+   * @param point - The point where the event occurred.
+   * @param event - The original pointer event.
+   * @returns True if the event was handled.
+   */
+  onHoverLeave?(point: Point, event: PointerEvent): boolean {
+    this.isHoveredState = false;
+
+    return true;
+  }
+
+  /**
+   * Handle hover move event.
+   * Override in subclasses to implement custom behavior.
+   * @param point - The point where the event occurred.
+   * @param event - The original pointer event.
+   * @returns True if the event was handled.
+   */
+  onHoverMove(point: Point, event: PointerEvent): boolean {
+    return true;
+  }
+
+  /**
    * Handle pointer down event.
    * Override in subclasses to implement custom behavior.
    * @param point - The point where the event occurred.
@@ -232,13 +272,13 @@ export abstract class BaseOverlay implements InteractionHandler {
   onPointerDown?(point: Point, event: PointerEvent): boolean;
 
   /**
-   * Handle pointer move event.
+   * Handle drag event.
    * Override in subclasses to implement custom behavior.
    * @param point - The point where the event occurred.
    * @param event - The original pointer event.
    * @returns True if the event was handled.
    */
-  onPointerMove?(point: Point, event: PointerEvent): boolean;
+  onDrag?(point: Point, event: PointerEvent): boolean;
 
   /**
    * Handle pointer up event.
@@ -266,22 +306,4 @@ export abstract class BaseOverlay implements InteractionHandler {
    * @returns True if the event was handled.
    */
   onDoubleClick?(point: Point, event: PointerEvent): boolean;
-
-  /**
-   * Handle hover enter event.
-   * Override in subclasses to implement custom behavior.
-   * @param point - The point where the event occurred.
-   * @param event - The original pointer event.
-   * @returns True if the event was handled.
-   */
-  onHoverEnter?(point: Point, event: PointerEvent): boolean;
-
-  /**
-   * Handle hover leave event.
-   * Override in subclasses to implement custom behavior.
-   * @param point - The point where the event occurred.
-   * @param event - The original pointer event.
-   * @returns True if the event was handled.
-   */
-  onHoverLeave?(point: Point, event: PointerEvent): boolean;
 }

@@ -228,7 +228,6 @@ export class BoundingBoxOverlay
     // absolute coordinates back to relative coordinates using the coordinate system
     this.markForCoordinateUpdate();
 
-    // Mark as dirty to trigger re-render
     this.markDirty();
   }
 
@@ -240,10 +239,10 @@ export class BoundingBoxOverlay
     this.dragStartPoint = point;
     this.dragStartBounds = { ...this.absoluteBounds };
 
-    return true; // Indicate we can handle this event
+    return true;
   }
 
-  onPointerMove(point: Point, event: PointerEvent): boolean {
+  onDrag(point: Point, event: PointerEvent): boolean {
     if (!this.dragStartPoint || !this.dragStartBounds) return false;
 
     const delta = {
@@ -259,7 +258,6 @@ export class BoundingBoxOverlay
       height: this.dragStartBounds.height,
     };
 
-    // Mark as dirty to trigger re-render
     this.markDirty();
 
     return true;
@@ -271,39 +269,6 @@ export class BoundingBoxOverlay
     // Reset drag state
     this.dragStartPoint = undefined;
     this.dragStartBounds = undefined;
-
-    return true;
-  }
-
-  onHoverEnter(point: Point, event: PointerEvent): boolean {
-    this.isHoveredState = true;
-
-    // Emit event to trigger re-ordering
-    this.eventBus?.emit({
-      type: LIGHTER_EVENTS.OVERLAY_HOVER,
-      detail: { id: this.id, point },
-    });
-
-    return true;
-  }
-
-  onHoverLeave(point: Point, event: PointerEvent): boolean {
-    this.isHoveredState = false;
-
-    // Emit event to trigger re-ordering
-    this.eventBus?.emit({
-      type: LIGHTER_EVENTS.OVERLAY_UNHOVER,
-      detail: { id: this.id, point },
-    });
-
-    return true;
-  }
-
-  onHoverMove(point: Point, event: PointerEvent): boolean {
-    this.eventBus?.emit({
-      type: LIGHTER_EVENTS.OVERLAY_HOVER_MOVE,
-      detail: { id: this.id, point },
-    });
 
     return true;
   }
