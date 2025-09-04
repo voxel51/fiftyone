@@ -15,12 +15,9 @@ import {
 import React, { useEffect, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { ImageOptions, ImageOverlay, overlayFactory } from "../index";
-import { useLighter, useLighterSetup } from "./index";
+import { useLighter, useLighterSetupWithPixi } from "./index";
 import { convertLegacyToLighterDetection } from "./looker-lighter-bridge";
 
-/**
- * Props for the LighterSampleRenderer component.
- */
 export interface LighterSampleRendererProps {
   /** Custom CSS class name */
   className?: string;
@@ -29,8 +26,7 @@ export interface LighterSampleRendererProps {
 }
 
 /**
- * Example of using the useLighter hook with optional custom renderer and resource loader.
- * This component demonstrates using the OverlayFactory to create overlays instead of direct instantiation.
+ * Lighter unit sample renderer with PixiJS renderer.
  */
 export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
   className = "",
@@ -42,8 +38,7 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
     fos.lookerOptions({ modal: true, withFilter: false })
   );
 
-  // Setup the lighter instance
-  useLighterSetup(canvasRef, options);
+  useLighterSetupWithPixi(canvasRef, options);
 
   // Get access to the lighter instance
   const { scene, isReady, addOverlay } = useLighter();

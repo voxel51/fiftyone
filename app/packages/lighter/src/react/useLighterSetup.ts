@@ -25,7 +25,7 @@ export type LighterOptions = Partial<ReturnType<typeof useLookerOptions>>;
  *
  * All effects related to lighter should be handled in this hook.
  */
-export const useLighterSetup = (
+export const useLighterSetupWithPixi = (
   canvasRef: React.RefObject<HTMLCanvasElement>,
   options: LighterOptions
 ) => {
