@@ -7600,7 +7600,7 @@
             "cpu": { "support": true },
             "gpu": { "support": true }
           },
-          "tags": ["zero-shot", "torch", "dermatology", "clip"],
+          "tags": ["classification", "torch", "official", "medical"],
           "training_data": [
             {
               "name": "MONET (dermatology image–text corpus)",
