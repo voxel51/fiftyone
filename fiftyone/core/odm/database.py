@@ -248,6 +248,20 @@ def _connect():
 
 def _disconnect():
     global _client, _async_client
+    # Explicitly call close to ensure that client and
+    # server-side resources are freed
+    # https://jira.mongodb.org/browse/PYTHON-3606
+    if _client:
+        try:
+            _client.close()
+        except Exception:
+            ...
+    if _async_client:
+        try:
+            _async_client.close()
+        except Exception:
+            ...
+
     _client = None
     _async_client = None
     mongoengine.disconnect_all()

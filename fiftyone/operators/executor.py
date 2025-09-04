@@ -10,17 +10,16 @@ import asyncio
 import collections
 import inspect
 import logging
-import os
 import traceback
-
-from typing import Optional
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
 import fiftyone.core.odm.utils as focu
+import fiftyone.core.stages as focs
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
+from fiftyone.operators import constants
 from fiftyone.operators.decorators import coroutine_timeout
 from fiftyone.operators.message import GeneratedMessage, MessageType
 from fiftyone.operators.operations import Operations
@@ -545,7 +544,7 @@ class ExecutionContext(object):
         # id if it is available
         uid = self.request_params.get("dataset_id", None)
         if uid:
-            self._dataset = focu.load_dataset(id=uid)
+            self._dataset = focu.load_dataset(id=uid, reload=True)
 
             # Set the dataset_name using the dataset object in case the dataset
             # has been renamed or changed since the context was created
@@ -553,12 +552,7 @@ class ExecutionContext(object):
         else:
             uid = self.request_params.get("dataset_name", None)
             if uid:
-                self._dataset = focu.load_dataset(name=uid)
-
-        # TODO: refactor so that this additional reload post-load is not
-        #  required
-        if self._dataset is not None:
-            self._dataset.reload()
+                self._dataset = focu.load_dataset(name=uid, reload=True)
 
         if (
             self.group_slice is not None
@@ -588,7 +582,6 @@ class ExecutionContext(object):
         if self._view is not None:
             return self._view
 
-        # Always derive the view from the context's dataset
         dataset = self.dataset
         view_name = self.request_params.get("view_name", None)
         stages = self.request_params.get("view", None)
@@ -604,14 +597,16 @@ class ExecutionContext(object):
                 stages=stages,
                 filters=filters,
                 extended_stages=extended,
-                reload=False,
             )
         else:
             self._view = dataset.load_saved_view(view_name)
 
         return self._view
 
-    def target_view(self, param_name="view_target"):
+    def target_view(
+        self,
+        param_name="view_target",
+    ):
         """The target :class:`fiftyone.core.view.DatasetView` for the operator
         being executed.
 
@@ -622,25 +617,45 @@ class ExecutionContext(object):
         Returns:
             a :class:`fiftyone.core.collections.SampleCollection`
         """
-        target = self.params.get(param_name, None)
-        if target == "SELECTED_SAMPLES":
-            return self.view.select(self.selected)
-        if target == "DATASET":
+        target = self.params.get(param_name)
+
+        # If no target is specified, default to the base view if the
+        #   current view is generated, otherwise default to the entire dataset
+        if not target:
+            target = (
+                constants.ViewTarget.BASE_VIEW
+                if (
+                    self.view and self.view._is_generated
+                )  # pylint: disable=protected-access
+                else constants.ViewTarget.DATASET
+            )
+
+        if target == constants.ViewTarget.CURRENT_VIEW:
+            return self.view
+        if target == constants.ViewTarget.DATASET:
             return self.dataset
-        return self.view
+        if target == constants.ViewTarget.BASE_VIEW:
+            return self.view._base_view  # pylint: disable=protected-access
+        if target == constants.ViewTarget.SELECTED_SAMPLES:
+            return self.view.select(self.selected)
+        if target == constants.ViewTarget.SELECTED_LABELS:
+            return self.view.select_labels(self.selected_labels)
+        if target == constants.ViewTarget.DATASET_VIEW:
+            return self.dataset.view()
+
+        return self.dataset
+
+    # Alias for common word reversal
+    view_target = target_view
 
     @property
     def has_custom_view(self):
         """Whether the operator has a custom view."""
-        stages = self.request_params.get("view", None)
-        filters = self.request_params.get("filters", None)
-        extended = self.request_params.get("extended", None)
-        has_stages = stages is not None and stages != [] and stages != {}
-        has_filters = filters is not None and filters != [] and filters != {}
-        has_extended = (
-            extended is not None and extended != [] and extended != {}
-        )
-        return has_stages or has_filters or has_extended
+        has_stages = bool(self.request_params.get("view", None))
+        has_filters = bool(self.request_params.get("filters", None))
+        has_extended = bool(self.request_params.get("extended", None))
+        has_saved_view = bool(self.request_params.get("view_name", None))
+        return has_stages or has_filters or has_extended or has_saved_view
 
     @property
     def spaces(self):

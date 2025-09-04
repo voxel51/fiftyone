@@ -94,13 +94,13 @@ def execution_cache(
             size is 1024. The cache will evict the least recently used items when
             the size exceeds this limit.
 
-    note::
+    .. note::
 
         When using ``link_to_dataset=True``:
             - the associated store is deleted the dataset is deleted
             - the cache entry is namespaced to the dataset
 
-    note::
+    .. note::
 
         Return values will be coerced from JSON unsafe types to safe types.
         This may yield unexpected return values if the cached function returns
@@ -110,7 +110,8 @@ def execution_cache(
         This behavior can be overridden by providing custom ``serialize`` and/or
         ``deserialize`` functions.
 
-    Example Usage:
+    Examples::
+
         # Standalone function with default caching
         @execution_cache
         def expensive_query(ctx, path):

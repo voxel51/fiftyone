@@ -200,6 +200,25 @@ export class OperatorResult {
     public delegated: boolean = false,
     public errorMessage: string = null
   ) {}
+
+  static create(options: {
+    operator?: Operator;
+    result?: object;
+    executor?: Executor;
+    error?: string;
+    delegated?: boolean;
+    errorMessage?: string;
+  } = {}): OperatorResult {
+    return new OperatorResult(
+      options.operator || null,
+      options.result || {},
+      options.executor || null,
+      options.error || null,
+      options.delegated || false,
+      options.errorMessage || null
+    );
+  }
+
   hasOutputContent() {
     if (this.delegated) return false;
     return isObjWithContent(this.result) || isObjWithContent(this.error);

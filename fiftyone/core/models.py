@@ -835,8 +835,7 @@ def _make_data_loader(
     # functionality
     use_numpy = not isinstance(model, TorchModelMixin)
 
-    if num_workers is None:
-        num_workers = fout.recommend_num_workers()
+    num_workers = fout.recommend_num_workers(num_workers)
 
     if model.has_collate_fn:
         user_collate_fn = model.collate_fn
@@ -1935,8 +1934,7 @@ def _make_patch_data_loader(
     # functionality
     use_numpy = not isinstance(model, TorchModelMixin)
 
-    if num_workers is None:
-        num_workers = fout.recommend_num_workers()
+    num_workers = fout.recommend_num_workers(num_workers)
 
     dataset = fout.TorchImagePatchesDataset(
         samples=samples,

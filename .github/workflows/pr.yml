@@ -41,6 +41,7 @@ jobs:
               - 'setup.py'
               - '.github/workflows/build.yml'
               - '.github/workflows/test.yml'
+              - 'plugins/**'
 
   build:
     needs: modified-files
