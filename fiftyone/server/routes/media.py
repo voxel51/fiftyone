@@ -79,8 +79,10 @@ class Media(HTTPEndpoint):
         response.headers["Access-Control-Allow-Methods"] = "GET, HEAD, OPTIONS"
         response.headers[
             "Access-Control-Allow-Headers"
-        ] = "Range, Accept-Ranges, Content-Range, Content-Length"
-
+        ] = "Range, Content-Type, Authorization"
+        response.headers[
+            "Access-Control-Expose-Headers"
+        ] = "Accept-Ranges, Content-Range, Content-Length"
         return response
 
     async def ranged_file_response(
