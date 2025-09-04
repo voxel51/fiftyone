@@ -6,6 +6,7 @@ import * as PIXI from "pixi.js";
 import { Assets } from "pixi.js";
 import type { LoadOptions, ResourceLoader } from "./ResourceLoader";
 
+// todo: make this more robust and idiomatic
 PIXI.loadTextures.test = (_url, resolvedAsset) => {
   const format = resolvedAsset?.format;
   if (
@@ -29,25 +30,56 @@ PIXI.loadTextures.test = (_url, resolvedAsset) => {
  */
 export class PixiResourceLoader implements ResourceLoader {
   private initialized = false;
+  private initPromise: Promise<void> | null = null;
 
   /**
    * Initialize the Assets manager if not already done.
    * This should be called before loading any assets.
    */
   private async ensureInitialized(): Promise<void> {
-    if (!this.initialized) {
-      await Assets.init({
-        preferences: {
-          preferCreateImageBitmap: true,
-          preferWorkers: true,
-        },
-        texturePreference: {
-          resolution: window.devicePixelRatio,
-          format: ["avif", "webp", "jpg", "jpeg", "png"],
-        },
-      });
-      this.initialized = true;
+    if (this.initialized) {
+      return;
     }
+
+    if (this.initPromise) {
+      // If initialization is already in progress, wait for it
+      await this.initPromise;
+      return;
+    }
+
+    // Start initialization and store the promise
+    this.initPromise = this.performInitialization();
+
+    try {
+      await this.initPromise;
+      this.initialized = true;
+    } catch (error) {
+      // Clear the promise on failure so retries can attempt again
+      this.initPromise = null;
+      throw error;
+    }
+  }
+
+  /**
+   * Performs the actual Assets.init call
+   */
+  private async performInitialization(): Promise<void> {
+    // Safe fallback for SSR environments
+    const resolution =
+      typeof window !== "undefined" && window.devicePixelRatio
+        ? window.devicePixelRatio
+        : 1;
+
+    await Assets.init({
+      preferences: {
+        preferCreateImageBitmap: true,
+        preferWorkers: true,
+      },
+      texturePreference: {
+        resolution,
+        format: ["avif", "webp", "jpg", "jpeg", "png"],
+      },
+    });
   }
 
   /**
