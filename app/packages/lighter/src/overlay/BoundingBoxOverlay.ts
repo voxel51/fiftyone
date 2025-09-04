@@ -8,7 +8,6 @@ import {
   STROKE_WIDTH,
 } from "../constants";
 import { CONTAINS } from "../core/Scene2D";
-import { LIGHTER_EVENTS } from "../event/EventBus";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { Selectable } from "../selection/Selectable";
 import type {
@@ -60,7 +59,6 @@ export class BoundingBoxOverlay
   private isSelectedState = false;
   private relativeBounds: Rect;
   private absoluteBounds: Rect;
-  private isHoveredState = false;
 
   private _needsCoordinateUpdate = false;
   private textBounds?: Rect;
@@ -100,7 +98,8 @@ export class BoundingBoxOverlay
 
   setRelativeBounds(bounds: Rect): void {
     this.relativeBounds = { ...bounds };
-    this._needsCoordinateUpdate = false;
+    this._needsCoordinateUpdate = true;
+    this.markDirty();
   }
 
   getAbsoluteBounds(): Rect {
@@ -266,7 +265,8 @@ export class BoundingBoxOverlay
   onPointerUp(point: Point, event: PointerEvent): boolean {
     if (!this.dragStartPoint || !this.dragStartBounds) return false;
 
-    // Reset drag state
+    // Mark final position for relative-coordinate update and reset drag state
+    this.markForCoordinateUpdate();
     this.dragStartPoint = undefined;
     this.dragStartBounds = undefined;
 
@@ -319,7 +319,7 @@ export class BoundingBoxOverlay
    * @returns The confidence score, if any.
    */
   getConfidence(): number | undefined {
-    return this.options.confidence;
+    return this.options.label?.confidence;
   }
 
   /**
@@ -345,10 +345,6 @@ export class BoundingBoxOverlay
    */
   getContainmentLevel(point: Point): CONTAINS {
     const drawnBounds = this.getDrawnBBox();
-
-    // console.log(">>>ct: Drawn bounds are ", drawnBounds);
-    // console.log(">>>ct: Text bounds are ", this.textBounds);
-    // console.log(">>>ct: Point is ", point);
 
     // Check if point is inside the main bounding box
     if (this.isPointInRect(point, drawnBounds)) {

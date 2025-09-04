@@ -143,7 +143,7 @@ export const useBridge = (scene: Scene2D | null) => {
       }
 
       const overlays = scene.getSelectedOverlays();
-      const promises = overlays.map((overlay) => {
+      const promises = overlays.map((overlay) =>
         onSelectLabel({
           detail: {
             id: overlay.id,
@@ -153,9 +153,9 @@ export const useBridge = (scene: Scene2D | null) => {
             frameNumber: (overlay as any).label?.frame_number,
             sampleId: overlay.sampleId || "",
           },
-        });
-      });
-      await Promise.all(promises).then(() => {});
+        })
+      );
+      await Promise.all(promises);
     };
 
     scene.on(LIGHTER_EVENTS.OVERLAY_SELECT, handleOverlaySelect);

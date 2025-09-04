@@ -282,18 +282,7 @@ export class Scene2D {
    * Checks if an overlay contains a point.
    */
   private containsPoint(overlay: BaseOverlay, point: Point): CONTAINS {
-    const level = overlay.getContainmentLevel(point);
-
-    if (
-      overlay.getOverlayType() !== "ImageOverlay" &&
-      overlay.label &&
-      "label" in overlay.label &&
-      overlay.label.label === "airplane" &&
-      !("confidence" in overlay.label && overlay.label.confidence)
-    ) {
-      console.log(">>>level is ", level);
-    }
-    return level;
+    return overlay.getContainmentLevel(point);
   }
 
   /**
@@ -586,8 +575,6 @@ export class Scene2D {
     }
 
     this.interactionManager.reorderHandlers(this.overlayOrder);
-
-    console.log(">>>recalculateOverlayOrder end", this.overlayOrder);
   }
 
   /**
@@ -1041,6 +1028,9 @@ export class Scene2D {
 
     // Stop render loop
     this.config.renderer.stopRenderLoop();
+
+    // Clean up renderer
+    this.config.renderer.cleanUp();
   }
 
   /**

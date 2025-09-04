@@ -61,6 +61,8 @@ interaction handling, and overlay representation.
 -   Handles coordinate transformations
 -   Manages canonical media for spatial overlays
 -   Orchestrates interaction and selection systems
+-   Manages overlay ordering and rotation
+-   Handles render callbacks and scene options
 
 **Key Dependencies**:
 
@@ -73,8 +75,25 @@ class Scene2D {
     private coordinateSystem: CoordinateSystem;
     private renderingState: RenderingStateManager;
     private canonicalMedia?: CanonicalMedia;
+    private renderCallbacks: Map<string, RenderCallback>;
+    private overlayOrder: string[];
+    private rotation: number;
 }
 ```
+
+**Key Public Methods**:
+
+-   `addOverlay(overlay: BaseOverlay)`: Add overlay to scene
+-   `removeOverlay(id: string)`: Remove overlay from scene
+-   `startRenderLoop()`: Start the rendering loop
+-   `registerRenderCallback(callback: RenderCallback)`: Register render
+    callbacks
+-   `undo()`, `redo()`, `canUndo()`, `canRedo()`: Undo/redo operations
+-   `selectOverlay(id: string)`, `deselectOverlay(id: string)`: Selection
+    management
+-   `setCanonicalMedia(overlay: BaseOverlay & CanonicalMedia)`: Set coordinate
+    reference
+-   `getVisibleOverlays()`, `getSelectedOverlays()`: Query overlays
 
 ### 2. Event System
 
@@ -84,13 +103,19 @@ class Scene2D {
 
 **Key Event Types**:
 
--   **Overlay Events**: `OVERLAY_ADDED`, `OVERLAY_REMOVED`, `OVERLAY_LOADED`
+-   **Overlay Events**: `OVERLAY_ADDED`, `OVERLAY_REMOVED`, `OVERLAY_LOADED`,
+    `OVERLAY_ERROR`
+-   **Annotation Events**: `ANNOTATION_ADDED`, `ANNOTATION_REMOVED`
 -   **Interaction Events**: `OVERLAY_CLICK`, `OVERLAY_DRAG_START`,
-    `OVERLAY_HOVER`
--   **Selection Events**: `OVERLAY_SELECT`, `SELECTION_CHANGED`,
-    `SELECTION_CLEARED`
+    `OVERLAY_DRAG_MOVE`, `OVERLAY_DRAG_END`, `OVERLAY_HOVER`,
+    `OVERLAY_UNHOVER`, `OVERLAY_HOVER_MOVE`
+-   **Selection Events**: `OVERLAY_SELECT`, `OVERLAY_DESELECT`,
+    `SELECTION_CHANGED`, `SELECTION_CLEARED`
 -   **Spatial Events**: `SPATIAL_SHIFT`, `SPATIAL_RESIZE`, `SPATIAL_MOVE`
--   **System Events**: `RESIZE`, `CANONICAL_MEDIA_CHANGED`
+-   **System Events**: `RESIZE`, `CANONICAL_MEDIA_CHANGED`,
+    `SCENE_OPTIONS_CHANGED`
+-   **Resource Events**: `RESOURCE_LOADED`, `RESOURCE_ERROR`
+-   **Undo/Redo Events**: `UNDO`, `REDO`
 
 ### 3. Overlay System
 
@@ -110,7 +135,11 @@ class Scene2D {
 interface Spatial {
     getRelativeBounds(): Rect;
     setAbsoluteBounds(bounds: Rect): void;
+    getAbsoluteBounds(): Rect;
+    setRelativeBounds(bounds: Rect): void;
     needsCoordinateUpdate(): boolean;
+    markForCoordinateUpdate(): void;
+    markCoordinateUpdateComplete(): void;
 }
 
 interface Selectable {
@@ -122,10 +151,23 @@ interface Selectable {
 interface Movable {
     getPosition(): Point;
     setPosition(position: Point): void;
+    markDirty(): void;
+}
+
+interface Hoverable {
+    getTooltipInfo(): {
+        color: string;
+        field: string;
+        label: any;
+        type: string;
+    } | null;
+    onHoverEnter?(point: Point, event: PointerEvent): boolean;
+    onHoverLeave?(point: Point, event: PointerEvent): boolean;
+    onHoverMove?(point: Point, event: PointerEvent): boolean;
 }
 ```
 
-**Factory Pattern**: `OverlayFactory` for type-safe overlay creation
+**Factory Pattern**: `OverlayFactory` for type-safe dynamic overlay creation
 
 ### 4. Rendering System
 
@@ -142,6 +184,14 @@ interface Movable {
 -   **Element Tracking**: Map-based element management for disposal
 -   **Hit Testing**: Point-in-bounds testing for interaction
 -   **Performance**: Texture caching and optimized drawing operations
+-   **Image Support**: Multiple image source types (HTML, Canvas, Texture,
+    ImageData, Bitmap)
+
+**Renderer Methods**:
+
+-   `drawRect()`, `drawText()`, `drawLine()`, `drawImage()`: Drawing primitives
+-   `startRenderLoop()`, `stopRenderLoop()`: Render loop management
+-   `dispose()`, `hide()`, `show()`: Container management
 
 ### 5. Interaction System
 
@@ -161,6 +211,7 @@ interface Movable {
 -   **Undo**: `Ctrl+Z` (Windows/Linux) or `Cmd+Z` (Mac)
 -   **Redo**: `Ctrl+Y` or `Ctrl+Shift+Z` (Windows/Linux) or `Cmd+Y` or
     `Cmd+Shift+Z` (Mac)
+-   **Rotation**: Arrow Up/Down for overlay rotation
 
 **Features**:
 
@@ -175,16 +226,8 @@ interface Movable {
 
 **Features**:
 
--   Multi-selection support (Ctrl/Cmd+click)
--   Selection priority for overlapping overlays
 -   Programmatic selection API
 -   Event emission for selection changes
-
-**Selection Priority**:
-
--   Classifications: 15 (highest)
--   Bounding Boxes: 10 (medium)
--   Images: 5 (lowest)
 
 ### 7. Coordinate System
 
@@ -210,6 +253,12 @@ interface Movable {
 -   `UndoRedoManager` for stack management
 -   `MoveOverlayCommand` for overlay movement
 
+**Features**:
+
+-   Configurable stack size (default: 100)
+-   Automatic redo stack clearing on new commands
+-   Memory-efficient command management
+
 ### 9. Resource Management
 
 **Location**: `src/resource/`
@@ -224,15 +273,28 @@ interface Movable {
 
 -   Background loading with `loadBackground()`
 -   Retry logic with exponential backoff
--   Asset type hints for optimization
 -   Memory management with `unload()`
+
+### 10. Rendering State Management
+
+**Location**: `src/core/RenderingStateManager.ts`
+
+**Purpose**: Track overlay rendering status throughout the pipeline
+
+**Status Types**:
+
+-   `pending`: Initial state
+-   `decoded`: Resources loaded
+-   `painting`: Currently rendering
+-   `painted`: Successfully rendered
+-   `error`: Rendering failed
 
 ## Data Flow
 
 ### 1. Scene Initialization
 
 ```
-React Component → useLighter → Scene2D → Managers → EventBus
+React Component → useLighterSetup → Scene2D → Managers → EventBus
 ```
 
 ### 2. Overlay Addition
@@ -252,6 +314,7 @@ Scene2D.renderFrame() →
   ├── Coordinate Updates (spatial overlays)
   ├── Overlay.render() → Renderer2D.draw*()
   ├── State Management (pending → painting → painted)
+  ├── Render Callbacks (before/after phases)
   └── Error Handling (error status)
 ```
 
@@ -279,39 +342,23 @@ Canonical Media Bounds Change →
 
 ### Hooks Architecture
 
--   **`useLighterWithPixi`**: Main hook for scene lifecycle
+-   **`useLighterSetup`**: Main hook for scene lifecycle and initialization
+-   **`useLighter`**: Access to scene methods and undo/redo operations
 -   **`useSceneSelectionState`**: Selection state management
 -   **`usePixiRenderer`**: Renderer lifecycle
 -   **`usePixiResourceLoader`**: Resource loader management
-
-**Undo/Redo Support**:
-
-The `useLighterWithPixi` hook provides programmatic access to undo/redo
-operations:
-
-```typescript
-const { undo, redo, canUndo, canRedo } = useLighterWithPixi(canvasRef);
-
-// Programmatic undo/redo
-undo();
-redo();
-
-// Check if operations are available
-if (canUndo()) {
-    // Enable undo button
-}
-if (canRedo()) {
-    // Enable redo button
-}
-```
-
-Keyboard shortcuts are automatically enabled when using this hook.
+-   **`useLighterTooltipEventHandler`**: Tooltip event handling
+-   **`useBridge`**: Integration with FiftyOne state management
 
 ### Component Pattern
 
 ```typescript
 const LighterSampleRenderer = ({ sample, width, height, options }) => {
-    const { scene, isReady, addOverlay } = useLighter(canvasRef, options);
+    // Setup the scene
+    useLighterSetup(canvasRef, options);
+
+    // Access scene functionality
+    const { scene, isReady, addOverlay, undo, redo } = useLighter();
     const { selectedOverlayIds } = useSceneSelectionState(scene);
 
     // Sample loading and overlay creation
@@ -327,18 +374,20 @@ const LighterSampleRenderer = ({ sample, width, height, options }) => {
 -   **Element Reuse**: Update existing PixiJS elements instead of recreating
 -   **Texture Caching**: PixiJS Assets manager for texture reuse
 -   **Layered Rendering**: Separate containers for static and dynamic content
+-   **Render Callbacks**: Before/after render phases for custom logic
 
 ### 2. Memory Management
 
--   **Proper Disposal**: Overlay.destroy() and renderer.dispose()
--   **Resource Cleanup**: Texture destruction and event listener removal
+-   **Disposal**: Overlay.destroy() and renderer.dispose()
 -   **Weak References**: Event bus uses standard DOM event system
+-   **AbortController**: Proper cleanup of event listeners
 
 ### 3. Interaction Performance
 
 -   **Hit Testing**: Efficient bounds checking with element tracking
 -   **Event Delegation**: Canvas-level event handling with overlay routing
 -   **Selection Priority**: Quick resolution of overlapping overlays
+-   **Overlay Ordering**: Smart ordering for interactive elements
 
 ## Extension Points
 
@@ -369,21 +418,5 @@ class CustomRenderer implements Renderer2D {
 -   **Event System**: For custom event types and handlers
 -   **Factory Pattern**: For extensible overlay creation
 
-## Error Handling
-
-### 1. Rendering Errors
-
--   **Status Management**: OVERLAY_STATUS_ERROR for failed renders
--   **Error Events**: OVERLAY_ERROR events for external handling
--   **Graceful Degradation**: Continue rendering other overlays
-
-### 2. Resource Loading Errors
-
--   **Retry Logic**: Exponential backoff for network failures
--   **Fallback Loading**: Background loading with main thread fallback
--   **Error Events**: RESOURCE_ERROR events for user feedback
-
-### 3. Interaction Errors
-
--   **Event Safety**: Try-catch blocks in event handlers
--   **State Recovery**: Proper cleanup on interaction failures
+**Note**: PluginRegistry is currently marked as unused and needs to be
+integrated with FiftyOne plugins.

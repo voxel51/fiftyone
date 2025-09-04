@@ -53,8 +53,6 @@ export const useLighterTooltipEventHandler = (scene: Scene2D | null) => {
       return;
     }
 
-    console.log(">>> here in useEffect of tooltip event handler <<<");
-
     const handleHover = (event: CustomEvent) => {
       tooltipEventHandler(event, scene);
     };
