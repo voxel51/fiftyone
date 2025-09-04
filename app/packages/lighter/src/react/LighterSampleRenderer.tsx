@@ -22,10 +22,6 @@ import { convertLegacyToLighterDetection } from "./looker-lighter-bridge";
  * Props for the LighterSampleRenderer component.
  */
 export interface LighterSampleRendererProps {
-  /** Width of the canvas */
-  width?: number;
-  /** Height of the canvas */
-  height?: number;
   /** Custom CSS class name */
   className?: string;
   /** Sample to display */
@@ -37,8 +33,6 @@ export interface LighterSampleRendererProps {
  * This component demonstrates using the OverlayFactory to create overlays instead of direct instantiation.
  */
 export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
-  width,
-  height,
   className = "",
   sample,
 }) => {
@@ -60,8 +54,6 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
 
   /**
    * This effect is responsible for loading the sample and adding the overlays to the scene.
-   *
-   * Note:
    */
   useEffect(() => {
     if (!isReady || !scene) return;
@@ -106,6 +98,7 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
   return (
     <div
       className={`lighter-sample-renderer ${className}`}
+      data-cy="lighter-sample-renderer"
       style={{
         width: "100%",
         height: "100%",
@@ -115,6 +108,7 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
     >
       <canvas
         ref={canvasRef}
+        data-cy="lighter-sample-renderer-canvas"
         style={{
           display: "block",
           flex: 1,
