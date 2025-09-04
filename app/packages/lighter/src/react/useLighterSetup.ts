@@ -31,7 +31,7 @@ export const useLighterSetup = (
 ) => {
   const [scene, setScene] = useAtom(lighterSceneAtom);
 
-  // this is the bridge between FiftyOne state management system and Lighter
+  // This is the bridge between FiftyOne state management system and Lighter
   useBridge(scene);
 
   useEffect(() => {
@@ -60,6 +60,9 @@ export const useLighterSetup = (
       options: sceneOptions,
     });
 
+    // Guard against multiple calls to setScene because of async IIFEs
+    let cancelled = false;
+
     (async () => {
       // Initialize renderer if it's a PixiRenderer2D and not already initialized
       if (!rendererInstance.isReady()) {
@@ -68,20 +71,15 @@ export const useLighterSetup = (
 
       await sceneInstance.startRenderLoop();
 
-      // Store the scene instance in global state
-      setScene(sceneInstance);
+      if (!cancelled) {
+        setScene(sceneInstance);
+      }
     })();
 
     return () => {
+      cancelled = true;
       sceneInstance.destroy();
       setScene(null);
-
-      if ("gl" in rendererInstance.getPixiApp().renderer) {
-        // note: this destroys webgl context. right now we're creating a new one per sample...
-        // might want to consider using a global pixi renderer. the cost of doing that is that we have to manage lifecycle really well.
-        // https://pixijs.com/8.x/guides/concepts/architecture
-        rendererInstance.getPixiApp().destroy(true);
-      }
     };
   }, [canvasRef, setScene]);
 

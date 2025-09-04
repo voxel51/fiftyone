@@ -12,7 +12,7 @@ import {
   State,
   useAssertedRecoilValue,
 } from "@fiftyone/state";
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { ImageOptions, ImageOverlay, overlayFactory } from "../index";
 import { useLighter, useLighterSetup } from "./index";
@@ -43,10 +43,6 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
   sample,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [canvasDimensions, setCanvasDimensions] = useState({
-    width: width || 0,
-    height: height || 0,
-  });
 
   const options = useRecoilValue(
     fos.lookerOptions({ modal: true, withFilter: false })
@@ -58,55 +54,54 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
   // Get access to the lighter instance
   const { scene, isReady, addOverlay } = useLighter();
 
-  // Get actual canvas dimensions from parent container
-  useLayoutEffect(() => {
-    const canvas = canvasRef.current;
-
-    if (!canvas) return;
-
-    const { width: actualWidth, height: actualHeight } =
-      canvas.parentElement!.getBoundingClientRect();
-    setCanvasDimensions({ width: actualWidth, height: actualHeight });
-  }, [canvasRef]);
-
   const schema = useAssertedRecoilValue(
     fieldSchema({ space: State.SPACE.SAMPLE })
   );
 
+  /**
+   * This effect is responsible for loading the sample and adding the overlays to the scene.
+   *
+   * Note:
+   */
   useEffect(() => {
-    if (isReady && scene) {
-      const mediaUrl =
-        sample.urls.length > 0 ? getSampleSrc(sample.urls[0].url!) : null;
+    if (!isReady || !scene) return;
 
-      if (mediaUrl) {
-        const mediaOverlay = overlayFactory.create<ImageOptions, ImageOverlay>(
-          "image",
-          {
-            src: mediaUrl,
-            maintainAspectRatio: true,
-          }
-        );
-        addOverlay(mediaOverlay);
+    const mediaUrl =
+      sample.urls.length > 0 && sample.urls[0].url
+        ? getSampleSrc(sample.urls[0].url)
+        : null;
 
-        // Set the image overlay as canonical media for coordinate transformations
-        scene.setCanonicalMedia(mediaOverlay);
-      }
-
-      // Load and add overlays from the sample
-      const overlays = loadOverlays(sample.sample, schema, false);
-
-      for (const overlay of overlays) {
-        if (overlay instanceof DetectionOverlay) {
-          // Convert legacy overlay to lighter overlay with relative coordinates
-          const lighterOverlay = convertLegacyToLighterDetection(
-            overlay,
-            sample.id
-          );
-          addOverlay(lighterOverlay);
+    if (mediaUrl) {
+      const mediaOverlay = overlayFactory.create<ImageOptions, ImageOverlay>(
+        "image",
+        {
+          src: mediaUrl,
+          maintainAspectRatio: true,
         }
+      );
+      addOverlay(mediaOverlay);
+
+      // Set the image overlay as canonical media for coordinate transformations
+      scene.setCanonicalMedia(mediaOverlay);
+    }
+
+    const overlays = loadOverlays(sample.sample, schema, false);
+
+    for (const overlay of overlays) {
+      if (overlay instanceof DetectionOverlay) {
+        // Convert legacy overlay to lighter overlay with relative coordinates
+        const lighterOverlay = convertLegacyToLighterDetection(
+          overlay,
+          sample.id
+        );
+        addOverlay(lighterOverlay);
       }
     }
-  }, [isReady, addOverlay, sample, scene, schema]); // Add scene and schema to dependencies
+
+    return () => {
+      scene.destroy();
+    };
+  }, [isReady, addOverlay, sample, scene, schema]);
 
   return (
     <div

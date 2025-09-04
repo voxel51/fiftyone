@@ -114,7 +114,9 @@ export class PixiRenderer2D implements Renderer2D {
     this.isRunning = false;
     this.renderLoop = undefined;
 
-    this.app.ticker.remove(this.tick);
+    if (this.app.ticker) {
+      this.app.ticker.remove(this.tick);
+    }
   }
 
   drawRect(bounds: Rect, style: DrawStyle, containerId: string): void {
@@ -521,6 +523,15 @@ export class PixiRenderer2D implements Renderer2D {
         point.y >= bounds.y &&
         point.y <= bounds.y + bounds.height
       );
+    }
+  }
+
+  cleanUp(): void {
+    // note: this destroys webgl context. right now we're creating a new one per sample...
+    // might want to consider using a global pixi renderer. the cost of doing that is that we have to manage lifecycle really well.
+    // https://pixijs.com/8.x/guides/concepts/architecture
+    if (this.app?.renderer && "gl" in this.app.renderer) {
+      this.app.destroy(true);
     }
   }
 }

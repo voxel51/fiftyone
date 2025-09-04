@@ -123,4 +123,10 @@ export interface Renderer2D {
    * Returns the underlying HTMLCanvasElement used for rendering.
    */
   getCanvas(): HTMLCanvasElement;
+
+  /**
+   * Cleans up the renderer.
+   * Releases any resources held by the renderer.
+   */
+  cleanUp(): void;
 }
