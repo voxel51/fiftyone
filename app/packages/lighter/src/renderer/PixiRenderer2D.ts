@@ -2,6 +2,7 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
+import { Viewport } from "pixi-viewport";
 import * as PIXI from "pixi.js";
 import {
   DEFAULT_TEXT_PADDING,
@@ -23,14 +24,15 @@ import type { ImageOptions, ImageSource, Renderer2D } from "./Renderer2D";
 import { DashLine } from "./pixi-renderer-utils/dashed-line";
 
 /**
- * PixiJS v8 renderer
+ * PixiJS renderer
  */
 export class PixiRenderer2D implements Renderer2D {
   private app!: PIXI.Application;
-  private stage!: PIXI.Container;
   private renderLoop?: () => void;
   private isRunning = false;
   public eventBus?: EventBus;
+
+  private viewport?: Viewport;
 
   private resizeObserver?: ResizeObserver;
 
@@ -48,7 +50,6 @@ export class PixiRenderer2D implements Renderer2D {
   }
 
   public async initializePixiJS(): Promise<void> {
-    // Initialize PixiJS application with performance optimizations
     this.app = new PIXI.Application();
 
     // Set up resize observer to handle canvas resizing
@@ -58,7 +59,6 @@ export class PixiRenderer2D implements Renderer2D {
         if (this.app && this.isInitialized) {
           this.app.renderer.resize(width, height);
 
-          // Emit resize event to the event bus
           if (this.eventBus) {
             this.eventBus.emit({
               type: LIGHTER_EVENTS.RESIZE,
@@ -84,15 +84,23 @@ export class PixiRenderer2D implements Renderer2D {
       backgroundAlpha: 0,
     });
 
-    this.stage = this.app.stage;
+    this.viewport = new Viewport({
+      events: this.app.renderer.events,
+    });
+
+    this.app.stage.addChild(this.viewport);
+
+    // Activate plugins
+    this.viewport.drag().pinch().wheel().decelerate();
 
     // Create containers for proper layering hierarchy
     this.foregroundContainer = new PIXI.Container();
     this.backgroundContainer = new PIXI.Container();
 
-    // Add containers to stage in proper layering order (background to foreground)
-    this.stage.addChild(this.backgroundContainer); // Background content (images, etc.)
-    this.stage.addChild(this.foregroundContainer); // Foreground content (graphics, text, overlays)
+    // Background content (image, etc.)
+    this.viewport.addChild(this.backgroundContainer);
+    // Foreground content (graphics, text, non-image overlays)
+    this.viewport.addChild(this.foregroundContainer);
 
     this.isInitialized = true;
   }
@@ -344,13 +352,6 @@ export class PixiRenderer2D implements Renderer2D {
   }
 
   /**
-   * Get the stage for direct PixiJS manipulation
-   */
-  getStage(): PIXI.Container {
-    return this.stage;
-  }
-
-  /**
    * Check if the renderer is initialized
    */
   isReady(): boolean {
@@ -405,6 +406,10 @@ export class PixiRenderer2D implements Renderer2D {
     container.addChild(element);
   }
 
+  /**
+   * Disposes of a container
+   * @param containerId - The container ID to dispose
+   */
   dispose(containerId: string): void {
     const container = this.containers.get(containerId);
     if (container) {
@@ -436,7 +441,7 @@ export class PixiRenderer2D implements Renderer2D {
   }
 
   /**
-   * Update resource bounds directly without recreating the sprite to avoid flicker during resize
+   * Update resource bounds directly without recreating the sprite
    */
   updateResourceBounds(containerId: string, bounds: Rect): void {
     const container = this.containers.get(containerId);

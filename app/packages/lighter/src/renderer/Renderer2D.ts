@@ -4,11 +4,11 @@
 
 import { EventBus } from "../event/EventBus";
 import type {
+  Dimensions2D,
   DrawStyle,
   Point,
   Rect,
   TextOptions,
-  Dimensions2D,
 } from "../types";
 
 /**
@@ -41,23 +41,14 @@ export interface ImageSource {
  */
 export interface ImageOptions {
   opacity?: number;
-  rotation?: number; // in radians
+  // in radians
+  rotation?: number;
   scaleX?: number;
   scaleY?: number;
 }
 
 /**
- * Generic options for resource operations.
- */
-export interface ResourceOptions {
-  opacity?: number;
-  rotation?: number; // in radians
-  scaleX?: number;
-  scaleY?: number;
-}
-
-/**
- * 2D renderer interface (merges backend and strategy responsibilities).
+ * 2D renderer interface.
  */
 export interface Renderer2D {
   // Infrastructure
@@ -94,7 +85,7 @@ export interface Renderer2D {
   show(containerId: string): void;
 
   /**
-   * Update resource bounds directly without recreating the sprite to avoid flicker during resize
+   * Update resource bounds
    * @param containerId - The container ID.
    * @param bounds - The new bounds for the resource.
    */
