@@ -58,13 +58,6 @@ export abstract class BaseOverlay implements InteractionHandler {
    */
   attachEventBus(bus: EventBus): void {
     this.eventBus = bus;
-    // Listen for undo/redo events
-    bus.on(LIGHTER_EVENTS.UNDO, () => {
-      // Handle undo
-    });
-    bus.on(LIGHTER_EVENTS.REDO, () => {
-      // Handle redo
-    });
   }
 
   /**

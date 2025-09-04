@@ -911,8 +911,18 @@ export class Scene2D {
    *
    * @param event - The event to dispatch.
    */
-  dispatch(event: LighterEvent): void {
+  private dispatch(event: LighterEvent): void {
     this.config.eventBus.emit(event);
+  }
+
+  /**
+   * Dispatches an event through the scene's event bus.
+   * Use `executeCommand` instead of this method where possible.
+   *
+   * @param event - The event to dispatch.
+   */
+  public dispatch_DANGEROUSLY(event: LighterEvent): void {
+    this.dispatch(event);
   }
 
   /**
@@ -923,9 +933,8 @@ export class Scene2D {
     command.execute();
     this.undoRedo.push(command);
 
-    // Emit undo/redo event
     this.dispatch({
-      type: LIGHTER_EVENTS.UNDO,
+      type: LIGHTER_EVENTS.COMMAND_EXECUTED,
       detail: { commandId: command.id },
     });
   }

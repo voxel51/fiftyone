@@ -20,9 +20,11 @@ export const LIGHTER_EVENTS = {
   ANNOTATION_ADDED: "annotation-added",
   /** Emitted when an annotation is removed from the scene. An annotation is an overlay after it's committed to the scene. */
   ANNOTATION_REMOVED: "annotation-removed",
-  /** Emitted when an undo operation is performed */
+  /** Emitted when a new command is executed and added to the undo stack */
+  COMMAND_EXECUTED: "command-executed",
+  /** Emitted when a command is undone (reversed) */
   UNDO: "undo",
-  /** Emitted when a redo operation is performed */
+  /** Emitted when a command is redone (re-executed) */
   REDO: "redo",
   /** Emitted when a resource (image, texture, etc.) has finished loading. This doesn't apply to overlays that have no media. */
   RESOURCE_LOADED: "resource-loaded",
@@ -84,6 +86,10 @@ export type LighterEvent =
       detail: { id: string; annotation: any };
     }
   | { type: typeof LIGHTER_EVENTS.ANNOTATION_REMOVED; detail: { id: string } }
+  | {
+      type: typeof LIGHTER_EVENTS.COMMAND_EXECUTED;
+      detail: { commandId: string };
+    }
   | { type: typeof LIGHTER_EVENTS.UNDO; detail: { commandId: string } }
   | { type: typeof LIGHTER_EVENTS.REDO; detail: { commandId: string } }
   | {

@@ -85,7 +85,7 @@ export const useLighterSetupWithPixi = (
 
   useEffect(() => {
     if (scene) {
-      scene.dispatch({
+      scene.dispatch_DANGEROUSLY({
         type: LIGHTER_EVENTS.SCENE_OPTIONS_CHANGED,
         detail: {
           activePaths: options.activePaths,
