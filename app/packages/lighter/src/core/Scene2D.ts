@@ -928,14 +928,18 @@ export class Scene2D {
   /**
    * Executes a command and adds it to the undo stack.
    * @param command - The command to execute.
+   * @param isUndoable - Whether the command is undoable.
    */
-  executeCommand(command: Command): void {
+  executeCommand(command: Command, isUndoable = true): void {
     command.execute();
-    this.undoRedo.push(command);
+
+    if (isUndoable) {
+      this.undoRedo.push(command);
+    }
 
     this.dispatch({
       type: LIGHTER_EVENTS.COMMAND_EXECUTED,
-      detail: { commandId: command.id },
+      detail: { commandId: command.id, isUndoable },
     });
   }
 

@@ -88,7 +88,7 @@ export type LighterEvent =
   | { type: typeof LIGHTER_EVENTS.ANNOTATION_REMOVED; detail: { id: string } }
   | {
       type: typeof LIGHTER_EVENTS.COMMAND_EXECUTED;
-      detail: { commandId: string };
+      detail: { commandId: string; isUndoable: boolean };
     }
   | { type: typeof LIGHTER_EVENTS.UNDO; detail: { commandId: string } }
   | { type: typeof LIGHTER_EVENTS.REDO; detail: { commandId: string } }
