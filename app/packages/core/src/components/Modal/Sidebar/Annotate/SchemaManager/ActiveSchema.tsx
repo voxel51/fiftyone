@@ -1,39 +1,55 @@
 import { useTheme } from "@fiftyone/components";
+import { useOperatorExecutor } from "@fiftyone/operators";
+import { snackbarMessage } from "@fiftyone/state";
 import { Typography } from "@mui/material";
-import { atom, useAtomValue, useSetAtom } from "jotai";
+import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { atomFamily } from "jotai/utils";
-import React from "react";
+import React, { useCallback } from "react";
+import { useSetRecoilState } from "recoil";
 import { RoundButtonWhite } from "../Actions";
-import { activePaths, removeFromActiveSchemas, schema } from "../state";
+import { activePaths, removeFromActiveSchemas } from "../state";
 import { Container, ItemLeft, ItemRight } from "./Components";
 import FieldRow from "./FieldRow";
 import Footer from "./Footer";
 import { Header } from "./Modal";
 import NoActiveSchema from "./NoActiveSchema";
 
-const deselectedFields = atom(new Set<string>());
+const useDeactivate = () => {
+  const removeFromActiveSchema = useSetAtom(removeFromActiveSchemas);
+  const [selected, setSelected] = useAtom(selectedFields);
+  const activateFields = useOperatorExecutor("deactivate_annotation_schemas");
+  const setMessage = useSetRecoilState(snackbarMessage);
+
+  return useCallback(
+    (path?: string) => {
+      removeFromActiveSchema(path ? new Set([path]) : selected);
+      activateFields.execute({ paths: path ? [path] : Array.from(selected) });
+      setSelected(new Set());
+      const size = path ? 1 : selected.size;
+      setMessage(`${size} schema${size > 1 ? "s" : ""} deactivated`);
+    },
+    [activateFields, removeFromActiveSchema, selected, setSelected, setMessage]
+  );
+};
+
+const selectedFields = atom(new Set<string>());
 
 export const isSelected = atomFamily((path: string) =>
   atom(
-    (get) => !get(deselectedFields).has(path),
+    (get) => get(selectedFields).has(path),
     (get, set, toggle: boolean) => {
-      const selected = new Set(get(deselectedFields));
-      toggle ? selected.delete(path) : selected.add(path);
-      set(deselectedFields, selected);
+      const selected = new Set(get(selectedFields));
+      toggle ? selected.add(path) : selected.delete(path);
+      set(selectedFields, selected);
     }
   )
 );
 
-const disableSchema = atom(null, (get, set, path: string) =>
-  set(schema(path), { ...get(schema(path)), active: false })
-);
-
 const Rows = () => {
   const fields = useAtomValue(activePaths);
-  const deselected = useAtomValue(deselectedFields);
-  const disable = useSetAtom(disableSchema);
+  const selected = useAtomValue(selectedFields);
   const theme = useTheme();
-  const removeFromActiveSchema = useSetAtom(removeFromActiveSchemas);
+  const deactivate = useDeactivate();
 
   if (!fields.length) {
     return null;
@@ -47,20 +63,18 @@ const Rows = () => {
             <Typography color="secondary" padding="1rem 0">
               {fields.length} active schema{fields.length === 1 ? "" : "s"}
             </Typography>
-            {!!deselected.size && (
+            {!!selected.size && (
               <>
                 <span style={{ color: theme.background.level1 }}>&bull;</span>
                 <Typography color="secondary" padding="1rem 0">
-                  {deselected.size} deselected
+                  {selected.size} selected
                 </Typography>
               </>
             )}
           </ItemLeft>
           <ItemRight>
-            {!!deselected.size && (
-              <RoundButtonWhite
-                onClick={() => removeFromActiveSchema(deselected)}
-              >
+            {!!selected.size && (
+              <RoundButtonWhite onClick={() => deactivate()}>
                 Remove from active schema
               </RoundButtonWhite>
             )}
@@ -71,11 +85,10 @@ const Rows = () => {
             key={path}
             path={path}
             isSelected={isSelected(path)}
-            onDelete={() => disable(path)}
+            onDelete={() => deactivate(path)}
           />
         ))}
       </Container>
-      <Footer />
     </>
   );
 };
@@ -90,11 +103,24 @@ const FallbackItem = () => {
 };
 
 const ActiveSchema = () => {
+  const [selected, setSelected] = useAtom(selectedFields);
+  const deactivate = useDeactivate();
   return (
     <>
       <Rows />
-
       <FallbackItem />
+      {!!selected.size && (
+        <Footer
+          primaryButton={{
+            onClick: deactivate,
+            text: "Deactivate fields",
+          }}
+          secondaryButton={{
+            onClick: () => setSelected(new Set()),
+            text: "Cancel",
+          }}
+        />
+      )}
     </>
   );
 };

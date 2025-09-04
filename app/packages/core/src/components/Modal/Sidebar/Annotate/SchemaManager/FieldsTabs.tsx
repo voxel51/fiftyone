@@ -53,7 +53,7 @@ const FieldsTabs = () => {
       }}
     >
       <Tab
-        label="Active schema"
+        label="Active fields"
         value="active"
         onClick={() => setTab("active")}
       />

@@ -1,8 +1,6 @@
 import { MuiButton } from "@fiftyone/components";
-import { useSetAtom } from "jotai";
 import React from "react";
 import styled from "styled-components";
-import { showModal } from "../state";
 
 const Container = styled.div`
   width: 100%;
@@ -18,19 +16,40 @@ const Container = styled.div`
   background: ${({ theme }) => theme.background.level2};
 `;
 
-const Footer = () => {
-  const close = useSetAtom(showModal);
+interface Button {
+  onClick: () => void;
+  text: string;
+  disabled?: boolean;
+}
+
+const Footer = ({
+  primaryButton,
+  secondaryButton,
+}: {
+  primaryButton: Button;
+  secondaryButton?: Button;
+}) => {
   return (
     <Container>
+      {secondaryButton ? (
+        <MuiButton
+          variant="outlined"
+          color="secondary"
+          onClick={secondaryButton.onClick}
+          disabled={secondaryButton.disabled}
+        >
+          {secondaryButton.text}
+        </MuiButton>
+      ) : (
+        <div />
+      )}
       <MuiButton
-        variant="outlined"
-        color="secondary"
-        onClick={() => alert("Cancel")}
+        variant="contained"
+        color="primary"
+        onClick={primaryButton.onClick}
+        disabled={primaryButton.disabled}
       >
-        Cancel
-      </MuiButton>
-      <MuiButton variant="contained" color="primary" onClick={close}>
-        Done
+        {primaryButton.text}
       </MuiButton>
     </Container>
   );

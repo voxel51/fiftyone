@@ -4416,6 +4416,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         field_doc.description = field.description
         field_doc.info = field.info
+        field_doc.schema = field.schema
 
         try:
             self.save()

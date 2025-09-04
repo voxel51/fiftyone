@@ -77,6 +77,7 @@ export enum EntryKind {
   GROUP = "GROUP",
   INPUT = "INPUT",
   LABEL = "LABEL",
+  LOADING = "LOADING",
   PATH = "PATH",
 }
 
@@ -107,11 +108,17 @@ export interface LabelEntry {
   id: string;
 }
 
+export interface LoadingEntry {
+  kind: EntryKind.LOADING;
+  id: string;
+}
+
 export type SidebarEntry =
   | EmptyEntry
   | GroupEntry
   | InputEntry
   | LabelEntry
+  | LoadingEntry
   | PathEntry;
 
 export const readableTags = selectorFamily<

@@ -4,7 +4,7 @@ import type { WritableAtom } from "jotai";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import React from "react";
 import { RoundButtonWhite } from "../Actions";
-import { currentPath, schema } from "../state";
+import { currentPath, fieldType } from "../state";
 import { Item, ItemLeft, ItemRight } from "./Components";
 
 type SelectedAtom = WritableAtom<boolean, [toggle: boolean], void>;
@@ -31,14 +31,14 @@ const FieldRow = ({
   onDelete?: () => void;
 }) => {
   const setField = useSetAtom(currentPath);
-  const type = useAtomValue(schema(path))?.type;
+  const fType = useAtomValue(fieldType(path));
 
   return (
     <Item>
       <ItemLeft>
         {isSelected && <Selectable isSelected={isSelected} />}
         <Typography>{path}</Typography>
-        <Typography color="secondary">{type}</Typography>
+        <Typography color="secondary">{fType}</Typography>
       </ItemLeft>
 
       <ItemRight>

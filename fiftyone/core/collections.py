@@ -3339,7 +3339,7 @@ class SampleCollection(object):
             progress=progress,
         )
 
-    def compute_annotation_schema(self, field_name):
+    def compute_annotation_schema(self, field_name, scan_samples=True):
         """Compute the annotation schema for a collection's field
 
         An annotation schema is defined by a type. A field type and an annotation
@@ -3364,7 +3364,9 @@ class SampleCollection(object):
         Returns:
             an annotation schema dictionary
         """
-        return foan.compute_annotation_schema(self, field_name)
+        return foan.compute_annotation_schema(
+            self, field_name, scan_samples=scan_samples
+        )
 
     def apply_model(
         self,

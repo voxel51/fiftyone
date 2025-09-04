@@ -1,19 +1,19 @@
-import type { ModalSample, PathFilterSelector } from "@fiftyone/state";
+import type {
+  LabelEntry,
+  ModalSample,
+  PathFilterSelector,
+  SidebarEntry,
+} from "@fiftyone/state";
 import {
   EntryKind,
   activeFields,
   modalSample,
   pathFilter,
 } from "@fiftyone/state";
-import { atom, getDefaultStore } from "jotai";
-import { splitAtom } from "jotai/utils";
+import { useAtomValue } from "jotai";
 import { get } from "lodash";
-import { useRecoilValue } from "recoil";
-
-const jotaiStore = getDefaultStore();
-
-const labelsAtom = atom([]);
-const labelAtom = splitAtom(labelsAtom, (label) => label._id);
+import { useRecoilValue, useRecoilValueLoadable } from "recoil";
+import { objectsExpanded, primitivesExpanded } from "./GroupEntry";
 
 const getLabels = ({
   active,
@@ -26,41 +26,44 @@ const getLabels = ({
   paths: string[];
 }) => {
   const data = sample.sample;
-
-  const labels = [];
+  const labels: LabelEntry[] = [];
 
   for (let index = 0; index < active.length; index++) {
     const path = active[index];
-    const d = get(data, path);
+    const result = get(data, path);
 
-    if (Array.isArray(d)) {
-      labels.push(...d);
-    } else {
-      labels.push(d);
+    const array = Array.isArray(result) ? result : result ? [result] : [];
+
+    for (const label of array) {
+      labels.push({ kind: EntryKind.LABEL, id: label._id, label });
     }
   }
 
   return labels;
 };
 
-const useEntries = () => {
+const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
   const active = useRecoilValue(activeFields({ expanded: true, modal: true }));
   const filter = useRecoilValue(pathFilter(true));
-  const modalSampleData = useRecoilValue(modalSample);
+  const modalSampleData = useRecoilValueLoadable(modalSample);
+  const showObjects = useAtomValue(objectsExpanded);
+  const showPrimitives = useAtomValue(primitivesExpanded);
+
+  const labels = showObjects
+    ? modalSampleData.state === "loading"
+      ? [{ kind: EntryKind.LOADING, id: "labels" }]
+      : getLabels({ active, filter, sample: modalSampleData.contents })
+    : [];
+
+  const primitives = showPrimitives ? [] : [];
 
   return [
     [
       { kind: EntryKind.GROUP, name: "Objects" },
-      ...getLabels({ active, filter, sample: modalSampleData }).map((la) => {
-        return {
-          kind: EntryKind.LABEL,
-          id: la?._id,
-          label: la,
-        };
-      }),
+      ...labels,
       { kind: EntryKind.GROUP, name: "Primitives" },
-    ],
-    (entry) => {},
+    ] as SidebarEntry[],
+    () => {},
   ];
 };
 

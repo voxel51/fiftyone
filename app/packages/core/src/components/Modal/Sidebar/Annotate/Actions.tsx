@@ -1,6 +1,7 @@
 import { useTheme } from "@fiftyone/components";
 import React from "react";
 import styled from "styled-components";
+import useShowModal from "./useShowModal";
 
 const ActionsDiv = styled.div`
   align-items: center;
@@ -209,7 +210,8 @@ const Redo = () => {
 };
 
 const Schema = () => {
-  return <RoundButton>Schema</RoundButton>;
+  const showModal = useShowModal();
+  return <RoundButton onClick={showModal}>Schema</RoundButton>;
 };
 
 const Actions = () => {

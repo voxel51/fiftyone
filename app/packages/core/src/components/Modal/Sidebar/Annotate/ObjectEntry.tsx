@@ -42,7 +42,7 @@ const Line = styled.div<{ fill: string }>`
   background: ${({ fill }) => fill};
 `;
 
-const ObjectItem = () => {
+const ObjectEntry = () => {
   return (
     <Container>
       <Line fill="white" />
@@ -63,4 +63,4 @@ const ObjectItem = () => {
   );
 };
 
-export default ObjectItem;
+export default ObjectEntry;

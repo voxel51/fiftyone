@@ -80,7 +80,8 @@ const Toggle = ({ name }: { name: string }) => {
 
 export const getGroupAtom = (name: string) =>
   name === "Objects" ? objectsExpanded : primitivesExpanded;
-export const objectsExpanded = atom(false);
+
+export const objectsExpanded = atom(true);
 export const primitivesExpanded = atom(false);
 
 const Group = React.memo(({ name }: { name: string }) => {

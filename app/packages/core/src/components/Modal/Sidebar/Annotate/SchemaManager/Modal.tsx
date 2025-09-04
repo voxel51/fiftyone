@@ -113,7 +113,7 @@ const Page = () => {
   const tab = useAtomValue(activeSchemaTab);
 
   if (field) {
-    return <EditAnnotationFieldSchema />;
+    return <EditAnnotationFieldSchema path={field} />;
   }
 
   if (tab === "active") {
@@ -131,17 +131,17 @@ const Modal = () => {
     }
     return el;
   }, []);
-  const close = useSetAtom(showModal);
+  const show = useSetAtom(showModal);
 
   return createPortal(
-    <Background onClick={close}>
+    <Background onClick={() => show(false)}>
       <Container onClick={(e) => e.stopPropagation()}>
         <Header>
           <Heading />
           <Close
             color="secondary"
             style={{ height: "3rem", width: "3rem" }}
-            onClick={close}
+            onClick={() => show(false)}
           />
         </Header>
 

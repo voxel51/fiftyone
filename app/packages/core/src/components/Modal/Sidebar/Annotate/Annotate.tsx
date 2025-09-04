@@ -1,16 +1,40 @@
+import { LoadingSpinner } from "@fiftyone/components";
 import { EntryKind } from "@fiftyone/state";
+import { Typography } from "@mui/material";
 import { atom, useAtomValue } from "jotai";
 import React from "react";
+import styled from "styled-components";
 import Sidebar from "../../../Sidebar";
 import Actions from "./Actions";
 import GroupEntry from "./GroupEntry";
 import ImportSchema from "./ImportSchema";
-import ObjectItem from "./ObjectEntry";
+import LoadingEntry from "./LoadingEntry";
+import ObjectEntry from "./ObjectEntry";
 import SchemaManager from "./SchemaManager";
-import { activePaths, showModal } from "./state";
+import { activePaths, schemas, showModal } from "./state";
 import useEntries from "./useEntries";
 
 const showImportPage = atom((get) => !get(activePaths).length);
+
+const Container = styled.div`
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  overflow: auto;
+`;
+
+const Loading = () => {
+  return (
+    <Container>
+      <LoadingSpinner />
+      <Typography color="secondary" padding="1rem 0">
+        Loading
+      </Typography>
+    </Container>
+  );
+};
 
 const AnnotateSidebar = () => {
   return (
@@ -25,7 +49,14 @@ const AnnotateSidebar = () => {
 
           if (entry.kind === EntryKind.LABEL) {
             return {
-              children: <ObjectItem />,
+              children: <ObjectEntry />,
+              disabled: true,
+            };
+          }
+
+          if (entry.kind === EntryKind.LOADING) {
+            return {
+              children: <LoadingEntry />,
               disabled: true,
             };
           }
@@ -41,6 +72,11 @@ const AnnotateSidebar = () => {
 const Annotate = () => {
   const showSchemaModal = useAtomValue(showModal);
   const showImport = useAtomValue(showImportPage);
+  const loading = useAtomValue(schemas) === null;
+
+  if (loading) {
+    return <Loading />;
+  }
 
   return (
     <>

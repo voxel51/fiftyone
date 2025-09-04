@@ -19,6 +19,14 @@ import fiftyone.operators.types as types
 from fiftyone.core.odm.workspace import default_workspace_factory
 from .group_by import GroupBy
 from .model_evaluation import ConfigureScenario
+from .annotation import (
+    ActivateAnnotationSchemas,
+    ComputeAnnotationSchema,
+    DeactivateAnnotationSchemas,
+    DeleteAnnotationSchema,
+    GetAnnotationSchemas,
+    SaveAnnotationSchema,
+)
 
 
 class EditFieldInfo(foo.Operator):
@@ -2733,3 +2741,11 @@ def register(p):
 
     # view stages
     p.register(GroupBy)
+
+    # annotation
+    p.register(ActivateAnnotationSchemas)
+    p.register(ComputeAnnotationSchema)
+    p.register(DeactivateAnnotationSchemas)
+    p.register(DeleteAnnotationSchema)
+    p.register(GetAnnotationSchemas)
+    p.register(SaveAnnotationSchema)

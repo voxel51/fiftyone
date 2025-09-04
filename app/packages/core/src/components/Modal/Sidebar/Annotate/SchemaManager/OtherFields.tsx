@@ -1,13 +1,37 @@
+import { useOperatorExecutor } from "@fiftyone/operators";
+import { snackbarMessage } from "@fiftyone/state";
 import { Typography } from "@mui/material";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { atomFamily } from "jotai/utils";
-import React from "react";
+import React, { useCallback } from "react";
+import { useSetRecoilState } from "recoil";
 import { RoundButton } from "../Actions";
-import { addToActiveSchemas, inactivePaths, schema } from "../state";
+import {
+  addToActiveSchemas,
+  deleteSchemas,
+  inactivePaths,
+  schema,
+} from "../state";
 import { Container, ItemLeft, ItemRight, MutedItem } from "./Components";
 import FieldRow from "./FieldRow";
 import Footer from "./Footer";
 import { Header } from "./Modal";
+
+const useActivate = () => {
+  const addToActiveSchema = useSetAtom(addToActiveSchemas);
+  const [selected, setSelected] = useAtom(selectedFields);
+  const activateFields = useOperatorExecutor("activate_annotation_schemas");
+  const setMessage = useSetRecoilState(snackbarMessage);
+
+  return useCallback(() => {
+    addToActiveSchema(selected);
+    activateFields.execute({ paths: Array.from(selected) });
+    setSelected(new Set());
+    setMessage(
+      `${selected.size} schema${selected.size > 1 ? "s" : ""} activated`
+    );
+  }, [activateFields, addToActiveSchema, selected, setSelected, setMessage]);
+};
 
 const selectedFields = atom(new Set<string>());
 
@@ -22,15 +46,40 @@ export const isSelected = atomFamily((path: string) =>
   )
 );
 
+const removeSelection = atom(null, (_, set, paths: string[]) => {
+  for (const path of paths) {
+    set(isSelected(path), false);
+  }
+});
+
 const otherFieldsWithSchema = atom((get) =>
   get(inactivePaths).filter((path) => get(schema(path))?.config)
 );
 
+const useDeleteSchema = () => {
+  const deleteSchema = useOperatorExecutor("delete_annotation_schema");
+  const deletePaths = useSetAtom(deleteSchemas);
+  const setMessage = useSetRecoilState(snackbarMessage);
+  const remove = useSetAtom(removeSelection);
+
+  return useCallback(
+    (path: string) => {
+      deleteSchema.execute({ path });
+      deletePaths([path]);
+
+      setMessage(`${path} schema deleted`);
+      remove([path]);
+    },
+    [deleteSchema.execute, deletePaths, remove, setMessage]
+  );
+};
+
 const OtherFieldsWithSchema = () => {
+  const activate = useActivate();
   const fields = useAtomValue(otherFieldsWithSchema);
   const [selected, setSelected] = useAtom(selectedFields);
-  const addToActiveSchema = useSetAtom(addToActiveSchemas);
 
+  const deleteSchema = useDeleteSchema();
   if (!fields.length) {
     return null;
   }
@@ -55,15 +104,18 @@ const OtherFieldsWithSchema = () => {
             </RoundButton>
           )}
           {!!selected.size && (
-            <RoundButton onClick={() => addToActiveSchema(selected)}>
-              Add to active schema
-            </RoundButton>
+            <RoundButton onClick={activate}>Add to active fields</RoundButton>
           )}
         </ItemRight>
       </Header>
 
       {fields.map((path) => (
-        <FieldRow key={path} path={path} isSelected={isSelected(path)} />
+        <FieldRow
+          key={path}
+          path={path}
+          isSelected={isSelected(path)}
+          onDelete={() => deleteSchema(path)}
+        />
       ))}
     </>
   );
@@ -108,6 +160,10 @@ const FallbackItem = () => {
 };
 
 const OtherFields = () => {
+  const activate = useActivate();
+  const [selected, setSelected] = useAtom(selectedFields);
+  const addToActiveSchema = useSetAtom(addToActiveSchemas);
+
   return (
     <>
       <Container>
@@ -115,7 +171,18 @@ const OtherFields = () => {
         <OtherFieldsWithoutSchema />
         <FallbackItem />
       </Container>
-      <Footer />
+      {!!selected.size && (
+        <Footer
+          primaryButton={{
+            onClick: activate,
+            text: "Activate fields",
+          }}
+          secondaryButton={{
+            onClick: () => setSelected(new Set()),
+            text: "Cancel",
+          }}
+        />
+      )}
     </>
   );
 };

@@ -1,89 +1,160 @@
-import { JSONViewer } from "@fiftyone/components";
-import LoadingSpinner from "@fiftyone/components/src/components/Loading/LoadingSpinner";
+import { LoadingSpinner } from "@fiftyone/components";
+import { useOperatorExecutor } from "@fiftyone/operators";
 import { Sync } from "@mui/icons-material";
-import { Typography } from "@mui/material";
-import { atom, useAtom } from "jotai";
-import React, { useState } from "react";
+import { Link, Typography } from "@mui/material";
+import { useAtom } from "jotai";
+import React, { useEffect, useState } from "react";
 import styled from "styled-components";
+import { CodeView } from "../../../../../plugins/SchemaIO/components";
 import { RoundButtonWhite } from "../Actions";
-import { currentPath, schema } from "../state";
+import { schemaConfig } from "../state";
 import Footer from "./Footer";
 
 const Container = styled.div`
   flex: 1;
-  padding: 1rem 0;
   margin-bottom: 3rem;
-  displa
-`;
-
-const Scan = styled.div`
   border-radius: 3px;
   border: 1px solid ${({ theme }) => theme.divider};
-  width: 100%;
-  height: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 1rem;
   flex-direction: column;
+  overflow: auto;
+
+  & > div.json {
+    width: 100%;
+    height: 100%;
+  }
 `;
 
-const schemaConfig = atom(
-  (get) => get(schema(get(currentPath) ?? ""))?.config,
-  (get, set, value: boolean) => {
-    set(schema(get(currentPath) ?? ""), {
-      ...get(schema(get(currentPath) ?? "")),
-      config: value,
-    });
-  }
-);
-
-const Loading = () => {
+const Loading = ({ scanning }: { scanning?: boolean }) => {
   return (
     <>
       <LoadingSpinner />
       <Typography color="secondary" padding="1rem 0">
-        Scanning samples
+        {scanning ? "Scanning samples" : "Loading"}
       </Typography>
     </>
   );
 };
 
-const EditAnnotationSchema = () => {
-  const [config, setConfig] = useAtom(schemaConfig);
-  const [loading, setLoading] = useState(false);
+const useAnnotationSchema = (path: string) => {
+  const [loading, setLoading] = useState<"loading" | "scanning" | false>(false);
+  const [config, setConfig] = useAtom(schemaConfig(path));
 
+  const [localConfig, setLocalConfig] = useState(config);
+
+  const compute = useOperatorExecutor("compute_annotation_schema");
+  const save = useOperatorExecutor("save_annotation_schema");
+
+  useEffect(() => {
+    if (!compute.result) {
+      return;
+    }
+
+    setLoading(false);
+    setLocalConfig(compute.result.config);
+  }, [compute.result]);
+
+  useEffect(() => {
+    if (save.result) {
+      setConfig(save.result.config);
+    }
+  }, [save.result, setConfig]);
+
+  return {
+    compute: (scan = true) => {
+      setLoading(scan ? "scanning" : "loading");
+      compute.execute({ path, scan_samples: scan });
+    },
+    computed: compute.result,
+
+    loading: loading,
+
+    scanning: loading === "scanning",
+    reset: () => setLocalConfig(config),
+
+    save: () => {
+      if (!localConfig) {
+        throw new Error("undefined schema");
+      }
+
+      save.execute({ path, config: localConfig });
+      setConfig(localConfig);
+    },
+    saving: save.isExecuting,
+    schema: localConfig,
+    setSchema: setLocalConfig,
+
+    hasChanges: JSON.stringify(config) !== JSON.stringify(localConfig),
+  };
+};
+
+const EditAnnotationSchema = ({ path }: { path: string }) => {
+  const data = useAnnotationSchema(path);
   return (
     <>
       <Typography color="secondary" padding="1rem 0">
-        Lorem ipsum...
+        Copy goes here
       </Typography>
       <Container>
-        <Scan>
-          {loading && <Loading />}
-          {!config && !loading && (
+        {data.loading && <Loading scanning={data.scanning} />}
+        {!data.schema && !data.loading && (
+          <>
             <RoundButtonWhite
               onClick={() => {
-                setLoading(true);
-                setTimeout(() => {
-                  setConfig(true);
-                  setLoading(false);
-                }, 3000);
+                data.compute();
               }}
             >
               <Sync /> Scan samples
             </RoundButtonWhite>
-          )}
-          {config && !loading && (
-            <JSONViewer
-              value={{ hello: "world" }}
-              containerProps={{ style: { height: "100%", width: "100%" } }}
-            />
-          )}
-        </Scan>
+            <Link
+              color="secondary"
+              onClick={() => {
+                data.compute(false);
+              }}
+            >
+              Skip scan
+            </Link>
+          </>
+        )}
+        {data.schema && !data.loading && (
+          <CodeView
+            data={JSON.stringify(data.schema, undefined, 2)}
+            onChange={(_, value) => {
+              data.setSchema(JSON.parse(value));
+            }}
+            path={path}
+            schema={{
+              view: {
+                language: "json",
+                readOnly: false,
+                width: "100%",
+                height: "100%",
+                componentsProps: {
+                  container: {
+                    className: "json",
+                  },
+                },
+              },
+            }}
+          />
+        )}
       </Container>
-
-      <Footer />
+      <Footer
+        secondaryButton={{
+          onClick: () => data.reset(),
+          disabled: !data.hasChanges,
+          text: "Reset",
+        }}
+        primaryButton={{
+          onClick: () => {
+            data.save();
+          },
+          disabled: !data.hasChanges,
+          text: data.saving ? "Saving..." : "Save schema",
+        }}
+      />
     </>
   );
 };

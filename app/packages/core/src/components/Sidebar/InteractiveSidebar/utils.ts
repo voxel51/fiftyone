@@ -227,6 +227,10 @@ export const getEntryKey = (entry: fos.SidebarEntry) => {
     return `label-${entry.id}`;
   }
 
+  if (entry.kind === fos.EntryKind.LOADING) {
+    return `loading-${entry.id}`;
+  }
+
   throw new Error("invalid entry");
 };
 
