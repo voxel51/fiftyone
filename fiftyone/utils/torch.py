@@ -1664,7 +1664,7 @@ class SemanticSegmenterOutputProcessor(OutputProcessor):
         return [fol.Segmentation(mask=mask) for mask in masks]
 
 
-def recommend_num_workers():
+def recommend_num_workers(num_workers=None):
     """Recommend a number of workers for running a
     :class:`torch:torch.utils.data.DataLoader`.
 
@@ -1672,15 +1672,20 @@ def recommend_num_workers():
         the recommended number of workers
     """
     if sys.platform.startswith("win"):
-        # Windows tends to have multiprocessing issues, so default to 0 workers
+        # Windows tends to have multiprocessing issues, especially with Torch,
+        # so default to 0 workers
         # https://github.com/voxel51/fiftyone/issues/1531
         # https://stackoverflow.com/q/20222534
         return 0
 
     try:
-        return multiprocessing.cpu_count() // 2
-    except:
-        return 4
+        default = multiprocessing.cpu_count() // 2
+    except Exception:
+        default = 4
+
+    return fou.recommend_process_pool_workers(
+        num_workers, default_num_workers=default
+    )
 
 
 def _to_bytes_array(strs):
