@@ -16,10 +16,6 @@ export const useImageModalSelectiveRendering = (
   looker: Lookers,
   ghost?: boolean
 ) => {
-  if (ghost) {
-    return;
-  }
-
   const { getNewFields } = useDetectNewActiveLabelFields({
     modal: true,
   });
@@ -30,7 +26,7 @@ export const useImageModalSelectiveRendering = (
   )}-image`;
 
   useEffect(() => {
-    if (!looker) {
+    if (!looker || ghost) {
       return;
     }
 
