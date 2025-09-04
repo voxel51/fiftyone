@@ -135,7 +135,11 @@ export function EmbeddingsPlot({
             plot_bgcolor: "rgba(0,0,0,0)",
             legend: {
               x: 1,
-              y: 1,
+              y: bounds.width < 500 ? 61 / bounds.height : 1,
+              xanchor: "right",
+              yanchor: "top",
+              yref: "paper",
+              xref: "paper",
               bgcolor: theme.background.level1,
               font: {
                 color: theme.text.secondary,
