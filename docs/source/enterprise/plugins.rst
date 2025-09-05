@@ -510,11 +510,10 @@ External orchestrators
 ----------------------
 
 It is also possible to connect your FiftyOne Enterprise deployment to other
-externally managed workflow orchestration tools such as:
+externally-managed workflow orchestration tools such as:
 `Airflow <https://airflow.apache.org>`_, `Flyte <https://flyte.org>`_,
-`Spark <https://spark.apache.org/>`_, etc. These platforms will have less
-builtin support and must have a continually running worker pool that can accept
-tasks from your deployment (i.e., not on-demand).
+`Spark <https://spark.apache.org/>`_, etc. Please contact your Voxel51 Customer
+Success representative for further details.
 
 .. _enterprise-managing-delegated-operations:
 
