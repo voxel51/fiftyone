@@ -53,6 +53,71 @@ const createButtonViewProps = (schema, onClick) => ({
   onClick,
 });
 
+// Helper function to generate unique copy IDs to avoid collisions
+function generateUniqueCopyId(
+  baseId: string,
+  state: any,
+  dataPath: string
+): string {
+  const existing = new Set(Object.keys(getFromPath(state, dataPath) || {}));
+  let suffix = 1;
+  let candidate = `${baseId}-copy`;
+  while (existing.has(candidate)) {
+    candidate = `${baseId}-copy-${suffix++}`;
+  }
+  return candidate;
+}
+
+// Helper function to detect platform for keyboard shortcuts
+function getPlatformShortcutKey(): string {
+  const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+  return isMac ? "⌘ + V" : "Ctrl + V";
+}
+
+// Shared layout calculation utility
+function calculateLayoutDimensions(
+  numItems: number,
+  layout: any,
+  autoLayout: boolean,
+  layoutMode: string,
+  numRows: number,
+  numCols: number
+) {
+  const MIN_ITEM_WIDTH = 400;
+  const MIN_ITEM_HEIGHT = 300;
+  const ASPECT_RATIO = 4 / 3; // width / height
+  const HEIGHT_FACTOR = 1 / ASPECT_RATIO;
+  const GRID_WIDTH = layout?.width;
+  const GRID_HEIGHT = layout?.height - 80; // panel height - footer height
+  const TARGET_ITEM_WIDTH = Math.max(MIN_ITEM_WIDTH, GRID_WIDTH / numItems);
+  const TARGET_ITEM_HEIGHT = HEIGHT_FACTOR * TARGET_ITEM_WIDTH;
+
+  let COLS = autoLayout
+    ? Math.floor(GRID_WIDTH / TARGET_ITEM_WIDTH) || 1
+    : layoutMode === "columns"
+    ? numCols
+    : Math.ceil(numItems / numRows);
+  let ROWS = autoLayout
+    ? Math.ceil(numItems / COLS) || 1
+    : layoutMode === "rows"
+    ? numRows
+    : Math.ceil(numItems / numCols);
+  const ROW_HEIGHT = Math.min(GRID_HEIGHT, TARGET_ITEM_HEIGHT);
+
+  if (numItems === 1) {
+    COLS = 1;
+    ROWS = 1;
+  }
+
+  return {
+    COLS,
+    ROWS,
+    ROW_HEIGHT,
+    MIN_ITEM_HEIGHT,
+    GRID_HEIGHT,
+  };
+}
+
 function useClipboardData() {
   const [hasClipboardData, setHasClipboardData] = useState(false);
   const [clipboardPermissionError, setClipboardPermissionError] =
@@ -149,9 +214,6 @@ const AddItemCTA = ({ onAdd, onPaste, view, clipboardData }) => {
   const cta_button_label = view?.cta_button_label || "Add Item";
   const paste_button_label = view?.paste_button_label || "Paste Plot";
 
-  // Detect platform for keyboard shortcut display
-  const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
-  const shortcutKey = isMac ? "⌘V" : "Ctrl+V";
   const { hasClipboardData, clipboardPermissionError } = clipboardData;
 
   return (
@@ -849,9 +911,8 @@ export default function DashboardView(props: ViewPropsType) {
     null
   );
 
-  // Detect platform for keyboard shortcut display
-  const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
-  const shortcutKey = isMac ? "⌘ + V" : "Ctrl + V";
+  // Get platform-specific shortcut key
+  const shortcutKey = getPlatformShortcutKey();
 
   const onDuplicateItem = useCallback(
     ({ id, path }) => {
@@ -860,13 +921,20 @@ export default function DashboardView(props: ViewPropsType) {
         `${dataPath}.${id}`
       );
       if (schema.view.on_duplicate_item && originalItem) {
+        // Generate a unique ID to avoid collisions
+        const newId = generateUniqueCopyId(
+          id,
+          (panelState as any)?.state,
+          dataPath
+        );
+
         // Get layout information for this item from customLayout
         const layoutItem = customLayout.find((item) => item.i === id);
         let layout = null;
         if (layoutItem) {
           layout = [
             {
-              id: id,
+              id: newId,
               x: layoutItem.x,
               y: layoutItem.y,
               w: layoutItem.w,
@@ -875,11 +943,23 @@ export default function DashboardView(props: ViewPropsType) {
           ];
         }
 
+        // Update the original item with the new ID
+        const updatedItem = {
+          ...originalItem,
+          name: newId,
+          raw_params: originalItem.raw_params
+            ? {
+                ...originalItem.raw_params,
+                panel_id: newId,
+              }
+            : undefined,
+        };
+
         triggerPanelEvent(panelId, {
           panelId,
           operator: schema.view.on_duplicate_item,
           params: {
-            plot_configs: [originalItem],
+            plot_configs: [updatedItem],
             layout: layout,
             auto_layout: autoLayout,
           },
@@ -1170,30 +1250,15 @@ export default function DashboardView(props: ViewPropsType) {
   const theme = useTheme();
 
   const NUM_ITEMS = propertiesAsArray.length;
-  const MIN_ITEM_WIDTH = 400;
-  const MIN_ITEM_HEIGHT = 300;
-  const ASPECT_RATIO = 4 / 3; // width / height
-  const HEIGHT_FACTOR = 1 / ASPECT_RATIO;
-  const GRID_WIDTH = layout?.width;
-  const GRID_HEIGHT = layout?.height - 80; // panel height - footer height
-  const TARGET_ITEM_WIDTH = Math.max(MIN_ITEM_WIDTH, GRID_WIDTH / NUM_ITEMS);
-  const TARGET_ITEM_HEIGHT = HEIGHT_FACTOR * TARGET_ITEM_WIDTH;
-  let COLS = autoLayout
-    ? Math.floor(GRID_WIDTH / TARGET_ITEM_WIDTH) || 1
-    : layoutMode === "columns"
-    ? numCols
-    : Math.ceil(NUM_ITEMS / numRows);
-  let ROWS = autoLayout
-    ? Math.ceil(NUM_ITEMS / COLS) || 1
-    : layoutMode === "rows"
-    ? numRows
-    : Math.ceil(NUM_ITEMS / numCols);
-  const ROW_HEIGHT = Math.min(GRID_HEIGHT, TARGET_ITEM_HEIGHT);
-
-  if (propertiesAsArray.length === 1) {
-    COLS = 1;
-    ROWS = 1;
-  }
+  const { COLS, ROWS, ROW_HEIGHT, MIN_ITEM_HEIGHT, GRID_HEIGHT } =
+    calculateLayoutDimensions(
+      NUM_ITEMS,
+      layout,
+      autoLayout,
+      layoutMode,
+      numRows,
+      numCols
+    );
   const orderedProperties = sortPropertiesByCustomLayout(
     propertiesAsArray,
     customLayout
@@ -1212,7 +1277,7 @@ export default function DashboardView(props: ViewPropsType) {
   });
 
   const gridLayout = useMemo(() => {
-    return customLayout || defaultLayout;
+    return customLayout.length > 0 ? customLayout : defaultLayout;
   }, [customLayout, defaultLayout]);
 
   const onExportAsPNG = useCallback(async () => {
