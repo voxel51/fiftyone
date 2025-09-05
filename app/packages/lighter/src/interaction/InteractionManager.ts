@@ -529,14 +529,7 @@ export class InteractionManager {
   ): void {
     const handler = this.findHandlerAtPoint(point);
 
-    if (!handler) {
-      this.hoveredHandler = undefined;
-      return;
-    }
-
-    // If we are hovering on the canonical media, and coming from some other overlay,
-    // emit *all* unhover event + particular overlay unhover event
-    if (handler.id === this.canonicalMediaId) {
+    if (!handler || handler.id === this.canonicalMediaId) {
       this.canvas.style.cursor = "default";
 
       if (this.hoveredHandler) {
