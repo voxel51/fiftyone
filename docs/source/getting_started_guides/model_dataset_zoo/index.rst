@@ -90,6 +90,7 @@ Model Zoo Features
 **Pre-trained Models**
 
 The FiftyOne Model Zoo provides ready-to-use models for various tasks:
+
 - **Classification Models** - Image classification with state-of-the-art architectures
 - **Detection Models** - Object detection and localization
 - **Segmentation Models** - Instance and semantic segmentation
@@ -98,6 +99,7 @@ The FiftyOne Model Zoo provides ready-to-use models for various tasks:
 **Custom Model Integration**
 
 Seamless integration with external models:
+
 - GitHub-hosted models
 - Custom model wrappers
 - Community contributions
@@ -132,6 +134,6 @@ Click **Next** to start with the first step: Exploring the FiftyOne Dataset Zoo.
    :hidden:
 
    Exploring the Dataset Zoo <01_intro>
-   Using the Model Zoo <02_explore>
-   Using Remotely-Sourced Zoo Models <03_remote_models>
+   Exploring the Model Zoo <02_explore>
+   Exploring Remote Zoo Models <03_remote_models>
    Guide Summary <summary> 

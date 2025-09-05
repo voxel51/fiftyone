@@ -137,5 +137,5 @@ Click **Next** to start with the first step: Loading Segmentation Datasets in Fi
 
    Loading Segmentation Datasets <01_intro>
    Adding Instance Segmentations <02_explore>
-   Segment Anything 2 (SAM2) in FiftyOne <03_sam2>
+   Segment Anything 2 in FiftyOne <03_sam2>
    Guide Summary <summary> 
