@@ -5,11 +5,19 @@
   border-radius: 2px !important;
   transition: all 0.2s ease !important;
   opacity: 0 !important;
+  /* Hide any text content or symbols */
+  font-size: 0 !important;
+  line-height: 0 !important;
+  text-indent: -9999px !important;
+  overflow: hidden !important;
 }
 
-/* Hide the default ::after content */
-.react-resizable-handle::after {
+/* Hide the default ::after and ::before content */
+.react-resizable-handle::after,
+.react-resizable-handle::before {
   display: none !important;
+  content: none !important;
+  visibility: hidden !important;
 }
 
 .react-resizable-handle:hover {

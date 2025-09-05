@@ -2,15 +2,12 @@ import React, { useEffect } from "react";
 import { useTheme } from "@fiftyone/components";
 import usePanelEvent from "@fiftyone/operators/src/usePanelEvent";
 import { usePanelId, usePanelState } from "@fiftyone/spaces";
+import useNotification from "@fiftyone/state/src/hooks/useNotification";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import EditIcon from "@mui/icons-material/Edit";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import FileCopyIcon from "@mui/icons-material/FileCopy";
-import SelectAllIcon from "@mui/icons-material/SelectAll";
-import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
-import DownloadIcon from "@mui/icons-material/Download";
-import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import {
   Alert,
   Box,
@@ -30,9 +27,10 @@ import {
   RadioGroup,
   styled,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
-import { forwardRef, useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import GridLayout from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
@@ -41,7 +39,7 @@ import { getPath, getProps } from "../utils";
 import { ObjectSchemaType, ViewPropsType } from "../utils/types";
 import DynamicIO from "./DynamicIO";
 import DashboardPNGExport from "./DashboardPNGExport";
-import { get, get as getFromPath } from "lodash";
+import { get as getFromPath } from "lodash";
 import "./DashboardResizeHandles.css";
 
 // Helper function to create minimal ButtonView props
@@ -57,18 +55,43 @@ const createButtonViewProps = (schema, onClick) => ({
 
 function useClipboardData() {
   const [hasClipboardData, setHasClipboardData] = useState(false);
+  const [clipboardPermissionError, setClipboardPermissionError] =
+    useState(false);
 
   const checkClipboard = useCallback(async () => {
     try {
+      // Check if clipboard API is available
+      if (!navigator.clipboard) {
+        setClipboardPermissionError(true);
+        setHasClipboardData(false);
+        return;
+      }
+
       const text = await navigator.clipboard.readText();
       const item = JSON.parse(text);
-      if (typeof item === "object" && item !== null) {
+
+      // Check if it's a valid dashboard data structure
+      if (
+        typeof item === "object" &&
+        item !== null &&
+        item.plots &&
+        Array.isArray(item.plots)
+      ) {
         setHasClipboardData(true);
+        setClipboardPermissionError(false);
       } else {
         setHasClipboardData(false);
+        setClipboardPermissionError(false);
       }
     } catch (error) {
       setHasClipboardData(false);
+
+      // Check if it's a permission error
+      if (error instanceof DOMException && error.name === "NotAllowedError") {
+        setClipboardPermissionError(true);
+      } else {
+        setClipboardPermissionError(false);
+      }
     }
   }, []);
 
@@ -112,6 +135,8 @@ function useClipboardData() {
   return {
     hasClipboardData,
     setHasClipboardData,
+    clipboardPermissionError,
+    setClipboardPermissionError,
     triggerCheck: checkClipboard,
   };
 }
@@ -127,7 +152,7 @@ const AddItemCTA = ({ onAdd, onPaste, view, clipboardData }) => {
   // Detect platform for keyboard shortcut display
   const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
   const shortcutKey = isMac ? "⌘V" : "Ctrl+V";
-  const { hasClipboardData } = clipboardData;
+  const { hasClipboardData, clipboardPermissionError } = clipboardData;
 
   return (
     <Box
@@ -189,6 +214,14 @@ const AddItemCTA = ({ onAdd, onPaste, view, clipboardData }) => {
             />
           )}
         </Box>
+        {clipboardPermissionError && (
+          <Alert severity="warning" sx={{ mt: 2, maxWidth: 400 }}>
+            <Typography variant="body2">
+              Clipboard access is restricted. To enable paste functionality,
+              please allow clipboard permissions in your browser settings.
+            </Typography>
+          </Alert>
+        )}
       </Paper>
     </Box>
   );
@@ -311,7 +344,7 @@ const ControlContainer = ({
   clipboardData,
   hasMultipleItems,
 }) => {
-  const { hasClipboardData } = clipboardData;
+  const { hasClipboardData, clipboardPermissionError } = clipboardData;
   if (!isEditMode) {
     return null;
   }
@@ -353,18 +386,36 @@ const ControlContainer = ({
           onEditLayoutClick
         )}
       />
-      {hasClipboardData && (
+      {hasClipboardData && !clipboardPermissionError && (
         <ButtonView
           {...createButtonViewProps(
             {
               type: "object",
               view: {
                 icon: "content_paste",
-                label: `Paste (${shortcutKey})`,
+                label: `Paste`,
                 variant: "square",
               },
             },
             onPasteClick
+          )}
+        />
+      )}
+      {clipboardPermissionError && (
+        <ButtonView
+          {...createButtonViewProps(
+            {
+              type: "object",
+              view: {
+                icon: "content_paste",
+                label: `Paste`,
+                variant: "square",
+                disabled: true,
+                title:
+                  "Clipboard access denied. Please allow clipboard permissions in your browser settings.",
+              },
+            },
+            () => {} // Disabled click handler
           )}
         />
       )}
@@ -382,36 +433,6 @@ const ControlContainer = ({
             onSelectAll
           )}
         />
-      )}
-      {selectedItemIds.size > 0 && (
-        <>
-          <ButtonView
-            {...createButtonViewProps(
-              {
-                type: "object",
-                view: {
-                  icon: "delete",
-                  label: "Delete selected",
-                  variant: "square",
-                },
-              },
-              onDeleteSelected
-            )}
-          />
-          <Typography
-            variant="caption"
-            sx={{
-              color: "text.secondary",
-              fontSize: "0.8rem",
-              marginLeft: 1,
-              padding: "4px 8px",
-              backgroundColor: "action.hover",
-              borderRadius: 1,
-            }}
-          >
-            {selectedItemIds.size} selected
-          </Typography>
-        </>
       )}
       <Box sx={{ display: "flex", alignItems: "center" }}>
         <ButtonView
@@ -492,6 +513,10 @@ export default function DashboardView(props: ViewPropsType) {
 
   // Shared clipboard state
   const clipboardData = useClipboardData();
+  const { clipboardPermissionError } = clipboardData;
+
+  // Notification hook for user feedback
+  const showNotification = useNotification();
 
   for (const property in properties) {
     propertiesAsArray.push({ id: property, ...properties[property] });
@@ -541,29 +566,6 @@ export default function DashboardView(props: ViewPropsType) {
     }
   }, [panelId, props, schema.view.on_add_item, triggerPanelEvent]);
 
-  const onDuplicateItem = useCallback(
-    ({ id, path }) => {
-      const originalItem = getFromPath(
-        (panelState as any)?.state,
-        `${dataPath}.${id}`
-      );
-      if (schema.view.on_duplicate_item) {
-        triggerPanelEvent(panelId, {
-          panelId,
-          operator: schema.view.on_duplicate_item,
-          params: { plot_configs: [originalItem] },
-        });
-      }
-    },
-    [
-      panelId,
-      panelState,
-      dataPath,
-      schema.view.on_duplicate_item,
-      triggerPanelEvent,
-    ]
-  );
-
   const safeParseJSON = (jsonString: string) => {
     try {
       return JSON.parse(jsonString);
@@ -612,41 +614,132 @@ export default function DashboardView(props: ViewPropsType) {
 
   // Unified paste handler that works in both edit mode and when dashboard is empty
   const handlePaste = useCallback(async () => {
-    console.log("DEBUG: Starting paste operation");
     setIsPasting(true);
+
     try {
+      // Check if clipboard API is available
+      if (!navigator.clipboard) {
+        showNotification({
+          msg: "Clipboard access is not supported in this browser. Please use a modern browser to enable copy/paste functionality.",
+          variant: "error",
+        });
+        setIsPasting(false);
+        return;
+      }
+
       const rawClipboardData = await navigator.clipboard.readText();
       let clipboardData = safeParseJSON(rawClipboardData);
-      let plotConfigs = clipboardData.plots;
-      let layout = clipboardData.layout;
-      let auto_layout = clipboardData.auto_layout;
 
-      if (plotConfigs && plotConfigs.length > 0) {
-        triggerPanelEvent(panelId, {
-          panelId,
-          operator: schema.view.on_duplicate_item,
-          params: {
-            plot_configs: plotConfigs,
-            layout: layout,
-            auto_layout: auto_layout,
-          },
-          callback: (result) => {
-            console.log("DEBUG: Paste result:", plotConfigs);
-            if (auto_layout !== undefined) {
-              setAutoLayout(auto_layout);
-            }
-            if (layout && layout.length > 0) {
-              console.log("DEBUG: Setting custom layout:", layout);
-              setCustomLayout(layout);
-            }
-            setIsPasting(false);
-          },
+      if (!clipboardData) {
+        showNotification({
+          msg: "No valid dashboard data found in clipboard. Please copy a dashboard item first.",
+          variant: "warning",
         });
+        setIsPasting(false);
+        return;
       }
+
+      // Validate the clipboard data structure
+      if (
+        !clipboardData.plots ||
+        !Array.isArray(clipboardData.plots) ||
+        clipboardData.plots.length === 0
+      ) {
+        showNotification({
+          msg: "No valid dashboard items found in clipboard. Please copy a dashboard item first.",
+          variant: "warning",
+        });
+        setIsPasting(false);
+        return;
+      }
+
+      // Generate new unique IDs for the plots to avoid conflicts
+      const plotConfigs = clipboardData.plots.map((plot, index) => {
+        const newId = `${plot.name || "plot"}_${Date.now()}_${index}`;
+        return {
+          ...plot,
+          name: newId,
+          // Update any references to the old ID in the plot config
+          raw_params: plot.raw_params
+            ? {
+                ...plot.raw_params,
+                panel_id: newId,
+              }
+            : undefined,
+        };
+      });
+
+      // Generate new layout with updated IDs
+      const layout = clipboardData.layout
+        ? clipboardData.layout.map((layoutItem: any, index: number) => {
+            const originalPlot = clipboardData.plots[index];
+            const newId = `${
+              originalPlot.name || "plot"
+            }_${Date.now()}_${index}`;
+            return {
+              ...layoutItem,
+              id: newId,
+            };
+          })
+        : null;
+
+      const auto_layout = clipboardData.auto_layout;
+
+      triggerPanelEvent(panelId, {
+        panelId,
+        operator: schema.view.on_duplicate_item,
+        params: {
+          plot_configs: plotConfigs,
+          layout: layout,
+          auto_layout: auto_layout,
+        },
+        callback: (result) => {
+          if (auto_layout !== undefined) {
+            setAutoLayout(auto_layout);
+          }
+          if (layout && layout.length > 0) {
+            setCustomLayout(layout);
+          }
+          setIsPasting(false);
+
+          // Show success notification
+          showNotification({
+            msg: `Successfully pasted ${plotConfigs.length} plot(s)`,
+            variant: "success",
+          });
+        },
+      });
     } catch (error) {
       console.error("Error pasting items:", error);
+      setIsPasting(false);
+
+      // Handle specific clipboard permission errors
+      if (error instanceof DOMException && error.name === "NotAllowedError") {
+        showNotification({
+          msg: "Clipboard access denied. Please allow clipboard permissions in your browser settings and try again.",
+          variant: "error",
+        });
+      } else if (
+        error instanceof DOMException &&
+        error.name === "SecurityError"
+      ) {
+        showNotification({
+          msg: "Clipboard access blocked for security reasons. Please ensure you're on a secure connection (HTTPS) and try again.",
+          variant: "error",
+        });
+      } else {
+        showNotification({
+          msg: "Failed to paste items. Please check that you have valid dashboard data in your clipboard and try again.",
+          variant: "error",
+        });
+      }
     }
-  }, [panelId, schema.view.on_duplicate_item, triggerPanelEvent]);
+  }, [
+    panelId,
+    schema.view.on_duplicate_item,
+    triggerPanelEvent,
+    showNotification,
+  ]);
 
   // Selection handlers - now support multiple selection
   const handleItemSelect = useCallback(
@@ -760,6 +853,50 @@ export default function DashboardView(props: ViewPropsType) {
   const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
   const shortcutKey = isMac ? "⌘ + V" : "Ctrl + V";
 
+  const onDuplicateItem = useCallback(
+    ({ id, path }) => {
+      const originalItem = getFromPath(
+        (panelState as any)?.state,
+        `${dataPath}.${id}`
+      );
+      if (schema.view.on_duplicate_item && originalItem) {
+        // Get layout information for this item from customLayout
+        const layoutItem = customLayout.find((item) => item.i === id);
+        let layout = null;
+        if (layoutItem) {
+          layout = [
+            {
+              id: id,
+              x: layoutItem.x,
+              y: layoutItem.y,
+              w: layoutItem.w,
+              h: layoutItem.h,
+            },
+          ];
+        }
+
+        triggerPanelEvent(panelId, {
+          panelId,
+          operator: schema.view.on_duplicate_item,
+          params: {
+            plot_configs: [originalItem],
+            layout: layout,
+            auto_layout: autoLayout,
+          },
+        });
+      }
+    },
+    [
+      panelId,
+      panelState,
+      dataPath,
+      schema.view.on_duplicate_item,
+      triggerPanelEvent,
+      customLayout,
+      autoLayout,
+    ]
+  );
+
   const copyItemsToClipboard = useCallback(
     (ids?: string[]) => {
       const itemsToCopy = ids || Array.from(selectedItemIds);
@@ -837,9 +974,18 @@ export default function DashboardView(props: ViewPropsType) {
             .then(() => {
               // Set clipboard state directly since we know we just copied valid data
               clipboardData.setHasClipboardData(true);
+              // Show success notification
+              showNotification({
+                msg: "Copied",
+                variant: "success",
+              });
             })
             .catch((err) => {
               console.error("Failed to copy to clipboard:", err);
+              showNotification({
+                msg: "Failed to copy to clipboard. Please try again.",
+                variant: "error",
+              });
             });
         }
       } catch (error) {
@@ -853,6 +999,7 @@ export default function DashboardView(props: ViewPropsType) {
       selectedItemIds,
       customLayout,
       propertiesAsArray,
+      showNotification,
     ]
   );
 
@@ -1003,6 +1150,8 @@ export default function DashboardView(props: ViewPropsType) {
     panelState,
     dataPath,
     copyItemsToClipboard,
+    handlePaste,
+    deleteSelectedItems,
   ]);
 
   const handleClosePopover = () => {
@@ -1050,7 +1199,7 @@ export default function DashboardView(props: ViewPropsType) {
     customLayout
   );
   const defaultLayout = orderedProperties.map((property, index) => {
-    return {
+    const layoutItem = {
       i: property.id,
       x: index % COLS,
       y: Math.floor(index / COLS),
@@ -1059,12 +1208,11 @@ export default function DashboardView(props: ViewPropsType) {
       minW: 1, // Minimum width in grid units
       minH: Math.ceil(MIN_ITEM_HEIGHT / (GRID_HEIGHT / ROWS)), // Minimum height in grid units
     };
+    return layoutItem;
   });
 
   const gridLayout = useMemo(() => {
-    const layout = customLayout || defaultLayout;
-    console.log("DEBUG: Final computed gridLayout:", layout);
-    return layout;
+    return customLayout || defaultLayout;
   }, [customLayout, defaultLayout]);
 
   const onExportAsPNG = useCallback(async () => {
@@ -1193,7 +1341,6 @@ export default function DashboardView(props: ViewPropsType) {
     (layout) => {
       // Skip layout changes during paste operations
       if (isPasting) {
-        console.log("DEBUG: Skipping onLayoutChange during paste operation");
         return;
       }
 
@@ -1216,8 +1363,6 @@ export default function DashboardView(props: ViewPropsType) {
     },
     [isPasting, setCustomLayout]
   );
-
-  console.log("propertiesAsArray", propertiesAsArray);
 
   if (!propertiesAsArray.length) {
     if (!allow_addition) {
@@ -1362,54 +1507,60 @@ export default function DashboardView(props: ViewPropsType) {
                     {isEditMode && (
                       <Box>
                         {allow_edit && (
-                          <IconButton
-                            size="small"
-                            onMouseDown={(e) => e.stopPropagation()}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onEditItem({ id, path: getPath(path, id) });
-                            }}
-                            sx={{ color: theme.text.secondary }}
-                          >
-                            <EditIcon />
-                          </IconButton>
+                          <Tooltip title="Edit" placement="top" arrow>
+                            <IconButton
+                              size="small"
+                              onMouseDown={(e) => e.stopPropagation()}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onEditItem({ id, path: getPath(path, id) });
+                              }}
+                              sx={{ color: theme.text.secondary }}
+                            >
+                              <EditIcon />
+                            </IconButton>
+                          </Tooltip>
                         )}
-                        <IconButton
-                          size="small"
-                          onMouseDown={(e) => e.stopPropagation()}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDuplicateItem({ id, path: getPath(path, id) });
-                          }}
-                          sx={{ color: theme.text.secondary }}
-                          title="Duplicate item"
-                        >
-                          <FileCopyIcon />
-                        </IconButton>
-                        <IconButton
-                          size="small"
-                          onMouseDown={(e) => e.stopPropagation()}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onCopyItem({ id, path: getPath(path, id) });
-                          }}
-                          sx={{ color: theme.text.secondary }}
-                          title="Copy item"
-                        >
-                          <ContentCopyIcon />
-                        </IconButton>
-                        {allow_deletion && (
+                        <Tooltip title="Duplicate" placement="top" arrow>
                           <IconButton
                             size="small"
                             onMouseDown={(e) => e.stopPropagation()}
                             onClick={(e) => {
                               e.stopPropagation();
-                              onCloseItem({ id, path: getPath(path, id) });
+                              onDuplicateItem({ id, path: getPath(path, id) });
                             }}
                             sx={{ color: theme.text.secondary }}
                           >
-                            <CloseIcon />
+                            <FileCopyIcon />
                           </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Copy" placement="top" arrow>
+                          <IconButton
+                            size="small"
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onCopyItem({ id, path: getPath(path, id) });
+                            }}
+                            sx={{ color: theme.text.secondary }}
+                          >
+                            <ContentCopyIcon />
+                          </IconButton>
+                        </Tooltip>
+                        {allow_deletion && (
+                          <Tooltip title="Remove" placement="top" arrow>
+                            <IconButton
+                              size="small"
+                              onMouseDown={(e) => e.stopPropagation()}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onCloseItem({ id, path: getPath(path, id) });
+                              }}
+                              sx={{ color: theme.text.secondary }}
+                            >
+                              <CloseIcon />
+                            </IconButton>
+                          </Tooltip>
                         )}
                       </Box>
                     )}
