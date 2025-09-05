@@ -12,9 +12,10 @@ import re
 import requests
 import logging
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from dataclasses import dataclass
 from urllib.parse import urlparse, urljoin
+from datetime import datetime
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -42,11 +43,8 @@ class PluginDocGenerator:
         self.plugins_ecosystem_dir = self.plugins_dir / "plugins_ecosystem"
         self.plugins_ecosystem_dir.mkdir(exist_ok=True)
 
-    def _parse_github_url(self, github_url: str):
-        """
-        Parse a GitHub URL and return (owner, repo, path).
-        Handles repo root, folder URLs, and direct file URLs.
-        """
+    def _parse_github_url(self, github_url: str) -> Tuple[str, str, str]:
+        """Parse a GitHub URL and return (owner, repo, path)."""
         parts = urlparse(github_url).path.strip("/").split("/")
 
         if len(parts) < 2:
@@ -61,53 +59,59 @@ class PluginDocGenerator:
     def fetch_github_readme(
         self, owner: str, repo: str, path: str = ""
     ) -> str:
-        """
-        Fetch README from GitHub (root or subfolder).
-        Use API for root, raw.githubusercontent for subfolders.
-        """
+        """Fetch README from GitHub (root or subfolder)."""
         token = os.getenv("GITHUB_TOKEN")
         headers = {"Accept": "application/vnd.github.v3.raw"}
         if token:
             headers["Authorization"] = f"Bearer {token}"
 
         if not path:
-            url = f"https://api.github.com/repos/{owner}/{repo}/readme"
-            try:
-                resp = requests.get(url, headers=headers, timeout=10)
-                resp.raise_for_status()
-                return resp.text
-            except Exception as e:
-                logger.warning(f"Failed to fetch root README via API: {e}")
-                raw_url = f"https://raw.githubusercontent.com/{owner}/{repo}/main/README.md"
-                try:
-                    return requests.get(raw_url, timeout=10).text
-                except Exception as e2:
-                    logger.error(f"Failed raw fallback {raw_url}: {e2}")
-                    return ""
+            return self._fetch_root_readme(owner, repo, headers)
+        return self._fetch_subfolder_readme(owner, repo, path)
 
+    def _fetch_root_readme(self, owner: str, repo: str, headers: dict) -> str:
+        """Fetch root README using GitHub API with raw fallback."""
+        try:
+            url = f"https://api.github.com/repos/{owner}/{repo}/readme"
+            resp = requests.get(url, headers=headers, timeout=10)
+            resp.raise_for_status()
+            return resp.text
+        except Exception as e:
+            logger.warning(f"Failed to fetch root README via API: {e}")
+            return self._fetch_raw_readme(owner, repo, "")
+
+    def _fetch_subfolder_readme(self, owner: str, repo: str, path: str) -> str:
+        """Fetch subfolder README from raw GitHub."""
+        return self._fetch_raw_readme(owner, repo, path)
+
+    def _fetch_raw_readme(self, owner: str, repo: str, path: str) -> str:
+        """Fetch README from raw GitHub URL."""
         raw_url = f"https://raw.githubusercontent.com/{owner}/{repo}/main/{path}/README.md"
         try:
             resp = requests.get(raw_url, timeout=10)
             resp.raise_for_status()
             return resp.text
         except Exception as e:
-            logger.error(
-                f"Failed to fetch subfolder README from {raw_url}: {e}"
-            )
+            logger.error(f"Failed to fetch README from {raw_url}: {e}")
             return ""
 
-    def fetch_github_stars(self, owner: str, repo: str) -> Optional[int]:
-        """Fetch stargazers count for a GitHub repository."""
+    def fetch_github_stars(self, owner: str, repo: str) -> Optional[dict]:
+        """Fetch stargazers count and update date for a GitHub repository."""
         try:
             token = os.getenv("GITHUB_TOKEN")
             headers = {"Accept": "application/vnd.github.v3+json"}
             if token:
                 headers["Authorization"] = f"Bearer {token}"
+
             api_url = f"https://api.github.com/repos/{owner}/{repo}"
             resp = requests.get(api_url, headers=headers, timeout=8)
+
             if resp.status_code == 200:
                 data = resp.json()
-                return int(data.get("stargazers_count", 0))
+                return {
+                    "stars": int(data.get("stargazers_count", 0)),
+                    "updated_at": data.get("updated_at"),
+                }
             logger.warning(
                 f"Failed to fetch stars for {owner}/{repo}: {resp.status_code}"
             )
@@ -119,25 +123,16 @@ class PluginDocGenerator:
         """Extract plugin information from the README content."""
         plugins = []
 
-        community_section = self._extract_table_section(
-            readme_content, "Community Plugins"
-        )
-        if community_section:
-            plugins.extend(
-                self._parse_html_table(community_section, "community")
-            )
+        sections = [
+            ("Community Plugins", "community"),
+            ("Core Plugins", "voxel51"),
+            ("Voxel51 Plugins", "voxel51"),
+        ]
 
-        core_section = self._extract_table_section(
-            readme_content, "Core Plugins"
-        )
-        if core_section:
-            plugins.extend(self._parse_html_table(core_section, "core"))
-
-        voxel51_section = self._extract_table_section(
-            readme_content, "Voxel51 Plugins"
-        )
-        if voxel51_section:
-            plugins.extend(self._parse_html_table(voxel51_section, "voxel51"))
+        for section_name, category in sections:
+            section = self._extract_table_section(readme_content, section_name)
+            if section:
+                plugins.extend(self._parse_html_table(section, category))
 
         return plugins
 
@@ -147,9 +142,7 @@ class PluginDocGenerator:
         """Extract a table section from the README content."""
         pattern = rf"## {re.escape(section_name)}\s*\n\n(.*?)(?=\n## |\n$)"
         match = re.search(pattern, content, re.DOTALL)
-        if match:
-            return match.group(1)
-        return None
+        return match.group(1) if match else None
 
     def _parse_html_table(
         self, table_content: str, category: str
@@ -161,54 +154,52 @@ class PluginDocGenerator:
         )
         rows = re.findall(row_pattern, table_content, re.DOTALL)
 
-        for row in rows:
-            if len(row) != 2:
-                continue
-
-            name_cell, description_cell = row
-            name_match = re.search(
-                r'<a[^>]*href="([^"]*)"[^>]*>([^<]*)</a>', name_cell
+        for name_cell, description_cell in rows:
+            plugin = self._create_plugin_from_row(
+                name_cell, description_cell, category
             )
-            if not name_match:
-                continue
-
-            github_url = name_match.group(1)
-            plugin_name = name_match.group(2).strip()
-
-            if plugin_name.startswith("@"):
-                plugin_name = plugin_name[1:]
-
-            description = re.sub(r"<[^>]+>", "", description_cell).strip()
-            icon_match = re.match(r"^([^\s]+)\s*(.+)", description)
-            icon = icon_match.group(1) if icon_match else None
-            clean_description = (
-                icon_match.group(2) if icon_match else description
-            )
-
-            clean_description = clean_description.strip()
-
-            if "Name" in plugin_name or "Description" in clean_description:
-                continue
-
-            plugin = Plugin(
-                name=plugin_name,
-                description=clean_description,
-                github_url=github_url,
-                readme_url=f"{github_url}/README.md",
-                category=category,
-                icon=icon,
-            )
-            plugins.append(plugin)
+            if plugin:
+                plugins.append(plugin)
 
         return plugins
 
+    def _create_plugin_from_row(
+        self, name_cell: str, description_cell: str, category: str
+    ) -> Optional[Plugin]:
+        """Create a Plugin object from table row data."""
+        name_match = re.search(
+            r'<a[^>]*href="([^"]*)"[^>]*>([^<]*)</a>', name_cell
+        )
+        if not name_match:
+            return None
+
+        github_url = name_match.group(1)
+        plugin_name = name_match.group(2).strip()
+
+        if plugin_name.startswith("@"):
+            plugin_name = plugin_name[1:]
+
+        description = re.sub(r"<[^>]+>", "", description_cell).strip()
+        icon_match = re.match(r"^([^\s]+)\s*(.+)", description)
+
+        icon = icon_match.group(1) if icon_match else None
+        clean_description = icon_match.group(2) if icon_match else description
+        clean_description = clean_description.strip()
+
+        if "Name" in plugin_name or "Description" in clean_description:
+            return None
+
+        return Plugin(
+            name=plugin_name,
+            description=clean_description,
+            github_url=github_url,
+            readme_url=f"{github_url}/README.md",
+            category=category,
+            icon=icon,
+        )
+
     def _convert_relative_url(self, url: str, github_url: str) -> str:
-        """
-        Normalize URLs in README:
-        - Return raw URLs unchanged
-        - Convert blob/tree URLs to raw.githubusercontent.com
-        - Convert relative paths (./foo.png) to raw paths based on github_url
-        """
+        """Normalize URLs in README content."""
         if "raw.githubusercontent.com" in url:
             return url
 
@@ -366,6 +357,21 @@ class PluginDocGenerator:
 
         return processed
 
+    def _get_plugin_sort_key(self, plugin_tuple):
+        """Get sort key for plugin tuple based on update date and stars."""
+        plugin, image, repo_info = plugin_tuple
+
+        if repo_info and repo_info.get("updated_at"):
+            try:
+                updated_at = datetime.fromisoformat(
+                    repo_info["updated_at"].replace("Z", "+00:00")
+                )
+                stars = repo_info.get("stars", 0)
+                return (-updated_at.timestamp(), -stars)
+            except:
+                return (0, -repo_info.get("stars", 0))
+        return (0, -repo_info.get("stars", 0) if repo_info else 0)
+
     def generate_plugins_ecosystem_rst(self, all_plugins: List[Plugin]) -> str:
         """Generate the plugins_ecosystem.rst file with all plugin cards."""
         rst_content = """.. _plugins-ecosystem:
@@ -379,14 +385,41 @@ Welcome to the FiftyOne Plugins ecosystem! 🚀
 
 Discover cutting-edge research, state-of-the-art models, and innovative techniques. These plugins extend the power of FiftyOne beyond imagination. From advanced computer vision models to specialized annotation tools, our curated collection transforms FiftyOne into your ultimate AI research platform.
 
-Explore the latest breakthroughs and enhance your workflows with these powerful plugins from the
-`FiftyOne Plugins <https://github.com/voxel51/fiftyone-plugins>`_ repository:
+.. raw:: html
 
-.. note::
-   Community plugins are external projects maintained by their respective authors. They are not
-   part of FiftyOne core and may change independently. Review each plugin's documentation and
-   license before use.
+    <div class="search-container" style="margin: 1rem 0; display: flex; justify-content: center;">
+        <div class="search-box" style="position: relative; width: 100%; max-width: 500px;">
+            <input type="text" id="plugin-search" placeholder="Search plugins by name, description, author, or category..." 
+                   style="width: 100%; padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; outline: none; transition: border-color 0.3s ease;"
+                   onkeyup="searchPlugins()">
+            <div style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #666;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                </svg>
+            </div>
+        </div>
+    </div>
 
+
+
+
+.. raw:: html
+
+    <div style="margin:0; width: 100%; display:flex; justify-content:flex-end;">
+        <a href="https://github.com/voxel51/fiftyone-plugins?tab=readme-ov-file#contributing" target="_blank" class="sd-btn sd-btn-primary book-a-demo plugins-cta" rel="noopener noreferrer">
+            
+            <div class="arrow">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="size-3">
+                <path stroke="currentColor" stroke-width="1.5"
+                        d="M1.458 11.995h20.125M11.52 22.063 21.584 12 11.521 1.937"
+                        vector-effect="non-scaling-stroke"></path>
+                </svg>  
+            </div>
+            <div class="text">Build your own plugin</div>
+        </a>
+    </div>
+    
 .. Plugins cards section -----------------------------------------------------
 
 .. raw:: html
@@ -412,8 +445,16 @@ Explore the latest breakthroughs and enhance your workflows with these powerful 
 .. Add plugin cards below
 
 """
-        plugins_with_images = []
-        plugins_without_images = []
+
+        plugins_with_info = []
+        fallback_images = [
+            "https://cdn.voxel51.com/zoo-predictions.webp",
+            "https://cdn.voxel51.com/yolo-predictions.webp",
+            "https://cdn.voxel51.com/torchvision-predictions.webp",
+            "https://cdn.voxel51.com/mistake-loc.webp",
+            "https://cdn.voxel51.com/mistake-missing.webp",
+            "https://cdn.sanity.io/images/h6toihm1/production/d286d778ffac5e30c2af62755808bf566dc5d3b6-2048x1148.webp",
+        ]
 
         for plugin in all_plugins:
             owner, repo, path = self._parse_github_url(plugin.github_url)
@@ -432,23 +473,23 @@ Explore the latest breakthroughs and enhance your workflows with these powerful 
             )
 
             readme_path = self.plugins_ecosystem_dir / f"{plugin_slug}.md"
+
             with open(readme_path, "w", encoding="utf-8") as f:
                 f.write(processed_readme)
 
+            repo_info = self.fetch_github_stars(owner, repo)
             image_path = self._extract_image_from_readme(
                 readme_content, plugin.github_url
             )
-            (
-                plugins_with_images if image_path else plugins_without_images
-            ).append((plugin, image_path or None))
 
-        all_plugins_list = plugins_with_images + plugins_without_images
+            plugins_with_info.append((plugin, image_path or None, repo_info))
 
-        logger.info(
-            f"Found {len(plugins_with_images)} plugins with images and {len(plugins_without_images)} without images"
-        )
+        plugins_with_info.sort(key=self._get_plugin_sort_key)
+        all_plugins_list = plugins_with_info
 
-        for plugin, cached_image_path in all_plugins_list:
+        for idx, (plugin, cached_image_path, repo_info) in enumerate(
+            all_plugins_list
+        ):
             plugin_name = plugin.name.split("/")[-1].replace("`", "").strip()
             display_name = " ".join(
                 word.capitalize()
@@ -459,26 +500,30 @@ Explore the latest breakthroughs and enhance your workflows with these powerful 
             image_path = (
                 cached_image_path
                 if cached_image_path
-                else "https://cdn.sanity.io/images/h6toihm1/production/7eddaa11e4fe94c99f1b4072053db599dca64cdd-1920x1080.png"
+                else fallback_images[idx % len(fallback_images)]
             )
 
             category_tag = plugin.category.title()
+            stars = repo_info.get("stars") if repo_info else None
 
-            try:
-                owner, repo, _ = self._parse_github_url(plugin.github_url)
-                stars = self.fetch_github_stars(owner, repo)
-            except Exception:
-                stars = None
             header_text = (
                 f"{display_name} ⭐ {stars}"
                 if stars is not None
-                else f"{display_name}"
+                else display_name
             )
+
+            author = plugin.name.split("/")[0] if "/" in plugin.name else ""
+            author_html = (
+                f'<span class="card-subtitle text-muted" style="background-color: #ff6b35; color: white !important; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: 500;">by {author}</span><br/>'
+                if author
+                else ""
+            )
+            description_with_author = f"{author_html}{plugin.description}"
 
             rst_content += f"""
 .. customcarditem::
     :header: {header_text}
-    :description: {plugin.description}
+    :description: {description_with_author}
     :link: {plugin_link}
     :image: {image_path}
     :tags: {category_tag}
@@ -498,27 +543,69 @@ Explore the latest breakthroughs and enhance your workflows with these powerful 
 
     </div>
 
+    <script>
+    function searchPlugins() {
+        const searchTerm = document.getElementById('plugin-search').value.toLowerCase().trim();
+        const cards = document.querySelectorAll('.tutorials-card-container');
+        let visibleCount = 0;
+        
+        cards.forEach(card => {
+            const header = card.querySelector('.card-title-container strong')?.textContent?.toLowerCase() || '';
+            const description = card.querySelector('.card-summary')?.textContent?.toLowerCase() || '';
+            const tags = card.querySelector('.tags')?.textContent?.toLowerCase() || '';
+            const author = card.querySelector('.card-subtitle')?.textContent?.toLowerCase() || '';
+            
+            const searchableText = `${header} ${description} ${tags} ${author}`;
+            
+            if (searchTerm === '' || searchableText.includes(searchTerm)) {
+                card.style.display = 'block';
+                visibleCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+        
+        const allButton = document.querySelector('.tutorial-filter[data-tag="all"]');
+        if (allButton) {
+            allButton.textContent = `All (${visibleCount})`;
+        }
+        
+        const noResults = document.getElementById('no-results');
+        if (visibleCount === 0 && searchTerm !== '') {
+            if (!noResults) {
+                const container = document.querySelector('.tutorial-cards-grid');
+                const message = document.createElement('div');
+                message.id = 'no-results';
+                message.style.textAlign = 'center';
+                message.style.padding = '2rem';
+                message.style.color = '#666';
+                message.innerHTML = '<h3>No plugins found</h3><p>Try adjusting your search terms</p>';
+                container.appendChild(message);
+            }
+        } else if (noResults) {
+            noResults.remove();
+        }
+    }
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        const allButton = document.querySelector('.tutorial-filter[data-tag="all"]');
+        if (allButton) {
+            allButton.addEventListener('click', function() {
+                document.getElementById('plugin-search').value = '';
+                searchPlugins();
+            });
+        }
+    });
+    </script>
+
 .. End plugins cards section -------------------------------------------------
 
-.. toctree::
-   :maxdepth: 1
-   :hidden:
+.. note::
+   Community plugins are external projects maintained by their respective authors. They are not
+   part of FiftyOne core and may change independently. Review each plugin's documentation and
+   license before use.
 
 """
-
-        for plugin_tuple in all_plugins_list:
-            plugin = plugin_tuple[0]
-            plugin_name = plugin.name.split("/")[-1].replace("`", "").strip()
-            plugin_slug = (
-                plugin_name.lower().replace("-", "_").replace(" ", "_")
-            )
-            filename = f"{plugin_slug}.md"
-            rst_content += f"   {plugin_name} <{filename}>\n"
-
-        rst_content += """
-
-"""
-
         return rst_content
 
     def generate_all_docs(self, readme_content: str):
@@ -529,7 +616,6 @@ Explore the latest breakthroughs and enhance your workflows with these powerful 
             return
 
         logger.info(f"Found {len(plugins)} plugins")
-
         plugins_ecosystem_content = self.generate_plugins_ecosystem_rst(
             plugins
         )

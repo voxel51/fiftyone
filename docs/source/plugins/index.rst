@@ -125,8 +125,7 @@ App? Just open the :ref:`Embeddings panel <app-embeddings-panel>`:
    :maxdepth: 1
    :hidden:
 
-   Overview <self>
-   Plugins Ecosystem <plugins_ecosystem/index>
+   Plugins Ecosystem __SUB_NEW__ <plugins_ecosystem/index>
    Using plugins <using_plugins>
    Developing plugins <developing_plugins>
    API reference <api/plugins>
