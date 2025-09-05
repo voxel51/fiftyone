@@ -91,7 +91,7 @@ export class PixiRenderer2D implements Renderer2D {
     this.app.stage.addChild(this.viewport);
 
     // Activate plugins
-    this.viewport.drag().pinch().wheel().decelerate();
+    this.viewport.drag().pinch().wheel();
 
     // Create containers for proper layering hierarchy
     this.foregroundContainer = new PIXI.Container();
