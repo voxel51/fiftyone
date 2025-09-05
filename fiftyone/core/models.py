@@ -6,6 +6,8 @@ FiftyOne models.
 |
 """
 
+from collections import deque
+from concurrent.futures import ThreadPoolExecutor
 import contextlib
 import inspect
 import logging
@@ -460,6 +462,40 @@ def _apply_image_model_data_loader(
 ):
     needs_samples = isinstance(model, SamplesMixin)
 
+    def preprocess_batch(sample_batch, imgs):
+        imgs = model.collate_fn(model.transforms(imgs)) if preprocess else imgs
+        image_sizes = imgs.pop("fo_image_size", [(None, None)])
+        for k, v in imgs.items():
+            imgs[k] = v.to(model.device)
+        return sample_batch, imgs, image_sizes
+
+    def process_batch(sample_batch, imgs, image_sizes):
+        if needs_samples:
+            output = model.predict_all(imgs, samples=sample_batch)
+        else:
+            output = model.predict_all(imgs)
+        return sample_batch, output, image_sizes
+
+    def postprocess_batch(sample_batch, output, image_sizes):
+        labels_batch = output_processor(
+            output,
+            image_sizes,
+            confidence_thresh=model.config.confidence_thresh,
+        )
+        with _handle_batch_error(skip_failures, sample_batch):
+            for sample, labels in zip(sample_batch, labels_batch):
+                if filename_maker is not None:
+                    _export_arrays(labels, sample.filepath, filename_maker)
+
+                sample.add_labels(
+                    labels,
+                    label_field=label_field,
+                    confidence_thresh=confidence_thresh,
+                )
+                ctx.save(sample)
+
+        return sample_batch
+
     data_loader = _make_data_loader(
         samples,
         model,
@@ -478,55 +514,76 @@ def _apply_image_model_data_loader(
     with contextlib.ExitStack() as context:
         pb = context.enter_context(fou.ProgressBar(samples, progress=progress))
         ctx = context.enter_context(foc.SaveContext(samples))
-        submit = context.enter_context(
-            fou.async_executor(
-                max_workers=1,
-                skip_failures=skip_failures,
-                warning="Async failure labeling batches",
-            )
-        )
+        preprocess = getattr(model, "_preprocess", False)
         output_processor = getattr(
             model, "_output_processor", lambda output, *_, **__: output
         )
-        context.enter_context(fou.SetAttributes(model, _output_processor=None))
+        context.enter_context(
+            fou.SetAttributes(model, preprocess=False, _output_processor=None)
+        )
+        executor = context.enter_context(ThreadPoolExecutor(max_workers=2))
 
-        def save_batch(sample_batch, output, image_sizes):
-            labels_batch = output_processor(
-                output,
-                image_sizes,
-                confidence_thresh=model.config.confidence_thresh,
-            )
-            with _handle_batch_error(skip_failures, sample_batch):
-                for sample, labels in zip(sample_batch, labels_batch):
-                    if filename_maker is not None:
-                        _export_arrays(labels, sample.filepath, filename_maker)
+        preprocessing_tasks = deque()
+        gpu_tasks = deque()
+        postprocessing_tasks = deque()
 
-                    sample.add_labels(
-                        labels,
-                        label_field=label_field,
-                        confidence_thresh=confidence_thresh,
-                    )
-                    ctx.save(sample)
-
-        for sample_batch, imgs in zip(
+        batches = zip(
             fou.iter_batches(samples, batch_size),
             data_loader,
-        ):
-            with _handle_batch_error(skip_failures, sample_batch):
-                if isinstance(imgs, Exception):
-                    raise imgs
+        )
+        sample_batch, imgs = next(batches, (None, None))
+        if imgs:
+            if isinstance(imgs, Exception):
+                raise imgs
 
-                image_sizes = imgs.pop("fo_image_size", [(None, None)])
-                if needs_samples:
-                    output = model.predict_all(imgs, samples=sample_batch)
-                else:
-                    output = model.predict_all(imgs)
+            preprocessing_tasks.append(
+                executor.submit(preprocess_batch, sample_batch, imgs)
+            )
 
-                submit(
-                    save_batch, sample_batch, output, image_sizes=image_sizes
+        while True:
+            if not preprocessing_tasks:
+                sample_batch, imgs = next(batches, (None, None))
+                if imgs:
+                    if isinstance(imgs, Exception):
+                        raise imgs
+
+                    preprocessing_tasks.append(
+                        executor.submit(preprocess_batch, sample_batch, imgs)
+                    )
+
+            if gpu_tasks:
+                task = gpu_tasks.popleft()
+                sample_batch, output, image_sizes = task()
+                postprocessing_tasks.append(
+                    executor.submit(
+                        postprocess_batch,
+                        sample_batch,
+                        output,
+                        image_sizes,
+                    )
                 )
 
-            pb.update(len(sample_batch))
+            if preprocessing_tasks:
+                (
+                    sample_batch,
+                    imgs,
+                    image_sizes,
+                ) = preprocessing_tasks.popleft().result()
+                gpu_tasks.append(
+                    lambda sample_batch=sample_batch, imgs=imgs, image_sizes=image_sizes: process_batch(
+                        sample_batch,
+                        imgs,
+                        image_sizes,
+                    )
+                )
+                continue
+
+            if postprocessing_tasks:
+                sample_batch = postprocessing_tasks.popleft().result()
+                pb.update(len(sample_batch))
+                continue
+
+            break
 
 
 def _apply_image_model_to_frames_single(

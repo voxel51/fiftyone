@@ -661,10 +661,10 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
         # this line is the only difference between this and the base class
         # we should consolidate this function once post processing is properly
         # removed out of torchimagemodel
-        image_sizes = args.pop("fo_image_size", [(None, None)])
+        # image_sizes = args.pop("fo_image_size", [(None, None)])
 
-        for k, v in args.items():
-            args[k] = v.to(self.device)
+        # for k, v in args.items():
+        #     args[k] = v.to(self.device)
 
         output = self._forward_pass(args)
 
