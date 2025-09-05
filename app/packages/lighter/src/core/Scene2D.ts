@@ -106,6 +106,7 @@ export class Scene2D {
       config.eventBus,
       this.undoRedo,
       this.selectionManager,
+      config.renderer,
       (id) => this.overlays.get(id)
     );
     this.sceneOptions = config.options;

@@ -116,6 +116,16 @@ export interface Renderer2D {
   getCanvas(): HTMLCanvasElement;
 
   /**
+   * Disables zoom and pan interactions (e.g., during overlay dragging).
+   */
+  disableZoomPan(): void;
+
+  /**
+   * Re-enables zoom and pan interactions after overlay interactions are complete.
+   */
+  enableZoomPan(): void;
+
+  /**
    * Cleans up the renderer.
    * Releases any resources held by the renderer.
    */

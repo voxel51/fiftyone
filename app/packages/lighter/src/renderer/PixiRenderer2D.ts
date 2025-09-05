@@ -352,6 +352,29 @@ export class PixiRenderer2D implements Renderer2D {
   }
 
   /**
+   * Disables zoom and pan interactions (e.g., during overlay dragging).
+   * This prevents viewport plugins from interfering with overlay interactions.
+   */
+  disableZoomPan(): void {
+    if (this.viewport?.plugins) {
+      this.viewport.plugins.pause("drag");
+      this.viewport.plugins.pause("pinch");
+      this.viewport.plugins.pause("wheel");
+    }
+  }
+
+  /**
+   * Re-enables zoom and pan interactions after overlay interactions are complete.
+   */
+  enableZoomPan(): void {
+    if (this.viewport?.plugins) {
+      this.viewport.plugins.resume("drag");
+      this.viewport.plugins.resume("pinch");
+      this.viewport.plugins.resume("wheel");
+    }
+  }
+
+  /**
    * Check if the renderer is initialized
    */
   isReady(): boolean {
