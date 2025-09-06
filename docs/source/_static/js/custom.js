@@ -505,17 +505,26 @@ function initMobileNavDropdown() {
   });
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  initSidebarToggle();
-  initSlidingNavBar();
-  initDropdownDelay();
-  markLineNumbers();
-  initTabsSlidingIndicator();
-  initMobileNavDropdown();
-});
+/* KAPA AI Button */
+const initKapaAIButton = () => {
+  const button = document.createElement("button");
+  button.className = "kapa-ai-button";
+  button.innerHTML = `
+    <span class="kapa-text">Ask AI</span>
+    <div class="kapa-logo">
+      <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" alt="FiftyOne Logo" />
+    </div>
+  `;
 
-document.addEventListener("DOMContentLoaded", function () {
-  var script = document.createElement("script");
+  button.addEventListener("click", () => {
+    if (window.Kapa) {
+      window.Kapa.open();
+    }
+  });
+
+  document.body.appendChild(button);
+
+  const script = document.createElement("script");
   script.src = "https://widget.kapa.ai/kapa-widget.bundle.js";
   script.setAttribute(
     "data-website-id",
@@ -523,10 +532,21 @@ document.addEventListener("DOMContentLoaded", function () {
   );
   script.setAttribute("data-project-name", "Voxel51");
   script.setAttribute("data-project-color", "#212529");
+  script.setAttribute("data-button-hide", "true");
   script.setAttribute(
     "data-project-logo",
     "https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png"
   );
   script.async = true;
   document.head.appendChild(script);
+};
+
+document.addEventListener("DOMContentLoaded", () => {
+  initSidebarToggle();
+  initSlidingNavBar();
+  initDropdownDelay();
+  markLineNumbers();
+  initTabsSlidingIndicator();
+  initMobileNavDropdown();
+  initKapaAIButton();
 });

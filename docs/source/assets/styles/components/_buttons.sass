@@ -97,3 +97,39 @@
   &:hover:before
     background-color: var(--pst-color-link)
 
+.kapa-ai-button
+  position: fixed
+  bottom: 20px
+  right: 20px
+  z-index: 1000
+  background-color: var(--pst-color-link) !important
+  color: #fff !important
+  border-radius: 40px
+  font-size: 16px
+  font-weight: 500
+  text-decoration: none
+  padding: 12px 20px
+  border-width: 0 !important
+  letter-spacing: 0.14px
+  display: flex
+  align-items: center
+  gap: 10px
+
+  &:hover
+    background-color: color-mix(in oklab, var(--pst-color-link) 90%, transparent) !important
+    text-decoration: none
+
+  .kapa-text
+    flex: 1
+
+  .kapa-logo
+    width: 20px
+    height: 20px
+    display: flex
+    align-items: center
+    justify-content: center
+
+    img
+      width: 20px
+      height: 20px
+      object-fit: contain
