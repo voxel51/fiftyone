@@ -82,6 +82,9 @@ export class PixiRenderer2D implements Renderer2D {
       width: this.canvas.parentElement!.clientWidth,
       height: this.canvas.parentElement!.clientHeight,
       backgroundAlpha: 0,
+      autoStart: false,
+      // note: webgpu is faster but not consistent across browsers and has random bugs
+      preference: "webgl",
     });
 
     this.viewport = new Viewport({
@@ -99,8 +102,11 @@ export class PixiRenderer2D implements Renderer2D {
 
     // Background content (image, etc.)
     this.viewport.addChild(this.backgroundContainer);
+    this.cacheAsTexture(this.backgroundContainer);
     // Foreground content (graphics, text, non-image overlays)
     this.viewport.addChild(this.foregroundContainer);
+
+    this.app.start();
 
     this.isInitialized = true;
   }
@@ -323,14 +329,13 @@ export class PixiRenderer2D implements Renderer2D {
         sprite.scale.y = options.scaleY ?? 1;
       }
     }
-    this.addToContainer(sprite, containerId);
+    this.addToContainer(sprite, containerId, false);
   }
 
   clear(): void {
     this.foregroundContainer.removeChildren();
     this.backgroundContainer.removeChildren();
     this.containers.clear();
-    this.resizeObserver?.disconnect();
   }
 
   /**
@@ -402,30 +407,26 @@ export class PixiRenderer2D implements Renderer2D {
   }
 
   /**
-   * Creates or gets a container for a given ID
-   * @param containerId - The container ID
-   * @returns The container for this ID
-   */
-  private getOrCreateContainer(containerId: string): PIXI.Container {
-    let container = this.containers.get(containerId);
-    if (!container) {
-      container = new PIXI.Container();
-      this.containers.set(containerId, container);
-      this.foregroundContainer.addChild(container);
-    }
-    return container;
-  }
-
-  /**
    * Adds an element to the appropriate container
    * @param element - The PIXI element to add
    * @param containerId - The container ID this element belongs to
    */
   private addToContainer(
     element: PIXI.Container | PIXI.Graphics | PIXI.Text | PIXI.Sprite,
-    containerId: string
+    containerId: string,
+    addToForeground: boolean = true
   ): void {
-    const container = this.getOrCreateContainer(containerId);
+    let container = this.containers.get(containerId);
+    if (!container) {
+      container = new PIXI.Container();
+      this.containers.set(containerId, container);
+
+      if (addToForeground) {
+        this.foregroundContainer.addChild(container);
+      } else {
+        this.backgroundContainer.addChild(container);
+      }
+    }
     container.addChild(element);
   }
 
@@ -555,11 +556,10 @@ export class PixiRenderer2D implements Renderer2D {
   }
 
   cleanUp(): void {
-    // note: this destroys webgl context. right now we're creating a new one per sample...
-    // might want to consider using a global pixi renderer. the cost of doing that is that we have to manage lifecycle really well.
-    // https://pixijs.com/8.x/guides/concepts/architecture
-    if (this.app?.renderer && "gl" in this.app.renderer) {
-      this.app.destroy(true);
+    this.clear();
+    this.resizeObserver?.disconnect();
+    if (this.app?.renderer) {
+      this.app.destroy();
     }
   }
 }

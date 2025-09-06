@@ -1037,11 +1037,11 @@ export class Scene2D {
     this.selectionManager.destroy();
     this.undoRedo.clear();
 
-    // Remove event listeners by aborting the abort controller
-    this.abortController.abort();
-
     // Stop render loop
     this.config.renderer.stopRenderLoop();
+
+    // Remove event listeners by aborting the abort controller
+    this.abortController.abort();
 
     // Clean up renderer
     this.config.renderer.cleanUp();
