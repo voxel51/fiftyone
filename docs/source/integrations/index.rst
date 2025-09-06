@@ -141,7 +141,7 @@ on the cards below to see how!
 
 .. customcarditem::
     :header: LanceDB
-    :description: Use our LancedDB integration to index your datasets and perform embeddings queries at scale without the need for a cloud service.
+    :description: Use our LanceDB integration to index your datasets and perform embeddings queries at scale without the need for a cloud service.
     :link: lancedb.html
     :image: ../_images/brain-leaky-splits.png
     :tags: Brain,Embeddings,Vector-Search
