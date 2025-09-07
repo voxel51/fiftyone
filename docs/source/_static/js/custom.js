@@ -521,7 +521,7 @@ const initKapaAI = () => {
     buttonHide: "true",
     projectLogo: logo,
     modalZIndex: "9999",
-    modalYOffset: "5",
+    modalYOffset: "5vh",
     modalExampleQuestions:
       "How can I import my data?,How can I compute embeddings?, How can I create my own plugin?, How can I evaluate my model?",
     modalDisclaimer:
@@ -530,9 +530,10 @@ const initKapaAI = () => {
 
   document.head.appendChild(script);
 
-  const floatingButton = document.createElement("button");
-  floatingButton.className = "kapa-ai-button";
-  floatingButton.innerHTML = `<span class="kapa-text">Ask AI</span><div class="kapa-logo"><img src="${logo}" alt="FiftyOne Logo" /></div>`;
+  const floatingButton = Object.assign(document.createElement("button"), {
+    className: "kapa-ai-button",
+    innerHTML: `<span class="kapa-text">Ask AI</span><div class="kapa-logo"><img src="${logo}" alt="FiftyOne Logo" /></div>`,
+  });
   floatingButton.addEventListener("click", () => {
     if (window.Kapa) {
       window.Kapa.open();
@@ -541,9 +542,12 @@ const initKapaAI = () => {
   document.body.appendChild(floatingButton);
 
   const createAskAIButton = (query) => {
-    const button = document.createElement("button");
-    button.className = "kapa-ask-ai-button";
-    button.innerHTML = `<span class="kapa-text">Ask AI about "${query}"</span><div class="kapa-logo"><img src="${logo}" alt="FiftyOne Logo" /></div>`;
+    const button = Object.assign(document.createElement("button"), {
+      className: "kapa-ask-ai-button",
+      innerHTML: `<span class="kapa-text"></span><div class="kapa-logo"><img src="${logo}" alt="FiftyOne Logo" /></div>`,
+    });
+    button.querySelector(".kapa-text").textContent = `Ask AI about "${query}"`;
+
     button.addEventListener("click", () => {
       if (window.Kapa) {
         window.Kapa.open({ mode: "ai", query, submit: true });
