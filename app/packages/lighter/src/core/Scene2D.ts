@@ -98,6 +98,8 @@ export class Scene2D {
 
   private abortController = new AbortController();
 
+  public isDestroyed = false;
+
   constructor(private readonly config: Scene2DConfig) {
     this.coordinateSystem = new CoordinateSystem2D();
     this.selectionManager = new SelectionManager(config.eventBus);
@@ -687,7 +689,7 @@ export class Scene2D {
   };
 
   public async startRenderLoop(): Promise<void> {
-    this.config.renderer.startRenderLoop(async () => {
+    this.config.renderer.addTickHandler(async () => {
       await this.renderFrame();
     });
   }
@@ -1021,6 +1023,8 @@ export class Scene2D {
    * Destroys the scene and cleans up resources.
    */
   destroy(): void {
+    if (this.isDestroyed) return;
+
     // Clear all overlays
     this.clear();
 
@@ -1037,14 +1041,13 @@ export class Scene2D {
     this.selectionManager.destroy();
     this.undoRedo.clear();
 
-    // Stop render loop
-    this.config.renderer.stopRenderLoop();
-
     // Remove event listeners by aborting the abort controller
     this.abortController.abort();
 
-    // Clean up renderer
+    // Clean up renderer (NOT destroy)
     this.config.renderer.cleanUp();
+
+    this.isDestroyed = true;
   }
 
   /**

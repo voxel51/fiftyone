@@ -54,9 +54,9 @@ export interface Renderer2D {
   // Infrastructure
   eventBus?: EventBus;
 
-  // Render loop
-  startRenderLoop(onFrame: () => void): void;
-  stopRenderLoop(): void;
+  // Tick loop
+  addTickHandler(onFrame: () => void): void;
+  resetTickHandler(): void;
 
   // Drawing methods
   drawRect(bounds: Rect, style: DrawStyle, containerId: string): void;
@@ -78,7 +78,6 @@ export interface Renderer2D {
     options: ImageOptions | undefined,
     containerId: string
   ): void;
-  clear(): void;
 
   dispose(containerId: string): void;
   hide(containerId: string): void;
@@ -126,8 +125,13 @@ export interface Renderer2D {
   enableZoomPan(): void;
 
   /**
-   * Cleans up the renderer.
-   * Releases any resources held by the renderer.
+   * Reset tick handler, and remove all children from the viewport.
    */
   cleanUp(): void;
+
+  /**
+   * Destroys the renderer.
+   * Releases any resources held by the renderer.
+   */
+  destroy(): void;
 }

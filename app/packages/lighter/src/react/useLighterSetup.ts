@@ -4,15 +4,15 @@
 
 import { useLookerOptions } from "@fiftyone/state";
 import { useAtom } from "jotai";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import {
   EventBus,
   globalPixiResourceLoader,
   LIGHTER_EVENTS,
+  lighterSceneAtom,
   PixiRenderer2D,
   Scene2D,
 } from "../index";
-import { lighterSceneAtom } from "../state";
 import { useBridge } from "./useBridge";
 
 // TODO: Ultimately, we'll want to remove dependency on "looker" and create our own options type
@@ -24,26 +24,28 @@ export type LighterOptions = Partial<ReturnType<typeof useLookerOptions>>;
  * This hook handles initialization and stores the scene instance in global state.
  *
  * All effects related to lighter should be handled in this hook.
+ *
+ * @param stableCanvas - The canvas element to use for rendering. This should be a stable reference,
+ * i.e., it should not change during the lifetime of the component.
+ * @param options - The options for the scene.
  */
 export const useLighterSetupWithPixi = (
-  canvasRef: React.RefObject<HTMLCanvasElement>,
+  stableCanvas: HTMLCanvasElement,
   options: LighterOptions
 ) => {
   const [scene, setScene] = useAtom(lighterSceneAtom);
 
-  // This is the bridge between FiftyOne state management system and Lighter
-  useBridge(scene);
+  const rendererRef = useRef<PixiRenderer2D | null>(null);
+  const eventBusRef = useRef<EventBus | null>(null);
 
   useEffect(() => {
-    if (!canvasRef.current) return;
-
-    const canvas = canvasRef.current;
+    if (!stableCanvas) return;
 
     const eventBus = new EventBus();
+    eventBusRef.current = eventBus;
 
-    const rendererInstance = new PixiRenderer2D(canvas, eventBus);
-
-    const resourceLoaderInstance = globalPixiResourceLoader;
+    const renderer = new PixiRenderer2D(stableCanvas, eventBus);
+    rendererRef.current = renderer;
 
     // Extract only the options we need for Scene2D
     const sceneOptions = {
@@ -52,39 +54,33 @@ export const useLighterSetupWithPixi = (
       alpha: options.alpha,
     };
 
-    const sceneInstance = new Scene2D({
-      canvas,
-      renderer: rendererInstance,
-      resourceLoader: resourceLoaderInstance,
-      eventBus,
+    const newScene = new Scene2D({
+      renderer,
+      eventBus: eventBusRef.current,
+      canvas: stableCanvas,
+      resourceLoader: globalPixiResourceLoader,
       options: sceneOptions,
     });
+    setScene(newScene);
 
-    // Guard against multiple calls to setScene because of async IIFEs
-    let cancelled = false;
-
-    (async () => {
-      // Initialize renderer if it's a PixiRenderer2D and not already initialized
-      if (!rendererInstance.isReady()) {
-        await rendererInstance.initializePixiJS();
-      }
-
-      await sceneInstance.startRenderLoop();
-
-      if (!cancelled) {
-        setScene(sceneInstance);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-      sceneInstance.destroy();
-      setScene(null);
-    };
-  }, [canvasRef, setScene]);
+    // note: do NOT add options as a dep here, we have another effect to sync scene with new options
+  }, [stableCanvas]);
 
   useEffect(() => {
-    if (scene) {
+    if (!scene || scene.isDestroyed) return;
+
+    rendererRef.current?.initializePixiJS().then(() => {
+      scene.startRenderLoop();
+    });
+
+    return () => {
+      scene.destroy();
+      setScene(null);
+    };
+  }, [scene]);
+
+  useEffect(() => {
+    if (scene && !scene.isDestroyed) {
       scene.dispatch_DANGEROUSLY({
         type: LIGHTER_EVENTS.SCENE_OPTIONS_CHANGED,
         detail: {
@@ -95,6 +91,9 @@ export const useLighterSetupWithPixi = (
       });
     }
   }, [scene, options]);
+
+  // This is the bridge between FiftyOne state management system and Lighter
+  useBridge(scene);
 
   // Return empty object since this hook is just for setup
   // The actual scene access is provided by useLighter hook
