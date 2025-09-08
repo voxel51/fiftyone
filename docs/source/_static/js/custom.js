@@ -412,9 +412,11 @@ function initTabsSlidingIndicator() {
       if (activeTab) {
         const left = activeTab.offsetLeft;
         const width = activeTab.offsetWidth;
+        const top = activeTab.offsetTop + activeTab.offsetHeight - 1;
 
         slidingIndicator.style.left = `${left}px`;
         slidingIndicator.style.width = `${width}px`;
+        slidingIndicator.style.top = `${top}px`;
         slidingIndicator.style.opacity = "1";
       } else {
         slidingIndicator.style.opacity = "0";
