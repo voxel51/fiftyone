@@ -755,6 +755,9 @@ subsequent sections.
                 allow_delegated_execution=True/False,    # default False
                 default_choice_to_delegated=True/False,  # default False
                 resolve_execution_options_on_change=None,
+
+                # Whether the operator supports distributed execution
+                allow_distributed_execution=True/False,  # default False
             )
 
         def resolve_placement(self, ctx):
@@ -954,7 +957,7 @@ execution:
             default_choice_to_delegated=True/False,  # default False
             resolve_execution_options_on_change=None,
 
-            # If delegated, whether the operator supports distributed execution
+            # Whether the operator supports distributed execution
             allow_distributed_execution=True/False,  # default False
         )
 
@@ -1123,68 +1126,28 @@ the property will automatically be marked as `invalid=True`. The operator's
 
 .. _operator-target-view:
 
-Operator inputs: target view
-----------------------------
+Target view __SUB_NEW__
+-----------------------
 
 .. versionadded:: 1.8.0
 
-A common pattern is to allow users to choose whether an operator should be
-applied to the entire dataset, just the current view, or some other subset of
-samples. As of v1.8.0, FiftyOne has a builtin utility for applying this
+A common pattern when defining operators is to allow users to choose whether an
+operator should be applied to the entire dataset, just the current view, or
+some other subset of samples. FiftyOne has a builtin utility for applying this
 pattern to your operators.
 
-The input form element for choosing the target view
-can be created via the
+To use this feature, call the
 :meth:`inputs.view_target() <fiftyone.operators.types.Object.view_target>`
-function, which you can call from within your operator's
-:meth:`resolve_input() <fiftyone.operators.Operator.resolve_input>`
-function.
+function within your operator's
+:meth:`resolve_input() <fiftyone.operators.Operator.resolve_input>` method.
+This will add a radio button group to your operator's input form that presents
+the set of possible view targets to the user. The resolved target view can then
+be accessed in the operator's
+:meth:`execute() <fiftyone.operators.Operator.execute>` method via
+:meth:`ctx.target_view() <fiftyone.operators.ExecutionContext.target_view>`.
 
-The resolved target view can be accessed in the operator's
-:meth:`execute() <fiftyone.operators.Operator.execute>` method
-via :meth:`ctx.target_view() <fiftyone.operators.ExecutionContext.target_view>`.
-
-The available choices the user will have for the target view depend on the
-current context and the provided flags.
-
-The choices include:
-
-+--------------------------+----------------------------------------------------------------------------------+
-| Choice                   | Description                                                                      |
-+==========================+==================================================================================+
-| DATASET                  | The entire dataset, if the current view is not a generated view                  |
-+--------------------------+----------------------------------------------------------------------------------+
-| BASE_VIEW                | The base view, if the current view is a generated view such as                   |
-|                          | :class:`fiftyone.core.clips.ClipsView`, :class:`fiftyone.core.video.FramesView`, |
-|                          | or :class:`fiftyone.core.patches.PatchesView`. Base view is the semantic         |
-|                          | equivalent of "entire dataset" for these views. The base view is the view from   |
-|                          | which the generated view was created. For example,                               |
-|                          | ``dataset.limit(51).to_frames("ground_truth").limit(10)`` has a base view of     |
-|                          | ``dataset.limit(51).to_frames("ground_truth")``                                  |
-+--------------------------+----------------------------------------------------------------------------------+
-| DATASET_VIEW             | The dataset view (``ctx.dataset.view()``), if ``allow_dataset_view`` is ``True`` |
-|                          | . Note this is unlikely to be useful in the average case, so it defaults to off  |
-+--------------------------+----------------------------------------------------------------------------------+
-| CURRENT_VIEW             | The current view, if the current view is different from the dataset view         |
-+--------------------------+----------------------------------------------------------------------------------+
-| SELECTED_SAMPLES         | The currently selected samples, if ``allow_selected_samples`` is ``True`` and    |
-|                          | there are selected samples                                                       |
-+--------------------------+----------------------------------------------------------------------------------+
-| SELECTED_LABELS          | The currently selected labels, if ``allow_selected_labels`` is ``True`` and      |
-|                          | there are selected labels                                                        |
-+--------------------------+----------------------------------------------------------------------------------+
-
-If there's no view or selected items, the only option is entire dataset,
-so no choice is presented to the user.
-
-The target view descriptions are generated based on the provided
-``action_description`` and the various description parameters. If a
-description parameter is not ``None``, it will be used as the description
-for the corresponding target view choice. Otherwise, a default description
-will be generated such as ``f"{action_description} the entire dataset"``.
-
-Here is a simple example of an operator that uses the target view pattern to
-give the user the choice of target view:
+Here's a simple example of an operator that uses the target view pattern to
+give the user the choice of target view to process:
 
 .. code-block:: python
 
@@ -1195,336 +1158,79 @@ give the user the choice of target view:
         def config(self):
             return foo.OperatorConfig(
                 name="target_view_operator",
-                label="Testing Target View Operator",
+                label="Target view operator",
                 dynamic=True,
             )
 
         def resolve_input(self, ctx):
             inputs = types.Object()
+
+            # Prompt user to select the target view to process
             inputs.view_target(ctx)
 
             return types.Property(
-                inputs, view=types.View(label="Target View Operator")
+                inputs, view=types.View(label="Target view operator")
             )
 
         def execute(self, ctx):
-            target_view = ctx.target_view()
             # Do something with the target view
+            target_view = ctx.target_view()
             print("Sample collection size", len(target_view))
 
-And here is a screenshot of the target view input in the FiftyOne app when
-applied to a compute metadata operator:
+And here's a screenshot of a typical target view radio group in an operator's
+input form:
 
 .. image:: /images/plugins/operators/examples/operator-target-view.png
     :align: center
 
-.. _operator-delegated-execution:
-
-Delegated execution
--------------------
-
-By default, operations are :ref:`executed <operator-execution>` immediately
-after their inputs are provided in the App or they are triggered
-programmatically.
-
-However, many interesting operations like model inference, embeddings
-computation, evaluation, and exports are computationally intensive and/or not
-suitable for immediate execution.
-
-In such cases, :ref:`delegated operations <delegated-operations>` come to the
-rescue by allowing users to schedule potentially long-running tasks that are
-executed in the background while you continue to use the App.
-
-.. note::
-
-    :ref:`FiftyOne Enterprise <enterprise-delegated-operations>` deployments come out of
-    the box with a connected compute cluster for executing delegated operations
-    at scale.
-
-    In FiftyOne Open Source, you can use delegated operations at small scale
-    by :ref:`running them locally <delegated-orchestrator-open-source>`.
-
-There are a variety of options available for configuring whether a given
-operation should be delegated or executed immediately.
-
-.. _operator-execution-options:
-
-Execution options
-~~~~~~~~~~~~~~~~~
-
-You can provide the optional properties described below in the
-:ref:`operator's config <operator-config>` to specify the available execution
-modes for the operator:
-
-.. code-block:: python
-    :linenos:
-
-    @property
-    def config(self):
-        return foo.OperatorConfig(
-            # Other parameters...
-
-            # Whether to allow immediate execution
-            allow_immediate_execution=True/False,    # default True
-
-            # Whether to allow delegated execution
-            allow_delegated_execution=True/False,    # default False
-
-            # Whether the default execution mode should be delegated, if both
-            # options are available
-            default_choice_to_delegated=True/False,  # default False
-
-            # Whether to resolve execution options dynamically when the
-            # operator's inputs change. By default, this behavior will match
-            # the operator's ``dynamic`` setting
-            resolve_execution_options_on_change=True/False/None,  # default None
-        )
-
-When the operator's input form is rendered in the App, the `Execute|Schedule`
-button at the bottom of the modal will contextually show whether the operation
-will be executed immediately, scheduled for delegated execution, or allow the
-user to choose between the supported options if there are multiple:
-
-.. image:: /images/plugins/operators/operator-execute-button.png
-    :align: center
-
-.. _dynamic-execution-options:
-
-Dynamic execution options
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Operators may also implement
-:meth:`resolve_execution_options() <fiftyone.operators.operator.Operator.resolve_execution_options>`
-to dynamically configure the available execution options based on the current
-execution context:
-
-.. code-block:: python
-    :linenos:
-
-    # Option 1: recommend delegation for larger views
-    def resolve_execution_options(self, ctx):
-        should_delegate = len(ctx.view) > 1000
-        return foo.ExecutionOptions(
-            allow_immediate_execution=True,
-            allow_delegated_execution=True,
-            default_choice_to_delegated=should_delegate,
-        )
-
-    # Option 2: force delegation for larger views
-    def resolve_execution_options(self, ctx):
-        delegate = len(ctx.view) > 1000
-        return foo.ExecutionOptions(
-            allow_immediate_execution=not delegate,
-            allow_delegated_execution=delegate,
-        )
-
-If implemented, this method will override any static execution parameters
-included in the :ref:`operator's config <operator-config>` as described in the
-previous section.
-
-.. _operator-forced-delegation:
-
-Forced delegation
-~~~~~~~~~~~~~~~~~
-
-Operators can implement
-:meth:`resolve_delegation() <fiftyone.operators.operator.Operator.resolve_delegation>`
-to force a particular operation to be delegated (by returning `True`) or
-executed immediately (by returning `False`) based on the current execution
-context.
-
-For example, you could decide whether to delegate execution based on the size
-of the current view:
-
-.. code-block:: python
-    :linenos:
-
-    def resolve_delegation(self, ctx):
-        # Force delegation for large views and immediate execution for small views
-        return len(ctx.view) > 1000
-
-If :meth:`resolve_delegation() <fiftyone.operators.operator.Operator.resolve_delegation>`
-is not implemented or returns `None`, then the choice of execution mode is
-deferred to the prior mechanisms described above.
-
-.. _operator-reporting-progress:
-
-Reporting progress
-~~~~~~~~~~~~~~~~~~
-
-Delegated operations can report their execution progress by calling
-:meth:`set_progress() <fiftyone.operators.executor.ExecutionContext.set_progress>`
-on their execution context from within
-:meth:`execute() <fiftyone.operators.operator.Operator.execute>`:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.core.storage as fos
-    import fiftyone.core.utils as fou
-
-    def execute(self, ctx):
-        images_dir = ctx.params["images_dir"]
-
-        filepaths = fos.list_files(images_dir, abs_paths=True, recursive=True)
-
-        num_added = 0
-        num_total = len(filepaths)
-        for batch in fou.iter_batches(filepaths, 100):
-            samples = [fo.Sample(filepath=f) for f in batch]
-            ctx.dataset.add_samples(samples)
-
-            num_added += len(batch)
-            ctx.set_progress(progress=num_added / num_total)
-
-.. note::
-
-    :ref:`FiftyOne Enterprise <fiftyone-enterprise>` users can view the current progress
-    of their delegated operations from the
-    :ref:`Runs page <enterprise-managing-delegated-operations>` of the Enterprise App!
-
-For your convenience, all builtin methods of the FiftyOne SDK that support
-rendering progress bars provide an optional `progress` method that you can use
-trigger calls to
-:meth:`set_progress() <fiftyone.operators.executor.ExecutionContext.set_progress>`
-using the pattern show below:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-
-    def execute(self, ctx):
-        images_dir = ctx.params["images_dir"]
-
-        # Custom logic that controls how progress is reported
-        def set_progress(pb):
-            if pb.complete:
-                ctx.set_progress(progress=1, label="Operation complete")
-            else:
-                ctx.set_progress(progress=pb.progress)
-
-        # Option 1: report progress every five seconds
-        progress = fo.report_progress(set_progress, dt=5.0)
-
-        # Option 2: report progress at 10 equally-spaced increments
-        # progress = fo.report_progress(set_progress, n=10)
-
-        ctx.dataset.add_images_dir(images_dir, progress=progress)
-
-You can also use the builtin
-:class:`ProgressHandler <fiftyone.operators.ProgressHandler>` class to
-automatically forward logging messages to
-:meth:`set_progress() <fiftyone.operators.executor.ExecutionContext.set_progress>`
-as `label` values using the pattern shown below:
-
-.. code-block:: python
-    :linenos:
-
-    import logging
-    import fiftyone.operators as foo
-    import fiftyone.zoo as foz
-
-    def execute(self, ctx):
-        name = ctx.params["name"]
-
-        # Automatically report all `fiftyone` logging messages
-        with foo.ProgressHandler(ctx, logger=logging.getLogger("fiftyone")):
-            foz.load_zoo_dataset(name, persistent=True)
-
-.. _writing-distributed-operators:
-
-Distributed execution
-~~~~~~~~~~~~~~~~~~~~~
-
-.. versionadded:: 1.8.0
-
-In FiftyOne Enterprise, delegated operations can be executed in a
-:ref:`distributed <enterprise-do-distributed-execution>` fashion across
-multiple workers to speed up execution on large datasets. This is not
-supported in FiftyOne Open Source, but operator authors can still utilize
-the distributed execution paradigm so that their operators can be run in
-a distributed fashion when deployed in Enterprise.
-
-.. note::
-    In FiftyOne Open Source, the ``allow_distributed_execution`` flag is
-    ignored at runtime. Use it to declare intent in your operator, and the
-    capability will be honored when the operator runs in Enterprise
-
-There are really two requirements for supporting distributed execution and
-they are both quite simple!
-
-Allow distributed
-^^^^^^^^^^^^^^^^^
-
-To allow your operator to be executed in a distributed fashion, you must set
-the `allow_distributed_execution` flag to `True` in the
-:ref:`operator's config <operator-config>`:
-
-.. code-block:: python
-    :linenos:
-
-    @property
-    def config(self):
-        return foo.OperatorConfig(
-            name="my_distributed_operator",
-            label="My Distributed Operator",
-            allow_delegated_execution=True,
-            allow_immediate_execution=True,
-            default_choice_to_delegated=True,
-            dynamic=True,
-            allow_distributed_execution=True,
-        )
-
-Utilize distributed execution
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-To utilize distributed execution, you must ensure the operator is using the
-proper dataset view in its
-:meth:`execute() <fiftyone.operators.Operator.execute>` method. This way, the
-task splits will be respected by child tasks, while non-distributed execution
-will also work as expected.
-
-This can be achieved via one of two ways:
-
-1.  Always use ``ctx.view`` within ``execute()``. This is the simplest
-    approach and works well if your operator only ever uses the user's current
-    view.
-
-    For example:
-
-    .. code-block:: python
-       :linenos:
-
-       def execute(self, ctx):
-           # Use ctx.view as the basis for your computation
-           num_samples = len(ctx.view)
-           ...
-2.  **[Recommended]** Use
-    :meth:`ctx.target_view() <fiftyone.operators.ExecutionContext.target_view>`
-    if your operator is using the :ref:`target view pattern <operator-target-view>`.
-    This is the recommended approach since it is likely that your users will
-    want to choose the target view when executing the operator.
-
-    For example:
-
-    .. code-block:: python
-       :linenos:
-
-       def execute(self, ctx):
-           # Use ctx.target_view() as the basis for your computation
-           target_view = ctx.target_view()
-           num_samples = len(target_view)
-           ...
-
-.. warning::
-
-    Since the operator may be executed multiple times, each on a subset of
-    the data, in any order, the operator cannot perform any pre or post
-    processing outside of the ``ctx.view``. That is, the operator execution
-    must be a so-called
-    `embarrassingly parallel problem <https://en.wikipedia.org/wiki/Embarrassingly_parallel>`_.
+The available choices the user will have for the target view at runtime depend
+on the current execution context and the values of any optional parameters you
+pass to :meth:`inputs.view_target() <fiftyone.operators.types.Object.view_target>`.
+
+The full set of possible view targets are:
+
++--------------------------+----------------------------------------------------------------------------------+
+| Choice                   | Description                                                                      |
++==========================+==================================================================================+
+| DATASET                  | The current dataset loaded in the App. Always presented as an option unless the  |
+|                          | current view is a generated view                                                 |
++--------------------------+----------------------------------------------------------------------------------+
+| BASE_VIEW                | The current base view in the App. Always presented as an option in place of      |
+|                          | ``DATASET`` when the current view is a generated view (eg                        |
+|                          | :ref:`patches <object-patches-views>`, :ref:`frames <frame-views>`, or           |
+|                          | :ref:`clips <clip-views>`).                                                      |
+|                          |                                                                                  |
+|                          | Base view is the semantic equivalent of "entire dataset" for generated views.    |
+|                          | For example, ``dataset.limit(51).to_frames("ground_truth").limit(10)`` has a     |
+|                          | base view of ``dataset.limit(51).to_frames("ground_truth")``                     |
++--------------------------+----------------------------------------------------------------------------------+
+| CURRENT_VIEW             | The current view loaded in the App. Always presented as an option unless the     |
+|                          | full dataset is currently loaded                                                 |
++--------------------------+----------------------------------------------------------------------------------+
+| DATASET_VIEW             | A full view of the current dataset (ie ``ctx.dataset.view()``). Only presented   |
+|                          | as an option if ``allow_dataset_view=True``                                      |
++--------------------------+----------------------------------------------------------------------------------+
+| SELECTED_SAMPLES         | The currently selected samples in the App. Only presented as an option if        |
+|                          | ``allow_selected_samples=True`` and the user has samples selected                |
++--------------------------+----------------------------------------------------------------------------------+
+| SELECTED_LABELS          | The currently selected labels in the App, Only presented as an option if         |
+|                          | ``allow_selected_labels=True`` and the user has labels selected                  |
++--------------------------+----------------------------------------------------------------------------------+
+
+At runtime, the target view radio group is dynamically generated to only show
+the valid view targets given the current state of the user's App.
+
+For example, if the user is currently viewing the entire dataset in the App and
+no samples are currently selected, the `DATASET_VIEW` and `SELECTED_SAMPLES`
+options are automatically omitted from the radio group, since they do not apply.
+If there is only one valid choice, the radio group is omitted completely.
+
+The target view descriptions in the input form can be configured by passing the
+optional ``action_description`` and various other description parameters to
+:meth:`inputs.view_target() <fiftyone.operators.types.Object.view_target>`.
+If a description parameter is not ``None``, it will be used as the description
+for the corresponding target view choice. Otherwise, a default description
+will be generated such as ``f"{action_description} the entire dataset"``.
 
 .. _operator-execution:
 
@@ -1704,6 +1410,316 @@ operator to render a progress bar tracking the progress of an operation:
     `VoxelGPT plugin <https://github.com/voxel51/voxelgpt/blob/dfe23093485081fb889dbe18685587f4358a4438/__init__.py#L133>`_
     for a more sophisticated example of using generator execution to stream an
     LLM's response to a panel.
+
+.. _operator-delegated-execution:
+
+Delegated execution
+-------------------
+
+By default, operations are :ref:`executed <operator-execution>` immediately
+after their inputs are provided in the App or they are triggered
+programmatically.
+
+However, many interesting operations like model inference, embeddings
+computation, evaluation, and exports are computationally intensive and/or not
+suitable for immediate execution.
+
+In such cases, :ref:`delegated operations <delegated-operations>` come to the
+rescue by allowing users to schedule potentially long-running tasks that are
+executed in the background while you continue to use the App.
+
+.. note::
+
+    :ref:`FiftyOne Enterprise <enterprise-delegated-operations>` deployments
+    come out of the box with a connected compute cluster for executing
+    delegated operations at scale.
+
+    In FiftyOne Open Source, you can use delegated operations at small scale
+    by :ref:`running them locally <delegated-orchestrator-open-source>`.
+
+There are a variety of options available for configuring whether a given
+operation should be delegated or executed immediately.
+
+.. _operator-execution-options:
+
+Execution options
+~~~~~~~~~~~~~~~~~
+
+You can provide the optional properties described below in the
+:ref:`operator's config <operator-config>` to specify the available execution
+modes for the operator:
+
+.. code-block:: python
+    :linenos:
+
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            # Other parameters...
+
+            # Whether to allow immediate execution
+            allow_immediate_execution=True/False,    # default True
+
+            # Whether to allow delegated execution
+            allow_delegated_execution=True/False,    # default False
+
+            # Whether the default execution mode should be delegated, if both
+            # options are available
+            default_choice_to_delegated=True/False,  # default False
+
+            # Whether to resolve execution options dynamically when the
+            # operator's inputs change. By default, this behavior will match
+            # the operator's ``dynamic`` setting
+            resolve_execution_options_on_change=True/False/None,  # default None
+        )
+
+When the operator's input form is rendered in the App, the `Execute|Schedule`
+button at the bottom of the modal will contextually show whether the operation
+will be executed immediately, scheduled for delegated execution, or allow the
+user to choose between the supported options if there are multiple:
+
+.. image:: /images/plugins/operators/operator-execute-button.png
+    :align: center
+
+.. _dynamic-execution-options:
+
+Dynamic execution options
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Operators may also implement
+:meth:`resolve_execution_options() <fiftyone.operators.operator.Operator.resolve_execution_options>`
+to dynamically configure the available execution options based on the current
+execution context:
+
+.. code-block:: python
+    :linenos:
+
+    # Option 1: recommend delegation for larger views
+    def resolve_execution_options(self, ctx):
+        should_delegate = len(ctx.view) > 1000
+        return foo.ExecutionOptions(
+            allow_immediate_execution=True,
+            allow_delegated_execution=True,
+            default_choice_to_delegated=should_delegate,
+        )
+
+    # Option 2: force delegation for larger views
+    def resolve_execution_options(self, ctx):
+        delegate = len(ctx.view) > 1000
+        return foo.ExecutionOptions(
+            allow_immediate_execution=not delegate,
+            allow_delegated_execution=delegate,
+        )
+
+If implemented, this method will override any static execution parameters
+included in the :ref:`operator's config <operator-config>` as described in the
+previous section.
+
+.. _operator-forced-delegation:
+
+Forced delegation
+~~~~~~~~~~~~~~~~~
+
+Operators can implement
+:meth:`resolve_delegation() <fiftyone.operators.operator.Operator.resolve_delegation>`
+to force a particular operation to be delegated (by returning `True`) or
+executed immediately (by returning `False`) based on the current execution
+context.
+
+For example, you could decide whether to delegate execution based on the size
+of the current view:
+
+.. code-block:: python
+    :linenos:
+
+    def resolve_delegation(self, ctx):
+        # Force delegation for large views and immediate execution for small views
+        return len(ctx.view) > 1000
+
+If :meth:`resolve_delegation() <fiftyone.operators.operator.Operator.resolve_delegation>`
+is not implemented or returns `None`, then the choice of execution mode is
+deferred to the prior mechanisms described above.
+
+.. _operator-reporting-progress:
+
+Reporting progress
+~~~~~~~~~~~~~~~~~~
+
+Delegated operations can report their execution progress by calling
+:meth:`set_progress() <fiftyone.operators.executor.ExecutionContext.set_progress>`
+on their execution context from within
+:meth:`execute() <fiftyone.operators.operator.Operator.execute>`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.core.storage as fos
+    import fiftyone.core.utils as fou
+
+    def execute(self, ctx):
+        images_dir = ctx.params["images_dir"]
+
+        filepaths = fos.list_files(images_dir, abs_paths=True, recursive=True)
+
+        num_added = 0
+        num_total = len(filepaths)
+        for batch in fou.iter_batches(filepaths, 100):
+            samples = [fo.Sample(filepath=f) for f in batch]
+            ctx.dataset.add_samples(samples)
+
+            num_added += len(batch)
+            ctx.set_progress(progress=num_added / num_total)
+
+.. note::
+
+    :ref:`FiftyOne Enterprise <fiftyone-enterprise>` users can view the current
+    progress of their delegated operations from the
+    :ref:`Runs page <enterprise-managing-delegated-operations>`.
+
+For your convenience, all builtin methods of the FiftyOne SDK that support
+rendering progress bars provide an optional `progress` method that you can use
+trigger calls to
+:meth:`set_progress() <fiftyone.operators.executor.ExecutionContext.set_progress>`
+using the pattern show below:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    def execute(self, ctx):
+        images_dir = ctx.params["images_dir"]
+
+        # Custom logic that controls how progress is reported
+        def set_progress(pb):
+            if pb.complete:
+                ctx.set_progress(progress=1, label="Operation complete")
+            else:
+                ctx.set_progress(progress=pb.progress)
+
+        # Option 1: report progress every five seconds
+        progress = fo.report_progress(set_progress, dt=5.0)
+
+        # Option 2: report progress at 10 equally-spaced increments
+        # progress = fo.report_progress(set_progress, n=10)
+
+        ctx.dataset.add_images_dir(images_dir, progress=progress)
+
+You can also use the builtin
+:class:`ProgressHandler <fiftyone.operators.ProgressHandler>` class to
+automatically forward logging messages to
+:meth:`set_progress() <fiftyone.operators.executor.ExecutionContext.set_progress>`
+as `label` values using the pattern shown below:
+
+.. code-block:: python
+    :linenos:
+
+    import logging
+    import fiftyone.operators as foo
+    import fiftyone.zoo as foz
+
+    def execute(self, ctx):
+        name = ctx.params["name"]
+
+        # Automatically report all `fiftyone` logging messages
+        with foo.ProgressHandler(ctx, logger=logging.getLogger("fiftyone")):
+            foz.load_zoo_dataset(name, persistent=True)
+
+.. _writing-distributed-operators:
+
+Distributed execution __SUB_NEW__
+---------------------------------
+
+.. versionadded:: 1.8.0
+
+In FiftyOne Enterprise, delegated operations can be
+:ref:`distributed across multiple workers <enterprise-distributed-execution>`
+to accelerate computation on large datasets.
+
+Distributed execution is not available in FiftyOne Open Source, but plugin
+authors can still utilize the distributed execution paradigm described here so
+that their operators can be executed in a distributed fashion when used in
+FiftyOne Enterprise. When an operator that supports distributed execution is
+used in FiftyOne Open Source, its
+:meth:`execute() <fiftyone.operators.Operator.execute>` method will simply be
+called exactly once with the full target view on which the operator was invoked.
+
+Supporting distributed execution
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To declare that an operator supports distributed execution, simply set
+`allow_distributed_execution=True` in the
+:ref:`operator's config <operator-config>`:
+
+.. code-block:: python
+    :linenos:
+
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="my_distributed_operator",
+            label="My distributed operator",
+            ...
+
+            # Declare support for distributed execution
+            allow_delegated_execution=True,
+            allow_distributed_execution=True,
+        )
+
+At runtime, a distributed operator's
+:meth:`execute() <fiftyone.operators.Operator.execute>` method is called one or
+more times, each with a different ``ctx.view`` that encodes the specific
+samples that should be processed in that batch:
+
+.. code-block:: python
+   :linenos:
+
+    def execute(self, ctx):
+        # Use `ctx.view` as the basis for your computation
+        for sample in ctx.view:
+            ...
+
+The number of batches is
+:ref:`chosen <enterprise-distributed-execution>` by the user who schedules
+a distributed execution. The user may also opt *not* to use distributed
+execution, in which case
+:meth:`execute() <fiftyone.operators.Operator.execute>` is called exactly once.
+Any necessary batching is automatically handled by FiftyOne's scheduling engine.
+
+.. warning::
+
+    Since distributed operators are executed multiple times, each on a subset
+    of the data, in any order, the operator cannot perform any pre or post
+    processing outside of the current batch. That is, the operator must
+    represent an
+    `embarrassingly parallel task <https://en.wikipedia.org/wiki/Embarrassingly_parallel>`_.
+
+Supporting target views
+~~~~~~~~~~~~~~~~~~~~~~~
+
+If your operator uses the :ref:`target view pattern <operator-target-view>`,
+then you should use
+:meth:`ctx.target_view() <fiftyone.operators.ExecutionContext.target_view>`
+instead of ``ctx.view`` in the operator's
+:meth:`execute() <fiftyone.operators.Operator.execute>` method to ensure that
+non-distributed execution continues to work as expected:
+
+.. code-block:: python
+   :linenos:
+
+    def execute(self, ctx):
+        # Use `ctx.target_view()` as the basis for your computation
+        for sample in ctx.target_view():
+            ...
+
+Why is this? When the user chooses distribution execution,
+:meth:`ctx.target_view() <fiftyone.operators.ExecutionContext.target_view>`
+and ``ctx.view`` are equivalent; both encode the specific samples to process in
+the current batch. However, if the user opts for non-distributed execution,
+then :meth:`ctx.target_view() <fiftyone.operators.ExecutionContext.target_view>`
+must be used as the user may have chosen a target view other than the current
+``ctx.view``.
 
 .. _operator-secrets:
 

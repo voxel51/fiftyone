@@ -4010,6 +4010,252 @@ should implement is determined by the type of dataset that you are exporting.
 
 .. tabs::
 
+  .. group-tab:: Generic datasets
+
+        The |GenericSampleDatasetExporter| interface allows you to define
+        exporters that take a sequence of arbitrary |Sample| objects as input.
+
+        The pseudocode below provides a template for a custom
+        |GenericSampleDatasetExporter|:
+
+        .. code-block:: python
+            :linenos:
+
+            import fiftyone.utils.data as foud
+
+            class CustomGenericSampleDatasetExporter(foud.GenericSampleDatasetExporter):
+                """Custom exporter for generic sample datasets.
+
+                Args:
+                    export_dir (None): the directory to write the export. This may be
+                        optional for some exporters
+                    **kwargs: additional keyword arguments for your exporter
+                """
+
+                def __init__(self, export_dir=None, **kwargs):
+                    super().__init__(export_dir=export_dir)
+                    # Your initialization here
+
+                def setup(self):
+                    """Performs any necessary setup before exporting the first sample in
+                    the dataset.
+
+                    This method is called when the exporter's context manager interface is
+                    entered, :func:`DatasetExporter.__enter__`.
+                    """
+                    # Your custom setup here
+                    pass
+
+                def log_collection(self, sample_collection):
+                    """Logs any relevant information about the
+                    :class:`fiftyone.core.collections.SampleCollection` whose samples will
+                    be exported.
+
+                    Subclasses can optionally implement this method if their export format
+                    can record information such as the
+                    :meth:`fiftyone.core.collections.SampleCollection.info` or
+                    :meth:`fiftyone.core.collections.SampleCollection.classes` of the
+                    collection being exported.
+
+                    By convention, this method must be optional; i.e., if it is not called
+                    before the first call to :meth:`export_sample`, then the exporter must
+                    make do without any information about the
+                    :class:`fiftyone.core.collections.SampleCollection` (which may not be
+                    available, for example, if the samples being exported are not stored in
+                    a collection).
+
+                    Args:
+                        sample_collection: the
+                            :class:`fiftyone.core.collections.SampleCollection` whose
+                            samples will be exported
+                    """
+                    # Log any information from the sample collection here
+                    pass
+
+                def export_sample(self, sample):
+                    """Exports the given sample to the dataset.
+
+                    Args:
+                        sample: a :class:`fiftyone.core.sample.Sample`
+                    """
+                    # Export the provided sample
+                    pass
+
+                def close(self, *args):
+                    """Performs any necessary actions after the last sample has been
+                    exported.
+
+                    This method is called when the exporter's context manager interface is
+                    exited, :func:`DatasetExporter.__exit__`.
+
+                    Args:
+                        *args: the arguments to :func:`DatasetExporter.__exit__`
+                    """
+                    # Your custom code here to complete the export
+                    pass
+
+        When
+        :meth:`export() <fiftyone.core.collections.SampleCollection.export>` is
+        called with a custom |GenericSampleDatasetExporter|, the export is effectively
+        performed via the pseudocode below:
+
+        .. code-block:: python
+
+            import fiftyone as fo
+
+            samples = ...
+            exporter = CustomGenericSampleDatasetExporter(...)
+
+            with exporter:
+                exporter.log_collection(samples)
+
+                for sample in samples:
+                    exporter.export_sample(sample)
+
+        Note that the exporter is invoked via its context manager interface,
+        which automatically calls the
+        :meth:`setup() <fiftyone.utils.data.exporters.GenericSampleDatasetExporter.setup>`
+        and
+        :meth:`close() <fiftyone.utils.data.exporters.GenericSampleDatasetExporter.close>`
+        methods of the exporter to handle setup/completion of the export.
+
+        The
+        :meth:`log_collection() <fiftyone.utils.data.exporters.GenericSampleDatasetExporter.log_collection>`
+        method is called after the exporter's context manager has been entered
+        but before any samples have been exported. This method can optionally
+        be implemented by exporters that store information such as the
+        :meth:`name <fiftyone.core.collections.SampleCollection.name>` or
+        :meth:`info <fiftyone.core.collections.SampleCollection.info>` from the
+        collection being exported.
+
+        Each sample is exported via the
+        :meth:`export_sample() <fiftyone.utils.data.exporters.GenericSampleDatasetExporter.export_sample>`
+        method.
+
+  .. group-tab:: Batch exports
+
+        The |BatchDatasetExporter| interface allows you to define exporters
+        that directly take a |SampleCollection| as input. This interface allows
+        for greater efficiency for export formats that handle aggregating over
+        the samples themselves.
+
+        The pseudocode below provides a template for a custom
+        |BatchDatasetExporter|:
+
+        .. code-block:: python
+            :linenos:
+
+            import fiftyone.utils.data as foud
+
+            class CustomBatchDatasetExporter(foud.BatchDatasetExporter):
+                """Custom batch exporter for datasets.
+
+                Args:
+                    export_dir (None): the directory to write the export. This may be
+                        optional for some exporters
+                    **kwargs: additional keyword arguments for your exporter
+                """
+
+                def __init__(self, export_dir=None, **kwargs):
+                    super().__init__(export_dir=export_dir)
+                    # Your initialization here
+
+                def setup(self):
+                    """Performs any necessary setup before exporting the dataset.
+
+                    This method is called when the exporter's context manager interface is
+                    entered, :func:`DatasetExporter.__enter__`.
+                    """
+                    # Your custom setup here
+                    pass
+
+                def log_collection(self, sample_collection):
+                    """Logs any relevant information about the
+                    :class:`fiftyone.core.collections.SampleCollection` whose samples will
+                    be exported.
+
+                    Subclasses can optionally implement this method if their export format
+                    can record information such as the
+                    :meth:`fiftyone.core.collections.SampleCollection.info` or
+                    :meth:`fiftyone.core.collections.SampleCollection.classes` of the
+                    collection being exported.
+
+                    By convention, this method must be optional; i.e., if it is not called
+                    before :meth:`export_samples`, then the exporter must make do without
+                    any information about the
+                    :class:`fiftyone.core.collections.SampleCollection` (which may not be
+                    available, for example, if the samples being exported are not stored in
+                    a collection).
+
+                    Args:
+                        sample_collection: the
+                            :class:`fiftyone.core.collections.SampleCollection` whose
+                            samples will be exported
+                    """
+                    # Log any information from the sample collection here
+                    pass
+
+                def export_samples(self, sample_collection, progress=None):
+                    """Exports the given sample collection.
+
+                    Args:
+                        sample_collection: a
+                            :class:`fiftyone.core.collections.SampleCollection`
+                        progress (None): whether to render a progress bar (True/False), use
+                            the default value ``fiftyone.config.show_progress_bars``
+                            (None), or a progress callback function to invoke instead
+                    """
+
+                def close(self, *args):
+                    """Performs any necessary actions after the collection has been
+                    exported.
+
+                    This method is called when the exporter's context manager interface is
+                    exited, :func:`DatasetExporter.__exit__`.
+
+                    Args:
+                        *args: the arguments to :func:`DatasetExporter.__exit__`
+                    """
+                    # Your custom code here to complete the export
+                    pass
+
+        When
+        :meth:`export() <fiftyone.core.collections.SampleCollection.export>` is
+        called with a custom |BatchDatasetExporter|, the export is effectively
+        performed via the pseudocode below:
+
+        .. code-block:: python
+
+            import fiftyone as fo
+
+            samples = ...
+            exporter = CustomBatchDatasetExporter(...)
+
+            with exporter:
+                exporter.log_collection(samples)
+
+                exporter.export_samples(samples)
+
+        Note that the exporter is invoked via its context manager interface,
+        which automatically calls the
+        :meth:`setup() <fiftyone.utils.data.exporters.BatchDatasetExporter.setup>`
+        and
+        :meth:`close() <fiftyone.utils.data.exporters.BatchDatasetExporter.close>`
+        methods of the exporter to handle setup/completion of the export.
+
+        The
+        :meth:`log_collection() <fiftyone.utils.data.exporters.BatchDatasetExporter.log_collection>`
+        method is called after the exporter's context manager has been entered
+        but before the samples have been exported. This method can optionally
+        be implemented by exporters that store information such as the
+        :meth:`name <fiftyone.core.collections.SampleCollection.name>` or
+        :meth:`info <fiftyone.core.collections.SampleCollection.info>` from the
+        collection being exported.
+
+        The core export logic is invoked via the
+        :meth:`export_samples() <fiftyone.utils.data.exporters.BatchDatasetExporter.export_sample>`
+        method.
+
   .. group-tab:: Unlabeled image datasets
 
         To define a custom exporter for unlabeled image datasets, implement the
@@ -4097,7 +4343,7 @@ should implement is determined by the type of dataset that you are exporting.
                     """Performs any necessary actions after the last sample has been
                     exported.
 
-                    This method is called when the importer's context manager interface is
+                    This method is called when the exporter's context manager interface is
                     exited, :func:`DatasetExporter.__exit__`.
 
                     Args:
@@ -4271,7 +4517,7 @@ should implement is determined by the type of dataset that you are exporting.
                     """Performs any necessary actions after the last sample has been
                     exported.
 
-                    This method is called when the importer's context manager interface is
+                    This method is called when the exporter's context manager interface is
                     exited, :func:`DatasetExporter.__exit__`.
 
                     Args:
@@ -4430,7 +4676,7 @@ should implement is determined by the type of dataset that you are exporting.
                     """Performs any necessary actions after the last sample has been
                     exported.
 
-                    This method is called when the importer's context manager interface is
+                    This method is called when the exporter's context manager interface is
                     exited, :func:`DatasetExporter.__exit__`.
 
                     Args:
@@ -4629,7 +4875,7 @@ should implement is determined by the type of dataset that you are exporting.
                     """Performs any necessary actions after the last sample has been
                     exported.
 
-                    This method is called when the importer's context manager interface is
+                    This method is called when the exporter's context manager interface is
                     exited, :func:`DatasetExporter.__exit__`.
 
                     Args:
@@ -4756,7 +5002,7 @@ should implement is determined by the type of dataset that you are exporting.
                     collection being exported.
 
                     By convention, this method must be optional; i.e., if it is not called
-                    before the first call to :meth:`export_sample`, then the exporter must
+                    before the first call to :meth:`export_group`, then the exporter must
                     make do without any information about the
                     :class:`fiftyone.core.collections.SampleCollection` (which may not be
                     available, for example, if the samples being exported are not stored in
@@ -4784,7 +5030,7 @@ should implement is determined by the type of dataset that you are exporting.
                     """Performs any necessary actions after the last group has been
                     exported.
 
-                    This method is called when the importer's context manager interface is
+                    This method is called when the exporter's context manager interface is
                     exited, :func:`DatasetExporter.__exit__`.
 
                     Args:
@@ -4851,6 +5097,47 @@ Custom dataset types can be declared by implementing the |DatasetType| subclass
 corresponding to the type of dataset that you are working with.
 
 .. tabs::
+
+  .. group-tab:: Generic datasets
+
+    The pseudocode below provides a template for a custom |DatasetType|
+    subclass that represents a collection of arbitrary content:
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone.types as fot
+
+        class CustomDataset(fot.Dataset):
+            """Custom dataset type."""
+
+            def get_dataset_importer_cls(self):
+                """Returns the
+                :class:`fiftyone.utils.data.importers.DatasetImporter`
+                class for importing datasets of this type from disk.
+
+                Returns:
+                    a :class:`fiftyone.utils.data.importers.DatasetImporter`
+                    class
+                """
+                # Return your custom DatasetImporter class here
+                pass
+
+            def get_dataset_exporter_cls(self):
+                """Returns the
+                :class:`fiftyone.utils.data.exporters.DatasetExporter`
+                class for exporting datasets of this type to disk.
+
+                Returns:
+                    a :class:`fiftyone.utils.data.exporters.DatasetExporter`
+                    class
+                """
+                # Return your custom DatasetExporter class here
+                pass
+
+    Note that, as this type represents a dataset of arbitrary content, its
+    importer should subclass from the base |DatasetImporter|, and its exporter
+    should subclass from the base |DatasetExporter|.
 
   .. group-tab:: Unlabeled image datasets
 

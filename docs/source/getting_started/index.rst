@@ -1,4 +1,4 @@
-.. _getting_started_guides:
+.. _getting-started-guides:
 
 Getting Started Guides
 ======================
@@ -81,21 +81,7 @@ Each guide is designed as a sequential learning experience with navigation betwe
 
     </div>
 
-.. End Guide cards section ---------------------------------------------------
-
-.. _quick-assessment:
-
-Not sure where to start? Take our quick assessment:
-
-**Working with object detection?** → :doc:`Explore the Object Detection Guide <object_detection/index>`
-
-**Have medical imaging data?** → :doc:`Begin with Medical Imaging Guide <medical_imaging/index>`
-
-**Working on autonomous vehicles?** → :doc:`Jump to Self-Driving Guide <self_driving/index>`
-
-**Need 3D computer vision?** → :doc:`Explore 3D Visual AI Guide <threed_visual_ai/index>`
-
-**Want to evaluate model performance?** → :doc:`Start with Model Evaluation Guide <model_evaluation/index>`
+.. End guide cards section ---------------------------------------------------
 
 .. toctree::
    :maxdepth: 1
