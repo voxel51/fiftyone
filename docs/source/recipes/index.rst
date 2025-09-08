@@ -39,7 +39,7 @@ workflows.
     :header: Creating views and using view expressions
     :description: Create views to easily query and explore your datasets in FiftyOne.
     :link: creating_views.html
-    :image: ../_static/images/recipes/creating_views.png
+    :image: ../_images/app-views1.gif
     :tags: Basics,Dataset-Curation
 
 .. customcarditem::
@@ -60,56 +60,56 @@ workflows.
     :header: Adding classifier predictions to a dataset
     :description: Add FiftyOne to your model training and analysis loop to visualize and analyze your classifier's predictions.
     :link: adding_classifications.html
-    :image: ../_static/images/recipes/adding_classifications.png
+    :image: ../_images/evaluate_detections_dataset.jpg
     :tags: Basics,Model-Training
 
 .. customcarditem::
     :header: Adding object detections to a dataset
     :description: Use FiftyOne to store your object detections and use the FiftyOne App to analyze them.
     :link: adding_detections.html
-    :image: ../_static/images/recipes/adding_detections.png
+    :image: ../_images/yolov8_coco_val_predictions.png
     :tags: Basics,Model-Training
 
 .. customcarditem::
     :header: Draw labels on samples
     :description: Render labels on the samples in your FiftyOne Dataset with a single line of code.
     :link: draw_labels.html
-    :image: ../_static/images/recipes/draw_labels.png
+    :image: ../_images/draw_labels_quickstart_video.gif
     :tags: Basics,Visualization
 
 .. customcarditem::
     :header: Convert dataset formats on disk
     :description: Use FiftyOne's powerful dataset import/export features to convert your datasets on disk between standard (or custom) formats.
     :link: convert_datasets.html
-    :image: ../_static/images/recipes/convert_datasets.png
+    :image: ../_images/file-explorer.gif
     :tags: Basics,I/O
 
 .. customcarditem::
     :header: Merging datasets
     :description: Easily merge datasets on disk or in-memory using FiftyOne; e.g., to add a new set of model predictions to a dataset.
     :link: merge_datasets.html
-    :image: ../_static/images/recipes/merge_datasets.png
+    :image: ../_images/dynamic-groups.gif
     :tags: Basics,I/O
 
 .. customcarditem::
     :header: Import datasets in custom formats
     :description: Write your own custom DatasetImporter and use it to import datasets in your custom format into FiftyOne.
     :link: custom_importer.html
-    :image: ../_static/images/recipes/custom_importer.png
+    :image: ../_images/import.gif
     :tags: Advanced,I/O
 
 .. customcarditem::
     :header: Export datasets in custom formats
     :description: Write your own custom DatasetExporter and use it to export a FiftyOne Dataset to disk in your custom format.
     :link: custom_exporter.html
-    :image: ../_static/images/recipes/custom_exporter.png
+    :image: ../_images/archive-snapshot.png
     :tags: Advanced,I/O
 
 .. customcarditem::
     :header: Parse samples in custom formats
     :description: Write your own custom SampleParser and use it to add samples in your custom format to a FiftyOne Dataset.
     :link: custom_parser.html
-    :image: ../_static/images/recipes/custom_parser.png
+    :image: ../_images/groups-grid-view.gif
     :tags: Advanced,I/O
 
 .. End of recipe cards

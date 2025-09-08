@@ -66,7 +66,7 @@ Each guide is designed as a sequential learning experience with navigation betwe
     :header: Model Evaluation Guide
     :description: Comprehensive model evaluation workflows with advanced analysis techniques. Learn to assess model performance, identify failure cases, and optimize your computer vision models.
     :link: model_evaluation/index.html
-    :image: ../_static/images/tutorials/evaluate_classifications.png
+    :image: https://cdn.voxel51.com/getting_started_model_evaluation/notebook2/model_evaluation.webp
     :tags: Core-Fiftyone,Research
 
 .. End of guide cards
