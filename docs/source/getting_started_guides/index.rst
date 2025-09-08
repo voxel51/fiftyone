@@ -73,14 +73,14 @@ Each guide is designed as a sequential learning experience with navigation betwe
     :header: Segmentation Guide
     :description: Master segmentation workflows with instance and semantic segmentation. Learn to load COCO datasets, add predictions with SAM2, and work with advanced segmentation models.
     :link: segmentation/index.html
-    :image: https://cdn.voxel51.com/getting_started_segmentation/notebook1/segmentation_overview.webp
+    :image: https://cdn.voxel51.com/getting_started_segmentation/notebook1/coffe_beans.webp
     :tags: Core-Fiftyone,Research
 
 .. customcarditem::
     :header: Model Dataset Zoo Guide
     :description: Master the FiftyOne Zoo with datasets and models. Learn to explore built-in datasets, apply pre-trained models, and integrate custom models from GitHub or public URLs.
     :link: model_dataset_zoo/index.html
-    :image: https://cdn.voxel51.com/getting_started_model_dataset_zoo/notebook1/zoo_overview.webp
+    :image: https://cdn.voxel51.com/getting_started_model_dataset_zoo/notebook2/imagenet.webp
     :tags: Core-Fiftyone,Research
 
 .. customcarditem::
