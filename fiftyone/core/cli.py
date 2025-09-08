@@ -3248,6 +3248,16 @@ class DelegatedListCommand(Command):
             help="only list operations for this dataset",
         )
         parser.add_argument(
+            "-m",
+            "--match",
+            default=None,
+            metavar="MATCH",
+            help=(
+                "only list operations whose operator or label contain this "
+                "string"
+            ),
+        )
+        parser.add_argument(
             "-s",
             "--state",
             default=None,
@@ -3283,6 +3293,7 @@ class DelegatedListCommand(Command):
         dos = food.DelegatedOperationService()
 
         state = _parse_state(args.state)
+        search = _parse_search(args.match)
         paging = _parse_paging(
             sort_by=args.sort_by, reverse=args.reverse, limit=args.limit
         )
@@ -3291,6 +3302,7 @@ class DelegatedListCommand(Command):
             operator=args.operator,
             dataset_name=args.dataset,
             run_state=state,
+            search=search,
             paging=paging,
         )
 
@@ -3302,6 +3314,13 @@ def _parse_state(state):
         return None
 
     return state.lower()
+
+
+def _parse_search(match):
+    if match is None:
+        return None
+
+    return {".*" + match + ".*": ["operator", "label"]}
 
 
 def _parse_paging(sort_by=None, reverse=None, limit=None):

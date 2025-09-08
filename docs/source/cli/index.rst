@@ -987,6 +987,7 @@ List delegated operations.
     fiftyone delegated list [-h]
                             [-o OPERATOR]
                             [-d DATASET]
+                            [-m MATCH]
                             [-s STATE]
                             [--sort-by SORT_BY]
                             [--reverse]
@@ -1002,6 +1003,8 @@ List delegated operations.
                             only list operations for this operator
       -d DATASET, --dataset DATASET
                             only list operations for this dataset
+      -m MATCH, --match MATCH
+                            only list operations whose operator or label contain this string
       -s STATE, --state STATE
                             only list operations with this state. Supported
                             values are ('SCHEDULED', 'QUEUED', 'RUNNING', 'COMPLETED', 'FAILED')
