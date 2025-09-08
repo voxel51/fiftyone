@@ -115,6 +115,7 @@ function calculateLayoutDimensions(
     ROW_HEIGHT,
     MIN_ITEM_HEIGHT,
     GRID_HEIGHT,
+    GRID_WIDTH,
   };
 }
 
@@ -1250,7 +1251,7 @@ export default function DashboardView(props: ViewPropsType) {
   const theme = useTheme();
 
   const NUM_ITEMS = propertiesAsArray.length;
-  const { COLS, ROWS, ROW_HEIGHT, MIN_ITEM_HEIGHT, GRID_HEIGHT } =
+  const { COLS, ROWS, ROW_HEIGHT, MIN_ITEM_HEIGHT, GRID_HEIGHT, GRID_WIDTH } =
     calculateLayoutDimensions(
       NUM_ITEMS,
       layout,
