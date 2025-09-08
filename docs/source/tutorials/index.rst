@@ -44,147 +44,147 @@ your datasets and turn your good models into *great models*.
     :header: pandas-style queries in FiftyOne
     :description: Translate your pandas knowledge to FiftyOne. This tutorial gives a side-by-side comparison of performing common operations in pandas and FiftyOne.
     :link: pandas_comparison.html
-    :image: ../_static/images/tutorials/pandas_tutorial.png
+    :image: ../_images/brain-mnist.png
     :tags: Filtering,Dataset-Evaluation
 
 .. customcarditem::
     :header: Evaluating object detections
     :description: Aggregate statistics aren't sufficient for object detection. This tutorial shows how to use FiftyOne to perform powerful evaluation workflows on your detector.
     :link: evaluate_detections.html
-    :image: ../_static/images/tutorials/evaluate_detections.png
+    :image: ../_images/evaluate_detections_dataset.jpg
     :tags: Model-Evaluation
 
 .. customcarditem::
     :header: Evaluating a classifier
     :description: Evaluation made easy. This tutorial walks through an end-to-end example of fine-tuning a classifier and understanding its failure modes using FiftyOne.
     :link: evaluate_classifications.html
-    :image: ../_static/images/tutorials/evaluate_classifications.png
+    :image: ../_images/model-evaluation-confusion.gif
     :tags: Model-Evaluation
 
 .. customcarditem::
     :header: Using image embeddings
     :description: Visualize your data in new ways. This tutorial shows how to use FiftyOne's powerful embeddings visualization capabilities to improve your image datasets.
     :link: image_embeddings.html
-    :image: ../_static/images/tutorials/image_embeddings.png
+    :image: ../_images/image_embeddings_test_split.png
     :tags: Visualization,Brain,Embeddings
 
 .. customcarditem::
     :header: Annotating with CVAT
     :description: So you've loaded and explored your data in FiftyOne... but now what? See how to send it off to CVAT for annotation in just one line of code.
     :link: cvat_annotation.html
-    :image: ../_static/images/tutorials/cvat_segmentation.png
+    :image: ../_images/cvat_segmentation.png
     :tags: Annotation,Dataset-Evaluation
 
 .. customcarditem::
     :header: Annotating with Labelbox
     :description: Unlock the power of the Labelbox platform. See how you can get your FiftyOne datasets annotated with just one line of code.
     :link: labelbox_annotation.html
-    :image: ../_static/images/tutorials/labelbox_square.png
+    :image: ../_images/labelbox_detection.png
     :tags: Annotation,Dataset-Evaluation
 
 .. customcarditem::
     :header: Training with Detectron2
     :description: Put your FiftyOne datasets to work and learn how to train and evaluate Detectron2 models directly on your data.
     :link: detectron2.html
-    :image: ../_static/images/tutorials/detectron2.png
+    :image: ../_images/open-images-v7.png
     :tags: Model-Training,Model-Evaluation
 
 .. customcarditem::
     :header: Downloading and evaluating Open Images
     :description: Expand your data lake and evaluate your object detection models with Google's Open Images dataset and evaluation protocol, all natively within FiftyOne.
     :link: open_images.html
-    :image: ../_static/images/tutorials/open_images.png
+    :image: ../_images/open-images-v7.png
     :tags: Dataset-Evaluation,Model-Evaluation,Dataset-Zoo
 
 .. customcarditem::
     :header: Exploring image uniqueness
     :description: Your models need diverse data. This tutorial shows how FiftyOne can remove near-duplicate images and recommend unique samples for model training.
     :link: uniqueness.html
-    :image: ../_static/images/tutorials/uniqueness.png
+    :image: ../_images/brain-cifar10-unique-viz.png
     :tags: Dataset-Evaluation,Brain
 
 .. customcarditem::
     :header: Finding classification mistakes
     :description: Better models start with better data. This tutorial shows how FiftyOne can automatically find label mistakes in your classification datasets.
     :link: classification_mistakes.html
-    :image: ../_static/images/tutorials/classification_mistakes.png
+    :image: ../_images/zero_shot_classification_all_wrong_view.png
     :tags: Dataset-Evaluation,Brain
 
 .. customcarditem::
     :header: Finding detection mistakes
     :description: How good are your ground truth objects? Use the FiftyOne Brain's mistakenness feature to find annotation errors in your object detections.
     :link: detection_mistakes.html
-    :image: ../_static/images/tutorials/detection_mistakes.png
+    :image: ../_images/detection_mistakes_full_dataset.png
     :tags: Dataset-Evaluation,Brain
 
 .. customcarditem::
     :header: Nearest Neighbor Embeddings Classification with Qdrant
     :description: Easily pre-annotate your FiftyOne datasets using approximate nearest neighbors search on embeddings with Qdrant.
     :link: qdrant.html
-    :image: ../_static/images/tutorials/qdrant.png
+    :image: ../_images/places-validation.png
     :tags: Dataset-Evaluation,Model-Evaluation,Embeddings
 
 .. customcarditem::
     :header: Fine-tuning YOLOv8 model predictions
     :description: Visualize and evaluate YOLOv8 model predictions before fine-tuning for your custom use case.
     :link: yolov8.html
-    :image: ../_static/images/tutorials/yolov8.png
+    :image: ../_images/yolov8_coco_val_predictions.png
     :tags: Model-Evaluation
 
 .. customcarditem::
     :header: Build 3D point cloud datasets with Point-E
     :description: Lidar is expensive. This tutorial shows how FiftyOne can help you construct high quality 3D point cloud datasets using Point-E point cloud models.
     :link: pointe.html
-    :image: ../_static/images/tutorials/pointe.png
+    :image: ../_images/pointe_preview.gif
     :tags: Dataset-Curation,Filtering,Visualization
 
 .. customcarditem::
     :header: Monocular Depth Estimation with Hugging Face
     :description: Metrics for monocular depth estimation can be deceiving. Run MDE models on your data and visualize their predictions with FiftyOne.
     :link: monocular_depth_estimation.html
-    :image: ../_static/images/tutorials/monocular_depth_estimation.png
+    :image: ../_images/mde_gt_heatmaps.png
     :tags: Model-Evaluation,Visualization
 
 .. customcarditem::
     :header: Visualizing Data with Dimensionality Reduction
     :description: Compare and contrast dimensionality reduction techniques for visualizing your data in FiftyOne.
     :link: dimension_reduction.html
-    :image: ../_static/images/tutorials/dimension_reduction.png
+    :image: ../_images/dimension_reduction_cifar10_base_dataset.png
     :tags: Brain,Visualization
 
 .. customcarditem::
     :header: Zero-Shot Image Classification
     :description: Run and evaluate zero-shot image classification models with OpenCLIP, Hugging Face Transformers, and FiftyOne.
     :link: zero_shot_classification.html
-    :image: ../_static/images/tutorials/zero_shot_classification.png
+    :image: ../_images/zero_shot_classification_initial_dataset.png
     :tags: Filtering,Model-Evaluation,Model-Zoo
 
 .. customcarditem::
     :header: Augmenting Datasets with Albumentations
     :description: Learn how to apply and test out different augmentations on your datasets using FiftyOne and Albumentations.
     :link: data_augmentation.html
-    :image: ../_static/images/tutorials/data_augmentation.png
+    :image: ../_images/augmentations_initial_dataset.png
     :tags: App,Dataset-Curation,Visualization
 
 .. customcarditem::
     :header: Clustering Images with Embeddings
     :description: Use embeddings to cluster images in your dataset and visualize the results in FiftyOne.
     :link: clustering.html
-    :image: ../_static/images/tutorials/clustering.jpg
+    :image: ../_images/clustering_preview.jpg
     :tags: App,Brain,Dataset-Curation,Embeddings,Visualization
 
 .. customcarditem::
     :header: Small Object Detection with SAHI
     :description: Detect small objects in your images with Slicing-Aided Hyper-Inference (SAHI) and FiftyOne.
     :link: small_object_detection.html
-    :image: ../_static/images/tutorials/small_object_detection.jpg
+    :image: ../_images/sahi_dataset.jpg
     :tags: Model-Evaluation,Model-Zoo
 
 .. customcarditem::
     :header: Anomaly Detection with Anomalib
     :description: Detect anomalies in your images with Anomalib and FiftyOne.
     :link: anomaly_detection.html
-    :image: ../_static/images/tutorials/anomaly_detection.jpg
+    :image: ../_images/anomaly_detection_thumbnail.jpg
     :tags: Embeddings,Model-Evaluation,Model-Training,Visualization
 
 .. End of tutorial cards
