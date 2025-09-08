@@ -43,7 +43,7 @@ Pinned datasets
 You can pin datasets for easy access by hovering over the dataset's name in
 the main table and clicking the pin icon.
 
-The "Your pinned datasets" widget on the right-hand side of the hompage shows
+The "Your pinned datasets" widget on the right-hand side of the homepage shows
 your pinned datasets at a glance and allows you to quickly open one by
 clicking on its name. Pinned datasets are listed in reverse chronological order
 (most recently pinned on top).
@@ -168,7 +168,7 @@ right hand side of a row of the dataset listing table and selecting
 .. note::
 
    Did you know? You can also use the :ref:`Enterprise SDK <enterprise-python-sdk>` to
-   programmatically, create, edit, and delete datasets.
+   programmatically create, edit, and delete datasets.
 
 .. _enterprise-dataset-basic-info:
 

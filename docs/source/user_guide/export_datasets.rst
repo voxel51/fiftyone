@@ -128,7 +128,7 @@ a |DatasetView| into any format of your choice via the basic recipe below.
             --label-field $LABEL_FIELD
 
     Note the `LABEL_FIELD` argument in the above example, which specifies the
-    particular label field that you wish to export. This is necessary your
+    particular label field that you wish to export. This is necessary if your
     FiftyOne dataset contains multiple label fields.
 
     You can use the :ref:`kwargs option <cli-fiftyone-datasets-export>` to

@@ -947,7 +947,7 @@ class Polyline(_HasAttributesDict, _HasID, _HasInstance, Label):
 
         Args:
             xc: the x-center coordinate
-            yc: the y-center coorindate
+            yc: the y-center coordinate
             w: the box width
             y: the box height
             theta: the counter-clockwise rotation of the box in radians
@@ -1487,7 +1487,7 @@ class GeoLocation(_HasID, Label):
 
                 [[lon1, lat1], [lon2, lat2], ...]
 
-        polygon (None): a polygon defined by coorindates as shown below::
+        polygon (None): a polygon defined by coordinates as shown below::
 
                 [
                     [[lon1, lat1], [lon2, lat2], ...],

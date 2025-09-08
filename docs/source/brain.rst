@@ -68,7 +68,7 @@ workflow:
   "What data should I select to annotate?"
 
 * :ref:`Mistakenness <brain-label-mistakes>`:
-  Annotations mistakes create an artificial ceiling on the performance of your
+  Annotation mistakes create an artificial ceiling on the performance of your
   models. However, finding these mistakes by hand is at least as arduous as the
   original annotation was, especially in cases of larger datasets. The FiftyOne
   Brain provides a quantitative *mistakenness measure* to identify possible
@@ -180,7 +180,7 @@ Applications
 ------------
 
 How can embedding-based visualization of your data be used in practice? These
-visualizations often uncover hidden structure in you data that has important
+visualizations often uncover hidden structure in your data that has important
 semantic meaning depending on the data you use to color/size the points.
 
 Here are a few of the many possible applications:

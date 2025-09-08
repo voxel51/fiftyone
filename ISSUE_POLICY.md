@@ -92,7 +92,7 @@ Documentation issues typically go through the following lifecycle:
 Installation issues typically go through the following lifecycle:
 
 1. An installation GitHub Issue is submitted, which contains a description of
-   the issue and the platforms its affects.
+   the issue and the platforms it affects.
 2. The [issue is triaged](ISSUE_TRIAGE.md) to identify whether more information
    is needed from the author, give an indication of priority, and route the
    issue to appropriate maintainers.
@@ -100,7 +100,6 @@ Installation issues typically go through the following lifecycle:
    about how to implement a fix.
 4. After an approach has been agreed upon, an owner for the fix is identified.
    FiftyOne maintainers may choose to adopt ownership of severe installation
-   issues to ensure a timely fix. FiftyOne maintainers may choose to adopt
-   ownership of severe installation
+   issues to ensure a timely fix.
 5. The fix owner begins implementing the fix and ultimately files associated
    pull requests.

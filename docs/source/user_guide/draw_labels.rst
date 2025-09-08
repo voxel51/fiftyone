@@ -46,7 +46,7 @@ your datasets that you have identified by constructing a |DatasetView|.
 
   .. group-tab:: CLI
 
-    You can rendered annotated media for an entire FiftyOne dataset
+    You can render annotated media for an entire FiftyOne dataset
     :doc:`via the CLI </cli/index>`:
 
     .. code-block:: shell
