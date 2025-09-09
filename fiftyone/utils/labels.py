@@ -1351,7 +1351,7 @@ def _process_3d_sample(
     polylines = []
 
     for det in detections_3d.detections:
-        ply = _process_detection_to_ply(
+        polyline_result = _process_detection_to_polyline(
             det,
             transforms,
             forward_flags,
@@ -1361,13 +1361,13 @@ def _process_3d_sample(
             height,
             sample,
         )
-        if ply:
-            polylines.append(ply)
+        if polyline_result:
+            polylines.append(polyline_result)
 
     return polylines
 
 
-def _process_detection_to_ply(
+def _process_detection_to_polyline(
     det,
     transforms: fou3d.TransformationType,
     forward_flags: Optional[List[bool]],
@@ -1401,13 +1401,13 @@ def _process_detection_to_ply(
         corners_2d_cam, corners_3d_cam, (width, height)
     ):
         return None
-    ply_corners = [
+    polyline_corners = [
         (corners_2d_cam[0][i] / width, corners_2d_cam[1][i] / height)
         for i in range(8)
     ]
 
     return fol.Polyline.from_cuboid(
-        vertices=ply_corners,
+        vertices=polyline_corners,
         label=det.label,
         confidence=det.confidence,
         instance=det.instance,
