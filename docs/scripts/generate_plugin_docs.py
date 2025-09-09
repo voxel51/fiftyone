@@ -43,6 +43,21 @@ class PluginDocGenerator:
         self.plugins_ecosystem_dir = self.plugins_dir / "plugins_ecosystem"
         self.plugins_ecosystem_dir.mkdir(exist_ok=True)
 
+    def _remove_emojis(self, text: str) -> str:
+        """Remove emoji and miscellaneous symbols from a string.
+
+        This targets common Unicode emoji blocks and symbol ranges while leaving
+        standard ASCII and most typical punctuation intact.
+        """
+        if not text:
+            return text
+
+        emoji_pattern = re.compile(
+            r"[\U0001F300-\U0001FAFF\U00002702-\U000027B0\U000024C2-\U0001F251\u2600-\u26FF\u2700-\u27BF]",
+            flags=re.UNICODE,
+        )
+        return emoji_pattern.sub("", text)
+
     def _parse_github_url(self, github_url: str) -> Tuple[str, str, str]:
         """Parse a GitHub URL and return (owner, repo, path)."""
         parts = urlparse(github_url).path.strip("/").split("/")
@@ -111,6 +126,7 @@ class PluginDocGenerator:
                 return {
                     "stars": int(data.get("stargazers_count", 0)),
                     "updated_at": data.get("updated_at"),
+                    "default_branch": data.get("default_branch"),
                 }
             logger.warning(
                 f"Failed to fetch stars for {owner}/{repo}: {resp.status_code}"
@@ -387,12 +403,10 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
 
 .. raw:: html
 
-    <div class="search-container" style="margin: 1rem 0; display: flex; justify-content: center;">
-        <div class="search-box" style="position: relative; width: 100%; max-width: 500px;">
-            <input type="text" id="plugin-search" placeholder="Search plugins by name, description, author, or category..." 
-                   style="width: 100%; padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; outline: none; transition: border-color 0.3s ease;"
-                   onkeyup="searchPlugins()">
-            <div style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #666;">
+    <div class="plugins-search-container">
+        <div class="plugins-search-box">
+            <input type="text" id="plugin-search" placeholder="Search plugins by name, description, author, or category...">
+            <div class="plugins-search-icon">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="11" cy="11" r="8"></circle>
                     <path d="m21 21-4.35-4.35"></path>
@@ -401,14 +415,10 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
         </div>
     </div>
 
-
-
-
 .. raw:: html
 
     <div style="margin:0; width: 100%; display:flex; justify-content:flex-end;">
         <a href="https://github.com/voxel51/fiftyone-plugins?tab=readme-ov-file#contributing" target="_blank" class="sd-btn sd-btn-primary book-a-demo plugins-cta" rel="noopener noreferrer">
-            
             <div class="arrow">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="size-3">
                 <path stroke="currentColor" stroke-width="1.5"
@@ -471,11 +481,22 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
             processed_readme = self._process_readme_urls(
                 readme_content, plugin.github_url
             )
+            processed_readme = self._remove_emojis(processed_readme)
 
             readme_path = self.plugins_ecosystem_dir / f"{plugin_slug}.md"
 
             with open(readme_path, "w", encoding="utf-8") as f:
-                f.write(processed_readme)
+                if plugin.category == "community":
+                    community_note = """> **Note**
+> 
+> Community plugins are external projects maintained by their respective authors. They are not
+> part of FiftyOne core and may change independently. Review each plugin's documentation and
+> license before use.
+
+"""
+                    f.write(community_note + processed_readme)
+                else:
+                    f.write(processed_readme)
 
             repo_info = self.fetch_github_stars(owner, repo)
             image_path = self._extract_image_from_readme(
@@ -495,7 +516,7 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
                 word.capitalize()
                 for word in plugin_name.replace("_", " ").split()
             )
-            plugin_link = f"{plugin_name.lower().replace('-', '_').replace(' ', '_')}.html"
+            plugin_link = f"plugins_ecosystem/{plugin_name.lower().replace('-', '_').replace(' ', '_')}.html"
 
             image_path = (
                 cached_image_path
@@ -520,13 +541,51 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
             )
             description_with_author = f"{author_html}{plugin.description}"
 
+            try:
+                owner, repo, subpath = self._parse_github_url(
+                    plugin.github_url
+                )
+                branch = (repo_info or {}).get("default_branch") or "main"
+                init_rel_path = (
+                    f"{subpath}/__init__.py" if subpath else "__init__.py"
+                )
+                raw_init_url = f"https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{init_rel_path}"
+                init_resp = requests.get(raw_init_url, timeout=6)
+                has_model = False
+                has_dataset = False
+                if init_resp.status_code == 200:
+                    init_text = init_resp.text or ""
+                    has_model = (
+                        re.search(r"\bdef\s+download_model\s*\(", init_text)
+                        is not None
+                    )
+                    has_dataset = (
+                        re.search(r"\bdef\s+load_dataset\s*\(", init_text)
+                        is not None
+                    )
+            except Exception as e:
+                logger.warning(
+                    f"Error checking for model and dataset in {plugin.github_url}: {e}"
+                )
+                has_model = False
+                has_dataset = False
+
+            extra_tags = []
+            if has_model:
+                extra_tags.append("Model")
+            if has_dataset:
+                extra_tags.append("Dataset")
+            tags_field = ",".join(
+                [t for t in [category_tag] + extra_tags if t]
+            )
+
             rst_content += f"""
 .. customcarditem::
     :header: {header_text}
     :description: {description_with_author}
     :link: {plugin_link}
     :image: {image_path}
-    :tags: {category_tag}
+    :tags: {tags_field}
 
 """
 
@@ -543,60 +602,7 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
 
     </div>
 
-    <script>
-    function searchPlugins() {
-        const searchTerm = document.getElementById('plugin-search').value.toLowerCase().trim();
-        const cards = document.querySelectorAll('.tutorials-card-container');
-        let visibleCount = 0;
-        
-        cards.forEach(card => {
-            const header = card.querySelector('.card-title-container strong')?.textContent?.toLowerCase() || '';
-            const description = card.querySelector('.card-summary')?.textContent?.toLowerCase() || '';
-            const tags = card.querySelector('.tags')?.textContent?.toLowerCase() || '';
-            const author = card.querySelector('.card-subtitle')?.textContent?.toLowerCase() || '';
-            
-            const searchableText = `${header} ${description} ${tags} ${author}`;
-            
-            if (searchTerm === '' || searchableText.includes(searchTerm)) {
-                card.style.display = 'block';
-                visibleCount++;
-            } else {
-                card.style.display = 'none';
-            }
-        });
-        
-        const allButton = document.querySelector('.tutorial-filter[data-tag="all"]');
-        if (allButton) {
-            allButton.textContent = `All (${visibleCount})`;
-        }
-        
-        const noResults = document.getElementById('no-results');
-        if (visibleCount === 0 && searchTerm !== '') {
-            if (!noResults) {
-                const container = document.querySelector('.tutorial-cards-grid');
-                const message = document.createElement('div');
-                message.id = 'no-results';
-                message.style.textAlign = 'center';
-                message.style.padding = '2rem';
-                message.style.color = '#666';
-                message.innerHTML = '<h3>No plugins found</h3><p>Try adjusting your search terms</p>';
-                container.appendChild(message);
-            }
-        } else if (noResults) {
-            noResults.remove();
-        }
-    }
     
-    document.addEventListener('DOMContentLoaded', function() {
-        const allButton = document.querySelector('.tutorial-filter[data-tag="all"]');
-        if (allButton) {
-            allButton.addEventListener('click', function() {
-                document.getElementById('plugin-search').value = '';
-                searchPlugins();
-            });
-        }
-    });
-    </script>
 
 .. End plugins cards section -------------------------------------------------
 
@@ -604,6 +610,18 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
    Community plugins are external projects maintained by their respective authors. They are not
    part of FiftyOne core and may change independently. Review each plugin's documentation and
    license before use.
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :glob:
+
+   Overview <overview>
+   Using plugins <using_plugins>
+   Developing plugins <developing_plugins>
+   plugins_ecosystem/*
+   API reference <api/plugins>
+   TypeScript API reference <ts-api>
 
 """
         return rst_content
@@ -616,10 +634,11 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
             return
 
         logger.info(f"Found {len(plugins)} plugins")
+
         plugins_ecosystem_content = self.generate_plugins_ecosystem_rst(
             plugins
         )
-        with open(self.plugins_ecosystem_dir / "index.rst", "w") as f:
+        with open(self.plugins_dir / "index.rst", "w") as f:
             f.write(plugins_ecosystem_content)
 
         logger.info("Plugin documentation generated successfully!")
