@@ -7,14 +7,14 @@ FiftyOne Enterprise Plugins
 
 FiftyOne Enterprise provides native support for installing and running
 :ref:`FiftyOne plugins <fiftyone-plugins>`, which offers powerful opportunities
-to extend and customize the functionality of your Enterprise deployment to suit your
-needs.
+to extend and customize the functionality of your Enterprise deployment to suit
+your needs.
 
 .. note::
 
     What can you do with plugins? Check out
-    :ref:`delegated operations <enterprise-delegated-operations>` to see some quick
-    examples, then check out the
+    :ref:`delegated operations <enterprise-delegated-operations>` to see some
+    quick examples, then check out the
     `FiftyOne plugins <https://github.com/voxel51/fiftyone-plugins>`_
     repository for a growing collection of prebuilt plugins that you can add to
     your Enterprise deployment!
@@ -357,9 +357,10 @@ FiftyOne's plugin framework that allows users to schedule tasks from within the
 App that are executed in the background on a connected compute cluster.
 
 With FiftyOne Enterprise, your team can
-:ref:`upload and permission <enterprise-plugins-page>` custom operations that your
-users can execute from the Enterprise App, all of which run against a central
-orchestrator :ref:`configured by <enterprise-delegated-orchestrator>` your admins.
+:ref:`upload and permission <enterprise-plugins-page>` custom operations that
+your users can execute from the Enterprise App, all of which run against a
+central orchestrator :ref:`configured by <enterprise-delegated-orchestrator>`
+your admins.
 
 Why is this awesome? Your AI stack needs a flexible data-centric component that
 enables you to organize and compute on your data. With delegated operations,
@@ -427,50 +428,53 @@ continue with other work. Meanwhile, all datasets have a
 browse a history of all delegated operations that have been run on the dataset
 and their status.
 
-.. _enterprise-do-distributed-execution:
+.. _enterprise-distributed-execution:
 
-Distributed execution
-_____________________
+Distributed execution __SUB_NEW__
+_________________________________
 
 .. versionadded:: 2.11.0
 
 FiftyOne Enterprise supports distributed execution of delegated operations
-across multiple workers in an orchestrator.
+across many workers in parallel.
 
-.. note::
-    If you are an operator author wanting to add support for distributed
-    execution, see the reference guide
-    :ref:`here <writing-distributed-operators>`.
+When you schedule a
+:ref:`distributable operation <writing-distributed-operators>` from the App,
+you can choose how many batches to split the operation into. The dataset or
+target view will be split up into that number of tasks, and each task will be
+executed independently on a separate worker, allowing you to scale out the
+execution of large operations across many machines.
 
-When you schedule a distributable delegated operation from the App, you can
-choose how many tasks to split the operation into. The dataset or target view
-will be split up into that number of tasks. Each task will be executed
-independently on a separate worker in your chosen orchestrator, allowing you
-to scale out the execution of large operations across many machines.
-
-If you choose a number of tasks *T* less than the deployment's maximum, the
-operation can complete up to *T* times faster, if resources are available
+If you choose a number of tasks (T) less than the deployment's maximum, the
+operation can complete up to T times faster, if resources are available
 and tasks are balanced!
 
 .. image:: /images/plugins/operators/distributed/selecting-num-tasks.png
 
-You may want to split an operation into many tasks if you are working with
-a large dataset or if the operation is computationally intensive. This is
-perfectly acceptable, however, the operation speedup you achieve will be
-limited by the deployment maximum and number of workers in your orchestrator.
-
-In the example below, we have chosen 100 tasks, but the deployment maximum
-is 9. This means that at most 9 tasks can be executed in parallel.
-
 .. note::
 
-    Contact your Voxel51 support team to scale your deployment's compute
-    capacity!
+    Follow :ref:`these simple instructions <writing-distributed-operators>`
+    to update your operators to support distributed execution.
+
+You may want to split an operation into more tasks than can be run
+concurrently based on your deployment's maximum. For example, you may do this
+to limit the runtime of each individual task so that the scheduling engine can
+prioritize other tasks as necessary throughout execution.
+
+In the example below, we have chosen to split a distributable operation into
+100 batches, but the deployment maximum is 9 concurrent tasks, so at most 9
+batches will be processed in parallel at any given time.
 
 .. image:: /images/plugins/operators/distributed/tasks-greater-than-limit.png
 
-Hit "Schedule" and the operation will be scheduled for distributed execution.
-Now you can check on its status in the :ref:`Runs page <enterprise-runs-page>`.
+Once scheduled, you can monitor the status of a distributed operation,
+including fine-grained details about each individual worker, from the
+:ref:`Runs page <enterprise-runs-page>`.
+
+.. note::
+
+    Contact your Voxel51 support team to increase your deployment's maximum
+    delegated operation capacity.
 
 .. _enterprise-delegated-orchestrator:
 
@@ -480,41 +484,50 @@ ________________________________
 FiftyOne Enterprise offers a builtin orchestrator that is configured as part of
 your team's deployment with a default level of compute capacity.
 
+As you scale your usage of FiftyOne, you'll likely want to scale your
+deployment's compute capacity and take advantage of advanced features such as
+configuring an on-demand compute integration with your external compute
+platform such as Databricks or Anyscale.
+
 .. note::
 
     Contact your Voxel51 support team to scale your deployment's compute
     capacity, for more information about on-demand compute integrations,
     or if you'd like to use another external orchestrator.
 
-On-demand compute
------------------
+.. _enterprise-on-demand-compute:
+
+On-demand compute __SUB_NEW__
+-----------------------------
+
+.. versionadded:: 2.11.0
 
 .. note::
 
-    This feature is currently in **beta** and its API or functionality may
+    On-demand compute is currently in **beta** and its API or functionality may
     change in future releases.
 
-As of FiftyOne Enterprise 2.11.0, there is builtin support for scheduling
-delegated operations on-demand in supported external compute platforms. This
-means only using expensive compute resources when they're actually needed!
-Platforms currently supported include:
+FiftyOne Enterprise supports executing delegated operations on-demand in
+your connected external compute platform. With on-demand compute, resources are
+only provisioned and used when they're actually needed, minimizing idle times.
 
-- `Databricks <https://www.databricks.com/>`_
-- `Anyscale <https://www.anyscale.com/>`_
+On-demand compute is currently supported on
+`Databricks <https://www.databricks.com/>`_ and
+`Anyscale <https://www.anyscale.com/>`_.
 
-Administrators can see more information about configuring these orchestrators
-in the
-`deployment guide <https://github.com/voxel51/fiftyone-teams-app-deploy/blob/main/docs/configuring-on-demand-orchestrator.md>`_.
+Administrators can refer to the
+`deployment guide <https://github.com/voxel51/fiftyone-teams-app-deploy/blob/main/docs/configuring-on-demand-orchestrator.md>`_
+to learn how to configure on-demand compute for their FiftyOne Enterprise
+deployment.
 
 External orchestrators
 ----------------------
 
 It is also possible to connect your FiftyOne Enterprise deployment to other
-externally managed workflow orchestration tools such as:
-`Airflow <https://airflow.apache.org>`_, `Flyte <https://flyte.org>`_,
-`Spark <https://spark.apache.org/>`_, etc. These platforms will have less
-builtin support and must have a continually running worker pool that can accept
-tasks from your deployment (i.e., not on-demand).
+externally-managed workflow orchestration tools, such as
+`Airflow <https://airflow.apache.org>`_, `Flyte <https://flyte.org>`_, and
+`Spark <https://spark.apache.org/>`_. Please contact your Voxel51 support team
+for further details.
 
 .. _enterprise-managing-delegated-operations:
 

@@ -6,6 +6,18 @@
 #   from/broken/page2.ext to/existing/page2.ext
 #
 
+# Introduced in v2.11.0
+getting_started/install.rst  installation/index.rst
+getting_started/virtualenv.rst  installation/virtualenv.rst
+getting_started/troubleshooting.rst  installation/troubleshooting.rst
+environments/index.html  installation/environments.rst
+getting_started_guides/index.html  getting_started/index.html
+getting_started_guides/object_detection/index.html  getting_started/object_detection/index.html
+getting_started_guides/medical_imaging/index.html  getting_started/medical_imaging/index.html
+getting_started_guides/self_driving/index.html  getting_started/self_driving/index.html
+getting_started_guides/threed_visual_ai/index.html  getting_started/threed_visual_ai/index.html
+getting_started_guides/model_evaluation/index.html  getting_started/model_evaluation/index.html
+
 # Introduced in v2.9.0
 user_guide/dataset_creation/index.rst  user_guide/import_datasets.rst
 user_guide/dataset_creation/datasets.rst  user_guide/import_datasets.rst

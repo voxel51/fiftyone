@@ -14,8 +14,8 @@ models**
 <a href="https://voxel51.com/fiftyone">Website</a> •
 <a href="https://voxel51.com/docs/fiftyone">Docs</a> •
 <a href="https://colab.research.google.com/github/voxel51/fiftyone-examples/blob/master/examples/quickstart.ipynb">Try it Now</a> •
+<a href="https://voxel51.com/docs/fiftyone/getting_started_guides/index.html">Getting Started Guides</a> •
 <a href="https://voxel51.com/docs/fiftyone/tutorials/index.html">Tutorials</a> •
-<a href="https://github.com/voxel51/fiftyone-examples">Examples</a> •
 <a href="https://voxel51.com/blog/">Blog</a> •
 <a href="https://discord.gg/fiftyone-community">Community</a>
 
@@ -42,7 +42,6 @@ If you're looking to scale to production-grade, collaborative, cloud-native
 enterprise workloads, check out
 **[FiftyOne Enterprise](http://voxel51.com/enterprise)** 🚀
 
-
 <div id='installation'/>
 
 ## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> &nbsp; installation &nbsp; 💻
@@ -58,7 +57,7 @@ pip install fiftyone
 
 ### Installation options
 
-FiftyOne supports Python 3.9 - 3.11.
+FiftyOne supports Python 3.9 - 3.12.
 
 For most users, we recommend installing the latest release version of FiftyOne
 via `pip` as shown above.
@@ -70,11 +69,11 @@ See the [prerequisites section](#prerequisites) for system-specific setup
 information.
 
 We strongly recommend that you install FiftyOne in a
-[virtual environment](https://voxel51.com/docs/fiftyone/getting_started/virtualenv.html)
+[virtual environment](https://voxel51.com/docs/fiftyone/installation/virtualenv.html)
 to maintain a clean workspace.
 
 Consult the
-[installation guide](https://voxel51.com/docs/fiftyone/getting_started/install.html)
+[installation guide](https://voxel51.com/docs/fiftyone/installation/index.html)
 for troubleshooting and other information about getting up-and-running with
 FiftyOne.
 
@@ -92,7 +91,7 @@ App.
 
 You'll need the following tools installed:
 
--   [Python](https://www.python.org) (3.9 - 3.11)
+-   [Python](https://www.python.org) (3.9 - 3.12)
 -   [Node.js](https://nodejs.org) - on Linux, we recommend using
     [nvm](https://github.com/nvm-sh/nvm) to install an up-to-date version.
 -   [Yarn](https://yarnpkg.com) - once Node.js is installed, you can
@@ -100,7 +99,7 @@ You'll need the following tools installed:
     `corepack enable`
 
 We strongly recommend that you install FiftyOne in a
-[virtual environment](https://voxel51.com/docs/fiftyone/getting_started/virtualenv.html)
+[virtual environment](https://voxel51.com/docs/fiftyone/installation/virtualenv.html)
 to maintain a clean workspace.
 
 If you are working in Google Colab,
@@ -323,7 +322,7 @@ brew install ffmpeg
 ⚠️ The version of Python that is available in the Microsoft Store is **not
 recommended** ⚠️
 
-Download a Python 3.9 - 3.11 installer from
+Download a Python 3.9 - 3.12 installer from
 [python.org](https://www.python.org/downloads/). Make sure to pick a 64-bit
 version. For example, this
 [Python 3.10.11 installer](https://www.python.org/ftp/python/3.10.11/python-3.10.11-amd64.exe).
@@ -409,7 +408,6 @@ Note that if you are running the above code in a script, you must include
 [this page](https://voxel51.com/docs/fiftyone/user_guide/app.html#creating-a-session)
 for more information.
 
-
 <div id='key-features'>
 
 ## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> &nbsp; key features &nbsp; 🔑
@@ -447,28 +445,29 @@ https://github.com/user-attachments/assets/de5f25e1-a967-4362-9e04-616449e745e5
 
 https://github.com/user-attachments/assets/c7ed496d-0cf7-45d6-9853-e349f1abd6f8
 
+<div id='getting-started'/>
+
+## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> &nbsp; documentation &nbsp; 🪪
+
+Check out these resources to get up and running with FiftyOne:
+
+| [Getting Started Guides](https://voxel51.com/docs/fiftyone/getting_started_guides/index.html) | [Tutorials](https://voxel51.com/docs/fiftyone/tutorials/index.html) | [Recipes](https://voxel51.com/docs/fiftyone/recipes/index.html) | [User Guide](https://voxel51.com/docs/fiftyone/user_guide/index.html) | [Examples](https://github.com/voxel51/fiftyone-examples) | [API Reference](https://voxel51.com/docs/fiftyone/api/fiftyone.html) | [CLI Reference](https://voxel51.com/docs/fiftyone/cli/index.html) |
+| --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------------------- | ----------------------------------------------------------------- |
+
+Full documentation is available at [fiftyone.ai](https://fiftyone.ai).
+
+</div>
+
 <div id='additional-resources'>
 
 ## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> &nbsp; additional resources &nbsp; 🚁
 
-| [FiftyOne Enterprise](https://voxel51.com/enterprise) | [VoxelGPT](https://github.com/voxel51/voxelgpt) | [Plugins](https://voxel51.com/plugins) | [Vector Search](https://voxel51.com/blog/the-computer-vision-interface-for-vector-search) | [Dataset Zoo](https://docs.voxel51.com/dataset_zoo/index.html) | [Model Zoo](https://docs.voxel51.com/model_zoo/index.html) | [FiftyOne Brain](https://docs.voxel51.com/brain.html) |
-| ----------------------------------------------------- | ----------------------------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------- | ----------------------------------------------------- |
+| [FiftyOne Enterprise](https://voxel51.com/enterprise) | [Building Plugins](https://docs.voxel51.com/plugins/index.html) | [Vector Search](https://voxel51.com/blog/the-computer-vision-interface-for-vector-search) | [Dataset Zoo](https://docs.voxel51.com/dataset_zoo/index.html) | [Model Zoo](https://docs.voxel51.com/model_zoo/index.html) | [FiftyOne Brain](https://docs.voxel51.com/brain.html) | [VoxelGPT](https://github.com/voxel51/voxelgpt) |
+| ----------------------------------------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------- | ----------------------------------------------------- | ----------------------------------------------- |
 
 </div>
 
-<div id='documentation'/>
-
-## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> &nbsp; documentation &nbsp; 🪪
-
-Full documentation for FiftyOne is available at
-[fiftyone.ai](https://fiftyone.ai).
-
-| [Tutorials](https://voxel51.com/docs/fiftyone/tutorials/index.html) | [Recipes](https://voxel51.com/docs/fiftyone/recipes/index.html) | [Examples](https://github.com/voxel51/fiftyone-examples) | [User Guide](https://voxel51.com/docs/fiftyone/user_guide/index.html) | [CLI Documentation](https://voxel51.com/docs/fiftyone/cli/index.html) | [API Reference](https://voxel51.com/docs/fiftyone/api/fiftyone.html) |
-| ------------------------------------------------------------------- | --------------------------------------------------------------- | -------------------------------------------------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------- |
-
-</div>
-
-<div id='fiftyone-teams'/>
+<div id='fiftyone-enterprise'/>
 
 ## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> &nbsp; FiftyOne Enterprise &nbsp; 🏎️
 
@@ -476,13 +475,12 @@ Want to securely collaborate on billions of samples in the cloud and connect to
 your compute resources to automate your workflows? Check out
 [FiftyOne Enterprise](https://voxel51.com/enterprise).
 
-
 <div id='faq'/>
 
 ## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> &nbsp; faq & troubleshooting &nbsp; ⛓️‍💥
 
 Refer to our
-[common issues](https://docs.voxel51.com/getting_started/troubleshooting.html)
+[common issues](https://docs.voxel51.com/installation/troubleshooting.html)
 page to troubleshoot installation issues. If you're still stuck, check our
 [frequently asked questions](https://docs.voxel51.com/faq/index.html) page for
 more answers.
