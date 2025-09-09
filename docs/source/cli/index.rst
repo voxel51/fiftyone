@@ -1009,7 +1009,7 @@ List delegated operations.
                             only list operations with this state. Supported
                             values are ('SCHEDULED', 'QUEUED', 'RUNNING', 'COMPLETED', 'FAILED')
       --sort-by SORT_BY     how to sort the operations. Supported values are
-                            ('SCHEDULED_AT', 'QUEUED_AT', 'STARTED_AT', COMPLETED_AT', 'FAILED_AT', 'OPERATOR', 'LABEL')
+                            ('SCHEDULED_AT', 'QUEUED_AT', 'STARTED_AT', 'COMPLETED_AT', 'FAILED_AT', 'OPERATOR', 'LABEL')
       --reverse             whether to sort in reverse order
       -l LIMIT, --limit LIMIT
                             a maximum number of operations to show

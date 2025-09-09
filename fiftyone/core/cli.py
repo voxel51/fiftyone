@@ -3271,7 +3271,7 @@ class DelegatedListCommand(Command):
             default="QUEUED_AT",
             help=(
                 "how to sort the operations. Supported values are "
-                "('SCHEDULED_AT', 'QUEUED_AT', 'STARTED_AT', COMPLETED_AT', 'FAILED_AT', 'OPERATOR', 'LABEL')"
+                "('SCHEDULED_AT', 'QUEUED_AT', 'STARTED_AT', 'COMPLETED_AT', 'FAILED_AT', 'OPERATOR', 'LABEL')"
             ),
         )
         parser.add_argument(
