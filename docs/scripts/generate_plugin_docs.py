@@ -91,24 +91,32 @@ class PluginDocGenerator:
             resp = requests.get(url, headers=headers, timeout=10)
             resp.raise_for_status()
             return resp.text
-        except Exception as e:
+        except requests.RequestException as e:
             logger.warning(f"Failed to fetch root README via API: {e}")
-            return self._fetch_raw_readme(owner, repo, "")
+            return self._fetch_raw_readme(owner, repo, "", None)
 
     def _fetch_subfolder_readme(self, owner: str, repo: str, path: str) -> str:
         """Fetch subfolder README from raw GitHub."""
-        return self._fetch_raw_readme(owner, repo, path)
+        return self._fetch_raw_readme(owner, repo, path, None)
 
-    def _fetch_raw_readme(self, owner: str, repo: str, path: str) -> str:
-        """Fetch README from raw GitHub URL."""
-        raw_url = f"https://raw.githubusercontent.com/{owner}/{repo}/main/{path}/README.md"
-        try:
-            resp = requests.get(raw_url, timeout=10)
-            resp.raise_for_status()
-            return resp.text
-        except Exception as e:
-            logger.error(f"Failed to fetch README from {raw_url}: {e}")
-            return ""
+    def _fetch_raw_readme(
+        self, owner: str, repo: str, path: str, branch: Optional[str] = None
+    ) -> str:
+        """Fetch README from raw GitHub URL with branch fallback."""
+        subpath = f"{path}/README.md" if path else "README.md"
+        branches = [branch] if branch else ["main", "master"]
+        for b in branches:
+            raw_url = f"https://raw.githubusercontent.com/{owner}/{repo}/{b}/{subpath}"
+            try:
+                resp = requests.get(raw_url, timeout=10)
+                if resp.status_code == 200:
+                    return resp.text
+            except requests.RequestException as e:
+                logger.warning(f"Failed to fetch README from {raw_url}: {e}")
+        logger.exception(
+            f"Failed to fetch README for {owner}/{repo} at {path or '.'}"
+        )
+        return ""
 
     def fetch_github_stars(self, owner: str, repo: str) -> Optional[dict]:
         """Fetch stargazers count and update date for a GitHub repository."""
@@ -539,7 +547,10 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
                 if author
                 else ""
             )
-            description_with_author = f"{author_html}{plugin.description}"
+            safe_desc = plugin.description.replace("\n", " ").replace(
+                ":", "\\:"
+            )
+            description_with_author = f"{author_html}{safe_desc}"
 
             try:
                 owner, repo, subpath = self._parse_github_url(

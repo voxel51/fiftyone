@@ -72,14 +72,6 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
 
 
 .. customcarditem::
-    :header: Moondream2 ⭐ 3
-    :description: <span class="card-subtitle text-muted" style="background-color: #ff6b35; color: white !important; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: 500;">by harpreetsahota204</span><br/>A FiftyOne plugin for running inference with moondream2, a fast and open vision-language model.
-    :link: plugins_ecosystem/moondream2.html
-    :image: https://cdn.voxel51.com/yolo-predictions.webp
-    :tags: Community,Model
-
-
-.. customcarditem::
     :header: Multi Annotator Toolkit ⭐ 5
     :description: <span class="card-subtitle text-muted" style="background-color: #ff6b35; color: white !important; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: 500;">by madave94</span><br/>Tackle noisy annotation! Find and analyze annotation issues in datasets with multiple annotators per image.
     :link: plugins_ecosystem/multi_annotator_toolkit.html
@@ -99,7 +91,7 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
     :header: Voxelgpt ⭐ 248
     :description: <span class="card-subtitle text-muted" style="background-color: #ff6b35; color: white !important; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: 500;">by voxel51</span><br/>An AI assistant that can query visual datasets, search the FiftyOne docs, and answer general computer vision questions
     :link: plugins_ecosystem/voxelgpt.html
-    :image: https://cdn.voxel51.com/mistake-missing.webp
+    :image: https://cdn.voxel51.com/mistake-loc.webp
     :tags: Voxel51
 
 
@@ -107,7 +99,7 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
     :header: Annotation ⭐ 131
     :description: <span class="card-subtitle text-muted" style="background-color: #ff6b35; color: white !important; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: 500;">by voxel51</span><br/>Utilities for integrating FiftyOne with annotation tools
     :link: plugins_ecosystem/annotation.html
-    :image: https://cdn.sanity.io/images/h6toihm1/production/d286d778ffac5e30c2af62755808bf566dc5d3b6-2048x1148.webp
+    :image: https://cdn.voxel51.com/mistake-missing.webp
     :tags: Voxel51
 
 
@@ -115,7 +107,7 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
     :header: Brain ⭐ 131
     :description: <span class="card-subtitle text-muted" style="background-color: #ff6b35; color: white !important; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: 500;">by voxel51</span><br/>Utilities for working with the FiftyOne Brain
     :link: plugins_ecosystem/brain.html
-    :image: https://cdn.voxel51.com/zoo-predictions.webp
+    :image: https://cdn.sanity.io/images/h6toihm1/production/d286d778ffac5e30c2af62755808bf566dc5d3b6-2048x1148.webp
     :tags: Voxel51
 
 
@@ -123,7 +115,7 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
     :header: Dashboard ⭐ 131
     :description: <span class="card-subtitle text-muted" style="background-color: #ff6b35; color: white !important; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: 500;">by voxel51</span><br/>Create your own custom dashboards from within the App
     :link: plugins_ecosystem/dashboard.html
-    :image: https://cdn.voxel51.com/yolo-predictions.webp
+    :image: https://cdn.voxel51.com/zoo-predictions.webp
     :tags: Voxel51
 
 
@@ -131,7 +123,7 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
     :header: Io ⭐ 131
     :description: <span class="card-subtitle text-muted" style="background-color: #ff6b35; color: white !important; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: 500;">by voxel51</span><br/>A collection of import/export utilities
     :link: plugins_ecosystem/io.html
-    :image: https://cdn.voxel51.com/torchvision-predictions.webp
+    :image: https://cdn.voxel51.com/yolo-predictions.webp
     :tags: Voxel51
 
 
@@ -139,7 +131,7 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
     :header: Indexes ⭐ 131
     :description: <span class="card-subtitle text-muted" style="background-color: #ff6b35; color: white !important; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: 500;">by voxel51</span><br/>Utilities working with FiftyOne database indexes
     :link: plugins_ecosystem/indexes.html
-    :image: https://cdn.voxel51.com/mistake-loc.webp
+    :image: https://cdn.voxel51.com/torchvision-predictions.webp
     :tags: Voxel51
 
 
@@ -155,7 +147,7 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
     :header: Delegated ⭐ 131
     :description: <span class="card-subtitle text-muted" style="background-color: #ff6b35; color: white !important; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: 500;">by voxel51</span><br/>Utilities for managing your delegated operations
     :link: plugins_ecosystem/delegated.html
-    :image: https://cdn.sanity.io/images/h6toihm1/production/d286d778ffac5e30c2af62755808bf566dc5d3b6-2048x1148.webp
+    :image: https://cdn.voxel51.com/mistake-missing.webp
     :tags: Voxel51
 
 
@@ -163,7 +155,7 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
     :header: Runs ⭐ 131
     :description: <span class="card-subtitle text-muted" style="background-color: #ff6b35; color: white !important; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: 500;">by voxel51</span><br/>Utilities for managing your custom runs
     :link: plugins_ecosystem/runs.html
-    :image: https://cdn.voxel51.com/zoo-predictions.webp
+    :image: https://cdn.sanity.io/images/h6toihm1/production/d286d778ffac5e30c2af62755808bf566dc5d3b6-2048x1148.webp
     :tags: Voxel51
 
 
@@ -171,7 +163,7 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
     :header: Utils ⭐ 131
     :description: <span class="card-subtitle text-muted" style="background-color: #ff6b35; color: white !important; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: 500;">by voxel51</span><br/>Call your favorite SDK utilities from the App
     :link: plugins_ecosystem/utils.html
-    :image: https://cdn.voxel51.com/yolo-predictions.webp
+    :image: https://cdn.voxel51.com/zoo-predictions.webp
     :tags: Voxel51
 
 
@@ -179,7 +171,7 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
     :header: Zoo ⭐ 131
     :description: <span class="card-subtitle text-muted" style="background-color: #ff6b35; color: white !important; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: 500;">by voxel51</span><br/>Download datasets and run inference with models from the FiftyOne Zoo, all without leaving the App
     :link: plugins_ecosystem/zoo.html
-    :image: https://cdn.voxel51.com/torchvision-predictions.webp
+    :image: https://cdn.voxel51.com/yolo-predictions.webp
     :tags: Voxel51
 
 
@@ -195,7 +187,7 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
     :header: Segments-voxel51-plugin ⭐ 5
     :description: <span class="card-subtitle text-muted" style="background-color: #ff6b35; color: white !important; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: 500;">by segmentsai</span><br/>Integrate FiftyOne with the Segments.ai annotation tool!
     :link: plugins_ecosystem/segments_voxel51_plugin.html
-    :image: https://cdn.voxel51.com/mistake-missing.webp
+    :image: https://cdn.voxel51.com/mistake-loc.webp
     :tags: Community
 
 
@@ -227,7 +219,7 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
     :header: Mlflow ⭐ 5
     :description: <span class="card-subtitle text-muted" style="background-color: #ff6b35; color: white !important; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: 500;">by voxel51</span><br/>Track model training experiments on your FiftyOne datasets with MLflow!
     :link: plugins_ecosystem/mlflow.html
-    :image: https://cdn.voxel51.com/torchvision-predictions.webp
+    :image: https://cdn.voxel51.com/yolo-predictions.webp
     :tags: Voxel51
 
 
@@ -259,7 +251,7 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
     :header: Hiera Video Embeddings ⭐ 3
     :description: <span class="card-subtitle text-muted" style="background-color: #ff6b35; color: white !important; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: 500;">by harpreetsahota</span><br/>Compute embeddings for video using Facebook Hiera Models
     :link: plugins_ecosystem/hiera_video_embeddings.html
-    :image: https://cdn.voxel51.com/zoo-predictions.webp
+    :image: https://cdn.sanity.io/images/h6toihm1/production/d286d778ffac5e30c2af62755808bf566dc5d3b6-2048x1148.webp
     :tags: Community
 
 
@@ -275,7 +267,7 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
     :header: Multimodal Rag ⭐ 20
     :description: <span class="card-subtitle text-muted" style="background-color: #ff6b35; color: white !important; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: 500;">by jacobmarks</span><br/>Create and test multimodal RAG pipelines with LlamaIndex, Milvus, and FiftyOne!
     :link: plugins_ecosystem/multimodal_rag.html
-    :image: https://cdn.voxel51.com/torchvision-predictions.webp
+    :image: https://cdn.voxel51.com/yolo-predictions.webp
     :tags: Community
 
 
@@ -283,7 +275,7 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
     :header: Moondream2 ⭐ 7
     :description: <span class="card-subtitle text-muted" style="background-color: #ff6b35; color: white !important; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: 500;">by harpreetsahota</span><br/>Run Moondream2 Models from Hugging Face on your FiftyOne Dataset
     :link: plugins_ecosystem/moondream2.html
-    :image: https://cdn.voxel51.com/mistake-loc.webp
+    :image: https://cdn.voxel51.com/torchvision-predictions.webp
     :tags: Community
 
 
@@ -323,7 +315,7 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
     :header: Pdf-loader ⭐ 2
     :description: <span class="card-subtitle text-muted" style="background-color: #ff6b35; color: white !important; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: 500;">by brimoor</span><br/>Load your PDF documents into FiftyOne as per-page images
     :link: plugins_ecosystem/pdf_loader.html
-    :image: https://cdn.voxel51.com/torchvision-predictions.webp
+    :image: https://cdn.voxel51.com/yolo-predictions.webp
     :tags: Community
 
 
@@ -339,7 +331,7 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
     :header: Aimv2 Embeddings ⭐ 2
     :description: <span class="card-subtitle text-muted" style="background-color: #ff6b35; color: white !important; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: 500;">by harpreetsahota</span><br/>Compute embeddings using AIMv2 Models
     :link: plugins_ecosystem/aimv2_embeddings.html
-    :image: https://cdn.voxel51.com/mistake-missing.webp
+    :image: https://cdn.voxel51.com/mistake-loc.webp
     :tags: Community
 
 
@@ -355,7 +347,7 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
     :header: Fiftyone-vlm-efficient ⭐ 4
     :description: <span class="card-subtitle text-muted" style="background-color: #ff6b35; color: white !important; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: 500;">by AdonaiVera</span><br/>Improve VLM training data quality with state-of-the-art dataset pruning and quality techniques
     :link: plugins_ecosystem/fiftyone_vlm_efficient.html
-    :image: https://cdn.voxel51.com/zoo-predictions.webp
+    :image: https://cdn.sanity.io/images/h6toihm1/production/d286d778ffac5e30c2af62755808bf566dc5d3b6-2048x1148.webp
     :tags: Community
 
 
@@ -411,7 +403,7 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
     :header: Model-comparison ⭐ 13
     :description: <span class="card-subtitle text-muted" style="background-color: #ff6b35; color: white !important; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: 500;">by allenleetc</span><br/>Compare two object detection models!
     :link: plugins_ecosystem/model_comparison.html
-    :image: https://cdn.voxel51.com/yolo-predictions.webp
+    :image: https://cdn.voxel51.com/zoo-predictions.webp
     :tags: Community
 
 
@@ -419,7 +411,7 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
     :header: Depth Pro Plugin ⭐ 2
     :description: <span class="card-subtitle text-muted" style="background-color: #ff6b35; color: white !important; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: 500;">by harpreetsahota</span><br/>Perfom zero-shot metric monocular depth estimation using the Apple Depth Pro model
     :link: plugins_ecosystem/depth_pro_plugin.html
-    :image: https://cdn.voxel51.com/torchvision-predictions.webp
+    :image: https://cdn.voxel51.com/yolo-predictions.webp
     :tags: Community
 
 
@@ -459,7 +451,7 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
     :header: Plotly-map-panel ⭐ 0
     :description: <span class="card-subtitle text-muted" style="background-color: #ff6b35; color: white !important; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: 500;">by allenleetc</span><br/>Plotly-based Map Panel with adjustable marker cosmetics!
     :link: plugins_ecosystem/plotly_map_panel.html
-    :image: https://cdn.voxel51.com/yolo-predictions.webp
+    :image: https://cdn.voxel51.com/zoo-predictions.webp
     :tags: Community
 
 
@@ -491,7 +483,7 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
     :header: Huggingface Hub ⭐ 1
     :description: <span class="card-subtitle text-muted" style="background-color: #ff6b35; color: white !important; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: 500;">by voxel51</span><br/>Push FiftyOne datasets to the Hugging Face Hub, and load datasets from the Hub into FiftyOne!
     :link: plugins_ecosystem/huggingface_hub.html
-    :image: https://cdn.sanity.io/images/h6toihm1/production/d286d778ffac5e30c2af62755808bf566dc5d3b6-2048x1148.webp
+    :image: https://cdn.voxel51.com/mistake-missing.webp
     :tags: Voxel51
 
 
@@ -499,7 +491,7 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
     :header: Transformers ⭐ 1
     :description: <span class="card-subtitle text-muted" style="background-color: #ff6b35; color: white !important; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: 500;">by voxel51</span><br/>Run inference on your datasets using Hugging Face Transformers models!
     :link: plugins_ecosystem/transformers.html
-    :image: https://cdn.voxel51.com/zoo-predictions.webp
+    :image: https://cdn.sanity.io/images/h6toihm1/production/d286d778ffac5e30c2af62755808bf566dc5d3b6-2048x1148.webp
     :tags: Voxel51
 
 

@@ -79,7 +79,7 @@ plugin makes it easy:
 
 .. image:: /images/plugins/operators/examples/evaluation.gif
 
-Need to compute embedding for your dataset? Kick off the task with the
+Need to compute embeddings for your dataset? Kick off the task with the
 `@voxel51/brain <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/brain/README.md>`_
 plugin and proceed with other work while the execution happens in the background:
 
