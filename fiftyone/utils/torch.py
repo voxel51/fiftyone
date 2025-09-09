@@ -2524,7 +2524,11 @@ class NumpySerializedList:
         self._lst = [_serialize(x) for x in lst]
         self._addr = np.asarray([len(x) for x in self._lst], dtype=np.int64)
         self._addr = np.cumsum(self._addr)
-        self._lst = np.concatenate(self._lst)
+        self._lst = (
+            np.concatenate(self._lst)
+            if self._lst
+            else np.empty(0, dtype=np.uint8)
+        )
 
         logger.debug(
             "Serialized dataset takes {:.2f} MiB".format(
