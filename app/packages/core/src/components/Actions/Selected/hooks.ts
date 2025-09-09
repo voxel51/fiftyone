@@ -1,3 +1,4 @@
+import { useLighter } from "@fiftyone/lighter";
 import type { Lookers } from "@fiftyone/looker";
 import type { State } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
@@ -8,10 +9,17 @@ import { useRecoilCallback, useRecoilValue } from "recoil";
 import { toLabelMap } from "./utils";
 
 export const useClearSelectedLabels = (close) => {
+  const { scene } = useLighter();
+
   return useRecoilCallback(
     ({ set }) =>
       async () => {
+        if (scene) {
+          scene.clearSelection({ isBridgeLogicHandled: true });
+        }
+
         set(fos.selectedLabels, []);
+
         close();
       },
     []
@@ -57,8 +65,27 @@ export const useSelectVisible = (
   visibleAtom?: RecoilValueReadOnly<fos.State.SelectedLabel[]> | null,
   visible?: fos.State.SelectedLabel[]
 ) => {
+  const { scene } = useLighter();
+
   return useRecoilCallback(({ snapshot, set }) => async () => {
     const selected = await snapshot.getPromise(fos.selectedLabelMap);
+
+    if (scene) {
+      try {
+        const visibleSelectableOverlayIds =
+          scene.getVisibleSelectableOverlayIds();
+
+        if (visibleSelectableOverlayIds.length > 0) {
+          scene.clearSelection({ isBridgeLogicHandled: true });
+
+          visibleSelectableOverlayIds.forEach((overlayId) => {
+            scene.selectOverlay(overlayId, { isBridgeLogicHandled: true });
+          });
+        }
+      } catch (error) {
+        console.warn("Failed to select overlays in lighter scene:", error);
+      }
+    }
 
     set(fos.selectedLabelMap, {
       ...selected,
@@ -90,7 +117,13 @@ export const useUnselectVisible = (
   visibleIdsAtom?: RecoilValueReadOnly<Set<string>>,
   visibleIds?: Set<string>
 ) => {
+  const { scene } = useLighter();
+
   return useRecoilCallback(({ snapshot, set }) => async () => {
+    if (scene) {
+      scene.clearSelection({ isBridgeLogicHandled: true });
+    }
+
     const selected = await snapshot.getPromise(fos.selectedLabels);
     const result = visibleIdsAtom
       ? await snapshot.getPromise(visibleIdsAtom)

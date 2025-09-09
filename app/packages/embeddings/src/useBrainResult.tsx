@@ -7,14 +7,21 @@ import { useColorByField } from "./useLabelSelector";
 // and has a loading state and an error state
 export const useBrainResult = () => usePanelStatePartial("brainResult", null);
 export const usePointsField = () => usePanelStatePartial("pointsField", null);
+
 export function useBrainResultsSelector() {
   const [selected, setSelected] = useBrainResult();
   const dataset = useRecoilValue(fos.dataset);
   const [colorByField, setColorByField] = useColorByField();
+  const [loadingPlotError, setLoadingPlotError] = usePanelStatePartial(
+    "loadingPlotError",
+    null,
+    true
+  );
   const handlers = {
     onSelect(selected) {
       setSelected(selected);
       setColorByField(null);
+      setLoadingPlotError(null);
     },
     value: selected,
     useSearch: (search) => ({
@@ -24,11 +31,15 @@ export function useBrainResultsSelector() {
     }),
   };
 
+  const hasSelection = selected !== null;
+
   return {
     handlers,
     brainKey: selected,
     canSelect: countValidBrainMethods(dataset) > 0,
-    hasSelection: selected !== null,
+    hasSelection: hasSelection,
+    hasLoadingError: loadingPlotError !== null,
+    showPlot: !loadingPlotError && hasSelection,
   };
 }
 

@@ -38,7 +38,7 @@ import {
 } from "./operators";
 import { OperatorPromptType, Places } from "./types";
 import { OperatorExecutorOptions } from "./types-internal";
-import { generateOperatorSessionId } from "./utils";
+import { generateOperatorSessionId, optimizeCtx } from "./utils";
 import { ValidationContext } from "./validation";
 
 export const promptingOperatorState = atom({
@@ -473,16 +473,22 @@ export const useOperatorPrompt = () => {
   const promptView = useMemo(() => {
     return inputFields?.view;
   }, [inputFields]);
+  const serializedParams = useMemo(() => {
+    return JSON.stringify(ctx.params);
+  }, [ctx.params]);
+  const liteValuesRef = useRef({});
 
   const resolveInput = useCallback(
     debounce(
       async (ctx) => {
         try {
+          const liteValues = liteValuesRef.current;
+          const optimizedCtx = optimizeCtx(ctx, liteValues);
           if (operator.config.resolveExecutionOptionsOnChange) {
-            execDetails.fetch(ctx);
+            execDetails.fetch(optimizedCtx);
           }
           const resolved =
-            cachedResolvedInput || (await operator.resolveInput(ctx));
+            cachedResolvedInput || (await operator.resolveInput(optimizedCtx));
 
           validateThrottled(ctx, resolved);
           if (resolved) {
@@ -505,7 +511,7 @@ export const useOperatorPrompt = () => {
   const resolveInputFields = useCallback(async () => {
     ctx.hooks = hooks;
     resolveInput(ctx);
-  }, [ctx, operatorName, hooks, JSON.stringify(ctx.params)]);
+  }, [ctx, operatorName, hooks, serializedParams]);
 
   const validate = useCallback((ctx, resolved) => {
     return new Promise<{
@@ -537,7 +543,7 @@ export const useOperatorPrompt = () => {
   useEffect(() => {
     if (executor.isExecuting || executor.hasExecuted) return;
     resolveInputFields();
-  }, [ctx.params, executor.isExecuting, executor.hasResultOrError]);
+  }, [serializedParams, executor.isExecuting]);
   const [validationErrors, setValidationErrors] = useState([]);
 
   const [outputFields, setOutputFields] = useState();
@@ -574,6 +580,11 @@ export const useOperatorPrompt = () => {
         }
       }
   );
+
+  const setLiteValues = useCallback((liteValues) => {
+    liteValuesRef.current = liteValues;
+  }, []);
+
   const execute = useCallback(
     async (options = {}) => {
       setPreparing(true);
@@ -633,10 +644,9 @@ export const useOperatorPrompt = () => {
     notify,
   ]);
 
-  const pendingResolve = useMemo(
-    () => ctx.params != resolvedCtx?.params,
-    [ctx.params, resolvedCtx?.params]
-  );
+  const pendingResolve = useMemo(() => {
+    return serializedParams !== JSON.stringify(resolvedCtx?.params);
+  }, [serializedParams, resolvedCtx]);
   const resolving = pendingResolve || preparing;
 
   const submitOptions = useOperatorPromptSubmitOptions(
@@ -681,6 +691,7 @@ export const useOperatorPrompt = () => {
     submitOptions,
     promptView,
     resolvedIO,
+    setLiteValues,
   };
 };
 
@@ -1006,6 +1017,45 @@ export function useOperatorBrowser() {
   };
 }
 
+/**
+ * @param uri - The URI of the operator to execute.
+ * @param handlers - The optional handlers for the operator.
+ * @returns An object containing the state of the operator execution.
+ *
+ * Example:
+ *
+ * ```ts
+ * const defaultParams = {
+ *   // default parameters of the operator
+ *   param1: "value1",
+ *   param2: "value2",
+ * };
+ * const paramOverrides = {
+ *   // override the parameters of the operator
+ *   param1: "value1-override",
+ * };
+ * const handlers = {
+ *   onSuccess: (result: OperatorResult, opts: OperatorExecutorOptions) => {
+ *     // do something with the success
+ *   },
+ *   onError: (error: OperatorResult, opts: OperatorExecutorOptions) => {
+ *     // do something with the error
+ *   }
+ * };
+ * const executor = useOperatorExecutor("my-operator", handlers);
+ * const myBtnCb = useCallback(() => {
+ *   const opts: OperatorExecutorOptions = {
+ *     skipErrorNotification: true,
+ *     callback: (result: OperatorResult, opts: OperatorExecutorOptions) => {
+ *       if (result.error) {
+ *         // do something with the error
+ *       }
+ *     }
+ *   };
+ *   executor.execute(paramOverrides, opts);
+ * }, [executor]);
+ * ```
+ */
 export function useOperatorExecutor(uri, handlers: any = {}) {
   uri = resolveOperatorURI(uri, { keepMethod: true });
 
@@ -1058,7 +1108,7 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
         setResult(result.result);
         setError(result.error);
         setIsDelegated(result.delegated);
-        if (result.error) {
+        if (result.error && !options?.skipErrorNotification) {
           handlers.onError?.(result, { ctx });
           notify({
             msg: result.errorMessage || `Operation failed: ${uri}`,
@@ -1103,8 +1153,6 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
     isDelegated,
   };
 }
-
-export function useExecutorQueue() {}
 
 export function useInvocationRequestQueue() {
   const ref = useRef<InvocationRequestQueue>();

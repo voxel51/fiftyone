@@ -1,9 +1,11 @@
+import { LoadingDots } from "@fiftyone/components";
 import { Add, Remove } from "@mui/icons-material";
-import { atom, useAtom } from "jotai";
+import { atom, useAtom, useAtomValue } from "jotai";
 import React from "react";
 import styled, { useTheme } from "styled-components";
 import { Column } from "./Components";
 import { Container } from "./Icons";
+import { labels } from "./useLabels";
 
 const PlusMinusButton = ({
   expanded,
@@ -66,7 +68,7 @@ const Round = styled.div`
 `;
 
 const Toggle = ({ name }: { name: string }) => {
-  const [expanded, setExpanded] = useAtom(getGroupAtom(name));
+  const [expanded, setExpanded] = useAtom(EXPANDED_ATOMS[name]);
 
   return (
     <Round>
@@ -78,14 +80,25 @@ const Toggle = ({ name }: { name: string }) => {
   );
 };
 
-export const getGroupAtom = (name: string) =>
-  name === "Objects" ? objectsExpanded : primitivesExpanded;
-
-export const objectsExpanded = atom(true);
+export const labelsExpanded = atom(true);
 export const primitivesExpanded = atom(false);
+
+const EXPANDED_ATOMS = {
+  Labels: labelsExpanded,
+  Primitives: primitivesExpanded,
+};
+
+const labelsCount = atom((get) => get(labels).length);
+const primitivesCount = atom(0);
+
+const COUNT_ATOMS = {
+  Labels: labelsCount,
+  Primitives: primitivesCount,
+};
 
 const Group = React.memo(({ name }: { name: string }) => {
   const theme = useTheme();
+  const count = useAtomValue(COUNT_ATOMS[name]);
 
   return (
     <div
@@ -105,7 +118,7 @@ const Group = React.memo(({ name }: { name: string }) => {
           </GroupDiv>
 
           <Column>
-            <Container>7</Container>
+            <Container>{count === null ? <LoadingDots /> : count}</Container>
             <Toggle name={name} />
           </Column>
         </GroupHeader>

@@ -15,7 +15,7 @@ import { get } from "lodash";
 import ColorSquare from "../../components/ColorSquare";
 import EvaluationTable from "../../components/EvaluationTable";
 import { COMPARE_KEY_COLOR, KEY_COLOR } from "../../constants";
-import { getNumericDifference } from "../../utils";
+import { getInapplicableMetrics, getNumericDifference } from "../../utils";
 import { useActiveFilter } from "./utils";
 
 export default function Summary(props) {
@@ -26,19 +26,10 @@ export default function Summary(props) {
   const evaluationInfo = evaluation.info;
   const evaluationConfig = evaluationInfo.config;
   const evaluationMetrics = evaluation.metrics;
-  const evaluationType = evaluationConfig.type;
-  const evaluationMethod = evaluationConfig.method;
   const compareEvaluationInfo = compareEvaluation?.info || {};
   const compareEvaluationConfig = compareEvaluationInfo?.config || {};
   const compareEvaluationMetrics = compareEvaluation?.metrics || {};
-  const isObjectDetection = evaluationType === "detection";
-  const isClassification = evaluationType === "classification";
-  const isSegmentation = evaluationType === "segmentation";
-  const isBinaryClassification =
-    evaluationType === "classification" && evaluationMethod === "binary";
-  const showTpFpFn = isObjectDetection || isBinaryClassification;
-  const isNoneBinaryClassification =
-    isClassification && evaluationMethod !== "binary";
+  const inapplicable = getInapplicableMetrics(evaluation);
 
   const summaryRows = [
     {
@@ -46,7 +37,7 @@ export default function Summary(props) {
       property: "Average Confidence",
       value: evaluationMetrics.average_confidence,
       compareValue: compareEvaluationMetrics.average_confidence,
-      hide: isSegmentation,
+      hide: inapplicable.includes("average_confidence"),
     },
     {
       id: "support",
@@ -65,7 +56,7 @@ export default function Summary(props) {
       property: "IoU Threshold",
       value: evaluationConfig.iou,
       compareValue: compareEvaluationConfig.iou,
-      hide: !isObjectDetection,
+      hide: inapplicable.includes("iou"),
     },
     {
       id: "precision",
@@ -90,14 +81,14 @@ export default function Summary(props) {
       property: "mAP",
       value: evaluationMetrics.mAP,
       compareValue: compareEvaluationMetrics.mAP,
-      hide: !isObjectDetection,
+      hide: inapplicable.includes("mAP"),
     },
     {
       id: "mAR",
       property: "mAR",
       value: evaluationMetrics.mAR,
       compareValue: compareEvaluationMetrics.mAR,
-      hide: !isObjectDetection,
+      hide: inapplicable.includes("mAR"),
     },
     {
       id: "tp",
@@ -111,7 +102,7 @@ export default function Summary(props) {
             ? "compare"
             : "selected"
           : false,
-      hide: !showTpFpFn,
+      hide: inapplicable.includes("tp"),
     },
     {
       id: "fp",
@@ -126,7 +117,7 @@ export default function Summary(props) {
             ? "compare"
             : "selected"
           : false,
-      hide: !showTpFpFn,
+      hide: inapplicable.includes("fp"),
     },
     {
       id: "fn",
@@ -141,25 +132,25 @@ export default function Summary(props) {
             ? "compare"
             : "selected"
           : false,
-      hide: !showTpFpFn,
+      hide: inapplicable.includes("fn"),
     },
     {
       id: true,
       property: "Correct",
-      value: evaluationMetrics.num_correct,
-      compareValue: compareEvaluationMetrics.num_correct,
+      value: evaluationMetrics.correct,
+      compareValue: compareEvaluationMetrics.correct,
       lesserIsBetter: false,
       filterable: true,
-      hide: !isNoneBinaryClassification,
+      hide: inapplicable.includes("correct"),
     },
     {
       id: false,
       property: "Incorrect",
-      value: evaluationMetrics.num_incorrect,
-      compareValue: compareEvaluationMetrics.num_incorrect,
-      lesserIsBetter: false,
+      value: evaluationMetrics.incorrect,
+      compareValue: compareEvaluationMetrics.incorrect,
+      lesserIsBetter: true,
       filterable: true,
-      hide: !isNoneBinaryClassification,
+      hide: inapplicable.includes("incorrect"),
     },
     ...formatCustomMetricRows(evaluation, compareEvaluation),
   ];
@@ -223,11 +214,17 @@ export default function Summary(props) {
           const zeroRatio = ratio === 0;
           const negativeRatio = ratio < 0;
           const ratioColor = positiveRatio
-            ? "#8BC18D"
+            ? lesserIsBetter
+              ? "#FF6464"
+              : "#8BC18D"
             : negativeRatio
-            ? "#FF6464"
+            ? lesserIsBetter
+              ? "#8BC18D"
+              : "#FF6464"
             : theme.palette.text.tertiary;
           const showTrophy = lesserIsBetter ? difference < 0 : difference > 0;
+          const showCompareTrophy =
+            typeof difference === "number" && difference !== 0 && !showTrophy;
           const activeStyle: SxProps = {
             backgroundColor: theme.palette.voxel["500"],
             color: "#FFFFFF",
@@ -288,25 +285,29 @@ export default function Summary(props) {
                           <Typography color="text.tertiary">—</Typography>
                         )}
                       </Typography>
-
-                      {filterable && (
-                        <IconButton
-                          sx={{
-                            p: 0.25,
-                            borderRadius: 0.5,
-                            ...(active === "compare" ? activeStyle : {}),
-                          }}
-                          onClick={() => {
-                            loadView("field", {
-                              field: rowId,
-                              key: compareKey,
-                            });
-                          }}
-                          title="Load view"
-                        >
-                          <GridView sx={{ fontSize: 16 }} />
-                        </IconButton>
-                      )}
+                      <Stack direction="row" spacing={1}>
+                        {showCompareTrophy && (
+                          <Typography sx={{ fontSize: 12 }}>🏆</Typography>
+                        )}
+                        {filterable && (
+                          <IconButton
+                            sx={{
+                              p: 0.25,
+                              borderRadius: 0.5,
+                              ...(active === "compare" ? activeStyle : {}),
+                            }}
+                            onClick={() => {
+                              loadView("field", {
+                                field: rowId,
+                                key: compareKey,
+                              });
+                            }}
+                            title="Load view"
+                          >
+                            <GridView sx={{ fontSize: 16 }} />
+                          </IconButton>
+                        )}
+                      </Stack>
                     </Stack>
                   </TableCell>
                   <TableCell>

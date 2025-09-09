@@ -34,6 +34,13 @@ your datasets and turn your good models into *great models*.
 .. Add tutorial cards below
 
 .. customcarditem::
+    :header: DINOv3 visual search
+    :description: Leverage the power of DINOv3 embeddings for visual search, similarity analysis, and foreground segmentation in FiftyOne. Learn to compute embeddings, visualize them, and build classifiers using this state-of-the-art vision model.
+    :link: dinov3.html
+    :image: https://cdn.voxel51.com/tutorial_dinov3/dinov3.png
+    :tags: Embeddings,Brain,Model-Evaluation,Visualization
+
+.. customcarditem::
     :header: pandas-style queries in FiftyOne
     :description: Translate your pandas knowledge to FiftyOne. This tutorial gives a side-by-side comparison of performing common operations in pandas and FiftyOne.
     :link: pandas_comparison.html
@@ -204,6 +211,7 @@ your datasets and turn your good models into *great models*.
    :maxdepth: 1
    :hidden:
 
+   DINOv3 visual search <dinov3.ipynb>
    pandas and FiftyOne <pandas_comparison.ipynb>
    Evaluating object detections <evaluate_detections.ipynb>
    Evaluating a classifier <evaluate_classifications.ipynb>

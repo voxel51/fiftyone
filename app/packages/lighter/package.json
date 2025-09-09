@@ -1,0 +1,35 @@
+{
+    "name": "@fiftyone/lighter",
+    "author": "Voxel51, Inc.",
+    "version": "0.0.0",
+    "description": "A lightweight library to view FiftyOne samples with overlays",
+    "homepage": "https://github.com/voxel51/fiftyone/app/packages/lighter",
+    "license": "Apache-2.0",
+    "bugs": {
+        "url": "https://github.com/voxel51/fiftyone/issues"
+    },
+    "main": "./src/index.ts",
+    "scripts": {
+        "build": "tsc",
+        "test": "jest",
+        "test:watch": "jest --watch",
+        "lint": "eslint src/**/*.ts",
+        "type-check": "tsc --noEmit"
+    },
+    "dependencies": {
+        "pixi.js": "^8.12.0"
+    },
+    "devDependencies": {
+        "@types/react": "^18.2.0",
+        "@types/react-dom": "^18.2.0",
+        "@typescript-eslint/eslint-plugin": "^6.0.0",
+        "@typescript-eslint/parser": "^6.0.0",
+        "eslint": "^8.0.0",
+        "typescript": "^5.8.3"
+    },
+    "peerDependencies": {
+        "jotai": "*",
+        "react": "^18.0.0",
+        "react-dom": "^18.0.0"
+    }
+}

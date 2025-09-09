@@ -1,4 +1,5 @@
 import { useTrackEvent } from "@fiftyone/analytics";
+import { ErrorBoundary } from "@fiftyone/components";
 import { Plot } from "@fiftyone/components/src/components/Plot";
 import { usePanelEvent } from "@fiftyone/operators";
 import { usePanelId, usePanelStatePartial } from "@fiftyone/spaces";
@@ -27,8 +28,8 @@ import {
   Typography,
   useTheme,
 } from "@mui/material";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { atom, useRecoilState } from "recoil";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { atom } from "recoil";
 import AlertView from "../../../AlertView";
 import ConfusionMatrixConfig from "../../components/ConfusionMatrixConfig";
 import CreateScenario from "../../components/CreateScenario";
@@ -43,7 +44,12 @@ import {
   SECONDARY_KEY_COLOR,
   TERTIARY_KEY_COLOR,
 } from "../../constants";
-import { getClasses, getMatrix } from "../../utils";
+import {
+  getClasses,
+  getEvaluationType,
+  getInapplicableMetrics,
+  getMatrix,
+} from "../../utils";
 import Actions from "./Actions";
 import Legends from "./Legends";
 import LoadingError from "./LoadingError";
@@ -390,25 +396,27 @@ export default function Scenarios(props) {
           />
         </Stack>
       </Stack>
-      {scenario && (
-        <Scenario
-          key={scenario}
-          id={scenario}
-          data={data}
-          loadScenario={loadScenario}
-          mode={mode}
-          loading={loadingScenario}
-          differenceMode={differenceMode}
-          evaluation={evaluation}
-          compareEvaluation={compareEvaluation}
-          selectedSubsets={selectedSubsets}
-          loadView={loadView}
-          onDelete={onDelete}
-          onEdit={onEdit}
-          readOnly={readOnly}
-          trackEvent={trackEvent}
-        />
-      )}
+      <ErrorBoundary>
+        {scenario && (
+          <Scenario
+            key={scenario}
+            id={scenario}
+            data={data}
+            loadScenario={loadScenario}
+            mode={mode}
+            loading={loadingScenario}
+            differenceMode={differenceMode}
+            evaluation={evaluation}
+            compareEvaluation={compareEvaluation}
+            selectedSubsets={selectedSubsets}
+            loadView={loadView}
+            onDelete={onDelete}
+            onEdit={onEdit}
+            readOnly={readOnly}
+            trackEvent={trackEvent}
+          />
+        )}
+      </ErrorBoundary>
     </Stack>
   );
 }
@@ -428,25 +436,13 @@ function Scenario(props) {
     readOnly,
     trackEvent,
   } = props;
-  const { key, compareKey } = data?.view;
+  const { key, compareKey } = data?.view || {};
   let scenario = data?.[`scenario_${id}_${key}`];
   let compareScenario = data?.[`scenario_${id}_${compareKey}`];
   const showAllSubsets =
     selectedSubsets.length === 1 && selectedSubsets[0] === "all";
-
   const loadError = data?.scenario_load_error;
   const scenarioChanges = data?.[`scenario_${id}_changes`];
-
-  const [{ code: errorCode, error: errorDescription }, setLoadError] =
-    useRecoilState(loadScenarioErrorState);
-
-  useEffect(() => {
-    if (loadError && loadError.id === id) {
-      setLoadError(loadError);
-    } else {
-      setLoadError({ code: "", error: "", id: "" });
-    }
-  }, [loadError]);
 
   useEffect(() => {
     if (!scenario) {
@@ -460,7 +456,7 @@ function Scenario(props) {
     }
   }, [compareKey, compareScenario]);
 
-  if (errorCode) {
+  if (loadError) {
     return (
       <Stack
         sx={{ minHeight: 300 }}
@@ -468,11 +464,10 @@ function Scenario(props) {
         justifyContent="center"
       >
         <LoadingError
-          code={errorCode}
-          description={errorDescription}
           onDelete={onDelete}
           onEdit={onEdit}
           readOnly={readOnly}
+          {...loadError}
         />
       </Stack>
     );
@@ -509,6 +504,18 @@ function Scenario(props) {
     }
   }
 
+  if (scenario.subsets.length === 0) {
+    return (
+      <Stack
+        sx={{ minHeight: 300 }}
+        alignItems="center"
+        justifyContent="center"
+      >
+        <Typography>No subset defined</Typography>
+      </Stack>
+    );
+  }
+
   return (
     <Stack>
       {scenarioChanges && (
@@ -537,6 +544,8 @@ function Scenario(props) {
           data={data}
           scenario={scenario}
           compareScenario={compareScenario}
+          evaluation={props.evaluation}
+          compareEvaluation={props.compareEvaluation}
           differenceMode={differenceMode}
           loadView={loadView}
         />
@@ -546,11 +555,21 @@ function Scenario(props) {
 }
 
 function ScenarioTables(props) {
+  const inapplicable = getInapplicableMetrics(props.evaluation);
+  const hidePredictionStatistics = inapplicable.includes(
+    "prediction_statistics"
+  );
+  const hideConfidenceDistribution = inapplicable.includes(
+    "confidence_distribution"
+  );
+
   return (
     <Stack spacing={2}>
-      <PredictionStatisticsTable {...props} />
+      {!hidePredictionStatistics && <PredictionStatisticsTable {...props} />}
       <ModelPerformanceMetricsTable {...props} />
-      <ConfidenceDistributionTable {...props} />
+      {!hideConfidenceDistribution && (
+        <ConfidenceDistributionTable {...props} />
+      )}
     </Stack>
   );
 }
@@ -561,6 +580,14 @@ function PredictionStatisticsTable(props) {
   const compareSubsetsData = compareScenario?.subsets_data;
   const { key, compareKey } = data?.view;
   const width = getWidth(props);
+  const type = getEvaluationType(props.evaluation);
+  const isMulticlassClassification = type === "multiclass_classification";
+  const tpOrCorrectLabel = isMulticlassClassification
+    ? "Correct"
+    : "True Positives";
+  const fnOrIncorrectLabel = isMulticlassClassification
+    ? "Incorrect"
+    : "False Negatives";
 
   return (
     <Stack>
@@ -579,36 +606,49 @@ function PredictionStatisticsTable(props) {
           const compareSubsetData = compareSubsetsData?.[subset];
           const { metrics } = subsetData;
           const compareMetrics = compareSubsetData?.metrics;
+
           return (
             <TableRow key={subset}>
               <TableCell>{subset}</TableCell>
               <TableCell>
                 <Stack spacing={1}>
                   <Stack direction="row" spacing={1}>
-                    <Typography color="secondary">TP:</Typography>
-                    <Typography>{metrics.tp}</Typography>
+                    <Typography color="secondary">
+                      {tpOrCorrectLabel}:
+                    </Typography>
+                    <Typography>{metrics.tp ?? metrics.correct}</Typography>
                     <Difference
-                      value={metrics.tp}
-                      compareValue={compareMetrics?.tp}
+                      value={metrics.tp ?? metrics.correct}
+                      compareValue={
+                        compareMetrics?.tp ?? compareMetrics?.correct
+                      }
                       mode="trophy"
                     />
                   </Stack>
+                  {!isMulticlassClassification && (
+                    <Stack direction="row" spacing={1}>
+                      <Typography color="secondary">
+                        False Positives:
+                      </Typography>
+                      <Typography>{metrics.fp}</Typography>
+                      <Difference
+                        value={metrics.fp}
+                        compareValue={compareMetrics?.fp}
+                        mode="trophy"
+                        lesserIsBetter
+                      />
+                    </Stack>
+                  )}
                   <Stack direction="row" spacing={1}>
-                    <Typography color="secondary">FP:</Typography>
-                    <Typography>{metrics.fp}</Typography>
+                    <Typography color="secondary">
+                      {fnOrIncorrectLabel}:
+                    </Typography>
+                    <Typography>{metrics.fn ?? metrics.incorrect}</Typography>
                     <Difference
-                      value={metrics.fp}
-                      compareValue={compareMetrics?.fp}
-                      mode="trophy"
-                      lesserIsBetter
-                    />
-                  </Stack>
-                  <Stack direction="row" spacing={1}>
-                    <Typography color="secondary">FN:</Typography>
-                    <Typography>{metrics.fn}</Typography>
-                    <Difference
-                      value={metrics.fn}
-                      compareValue={compareMetrics?.fn}
+                      value={metrics.fn ?? metrics.incorrect}
+                      compareValue={
+                        compareMetrics?.fn ?? compareMetrics?.incorrect
+                      }
                       mode="trophy"
                       lesserIsBetter
                     />
@@ -620,30 +660,42 @@ function PredictionStatisticsTable(props) {
                   {compareMetrics ? (
                     <Stack spacing={1}>
                       <Stack direction="row" spacing={1}>
-                        <Typography color="secondary">TP:</Typography>
-                        <Typography>{compareMetrics?.tp}</Typography>
+                        <Typography color="secondary">
+                          {tpOrCorrectLabel}:
+                        </Typography>
+                        <Typography>
+                          {compareMetrics?.tp ?? compareMetrics?.correct}
+                        </Typography>
                         <Difference
-                          value={compareMetrics.tp}
-                          compareValue={metrics.tp}
+                          value={compareMetrics.tp ?? compareMetrics.correct}
+                          compareValue={metrics.tp ?? metrics.correct}
                           mode="trophy"
                         />
                       </Stack>
+                      {!isMulticlassClassification && (
+                        <Stack direction="row" spacing={1}>
+                          <Typography color="secondary">
+                            False Positives:
+                          </Typography>
+                          <Typography>{compareMetrics?.fp}</Typography>
+                          <Difference
+                            value={compareMetrics.fp}
+                            compareValue={metrics.fp}
+                            mode="trophy"
+                            lesserIsBetter
+                          />
+                        </Stack>
+                      )}
                       <Stack direction="row" spacing={1}>
-                        <Typography color="secondary">FP:</Typography>
-                        <Typography>{compareMetrics?.fp}</Typography>
+                        <Typography color="secondary">
+                          {fnOrIncorrectLabel}:
+                        </Typography>
+                        <Typography>
+                          {compareMetrics.fn ?? compareMetrics.incorrect}
+                        </Typography>
                         <Difference
-                          value={compareMetrics.fp}
-                          compareValue={metrics.fp}
-                          mode="trophy"
-                          lesserIsBetter
-                        />
-                      </Stack>
-                      <Stack direction="row" spacing={1}>
-                        <Typography color="secondary">FN:</Typography>
-                        <Typography>{compareMetrics.fn}</Typography>
-                        <Difference
-                          value={compareMetrics.fn}
-                          compareValue={metrics.fn}
+                          value={compareMetrics.fn ?? compareMetrics.incorrect}
+                          compareValue={metrics.fn ?? metrics.incorrect}
                           mode="trophy"
                           lesserIsBetter
                         />
@@ -659,20 +711,26 @@ function PredictionStatisticsTable(props) {
                   {compareMetrics ? (
                     <Stack>
                       <Difference
-                        value={metrics.tp}
-                        compareValue={compareMetrics.tp}
+                        value={metrics.tp ?? metrics.correct}
+                        compareValue={
+                          compareMetrics.tp ?? compareMetrics.correct
+                        }
                         mode={differenceMode}
                         arrow
                       />
+                      {!isMulticlassClassification && (
+                        <Difference
+                          value={metrics.fp}
+                          compareValue={compareMetrics.fp}
+                          mode={differenceMode}
+                          arrow
+                        />
+                      )}
                       <Difference
-                        value={metrics.fp}
-                        compareValue={compareMetrics.fp}
-                        mode={differenceMode}
-                        arrow
-                      />
-                      <Difference
-                        value={metrics.fn}
-                        compareValue={compareMetrics.fn}
+                        value={metrics.fn ?? metrics.incorrect}
+                        compareValue={
+                          compareMetrics.fn ?? compareMetrics.incorrect
+                        }
                         mode={differenceMode}
                         arrow
                       />
@@ -726,6 +784,10 @@ function ModelPerformanceMetricsTable(props) {
   const [subset, setSubset] = usePanelStatePartial(`${id}_mpts`, subsets[0]);
   const { key, compareKey } = data?.view;
   const width = getWidth(props);
+  const inapplicable = getInapplicableMetrics(props.evaluation);
+  const metrics = MODEL_PERFORMANCE_METRICS.filter(
+    (metric) => !inapplicable.includes(metric.key)
+  );
 
   return (
     <Stack>
@@ -746,7 +808,7 @@ function ModelPerformanceMetricsTable(props) {
             {compareKey && <TableCell sx={{ width }}>Difference</TableCell>}
           </TableRow>
         </TableHead>
-        {MODEL_PERFORMANCE_METRICS.map(({ label, key }) => {
+        {metrics.map(({ label, key }) => {
           const subsetData = subsets_data[subset];
           const compareSubsetData = compareSubsetsData?.[subset];
           const { metrics } = subsetData;
@@ -947,14 +1009,24 @@ function ScenarioChartCard(props) {
 }
 
 function ScenarioCharts(props) {
+  const inapplicable = getInapplicableMetrics(props.evaluation);
+  const hidePredictionStatistics = inapplicable.includes(
+    "prediction_statistics"
+  );
+  const hideConfidenceDistribution = inapplicable.includes(
+    "confidence_distribution"
+  );
+
   return (
     <Grid container spacing={2} pt={2}>
-      <Grid item xs={6}>
-        <ScenarioChartCard>
-          <PredictionStatisticsChart {...props} />
-        </ScenarioChartCard>
-      </Grid>
-      <Grid item xs={6}>
+      {!hidePredictionStatistics && (
+        <Grid item xs={6}>
+          <ScenarioChartCard>
+            <PredictionStatisticsChart {...props} />
+          </ScenarioChartCard>
+        </Grid>
+      )}
+      <Grid item xs={hidePredictionStatistics ? 12 : 6}>
         <ScenarioChartCard>
           <ScenarioModelPerformanceChart {...props} />
         </ScenarioChartCard>
@@ -964,12 +1036,14 @@ function ScenarioCharts(props) {
           <ConfusionMatrixChart {...props} />
         </ScenarioChartCard>
       </Grid>
-      <Grid item xs={6}>
-        <ScenarioChartCard>
-          <ConfidenceDistributionChart {...props} />
-        </ScenarioChartCard>
-      </Grid>
-      <Grid item xs={6}>
+      {!hideConfidenceDistribution && (
+        <Grid item xs={6}>
+          <ScenarioChartCard>
+            <ConfidenceDistributionChart {...props} />
+          </ScenarioChartCard>
+        </Grid>
+      )}
+      <Grid item xs={hideConfidenceDistribution ? 12 : 6}>
         <ScenarioChartCard>
           <MetricPerformanceChart {...props} />
         </ScenarioChartCard>
@@ -999,152 +1073,107 @@ function PredictionStatisticsChart(props) {
   const [metric, setMetric] = usePanelStatePartial("ps_metric", "all");
   const showAllMetric = metric === "all";
   const { key, compareKey } = props.data?.view || {};
+  const type = getEvaluationType(props.evaluation);
+  const isMulticlassClassification = type === "multiclass_classification";
+  const tpOrCorrectLabel = isMulticlassClassification
+    ? "Correct"
+    : "True Positives";
+  const fnOrIncorrectLabel = isMulticlassClassification
+    ? "Incorrect"
+    : "False Negatives";
 
   let plotData = new Array<unknown>();
 
-  const tp: number[] = [];
+  const tpOrCorrect: number[] = [];
   const fp: number[] = [];
-  const fn: number[] = [];
-  const compareTP: number[] = [];
+  const fnOrIncorrect: number[] = [];
+  const compareTPOrCorrect: number[] = [];
   const compareFP: number[] = [];
-  const compareFN: number[] = [];
+  const compareFNOrIncorrect: number[] = [];
   const metricsByMode = {
-    tp: { main: tp, compare: compareTP },
+    tp: { main: tpOrCorrect, compare: compareTPOrCorrect },
     fp: { main: fp, compare: compareFP },
-    fn: { main: fn, compare: compareFN },
+    fn: { main: fnOrIncorrect, compare: compareFNOrIncorrect },
   };
-  const metricsBySubset = {};
-
-  const traceOne: any = { values: [], colors: [], keys: [] };
-  const traceTwo: any = { values: [], colors: [], keys: [] };
-  const traceThree: any = { values: [], colors: [], keys: [] };
-  const compareTraceOne: any = { values: [], colors: [], keys: [] };
-  const compareTraceTwo: any = { values: [], colors: [], keys: [] };
-  const compareTraceThree: any = { values: [], colors: [], keys: [] };
 
   for (const subset of subsets) {
     const metrics = subsets_data[subset].metrics;
     const compareMetrics = compareSubsetsData?.[subset]?.metrics;
-    const traces = [
-      { value: metrics.tp, color: KEY_COLOR, key: "tp" },
-      { value: metrics.fp, color: SECONDARY_KEY_COLOR, key: "fp" },
-      { value: metrics.fn, color: TERTIARY_KEY_COLOR, key: "fn" },
-    ].sort((a, b) => b.value - a.value);
-
-    traceOne.values.push(traces[0].value);
-    traceOne.colors.push(traces[0].color);
-    traceOne.keys.push(traces[0].key);
-    traceTwo.values.push(traces[1].value);
-    traceTwo.colors.push(traces[1].color);
-    traceTwo.keys.push(traces[1].key);
-    traceThree.values.push(traces[2].value);
-    traceThree.colors.push(traces[2].color);
-    traceThree.keys.push(traces[2].key);
-
-    tp.push(metrics.tp);
+    tpOrCorrect.push(metrics.tp ?? metrics.correct);
     fp.push(metrics.fp);
-    fn.push(metrics.fn);
-
-    metricsBySubset[subset] = {
-      tp: metrics.tp,
-      fp: metrics.fp,
-      fn: metrics.fn,
-    };
-
+    fnOrIncorrect.push(metrics.fn ?? metrics.incorrect);
     if (compareMetrics) {
-      compareTP.push(compareMetrics.tp);
+      compareTPOrCorrect.push(compareMetrics.tp ?? compareMetrics.correct);
       compareFP.push(compareMetrics.fp);
-      compareFN.push(compareMetrics.fn);
-
-      metricsBySubset[subset] = {
-        ...metricsBySubset[subset],
-        compareTP: compareMetrics.tp,
-        compareFP: compareMetrics.fp,
-        compareFN: compareMetrics.fn,
-      };
-
-      const compareTraces = [
-        { value: compareMetrics.tp, color: COMPARE_KEY_COLOR, key: "tp" },
-        {
-          value: compareMetrics.fp,
-          color: COMPARE_KEY_SECONDARY_COLOR,
-          key: "fp",
-        },
-        {
-          value: compareMetrics.fn,
-          color: COMPARE_KEY_TERTIARY_COLOR,
-          key: "fn",
-        },
-      ].sort((a, b) => b.value - a.value);
-      compareTraceOne.values.push(compareTraces[0].value);
-      compareTraceOne.colors.push(compareTraces[0].color);
-      compareTraceOne.keys.push(compareTraces[0].key);
-      compareTraceTwo.values.push(compareTraces[1].value);
-      compareTraceTwo.colors.push(compareTraces[1].color);
-      compareTraceTwo.keys.push(compareTraces[1].key);
-      compareTraceThree.values.push(compareTraces[2].value);
-      compareTraceThree.colors.push(compareTraces[2].color);
-      compareTraceThree.keys.push(compareTraces[2].key);
+      compareFNOrIncorrect.push(compareMetrics.fn ?? compareMetrics.incorrect);
     }
   }
+
   if (showAllMetric) {
     const tpTrace = {
       x: subsets,
-      y: traceOne.values,
-      keys: traceOne.keys,
+      y: tpOrCorrect,
+      name: `${key} ${tpOrCorrectLabel}`,
+      id: isMulticlassClassification ? true : "tp",
       type: "bar",
       offsetgroup: 0,
-      marker: { color: traceOne.colors },
+      marker: { color: KEY_COLOR },
       hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
     };
-
     const fpTrace = {
       x: subsets,
-      y: traceTwo.values,
+      y: fp,
+      name: `${key} False Positives`,
+      id: "fp",
       type: "bar",
       offsetgroup: 0,
-      marker: { color: traceTwo.colors },
+      marker: { color: SECONDARY_KEY_COLOR },
       hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
     };
     const fnTrace = {
       x: subsets,
-      y: traceThree.values,
+      y: fnOrIncorrect,
+      name: `${key} ${fnOrIncorrectLabel}`,
+      id: isMulticlassClassification ? false : "fn",
       type: "bar",
       offsetgroup: 0,
-      marker: { color: traceThree.colors },
+      marker: { color: TERTIARY_KEY_COLOR },
       hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
     };
 
     const compareTPTrace = {
       x: subsets,
-      y: compareTraceOne.values,
-      keys: compareTraceOne.keys,
+      y: compareTPOrCorrect,
+      name: `${compareKey} ${tpOrCorrectLabel}`,
+      id: isMulticlassClassification ? true : "tp",
       isCompare: true,
       type: "bar",
       offsetgroup: 1,
-      marker: { color: compareTraceOne.colors },
+      marker: { color: COMPARE_KEY_COLOR },
       hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
     };
 
     const compareFPTrace = {
       x: subsets,
-      y: compareTraceTwo.values,
-      keys: compareTraceTwo.keys,
+      y: compareFP,
+      name: `${compareKey} False Positives`,
+      id: "fp",
       isCompare: true,
       type: "bar",
       offsetgroup: 1,
-      marker: { color: compareTraceTwo.colors },
+      marker: { color: COMPARE_KEY_SECONDARY_COLOR },
       hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
     };
 
     const compareFNTrace = {
       x: subsets,
-      y: compareTraceThree.values,
-      keys: compareTraceThree.keys,
+      y: compareFNOrIncorrect,
+      name: `${compareKey} ${fnOrIncorrectLabel}`,
+      id: isMulticlassClassification ? false : "fn",
       isCompare: true,
       type: "bar",
       offsetgroup: 1,
-      marker: { color: compareTraceThree.colors },
+      marker: { color: COMPARE_KEY_TERTIARY_COLOR },
       hovertemplate: PLOT_TOOLTIP_TEMPLATES.bar,
     };
     plotData = [tpTrace, fpTrace, fnTrace];
@@ -1154,8 +1183,14 @@ function PredictionStatisticsChart(props) {
   } else {
     const metricsForMode = metricsByMode[metric];
     const { main, compare } = metricsForMode;
+    const metricToId = isMulticlassClassification
+      ? { tp: true, fn: false }
+      : { tp: "tp", fp: "fp", fn: "fn" };
+    const id = metricToId[metric];
+
     plotData = [
       {
+        id,
         x: subsets,
         y: main,
         type: "bar",
@@ -1167,6 +1202,8 @@ function PredictionStatisticsChart(props) {
     ];
     if (compareSubsetsData) {
       plotData.push({
+        id,
+        isCompare: true,
         x: subsets,
         y: compare,
         type: "bar",
@@ -1192,23 +1229,26 @@ function PredictionStatisticsChart(props) {
             <Typography>All</Typography>
           </MenuItem>
           <MenuItem value={"tp"} key={"tp"}>
-            <Typography>True Positives</Typography>
+            <Typography>{tpOrCorrectLabel}</Typography>
           </MenuItem>
-          <MenuItem value={"fp"} key={"fp"}>
-            <Typography>False Positives</Typography>
-          </MenuItem>
+          {!isMulticlassClassification && (
+            <MenuItem value={"fp"} key={"fp"}>
+              <Typography>False Positives</Typography>
+            </MenuItem>
+          )}
           <MenuItem value={"fn"} key={"fn"}>
-            <Typography>False Negatives</Typography>
+            <Typography>{fnOrIncorrectLabel}</Typography>
           </MenuItem>
         </EvaluationSelect>
       </Stack>
 
       <Plot
         data={plotData}
-        layout={showAllMetric ? { barmode: "overlay" } : {}}
+        layout={showAllMetric ? { barmode: "stack" } : {}}
         onClick={({ points }) => {
           const firstPoint = points[0];
-          const { id, isCompare } = firstPoint.data;
+          const { id } = firstPoint.data;
+          const isCompare = firstPoint?.fullData?._input?.isCompare;
           const subset = firstPoint.x;
           const subsetDef = getSubsetDef(scenario, subset);
           trackEvent("evaluation_plot_click", {
@@ -1216,30 +1256,11 @@ function PredictionStatisticsChart(props) {
             subsetDef,
             plotName: "prediction_statistics",
           });
-          loadView("field", { field: id, subset_def: subsetDef });
-        }}
-        tooltip={(tooltip) => {
-          const [point] = tooltip.points;
-          const { x, y, data } = point;
-          const isCompare = data.offsetgroup === 1;
-          const metrics = metricsBySubset[x];
-          return {
-            label: x,
-            data: [
-              {
-                label: "True Positives",
-                value: isCompare ? metrics.compareTP : metrics.tp,
-              },
-              {
-                label: "False Positives",
-                value: isCompare ? metrics.compareFP : metrics.fp,
-              },
-              {
-                label: "False Negatives",
-                value: isCompare ? metrics.compareFN : metrics.fn,
-              },
-            ].sort((a, b) => b.value - a.value),
-          };
+          loadView("field", {
+            field: id,
+            subset_def: subsetDef,
+            key: isCompare ? compareKey : undefined,
+          });
         }}
       />
       <Legends
@@ -1258,13 +1279,23 @@ function ScenarioModelPerformanceChart(props) {
   const [subset, setSubset] = usePanelStatePartial(`${id}_mps`, subsets[0]);
   const subsetData = scenario.subsets_data[subset];
   const compareSubsetData = compareScenario?.subsets_data[subset];
+
+  // when subset is empty, do not render the chart
+  if (!subsetData) {
+    return <></>;
+  }
+
   const { metrics } = subsetData;
   const compareMetrics = compareSubsetData?.metrics;
   const { key, compareKey } = props.data?.view;
+  const inapplicable = getInapplicableMetrics(props.evaluation);
+  const metricFields = MODEL_PERFORMANCE_METRICS.filter(
+    (metric) => !inapplicable.includes(metric.key)
+  );
 
   const theta = [];
   const r = [];
-  for (const metric of MODEL_PERFORMANCE_METRICS) {
+  for (const metric of metricFields) {
     const { label, key } = metric;
     const value = metrics[key];
     if (isNullish(value)) continue;
@@ -1287,7 +1318,7 @@ function ScenarioModelPerformanceChart(props) {
   if (compareMetrics) {
     const compareTheta = [];
     const compareR = [];
-    for (const metric of MODEL_PERFORMANCE_METRICS) {
+    for (const metric of metricFields) {
       const { label, key } = metric;
       const value = compareMetrics[key];
       if (isNullish(value)) continue;
@@ -1332,8 +1363,9 @@ function ScenarioModelPerformanceChart(props) {
 }
 
 function ConfusionMatrixChart(props) {
-  const { scenario, compareScenario, loadView, trackEvent } = props;
+  const { scenario, compareScenario, loadView, trackEvent, data } = props;
   const { subsets, id } = scenario;
+  const compareKey = data?.view?.compareKey;
   const [subset, setSubset] = usePanelStatePartial(`${id}_cms`, subsets[0]);
   const subsetData = scenario.subsets_data[subset];
   const compareSubsetData = compareScenario?.subsets_data[subset];
@@ -1360,6 +1392,7 @@ function ConfusionMatrixChart(props) {
           config,
           evaluationMaskTargets,
           compareEvaluationMaskTargets,
+          true,
           true
         )?.plot,
       ]
@@ -1423,6 +1456,21 @@ function ConfusionMatrixChart(props) {
           <Stack sx={{ width: "50%" }}>
             <Plot
               data={comparePlotData}
+              onClick={({ points }) => {
+                const firstPoint = points[0];
+                const subsetDef = getSubsetDef(scenario, subset);
+                trackEvent("evaluation_plot_click", {
+                  id: scenario.id,
+                  subsetDef,
+                  plotName: "confusion_matrix",
+                });
+                loadView("matrix", {
+                  x: firstPoint.x,
+                  y: firstPoint.y,
+                  subset_def: subsetDef,
+                  key: compareKey,
+                });
+              }}
               tooltip={(event: any) => {
                 const [point] = event.points;
                 const x = point.x;
@@ -1636,11 +1684,12 @@ function MetricPerformanceChart(props) {
   const { scenario, compareScenario, loadView, trackEvent } = props;
   const { subsets, subsets_data } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
-  const [metric, setMetric] = usePanelStatePartial(
-    "mp_mode",
-    "average_confidence"
-  );
-  const { key, compareKey } = props.data?.view;
+  const inapplicable = getInapplicableMetrics(props.evaluation);
+  const metrics = MODEL_PERFORMANCE_METRICS.filter((metric) => {
+    return !inapplicable.includes(metric.key);
+  });
+  const [metric, setMetric] = usePanelStatePartial("mp_mode", metrics[0].key);
+  const { key, compareKey } = props.data?.view || {};
 
   const y = subsets.map((subset) => {
     const subsetData = subsets_data[subset];
@@ -1684,7 +1733,7 @@ function MetricPerformanceChart(props) {
           }}
           ghost
         >
-          {MODEL_PERFORMANCE_METRICS.map(({ key, label }) => {
+          {metrics.map(({ key, label }) => {
             return (
               <MenuItem value={key} key={key}>
                 <Typography>{label}</Typography>

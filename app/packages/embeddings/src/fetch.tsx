@@ -18,6 +18,8 @@ export async function fetchColorByChoices(params) {
   );
 }
 
+import { NetworkError, ServerError } from "@fiftyone/utilities";
+
 export async function fetchPlot({
   datasetName,
   brainKey,
@@ -32,7 +34,7 @@ export async function fetchPlot({
     labelField,
     slices,
   });
-  return handleErrors(res);
+  return res;
 }
 
 function handleErrors(res) {
@@ -43,4 +45,19 @@ function handleErrors(res) {
       res?.error || "Unknown error fetching embeddings plot data."
     );
   }
+}
+
+type EmbeddingsServerError = {
+  error?: string;
+  details?: string;
+  stack?: string;
+};
+
+function convertNetworkErrorIntoEmbeddingsServerError(
+  error: NetworkError | ServerError
+): EmbeddingsServerError {
+  return {
+    error: error.message || "Unknown error occurred.",
+    stack: error.stack,
+  };
 }

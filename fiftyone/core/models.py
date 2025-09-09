@@ -5,6 +5,7 @@ FiftyOne models.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import contextlib
 import inspect
 import logging
@@ -47,6 +48,23 @@ _ALLOWED_PATCH_TYPES = (
     fol.Polyline,
     fol.Polylines,
 )
+
+
+@contextlib.contextmanager
+def _handle_batch_error(skip_failures, sample_batch):
+    try:
+        yield
+    except Exception as e:
+        if not skip_failures:
+            raise e
+
+        logger.warning(
+            "Batch: %s - %s\nError: %s\n",
+            sample_batch[0].id,
+            sample_batch[-1].id,
+            e,
+            exc_info=True,
+        )
 
 
 def apply_model(
@@ -460,22 +478,16 @@ def _apply_image_model_data_loader(
     with contextlib.ExitStack() as context:
         pb = context.enter_context(fou.ProgressBar(samples, progress=progress))
         ctx = context.enter_context(foc.SaveContext(samples))
+        submit = context.enter_context(
+            fou.async_executor(
+                max_workers=1,
+                skip_failures=skip_failures,
+                warning="Async failure labeling batches",
+            )
+        )
 
-        for sample_batch, imgs in zip(
-            fou.iter_batches(samples, batch_size),
-            data_loader,
-        ):
-            try:
-                if isinstance(imgs, Exception):
-                    raise imgs
-
-                if needs_samples:
-                    labels_batch = model.predict_all(
-                        imgs, samples=sample_batch
-                    )
-                else:
-                    labels_batch = model.predict_all(imgs)
-
+        def save_batch(sample_batch, labels_batch):
+            with _handle_batch_error(skip_failures, sample_batch):
                 for sample, labels in zip(sample_batch, labels_batch):
                     if filename_maker is not None:
                         _export_arrays(labels, sample.filepath, filename_maker)
@@ -487,16 +499,22 @@ def _apply_image_model_data_loader(
                     )
                     ctx.save(sample)
 
-            except Exception as e:
-                if not skip_failures:
-                    raise e
+        for sample_batch, imgs in zip(
+            fou.iter_batches(samples, batch_size),
+            data_loader,
+        ):
+            with _handle_batch_error(skip_failures, sample_batch):
+                if isinstance(imgs, Exception):
+                    raise imgs
 
-                logger.warning(
-                    "Batch: %s - %s\nError: %s\n",
-                    sample_batch[0].id,
-                    sample_batch[-1].id,
-                    e,
-                )
+                if needs_samples:
+                    labels_batch = model.predict_all(
+                        imgs, samples=sample_batch
+                    )
+                else:
+                    labels_batch = model.predict_all(imgs)
+
+                submit(save_batch, sample_batch, labels_batch)
 
             pb.update(len(sample_batch))
 
@@ -1201,6 +1219,23 @@ def _compute_image_embeddings_data_loader(
         pb = context.enter_context(fou.ProgressBar(samples, progress=progress))
         if embeddings_field is not None:
             ctx = context.enter_context(foc.SaveContext(samples))
+        else:
+            ctx = None
+
+        submit = context.enter_context(
+            fou.async_executor(
+                max_workers=1,
+                skip_failures=skip_failures,
+                warning="Async failure saving embeddings",
+            )
+        )
+
+        def save_batch(sample_batch, embeddings_batch):
+            with _handle_batch_error(skip_failures, sample_batch):
+                for sample, embedding in zip(sample_batch, embeddings_batch):
+                    sample[embeddings_field] = embedding
+                    if ctx:
+                        ctx.save(sample)
 
         for sample_batch, imgs in zip(
             fou.iter_batches(samples, batch_size),
@@ -1226,9 +1261,7 @@ def _compute_image_embeddings_data_loader(
                 )
 
             if embeddings_field is not None:
-                for sample, embedding in zip(sample_batch, embeddings_batch):
-                    sample[embeddings_field] = embedding
-                    ctx.save(sample)
+                submit(save_batch, sample_batch, embeddings_batch)
             else:
                 embeddings.extend(embeddings_batch)
 
@@ -1955,8 +1988,12 @@ def _make_patch_data_loader(
         dataset,
         batch_size=1,
         num_workers=num_workers,
-        collate_fn=lambda batch: batch[0],  # return patches directly
+        collate_fn=_patch_collate_fn,
     )
+
+
+def _patch_collate_fn(batch):
+    return batch[0]  # return patches directly
 
 
 def _parse_batch_size(batch_size, model, use_data_loader):

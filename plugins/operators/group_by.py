@@ -16,7 +16,7 @@ class GroupBy(foo.Operator):
     @property
     def config(self):
         return foo.OperatorConfig(
-            name="group_by",
+            name="load_group_by",
             label="Group by",
             dynamic=True,
             icon="merge",
@@ -116,7 +116,6 @@ def _create(ctx, obj):
 
         input(
             "order_by_key",
-            default=False,
             required=False,
             label="Order by key",
             description=(

@@ -250,7 +250,14 @@ export const extendedSelection = (() => {
   let current = { selection: null };
   return graphQLSyncFragmentAtom<
     datasetFragment$key,
-    { selection: string[]; scope?: string }
+    {
+      selection: string[];
+      scope?: string;
+      spatialSelection?: {
+        polygon: Array<Array<number>>;
+        field: string;
+      } | null;
+    }
   >(
     {
       fragments: [datasetFragment],

@@ -1,4 +1,3 @@
-import { useTheme } from "@fiftyone/components";
 import React from "react";
 import styled from "styled-components";
 import useShowModal from "./useShowModal";
@@ -215,7 +214,6 @@ const Schema = () => {
 };
 
 const Actions = () => {
-  const theme = useTheme();
   return (
     <>
       <ActionsDiv>
@@ -228,10 +226,7 @@ const Actions = () => {
         <Redo />
       </ActionsDiv>
       <ActionsDiv style={{ margin: "0 0.25rem", paddingBottom: "0.5rem" }}>
-        <div>
-          Click labels to edit{" "}
-          <span style={{ color: theme.background.level1 }}>&bull;</span> 24
-        </div>
+        <div>Click labels to edit</div>
         <Schema />
       </ActionsDiv>
     </>

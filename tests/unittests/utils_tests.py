@@ -7,6 +7,7 @@ FiftyOne utilities unit tests.
 """
 
 from datetime import datetime
+import sys
 import time
 import unittest
 from unittest.mock import MagicMock, patch
@@ -22,8 +23,240 @@ import fiftyone.core.odm as foo
 from fiftyone.core.odm.utils import load_dataset
 import fiftyone.core.utils as fou
 from fiftyone.migrations.runner import MigrationRunner
+import fiftyone.utils.data as foud
+from fiftyone import ViewField as F
 
 from decorators import drop_datasets
+
+
+class MapValuesTests(unittest.TestCase):
+    @drop_datasets
+    def test_map_values_dataset(self):
+        sample1 = fo.Sample(filepath="image1.jpg")
+        sample2 = fo.Sample(
+            filepath="image2.jpg",
+            tags=["cat", "dog", "fox"],
+            str_field="cat",
+            animal=fo.Classification(label="cat"),
+            animals=fo.Classifications(
+                classifications=[
+                    fo.Classification(label="cat"),
+                    fo.Classification(label="dog"),
+                    fo.Classification(label="fox"),
+                ]
+            ),
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2])
+
+        mapping = {"cat": "CAT", "dog": "DOG"}
+
+        foud.map_values(dataset, "tags", mapping)
+
+        self.assertDictEqual(
+            dataset.count_values("tags"),
+            {"CAT": 1, "DOG": 1, "fox": 1},
+        )
+
+        foud.map_values(dataset, "str_field", mapping)
+
+        self.assertDictEqual(
+            dataset.count_values("str_field"),
+            {"CAT": 1, None: 1},
+        )
+
+        foud.map_values(dataset, "animal.label", mapping)
+
+        self.assertDictEqual(
+            dataset.count_values("animal.label"),
+            {"CAT": 1, None: 1},
+        )
+
+        foud.map_values(dataset, "animals.classifications.label", mapping)
+
+        self.assertDictEqual(
+            dataset.count_values("animals.classifications.label"),
+            {"CAT": 1, "DOG": 1, "fox": 1},
+        )
+
+    @drop_datasets
+    def test_map_values_edited_field(self):
+        sample1 = fo.Sample(filepath="image1.jpg")
+        sample2 = fo.Sample(
+            filepath="image2.jpg",
+            tags=["cat", "dog", "fox"],
+            str_field="cat",
+            animal=fo.Classification(label="cat"),
+            animals=fo.Classifications(
+                classifications=[
+                    fo.Classification(label="cat"),
+                    fo.Classification(label="dog"),
+                    fo.Classification(label="fox"),
+                ]
+            ),
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2])
+
+        mapping = {"cat": "CAT", "dog": "DOG"}
+
+        view = dataset.set_field(
+            "tags", F("tags").map((F() == "cat").if_else("dog", F()))
+        )
+        foud.map_values(view, "tags", mapping)
+
+        self.assertTrue(view._edits_field("tags"))
+        self.assertDictEqual(
+            dataset.count_values("tags"),
+            {"DOG": 2, "fox": 1},
+        )
+
+        view = dataset.limit(1)
+        foud.map_values(view, "str_field", mapping)
+
+        self.assertDictEqual(
+            dataset.count_values("str_field"),
+            {"cat": 1, None: 1},
+        )
+
+        view = dataset.set_field(
+            "animal.label",
+            (F("label") == "cat").if_else("dog", None),
+        )
+        foud.map_values(view, "animal.label", mapping)
+
+        self.assertTrue(view._edits_field("animal"))
+        self.assertTrue(view._edits_field("animal.label"))
+        self.assertDictEqual(
+            dataset.count_values("animal.label"),
+            {"DOG": 1, None: 1},
+        )
+
+        view = dataset.filter_labels("animals", F("label") != "dog")
+        foud.map_values(view, "animals.classifications.label", mapping)
+
+        self.assertTrue(view._edits_field("animals"))
+        self.assertDictEqual(
+            dataset.count_values("animals.classifications.label"),
+            {"CAT": 1, "dog": 1, "fox": 1},
+        )
+
+    @drop_datasets
+    def test_map_frame_values_dataset(self):
+        sample = fo.Sample(filepath="video.mp4")
+        sample.frames[1] = fo.Frame()
+        sample.frames[2] = fo.Frame(
+            tags=["cat", "dog", "fox"],
+            str_field="cat",
+            animal=fo.Classification(label="cat"),
+            animals=fo.Classifications(
+                classifications=[
+                    fo.Classification(label="cat"),
+                    fo.Classification(label="dog"),
+                    fo.Classification(label="fox"),
+                ]
+            ),
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        mapping = {"cat": "CAT", "dog": "DOG"}
+
+        foud.map_values(dataset, "frames.tags", mapping)
+
+        self.assertDictEqual(
+            dataset.count_values("frames.tags"),
+            {"CAT": 1, "DOG": 1, "fox": 1},
+        )
+
+        foud.map_values(dataset, "frames.str_field", mapping)
+
+        self.assertDictEqual(
+            dataset.count_values("frames.str_field"),
+            {"CAT": 1, None: 1},
+        )
+
+        foud.map_values(dataset, "frames.animal.label", mapping)
+
+        self.assertDictEqual(
+            dataset.count_values("frames.animal.label"),
+            {"CAT": 1, None: 1},
+        )
+
+        foud.map_values(
+            dataset, "frames.animals.classifications.label", mapping
+        )
+
+        self.assertDictEqual(
+            dataset.count_values("frames.animals.classifications.label"),
+            {"CAT": 1, "DOG": 1, "fox": 1},
+        )
+
+    @drop_datasets
+    def test_map_frame_values_edited_field(self):
+        sample = fo.Sample(filepath="video.mp4")
+        sample.frames[1] = fo.Frame()
+        sample.frames[2] = fo.Frame(
+            tags=["cat", "dog", "fox"],
+            str_field="cat",
+            animal=fo.Classification(label="cat"),
+            animals=fo.Classifications(
+                classifications=[
+                    fo.Classification(label="cat"),
+                    fo.Classification(label="dog"),
+                    fo.Classification(label="fox"),
+                ]
+            ),
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        mapping = {"cat": "CAT", "dog": "DOG"}
+
+        view = dataset.set_field(
+            "frames.tags", F("tags").map((F() == "cat").if_else("dog", F()))
+        )
+        foud.map_values(view, "frames.tags", mapping)
+
+        self.assertTrue(view._edits_field("frames.tags"))
+        self.assertDictEqual(
+            dataset.count_values("frames.tags"),
+            {"DOG": 2, "fox": 1},
+        )
+
+        view = dataset.match_frames(F("frame_number") <= 1)
+        foud.map_values(view, "frames.str_field", mapping)
+
+        self.assertDictEqual(
+            dataset.count_values("frames.str_field"),
+            {"cat": 1, None: 1},
+        )
+
+        view = dataset.set_field(
+            "frames.animal.label",
+            (F("label") == "cat").if_else("dog", None),
+        )
+        foud.map_values(view, "frames.animal.label", mapping)
+
+        self.assertTrue(view._edits_field("frames.animal"))
+        self.assertTrue(view._edits_field("frames.animal.label"))
+        self.assertDictEqual(
+            dataset.count_values("frames.animal.label"),
+            {"DOG": 1, None: 1},
+        )
+
+        view = dataset.filter_labels("frames.animals", F("label") != "dog")
+        foud.map_values(view, "frames.animals.classifications.label", mapping)
+
+        self.assertTrue(view._edits_field("frames.animals"))
+        self.assertDictEqual(
+            dataset.count_values("frames.animals.classifications.label"),
+            {"CAT": 1, "dog": 1, "fox": 1},
+        )
 
 
 class BatcherTests(unittest.TestCase):
@@ -262,6 +495,74 @@ class CoreUtilsTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             fou.to_slug("a" * 101)  # too long
 
+    def test_get_module_name(self):
+        if sys.platform.startswith("win"):
+            self.assertEqual(
+                fou.get_module_name("C:\\tmp\\test\\module"),
+                "tmp.test.module",
+            )
+            self.assertEqual(
+                fou.get_module_name("C:\\tmp\\test\\module.py"),
+                "tmp.test.module",
+            )
+            self.assertEqual(
+                fou.get_module_name("C:\\tmp\\test\\module", "C:\\tmp"),
+                "test.module",
+            )
+            self.assertEqual(
+                fou.get_module_name("C:\\tmp\\test\\module.py", "C:\\tmp"),
+                "test.module",
+            )
+            self.assertEqual(
+                fou.get_module_name("C:\\tmp\\test\\module", "C:\\"),
+                "tmp.test.module",
+            )
+            self.assertEqual(
+                fou.get_module_name("C:\\tmp\\test\\module.py", "C:\\"),
+                "tmp.test.module",
+            )
+            self.assertEqual(
+                fou.get_module_name("C:\\tmp\\test\\module", "D:\\foo"),
+                "tmp.test.module",
+            )
+            self.assertEqual(
+                fou.get_module_name("C:\\tmp\\test\\module.py", "D:\\foo"),
+                "tmp.test.module",
+            )
+        else:
+            self.assertEqual(
+                fou.get_module_name("/tmp/test/module"),
+                "tmp.test.module",
+            )
+            self.assertEqual(
+                fou.get_module_name("/tmp/test/module.py"),
+                "tmp.test.module",
+            )
+            self.assertEqual(
+                fou.get_module_name("/tmp/test/module", "/tmp"),
+                "test.module",
+            )
+            self.assertEqual(
+                fou.get_module_name("/tmp/test/module.py", "/tmp"),
+                "test.module",
+            )
+            self.assertEqual(
+                fou.get_module_name("/tmp/test/module", "/"),
+                "tmp.test.module",
+            )
+            self.assertEqual(
+                fou.get_module_name("/tmp/test/module.py", "/"),
+                "tmp.test.module",
+            )
+            self.assertEqual(
+                fou.get_module_name("/tmp/test/module", "/foo"),
+                "tmp.test.module",
+            )
+            self.assertEqual(
+                fou.get_module_name("/tmp/test/module.py", "/foo"),
+                "tmp.test.module",
+            )
+
 
 class LabelsTests(unittest.TestCase):
     @drop_datasets
@@ -462,7 +763,7 @@ class MigrationTests(unittest.TestCase):
         pkg_ver = foc.VERSION
         future_ver = str(int(pkg_ver[0]) + 1) + pkg_ver[1:]
 
-        # Uprading to a future version is not allowed
+        # Upgrading to a future version is not allowed
 
         with self.assertRaises(EnvironmentError):
             MigrationRunner(pkg_ver, future_ver)

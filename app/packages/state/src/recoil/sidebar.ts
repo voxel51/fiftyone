@@ -1,3 +1,5 @@
+import { ClassificationLabel } from "@fiftyone/looker/src/overlays/classifications";
+import { DetectionLabel } from "@fiftyone/looker/src/overlays/detection";
 import type {
   frameFieldsFragment$key,
   sampleFieldsFragment$key,
@@ -103,9 +105,14 @@ export interface PathEntry {
   shown: boolean;
 }
 
-export interface LabelEntry {
-  kind: EntryKind.LABEL;
+export interface AnnotationLabel {
   id: string;
+  data: ClassificationLabel | DetectionLabel;
+  path: string;
+}
+
+export interface LabelEntry extends AnnotationLabel {
+  kind: EntryKind.LABEL;
 }
 
 export interface LoadingEntry {

@@ -789,7 +789,7 @@ def _apply_confidence_thresh(label, confidence_thresh):
         label.apply_confidence_threshold(confidence_thresh)
     elif hasattr(label, "confidence"):
         if label.confidence is None or label.confidence < confidence_thresh:
-            label = None
+            label.label = None
 
     return label
 

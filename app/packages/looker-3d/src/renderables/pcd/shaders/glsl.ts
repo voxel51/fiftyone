@@ -46,6 +46,7 @@ export const ShadeByHeightShaders = {
   uniform float max;
   uniform float min;
   uniform vec3 upVector;
+  uniform vec4 quaternion;
   uniform float pointSize;
   uniform bool isPointSizeAttenuated;
 
@@ -55,9 +56,27 @@ export const ShadeByHeightShaders = {
     return (curval - minval) / (maxval - minval);
   }
 
+  // quaternion to rotation matrix (3x3)
+  // https://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation
+  mat3 quaternionToMatrix(vec4 q) {
+    float x = q.x, y = q.y, z = q.z, w = q.w;
+    return mat3(
+      1.0 - 2.0 * y * y - 2.0 * z * z, 2.0 * x * y - 2.0 * w * z, 2.0 * x * z + 2.0 * w * y,
+      2.0 * x * y + 2.0 * w * z, 1.0 - 2.0 * x * x - 2.0 * z * z, 2.0 * y * z - 2.0 * w * x,
+      2.0 * x * z - 2.0 * w * y, 2.0 * y * z + 2.0 * w * x, 1.0 - 2.0 * x * x - 2.0 * y * y
+    );
+  }
+
   void main() {
     vec3 pos = position;
-    float projectedHeight = dot(pos, upVector);
+    
+    vec3 rotatedUpVector = upVector;
+    if (quaternion.w != 0.0 || quaternion.x != 0.0 || quaternion.y != 0.0 || quaternion.z != 0.0) {
+      mat3 rotationMatrix = quaternionToMatrix(quaternion);
+      rotatedUpVector = rotationMatrix * upVector;
+    }
+    
+    float projectedHeight = dot(pos, rotatedUpVector);
     hValue = remap(min, max, projectedHeight);
 
     vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);

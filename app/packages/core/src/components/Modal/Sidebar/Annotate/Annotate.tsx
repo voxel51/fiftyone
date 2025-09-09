@@ -8,11 +8,12 @@ import Sidebar from "../../../Sidebar";
 import Actions from "./Actions";
 import GroupEntry from "./GroupEntry";
 import ImportSchema from "./ImportSchema";
+import LabelEntry from "./LabelEntry";
 import LoadingEntry from "./LoadingEntry";
-import ObjectEntry from "./ObjectEntry";
 import SchemaManager from "./SchemaManager";
 import { activePaths, schemas, showModal } from "./state";
 import useEntries from "./useEntries";
+import useLabels from "./useLabels";
 
 const showImportPage = atom((get) => !get(activePaths).length);
 
@@ -37,6 +38,7 @@ const Loading = () => {
 };
 
 const AnnotateSidebar = () => {
+  useLabels();
   return (
     <>
       <Actions />
@@ -48,8 +50,9 @@ const AnnotateSidebar = () => {
           }
 
           if (entry.kind === EntryKind.LABEL) {
+            const { kind: _, ...props } = entry;
             return {
-              children: <ObjectEntry />,
+              children: <LabelEntry {...props} />,
               disabled: true,
             };
           }

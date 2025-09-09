@@ -9,7 +9,7 @@ export { default as ColoredDot } from "./ColoredDot";
 export { default as CopyButton } from "./CopyButton";
 export { default as Dialog } from "./Dialog";
 export { default as EditableLabel } from "./EditableLabel";
-export { default as ErrorBoundary } from "./ErrorBoundary";
+export { default as ErrorBoundary, ErrorDisplayMarkup } from "./ErrorBoundary";
 export { default as ExternalLink, useExternalLink } from "./ExternalLink";
 export { default as FilterAndSelectionIndicator } from "./FilterAndSelectionIndicator";
 export { default as Header } from "./Header";

@@ -60,7 +60,16 @@ export const schemas = atom<AnnotationSchemas | null>(null);
 
 export const fieldTypes = atom<{ [key: string]: string }>({});
 export const fieldType = atomFamily((path: string) =>
-  atom((get) => get(fieldTypes)[path])
+  atom((get) => {
+    const types = get(fieldTypes);
+    const result = types[path];
+
+    if (!result) {
+      return types[path.split(".").slice(0, -1).join(".")];
+    }
+
+    return result;
+  })
 );
 
 export const schema = atomFamily((path: string) =>

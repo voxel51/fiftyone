@@ -41,6 +41,10 @@ class ExecutionStoreRepo(ABC):
             dataset_id (Optional[ObjectId]): the dataset ID to operate on
             is_cache (False): whether the store is a cache store
         """
+        if dataset_id is not None and not isinstance(dataset_id, ObjectId):
+            raise ValueError(
+                f"dataset_id must be an ObjectId, got {type(dataset_id).__name__}"
+            )
         self._dataset_id = dataset_id
 
     @abstractmethod
@@ -301,6 +305,10 @@ class MongoExecutionStoreRepo(ExecutionStoreRepo):
     def __init__(
         self, collection, dataset_id: Optional[ObjectId] = None, is_cache=False
     ):
+        if dataset_id is not None and not isinstance(dataset_id, ObjectId):
+            raise ValueError(
+                f"dataset_id must be an ObjectId, got {type(dataset_id).__name__}"
+            )
         super().__init__(dataset_id, is_cache)
         self._collection = collection
         self._create_indexes()

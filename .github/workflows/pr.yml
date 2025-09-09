@@ -21,7 +21,7 @@ jobs:
       e2e-changes: ${{ steps.filter.outputs.e2e-pw }}
       fiftyone-changes: ${{ steps.filter.outputs.fiftyone }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -41,6 +41,7 @@ jobs:
               - 'setup.py'
               - '.github/workflows/build.yml'
               - '.github/workflows/test.yml'
+              - 'plugins/**'
 
   build:
     needs: modified-files

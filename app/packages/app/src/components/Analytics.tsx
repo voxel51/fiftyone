@@ -49,7 +49,7 @@ export default function Analytics({ fragment }: { fragment: Analytics$key }) {
   // and adds significant time to the tests.
   // we should usually _never_ have any divergence between tests and prod.
   if (window["IS_PLAYWRIGHT"]) {
-    console.log("Analytics component is disabled in playwright"); 
+    console.log("Analytics component is disabled in playwright");
     return null;
   }
 

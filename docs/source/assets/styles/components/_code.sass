@@ -1,0 +1,77 @@
+code.literal
+  border: none
+  font-size: 1em
+  background-color: #f3f4f5
+
+p .code .pre,
+p code pre
+  font-size: 14.5px
+
+div.nbinput.container
+  margin-bottom: 1.15rem
+
+  div.input_area
+    border: 0
+
+    div.highlight > pre
+      padding: 1rem
+
+div.nboutput.container
+  margin-bottom: 1.15rem
+
+  div.output_area
+    div.highlight > pre
+      color: #000000
+
+    .copybtn
+      display: none
+
+div.highlight
+  pre
+    border-radius: 8px
+    line-height: 1.5 !important
+    position: relative
+    overflow-x: auto
+    overflow-y: hidden
+    border: 0
+
+    .nb, .mi, .kc, code.xref, a code, .fm, .ow, .nb, .nt, .nc, .k, .kn
+      color: #1E5AA5 !important
+      text-decoration: none !important
+
+    .s1, .s2, .ne, .m, .l, .vm, .nv
+      color: #7A3BBF !important
+
+    span.linenos
+      background-color: var(--color-background) !important
+      margin-right: 1em
+      display: inline-block
+      min-width: 4em
+      text-align: center
+      margin-left: -1.5em
+      padding-bottom: 0.1em
+      margin-bottom: -0.05em
+
+    span.linenos.first-linenos
+      padding-top: 1.375rem
+      margin-top: -1.375rem
+
+    span.linenos.last-linenos
+      padding-bottom: 1.375rem
+      margin-bottom: -1.375rem
+
+  button.copybtn, button.copybtn:not(.success), button.copybtn:hover, button.copybtn:hover:not(.success)
+    top: 8px
+    right: 8px
+    color: #000000CC
+    background-color: #FFFFFF40
+    border-radius: 40px
+    height: 32px
+    width: 32px
+
+blockquote
+  border-color: var(--pst-color-primary)
+  background-color: transparent
+
+.nbinput .prompt, .nboutput .prompt
+  display: none

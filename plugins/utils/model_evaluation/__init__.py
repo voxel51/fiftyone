@@ -7,6 +7,7 @@ FiftyOne builtin plugins.
 """
 
 from fiftyone.operators.store import ExecutionStore
+from bson import ObjectId
 
 
 STORE_NAME = "model_evaluation_panel_builtin"
@@ -17,6 +18,8 @@ def get_subsets_from_custom_code(ctx, custom_code):
         local_vars = {}
         exec(custom_code, {"ctx": ctx}, local_vars)
         data = local_vars.get("subsets", {})
+        if len(data) == 0:
+            return None, "No subsets found in the custom code."
         return data, None
     except Exception as e:
         return None, str(e)
@@ -38,7 +41,10 @@ def get_scenarios_store(ctx):
     Get the scenarios store from the context.
     """
     dataset_id = get_dataset_id(ctx)
-    return ExecutionStore.create(STORE_NAME, dataset_id)
+
+    dataset_oid = ObjectId(dataset_id)
+
+    return ExecutionStore.create(STORE_NAME, dataset_oid)
 
 
 def get_scenarios(ctx):
