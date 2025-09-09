@@ -514,6 +514,8 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
 
     def get(self, _id: ObjectId) -> DelegatedOperationDocument:
         doc = self._collection.find_one(filter={"_id": _id})
+        if doc is None:
+            raise ValueError(f"No operation found with ID {_id}")
         return DelegatedOperationDocument().from_pymongo(doc)
 
     def count(self, filters: dict = None, search: dict = None) -> int:
