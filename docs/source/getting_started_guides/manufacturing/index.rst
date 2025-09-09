@@ -140,7 +140,7 @@ Click **Next** to start with the first step: Getting Started with Manufacturing 
    :maxdepth: 1
    :hidden:
 
-   Getting Started with Manufacturing Datasets <01_intro.ipynb>
+   Manufacturing Datasets <01_intro.ipynb>
    Understanding and Using Embeddings <02_embeddings.ipynb>
    Clustering and Labeling with Embeddings <03_clustering.ipynb>
    Custom Embeddings for Industrial Data <04_custom_embeddings.ipynb>
