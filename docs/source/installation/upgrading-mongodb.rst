@@ -58,7 +58,7 @@ Upgrading to MongoDB 8
 
 4.  `Install mongosh <https://www.mongodb.com/docs/mongodb-shell/install>`_
 
-5.  Find the MongoDB URI using your operating systems network libraries
+5.  Find the MongoDB URI using your operating system's network libraries
 
 .. tabs::
 

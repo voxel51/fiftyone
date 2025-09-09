@@ -1328,7 +1328,7 @@ operations involve updating the current state of the App:
         ctx.ops.clear_sidebar_filters()
 
         # Selected samples
-        ctx.ops.set_selected_samples([...]))
+        ctx.ops.set_selected_samples([...])
         ctx.ops.clear_selected_samples()
 
         # Selected labels

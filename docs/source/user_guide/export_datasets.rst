@@ -4253,7 +4253,7 @@ should implement is determined by the type of dataset that you are exporting.
         collection being exported.
 
         The core export logic is invoked via the
-        :meth:`export_samples() <fiftyone.utils.data.exporters.BatchDatasetExporter.export_sample>`
+        :meth:`export_samples() <fiftyone.utils.data.exporters.BatchDatasetExporter.export_samples>`
         method.
 
   .. group-tab:: Unlabeled image datasets
