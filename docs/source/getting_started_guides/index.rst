@@ -69,6 +69,27 @@ Each guide is designed as a sequential learning experience with navigation betwe
     :image: https://cdn.voxel51.com/getting_started_model_evaluation/notebook2/model_evaluation.webp
     :tags: Core-Fiftyone,Research
 
+.. customcarditem::
+    :header: Segmentation Guide
+    :description: Master segmentation workflows with instance and semantic segmentation. Learn to load COCO datasets, add predictions with SAM2, and work with advanced segmentation models.
+    :link: segmentation/index.html
+    :image: https://cdn.voxel51.com/getting_started_segmentation/notebook1/coffe_beans.webp
+    :tags: Core-Fiftyone,Research
+
+.. customcarditem::
+    :header: Model Dataset Zoo Guide
+    :description: Master the FiftyOne Zoo with datasets and models. Learn to explore built-in datasets, apply pre-trained models, and integrate custom models from GitHub or public URLs.
+    :link: model_dataset_zoo/index.html
+    :image: https://cdn.voxel51.com/getting_started_model_dataset_zoo/notebook2/imagenet.webp
+    :tags: Core-Fiftyone,Research
+
+.. customcarditem::
+    :header: Manufacturing Guide
+    :description: Complete manufacturing AI workflow with anomaly detection, defect inspection, and safety monitoring. Learn to work with MVTec datasets, embeddings, clustering, and video analytics for industrial applications.
+    :link: manufacturing/index.html
+    :image: https://cdn.voxel51.com/getting_started_manufacturing/notebook1/filtering.webp
+    :tags: Manufacturing,Industrial-AI,Research
+
 .. End of guide cards
 
 .. raw:: html
@@ -105,4 +126,7 @@ Not sure where to start? Take our quick assessment:
    Medical Imaging Guide <medical_imaging/index>
    Self-Driving Guide <self_driving/index>
    3D Visual AI Guide <threed_visual_ai/index>
-   Model Evaluation Guide <model_evaluation/index> 
+   Model Evaluation Guide <model_evaluation/index>
+   Segmentation Guide <segmentation/index>
+   Model Dataset Zoo Guide <model_dataset_zoo/index> 
+   Manufacturing Guide <manufacturing/index>
