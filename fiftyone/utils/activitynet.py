@@ -974,7 +974,16 @@ class ActivityNetSplitInfo(ActivityNetInfo):
                 )
 
             anno_link = _ANNOTATION_DOWNLOAD_LINKS[version]
-            etaw.download_file(anno_link, path=self.raw_anno_path)
+            try:
+                etaw.download_file(anno_link, path=self.raw_anno_path)
+            except Exception as e:
+                logger.warning(
+                    "Failed to download annotations from primary source: %s. "
+                    "Trying backup source...",
+                    str(e),
+                )
+                backup_link = _ANNOTATION_BACKUP_LINKS[version]
+                etaw.download_file(backup_link, path=self.raw_anno_path)
 
         return etas.read_json(self.raw_anno_path)
 
@@ -1063,7 +1072,16 @@ class ActivityNetDatasetInfo(ActivityNetInfo):
     def _get_raw_annotations(self):
         if not os.path.isfile(self.raw_anno_path):
             anno_link = _ANNOTATION_DOWNLOAD_LINKS[self.version]
-            etaw.download_file(anno_link, path=self.raw_anno_path)
+            try:
+                etaw.download_file(anno_link, path=self.raw_anno_path)
+            except Exception as e:
+                logger.warning(
+                    "Failed to download annotations from primary source: %s. "
+                    "Trying backup source...",
+                    str(e),
+                )
+                backup_link = _ANNOTATION_BACKUP_LINKS[self.version]
+                etaw.download_file(backup_link, path=self.raw_anno_path)
 
         return etas.read_json(self.raw_anno_path)
 
@@ -1172,6 +1190,13 @@ _ANNOTATION_DOWNLOAD_LINKS = {
     "100": "http://ec2-52-25-205-214.us-west-2.compute.amazonaws.com/files/activity_net.v1-2.min.json",
     "200": "http://ec2-52-25-205-214.us-west-2.compute.amazonaws.com/files/activity_net.v1-3.min.json",
 }
+
+
+_ANNOTATION_BACKUP_LINKS = {
+    "100": "https://raw.githubusercontent.com/The-FaZe/online-action-recognition/refs/heads/master/Activitynet/data/activitynet_splits/activity_net.v1-2.min.json",
+    "200": "https://raw.githubusercontent.com/The-FaZe/online-action-recognition/refs/heads/master/Activitynet/data/activitynet_splits/activity_net.v1-3.min.json",
+}
+
 
 _SPLIT_MAP = {
     "train": "training",
