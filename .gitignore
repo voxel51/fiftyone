@@ -23,6 +23,7 @@ dist/
 
 /docs/build/
 /docs/source/api/
+/docs/source/plugins/plugin_cards.rst
 /docs/source/plugins/plugins_ecosystem/
 
 /bin

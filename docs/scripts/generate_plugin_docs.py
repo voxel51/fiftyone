@@ -627,7 +627,7 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
    :hidden:
    :glob:
 
-   Overview <overview>
+   Overview <index>
    Using plugins <using_plugins>
    Developing plugins <developing_plugins>
    plugins_ecosystem/*
@@ -649,7 +649,7 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
         plugins_ecosystem_content = self.generate_plugins_ecosystem_rst(
             plugins
         )
-        with open(self.plugins_dir / "index.rst", "w") as f:
+        with open(self.plugins_dir / "plugin_cards.rst", "w") as f:
             f.write(plugins_ecosystem_content)
 
         logger.info("Plugin documentation generated successfully!")

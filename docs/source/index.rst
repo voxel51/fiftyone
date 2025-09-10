@@ -550,7 +550,7 @@ us at support@voxel51.com.
    User Guide <user_guide/index>
    Dataset Zoo <dataset_zoo/index>
    Model Zoo <model_zoo/index>
-   Plugin Zoo <plugins/index>
+   Plugin Zoo <plugins/plugin_cards>
    FiftyOne Brain <brain>
    Integrations <integrations/index>
    CLI <cli/index>
