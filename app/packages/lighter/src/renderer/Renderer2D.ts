@@ -4,11 +4,11 @@
 
 import { EventBus } from "../event/EventBus";
 import type {
+  Dimensions2D,
   DrawStyle,
   Point,
   Rect,
   TextOptions,
-  Dimensions2D,
 } from "../types";
 
 /**
@@ -41,7 +41,8 @@ export interface ImageSource {
  */
 export interface ImageOptions {
   opacity?: number;
-  rotation?: number; // in radians
+  // in radians
+  rotation?: number;
   scaleX?: number;
   scaleY?: number;
 }
@@ -58,14 +59,15 @@ export interface ResourceOptions {
 
 /**
  * 2D renderer interface (merges backend and strategy responsibilities).
+ * 2D renderer interface.
  */
 export interface Renderer2D {
   // Infrastructure
   eventBus?: EventBus;
 
-  // Render loop
-  startRenderLoop(onFrame: () => void): void;
-  stopRenderLoop(): void;
+  // Tick loop
+  addTickHandler(onFrame: () => void): void;
+  resetTickHandler(): void;
 
   // Drawing methods
   drawRect(bounds: Rect, style: DrawStyle, containerId: string): void;
@@ -87,14 +89,13 @@ export interface Renderer2D {
     options: ImageOptions | undefined,
     containerId: string
   ): void;
-  clear(): void;
 
   dispose(containerId: string): void;
   hide(containerId: string): void;
   show(containerId: string): void;
 
   /**
-   * Update resource bounds directly without recreating the sprite to avoid flicker during resize
+   * Update resource bounds
    * @param containerId - The container ID.
    * @param bounds - The new bounds for the resource.
    */
@@ -125,8 +126,23 @@ export interface Renderer2D {
   getCanvas(): HTMLCanvasElement;
 
   /**
-   * Cleans up the renderer.
-   * Releases any resources held by the renderer.
+   * Disables zoom and pan interactions (e.g., during overlay dragging).
+   */
+  disableZoomPan(): void;
+
+  /**
+   * Re-enables zoom and pan interactions after overlay interactions are complete.
+   */
+  enableZoomPan(): void;
+
+  /**
+   * Reset tick handler, and remove all children from the viewport.
    */
   cleanUp(): void;
+
+  /**
+   * Destroys the renderer.
+   * Releases any resources held by the renderer.
+   */
+  destroy(): void;
 }

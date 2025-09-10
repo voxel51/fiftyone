@@ -10,7 +10,7 @@ import {
 } from "@fiftyone/state";
 import { useEffect } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
-import { LIGHTER_EVENTS, Scene2D } from "../index";
+import { Scene2D } from "../index";
 import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
 
 /**
@@ -41,21 +41,21 @@ export const useBridge = (scene: Scene2D | null) => {
    */
 
   // Effect to run during scene initialization
-  useEffect(() => {
-    if (!scene) {
-      return;
-    }
+  // useEffect(() => {
+  //   if (!scene) {
+  //     return;
+  //   }
 
-    (async () => {
-      const selectedLabelsValue = await getSelectedLabels();
+  //   (async () => {
+  //     const selectedLabelsValue = await getSelectedLabels();
 
-      for (const label of selectedLabelsValue) {
-        scene.selectOverlay(label.labelId, { isBridgeLogicHandled: true });
-      }
-    })();
+  //     for (const label of selectedLabelsValue) {
+  //       scene.selectOverlay(label.labelId, { isBridgeLogicHandled: true });
+  //     }
+  //   })();
 
-    return () => {};
-  }, [scene, getSelectedLabels]);
+  //   return () => {};
+  // }, [scene, getSelectedLabels]);
 
   // Effect to update scene with color scheme changes
   useEffect(() => {
@@ -158,14 +158,17 @@ export const useBridge = (scene: Scene2D | null) => {
       await Promise.all(promises);
     };
 
-    scene.on(LIGHTER_EVENTS.OVERLAY_SELECT, handleOverlaySelect);
-    scene.on(LIGHTER_EVENTS.OVERLAY_DESELECT, handleOverlayDeselect);
-    scene.on(LIGHTER_EVENTS.SELECTION_CLEARED, handleSelectionCleared);
+    // note: in "annotate" mode, selection means "select the overlay for annotation" now
+    // so we need not interface with FO just yet
+    // scene.on(LIGHTER_EVENTS.OVERLAY_SELECT, handleOverlaySelect);
+    // scene.on(LIGHTER_EVENTS.OVERLAY_DESELECT, handleOverlayDeselect);
+    // scene.on(LIGHTER_EVENTS.SELECTION_CLEARED, handleSelectionCleared);
 
     return () => {
-      scene.off(LIGHTER_EVENTS.OVERLAY_SELECT, handleOverlaySelect);
-      scene.off(LIGHTER_EVENTS.OVERLAY_DESELECT, handleOverlayDeselect);
-      scene.off(LIGHTER_EVENTS.SELECTION_CLEARED, handleSelectionCleared);
+      // see note above
+      // scene.off(LIGHTER_EVENTS.OVERLAY_SELECT, handleOverlaySelect);
+      // scene.off(LIGHTER_EVENTS.OVERLAY_DESELECT, handleOverlayDeselect);
+      // scene.off(LIGHTER_EVENTS.SELECTION_CLEARED, handleSelectionCleared);
     };
   }, [scene, onSelectLabel]);
 };

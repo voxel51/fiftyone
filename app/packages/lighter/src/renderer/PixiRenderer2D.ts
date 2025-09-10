@@ -2,6 +2,7 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
+import { Viewport } from "pixi-viewport";
 import * as PIXI from "pixi.js";
 import {
   DEFAULT_TEXT_PADDING,
@@ -19,18 +20,22 @@ import type {
   TextOptions,
 } from "../types";
 import { parseColorWithAlpha } from "../utils/color";
-import type { ImageOptions, ImageSource, Renderer2D } from "./Renderer2D";
 import { DashLine } from "./pixi-renderer-utils/dashed-line";
+import type { ImageOptions, ImageSource, Renderer2D } from "./Renderer2D";
+import { sharedPixiApp } from "./SharedPixiApplication";
 
 /**
- * PixiJS v8 renderer
+ * PixiJS renderer.
+ * While we have a singleton for the PIXI application, this class manages the renderer instance
+ * and the lifecycle of objects within the renderer.
  */
 export class PixiRenderer2D implements Renderer2D {
   private app!: PIXI.Application;
-  private stage!: PIXI.Container;
-  private renderLoop?: () => void;
+  private tickHandler?: () => void;
   private isRunning = false;
   public eventBus?: EventBus;
+
+  private viewport?: Viewport;
 
   private resizeObserver?: ResizeObserver;
 
@@ -41,24 +46,19 @@ export class PixiRenderer2D implements Renderer2D {
   // Container tracking for visibility management
   private containers = new Map<string, PIXI.Container>();
 
-  private isInitialized = false;
-
   constructor(private canvas: HTMLCanvasElement, eventBus?: EventBus) {
     this.eventBus = eventBus;
   }
 
   public async initializePixiJS(): Promise<void> {
-    // Initialize PixiJS application with performance optimizations
-    this.app = new PIXI.Application();
+    this.app = await sharedPixiApp.initialize(this.canvas);
 
-    // Set up resize observer to handle canvas resizing
     this.resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const { width, height } = entry.contentRect;
-        if (this.app && this.isInitialized) {
+        if (this.app && this.isReady()) {
           this.app.renderer.resize(width, height);
 
-          // Emit resize event to the event bus
           if (this.eventBus) {
             this.eventBus.emit({
               type: LIGHTER_EVENTS.RESIZE,
@@ -74,49 +74,50 @@ export class PixiRenderer2D implements Renderer2D {
       this.resizeObserver.observe(this.canvas.parentElement);
     }
 
-    await this.app.init({
-      view: this.canvas,
-      antialias: true,
-      resolution: window.devicePixelRatio || 1,
-      autoDensity: true,
-      width: this.canvas.parentElement!.clientWidth,
-      height: this.canvas.parentElement!.clientHeight,
-      backgroundAlpha: 0,
+    this.viewport = new Viewport({
+      events: this.app.renderer.events,
     });
 
-    this.stage = this.app.stage;
+    this.app.stage.addChild(this.viewport);
 
-    // Create containers for proper layering hierarchy
+    // Activate drag, pinch, and wheel plugins.
+    this.viewport.drag().pinch().wheel();
+
     this.foregroundContainer = new PIXI.Container();
     this.backgroundContainer = new PIXI.Container();
 
-    // Add containers to stage in proper layering order (background to foreground)
-    this.stage.addChild(this.backgroundContainer); // Background content (images, etc.)
-    this.stage.addChild(this.foregroundContainer); // Foreground content (graphics, text, overlays)
+    // Background content (image, etc.)
+    this.viewport.addChild(this.backgroundContainer);
+    this.cacheAsTexture(this.backgroundContainer);
 
-    this.isInitialized = true;
+    // Foreground content (graphics, text, non-image overlays)
+    this.viewport.addChild(this.foregroundContainer);
+
+    this.app.start();
   }
 
   private tick = () => {
-    if (this.isRunning && this.renderLoop) this.renderLoop();
+    if (this.isRunning && this.tickHandler) this.tickHandler();
   };
 
-  startRenderLoop(onFrame: () => void): void {
-    if (this.isRunning) return;
+  addTickHandler(onFrame: () => void): void {
+    if (this.isRunning) {
+    }
 
     this.isRunning = true;
-    this.renderLoop = onFrame;
+    this.tickHandler = onFrame;
 
     this.app.ticker.add(this.tick);
   }
 
-  stopRenderLoop(): void {
+  resetTickHandler(): void {
     this.isRunning = false;
-    this.renderLoop = undefined;
 
     if (this.app.ticker) {
       this.app.ticker.remove(this.tick);
     }
+
+    this.tickHandler = undefined;
   }
 
   drawRect(bounds: Rect, style: DrawStyle, containerId: string): void {
@@ -315,20 +316,12 @@ export class PixiRenderer2D implements Renderer2D {
         sprite.scale.y = options.scaleY ?? 1;
       }
     }
-    this.addToContainer(sprite, containerId);
-  }
-
-  clear(): void {
-    this.foregroundContainer.removeChildren();
-    this.backgroundContainer.removeChildren();
-    this.containers.clear();
-    this.resizeObserver?.disconnect();
+    this.addToContainer(sprite, containerId, false);
   }
 
   /**
    * Optimize rendering by caching static graphics as textures
    * Use this for overlays that don't change frequently
-   * In v8, cacheAsBitmap is replaced with cacheAsTexture
    */
   cacheAsTexture(container: PIXI.Container): void {
     if (container && container.children && container.children.length > 0) {
@@ -344,24 +337,40 @@ export class PixiRenderer2D implements Renderer2D {
   }
 
   /**
-   * Get the stage for direct PixiJS manipulation
+   * Disables zoom and pan interactions (e.g., during overlay dragging).
+   * This prevents viewport plugins from interfering with overlay interactions.
    */
-  getStage(): PIXI.Container {
-    return this.stage;
+  disableZoomPan(): void {
+    if (this.viewport?.plugins) {
+      this.viewport.plugins.pause("drag");
+      this.viewport.plugins.pause("pinch");
+      this.viewport.plugins.pause("wheel");
+    }
+  }
+
+  /**
+   * Re-enables zoom and pan interactions after overlay interactions are complete.
+   */
+  enableZoomPan(): void {
+    if (this.viewport?.plugins) {
+      this.viewport.plugins.resume("drag");
+      this.viewport.plugins.resume("pinch");
+      this.viewport.plugins.resume("wheel");
+    }
   }
 
   /**
    * Check if the renderer is initialized
    */
   isReady(): boolean {
-    return this.isInitialized;
+    return sharedPixiApp.isReady();
   }
 
   /**
    * Get the current container dimensions
    */
   getContainerDimensions(): { width: number; height: number } {
-    if (!this.isInitialized || !this.app) {
+    if (!this.isReady() || !this.app) {
       return { width: 0, height: 0 };
     }
     return {
@@ -378,33 +387,35 @@ export class PixiRenderer2D implements Renderer2D {
   }
 
   /**
-   * Creates or gets a container for a given ID
-   * @param containerId - The container ID
-   * @returns The container for this ID
+   * Adds an element to the appropriate container
+   * @param element - The PIXI element to add
+   * @param containerId - The container ID this element belongs to
+   * @param addToForeground - Whether to add the element to the foreground container.
+   * If false, adds the element to the background container.
    */
-  private getOrCreateContainer(containerId: string): PIXI.Container {
+  private addToContainer(
+    element: PIXI.Container | PIXI.Graphics | PIXI.Text | PIXI.Sprite,
+    containerId: string,
+    addToForeground: boolean = true
+  ): void {
     let container = this.containers.get(containerId);
     if (!container) {
       container = new PIXI.Container();
       this.containers.set(containerId, container);
-      this.foregroundContainer.addChild(container);
-    }
-    return container;
-  }
 
-  /**
-   * Adds an element to the appropriate container
-   * @param element - The PIXI element to add
-   * @param containerId - The container ID this element belongs to
-   */
-  private addToContainer(
-    element: PIXI.Container | PIXI.Graphics | PIXI.Text | PIXI.Sprite,
-    containerId: string
-  ): void {
-    const container = this.getOrCreateContainer(containerId);
+      if (addToForeground) {
+        this.foregroundContainer.addChild(container);
+      } else {
+        this.backgroundContainer.addChild(container);
+      }
+    }
     container.addChild(element);
   }
 
+  /**
+   * Disposes of a container
+   * @param containerId - The container ID to dispose
+   */
   dispose(containerId: string): void {
     const container = this.containers.get(containerId);
     if (container) {
@@ -436,12 +447,11 @@ export class PixiRenderer2D implements Renderer2D {
   }
 
   /**
-   * Update resource bounds directly without recreating the sprite to avoid flicker during resize
+   * Update resource bounds directly without recreating the sprite
    */
   updateResourceBounds(containerId: string, bounds: Rect): void {
     const container = this.containers.get(containerId);
     if (container) {
-      // Find the sprite in the container and update its bounds
       for (const child of container.children) {
         if (child instanceof PIXI.Sprite) {
           child.x = bounds.x;
@@ -454,7 +464,6 @@ export class PixiRenderer2D implements Renderer2D {
     }
   }
 
-  // Hit testing methods
   hitTest(point: Point, containerId?: string): boolean {
     if (containerId) {
       const container = this.containers.get(containerId);
@@ -527,11 +536,17 @@ export class PixiRenderer2D implements Renderer2D {
   }
 
   cleanUp(): void {
-    // note: this destroys webgl context. right now we're creating a new one per sample...
-    // might want to consider using a global pixi renderer. the cost of doing that is that we have to manage lifecycle really well.
-    // https://pixijs.com/8.x/guides/concepts/architecture
-    if (this.app?.renderer && "gl" in this.app.renderer) {
-      this.app.destroy(true);
-    }
+    this.resetTickHandler();
+    this.viewport?.destroy({ children: true });
+    this.viewport?.removeChildren();
+    this.containers.clear();
+    this.resizeObserver?.disconnect();
+    this.app.stop();
+    this.app.stage.removeChildren();
+  }
+
+  // note: be careful of calling this one.
+  destroy(): void {
+    sharedPixiApp.destroy();
   }
 }

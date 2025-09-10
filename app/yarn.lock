@@ -2507,6 +2507,7 @@ __metadata:
     eslint-plugin-react: "npm:^7.31.11"
     eslint-plugin-react-hooks: "npm:^4.6.0"
     jsdom: "npm:^20.0.2"
+    pixi-viewport: "npm:^6.0.3"
     prettier: "npm:^2.8.0"
     react-player: "npm:^2.16.0"
     react-plotly.js: "npm:^2.6.0"
@@ -2542,7 +2543,7 @@ __metadata:
     "@typescript-eslint/eslint-plugin": "npm:^6.0.0"
     "@typescript-eslint/parser": "npm:^6.0.0"
     eslint: "npm:^8.0.0"
-    pixi.js: "npm:^8.12.0"
+    pixi.js: "npm:^8.13.1"
     typescript: "npm:^5.8.3"
   peerDependencies:
     jotai: "*"
@@ -15445,9 +15446,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"pixi.js@npm:^8.12.0":
-  version: 8.12.0
-  resolution: "pixi.js@npm:8.12.0"
+"pixi-viewport@npm:^6.0.3":
+  version: 6.0.3
+  resolution: "pixi-viewport@npm:6.0.3"
+  peerDependencies:
+    pixi.js: ">=8"
+  checksum: 10/aa989ed0201f16df92a69aa2cf270f7be77657ce32d5d4f97fab2c192f81ee6ee50bdd56128ef6fe3606a2844f4ea04afc2e3b91e42dcc27df55783f20e982b9
+  languageName: node
+  linkType: hard
+
+"pixi.js@npm:^8.13.1":
+  version: 8.13.1
+  resolution: "pixi.js@npm:8.13.1"
   dependencies:
     "@pixi/colord": "npm:^2.9.6"
     "@types/css-font-loading-module": "npm:^0.0.12"
@@ -15459,7 +15469,8 @@ __metadata:
     gifuct-js: "npm:^2.1.2"
     ismobilejs: "npm:^1.1.1"
     parse-svg-path: "npm:^0.1.2"
-  checksum: 10/dd37a70b1793c16ea9ad33c98f2b89880c9590fb6aae86dddd34a4b4dfb3bb6f2f3740aaf9ee2a077a06be82497bad27106c56451083e9148997d951fa92fdc1
+    tiny-lru: "npm:^11.4.5"
+  checksum: 10/153b0133ba1cf38b7cbde36f0d491a5234b701ac58dff551bf504d019dbd8e5f282ea71daba16abbb9b056e653d1d125940d1cc48a692482d6f0f977efb4c91c
   languageName: node
   linkType: hard
 
@@ -18478,6 +18489,13 @@ __metadata:
   version: 1.3.3
   resolution: "tiny-invariant@npm:1.3.3"
   checksum: 10/5e185c8cc2266967984ce3b352a4e57cb89dad5a8abb0dea21468a6ecaa67cd5bb47a3b7a85d08041008644af4f667fb8b6575ba38ba5fb00b3b5068306e59fe
+  languageName: node
+  linkType: hard
+
+"tiny-lru@npm:^11.4.5":
+  version: 11.4.5
+  resolution: "tiny-lru@npm:11.4.5"
+  checksum: 10/a886d1820c4ad0c916d020ab06a9c6f2e25379e318c6ce55cd72f5dec8d9df8ee3d7a8b8ba7cbde288cdd011735bebbd0257f80164af23ba0b43d72c267b24ea
   languageName: node
   linkType: hard
 

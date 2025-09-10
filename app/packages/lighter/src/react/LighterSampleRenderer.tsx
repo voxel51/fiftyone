@@ -1,20 +1,20 @@
 /**
  * Copyright 2017-2025, Voxel51, Inc.
  */
-
 import { loadOverlays } from "@fiftyone/looker/src/overlays";
 import DetectionOverlay from "@fiftyone/looker/src/overlays/detection";
 import * as fos from "@fiftyone/state";
 import {
-  Sample,
-  State,
   fieldSchema,
   getSampleSrc,
+  Sample,
+  State,
   useAssertedRecoilValue,
 } from "@fiftyone/state";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { ImageOptions, ImageOverlay, overlayFactory } from "../index";
+import { singletonCanvas } from "../renderer/SharedCanvas";
 import { useLighter, useLighterSetupWithPixi } from "./index";
 import { convertLegacyToLighterDetection } from "./looker-lighter-bridge";
 
@@ -32,13 +32,15 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
   className = "",
   sample,
 }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const options = useRecoilValue(
-    fos.lookerOptions({ modal: true, withFilter: false })
-  );
+  // we have this hack to force a re-render on layout effect, so that containerRef.current is defined
+  // this is to allow stable singleton canvas to bind to new containers
+  const [, setReTrigger] = useState(0);
 
-  useLighterSetupWithPixi(canvasRef, options);
+  useLayoutEffect(() => {
+    setReTrigger((prev) => prev + 1);
+  }, []);
 
   // Get access to the lighter instance
   const { scene, isReady, addOverlay } = useLighter();
@@ -92,8 +94,10 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
 
   return (
     <div
+      ref={containerRef}
       className={`lighter-sample-renderer ${className}`}
       data-cy="lighter-sample-renderer"
+      id="lighter-sample-renderer-container"
       style={{
         width: "100%",
         height: "100%",
@@ -101,14 +105,23 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
         flexDirection: "column",
       }}
     >
-      <canvas
-        ref={canvasRef}
-        data-cy="lighter-sample-renderer-canvas"
-        style={{
-          display: "block",
-          flex: 1,
-        }}
-      />
+      {containerRef.current && <LighterSetupImpl containerRef={containerRef} />}
     </div>
   );
+};
+
+const LighterSetupImpl = (props: {
+  containerRef: React.RefObject<HTMLDivElement>;
+}) => {
+  const { containerRef } = props;
+
+  const options = useRecoilValue(
+    fos.lookerOptions({ modal: true, withFilter: false })
+  );
+
+  const canvas = singletonCanvas.getCanvas(containerRef.current!);
+
+  useLighterSetupWithPixi(canvas, options);
+
+  return null;
 };

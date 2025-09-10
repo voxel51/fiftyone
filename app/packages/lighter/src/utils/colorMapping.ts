@@ -152,7 +152,7 @@ export function getSimpleStrokeStyles({
   strokeColor: string;
   dashLength?: number;
 }) {
-  const INFO_COLOR = "#ffffff";
+  const INFO_COLOR = "#00ff00";
 
   let overlayStrokeColor: string | null = null;
   let overlayDash: number | null = null;

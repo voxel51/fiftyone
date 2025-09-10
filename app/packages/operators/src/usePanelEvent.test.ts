@@ -1,9 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renderHook, act } from "@testing-library/react";
+import { PanelEventError } from "@fiftyone/utilities";
+import { act, renderHook } from "@testing-library/react";
 import React from "react";
 import { RecoilRoot } from "recoil";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import usePanelEvent, { usePendingPanelEventError } from "./usePanelEvent";
-import { PanelEventError } from "@fiftyone/utilities";
 
 ////////////////////////////
 //   Mock dependencies    //
@@ -84,7 +84,6 @@ describe("usePendingPanelEventError", () => {
     } catch (error) {
       thrownError = error as PanelEventError;
     }
-
     expect(thrownError!).toBeInstanceOf(PanelEventError);
     expect(thrownError!.message).toBe("Operation failed");
     expect(thrownError!.operator).toBe("test");

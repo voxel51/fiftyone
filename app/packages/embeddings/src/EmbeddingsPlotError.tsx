@@ -1,9 +1,9 @@
 import { Loading } from "@fiftyone/components";
 import ErrorWithStack from "./ErrorWithStack";
-import { PlotError } from "./types";
+import { PlotErrorResponse } from "./types";
 
 interface EmbeddingsPlotErrorProps {
-  error: PlotError;
+  error: PlotErrorResponse;
 }
 
 export default function EmbeddingsPlotError({
@@ -12,5 +12,5 @@ export default function EmbeddingsPlotError({
   if (error?.stack) {
     return <ErrorWithStack error={error} />;
   }
-  return <Loading>{error.message}</Loading>;
+  return <Loading>{error.details ?? error["message"]}</Loading>;
 }

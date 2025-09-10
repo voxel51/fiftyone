@@ -4,10 +4,10 @@
 
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { TransformOptions } from "../commands/TransformOverlayCommand";
 import type { RenderCallback } from "../core/Scene2D";
-import { overlayFactory } from "../index";
+import { lighterSceneAtom, overlayFactory } from "../index";
 import { BaseOverlay } from "../overlay/BaseOverlay";
-import { lighterSceneAtom } from "../state";
 
 /**
  * Hook for accessing the current lighter instance without side effects.
@@ -73,6 +73,26 @@ export const useLighter = () => {
     [scene]
   );
 
+  const getOverlay = useCallback(
+    (id: string) => {
+      if (scene) {
+        return scene.getOverlay(id);
+      }
+      return undefined;
+    },
+    [scene]
+  );
+
+  const transformOverlay = useCallback(
+    (id: string, options: TransformOptions) => {
+      if (scene) {
+        return scene.transformOverlay(id, options);
+      }
+      return false;
+    },
+    [scene]
+  );
+
   const undo = useCallback(() => {
     if (scene && scene.canUndo()) {
       scene.undo();
@@ -114,6 +134,8 @@ export const useLighter = () => {
     isReady,
     addOverlay,
     removeOverlay,
+    getOverlay,
+    transformOverlay,
     undo,
     redo,
     canUndo,

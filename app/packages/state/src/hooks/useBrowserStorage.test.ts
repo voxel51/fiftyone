@@ -1,5 +1,5 @@
-import { describe, expect, it, beforeEach, afterEach } from "vitest";
-import { renderHook, act } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { useBrowserStorage } from "./useBrowserStorage";
 
 // Utility wrapper for cleaner access

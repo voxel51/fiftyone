@@ -2,15 +2,16 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
+import type { Movable } from "../commands/MoveOverlayCommand";
+import { MoveOverlayCommand } from "../commands/MoveOverlayCommand";
+import { UndoRedoManager } from "../commands/UndoRedoManager";
 import type { EventBus } from "../event/EventBus";
 import { LIGHTER_EVENTS } from "../event/EventBus";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
+import type { Renderer2D } from "../renderer/Renderer2D";
 import type { Selectable } from "../selection/Selectable";
 import type { SelectionManager } from "../selection/SelectionManager";
 import type { Point } from "../types";
-import type { Movable } from "../undo/MoveOverlayCommand";
-import { MoveOverlayCommand } from "../undo/MoveOverlayCommand";
-import { UndoRedoManager } from "../undo/UndoRedoManager";
 
 /**
  * Interface for objects that can handle interaction events.
@@ -118,11 +119,8 @@ export class InteractionManager {
   // Drag state management
   private dragState?: DragState;
 
-  private selectionManager: SelectionManager;
-  private undoRedoManager: UndoRedoManager;
-
   // Configuration
-  private readonly CLICK_THRESHOLD = 5; // pixels
+  private readonly CLICK_THRESHOLD = 1; // pixels
   private readonly CLICK_TIME_THRESHOLD = 300; // ms
   private readonly DOUBLE_CLICK_TIME_THRESHOLD = 500; // ms
   private readonly DOUBLE_CLICK_DISTANCE_THRESHOLD = 10; // pixels
@@ -134,12 +132,11 @@ export class InteractionManager {
   constructor(
     private canvas: HTMLCanvasElement,
     private eventBus: EventBus,
-    undoRedoManager: UndoRedoManager,
-    selectionManager: SelectionManager,
+    private undoRedoManager: UndoRedoManager,
+    private selectionManager: SelectionManager,
+    private renderer: Renderer2D,
     getOverlayById: (id: string) => BaseOverlay | undefined
   ) {
-    this.undoRedoManager = undoRedoManager;
-    this.selectionManager = selectionManager;
     this.getOverlayById = getOverlayById;
 
     this.setupEventListeners();
@@ -337,6 +334,8 @@ export class InteractionManager {
 
         if (distance > this.CLICK_THRESHOLD) {
           this.isDragging = true;
+          // Disable zoom/pan to prevent interference during overlay dragging
+          this.renderer.disableZoomPan();
         }
       }
     }
@@ -401,6 +400,8 @@ export class InteractionManager {
       this.isDragging = false;
       this.dragHandler = undefined;
       this.dragState = undefined;
+      // Re-enable zoom/pan after overlay dragging ends
+      this.renderer.enableZoomPan();
       event.preventDefault();
     } else if (this.dragHandler && !this.isDragging) {
       // This was a click, not a drag - handle as click for selection
@@ -423,6 +424,8 @@ export class InteractionManager {
       this.isDragging = false;
       this.dragHandler = undefined;
       this.dragState = undefined;
+      // Re-enable zoom/pan after drag cancellation
+      this.renderer.enableZoomPan();
     }
   };
 
@@ -526,14 +529,7 @@ export class InteractionManager {
   ): void {
     const handler = this.findHandlerAtPoint(point);
 
-    if (!handler) {
-      this.hoveredHandler = undefined;
-      return;
-    }
-
-    // If we are hovering on the canonical media, and coming from some other overlay,
-    // emit *all* unhover event + particular overlay unhover event
-    if (handler.id === this.canonicalMediaId) {
+    if (!handler || handler.id === this.canonicalMediaId) {
       this.canvas.style.cursor = "default";
 
       if (this.hoveredHandler) {

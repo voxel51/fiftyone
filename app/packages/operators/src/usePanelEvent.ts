@@ -1,11 +1,11 @@
 import { usePanelStateByIdCallback } from "@fiftyone/spaces";
 import { useNotification } from "@fiftyone/state";
-import { useState, useEffect } from "react";
+import { PanelEventError } from "@fiftyone/utilities";
+import { useEffect, useState } from "react";
 import { useActivePanelEventsCount } from "./hooks";
 import { executeOperator, OperatorResult } from "./operators";
 import { usePromptOperatorInput } from "./state";
 import { ExecutionCallback } from "./types-internal";
-import { PanelEventError } from "@fiftyone/utilities";
 
 type HandlerOptions = {
   params: { [name: string]: unknown };

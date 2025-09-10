@@ -26,6 +26,8 @@ export interface SelectionOptions {
  * Manages selection state for overlays in a scene.
  */
 export class SelectionManager {
+  private readonly multipleSelection = false;
+
   private selectedOverlays = new Set<string>();
   private selectableOverlays = new Map<string, Selectable>();
 
@@ -59,7 +61,16 @@ export class SelectionManager {
     if (!overlay) return;
 
     const wasSelected = this.selectedOverlays.has(id);
-    if (wasSelected) return; // Already selected
+    if (wasSelected) return;
+
+    if (!this.multipleSelection && this.selectedOverlays.size > 0) {
+      const existingSelectedOverlayId = this.selectedOverlays
+        .values()
+        .next().value;
+      if (existingSelectedOverlayId) {
+        this.deselect(existingSelectedOverlayId);
+      }
+    }
 
     this.selectedOverlays.add(id);
     overlay.setSelected(true);

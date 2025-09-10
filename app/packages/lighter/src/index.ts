@@ -46,10 +46,10 @@ export { SelectionManager } from "./selection/SelectionManager";
 export type { SelectionOptions } from "./selection/SelectionManager";
 
 // Undo/Redo exports
-export type { Command } from "./undo/Command";
-export { MoveOverlayCommand } from "./undo/MoveOverlayCommand";
-export type { Movable } from "./undo/MoveOverlayCommand";
-export { UndoRedoManager } from "./undo/UndoRedoManager";
+export type { Command } from "./commands/Command";
+export { MoveOverlayCommand } from "./commands/MoveOverlayCommand";
+export type { Movable } from "./commands/MoveOverlayCommand";
+export { UndoRedoManager } from "./commands/UndoRedoManager";
 
 // Plugin exports
 // TODO: PluginRegistry is currently unused - this needs to be hooked with fiftyone plugins
