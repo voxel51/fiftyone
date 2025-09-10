@@ -963,7 +963,12 @@ def _count_list_items(path, view):
                                         "$add": [
                                             {
                                                 "$ifNull": [
-                                                    {"$getField": "$$this"},
+                                                    {
+                                                        "$getField": {
+                                                            "input": "$$value",
+                                                            "field": "$$this",
+                                                        }
+                                                    },
                                                     0,
                                                 ]
                                             },
