@@ -17,3 +17,5 @@ export type OperatorExecutorOptions = {
   callback?: ExecutionCallback;
   skipErrorNotification?: boolean;
 };
+
+export type ParamsType = Record<string, any>;
