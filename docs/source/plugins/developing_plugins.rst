@@ -193,7 +193,7 @@ exposes, and declare any :ref:`secrets <plugins-secrets>` that it may require.
 The following fields are available:
 
 .. table::
-    :widths: 20,10,70
+    :widths: 20,11,69
 
     +------------------------------+-----------+-----------------------------------------------------------------------------+
     | Field                        | Required? | Description                                                                 |
