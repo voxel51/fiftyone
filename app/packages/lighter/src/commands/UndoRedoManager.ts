@@ -95,6 +95,19 @@ export class UndoRedoManager {
    * Clears all undo/redo history.
    */
   clear(): void {
+    // see if any items have "destroy" method, if so, call it
+    for (const command of this.undoStack) {
+      if (command.hasOwnProperty("destroy")) {
+        command["destroy"]();
+      }
+    }
+
+    for (const command of this.redoStack) {
+      if (command.hasOwnProperty("destroy")) {
+        command["destroy"]();
+      }
+    }
+
     this.undoStack = [];
     this.redoStack = [];
   }

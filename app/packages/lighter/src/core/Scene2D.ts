@@ -2,8 +2,10 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
+import { AddOverlayCommand } from "../commands/AddOverlayCommand";
 import type { Command } from "../commands/Command";
 import { Movable } from "../commands/MoveOverlayCommand";
+import { RemoveOverlayCommand } from "../commands/RemoveOverlayCommand";
 import {
   TransformOverlayCommand,
   type TransformOptions,
@@ -762,8 +764,15 @@ export class Scene2D {
   /**
    * Adds an overlay to the scene.
    * @param overlay - The overlay to add.
+   * @param withUndo - Whether to track this operation for undo/redo.
    */
-  addOverlay(overlay: BaseOverlay): void {
+  addOverlay(overlay: BaseOverlay, withUndo: boolean = false): void {
+    if (withUndo) {
+      const command = new AddOverlayCommand(this, overlay);
+      this.executeCommand(command);
+      return;
+    }
+
     if (this.overlays.has(overlay.id)) {
       return;
     }
@@ -800,18 +809,25 @@ export class Scene2D {
   /**
    * Removes an overlay from the scene.
    * @param id - The ID of the overlay to remove.
+   * @param withUndo - Whether to track this operation for undo/redo.
    */
-  removeOverlay(id: string): void {
+  removeOverlay(id: string, withUndo: boolean = false): void {
+    if (withUndo) {
+      const overlay = this.overlays.get(id);
+      if (overlay) {
+        const command = new RemoveOverlayCommand(this, overlay);
+        this.executeCommand(command);
+        return;
+      }
+    }
     const overlay = this.overlays.get(id);
-    if (overlay) {
-      // Remove from interaction manager
-      this.interactionManager.removeHandler(overlay);
 
-      // Remove from selection manager
+    if (overlay) {
+      this.interactionManager.removeHandler(overlay);
       this.selectionManager.removeSelectable(id);
 
-      // Call destroy method for proper cleanup
-      overlay.destroy();
+      // Dispose the renderer container to actually remove it from the renderer
+      this.config.renderer.dispose(id);
 
       this.overlays.delete(id);
       this.overlayOrder = this.overlayOrder.filter(
@@ -820,7 +836,6 @@ export class Scene2D {
       this.renderingState.clear(id);
     }
 
-    // Emit overlay-removed event
     this.dispatch({
       type: LIGHTER_EVENTS.OVERLAY_REMOVED,
       detail: { id },
@@ -898,8 +913,7 @@ export class Scene2D {
       newBounds
     );
 
-    command.execute();
-    this.undoRedo.push(command);
+    this.executeCommand(command);
 
     return true;
   }

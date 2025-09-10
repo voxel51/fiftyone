@@ -56,18 +56,18 @@ export const useLighter = () => {
   }, [scene]);
 
   const addOverlay = useCallback(
-    (overlay: BaseOverlay) => {
+    (overlay: BaseOverlay, withUndo: boolean = false) => {
       if (scene) {
-        scene.addOverlay(overlay);
+        scene.addOverlay(overlay, withUndo);
       }
     },
     [scene]
   );
 
   const removeOverlay = useCallback(
-    (id: string) => {
+    (id: string, withUndo: boolean = false) => {
       if (scene) {
-        scene.removeOverlay(id);
+        scene.removeOverlay(id, withUndo);
       }
     },
     [scene]
