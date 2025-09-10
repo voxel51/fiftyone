@@ -3147,7 +3147,7 @@ fos = lazy_import("fiftyone.core.storage")
 
 @contextmanager
 def async_executor(
-    *, max_workers, skip_failures=False, warning="Async failure"
+    *, max_workers=None, skip_failures=False, warning="Async failure"
 ):
     """
     Context manager that provides a function for submitting tasks to a thread
@@ -3168,6 +3168,12 @@ def async_executor(
     Raises:
         Exception: if a task raises an exception and ``skip_failures == False``
     """
+    if max_workers is None:
+        max_workers = (
+            fo.config.default_thread_pool_workers
+            or recommend_thread_pool_workers(max_workers)
+        )
+
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         _futures = []
 
