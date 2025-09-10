@@ -1,6 +1,15 @@
-import React from "react";
+import {
+  BoundingBoxOptions,
+  BoundingBoxOverlay,
+  overlayFactory,
+  useLighter,
+} from "@fiftyone/lighter";
+import * as fos from "@fiftyone/state";
+import React, { useCallback } from "react";
+import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import useShowModal from "./useShowModal";
+import { objectId } from "./utils";
 
 const ActionsDiv = styled.div`
   align-items: center;
@@ -137,12 +146,36 @@ const Classification = () => {
 };
 
 const Detection = () => {
+  const { addOverlay } = useLighter();
+  const currentSampleId = useRecoilValue(fos.currentSampleId);
+
+  const addRandomDetection = useCallback(() => {
+    const detection = overlayFactory.create<
+      BoundingBoxOptions,
+      BoundingBoxOverlay
+    >("bounding-box", {
+      sampleId: currentSampleId,
+      label: {
+        id: objectId(),
+        label: `detection-${Math.random().toString(36).substring(2, 5)}`,
+        tags: [],
+        bounding_box: [0.1, 0.1, 0.1, 0.1],
+      },
+      relativeBounds: {
+        x: 0.1,
+        y: 0.1,
+        width: 0.1,
+        height: 0.1,
+      },
+      draggable: true,
+      selectable: true,
+    });
+
+    addOverlay(detection);
+  }, [currentSampleId, addOverlay]);
+
   return (
-    <Square
-      onClick={() => {
-        alert("Detection");
-      }}
-    >
+    <Square onClick={addRandomDetection}>
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="19"
@@ -161,10 +194,14 @@ const Detection = () => {
 };
 
 const Undo = () => {
+  const { undo, canUndo } = useLighter();
+
   return (
     <Round
-      onClick={() => {
-        alert("UNDO");
+      onClick={undo}
+      style={{
+        opacity: canUndo ? 1 : 0.5,
+        cursor: canUndo ? "pointer" : "not-allowed",
       }}
     >
       <svg
@@ -185,10 +222,14 @@ const Undo = () => {
 };
 
 const Redo = () => {
+  const { redo, canRedo } = useLighter();
+
   return (
     <Round
-      onClick={() => {
-        alert("REDO");
+      onClick={redo}
+      style={{
+        opacity: canRedo ? 1 : 0.5,
+        cursor: canRedo ? "pointer" : "not-allowed",
       }}
     >
       <svg
