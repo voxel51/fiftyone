@@ -2,8 +2,8 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
+import type { Point, Rect } from "../types";
 import type { Command } from "./Command";
-import type { Point } from "../types";
 
 /**
  * Interface for overlays that can be moved.
@@ -20,6 +20,18 @@ export interface Movable {
    * @param position - The new position.
    */
   setPosition(position: Point): void;
+
+  /**
+   * Get the current bounds of the overlay.
+   * @returns The current bounds.
+   */
+  getBounds(): Rect;
+
+  /**
+   * Set the bounds of the overlay.
+   * @param bounds - The new bounds.
+   */
+  setBounds(bounds: Rect): void;
 
   /**
    * Mark the overlay as dirty to trigger re-render.
@@ -46,11 +58,9 @@ export class MoveOverlayCommand implements Command {
 
   execute(): void {
     this.overlay.setPosition(this.newPosition);
-    this.overlay.markDirty();
   }
 
   undo(): void {
     this.overlay.setPosition(this.oldPosition);
-    this.overlay.markDirty();
   }
 }

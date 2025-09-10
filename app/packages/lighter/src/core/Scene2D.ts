@@ -2,6 +2,13 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
+import type { Command } from "../commands/Command";
+import { Movable } from "../commands/MoveOverlayCommand";
+import {
+  TransformOverlayCommand,
+  type TransformOptions,
+} from "../commands/TransformOverlayCommand";
+import { UndoRedoManager } from "../commands/UndoRedoManager";
 import { STROKE_WIDTH } from "../constants";
 import { LIGHTER_EVENTS, type LighterEvent } from "../event/EventBus";
 import { InteractionManager } from "../interaction/InteractionManager";
@@ -16,8 +23,6 @@ import type {
   Point,
   Spatial,
 } from "../types";
-import type { Command } from "../undo/Command";
-import { UndoRedoManager } from "../undo/UndoRedoManager";
 import { generateColorFromId } from "../utils/color";
 import type { ColorMappingContext } from "../utils/colorMapping";
 import { getOverlayColor } from "../utils/colorMapping";
@@ -588,7 +593,7 @@ export class Scene2D {
   private recalculateOverlayOrderForInteractiveOrdering(): {
     containedIds: string[];
   } {
-    const { activePaths, showOverlays, alpha } = this.sceneOptions || {};
+    const { activePaths } = this.sceneOptions || {};
 
     const point = this.interactionManager.getPixelCoordinates();
 
@@ -686,6 +691,12 @@ export class Scene2D {
 
     isSpatial: (overlay: BaseOverlay): overlay is BaseOverlay & Spatial =>
       "getRelativeBounds" in overlay && "setAbsoluteBounds" in overlay,
+
+    isTransformable: (overlay: BaseOverlay): overlay is BaseOverlay & Movable =>
+      "getPosition" in overlay &&
+      "setPosition" in overlay &&
+      "getBounds" in overlay &&
+      "setBounds" in overlay,
   };
 
   public async startRenderLoop(): Promise<void> {
@@ -840,6 +851,57 @@ export class Scene2D {
    */
   getOverlay(id: string): BaseOverlay | undefined {
     return this.overlays.get(id);
+  }
+
+  /**
+   * Transforms an overlay by moving and/or scaling it.
+   * @param id - The overlay ID.
+   * @param options - The transformation options.
+   * @returns True if the transformation was successful, false otherwise.
+   */
+  transformOverlay(id: string, options: TransformOptions): boolean {
+    const overlay = this.overlays.get(id);
+    if (!overlay) {
+      console.warn(`Overlay with id ${id} not found`);
+      return false;
+    }
+
+    // Check if overlay supports transformation
+    if (!this.typeGuards.isTransformable(overlay)) {
+      console.warn(`Overlay with id ${id} does not support transformation`);
+      return false;
+    }
+
+    // Get current bounds for undo/redo
+    const oldBounds = overlay.getBounds();
+
+    // Calculate new bounds
+    let newBounds = { ...oldBounds };
+
+    if (options.bounds) {
+      newBounds = { ...options.bounds };
+    } else if (options.scale) {
+      // Apply scaling to current bounds
+      newBounds = {
+        x: newBounds.x,
+        y: newBounds.y,
+        width: newBounds.width * options.scale.x,
+        height: newBounds.height * options.scale.y,
+      };
+    }
+
+    // Create and execute transform command for undo/redo support
+    const command = new TransformOverlayCommand(
+      overlay,
+      id,
+      oldBounds,
+      newBounds
+    );
+
+    command.execute();
+    this.undoRedo.push(command);
+
+    return true;
   }
 
   /**

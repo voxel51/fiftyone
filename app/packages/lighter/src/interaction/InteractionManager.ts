@@ -2,6 +2,9 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
+import type { Movable } from "../commands/MoveOverlayCommand";
+import { MoveOverlayCommand } from "../commands/MoveOverlayCommand";
+import { UndoRedoManager } from "../commands/UndoRedoManager";
 import type { EventBus } from "../event/EventBus";
 import { LIGHTER_EVENTS } from "../event/EventBus";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
@@ -9,9 +12,6 @@ import type { Renderer2D } from "../renderer/Renderer2D";
 import type { Selectable } from "../selection/Selectable";
 import type { SelectionManager } from "../selection/SelectionManager";
 import type { Point } from "../types";
-import type { Movable } from "../undo/MoveOverlayCommand";
-import { MoveOverlayCommand } from "../undo/MoveOverlayCommand";
-import { UndoRedoManager } from "../undo/UndoRedoManager";
 
 /**
  * Interface for objects that can handle interaction events.

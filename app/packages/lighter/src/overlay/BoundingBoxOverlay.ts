@@ -2,6 +2,7 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
+import type { Movable } from "../commands/MoveOverlayCommand";
 import {
   DEFAULT_TEXT_PADDING,
   LABEL_ARCHETYPE_PRIORITY,
@@ -18,7 +19,6 @@ import type {
   Rect,
   Spatial,
 } from "../types";
-import type { Movable } from "../undo/MoveOverlayCommand";
 import {
   getInstanceStrokeStyles,
   getSimpleStrokeStyles,
@@ -219,15 +219,13 @@ export class BoundingBoxOverlay
   }
 
   setPosition(position: Point): void {
-    // Update absolute bounds with new position
-    this.absoluteBounds.x = position.x;
-    this.absoluteBounds.y = position.y;
+    this.absoluteBounds = {
+      ...this.absoluteBounds,
+      x: position.x,
+      y: position.y,
+    };
 
-    // Mark for coordinate update so the scene can properly convert
-    // absolute coordinates back to relative coordinates using the coordinate system
     this.markForCoordinateUpdate();
-
-    this.markDirty();
   }
 
   // Interaction handlers
@@ -303,7 +301,7 @@ export class BoundingBoxOverlay
    */
   setBounds(bounds: Rect): void {
     this.absoluteBounds = { ...bounds };
-    this.markDirty();
+    this.markForCoordinateUpdate();
   }
 
   /**
@@ -446,7 +444,7 @@ export class BoundingBoxOverlay
   setSelected(selected: boolean): void {
     if (this.isSelectedState !== selected) {
       this.isSelectedState = selected;
-      this.markDirty(); // Trigger re-render to show/hide selection
+      this.markDirty();
     }
   }
 
