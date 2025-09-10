@@ -2,7 +2,7 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import type { Point } from "../types";
+import type { Point, Rect } from "../types";
 
 /**
  * Event type constants for overlay events.
@@ -38,6 +38,8 @@ export const LIGHTER_EVENTS = {
   OVERLAY_DRAG_MOVE: "overlay-drag-move",
   /** Emitted when an overlay drag ends */
   OVERLAY_DRAG_END: "overlay-drag-end",
+  /** Emitted when an overlay's bounds change */
+  OVERLAY_BOUNDS_CHANGED: "overlay-bounds-changed",
   /** Emitted when an overlay is clicked */
   OVERLAY_CLICK: "overlay-click",
   /** Emitted when an overlay is double-clicked */
@@ -127,6 +129,10 @@ export type LighterEvent =
         startPosition: Point;
         endPosition: Point;
       };
+    }
+  | {
+      type: typeof LIGHTER_EVENTS.OVERLAY_BOUNDS_CHANGED;
+      detail: { id: string; absoluteBounds: Rect; relativeBounds: Rect };
     }
   | {
       type: typeof LIGHTER_EVENTS.OVERLAY_CLICK;

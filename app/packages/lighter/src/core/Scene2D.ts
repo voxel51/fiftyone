@@ -1328,10 +1328,19 @@ export class Scene2D {
         overlay.needsCoordinateUpdate()
       ) {
         this.updateSpatialOverlayRelativeBounds(overlay);
-        // Mark coordinate update as complete
         overlay.markCoordinateUpdateComplete();
+
+        this.dispatch({
+          type: LIGHTER_EVENTS.OVERLAY_BOUNDS_CHANGED,
+          detail: {
+            id: overlay.id,
+            absoluteBounds: overlay.getAbsoluteBounds(),
+            relativeBounds: overlay.getRelativeBounds(),
+          },
+        });
       }
     }
+
     for (const overlayId of this.overlayOrder) {
       this.renderOverlay(overlayId);
     }
