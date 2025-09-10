@@ -187,7 +187,6 @@ export class InteractionManager {
 
   private setupDragEventListeners(): void {
     this.eventBus.on(LIGHTER_EVENTS.OVERLAY_DRAG_END, (event) => {
-      console.log("OVERLAY_DRAG_END", event);
       const overlay = this.getOverlayById(event.detail.id);
       if (overlay && this.isMovableOverlay(overlay)) {
         const { startPosition, endPosition } = event.detail;
