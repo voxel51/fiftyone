@@ -171,7 +171,7 @@ const Detection = () => {
       selectable: true,
     });
 
-    addOverlay(detection);
+    addOverlay(detection, true);
   }, [currentSampleId, addOverlay]);
 
   return (

@@ -68,7 +68,7 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
           maintainAspectRatio: true,
         }
       );
-      addOverlay(mediaOverlay);
+      addOverlay(mediaOverlay, false);
 
       // Set the image overlay as canonical media for coordinate transformations
       scene.setCanonicalMedia(mediaOverlay);
@@ -83,7 +83,7 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
           overlay,
           sample.id
         );
-        addOverlay(lighterOverlay);
+        addOverlay(lighterOverlay, false);
       }
     }
 
