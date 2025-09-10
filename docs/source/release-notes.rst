@@ -3,6 +3,13 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.11.1
+--------------------------
+*Released September 11, 2025*
+
+- Fixed a permissioning edge case that could cause users to view the names of
+  datasets they didn't have access to.
+
 FiftyOne Enterprise 2.11.0
 --------------------------
 *Released September 3, 2025*
