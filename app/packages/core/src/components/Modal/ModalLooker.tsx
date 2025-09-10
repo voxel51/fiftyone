@@ -1,12 +1,14 @@
-import { useTheme } from "@fiftyone/components";
+import { LoadingDots, useTheme } from "@fiftyone/components";
 import type { ImageLooker } from "@fiftyone/looker";
 import { isNativeMediaType } from "@fiftyone/looker/src/util";
 import * as fos from "@fiftyone/state";
+import { useAtomValue } from "jotai";
 import React, { useMemo } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { LighterSampleRenderer } from "../../../../lighter/src";
 import { ImaVidLookerReact } from "./ImaVidLooker";
 import { MetadataLooker } from "./MetadataLooker";
+import { labelAtoms, loading } from "./Sidebar/Annotate/useLabels";
 import { VideoLookerReact } from "./VideoLooker";
 import useLooker from "./use-looker";
 import { useImageModalSelectiveRendering } from "./use-modal-selective-rendering";
@@ -35,6 +37,15 @@ interface LookerProps {
   // `ghost` means looker will render but with width and height set to 0
   ghost?: boolean;
 }
+
+const Load = ({ children }) => {
+  const l = useAtomValue(loading);
+  if (l) {
+    return <LoadingDots />;
+  }
+
+  return <>{children}</>;
+};
 
 const ModalLookerNoTimeline = React.memo((props: LookerProps) => {
   const { id, ref, looker } = useLooker<ImageLooker>(props);
@@ -91,10 +102,10 @@ export const ModalLooker = React.memo(
       isNativeMediaType(sample.sample.media_type ?? sample.sample._media_type)
     ) {
       return (
-        <>
-          <LighterSampleRenderer sample={sample} />
+        <Load>
+          <LighterSampleRenderer sample={sample} labels={labelAtoms} />
           <ModalLookerNoTimeline sample={sample} ghost />
-        </>
+        </Load>
       );
     }
 

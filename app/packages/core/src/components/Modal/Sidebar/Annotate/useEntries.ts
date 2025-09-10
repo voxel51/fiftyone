@@ -1,18 +1,25 @@
 import type { SidebarEntry } from "@fiftyone/state";
 import { EntryKind } from "@fiftyone/state";
-import { useAtomValue } from "jotai";
+import { getDefaultStore, useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { labelsExpanded } from "./GroupEntry";
-import { labels, loading } from "./useLabels";
+import { labelAtoms, loading } from "./useLabels";
+
+const store = getDefaultStore();
 
 const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
   const showLabels = useAtomValue(labelsExpanded);
-  const labelValues = useAtomValue(labels);
+  const atoms = useAtomValue(labelAtoms);
 
   const loadingValue = useAtomValue(loading);
   const labelEntries = useMemo(
-    () => labelValues.map((label) => ({ ...label, kind: EntryKind.LABEL })),
-    [labelValues]
+    () =>
+      atoms.map((atom) => ({
+        kind: EntryKind.LABEL,
+        atom,
+        id: store.get(atom).id,
+      })),
+    [atoms]
   );
 
   return [

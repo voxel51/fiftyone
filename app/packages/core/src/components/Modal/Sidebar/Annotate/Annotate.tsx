@@ -6,6 +6,7 @@ import React from "react";
 import styled from "styled-components";
 import Sidebar from "../../../Sidebar";
 import Actions from "./Actions";
+import Edit, { isEditing } from "./Edit";
 import GroupEntry from "./GroupEntry";
 import ImportSchema from "./ImportSchema";
 import LabelEntry from "./LabelEntry";
@@ -50,9 +51,10 @@ const AnnotateSidebar = () => {
           }
 
           if (entry.kind === EntryKind.LABEL) {
-            const { kind: _, ...props } = entry;
+            const { kind: _, atom } = entry;
+            console.log(atom);
             return {
-              children: <LabelEntry {...props} />,
+              children: <LabelEntry atom={atom} />,
               disabled: true,
             };
           }
@@ -76,9 +78,14 @@ const Annotate = () => {
   const showSchemaModal = useAtomValue(showModal);
   const showImport = useAtomValue(showImportPage);
   const loading = useAtomValue(schemas) === null;
+  const editing = useAtomValue(isEditing);
 
   if (loading) {
     return <Loading />;
+  }
+
+  if (editing) {
+    return <Edit />;
   }
 
   return (

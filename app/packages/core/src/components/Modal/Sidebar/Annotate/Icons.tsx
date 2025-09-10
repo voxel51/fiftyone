@@ -76,3 +76,10 @@ export const Shown = ({ on }: { on: boolean }) => {
     </Container>
   );
 };
+
+export const ICONS = {
+  Classification: Classification,
+  Classifications: Classification,
+  Detections: Detection,
+  Detection: Detection,
+};

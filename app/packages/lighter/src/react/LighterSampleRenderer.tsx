@@ -1,16 +1,17 @@
 /**
  * Copyright 2017-2025, Voxel51, Inc.
  */
-import { loadOverlays } from "@fiftyone/looker/src/overlays";
+import { FROM_FO } from "@fiftyone/looker/src/overlays";
 import DetectionOverlay from "@fiftyone/looker/src/overlays/detection";
 import * as fos from "@fiftyone/state";
 import {
-  fieldSchema,
-  getSampleSrc,
   Sample,
   State,
+  fieldSchema,
+  getSampleSrc,
   useAssertedRecoilValue,
 } from "@fiftyone/state";
+import { PrimitiveAtom, getDefaultStore } from "jotai";
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { ImageOptions, ImageOverlay, overlayFactory } from "../index";
@@ -23,6 +24,7 @@ export interface LighterSampleRendererProps {
   className?: string;
   /** Sample to display */
   sample: Sample;
+  labels: PrimitiveAtom<PrimitiveAtom<fos.AnnotationLabel>[]>;
 }
 
 /**
@@ -31,6 +33,7 @@ export interface LighterSampleRendererProps {
 export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
   className = "",
   sample,
+  labels,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -74,9 +77,12 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
       scene.setCanonicalMedia(mediaOverlay);
     }
 
-    const overlays = loadOverlays(sample.sample, schema, false);
+    const store = getDefaultStore();
+    const list = store.get(labels);
 
-    for (const overlay of overlays) {
+    for (const atom of list) {
+      const label = store.get(atom);
+      const overlay = FROM_FO[label.type](label.path, label.data)[0];
       if (overlay instanceof DetectionOverlay) {
         // Convert legacy overlay to lighter overlay with relative coordinates
         const lighterOverlay = convertLegacyToLighterDetection(

@@ -1,11 +1,14 @@
 import type { AnnotationLabel } from "@fiftyone/state";
 import { animated } from "@react-spring/web";
-import { useAtomValue } from "jotai";
+import type { PrimitiveAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import React from "react";
 import styled from "styled-components";
 import { Column } from "./Components";
-import { Classification, Detection } from "./Icons";
+import { editing } from "./Edit";
+import { ICONS } from "./Icons";
 import { fieldType } from "./state";
+import { hovering } from "./useHover";
 
 const Container = animated(styled.div`
   display: flex;
@@ -15,7 +18,8 @@ const Container = animated(styled.div`
   background: ${({ theme }) => theme.neutral.softBg};
   padding: 0.5rem;
 
-  &:hover {
+  &:hover,
+  &.hovering {
     background: ${({ theme }) => theme.background.level1};
   }
 `);
@@ -45,24 +49,25 @@ const Line = styled.div<{ fill: string }>`
   background: ${({ fill }) => fill};
 `;
 
-const ICONS = {
-  Classification: Classification,
-  Classifications: Classification,
-  Detections: Detection,
-  Detection: Detection,
-};
-
-const ObjectEntry = ({ data, path }: AnnotationLabel) => {
-  const type = useAtomValue(fieldType(path));
+const ObjectEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
+  const label = useAtomValue(atom);
+  const type = useAtomValue(fieldType(label.path));
+  const setEditing = useSetAtom(editing);
   const Icon = ICONS[type] ?? ICONS;
+  const isHovering = useAtomValue(hovering(label.id));
 
   return (
-    <Container>
+    <Container
+      onClick={() => {
+        setEditing(atom);
+      }}
+      className={isHovering ? "hovering" : ""}
+    >
       <Line fill="white" />
       <Header>
         <Column>
           <Icon fill="white" />
-          <div>{data.label}</div>
+          <div>{label.data.label}</div>
         </Column>
 
         {/*

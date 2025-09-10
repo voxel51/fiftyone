@@ -8,6 +8,7 @@ import * as fos from "@fiftyone/state";
 import React, { useCallback } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
+import { ItemLeft, ItemRight } from "./Components";
 import useShowModal from "./useShowModal";
 import { objectId } from "./utils";
 
@@ -193,7 +194,7 @@ const Detection = () => {
   );
 };
 
-const Undo = () => {
+export const Undo = () => {
   const { undo, canUndo } = useLighter();
 
   return (
@@ -221,7 +222,7 @@ const Undo = () => {
   );
 };
 
-const Redo = () => {
+export const Redo = () => {
   const { redo, canRedo } = useLighter();
 
   return (
@@ -258,13 +259,19 @@ const Actions = () => {
   return (
     <>
       <ActionsDiv>
-        <Arrow />
-        <Move />
-        <Classification />
-        <Detection />
-        <Line />
-        <Undo />
-        <Redo />
+        <ItemLeft style={{ flex: 1, justifyContent: "space-between" }}>
+          <Arrow />
+          <Move />
+          <Classification />
+          <Detection />
+        </ItemLeft>
+
+        <ItemRight>
+          <Line />
+
+          <Undo />
+          <Redo />
+        </ItemRight>
       </ActionsDiv>
       <ActionsDiv style={{ margin: "0 0.25rem", paddingBottom: "0.5rem" }}>
         <div>Click labels to edit</div>
