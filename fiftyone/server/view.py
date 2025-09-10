@@ -948,39 +948,23 @@ def _add_label_tags(path, field, view):
 
 def _count_list_items(path, view):
     expr = {
-        "$reduce": {
-            "input": F(path),  # The field to be processed
-            "initialValue": {},
-            "in": {
-                "$mergeObjects": [
-                    "$$value",
-                    {
-                        "$arrayToObject": [
-                            [
-                                {
-                                    "k": "$$this",
-                                    "v": {
-                                        "$add": [
-                                            {
-                                                "$ifNull": [
-                                                    {
-                                                        "$getField": {
-                                                            "input": "$$value",
-                                                            "field": "$$this",
-                                                        }
-                                                    },
-                                                    0,
-                                                ]
-                                            },
-                                            1,
-                                        ]
-                                    },
-                                }
-                            ]
-                        ]
+        "$arrayToObject": {
+            "$map": {
+                "input": {"$setUnion": "$_label_tags"},
+                "as": "tag",
+                "in": {
+                    "k": "$$tag",
+                    "v": {
+                        "$size": {
+                            "$filter": {
+                                "input": "$_label_tags",
+                                "as": "t",
+                                "cond": {"$eq": ["$$t", "$$tag"]},
+                            }
+                        }
                     },
-                ]
-            },
+                },
+            }
         }
     }
     return view.set_field(path, expr, _allow_missing=True)
