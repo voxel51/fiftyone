@@ -2663,6 +2663,82 @@ class ViewExpression(object):
         """
         return ViewExpression({"$reverseArray": self})
 
+    def sort(self, key=None, numeric=False, reverse=False):
+        """Sorts this expression, which must resolve to an array.
+
+        If no ``key`` is provided, this array must contain elements whose
+        BSON representation can be sorted by JavaScript's ``.sort()`` method.
+
+        If a ``key`` is provided, the array must contain documents, which are
+        sorted by ``key``, which must be a field or embedded field.
+
+        Examples::
+
+            #
+            # Sort the tags of each sample in a dataset
+            #
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(filepath="im1.jpg", tags=["z", "f", "p", "a"]),
+                    fo.Sample(filepath="im2.jpg", tags=["y", "q", "h", "d"]),
+                    fo.Sample(filepath="im3.jpg", tags=["w", "c", "v", "l"]),
+                ]
+            )
+
+            # Sort the `tags` of each sample
+            view = dataset.set_field("tags", F("tags").sort())
+
+            print(view.first().tags)
+
+            #
+            # Sort the predictions in each sample of a dataset by `confidence`
+            #
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            view = dataset.set_field(
+                "predictions.detections",
+                F("detections").sort(key="confidence", numeric=True, reverse=True)
+            )
+
+            sample = view.first()
+            print(sample.predictions.detections[0].confidence)
+            print(sample.predictions.detections[-1].confidence)
+
+        Args:
+            key (None): an optional field or ``embedded.field.name`` to sort by
+            numeric (False): whether the array contains numeric values. By
+                default, the values will be sorted alphabetically by their
+                string representations
+            reverse (False): whether to sort in descending order
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        sort_order = pymongo.DESCENDING if reverse else pymongo.ASCENDING
+
+        if key is not None:
+            sort_by = {key: sort_order}
+        else:
+            sort_by = sort_order
+
+        sort_stage = {
+            "$sortArray": {
+                "input": self,
+                "sortBy": sort_by,
+            }
+        }
+        return ViewExpression(sort_stage)
+
     def filter(self, expr):
         """Applies the given filter to the elements of this expression, which
         must resolve to an array.
@@ -4486,6 +4562,14 @@ class ViewExpression(object):
             zip_expr["defaults"] = defaults
 
         return ViewExpression({"$zip": zip_expr})
+
+    # Experimental expressions ###############################################
+
+    def _function(self, function):
+        function = " ".join(function.split())
+        return ViewExpression(
+            {"$function": {"body": function, "args": [self], "lang": "js"}}
+        )
 
 
 class ViewField(ViewExpression):
