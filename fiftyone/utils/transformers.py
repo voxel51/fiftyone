@@ -1129,7 +1129,7 @@ class TransformersPoseEstimationOutputProcessor(fout.OutputProcessor):
                     pose_results.append(batch_results)
         
         batch_keypoints = []
-        for idx, (pose_result, (width, height)) in enumerate(zip(pose_results, image_sizes)):
+        for idx, (pose_result, (height, width)) in enumerate(zip(pose_results, image_sizes)):
             keypoints_list = []
             
             if pose_result and len(pose_result) > 0:
@@ -1157,7 +1157,7 @@ class TransformersPoseEstimationOutputProcessor(fout.OutputProcessor):
                             keypoints_list.append(
                                 fol.Keypoint(
                                     label=self.COCO_KEYPOINT_NAMES[j] if j < len(self.COCO_KEYPOINT_NAMES) else f"keypoint_{j}",
-                                    points=[(x_rel, y_rel)],
+                                    points=[(float(x_rel), float(y_rel))],
                                     confidence=[float(score)]
                                 )
                             )
@@ -1222,6 +1222,9 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
         if hasattr(self._output_processor, '_processor'):
             if hasattr(self._transforms, 'processor'):
                 self._output_processor._processor = self._transforms.processor
+        
+        # Enable image size tracking for normalization
+        self._transforms.return_image_sizes = True
     
     def predict(self, img_or_sample):
         """Performs prediction on the given image or sample.
@@ -1286,7 +1289,19 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
         if self.preprocess and self._transforms is not None:
             if hasattr(self._transforms, 'processor'):
                 processed_batch = []
+                image_sizes_list = []
                 for img, boxes in zip(imgs, box_prompts):
+                    if isinstance(img, Image.Image):
+                        img_width, img_height = img.size
+                    elif isinstance(img, np.ndarray):
+                        img_height, img_width = img.shape[:2]
+                    elif isinstance(img, torch.Tensor):
+                        img_height, img_width = img.shape[-2:]
+                    else:
+                        img_width, img_height = 640, 480
+                    
+                    image_sizes_list.append((img_height, img_width))
+                    
                     processed = self._transforms.processor(
                         images=img,
                         boxes=[boxes],
@@ -1299,8 +1314,8 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
                 else:
                     pixel_values = torch.cat([p['pixel_values'] for p in processed_batch], dim=0)
                     imgs = {'pixel_values': pixel_values}
-                    if 'fo_image_size' in processed_batch[0]:
-                        imgs['fo_image_size'] = torch.stack([p['fo_image_size'] for p in processed_batch])
+                
+                imgs['fo_image_size'] = torch.tensor(image_sizes_list)
             else:
                 processed_imgs = []
                 for img in imgs:
@@ -1309,7 +1324,11 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
                 if self.has_collate_fn:
                     imgs = self.collate_fn(processed_imgs)
         
-        image_sizes = imgs.pop("fo_image_size", [(None, None)] * len(imgs))
+        if isinstance(imgs, dict) and 'pixel_values' in imgs:
+            batch_size = imgs['pixel_values'].shape[0]
+        else:
+            batch_size = len(imgs) if isinstance(imgs, list) else 1
+        image_sizes = imgs.pop("fo_image_size", [(None, None)] * batch_size)
         
         for k, v in imgs.items():
             if isinstance(v, torch.Tensor):
