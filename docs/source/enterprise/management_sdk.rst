@@ -20,7 +20,7 @@ keys, and more.
 .. _enterprise-sdk-api-reference:
 
 API reference
-_____________
+-----------
 
 .. _enterprise-sdk-connections:
 
