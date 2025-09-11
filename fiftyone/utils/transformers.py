@@ -25,7 +25,6 @@ import fiftyone.utils.torch as fout
 fou.ensure_torch()
 import torch
 
-from torchvision.transforms import functional as F
 
 fou.ensure_package("transformers")
 import transformers
@@ -1103,6 +1102,9 @@ class TransformersPoseEstimationOutputProcessor(fout.OutputProcessor):
     def __call__(self, output, image_sizes, confidence_thresh=None, box_prompts=None):
         """Process pose estimation outputs to FiftyOne format."""
         
+        if isinstance(image_sizes, torch.Tensor):
+            image_sizes = image_sizes.tolist()
+        
         if hasattr(output, 'heatmaps') and isinstance(output.heatmaps, torch.Tensor):
             output.heatmaps = output.heatmaps.detach()
         
@@ -1129,42 +1131,44 @@ class TransformersPoseEstimationOutputProcessor(fout.OutputProcessor):
                     pose_results.append(batch_results)
         
         batch_keypoints = []
-        for idx, (pose_result, (height, width)) in enumerate(zip(pose_results, image_sizes)):
-            keypoints_list = []
+        for pose_result, (height, width) in zip(pose_results, image_sizes):
+            height = float(height) if height is not None else None
+            width = float(width) if width is not None else None
             
-            if pose_result and len(pose_result) > 0:
+            persons = []
+            if pose_result:
                 for person_result in pose_result:
-                    if isinstance(person_result, dict):
-                        kpts = person_result.get('keypoints', [])
-                        scores = person_result.get('scores', [])
-                        
-                        if isinstance(kpts, torch.Tensor):
-                            kpts = kpts.detach().cpu().numpy()
-                        if isinstance(scores, torch.Tensor):
-                            scores = scores.detach().cpu().numpy()
-                        
-                        for j, (kp, score) in enumerate(zip(kpts, scores)):
-                            if confidence_thresh and score < confidence_thresh:
-                                continue
-                                
-                            if width and height:
-                                x_rel = float(kp[0]) / width
-                                y_rel = float(kp[1]) / height
-                            else:
-                                x_rel = float(kp[0])
-                                y_rel = float(kp[1])
-                            
-                            keypoints_list.append(
-                                fol.Keypoint(
-                                    label=self.COCO_KEYPOINT_NAMES[j] if j < len(self.COCO_KEYPOINT_NAMES) else f"keypoint_{j}",
-                                    points=[(float(x_rel), float(y_rel))],
-                                    confidence=[float(score)]
-                                )
-                            )
+                    if not isinstance(person_result, dict):
+                        continue
+                    kpts = person_result.get("keypoints", [])
+                    scores = person_result.get("scores", None)
+                    if isinstance(kpts, torch.Tensor):
+                        kpts = kpts.detach().cpu().numpy()
+                    if isinstance(scores, torch.Tensor):
+                        scores = scores.detach().cpu().numpy()
+                    if scores is None:
+                        scores = np.ones(len(kpts), dtype=float)
+                    
+                    points, confs = [], []
+                    for kp, sc in zip(kpts, scores):
+                        sc = float(sc)
+                        if confidence_thresh is not None and sc < confidence_thresh:
+                            points.append(None)
+                            confs.append(sc)
+                            continue
+                        x = float(kp[0])
+                        y = float(kp[1])
+                        x_rel = (x / width) if width else x
+                        y_rel = (y / height) if height else y
+                        points.append((x_rel, y_rel))
+                        confs.append(sc)
+                    
+                    if any(p is not None for p in points):
+                        persons.append(
+                            fol.Keypoint(label="person", points=points, confidence=confs)
+                        )
             
-            batch_keypoints.append(
-                fol.Keypoints(keypoints=keypoints_list, skeleton=self.COCO_SKELETON)
-            )
+            batch_keypoints.append(fol.Keypoints(keypoints=persons, skeleton=self.COCO_SKELETON))
         
         return batch_keypoints
 
@@ -1215,16 +1219,16 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
             )
         
         if config.output_processor_cls is None:
-            config.output_processor_cls = TransformersPoseEstimationOutputProcessor
+            config.output_processor_cls = "fiftyone.utils.transformers.TransformersPoseEstimationOutputProcessor"
         
         super().__init__(config)
         
-        if hasattr(self._output_processor, '_processor'):
-            if hasattr(self._transforms, 'processor'):
-                self._output_processor._processor = self._transforms.processor
+        if hasattr(self._output_processor, "processor"):
+            self._output_processor.processor = self.transforms.processor
+        else:
+            self._output_processor._processor = self.transforms.processor
         
-        # Enable image size tracking for normalization
-        self._transforms.return_image_sizes = True
+        self.transforms.return_image_sizes = True
     
     def predict(self, img_or_sample):
         """Performs prediction on the given image or sample.
@@ -1235,18 +1239,22 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
         Returns:
             a :class:`fiftyone.core.labels.Keypoints` instance
         """
-        if hasattr(img_or_sample, '__getitem__') and self.config.box_prompt_field:
+        if hasattr(img_or_sample, "filepath") and self.config.box_prompt_field:
             sample = img_or_sample
             img = sample.filepath
             
-            prompt_value = sample.get_field(self.config.box_prompt_field)
+            prompt_value = sample[self.config.box_prompt_field] if self.config.box_prompt_field in sample else None
             if prompt_value and hasattr(prompt_value, 'detections'):
                 boxes = []
+                md = getattr(sample, "metadata", None)
+                width = getattr(md, "width", None)
+                height = getattr(md, "height", None)
+                if width is None or height is None:
+                    with Image.open(img) as _im:
+                        width, height = _im.size
                 for det in prompt_value.detections:
                     if det.label == 'person':
                         x, y, w, h = det.bounding_box
-                        img_pil = Image.open(img) if isinstance(img, str) else img
-                        width, height = img_pil.size
                         boxes.append([x * width, y * height, w * width, h * height])
                 if boxes:
                     self.set_box_prompts([boxes])
@@ -1286,49 +1294,25 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
                 
                 box_prompts.append([[0, 0, float(w), float(h)]])
         
-        if self.preprocess and self._transforms is not None:
-            if hasattr(self._transforms, 'processor'):
-                processed_batch = []
-                image_sizes_list = []
-                for img, boxes in zip(imgs, box_prompts):
-                    if isinstance(img, Image.Image):
-                        img_width, img_height = img.size
-                    elif isinstance(img, np.ndarray):
-                        img_height, img_width = img.shape[:2]
-                    elif isinstance(img, torch.Tensor):
-                        img_height, img_width = img.shape[-2:]
-                    else:
-                        img_width, img_height = 640, 480
-                    
-                    image_sizes_list.append((img_height, img_width))
-                    
-                    processed = self._transforms.processor(
-                        images=img,
-                        boxes=[boxes],
-                        return_tensors="pt"
-                    )
-                    processed_batch.append(processed)
-                
-                if len(processed_batch) == 1:
-                    imgs = processed_batch[0]
-                else:
-                    pixel_values = torch.cat([p['pixel_values'] for p in processed_batch], dim=0)
-                    imgs = {'pixel_values': pixel_values}
-                
-                imgs['fo_image_size'] = torch.tensor(image_sizes_list)
-            else:
-                processed_imgs = []
-                for img in imgs:
-                    processed_imgs.append(self._transforms(img))
-                
-                if self.has_collate_fn:
-                    imgs = self.collate_fn(processed_imgs)
+        if self.preprocess:
+            processed = [
+                self.transforms({"images": img, "boxes": [boxes]})
+                for img, boxes in zip(imgs, box_prompts)
+            ]
+            imgs = self.collate_fn(processed)
         
         if isinstance(imgs, dict) and 'pixel_values' in imgs:
             batch_size = imgs['pixel_values'].shape[0]
         else:
             batch_size = len(imgs) if isinstance(imgs, list) else 1
-        image_sizes = imgs.pop("fo_image_size", [(None, None)] * batch_size)
+        
+        image_sizes = imgs.pop("fo_image_size", None)
+        if isinstance(image_sizes, torch.Tensor):
+            image_sizes = image_sizes.tolist()
+        if image_sizes is None:
+            image_sizes = []
+            for i in range(batch_size):
+                image_sizes.append((None, None))
         
         for k, v in imgs.items():
             if isinstance(v, torch.Tensor):
