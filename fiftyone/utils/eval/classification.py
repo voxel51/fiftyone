@@ -5,6 +5,7 @@ Classification evaluation.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from copy import deepcopy
 import inspect
 import itertools
@@ -900,6 +901,9 @@ class BinaryClassificationResults(ClassificationResults):
             backend=backend,
             **kwargs,
         )
+
+    def metrics(self, classes=None, average="binary", beta=1.0):
+        return super().metrics(classes, average, beta)
 
     def _parse_classes(self, classes):
         if classes is not None:
