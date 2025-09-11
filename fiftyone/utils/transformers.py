@@ -1175,8 +1175,6 @@ class FiftyOneTransformerForPoseEstimationConfig(FiftyOneTransformerConfig):
     Args:
         model (None): a ``transformers`` model
         name_or_path (None): the name or path to a checkpoint file to load
-        detector_name (None): name of detector model from zoo for person detection
-        detector_confidence_thresh (0.5): minimum confidence for person detections
     """
 
     def __init__(self, d):
@@ -1188,14 +1186,6 @@ class FiftyOneTransformerForPoseEstimationConfig(FiftyOneTransformerConfig):
         super().__init__(d)
         
         self.box_prompt_field = self.parse_string(d, "box_prompt_field", default=None)
-        
-        self.detector_name = self.parse_string(
-            d, "detector_name", 
-            default="faster-rcnn-resnet50-fpn-coco-torch" if not self.box_prompt_field else None
-        )
-        self.detector_confidence_thresh = self.parse_number(
-            d, "detector_confidence_thresh", default=0.8
-        )
 
 
 class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
@@ -1232,14 +1222,7 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
         if hasattr(self._output_processor, '_processor'):
             if hasattr(self._transforms, 'processor'):
                 self._output_processor._processor = self._transforms.processor
-        
-        if config.detector_name and not config.box_prompt_field:
-            import fiftyone.zoo as foz
-            self._detector = foz.load_zoo_model(config.detector_name)
-            self._detector_confidence_thresh = config.detector_confidence_thresh
-        else:
-            self._detector = None
-            self._detector_confidence_thresh = config.detector_confidence_thresh    
+    
     def _predict_all(self, imgs):
         """Perform pose estimation on images.
         
