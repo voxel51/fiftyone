@@ -12,7 +12,6 @@ import os
 import warnings
 
 import numpy as np
-import scipy
 import scipy.spatial as sp
 from scipy.spatial.transform import Rotation as R
 from typing import Any, Dict, List, Tuple, Union
@@ -428,7 +427,7 @@ def _compute_intersection_points(box1, box2):
 
 def rpy_to_rotation(euler_rpy: List[float]):
     """Converts Euler angles in roll-pitch-yaw order to a
-    scipy.spatial.transforms Rotation.
+    scipy.spatial.transform Rotation.
 
     Args:
         euler_rpy: a list of Euler angles in roll-pitch-yaw order
@@ -506,8 +505,8 @@ def single_coordinate_transform(
     Args:
         points: A 3-element np.ndarray representing the (x, y, z) coordinates of
             the point
-        rot_quaternion: A scipy.spatial.transform.Rotation quaternion
-            representing the current orientation
+        rot: A scipy.spatial.transform.Rotation representing the current
+            orientation
         transformation: A tuple containing:
             - translation: 3-element array (tx, ty, tz)
             - rotation_matrix: (3, 3) rotation matrix
