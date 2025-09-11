@@ -106,13 +106,13 @@
     window.addEventListener('DOMContentLoaded', function () {
     docsearch({
         container: '#searchbox-mobile',
-        appId: '{{ theme_docsearch_app_id }}',
-        apiKey: '{{ theme_docsearch_api_key }}',
-        indexName: '{{ theme_docsearch_index_name }}',
+        appId: '{{ docsearch_app_id }}',
+        apiKey: '{{ docsearch_api_key }}',
+        indexName: '{{ docsearch_index_name }}',
     });
 
     document.addEventListener('keydown', function (event) {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+      if (event.key === '/') {
         event.preventDefault();
         event.stopImmediatePropagation();
       }

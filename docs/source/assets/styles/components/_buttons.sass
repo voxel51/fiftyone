@@ -36,7 +36,7 @@
       height: 34px
 
   .text
-    letter-spacing: -0.01em
+    letter-spacing: 0.01em
     line-height: 1.3
     padding: 0px 16px
     transition: all 0.15s ease
@@ -97,3 +97,83 @@
   &:hover:before
     background-color: var(--pst-color-link)
 
+.kapa-ai-button
+  position: fixed
+  bottom: 20px
+  right: 20px
+  z-index: 1000
+  background-color: var(--pst-color-link) !important
+  color: #fff !important
+  border-radius: 40px
+  font-size: 16px
+  font-weight: 500
+  text-decoration: none
+  padding: 12px 20px
+  border-width: 0 !important
+  letter-spacing: 0.14px
+  display: flex
+  align-items: center
+  gap: 10px
+
+  &:hover
+    background-color: color-mix(in oklab, var(--pst-color-link) 90%, transparent) !important
+    text-decoration: none
+
+  .kapa-text
+    flex: 1
+
+  .kapa-logo
+    width: 20px
+    height: 20px
+    display: flex
+    align-items: center
+    justify-content: center
+
+    img
+      width: 20px
+      height: 20px
+      object-fit: contain
+
+.kapa-ask-ai-button
+  display: flex
+  align-items: center
+  gap: 8px
+  width: 100%
+  margin: 8px 0
+  padding: 8px 16px
+  background-color: $voxel-dark
+  border: 1px solid rgba(33, 37, 41, 0.2)
+  border-radius: $border-radius
+  font-size: 14px
+  font-weight: $font-weight-medium
+  color: #fff
+  cursor: pointer
+  transition: all $transition-normal
+  letter-spacing: 0.14px
+
+  &:hover
+    background-color: color-mix(in oklab, $voxel-dark 90%, transparent)
+    border-color: rgba(33, 37, 41, 0.3)
+    transform: translateY(-1px)
+    box-shadow: 0 2px 8px rgba(33, 37, 41, 0.2)
+
+  &:active
+    background-color: color-mix(in oklab, $voxel-dark 85%, transparent)
+    transform: translateY(0)
+
+  .kapa-text
+    flex: 1
+    font-weight: $font-weight-medium
+    color: #fff
+
+  .kapa-logo
+    width: 16px
+    height: 16px
+    display: flex
+    align-items: center
+    justify-content: center
+
+    img
+      width: 16px
+      height: 16px
+      object-fit: contain
