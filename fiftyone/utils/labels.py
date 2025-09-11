@@ -1218,7 +1218,6 @@ def detections_3d_to_cuboids_2d(
     camera_model: Callable = fou3d.pinhole_projector,
     transformation_key_field: str = "id",
     camera_key_field: str = "id",
-    batch_size: int = 1000,
     progress=None,
 ):
     """High-level orchestration of 3D → 2D label conversion. Processes the
@@ -1257,7 +1256,6 @@ def detections_3d_to_cuboids_2d(
             transformations for each sample
         camera_key_field ("id"): the key field to use for looking up camera
             parameters for each camera sample
-        batch_size (1000): number of samples to process in each batch
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
@@ -1269,9 +1267,6 @@ def detections_3d_to_cuboids_2d(
 
     camera_slice = sample_collection.select_group_slices(camera_slice_name)
     camera_slice.compute_metadata(progress=progress)
-
-    values_2d_label = {}
-    count = 0
 
     for group in sample_collection.select_fields(in_field).iter_groups(
         group_slices=[spatial_slice_name, camera_slice_name],

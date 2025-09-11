@@ -12,6 +12,7 @@ import os
 import warnings
 
 import numpy as np
+import scipy
 import scipy.spatial as sp
 from scipy.spatial.transform import Rotation as R
 from typing import Any, Dict, List, Tuple, Union
@@ -32,9 +33,6 @@ import fiftyone.utils.data as foud
 import fiftyone.utils.image as foui
 
 o3d = fou.lazy_import("open3d", callback=lambda: fou.ensure_package("open3d"))
-pyq = fou.lazy_import(
-    "pyquaternion", callback=lambda: fou.ensure_package("pyquaternion")
-)
 
 logger = logging.getLogger(__name__)
 
@@ -428,19 +426,18 @@ def _compute_intersection_points(box1, box2):
     return intersection_points
 
 
-def rpy_to_quaternion(euler_rpy: List[float]):
-    """Converts Euler angles in roll-pitch-yaw order to a quaternion.
+def rpy_to_rotation(euler_rpy: List[float]):
+    """Converts Euler angles in roll-pitch-yaw order to a
+    scipy.spatial.transforms Rotation.
 
     Args:
         euler_rpy: a list of Euler angles in roll-pitch-yaw order
 
     Returns:
-        A quaternion representing the rotation.
+        A scipy.spatial.transform Rotation.
     """
     roll, pitch, yaw = euler_rpy
-    rot = R.from_euler("zyx", [yaw, pitch, roll])
-    qx, qy, qz, qw = rot.as_quat()
-    return pyq.Quaternion(qw, qx, qy, qz)
+    return R.from_euler("zyx", [yaw, pitch, roll])
 
 
 def multiple_coordinate_transform(
@@ -456,14 +453,14 @@ def multiple_coordinate_transform(
     at each step using quaternion multiplication.
 
     Args:
-        points (list[float] or np.ndarray): A 3-element list/array representing
+        points: A 3-element list/array representing
             the (x, y, z) coordinates of the point
-        euler_rpy (list[float]): A 3-element list of Euler angles
+        euler_rpy: A 3-element list of Euler angles
             [roll, pitch, yaw] in radians
-        transformation_sequence (list[tuple]): A list of (translation, rotation) tuples:
+        transformation_sequence: A list of (translation, rotation) tuples:
             - translation: 3-element vector (tx, ty, tz)
             - rotation: (3, 3) rotation matrix
-        forward_transform_flags (list[bool], optional): One per transformation
+        forward_transform_flags (None): One per transformation
             True means apply the transform source → target
             False means apply the inverse (target → source). Defaults to all True
 
@@ -478,24 +475,24 @@ def multiple_coordinate_transform(
         raise ValueError(
             "transformation_sequence and forward_transform_flags must have equal lengths"
         )
-    rot_quaternion = rpy_to_quaternion(euler_rpy)
+    rot = rpy_to_rotation(euler_rpy)
     points = np.array(points)
     for (translation, rotation), forward_transform in zip(
         transformation_sequence, forward_transform_flags
     ):
-        points, rot_quaternion = single_coordinate_transform(
+        points, rot = single_coordinate_transform(
             points,
-            rot_quaternion,
+            rot,
             (np.array(translation), np.array(rotation)),
             forward_transform,
         )
-    yaw, pitch, roll = rot_quaternion.yaw_pitch_roll
+    yaw, pitch, roll = rot.as_euler("zyx", degrees=False)
     return points.tolist(), [roll, pitch, yaw]
 
 
 def single_coordinate_transform(
     points: np.ndarray,
-    rot_quaternion: Any,
+    rot: Any,
     transformation: Tuple[np.ndarray, np.ndarray],
     forward_transform: bool = True,
 ) -> Tuple[np.ndarray, Any]:
@@ -509,12 +506,12 @@ def single_coordinate_transform(
     Args:
         points: A 3-element np.ndarray representing the (x, y, z) coordinates of
             the point
-        rot_quaternion: A pyquaternion.Quaternion representing the current
-            orientation
-        transformation (tuple): A tuple containing:
-            - translation (np.ndarray): 3-element array (tx, ty, tz)
-            - rotation_matrix (np.ndarray): (3, 3) rotation matrix
-        forward_transform: If True, applies the forward transform. If False,
+        rot_quaternion: A scipy.spatial.transform.Rotation quaternion
+            representing the current orientation
+        transformation: A tuple containing:
+            - translation: 3-element array (tx, ty, tz)
+            - rotation_matrix: (3, 3) rotation matrix
+        forward_transform (True): If True, applies the forward transform. If False,
             applies the inverse transform
 
     Returns:
@@ -522,19 +519,20 @@ def single_coordinate_transform(
         - Updated orientation
     """
     transform_translation, transform_rot_matrix = transformation
-    transform_quaternion = pyq.Quaternion(matrix=transform_rot_matrix)
+    transform_rotation = R.from_matrix(transform_rot_matrix)
     if forward_transform:
         transformed_points = (
-            np.dot(transform_quaternion.rotation_matrix, points)
+            np.dot(transform_rotation.as_matrix(), points)
             + transform_translation
         )
-        final_orientation = transform_quaternion * rot_quaternion
+        final_orientation = transform_rotation * rot
     else:
         transformed_points = np.dot(
-            transform_quaternion.inverse.rotation_matrix,
+            transform_rotation.inv().as_matrix(),
             points - transform_translation,
         )
-        final_orientation = transform_quaternion.inverse * rot_quaternion
+        final_orientation = transform_rotation.inv() * rot
+
     return transformed_points, final_orientation
 
 
@@ -629,9 +627,9 @@ def point_in_front_of_camera(
         corners_3d: a 3x8 np.ndarray containing the 3D coordinates of the
             cuboid's corners
         imsize: a tuple (width, height) of the image dimensions
-        distance_threshold: a float representing the minimum distance in meters
+        distance_threshold (0.1): a float representing the minimum distance in meters
             for a corner to be considered in front of the camera
-        safety_threshold: a float representing the minimum safety distance in meters
+        safety_threshold (0.1): a float representing the minimum safety distance in meters
             for a corner to be considered safe
 
     Returns:
