@@ -1986,17 +1986,23 @@ class Tooltip(View):
         column: the column of the tooltip
     """
 
-    def __init__(self, row, column, **kwargs):
+    def __init__(self, row, column, value, **kwargs):
         super().__init__(**kwargs)
         self.row = row
         self.column = column
+        self.value = value
 
     def clone(self):
-        clone = Tooltip(self.row, self.column, **self._kwargs)
+        clone = Tooltip(self.row, self.column, self.value, **self._kwargs)
         return clone
 
     def to_json(self):
-        return {**super().to_json(), "row": self.row, "column": self.column}
+        return {
+            **super().to_json(),
+            "row": self.row,
+            "column": self.column,
+            "value": self.value,
+        }
 
 
 class TableView(View):
@@ -2044,11 +2050,17 @@ class TableView(View):
         self.row_actions.append(row_action)
         return row_action
 
-    def add_tooltip(self, row, column, value, **kwargs):
+    def add_tooltip(self, row, column, value, overwrite=False, **kwargs):
         if (row, column) in self._tooltip_map:
-            raise ValueError(
-                f"Tooltip for row '{row}' and column '{column}' already exists"
-            )
+            if overwrite:
+                tooltip = self._tooltip_map[(row, column)]
+                tooltip.value = value
+                tooltip._kwargs = kwargs
+                return tooltip
+            else:
+                raise ValueError(
+                    f"Tooltip for row '{row}' and column '{column}' already exists"
+                )
 
         tooltip = Tooltip(row=row, column=column, value=value, **kwargs)
         self.tooltips.append(tooltip)
