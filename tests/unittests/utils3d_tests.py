@@ -417,7 +417,6 @@ class CoordinateTransformationTests(unittest.TestCase):
             point, euler_rpy, [self.transformation]
         )
         self.assertTrue(np.allclose(point_transformed, [1, -4, 11]))
-        breakpoint()
         self.assertTrue(
             np.allclose(euler_rpy_transformed, [1.57, 1.57, 0], rtol=1e-03)
         )
