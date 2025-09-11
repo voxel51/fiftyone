@@ -1223,6 +1223,38 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
             if hasattr(self._transforms, 'processor'):
                 self._output_processor._processor = self._transforms.processor
     
+    def predict(self, img_or_sample):
+        """Performs prediction on the given image or sample.
+        
+        Args:
+            img_or_sample: either an image or a FiftyOne sample with box_prompt_field
+        
+        Returns:
+            a :class:`fiftyone.core.labels.Keypoints` instance
+        """
+        if hasattr(img_or_sample, '__getitem__') and self.config.box_prompt_field:
+            sample = img_or_sample
+            img = sample.filepath
+            
+            prompt_value = sample.get_field(self.config.box_prompt_field)
+            if prompt_value and hasattr(prompt_value, 'detections'):
+                boxes = []
+                for det in prompt_value.detections:
+                    if det.label == 'person':
+                        x, y, w, h = det.bounding_box
+                        img_pil = Image.open(img) if isinstance(img, str) else img
+                        width, height = img_pil.size
+                        boxes.append([x * width, y * height, w * width, h * height])
+                if boxes:
+                    self.set_box_prompts([boxes])
+        else:
+            img = img_or_sample
+        
+        if isinstance(img, str):
+            img = Image.open(img)
+        
+        return self._predict_all([img])[0]
+    
     def _predict_all(self, imgs):
         """Perform pose estimation on images.
         
@@ -1251,7 +1283,7 @@ class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
                 
                 box_prompts.append([[0, 0, float(w), float(h)]])
         
-        if self._preprocess and self._transforms is not None:
+        if self.preprocess and self._transforms is not None:
             if hasattr(self._transforms, 'processor'):
                 processed_batch = []
                 for img, boxes in zip(imgs, box_prompts):
