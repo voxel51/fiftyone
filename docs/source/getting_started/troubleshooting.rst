@@ -224,7 +224,7 @@ If you have output similar to the below, you may just need to install
   .../site-packages/fiftyone/db/bin/mongod: error while loading shared libraries:
     libcrypto.so.1.1: cannot open shared object file: No such file or directory
 
-On Ubuntu, `libssl` packages can be install with the following command:
+On Ubuntu, `libssl` packages can be installed with the following command:
 
 .. code-block:: shell
 
@@ -240,7 +240,7 @@ FiftyOne to use a MongoDB instance that you have installed yourself.
 Troubleshooting Windows imports
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If your encounter a `psutil.NoSuchProcessExists` exists when importing
+If you encounter a `psutil.NoSuchProcessExists` exists when importing
 `fiftyone`, you are likely missing the C++ libraries MongoDB requires.
 
 .. code-block::

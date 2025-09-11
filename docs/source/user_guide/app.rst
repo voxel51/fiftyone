@@ -92,7 +92,7 @@ opened in a new tab of your web browser. See
 
     When working inside a Docker container, FiftyOne should automatically
     detect and appropriately configure networking. However, if you are unable
-    to load the App in your browser, you many need to manually
+    to load the App in your browser, you may need to manually
     :ref:`set the App address <restricting-app-address>` to `0.0.0.0`:
 
     .. code:: python
