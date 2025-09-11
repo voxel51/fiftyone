@@ -1,9 +1,8 @@
-import { useLighter } from "@fiftyone/lighter";
+import { LIGHTER_EVENTS, useLighter } from "@fiftyone/lighter";
 import { atom, getDefaultStore } from "jotai";
-import { atomFamily } from "jotai/utils";
 import { useEffect } from "react";
 
-export const hovering = atomFamily((id: string) => atom(false));
+export const hoveringLabelIds = atom<string[]>([]);
 
 export default function useHover() {
   const { scene } = useLighter();
@@ -11,12 +10,33 @@ export default function useHover() {
   useEffect(() => {
     const store = getDefaultStore();
 
-    scene?.on("overlay-hover", (event) => {
-      store.set(hovering(event.detail.id), true);
-    });
+    const handleHover = (event: CustomEvent) => {
+      store.set(hoveringLabelIds, [
+        ...store.get(hoveringLabelIds),
+        event.detail.id,
+      ]);
+    };
 
-    scene?.on("overlay-unhover", (event) => {
-      store.set(hovering(event.detail.id), false);
-    });
+    const handleUnhover = (event: CustomEvent) => {
+      store.set(
+        hoveringLabelIds,
+        store.get(hoveringLabelIds).filter((id) => id !== event.detail.id)
+      );
+    };
+
+    const handleAllUnhover = (event: CustomEvent) => {
+      store.set(hoveringLabelIds, []);
+    };
+
+    scene?.on(LIGHTER_EVENTS.OVERLAY_HOVER, handleHover);
+
+    scene?.on(LIGHTER_EVENTS.OVERLAY_UNHOVER, handleUnhover);
+    scene?.on(LIGHTER_EVENTS.OVERLAY_ALL_UNHOVER, handleAllUnhover);
+
+    return () => {
+      scene?.off(LIGHTER_EVENTS.OVERLAY_HOVER, handleHover);
+      scene?.off(LIGHTER_EVENTS.OVERLAY_UNHOVER, handleUnhover);
+      scene?.off(LIGHTER_EVENTS.OVERLAY_ALL_UNHOVER, handleAllUnhover);
+    };
   }, [scene]);
 }

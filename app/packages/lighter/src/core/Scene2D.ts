@@ -390,8 +390,14 @@ export class Scene2D {
     // Find the topmost overlay at the current mouse position
     const topmostOverlay = this.findOverlayAtPoint(pixelCoordinates);
 
+    this.dispatch({
+      type: LIGHTER_EVENTS.OVERLAY_ALL_UNHOVER,
+      detail: {
+        point: pixelCoordinates,
+      },
+    });
+
     if (topmostOverlay && topmostOverlay.id !== this.canonicalMediaId) {
-      // Emit hover event with the current mouse position
       this.dispatch({
         type: LIGHTER_EVENTS.OVERLAY_HOVER,
         detail: {

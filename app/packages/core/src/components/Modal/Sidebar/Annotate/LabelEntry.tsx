@@ -8,7 +8,7 @@ import { Column } from "./Components";
 import { editing } from "./Edit";
 import { ICONS } from "./Icons";
 import { fieldType } from "./state";
-import { hovering } from "./useHover";
+import { hoveringLabelIds } from "./useHover";
 
 const Container = animated(styled.div`
   display: flex;
@@ -54,7 +54,9 @@ const ObjectEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
   const type = useAtomValue(fieldType(label.path));
   const setEditing = useSetAtom(editing);
   const Icon = ICONS[type] ?? ICONS;
-  const isHovering = useAtomValue(hovering(label.id));
+  const hoveringLabelIdsList = useAtomValue(hoveringLabelIds);
+
+  const isHovering = hoveringLabelIdsList.includes(label.id);
 
   return (
     <Container
