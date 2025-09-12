@@ -183,3 +183,17 @@ export interface Hoverable {
   /** Handle hover move event */
   onHoverMove?(point: Point, event: PointerEvent): boolean;
 }
+
+/**
+ * Persistence PDOs for adding bounding boxes.
+ */
+export class BoundingBoxPersistence {
+  constructor(
+    public readonly path: string,
+    public readonly field: string,
+    public readonly sampleId: string,
+    public readonly label: string,
+    public readonly bounds: Rect,
+    public readonly misc: Record<string, any> = {}
+  ) {}
+}

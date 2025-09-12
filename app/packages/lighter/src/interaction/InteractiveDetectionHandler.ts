@@ -2,7 +2,10 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import { BoundingBoxOverlay } from "../overlay/BoundingBoxOverlay";
+import {
+  BoundingBoxOptions,
+  BoundingBoxOverlay,
+} from "../overlay/BoundingBoxOverlay";
 import { OverlayFactory } from "../overlay/OverlayFactory";
 import { useLighter } from "../react";
 import type { Point } from "../types";
@@ -34,7 +37,7 @@ export class InteractiveDetectionHandler implements InteractionHandler {
     private addOverlay: ReturnType<typeof useLighter>["addOverlay"],
     private removeOverlay: ReturnType<typeof useLighter>["removeOverlay"],
     private overlayFactory: OverlayFactory,
-    private onComplete?: () => void
+    private onComplete?: (overlay: BoundingBoxOverlay) => void
   ) {}
 
   containsPoint(): boolean {
@@ -85,9 +88,8 @@ export class InteractiveDetectionHandler implements InteractionHandler {
     // Only create detection if we have a meaningful size
     const minSize = MIN_PIXELS;
     if (tempBounds.width < minSize || tempBounds.height < minSize) {
-      this.cleanupTempOverlay();
       this.isDragging = false;
-      this.onComplete?.();
+      this.cleanupTempOverlay();
       return true;
     }
 
@@ -98,7 +100,10 @@ export class InteractiveDetectionHandler implements InteractionHandler {
     this.cleanupTempOverlay();
 
     // Create the final detection using the temporary overlay's data
-    const detection = this.overlayFactory.create("bounding-box", {
+    const detection = this.overlayFactory.create<
+      BoundingBoxOptions,
+      BoundingBoxOverlay
+    >("bounding-box", {
       sampleId: this.sampleId,
       label: {
         id: `detection-${Math.random().toString(36).substring(2, 9)}`,
@@ -118,7 +123,7 @@ export class InteractiveDetectionHandler implements InteractionHandler {
 
     this.addOverlay(detection, true);
     this.isDragging = false;
-    this.onComplete?.();
+    this.onComplete?.(detection);
     return true;
   }
 

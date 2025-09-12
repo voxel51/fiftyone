@@ -2,7 +2,8 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import type { Point, Rect } from "../types";
+import { BaseOverlay } from "../overlay/BaseOverlay";
+import type { BoundingBoxPersistence, Point, Rect } from "../types";
 
 /**
  * Event type constants for lighter events.
@@ -22,14 +23,6 @@ export const LIGHTER_EVENTS = {
   OVERLAY_ERROR: "overlay-error",
   /** Emitted when an overlay's bounds change */
   OVERLAY_BOUNDS_CHANGED: "overlay-bounds-changed",
-
-  // ============================================================================
-  // ANNOTATION EVENTS
-  // ============================================================================
-  /** Emitted when an annotation is added to the scene. An annotation is an overlay after it's committed to the scene. */
-  ANNOTATION_ADDED: "annotation-added",
-  /** Emitted when an annotation is removed from the scene. An annotation is an overlay after it's committed to the scene. */
-  ANNOTATION_REMOVED: "annotation-removed",
 
   // ============================================================================
   // COMMAND & UNDO/REDO EVENTS
@@ -96,19 +89,25 @@ export const LIGHTER_EVENTS = {
   SCENE_INTERACTIVE_MODE_CHANGED: "scene-interactive-mode-changed",
 
   // ============================================================================
-  // "DO" EVENTS USERS CAN EMIT TO FORCE STATE CHANGES
+  // "DO" EVENTS USERS CAN EMIT TO FORCE STATE CHANGES OR ACTIONS
   // ============================================================================
   /** Emitted when the overlay needs to be forced to hover state */
   DO_OVERLAY_HOVER: "do-overlay-hover",
   /** Emitted when the overlay needs to be forced to unhover state */
   DO_OVERLAY_UNHOVER: "do-overlay-unhover",
+
+  /** Emitted when the overlay needs to be persisted */
+  DO_PERSIST_OVERLAY: "do-persist-overlay",
 } as const;
 
 /**
  * Overlay lifecycle events.
  */
 export type OverlayEvent =
-  | { type: typeof LIGHTER_EVENTS.OVERLAY_ADDED; detail: { id: string } }
+  | {
+      type: typeof LIGHTER_EVENTS.OVERLAY_ADDED;
+      detail: { id: string; overlay: BaseOverlay };
+    }
   | { type: typeof LIGHTER_EVENTS.OVERLAY_LOADED; detail: { id: string } }
   | { type: typeof LIGHTER_EVENTS.OVERLAY_REMOVED; detail: { id: string } }
   | {
@@ -119,16 +118,6 @@ export type OverlayEvent =
       type: typeof LIGHTER_EVENTS.OVERLAY_BOUNDS_CHANGED;
       detail: { id: string; absoluteBounds: Rect; relativeBounds: Rect };
     };
-
-/**
- * Annotation events.
- */
-export type AnnotationEvent =
-  | {
-      type: typeof LIGHTER_EVENTS.ANNOTATION_ADDED;
-      detail: { id: string; annotation: any };
-    }
-  | { type: typeof LIGHTER_EVENTS.ANNOTATION_REMOVED; detail: { id: string } };
 
 /**
  * Command and undo/redo events.
@@ -271,6 +260,10 @@ export type DoLighterEvent =
   | {
       type: typeof LIGHTER_EVENTS.DO_OVERLAY_UNHOVER;
       detail: { id: string };
+    }
+  | {
+      type: typeof LIGHTER_EVENTS.DO_PERSIST_OVERLAY;
+      detail: BoundingBoxPersistence;
     };
 
 /**
@@ -278,7 +271,6 @@ export type DoLighterEvent =
  */
 export type LighterEvent =
   | OverlayEvent
-  | AnnotationEvent
   | CommandEvent
   | ResourceEvent
   | InteractionEvent
