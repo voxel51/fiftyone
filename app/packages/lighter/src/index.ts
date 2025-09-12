@@ -39,6 +39,7 @@ export type { LighterEvent as OverlayEvent } from "./event/EventBus";
 // Interaction exports
 export { InteractionManager } from "./interaction/InteractionManager";
 export type { InteractionHandler } from "./interaction/InteractionManager";
+export { InteractiveDetectionHandler } from "./interaction/InteractiveDetectionHandler";
 
 // Selection exports
 export type { Selectable } from "./selection/Selectable";

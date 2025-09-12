@@ -12,12 +12,14 @@ import type { Renderer2D } from "../renderer/Renderer2D";
 import type { Selectable } from "../selection/Selectable";
 import type { SelectionManager } from "../selection/SelectionManager";
 import type { Point } from "../types";
+import { InteractiveDetectionHandler } from "./InteractiveDetectionHandler";
 
 /**
  * Interface for objects that can handle interaction events.
  */
 export interface InteractionHandler {
   readonly id: string;
+  readonly cursor?: string;
 
   /**
    * Handle pointer down event.
@@ -527,6 +529,16 @@ export class InteractionManager {
     isDragging: boolean
   ): void {
     const handler = this.findHandlerAtPoint(point);
+
+    // Check if any of the interactive handlers are active
+    const interactiveHandler = this.handlers.find(
+      (h) => h instanceof InteractiveDetectionHandler
+    );
+
+    if (interactiveHandler) {
+      // handled elsewhere, so return
+      return;
+    }
 
     if (!handler || handler.id === this.canonicalMediaId) {
       this.canvas.style.cursor = "default";
