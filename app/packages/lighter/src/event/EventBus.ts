@@ -84,16 +84,6 @@ export const LIGHTER_EVENTS = {
   SELECTION_CLEARED: "selection-cleared",
 
   // ============================================================================
-  // SPATIAL MANIPULATION EVENTS
-  // ============================================================================
-  /** Emitted to request spatial shifting of overlays */
-  SPATIAL_SHIFT: "spatial-shift",
-  /** Emitted to request dimension changes of overlays */
-  SPATIAL_RESIZE: "spatial-resize",
-  /** Emitted to request position changes of overlays */
-  SPATIAL_MOVE: "spatial-move",
-
-  // ============================================================================
   // SCENE-LEVEL EVENTS
   // ============================================================================
   /** Emitted when the canvas or container is resized */
@@ -235,35 +225,6 @@ export type SelectionEvent =
       detail: {
         previouslySelectedIds: string[];
         isBridgeLogicHandled?: boolean;
-      };
-    };
-
-/**
- * Spatial manipulation events.
- */
-export type SpatialEvent =
-  | {
-      type: typeof LIGHTER_EVENTS.SPATIAL_SHIFT;
-      detail: {
-        targetIds?: string[]; // If not provided, applies to selected overlays
-        deltaX: number;
-        deltaY: number;
-      };
-    }
-  | {
-      type: typeof LIGHTER_EVENTS.SPATIAL_RESIZE;
-      detail: {
-        targetIds?: string[]; // If not provided, applies to selected overlays
-        deltaWidth: number;
-        deltaHeight: number;
-      };
-    }
-  | {
-      type: typeof LIGHTER_EVENTS.SPATIAL_MOVE;
-      detail: {
-        targetIds?: string[]; // If not provided, applies to selected overlays
-        newX: number;
-        newY: number;
       };
     };
 

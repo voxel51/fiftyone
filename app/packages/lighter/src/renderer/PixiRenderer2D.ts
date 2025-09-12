@@ -158,6 +158,10 @@ export class PixiRenderer2D implements Renderer2D {
     options: TextOptions | undefined,
     containerId: string
   ): Dimensions2D {
+    if (text?.length === 0) {
+      return { width: 0, height: 0 };
+    }
+
     const textStyle = new PIXI.TextStyle({
       fontFamily: options?.font || FONT_FAMILY,
       fontSize: options?.fontSize || FONT_SIZE,

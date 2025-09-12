@@ -173,7 +173,7 @@ export class BoundingBoxOverlay
       );
     }
 
-    if (this.options.label) {
+    if (this.options.label && this.options.label.label?.length > 0) {
       const labelPosition = {
         x: this.absoluteBounds.x + DEFAULT_TEXT_PADDING - 1,
         y: this.absoluteBounds.y - 20,

@@ -2,6 +2,9 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
+import { BoundingBoxOverlay } from "../overlay/BoundingBoxOverlay";
+import { OverlayFactory } from "../overlay/OverlayFactory";
+import { useLighter } from "../react";
 import type { Point } from "../types";
 import type { InteractionHandler } from "./InteractionManager";
 
@@ -24,11 +27,13 @@ export class InteractiveDetectionHandler implements InteractionHandler {
     width: number;
     height: number;
   };
+  private tempOverlay?: BoundingBoxOverlay;
 
   constructor(
     private sampleId: string,
-    private addOverlay: (overlay: any, withUndo?: boolean) => void,
-    private overlayFactory: any,
+    private addOverlay: ReturnType<typeof useLighter>["addOverlay"],
+    private removeOverlay: ReturnType<typeof useLighter>["removeOverlay"],
+    private overlayFactory: OverlayFactory,
     private onComplete?: () => void
   ) {}
 
@@ -45,6 +50,10 @@ export class InteractiveDetectionHandler implements InteractionHandler {
       width: 0,
       height: 0,
     };
+
+    // Create temporary overlay for live preview
+    this.createTempOverlay(event);
+
     return true;
   }
 
@@ -58,46 +67,83 @@ export class InteractiveDetectionHandler implements InteractionHandler {
     const height = Math.abs(point.y - this.startPoint.y);
 
     this.currentBounds = { x, y, width, height };
+
+    this.updateTempOverlayBounds(event);
+
     return true;
   }
 
-  onPointerUp(point: Point, event: PointerEvent): boolean {
-    if (!this.isDragging || !this.startPoint || !this.currentBounds) {
+  onPointerUp(_point: Point, _event: PointerEvent): boolean {
+    if (!this.isDragging || !this.startPoint || !this.tempOverlay) {
+      this.cleanupTempOverlay();
       this.isDragging = false;
       return false;
     }
 
+    const tempBounds = this.tempOverlay.getAbsoluteBounds();
+
     // Only create detection if we have a meaningful size
     const minSize = MIN_PIXELS;
-    if (
-      this.currentBounds.width < minSize ||
-      this.currentBounds.height < minSize
-    ) {
+    if (tempBounds.width < minSize || tempBounds.height < minSize) {
+      this.cleanupTempOverlay();
       this.isDragging = false;
       this.onComplete?.();
       return true;
     }
 
-    // Convert absolute coordinates to relative coordinates [0,1]
-    const canvas = event.target as HTMLCanvasElement;
-    if (!canvas) {
-      this.isDragging = false;
-      this.onComplete?.();
-      return true;
-    }
+    const relativeBounds = this.tempOverlay.getRelativeBounds();
+    const label = this.tempOverlay.label as any;
 
-    const canvasRect = canvas.getBoundingClientRect();
+    // Remove temporary overlay first
+    this.cleanupTempOverlay();
 
-    const relativeX = this.currentBounds.x / canvasRect.width;
-    const relativeY = this.currentBounds.y / canvasRect.height;
-    const relativeWidth = this.currentBounds.width / canvasRect.width;
-    const relativeHeight = this.currentBounds.height / canvasRect.height;
-
+    // Create the final detection using the temporary overlay's data
     const detection = this.overlayFactory.create("bounding-box", {
       sampleId: this.sampleId,
       label: {
         id: `detection-${Math.random().toString(36).substring(2, 9)}`,
         label: `detection-${Math.random().toString(36).substring(2, 5)}`,
+        tags: [],
+        bounding_box: label?.bounding_box || [
+          relativeBounds.x,
+          relativeBounds.y,
+          relativeBounds.width,
+          relativeBounds.height,
+        ],
+      },
+      relativeBounds: relativeBounds,
+      draggable: true,
+      selectable: true,
+    });
+
+    this.addOverlay(detection, true);
+    this.isDragging = false;
+    this.onComplete?.();
+    return true;
+  }
+
+  /**
+   * Creates the temporary overlay for live preview during drag.
+   */
+  private createTempOverlay(event: PointerEvent): void {
+    if (!this.currentBounds) return;
+
+    const canvas = event.target as HTMLCanvasElement;
+    if (!canvas) return;
+
+    const canvasRect = canvas.getBoundingClientRect();
+
+    // Convert absolute coordinates to relative coordinates [0,1]
+    const relativeX = this.currentBounds.x / canvasRect.width;
+    const relativeY = this.currentBounds.y / canvasRect.height;
+    const relativeWidth = this.currentBounds.width / canvasRect.width;
+    const relativeHeight = this.currentBounds.height / canvasRect.height;
+
+    // Create temporary overlay for live preview
+    this.tempOverlay = this.overlayFactory.create("bounding-box", {
+      sampleId: this.sampleId,
+      label: {
+        id: `temp-detection-${Math.random().toString(36).substring(2, 9)}`,
         tags: [],
         bounding_box: [relativeX, relativeY, relativeWidth, relativeHeight],
       },
@@ -107,13 +153,35 @@ export class InteractiveDetectionHandler implements InteractionHandler {
         width: relativeWidth,
         height: relativeHeight,
       },
-      draggable: true,
-      selectable: true,
+      draggable: false,
+      selectable: false,
     });
 
-    this.addOverlay(detection, true);
-    this.isDragging = false;
-    this.onComplete?.();
-    return true;
+    // Add temporary overlay without undo tracking
+    this.addOverlay(this.tempOverlay, false);
+  }
+
+  /**
+   * Updates the bounds of the temporary overlay for live preview during drag.
+   */
+  private updateTempOverlayBounds(_event: PointerEvent): void {
+    if (!this.tempOverlay || !this.currentBounds) return;
+
+    this.tempOverlay.setBounds({
+      x: this.currentBounds.x,
+      y: this.currentBounds.y,
+      width: this.currentBounds.width,
+      height: this.currentBounds.height,
+    });
+  }
+
+  /**
+   * Cleans up the temporary overlay.
+   */
+  private cleanupTempOverlay(): void {
+    if (this.tempOverlay) {
+      this.removeOverlay(this.tempOverlay.id);
+      this.tempOverlay = undefined;
+    }
   }
 }
