@@ -21,7 +21,7 @@ const Line = styled.div`
   width: 2px;
 `;
 
-const Container = styled.div`
+const Container = styled.div<{ isOn?: boolean }>`
   align-items: center;
   display: flex;
   cursor: pointer;
@@ -30,6 +30,7 @@ const Container = styled.div`
   justify-content: center;
   padding: 0.25rem;
   width: 2.5rem;
+  margin: 0 0.5rem;
   color: ${({ theme }) => theme.text.secondary};
 
   &:hover {
@@ -39,6 +40,14 @@ const Container = styled.div`
   &:hover path {
     fill: ${({ theme }) => theme.primary.plainColor};
   }
+
+  ${({ isOn, theme }) =>
+    isOn &&
+    `
+    path {
+      fill: ${theme.primary.plainColor};
+    }
+  `}
 `;
 
 const Round = styled(Container)`
@@ -169,15 +178,7 @@ const Detection = () => {
   }, [scene, currentSampleId, addOverlay, removeOverlay, overlayFactory]);
 
   return (
-    <Square
-      onClick={toggleInteractiveMode}
-      style={{
-        backgroundColor: isInteractiveModeOnLocal
-          ? "rgba(0, 123, 255, 0.2)"
-          : undefined,
-        border: isInteractiveModeOnLocal ? "2px solid #007bff" : undefined,
-      }}
-    >
+    <Square onClick={toggleInteractiveMode} isOn={isInteractiveModeOnLocal}>
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="19"
