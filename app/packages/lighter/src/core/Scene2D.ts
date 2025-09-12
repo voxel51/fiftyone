@@ -4,7 +4,10 @@
 
 import { AddOverlayCommand } from "../commands/AddOverlayCommand";
 import type { Command } from "../commands/Command";
-import { Movable, MoveOverlayCommand } from "../commands/MoveOverlayCommand";
+import {
+  MoveOverlayCommand,
+  type Movable,
+} from "../commands/MoveOverlayCommand";
 import { RemoveOverlayCommand } from "../commands/RemoveOverlayCommand";
 import {
   TransformOverlayCommand,
