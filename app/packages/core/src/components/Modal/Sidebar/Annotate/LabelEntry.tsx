@@ -1,8 +1,9 @@
+import { LIGHTER_EVENTS, useLighter } from "@fiftyone/lighter";
 import type { AnnotationLabel } from "@fiftyone/state";
 import { animated } from "@react-spring/web";
 import type { PrimitiveAtom } from "jotai";
 import { useAtomValue, useSetAtom } from "jotai";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import { Column } from "./Components";
 import { editing } from "./Edit";
@@ -50,13 +51,31 @@ const Line = styled.div<{ fill: string }>`
 `;
 
 const ObjectEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
+  const [isHoveringThisRow, setIsHoveringThisRow] = useState(false);
   const label = useAtomValue(atom);
   const type = useAtomValue(fieldType(label.path));
   const setEditing = useSetAtom(editing);
   const Icon = ICONS[type] ?? ICONS;
   const hoveringLabelIdsList = useAtomValue(hoveringLabelIds);
+  const { scene } = useLighter();
 
   const isHovering = hoveringLabelIdsList.includes(label.id);
+
+  useEffect(() => {
+    if (!scene) return;
+
+    if (isHoveringThisRow) {
+      scene.dispatchSafely({
+        type: LIGHTER_EVENTS.DO_OVERLAY_HOVER,
+        detail: { id: label.id, tooltip: false },
+      });
+    } else {
+      scene.dispatchSafely({
+        type: LIGHTER_EVENTS.DO_OVERLAY_UNHOVER,
+        detail: { id: label.id },
+      });
+    }
+  }, [scene, isHoveringThisRow, label.id]);
 
   return (
     <Container
@@ -64,6 +83,8 @@ const ObjectEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
         setEditing(atom);
       }}
       className={isHovering ? "hovering" : ""}
+      onMouseEnter={() => setIsHoveringThisRow(true)}
+      onMouseLeave={() => setIsHoveringThisRow(false)}
     >
       <Line fill="white" />
       <Header>

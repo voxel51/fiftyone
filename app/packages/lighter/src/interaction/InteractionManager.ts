@@ -66,7 +66,7 @@ export interface InteractionHandler {
    * @param event - The original pointer event.
    * @returns True if the event was handled.
    */
-  onHoverEnter?(point: Point, event: PointerEvent): boolean;
+  onHoverEnter?(point: Point | null, event: PointerEvent | null): boolean;
 
   /**
    * Handle hover leave event.
@@ -74,7 +74,7 @@ export interface InteractionHandler {
    * @param event - The original pointer event.
    * @returns True if the event was handled.
    */
-  onHoverLeave?(point: Point, event: PointerEvent): boolean;
+  onHoverLeave?(point: Point | null, event: PointerEvent | null): boolean;
 
   /**
    * Handle hover move event.
@@ -432,6 +432,8 @@ export class InteractionManager {
       this.canvas.style.cursor = "default";
 
       if (this.hoveredHandler) {
+        this.hoveredHandler.onHoverLeave?.(point, event);
+
         this.eventBus?.emit({
           type: LIGHTER_EVENTS.OVERLAY_UNHOVER,
           detail: { id: this.hoveredHandler.id, point },
@@ -628,6 +630,15 @@ export class InteractionManager {
     this.canvas.removeEventListener("pointerleave", this.handlePointerLeave);
     document.removeEventListener("keydown", this.handleKeyDown);
     this.clearHandlers();
+  }
+
+  /**
+   * Finds a handler by its ID.
+   * @param id - The ID of the handler to find.
+   * @returns The handler if found, undefined otherwise.
+   */
+  findHandlerById(id: string): InteractionHandler | undefined {
+    return this.handlers.find((handler) => handler.id === id);
   }
 
   /**

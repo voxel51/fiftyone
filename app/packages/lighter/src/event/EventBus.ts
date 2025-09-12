@@ -94,6 +94,14 @@ export const LIGHTER_EVENTS = {
   SCENE_OPTIONS_CHANGED: "scene-options-changed",
   /** Emitted when the scene interactive mode changes */
   SCENE_INTERACTIVE_MODE_CHANGED: "scene-interactive-mode-changed",
+
+  // ============================================================================
+  // "DO" EVENTS USERS CAN EMIT TO FORCE STATE CHANGES
+  // ============================================================================
+  /** Emitted when the overlay needs to be forced to hover state */
+  DO_OVERLAY_HOVER: "do-overlay-hover",
+  /** Emitted when the overlay needs to be forced to unhover state */
+  DO_OVERLAY_UNHOVER: "do-overlay-unhover",
 } as const;
 
 /**
@@ -254,6 +262,19 @@ export type SceneEvent =
     };
 
 /**
+ * "Do" events.
+ */
+export type DoLighterEvent =
+  | {
+      type: typeof LIGHTER_EVENTS.DO_OVERLAY_HOVER;
+      detail: { id: string; point?: Point; tooltip?: boolean };
+    }
+  | {
+      type: typeof LIGHTER_EVENTS.DO_OVERLAY_UNHOVER;
+      detail: { id: string };
+    };
+
+/**
  * All lighter events that can be emitted.
  */
 export type LighterEvent =
@@ -263,24 +284,8 @@ export type LighterEvent =
   | ResourceEvent
   | InteractionEvent
   | SelectionEvent
-  | SpatialEvent
-  | SceneEvent;
-
-/**
- * Events that can be emitted safely.
- *
- * TODO: This should be a subset of LighterEvent, since
- * not all events are safe to emit from "outside" of lighter.
- */
-export type SafeLighterEvent =
-  | OverlayEvent
-  | AnnotationEvent
-  | CommandEvent
-  | ResourceEvent
-  | InteractionEvent
-  | SelectionEvent
-  | SpatialEvent
-  | SceneEvent;
+  | SceneEvent
+  | DoLighterEvent;
 
 /**
  * Event bus for communication between components.

@@ -6,9 +6,21 @@ import type { ColorSchemeInput } from "@fiftyone/relay";
 import { getColor } from "@fiftyone/utilities";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
 
+// Green for info (selection, here)
+const INFO_COLOR = "#00ff00";
+// Yellow for hover effect
+const HOVER_COLOR = "#FFDE01";
+
 export interface ColorMappingContext {
   colorScheme: ColorSchemeInput;
   seed: number;
+}
+
+export interface StrokeStyles {
+  strokeColor: string;
+  overlayStrokeColor: string | null;
+  overlayDash: number | null;
+  hoverStrokeColor: string | null;
 }
 
 /**
@@ -99,7 +111,7 @@ export function getOverlayColor(
  * Gets stroke styles for overlays with instances.
  * Four possible cases when label.instance is defined:
  * 1. Label is neither selected nor hovered: default color
- * 2. Label is hovered: white stroke
+ * 2. Label is hovered: white border overlay
  * 3. Label is selected: stroke with dash of white and default color
  * 4. Label is selected and hovered: stroke with dash of orange and default color
  */
@@ -113,7 +125,7 @@ export function getInstanceStrokeStyles({
   strokeColor: string;
   isHovered: boolean;
   dashLength?: number;
-}) {
+}): StrokeStyles {
   const INFO_COLOR = "#ffffff";
   const SELECTED_AND_HOVERED_COLOR = "#ff6f61";
 
@@ -134,34 +146,42 @@ export function getInstanceStrokeStyles({
     overlayDash = dashLength;
   }
 
-  return { strokeColor: finalStrokeColor, overlayStrokeColor, overlayDash };
+  return {
+    strokeColor: finalStrokeColor,
+    overlayStrokeColor,
+    overlayDash,
+    hoverStrokeColor: null,
+  };
 }
 
 /**
  * Gets stroke styles for overlays without instances.
- * Only two states:
+ * Three states:
  * 1. Selected: overlay a dashed white stroke on top of the main stroke
- * 2. All other states (including hover): do nothing
+ * 2. Hovered: add white border overlay
+ * 3. Default: normal stroke
  */
 export function getSimpleStrokeStyles({
   isSelected,
   strokeColor,
+  isHovered,
   dashLength = 8,
 }: {
   isSelected: boolean;
   strokeColor: string;
+  isHovered?: boolean;
   dashLength?: number;
-}) {
-  const INFO_COLOR = "#00ff00";
-
+}): StrokeStyles {
   let overlayStrokeColor: string | null = null;
   let overlayDash: number | null = null;
+  let hoverStrokeColor: string | null = null;
 
   if (isSelected) {
-    // Add white dashed overlay stroke
     overlayStrokeColor = INFO_COLOR;
     overlayDash = dashLength;
+  } else if (isHovered) {
+    hoverStrokeColor = HOVER_COLOR;
   }
 
-  return { strokeColor, overlayStrokeColor, overlayDash };
+  return { strokeColor, overlayStrokeColor, overlayDash, hoverStrokeColor };
 }

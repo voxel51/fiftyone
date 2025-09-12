@@ -135,18 +135,20 @@ export class BoundingBoxOverlay
     const hasInstance = this.options.label.instance?._id !== undefined;
 
     // Get stroke styles based on whether the label has an instance
-    const { strokeColor, overlayStrokeColor, overlayDash } = hasInstance
-      ? getInstanceStrokeStyles({
-          isSelected: this.isSelectedState,
-          strokeColor: style.strokeStyle || "#000000",
-          isHovered: this.isHoveredState,
-          dashLength: 8,
-        })
-      : getSimpleStrokeStyles({
-          isSelected: this.isSelectedState,
-          strokeColor: style.strokeStyle || "#ffffff",
-          dashLength: 8,
-        });
+    const { strokeColor, overlayStrokeColor, overlayDash, hoverStrokeColor } =
+      hasInstance
+        ? getInstanceStrokeStyles({
+            isSelected: this.isSelectedState,
+            strokeColor: style.strokeStyle || "#000000",
+            isHovered: this.isHoveredState,
+            dashLength: 8,
+          })
+        : getSimpleStrokeStyles({
+            isSelected: this.isSelectedState,
+            strokeColor: style.strokeStyle || "#ffffff",
+            isHovered: this.isHoveredState,
+            dashLength: 8,
+          });
 
     const mainStrokeStyle = {
       ...style,
@@ -161,7 +163,16 @@ export class BoundingBoxOverlay
 
     renderer.drawRect(this.absoluteBounds, mainStrokeStyle, this.containerId);
 
-    if (overlayStrokeColor && overlayDash) {
+    if (hoverStrokeColor) {
+      renderer.drawRect(
+        this.absoluteBounds,
+        {
+          strokeStyle: hoverStrokeColor,
+          lineWidth: style.lineWidth || 2,
+        },
+        this.containerId
+      );
+    } else if (overlayStrokeColor && overlayDash) {
       renderer.drawRect(
         this.absoluteBounds,
         {
@@ -458,6 +469,18 @@ export class BoundingBoxOverlay
   }
 
   // Hoverable interface implementation
+  onHoverEnter(point: Point, event: PointerEvent): boolean {
+    this.isHoveredState = true;
+    this.markDirty();
+    return true;
+  }
+
+  onHoverLeave(point: Point, event: PointerEvent): boolean {
+    this.isHoveredState = false;
+    this.markDirty();
+    return true;
+  }
+
   getTooltipInfo(): {
     color: string;
     field: string;
