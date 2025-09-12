@@ -11,6 +11,7 @@ import {
 import { useEffect } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { Scene2D } from "../index";
+import { useLighterOverlayPersistence } from "./useLighterOverlayPersistence";
 import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
 
 /**
@@ -26,6 +27,7 @@ export const useBridge = (scene: Scene2D | null) => {
   const currentColorSeed = useRecoilValue(colorSeed);
 
   useLighterTooltipEventHandler(scene);
+  useLighterOverlayPersistence(scene);
 
   const getSelectedLabels = useRecoilCallback(
     ({ snapshot }) =>

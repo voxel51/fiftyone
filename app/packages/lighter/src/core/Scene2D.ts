@@ -890,7 +890,7 @@ export class Scene2D {
 
     this.dispatch({
       type: LIGHTER_EVENTS.OVERLAY_ADDED,
-      detail: { id: overlay.id },
+      detail: { id: overlay.id, overlay },
     });
   }
 

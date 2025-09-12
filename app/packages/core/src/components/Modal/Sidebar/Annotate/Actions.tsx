@@ -1,4 +1,9 @@
-import { InteractiveDetectionHandler, useLighter } from "@fiftyone/lighter";
+import {
+  InteractiveDetectionHandler,
+  LIGHTER_EVENTS,
+  useLighter,
+} from "@fiftyone/lighter";
+import { BoundingBoxPersistence } from "@fiftyone/lighter/src/types";
 import * as fos from "@fiftyone/state";
 import React, { useCallback, useState } from "react";
 import { useRecoilValue } from "recoil";
@@ -21,7 +26,7 @@ const Line = styled.div`
   width: 2px;
 `;
 
-const Container = styled.div<{ isOn?: boolean }>`
+const Container = styled.div<{ ison?: string }>`
   align-items: center;
   display: flex;
   cursor: pointer;
@@ -41,8 +46,8 @@ const Container = styled.div<{ isOn?: boolean }>`
     fill: ${({ theme }) => theme.primary.plainColor};
   }
 
-  ${({ isOn, theme }) =>
-    isOn &&
+  ${({ ison, theme }) =>
+    ison === "true" &&
     `
     path {
       fill: ${theme.primary.plainColor};
@@ -170,7 +175,19 @@ const Detection = () => {
       currentSampleId,
       addOverlay,
       removeOverlay,
-      overlayFactory
+      overlayFactory,
+      (overlay) => {
+        scene.dispatchSafely({
+          type: LIGHTER_EVENTS.DO_PERSIST_OVERLAY,
+          detail: new BoundingBoxPersistence(
+            "detections",
+            overlay.field ?? "ground_truth",
+            currentSampleId,
+            overlay.label?.label ?? "",
+            overlay.getRelativeBounds()
+          ),
+        });
+      }
     );
 
     const isInteractiveMode = scene.toggleInteractiveMode(handler);
@@ -178,7 +195,10 @@ const Detection = () => {
   }, [scene, currentSampleId, addOverlay, removeOverlay, overlayFactory]);
 
   return (
-    <Square onClick={toggleInteractiveMode} isOn={isInteractiveModeOnLocal}>
+    <Square
+      onClick={toggleInteractiveMode}
+      ison={String(isInteractiveModeOnLocal)}
+    >
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="19"

@@ -6,6 +6,7 @@ Compute annotation schema operator
 |
 """
 
+import fiftyone as fo
 import fiftyone.operators as foo
 
 
@@ -120,3 +121,29 @@ class SaveAnnotationSchema(foo.Operator):
         field.save()
 
         return {"config": config}
+
+
+class AddBoundingBox(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="add_bounding_box",
+            label="Add bounding box",
+            unlisted=True,
+        )
+
+    def execute(self, ctx):
+        field = ctx.params.get("field", None)
+        sample_id = ctx.params.get("sample_id", None)
+        path = ctx.params.get("path", None)
+        label = ctx.params.get("label", None)
+        bounding_box = ctx.params.get("bounding_box", None)
+
+        sample = ctx.dataset[sample_id]
+        field_obj = sample[field]
+        detection_obj = field_obj[path]
+        detection_obj.append(
+            fo.Detection(label=label, bounding_box=bounding_box)
+        )
+
+        sample.save()

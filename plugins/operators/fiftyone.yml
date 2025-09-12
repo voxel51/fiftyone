@@ -46,3 +46,4 @@ operators:
   - get_annotation_schemas
   - save_annotation_schema
   - load_group_by
+  - add_bounding_box

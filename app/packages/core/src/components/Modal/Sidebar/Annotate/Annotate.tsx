@@ -52,7 +52,6 @@ const AnnotateSidebar = () => {
 
           if (entry.kind === EntryKind.LABEL) {
             const { kind: _, atom } = entry;
-            console.log(atom);
             return {
               children: <LabelEntry atom={atom} />,
               disabled: true,
