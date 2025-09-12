@@ -13,8 +13,8 @@ import {
 import { UndoRedoManager } from "../commands/UndoRedoManager";
 import { STROKE_WIDTH } from "../constants";
 import {
+  DoLighterEvent,
   LIGHTER_EVENTS,
-  SafeLighterEvent,
   type LighterEvent,
 } from "../event/EventBus";
 import type { InteractionHandler } from "../interaction/InteractionManager";
@@ -205,6 +205,7 @@ export class Scene2D {
       this.abortController
     );
 
+    // Listen for OVERLAY_DRAG_END events to trigger re-rendering of overlays that are currently dragged
     config.eventBus.on(
       LIGHTER_EVENTS.OVERLAY_DRAG_END,
       (event) => {
@@ -223,6 +224,32 @@ export class Scene2D {
             );
             this.undoRedo.push(moveCommand);
           }
+        }
+      },
+      this.abortController
+    );
+
+    // Listen for DO_OVERLAY_HOVER events to force hover state
+    config.eventBus.on(
+      LIGHTER_EVENTS.DO_OVERLAY_HOVER,
+      (event) => {
+        const { id, point } = event.detail;
+        const handler = this.interactionManager.findHandlerById(id);
+        if (handler && handler.onHoverEnter) {
+          handler.onHoverEnter(point ?? null, null);
+        }
+      },
+      this.abortController
+    );
+
+    // Listen for DO_OVERLAY_UNHOVER events to force unhover state
+    config.eventBus.on(
+      LIGHTER_EVENTS.DO_OVERLAY_UNHOVER,
+      (event) => {
+        const { id } = event.detail;
+        const handler = this.interactionManager.findHandlerById(id);
+        if (handler && handler.onHoverLeave) {
+          handler.onHoverLeave(null, null);
         }
       },
       this.abortController
@@ -1069,7 +1096,7 @@ export class Scene2D {
    *
    * @param event - The event to dispatch.
    */
-  public dispatchSafely(event: SafeLighterEvent): void {
+  public dispatchSafely(event: DoLighterEvent): void {
     this.dispatch(event);
   }
 
