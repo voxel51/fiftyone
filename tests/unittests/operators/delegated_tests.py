@@ -14,7 +14,6 @@ from unittest.mock import patch
 import bson
 import pytest
 
-import fiftyone
 from bson import ObjectId
 
 from fiftyone import Dataset
@@ -29,6 +28,7 @@ from fiftyone.operators.executor import (
     ExecutionResult,
     ExecutionRunState,
 )
+from fiftyone.operators.pipeline import PipelineStage
 from fiftyone.factory.repos import (
     DelegatedOperationDocument,
     delegated_operation,
@@ -203,6 +203,11 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         dataset_name = f"test_dataset_{dataset_id}"
         mock_load_dataset.return_value.name = dataset_name
         mock_load_dataset.return_value._doc.id = dataset_id
+
+        pipeline = [
+            PipelineStage(name="one", operator_uri="@test/op1"),
+            PipelineStage(name="two", operator_uri="@test/op2"),
+        ]
         doc = self.svc.queue_operation(
             operator=f"{TEST_DO_PREFIX}/operator/foo",
             label=mock_get_operator.return_value.config.label,
@@ -210,12 +215,14 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             context=ExecutionContext(
                 request_params={"foo": "bar", "dataset_name": dataset_name},
             ),
+            pipeline=pipeline,
         )
         self.docs_to_delete.append(doc)
         self.assertIsNotNone(doc.queued_at)
         self.assertEqual(doc.label, "Mock Operator")
         self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
         self.assertEqual(doc.metadata, {})
+        self.assertEqual(doc.pipeline, pipeline)
 
         doc2_metadata = {"inputs_schema": {}}
         doc2 = self.svc.queue_operation(
