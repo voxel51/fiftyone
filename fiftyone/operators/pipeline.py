@@ -47,3 +47,9 @@ class PipelineOperator(Operator):
             a list of :class:`fiftyone.operators.types.PipelineStage`,
         """
         raise NotImplementedError("subclass must implement resolve_pipeline")
+
+    def execute(self, ctx):
+        """Not used for pipeline operators."""
+        raise NotImplementedError(
+            "execute() not implemented for PipelineOperators"
+        )
