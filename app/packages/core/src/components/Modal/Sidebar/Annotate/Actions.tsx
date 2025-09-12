@@ -141,7 +141,7 @@ const Classification = () => {
 };
 
 const Detection = () => {
-  const { scene, addOverlay, overlayFactory } = useLighter();
+  const { scene, addOverlay, removeOverlay, overlayFactory } = useLighter();
   const currentSampleId = useRecoilValue(fos.currentSampleId);
   const [isInteractiveModeOnLocal, setIsInteractiveModeOnLocal] =
     useState(false);
@@ -160,12 +160,13 @@ const Detection = () => {
     const handler = new InteractiveDetectionHandler(
       currentSampleId,
       addOverlay,
+      removeOverlay,
       overlayFactory
     );
 
     const isInteractiveMode = scene.toggleInteractiveMode(handler);
     setIsInteractiveModeOnLocal(isInteractiveMode);
-  }, [scene, currentSampleId, addOverlay, overlayFactory]);
+  }, [scene, currentSampleId, addOverlay, removeOverlay, overlayFactory]);
 
   return (
     <Square

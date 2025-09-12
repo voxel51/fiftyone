@@ -3,13 +3,12 @@
  */
 
 import type { Movable } from "../commands/MoveOverlayCommand";
-import { MoveOverlayCommand } from "../commands/MoveOverlayCommand";
 import { UndoRedoManager } from "../commands/UndoRedoManager";
+import { TypeGuards } from "../core/Scene2D";
 import type { EventBus } from "../event/EventBus";
 import { LIGHTER_EVENTS } from "../event/EventBus";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
 import type { Renderer2D } from "../renderer/Renderer2D";
-import type { Selectable } from "../selection/Selectable";
 import type { SelectionManager } from "../selection/SelectionManager";
 import type { Point } from "../types";
 import { InteractiveDetectionHandler } from "./InteractiveDetectionHandler";
@@ -122,12 +121,10 @@ export class InteractionManager {
   private dragState?: DragState;
 
   // Configuration
-  private readonly CLICK_THRESHOLD = 1; // pixels
+  private readonly CLICK_THRESHOLD = 0.1;
   private readonly CLICK_TIME_THRESHOLD = 300; // ms
   private readonly DOUBLE_CLICK_TIME_THRESHOLD = 500; // ms
   private readonly DOUBLE_CLICK_DISTANCE_THRESHOLD = 10; // pixels
-
-  private getOverlayById: (id: string) => BaseOverlay | undefined;
 
   private currentPixelCoordinates?: Point;
 
@@ -136,14 +133,9 @@ export class InteractionManager {
     private eventBus: EventBus,
     private undoRedoManager: UndoRedoManager,
     private selectionManager: SelectionManager,
-    private renderer: Renderer2D,
-    getOverlayById: (id: string) => BaseOverlay | undefined
+    private renderer: Renderer2D
   ) {
-    this.getOverlayById = getOverlayById;
-
     this.setupEventListeners();
-    this.setupDragEventListeners();
-    this.setupSpatialEventListeners();
   }
 
   /**
@@ -166,122 +158,12 @@ export class InteractionManager {
   }
 
   private setupEventListeners(): void {
-    this.canvas.addEventListener("pointerdown", this.handlePointerDown, {
-      passive: false,
-    });
-    this.canvas.addEventListener("pointermove", this.handlePointerMove, {
-      passive: false,
-    });
-    this.canvas.addEventListener("pointerup", this.handlePointerUp, {
-      passive: false,
-    });
-    this.canvas.addEventListener("pointercancel", this.handlePointerCancel, {
-      passive: false,
-    });
-    this.canvas.addEventListener("pointerleave", this.handlePointerLeave, {
-      passive: false,
-    });
-
-    document.addEventListener("keydown", this.handleKeyDown, {
-      passive: false,
-    });
-  }
-
-  private setupDragEventListeners(): void {
-    this.eventBus.on(LIGHTER_EVENTS.OVERLAY_DRAG_END, (event) => {
-      const overlay = this.getOverlayById(event.detail.id);
-      if (overlay && this.isMovableOverlay(overlay)) {
-        const { startPosition, endPosition } = event.detail;
-        const moved =
-          Math.abs(startPosition.x - endPosition.x) > 1 ||
-          Math.abs(startPosition.y - endPosition.y) > 1;
-        if (moved) {
-          const moveCommand = new MoveOverlayCommand(
-            overlay,
-            event.detail.id,
-            startPosition,
-            endPosition
-          );
-          this.undoRedoManager.push(moveCommand);
-        }
-      }
-    });
-  }
-
-  private setupSpatialEventListeners(): void {
-    this.eventBus.on(LIGHTER_EVENTS.SPATIAL_SHIFT, (event) => {
-      this.handleSpatialShift(event.detail);
-    });
-    this.eventBus.on(LIGHTER_EVENTS.SPATIAL_RESIZE, (event) => {
-      this.handleSpatialResize(event.detail);
-    });
-    this.eventBus.on(LIGHTER_EVENTS.SPATIAL_MOVE, (event) => {
-      this.handleSpatialMove(event.detail);
-    });
-  }
-
-  private handleSpatialShift(detail: {
-    targetIds?: string[];
-    deltaX: number;
-    deltaY: number;
-  }): void {
-    const targetIds =
-      detail.targetIds || this.selectionManager.getSelectedIds();
-    for (const id of targetIds) {
-      const overlay = this.getOverlayById(id);
-      if (overlay && "getPosition" in overlay && "setPosition" in overlay) {
-        const movable = overlay as any;
-        const currentPos = movable.getPosition();
-        movable.setPosition({
-          x: currentPos.x + detail.deltaX,
-          y: currentPos.y + detail.deltaY,
-        });
-        overlay.markDirty();
-      }
-    }
-  }
-
-  private handleSpatialResize(detail: {
-    targetIds?: string[];
-    deltaWidth: number;
-    deltaHeight: number;
-  }): void {
-    const targetIds =
-      detail.targetIds || this.selectionManager.getSelectedIds();
-    for (const id of targetIds) {
-      const overlay = this.getOverlayById(id);
-      if (overlay && "getBounds" in overlay && "setBounds" in overlay) {
-        const resizable = overlay as any;
-        const currentBounds = resizable.getBounds();
-        resizable.setBounds({
-          x: currentBounds.x,
-          y: currentBounds.y,
-          width: Math.max(1, currentBounds.width + detail.deltaWidth),
-          height: Math.max(1, currentBounds.height + detail.deltaHeight),
-        });
-        overlay.markDirty();
-      }
-    }
-  }
-
-  private handleSpatialMove(detail: {
-    targetIds?: string[];
-    newX: number;
-    newY: number;
-  }): void {
-    const targetIds =
-      detail.targetIds || this.selectionManager.getSelectedIds();
-    for (const id of targetIds) {
-      const overlay = this.getOverlayById(id);
-      if (overlay && "setPosition" in overlay) {
-        const movable = overlay as any;
-        movable.setPosition({
-          x: detail.newX,
-          y: detail.newY,
-        });
-        overlay.markDirty();
-      }
-    }
+    this.canvas.addEventListener("pointerdown", this.handlePointerDown);
+    this.canvas.addEventListener("pointermove", this.handlePointerMove);
+    this.canvas.addEventListener("pointerup", this.handlePointerUp);
+    this.canvas.addEventListener("pointercancel", this.handlePointerCancel);
+    this.canvas.addEventListener("pointerleave", this.handlePointerLeave);
+    document.addEventListener("keydown", this.handleKeyDown);
   }
 
   private handlePointerDown = (event: PointerEvent): void => {
@@ -289,15 +171,21 @@ export class InteractionManager {
     this.clickStartTime = Date.now();
     this.clickStartPoint = point;
 
-    // Find the topmost handler that can handle this point
-    const handler = this.findHandlerAtPoint(point);
+    let handler: InteractionHandler | undefined = undefined;
+
+    const interactiveHandler = this.getInteractiveHandler();
+
+    if (interactiveHandler) {
+      handler = interactiveHandler;
+    } else {
+      handler = this.findHandlerAtPoint(point);
+    }
+
     if (handler?.onPointerDown?.(point, event)) {
-      // Store the handler but don't set isDragging yet
-      // Wait to see if there's actual movement
       this.dragHandler = handler;
 
       // If this is a movable overlay, track drag state
-      if (this.isMovableOverlay(handler)) {
+      if (TypeGuards.isMovable(handler)) {
         this.dragState = {
           overlay: handler,
           startPoint: point,
@@ -323,7 +211,13 @@ export class InteractionManager {
   private handlePointerMove = (event: PointerEvent): void => {
     this.currentPixelCoordinates = this.getCanvasPoint(event);
 
-    this.handleHover(this.currentPixelCoordinates, event, this.isDragging);
+    const interactiveHandler = this.getInteractiveHandler();
+
+    if (!interactiveHandler) {
+      // we don't want to handle hover in interactive mode
+      // for instance, no tooltips, no hover states, etc
+      this.handleHover(this.currentPixelCoordinates, event, this.isDragging);
+    }
 
     if (this.dragHandler && !this.isDragging) {
       // Check if we've moved enough to start dragging
@@ -343,7 +237,11 @@ export class InteractionManager {
 
     if (this.isDragging && this.dragHandler) {
       // Handle drag move
-      this.dragHandler.onDrag?.(this.currentPixelCoordinates, event);
+      if (!interactiveHandler) {
+        this.dragHandler.onDrag?.(this.currentPixelCoordinates, event);
+      } else {
+        interactiveHandler.onDrag?.(this.currentPixelCoordinates, event);
+      }
 
       // Emit drag move event with delta information
       if (this.dragState) {
@@ -505,7 +403,7 @@ export class InteractionManager {
       }
 
       // Handle selection if the handler is selectable
-      if (handler && this.isSelectableHandler(handler)) {
+      if (handler && TypeGuards.isSelectable(handler)) {
         this.selectionManager.toggle(handler.id, { event });
         event.preventDefault();
       }
@@ -529,16 +427,6 @@ export class InteractionManager {
     isDragging: boolean
   ): void {
     const handler = this.findHandlerAtPoint(point);
-
-    // Check if any of the interactive handlers are active
-    const interactiveHandler = this.handlers.find(
-      (h) => h instanceof InteractiveDetectionHandler
-    );
-
-    if (interactiveHandler) {
-      // handled elsewhere, so return
-      return;
-    }
 
     if (!handler || handler.id === this.canonicalMediaId) {
       this.canvas.style.cursor = "default";
@@ -629,6 +517,10 @@ export class InteractionManager {
     );
   }
 
+  private getInteractiveHandler(): InteractionHandler | undefined {
+    return this.handlers.find((h) => h instanceof InteractiveDetectionHandler);
+  }
+
   private findHandlerAtPoint(
     point: Point,
     skipCanonicalMedia: boolean = false
@@ -652,11 +544,11 @@ export class InteractionManager {
 
     // If multiple handlers found, prefer selectable ones with higher priority
     const selectableCandidates = candidates.filter((handler) =>
-      this.isSelectableHandler(handler)
+      TypeGuards.isSelectable(handler)
     );
 
     if (selectableCandidates.length > 0) {
-      // Choose the selectable overlay with highest selection priority
+      // Choose the selectable candidate with highest selection priority
       return selectableCandidates.reduce((best, current) => {
         const bestPriority = (best as any).getSelectionPriority?.() || 0;
         const currentPriority = (current as any).getSelectionPriority?.() || 0;
@@ -674,34 +566,6 @@ export class InteractionManager {
       x: event.clientX - rect.left,
       y: event.clientY - rect.top,
     };
-  }
-
-  /**
-   * Type guard to check if a handler is a movable overlay.
-   */
-  private isMovableOverlay(
-    handler: InteractionHandler
-  ): handler is BaseOverlay & Movable {
-    return (
-      "id" in handler &&
-      "getPosition" in handler &&
-      "setPosition" in handler &&
-      typeof handler.getPosition === "function" &&
-      typeof handler.setPosition === "function"
-    );
-  }
-
-  /**
-   * Type guard to check if a handler is selectable.
-   */
-  private isSelectableHandler(
-    handler: InteractionHandler
-  ): handler is InteractionHandler & Selectable {
-    return (
-      "id" in handler &&
-      "isSelected" in handler &&
-      typeof handler.isSelected === "function"
-    );
   }
 
   /**

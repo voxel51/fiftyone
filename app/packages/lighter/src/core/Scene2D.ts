@@ -4,7 +4,7 @@
 
 import { AddOverlayCommand } from "../commands/AddOverlayCommand";
 import type { Command } from "../commands/Command";
-import { Movable } from "../commands/MoveOverlayCommand";
+import { Movable, MoveOverlayCommand } from "../commands/MoveOverlayCommand";
 import { RemoveOverlayCommand } from "../commands/RemoveOverlayCommand";
 import {
   TransformOverlayCommand,
@@ -42,6 +42,35 @@ import {
   RenderingStateManager,
 } from "./RenderingStateManager";
 import type { Scene2DConfig, SceneOptions } from "./SceneConfig";
+
+export const TypeGuards = {
+  isSelectable: (
+    body: BaseOverlay | InteractionHandler
+  ): body is BaseOverlay & InteractionHandler & Selectable =>
+    "id" in body && "isSelected" in body && "setSelected" in body,
+
+  isSpatial: (
+    body: BaseOverlay | InteractionHandler
+  ): body is BaseOverlay & Spatial =>
+    "getRelativeBounds" in body && "setAbsoluteBounds" in body,
+
+  isTransformable: (
+    body: BaseOverlay | InteractionHandler
+  ): body is BaseOverlay & Movable =>
+    "getPosition" in body &&
+    "setPosition" in body &&
+    "getBounds" in body &&
+    "setBounds" in body,
+
+  isMovable: (
+    body: BaseOverlay | InteractionHandler
+  ): body is BaseOverlay & Movable =>
+    "id" in body &&
+    "getPosition" in body &&
+    "setPosition" in body &&
+    "getBounds" in body &&
+    "setBounds" in body,
+};
 
 /**
  * Const enum for point containment levels.
@@ -122,8 +151,7 @@ export class Scene2D {
       config.eventBus,
       this.undoRedo,
       this.selectionManager,
-      config.renderer,
-      (id) => this.overlays.get(id)
+      config.renderer
     );
     this.sceneOptions = config.options;
 
@@ -171,6 +199,29 @@ export class Scene2D {
           const overlay = this.overlays.get(overlayId);
           if (overlay) {
             overlay.markDirty();
+          }
+        }
+      },
+      this.abortController
+    );
+
+    config.eventBus.on(
+      LIGHTER_EVENTS.OVERLAY_DRAG_END,
+      (event) => {
+        const overlay = this.getOverlay(event.detail.id);
+        if (overlay && TypeGuards.isMovable(overlay)) {
+          const { startPosition, endPosition } = event.detail;
+          const moved =
+            Math.abs(startPosition.x - endPosition.x) > 1 ||
+            Math.abs(startPosition.y - endPosition.y) > 1;
+          if (moved) {
+            const moveCommand = new MoveOverlayCommand(
+              overlay,
+              event.detail.id,
+              startPosition,
+              endPosition
+            );
+            this.undoRedo.push(moveCommand);
           }
         }
       },
@@ -696,7 +747,7 @@ export class Scene2D {
     };
 
     // Check if overlay is selectable and selected
-    if (this.typeGuards.isSelectable(overlay) && overlay.isSelected()) {
+    if (TypeGuards.isSelectable(overlay) && overlay.isSelected()) {
       return {
         ...finalStyle,
         isSelected: true,
@@ -707,20 +758,6 @@ export class Scene2D {
 
     return finalStyle;
   }
-
-  private readonly typeGuards = {
-    isSelectable: (overlay: BaseOverlay): overlay is BaseOverlay & Selectable =>
-      "isSelected" in overlay && "setSelected" in overlay,
-
-    isSpatial: (overlay: BaseOverlay): overlay is BaseOverlay & Spatial =>
-      "getRelativeBounds" in overlay && "setAbsoluteBounds" in overlay,
-
-    isTransformable: (overlay: BaseOverlay): overlay is BaseOverlay & Movable =>
-      "getPosition" in overlay &&
-      "setPosition" in overlay &&
-      "getBounds" in overlay &&
-      "setBounds" in overlay,
-  };
 
   public async startRenderLoop(): Promise<void> {
     this.config.renderer.addTickHandler(async () => {
@@ -808,13 +845,13 @@ export class Scene2D {
     this.overlays.set(overlay.id, overlay);
 
     // Update coordinates if spatial and canonical media is set
-    if (this.typeGuards.isSpatial(overlay) && this.canonicalMedia) {
+    if (TypeGuards.isSpatial(overlay) && this.canonicalMedia) {
       this.updateSpatialOverlayCoordinates(overlay);
     }
 
     // Register with managers first
     this.interactionManager.addHandler(overlay);
-    if (this.typeGuards.isSelectable(overlay)) {
+    if (TypeGuards.isSelectable(overlay)) {
       this.selectionManager.addSelectable(overlay);
     }
 
@@ -903,7 +940,7 @@ export class Scene2D {
     }
 
     // Check if overlay supports transformation
-    if (!this.typeGuards.isTransformable(overlay)) {
+    if (!TypeGuards.isTransformable(overlay)) {
       console.warn(`Overlay with id ${id} does not support transformation`);
       return false;
     }
@@ -974,7 +1011,7 @@ export class Scene2D {
   getVisibleSelectableOverlays(): BaseOverlay[] {
     return Array.from(this.overlays.values()).filter(
       (overlay) =>
-        this.shouldShowOverlay(overlay) && this.typeGuards.isSelectable(overlay)
+        this.shouldShowOverlay(overlay) && TypeGuards.isSelectable(overlay)
     );
   }
 
@@ -1326,7 +1363,7 @@ export class Scene2D {
    */
   private updateAllSpatialOverlays(): void {
     for (const overlay of this.overlays.values()) {
-      if (this.typeGuards.isSpatial(overlay)) {
+      if (TypeGuards.isSpatial(overlay)) {
         this.updateSpatialOverlayCoordinates(overlay);
       }
     }
@@ -1377,10 +1414,7 @@ export class Scene2D {
 
     // Before rendering, update relative bounds for overlays that need it
     for (const overlay of this.overlays.values()) {
-      if (
-        this.typeGuards.isSpatial(overlay) &&
-        overlay.needsCoordinateUpdate()
-      ) {
+      if (TypeGuards.isSpatial(overlay) && overlay.needsCoordinateUpdate()) {
         this.updateSpatialOverlayRelativeBounds(overlay);
         overlay.markCoordinateUpdateComplete();
 
@@ -1479,11 +1513,11 @@ export class Scene2D {
       if (ret instanceof Promise) {
         ret.then(() => {
           this.renderingState.setStatus(overlayId, OVERLAY_STATUS_PAINTED);
-          overlay.markClean(); // Mark as clean after successful render
+          overlay.markClean();
         });
       } else {
         this.renderingState.setStatus(overlayId, OVERLAY_STATUS_PAINTED);
-        overlay.markClean(); // Mark as clean after successful render
+        overlay.markClean();
       }
     } catch (error) {
       this.handleRenderError(overlayId, error);
