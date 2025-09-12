@@ -160,26 +160,25 @@ export type ResourceEvent =
 export type InteractionEvent =
   | {
       type: typeof LIGHTER_EVENTS.OVERLAY_DRAG_START;
-      detail: { id: string; startPoint: Point; startPosition: Point };
+      detail: {
+        id: string;
+        startPosition: Point;
+        absoluteBounds: Rect;
+        relativeBounds: Rect;
+      };
     }
   | {
       type: typeof LIGHTER_EVENTS.OVERLAY_DRAG_MOVE;
-      detail: {
-        id: string;
-        currentPoint: Point;
-        delta: Point;
-        startPosition: Point;
-        currentPosition: Point;
-      };
+      detail: { id: string; absoluteBounds: Rect; relativeBounds: Rect };
     }
   | {
       type: typeof LIGHTER_EVENTS.OVERLAY_DRAG_END;
       detail: {
         id: string;
-        endPoint: Point;
-        totalDelta: Point;
         startPosition: Point;
         endPosition: Point;
+        absoluteBounds: Rect;
+        relativeBounds: Rect;
       };
     }
   | {

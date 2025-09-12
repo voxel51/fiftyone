@@ -192,15 +192,17 @@ export class InteractionManager {
           startPosition: handler.getPosition(),
         };
 
-        // Emit drag start with complete information
-        this.eventBus.emit({
-          type: LIGHTER_EVENTS.OVERLAY_DRAG_START,
-          detail: {
-            id: handler.id,
-            startPoint: point,
-            startPosition: this.dragState.startPosition,
-          },
-        });
+        if (TypeGuards.isSpatial(handler)) {
+          this.eventBus.emit({
+            type: LIGHTER_EVENTS.OVERLAY_DRAG_START,
+            detail: {
+              id: handler.id,
+              startPosition: this.dragState.startPosition,
+              absoluteBounds: handler.getAbsoluteBounds(),
+              relativeBounds: handler.getRelativeBounds(),
+            },
+          });
+        }
       }
 
       this.canvas.setPointerCapture(event.pointerId);
@@ -243,21 +245,14 @@ export class InteractionManager {
         interactiveHandler.onDrag?.(this.currentPixelCoordinates, event);
       }
 
-      // Emit drag move event with delta information
-      if (this.dragState) {
-        const delta = {
-          x: this.currentPixelCoordinates.x - this.dragState.startPoint.x,
-          y: this.currentPixelCoordinates.y - this.dragState.startPoint.y,
-        };
-
+      // Emit drag move event with bounds information
+      if (this.dragState && TypeGuards.isSpatial(this.dragState.overlay)) {
         this.eventBus.emit({
           type: LIGHTER_EVENTS.OVERLAY_DRAG_MOVE,
           detail: {
             id: this.dragState.overlay.id,
-            currentPoint: this.currentPixelCoordinates,
-            delta,
-            startPosition: this.dragState.startPosition,
-            currentPosition: this.dragState.overlay.getPosition(),
+            absoluteBounds: this.dragState.overlay.getAbsoluteBounds(),
+            relativeBounds: this.dragState.overlay.getRelativeBounds(),
           },
         });
       }
@@ -274,23 +269,16 @@ export class InteractionManager {
       // Handle drag end
       this.dragHandler.onPointerUp?.(point, event);
 
-      // Emit drag end event with complete movement information
-      if (this.dragState) {
-        const totalDelta = {
-          x: point.x - this.dragState.startPoint.x,
-          y: point.y - this.dragState.startPoint.y,
-        };
-
-        const endPosition = this.dragState.overlay.getPosition();
-
+      // Emit drag end event with bounds information
+      if (this.dragState && TypeGuards.isSpatial(this.dragState.overlay)) {
         this.eventBus.emit({
           type: LIGHTER_EVENTS.OVERLAY_DRAG_END,
           detail: {
             id: this.dragState.overlay.id,
-            endPoint: point,
-            totalDelta,
             startPosition: this.dragState.startPosition,
-            endPosition,
+            endPosition: this.dragState.overlay.getPosition(),
+            absoluteBounds: this.dragState.overlay.getAbsoluteBounds(),
+            relativeBounds: this.dragState.overlay.getRelativeBounds(),
           },
         });
       }
