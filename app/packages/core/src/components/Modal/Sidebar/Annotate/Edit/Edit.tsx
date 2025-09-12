@@ -1,25 +1,32 @@
 import { Button } from "@fiftyone/components";
 import { DeleteOutline } from "@mui/icons-material";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import React from "react";
 import styled from "styled-components";
+import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
+import ioSchema from "../../../../../plugins/SchemaIO/examples/input.json";
 import { Redo, RoundButton, Undo } from "../Actions";
 import { ItemLeft, ItemRight } from "../Components";
 import { ICONS } from "../Icons";
 import { fieldType, schemaConfig } from "../state";
-import { current } from "./state";
+import { current, editing } from "./state";
+import useMove from "./useMove";
 
 const Row = styled.div`
   align-items: center;
   color: ${({ theme }) => theme.text.secondary};
   display: flex;
   justify-content: space-between;
-  width: 100%;
+  margin: 0.5rem -1rem;
+  padding: 0 0.5rem;
 `;
 
 const ContentContainer = styled.div`
   margin: 0.25rem 1rem;
   height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 `;
 
 const Content = styled.div`
@@ -28,6 +35,7 @@ const Content = styled.div`
   width: 100%;
   flex: 1;
   padding: 1rem;
+  overflow: auto;
 `;
 
 const Header = () => {
@@ -50,34 +58,37 @@ const Header = () => {
 };
 
 const Footer = () => {
+  const setEditing = useSetAtom(editing);
   return (
     <Row>
-      <ItemLeft>
-        <RoundButton>
-          <DeleteOutline /> Delete
-        </RoundButton>
-      </ItemLeft>
-      <ItemRight>
-        <Button>Done</Button>
-      </ItemRight>
+      <RoundButton>
+        <DeleteOutline /> Delete
+      </RoundButton>
+
+      <Button onClick={() => setEditing(null)}>Done</Button>
     </Row>
   );
 };
 
 export default function Edit() {
   const [label, setLabel] = useAtom(current);
-  const config = useAtomValue(schemaConfig("predictions"));
+  const config = useAtomValue(schemaConfig(label.path));
 
-  console.log(config);
-  console.log(label);
+  useMove();
 
   return (
-    <>
-      <ContentContainer>
-        <Header />
-        <Content>{JSON.stringify(label, null, 2)}</Content>
-        <Footer />
-      </ContentContainer>
-    </>
+    <ContentContainer>
+      <Header />
+      <Content>
+        <SchemaIOComponent
+          schema={ioSchema}
+          data={{ X: 1 }}
+          onChange={(...args) => {
+            console.log(args);
+          }}
+        />
+      </Content>
+      <Footer />
+    </ContentContainer>
   );
 }

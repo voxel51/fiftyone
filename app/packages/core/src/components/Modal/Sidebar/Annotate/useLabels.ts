@@ -16,6 +16,7 @@ import {
 } from "recoil";
 import type { AnnotationSchemas } from "./state";
 import { schemas } from "./state";
+import useFocus from "./useFocus";
 import useHover from "./useHover";
 
 const handleSample = async ({
@@ -122,4 +123,5 @@ export default function useLabels() {
   ]);
 
   useHover();
+  useFocus();
 }

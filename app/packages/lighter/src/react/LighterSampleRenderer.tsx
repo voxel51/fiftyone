@@ -4,13 +4,7 @@
 import { FROM_FO } from "@fiftyone/looker/src/overlays";
 import DetectionOverlay from "@fiftyone/looker/src/overlays/detection";
 import * as fos from "@fiftyone/state";
-import {
-  Sample,
-  State,
-  fieldSchema,
-  getSampleSrc,
-  useAssertedRecoilValue,
-} from "@fiftyone/state";
+import { Sample, getSampleSrc } from "@fiftyone/state";
 import { PrimitiveAtom, getDefaultStore } from "jotai";
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
@@ -47,10 +41,6 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
 
   // Get access to the lighter instance
   const { scene, isReady, addOverlay } = useLighter();
-
-  const schema = useAssertedRecoilValue(
-    fieldSchema({ space: State.SPACE.SAMPLE })
-  );
 
   /**
    * This effect is responsible for loading the sample and adding the overlays to the scene.
@@ -96,7 +86,7 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
     return () => {
       scene.destroy();
     };
-  }, [isReady, addOverlay, sample, scene, schema]);
+  }, [isReady, addOverlay, sample, scene, labels]);
 
   return (
     <div

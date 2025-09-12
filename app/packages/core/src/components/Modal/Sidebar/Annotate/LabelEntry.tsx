@@ -50,7 +50,7 @@ const Line = styled.div<{ fill: string }>`
   background: ${({ fill }) => fill};
 `;
 
-const ObjectEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
+const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
   const [isHoveringThisRow, setIsHoveringThisRow] = useState(false);
   const label = useAtomValue(atom);
   const type = useAtomValue(fieldType(label.path));
@@ -104,4 +104,4 @@ const ObjectEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
   );
 };
 
-export default ObjectEntry;
+export default LabelEntry;

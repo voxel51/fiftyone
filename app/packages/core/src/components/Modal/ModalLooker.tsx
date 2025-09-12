@@ -39,8 +39,9 @@ interface LookerProps {
 }
 
 const Load = ({ children }) => {
-  const l = useAtomValue(loading);
-  if (l) {
+  const isLoading = useAtomValue(loading);
+  const mode = useAtomValue(fos.modalMode);
+  if (mode === "annotate" && isLoading) {
     return <LoadingDots />;
   }
 
@@ -71,7 +72,7 @@ const ModalLookerNoTimeline = React.memo((props: LookerProps) => {
 export const ModalLooker = React.memo(
   ({ sample: propsSampleData }: LookerProps) => {
     const modalSampleData = useRecoilValue(fos.modalSample);
-
+    const mode = useAtomValue(fos.modalMode);
     const sample = useMemo(() => {
       if (propsSampleData) {
         return {
@@ -102,10 +103,12 @@ export const ModalLooker = React.memo(
       isNativeMediaType(sample.sample.media_type ?? sample.sample._media_type)
     ) {
       return (
-        <Load>
-          <LighterSampleRenderer sample={sample} labels={labelAtoms} />
-          <ModalLookerNoTimeline sample={sample} ghost />
-        </Load>
+        <>
+          {mode === "annotate" && (
+            <LighterSampleRenderer sample={sample} labels={labelAtoms} />
+          )}
+          <ModalLookerNoTimeline sample={sample} ghost={mode === "annotate"} />
+        </>
       );
     }
 
