@@ -21,6 +21,7 @@ jobs:
     needs: [build, test]
     environment: release # For trusted publishing. See below.
     permissions:
+      contents: read
       id-token: write
     steps:
       - name: Download dist

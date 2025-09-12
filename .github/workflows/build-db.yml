@@ -111,6 +111,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/db-v')
     environment: release # For trusted publishing. See below.
     permissions:
+      contents: read
       id-token: write
     steps:
       - name: Download
