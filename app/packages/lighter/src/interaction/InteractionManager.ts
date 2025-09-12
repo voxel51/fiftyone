@@ -567,8 +567,14 @@ export class InteractionManager {
       y: event.clientY - rect.top,
     };
 
-    // Convert screen coordinates to world coordinates to account for viewport transformations
-    return this.renderer.screenToWorld(screenPoint);
+    // if there's interactive handler, convert to world coordinates
+    // todo: make this simpler
+    const interactiveHandler = this.getInteractiveHandler();
+    if (interactiveHandler) {
+      return this.renderer.screenToWorld(screenPoint);
+    }
+
+    return screenPoint;
   }
 
   /**

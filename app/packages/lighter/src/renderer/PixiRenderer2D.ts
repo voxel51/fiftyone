@@ -394,6 +394,7 @@ export class PixiRenderer2D implements Renderer2D {
     if (!this.isReady() || !this.app) {
       return { width: 0, height: 0 };
     }
+
     return {
       width: this.app.renderer.width,
       height: this.app.renderer.height,
