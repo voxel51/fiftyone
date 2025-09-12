@@ -1,5 +1,12 @@
 import { Autocomplete, MenuItem, TextField } from "@mui/material";
-import React from "react";
+import { get } from "lodash";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useKey } from "../hooks";
 import { getComponentProps } from "../utils";
 import ChoiceMenuItemBody from "./ChoiceMenuItemBody";
@@ -16,6 +23,63 @@ export default function AutocompleteView(props) {
   const valuesOnly = getValuesOnlySettingFromSchema(schema);
   const allowUserInput = view.allow_user_input !== false;
   const allowClearing = view.allow_clearing !== false;
+
+  // Draft state for the input field - this is what the user types
+  const [draftValue, setDraftValue] = useState("");
+  // Committed value - this is what gets sent to the parent
+  const [committedValue, setCommittedValue] = useState(null);
+  // Track if we're currently typing to avoid unnecessary updates
+  const isTypingRef = useRef(false);
+  // Track the last resolved value to prevent unnecessary re-resolves
+  const lastResolvedValueRef = useRef(null);
+
+  // Initialize draft value from external data
+  const currentValue = useMemo(() => {
+    return data ?? get(schema, "default");
+  }, [data, schema]);
+
+  // Initialize draft value when external data changes (but not while typing)
+  useEffect(() => {
+    if (!isTypingRef.current && currentValue !== lastResolvedValueRef.current) {
+      const displayValue = getDisplayValue(currentValue, choices);
+      setDraftValue(displayValue);
+      setCommittedValue(currentValue);
+      lastResolvedValueRef.current = currentValue;
+    }
+  }, [currentValue, choices]);
+
+  // Get display value for the input field
+  const getDisplayValue = useCallback((value, choices) => {
+    if (value === null || value === undefined) return "";
+    if (typeof value === "string") return value;
+    if (typeof value === "object" && value.label) return value.label;
+    if (typeof value === "object" && value.value !== undefined)
+      return value.value;
+    return String(value);
+  }, []);
+
+  // Commit the draft value to the parent
+  const commitValue = useCallback(
+    (value) => {
+      if (value === null || value === "") {
+        onChange(path, null);
+        setCommittedValue(null);
+      } else if (allowUserInput) {
+        // For user input, send the raw value
+        onChange(path, value);
+        setCommittedValue(value);
+      } else {
+        // For choice selection, resolve the value
+        const resolvedValue = resolveChangedValue(schema, value, valuesOnly);
+        onChange(path, resolvedValue);
+        setCommittedValue(resolvedValue);
+      }
+      setUserChanged();
+      isTypingRef.current = false;
+    },
+    [onChange, path, schema, valuesOnly, allowUserInput, setUserChanged]
+  );
+
   return (
     <FieldWrapper {...props}>
       <Autocomplete
@@ -24,23 +88,40 @@ export default function AutocompleteView(props) {
         disabled={readOnly}
         autoHighlight
         clearOnBlur={multiple}
-        defaultValue={getDefaultValue(data, choices)}
+        value={committedValue}
+        inputValue={draftValue}
         freeSolo={allowUserInput}
         size="small"
         onChange={(e, choice) => {
+          isTypingRef.current = false;
           if (choice === null) {
-            onChange(path, null);
-            setUserChanged();
+            setDraftValue("");
+            commitValue(null);
             return;
           }
-          const changedValue = resolveChangedValues(
-            schema,
-            choice,
-            valuesOnly,
-            multiple
-          );
-          onChange(path, changedValue);
-          setUserChanged();
+          const displayValue = getDisplayValue(choice, choices);
+          setDraftValue(displayValue);
+          commitValue(choice);
+        }}
+        onInputChange={(e, value, reason) => {
+          if (!e) return;
+
+          // Update draft value immediately for responsive typing
+          setDraftValue(value || "");
+          isTypingRef.current = true;
+
+          // Only commit on clear
+          if (reason === "clear") {
+            commitValue(null);
+          }
+        }}
+        onBlur={() => {
+          // Commit the current draft value on blur
+          if (draftValue === "" || draftValue === null) {
+            commitValue(null);
+          } else if (allowUserInput) {
+            commitValue(draftValue);
+          }
         }}
         options={choices.map((choice) => ({
           id: choice.value,
@@ -57,17 +138,6 @@ export default function AutocompleteView(props) {
             }
           />
         )}
-        onInputChange={(e) => {
-          if (!e) return;
-          if (!e.target.value && !multiple) {
-            onChange(path, null);
-            setUserChanged();
-          }
-          if (!multiple && e && allowUserInput) {
-            onChange(path, e.target.value);
-            setUserChanged();
-          }
-        }}
         isOptionEqualToValue={(option, value) => {
           if (allowDups) return false;
           option = resolveChangedValue(schema, option, true);
@@ -75,13 +145,18 @@ export default function AutocompleteView(props) {
           return option == value;
         }}
         multiple={multiple}
-        renderOption={(props, option) => {
+        renderOption={(optionProps, option) => {
           return (
             <MenuItem
-              {...props}
+              {...optionProps}
               {...getComponentProps(props, "optionContainer")}
             >
-              <ChoiceMenuItemBody {...option} {...props} />
+              <ChoiceMenuItemBody
+                {...(typeof option === "object" && option !== null
+                  ? option
+                  : {})}
+                {...props}
+              />
             </MenuItem>
           );
         }}
@@ -92,11 +167,6 @@ export default function AutocompleteView(props) {
 }
 
 // TODO: move these functions to a utils file
-
-function getDefaultValue(defaultValue, choices = []) {
-  const choice = choices.find(({ value }) => value === defaultValue);
-  return choice || defaultValue;
-}
 
 function getValuesOnlySettingFromSchema(schema) {
   const { view = {} } = schema;
