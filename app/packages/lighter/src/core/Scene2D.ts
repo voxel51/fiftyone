@@ -12,7 +12,12 @@ import {
 } from "../commands/TransformOverlayCommand";
 import { UndoRedoManager } from "../commands/UndoRedoManager";
 import { STROKE_WIDTH } from "../constants";
-import { LIGHTER_EVENTS, type LighterEvent } from "../event/EventBus";
+import {
+  LIGHTER_EVENTS,
+  SafeLighterEvent,
+  type LighterEvent,
+} from "../event/EventBus";
+import type { InteractionHandler } from "../interaction/InteractionManager";
 import { InteractionManager } from "../interaction/InteractionManager";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
 import type { Selectable } from "../selection/Selectable";
@@ -102,6 +107,8 @@ export class Scene2D {
   private colorMappingContext?: ColorMappingContext;
   private overlayOrderOptions: OverlayOrderOptions = {};
   private rotation: number = 0;
+  private interactiveMode: boolean = false;
+  private interactiveHandler?: InteractionHandler;
 
   private abortController = new AbortController();
 
@@ -437,6 +444,14 @@ export class Scene2D {
    */
   getCanvasDangerously(): HTMLCanvasElement {
     return this.config.canvas;
+  }
+
+  /**
+   * Sets the cursor for the canvas.
+   * @param cursor - The cursor to set.
+   */
+  setCursor(cursor: string): void {
+    this.config.canvas.style.cursor = cursor;
   }
 
   /**
@@ -1002,11 +1017,22 @@ export class Scene2D {
 
   /**
    * Dispatches an event through the scene's event bus.
-   * Use `executeCommand` instead of this method where possible.
+   * Use `executeCommand` or `dispatchSafely` instead of this method where possible.
    *
    * @param event - The event to dispatch.
    */
   public dispatch_DANGEROUSLY(event: LighterEvent): void {
+    this.dispatch(event);
+  }
+
+  /**
+   * Dispatches an event through the scene's event bus.
+   *
+   * Use this method to dispatch events that are safe to emit from "outside" of lighter.
+   *
+   * @param event - The event to dispatch.
+   */
+  public dispatchSafely(event: SafeLighterEvent): void {
     this.dispatch(event);
   }
 
@@ -1130,6 +1156,14 @@ export class Scene2D {
     this.config.renderer.cleanUp();
 
     this.isDestroyed = true;
+  }
+
+  /**
+   * Gets the interaction manager.
+   * @returns The interaction manager.
+   */
+  getInteractionManager(): InteractionManager {
+    return this.interactionManager;
   }
 
   /**
@@ -1465,5 +1499,72 @@ export class Scene2D {
     this.renderingState.setStatus(overlayId, OVERLAY_STATUS_ERROR);
     // Optionally handle error - could emit an event or log the error
     console.error(`Error rendering overlay ${overlayId}:`, error);
+  }
+
+  /**
+   * Gets the current interactive mode state.
+   * @returns True if interactive mode is active.
+   */
+  public getInteractiveMode(): boolean {
+    return this.interactiveMode;
+  }
+
+  /**
+   * Enters interactive mode with the provided interaction handler.
+   * @param handler - The interaction handler to use for interactive mode.
+   */
+  public enterInteractiveMode(handler: InteractionHandler): void {
+    if (this.interactiveMode) {
+      return;
+    }
+
+    this.interactiveMode = true;
+    this.interactiveHandler = handler;
+
+    this.interactionManager.addHandler(this.interactiveHandler);
+    this.setCursor(handler.cursor || "default");
+
+    this.dispatch({
+      type: LIGHTER_EVENTS.SCENE_INTERACTIVE_MODE_CHANGED,
+      detail: { interactiveMode: true },
+    });
+  }
+
+  /**
+   * Exits interactive mode.
+   */
+  public exitInteractiveMode(): void {
+    if (!this.interactiveMode) {
+      return;
+    }
+
+    this.interactiveMode = false;
+
+    if (this.interactiveHandler) {
+      this.interactionManager.removeHandler(this.interactiveHandler);
+      this.interactiveHandler = undefined;
+    }
+
+    this.setCursor("default");
+
+    this.dispatch({
+      type: LIGHTER_EVENTS.SCENE_INTERACTIVE_MODE_CHANGED,
+      detail: { interactiveMode: false },
+    });
+  }
+
+  /**
+   * Toggles interactive mode on/off with the provided interaction handler.
+   * @param handler - The interaction handler to use for interactive mode.
+   * @returns True if interactive mode is now active, false if it is now inactive.
+   */
+  public toggleInteractiveMode(handler: InteractionHandler): boolean {
+    if (this.interactiveMode) {
+      this.exitInteractiveMode();
+    } else {
+      this.enterInteractiveMode(handler);
+    }
+
+    return this.interactiveMode;
   }
 }

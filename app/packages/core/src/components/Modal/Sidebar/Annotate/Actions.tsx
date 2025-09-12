@@ -1,16 +1,10 @@
-import {
-  BoundingBoxOptions,
-  BoundingBoxOverlay,
-  overlayFactory,
-  useLighter,
-} from "@fiftyone/lighter";
+import { InteractiveDetectionHandler, useLighter } from "@fiftyone/lighter";
 import * as fos from "@fiftyone/state";
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ItemLeft, ItemRight } from "./Components";
 import useShowModal from "./useShowModal";
-import { objectId } from "./utils";
 
 const ActionsDiv = styled.div`
   align-items: center;
@@ -147,36 +141,42 @@ const Classification = () => {
 };
 
 const Detection = () => {
-  const { addOverlay } = useLighter();
+  const { scene, addOverlay, overlayFactory } = useLighter();
   const currentSampleId = useRecoilValue(fos.currentSampleId);
+  const [isInteractiveModeOnLocal, setIsInteractiveModeOnLocal] =
+    useState(false);
 
-  const addRandomDetection = useCallback(() => {
-    const detection = overlayFactory.create<
-      BoundingBoxOptions,
-      BoundingBoxOverlay
-    >("bounding-box", {
-      sampleId: currentSampleId,
-      label: {
-        id: objectId(),
-        label: `detection-${Math.random().toString(36).substring(2, 5)}`,
-        tags: [],
-        bounding_box: [0.1, 0.1, 0.1, 0.1],
-      },
-      relativeBounds: {
-        x: 0.1,
-        y: 0.1,
-        width: 0.1,
-        height: 0.1,
-      },
-      draggable: true,
-      selectable: true,
-    });
+  // Handle escape key to exit interactive mode
+  fos.useKeydownHandler((e: KeyboardEvent) => {
+    if (e.key === "Escape" && scene) {
+      scene.exitInteractiveMode();
+      setIsInteractiveModeOnLocal(false);
+    }
+  });
 
-    addOverlay(detection, true);
-  }, [currentSampleId, addOverlay]);
+  const toggleInteractiveMode = useCallback(() => {
+    if (!scene) return;
+
+    const handler = new InteractiveDetectionHandler(
+      currentSampleId,
+      addOverlay,
+      overlayFactory
+    );
+
+    const isInteractiveMode = scene.toggleInteractiveMode(handler);
+    setIsInteractiveModeOnLocal(isInteractiveMode);
+  }, [scene, currentSampleId, addOverlay, overlayFactory]);
 
   return (
-    <Square onClick={addRandomDetection}>
+    <Square
+      onClick={toggleInteractiveMode}
+      style={{
+        backgroundColor: isInteractiveModeOnLocal
+          ? "rgba(0, 123, 255, 0.2)"
+          : undefined,
+        border: isInteractiveModeOnLocal ? "2px solid #007bff" : undefined,
+      }}
+    >
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="19"
@@ -187,7 +187,7 @@ const Detection = () => {
         <title>Detection</title>
         <path
           d="M4.25 15.75C3.8375 15.75 3.48438 15.6031 3.19063 15.3094C2.89687 15.0156 2.75 14.6625 2.75 14.25V3.75C2.75 3.3375 2.89687 2.98438 3.19063 2.69063C3.48438 2.39687 3.8375 2.25 4.25 2.25H14.75C15.1625 2.25 15.5156 2.39687 15.8094 2.69063C16.1031 2.98438 16.25 3.3375 16.25 3.75V14.25C16.25 14.6625 16.1031 15.0156 15.8094 15.3094C15.5156 15.6031 15.1625 15.75 14.75 15.75H4.25ZM4.25 14.25H14.75V3.75H4.25V14.25Z"
-          fill="#999999"
+          fill={isInteractiveModeOnLocal ? "#007bff" : "#999999"}
         />
       </svg>
     </Square>

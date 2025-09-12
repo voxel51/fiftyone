@@ -18,6 +18,7 @@ export abstract class BaseOverlay implements InteractionHandler {
   readonly sampleId: string;
   readonly label: RawLookerLabel;
   readonly field?: string;
+  readonly cursor?: string;
 
   protected isHoveredState = false;
 
@@ -42,6 +43,7 @@ export abstract class BaseOverlay implements InteractionHandler {
     this.sampleId = sampleId;
     this.label = label;
     this.field = field;
+    this.cursor = "default";
   }
 
   /**

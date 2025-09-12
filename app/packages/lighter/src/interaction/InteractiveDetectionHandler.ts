@@ -1,0 +1,119 @@
+/**
+ * Copyright 2017-2025, Voxel51, Inc.
+ */
+
+import type { Point } from "../types";
+import type { InteractionHandler } from "./InteractionManager";
+
+const INTERACTIVE_DETECTION_HANDLER_ID = "interactive-detection-handler";
+
+const MIN_PIXELS = 2;
+
+/**
+ * Interactive detection handler for creating bounding box annotations.
+ */
+export class InteractiveDetectionHandler implements InteractionHandler {
+  readonly id = INTERACTIVE_DETECTION_HANDLER_ID;
+  readonly cursor = "crosshair";
+
+  private isDragging = false;
+  private startPoint?: Point;
+  private currentBounds?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+
+  constructor(
+    private sampleId: string,
+    private addOverlay: (overlay: any, withUndo?: boolean) => void,
+    private overlayFactory: any,
+    private onComplete?: () => void
+  ) {}
+
+  containsPoint(): boolean {
+    return true;
+  }
+
+  onPointerDown(point: Point, event: PointerEvent): boolean {
+    this.startPoint = point;
+    this.isDragging = true;
+    this.currentBounds = {
+      x: point.x,
+      y: point.y,
+      width: 0,
+      height: 0,
+    };
+    return true;
+  }
+
+  onDrag(point: Point, event: PointerEvent): boolean {
+    if (!this.isDragging || !this.startPoint) return false;
+
+    // Calculate bounds from start point to current point
+    const x = Math.min(this.startPoint.x, point.x);
+    const y = Math.min(this.startPoint.y, point.y);
+    const width = Math.abs(point.x - this.startPoint.x);
+    const height = Math.abs(point.y - this.startPoint.y);
+
+    this.currentBounds = { x, y, width, height };
+    return true;
+  }
+
+  onPointerUp(point: Point, event: PointerEvent): boolean {
+    if (!this.isDragging || !this.startPoint || !this.currentBounds) {
+      this.isDragging = false;
+      return false;
+    }
+
+    // Only create detection if we have a meaningful size
+    const minSize = MIN_PIXELS;
+    if (
+      this.currentBounds.width < minSize ||
+      this.currentBounds.height < minSize
+    ) {
+      this.isDragging = false;
+      this.onComplete?.();
+      return true;
+    }
+
+    // Convert absolute coordinates to relative coordinates [0,1]
+    const canvas = event.target as HTMLCanvasElement;
+    if (!canvas) {
+      this.isDragging = false;
+      this.onComplete?.();
+      return true;
+    }
+
+    const canvasRect = canvas.getBoundingClientRect();
+
+    const relativeX = this.currentBounds.x / canvasRect.width;
+    const relativeY = this.currentBounds.y / canvasRect.height;
+    const relativeWidth = this.currentBounds.width / canvasRect.width;
+    const relativeHeight = this.currentBounds.height / canvasRect.height;
+
+    const detection = this.overlayFactory.create("bounding-box", {
+      sampleId: this.sampleId,
+      label: {
+        id: `detection-${Math.random().toString(36).substring(2, 9)}`,
+        label: `detection-${Math.random().toString(36).substring(2, 5)}`,
+        tags: [],
+        bounding_box: [relativeX, relativeY, relativeWidth, relativeHeight],
+      },
+      relativeBounds: {
+        x: relativeX,
+        y: relativeY,
+        width: relativeWidth,
+        height: relativeHeight,
+      },
+      draggable: true,
+      selectable: true,
+    });
+
+    this.addOverlay(detection, true);
+    this.isDragging = false;
+    this.onComplete?.();
+    return true;
+  }
+}
