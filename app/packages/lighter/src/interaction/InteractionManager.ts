@@ -562,10 +562,13 @@ export class InteractionManager {
 
   private getCanvasPoint(event: PointerEvent): Point {
     const rect = this.canvas.getBoundingClientRect();
-    return {
+    const screenPoint = {
       x: event.clientX - rect.left,
       y: event.clientY - rect.top,
     };
+
+    // Convert screen coordinates to world coordinates to account for viewport transformations
+    return this.renderer.screenToWorld(screenPoint);
   }
 
   /**

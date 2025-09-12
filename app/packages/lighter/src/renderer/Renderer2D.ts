@@ -136,6 +136,13 @@ export interface Renderer2D {
   enableZoomPan(): void;
 
   /**
+   * Converts screen coordinates to world coordinates, accounting for viewport transformations.
+   * @param screenPoint - The screen coordinates to convert.
+   * @returns The world coordinates.
+   */
+  screenToWorld(screenPoint: Point): Point;
+
+  /**
    * Reset tick handler, and remove all children from the viewport.
    */
   cleanUp(): void;
