@@ -364,6 +364,23 @@ export class PixiRenderer2D implements Renderer2D {
   }
 
   /**
+   * Converts screen coordinates to world coordinates, accounting for viewport transformations.
+   * @param screenPoint - The screen coordinates to convert.
+   * @returns The world coordinates.
+   */
+  screenToWorld(screenPoint: Point): Point {
+    if (!this.viewport) {
+      return screenPoint;
+    }
+
+    const worldPoint = this.viewport.toWorld(screenPoint.x, screenPoint.y);
+    return {
+      x: worldPoint.x,
+      y: worldPoint.y,
+    };
+  }
+
+  /**
    * Check if the renderer is initialized
    */
   isReady(): boolean {
