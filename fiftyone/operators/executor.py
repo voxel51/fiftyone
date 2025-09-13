@@ -8,7 +8,6 @@ FiftyOne operator execution.
 
 import asyncio
 import collections
-import dataclasses
 import inspect
 import logging
 import traceback
@@ -268,15 +267,25 @@ async def execute_or_delegate_operator(
             should_delegate = True
 
     # Validate PipelineOperators
+
     pipeline_stages = []
     if isinstance(operator, pipeline.PipelineOperator):
-        pipeline_stages = operator.resolve_pipeline(ctx)
-        if not pipeline_stages or not isinstance(pipeline_stages, list):
-            raise TypeError("Pipeline must be a list of stages")
-        if not all(
-            isinstance(s, pipeline.PipelineStage) for s in pipeline_stages
-        ):
-            raise TypeError("Pipeline stages must be of type PipelineStage")
+        try:
+            pipeline_stages = operator.resolve_pipeline(ctx)
+            if not pipeline_stages or not isinstance(pipeline_stages, list):
+                raise TypeError("Pipeline must be a list of stages")
+            if not all(
+                isinstance(s, pipeline.PipelineStage) for s in pipeline_stages
+            ):
+                raise TypeError(
+                    "Pipeline stages must be of type PipelineStage"
+                )
+        except Exception as e:
+            return ExecutionResult(
+                executor=executor,
+                error=traceback.format_exc(),
+                error_message=f"Failed to resolve pipeline: {str(e)}",
+            )
 
     if should_delegate:
         try:
@@ -286,10 +295,14 @@ async def execute_or_delegate_operator(
             if (
                 ctx.num_distributed_tasks
                 or "num_distributed_tasks" in ctx.request_params
-                or isinstance(operator, pipeline.PipelineOperator)
             ):
                 raise ValueError(
-                    "Distributed execution only supported in FiftyOne Enterprise"
+                    "Distributed execution is only supported in FiftyOne Enterprise"
+                )
+            if isinstance(operator, pipeline.PipelineOperator):
+                raise ValueError(
+                    "Pipeline operators require a distributed executor, "
+                    "available only in FiftyOne Enterprise"
                 )
 
             ctx.request_params["delegated"] = True

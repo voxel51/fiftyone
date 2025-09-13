@@ -6,7 +6,7 @@ FiftyOne pipeline operator.
 |
 """
 import dataclasses
-from typing import Optional
+from typing import Any, Mapping, Optional
 
 from .operator import Operator
 
@@ -30,7 +30,17 @@ class PipelineStage:
     # Optional
     name: Optional[str] = None
     num_distributed_tasks: Optional[int] = None
-    params: Optional[dict[str]] = None
+    params: Optional[Mapping[str, Any]] = None
+
+    def __post_init__(self):
+        if not self.operator_uri:
+            raise ValueError("operator_uri must be a non-empty string")
+
+        if (
+            self.num_distributed_tasks is not None
+            and self.num_distributed_tasks < 1
+        ):
+            raise ValueError("num_distributed_tasks must be >= 1")
 
 
 class PipelineOperator(Operator):
@@ -44,12 +54,12 @@ class PipelineOperator(Operator):
             ctx: the :class:`fiftyone.operators.executor.ExecutionContext`
 
         Returns:
-            a list of :class:`fiftyone.operators.types.PipelineStage`,
+            a list of :class:`fiftyone.operators.PipelineStage`,
         """
         raise NotImplementedError("subclass must implement resolve_pipeline")
 
     def execute(self, ctx):
-        """Not used for pipeline operators."""
+        """Not used for pipeline operators; pipelines are executed via stages"""
         raise NotImplementedError(
             "execute() not implemented for PipelineOperators"
         )

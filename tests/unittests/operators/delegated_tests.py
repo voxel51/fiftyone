@@ -28,7 +28,7 @@ from fiftyone.operators.executor import (
     ExecutionResult,
     ExecutionRunState,
 )
-from fiftyone.operators.pipeline import PipelineStage
+from fiftyone.operators import PipelineStage
 from fiftyone.factory.repos import (
     DelegatedOperationDocument,
     delegated_operation,

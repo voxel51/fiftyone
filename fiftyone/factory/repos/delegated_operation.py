@@ -209,7 +209,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
 
         op.delegation_target = kwargs.get("delegation_target", None)
         op.metadata = kwargs.get("metadata") or {}
-        op.pipeline = kwargs.get("pipeline", [])
+        op.pipeline = kwargs.get("pipeline")
 
         context = None
         if isinstance(op.context, dict):
