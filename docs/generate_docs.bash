@@ -123,6 +123,9 @@ if [[ ${FAST_BUILD} = false ]]; then
     echo "Generating model zoo listing page"
     python scripts/make_model_zoo_docs.py
 
+    echo "Generating plugin documentation"
+    python scripts/generate_plugin_docs.py
+
     echo "Generating TypeScript API docs"
     cd ../app
     yarn doc

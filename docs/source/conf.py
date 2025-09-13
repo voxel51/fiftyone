@@ -74,6 +74,7 @@ extensions = [
     "autodocsumm",
     "myst_parser",
     "llms_txt",
+    "sphinx_remove_toctrees",
 ]
 
 # Types of class members to generate documentation for.
@@ -182,6 +183,8 @@ html_theme_options = {
 
 html_sidebars = {"**": ["algolia.html", "sidebar-nav"]}
 
+remove_from_toctrees = ["plugins/plugins_ecosystem/*"]
+
 html_favicon = "_static/favicon/favicon.ico"
 
 # Add any paths that contain custom static files (such as style sheets) here,
@@ -196,6 +199,7 @@ html_js_files = [
     "https://cdn.jsdelivr.net/npm/list.js@2.3.1/dist/list.min.js",
     "js/custom.js",
     "js/tutorial-filters.js",
+    "js/plugins-search.js",
 ]
 
 # Prevent RST source files from being included in output
