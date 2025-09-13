@@ -42,6 +42,50 @@ class PluginDocGenerator:
         self.plugins_dir.mkdir(exist_ok=True)
         self.plugins_ecosystem_dir = self.plugins_dir / "plugins_ecosystem"
         self.plugins_ecosystem_dir.mkdir(exist_ok=True)
+        self._compile_regex_patterns()
+
+    def _compile_regex_patterns(self):
+        """Pre-compile all regex patterns for better performance."""
+        self.emoji_pattern = re.compile(
+            r"[\U0001F300-\U0001FAFF\U00002702-\U000027B0\U000024C2-\U0001F251\u2600-\u26FF\u2700-\u27BF]",
+            flags=re.UNICODE,
+        )
+        self.table_section_pattern = re.compile(
+            r"## {}\s*\n\n(.*?)(?=\n## |\n$)", re.DOTALL
+        )
+        self.table_row_pattern = re.compile(
+            r"<tr>\s*<td[^>]*>(.*?)</td>\s*<td[^>]*>(.*?)</td>\s*</tr>",
+            re.DOTALL,
+        )
+        self.link_pattern = re.compile(
+            r'<a[^>]*href="([^"]*)"[^>]*>([^<]*)</a>'
+        )
+        self.html_tag_pattern = re.compile(r"<[^>]+>")
+        self.icon_description_pattern = re.compile(r"^([^\s]+)\s*(.+)")
+        self.markdown_img_pattern = re.compile(r"!\[[^\]]*\]\(([^)]+)\)")
+        self.user_attachments_pattern = re.compile(
+            r"https://github\.com/user-attachments/assets/[a-f0-9-]+"
+        )
+        self.github_assets_pattern = re.compile(
+            r"https://github\.com/[^/]+/[^/]+/assets/\d+/[a-f0-9-]+"
+        )
+        self.html_img_pattern = re.compile(
+            r'<img[^>]+src=["\']([^"\']+)["\'][^>]*>'
+        )
+        self.markdown_img_replace_pattern = re.compile(
+            r"!\[([^\]]*)\]\(([^)]+)\)"
+        )
+        self.html_img_replace_pattern = re.compile(
+            r'(<img[^>]+src=["\'])([^"\']+)(["\'][^>]*>)'
+        )
+        self.bare_github_url_pattern = re.compile(
+            r"^https://github\.com/[^/]+/[^/]+/[^\s]+$", re.MULTILINE
+        )
+        self.description_cleanup_pattern = re.compile(r"[\n:]")
+        self.download_model_pattern = re.compile(
+            r"\bdef\s+download_model\s*\("
+        )
+        self.load_dataset_pattern = re.compile(r"\bdef\s+load_dataset\s*\(")
 
     def _remove_emojis(self, text: str) -> str:
         """Remove emoji and miscellaneous symbols from a string.
@@ -51,12 +95,13 @@ class PluginDocGenerator:
         """
         if not text:
             return text
+        return self.emoji_pattern.sub("", text)
 
-        emoji_pattern = re.compile(
-            r"[\U0001F300-\U0001FAFF\U00002702-\U000027B0\U000024C2-\U0001F251\u2600-\u26FF\u2700-\u27BF]",
-            flags=re.UNICODE,
+    def _clean_description(self, description: str) -> str:
+        """Clean up plugin description by replacing newlines and colons."""
+        return self.description_cleanup_pattern.sub(
+            lambda m: " " if m.group(0) == "\n" else "\\:", description
         )
-        return emoji_pattern.sub("", text)
 
     def _parse_github_url(self, github_url: str) -> Tuple[str, str, str]:
         """Parse a GitHub URL and return (owner, repo, path)."""
@@ -164,7 +209,9 @@ class PluginDocGenerator:
         self, content: str, section_name: str
     ) -> Optional[str]:
         """Extract a table section from the README content."""
-        pattern = rf"## {re.escape(section_name)}\s*\n\n(.*?)(?=\n## |\n$)"
+        pattern = self.table_section_pattern.pattern.replace(
+            "{}", re.escape(section_name)
+        )
         match = re.search(pattern, content, re.DOTALL)
         return match.group(1) if match else None
 
@@ -173,10 +220,7 @@ class PluginDocGenerator:
     ) -> List[Plugin]:
         """Parse HTML table content and extract plugin information."""
         plugins = []
-        row_pattern = (
-            r"<tr>\s*<td[^>]*>(.*?)</td>\s*<td[^>]*>(.*?)</td>\s*</tr>"
-        )
-        rows = re.findall(row_pattern, table_content, re.DOTALL)
+        rows = self.table_row_pattern.findall(table_content)
 
         for name_cell, description_cell in rows:
             plugin = self._create_plugin_from_row(
@@ -191,9 +235,7 @@ class PluginDocGenerator:
         self, name_cell: str, description_cell: str, category: str
     ) -> Optional[Plugin]:
         """Create a Plugin object from table row data."""
-        name_match = re.search(
-            r'<a[^>]*href="([^"]*)"[^>]*>([^<]*)</a>', name_cell
-        )
+        name_match = self.link_pattern.search(name_cell)
         if not name_match:
             return None
 
@@ -203,8 +245,8 @@ class PluginDocGenerator:
         if plugin_name.startswith("@"):
             plugin_name = plugin_name[1:]
 
-        description = re.sub(r"<[^>]+>", "", description_cell).strip()
-        icon_match = re.match(r"^([^\s]+)\s*(.+)", description)
+        description = self.html_tag_pattern.sub("", description_cell).strip()
+        icon_match = self.icon_description_pattern.match(description)
 
         icon = icon_match.group(1) if icon_match else None
         clean_description = icon_match.group(2) if icon_match else description
@@ -252,7 +294,6 @@ class PluginDocGenerator:
 
                 owner = parts[3]
                 repo = parts[4]
-
                 branch = (
                     parts[branch_index] if branch_index < len(parts) else None
                 )
@@ -311,29 +352,21 @@ class PluginDocGenerator:
 
         image_path = None
         banned_exts = (".mp4", ".mov", ".avi")
-        markdown_img_pattern = r"!\[[^\]]*\]\(([^)]+)\)"
-        markdown_match = re.search(markdown_img_pattern, readme_content)
+
+        markdown_match = self.markdown_img_pattern.search(readme_content)
         if markdown_match:
             url = markdown_match.group(1)
             if not url.lower().endswith(banned_exts):
                 return self._convert_relative_url(url, github_url)
 
-        user_attachments_pattern = (
-            r"https://github\.com/user-attachments/assets/[a-f0-9-]+"
-        )
-        user_match = re.search(user_attachments_pattern, readme_content)
+        user_match = self.user_attachments_pattern.search(readme_content)
         if user_match:
             url = user_match.group(0)
             ctype = self._get_content_type(url)
             if ctype and ctype.startswith("image/"):
                 return url
-            else:
-                return None
 
-        github_assets_pattern = (
-            r"https://github\.com/[^/]+/[^/]+/assets/\d+/[a-f0-9-]+"
-        )
-        github_match = re.search(github_assets_pattern, readme_content)
+        github_match = self.github_assets_pattern.search(readme_content)
         if github_match:
             url = github_match.group(0)
             if not url.lower().endswith(banned_exts):
@@ -341,14 +374,34 @@ class PluginDocGenerator:
                 if ctype and ctype.startswith("image/"):
                     return self._convert_relative_url(url, github_url)
 
-        img_pattern = r'<img[^>]+src=["\']([^"\']+)["\'][^>]*>'
-        img_match = re.search(img_pattern, readme_content)
+        img_match = self.html_img_pattern.search(readme_content)
         if img_match:
             url = img_match.group(1)
             if not url.lower().endswith(banned_exts):
                 return self._convert_relative_url(url, github_url)
 
         return image_path
+
+    def _replace_markdown_image(self, match, github_url: str):
+        """Replace function for markdown images."""
+        alt_text = match.group(1)
+        url = match.group(2)
+        absolute_url = self._convert_relative_url(url, github_url)
+        return f"![{alt_text}]({absolute_url})"
+
+    def _replace_html_image(self, match, github_url: str):
+        """Replace function for HTML images."""
+        before_src = match.group(1)
+        url = match.group(2)
+        after_src = match.group(3)
+        absolute_url = self._convert_relative_url(url, github_url)
+        return f"{before_src}{absolute_url}{after_src}"
+
+    def _replace_bare_github_media(self, match, github_url: str):
+        """Replace function for bare GitHub URLs."""
+        url = match.group(0)
+        absolute_url = self._convert_relative_url(url, github_url)
+        return f'<video controls width="100%" style="max-width: 600px; height: auto;"><source src="{absolute_url}" type="video/mp4"></video>'
 
     def _process_readme_urls(
         self, readme_content: str, github_url: str
@@ -357,33 +410,43 @@ class PluginDocGenerator:
         if not readme_content:
             return readme_content
 
-        def replace_markdown_image(match):
-            alt_text = match.group(1)
-            url = match.group(2)
-            absolute_url = self._convert_relative_url(url, github_url)
-            return f"![{alt_text}]({absolute_url})"
-
-        def replace_html_image(match):
-            before_src = match.group(1)
-            url = match.group(2)
-            after_src = match.group(3)
-            absolute_url = self._convert_relative_url(url, github_url)
-            return f"{before_src}{absolute_url}{after_src}"
-
-        processed = re.sub(
-            r"!\[([^\]]*)\]\(([^)]+)\)", replace_markdown_image, readme_content
+        # Create partial functions with github_url bound
+        replace_markdown_image = lambda match: self._replace_markdown_image(
+            match, github_url
         )
-        processed = re.sub(
-            r'(<img[^>]+src=["\'])([^"\']+)(["\'][^>]*>)',
-            replace_html_image,
-            processed,
+        replace_html_image = lambda match: self._replace_html_image(
+            match, github_url
+        )
+        replace_bare_github_media = (
+            lambda match: self._replace_bare_github_media(match, github_url)
+        )
+
+        processed = self.markdown_img_replace_pattern.sub(
+            replace_markdown_image, readme_content
+        )
+        processed = self.html_img_replace_pattern.sub(
+            replace_html_image, processed
+        )
+        processed = self.bare_github_url_pattern.sub(
+            replace_bare_github_media, processed
         )
 
         return processed
 
     def _get_plugin_sort_key(self, plugin_tuple):
         """Get sort key for plugin tuple based on update date and stars."""
-        plugin, image, repo_info = plugin_tuple
+        (
+            plugin,
+            image,
+            repo_info,
+            owner,
+            repo,
+            path,
+            plugin_name,
+            plugin_slug,
+            display_name,
+            plugin_link,
+        ) = plugin_tuple
 
         if repo_info and repo_info.get("updated_at"):
             try:
@@ -398,73 +461,9 @@ class PluginDocGenerator:
 
     def generate_plugins_ecosystem_rst(self, all_plugins: List[Plugin]) -> str:
         """Generate the plugins_ecosystem.rst file with all plugin cards."""
-        rst_content = """.. _plugins-ecosystem:
+        rst_content = ""
 
-Plugins Ecosystem
-============================
-
-.. default-role:: code
-
-Welcome to the FiftyOne Plugins ecosystem! 🚀
-
-Discover cutting-edge research, state-of-the-art models, and innovative techniques. These plugins extend the power of FiftyOne beyond imagination. From advanced computer vision models to specialized annotation tools, our curated collection transforms FiftyOne into your ultimate AI research platform.
-
-.. raw:: html
-
-    <div class="plugins-search-container">
-        <div class="plugins-search-box">
-            <input type="text" id="plugin-search" placeholder="Search plugins by name, description, author, or category...">
-            <div class="plugins-search-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <path d="m21 21-4.35-4.35"></path>
-                </svg>
-            </div>
-        </div>
-    </div>
-
-.. raw:: html
-
-    <div style="margin:0; width: 100%; display:flex; justify-content:flex-end;">
-        <a href="https://github.com/voxel51/fiftyone-plugins?tab=readme-ov-file#contributing" target="_blank" class="sd-btn sd-btn-primary book-a-demo plugins-cta" rel="noopener noreferrer">
-            <div class="arrow">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="size-3">
-                <path stroke="currentColor" stroke-width="1.5"
-                        d="M1.458 11.995h20.125M11.52 22.063 21.584 12 11.521 1.937"
-                        vector-effect="non-scaling-stroke"></path>
-                </svg>  
-            </div>
-            <div class="text">Build your own plugin</div>
-        </a>
-    </div>
-    
-.. Plugins cards section -----------------------------------------------------
-
-.. raw:: html
-
-    <div id="plugin-cards-container">
-
-    <nav class="navbar navbar-expand-lg navbar-light tutorials-nav col-12">
-        <div class="tutorial-tags-container">
-            <div id="dropdown-filter-tags">
-                <div class="tutorial-filter-menu">
-                    <div class="tutorial-filter filter-btn all-tag-selected" data-tag="all">All</div>
-                </div>
-            </div>
-        </nav>
-        
-    <hr class="tutorials-hr">
-
-    <div class="row">
-
-    <div id="tutorial-cards">
-    <div class="list">
-
-.. Add plugin cards below
-
-"""
-
-        plugins_with_info = []
+        all_plugins_list = []
         fallback_images = [
             "https://cdn.voxel51.com/zoo-predictions.webp",
             "https://cdn.voxel51.com/yolo-predictions.webp",
@@ -475,16 +474,26 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
         ]
 
         for plugin in all_plugins:
-            owner, repo, path = self._parse_github_url(plugin.github_url)
-            readme_content = self.fetch_github_readme(owner, repo, path)
-
-            if readme_content is None:
+            try:
+                owner, repo, path = self._parse_github_url(plugin.github_url)
+            except ValueError as e:
+                logger.warning(
+                    f"Skipping plugin with invalid URL {plugin.github_url}: {e}"
+                )
                 continue
+            readme_content = self.fetch_github_readme(owner, repo, path)
+            if readme_content is None:
+                readme_content = ""
 
             plugin_name = plugin.name.split("/")[-1].replace("`", "").strip()
             plugin_slug = (
                 plugin_name.lower().replace("-", "_").replace(" ", "_")
             )
+            display_name = " ".join(
+                word.capitalize()
+                for word in plugin_name.replace("_", " ").split()
+            )
+            plugin_link = f"plugins_ecosystem/{plugin_name.lower().replace('-', '_').replace(' ', '_')}.html"
 
             processed_readme = self._process_readme_urls(
                 readme_content, plugin.github_url
@@ -495,11 +504,11 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
 
             with open(readme_path, "w", encoding="utf-8") as f:
                 if plugin.category == "community":
-                    community_note = """> **Note**
-> 
-> Community plugins are external projects maintained by their respective authors. They are not
-> part of FiftyOne core and may change independently. Review each plugin's documentation and
-> license before use.
+                    community_note = """```{note}
+Community plugins are external projects maintained by their respective authors. They are not
+part of FiftyOne core and may change independently. Review each plugin's documentation and
+license before use.
+```
 
 """
                     f.write(community_note + processed_readme)
@@ -511,20 +520,35 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
                 readme_content, plugin.github_url
             )
 
-            plugins_with_info.append((plugin, image_path or None, repo_info))
-
-        plugins_with_info.sort(key=self._get_plugin_sort_key)
-        all_plugins_list = plugins_with_info
-
-        for idx, (plugin, cached_image_path, repo_info) in enumerate(
-            all_plugins_list
-        ):
-            plugin_name = plugin.name.split("/")[-1].replace("`", "").strip()
-            display_name = " ".join(
-                word.capitalize()
-                for word in plugin_name.replace("_", " ").split()
+            all_plugins_list.append(
+                (
+                    plugin,
+                    image_path or None,
+                    repo_info,
+                    owner,
+                    repo,
+                    path,
+                    plugin_name,
+                    plugin_slug,
+                    display_name,
+                    plugin_link,
+                )
             )
-            plugin_link = f"plugins_ecosystem/{plugin_name.lower().replace('-', '_').replace(' ', '_')}.html"
+
+        all_plugins_list.sort(key=self._get_plugin_sort_key)
+
+        for idx, (
+            plugin,
+            cached_image_path,
+            repo_info,
+            owner,
+            repo,
+            path,
+            plugin_name,
+            plugin_slug,
+            display_name,
+            plugin_link,
+        ) in enumerate(all_plugins_list):
 
             image_path = (
                 cached_image_path
@@ -547,33 +571,28 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
                 if author
                 else ""
             )
-            safe_desc = plugin.description.replace("\n", " ").replace(
-                ":", "\\:"
-            )
+            safe_desc = self._clean_description(plugin.description)
             description_with_author = f"{author_html}{safe_desc}"
 
             try:
-                owner, repo, subpath = self._parse_github_url(
-                    plugin.github_url
-                )
                 branch = (repo_info or {}).get("default_branch") or "main"
                 init_rel_path = (
-                    f"{subpath}/__init__.py" if subpath else "__init__.py"
+                    f"{path}/__init__.py" if path else "__init__.py"
                 )
                 raw_init_url = f"https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{init_rel_path}"
                 init_resp = requests.get(raw_init_url, timeout=6)
-                has_model = False
-                has_dataset = False
                 if init_resp.status_code == 200:
                     init_text = init_resp.text or ""
                     has_model = (
-                        re.search(r"\bdef\s+download_model\s*\(", init_text)
+                        self.download_model_pattern.search(init_text)
                         is not None
                     )
                     has_dataset = (
-                        re.search(r"\bdef\s+load_dataset\s*\(", init_text)
-                        is not None
+                        self.load_dataset_pattern.search(init_text) is not None
                     )
+                else:
+                    has_model = False
+                    has_dataset = False
             except Exception as e:
                 logger.warning(
                     f"Error checking for model and dataset in {plugin.github_url}: {e}"
@@ -581,14 +600,15 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
                 has_model = False
                 has_dataset = False
 
-            extra_tags = []
-            if has_model:
-                extra_tags.append("Model")
-            if has_dataset:
-                extra_tags.append("Dataset")
-            tags_field = ",".join(
-                [t for t in [category_tag] + extra_tags if t]
-            )
+            extra_tags = [
+                tag
+                for tag, condition in [
+                    ("Model", has_model),
+                    ("Dataset", has_dataset),
+                ]
+                if condition
+            ]
+            tags_field = ",".join([category_tag] + extra_tags)
 
             rst_content += f"""
 .. customcarditem::
@@ -597,42 +617,6 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
     :link: {plugin_link}
     :image: {image_path}
     :tags: {tags_field}
-
-"""
-
-        rst_content += """
-.. End of plugin cards
-
-.. raw:: html
-
-    </div>
-
-    <div class="pagination d-flex justify-content-center"></div>
-
-    </div>
-
-    </div>
-
-    
-
-.. End plugins cards section -------------------------------------------------
-
-.. note::
-   Community plugins are external projects maintained by their respective authors. They are not
-   part of FiftyOne core and may change independently. Review each plugin's documentation and
-   license before use.
-
-.. toctree::
-   :maxdepth: 1
-   :hidden:
-   :glob:
-
-   Overview <index>
-   Using plugins <using_plugins>
-   Developing plugins <developing_plugins>
-   plugins_ecosystem/*
-   API reference <api/plugins>
-   TypeScript API reference <ts-api>
 
 """
         return rst_content
@@ -649,7 +633,7 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
         plugins_ecosystem_content = self.generate_plugins_ecosystem_rst(
             plugins
         )
-        with open(self.plugins_dir / "plugin_cards.rst", "w") as f:
+        with open(self.plugins_ecosystem_dir / "plugin_cards.rst", "w") as f:
             f.write(plugins_ecosystem_content)
 
         logger.info("Plugin documentation generated successfully!")
