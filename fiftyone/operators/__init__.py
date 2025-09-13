@@ -21,6 +21,7 @@ from .executor import (
 )
 from .utils import ProgressHandler, is_new
 from .panel import Panel, PanelConfig
+from .pipeline import PipelineOperator, PipelineStage
 from .store import ExecutionStore
 from .categories import Categories
 from .cache import execution_cache

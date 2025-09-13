@@ -40,6 +40,7 @@ class DelegatedOperationService(object):
         delegation_target=None,
         context=None,
         metadata=None,
+        pipeline=None,
     ):
         """Queues the given delegated operation for execution.
 
@@ -53,17 +54,22 @@ class DelegatedOperationService(object):
             metadata (None): an optional metadata dict containing properties below:
                 - inputs_schema: the schema of the operator's inputs
                 - outputs_schema: the schema of the operator's outputs
+            pipeline (None): an optional list of
+                :class:`fiftyone.operators.PipelineStage` to use for
+                the operation, if this is a pipeline operator
 
         Returns:
             a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
         """
-        return self._repo.queue_operation(
+        operation = self._repo.queue_operation(
             operator=operator,
             label=label if label else operator,
             delegation_target=delegation_target,
             context=context,
             metadata=metadata,
+            pipeline=pipeline,
         )
+        return operation
 
     def set_progress(self, doc_id, progress):
         """Sets the progress of the given delegated operation.

@@ -5,7 +5,8 @@ FiftyOne delegated operation repository document.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-
+import copy
+import dataclasses
 import logging
 from datetime import datetime
 
@@ -15,6 +16,7 @@ from fiftyone.operators.executor import (
     ExecutionRunState,
     ExecutionProgress,
 )
+from fiftyone.operators.pipeline import PipelineStage
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +64,8 @@ class DelegatedOperationDocument(object):
 
         # distributed task fields
         self.parent_id = None  # Only on children
+        self.pipeline_index = 0
+        self.pipeline = None  # Only on pipeline parent
 
     @property
     def num_distributed_tasks(self):
@@ -95,7 +99,7 @@ class DelegatedOperationDocument(object):
         self.parent_id = doc.get("parent_id", None)
 
         # internal fields
-        self.id = doc["_id"]
+        self.id = doc.get("_id", doc.get("id"))
         self._doc = doc
 
         # nested fields
@@ -127,14 +131,24 @@ class DelegatedOperationDocument(object):
             if "updated_at" in doc["status"]:
                 self.status.updated_at = doc["status"]["updated_at"]
 
+        if "pipeline" in doc and doc["pipeline"] is not None:
+            self.pipeline = [
+                PipelineStage(**stage) for stage in doc["pipeline"]
+            ]
+
         return self
 
     def to_pymongo(self) -> dict:
-        d = self.__dict__
+        d = copy.deepcopy(self.__dict__)
         if self.context:
             d["context"] = {
                 "request_params": self.context._get_serialized_request_params()
             }
-        d.pop("_doc")
-        d.pop("id")
+        if self.pipeline:
+            d["pipeline"] = [
+                dataclasses.asdict(stage) for stage in self.pipeline
+            ]
+
+        d.pop("_doc", None)
+        d.pop("id", None)
         return d
