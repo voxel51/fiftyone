@@ -3089,7 +3089,7 @@ def _extract_filter_field(val):
 
 
 class _GeoStage(ViewStage):
-    def __init__(self, location_field=None, create_index=True):
+    def __init__(self, location_field=None, create_index=False):
         self._location_field = location_field
         self._location_key = None
         self._create_index = create_index
@@ -3101,7 +3101,7 @@ class _GeoStage(ViewStage):
 
     @property
     def create_index(self):
-        """Whether to create the required spherical index, if necessary."""
+        """Whether to create the relevant spherical index, if necessary."""
         return self._create_index
 
     def validate(self, sample_collection):
@@ -3118,7 +3118,6 @@ class _GeoStage(ViewStage):
             self._location_key = self._location_field
 
         if self._create_index:
-            # These operations require a spherical index
             sample_collection.create_index([(self._location_key, "2dsphere")])
 
 
@@ -3129,7 +3128,8 @@ class GeoNear(_GeoStage):
     .. note::
 
         This stage must be the **first stage** in any
-        :class:`fiftyone.core.view.DatasetView` in which it appears.
+        :class:`fiftyone.core.view.DatasetView` in which it appears, and it
+        **requires** a spherical index on the specified location field.
 
     Examples::
 
@@ -3144,7 +3144,7 @@ class GeoNear(_GeoStage):
         # Sort the samples by their proximity to Times Square
         #
 
-        stage = fo.GeoNear(TIMES_SQUARE)
+        stage = fo.GeoNear(TIMES_SQUARE, create_index=True)
         view = dataset.add_stage(stage)
 
         #
@@ -3152,7 +3152,11 @@ class GeoNear(_GeoStage):
         # include samples within 5km
         #
 
-        stage = fo.GeoNear(TIMES_SQUARE, max_distance=5000)
+        stage = fo.GeoNear(
+            TIMES_SQUARE,
+            max_distance=5000,
+            create_index=True,
+        )
         view = dataset.add_stage(stage)
 
         #
@@ -3176,7 +3180,10 @@ class GeoNear(_GeoStage):
         )
 
         stage = fo.GeoNear(
-            TIMES_SQUARE, location_field="location", query=in_manhattan
+            TIMES_SQUARE,
+            location_field="location",
+            query=in_manhattan,
+            create_index=True,
         )
         view = dataset.add_stage(stage)
 
@@ -3207,7 +3214,7 @@ class GeoNear(_GeoStage):
         query (None): an optional dict defining a
             `MongoDB read query <https://docs.mongodb.com/manual/tutorial/query-documents/#read-operations-query-argument>`_
             that samples must match in order to be included in this view
-        create_index (True): whether to create the required spherical index,
+        create_index (False): whether to create the required spherical index,
             if necessary
     """
 
@@ -3218,7 +3225,7 @@ class GeoNear(_GeoStage):
         min_distance=None,
         max_distance=None,
         query=None,
-        create_index=True,
+        create_index=False,
     ):
         super().__init__(
             location_field=location_field,
@@ -3314,8 +3321,8 @@ class GeoNear(_GeoStage):
             {
                 "name": "create_index",
                 "type": "bool",
-                "default": "True",
-                "placeholder": "create_index (default=True)",
+                "default": "False",
+                "placeholder": "create_index (default=False)",
             },
         ]
 
@@ -3367,8 +3374,8 @@ class GeoWithin(_GeoStage):
         strict (True): whether a sample's location data must strictly fall
             within boundary (True) in order to match, or whether any
             intersection suffices (False)
-        create_index (True): whether to create the required spherical index,
-            if necessary
+        create_index (False): whether to create a spherical index, if
+            necessary, to optimize the query
     """
 
     def __init__(
@@ -3376,7 +3383,7 @@ class GeoWithin(_GeoStage):
         boundary,
         location_field=None,
         strict=True,
-        create_index=True,
+        create_index=False,
     ):
         super().__init__(
             location_field=location_field,
@@ -3432,8 +3439,8 @@ class GeoWithin(_GeoStage):
             {
                 "name": "create_index",
                 "type": "bool",
-                "default": "True",
-                "placeholder": "create_index (default=True)",
+                "default": "False",
+                "placeholder": "create_index (default=False)",
             },
         ]
 
@@ -3503,7 +3510,7 @@ class GroupBy(ViewStage):
             that defines how to sort the groups in the output view. If
             provided, this expression will be evaluated on the list of samples
             in each group. Only applicable when ``flat=True``
-        create_index (True): whether to create an index, if necessary, to
+        create_index (False): whether to create an index, if necessary, to
             optimize the grouping. Only applicable when grouping by field(s),
             not expressions
         order_by_key (None): an optional fixed ``order_by`` value representing
@@ -3520,7 +3527,7 @@ class GroupBy(ViewStage):
         flat=False,
         match_expr=None,
         sort_expr=None,
-        create_index=True,
+        create_index=False,
         order_by_key=None,
     ):
         self._field_or_expr = field_or_expr
@@ -3799,8 +3806,8 @@ class GroupBy(ViewStage):
             {
                 "name": "create_index",
                 "type": "bool",
-                "default": "True",
-                "placeholder": "create_index (default=True)",
+                "default": "False",
+                "placeholder": "create_index (default=False)",
             },
             {
                 "name": "order_by_key",
@@ -7548,12 +7555,12 @@ class SortBy(ViewStage):
                 with "a" for ascending order, or -1 or any string starting with
                 "d" for descending order
         reverse (False): whether to return the results in descending order
-        create_index (True): whether to create an index, if necessary, to
+        create_index (False): whether to create an index, if necessary, to
             optimize the sort. Only applicable when sorting by field(s), not
             expressions
     """
 
-    def __init__(self, field_or_expr, reverse=False, create_index=True):
+    def __init__(self, field_or_expr, reverse=False, create_index=False):
         self._field_or_expr = field_or_expr
         self._reverse = reverse
         self._create_index = create_index
@@ -7669,8 +7676,8 @@ class SortBy(ViewStage):
             {
                 "name": "create_index",
                 "type": "bool",
-                "default": "True",
-                "placeholder": "create_index (default=True)",
+                "default": "False",
+                "placeholder": "create_index (default=False)",
             },
         ]
 

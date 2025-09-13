@@ -2200,6 +2200,8 @@ class SampleCollection(object):
 
         if has_frame_fields:
             frame_numbers = results.pop(0)
+        else:
+            frame_numbers = None
 
         sample_ids = results[0]
         all_label_ids = results[1:]
@@ -5791,7 +5793,7 @@ class SampleCollection(object):
         min_distance=None,
         max_distance=None,
         query=None,
-        create_index=True,
+        create_index=False,
     ):
         """Sorts the samples in the collection by their proximity to a
         specified geolocation.
@@ -5799,7 +5801,8 @@ class SampleCollection(object):
         .. note::
 
             This stage must be the **first stage** in any
-            :class:`fiftyone.core.view.DatasetView` in which it appears.
+            :class:`fiftyone.core.view.DatasetView` in which it appears, and it
+            **requires** a spherical index on the specified location field.
 
         Examples::
 
@@ -5814,14 +5817,18 @@ class SampleCollection(object):
             # Sort the samples by their proximity to Times Square
             #
 
-            view = dataset.geo_near(TIMES_SQUARE)
+            view = dataset.geo_near(TIMES_SQUARE, create_index=True)
 
             #
             # Sort the samples by their proximity to Times Square, and only
             # include samples within 5km
             #
 
-            view = dataset.geo_near(TIMES_SQUARE, max_distance=5000)
+            view = dataset.geo_near(
+                TIMES_SQUARE,
+                max_distance=5000,
+                create_index=True,
+            )
 
             #
             # Sort the samples by their proximity to Times Square, and only
@@ -5844,7 +5851,10 @@ class SampleCollection(object):
             )
 
             view = dataset.geo_near(
-                TIMES_SQUARE, location_field="location", query=in_manhattan
+                TIMES_SQUARE,
+                location_field="location",
+                query=in_manhattan,
+                create_index=True,
             )
 
         Args:
@@ -5874,7 +5884,7 @@ class SampleCollection(object):
             query (None): an optional dict defining a
                 `MongoDB read query <https://docs.mongodb.com/manual/tutorial/query-documents/#read-operations-query-argument>`_
                 that samples must match in order to be included in this view
-            create_index (True): whether to create the required spherical
+            create_index (False): whether to create the required spherical
                 index, if necessary
 
         Returns:
@@ -5897,7 +5907,7 @@ class SampleCollection(object):
         boundary,
         location_field=None,
         strict=True,
-        create_index=True,
+        create_index=False,
     ):
         """Filters the samples in this collection to only include samples whose
         geolocation is within a specified boundary.
@@ -5944,8 +5954,8 @@ class SampleCollection(object):
             strict (True): whether a sample's location data must strictly fall
                 within boundary (True) in order to match, or whether any
                 intersection suffices (False)
-            create_index (True): whether to create the required spherical
-                index, if necessary
+            create_index (False): whether to create a spherical index, if
+                necessary, to optimize the query
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -5968,7 +5978,7 @@ class SampleCollection(object):
         flat=False,
         match_expr=None,
         sort_expr=None,
-        create_index=True,
+        create_index=False,
         order_by_key=None,
     ):
         """Creates a view that groups the samples in the collection by a
@@ -6034,7 +6044,7 @@ class SampleCollection(object):
                 that defines how to sort the groups in the output view. If
                 provided, this expression will be evaluated on the list of
                 samples in each group. Only applicable when ``flat=True``
-            create_index (True): whether to create an index, if necessary, to
+            create_index (False): whether to create an index, if necessary, to
                 optimize the grouping. Only applicable when grouping by
                 field(s), not expressions
             order_by_key (None): an optional fixed ``order_by`` value
@@ -7518,7 +7528,7 @@ class SampleCollection(object):
         return self._add_view_stage(fos.Skip(skip))
 
     @view_stage
-    def sort_by(self, field_or_expr, reverse=False, create_index=True):
+    def sort_by(self, field_or_expr, reverse=False, create_index=False):
         """Sorts the samples in the collection by the given field(s) or
         expression(s).
 
@@ -7582,7 +7592,7 @@ class SampleCollection(object):
                     any string starting with "a" for ascending order, or -1 or
                     any string starting with "d" for descending order
             reverse (False): whether to return the results in descending order
-            create_index (True): whether to create an index, if necessary, to
+            create_index (False): whether to create an index, if necessary, to
                 optimize the sort. Only applicable when sorting by field(s),
                 not expressions
 
