@@ -75,7 +75,7 @@ def apply_model(
     store_logits=False,
     batch_size=None,
     num_workers=None,
-    num_writer_thread_workers=None,
+    num_writer_workers=None,
     skip_failures=True,
     output_dir=None,
     rel_dir=None,
@@ -106,6 +106,8 @@ def apply_model(
             batching
         num_workers (None): the number of workers to use when loading images.
             Only applicable for Torch-based models
+        num_writer_workers (None): the number of thread workers to use when
+            writing predictions. Only applicable for Torch-based models.
         skip_failures (True): whether to gracefully continue without raising an
             error if predictions cannot be generated for a sample. Only
             applicable to :class:`Model` instances
@@ -285,7 +287,7 @@ def apply_model(
                 filename_maker,
                 progress,
                 field_mapping,
-                num_writer_thread_workers,
+                num_writer_workers,
             )
 
         if batch_size is not None:
@@ -459,7 +461,7 @@ def _apply_image_model_data_loader(
     filename_maker,
     progress,
     field_mapping,
-    num_writer_thread_workers,
+    num_writer_workers,
 ):
     needs_samples = isinstance(model, SamplesMixin)
 
@@ -483,7 +485,7 @@ def _apply_image_model_data_loader(
         ctx = context.enter_context(foc.SaveContext(samples))
         submit = context.enter_context(
             fou.async_executor(
-                max_workers=num_writer_thread_workers,
+                max_workers=num_writer_workers,
                 skip_failures=skip_failures,
                 warning="Async failure labeling batches",
             )
@@ -907,7 +909,7 @@ def compute_embeddings(
     embeddings_field=None,
     batch_size=None,
     num_workers=None,
-    num_writer_thread_workers=None,
+    num_writer_workers=None,
     skip_failures=True,
     progress=None,
     **kwargs,
@@ -938,6 +940,8 @@ def compute_embeddings(
             batching
         num_workers (None): the number of workers to use when loading images.
             Only applicable for Torch-based models
+        num_writer_workers (None): the number of thread workers to use when
+            writing embeddings. Only applicable for Torch-based models.
         skip_failures (True): whether to gracefully continue without raising an
             error if embeddings cannot be generated for a sample. Only
             applicable to :class:`Model` instances
@@ -1082,7 +1086,7 @@ def compute_embeddings(
                 skip_failures,
                 progress,
                 field_mapping,
-                num_writer_thread_workers,
+                num_writer_workers,
             )
 
         if batch_size is not None:
@@ -1205,7 +1209,7 @@ def _compute_image_embeddings_data_loader(
     skip_failures,
     progress,
     field_mapping,
-    num_writer_thread_workers,
+    num_writer_workers,
 ):
     data_loader = _make_data_loader(
         samples,
@@ -1230,7 +1234,7 @@ def _compute_image_embeddings_data_loader(
 
         submit = context.enter_context(
             fou.async_executor(
-                max_workers=num_writer_thread_workers,
+                max_workers=num_writer_workers,
                 skip_failures=skip_failures,
                 warning="Async failure saving embeddings",
             )
