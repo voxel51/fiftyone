@@ -2859,11 +2859,15 @@ def recommend_thread_pool_workers(num_workers=None):
     If a ``fo.config.max_thread_pool_workers`` is set, this limit is applied.
 
     Args:
-        num_workers (None): a suggested number of workers
+        num_workers (None): a suggested number of workers. If ``num_workers <= 0``, this
+            function returns 1.
 
     Returns:
         a number of workers
     """
+    if num_workers <= 0:
+        num_workers = 1
+
     if num_workers is None:
         num_workers = multiprocessing.cpu_count()
 
@@ -3160,7 +3164,8 @@ def async_executor(
                 submit(process_item, item)
 
     Args:
-        max_workers: the maximum number of workers to use
+        max_workers (None): the maximum number of workers to use. By default,
+            this is determined by :func:`fiftyone.core.utils.recommend_thread_pool_workers`.
         skip_failures (False): whether to skip exceptions raised by tasks
         warning ("Async failure"): the warning message to log if a task
             raises an exception and ``skip_failures == True``
