@@ -2445,7 +2445,7 @@ class SampleCollection(object):
                 frame.embedded.field.name = value
                 frame.save()
 
-        When setting `frame fields using the dict ``values`` syntax with a
+        When setting frame fields using the dict ``values`` syntax with a
         sample-level ``key_field``, each value in ``values`` may either be a
         list corresponding to the frames of the sample matching the given key,
         or each value may itself be a dict mapping frame numbers to values. In
@@ -3472,7 +3472,7 @@ class SampleCollection(object):
         overwrite=False,
         num_workers=None,
         skip_failures=True,
-        warn_failures=False,
+        warn_failures=True,
         progress=None,
     ):
         """Populates the ``metadata`` field of all samples in the collection.
@@ -3485,7 +3485,7 @@ class SampleCollection(object):
             num_workers (None): a suggested number of threads to use
             skip_failures (True): whether to gracefully continue without
                 raising an error if metadata cannot be computed for a sample
-            warn_failures (False): whether to log a warning if metadata cannot
+            warn_failures (True): whether to log a warning if metadata cannot
                 be computed for a sample
             progress (None): whether to render a progress bar (True/False), use
                 the default value ``fiftyone.config.show_progress_bars``

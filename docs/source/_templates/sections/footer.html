@@ -1,0 +1,122 @@
+{% if theme_footer_start or theme_footer_center or theme_footer_end %}
+<div class="bd-footer__inner bd-page-width">
+  <div class="footer-logo">
+    <img src="{{ pathto('_static/voxel51-logo.svg', 1) }}" class="logo__image only-light" alt="Voxel51">
+    <a href="{{link_sales}}" target="_blank" class="sd-btn sd-btn-primary book-a-demo" rel="noopener noreferrer">
+      <div class="arrow">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="size-3">
+        <path stroke="currentColor" stroke-width="1.5" d="M1.458 11.995h20.125M11.52 22.063 21.584 12 11.521 1.937" vector-effect="non-scaling-stroke"></path>
+      </svg>
+      </div>
+      <div class="text">Talk to a CV expert</div>
+    </a>
+  </div>
+  <div class="footer-links">
+    <div class="footer-links__item">
+      <div>Product</div>
+      <a href="{{link_annotation}}" target="_blank">Data Annotation</a>
+      <a href="{{link_curation}}" target="_blank">Data Curation</a>
+      <a href="{{link_evaluation}}" target="_blank">Model Evaluation</a>
+      <a href="{{link_integrations}}" target="_blank">Integrations</a>
+      <a href="{{link_plugins}}" target="_blank">Plugins</a>
+      <a href="{{link_pricing}}" target="_blank">Pricing</a>
+    </div>
+    <div class="footer-links__item">
+      <div>Solutions</div>
+      <a href="{{link_agriculture}}" target="_blank">Agriculture</a>
+      <a href="{{link_autonomous_systems}}" target="_blank">Autonomous Systems</a>
+      <a href="{{link_defense}}" target="_blank">Defense</a>
+      <a href="{{link_healthcare}}" target="_blank">Healthcare</a>
+      <a href="{{link_manufacturing}}" target="_blank">Manufacturing</a>
+      <a href="{{link_retail}}" target="_blank">Retail</a>
+      <a href="{{link_robotics}}" target="_blank">Robotics</a>
+      <a href="{{link_security}}" target="_blank">Security</a>
+    </div>
+    <div class="footer-links__item">
+      <div>Developers</div>
+      <a href="{{link_docs_fiftyone}}" target="_blank">Documentation</a>
+      <a href="{{link_events}}" target="_blank">Events &amp; Meetups</a>
+      <a href="{{link_glossary}}" target="_blank">Computer Vision Glossary</a>
+      <a href="{{link_community}}" target="_blank">Community</a>
+    </div>
+    <div class="footer-links__item">
+      <div>Resources</div>
+      <a href="{{link_voxel51_blog}}" target="_blank">Blog</a>
+      <a href="{{link_customers}}" target="_blank">Customer Stories</a>
+      <a href="{{link_model_zoo}}" target="_blank">Model Zoo</a>
+      <a href="{{link_dataset_zoo}}" target="_blank">Dataset Zoo</a>
+      <a href="{{link_research}}" target="_blank">CV Research</a>
+    </div>
+    <div class="footer-links__item">
+      <div>Company</div>
+      <a href="{{link_about}}" target="_blank">About Voxel51</a>
+      <a href="{{link_careers}}" target="_blank">Careers</a>
+      <a href="{{link_press}}" target="_blank">Press</a>
+    </div>
+    <div class="social-icons">
+      <a aria-label="Discord" href="{{link_voxel51_discord}}" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+          <path fill="currentColor" fill-rule="evenodd" d="m14.963 2.978.731.144c1.141.227 2.267.559 3.362.997l1.402.56.482.193.12.505 2.696 11.322.202.851-.816.314-7.01 2.696-1.02.392-.3-1.05-.87-3.05h-3.884l-.871 3.05-.3 1.05-1.02-.392-7.01-2.696-.816-.314.203-.851L2.939 5.377l.12-.505.482-.192 1.402-.561c1.095-.438 2.22-.77 3.362-.997l.731-.144.348.659L10.103 5h3.793l.72-1.363.347-.66ZM6.608 16.852H17.39v-2H6.608v2ZM7 12V9h2v3H7Zm8-3v3h2V9h-2Z" clip-rule="evenodd"></path>
+        </svg>
+      </a>
+      <a aria-label="Linkedin" href="{{link_linkedin}}" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+          <path fill="currentColor" fill-rule="evenodd" d="M2 1.5H1v6h6v-6H2ZM2 9H1v14h6V9H2Zm7 0h7a7 7 0 0 1 7 7v7h-6v-6a2 2 0 0 0-2-2v8H9V9Z" clip-rule="evenodd"></path>
+        </svg>
+      </a>
+      <a aria-label="Twitter" href="{{link_twitter}}" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+          <path fill="currentColor" d="m.75 2 8.417 11.223L.368 23h3.364l6.964-7.738L16.5 23H23l-8.758-11.678L22.632 2h-3.364l-6.555 7.284L7.25 2H.75Z"></path>
+        </svg>
+      </a>
+      <a aria-label="Youtube" href="{{link_youtube}}" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+          <path fill="currentColor" fill-rule="evenodd" d="M0 8a6 6 0 0 1 6-6h12a6 6 0 0 1 6 6v8a6 6 0 0 1-6 6H6a6 6 0 0 1-6-6V8Zm8.494-.09a.5.5 0 0 1 .752-.432l7.012 4.09a.5.5 0 0 1 0 .864l-7.012 4.09a.5.5 0 0 1-.752-.432V7.91Z" clip-rule="evenodd"></path>
+        </svg>
+      </a>
+    </div>
+  </div>
+  <div class="footer-items">
+    {% if theme_footer_start %}
+      <div class="footer-items__start">
+        {% for item in theme_footer_start %}
+          <div class="footer-item">{% include item %}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+    {% if theme_footer_center %}
+      <div class="footer-items__center">
+        {% for item in theme_footer_center %}
+          <div class="footer-item">{% include item %}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+    {% if theme_footer_end %}
+      <div class="footer-items__end">
+        {% for item in theme_footer_end %}
+          <div class="footer-item">{% include item %}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Workaround for mobile search: Sphinx extension only supports a single search box-->
+<script>
+    window.addEventListener('DOMContentLoaded', function () {
+    docsearch({
+        container: '#searchbox-mobile',
+        appId: '{{ docsearch_app_id }}',
+        apiKey: '{{ docsearch_api_key }}',
+        indexName: '{{ docsearch_index_name }}',
+    });
+
+    document.addEventListener('keydown', function (event) {
+      if (event.key === '/') {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+    });
+  });
+</script>
+{% endif %}

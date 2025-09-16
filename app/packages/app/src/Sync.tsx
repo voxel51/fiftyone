@@ -1,32 +1,32 @@
 import { Loading } from "@fiftyone/components";
 import { usePlugins } from "@fiftyone/plugins";
 import {
-  setDataset,
-  setGroupSlice,
-  setSample,
-  setSpaces,
-  setView,
   Writer,
+  setDataset,
   type setDatasetMutation,
+  setGroupSlice,
   type setGroupSliceMutation,
+  setSample,
   type setSampleMutation,
+  setSpaces,
   type setSpacesMutation,
+  setView,
   type setViewMutation,
 } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import {
   SESSION_DEFAULT,
-  stateSubscription,
   type Session,
+  stateSubscription,
 } from "@fiftyone/state";
 import type { Action } from "history";
 import React, { useRef } from "react";
 import { useRelayEnvironment } from "react-relay";
 import { useRecoilValue } from "recoil";
 import {
-  commitMutation,
   type Environment,
   type OperationType,
+  commitMutation,
 } from "relay-runtime";
 import Setup from "./components/Setup";
 import type { IndexPageQuery } from "./pages/__generated__/IndexPageQuery.graphql";
@@ -34,9 +34,9 @@ import type {
   DatasetPageQuery,
   DatasetPageQuery$data,
 } from "./pages/datasets/__generated__/DatasetPageQuery.graphql";
-import { useRouterContext, type Entry } from "./routing";
-import { AppReadyState } from "./useEvents/registerEvent";
+import { type Entry, useRouterContext } from "./routing";
 import useEventSource from "./useEventSource";
+import { AppReadyState } from "./useEvents/registerEvent";
 import useSetters from "./useSetters";
 import useWriters from "./useWriters";
 
@@ -177,7 +177,8 @@ const dispatchSideEffect = ({
       data.config
     );
     session.fieldVisibilityStage = nextEntry.state.fieldVisibility;
-    session.sessionSpaces = nextEntry.state?.workspace ?? fos.GRID_SPACES_DEFAULT;
+    session.sessionSpaces =
+      nextEntry.state?.workspace ?? fos.GRID_SPACES_DEFAULT;
   }
 
   update &&

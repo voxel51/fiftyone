@@ -28,7 +28,7 @@ import useUpdates from "./useUpdates";
 import useZoomSetting from "./useZoomSetting";
 
 const MAX_INSTANCES = 200;
-const MAX_ROWS = 5151;
+const MAX_ROWS = 200;
 
 function Grid() {
   const id = useMemoOne(() => uuid(), []);

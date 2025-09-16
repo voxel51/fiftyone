@@ -1351,7 +1351,7 @@ class OpenLABELShapes(AttributeParser):
         return self._to_individual_labels(label, attributes, width, height)
 
     @property
-    def _homogenous_shape_types(self):
+    def _homogeneous_shape_types(self):
         types = [type(s) for s in self.shapes]
 
         if len(set(types)) > 1:
@@ -1373,7 +1373,7 @@ class OpenLABELShapes(AttributeParser):
         if not self.shapes:
             return labels
 
-        if not self._homogenous_shape_types or not isinstance(
+        if not self._homogeneous_shape_types or not isinstance(
             self.shapes[0], OpenLABELPoint
         ):
             raise ValueError(

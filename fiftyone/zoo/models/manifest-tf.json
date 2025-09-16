@@ -4,7 +4,7 @@
             "base_name": "deeplabv3-cityscapes-tf",
             "base_filename": "deeplabv3-cityscapes.pb",
             "version": null,
-            "description": "DeepLabv3+ semantic segmentation model from `Encoder-Decoder with Atrous Separable Convolution for Semantic Image Segmentation <https://arxiv.org/abs/1802.02611>`_ with Xception backbone trained on the Cityscapes dataset",
+            "description": "Creates detailed pixel-by-pixel labels for urban scenes, helping autonomous vehicles understand their surroundings",
             "source": "https://github.com/tensorflow/models/blob/master/research/deeplab/g3doc/model_zoo.md",
             "author": "Liang-Chieh Chen, et al.",
             "license": "Apache 2.0",
@@ -40,13 +40,14 @@
                 }
             },
             "tags": ["segmentation", "cityscapes", "tf", "deeplabv3", "legacy"],
+            "training_data": [{"name": "Cityscapes", "url": "https://www.cityscapes-dataset.com/"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "deeplabv3-mnv2-cityscapes-tf",
             "base_filename": "deeplabv3-mnv2-cityscapes.pb",
             "version": null,
-            "description": "DeepLabv3+ semantic segmentation model from `Encoder-Decoder with Atrous Separable Convolution for Semantic Image Segmentation <https://arxiv.org/abs/1802.02611>`_ with MobileNetV2 backbone trained on the Cityscapes dataset",
+            "description": "Efficient street scene labeler designed to run on phones and edge devices with limited resources",
             "source": "https://github.com/tensorflow/models/blob/master/research/deeplab/g3doc/model_zoo.md",
             "author": "Liang-Chieh Chen, et al.",
             "license": "Apache 2.0",
@@ -82,13 +83,14 @@
                 }
             },
             "tags": ["segmentation", "cityscapes", "tf", "deeplabv3", "legacy"],
+            "training_data": [{"name": "Cityscapes", "url": "https://www.cityscapes-dataset.com/"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "efficientdet-d0-coco-tf1",
             "base_filename": "efficientdet-d0-coco.tar",
             "version": null,
-            "description": "EfficientDet-D0 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO",
+            "description": "Legacy-compatible tiny object detector for older systems still running TensorFlow 1 frameworks",
             "source": "https://github.com/voxel51/automl/tree/master/efficientdet",
             "author": "Mingxing Tan, et al.",
             "license": "Apache 2.0",
@@ -123,13 +125,14 @@
                 }
             },
             "tags": ["detection", "coco", "tf1", "efficientdet", "legacy"],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "efficientdet-d1-coco-tf1",
             "base_filename": "efficientdet-d1-coco.tar",
             "version": null,
-            "description": "EfficientDet-D1 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO",
+            "description": "Legacy version of versatile object finder maintaining compatibility with TensorFlow 1",
             "source": "https://github.com/voxel51/automl/tree/master/efficientdet",
             "author": "Mingxing Tan, et al.",
             "license": "Apache 2.0",
@@ -164,13 +167,14 @@
                 }
             },
             "tags": ["detection", "coco", "tf1", "efficientdet", "legacy"],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "efficientdet-d2-coco-tf1",
             "base_filename": "efficientdet-d2-coco.tar",
             "version": null,
-            "description": "EfficientDet-D2 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO",
+            "description": "Legacy-compatible balanced detector for established pipelines still using TensorFlow 1",
             "source": "https://github.com/voxel51/automl/tree/master/efficientdet",
             "author": "Mingxing Tan, et al.",
             "license": "Apache 2.0",
@@ -205,13 +209,14 @@
                 }
             },
             "tags": ["detection", "coco", "tf1", "efficientdet", "legacy"],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "efficientdet-d3-coco-tf1",
             "base_filename": "efficientdet-d3-coco.tar",
             "version": null,
-            "description": "EfficientDet-D3 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO",
+            "description": "Legacy object detector maintaining compatibility for systems using TensorFlow 1",
             "source": "https://github.com/voxel51/automl/tree/master/efficientdet",
             "author": "Mingxing Tan, et al.",
             "license": "Apache 2.0",
@@ -246,13 +251,14 @@
                 }
             },
             "tags": ["detection", "coco", "tf1", "efficientdet", "legacy"],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "efficientdet-d4-coco-tf1",
             "base_filename": "efficientdet-d4-coco.tar",
             "version": null,
-            "description": "EfficientDet-D4 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO",
+            "description": "Legacy high-accuracy object detector ensuring backward compatibility with TensorFlow 1",
             "source": "https://github.com/voxel51/automl/tree/master/efficientdet",
             "author": "Mingxing Tan, et al.",
             "license": "Apache 2.0",
@@ -287,13 +293,14 @@
                 }
             },
             "tags": ["detection", "coco", "tf1", "efficientdet", "legacy"],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "efficientdet-d5-coco-tf1",
             "base_filename": "efficientdet-d5-coco.tar",
             "version": null,
-            "description": "EfficientDet-D5 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO",
+            "description": "Legacy object detector with the highest accuracy in its family using TensorFlow 1",
             "source": "https://github.com/voxel51/automl/tree/master/efficientdet",
             "author": "Mingxing Tan, et al.",
             "license": "Apache 2.0",
@@ -328,13 +335,14 @@
                 }
             },
             "tags": ["detection", "coco", "tf1", "efficientdet", "legacy"],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "efficientdet-d6-coco-tf1",
             "base_filename": "efficientdet-d6-coco.tar",
             "version": null,
-            "description": "EfficientDet-D6 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO",
+            "description": "Legacy deep detector maintaining top accuracy for mature TensorFlow 1 production stacks",
             "source": "https://github.com/voxel51/automl/tree/master/efficientdet",
             "author": "Mingxing Tan, et al.",
             "license": "Apache 2.0",
@@ -369,13 +377,14 @@
                 }
             },
             "tags": ["detection", "coco", "tf1", "efficientdet", "legacy"],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "faster-rcnn-inception-resnet-atrous-v2-coco-tf",
             "base_filename": "faster-rcnn-inception-resnet-atrous-v2-coco.pb",
             "version": null,
-            "description": "Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ atrous version with Inception backbone trained on COCO",
+            "description": "High-accuracy object finder that sees wider context for better detection in complex scenes",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
             "author": "Shaoqing Ren, et al.",
             "license": "Apache 2.0",
@@ -416,13 +425,14 @@
                 "inception",
                 "resnet"
             ],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "faster-rcnn-inception-resnet-atrous-v2-lowproposals-coco-tf",
             "base_filename": "faster-rcnn-inception-resnet-atrous-v2-lowproposals-coco.pb",
             "version": null,
-            "description": "Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ atrous version with low-proposals and Inception backbone trained on COCO",
+            "description": "Speed-optimized detector that runs faster by examining fewer regions while maintaining good accuracy",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
             "author": "Shaoqing Ren, et al.",
             "license": "Apache 2.0",
@@ -464,13 +474,14 @@
                 "resnet",
                 "legacy"
             ],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "faster-rcnn-inception-v2-coco-tf",
             "base_filename": "faster-rcnn-inception-v2-coco.pb",
             "version": null,
-            "description": "Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ with Inception v2 backbone trained on COCO",
+            "description": "Compact object detector achieving real-time speeds for responsive computer vision applications",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
             "author": "Shaoqing Ren, et al.",
             "license": "Apache 2.0",
@@ -504,13 +515,14 @@
                 }
             },
             "tags": ["detection", "coco", "tf", "faster-rcnn", "inception"],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "faster-rcnn-nas-coco-tf",
             "base_filename": "faster-rcnn-nas-coco.pb",
             "version": null,
-            "description": "Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ with NAS-net backbone trained on COCO",
+            "description": "Smart detector using NAS-designed architecture for improved object finding across diverse images",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
             "author": "Shaoqing Ren, et al.",
             "license": "Apache 2.0",
@@ -544,13 +556,14 @@
                 }
             },
             "tags": ["detection", "coco", "tf", "faster-rcnn"],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "faster-rcnn-nas-lowproposals-coco-tf",
             "base_filename": "faster-rcnn-nas-lowproposals-coco.pb",
             "version": null,
-            "description": "Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ with low-proposals and NAS-net backbone trained on COCO",
+            "description": "Fast NAS-designed detector that speeds up processing for time-sensitive applications and deployments",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
             "author": "Shaoqing Ren, et al.",
             "license": "Apache 2.0",
@@ -584,13 +597,14 @@
                 }
             },
             "tags": ["detection", "coco", "tf", "faster-rcnn", "legacy"],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "faster-rcnn-resnet101-coco-tf",
             "base_filename": "faster-rcnn-resnet101-coco.pb",
             "version": null,
-            "description": "Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ with ResNet-101 backbone trained on COCO",
+            "description": "Deep object detector balancing accuracy and speed for reliable performance across varied scenes",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
             "author": "Shaoqing Ren, et al.",
             "license": "Apache 2.0",
@@ -624,13 +638,14 @@
                 }
             },
             "tags": ["detection", "coco", "tf", "faster-rcnn", "resnet", "legacy"],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "faster-rcnn-resnet101-lowproposals-coco-tf",
             "base_filename": "faster-rcnn-resnet101-lowproposals-coco.pb",
             "version": null,
-            "description": "Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ with low-proposals and ResNet-101 backbone trained on COCO",
+            "description": "Accelerated deep detector that processes fewer regions for faster results with minimal accuracy loss",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
             "author": "Shaoqing Ren, et al.",
             "license": "Apache 2.0",
@@ -664,13 +679,14 @@
                 }
             },
             "tags": ["detection", "coco", "tf", "faster-rcnn", "resnet", "legacy"],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "faster-rcnn-resnet50-coco-tf",
             "base_filename": "faster-rcnn-resnet50-coco.pb",
             "version": null,
-            "description": "Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ with ResNet-50 backbone trained on COCO",
+            "description": "Versatile object detector suitable for everyday vision tasks in research and production environments",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
             "author": "Shaoqing Ren, et al.",
             "license": "Apache 2.0",
@@ -704,13 +720,14 @@
                 }
             },
             "tags": ["detection", "coco", "tf", "faster-rcnn", "resnet"],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "faster-rcnn-resnet50-lowproposals-coco-tf",
             "base_filename": "faster-rcnn-resnet50-lowproposals-coco.pb",
             "version": null,
-            "description": "Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ with low-proposals and ResNet-50 backbone trained on COCO",
+            "description": "Speed-focused detector optimized for running on embedded devices and resource-limited hardware",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
             "author": "Shaoqing Ren, et al.",
             "license": "Apache 2.0",
@@ -744,13 +761,14 @@
                 }
             },
             "tags": ["detection", "coco", "tf", "faster-rcnn", "resnet", "legacy"],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "inception-resnet-v2-imagenet-tf1",
             "base_filename": "inception-resnet-v2-imagenet.pb",
             "version": null,
-            "description": "Inception v2 model from `Rethinking the Inception Architecture for Computer Vision <https://arxiv.org/abs/1512.00567>`_ trained on ImageNet",
+            "description": "High-accuracy image classifier with advanced architecture for precise categorization and feature extraction",
             "source": "https://github.com/tensorflow/models/tree/archive/research/slim#pre-trained-models",
             "author": "Christian Szegedy, et al.",
             "license": "Apache 2.0",
@@ -792,13 +810,14 @@
                 "inception",
                 "resnet"
             ],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "inception-v4-imagenet-tf1",
             "base_filename": "inception-v4-imagenet.pb",
             "version": null,
-            "description": "Inception v4 model from `Inception-v4, Inception-ResNet and the Impact of Residual Connections on Learning <https://arxiv.org/abs/1602.07261>`_ trained on ImageNet",
+            "description": "Enhanced image classifier with deeper architecture improving accuracy for demanding vision tasks",
             "source": "https://github.com/tensorflow/models/tree/archive/research/slim#pre-trained-models",
             "author": "Christian Szegedy, et al.",
             "license": "Apache 2.0",
@@ -840,13 +859,14 @@
                 "inception",
                 "legacy"
             ],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "mask-rcnn-inception-resnet-v2-atrous-coco-tf",
             "base_filename": "mask-rcnn-inception-resnet-v2-atrous-coco.pb",
             "version": null,
-            "description": "Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ atrous version with Inception backbone trained on COCO",
+            "description": "Creates precise object outlines and boxes for detailed scene understanding in high-resolution images",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
             "author": "Kaiming He, et al.",
             "license": "Apache 2.0",
@@ -887,13 +907,14 @@
                 "inception",
                 "resnet"
             ],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "mask-rcnn-inception-v2-coco-tf",
             "base_filename": "mask-rcnn-inception-v2-coco.pb",
             "version": null,
-            "description": "Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ with Inception backbone trained on COCO",
+            "description": "Fast object outliner generating masks and boxes with lower computing requirements for real-time use",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
             "author": "Kaiming He, et al.",
             "license": "Apache 2.0",
@@ -927,13 +948,14 @@
                 }
             },
             "tags": ["instances", "coco", "tf", "mask-rcnn", "inception"],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "mask-rcnn-resnet101-atrous-coco-tf",
             "base_filename": "mask-rcnn-resnet101-atrous-coco.pb",
             "version": null,
-            "description": "Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ atrous version with ResNet-101 backbone trained on COCO",
+            "description": "Enhanced object outliner providing detailed masks with better handling of large objects in scenes",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
             "author": "Kaiming He, et al.",
             "license": "Apache 2.0",
@@ -967,13 +989,14 @@
                 }
             },
             "tags": ["instances", "coco", "tf", "mask-rcnn", "resnet", "legacy"],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "mask-rcnn-resnet50-atrous-coco-tf",
             "base_filename": "mask-rcnn-resnet50-atrous-coco.pb",
             "version": null,
-            "description": "Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ atrous version with ResNet-50 backbone trained on COCO",
+            "description": "General-purpose object outliner creating masks and boxes suitable for most vision analysis tasks",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
             "author": "Kaiming He, et al.",
             "license": "Apache 2.0",
@@ -1007,13 +1030,14 @@
                 }
             },
             "tags": ["instances", "coco", "tf", "mask-rcnn", "resnet", "legacy"],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "mobilenet-v2-imagenet-tf1",
             "base_filename": "mobilenet-v2-imagenet.pb",
             "version": null,
-            "description": "MobileNetV2 model from `MobileNetV2: Inverted Residuals and Linear Bottlenecks <https://arxiv.org/abs/1801.04381>`_ trained on ImageNet",
+            "description": "Efficient mobile classifier using specialized architecture for fast image recognition on phones",
             "source": "https://github.com/tensorflow/models/tree/archive/research/slim#pre-trained-models",
             "author": "Mark Sandler, et al.",
             "license": "Apache 2.0",
@@ -1054,13 +1078,14 @@
                 "tf1",
                 "mobilenet"
             ],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "resnet-v1-50-imagenet-tf1",
             "base_filename": "resnet-v1-50-imagenet.pb",
             "version": null,
-            "description": "ResNet-50 v1 model from `Deep Residual Learning for Image Recognition <https://arxiv.org/abs/1512.03385>`_ trained on ImageNet",
+            "description": "Classic image recognition model providing reliable categorization and visual features for many applications",
             "source": "https://github.com/tensorflow/models/tree/archive/research/slim#pre-trained-models",
             "author": "Kaiming He, et al.",
             "license": "Apache 2.0",
@@ -1102,13 +1127,14 @@
                 "resnet",
                 "legacy"
             ],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "resnet-v2-50-imagenet-tf1",
             "base_filename": "resnet-v2-50-imagenet.pb",
             "version": null,
-            "description": "ResNet-50 v2 model from `Deep Residual Learning for Image Recognition <https://arxiv.org/abs/1512.03385>`_ trained on ImageNet",
+            "description": "Improved image classifier with smoother training process and better features for adapting to new tasks",
             "source": "https://github.com/tensorflow/models/tree/archive/research/slim#pre-trained-models",
             "author": "Kaiming He, et al.",
             "license": "Apache 2.0",
@@ -1150,13 +1176,14 @@
                 "resnet",
                 "legacy"
             ],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "rfcn-resnet101-coco-tf",
             "base_filename": "rfcn-resnet101-coco.pb",
             "version": null,
-            "description": "R-FCN object detection model from `R-FCN: Object Detection via Region-based Fully Convolutional Networks <https://arxiv.org/abs/1605.06409>`_ with ResNet-101 backbone trained on COCO",
+            "description": "Efficient object finder producing accurate boxes for eighty object types with optimized processing speed",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
             "author": "Jifeng Dai, et al.",
             "license": "Apache 2.0",
@@ -1190,13 +1217,14 @@
                 }
             },
             "tags": ["detection", "coco", "tf", "rfcn", "resnet", "legacy"],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "ssd-inception-v2-coco-tf",
             "base_filename": "ssd-inception-v2-coco.pb",
             "version": null,
-            "description": "Inception Single Shot Detector model from `SSD: Single Shot MultiBox Detector <https://arxiv.org/abs/1512.02325>`_ trained on COCO",
+            "description": "Real-time object finder that quickly identifies eighty common items in any image",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
             "author": "Wei Liu, et al.",
             "license": "Apache 2.0",
@@ -1230,13 +1258,14 @@
                 }
             },
             "tags": ["detection", "coco", "tf", "ssd", "inception"],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "ssd-mobilenet-v1-coco-tf",
             "base_filename": "ssd-mobilenet-v1-coco.pb",
             "version": null,
-            "description": "Single Shot Detector model from `SSD: Single Shot MultiBox Detector <https://arxiv.org/abs/1512.02325>`_ with MobileNetV1 backbone trained on COCO",
+            "description": "Mobile object detector that runs smoothly on phones and edge computing processors",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
             "author": "Wei Liu, et al.",
             "license": "Apache 2.0",
@@ -1270,13 +1299,14 @@
                 }
             },
             "tags": ["detection", "coco", "tf", "ssd", "mobilenet", "legacy"],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "ssd-mobilenet-v1-fpn-coco-tf",
             "base_filename": "ssd-mobilenet-v1-fpn-coco.pb",
             "version": null,
-            "description": "FPN Single Shot Detector model from `SSD: Single Shot MultiBox Detector <https://arxiv.org/abs/1512.02325>`_ with MobileNetV1 backbone trained on COCO",
+            "description": "Mobile object detector that runs smoothly on phones and edge computing processors",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
             "author": "Wei Liu, et al.",
             "license": "Apache 2.0",
@@ -1310,13 +1340,14 @@
                 }
             },
             "tags": ["detection", "coco", "tf", "ssd", "mobilenet", "legacy"],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "ssd-resnet50-fpn-coco-tf",
             "base_filename": "ssd-resnet50-fpn-coco.pb",
             "version": null,
-            "description": "FPN Single Shot Detector model from `SSD: Single Shot MultiBox Detector <https://arxiv.org/abs/1512.02325>`_ with ResNet-50 backbone trained on COCO",
+            "description": "Accurate object detector combining strong backbone with multi-scale detection for better results",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
             "author": "Wei Liu, et al.",
             "license": "Apache 2.0",
@@ -1350,13 +1381,14 @@
                 }
             },
             "tags": ["detection", "coco", "tf", "ssd", "resnet", "legacy"],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "vgg16-imagenet-tf1",
             "base_filename": "vgg16-imagenet.npz",
             "version": null,
-            "description": "VGG-16 model from `Very Deep Convolutional Networks for Large-Scale Image Recognition <https://arxiv.org/abs/1409.1556>`_ trained on ImageNet",
+            "description": "TensorFlow version of the classic image classifier supporting legacy production systems",
             "source": "https://gist.github.com/ksimonyan/211839e770f7b538e2d8#file-readme-md",
             "author": "Karen Simonyan, et al.",
             "license": "CC-BY-4.0",
@@ -1397,13 +1429,14 @@
                 "vgg",
                 "legacy"
             ],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "yolo-v2-coco-tf1",
             "base_filename": "yolo-v2-coco.weights",
             "version": null,
-            "description": "YOLOv2 model from `YOLO9000: Better, Faster, Stronger <https://arxiv.org/abs/1612.08242>`_ trained on COCO",
+            "description": "Classic real-time detector finding eighty object types quickly for video analysis applications",
             "source": "https://github.com/thtrieu/darkflow",
             "author": "Joseph Redmon, et al.",
             "license": "GPL-3.0",
@@ -1436,13 +1469,14 @@
                 }
             },
             "tags": ["detection", "coco", "tf1", "yolo", "legacy"],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "centernet-hg104-512-coco-tf2",
             "base_filename": "centernet_hg104_512x512_coco17_tpu-8.tar.gz",
             "version": null,
-            "description": "CenterNet model from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ with the Hourglass-104 backbone trained on COCO resized to 512x512",
+            "description": "Efficient object finder optimized for medium-resolution images to run faster on regular computers",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
             "author": "Xingyi Zhou, et al.",
             "license": "Apache 2.0",
@@ -1478,13 +1512,14 @@
                 }
             },
             "tags": ["detection", "coco", "tf2", "centernet"],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2021-01-6 11:01:34"
         },
         {
             "base_name": "centernet-hg104-1024-coco-tf2",
             "base_filename": "centernet_hg104_1024x1024_coco17_tpu-32.tar.gz",
             "version": null,
-            "description": "CenterNet model from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ with the Hourglass-104 backbone trained on COCO resized to 1024x1024",
+            "description": "Finds objects in high-resolution photos by pinpointing their centers with exceptional accuracy and speed",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
             "author": "Xingyi Zhou, et al.",
             "license": "Apache 2.0",
@@ -1520,13 +1555,14 @@
                 }
             },
             "tags": ["detection", "coco", "tf2", "centernet"],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2021-12-26 07:04:23"
         },
         {
             "base_name": "centernet-resnet50-v1-fpn-512-coco-tf2",
             "base_filename": "centernet_resnet50_v1_fpn_512x512_coco17_tpu-8.tar.gz",
             "version": null,
-            "description": "CenterNet model from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ with the ResNet-50-v1 backbone + FPN trained on COCO resized to 512x512",
+            "description": "Balanced object detector that works well for most everyday computer vision tasks and applications",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
             "author": "Xingyi Zhou, et al.",
             "license": "Apache 2.0",
@@ -1562,13 +1598,14 @@
                 }
             },
             "tags": ["detection", "coco", "tf2", "centernet", "resnet"],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2021-12-27 14:45:23"
         },
         {
             "base_name": "centernet-resnet101-v1-fpn-512-coco-tf2",
             "base_filename": "centernet_resnet101_v1_fpn_512x512_coco17_tpu-8.tar.gz",
             "version": null,
-            "description": "CenterNet model from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ with the ResNet-101v1 backbone + FPN trained on COCO resized to 512x512",
+            "description": "Advanced object finder with deeper processing for more accurate results in challenging scenes",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
             "author": "Xingyi Zhou, et al.",
             "license": "Apache 2.0",
@@ -1604,13 +1641,14 @@
                 }
             },
             "tags": ["detection", "coco", "tf2", "centernet", "resnet"],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2021-12-27 14:55:13"
         },
         {
             "base_name": "centernet-resnet50-v2-512-coco-tf2",
             "base_filename": "centernet_resnet50_v2_512x512_coco17_tpu-8.tar.gz",
             "version": null,
-            "description": "CenterNet model from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ with the ResNet-50v2 backbone trained on COCO resized to 512x512",
+            "description": "Updated version with improved training stability for more consistent object detection across different images",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
             "author": "Xingyi Zhou, et al.",
             "license": "Apache 2.0",
@@ -1646,13 +1684,14 @@
                 }
             },
             "tags": ["detection", "coco", "tf2", "centernet", "resnet"],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2021-12-27 14:59:23"
         },
         {
             "base_name": "centernet-mobilenet-v2-fpn-512-coco-tf2",
             "base_filename": "centernet_mobilenetv2_fpn_od.tar.gz",
             "version": null,
-            "description": "CenterNet model from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ with the MobileNetV2 backbone trained on COCO resized to 512x512",
+            "description": "Lightweight object detector that runs smoothly on phones and other portable devices",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
             "author": "Xingyi Zhou, et al.",
             "license": "Apache 2.0",
@@ -1688,13 +1727,14 @@
                 }
             },
             "tags": ["detection", "coco", "tf2", "centernet", "mobilenet"],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2021-12-27 17:05:20"
         },
         {
             "base_name": "efficientdet-d0-512-coco-tf2",
             "base_filename": "efficientdet_d0_coco17_tpu-32.tar.gz",
             "version": null,
-            "description": "EfficientDet-D0 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO resized to 512x512",
+            "description": "Tiny object detector optimized for phones and embedded systems working with smaller images",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
             "author": "Mingxing Tan, et al.",
             "license": "Apache 2.0",
@@ -1730,13 +1770,14 @@
                 }
             },
             "tags": ["detection", "coco", "tf2", "efficientdet"],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2021-12-27 18:25:10"
         },
         {
             "base_name": "efficientdet-d1-640-coco-tf2",
             "base_filename": "efficientdet_d1_coco17_tpu-32.tar.gz",
             "version": null,
-            "description": "EfficientDet-D1 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO resized to 640x640",
+            "description": "Versatile object finder for medium-sized images supporting many different computer vision applications",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
             "author": "Mingxing Tan, et al.",
             "license": "Apache 2.0",
@@ -1772,13 +1813,14 @@
                 }
             },
             "tags": ["detection", "coco", "tf2", "efficientdet"],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2021-12-27 18:25:10"
         },
         {
             "base_name": "efficientdet-d2-768-coco-tf2",
             "base_filename": "efficientdet_d2_coco17_tpu-32.tar.gz",
             "version": null,
-            "description": "EfficientDet-D2 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO resized to 768x768",
+            "description": "Balanced object detector offering good speed and accuracy for general-purpose image analysis",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
             "author": "Mingxing Tan, et al.",
             "license": "Apache 2.0",
@@ -1814,13 +1856,14 @@
                 }
             },
             "tags": ["detection", "coco", "tf2", "efficientdet"],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2021-12-27 18:40:20"
         },
         {
             "base_name": "efficientdet-d3-896-coco-tf2",
             "base_filename": "efficientdet_d3_coco17_tpu-32.tar.gz",
             "version": null,
-            "description": "EfficientDet-D3 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO resized to 896x896",
+            "description": "Accurate object finder for larger images with better detection of big objects",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
             "author": "Mingxing Tan, et al.",
             "license": "Apache 2.0",
@@ -1856,13 +1899,14 @@
                 }
             },
             "tags": ["detection", "coco", "tf2", "efficientdet"],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2021-12-27 18:42:30"
         },
         {
             "base_name": "efficientdet-d4-1024-coco-tf2",
             "base_filename": "efficientdet_d4_coco17_tpu-32.tar.gz",
             "version": null,
-            "description": "EfficientDet-D4 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO resized to 1024x1024",
+            "description": "High-accuracy object detector for detailed images delivering precise results in complex scenes",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
             "author": "Mingxing Tan, et al.",
             "license": "Apache 2.0",
@@ -1898,13 +1942,14 @@
                 }
             },
             "tags": ["detection", "coco", "tf2", "efficientdet"],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2021-12-27 18:42:30"
         },
         {
             "base_name": "efficientdet-d5-1280-coco-tf2",
             "base_filename": "efficientdet_d5_coco17_tpu-32.tar.gz",
             "version": null,
-            "description": "EfficientDet-D5 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO resized to 1280x1280",
+            "description": "Precision-focused object finder for very large images prioritizing accuracy over speed",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
             "author": "Mingxing Tan, et al.",
             "license": "Apache 2.0",
@@ -1940,13 +1985,14 @@
                 }
             },
             "tags": ["detection", "coco", "tf2", "efficientdet"],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2021-12-27 18:50:20"
         },
         {
             "base_name": "efficientdet-d6-1280-coco-tf2",
             "base_filename": "efficientdet_d6_coco17_tpu-32.tar.gz",
             "version": null,
-            "description": "EfficientDet-D6 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO resized to 1280x1280",
+            "description": "Deep object detector for large images achieving state-of-the-art accuracy on challenging content",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
             "author": "Mingxing Tan, et al.",
             "license": "Apache 2.0",
@@ -1982,13 +2028,14 @@
                 }
             },
             "tags": ["detection", "coco", "tf2", "efficientdet"],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2021-12-27 19:00:20"
         },
         {
             "base_name": "efficientdet-d7-1536-coco-tf2",
             "base_filename": "efficientdet_d7_coco17_tpu-32.tar.gz",
             "version": null,
-            "description": "EfficientDet-D7 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO resized to 1536x1536",
+            "description": "Maximum accuracy object finder for extra-large images pushing detection quality to the limit",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
             "author": "Mingxing Tan, et al.",
             "license": "Apache 2.0",
@@ -2024,13 +2071,14 @@
                 }
             },
             "tags": ["detection", "coco", "tf2", "efficientdet"],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2021-12-27 19:05:20"
         },
         {
             "base_name": "ssd-mobilenet-v2-320-coco17",
             "base_filename": "ssd_mobilenet_v2_320x320_coco17_tpu-8.tar.gz",
             "version": null,
-            "description": "MobileNetV2 model from `MobileNetV2: Inverted Residuals and Linear Bottlenecks <https://arxiv.org/pdf/1801.04381.pdf>`_ resized to 320x320",
+            "description": "Fast object finder optimized for quick GPU processing of smaller input images",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
             "author": "Mark Sandler, et al.",
             "license": "Apache 2.0",
@@ -2066,13 +2114,14 @@
                 }
             },
             "tags": ["detection", "coco", "tf2", "ssd", "mobilenet"],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2021-12-27 20:01:40"
         },
         {
             "base_name": "ssd-mobilenet-v1-fpn-640-coco17",
             "base_filename": "ssd_mobilenet_v1_fpn_640x640_coco17_tpu-8.tar.gz",
             "version": null,
-            "description": "MobileNetV1 model from `MobileNetV2: Inverted Residuals and Linear Bottlenecks <https://arxiv.org/pdf/1801.04381.pdf>`_ resized to 640x640",
+            "description": "Enhanced mobile detector that better finds small objects in larger resolution images",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
             "author": "Mark Sandler, et al.",
             "license": "Apache 2.0",
@@ -2108,6 +2157,7 @@
                 }
             },
             "tags": ["detection", "coco", "tf2", "ssd", "mobilenet"],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2021-12-27 20:05:20"
         }
     ]

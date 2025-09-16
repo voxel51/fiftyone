@@ -13,7 +13,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "1.8.0"
+VERSION = "1.9.0"
 
 
 def get_version():
@@ -50,7 +50,8 @@ INSTALL_REQUIRES = [
     "numpy",
     "packaging",
     "pandas",
-    "Pillow>=6.2",
+    # Pillow 11.2.0 introduced CVE 2025-48379 that is fixed in 11.3.0
+    "Pillow>=6.2,!=11.2.*",
     "plotly>=6.1.1",
     "pprintpp",
     "psutil",
@@ -74,9 +75,9 @@ INSTALL_REQUIRES = [
     "universal-analytics-python3>=1.0.1,<2",
     "pydash",
     # internal packages
-    "fiftyone-brain>=0.21.2,<0.22",
+    "fiftyone-brain>=0.21.3,<0.22",
     "fiftyone-db>=0.4,<2.0",
-    "voxel51-eta>=0.14.2,<0.15",
+    "voxel51-eta>=0.15.1,<0.16",
 ]
 
 

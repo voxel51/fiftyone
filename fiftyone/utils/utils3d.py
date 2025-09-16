@@ -13,6 +13,8 @@ import warnings
 
 import numpy as np
 import scipy.spatial as sp
+from scipy.spatial.transform import Rotation as R
+from typing import Any, Dict, List, Tuple, Union
 
 import eta.core.numutils as etan
 import eta.core.utils as etau
@@ -30,7 +32,6 @@ import fiftyone.utils.data as foud
 import fiftyone.utils.image as foui
 
 o3d = fou.lazy_import("open3d", callback=lambda: fou.ensure_package("open3d"))
-
 
 logger = logging.getLogger(__name__)
 
@@ -100,6 +101,13 @@ _PLANE_THICKNESS_EPSILON = 0.000001
 _POINT_IN_FRONT_OF_PLANE = 1
 _POINT_ON_PLANE = 0
 _POINT_BEHIND_PLANE = -1
+
+TransformationType = List[
+    Tuple[
+        Union[list[float], np.ndarray],  # translation
+        Union[list[list[float]], np.ndarray],  # rotation matrix
+    ]
+]
 
 
 # References
@@ -417,6 +425,226 @@ def _compute_intersection_points(box1, box2):
     return intersection_points
 
 
+def rpy_to_rotation(euler_rpy: List[float]):
+    """Converts Euler angles in roll-pitch-yaw order to a
+    scipy.spatial.transform Rotation.
+
+    Args:
+        euler_rpy: a list of Euler angles in roll-pitch-yaw order
+
+    Returns:
+        A scipy.spatial.transform Rotation.
+    """
+    roll, pitch, yaw = euler_rpy
+    return R.from_euler("zyx", [yaw, pitch, roll])
+
+
+def multiple_coordinate_transform(
+    points: List[float],
+    euler_rpy: List[float],
+    transformation_sequence: TransformationType,
+    forward_transform_flags: List[bool] = None,
+) -> Tuple[List[float], List[float]]:
+    """
+    Applies a sequence of 3D coordinate frame transformations to a point and its
+    orientation. Each transformation consists of a translation vector and a
+    rotation matrix, applied in the order provided. The orientation is updated
+    at each step using quaternion multiplication.
+
+    Args:
+        points: A 3-element list/array representing
+            the (x, y, z) coordinates of the point
+        euler_rpy: A 3-element list of Euler angles
+            [roll, pitch, yaw] in radians
+        transformation_sequence: A list of (translation, rotation) tuples:
+            - translation: 3-element vector (tx, ty, tz)
+            - rotation: (3, 3) rotation matrix
+        forward_transform_flags (None): One per transformation
+            True means apply the transform source → target
+            False means apply the inverse (target → source). Defaults to all True
+
+    Returns:
+            - Transformed 3D point [x, y, z].
+            - Updated orientation as Euler angles
+              [roll, pitch, yaw] in radians.
+    """
+    if forward_transform_flags is None:
+        forward_transform_flags = [True] * len(transformation_sequence)
+    if len(transformation_sequence) != len(forward_transform_flags):
+        raise ValueError(
+            "transformation_sequence and forward_transform_flags must have equal lengths"
+        )
+    rot = rpy_to_rotation(euler_rpy)
+    points = np.array(points)
+    for (translation, rotation), forward_transform in zip(
+        transformation_sequence, forward_transform_flags
+    ):
+        points, rot = single_coordinate_transform(
+            points,
+            rot,
+            (np.array(translation), np.array(rotation)),
+            forward_transform,
+        )
+    yaw, pitch, roll = rot.as_euler("zyx", degrees=False)
+    return points.tolist(), [roll, pitch, yaw]
+
+
+def single_coordinate_transform(
+    points: np.ndarray,
+    rot: Any,
+    transformation: Tuple[np.ndarray, np.ndarray],
+    forward_transform: bool = True,
+) -> Tuple[np.ndarray, Any]:
+    """
+    Applies a single 3D coordinate frame transformation to a point and its
+    orientation.
+
+    The transformation consists of a translation vector and a rotation matrix.
+    The orientation is updated using quaternion multiplication.
+
+    Args:
+        points: A 3-element np.ndarray representing the (x, y, z) coordinates of
+            the point
+        rot: A scipy.spatial.transform.Rotation representing the current
+            orientation
+        transformation: A tuple containing:
+            - translation: 3-element array (tx, ty, tz)
+            - rotation_matrix: (3, 3) rotation matrix
+        forward_transform (True): If True, applies the forward transform. If False,
+            applies the inverse transform
+
+    Returns:
+        - Transformed 3D point [x, y, z]
+        - Updated orientation
+    """
+    transform_translation, transform_rot_matrix = transformation
+    transform_rotation = R.from_matrix(transform_rot_matrix)
+    if forward_transform:
+        transformed_points = (
+            np.dot(transform_rotation.as_matrix(), points)
+            + transform_translation
+        )
+        final_orientation = transform_rotation * rot
+    else:
+        transformed_points = np.dot(
+            transform_rotation.inv().as_matrix(),
+            points - transform_translation,
+        )
+        final_orientation = transform_rotation.inv() * rot
+
+    return transformed_points, final_orientation
+
+
+def corners_from_euler(
+    location: List[float], rotation: List[float], dimension: List[float]
+) -> np.ndarray:
+    """Computes the 3D corners of a cuboid given its location, rotation, and
+    dimensions.
+
+    Args:
+        location: a 3-element list or np.ndarray representing the (x, y, z)
+            location of the cuboid
+        rotation: a 3-element list or np.ndarray representing the (roll, pitch,
+            yaw) rotation in radians
+        dimension: a 3-element list or np.ndarray representing the (length,
+            width, height) of the cuboid
+
+    Returns:
+        A 3x8 np.ndarray containing the 3D coordinates of the cuboid's corners.
+    """
+    l, w, h = dimension
+    roll, pitch, yaw = rotation
+    rot = R.from_euler("zyx", [yaw, pitch, roll])  # yaw-pitch-roll order
+    rotation_matrix = rot.as_matrix()
+    x_corners = l / 2 * np.array([1, 1, 1, 1, -1, -1, -1, -1])
+    y_corners = w / 2 * np.array([1, -1, -1, 1, 1, -1, -1, 1])
+    z_corners = h / 2 * np.array([1, 1, -1, -1, 1, 1, -1, -1])
+    corners = np.vstack((x_corners, y_corners, z_corners))
+    corners = np.dot(rotation_matrix, corners)
+    location = np.array(location).reshape(3, 1)
+    corners += location
+    return corners
+
+
+def pinhole_projector(
+    points: np.ndarray, cam_params: Dict, normalize=True
+) -> np.ndarray:
+    """Projects 3D detection points to 2D using the given camera intrinsics
+    assuming a pinhole camera.
+
+    The following orientation is assumed- x axis points to the right in the
+    image plane, y axis points down in the image plane and z axis points forward
+    from the camera.
+
+    Args:
+        points: a 3xN np.ndarray containing the 3D coordinates of the points
+        cam_params: a dict containing the key 'intrinsics' that maps to a 3x3 or
+            4x4 np.ndarray representing the camera intrinsics matrix
+        normalize (True): whether to normalize the projected points by their
+            z-coordinate
+
+    Returns:
+        A 2xN np.ndarray containing the projected 2D coordinates of the points.
+        If `normalize` is True, the points are normalized by their z-coordinate.
+    """
+    camera_intrinsics = cam_params.get("intrinsics")
+    if camera_intrinsics is None:
+        raise ValueError("camera_params['intrinsics'] is required")
+    camera_intrinsics = np.asarray(camera_intrinsics)
+    if camera_intrinsics.shape[0] > 4 or camera_intrinsics.shape[1] > 4:
+        raise ValueError("intrinsics must be 3x3 or 4x4")
+    if points.shape[0] != 3:
+        raise ValueError("points must be a 3xN array")
+
+    cam_int_pad = np.eye(4)
+    cam_int_pad[
+        : camera_intrinsics.shape[0], : camera_intrinsics.shape[1]
+    ] = camera_intrinsics
+    nbr_points = points.shape[1]
+
+    points = np.concatenate((points, np.ones((1, nbr_points))))
+    points = np.dot(cam_int_pad, points)
+    points = points[:3, :]
+    if normalize:
+        points = points / points[2:3, :].repeat(3, 0).reshape(3, nbr_points)
+    return points[:2, :]
+
+
+def point_in_front_of_camera(
+    corners_img: np.ndarray,
+    corners_3d: np.ndarray,
+    imsize: Tuple[int, int],
+    distance_threshold: float = 0.1,
+    safety_threshold: float = 0.1,
+) -> bool:
+    """Checks if the input corners are visible in the image and in front of the
+    camera.
+
+    Args:
+        corners_img: a 2x8 np.ndarray containing the projected 2D coordinates of
+            a cuboid's corners
+        corners_3d: a 3x8 np.ndarray containing the 3D coordinates of the
+            cuboid's corners
+        imsize: a tuple (width, height) of the image dimensions
+        distance_threshold (0.1): a float representing the minimum distance in meters
+            for a corner to be considered in front of the camera
+        safety_threshold (0.1): a float representing the minimum safety distance in meters
+            for a corner to be considered safe
+
+    Returns:
+        True if all corners are visible in the image and all corners are in
+        front of the camera, False otherwise.
+    """
+    visible = np.logical_and(
+        corners_img[0, :] > 0, corners_img[0, :] < imsize[0]
+    )
+    visible = np.logical_and(visible, corners_img[1, :] < imsize[1])
+    visible = np.logical_and(visible, corners_img[1, :] > 0)
+    visible = np.logical_and(visible, corners_3d[2, :] > safety_threshold)
+    in_front = corners_3d[2, :] > distance_threshold
+    return all(visible) and all(in_front)
+
+
 class OrthographicProjectionMetadata(DynamicEmbeddedDocument, fol._HasMedia):
     """Class for storing metadata about orthographic projections.
 
@@ -587,7 +815,7 @@ def compute_orthographic_projection_images(
 
             -   a dict mapping values in ``[0, 1]`` to ``(R, G, B)`` tuples in
                 ``[0, 255]``
-            -   a list of of ``(R, G, B)`` tuples in ``[0, 255]`` that cover
+            -   a list of ``(R, G, B)`` tuples in ``[0, 255]`` that cover
                 ``[0, 1]`` linearly spaced
         subsampling_rate (None): an optional unsigned int that, if provided,
             defines a uniform subsampling rate. The selected point indices are
@@ -709,7 +937,7 @@ def compute_orthographic_projection_image(
 
             -   a dict mapping values in ``[0, 1]`` to ``(R, G, B)`` tuples in
                 ``[0, 255]``
-            -   a list of of ``(R, G, B)`` tuples in ``[0, 255]`` that cover
+            -   a list of ``(R, G, B)`` tuples in ``[0, 255]`` that cover
                 ``[0, 1]`` linearly spaced
         subsampling_rate (None): an unsigned ``int`` that, if defined,
             defines a uniform subsampling rate. The selected point indices are

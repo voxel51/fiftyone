@@ -94,6 +94,12 @@ FiftyOne supports the configuration options described below:
 +----------------------------------+-------------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `do_not_track`                   | `FIFTYONE_DO_NOT_TRACK`                   | `False`                       | Controls whether UUID based import and App usage events are tracked.                   |
 +----------------------------------+-------------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `logging_destination`            | `FIFTYONE_LOGGING_DESTINATION`            | `stdout`                      | Controls FiftyOne's package-wide logging destination. Can be either ``stdout`` to send |
+|                                  |                                           |                               | all logs to stdout, or ``stdout,stderr`` to log errors to stderr and everything below  |
+|                                  |                                           |                               | an error to stdout.                                                                    |
++----------------------------------+-------------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `logging_format`                 | `FIFTYONE_LOGGING_FORMAT`                 | `text`                        | Controls FiftyOne's package-wide logging format. Can be either ``text`` or ``json``.   |
++----------------------------------+-------------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `logging_level`                  | `FIFTYONE_LOGGING_LEVEL`                  | `INFO`                        | Controls FiftyOne's package-wide logging level. Can be any valid ``logging`` level as  |
 |                                  |                                           |                               | a string: ``DEBUG, INFO, WARNING, ERROR, CRITICAL``.                                   |
 +----------------------------------+-------------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+

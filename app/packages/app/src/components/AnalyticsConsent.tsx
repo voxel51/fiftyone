@@ -1,5 +1,9 @@
-import { DEFAULT_WRITE_KEYS, useAnalyticsInfo, useTrackEvent } from "@fiftyone/analytics";
-import { Box, Grid, Link, Typography, Button } from "@mui/material";
+import {
+  DEFAULT_WRITE_KEYS,
+  useAnalyticsInfo,
+  useTrackEvent,
+} from "@fiftyone/analytics";
+import { Box, Button, Grid, Link, Typography } from "@mui/material";
 import React, { useCallback, useEffect, useState } from "react";
 import type { Analytics$data } from "./__generated__/Analytics.graphql";
 

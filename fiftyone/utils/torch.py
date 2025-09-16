@@ -5,6 +5,7 @@ PyTorch utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import functools
 import itertools
 import logging
@@ -962,6 +963,23 @@ class TorchImageModel(
             mask_targets_path = fou.fill_patterns(config.mask_targets_path)
             return etal.load_labels_map(mask_targets_path)
 
+        if (
+            hasattr(self, "_classes")
+            and self._classes is not None
+            and config.output_processor_args
+        ):
+            if config.output_processor_args.get("no_background_cls", False):
+                mask_targets = {
+                    idx + 1: val for idx, val in enumerate(self.classes)
+                }
+            else:
+                # Class at index 0 is treated as background class.
+                # This class is neither visualized in the app nor used in evaluate_segmentations.
+                mask_targets = {
+                    idx: val for idx, val in enumerate(self.classes)
+                }
+            return mask_targets
+
         return None
 
     def _parse_skeleton(self, config):
@@ -1017,6 +1035,8 @@ class TorchImageModel(
         elif config.image_dim:
             transforms.append(torchvision.transforms.Resize(config.image_dim))
         elif config.image_patch_size:
+            if config.image_min_dim:
+                transforms.append(MinResize(config.image_min_dim))
             transforms.append(PatchSize(config.image_patch_size))
         else:
             if config.image_min_size:
@@ -1317,7 +1337,7 @@ class ClassifierOutputProcessor(OutputProcessor):
         preds = []
         for prediction, score, _logits in zip(predictions, scores, logits):
             if confidence_thresh is not None and score < confidence_thresh:
-                classification = None
+                classification = fol.Classification()
             else:
                 classification = fol.Classification(
                     label=self.classes[prediction],
@@ -1402,7 +1422,7 @@ class DetectorOutputProcessor(OutputProcessor):
 
 
 class InstanceSegmenterOutputProcessor(OutputProcessor):
-    """Output processor for instance segementers.
+    """Output processor for instance segmenters.
 
     Args:
         classes (None): the list of class labels for the model
@@ -1595,15 +1615,21 @@ class KeypointDetectorOutputProcessor(OutputProcessor):
 
 
 class SemanticSegmenterOutputProcessor(OutputProcessor):
-    """Output processor for semantic segementers.
+    """Output processor for semantic segmenters.
 
     Args:
         classes (None): the list of class labels for the model. This parameter
             is not used
+        no_background_cls (False): if true, class indices are incremented by 1 in the mask
+        has_softmax_out (True): if false, softmax is applied to output predictions.
     """
 
-    def __init__(self, classes=None):
+    def __init__(
+        self, classes=None, no_background_cls=False, has_softmax_out=True
+    ):
         self.classes = classes
+        self.no_background_cls = no_background_cls
+        self.has_softmax_out = has_softmax_out
 
     def __call__(self, output, *args, **kwargs):
         """Parses the model output.
@@ -1620,12 +1646,25 @@ class SemanticSegmenterOutputProcessor(OutputProcessor):
         Returns:
             a list of :class:`fiftyone.core.labels.Segmentation` instances
         """
-        probs = output["out"].detach().cpu().numpy()
+        out = output["out"].detach().cpu()
+        if not self.has_softmax_out:
+            out = out.softmax(dim=1)
+        probs = out.numpy()
+
         masks = probs.argmax(axis=1)
+        if self.no_background_cls:
+            # Increment class index by 1 since 0 is reserved for background in the app.
+            masks += 1
+
+        confidence_thresh = kwargs.pop("confidence_thresh", None)
+        if confidence_thresh:
+            confidence = probs.max(axis=1)
+            conf_mask = confidence >= confidence_thresh
+            masks[~conf_mask] = 0
         return [fol.Segmentation(mask=mask) for mask in masks]
 
 
-def recommend_num_workers():
+def recommend_num_workers(num_workers=None):
     """Recommend a number of workers for running a
     :class:`torch:torch.utils.data.DataLoader`.
 
@@ -1633,15 +1672,20 @@ def recommend_num_workers():
         the recommended number of workers
     """
     if sys.platform.startswith("win"):
-        # Windows tends to have multiprocessing issues, so default to 0 workers
+        # Windows tends to have multiprocessing issues, especially with Torch,
+        # so default to 0 workers
         # https://github.com/voxel51/fiftyone/issues/1531
         # https://stackoverflow.com/q/20222534
         return 0
 
     try:
-        return multiprocessing.cpu_count() // 2
-    except:
-        return 4
+        default = multiprocessing.cpu_count() // 2
+    except Exception:
+        default = 4
+
+    return fou.recommend_process_pool_workers(
+        num_workers, default_num_workers=default
+    )
 
 
 def _to_bytes_array(strs):
@@ -2480,7 +2524,11 @@ class NumpySerializedList:
         self._lst = [_serialize(x) for x in lst]
         self._addr = np.asarray([len(x) for x in self._lst], dtype=np.int64)
         self._addr = np.cumsum(self._addr)
-        self._lst = np.concatenate(self._lst)
+        self._lst = (
+            np.concatenate(self._lst)
+            if self._lst
+            else np.empty(0, dtype=np.uint8)
+        )
 
         logger.debug(
             "Serialized dataset takes {:.2f} MiB".format(

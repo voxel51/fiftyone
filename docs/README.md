@@ -7,27 +7,56 @@ FiftyOne uses [Sphinx](https://www.sphinx-doc.org/en/master) and
 [Sphinx-Napoleon](https://pypi.python.org/pypi/sphinxcontrib-napoleon) to
 generate its documentation and API reference from source.
 
+## Prerequisites
+
+Before building the docs locally, ensure you have:
+
+-   Python 3.11 installed and a
+    [virtual environment](https://docs.voxel51.com/getting_started/virtualenv.html)
+    created specifically for documentation.
+
+    **Note:** Do **NOT** use the same environment where you ran `install.bash`
+    with the `-d` (dev mode) flag, as docs dependencies may conflict with test
+    dependencies.
+
+-   [pandoc](https://pandoc.org/installing.html) installed.
+
+-   A Unix-like shell environment to execute bash commands.
+
 ## Setup
 
-In order to build the docs locally, you must:
+To build the documentation locally, follow these steps:
 
-1.  Be running Python 3.9 in a
-    [virtual environment](https://docs.voxel51.com/getting_started/virtualenv.html)
+1. Install FiftyOne:
 
-2.  Perform a developer install of `fiftyone`:
+    ```shell
+    cd ..
+    bash install.bash
+    ```
 
-```shell
-git clone https://github.com/voxel51/fiftyone
-cd fiftyone
+2. Install documentation-specific requirements:
 
-bash install.bash -d
-```
+    ```shell
+    pip install -r requirements/docs.txt
+    ```
 
-3.  Add the path to your cloned `fiftyone` repository to your `PYTHONPATH`:
+3. If you are going to include FiftyOne Enterprise SDK components in your local
+   docs build, you need to install some additional dependencies as well:
 
-```shell
-export PYTHONPATH=$PYTHONPATH:/path/to/fiftyone
-```
+    ```shell
+    pip install -r requirements/docs-teams.txt
+    ```
+
+4. To use the `fiftyone` repository to autogenerate docs, you need to add it to
+   your `PYTHONPATH`:
+
+    ```shell
+    export PYTHONPATH=$PYTHONPATH:/path/to/fiftyone
+    ```
+
+**Tip:** to avoid running this every time you build the docs, add the previous
+line to your `~/.bashrc`, `~/.zshrc`, or the appropriate shell profile for your
+environment.
 
 ## Building
 
@@ -85,8 +114,8 @@ components of our style when you commit changes.
 
 ### Themes
 
-Theme files are located in the `docs/theme` folder. However, you should prefer
-to make changes in the following locations instead of the theme itself whenever
+This extends the theme `pydata_sphinx_theme`. However, you should prefer to
+make changes in the following locations instead of the theme itself whenever
 possible:
 
 -   `docs/source/_static` contains `custom.css` and `custom.js` files, where
@@ -99,18 +128,13 @@ possible:
     to add a block prefixed with `custom_` to the theme template, then override
     that block locally
 
-To work on the theme JavaScript (not `custom.js`), you will need to install a
-couple dependencies for the build process:
+### Compile CSS
 
-```sh
-cd docs/theme
-yarn install
+To compile Sass styles into CSS for the documentation:
+
+```shell
+make css
 ```
 
-A few commands are available:
-
--   `yarn build` bundles all JS files into the single file expected by the
-    theme
--   `yarn deploy` builds and copies this file into the built documentation
-    (which avoids the need to run `generate_docs.bash` again)
--   `yarn watch` re-runs `yarn deploy` whenever a JS source file changes
+This command compiles the Sass files located in `docs/source/assets/styles/`
+and outputs the compiled CSS to `docs/source/_static/custom.css`.

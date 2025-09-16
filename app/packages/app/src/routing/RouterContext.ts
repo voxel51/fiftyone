@@ -80,16 +80,22 @@ export const createRouter = <T extends OperationType>(
     [Subscription<T>, (() => void) | undefined]
   >();
 
-  const update = (location: FiftyOneLocation, action?: Action) => {
+  const update = (
+    location: FiftyOneLocation,
+    action?: Action,
+    attach?: Resource<Entry<T>>
+  ) => {
     currentEntryResource.load().then(({ cleanup }) => {
       try {
-        nextCurrentEntryResource = getEntryResource({
-          environment,
-          routes,
-          location: location as FiftyOneLocation,
-          hard: false,
-          handleError,
-        });
+        nextCurrentEntryResource =
+          attach ??
+          getEntryResource({
+            environment,
+            routes,
+            location: location as FiftyOneLocation,
+            hard: location.state.event !== "modal",
+            handleError,
+          });
       } catch (e) {
         if (e instanceof Resource) {
           // skip the page change if a resource is thrown
@@ -145,7 +151,6 @@ export const createRouter = <T extends OperationType>(
     },
 
     load(hard = false) {
-      const runUpdate = !currentEntryResource || hard;
       if (!currentEntryResource || hard) {
         currentEntryResource = getEntryResource({
           environment,
@@ -154,8 +159,12 @@ export const createRouter = <T extends OperationType>(
           location: history.location as FiftyOneLocation,
           routes,
         });
+        update(
+          history.location as FiftyOneLocation,
+          undefined,
+          currentEntryResource
+        );
       }
-      runUpdate && update(history.location as FiftyOneLocation);
       return currentEntryResource.load();
     },
 

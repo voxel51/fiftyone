@@ -376,7 +376,7 @@ When you specify an ``eval_key`` parameter, a number of helpful fields will be
 populated on each sample and its predicted/ground truth objects:
 
 -   True positive (TP), false positive (FP), and false negative (FN) counts
-    for the each sample are saved in top-level fields of each sample::
+    for each sample are saved in top-level fields of each sample::
 
         TP: sample.<eval_key>_tp
         FP: sample.<eval_key>_fp

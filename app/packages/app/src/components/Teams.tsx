@@ -221,7 +221,7 @@ export default function Teams({
 
     // don't show intro popoverif we're in playwright
     const isPlaywright = window["IS_PLAYWRIGHT"];
-    
+
     if (!hasSeenTooltip && !isPlaywright) {
       setShowPopover(true);
     }

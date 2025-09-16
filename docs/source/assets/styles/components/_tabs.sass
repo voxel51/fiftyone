@@ -1,0 +1,41 @@
+.sphinx-tabs-panel
+  border: 0
+
+
+[role="tablist"]
+  position: relative
+  border-bottom: 1px solid var(--color-background)
+  display: flex
+  flex-wrap: wrap
+
+.sphinx-tabs-tab[aria-selected="true"], .sphinx-tabs-tab:hover
+  border: 0
+  border-bottom: 0
+  margin: 0
+  color: var(--pst-color-text-base)
+
+.sphinx-tabs-tab, .sphinx-tabs-tab[aria-selected="true"]
+  padding: 2px 0
+  font-size: 16px
+  font-weight: 500
+  white-space: nowrap
+  flex-shrink: 0
+
+.sphinx-tabs-tab
+  font-family: var(--pst-font-family-base)
+  color: #181a1b99
+
+.closeable
+  display: flex
+  gap: 20px
+
+.tabs-sliding-indicator
+  position: absolute
+  left: 0
+  width: 0
+  height: 1px
+  background-color: #000
+  transition: all 0.3s ease
+  opacity: 0
+  z-index: 1
+  pointer-events: none
