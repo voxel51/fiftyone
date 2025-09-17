@@ -195,6 +195,13 @@ on the cards below to see how!
     :image: ../_images/brain-image-visualization.gif
     :tags: Model-Training,Model-Evaluation,Models
 
+.. customcarditem::
+    :header: VLM Run
+    :description: Extract structured data from images, documents, PDFs, audio, and video using vision-language models with just a few lines of code.
+    :link: vlm.html
+    :image: ../_images/brain-text-similarity.gif
+    :tags: Models,Document-Processing,Structured-Data
+
 .. End of integrations cards
 
 .. raw:: html
@@ -236,3 +243,4 @@ on the cards below to see how!
     OpenCLIP <openclip.rst>
     PyTorch Hub <pytorch_hub.rst>
     Lightning Flash <lightning_flash.rst>
+    VLM Run <vlm.rst>
