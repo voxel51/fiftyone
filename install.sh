@@ -58,13 +58,17 @@ ARCH=$(uname -m)
 MIN_MINOR=9
 MAX_MINOR=12
 
-if ! command -v python3 >/dev/null 2>&1; then
-    echo "Python 3 is not installed or not in PATH"
+if command -v python3 >/dev/null 2>&1; then
+    PYTHON=python3
+elif command -v python >/dev/null 2>&1; then
+    PYTHON=python
+else
+    echo "ERROR: Neither python3 nor python found in PATH."
     exit 1
 fi
 
 # Extract major.minor version info
-PY_VER=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+PY_VER=$($PYTHON -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
 MAJOR=$(echo "$PY_VER" | cut -d. -f1)
 MINOR=$(echo "$PY_VER" | cut -d. -f2)
 
