@@ -78,6 +78,10 @@ if [ "$MAJOR" -ne 3 ] || [ "$MINOR" -lt "$MIN_MINOR" ] || [ "$MINOR" -gt "$MAX_M
 fi
 
 echo "Python $PY_VER is supported."
+
+# Ensure pip targets this Python interpreter
+PIP="$PYTHON_BIN -m pip"
+
 # Do this first so pip installs with a built app
 if [ "$BUILD_APP" = true ]; then
     echo "***** INSTALLING FIFTYONE-APP *****"
@@ -153,7 +157,7 @@ if [ "$SCRATCH_MONGODB_INSTALL" = true ]; then
     cd -
 else
     echo "***** INSTALLING FIFTYONE-DB *****"
-    pip install fiftyone-db
+    $PIP install fiftyone-db
 fi
 
 echo "***** INSTALLING FIFTYONE-BRAIN *****"
@@ -172,26 +176,26 @@ if [ "$SOURCE_BRAIN_INSTALL" = true ]; then
         sh install.sh -d
     else
         echo "Performing install"
-        pip install .
+        $PIP install .
     fi
     cd -
 else
-    pip install --upgrade fiftyone-brain
+    $PIP install --upgrade fiftyone-brain
 fi
 
 echo "***** INSTALLING FIFTYONE *****"
 if [ "$DEV_INSTALL" = true ]; then
     echo "Performing dev install"
-    pip install -r requirements/dev.txt
+    $PIP install -r requirements/dev.txt
     pre-commit install
-    pip install -e .
+    $PIP install -e .
 elif [ "$DOCS_INSTALL" = true ]; then
     echo "Performing docs install"
-    pip install -r requirements/docs.txt
-    pip install -e .
+    $PIP install -r requirements/docs.txt
+    $PIP install -e .
 else
     echo "Performing install"
-    pip install .
+    $PIP install .
 fi
 
 if [ "$SOURCE_ETA_INSTALL" = true ]; then
@@ -207,10 +211,10 @@ if [ "$SOURCE_ETA_INSTALL" = true ]; then
     fi
     if [ "$DEV_INSTALL" = true ]; then
         echo "Performing dev install"
-        pip install -e .
+        $PIP install -e .
     else
         echo "Performing install"
-        pip install .
+        $PIP install .
     fi
     if [ ! -f eta/config.json ]; then
         echo "Installing default ETA config"
