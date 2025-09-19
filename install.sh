@@ -53,7 +53,6 @@ done
 set -e
 NODE_VERSION=22.14.0
 OS=$(uname -s)
-ARCH=$(uname -m)
 
 MIN_MINOR=9
 MAX_MINOR=12
