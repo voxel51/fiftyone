@@ -57,10 +57,10 @@ OS=$(uname -s)
 MIN_MINOR=9
 MAX_MINOR=12
 
-if command -v python3 >/dev/null 2>&1; then
-    PYTHON=python3
-elif command -v python >/dev/null 2>&1; then
+if command -v python >/dev/null 2>&1; then
     PYTHON=python
+elif command -v python3 >/dev/null 2>&1; then
+    PYTHON=python3
 else
     echo "ERROR: Neither python3 nor python found in PATH."
     exit 1
@@ -79,7 +79,7 @@ fi
 echo "Python $PY_VER is supported."
 
 # Ensure pip targets this Python interpreter
-PIP="$PYTHON_BIN -m pip"
+PIP="$PYTHON -m pip"
 
 # Do this first so pip installs with a built app
 if [ "$BUILD_APP" = true ]; then
