@@ -3187,8 +3187,8 @@ class DelegatedLaunchCommand(Command):
 
         parser.add_argument(
             "-m",
-            "--no-monitor",
-            action="store_false",
+            "--monitor",
+            action="store_true",
             dest="monitor",
             help="whether to monitor the state of the operation with a parent process",
         )

@@ -501,8 +501,8 @@ class DelegatedOperationService(object):
         dataset_name=None,
         limit=None,
         log=False,
-        monitor=True,
-        check_interval_seconds=300,
+        monitor=False,
+        check_interval_seconds=60,
         **kwargs,
     ):
         """Executes queued delegated operations matching the given criteria.
@@ -518,8 +518,8 @@ class DelegatedOperationService(object):
                 operations to execute
             log (False): the optional boolean flag to log the execution of the
                 delegated operations
-            monitor (True): if we should monitor the state of the operator in a subprocess.
-            check_interval_seconds (300): how many seconds to wait between polling operator status.
+            monitor (False): if we should monitor the state of the operator in a subprocess.
+            check_interval_seconds (60): how many seconds to wait between polling operator status.
         """
         results = []
         if limit is not None:
@@ -565,8 +565,8 @@ class DelegatedOperationService(object):
         log=False,
         run_link=None,
         log_path=None,
-        monitor=True,
-        check_interval_seconds=300,
+        monitor=False,
+        check_interval_seconds=60,
     ):
         """Executes the given delegated operation.
 
@@ -578,8 +578,8 @@ class DelegatedOperationService(object):
             run_link (None): an optional link to orchestrator-specific
                 information about the operation
             log_path (None): an optional path to the log file for the operation
-            monitor (True): if we should monitor the state of the operator in a subprocess.
-            check_interval_seconds (300): how many seconds to wait between polling operator status.
+            monitor (False): if we should monitor the state of the operator in a subprocess.
+            check_interval_seconds (60): how many seconds to wait between polling operator status.
         """
         try:
             succeeded = (
@@ -690,7 +690,7 @@ class DelegatedOperationService(object):
             )
 
     def _execute_operation_multi_proc(
-        self, operation, log=False, check_interval_seconds=300
+        self, operation, log=False, check_interval_seconds=60
     ):
         """Executes an operation in a separate process and monitors it."""
         ctx = multiprocessing.get_context("spawn")
@@ -719,16 +719,24 @@ class DelegatedOperationService(object):
 
                 try:
                     op_doc = self.get(operation.id)
-                    if (
-                        op_doc
-                        and op_doc.run_state == ExecutionRunState.FAILED
-                        and op_doc.result.error
-                        and "marked as failed by" in op_doc.result.error
-                    ):
-                        reason = "Operation marked as FAILED externally"
+                    if op_doc and op_doc.run_state == ExecutionRunState.FAILED:
+                        err = None
+                        res = getattr(op_doc, "result", None)
+                        if isinstance(res, dict):
+                            err = res.get("error")
+                        else:
+                            err = getattr(res, "error", None)
+
+                        reason = (
+                            "Operation marked as FAILED externally"
+                            if not err
+                            or "marked as failed" in str(err).lower()
+                            else f"Operation FAILED (detected by monitor): {err}"
+                        )
                         self._terminate_child_process(
                             child_process, operation.id, reason
                         )
+                        result = ExecutionResult(error=reason)
                         break
                 except Exception as e:
                     reason = f"Error in monitoring loop: {e}"
@@ -740,13 +748,23 @@ class DelegatedOperationService(object):
                     self._terminate_child_process(
                         child_process, operation.id, reason
                     )
-                    raise
-            final_doc = self.get(operation.id)
-            result = (
-                final_doc.result
-                if final_doc and final_doc.result
-                else ExecutionResult()
-            )
+                    result = ExecutionResult(error=reason)
+                    break
+            if not result:
+                final_doc = self.get(operation.id)
+                raw = final_doc.result if final_doc else None
+                if isinstance(raw, ExecutionResult):
+                    result = raw
+                elif isinstance(raw, dict):
+                    result = ExecutionResult(
+                        result=raw.get("result"),
+                        error=raw.get("error"),
+                        error_message=raw.get("error_message"),
+                        delegated=raw.get("delegated", False),
+                        outputs_schema=raw.get("outputs_schema"),
+                    )
+                else:
+                    result = ExecutionResult()
         finally:
             listener.stop()
             if child_process and child_process.is_alive():

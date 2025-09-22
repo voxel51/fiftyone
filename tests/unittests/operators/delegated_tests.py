@@ -989,7 +989,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         mock_psutil_parent.terminate.assert_called_once()
 
         self.assertIsNotNone(result)
-        self.assertIn("marked as failed by test", result.error)
+        self.assertIn("Operation marked as FAILED externally", result.error)
 
         mock_process.start.assert_called_once()
         mock_process.join.assert_called()
