@@ -135,15 +135,56 @@ class AddBoundingBox(foo.Operator):
     def execute(self, ctx):
         field = ctx.params.get("field", None)
         sample_id = ctx.params.get("sample_id", None)
-        path = ctx.params.get("path", None)
+
         label = ctx.params.get("label", None)
+        label_id = ctx.params.get("label_id", None)
         bounding_box = ctx.params.get("bounding_box", None)
 
         sample = ctx.dataset[sample_id]
         field_obj = sample[field]
-        detection_obj = field_obj[path]
+        # assume we're setting fo.Detections for now
+        detection_obj = field_obj["detections"]
+
+        # todo: validation
+
         detection_obj.append(
-            fo.Detection(label=label, bounding_box=bounding_box)
+            fo.Detection(
+                label=label,
+                bounding_box=bounding_box,
+                id=label_id,
+            )
         )
+
+        sample.save()
+
+
+class RemoveBoundingBox(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="remove_bounding_box",
+            label="Remove bounding box",
+            unlisted=True,
+        )
+
+    def execute(self, ctx):
+        path = ctx.params.get("path", None)
+        sample_id = ctx.params.get("sample_id", None)
+        bounding_box_id = ctx.params.get("id", None)
+
+        sample = ctx.dataset[sample_id]
+        detection_obj = sample[path]
+
+        # check if the detection_obj is a list
+        if isinstance(detection_obj, list):
+            new_detection_obj = [
+                detection
+                for detection in detection_obj
+                if detection.id != bounding_box_id
+            ]
+            sample[path] = new_detection_obj
+        else:
+            # it's a single fo.Detection object
+            sample[path] = None
 
         sample.save()

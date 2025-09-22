@@ -861,10 +861,6 @@ export class Scene2D {
       return;
     }
 
-    if (this.overlays.has(overlay.id)) {
-      return;
-    }
-
     this.renderingState.setStatus(overlay.id, OVERLAY_STATUS_PENDING);
     // Inject renderer into overlay
     overlay.setRenderer(this.config.renderer);
@@ -954,6 +950,15 @@ export class Scene2D {
    */
   getOverlay(id: string): BaseOverlay | undefined {
     return this.overlays.get(id);
+  }
+
+  /**
+   * Checks if an overlay with the given ID exists in the scene.
+   * @param id - The overlay ID to check.
+   * @returns True if the overlay exists, false otherwise.
+   */
+  hasOverlay(id: string): boolean {
+    return this.overlays.has(id);
   }
 
   /**
@@ -1599,6 +1604,7 @@ export class Scene2D {
    */
   public exitInteractiveMode(): void {
     if (!this.interactiveMode) {
+      this.setCursor("default");
       return;
     }
 

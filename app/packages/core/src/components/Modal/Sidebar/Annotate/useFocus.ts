@@ -1,4 +1,4 @@
-import { useLighter } from "@fiftyone/lighter";
+import { LIGHTER_EVENTS, useLighter } from "@fiftyone/lighter";
 import { getDefaultStore } from "jotai";
 import { useEffect } from "react";
 import { editing } from "./Edit";
@@ -10,7 +10,7 @@ export default function useFocus() {
   useEffect(() => {
     const store = getDefaultStore();
 
-    scene?.on("overlay-drag-start", (event) => {
+    scene?.on(LIGHTER_EVENTS.OVERLAY_SELECT, (event) => {
       store.set(editing, store.get(labelMap)[event.detail.id]);
     });
   }, [scene]);

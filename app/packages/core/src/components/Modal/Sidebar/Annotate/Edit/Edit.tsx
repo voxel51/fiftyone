@@ -1,7 +1,11 @@
 import { Button } from "@fiftyone/components";
+import { LIGHTER_EVENTS, useLighter } from "@fiftyone/lighter";
+import * as fos from "@fiftyone/state";
+import { AnnotationLabel } from "@fiftyone/state";
 import { DeleteOutline } from "@mui/icons-material";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import React from "react";
+import { getDefaultStore, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useMemo } from "react";
+import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import ioSchema from "../../../../../plugins/SchemaIO/examples/input.json";
@@ -38,11 +42,9 @@ const Content = styled.div`
   overflow: auto;
 `;
 
-const Header = () => {
-  const [label, setLabel] = useAtom(current);
-  const type = useAtomValue(fieldType(label.path));
+const Header = ({ type, label }: { type: string; label: AnnotationLabel }) => {
+  const Icon = type ? ICONS[type] ?? ICONS : null;
 
-  const Icon = ICONS[type] ?? ICONS;
   return (
     <Row>
       <ItemLeft style={{ columnGap: "0.5rem" }}>
@@ -58,27 +60,71 @@ const Header = () => {
 };
 
 const Footer = () => {
-  const setEditing = useSetAtom(editing);
+  const setEditingAtom = useSetAtom(editing);
+  const { scene } = useLighter();
+  const currentSampleId = useRecoilValue(fos.currentSampleId);
+  const currentLabel = useAtomValue(current);
+
   return (
     <Row>
-      <RoundButton>
-        <DeleteOutline /> Delete
+      <RoundButton
+        onClick={() => {
+          if (!currentLabel) return;
+
+          if (!scene) return;
+
+          scene.removeOverlay(currentLabel.id);
+
+          scene.dispatchSafely({
+            type: LIGHTER_EVENTS.DO_REMOVE_OVERLAY,
+            detail: {
+              id: currentLabel.id,
+              sampleId: currentSampleId,
+              path: currentLabel.expandedPath,
+            },
+          });
+
+          setEditingAtom(null);
+        }}
+      >
+        {currentLabel && <DeleteOutline />}
+        Delete
       </RoundButton>
 
-      <Button onClick={() => setEditing(null)}>Done</Button>
+      <Button onClick={() => setEditingAtom(null)}>Done</Button>
     </Row>
   );
 };
 
 export default function Edit() {
-  const [label, setLabel] = useAtom(current);
-  const config = useAtomValue(schemaConfig(label.path));
+  const [label] = useAtom(current);
+
+  const type = useMemo(() => {
+    if (!label) {
+      return null;
+    }
+    const store = getDefaultStore();
+    return store.get(fieldType(label.path));
+  }, [label]);
+
+  const config = useMemo(() => {
+    if (!label) {
+      return null;
+    }
+
+    const store = getDefaultStore();
+    return store.get(schemaConfig(label.path));
+  }, [label]);
 
   useMove();
 
+  if (!label || !type || !config) {
+    return null;
+  }
+
   return (
     <ContentContainer>
-      <Header />
+      <Header type={type} label={label} />
       <Content>
         <SchemaIOComponent
           schema={ioSchema}

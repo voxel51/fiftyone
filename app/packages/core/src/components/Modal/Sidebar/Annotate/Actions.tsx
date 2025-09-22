@@ -3,12 +3,16 @@ import {
   LIGHTER_EVENTS,
   useLighter,
 } from "@fiftyone/lighter";
-import { BoundingBoxPersistence } from "@fiftyone/lighter/src/types";
+import { DetectionLabel } from "@fiftyone/looker/src/overlays/detection";
 import * as fos from "@fiftyone/state";
-import React, { useCallback, useState } from "react";
+import { DETECTION } from "@fiftyone/utilities";
+import { atom, getDefaultStore, useSetAtom } from "jotai";
+import { useCallback, useState } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ItemLeft, ItemRight } from "./Components";
+import { editing } from "./Edit";
+import { activeSchemas } from "./state";
 import useShowModal from "./useShowModal";
 
 const ActionsDiv = styled.div`
@@ -160,6 +164,8 @@ const Detection = () => {
   const [isInteractiveModeOnLocal, setIsInteractiveModeOnLocal] =
     useState(false);
 
+  const setEditing = useSetAtom(editing);
+
   // Handle escape key to exit interactive mode
   fos.useKeydownHandler((e: KeyboardEvent) => {
     if (e.key === "Escape" && scene) {
@@ -171,27 +177,55 @@ const Detection = () => {
   const toggleInteractiveMode = useCallback(() => {
     if (!scene) return;
 
+    if (isInteractiveModeOnLocal) {
+      scene.exitInteractiveMode();
+      setIsInteractiveModeOnLocal(false);
+      return;
+    }
+
+    const activeSchemasVal = getDefaultStore().get(activeSchemas);
+
+    if (!activeSchemasVal || Object.keys(activeSchemasVal).length === 0) return;
+
     const handler = new InteractiveDetectionHandler(
       currentSampleId,
+      activeSchemasVal,
       addOverlay,
       removeOverlay,
       overlayFactory,
-      (overlay) => {
+      (overlay, path) => {
         scene.dispatchSafely({
           type: LIGHTER_EVENTS.DO_PERSIST_OVERLAY,
-          detail: new BoundingBoxPersistence(
-            "detections",
-            overlay.field ?? "ground_truth",
-            currentSampleId,
-            overlay.label?.label ?? "",
-            overlay.getRelativeBounds()
-          ),
+          detail: {
+            id: overlay.id,
+            field: path,
+            sampleId: currentSampleId,
+            label: overlay.label?.label ?? "",
+            bounds: overlay.getRelativeBounds(),
+            misc: {},
+          },
         });
+
+        if (overlay.label) {
+          setEditing(
+            atom<fos.AnnotationLabel>({
+              id: overlay.label?.id,
+              data: overlay.label as DetectionLabel,
+              path: overlay.field,
+              expandedPath: overlay.field + ".detections",
+              // todo: how to infer this smartly?
+              // most likely can be sure it's Detections here
+              type: DETECTION,
+            })
+          );
+        }
+
+        scene.exitInteractiveMode();
       }
     );
 
-    const isInteractiveMode = scene.toggleInteractiveMode(handler);
-    setIsInteractiveModeOnLocal(isInteractiveMode);
+    scene.enterInteractiveMode(handler);
+    setIsInteractiveModeOnLocal(true);
   }, [scene, currentSampleId, addOverlay, removeOverlay, overlayFactory]);
 
   return (

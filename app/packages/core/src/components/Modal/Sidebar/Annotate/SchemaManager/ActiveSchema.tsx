@@ -33,7 +33,7 @@ const useDeactivate = () => {
   );
 };
 
-const selectedFields = atom(new Set<string>());
+export const selectedFields = atom(new Set<string>());
 
 export const isSelected = atomFamily((path: string) =>
   atom(

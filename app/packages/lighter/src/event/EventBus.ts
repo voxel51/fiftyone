@@ -3,7 +3,7 @@
  */
 
 import { BaseOverlay } from "../overlay/BaseOverlay";
-import type { BoundingBoxPersistence, Point, Rect } from "../types";
+import type { Point, Rect } from "../types";
 
 /**
  * Event type constants for lighter events.
@@ -98,6 +98,8 @@ export const LIGHTER_EVENTS = {
 
   /** Emitted when the overlay needs to be persisted */
   DO_PERSIST_OVERLAY: "do-persist-overlay",
+  /** Emitted when the overlay needs to be removed */
+  DO_REMOVE_OVERLAY: "do-remove-overlay",
 } as const;
 
 /**
@@ -263,7 +265,18 @@ export type DoLighterEvent =
     }
   | {
       type: typeof LIGHTER_EVENTS.DO_PERSIST_OVERLAY;
-      detail: BoundingBoxPersistence;
+      detail: {
+        id: string;
+        field: string;
+        sampleId: string;
+        label: string;
+        bounds: Rect;
+        misc?: Record<string, any>;
+      };
+    }
+  | {
+      type: typeof LIGHTER_EVENTS.DO_REMOVE_OVERLAY;
+      detail: { id: string; sampleId: string; path: string };
     };
 
 /**

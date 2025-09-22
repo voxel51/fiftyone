@@ -2,10 +2,15 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
+import {
+  addLabel,
+  removeLabel,
+} from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useLabels";
 import { useOperatorExecutor } from "@fiftyone/operators";
+import { DETECTION } from "@fiftyone/utilities";
+import { useSetAtom } from "jotai";
 import { useCallback, useEffect } from "react";
 import { LIGHTER_EVENTS, Scene2D } from "../index";
-import { BoundingBoxPersistence } from "../types";
 
 /**
  * Hook that handles tooltip events for lighter overlays.
@@ -13,12 +18,16 @@ import { BoundingBoxPersistence } from "../types";
  */
 export const useLighterOverlayPersistence = (scene: Scene2D | null) => {
   const addBoundingBox = useOperatorExecutor("add_bounding_box");
+  const removeBoundingBox = useOperatorExecutor("remove_bounding_box");
+
+  const addLabelEffect = useSetAtom(addLabel);
+  const removeLabelEffect = useSetAtom(removeLabel);
 
   const handlePersistOverlay = useCallback(
     (event: CustomEvent) => {
       const overlay = event.detail;
 
-      if (overlay instanceof BoundingBoxPersistence) {
+      if (overlay) {
         try {
           const bbox = [
             overlay.bounds.x,
@@ -27,11 +36,19 @@ export const useLighterOverlayPersistence = (scene: Scene2D | null) => {
             overlay.bounds.height,
           ];
           addBoundingBox.execute({
-            path: overlay.path,
             field: overlay.field,
             sample_id: overlay.sampleId,
+            label_id: overlay.id,
             label: overlay.label ?? "",
             bounding_box: bbox,
+          });
+
+          addLabelEffect({
+            id: overlay.id,
+            data: overlay,
+            path: overlay.field,
+            expandedPath: overlay.field + ".detections",
+            type: DETECTION,
           });
         } catch (error) {
           console.error("Error adding bounding box", error);
@@ -47,8 +64,24 @@ export const useLighterOverlayPersistence = (scene: Scene2D | null) => {
     [addBoundingBox]
   );
 
-  // TODO
-  const handleOverlayRemoved = useCallback(() => {}, []);
+  const handleRemoveOverlay = useCallback(
+    (event: CustomEvent) => {
+      const { id, sampleId, path } = event.detail;
+      try {
+        console.log("removing bounding box", id, sampleId, path);
+        removeBoundingBox.execute({
+          id,
+          path,
+          sample_id: sampleId,
+        });
+
+        removeLabelEffect(id);
+      } catch (error) {
+        console.error("Error removing bounding box", error);
+      }
+    },
+    [removeBoundingBox]
+  );
 
   useEffect(() => {
     if (!scene) {
@@ -56,9 +89,11 @@ export const useLighterOverlayPersistence = (scene: Scene2D | null) => {
     }
 
     scene.on(LIGHTER_EVENTS.DO_PERSIST_OVERLAY, handlePersistOverlay);
+    scene.on(LIGHTER_EVENTS.DO_REMOVE_OVERLAY, handleRemoveOverlay);
 
     return () => {
       scene.off(LIGHTER_EVENTS.DO_PERSIST_OVERLAY, handlePersistOverlay);
+      scene.off(LIGHTER_EVENTS.DO_REMOVE_OVERLAY, handleRemoveOverlay);
     };
   }, [scene]);
 };

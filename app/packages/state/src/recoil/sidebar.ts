@@ -110,6 +110,7 @@ export interface AnnotationLabel {
   id: string;
   data: ClassificationLabel | DetectionLabel;
   path: string;
+  expandedPath: string;
   type: string;
 }
 

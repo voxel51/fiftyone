@@ -7,7 +7,7 @@ import { activeFields, field, modalSample, pathFilter } from "@fiftyone/state";
 import { atom, useAtomValue, useSetAtom } from "jotai";
 import { splitAtom } from "jotai/utils";
 import { get } from "lodash";
-import { useEffect } from "react";
+import { useCallback } from "react";
 import {
   selector,
   useRecoilCallback,
@@ -45,7 +45,7 @@ const handleSample = async ({
     const array = Array.isArray(result) ? result : result ? [result] : [];
 
     for (const data of array) {
-      labels.push({ data, path, id: data._id, type });
+      labels.push({ data, path, expandedPath, id: data._id, type });
     }
   }
 
@@ -56,6 +56,17 @@ const handleSample = async ({
 
 export const labels = atom<Array<AnnotationLabel>>([]);
 export const labelAtoms = splitAtom(labels, ({ id }) => id);
+
+export const addLabel = atom(null, (get, set, label: AnnotationLabel) => {
+  set(labels, [...get(labels), label]);
+});
+
+export const removeLabel = atom(null, (get, set, id: string) => {
+  set(
+    labels,
+    get(labels).filter((label) => label.id !== id)
+  );
+});
 
 export const labelMap = atom((get) => {
   const atoms = get(labelAtoms);
@@ -97,7 +108,7 @@ export default function useLabels() {
       }
   );
 
-  useEffect(() => {
+  const handleSampleData = useCallback(() => {
     if (modalSampleData.state !== "loading" && schemaMap) {
       handleSample({
         paths,
@@ -106,8 +117,8 @@ export default function useLabels() {
         getFieldType,
         schemas: schemaMap,
       }).then((r) => {
-        setLabels(r);
         setLoading(false);
+        setLabels(r);
       });
     } else {
       setLoading(true);
@@ -124,4 +135,8 @@ export default function useLabels() {
 
   useHover();
   useFocus();
+
+  return {
+    handleSampleData,
+  };
 }

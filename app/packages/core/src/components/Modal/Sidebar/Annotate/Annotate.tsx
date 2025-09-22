@@ -2,7 +2,7 @@ import { LoadingSpinner } from "@fiftyone/components";
 import { EntryKind } from "@fiftyone/state";
 import { Typography } from "@mui/material";
 import { atom, useAtomValue } from "jotai";
-import React from "react";
+import React, { useEffect } from "react";
 import styled from "styled-components";
 import Sidebar from "../../../Sidebar";
 import Actions from "./Actions";
@@ -38,8 +38,13 @@ const Loading = () => {
   );
 };
 
-const AnnotateSidebar = () => {
-  useLabels();
+const AnnotateSidebar = React.memo(() => {
+  const { handleSampleData } = useLabels();
+
+  useEffect(() => {
+    handleSampleData();
+  }, [handleSampleData]);
+
   return (
     <>
       <Actions />
@@ -71,7 +76,7 @@ const AnnotateSidebar = () => {
       />
     </>
   );
-};
+});
 
 const Annotate = () => {
   const showSchemaModal = useAtomValue(showModal);

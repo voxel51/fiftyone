@@ -2,6 +2,10 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
+import { interactiveModeInput } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/state";
+import { AnnotationSchemas } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/state";
+import { objectId } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/utils";
+import { getDefaultStore } from "jotai";
 import {
   BoundingBoxOptions,
   BoundingBoxOverlay,
@@ -34,10 +38,11 @@ export class InteractiveDetectionHandler implements InteractionHandler {
 
   constructor(
     private sampleId: string,
+    private activeSchemas: AnnotationSchemas,
     private addOverlay: ReturnType<typeof useLighter>["addOverlay"],
     private removeOverlay: ReturnType<typeof useLighter>["removeOverlay"],
     private overlayFactory: OverlayFactory,
-    private onComplete?: (overlay: BoundingBoxOverlay) => void
+    private onComplete?: (overlay: BoundingBoxOverlay, path: string) => void
   ) {}
 
   containsPoint(): boolean {
@@ -87,29 +92,54 @@ export class InteractiveDetectionHandler implements InteractionHandler {
 
     // Only create detection if we have a meaningful size
     const minSize = MIN_PIXELS;
-    if (tempBounds.width < minSize || tempBounds.height < minSize) {
+    if (
+      !this.currentBounds ||
+      tempBounds.width < minSize ||
+      tempBounds.height < minSize
+    ) {
       this.isDragging = false;
       this.cleanupTempOverlay();
       return true;
     }
 
-    const relativeBounds = this.tempOverlay.getRelativeBounds();
-    const label = this.tempOverlay.label as any;
-
     // Remove temporary overlay first
-    this.cleanupTempOverlay();
 
-    // Create the final detection using the temporary overlay's data
+    // Show the interactive input modal for label name and field selection
+    getDefaultStore().set(interactiveModeInput, {
+      inputType: "new-bounding-box",
+      payload: {
+        x: this.currentBounds.x + this.currentBounds.width,
+        y: this.currentBounds.y + this.currentBounds.height / 2,
+      },
+      onComplete: (value: { labelName: string; field: string }) => {
+        this.isDragging = false;
+        this.createDetectionWithLabel(value.labelName, value.field);
+        this.cleanupTempOverlay();
+      },
+    });
+
+    return true;
+  }
+
+  /**
+   * Creates a detection with the specified label name and field.
+   */
+  private createDetectionWithLabel(labelName: string, field: string): void {
+    if (!this.tempOverlay) return;
+
+    const relativeBounds = this.tempOverlay.getRelativeBounds();
+
     const detection = this.overlayFactory.create<
       BoundingBoxOptions,
       BoundingBoxOverlay
     >("bounding-box", {
+      field,
       sampleId: this.sampleId,
       label: {
-        id: `detection-${Math.random().toString(36).substring(2, 9)}`,
-        label: `detection-${Math.random().toString(36).substring(2, 5)}`,
+        id: objectId(),
+        label: labelName,
         tags: [],
-        bounding_box: label?.bounding_box || [
+        bounding_box: [
           relativeBounds.x,
           relativeBounds.y,
           relativeBounds.width,
@@ -122,9 +152,7 @@ export class InteractiveDetectionHandler implements InteractionHandler {
     });
 
     this.addOverlay(detection, true);
-    this.isDragging = false;
-    this.onComplete?.(detection);
-    return true;
+    this.onComplete?.(detection, field);
   }
 
   /**
@@ -146,6 +174,7 @@ export class InteractiveDetectionHandler implements InteractionHandler {
 
     // Create temporary overlay for live preview
     this.tempOverlay = this.overlayFactory.create("bounding-box", {
+      field: Object.keys(this.activeSchemas)[0],
       sampleId: this.sampleId,
       label: {
         id: `temp-detection-${Math.random().toString(36).substring(2, 9)}`,

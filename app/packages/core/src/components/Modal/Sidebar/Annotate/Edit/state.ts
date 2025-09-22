@@ -5,11 +5,22 @@ import { atom } from "jotai";
 export const editing = atom<PrimitiveAtom<AnnotationLabel> | null>(null);
 
 export const current = atom((get) => {
-  const current = get(editing);
-  if (current) {
-    return get(current);
+  const currentEditing = get(editing);
+
+  if (currentEditing) {
+    return get(currentEditing);
   }
 
-  throw new Error("no data");
+  return null;
 });
+
 export const isEditing = atom((get) => get(editing) !== null);
+
+export const interactiveModeInput = atom<{
+  inputType: "new-bounding-box";
+  payload: {
+    x: number;
+    y: number;
+  };
+  onComplete: (value: any) => void;
+} | null>(null);

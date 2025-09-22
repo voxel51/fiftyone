@@ -25,6 +25,7 @@ from .model_evaluation import ConfigureScenario
 from .annotation import (
     ActivateAnnotationSchemas,
     AddBoundingBox,
+    RemoveBoundingBox,
     ComputeAnnotationSchema,
     DeactivateAnnotationSchemas,
     DeleteAnnotationSchema,
@@ -2761,6 +2762,7 @@ def register(p):
     # annotation
     p.register(ActivateAnnotationSchemas)
     p.register(AddBoundingBox)
+    p.register(RemoveBoundingBox)
     p.register(ComputeAnnotationSchema)
     p.register(DeactivateAnnotationSchemas)
     p.register(DeleteAnnotationSchema)

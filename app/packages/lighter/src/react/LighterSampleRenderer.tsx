@@ -1,11 +1,16 @@
 /**
  * Copyright 2017-2025, Voxel51, Inc.
  */
+import { editing } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit";
+import {
+  labelAtoms,
+  labels,
+} from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useLabels";
 import { FROM_FO } from "@fiftyone/looker/src/overlays";
 import DetectionOverlay from "@fiftyone/looker/src/overlays/detection";
 import * as fos from "@fiftyone/state";
 import { Sample, getSampleSrc } from "@fiftyone/state";
-import { PrimitiveAtom, getDefaultStore } from "jotai";
+import { getDefaultStore, useSetAtom } from "jotai";
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { ImageOptions, ImageOverlay, overlayFactory } from "../index";
@@ -18,7 +23,6 @@ export interface LighterSampleRendererProps {
   className?: string;
   /** Sample to display */
   sample: Sample;
-  labels: PrimitiveAtom<PrimitiveAtom<fos.AnnotationLabel>[]>;
 }
 
 /**
@@ -27,7 +31,6 @@ export interface LighterSampleRendererProps {
 export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
   className = "",
   sample,
-  labels,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -41,6 +44,8 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
 
   // Get access to the lighter instance
   const { scene, isReady, addOverlay } = useLighter();
+
+  const setEditing = useSetAtom(editing);
 
   /**
    * This effect is responsible for loading the sample and adding the overlays to the scene.
@@ -67,26 +72,54 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
       scene.setCanonicalMedia(mediaOverlay);
     }
 
-    const store = getDefaultStore();
-    const list = store.get(labels);
-
-    for (const atom of list) {
-      const label = store.get(atom);
-      const overlay = FROM_FO[label.type](label.path, label.data)[0];
-      if (overlay instanceof DetectionOverlay) {
-        // Convert legacy overlay to lighter overlay with relative coordinates
-        const lighterOverlay = convertLegacyToLighterDetection(
-          overlay,
-          sample.id
-        );
-        addOverlay(lighterOverlay, false);
-      }
-    }
-
     return () => {
       scene.destroy();
     };
-  }, [isReady, addOverlay, sample, scene, labels]);
+  }, [isReady, addOverlay, sample, scene]);
+
+  useEffect(() => {
+    if (!scene || !sample) return;
+
+    const store = getDefaultStore();
+
+    // hack: this is how we execute it once
+    let areOverlaysAdded = false;
+
+    const unsub = store.sub(labels, () => {
+      const labelAtomsList = store.get(labelAtoms);
+
+      if (areOverlaysAdded) return;
+
+      for (const atom of labelAtomsList) {
+        const label = store.get(atom);
+        const overlay = FROM_FO[label.type](label.path, label.data)[0];
+        if (overlay instanceof DetectionOverlay) {
+          // Convert legacy overlay to lighter overlay with relative coordinates
+          const lighterOverlay = convertLegacyToLighterDetection(
+            overlay,
+            sample.id
+          );
+
+          addOverlay(lighterOverlay, false);
+        }
+        areOverlaysAdded = true;
+      }
+    });
+
+    return () => {
+      unsub();
+      areOverlaysAdded = false;
+    };
+  }, [scene, sample, addOverlay, labelAtoms]);
+
+  /**
+   * This effect runs cleanup when the component unmounts
+   */
+  useEffect(() => {
+    return () => {
+      setEditing(null);
+    };
+  }, []);
 
   return (
     <div
