@@ -17,6 +17,7 @@ import { Sidebar } from "./Sidebar";
 import { TooltipInfo } from "./TooltipInfo";
 import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
 import { modalContext } from "./modal-context";
+import { InteractiveModelInput } from "./Sidebar/Annotate/Edit/InteractiveModelnput";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -215,6 +216,7 @@ const Modal = () => {
         onClick={onClickModalWrapper}
         data-cy="modal"
       >
+        <InteractiveModelInput />
         <Actions />
         <TooltipInfo />
         <ModalContainer style={{ ...screenParams }}>

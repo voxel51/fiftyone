@@ -20,7 +20,10 @@ const selectSchemas = (
 
 export interface AnnotationSchema {
   active?: boolean;
-  config?: object;
+  config?: {
+    attributes: Record<string, any>;
+    classes?: string[];
+  };
 }
 export interface AnnotationSchemas {
   [key: string]: AnnotationSchema | null;
@@ -30,7 +33,7 @@ export const activePaths = atom((get) =>
   Object.keys(get(activeSchemas) ?? {}).sort()
 );
 
-export const activeSchemas = atom((get) =>
+export const activeSchemas = atom<AnnotationSchemas>((get) =>
   selectSchemas(get(schemas) ?? {}, (schema) => !!schema?.active)
 );
 
