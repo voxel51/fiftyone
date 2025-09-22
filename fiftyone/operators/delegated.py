@@ -612,15 +612,17 @@ class DelegatedOperationService(object):
                 return self._execute_operation_multi_proc(
                     operation, log, check_interval_seconds
                 )
-            else:
-                return self._execute_operation_sync(operation, log)
+            return self._execute_operation_sync(operation, log)
         except Exception as e:
-            logger.debug(
-                "Uncaught exception when executing operator. Error=%s",
-                e,
-                exc_info=True,
-            )
-        return None
+            logger.exception("Uncaught exception when executing operator")
+            err = ExecutionResult(error=traceback.format_exc())
+            try:
+                self.set_failed(doc_id=operation.id, result=err)
+            except Exception:
+                logger.exception(
+                    "Failed to mark operation %s as FAILED", operation.id
+                )
+            return err
 
     def _execute_operation_sync(self, operation, log=False):
         """Executes an operation synchronously in the current process."""
@@ -751,7 +753,14 @@ class DelegatedOperationService(object):
                     result = ExecutionResult(error=reason)
                     break
             if not result:
-                final_doc = self.get(operation.id)
+                try:
+                    final_doc = self.get(operation.id)
+                except Exception as e:
+                    logger.exception(
+                        "Failed to fetch final doc for operation %s",
+                        operation.id,
+                    )
+                    return ExecutionResult(error=f"Finalization error: {e}")
                 raw = final_doc.result if final_doc else None
                 if isinstance(raw, ExecutionResult):
                     result = raw
