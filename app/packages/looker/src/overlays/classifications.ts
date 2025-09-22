@@ -399,5 +399,5 @@ const getText = (_cls: string, label) => {
     return label.value;
   }
 
-  return label.label;
+  return label.label ?? "null";
 };

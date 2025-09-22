@@ -193,7 +193,7 @@ exposes, and declare any :ref:`secrets <plugins-secrets>` that it may require.
 The following fields are available:
 
 .. table::
-    :widths: 20,10,70
+    :widths: 20,11,69
 
     +------------------------------+-----------+-----------------------------------------------------------------------------+
     | Field                        | Required? | Description                                                                 |
@@ -953,6 +953,9 @@ execution:
             allow_delegated_execution=True/False,    # default False
             default_choice_to_delegated=True/False,  # default False
             resolve_execution_options_on_change=None,
+
+            # If delegated, whether the operator supports distributed execution
+            allow_distributed_execution=True/False,  # default False
         )
 
 .. _operator-execution-context:
@@ -1093,7 +1096,7 @@ values and any other aspects of the
             # We found a similarity config; render some inputs specific to that
             inputs.bool(
                 "upgrade",
-                label"Compute visualization",
+                label="Compute visualization",
                 description="Generate an embeddings visualization for this index?",
                 view=types.CheckboxView(),
             )
@@ -1429,6 +1432,99 @@ as `label` values using the pattern shown below:
         # Automatically report all `fiftyone` logging messages
         with foo.ProgressHandler(ctx, logger=logging.getLogger("fiftyone")):
             foz.load_zoo_dataset(name, persistent=True)
+
+.. _writing-distributed-operators:
+
+Distributed execution
+~~~~~~~~~~~~~~~~~~~~~
+
+.. versionadded:: 1.8.0
+
+In FiftyOne Enterprise, delegated operations can be executed in a
+:ref:`distributed <enterprise-do-distributed-execution>` fashion across
+multiple workers to speed up execution on large datasets. This is not
+supported in FiftyOne Open Source, but operator authors can still utilize
+the distributed execution paradigm so that their operators can be run in
+a distributed fashion when deployed in Enterprise.
+
+.. note::
+    In FiftyOne Open Source, the ``allow_distributed_execution`` flag is
+    ignored at runtime. Use it to declare intent in your operator, and the
+    capability will be honored when the operator runs in Enterprise
+
+There are really two requirements for supporting distributed execution and
+they are both quite simple!
+
+Allow distributed
+^^^^^^^^^^^^^^^^^
+
+To allow your operator to be executed in a distributed fashion, you must set
+the `allow_distributed_execution` flag to `True` in the
+:ref:`operator's config <operator-config>`:
+
+.. code-block:: python
+    :linenos:
+
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="my_distributed_operator",
+            label="My Distributed Operator",
+            allow_delegated_execution=True,
+            allow_immediate_execution=True,
+            default_choice_to_delegated=True,
+            dynamic=True,
+            allow_distributed_execution=True,
+        )
+
+Utilize distributed execution
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To utilize distributed execution, you must ensure the operator is using the
+proper dataset view in its
+:meth:`execute() <fiftyone.operators.Operator.execute>` method. This way, the
+task splits will be respected by child tasks, while non-distributed execution
+will also work as expected.
+
+This can be achieved via one of two ways:
+
+1.  Always use ``ctx.view`` within ``execute()``. This is the simplest
+    approach and works well if your operator only ever uses the user's current
+    view.
+
+    For example:
+
+    .. code-block:: python
+       :linenos:
+
+       def execute(self, ctx):
+           # Use ctx.view as the basis for your computation
+           num_samples = len(ctx.view)
+           ...
+2.  **[Recommended]** Use
+    :meth:`ctx.target_view() <fiftyone.operators.ExecutionContext.target_view>`
+    if your operator is using the :ref:`target view pattern <operator-target-view>`.
+    This is the recommended approach since it is likely that your users will
+    want to choose the target view when executing the operator.
+
+    For example:
+
+    .. code-block:: python
+       :linenos:
+
+       def execute(self, ctx):
+           # Use ctx.target_view() as the basis for your computation
+           target_view = ctx.target_view()
+           num_samples = len(target_view)
+           ...
+
+.. warning::
+
+    Since the operator may be executed multiple times, each on a subset of
+    the data, in any order, the operator cannot perform any pre or post
+    processing outside of the ``ctx.view``. That is, the operator execution
+    must be a so-called
+    `embarrassingly parallel problem <https://en.wikipedia.org/wiki/Embarrassingly_parallel>`_.
 
 .. _operator-execution:
 

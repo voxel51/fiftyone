@@ -502,6 +502,7 @@ class ZooModel(etam.Model):
         default_deployment_config_dict (None): a
             :class:`fiftyone.core.models.ModelConfig` dict describing the
             recommended settings for deploying the model
+        training_data (None): the training data information for the model, if applicable
     """
 
     _REQUIREMENT_ERROR_SUFFIX = (

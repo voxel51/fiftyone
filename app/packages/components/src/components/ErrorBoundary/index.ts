@@ -1,1 +1,1 @@
-export { default } from "./ErrorBoundary";
+export { default, ErrorDisplayMarkup } from "./ErrorBoundary";

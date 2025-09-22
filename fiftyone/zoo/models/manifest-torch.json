@@ -49,7 +49,7 @@
                 "alexnet",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -101,7 +101,7 @@
                 "deeplabv3",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -144,7 +144,7 @@
                 "transformer",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "SA-1B", "url": "https://segment-anything.com/dataset/index.html"}],
             "date_added": "2023-05-12 11:40:51"
         },
         {
@@ -187,7 +187,7 @@
                 "transformer",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "SA-1B", "url": "https://segment-anything.com/dataset/index.html"}],
             "date_added": "2023-05-12 11:40:51"
         },
         {
@@ -229,7 +229,7 @@
                 "zero-shot",
                 "transformer"
             ],
-            "training_data": [],
+            "training_data": [{"name": "SA-1B", "url": "https://segment-anything.com/dataset/index.html"}],
             "date_added": "2023-05-12 11:40:51"
         },
         {
@@ -265,7 +265,16 @@
                 }
             },
             "tags": ["segment-anything", "torch", "zero-shot"],
-            "training_data": [],
+            "training_data": [
+                            {
+                                            "name": "SA-V",
+                                            "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                            },
+                            {
+                                            "name": "SA-1B",
+                                            "url": "https://segment-anything.com/dataset/index.html"
+                            }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -307,7 +316,16 @@
                 "transformer",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [
+                            {
+                                            "name": "SA-V",
+                                            "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                            },
+                            {
+                                            "name": "SA-1B",
+                                            "url": "https://segment-anything.com/dataset/index.html"
+                            }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -349,7 +367,16 @@
                 "transformer",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [
+                            {
+                                            "name": "SA-V",
+                                            "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                            },
+                            {
+                                            "name": "SA-1B",
+                                            "url": "https://segment-anything.com/dataset/index.html"
+                            }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -391,7 +418,16 @@
                 "transformer",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [
+                            {
+                                            "name": "SA-V",
+                                            "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                            },
+                            {
+                                            "name": "SA-1B",
+                                            "url": "https://segment-anything.com/dataset/index.html"
+                            }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -433,7 +469,16 @@
                 "transformer",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [
+                            {
+                                            "name": "SA-V",
+                                            "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                            },
+                            {
+                                            "name": "SA-1B",
+                                            "url": "https://segment-anything.com/dataset/index.html"
+                            }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -476,7 +521,16 @@
                 "transformer",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [
+                            {
+                                            "name": "SA-V",
+                                            "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                            },
+                            {
+                                            "name": "SA-1B",
+                                            "url": "https://segment-anything.com/dataset/index.html"
+                            }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -519,7 +573,16 @@
                 "transformer",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [
+                            {
+                                            "name": "SA-V",
+                                            "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                            },
+                            {
+                                            "name": "SA-1B",
+                                            "url": "https://segment-anything.com/dataset/index.html"
+                            }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -561,7 +624,16 @@
                 "video",
                 "transformer"
             ],
-            "training_data": [],
+            "training_data": [
+                            {
+                                            "name": "SA-V",
+                                            "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                            },
+                            {
+                                            "name": "SA-1B",
+                                            "url": "https://segment-anything.com/dataset/index.html"
+                            }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -604,7 +676,16 @@
                 "transformer",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [
+                            {
+                                            "name": "SA-Med2D-20M",
+                                            "url": "https://github.com/OpenGVLab/SAM-Med2D"
+                            },
+                            {
+                                            "name": "Medical Video Datasets",
+                                            "url": "https://github.com/MedicineToken/Medical-SAM2"
+                            }
+            ],
             "date_added": "2024-08-17 14:48:00"
         },
         {
@@ -642,7 +723,16 @@
                 }
             },
             "tags": ["segment-anything", "torch", "zero-shot", "transformer"],
-            "training_data": [],
+            "training_data": [
+                            {
+                                            "name": "SA-V",
+                                            "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                            },
+                            {
+                                            "name": "SA-1B",
+                                            "url": "https://segment-anything.com/dataset/index.html"
+                            }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -686,7 +776,16 @@
                 "transformer",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [
+                            {
+                                            "name": "SA-V",
+                                            "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                            },
+                            {
+                                            "name": "SA-1B",
+                                            "url": "https://segment-anything.com/dataset/index.html"
+                            }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -730,7 +829,16 @@
                 "transformer",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [
+                            {
+                                            "name": "SA-V",
+                                            "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                            },
+                            {
+                                            "name": "SA-1B",
+                                            "url": "https://segment-anything.com/dataset/index.html"
+                            }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -774,7 +882,16 @@
                 "transformer",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [
+                            {
+                                            "name": "SA-V",
+                                            "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                            },
+                            {
+                                            "name": "SA-1B",
+                                            "url": "https://segment-anything.com/dataset/index.html"
+                            }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -817,7 +934,16 @@
                 "video",
                 "transformer"
             ],
-            "training_data": [],
+            "training_data": [
+                            {
+                                            "name": "SA-V",
+                                            "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                            },
+                            {
+                                            "name": "SA-1B",
+                                            "url": "https://segment-anything.com/dataset/index.html"
+                            }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -862,7 +988,16 @@
                 "transformer",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [
+                            {
+                                            "name": "SA-V",
+                                            "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                            },
+                            {
+                                            "name": "SA-1B",
+                                            "url": "https://segment-anything.com/dataset/index.html"
+                            }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -907,7 +1042,16 @@
                 "transformer",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [
+                            {
+                                            "name": "SA-V",
+                                            "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                            },
+                            {
+                                            "name": "SA-1B",
+                                            "url": "https://segment-anything.com/dataset/index.html"
+                            }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -952,7 +1096,16 @@
                 "transformer",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [
+                            {
+                                            "name": "SA-V",
+                                            "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                            },
+                            {
+                                            "name": "SA-1B",
+                                            "url": "https://segment-anything.com/dataset/index.html"
+                            }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -1004,7 +1157,7 @@
                 "deeplabv3",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1056,7 +1209,7 @@
                 "densenet",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1107,7 +1260,7 @@
                 "torch",
                 "densenet"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1159,7 +1312,7 @@
                 "densenet",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1211,7 +1364,7 @@
                 "densenet",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1258,7 +1411,7 @@
                 "resnet",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1310,7 +1463,7 @@
                 "resnet",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1362,7 +1515,7 @@
                 "resnet",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1414,7 +1567,7 @@
                 "googlenet",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1465,7 +1618,7 @@
                 "inception",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1538,7 +1691,7 @@
                 "resnet",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1584,7 +1737,7 @@
                 "resnet",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1636,7 +1789,7 @@
                 "mnasnet",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1688,7 +1841,7 @@
                 "mnasnet",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1740,7 +1893,7 @@
                 "mobilenet",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1792,7 +1945,7 @@
                 "resnet",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1844,7 +1997,7 @@
                 "resnet",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1896,7 +2049,7 @@
                 "resnet",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1948,7 +2101,7 @@
                 "resnet",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2000,7 +2153,7 @@
                 "resnet",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2052,7 +2205,7 @@
                 "resnext",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2103,7 +2256,7 @@
                 "torch",
                 "resnext"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2143,7 +2296,7 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "retinanet", "resnet"],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2195,7 +2348,7 @@
                 "shufflenet",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2247,13 +2400,13 @@
                 "shufflenet",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "squeezenet-1.1-imagenet-torch",
             "base_filename": "squeezenet1_1-f364aa15.pth",
-            "version": null,
+            "version": "1.1",
             "description": "Tiny image classifier that fits in just five megabytes for embedded devices",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Forrest Iandola",
@@ -2290,13 +2443,13 @@
                 }
             },
             "tags": ["classification", "imagenet", "torch", "squeezenet"],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "squeezenet-imagenet-torch",
             "base_filename": "squeezenet1_0-a815701f.pth",
-            "version": null,
+            "version": "1.0",
             "description": "Ultra-compact image classifier perfect for severely resource-constrained hardware and applications",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Forrest Iandola",
@@ -2339,7 +2492,7 @@
                 "squeezenet",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2391,7 +2544,7 @@
                 "vgg",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2441,7 +2594,7 @@
                 "vgg",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2493,7 +2646,7 @@
                 "vgg",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2543,7 +2696,7 @@
                 "vgg",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2595,7 +2748,7 @@
                 "vgg",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2645,7 +2798,7 @@
                 "vgg",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2697,7 +2850,7 @@
                 "vgg",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2747,7 +2900,7 @@
                 "vgg",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2799,7 +2952,7 @@
                 "wide-resnet",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2851,7 +3004,7 @@
                 "wide-resnet",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2896,7 +3049,7 @@
                 "zero-shot",
                 "transformer"
             ],
-            "training_data": [],
+            "training_data": [{"name": "LAION-2B", "url": "https://laion.ai/blog/laion-5b/"}],
             "date_added": "2023-12-13 14:25:51"
         },
         {
@@ -2962,7 +3115,7 @@
                 "transformers",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2024-01-17 14:25:51"
         },
         {
@@ -3131,7 +3284,7 @@
                 "zero-shot",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "WebLI", "url": "https://arxiv.org/abs/2209.06794"}],
             "date_added": "2024-01-17 14:25:51"
         },
         {
@@ -3216,7 +3369,16 @@
                 "zero-shot",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [
+                            {
+                                            "name": "YFCC-100M",
+                                            "url": "https://multimediacommons.wordpress.com/yfcc100m-core-dataset/"
+                            },
+                            {
+                                            "name": "Conceptual Captions 12M",
+                                            "url": "https://github.com/google-research-datasets/conceptual-12m"
+                            }
+            ],
             "date_added": "2025-05-15 15:20:35"
         },
         {
@@ -3252,7 +3414,7 @@
                 "zero-shot",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "WebLI", "url": "https://arxiv.org/abs/2209.06794"}],
             "date_added": "2024-01-17 14:25:51"
         },
         {
@@ -3288,7 +3450,7 @@
                 "zero-shot",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "WebLI", "url": "https://arxiv.org/abs/2209.06794"}],
             "date_added": "2025-07-15 13:49:00"
         },
         {
@@ -3324,7 +3486,7 @@
                 "zero-shot",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "WebLI", "url": "https://arxiv.org/abs/2209.06794"}],
             "date_added": "2025-07-28 15:25:00"
         },
         {
@@ -3360,7 +3522,20 @@
                 "zero-shot",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [
+                            {
+                                            "name": "Objects365v1",
+                                            "url": "https://www.objects365.org"
+                            },
+                            {
+                                            "name": "OpenImages V6",
+                                            "url": "https://storage.googleapis.com/openimages/web/index.html"
+                            },
+                            {
+                                            "name": "MS COCO 2017",
+                                            "url": "https://cocodataset.org"
+                            }
+            ],
             "date_added": "2024-01-17 14:25:51"
         },
         {
@@ -3413,7 +3588,7 @@
                 "transformer",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "WIT-400M", "url": "https://github.com/openai/CLIP"}],
             "date_added": "2022-04-12 17:49:51"
         },
         {
@@ -3452,7 +3627,7 @@
                 "transformer",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "LVD-142M", "url": "https://arxiv.org/abs/2304.07193"}],
             "date_added": "2023-07-31 10:17:51"
         },
         {
@@ -3491,7 +3666,7 @@
                 "transformer",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "LVD-142M", "url": "https://arxiv.org/abs/2304.07193"}],
             "date_added": "2023-07-31 10:17:51"
         },
         {
@@ -3530,7 +3705,7 @@
                 "transformer",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "LVD-142M", "url": "https://arxiv.org/abs/2304.07193"}],
             "date_added": "2023-07-31 10:17:51"
         },
         {
@@ -3569,7 +3744,7 @@
                 "transformer",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "LVD-142M", "url": "https://arxiv.org/abs/2304.07193"}],
             "date_added": "2023-07-31 10:17:51"
         },
         {
@@ -3608,7 +3783,7 @@
                 "transformer",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "LVD-142M", "url": "https://arxiv.org/abs/2304.07193"}],
             "date_added": "2023-12-02 16:42:00"
         },
         {
@@ -3647,7 +3822,7 @@
                 "transformer",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "LVD-142M", "url": "https://arxiv.org/abs/2304.07193"}],
             "date_added": "2023-12-02 16:42:00"
         },
         {
@@ -3686,7 +3861,7 @@
                 "transformer",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "LVD-142M", "url": "https://arxiv.org/abs/2304.07193"}],
             "date_added": "2023-12-02 16:42:00"
         },
         {
@@ -3725,7 +3900,7 @@
                 "transformer",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "LVD-142M", "url": "https://arxiv.org/abs/2304.07193"}],
             "date_added": "2023-12-02 16:42:00"
         },
         {
@@ -3766,7 +3941,7 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2025-05-22 14:14:45"
         },
         {
@@ -3807,7 +3982,7 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2025-05-22 14:14:45"
         },
         {
@@ -3848,7 +4023,7 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2025-05-22 14:14:45"
         },
         {
@@ -3889,7 +4064,7 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2025-05-22 14:14:45"
         },
         {
@@ -3930,7 +4105,7 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -3971,7 +4146,7 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -4012,7 +4187,7 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -4053,7 +4228,7 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -4094,7 +4269,7 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -4135,7 +4310,7 @@
                 }
             },
             "tags": ["instances", "coco", "torch", "yolo", "official"],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2024-04-02 19:22:51"
         },
         {
@@ -4176,7 +4351,7 @@
                 }
             },
             "tags": ["instances", "coco", "torch", "yolo", "official"],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2024-04-02 19:22:51"
         },
         {
@@ -4217,7 +4392,7 @@
                 }
             },
             "tags": ["instances", "coco", "torch", "yolo", "official"],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2024-04-02 19:22:51"
         },
         {
@@ -4258,7 +4433,7 @@
                 }
             },
             "tags": ["instances", "coco", "torch", "yolo", "official"],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2024-04-02 19:22:51"
         },
         {
@@ -4299,7 +4474,7 @@
                 }
             },
             "tags": ["instances", "coco", "torch", "yolo", "official"],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2024-04-02 19:22:51"
         },
         {
@@ -4340,7 +4515,7 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -4381,7 +4556,7 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -4422,7 +4597,7 @@
                 }
             },
             "tags": ["instances", "coco", "torch", "yolo", "official"],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2024-04-02 19:22:51"
         },
         {
@@ -4463,7 +4638,7 @@
                 }
             },
             "tags": ["instances", "coco", "torch", "yolo", "official"],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2024-04-02 19:22:51"
         },
         {
@@ -4504,7 +4679,7 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2024-07-01 19:22:51"
         },
         {
@@ -4545,7 +4720,7 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2024-07-01 19:22:51"
         },
         {
@@ -4586,7 +4761,7 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2024-07-01 19:22:51"
         },
         {
@@ -4627,7 +4802,7 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2024-07-01 19:22:51"
         },
         {
@@ -4668,7 +4843,7 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2024-07-01 19:22:51"
         },
         {
@@ -4709,7 +4884,7 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2024-10-05 19:22:51"
         },
         {
@@ -4750,7 +4925,7 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2024-10-05 19:22:51"
         },
         {
@@ -4791,7 +4966,7 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2024-10-05 19:22:51"
         },
         {
@@ -4832,7 +5007,7 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2024-10-05 19:22:51"
         },
         {
@@ -4873,7 +5048,7 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2024-10-05 19:22:51"
         },
         {
@@ -4914,7 +5089,7 @@
                 }
             },
             "tags": ["instances", "coco", "torch", "yolo", "official"],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2024-10-05 19:22:51"
         },
         {
@@ -4955,7 +5130,7 @@
                 }
             },
             "tags": ["instances", "coco", "torch", "yolo", "official"],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2024-10-05 19:22:51"
         },
         {
@@ -4996,7 +5171,7 @@
                 }
             },
             "tags": ["instances", "coco", "torch", "yolo", "official"],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2024-10-05 19:22:51"
         },
         {
@@ -5037,7 +5212,7 @@
                 }
             },
             "tags": ["instances", "coco", "torch", "yolo", "official"],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2024-10-05 19:22:51"
         },
         {
@@ -5078,7 +5253,7 @@
                 }
             },
             "tags": ["instances", "coco", "torch", "yolo", "official"],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2024-10-05 19:22:51"
         },
         {
@@ -5119,7 +5294,24 @@
                 }
             },
             "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
-            "training_data": [],
+            "training_data": [
+                            {
+                                            "name": "Objects365v1",
+                                            "url": "https://www.objects365.org"
+                            },
+                            {
+                                            "name": "GQA",
+                                            "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                            },
+                            {
+                                            "name": "Flickr30k",
+                                            "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                            },
+                            {
+                                            "name": "CC3M-Lite",
+                                            "url": null
+                            }
+            ],
             "date_added": "2025-04-10 12:24:41"
         },
         {
@@ -5160,7 +5352,24 @@
                 }
             },
             "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
-            "training_data": [],
+            "training_data": [
+                            {
+                                            "name": "Objects365v1",
+                                            "url": "https://www.objects365.org"
+                            },
+                            {
+                                            "name": "GQA",
+                                            "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                            },
+                            {
+                                            "name": "Flickr30k",
+                                            "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                            },
+                            {
+                                            "name": "CC3M-Lite",
+                                            "url": null
+                            }
+            ],
             "date_added": "2025-04-10 12:24:41"
         },
         {
@@ -5201,7 +5410,24 @@
                 }
             },
             "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
-            "training_data": [],
+            "training_data": [
+                            {
+                                            "name": "Objects365v1",
+                                            "url": "https://www.objects365.org"
+                            },
+                            {
+                                            "name": "GQA",
+                                            "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                            },
+                            {
+                                            "name": "Flickr30k",
+                                            "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                            },
+                            {
+                                            "name": "CC3M-Lite",
+                                            "url": null
+                            }
+            ],
             "date_added": "2025-04-10 12:24:41"
         },
         {
@@ -5242,7 +5468,24 @@
                 }
             },
             "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
-            "training_data": [],
+            "training_data": [
+                            {
+                                            "name": "Objects365v1",
+                                            "url": "https://www.objects365.org"
+                            },
+                            {
+                                            "name": "GQA",
+                                            "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                            },
+                            {
+                                            "name": "Flickr30k",
+                                            "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                            },
+                            {
+                                            "name": "CC3M-Lite",
+                                            "url": null
+                            }
+            ],
             "date_added": "2025-04-10 12:24:41"
         },
         {
@@ -5283,7 +5526,24 @@
                 }
             },
             "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
-            "training_data": [],
+            "training_data": [
+                            {
+                                            "name": "Objects365v1",
+                                            "url": "https://www.objects365.org"
+                            },
+                            {
+                                            "name": "GQA",
+                                            "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                            },
+                            {
+                                            "name": "Flickr30k",
+                                            "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                            },
+                            {
+                                            "name": "CC3M-Lite",
+                                            "url": null
+                            }
+            ],
             "date_added": "2025-04-10 12:24:41"
         },
         {
@@ -5324,7 +5584,24 @@
                 }
             },
             "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
-            "training_data": [],
+            "training_data": [
+                            {
+                                            "name": "Objects365v1",
+                                            "url": "https://www.objects365.org"
+                            },
+                            {
+                                            "name": "GQA",
+                                            "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                            },
+                            {
+                                            "name": "Flickr30k",
+                                            "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                            },
+                            {
+                                            "name": "CC3M-Lite",
+                                            "url": null
+                            }
+            ],
             "date_added": "2025-04-10 12:24:41"
         },
         {
@@ -5372,7 +5649,7 @@
                 "rtdetr",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2024-07-01 19:22:51"
         },
         {
@@ -5420,7 +5697,7 @@
                 "rtdetr",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2024-07-01 19:22:51"
         },
         {
@@ -5461,7 +5738,20 @@
                 }
             },
             "tags": ["detection", "torch", "yolo", "zero-shot", "official"],
-            "training_data": [],
+            "training_data": [
+                            {
+                                            "name": "Objects365v1",
+                                            "url": "https://www.objects365.org"
+                            },
+                            {
+                                            "name": "GQA",
+                                            "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                            },
+                            {
+                                            "name": "Flickr30k",
+                                            "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                            }
+            ],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -5502,7 +5792,20 @@
                 }
             },
             "tags": ["detection", "torch", "yolo", "zero-shot", "official"],
-            "training_data": [],
+            "training_data": [
+                            {
+                                            "name": "Objects365v1",
+                                            "url": "https://www.objects365.org"
+                            },
+                            {
+                                            "name": "GQA",
+                                            "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                            },
+                            {
+                                            "name": "Flickr30k",
+                                            "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                            }
+            ],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -5543,7 +5846,20 @@
                 }
             },
             "tags": ["detection", "torch", "yolo", "zero-shot", "official"],
-            "training_data": [],
+            "training_data": [
+                            {
+                                            "name": "Objects365v1",
+                                            "url": "https://www.objects365.org"
+                            },
+                            {
+                                            "name": "GQA",
+                                            "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                            },
+                            {
+                                            "name": "Flickr30k",
+                                            "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                            }
+            ],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -5584,7 +5900,20 @@
                 }
             },
             "tags": ["detection", "torch", "yolo", "zero-shot", "official"],
-            "training_data": [],
+            "training_data": [
+                            {
+                                            "name": "Objects365v1",
+                                            "url": "https://www.objects365.org"
+                            },
+                            {
+                                            "name": "GQA",
+                                            "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                            },
+                            {
+                                            "name": "Flickr30k",
+                                            "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                            }
+            ],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -5632,7 +5961,7 @@
                 "obb",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "DOTA-v1.0", "url": "https://captain-whu.github.io/DOTA/"}],
             "date_added": "2024-04-05 19:22:51"
         },
         {
@@ -5680,7 +6009,7 @@
                 "obb",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "DOTA-v1.0", "url": "https://captain-whu.github.io/DOTA/"}],
             "date_added": "2024-04-05 19:22:51"
         },
         {
@@ -5728,7 +6057,7 @@
                 "obb",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "DOTA-v1.0", "url": "https://captain-whu.github.io/DOTA/"}],
             "date_added": "2024-04-05 19:22:51"
         },
         {
@@ -5776,7 +6105,7 @@
                 "obb",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "DOTA-v1.0", "url": "https://captain-whu.github.io/DOTA/"}],
             "date_added": "2024-04-05 19:22:51"
         },
         {
@@ -5824,7 +6153,7 @@
                 "obb",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "DOTA-v1.0", "url": "https://captain-whu.github.io/DOTA/"}],
             "date_added": "2024-04-05 19:22:51"
         },
         {
@@ -5865,7 +6194,7 @@
                 }
             },
             "tags": ["detection", "oiv7", "torch", "yolo", "official"],
-            "training_data": [],
+            "training_data": [{"name": "Open Images V7", "url": "https://storage.googleapis.com/openimages/web/index.html"}],
             "date_added": "2024-05-20 19:22:51"
         },
         {
@@ -5906,7 +6235,7 @@
                 }
             },
             "tags": ["detection", "oiv7", "torch", "yolo", "official"],
-            "training_data": [],
+            "training_data": [{"name": "Open Images V7", "url": "https://storage.googleapis.com/openimages/web/index.html"}],
             "date_added": "2024-05-20 19:22:51"
         },
         {
@@ -5947,7 +6276,7 @@
                 }
             },
             "tags": ["detection", "oiv7", "torch", "yolo", "official"],
-            "training_data": [],
+            "training_data": [{"name": "Open Images V7", "url": "https://storage.googleapis.com/openimages/web/index.html"}],
             "date_added": "2024-05-20 19:22:51"
         },
         {
@@ -5988,7 +6317,7 @@
                 }
             },
             "tags": ["detection", "oiv7", "torch", "yolo", "official"],
-            "training_data": [],
+            "training_data": [{"name": "Open Images V7", "url": "https://storage.googleapis.com/openimages/web/index.html"}],
             "date_added": "2024-05-20 19:22:51"
         },
         {
@@ -6029,7 +6358,7 @@
                 }
             },
             "tags": ["detection", "oiv7", "torch", "yolo", "official"],
-            "training_data": [],
+            "training_data": [{"name": "Open Images V7", "url": "https://storage.googleapis.com/openimages/web/index.html"}],
             "date_added": "2024-05-20 19:22:51"
         },
         {
@@ -6059,7 +6388,16 @@
                 }
             },
             "tags": ["detection", "torch", "yolo", "official"],
-            "training_data": [],
+            "training_data": [
+                            {
+                                            "name": "MS COCO 2017",
+                                            "url": "https://cocodataset.org"
+                            },
+                            {
+                                            "name": "Objects365",
+                                            "url": "https://www.objects365.org"
+                            }
+            ],
             "date_added": "2024-01-06 08:51:14"
         },
         {
@@ -6100,7 +6438,7 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2025-05-22 14:14:45"
         },
         {
@@ -6138,7 +6476,7 @@
                 "transformers",
                 "convnext"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2025-06-30 12:00:00"
         },
         {
@@ -6177,7 +6515,7 @@
                 "convnext",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2025-06-30 12:00:00"
         },
         {
@@ -6216,7 +6554,7 @@
                 "convnext",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2025-06-30 12:00:00"
         },
         {
@@ -6254,7 +6592,7 @@
                 "transformers",
                 "convnext"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2025-06-30 12:00:00"
         },
         {
@@ -6293,7 +6631,16 @@
                 "convnext",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [
+                            {
+                                            "name": "ImageNet-22K",
+                                            "url": "https://www.image-net.org/download.php"
+                            },
+                            {
+                                            "name": "ImageNet-1K",
+                                            "url": "https://www.image-net.org/download.php"
+                            }
+            ],
             "date_added": "2025-06-30 12:00:00"
         },
         {
@@ -6332,7 +6679,7 @@
                 "efficientnet",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2025-06-30 12:00:00"
         },
         {
@@ -6371,7 +6718,7 @@
                 "efficientnet",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2025-06-30 12:00:00"
         },
         {
@@ -6410,7 +6757,7 @@
                 "efficientnet",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2025-06-30 12:00:00"
         },
         {
@@ -6449,7 +6796,7 @@
                 "efficientnet",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2025-06-30 12:00:00"
         },
         {
@@ -6488,7 +6835,7 @@
                 "efficientnet",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2025-06-30 12:00:00"
         },
         {
@@ -6527,7 +6874,7 @@
                 "efficientnet",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2025-06-30 12:00:00"
         },
         {
@@ -6566,7 +6913,7 @@
                 "efficientnet",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2025-06-30 12:00:00"
         },
         {
@@ -6605,7 +6952,7 @@
                 "efficientnet",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2025-06-30 12:00:00"
         },
         {
@@ -6643,7 +6990,7 @@
                 "swin-transformer",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2025-07-02 12:00:00"
         },
         {
@@ -6681,7 +7028,7 @@
                 "swin-transformer",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2025-07-02 12:00:00"
         },
         {
@@ -6719,7 +7066,7 @@
                 "swin-transformer",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2025-07-02 12:00:00"
         },
         {
@@ -6757,7 +7104,7 @@
                 "swin-transformer",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
             "date_added": "2025-07-02 12:00:00"
         },
         {
@@ -6788,7 +7135,7 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "transformers", "rtdetr"],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2025-07-03 12:00:00"
         },
         {
@@ -6826,7 +7173,7 @@
                 "rtdetr",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2025-07-03 12:00:00"
         },
         {
@@ -6861,7 +7208,7 @@
                 "detr",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2025-07-15 23:00:00"
         },
         {
@@ -6896,7 +7243,7 @@
                 "detr",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2025-07-15 23:00:00"
         },
         {
@@ -6931,7 +7278,7 @@
                 "detr",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2025-07-15 23:00:00"
         },
         {
@@ -6966,7 +7313,7 @@
                 "detr",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2025-07-15 23:00:00"
         },
         {
@@ -7001,7 +7348,7 @@
                 "detr",
                 "official"
             ],
-            "training_data": [],
+            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
             "date_added": "2025-07-15 23:00:00"
         },
         {
@@ -7033,7 +7380,7 @@
                 }
             },
             "tags": ["segmentation", "torch", "segformer", "official"],
-            "training_data": [],
+            "training_data": [{"name": "ADE20K", "url": "https://github.com/CSAILVision/ADE20K"}],
             "date_added": "2025-08-04 12:34:17"
         },
         {
@@ -7065,7 +7412,7 @@
                 }
             },
             "tags": ["segmentation", "torch", "segformer", "official"],
-            "training_data": [],
+            "training_data": [{"name": "ADE20K", "url": "https://github.com/CSAILVision/ADE20K"}],
             "date_added": "2025-08-04 12:34:20"
         },
         {
@@ -7097,7 +7444,7 @@
                 }
             },
             "tags": ["segmentation", "torch", "segformer", "official"],
-            "training_data": [],
+            "training_data": [{"name": "ADE20K", "url": "https://github.com/CSAILVision/ADE20K"}],
             "date_added": "2025-08-04 12:34:22"
         },
         {
@@ -7129,7 +7476,7 @@
                 }
             },
             "tags": ["segmentation", "torch", "segformer", "official"],
-            "training_data": [],
+            "training_data": [{"name": "ADE20K", "url": "https://github.com/CSAILVision/ADE20K"}],
             "date_added": "2025-08-04 12:34:24"
         },
         {
@@ -7161,7 +7508,7 @@
                 }
             },
             "tags": ["segmentation", "torch", "segformer", "official"],
-            "training_data": [],
+            "training_data": [{"name": "ADE20K", "url": "https://github.com/CSAILVision/ADE20K"}],
             "date_added": "2025-08-04 12:34:25"
         },
         {
@@ -7193,8 +7540,102 @@
                 }
             },
             "tags": ["segmentation", "torch", "segformer", "official"],
-            "training_data": [],
+            "training_data": [{"name": "ADE20K", "url": "https://github.com/CSAILVision/ADE20K"}],
             "date_added": "2025-08-04 12:34:27"
+        },
+        {
+          "base_name": "medsiglip-448-zero-torch",
+          "base_filename": null,
+          "version": null,
+          "description": "Medical SigLIP for zero-shot image classification and embeddings",
+          "source": "https://huggingface.co/google/medsiglip-448",
+          "author": "Google Research",
+          "license": "Custom (HAI-DEF gated on Hugging Face)",
+          "size_bytes": null,
+          "default_deployment_config_dict": {
+            "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForImageClassification",
+            "config": {
+              "name_or_path": "google/medsiglip-448",
+              "transformers_processor_kwargs": {
+                "padding": true
+              },
+              "output_processor_args": {
+                "store_logits": true,
+                "logits_key": "logits_per_image"
+              }
+            }
+          },
+          "requirements": {
+            "packages": ["torch", "torchvision", "transformers", "huggingface_hub"],
+            "cpu": { "support": true },
+            "gpu": { "support": true }
+          },
+          "tags": ["classification", "torch", "official", "medical", "zero-shot"],
+          "training_data": [],
+          "date_added": "2025-09-03 15:09:00"
+        },
+        {
+          "base_name": "monet-zero-torch",
+          "base_filename": null,
+          "version": null,
+          "description": "CLIP‑based vision‑language model for zero‑shot dermatology image classification.",
+          "source": "https://huggingface.co/suinleelab/monet",
+          "author": "Su‑In Lee Lab",
+          "license": "MIT",
+          "size_bytes": 1710000000,
+          "default_deployment_config_dict": {
+            "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForImageClassification",
+            "config": {
+              "name_or_path": "suinleelab/monet",
+              "transformers_processor_kwargs": {
+                "padding": true
+              },
+              "output_processor_args": {
+                "logits_key": "logits_per_image"
+              }
+            }
+          },
+          "requirements": {
+            "packages": ["torch", "torchvision", "transformers"],
+            "cpu": { "support": true },
+            "gpu": { "support": true }
+          },
+          "tags": ["classification", "torch", "official", "medical"],
+          "training_data": [
+            {
+              "name": "MONET (dermatology image–text corpus)",
+              "url": "https://huggingface.co/suinleelab/monet"
+            }
+          ],
+          "date_added": "2025-09-04 12:45:00"
+        },
+        {
+          "base_name": "pubmed-clip-vit-base-patch32",
+          "base_filename": null,
+          "version": null,
+          "description": "Zero-shot medical image classifier trained on biomedical image–text pairs.",
+          "source": "https://huggingface.co/flaviagiammarino/pubmed-clip-vit-base-patch32",
+          "author": "Sedigheh Eslami et al.",
+          "license": "MIT",
+          "size_bytes": 634388480,
+          "default_deployment_config_dict": {
+            "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForImageClassification",
+            "config": {
+              "name_or_path": "flaviagiammarino/pubmed-clip-vit-base-patch32",
+              "transforms_args": { "use_fast": false },
+              "transformers_processor_kwargs": { "padding": true }
+            }
+          },
+          "requirements": {
+            "packages": ["torch", "torchvision", "transformers"],
+            "cpu": { "support": true },
+            "gpu": { "support": true }
+          },
+          "tags": ["classification", "torch", "official", "medical", "zero-shot"],
+          "training_data": [
+            { "name": "ROCO (Radiology Objects in Context)", "url": "https://github.com/razorx89/roco-dataset" }
+          ],
+          "date_added": "2025-09-05 11:56:00"
         }
     ]
 }
