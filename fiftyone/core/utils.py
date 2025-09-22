@@ -2865,11 +2865,12 @@ def recommend_thread_pool_workers(num_workers=None):
     Returns:
         a number of workers
     """
-    if num_workers <= 0:
-        num_workers = 1
 
     if num_workers is None:
         num_workers = multiprocessing.cpu_count()
+
+    if num_workers <= 0:
+        num_workers = 1
 
     if fo.config.max_thread_pool_workers is not None:
         num_workers = min(num_workers, fo.config.max_thread_pool_workers)
