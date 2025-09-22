@@ -170,10 +170,10 @@ export default function PlotlyView(props: ViewPropsType) {
       },
       autosize: true,
       margin: {
-        t: 20, // Adjust top margin
-        l: 50, // Adjust left margin for y-axis labels
-        b: 50, // Adjust bottom margin for x-axis labels
-        r: 20, // Adjust right margin
+        t: 8, // Reduce top margin
+        l: 30, // Keep left margin for y-axis labels
+        b: 0, // Reduce bottom margin
+        r: 8, // Keep right margin
         pad: 0,
       },
       paper_bgcolor: theme.background.mediaSpace,

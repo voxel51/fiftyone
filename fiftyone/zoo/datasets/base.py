@@ -16,6 +16,7 @@ import eta.core.web as etaw
 import fiftyone.types as fot
 import fiftyone.utils.activitynet as foua
 import fiftyone.utils.bdd as foub
+import fiftyone.utils.caltech as fouct
 import fiftyone.utils.cityscapes as foucs
 import fiftyone.utils.coco as fouc
 import fiftyone.utils.data as foud
@@ -522,9 +523,9 @@ class Caltech101Dataset(FiftyOneDataset):
     one background clutter class (``BACKGROUND_Google``). Each image is
     labelled with a single object.
 
-    Each class contains roughly 40 to 800 images, totalling around 9,000
-    images. Images are of variable sizes, with typical edge lengths of 200-300
-    pixels. This version contains image-level labels only.
+    Each class contains roughly 40 to 800 images, totalling 9,144 images.
+    Images are of variable sizes, with typical edge lengths of 200-300 pixels.
+    This version contains image-level labels only.
 
     Example usage::
 
@@ -541,15 +542,6 @@ class Caltech101Dataset(FiftyOneDataset):
     Source
         https://data.caltech.edu/records/mzrjq-6wc02
     """
-
-    #
-    # The source URL for the data is
-    # https://data.caltech.edu/records/mzrjq-6wc02/files/caltech-101.zip?download=1
-    # but this now redirects to the Google Drive file below
-    #
-    _GDRIVE_ID = "137RyRjvTBkBiIfeYBNZBtViDHQ6_Ewsp"
-    _ARCHIVE_NAME = "101_ObjectCategories.tar.gz"
-    _DIR_IN_ARCHIVE = "101_ObjectCategories"
 
     @property
     def name(self):
@@ -568,24 +560,11 @@ class Caltech101Dataset(FiftyOneDataset):
         return None
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, _):
-        _download_and_extract_archive(
-            self._GDRIVE_ID,
-            self._ARCHIVE_NAME,
-            self._DIR_IN_ARCHIVE,
-            dataset_dir,
-            scratch_dir,
+        num_samples, classes, _ = fouct.download_caltech101_dataset(
+            dataset_dir, scratch_dir=scratch_dir
         )
 
-        # Must always delete `scratch_dir` because it would be confused as a
-        # class folder
-        etau.delete_dir(scratch_dir)
-
-        logger.info("Parsing dataset metadata")
         dataset_type = fot.ImageClassificationDirectoryTree()
-        importer = foud.ImageClassificationDirectoryTreeImporter
-        classes = importer._get_classes(dataset_dir)
-        num_samples = importer._get_num_samples(dataset_dir)
-        logger.info("Found %d samples", num_samples)
 
         return dataset_type, num_samples, classes
 
@@ -616,15 +595,6 @@ class Caltech256Dataset(FiftyOneDataset):
         https://data.caltech.edu/records/nyy15-4j048
     """
 
-    #
-    # The source URL for the data is
-    # https://data.caltech.edu/records/nyy15-4j048/files/256_ObjectCategories.tar?download=1
-    # but this now redirects to the Google Drive file below
-    #
-    _GDRIVE_ID = "1r6o0pSROcV1_VwT4oSjA2FBUSCWGuxLK"
-    _ARCHIVE_NAME = "256_ObjectCategories.tar"
-    _DIR_IN_ARCHIVE = "256_ObjectCategories"
-
     @property
     def name(self):
         return "caltech256"
@@ -642,49 +612,11 @@ class Caltech256Dataset(FiftyOneDataset):
         return None
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, _):
-        _download_and_extract_archive(
-            self._GDRIVE_ID,
-            self._ARCHIVE_NAME,
-            self._DIR_IN_ARCHIVE,
-            dataset_dir,
-            scratch_dir,
+        num_samples, classes, _ = fouct.download_caltech256_dataset(
+            dataset_dir, scratch_dir=scratch_dir
         )
 
-        # There are two extraneous items in the raw download...
-        try:
-            etau.delete_dir(os.path.join(dataset_dir, "056.dog", "greg"))
-        except:
-            pass
-
-        try:
-            etau.delete_file(
-                os.path.join(dataset_dir, "198.spider", "RENAME2")
-            )
-        except:
-            pass
-
-        # Must always delete `scratch_dir` because it would be confused as a
-        # class folder
-        etau.delete_dir(scratch_dir)
-
-        # Normalize labels
-        logger.info("Normalizing labels")
-        for old_label in etau.list_subdirs(dataset_dir):
-            new_label = old_label.split(".", 1)[1]
-            if new_label.endswith("-101"):
-                new_label = new_label[:-4]
-
-            etau.move_dir(
-                os.path.join(dataset_dir, old_label),
-                os.path.join(dataset_dir, new_label),
-            )
-
-        logger.info("Parsing dataset metadata")
         dataset_type = fot.ImageClassificationDirectoryTree()
-        importer = foud.ImageClassificationDirectoryTreeImporter
-        classes = importer._get_classes(dataset_dir)
-        num_samples = importer._get_num_samples(dataset_dir)
-        logger.info("Found %d samples", num_samples)
 
         return dataset_type, num_samples, classes
 

@@ -273,14 +273,12 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
     };
 
     const CLASSIFICATION_RENDERER = (path, param: Classification) => {
-      if (!param.label) {
-        return null;
-      }
+      const label = param.label ?? "null";
 
       return {
         path,
-        value: param.label,
-        title: `${path}: ${param.label}`,
+        value: label,
+        title: `${path}: ${label}`,
         color: getAssignedColor({
           coloring,
           path,

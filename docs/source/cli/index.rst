@@ -929,7 +929,7 @@ Tools for working with FiftyOne delegated operations.
 
 .. code-block:: text
 
-    fiftyone delegated [-h] [--all-help] {launch,list,info,fail,delete,cleanup} ...
+    fiftyone delegated [-h] [--all-help] {launch,list,info,output,fail,delete,cleanup} ...
 
 **Arguments**
 
@@ -940,10 +940,11 @@ Tools for working with FiftyOne delegated operations.
       --all-help   show help recursively and exit
 
     available commands:
-      {launch,list,info,fail,delete,cleanup}
+      {launch,list,info,output,fail,delete,cleanup}
         launch              Launches a service for running delegated operations.
         list                List delegated operations.
         info                Prints information about a delegated operation.
+        output              Prints the output for a delegated operation.
         fail                Manually mark delegated as failed.
         delete              Delete delegated operations.
         cleanup             Cleanup delegated operations.
@@ -986,6 +987,7 @@ List delegated operations.
     fiftyone delegated list [-h]
                             [-o OPERATOR]
                             [-d DATASET]
+                            [-m MATCH]
                             [-s STATE]
                             [--sort-by SORT_BY]
                             [--reverse]
@@ -1001,11 +1003,13 @@ List delegated operations.
                             only list operations for this operator
       -d DATASET, --dataset DATASET
                             only list operations for this dataset
+      -m MATCH, --match MATCH
+                            only list operations whose operator or label contain this string
       -s STATE, --state STATE
                             only list operations with this state. Supported
                             values are ('SCHEDULED', 'QUEUED', 'RUNNING', 'COMPLETED', 'FAILED')
       --sort-by SORT_BY     how to sort the operations. Supported values are
-                            ('SCHEDULED_AT', 'QUEUED_AT', 'STARTED_AT', COMPLETED_AT', 'FAILED_AT', 'OPERATOR')
+                            ('SCHEDULED_AT', 'QUEUED_AT', 'STARTED_AT', 'COMPLETED_AT', 'FAILED_AT', 'OPERATOR', 'LABEL')
       --reverse             whether to sort in reverse order
       -l LIMIT, --limit LIMIT
                             a maximum number of operations to show
@@ -1054,6 +1058,34 @@ Prints information about a delegated operation.
 
     # Print information about a delegated operation
     fiftyone delegated info <id>
+
+.. _cli-fiftyone-delegated-output:
+
+Delegated operation output
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Prints the output for a delegated operation.
+
+.. code-block:: text
+
+    fiftyone delegated output [-h] ID
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      ID          the operation ID
+
+    optional arguments:
+      -h, --help  show this help message and exit
+
+**Examples**
+
+.. code-block:: shell
+
+    # Print the output for a delegated operation
+    fiftyone delegated output <id>
 
 .. _cli-fiftyone-delegated-fail:
 

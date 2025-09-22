@@ -3156,6 +3156,7 @@ class DelegatedCommand(Command):
         _register_command(subparsers, "launch", DelegatedLaunchCommand)
         _register_command(subparsers, "list", DelegatedListCommand)
         _register_command(subparsers, "info", DelegatedInfoCommand)
+        _register_command(subparsers, "output", DelegatedOutputCommand)
         _register_command(subparsers, "fail", DelegatedFailCommand)
         _register_command(subparsers, "delete", DelegatedDeleteCommand)
         _register_command(subparsers, "cleanup", DelegatedCleanupCommand)
@@ -3247,6 +3248,16 @@ class DelegatedListCommand(Command):
             help="only list operations for this dataset",
         )
         parser.add_argument(
+            "-m",
+            "--match",
+            default=None,
+            metavar="MATCH",
+            help=(
+                "only list operations whose operator or label contain this "
+                "string"
+            ),
+        )
+        parser.add_argument(
             "-s",
             "--state",
             default=None,
@@ -3260,7 +3271,7 @@ class DelegatedListCommand(Command):
             default="QUEUED_AT",
             help=(
                 "how to sort the operations. Supported values are "
-                "('SCHEDULED_AT', 'QUEUED_AT', 'STARTED_AT', COMPLETED_AT', 'FAILED_AT', 'OPERATOR')"
+                "('SCHEDULED_AT', 'QUEUED_AT', 'STARTED_AT', 'COMPLETED_AT', 'FAILED_AT', 'OPERATOR', 'LABEL')"
             ),
         )
         parser.add_argument(
@@ -3282,6 +3293,7 @@ class DelegatedListCommand(Command):
         dos = food.DelegatedOperationService()
 
         state = _parse_state(args.state)
+        search = _parse_search(args.match)
         paging = _parse_paging(
             sort_by=args.sort_by, reverse=args.reverse, limit=args.limit
         )
@@ -3290,6 +3302,7 @@ class DelegatedListCommand(Command):
             operator=args.operator,
             dataset_name=args.dataset,
             run_state=state,
+            search=search,
             paging=paging,
         )
 
@@ -3301,6 +3314,13 @@ def _parse_state(state):
         return None
 
     return state.lower()
+
+
+def _parse_search(match):
+    if match is None:
+        return None
+
+    return {".*" + match + ".*": ["operator", "label"]}
 
 
 def _parse_paging(sort_by=None, reverse=None, limit=None):
@@ -3329,6 +3349,7 @@ def _parse_reverse(reverse):
 def _print_delegated_list(ops):
     headers = [
         "id",
+        "label",
         "operator",
         "dataset",
         "queued_at",
@@ -3351,6 +3372,7 @@ def _print_delegated_list(ops):
         rows.append(
             {
                 "id": op.id,
+                "label": op.label,
                 "operator": op.operator,
                 "dataset": op.context.request_params.get("dataset_name", None),
                 "queued_at": op.queued_at,
@@ -3383,6 +3405,36 @@ class DelegatedInfoCommand(Command):
         dos = food.DelegatedOperationService()
         op = dos.get(ObjectId(args.id))
         fo.pprint(op._doc)
+
+
+class DelegatedOutputCommand(Command):
+    """Prints the output for a delegated operation.
+
+    Examples::
+
+        # Print the output for a delegated operation
+        fiftyone delegated output <id>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument("id", metavar="ID", help="the operation ID")
+
+    @staticmethod
+    def execute(parser, args):
+        dos = food.DelegatedOperationService()
+        op = dos.get(ObjectId(args.id))
+        if op.run_state == fooe.ExecutionRunState.COMPLETED:
+            result = op._doc.get("result", None)
+            if result:
+                result = result.get("result", None)
+            if result:
+                _print_dict_as_table(result)
+        else:
+            print(
+                "Cannot get output for operation %s in state %s"
+                % (args.id, op.run_state)
+            )
 
 
 class DelegatedFailCommand(Command):
