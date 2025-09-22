@@ -645,6 +645,106 @@ class DelegatedOperationService(object):
                 )
         return result
 
+    def _execute_operation_multi_proc(
+        self, operation, log=False, check_interval_seconds=60
+    ):
+        """Executes an operation in a separate process and monitors it."""
+        ctx = multiprocessing.get_context("spawn")
+        log_queue = ctx.Queue()
+
+        root_logger = logging.getLogger("fiftyone")
+        listener = logging.handlers.QueueListener(
+            log_queue, *root_logger.handlers
+        )
+        listener.start()
+
+        result = None
+        child_process = None
+        try:
+            child_process = ctx.Process(
+                target=_execute_operator_in_child_process,
+                args=(operation.id, log, log_queue),
+            )
+            child_process.start()
+
+            result = self._monitor_operation(
+                child_process, operation.id, check_interval_seconds
+            )
+
+            if not result:
+                try:
+                    final_doc = self.get(operation.id)
+                except Exception as e:
+                    logger.exception(
+                        "Failed to fetch final doc for operation %s",
+                        operation.id,
+                    )
+                    return ExecutionResult(error=f"Finalization error: {e}")
+                raw = final_doc.result if final_doc else None
+                if isinstance(raw, ExecutionResult):
+                    result = raw
+                elif isinstance(raw, dict):
+                    result = ExecutionResult(
+                        result=raw.get("result"),
+                        error=raw.get("error"),
+                        error_message=raw.get("error_message"),
+                        delegated=raw.get("delegated", False),
+                        outputs_schema=raw.get("outputs_schema"),
+                    )
+                else:
+                    result = ExecutionResult()
+        finally:
+            listener.stop()
+            if child_process and child_process.is_alive():
+                self._terminate_child_process(
+                    child_process, operation.id, "Executor shutting down"
+                )
+
+        return result
+
+    def _monitor_operation(
+        self, child_process, operation_id, check_interval_seconds=60
+    ):
+        """
+        Monitors the child_process and operation state for failures.
+        """
+        while child_process.is_alive():
+            child_process.join(timeout=check_interval_seconds)
+
+            if not child_process.is_alive():
+                return None
+
+            try:
+                op_doc = self.get(operation_id)
+                if op_doc and op_doc.run_state == ExecutionRunState.FAILED:
+                    err = None
+                    res = getattr(op_doc, "result", None)
+                    if isinstance(res, dict):
+                        err = res.get("error")
+                    else:
+                        err = getattr(res, "error", None)
+
+                    reason = (
+                        "Operation marked as FAILED externally"
+                        if not err or "marked as failed" in str(err).lower()
+                        else f"Operation FAILED (detected by monitor): {err}"
+                    )
+                    self._terminate_child_process(
+                        child_process, operation_id, reason
+                    )
+                    return ExecutionResult(error=reason)
+            except Exception as e:
+                reason = f"Error in monitoring loop: {e}"
+                logger.error(
+                    "Error in monitoring loop for operation %s: %s",
+                    operation_id,
+                    e,
+                )
+                self._terminate_child_process(
+                    child_process, operation_id, reason
+                )
+                return ExecutionResult(error=reason)
+
     def _terminate_child_process(self, child_process, operation_id, reason):
         """
         Terminates a child process and its descendants using psutil.
@@ -690,98 +790,6 @@ class DelegatedOperationService(object):
             logger.error(
                 "Error during process tree termination for PID %d: %s", pid, e
             )
-
-    def _execute_operation_multi_proc(
-        self, operation, log=False, check_interval_seconds=60
-    ):
-        """Executes an operation in a separate process and monitors it."""
-        ctx = multiprocessing.get_context("spawn")
-        log_queue = ctx.Queue()
-
-        root_logger = logging.getLogger("fiftyone")
-        listener = logging.handlers.QueueListener(
-            log_queue, *root_logger.handlers
-        )
-        listener.start()
-
-        result = None
-        child_process = None
-        try:
-            child_process = ctx.Process(
-                target=_execute_operator_in_child_process,
-                args=(operation.id, log, log_queue),
-            )
-            child_process.start()
-
-            while child_process.is_alive():
-                child_process.join(timeout=check_interval_seconds)
-
-                if not child_process.is_alive():
-                    break
-
-                try:
-                    op_doc = self.get(operation.id)
-                    if op_doc and op_doc.run_state == ExecutionRunState.FAILED:
-                        err = None
-                        res = getattr(op_doc, "result", None)
-                        if isinstance(res, dict):
-                            err = res.get("error")
-                        else:
-                            err = getattr(res, "error", None)
-
-                        reason = (
-                            "Operation marked as FAILED externally"
-                            if not err
-                            or "marked as failed" in str(err).lower()
-                            else f"Operation FAILED (detected by monitor): {err}"
-                        )
-                        self._terminate_child_process(
-                            child_process, operation.id, reason
-                        )
-                        result = ExecutionResult(error=reason)
-                        break
-                except Exception as e:
-                    reason = f"Error in monitoring loop: {e}"
-                    logger.error(
-                        "Error in monitoring loop for operation %s: %s",
-                        operation.id,
-                        e,
-                    )
-                    self._terminate_child_process(
-                        child_process, operation.id, reason
-                    )
-                    result = ExecutionResult(error=reason)
-                    break
-            if not result:
-                try:
-                    final_doc = self.get(operation.id)
-                except Exception as e:
-                    logger.exception(
-                        "Failed to fetch final doc for operation %s",
-                        operation.id,
-                    )
-                    return ExecutionResult(error=f"Finalization error: {e}")
-                raw = final_doc.result if final_doc else None
-                if isinstance(raw, ExecutionResult):
-                    result = raw
-                elif isinstance(raw, dict):
-                    result = ExecutionResult(
-                        result=raw.get("result"),
-                        error=raw.get("error"),
-                        error_message=raw.get("error_message"),
-                        delegated=raw.get("delegated", False),
-                        outputs_schema=raw.get("outputs_schema"),
-                    )
-                else:
-                    result = ExecutionResult()
-        finally:
-            listener.stop()
-            if child_process and child_process.is_alive():
-                self._terminate_child_process(
-                    child_process, operation.id, "Executor shutting down"
-                )
-
-        return result
 
     async def _execute_operator(self, doc):
         operator_uri = doc.operator
