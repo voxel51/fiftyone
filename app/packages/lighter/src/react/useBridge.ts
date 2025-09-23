@@ -27,7 +27,6 @@ export const useBridge = (scene: Scene2D | null) => {
   const currentColorSeed = useRecoilValue(colorSeed);
 
   useLighterTooltipEventHandler(scene);
-  useLighterOverlayPersistence(scene);
 
   const getSelectedLabels = useRecoilCallback(
     ({ snapshot }) =>
