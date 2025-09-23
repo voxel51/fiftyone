@@ -86,7 +86,7 @@ will transform FiftyOne into your bespoke visual AI development workbench.
 
 .. note::
 
-   Plugins are external projects maintained by their respective authors.
+   Community plugins are external projects maintained by their respective authors.
    They are not part of FiftyOne core and may change independently.
    Please review each plugin's documentation and license before use.
 
