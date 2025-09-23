@@ -1,13 +1,19 @@
 .. _plugins-ecosystem:
 
 Plugins Ecosystem
-============================
+=================
 
 .. default-role:: code
 
 Welcome to the FiftyOne Plugins ecosystem! 🚀
 
-Discover cutting-edge research, state-of-the-art models, and innovative techniques. These plugins extend the power of FiftyOne beyond imagination. From advanced computer vision models to specialized annotation tools, our curated collection transforms FiftyOne into your ultimate AI research platform.
+Here you'll discover cutting-edge research, state-of-the-art models, and
+powerful add-ons that unlock new FiftyOne workflows.
+
+FiftyOne plugins allow you to extend and customize the functionality of the
+core tool to suit your specific needs. From advanced computer vision models to
+integrations with other popular AI tools, this curated collection of plugins
+will transform FiftyOne into your bespoke visual AI development workbench.
 
 .. raw:: html
 
@@ -34,7 +40,7 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
                         vector-effect="non-scaling-stroke"></path>
                 </svg>  
             </div>
-            <div class="text">Build your own plugin</div>
+            <div class="text">Showcase your own plugin</div>
         </a>
     </div>
     
@@ -79,9 +85,10 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
 .. End plugins cards section -------------------------------------------------
 
 .. note::
-   Community plugins are external projects maintained by their respective authors. They are not
-   part of FiftyOne core and may change independently. Review each plugin's documentation and
-   license before use.
+
+   Plugins are external projects maintained by their respective authors.
+   They are not part of FiftyOne core and may change independently.
+   Please review each plugin's documentation and license before use.
 
 .. toctree::
    :maxdepth: 1
@@ -91,6 +98,6 @@ Discover cutting-edge research, state-of-the-art models, and innovative techniqu
    Overview <overview>
    Using plugins <using_plugins>
    Developing plugins <developing_plugins>
-   plugins_ecosystem/*
    API reference <api/plugins>
    TypeScript API reference <ts-api>
+   plugins_ecosystem/*

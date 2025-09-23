@@ -505,9 +505,9 @@ class PluginDocGenerator:
             with open(readme_path, "w", encoding="utf-8") as f:
                 if plugin.category == "community":
                     community_note = """```{note}
-Community plugins are external projects maintained by their respective authors. They are not
-part of FiftyOne core and may change independently. Review each plugin's documentation and
-license before use.
+This is a **community plugin**, an external project maintained by its respective author.
+Community plugins are not part of FiftyOne core and may change independently.
+Please review each plugin's documentation and license before use.
 ```
 
 """

@@ -15,9 +15,8 @@ your needs.
     What can you do with plugins? Check out
     :ref:`delegated operations <enterprise-delegated-operations>` to see some
     quick examples, then check out the
-    `FiftyOne plugins <https://github.com/voxel51/fiftyone-plugins>`_
-    repository for a growing collection of prebuilt plugins that you can add to
-    your Enterprise deployment!
+    :ref:`Plugins Ecosystem <plugins-ecosystem>` for a growing collection of
+    plugins that you can add to your Enterprise deployment!
 
 .. _enterprise-plugins-page:
 

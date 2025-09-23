@@ -22,9 +22,8 @@ Get started with plugins by installing some
 
 .. note::
 
-    Check out the
-    `FiftyOne plugins <https://github.com/voxel51/fiftyone-plugins>`_
-    repository for a growing collection of plugins that you can easily
+    Check out the :ref:`Plugins Ecosystem <plugins-ecosystem>` for a growing
+    collection of plugins that you can easily
     :ref:`download <plugins-download>` and use locally.
 
 .. _plugins-getting-started:
