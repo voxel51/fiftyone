@@ -11,12 +11,11 @@ can access from within the App.
 
 .. note::
 
-    Check out the
-    `FiftyOne plugins <https://github.com/voxel51/fiftyone-plugins>`_
-    repository for a growing collection of plugins that you can easily
+    Check out the :ref:`Plugins Ecosystem <plugins-ecosystem>` for a growing
+    collection of plugins that you can easily
     :ref:`download <plugins-download>` and use locally.
 
-    Then, after you get comfortable using prebuilt plugins, try your hand at
+    Then, after you get comfortable using existing plugins, try your hand at
     :ref:`writing your own <developing-plugins>`!
 
 .. _plugins-download:
