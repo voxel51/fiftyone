@@ -3219,16 +3219,16 @@ def async_executor(
         Exception: if a task raises an exception and ``skip_failures == False``
     """
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        _futures = []
+        futures = []
 
         def submit(*args, **kwargs):
             future = executor.submit(*args, **kwargs)
-            _futures.append(future)
+            futures.append(future)
             return future
 
         yield submit
 
-        for future in _futures:
+        for future in futures:
             try:
                 future.result()
             except Exception as e:
