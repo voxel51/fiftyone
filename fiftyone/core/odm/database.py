@@ -240,6 +240,8 @@ def establish_db_conn(config):
 
 def _connect():
     global _client
+    if _client and getattr(_client, "_closed", False):
+        _client = None
     if _client is None:
         global _connection_kwargs
 
