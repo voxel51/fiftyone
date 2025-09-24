@@ -2559,7 +2559,7 @@ __metadata:
     "@biomejs/biome": "npm:^1.8.3"
     "@emotion/react": "npm:^11.14.0"
     "@emotion/styled": "npm:^11.14.0"
-    "@react-three/drei": "npm:^10.6.0"
+    "@react-three/drei": "npm:^10.7.6"
     "@react-three/fiber": "npm:^8.18.0"
     "@types/node": "npm:^20.11.10"
     "@types/react": "npm:^18.2.48"
@@ -4434,9 +4434,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-three/drei@npm:^10.6.0":
-  version: 10.6.0
-  resolution: "@react-three/drei@npm:10.6.0"
+"@react-three/drei@npm:^10.7.6":
+  version: 10.7.6
+  resolution: "@react-three/drei@npm:10.7.6"
   dependencies:
     "@babel/runtime": "npm:^7.26.0"
     "@mediapipe/tasks-vision": "npm:0.10.17"
@@ -4467,7 +4467,7 @@ __metadata:
   peerDependenciesMeta:
     react-dom:
       optional: true
-  checksum: 10/df42d7e515bde84f1e546e1757c8fdc115d13ee9e6f79e308edc0ecd411c5cfe570c31ebe50b3715e4902432544d9eba204acf760faefca613b31e857ce4fd99
+  checksum: 10/fd6efdb687cfa0bdceeaf4183dfad99e7a2dc1b153f803d24de861fea8d5c924d2b01f5a659a4942f051f56842f6ac193f62cc4d1e3d0032f0b847a4c6177ddf
   languageName: node
   linkType: hard
 

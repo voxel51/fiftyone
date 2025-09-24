@@ -14,11 +14,13 @@ import { Leva } from "./fo3d/Leva";
 import { MediaTypeFo3dComponent } from "./fo3d/MediaTypeFo3d";
 import { useHotkey } from "./hooks";
 import {
+  clearTransformStateSelector,
   currentActionAtom,
   fo3dContainsBackground,
   isColormapModalOpenAtom,
   isGridOnAtom,
   isLevaConfigPanelOnAtom,
+  selectedLabelForTransformAtom,
 } from "./state";
 
 /**
@@ -81,6 +83,15 @@ export const Looker3d = () => {
   useHotkey(
     "Escape",
     async ({ snapshot, set }) => {
+      const selectedLabelForTransform = await snapshot.getPromise(
+        selectedLabelForTransformAtom
+      );
+
+      if (selectedLabelForTransform) {
+        set(clearTransformStateSelector, null);
+        return;
+      }
+
       const isTooltipLocked = await snapshot.getPromise(fos.isTooltipLocked);
 
       if (isTooltipLocked) {

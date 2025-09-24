@@ -1,6 +1,5 @@
 import {
   FO_LABEL_TOGGLED_EVENT,
-  LabelData,
   LabelToggledEvent,
   Sample,
   selectiveRenderingEventBus,
@@ -14,6 +13,7 @@ import * as fos from "@fiftyone/state";
 import { fieldSchema } from "@fiftyone/state";
 import { useOnShiftClickLabel } from "@fiftyone/state/src/hooks/useOnShiftClickLabel";
 import { ThreeEvent } from "@react-three/fiber";
+import { useAtomValue } from "jotai";
 import { folder, useControls } from "leva";
 import { get as _get } from "lodash";
 import { useCallback, useEffect, useMemo } from "react";
@@ -26,15 +26,27 @@ import { toEulerFromDegreesArray } from "../utils";
 import { Cuboid, type CuboidProps } from "./cuboid";
 import { type OverlayLabel, load3dOverlays } from "./loader";
 import { type PolyLineProps, Polyline } from "./polyline";
+import { useTransformControls } from "./useTransformControls";
 
 export interface ThreeDLabelsProps {
   sampleMap: { [sliceOrFilename: string]: Sample } | fos.Sample[];
 }
 
 export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
+  const mode = useAtomValue(fos.modalMode);
   const schema = useRecoilValue(fieldSchema({ space: fos.State.SPACE.SAMPLE }));
   const { coloring, selectedLabelTags, customizeColorSetting, labelTagColors } =
     useRecoilValue(fos.lookerOptions({ withFilter: true, modal: true }));
+
+  const {
+    selectedLabelForTransform,
+    selectLabelForTransform,
+    transformMode,
+    transformSpace,
+    handleTransformStart,
+    handleTransformEnd,
+    clearSelectedLabel,
+  } = useTransformControls();
 
   const settings = fop.usePluginSettings<Looker3dSettings>(
     "3d",
@@ -88,6 +100,19 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
 
   const handleSelect = useCallback(
     (label: OverlayLabel, e: ThreeEvent<MouseEvent>) => {
+      // In annotate mode, handle transform selection
+      if (mode === "annotate") {
+        // If clicking the same label that's already selected, deselect it
+        if (selectedLabelForTransform?._id === label._id) {
+          clearSelectedLabel();
+        } else {
+          // Otherwise, select the new label
+          selectLabelForTransform(label);
+        }
+
+        return;
+      }
+
       onSelectLabel({
         detail: {
           id: label._id,
@@ -98,7 +123,13 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
         },
       });
     },
-    [onSelectLabel]
+    [
+      onSelectLabel,
+      mode,
+      selectLabelForTransform,
+      clearSelectedLabel,
+      selectedLabelForTransform,
+    ]
   );
 
   const [overlayRotation, itemRotation] = useMemo(
@@ -110,13 +141,6 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
     ],
     [settings]
   );
-
-  const canonicalSampleId = useMemo(() => {
-    const samples = Array.isArray(sampleMap)
-      ? sampleMap
-      : Object.values(sampleMap);
-    return samples[0].id ?? samples[0].sample?._id;
-  }, [sampleMap]);
 
   const rawOverlays = useMemo(
     () =>
@@ -161,6 +185,7 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
         newCuboidOverlays.push(
           <Cuboid
             key={`cuboid-${overlay.id ?? overlay._id}-${overlay.sampleId}`}
+            lineWidth={cuboidLineWidth}
             rotation={overlayRotation}
             itemRotation={itemRotation}
             opacity={labelAlpha}
@@ -169,6 +194,14 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
             label={overlay}
             tooltip={tooltip}
             useLegacyCoordinates={settings.useLegacyCoordinates}
+            isSelectedForTransform={
+              selectedLabelForTransform?._id === overlay._id
+            }
+            isAnnotateMode={mode === "annotate"}
+            transformMode={transformMode}
+            transformSpace={transformSpace}
+            onTransformStart={handleTransformStart}
+            onTransformEnd={handleTransformEnd}
           />
         );
       } else if (
@@ -180,10 +213,19 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
             key={`polyline-${overlay._id ?? overlay.id}-${overlay.sampleId}`}
             rotation={overlayRotation}
             opacity={labelAlpha}
+            lineWidth={polylineWidth}
             {...(overlay as unknown as PolyLineProps)}
             label={overlay}
             onClick={(e) => handleSelect(overlay, e)}
             tooltip={tooltip}
+            isSelectedForTransform={
+              selectedLabelForTransform?._id === overlay._id
+            }
+            isAnnotateMode={mode === "annotate"}
+            transformMode={transformMode}
+            transformSpace={transformSpace}
+            onTransformStart={handleTransformStart}
+            onTransformEnd={handleTransformEnd}
           />
         );
       }

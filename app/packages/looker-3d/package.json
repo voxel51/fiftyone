@@ -16,7 +16,7 @@
     "dependencies": {
         "@emotion/react": "^11.14.0",
         "@emotion/styled": "^11.14.0",
-        "@react-three/drei": "^10.6.0",
+        "@react-three/drei": "^10.7.6",
         "@react-three/fiber": "^8.18.0",
         "leva": "^0.9.36",
         "lodash": "^4.17.21",

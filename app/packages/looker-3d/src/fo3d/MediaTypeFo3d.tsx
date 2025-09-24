@@ -41,8 +41,10 @@ import type { Looker3dSettings } from "../settings";
 import {
   activeNodeAtom,
   cameraPositionAtom,
+  clearTransformStateSelector,
   currentHoveredPointAtom,
   isFo3dBackgroundOnAtom,
+  isTransformingAtom,
 } from "../state";
 import { HoverMetadata } from "../types";
 import { FoSceneComponent } from "./FoScene";
@@ -219,6 +221,7 @@ export const MediaTypeFo3dComponent = () => {
 
   const cameraRef = useRef<THREE.PerspectiveCamera>();
   const cameraControlsRef = useRef<CameraControls>();
+  const isTransforming = useRecoilValue(isTransformingAtom);
 
   const keyState = useRef({
     shiftRight: false,
@@ -227,7 +230,25 @@ export const MediaTypeFo3dComponent = () => {
     controlLeft: false,
   });
 
+  /**
+   * This effect updates the camera controls config when the transforming state changes
+   */
+  useEffect(() => {
+    updateCameraControlsConfig();
+  }, [isTransforming]);
+
   const updateCameraControlsConfig = useCallback(() => {
+    if (!cameraControlsRef.current) return;
+
+    // Disable camera controls when transforming
+    if (isTransforming) {
+      cameraControlsRef.current.enabled = false;
+      return;
+    }
+
+    // Re-enable camera controls when not transforming
+    cameraControlsRef.current.enabled = true;
+
     if (keyState.current.shiftRight || keyState.current.shiftLeft) {
       cameraControlsRef.current.mouseButtons.left =
         CameraControlsImpl.ACTION.TRUCK;
@@ -238,7 +259,7 @@ export const MediaTypeFo3dComponent = () => {
       cameraControlsRef.current.mouseButtons.left =
         CameraControlsImpl.ACTION.ROTATE;
     }
-  }, [keyState]);
+  }, [keyState, isTransforming]);
 
   fos.useEventHandler(document, "keydown", (e: KeyboardEvent) => {
     if (e.code === "ShiftRight") keyState.current.shiftRight = true;
@@ -380,6 +401,7 @@ export const MediaTypeFo3dComponent = () => {
       () => {
         set(activeNodeAtom, null);
         set(currentHoveredPointAtom, null);
+        set(clearTransformStateSelector, null);
         setAutoRotate(false);
       },
     []
@@ -753,7 +775,9 @@ export const MediaTypeFo3dComponent = () => {
           </group>
         </Bvh>
 
-        {isSceneInitialized && <ThreeDLabels sampleMap={{ fo3d: sample }} />}
+        {isSceneInitialized && (
+          <ThreeDLabels sampleMap={{ fo3d: sample as any }} />
+        )}
       </Canvas>
       <StatusBarRootContainer>
         <StatusBar cameraRef={cameraRef} />

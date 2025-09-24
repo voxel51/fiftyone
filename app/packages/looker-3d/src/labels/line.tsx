@@ -1,46 +1,54 @@
-import { extend } from "@react-three/fiber";
-import React from "react";
-import { useRecoilValue } from "recoil";
+import { extend, useThree } from "@react-three/fiber";
+import React, { useEffect, useMemo } from "react";
 import * as THREE from "three";
 import { Line2 } from "three/examples/jsm/lines/Line2";
 import { LineGeometry } from "three/examples/jsm/lines/LineGeometry";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
-import { polylineLabelLineWidthAtom } from "../state";
 import type { OverlayProps } from "./shared";
 
 extend({ Line2, LineMaterial, LineGeometry });
 
 interface LineProps extends Omit<OverlayProps, "tooltip" | "onClick"> {
   points: THREE.Vector3Tuple[];
+  width?: number;
 }
 
-export const Line = ({ rotation, points, color, opacity }: LineProps) => {
-  const lineWidth = useRecoilValue(polylineLabelLineWidthAtom);
-  const geo = React.useMemo(() => {
-    const g = new THREE.BufferGeometry().setFromPoints(
-      points.map((p) => new THREE.Vector3(...p))
-    );
-    g.rotateX(rotation[0]);
-    g.rotateY(rotation[1]);
-    g.rotateZ(rotation[2]);
+export const Line = ({
+  rotation,
+  points,
+  color,
+  opacity = 1,
+  width = 1,
+}: LineProps) => {
+  const { size } = useThree();
+
+  const geometry = useMemo(() => {
+    const g = new LineGeometry();
+    const flat = points.flat();
+    g.setPositions(flat);
     return g;
-  }, [points, rotation]);
+  }, [points]);
 
-  const geometry = React.useMemo(() => {
-    return new LineGeometry().fromLine(new THREE.Line(geo));
-  }, [geo]);
-
-  const material = React.useMemo(() => {
+  const material = useMemo(() => {
     return new LineMaterial({
-      color: color,
-      linewidth: lineWidth,
-      opacity: opacity,
+      color,
+      linewidth: width,
+      opacity,
+      transparent: opacity < 1,
     });
-  }, [color, lineWidth, opacity]);
+  }, [color, width, opacity]);
 
-  return (
-    <mesh rotation={rotation}>
-      <line2 geometry={geometry} material={material} />
-    </mesh>
-  );
+  // keep resolution in sync with canvas size
+  useEffect(() => {
+    material.resolution.set(size.width, size.height);
+  }, [material, size]);
+
+  useEffect(() => {
+    return () => {
+      geometry.dispose();
+      material.dispose();
+    };
+  }, [geometry, material]);
+
+  return <line2 geometry={geometry} material={material} rotation={rotation} />;
 };

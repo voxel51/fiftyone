@@ -199,3 +199,39 @@ export const polylineLabelLineWidthAtom = atom({
     }),
   ],
 });
+
+// Transform control state
+export type TransformMode = "translate" | "rotate" | "scale";
+export type TransformSpace = "world" | "local";
+
+export const selectedLabelForTransformAtom = atom<any | null>({
+  key: "fo3d-selectedLabelForTransform",
+  default: null,
+});
+
+export const transformModeAtom = atom<TransformMode>({
+  key: "fo3d-transformMode",
+  default: "translate",
+});
+
+export const transformSpaceAtom = atom<TransformSpace>({
+  key: "fo3d-transformSpace",
+  default: "world",
+});
+
+export const isTransformingAtom = atom<boolean>({
+  key: "fo3d-isTransforming",
+  default: false,
+});
+
+// Selector to clear all transform state
+export const clearTransformStateSelector = selector({
+  key: "fo3d-clearTransformState",
+  get: () => null,
+  set: ({ set }) => {
+    set(selectedLabelForTransformAtom, null);
+    set(transformModeAtom, "translate");
+    set(transformSpaceAtom, "world");
+    set(isTransformingAtom, false);
+  },
+});
