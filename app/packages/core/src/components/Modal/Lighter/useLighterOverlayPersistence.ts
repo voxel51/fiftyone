@@ -10,7 +10,7 @@ import { useOperatorExecutor } from "@fiftyone/operators";
 import { DETECTION } from "@fiftyone/utilities";
 import { useSetAtom } from "jotai";
 import { useCallback, useEffect } from "react";
-import { LIGHTER_EVENTS, Scene2D } from "../index";
+import { LIGHTER_EVENTS, Scene2D } from "@fiftyone/lighter";
 
 /**
  * Hook that handles tooltip events for lighter overlays.

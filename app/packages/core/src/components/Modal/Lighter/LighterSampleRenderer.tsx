@@ -6,6 +6,13 @@ import {
   labelAtoms,
   labels,
 } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useLabels";
+import {
+  ImageOptions,
+  ImageOverlay,
+  overlayFactory,
+  useLighter,
+  useLighterSetupWithPixi,
+} from "@fiftyone/lighter";
 import { FROM_FO } from "@fiftyone/looker/src/overlays";
 import DetectionOverlay from "@fiftyone/looker/src/overlays/detection";
 import * as fos from "@fiftyone/state";
@@ -13,10 +20,9 @@ import { Sample, getSampleSrc } from "@fiftyone/state";
 import { getDefaultStore, useSetAtom } from "jotai";
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
-import { ImageOptions, ImageOverlay, overlayFactory } from "../index";
-import { singletonCanvas } from "../renderer/SharedCanvas";
-import { useLighter, useLighterSetupWithPixi } from "./index";
+import { singletonCanvas } from "./SharedCanvas";
 import { convertLegacyToLighterDetection } from "./looker-lighter-bridge";
+import { useBridge } from "./useBridge";
 
 export interface LighterSampleRendererProps {
   /** Custom CSS class name */
@@ -150,7 +156,10 @@ const LighterSetupImpl = (props: {
 
   const canvas = singletonCanvas.getCanvas(containerRef.current!);
 
-  useLighterSetupWithPixi(canvas, options);
+  const { scene } = useLighterSetupWithPixi(canvas, options);
+
+  // This is the bridge between FiftyOne state management system and Lighter
+  useBridge(scene);
 
   return null;
 };

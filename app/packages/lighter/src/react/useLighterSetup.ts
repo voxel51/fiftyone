@@ -13,7 +13,6 @@ import {
   PixiRenderer2D,
   Scene2D,
 } from "../index";
-import { useBridge } from "./useBridge";
 
 // TODO: Ultimately, we'll want to remove dependency on "looker" and create our own options type
 // This type extends what fos.useLookerOptions returns to maintain compatibility during transition
@@ -92,10 +91,5 @@ export const useLighterSetupWithPixi = (
     }
   }, [scene, options]);
 
-  // This is the bridge between FiftyOne state management system and Lighter
-  useBridge(scene);
-
-  // Return empty object since this hook is just for setup
-  // The actual scene access is provided by useLighter hook
-  return {};
+  return { scene };
 };
