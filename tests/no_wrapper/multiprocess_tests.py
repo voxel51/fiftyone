@@ -30,6 +30,19 @@ def _check_process(port):
     assert int(port) == food._connection_kwargs["port"]
 
 
+class GetDbConnTests(unittest.TestCase):
+    def test_get_db_conn(self):
+        import fiftyone.core.odm as foo
+
+        conn = foo.get_db_conn()
+        self.assertIsNotNone(conn)
+        conn.client.close()
+        assert conn.client._closed == True
+        # should be able to reconnect
+        conn = foo.get_db_conn()
+        assert conn.client._closed == False
+
+
 if __name__ == "__main__":
     fo.config.show_progress_bars = False
     unittest.main(verbosity=2)
