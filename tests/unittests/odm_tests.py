@@ -109,3 +109,14 @@ class GetIndexedValuesTests(unittest.TestCase):
 
         finally:
             dataset.delete()
+
+
+class GetDbConnTests(unittest.TestCase):
+    def test_get_db_conn(self):
+        conn = foo.get_db_conn()
+        self.assertIsNotNone(conn)
+        conn.client.close()
+        assert conn.client._closed == True
+        # should be able to reconnect
+        conn = foo.get_db_conn()
+        assert conn.client._closed == False

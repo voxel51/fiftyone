@@ -275,6 +275,8 @@ def _async_connect(use_global=False):
     _connect()
 
     global _async_client
+    if _async_client and getattr(_async_client, "_closed", False):
+        _async_client = None
     if not use_global or _async_client is None:
         global _connection_kwargs
         client = mtr.AsyncIOMotorClient(
