@@ -155,7 +155,10 @@ export const InteractiveModelInput = () => {
     return (
       <NewBoundingBox
         payload={interactiveModeInputVal.payload}
-        onDismiss={() => setInteractiveModeInputVal(null)}
+        onDismiss={() => {
+          interactiveModeInputVal.onDismiss?.();
+          setInteractiveModeInputVal(null);
+        }}
         onComplete={(value) => {
           interactiveModeInputVal.onComplete(value);
           setInteractiveModeInputVal(null);

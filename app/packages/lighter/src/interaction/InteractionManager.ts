@@ -90,6 +90,11 @@ export interface InteractionHandler {
    * @returns True if this handler can handle events at the point.
    */
   containsPoint(point: Point): boolean;
+
+  /**
+   * Release any resources held by the handler.
+   */
+  cleanup?(): void;
 }
 
 /**
@@ -582,7 +587,11 @@ export class InteractionManager {
   removeHandler(handler: InteractionHandler): void {
     const index = this.handlers.indexOf(handler);
     if (index > -1) {
-      this.handlers.splice(index, 1);
+      const removedHandler = this.handlers.splice(index, 1);
+
+      if (removedHandler?.at?.(0)) {
+        removedHandler[0].cleanup?.();
+      }
     }
 
     // Clear references if this was the active handler

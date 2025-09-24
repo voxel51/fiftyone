@@ -23,4 +23,5 @@ export const interactiveModeInput = atom<{
     y: number;
   };
   onComplete: (value: any) => void;
+  onDismiss?: () => void;
 } | null>(null);

@@ -1,17 +1,20 @@
 import {
+  BoundingBoxOptions,
+  BoundingBoxOverlay,
   InteractiveDetectionHandler,
   LIGHTER_EVENTS,
   useLighter,
 } from "@fiftyone/lighter";
 import { DetectionLabel } from "@fiftyone/looker/src/overlays/detection";
 import * as fos from "@fiftyone/state";
-import { DETECTION } from "@fiftyone/utilities";
+import { DETECTION, objectId } from "@fiftyone/utilities";
 import { atom, getDefaultStore, useSetAtom } from "jotai";
 import { useCallback, useState } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ItemLeft, ItemRight } from "./Components";
 import { editing } from "./Edit";
+import { interactiveModeInput } from "./Edit/state";
 import { activeSchemas } from "./state";
 import useShowModal from "./useShowModal";
 
@@ -189,38 +192,79 @@ const Detection = () => {
 
     const handler = new InteractiveDetectionHandler(
       currentSampleId,
-      activeSchemasVal,
+      Object.keys(activeSchemasVal)[0],
       addOverlay,
       removeOverlay,
       overlayFactory,
-      (overlay, path) => {
-        scene.dispatchSafely({
-          type: LIGHTER_EVENTS.DO_PERSIST_OVERLAY,
-          detail: {
-            id: overlay.id,
-            field: path,
-            sampleId: currentSampleId,
-            label: overlay.label?.label ?? "",
-            bounds: overlay.getRelativeBounds(),
-            misc: {},
+      (tempOverlay) => {
+        // Show the interactive input modal for label name and field selection
+        const absoluteBounds = tempOverlay.getAbsoluteBounds();
+        getDefaultStore().set(interactiveModeInput, {
+          inputType: "new-bounding-box",
+          payload: {
+            x: absoluteBounds.x + absoluteBounds.width,
+            y: absoluteBounds.y + absoluteBounds.height / 2,
+          },
+          onComplete: (value: { labelName: string; field: string }) => {
+            const relativeBounds = tempOverlay.getRelativeBounds();
+
+            const detection = overlayFactory.create<
+              BoundingBoxOptions,
+              BoundingBoxOverlay
+            >("bounding-box", {
+              field: value.field,
+              sampleId: currentSampleId,
+              label: {
+                id: objectId(),
+                label: value.labelName,
+                tags: [],
+                bounding_box: [
+                  relativeBounds.x,
+                  relativeBounds.y,
+                  relativeBounds.width,
+                  relativeBounds.height,
+                ],
+              },
+              relativeBounds: relativeBounds,
+              draggable: true,
+              selectable: true,
+            });
+
+            addOverlay(detection, true);
+
+            // Persist the overlay
+            scene.dispatchSafely({
+              type: LIGHTER_EVENTS.DO_PERSIST_OVERLAY,
+              detail: {
+                id: detection.id,
+                field: value.field,
+                sampleId: currentSampleId,
+                label: detection.label?.label ?? "",
+                bounds: detection.getRelativeBounds(),
+                misc: {},
+              },
+            });
+
+            // Set editing state
+            if (detection.label) {
+              setEditing(
+                atom<fos.AnnotationLabel>({
+                  id: detection.label?.id,
+                  data: detection.label as DetectionLabel,
+                  path: detection.field,
+                  expandedPath: detection.field + ".detections",
+                  type: DETECTION,
+                })
+              );
+            }
+
+            scene.exitInteractiveMode();
+          },
+          onDismiss: () => {
+            scene.exitInteractiveMode();
+            setIsInteractiveModeOnLocal(false);
           },
         });
-
-        if (overlay.label) {
-          setEditing(
-            atom<fos.AnnotationLabel>({
-              id: overlay.label?.id,
-              data: overlay.label as DetectionLabel,
-              path: overlay.field,
-              expandedPath: overlay.field + ".detections",
-              // todo: how to infer this smartly?
-              // most likely can be sure it's Detections here
-              type: DETECTION,
-            })
-          );
-        }
-
-        scene.exitInteractiveMode();
       }
     );
 
