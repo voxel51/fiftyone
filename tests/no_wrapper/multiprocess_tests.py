@@ -37,10 +37,29 @@ class GetDbConnTests(unittest.TestCase):
         conn = foo.get_db_conn()
         self.assertIsNotNone(conn)
         conn.client.close()
-        assert conn.client._closed == True
-        # should be able to reconnect
+        self.assertTrue(conn.client._closed)
+        # should reconnect
         conn = foo.get_db_conn()
-        assert conn.client._closed == False
+        self.assertFalse(conn.client._closed)
+
+
+class GetAsyncDbConnTests(unittest.TestCase):
+    def test_get_async_db_conn(self):
+        import fiftyone.core.odm as foo
+
+        conn = foo.get_async_db_conn(use_global=True)
+        self.assertIsNotNone(conn)
+
+        # Check that the connection is open
+        self.assertFalse(conn.delegate.client._closed)
+
+        # Close the connection
+        conn.delegate.client.close()
+        self.assertTrue(conn.delegate.client._closed)
+
+        # should reconnect
+        conn = foo.get_async_db_conn(use_global=True)
+        self.assertFalse(conn.delegate.client._closed)
 
 
 if __name__ == "__main__":
