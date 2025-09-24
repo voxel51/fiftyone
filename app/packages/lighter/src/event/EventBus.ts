@@ -95,7 +95,6 @@ export const LIGHTER_EVENTS = {
   DO_OVERLAY_HOVER: "do-overlay-hover",
   /** Emitted when the overlay needs to be forced to unhover state */
   DO_OVERLAY_UNHOVER: "do-overlay-unhover",
-
   /** Emitted when the overlay needs to be persisted */
   DO_PERSIST_OVERLAY: "do-persist-overlay",
 } as const;
