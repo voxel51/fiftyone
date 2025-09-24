@@ -2,6 +2,7 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
+import { Scene2D } from "@fiftyone/lighter";
 import {
   colorScheme,
   colorSeed,
@@ -10,7 +11,6 @@ import {
 } from "@fiftyone/state";
 import { useEffect } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
-import { Scene2D } from "../index";
 import { useLighterOverlayPersistence } from "./useLighterOverlayPersistence";
 import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
 

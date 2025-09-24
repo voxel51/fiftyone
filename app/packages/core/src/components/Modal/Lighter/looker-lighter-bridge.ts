@@ -1,7 +1,7 @@
 import { BaseState } from "@fiftyone/looker";
 import DetectionOverlay from "@fiftyone/looker/src/overlays/detection";
-import { BoundingBoxOptions, overlayFactory } from "..";
-import { BoundingBoxLabel } from "../overlay/BoundingBoxOverlay";
+import { BoundingBoxOptions, overlayFactory } from "@fiftyone/lighter";
+import { BoundingBoxLabel } from "@fiftyone/lighter/src/overlay/BoundingBoxOverlay";
 
 // todo: this is temporary hack
 export const convertLegacyToLighterDetection = (

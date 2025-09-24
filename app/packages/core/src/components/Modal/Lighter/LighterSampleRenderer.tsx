@@ -1,6 +1,13 @@
 /**
  * Copyright 2017-2025, Voxel51, Inc.
  */
+import {
+  ImageOptions,
+  ImageOverlay,
+  overlayFactory,
+  useLighter,
+  useLighterSetupWithPixi,
+} from "@fiftyone/lighter";
 import { loadOverlays } from "@fiftyone/looker/src/overlays";
 import DetectionOverlay from "@fiftyone/looker/src/overlays/detection";
 import * as fos from "@fiftyone/state";
@@ -13,10 +20,9 @@ import {
 } from "@fiftyone/state";
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
-import { ImageOptions, ImageOverlay, overlayFactory } from "../index";
-import { singletonCanvas } from "../renderer/SharedCanvas";
-import { useLighter, useLighterSetupWithPixi } from "./index";
+import { singletonCanvas } from "./SharedCanvas";
 import { convertLegacyToLighterDetection } from "./looker-lighter-bridge";
+import { useBridge } from "./useBridge";
 
 export interface LighterSampleRendererProps {
   /** Custom CSS class name */
@@ -121,7 +127,10 @@ const LighterSetupImpl = (props: {
 
   const canvas = singletonCanvas.getCanvas(containerRef.current!);
 
-  useLighterSetupWithPixi(canvas, options);
+  const { scene } = useLighterSetupWithPixi(canvas, options);
+
+  // This is the bridge between FiftyOne state management system and Lighter
+  useBridge(scene);
 
   return null;
 };
