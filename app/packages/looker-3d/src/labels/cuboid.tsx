@@ -22,6 +22,8 @@ export interface CuboidProps extends OverlayProps {
   dimensions: THREE.Vector3Tuple;
   itemRotation: THREE.Vector3Tuple;
   lineWidth?: number;
+  isSelectedForAnnotation?: boolean;
+  isSelectedForTransform?: boolean;
 }
 
 export const Cuboid = ({
@@ -37,6 +39,7 @@ export const Cuboid = ({
   label,
   color,
   useLegacyCoordinates,
+  isSelectedForAnnotation,
   isSelectedForTransform,
   isAnnotateMode,
   transformMode = "translate",
@@ -80,7 +83,8 @@ export const Cuboid = ({
   const { strokeAndFillColor, isSimilarLabelHovered } = useLabelColor(
     { selected, color },
     isHovered,
-    label
+    label,
+    isSelectedForAnnotation
   );
   const { handleTransformStart, handleTransformEnd } = useTransformHandlers(
     label,

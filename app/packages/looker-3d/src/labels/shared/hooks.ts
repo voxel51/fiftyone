@@ -40,7 +40,8 @@ export const useEventHandlers = (tooltip: any, label: any): EventHandlers => {
 export const useLabelColor = (
   props: Pick<BaseOverlayProps, "selected" | "color">,
   isHovered: boolean,
-  label: any
+  label: any,
+  isSelectedForAnnotation?: boolean
 ) => {
   const isSimilarLabelHovered = useSimilarLabels3d(label);
 
@@ -49,6 +50,7 @@ export const useLabelColor = (
     isHovered,
     isSimilarLabelHovered,
     defaultColor: props.color,
+    isSelectedForAnnotation,
   });
 
   return {

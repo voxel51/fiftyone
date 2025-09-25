@@ -6,7 +6,7 @@ import {
   nullableModalSampleId,
 } from "@fiftyone/state";
 import { atom, atomFamily, selector } from "recoil";
-import { Vector3 } from "three";
+import { Vector3, type Vector3Tuple } from "three";
 import { SHADE_BY_HEIGHT } from "./constants";
 import type { FoSceneNode } from "./hooks";
 import type { Actions, AssetLoadingLog, ShadeBy } from "./types";
@@ -210,9 +210,14 @@ export const polylineLabelLineWidthAtom = atom({
 export type TransformMode = "translate" | "rotate" | "scale";
 export type TransformSpace = "world" | "local";
 
-export const selectedLabelForTransformAtom = atom<any | null>({
-  key: "fo3d-selectedLabelForTransform",
+export const selectedLabelForAnnotationAtom = atom<any | null>({
+  key: "fo3d-selectedLabelForAnnotation",
   default: null,
+});
+
+export const isInTransformModeAtom = atom<boolean>({
+  key: "fo3d-isInTransformMode",
+  default: false,
 });
 
 export const transformModeAtom = atom<TransformMode>({
@@ -284,11 +289,51 @@ export const clearTransformStateSelector = selector({
   key: "fo3d-clearTransformState",
   get: () => null,
   set: ({ set }) => {
-    set(selectedLabelForTransformAtom, null);
+    set(selectedLabelForAnnotationAtom, null);
+    set(isInTransformModeAtom, false);
     set(transformModeAtom, "translate");
     set(transformSpaceAtom, "world");
     set(isTransformingAtom, false);
     set(transformDataAtom, {});
     // Note: We don't clear transformedLabelsAtom here as it should persist
   },
+});
+
+// Polyline segment addition state
+export interface NewPolylineSegment {
+  vertices: Vector3Tuple[];
+  isTemporary?: boolean; // For preview while placing
+}
+
+export interface PolylineSegmentEditState {
+  segments: NewPolylineSegment[];
+  activeVertexIndex?: number; // Index of vertex being transformed
+}
+
+// Map of label ID to new segments
+export const polylineSegmentEditsAtom = atom<
+  Record<string, PolylineSegmentEditState>
+>({
+  key: "fo3d-polylineSegmentEdits",
+  default: {},
+});
+
+// Current mode for polyline editing
+export type PolylineEditMode = "idle" | "adding" | "editing";
+
+export const polylineEditModeAtom = atom<PolylineEditMode>({
+  key: "fo3d-polylineEditMode",
+  default: "idle",
+});
+
+// Label ID of the polyline currently being edited
+export const activePolylineLabelAtom = atom<string | null>({
+  key: "fo3d-activePolylineLabel",
+  default: null,
+});
+
+// Temporary vertices being placed (before confirming the segment)
+export const temporaryVerticesAtom = atom<Vector3Tuple[]>({
+  key: "fo3d-temporaryVertices",
+  default: [],
 });

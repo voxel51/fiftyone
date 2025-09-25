@@ -2,8 +2,9 @@ import { useCallback, useEffect, useRef } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
 import {
   clearTransformStateSelector,
+  isInTransformModeAtom,
   isTransformingAtom,
-  selectedLabelForTransformAtom,
+  selectedLabelForAnnotationAtom,
   transformDataAtom,
   transformedLabelsAtom,
   transformModeAtom,
@@ -16,11 +17,14 @@ import {
 import type { OverlayLabel } from "./loader";
 
 /**
- * This hook is used to handle transform controls for 3D labels.
+ * This hook is used to handle annotation controls for 3D labels.
  */
-export const useTransformControls = () => {
-  const [selectedLabelForTransform, setSelectedLabelForTransform] =
-    useRecoilState(selectedLabelForTransformAtom);
+export const useAnnotationControls = () => {
+  const [selectedLabelForAnnotation, setSelectedLabelForAnnotation] =
+    useRecoilState(selectedLabelForAnnotationAtom);
+  const [isInTransformMode, setIsInTransformMode] = useRecoilState(
+    isInTransformModeAtom
+  );
   const [transformMode, setTransformMode] = useRecoilState(transformModeAtom);
   const [transformSpace, setTransformSpace] =
     useRecoilState(transformSpaceAtom);
@@ -43,29 +47,47 @@ export const useTransformControls = () => {
     dimensions: [number, number, number];
   } | null>(null);
 
-  const selectLabelForTransform = useCallback(
+  const selectLabelForAnnotation = useCallback(
     (label: OverlayLabel) => {
-      setSelectedLabelForTransform(label);
-      setTransformMode("translate");
-      setTransformSpace("world");
+      setSelectedLabelForAnnotation(label);
     },
-    [setSelectedLabelForTransform, setTransformMode, setTransformSpace]
+    [setSelectedLabelForAnnotation]
   );
 
-  const clearSelectedLabel = useCallback(() => {
-    setSelectedLabelForTransform(null);
+  const enterTransformMode = useCallback(() => {
+    if (selectedLabelForAnnotation) {
+      setIsInTransformMode(true);
+      setTransformMode("translate");
+      setTransformSpace("world");
+    }
+  }, [
+    selectedLabelForAnnotation,
+    setIsInTransformMode,
+    setTransformMode,
+    setTransformSpace,
+  ]);
+
+  const exitTransformMode = useCallback(() => {
+    setIsInTransformMode(false);
     setIsTransforming(false);
-  }, [setSelectedLabelForTransform, setIsTransforming]);
+    setTransformData({});
+  }, [setIsInTransformMode, setIsTransforming, setTransformData]);
+
+  const clearSelectedLabel = useCallback(() => {
+    setSelectedLabelForAnnotation(null);
+    setIsInTransformMode(false);
+    setIsTransforming(false);
+  }, [setSelectedLabelForAnnotation, setIsInTransformMode, setIsTransforming]);
 
   const toggleLabelSelection = useCallback(
     (label: OverlayLabel) => {
-      if (selectedLabelForTransform) {
+      if (selectedLabelForAnnotation) {
         clearSelectedLabel();
       } else {
-        selectLabelForTransform(label);
+        selectLabelForAnnotation(label);
       }
     },
-    [selectedLabelForTransform, clearSelectedLabel, selectLabelForTransform]
+    [selectedLabelForAnnotation, clearSelectedLabel, selectLabelForAnnotation]
   );
 
   const setMode = useCallback(
@@ -88,10 +110,10 @@ export const useTransformControls = () => {
     setTransformData({});
 
     // Store original values for delta calculation
-    if (selectedLabelForTransform) {
-      const labelId = selectedLabelForTransform._id;
+    if (selectedLabelForAnnotation && isInTransformMode) {
+      const labelId = selectedLabelForAnnotation._id;
       const existingTransform = transformedLabels[labelId];
-      const labelWithProps = selectedLabelForTransform as any;
+      const labelWithProps = selectedLabelForAnnotation as any;
 
       originalValuesRef.current = {
         position: existingTransform?.worldPosition ||
@@ -103,7 +125,8 @@ export const useTransformControls = () => {
   }, [
     setIsTransforming,
     setTransformData,
-    selectedLabelForTransform,
+    selectedLabelForAnnotation,
+    isInTransformMode,
     transformedLabels,
   ]);
 
@@ -115,12 +138,13 @@ export const useTransformControls = () => {
     // Save the final transformed values
     if (
       transformControlsRef.current &&
-      selectedLabelForTransform &&
+      selectedLabelForAnnotation &&
+      isInTransformMode &&
       originalValuesRef.current
     ) {
       const controls = transformControlsRef.current;
       const object = controls.object;
-      const labelId = selectedLabelForTransform._id;
+      const labelId = selectedLabelForAnnotation._id;
 
       if (object) {
         const newTransformedData: TransformedLabelData = {
@@ -137,7 +161,7 @@ export const useTransformControls = () => {
                   originalValuesRef.current.dimensions[2] * object.scale.z,
                 ]
               : transformedLabels[labelId]?.dimensions ||
-                (selectedLabelForTransform as any).dimensions || [1, 1, 1],
+                (selectedLabelForAnnotation as any).dimensions || [1, 1, 1],
           localRotation: [
             (object.rotation.x * 180) / Math.PI,
             (object.rotation.y * 180) / Math.PI,
@@ -162,7 +186,8 @@ export const useTransformControls = () => {
     setIsTransforming,
     setTransformData,
     transformControlsRef,
-    selectedLabelForTransform,
+    selectedLabelForAnnotation,
+    isInTransformMode,
     transformMode,
     transformedLabels,
     setTransformedLabels,
@@ -171,7 +196,8 @@ export const useTransformControls = () => {
   const handleTransformChange = useCallback(() => {
     if (
       !transformControlsRef.current ||
-      !selectedLabelForTransform ||
+      !selectedLabelForAnnotation ||
+      !isInTransformMode ||
       !originalValuesRef.current
     )
       return;
@@ -214,44 +240,54 @@ export const useTransformControls = () => {
     }
 
     setTransformData(newTransformData);
-  }, [transformMode, selectedLabelForTransform, setTransformData]);
+  }, [
+    transformMode,
+    selectedLabelForAnnotation,
+    isInTransformMode,
+    setTransformData,
+  ]);
 
   /**
    * This effect handles keyboard events for transform controls.
    * It listens for keydown events and handles the following:
-   * - Mode switching (G, R, S)
+   * - Mode switching (G, R, S) - only works when a label is selected for annotation
    * - Axis constraints (X, Y, Z for world, XX, YY, ZZ for local)
    * - ESC to deselect
    *
    * Note: these hotkeys are inspired by Blender.
    */
   useEffect(() => {
-    if (!selectedLabelForTransform) return;
-
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Only handle hotkeys when a label is selected for transform
-      if (!selectedLabelForTransform) return;
-
-      // Prevent default behavior for our hotkeys
-      const hotkeys = ["g", "r", "s", "x", "y", "z"];
-      if (hotkeys.includes(e.key.toLowerCase())) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-
       const key = e.key.toLowerCase();
 
-      // Mode switching (G, R, S)
-      if (key === "g") {
-        setMode("translate");
-      } else if (key === "r") {
-        setMode("rotate");
-      } else if (key === "s") {
-        setMode("scale");
+      // Mode switching (G, R, S) - only works when a label is selected for annotation
+      if (
+        (key === "g" || key === "r" || key === "s") &&
+        selectedLabelForAnnotation
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        // Enter transform mode if not already in it
+        if (!isInTransformMode) {
+          enterTransformMode();
+        }
+
+        // Set the appropriate transform mode
+        if (key === "g") {
+          setMode("translate");
+        } else if (key === "r") {
+          setMode("rotate");
+        } else if (key === "s") {
+          setMode("scale");
+        }
       }
 
-      // Axis constraints (X, Y, Z for world, XX, YY, ZZ for local)
-      if (key === "x" || key === "y" || key === "z") {
+      // Axis constraints (X, Y, Z for world, XX, YY, ZZ for local) - only when in transform mode
+      if ((key === "x" || key === "y" || key === "z") && isInTransformMode) {
+        e.preventDefault();
+        e.stopPropagation();
+
         const axis = key.toUpperCase();
 
         // Check if this is a double-tap for local space
@@ -273,9 +309,9 @@ export const useTransformControls = () => {
         lastKeyPressRef.current = { key, time: now };
       }
 
-      // ESC to deselect
-      if (key === "escape") {
-        clearTransformState(null);
+      // ESC to exit transform mode (but keep annotation selection)
+      if (key === "escape" && isInTransformMode) {
+        exitTransformMode();
         e.stopPropagation();
       }
     };
@@ -284,11 +320,21 @@ export const useTransformControls = () => {
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [selectedLabelForTransform, setMode, setSpace, clearSelectedLabel]);
+  }, [
+    selectedLabelForAnnotation,
+    isInTransformMode,
+    enterTransformMode,
+    exitTransformMode,
+    setMode,
+    setSpace,
+  ]);
 
   return {
-    selectedLabelForTransform,
-    selectLabelForTransform,
+    selectedLabelForAnnotation,
+    isInTransformMode,
+    selectLabelForAnnotation,
+    enterTransformMode,
+    exitTransformMode,
     toggleLabelSelection,
     clearSelectedLabel,
     transformMode,

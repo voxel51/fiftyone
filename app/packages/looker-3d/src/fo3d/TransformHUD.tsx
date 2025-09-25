@@ -5,7 +5,7 @@ import styled from "styled-components";
 import {
   hoveredLabelAtom,
   isTransformingAtom,
-  selectedLabelForTransformAtom,
+  selectedLabelForAnnotationAtom,
   transformDataAtom,
   transformModeAtom,
   transformedLabelsAtom,
@@ -57,7 +57,7 @@ const formatNumber = (
 export const TransformHUD = () => {
   const isTransforming = useRecoilValue(isTransformingAtom);
   const transformMode = useRecoilValue(transformModeAtom);
-  const selectedLabel = useRecoilValue(selectedLabelForTransformAtom);
+  const selectedLabel = useRecoilValue(selectedLabelForAnnotationAtom);
   const transformData = useRecoilValue(transformDataAtom);
   const hoveredLabel = useRecoilValue(hoveredLabelAtom);
   const transformedLabels = useRecoilValue(transformedLabelsAtom);

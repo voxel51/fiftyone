@@ -26,7 +26,7 @@ import { toEulerFromDegreesArray } from "../utils";
 import { Cuboid, type CuboidProps } from "./cuboid";
 import { type OverlayLabel, load3dOverlays } from "./loader";
 import { type PolyLineProps, Polyline } from "./polyline";
-import { useTransformControls } from "./useTransformControls";
+import { useAnnotationControls } from "./useAnnotationControls";
 
 export interface ThreeDLabelsProps {
   sampleMap: { [sliceOrFilename: string]: Sample } | fos.Sample[];
@@ -39,8 +39,9 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
     useRecoilValue(fos.lookerOptions({ withFilter: true, modal: true }));
 
   const {
-    selectedLabelForTransform,
-    selectLabelForTransform,
+    selectedLabelForAnnotation,
+    isInTransformMode,
+    selectLabelForAnnotation,
     transformMode,
     transformSpace,
     handleTransformStart,
@@ -48,7 +49,7 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
     handleTransformChange,
     clearSelectedLabel,
     transformControlsRef,
-  } = useTransformControls();
+  } = useAnnotationControls();
 
   const settings = fop.usePluginSettings<Looker3dSettings>(
     "3d",
@@ -105,11 +106,11 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
       // In annotate mode, handle transform selection
       if (mode === "annotate") {
         // If clicking the same label that's already selected, deselect it
-        if (selectedLabelForTransform?._id === label._id) {
+        if (selectedLabelForAnnotation?._id === label._id) {
           clearSelectedLabel();
         } else {
           // Otherwise, select the new label
-          selectLabelForTransform(label);
+          selectLabelForAnnotation(label);
         }
 
         return;
@@ -128,9 +129,9 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
     [
       onSelectLabel,
       mode,
-      selectLabelForTransform,
+      selectLabelForAnnotation,
       clearSelectedLabel,
-      selectedLabelForTransform,
+      selectedLabelForAnnotation,
     ]
   );
 
@@ -196,8 +197,12 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
             label={overlay}
             tooltip={tooltip}
             useLegacyCoordinates={settings.useLegacyCoordinates}
+            isSelectedForAnnotation={
+              selectedLabelForAnnotation?._id === overlay._id
+            }
             isSelectedForTransform={
-              selectedLabelForTransform?._id === overlay._id
+              selectedLabelForAnnotation?._id === overlay._id &&
+              isInTransformMode
             }
             isAnnotateMode={mode === "annotate"}
             transformMode={transformMode}
@@ -222,8 +227,12 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
             label={overlay}
             onClick={(e) => handleSelect(overlay, e)}
             tooltip={tooltip}
+            isSelectedForAnnotation={
+              selectedLabelForAnnotation?._id === overlay._id
+            }
             isSelectedForTransform={
-              selectedLabelForTransform?._id === overlay._id
+              selectedLabelForAnnotation?._id === overlay._id &&
+              isInTransformMode
             }
             isAnnotateMode={mode === "annotate"}
             transformMode={transformMode}
@@ -245,7 +254,8 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
     handleSelect,
     tooltip,
     settings,
-    selectedLabelForTransform,
+    selectedLabelForAnnotation,
+    isInTransformMode,
     transformMode,
     transformSpace,
     handleTransformStart,
