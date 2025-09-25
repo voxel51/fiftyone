@@ -1,132 +1,103 @@
-.. _fiftyone-plugins:
+.. _plugins-ecosystem:
 
-Plugins Overview
-================
+Plugins Ecosystem
+=================
 
 .. default-role:: code
 
-FiftyOne provides a powerful plugin framework that allows for extending and
-customizing the functionality of the tool to suit your specific needs.
+Welcome to the FiftyOne Plugins ecosystem! 🚀
 
-With plugins, you can add new functionality to the FiftyOne App, create
-integrations with other tools and APIs, render custom panels, and add custom
-actions to menus.
+Here you'll discover cutting-edge research, state-of-the-art models, and
+powerful add-ons that unlock new FiftyOne workflows.
 
-With :ref:`FiftyOne Enterprise <enterprise-delegated-operations>`, you can even write
-plugins that allow users to execute long-running tasks from within the App that
-run on a connected compute cluster.
+FiftyOne plugins allow you to extend and customize the functionality of the
+core tool to suit your specific needs. From advanced computer vision models to
+integrations with other popular AI tools, this curated collection of plugins
+will transform FiftyOne into your bespoke visual AI development workbench.
 
-Get started with plugins by installing some
-:ref:`popular plugins <plugins-getting-started>`, then try your hand at
-:ref:`writing your own <developing-plugins>`!
+.. raw:: html
 
-.. note::
+    <div class="plugins-search-container">
+        <div class="plugins-search-box">
+            <input type="text" id="plugin-search" placeholder="Search plugins by name, description, author, or category...">
+            <div class="plugins-search-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                </svg>
+            </div>
+        </div>
+    </div>
 
-    Check out the
-    `FiftyOne plugins <https://github.com/voxel51/fiftyone-plugins>`_
-    repository for a growing collection of plugins that you can easily
-    :ref:`download <plugins-download>` and use locally.
+.. raw:: html
 
-.. _plugins-getting-started:
+    <div style="margin:0; width: 100%; display:flex; justify-content:flex-end;">
+        <a href="https://github.com/voxel51/fiftyone-plugins?tab=readme-ov-file#contributing" target="_blank" class="sd-btn sd-btn-primary book-a-demo plugins-cta" rel="noopener noreferrer">
+            <div class="arrow">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="size-3">
+                <path stroke="currentColor" stroke-width="1.5"
+                        d="M1.458 11.995h20.125M11.52 22.063 21.584 12 11.521 1.937"
+                        vector-effect="non-scaling-stroke"></path>
+                </svg>  
+            </div>
+            <div class="text">Showcase your own plugin</div>
+        </a>
+    </div>
+    
+.. Plugins cards section -----------------------------------------------------
 
-Getting started
-_______________
+.. raw:: html
 
-What can plugins do for you? Get started by installing any of
-these plugins available in the
-`FiftyOne Plugins <https://github.com/voxel51/fiftyone-plugins>`_ repository:
+    <div id="plugin-cards-container">
 
-.. table::
-    :widths: 35 65
+    <nav class="navbar navbar-expand-lg navbar-light tutorials-nav col-12">
+        <div class="tutorial-tags-container">
+            <div id="dropdown-filter-tags">
+                <div class="tutorial-filter-menu">
+                    <div class="tutorial-filter filter-btn all-tag-selected" data-tag="all">All</div>
+                </div>
+            </div>
+        </nav>
+        
+    <hr class="tutorials-hr">
 
-    +-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------+
-    | `@voxel51/annotation <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/annotation/README.md>`_ | ✏️ Utilities for integrating FiftyOne with annotation tools                                                               |
-    +-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------+
-    | `@voxel51/brain <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/brain/README.md>`_           | 🧠 Utilities for working with the FiftyOne Brain                                                                          |
-    +-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------+
-    | `@voxel51/dashboard <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/dashboard/README.md>`_   | 📊 Create your own custom dashboards from within the App                                                                  |
-    +-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------+
-    | `@voxel51/evaluation <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/evaluation/README.md>`_ | ✅ Utilities for evaluating models with FiftyOne                                                                          |
-    +-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------+
-    | `@voxel51/io <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/io/README.md>`_                 | 📁 A collection of import/export utilities                                                                                |
-    +-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------+
-    | `@voxel51/indexes <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/indexes/README.md>`_       | 📈 Utilities for working with FiftyOne database indexes                                                                   |
-    +-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------+
-    | `@voxel51/runs <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/runs/README.md>`_             | 📈 Utilities for working with custom runs                                                                                 |
-    +-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------+
-    | `@voxel51/utils <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/utils/README.md>`_           | ⚒️ Call your favorite SDK utilities from the App                                                                          |
-    +-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------+
-    | `@voxel51/voxelgpt <https://github.com/voxel51/voxelgpt>`_                                                  | 🤖 An AI assistant that can query visual datasets, search the FiftyOne docs, and answer general computer vision questions |
-    +-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------+
-    | `@voxel51/zoo <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/zoo/README.md>`_               | 🌎 Download datasets and run inference with models from the FiftyOne Zoo, all without leaving the App                     |
-    +-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------+
+    <div class="row">
 
-For example, do you wish you could import data from within the App? With the
-`@voxel51/io <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/io/README.md>`_,
-plugin, you can!
+    <div id="tutorial-cards">
+    <div class="list">
 
-.. image:: /images/plugins/operators/examples/import.gif
+.. Add plugin cards below
 
-Want to send data for annotation from within the App? Sure thing! Just install the
-`@voxel51/annotation <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/annotation/README.md>`_
-plugin:
+.. include:: plugins_ecosystem/plugin_cards.rst
 
-.. image:: /images/plugins/operators/examples/annotation.gif
+.. End of plugin cards
 
-Have model predictions on your dataset that you want to evaluate? The
-`@voxel51/evaluation <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/evaluation/README.md>`_
-plugin makes it easy:
+.. raw:: html
 
-.. image:: /images/plugins/operators/examples/evaluation.gif
+    </div>
 
-Need to compute embedding for your dataset? Kick off the task with the
-`@voxel51/brain <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/brain/README.md>`_
-plugin and proceed with other work while the execution happens in the background:
+    <div class="pagination d-flex justify-content-center"></div>
 
-.. image:: /images/plugins/operators/examples/embeddings.gif
+    </div>
 
-Want to create a custom dashboard that displays statistics of interest about
-the current dataset? Just install the
-`@voxel51/dashboard <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/dashboard/README.md>`_
-plugin and build away:
+    </div>
 
-.. image:: /images/plugins/panels/dashboard-panel.gif
+.. End plugins cards section -------------------------------------------------
 
 .. note::
 
-    When you choose :ref:`delegated execution <delegated-operations>` in the
-    App, these tasks are automatically scheduled for execution on your
-    :ref:`connected orchestrator <delegated-orchestrator>` and you can continue
-    with other work!
-
-FiftyOne also includes a number of builtin features that are implemented as
-plugins. For example, :ref:`Panels <plugins-design-panels>` are miniature
-full-featured data applications that you can open in
-:ref:`App Spaces <app-spaces>` and interactively manipulate to explore your
-dataset and update/respond to updates from other spaces that are currently open
-in the App.
-
-Does your dataset have geolocation data? Use the
-:ref:`Map panel <app-map-panel>` to view it:
-
-.. image:: /images/app/app-map-panel.gif
-
-Want to :ref:`visualize embeddings <brain-embeddings-visualization>` in the
-App? Just open the :ref:`Embeddings panel <app-embeddings-panel>`:
-
-.. image:: /images/brain/brain-object-visualization.gif
-
-.. note::
-
-    Look interesting? Learn how to :ref:`develop your own <developing-plugins>`
-    plugins!
+   Community plugins are external projects maintained by their respective authors.
+   They are not part of FiftyOne core and may change independently.
+   Please review each plugin's documentation and license before use.
 
 .. toctree::
    :maxdepth: 1
    :hidden:
+   :glob:
 
-   Overview <self>
+   Overview <overview>
    Using plugins <using_plugins>
    Developing plugins <developing_plugins>
    API reference <api/plugins>
    TypeScript API reference <ts-api>
+   plugins_ecosystem/*
