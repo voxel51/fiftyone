@@ -478,13 +478,6 @@ def _apply_image_model_data_loader(
     with contextlib.ExitStack() as context:
         pb = context.enter_context(fou.ProgressBar(samples, progress=progress))
         ctx = context.enter_context(foc.SaveContext(samples))
-        submit = context.enter_context(
-            fou.async_executor(
-                max_workers=1,
-                skip_failures=skip_failures,
-                warning="Async failure labeling batches",
-            )
-        )
 
         def save_batch(sample_batch, labels_batch):
             with _handle_batch_error(skip_failures, sample_batch):
@@ -499,9 +492,15 @@ def _apply_image_model_data_loader(
                     )
                     ctx.save(sample)
 
-        for sample_batch, imgs in zip(
-            fou.iter_batches(samples, batch_size),
-            data_loader,
+        for submit, (sample_batch, imgs) in fou.async_iterator(
+            zip(
+                fou.iter_batches(samples, batch_size),
+                data_loader,
+            ),
+            limit=10,
+            max_workers=1,
+            skip_failures=skip_failures,
+            warning="Async failure labeling batches",
         ):
             with _handle_batch_error(skip_failures, sample_batch):
                 if isinstance(imgs, Exception):
@@ -1221,14 +1220,6 @@ def _compute_image_embeddings_data_loader(
         else:
             ctx = None
 
-        submit = context.enter_context(
-            fou.async_executor(
-                max_workers=1,
-                skip_failures=skip_failures,
-                warning="Async failure saving embeddings",
-            )
-        )
-
         def save_batch(sample_batch, embeddings_batch):
             with _handle_batch_error(skip_failures, sample_batch):
                 for sample, embedding in zip(sample_batch, embeddings_batch):
@@ -1236,9 +1227,15 @@ def _compute_image_embeddings_data_loader(
                     if ctx:
                         ctx.save(sample)
 
-        for sample_batch, imgs in zip(
-            fou.iter_batches(samples, batch_size),
-            data_loader,
+        for submit, (sample_batch, imgs) in fou.async_iterator(
+            zip(
+                fou.iter_batches(samples, batch_size),
+                data_loader,
+            ),
+            limit=10,
+            max_workers=1,
+            skip_failures=skip_failures,
+            warning="Async failure saving embeddings",
         ):
             embeddings_batch = [None] * len(sample_batch)
 

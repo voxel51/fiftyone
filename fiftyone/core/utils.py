@@ -3235,3 +3235,60 @@ def async_executor(
                 if not skip_failures:
                     raise e
                 logger.warning(warning, exc_info=True)
+
+
+def async_iterator(
+    iterator,
+    *,
+    limit,
+    max_workers,
+    skip_failures=False,
+    warning="Async failure",
+):
+    """
+    Wraps an iterable with a thread pool executor and provides a function to add
+    tasks to a background queue. When the background queue has more than
+    max number of allowed tasks, iteration pauses until a task completes.
+
+    Example::
+
+        for submit, item in async_iterator(iterator, limit=4, max_workers=4):
+            submit(task(item))
+
+    Args:
+        iterator: an iterable to consume
+        limit: the maximum number of background tasks to allow before
+            pausing iteration
+        max_workers: the maximum number of workers to use
+        skip_failures (False): whether to skip exceptions raised by tasks
+        warning ("Async failure"): the warning message to log if a task
+            raises an exception and ``skip_failures == True``
+
+    Raises:
+        Exception: if a task raises an exception and ``skip_failures == False``
+    """
+
+    def wait_for_task(future):
+        try:
+            yield future.result()
+        except Exception as e:
+            if not skip_failures:
+                raise e
+            logger.warning(warning, exc_info=True)
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = []
+
+        def submit(*args, **kwargs):
+            future = executor.submit(*args, **kwargs)
+            futures.append(future)
+            return future
+
+        for item in iterator:
+            yield submit, item
+
+            while len(futures) > limit:
+                wait_for_task(futures.pop(0))
+
+        for future in futures:
+            wait_for_task(future)
