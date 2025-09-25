@@ -9,10 +9,8 @@ This page describes how to write your own FiftyOne plugins.
 
 .. note::
 
-    Check out the
-    `FiftyOne plugins <https://github.com/voxel51/fiftyone-plugins>`_
-    repository for a growing collection of plugins that you can use as examples
-    when developing your own.
+    Check out the :ref:`Plugins Ecosystem <plugins-ecosystem>` for a growing
+    collection of plugins that you can use as examples when developing your own.
 
 .. _plugins-design-overview:
 
