@@ -1,5 +1,5 @@
 import { extend, useThree } from "@react-three/fiber";
-import React, { useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import * as THREE from "three";
 import { Line2 } from "three/examples/jsm/lines/Line2";
 import { LineGeometry } from "three/examples/jsm/lines/LineGeometry";
@@ -45,10 +45,15 @@ export const Line = ({
 
   useEffect(() => {
     return () => {
-      geometry.dispose();
-      material.dispose();
+      try {
+        geometry.dispose();
+        material.dispose();
+      } catch (error) {
+        console.error(error);
+      }
     };
   }, [geometry, material]);
 
+  // @ts-ignore
   return <line2 geometry={geometry} material={material} rotation={rotation} />;
 };

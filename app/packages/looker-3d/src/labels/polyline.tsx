@@ -1,7 +1,9 @@
 import chroma from "chroma-js";
 import { useEffect, useMemo, useRef } from "react";
+import { useSetRecoilState } from "recoil";
 import * as THREE from "three";
 import { PolylinePointMarker } from "../fo3d/components/PolylinePointMarker";
+import { hoveredLabelAtom } from "../state";
 import { Line } from "./line";
 import { createFilledPolygonMeshes } from "./polygon-fill-utils";
 import type { OverlayProps } from "./shared";
@@ -58,6 +60,7 @@ export const Polyline = ({
     onTransformStart,
     onTransformEnd
   );
+  const setHoveredLabel = useSetRecoilState(hoveredLabelAtom);
 
   const lines = useMemo(
     () =>
@@ -125,6 +128,25 @@ export const Polyline = ({
     ));
   }, [filled, points3d, rotation, material, label._id]);
 
+  // Calculate centroid of polylines for transform controls
+  const centerPosition = useMemo(() => {
+    if (points3d.length === 0) return [0, 0, 0];
+
+    const allPoints = points3d.flat();
+    if (allPoints.length === 0) return [0, 0, 0];
+
+    const sum = allPoints.reduce(
+      (acc, point) => [acc[0] + point[0], acc[1] + point[1], acc[2] + point[2]],
+      [0, 0, 0]
+    );
+
+    return [
+      sum[0] / allPoints.length,
+      sum[1] / allPoints.length,
+      sum[2] / allPoints.length,
+    ] as [number, number, number];
+  }, [points3d]);
+
   const pointMarkers = useMemo(() => {
     if (!isAnnotateMode) return null;
 
@@ -134,17 +156,25 @@ export const Polyline = ({
       .set("hsl.h", "+180")
       .hex();
 
-    return points3d.flatMap((pts, polylineIndex) =>
-      pts.map((point) => {
+    return points3d.flatMap((pts, polylineIndex) => {
+      let visitedPoints = new Set();
+
+      return pts.map((point) => {
+        const key = `${point[0]}-${point[1]}-${point[2]}-${polylineIndex}`;
+
+        if (visitedPoints.has(key)) return null;
+
+        visitedPoints.add(key);
+
         return (
           <PolylinePointMarker
-            key={`point-${label._id}-${polylineIndex}`}
+            key={key}
             position={new THREE.Vector3(...point)}
             color={complementaryColor}
           />
         );
-      })
-    );
+      });
+    });
   }, [isAnnotateMode, points3d, label._id, strokeAndFillColor]);
 
   // Cleanup meshes on unmount
@@ -190,14 +220,21 @@ export const Polyline = ({
       onTransformEnd={handleTransformEnd}
       onTransformChange={onTransformChange}
       transformControlsRef={transformControlsRef}
+      transformControlsPosition={centerPosition as THREE.Vector3Tuple}
     >
       <group
         onPointerOver={() => {
           setIsHovered(true);
+          if (isAnnotateMode) {
+            setHoveredLabel(label);
+          }
           onPointerOver();
         }}
         onPointerOut={() => {
           setIsHovered(false);
+          if (isAnnotateMode) {
+            setHoveredLabel(null);
+          }
           onPointerOut();
         }}
         onClick={onClick}

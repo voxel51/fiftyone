@@ -138,8 +138,10 @@ export const useTransformControls = () => {
                 ]
               : transformedLabels[labelId]?.dimensions ||
                 (selectedLabelForTransform as any).dimensions || [1, 1, 1],
-          localRotation: (selectedLabelForTransform as any).rotation || [
-            0, 0, 0,
+          localRotation: [
+            (object.rotation.x * 180) / Math.PI,
+            (object.rotation.y * 180) / Math.PI,
+            (object.rotation.z * 180) / Math.PI,
           ],
           worldRotation: [
             (object.rotation.x * 180) / Math.PI,
@@ -181,6 +183,11 @@ export const useTransformControls = () => {
 
     const newTransformData: TransformData = {};
 
+    // Store absolute world position
+    newTransformData.x = object.position.x;
+    newTransformData.y = object.position.y;
+    newTransformData.z = object.position.z;
+
     switch (transformMode) {
       case "translate":
         // Show delta from original position
@@ -199,7 +206,7 @@ export const useTransformControls = () => {
         break;
 
       case "rotate":
-        // Show absolute rotation in degrees
+        // Absolute rotation in degrees (local rotation based on transformSpace setting)
         newTransformData.rotationX = (object.rotation.x * 180) / Math.PI;
         newTransformData.rotationY = (object.rotation.y * 180) / Math.PI;
         newTransformData.rotationZ = (object.rotation.z * 180) / Math.PI;

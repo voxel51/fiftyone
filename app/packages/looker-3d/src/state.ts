@@ -180,6 +180,12 @@ export const currentHoveredPointAtom = atom<Vector3 | null>({
   default: null,
 });
 
+// Hover state for labels in annotate mode
+export const hoveredLabelAtom = atom<any | null>({
+  key: "fo3d-hoveredLabel",
+  default: null,
+});
+
 export const cuboidLabelLineWidthAtom = atom({
   key: "fo3d-cuboidLabelLineWidth",
   default: 3,
@@ -226,14 +232,29 @@ export const isTransformingAtom = atom<boolean>({
 
 // Transform data for HUD display
 export interface TransformData {
+  // Delta X
   dx?: number;
+  // Delta Y
   dy?: number;
+  // Delta Z
   dz?: number;
+  // Absolute world position X
+  x?: number;
+  // Absolute world position Y
+  y?: number;
+  // Absolute world position Z
+  z?: number;
+  // Dimensions X
   dimensionX?: number;
+  // Dimensions Y
   dimensionY?: number;
+  // Dimensions ZÒ
   dimensionZ?: number;
+  // Local rotation X (in degrees)
   rotationX?: number;
+  // Local rotation Y (in degrees)
   rotationY?: number;
+  // Local rotation Z (in degrees)
   rotationZ?: number;
 }
 

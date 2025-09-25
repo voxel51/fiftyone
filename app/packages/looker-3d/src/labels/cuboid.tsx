@@ -1,9 +1,11 @@
 import { extend } from "@react-three/fiber";
 import { useEffect, useMemo } from "react";
+import { useSetRecoilState } from "recoil";
 import * as THREE from "three";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry";
+import { hoveredLabelAtom } from "../state";
 import type { OverlayProps } from "./shared";
 import { TransformControlsWrapper } from "./shared/TransformControls";
 import {
@@ -85,6 +87,7 @@ export const Cuboid = ({
     onTransformStart,
     onTransformEnd
   );
+  const setHoveredLabel = useSetRecoilState(hoveredLabelAtom);
 
   const edgesGeo = useMemo(() => new THREE.EdgesGeometry(geo), [geo]);
   const geometry = useMemo(
@@ -143,26 +146,34 @@ export const Cuboid = ({
       onTransformEnd={handleTransformEnd}
       onTransformChange={onTransformChange}
       transformControlsRef={transformControlsRef}
+      transformControlsPosition={[loc.x, loc.y, loc.z]}
     >
       {/* Outline */}
+      {/* @ts-ignore */}
       <lineSegments2
+        position={[loc.x, loc.y, loc.z]}
+        rotation={actualRotation}
         geometry={geometry}
         material={material}
-        position={loc}
-        rotation={actualRotation}
       />
 
       {/* Clickable volume */}
       <mesh
-        position={loc}
+        position={[loc.x, loc.y, loc.z]}
         rotation={actualRotation}
         onClick={onClick}
         onPointerOver={() => {
           setIsHovered(true);
+          if (isAnnotateMode) {
+            setHoveredLabel(label);
+          }
           onPointerOver();
         }}
         onPointerOut={() => {
           setIsHovered(false);
+          if (isAnnotateMode) {
+            setHoveredLabel(null);
+          }
           onPointerOut();
         }}
         {...restEventHandlers}
