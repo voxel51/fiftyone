@@ -4,7 +4,7 @@ Getting Started with FiftyOne Enterprise
 ========================================
 .. default-role:: code
 
-This guide provides comprehensive instructions to successful upload your first dataset to FiftyOne Enterprise (FOE). 
+This guide provides comprehensive instructions to successfully upload your first dataset to FiftyOne Enterprise (FOE).
 
 Upload Cloud Credentials to your Deployment
 -------------------------------------------
