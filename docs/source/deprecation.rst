@@ -24,7 +24,7 @@ Kubernetes 1.30 and older.
 .. _deprecation-mongodb-5.0:
 
 MongoDB 5.0
----------------
+-----------
 *Support ending July 1, 2025*
 
 `MongoDB 5.0 <https://www.mongodb.com/legal/support-policy/lifecycles>`_

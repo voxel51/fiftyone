@@ -78,6 +78,7 @@ $(document).ready(function () {
       };
 
       var tutorialList = new List("tutorial-cards", options);
+      window.tutorialList = tutorialList;
 
       function filterSelectedTags(cardTags, selectedTags) {
         return cardTags.some(function (tag) {
@@ -89,6 +90,9 @@ $(document).ready(function () {
 
       function updateList() {
         var selectedTags = [];
+        var searchTerm = (document.getElementById("plugin-search")?.value || "")
+          .toLowerCase()
+          .trim();
 
         $(".selected").each(function () {
           selectedTags.push($(this).data("tag"));
@@ -96,19 +100,49 @@ $(document).ready(function () {
 
         tutorialList.filter(function (item) {
           var cardTags;
-
           if (item.values().tags == null) {
             cardTags = [""];
           } else {
             cardTags = item.values().tags.split(",");
           }
 
-          if (selectedTags.length == 0) {
-            return true;
-          } else {
-            return filterSelectedTags(cardTags, selectedTags);
-          }
+          var matchesTags =
+            selectedTags.length == 0 ||
+            filterSelectedTags(cardTags, selectedTags);
+
+          if (!matchesTags) return false;
+
+          if (!searchTerm) return true;
+
+          var elm = item.elm;
+          if (!elm) return false;
+
+          var header =
+            elm
+              .querySelector(".card-title-container strong")
+              ?.textContent?.toLowerCase() || "";
+          var description =
+            elm.querySelector(".card-summary")?.textContent?.toLowerCase() ||
+            "";
+          var tags =
+            elm.querySelector(".tags")?.textContent?.toLowerCase() || "";
+          var author =
+            elm.querySelector(".card-subtitle")?.textContent?.toLowerCase() ||
+            "";
+
+          var searchableText = `${header} ${description} ${tags} ${author}`;
+          return searchableText.indexOf(searchTerm) !== -1;
         });
+
+        var allButton = document.querySelector(
+          '.tutorial-filter[data-tag="all"]'
+        );
+        if (allButton) {
+          var visibleCount = document.querySelectorAll(
+            ".tutorials-card-container"
+          ).length;
+          allButton.textContent = `All (${visibleCount})`;
+        }
       }
 
       $(".filter-btn").on("click", function () {
@@ -127,6 +161,22 @@ $(document).ready(function () {
 
         updateList();
       });
+
+      var searchInput = document.getElementById("plugin-search");
+      if (searchInput) {
+        searchInput.addEventListener("input", function () {
+          updateList();
+        });
+      }
+      const allButton = document.querySelector(
+        '.tutorial-filter[data-tag="all"]'
+      );
+      if (allButton && searchInput) {
+        allButton.addEventListener("click", function () {
+          searchInput.value = "";
+          updateList();
+        });
+      }
     },
   };
 

@@ -3,16 +3,11 @@ FiftyOne Installation
 
 .. default-role:: code
 
-.. toctree::
-  :hidden:
-
-  Virtual environments <virtualenv>
-  Troubleshooting <troubleshooting>
-
 .. note::
 
-    Need to collaborate on your datasets? Check out
-    :ref:`FiftyOne Enterprise <fiftyone-enterprise>`!
+    Did you know? :ref:`FiftyOne Enterprise <fiftyone-enterprise>` is an open
+    source-compatible deployment of FiftyOne that supports multiuser
+    collaboration, cloud data, on-demand compute, and much more 🚀
 
 .. _install-prereqs:
 
@@ -220,7 +215,7 @@ a dataset for the first time in a newer version of FiftyOne.
 
   If you are a FiftyOne 1.2.0 or lower user with an Ubuntu 24 operating system,
   you will need to
-  :ref:`upgrade your MongoDB binaries <mongodb-7-to-8>`.
+  :ref:`upgrade your MongoDB binaries <upgrading-to-mongodb-8>`.
 
 .. _downgrading-fiftyone:
 
@@ -276,3 +271,12 @@ FiftyOne and all of its subpackages can be uninstalled with:
 .. code-block:: shell
 
    pip uninstall fiftyone fiftyone-brain fiftyone-db
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+
+   Usage environments <environments>
+   Python venvs <virtualenv>
+   Upgrading MongoDB <upgrading-mongodb>
+   Troubleshooting <troubleshooting>

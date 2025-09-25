@@ -53,17 +53,24 @@ most impactful ways to boost the performance of your model.
 FiftyOne provides the building blocks for optimizing your dataset analysis
 pipeline. Use it to get hands-on with your data, including visualizing complex
 labels, evaluating your models, exploring scenarios of interest, identifying
-failure modes, finding annotation mistakes, and much more!
+failure modes, finding annotation mistakes, and much more.
+
+.. note::
+
+  FiftyOne is growing!
+  `Sign up for the mailing list <https://share.hsforms.com/1zpJ60ggaQtOoVeBqIZdaaA2ykyk>`_
+  to learn about new features as they come out.
+
+Where to Begin
+______________
+
+Get up and running in a couple minutes by installing FiftyOne:
 
 .. custombutton::
-    :button_text: Install FiftyOne!
-    :button_link: getting_started/install.html
+    :button_text: Install FiftyOne
+    :button_link: installation/index.html
 
-Where to Begin?
-===============
-
-Ready to dive into FiftyOne? Choose a guided learning experience tailored 
-to your use case:
+Then check out a guided learning experience tailored to your use case:
 
 .. raw:: html
 
@@ -74,217 +81,52 @@ to your use case:
     :description: Explore medical imaging workflows with DICOM, CT scans, and volumetric data.
     :level: Beginner
     :time: 15-25 min
-    :link: getting_started_guides/medical_imaging/index.html
+    :link: getting_started/medical_imaging/index.html
+
 .. customguidescard::
     :title: Self-Driving Guide
     :description: Dive into autonomous vehicle data workflows with sensor fusion and trajectory analysis.
     :level: Beginner
     :time: 20-30 min
-    :link: getting_started_guides/self_driving/index.html
+    :link: getting_started/self_driving/index.html
+
 .. customguidescard::
     :title: Model Evaluation Guide
     :description: Comprehensive model evaluation workflows with advanced analysis techniques.
     :level: Beginner
     :time: 15-25 min
-    :link: getting_started_guides/model_evaluation/index.html
+    :link: getting_started/model_evaluation/index.html
 
 .. raw:: html
 
     </div>
 
-.. raw:: html
+None of those guides seem quite right? Here are some more options:
 
-    <div class="text-center" style="margin: 1rem 0 2rem 0;">
-        <a href="getting_started_guides/index.html" class="sd-btn sd-btn-primary" style="font-size: 1rem; padding: 12px 24px;">
-            Explore All Getting Started Guides
-        </a>
-    </div>
+**Working with object detection?** → :doc:`Explore the Object Detection Guide <getting_started/object_detection/index>`
 
+**Have medical imaging data?** → :doc:`Check out the Medical Imaging Guide <getting_started/medical_imaging/index>`
 
-Not sure where to start? Take our quick assessment:
+**Working on autonomous vehicles?** → :doc:`Jump into the Self-Driving Guide <getting_started/self_driving/index>`
 
-**Working with object detection?** → :doc:`Explore the Object Detection Guide <getting_started_guides/object_detection/index>`
+**Need 3D computer vision?** → :doc:`Explore the 3D Visual AI Guide <getting_started/threed_visual_ai/index>`
 
-**Have medical imaging data?** → :doc:`Begin with Medical Imaging Guide <getting_started_guides/medical_imaging/index>`
+**Want to evaluate model performance?** → :doc:`Follow the Model Evaluation Guide <getting_started/model_evaluation/index>`
 
-**Working on autonomous vehicles?** → :doc:`Jump to Self-Driving Guide <getting_started_guides/self_driving/index>`
+.. custombutton::
+    :button_text: Explore all getting started guides
+    :button_link: getting_started/index.html
 
-**Need 3D computer vision?** → :doc:`Explore 3D Visual AI Guide <getting_started_guides/threed_visual_ai/index>`
+Ready to dive deeper into FiftyOne? Check out these resources:
 
-**Want to evaluate model performance?** → :doc:`Start with Model Evaluation Guide <getting_started_guides/model_evaluation/index>`
-
-
-FiftyOne integrates naturally with your favorite tools. Click on a logo to
-learn how:
-
-.. raw:: html
-
-    <div class="integrations-logos">
-
-.. customimagelink::
-    :image_link: recipes/adding_detections.html
-    :image_src: https://voxel51.com/images/integrations/pytorch-128.png
-    :image_title: PyTorch
-
-.. customimagelink::
-    :image_link: integrations/lightning_flash.html
-    :image_src: https://voxel51.com/images/integrations/pytorch-lightning-128.png
-    :image_title: PyTorch Lightning
-
-.. customimagelink::
-    :image_link: integrations/huggingface.html
-    :image_src: https://voxel51.com/images/integrations/hugging-face-128.png
-    :image_title: Hugging Face
-
-.. customimagelink::
-    :image_link: integrations/ultralytics.html
-    :image_src: https://voxel51.com/images/integrations/ultralytics-128.png
-    :image_title: Ultralytics
-
-.. customimagelink::
-    :image_link: integrations/super_gradients.html
-    :image_src: https://voxel51.com/images/integrations/super-gradients-128.png
-    :image_title: SuperGradients
-
-.. customimagelink::
-    :image_link: recipes/adding_detections.html
-    :image_src: https://voxel51.com/images/integrations/tensorflow-128.png
-    :image_title: TensorFlow
-
-.. customimagelink::
-    :image_link: tutorials/detectron2.html
-    :image_src: https://voxel51.com/images/integrations/detectron2-128.png
-    :image_title: Detectron2
-
-.. customimagelink::
-    :image_link: integrations/qdrant.html
-    :image_src: https://voxel51.com/images/integrations/qdrant-128.png
-    :image_title: Qdrant
-
-.. customimagelink::
-    :image_link: integrations/redis.html
-    :image_src: https://voxel51.com/images/integrations/redis-128.png
-    :image_title: Redis
-
-.. customimagelink::
-    :image_link: integrations/pinecone.html
-    :image_src: https://voxel51.com/images/integrations/pinecone-128.png
-    :image_title: Pinecone
-
-.. customimagelink::
-    :image_link: integrations/mongodb.html
-    :image_src: https://voxel51.com/images/integrations/mongodb-128.png
-    :image_title: MongoDB
-
-.. customimagelink::
-    :image_link: integrations/elasticsearch.html
-    :image_src: https://voxel51.com/images/integrations/elasticsearch-128.png
-    :image_title: Elasticsearch
-
-.. customimagelink::
-    :image_link: integrations/postgres.html
-    :image_src: https://voxel51.com/images/integrations/postgres-128.png
-    :image_title: PostgreSQL
-
-.. customimagelink::
-    :image_link: integrations/mosaic.html
-    :image_src: https://voxel51.com/images/integrations/mosaic-128.png
-    :image_title: Mosaic
-
-.. customimagelink::
-    :image_link: integrations/milvus.html
-    :image_src: https://voxel51.com/images/integrations/milvus-128.png
-    :image_title: Milvus
-
-.. customimagelink::
-    :image_link: integrations/lancedb.html
-    :image_src: https://voxel51.com/images/integrations/lancedb-128.png
-    :image_title: LanceDB
-
-.. customimagelink::
-    :image_link: integrations/activitynet.html
-    :image_src: https://voxel51.com/images/integrations/activitynet-128.png
-    :image_title: ActivityNet
-
-.. customimagelink::
-    :image_link: integrations/coco.html
-    :image_src: https://voxel51.com/images/integrations/coco-128.png
-    :image_title: COCO
-
-.. customimagelink::
-    :image_link: integrations/open_images.html
-    :image_src: https://voxel51.com/images/integrations/open-images-128.png
-    :image_title: Open Images
-
-.. customimagelink::
-    :image_link: environments/index.html#notebooks
-    :image_src: https://voxel51.com/images/integrations/jupyter-128.png
-    :image_title: Jupyter
-
-.. customimagelink::
-    :image_link: environments/index.html#notebooks
-    :image_src: https://voxel51.com/images/integrations/colab-128.png
-    :image_title: Google Colab
-
-.. customimagelink::
-    :image_link: user_guide/plots.html
-    :image_src: https://voxel51.com/images/integrations/plotly-128.png
-    :image_title: Plotly
-
-.. customimagelink::
-    :image_link: integrations/cvat.html
-    :image_src: https://voxel51.com/images/integrations/cvat-128.png
-    :image_title: CVAT
-
-.. customimagelink::
-    :image_link: integrations/labelstudio.html
-    :image_src: https://voxel51.com/images/integrations/labelstudio-128.png
-    :image_title: Label Studio
-
-.. customimagelink::
-    :image_link: integrations/v7.html
-    :image_src: https://voxel51.com/images/integrations/v7-128.png
-    :image_title: V7
-
-.. customimagelink::
-    :image_link: https://github.com/segments-ai/segments-voxel51-plugin
-    :image_src: https://voxel51.com/images/integrations/segments-128.png
-    :image_title: Segments
-
-.. customimagelink::
-    :image_link: integrations/labelbox.html
-    :image_src: https://voxel51.com/images/integrations/labelbox-128.png
-    :image_title: Labelbox
-
-.. customimagelink::
-    :image_link: api/fiftyone.utils.scale.html
-    :image_src: https://voxel51.com/images/integrations/scale-128.png
-    :image_title: Scale AI
-
-.. customimagelink::
-    :image_link: enterprise/installation.html#google-cloud-storage
-    :image_src: https://voxel51.com/images/integrations/google-cloud-128.png
-    :image_title: Google Cloud
-
-.. customimagelink::
-    :image_link: enterprise/installation.html#amazon-s3
-    :image_src: https://voxel51.com/images/integrations/aws-128.png
-    :image_title: Amazon Web Services
-
-.. customimagelink::
-    :image_link: enterprise/installation.html#microsoft-azure
-    :image_src: https://voxel51.com/images/integrations/azure-128.png
-    :image_title: Azure
-
-.. raw:: html
-
-    </div>
-
-.. note::
-
-  FiftyOne is growing!
-  `Sign up for the mailing list <https://share.hsforms.com/1zpJ60ggaQtOoVeBqIZdaaA2ykyk>`_
-  to learn about new features as they come out.
+* Try one of the :doc:`tutorials <tutorials/index>` that demonstrate the unique
+  capabilities of FiftyOne
+* Explore :doc:`recipes <recipes/index>` for integrating FiftyOne into
+  your current ML workflows
+* Check out the :doc:`cheat sheets <cheat_sheets/index>` for topics you may
+  want to master quickly
+* Consult the :doc:`user guide <user_guide/index>` for detailed instructions on
+  how to accomplish various tasks with FiftyOne
 
 .. _core-capabilities:
 
@@ -518,20 +360,174 @@ provided via GitHub repositories or URLs.
 
     session = fo.launch_app(dataset)
 
-What's Next?
+Integrations
 ____________
 
-Where should you go from here? You could...
+FiftyOne integrates naturally with your favorite tools. Click on a logo to
+learn how:
 
-* :ref:`Install FiftyOne <installing-fiftyone>`
-* Try one of the :doc:`tutorials <tutorials/index>` that demonstrate the unique
-  capabilities of FiftyOne
-* Explore :doc:`recipes <recipes/index>` for integrating FiftyOne into
-  your current ML workflows
-* Check out the :doc:`cheat sheets <cheat_sheets/index>` for topics you may
-  want to master quickly
-* Consult the :doc:`user guide <user_guide/index>` for detailed instructions on
-  how to accomplish various tasks with FiftyOne
+.. raw:: html
+
+    <div class="integrations-logos">
+
+.. customimagelink::
+    :image_link: recipes/adding_detections.html
+    :image_src: https://voxel51.com/images/integrations/pytorch-128.png
+    :image_title: PyTorch
+
+.. customimagelink::
+    :image_link: integrations/lightning_flash.html
+    :image_src: https://voxel51.com/images/integrations/pytorch-lightning-128.png
+    :image_title: PyTorch Lightning
+
+.. customimagelink::
+    :image_link: integrations/huggingface.html
+    :image_src: https://voxel51.com/images/integrations/hugging-face-128.png
+    :image_title: Hugging Face
+
+.. customimagelink::
+    :image_link: integrations/ultralytics.html
+    :image_src: https://voxel51.com/images/integrations/ultralytics-128.png
+    :image_title: Ultralytics
+
+.. customimagelink::
+    :image_link: integrations/super_gradients.html
+    :image_src: https://voxel51.com/images/integrations/super-gradients-128.png
+    :image_title: SuperGradients
+
+.. customimagelink::
+    :image_link: recipes/adding_detections.html
+    :image_src: https://voxel51.com/images/integrations/tensorflow-128.png
+    :image_title: TensorFlow
+
+.. customimagelink::
+    :image_link: tutorials/detectron2.html
+    :image_src: https://voxel51.com/images/integrations/detectron2-128.png
+    :image_title: Detectron2
+
+.. customimagelink::
+    :image_link: integrations/qdrant.html
+    :image_src: https://voxel51.com/images/integrations/qdrant-128.png
+    :image_title: Qdrant
+
+.. customimagelink::
+    :image_link: integrations/redis.html
+    :image_src: https://voxel51.com/images/integrations/redis-128.png
+    :image_title: Redis
+
+.. customimagelink::
+    :image_link: integrations/pinecone.html
+    :image_src: https://voxel51.com/images/integrations/pinecone-128.png
+    :image_title: Pinecone
+
+.. customimagelink::
+    :image_link: integrations/mongodb.html
+    :image_src: https://voxel51.com/images/integrations/mongodb-128.png
+    :image_title: MongoDB
+
+.. customimagelink::
+    :image_link: integrations/elasticsearch.html
+    :image_src: https://voxel51.com/images/integrations/elasticsearch-128.png
+    :image_title: Elasticsearch
+
+.. customimagelink::
+    :image_link: integrations/postgres.html
+    :image_src: https://voxel51.com/images/integrations/postgres-128.png
+    :image_title: PostgreSQL
+
+.. customimagelink::
+    :image_link: integrations/mosaic.html
+    :image_src: https://voxel51.com/images/integrations/mosaic-128.png
+    :image_title: Mosaic
+
+.. customimagelink::
+    :image_link: integrations/milvus.html
+    :image_src: https://voxel51.com/images/integrations/milvus-128.png
+    :image_title: Milvus
+
+.. customimagelink::
+    :image_link: integrations/lancedb.html
+    :image_src: https://voxel51.com/images/integrations/lancedb-128.png
+    :image_title: LanceDB
+
+.. customimagelink::
+    :image_link: integrations/activitynet.html
+    :image_src: https://voxel51.com/images/integrations/activitynet-128.png
+    :image_title: ActivityNet
+
+.. customimagelink::
+    :image_link: integrations/coco.html
+    :image_src: https://voxel51.com/images/integrations/coco-128.png
+    :image_title: COCO
+
+.. customimagelink::
+    :image_link: integrations/open_images.html
+    :image_src: https://voxel51.com/images/integrations/open-images-128.png
+    :image_title: Open Images
+
+.. customimagelink::
+    :image_link: environments/index.html#notebooks
+    :image_src: https://voxel51.com/images/integrations/jupyter-128.png
+    :image_title: Jupyter
+
+.. customimagelink::
+    :image_link: environments/index.html#notebooks
+    :image_src: https://voxel51.com/images/integrations/colab-128.png
+    :image_title: Google Colab
+
+.. customimagelink::
+    :image_link: user_guide/plots.html
+    :image_src: https://voxel51.com/images/integrations/plotly-128.png
+    :image_title: Plotly
+
+.. customimagelink::
+    :image_link: integrations/cvat.html
+    :image_src: https://voxel51.com/images/integrations/cvat-128.png
+    :image_title: CVAT
+
+.. customimagelink::
+    :image_link: integrations/labelstudio.html
+    :image_src: https://voxel51.com/images/integrations/labelstudio-128.png
+    :image_title: Label Studio
+
+.. customimagelink::
+    :image_link: integrations/v7.html
+    :image_src: https://voxel51.com/images/integrations/v7-128.png
+    :image_title: V7
+
+.. customimagelink::
+    :image_link: https://github.com/segments-ai/segments-voxel51-plugin
+    :image_src: https://voxel51.com/images/integrations/segments-128.png
+    :image_title: Segments
+
+.. customimagelink::
+    :image_link: integrations/labelbox.html
+    :image_src: https://voxel51.com/images/integrations/labelbox-128.png
+    :image_title: Labelbox
+
+.. customimagelink::
+    :image_link: api/fiftyone.utils.scale.html
+    :image_src: https://voxel51.com/images/integrations/scale-128.png
+    :image_title: Scale AI
+
+.. customimagelink::
+    :image_link: enterprise/installation.html#google-cloud-storage
+    :image_src: https://voxel51.com/images/integrations/google-cloud-128.png
+    :image_title: Google Cloud
+
+.. customimagelink::
+    :image_link: enterprise/installation.html#amazon-s3
+    :image_src: https://voxel51.com/images/integrations/aws-128.png
+    :image_title: Amazon Web Services
+
+.. customimagelink::
+    :image_link: enterprise/installation.html#microsoft-azure
+    :image_src: https://voxel51.com/images/integrations/azure-128.png
+    :image_title: Azure
+
+.. raw:: html
+
+    </div>
 
 Need Support?
 _____________
@@ -546,9 +542,8 @@ us at support@voxel51.com.
 
    Overview <self>
    FiftyOne Enterprise 🚀 <enterprise/index>
-   Installation <getting_started/install>
-   Environments <environments/index>
-   Getting Started Guides <getting_started_guides/index>
+   Installation <installation/index>
+   Getting Started <getting_started/index>
    Tutorials <tutorials/index>
    Recipes <recipes/index>
    Cheat Sheets <cheat_sheets/index>
@@ -556,8 +551,8 @@ us at support@voxel51.com.
    Dataset Zoo <dataset_zoo/index>
    Model Zoo <model_zoo/index>
    FiftyOne Brain <brain>
-   Integrations <integrations/index>
    Plugins <plugins/index>
+   Integrations <integrations/index>
    CLI <cli/index>
    API Reference <api/fiftyone>
    Release Notes <release-notes>
