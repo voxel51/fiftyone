@@ -1,11 +1,11 @@
 import { ColoredDot } from "@fiftyone/components";
+import { useTriggerPanelEvent } from "@fiftyone/operators";
 import { useMutation } from "@fiftyone/state";
 import { Chip, MenuItem, Select, Stack, Typography } from "@mui/material";
-import { useTriggerEvent } from "./utils";
 
 export default function Status(props: StatusProps) {
   const { status, canEdit, readOnly, setStatusEvent } = props;
-  const triggerEvent = useTriggerEvent();
+  const triggerEvent = useTriggerPanelEvent();
   const [enable, message] = useMutation(canEdit, "update evaluation status");
 
   if (!readOnly) {

@@ -1,4 +1,5 @@
 import { PanelCTA } from "@fiftyone/components";
+import { useTriggerPanelEvent } from "@fiftyone/operators";
 import { constants } from "@fiftyone/utilities";
 import { Box } from "@mui/material";
 import React, { useCallback, useMemo } from "react";
@@ -7,11 +8,7 @@ import ConfirmationDialog from "./ConfirmationDialog";
 import Evaluate from "./Evaluate";
 import Evaluation from "./Evaluation";
 import Overview from "./Overview";
-import {
-  openModelEvalDialog,
-  selectedModelEvaluation,
-  useTriggerEvent,
-} from "./utils";
+import { openModelEvalDialog, selectedModelEvaluation } from "./utils";
 
 const TRY_LINK = "http://voxel51.com/try-evaluation";
 
@@ -61,7 +58,7 @@ export default function NativeModelEvaluationView(props) {
   const { page = "overview", key, id, compareKey } = viewState;
   const showEmptyOverview =
     computedEvaluations.length === 0 && pending_evaluations.length === 0;
-  const triggerEvent = useTriggerEvent();
+  const triggerEvent = useTriggerPanelEvent();
   const [showCTA, setShowCTA] = React.useState(false);
   const onEvaluate = useCallback(() => {
     if (constants.IS_APP_MODE_FIFTYONE) {
