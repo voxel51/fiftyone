@@ -92,6 +92,10 @@ FiftyOne supports the configuration options described below:
 |                                  |                                           |                               | will only listen on the local interface. See :ref:`this page <restricting-app-address>`|
 |                                  |                                           |                               | for more information.                                                                  |
 +----------------------------------+-------------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `delegated_operation_monitor_interval` | `FIFTYONE_DELEGATED_OPERATION_MONITOR_INTERVAL` | `60`                    | Interval to monitor delegated operation (DO) state in seconds. If the DO has failed we |
+|                                  |                                           |                               | will terminate execution, otherwise we will update the DO to confirm the worker is     |
+|                                  |                                           |                               | still alive and executing.                                                             |
++----------------------------------+-------------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `do_not_track`                   | `FIFTYONE_DO_NOT_TRACK`                   | `False`                       | Controls whether UUID based import and App usage events are tracked.                   |
 +----------------------------------+-------------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `logging_destination`            | `FIFTYONE_LOGGING_DESTINATION`            | `stdout`                      | Controls FiftyOne's package-wide logging destination. Can be either ``stdout`` to send |
@@ -137,8 +141,6 @@ FiftyOne supports the configuration options described below:
 +----------------------------------+-------------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `plugins_cache_enabled`          | `FIFTYONE_PLUGINS_CACHE_ENABLED`          | `False`                       | When set to ``True`` plugins will be cached until their directory's ``mtime`` changes. |
 |                                  |                                           |                               | This is intended to be used in production.                                             |
-+----------------------------------+-------------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `do_not_track`                   | `FIFTYONE_DO_NOT_TRACK`                   | `False`                       | Controls whether UUID based import and App usage events are tracked.                   |
 +----------------------------------+-------------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `show_progress_bars`             | `FIFTYONE_SHOW_PROGRESS_BARS`             | `True`                        | Controls whether progress bars are printed to the terminal when performing             |
 |                                  |                                           |                               | operations such reading/writing large datasets or activating FiftyOne                  |

@@ -3193,6 +3193,13 @@ class DelegatedLaunchCommand(Command):
             help="whether to monitor the state of the operation with a parent process",
         )
 
+        parser.add_argument(
+            "--monitor-interval",
+            type=int,
+            default=fo.config.delegated_operation_monitor_interval,
+            help="the interval in seconds at which to monitor the operation status (default: %(default)s)",
+        )
+
     @staticmethod
     def execute(parser, args):
         supported_types = ("local",)
@@ -3203,10 +3210,12 @@ class DelegatedLaunchCommand(Command):
             )
 
         if args.type == "local":
-            _launch_delegated_local(monitor=args.monitor)
+            _launch_delegated_local(
+                monitor=args.monitor, monitor_interval=args.monitor_interval
+            )
 
 
-def _launch_delegated_local(monitor=False):
+def _launch_delegated_local(monitor=False, monitor_interval=60):
     from fiftyone.core.session.session import _WELCOME_MESSAGE
 
     try:
@@ -3216,7 +3225,12 @@ def _launch_delegated_local(monitor=False):
         print("Delegated operation service running")
         print("\nTo exit, press ctrl + c")
         while True:
-            dos.execute_queued_operations(limit=1, log=True, monitor=monitor)
+            dos.execute_queued_operations(
+                limit=1,
+                log=True,
+                monitor=monitor,
+                check_interval_seconds=monitor_interval,
+            )
             time.sleep(0.5)
     except KeyboardInterrupt:
         pass
