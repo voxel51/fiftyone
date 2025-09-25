@@ -734,7 +734,7 @@ class DelegatedOperationService(object):
                     )
                     return ExecutionResult(error=reason)
                 else:
-                    logger.info("Pinging operation %s", operation_id)
+                    logger.debug("Pinging operation %s", operation_id)
                     self._repo.ping(operation_id)
             except Exception as e:
                 reason = f"Error in monitoring loop: {e}"
