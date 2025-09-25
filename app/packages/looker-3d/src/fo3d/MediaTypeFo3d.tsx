@@ -764,7 +764,14 @@ export const MediaTypeFo3dComponent = () => {
         />
         <AdaptiveDpr pixelated />
         <AdaptiveEvents />
-        {!autoRotate && <CameraControls ref={cameraControlsRef} />}
+        {!autoRotate && (
+          <CameraControls
+            smoothTime={0.1}
+            dollySpeed={0.1}
+            dollyToCursor
+            ref={cameraControlsRef}
+          />
+        )}
         {autoRotate && <OrbitControls autoRotate={autoRotate} makeDefault />}
         <SceneControls scene={foScene} cameraControlsRef={cameraControlsRef} />
         <Gizmos />

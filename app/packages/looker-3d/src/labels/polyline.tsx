@@ -1,5 +1,10 @@
+import chroma from "chroma-js";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
+import { PolylinePointMarker } from "../fo3d/components/PolylinePointMarker";
+import { Line } from "./line";
+import { createFilledPolygonMeshes } from "./polygon-fill-utils";
+import type { OverlayProps } from "./shared";
 import { TransformControlsWrapper } from "./shared/TransformControls";
 import {
   useEventHandlers,
@@ -7,9 +12,6 @@ import {
   useLabelColor,
   useTransformHandlers,
 } from "./shared/hooks";
-import { Line } from "./line";
-import { createFilledPolygonMeshes } from "./polygon-fill-utils";
-import type { OverlayProps } from "./shared";
 
 export interface PolyLineProps extends OverlayProps {
   points3d: THREE.Vector3Tuple[][];
@@ -123,6 +125,28 @@ export const Polyline = ({
     ));
   }, [filled, points3d, rotation, material, label._id]);
 
+  const pointMarkers = useMemo(() => {
+    if (!isAnnotateMode) return null;
+
+    // this is to have contrast for annotation,
+    // or else the point markers would be invisible with large line widths
+    const complementaryColor = chroma(strokeAndFillColor)
+      .set("hsl.h", "+180")
+      .hex();
+
+    return points3d.flatMap((pts, polylineIndex) =>
+      pts.map((point) => {
+        return (
+          <PolylinePointMarker
+            key={`point-${label._id}-${polylineIndex}`}
+            position={new THREE.Vector3(...point)}
+            color={complementaryColor}
+          />
+        );
+      })
+    );
+  }, [isAnnotateMode, points3d, label._id, strokeAndFillColor]);
+
   // Cleanup meshes on unmount
   useEffect(() => {
     return () => {
@@ -152,6 +176,7 @@ export const Polyline = ({
     <>
       {filled && filledMeshes}
       {lines}
+      {pointMarkers}
     </>
   );
 

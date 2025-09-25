@@ -2561,11 +2561,13 @@ __metadata:
     "@emotion/styled": "npm:^11.14.0"
     "@react-three/drei": "npm:^10.7.6"
     "@react-three/fiber": "npm:^8.18.0"
+    "@types/chroma-js": "npm:^3.1.1"
     "@types/node": "npm:^20.11.10"
     "@types/react": "npm:^18.2.48"
     "@types/react-dom": "npm:^18.2.18"
     "@types/three": "npm:^0.176.0"
     "@vitejs/plugin-react": "npm:^1.3.0"
+    chroma-js: "npm:^3.1.2"
     leva: "npm:^0.9.36"
     lodash: "npm:^4.17.21"
     nodemon: "npm:^3.0.3"
@@ -5377,6 +5379,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/chroma-js@npm:^3.1.1":
+  version: 3.1.1
+  resolution: "@types/chroma-js@npm:3.1.1"
+  checksum: 10/24770bd645425a1d90e3651dbb18bc5977290a2d2fc6e9f32d3892d4c43c1e9f554fb324cd0f4e20a23b734ee652278330a0d331973a7da824e0c15192ba129b
+  languageName: node
+  linkType: hard
+
 "@types/color-string@npm:^1.5.0":
   version: 1.5.5
   resolution: "@types/color-string@npm:1.5.5"
@@ -7837,6 +7846,13 @@ __metadata:
   version: 2.0.0
   resolution: "chownr@npm:2.0.0"
   checksum: 10/c57cf9dd0791e2f18a5ee9c1a299ae6e801ff58fee96dc8bfd0dcb4738a6ce58dd252a3605b1c93c6418fe4f9d5093b28ffbf4d66648cb2a9c67eaef9679be2f
+  languageName: node
+  linkType: hard
+
+"chroma-js@npm:^3.1.2":
+  version: 3.1.2
+  resolution: "chroma-js@npm:3.1.2"
+  checksum: 10/ea09b27d04b477a8fdc3314bfa6dc8de05feab47999ff1acdeba6cf3c32c76338baa5b4562d949d33d8adeca57754e5ea591c15b9985d65583c8771e7e07c2ef
   languageName: node
   linkType: hard
 
