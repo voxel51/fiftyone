@@ -868,8 +868,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         mock_get_operator,
     ):
         mock_process = mock.MagicMock()
-        # Process stays alive for one monitoring cycle, then exits
-        # Need more True values since is_alive() is called multiple times
+
         mock_process.is_alive.side_effect = [True, True, True, False, False]
 
         mock_context = mock.MagicMock()
@@ -926,10 +925,6 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         mock_process = mock.MagicMock()
         mock_process.pid = 12345
 
-        # This side_effect needs to be long enough for the entire sequence:
-        # Loop 1: while check (True), after-join check (True) -> PING
-        # Loop 2: while check (True), after-join check (True) -> DETECT FAIL & TERMINATE
-        # Post-loop: a final check in the finally block might happen after termination
         mock_process.is_alive.side_effect = [
             True,  # 1st loop: while condition
             True,  # 1st loop: after join
@@ -962,10 +957,6 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         failed_doc.run_state = ExecutionRunState.FAILED
         failed_doc.result = ExecutionResult(error="marked as failed by test")
 
-        # *** THE FIX IS HERE ***
-        # Use `side_effect` to simulate the document state changing over time.
-        # 1st call to self.svc.get() returns `running_doc`.
-        # 2nd call to self.svc.get() returns `failed_doc`.
         with patch.object(
             self.svc, "get", side_effect=[running_doc, failed_doc]
         ), patch("time.sleep", return_value=None), patch.object(
