@@ -3202,6 +3202,8 @@ class DelegatedLaunchCommand(Command):
 
     @staticmethod
     def execute(parser, args):
+        if args.monitor_interval < 1:
+            raise ValueError("monitor interval must be at least 1 second")
         supported_types = ("local",)
         if args.type not in supported_types:
             raise ValueError(
