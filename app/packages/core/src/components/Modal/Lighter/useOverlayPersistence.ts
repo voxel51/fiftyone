@@ -13,10 +13,9 @@ import { useCallback, useEffect } from "react";
 import { LIGHTER_EVENTS, Scene2D } from "@fiftyone/lighter";
 
 /**
- * Hook that handles tooltip events for lighter overlays.
- * Converts lighter hover events to tooltip state updates.
+ * Hook that handles overlay persistence events.
  */
-export const useLighterOverlayPersistence = (scene: Scene2D | null) => {
+export const useOverlayPersistence = (scene: Scene2D | null) => {
   const addBoundingBox = useOperatorExecutor("add_bounding_box");
   const removeBoundingBox = useOperatorExecutor("remove_bounding_box");
 
