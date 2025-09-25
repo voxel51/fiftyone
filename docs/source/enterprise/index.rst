@@ -69,6 +69,12 @@ pages on this site apply to Enterprise deployments as well.
     :button_link: installation.html
 
 .. customcalloutitem::
+    :header: Getting Started
+    :description: Learn how to upload your first dataset to FiftyOne Enterprise.
+    :button_text: Upload your first dataset
+    :button_link: getting_started.html
+
+.. customcalloutitem::
     :header: Cloud-backed media
     :description: Integrate FiftyOne Enterprise with your media stored in the cloud.
     :button_text: Get started with cloud media
@@ -161,6 +167,7 @@ pages on this site apply to Enterprise deployments as well.
 
     Overview <overview>
     Installation <installation>
+    Getting Started <getting_started>
     API connection <api_connection>
     Cloud-backed media <cloud_media>
     Roles and permissions <roles_and_permissions>
