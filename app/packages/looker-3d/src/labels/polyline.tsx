@@ -1,9 +1,12 @@
-import { TransformControls, useCursor } from "@react-three/drei";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
-import { use3dLabelColor } from "../hooks/use-3d-label-color";
-import { useSimilarLabels3d } from "../hooks/use-similar-labels-3d";
-import { TransformMode, TransformSpace } from "../state";
+import { TransformControlsWrapper } from "./shared/TransformControls";
+import {
+  useEventHandlers,
+  useHoverState,
+  useLabelColor,
+  useTransformHandlers,
+} from "./shared/hooks";
 import { Line } from "./line";
 import { createFilledPolygonMeshes } from "./polygon-fill-utils";
 import type { OverlayProps } from "./shared";
@@ -14,14 +17,6 @@ export interface PolyLineProps extends OverlayProps {
   lineWidth?: number;
   // We ignore closed for now
   closed?: boolean;
-  isSelectedForTransform?: boolean;
-  isAnnotateMode?: boolean;
-  transformMode?: TransformMode;
-  transformSpace?: TransformSpace;
-  onTransformStart?: () => void;
-  onTransformEnd?: () => void;
-  onTransformChange?: () => void;
-  transformControlsRef?: React.RefObject<any>;
 }
 
 export const Polyline = ({
@@ -44,35 +39,23 @@ export const Polyline = ({
   onTransformChange,
   transformControlsRef,
 }: PolyLineProps) => {
-  const groupRef = useRef<THREE.Group>(null);
   const meshesRef = useRef<THREE.Mesh[]>([]);
 
-  const { onPointerOver, onPointerOut, ...restEventHandlers } = useMemo(() => {
-    return {
-      ...tooltip.getMeshProps(label),
-    };
-  }, [tooltip, label]);
-
-  const [isPolylineHovered, setIsPolylineHovered] = useState(false);
-
-  const isSimilarLabelHovered = useSimilarLabels3d(label);
-
-  useCursor(isPolylineHovered);
-
-  const handleTransformEnd = useCallback(() => {
-    onTransformEnd?.();
-  }, [label._id, onTransformEnd]);
-
-  const handleTransformStart = useCallback(() => {
-    onTransformStart?.();
-  }, [label._id, onTransformStart]);
-
-  const strokeAndFillColor = use3dLabelColor({
-    isSelected: selected,
-    isHovered: isPolylineHovered,
-    isSimilarLabelHovered,
-    defaultColor: color,
-  });
+  const { isHovered, setIsHovered } = useHoverState();
+  const { onPointerOver, onPointerOut, restEventHandlers } = useEventHandlers(
+    tooltip,
+    label
+  );
+  const { strokeAndFillColor, isSimilarLabelHovered } = useLabelColor(
+    { selected, color },
+    isHovered,
+    label
+  );
+  const { handleTransformStart, handleTransformEnd } = useTransformHandlers(
+    label,
+    onTransformStart,
+    onTransformEnd
+  );
 
   const lines = useMemo(
     () =>
@@ -80,14 +63,23 @@ export const Polyline = ({
         <Line
           key={`polyline-${label._id}-${i}`}
           width={lineWidth}
-          rotation={rotation}
           points={pts}
           opacity={opacity}
           color={strokeAndFillColor}
           label={label}
+          rotation={rotation}
+          selected={selected}
         />
       )),
-    [points3d, rotation, opacity, strokeAndFillColor, label, lineWidth]
+    [
+      points3d,
+      opacity,
+      strokeAndFillColor,
+      label,
+      lineWidth,
+      rotation,
+      selected,
+    ]
   );
 
   const material = useMemo(() => {
@@ -156,71 +148,38 @@ export const Polyline = ({
     };
   }, [material]);
 
-  if (filled && filledMeshes) {
-    return (
-      <>
-        <group
-          ref={groupRef}
-          onPointerOver={() => {
-            setIsPolylineHovered(true);
-            onPointerOver();
-          }}
-          onPointerOut={() => {
-            setIsPolylineHovered(false);
-            onPointerOut();
-          }}
-          onClick={onClick}
-          {...restEventHandlers}
-        >
-          {filledMeshes}
-          {lines}
-        </group>
-        {/* TransformControls for annotate mode */}
-        {isAnnotateMode && isSelectedForTransform && (
-          <TransformControls
-            ref={transformControlsRef}
-            object={groupRef}
-            mode={transformMode}
-            space={transformSpace}
-            onMouseDown={handleTransformStart}
-            onMouseUp={handleTransformEnd}
-            onObjectChange={onTransformChange}
-          />
-        )}
-      </>
-    );
-  }
+  const content = (
+    <>
+      {filled && filledMeshes}
+      {lines}
+    </>
+  );
 
   return (
-    <>
+    <TransformControlsWrapper
+      isSelectedForTransform={isSelectedForTransform}
+      isAnnotateMode={isAnnotateMode}
+      transformMode={transformMode}
+      transformSpace={transformSpace}
+      onTransformStart={handleTransformStart}
+      onTransformEnd={handleTransformEnd}
+      onTransformChange={onTransformChange}
+      transformControlsRef={transformControlsRef}
+    >
       <group
-        ref={groupRef}
         onPointerOver={() => {
-          setIsPolylineHovered(true);
+          setIsHovered(true);
           onPointerOver();
         }}
         onPointerOut={() => {
-          setIsPolylineHovered(false);
+          setIsHovered(false);
           onPointerOut();
         }}
         onClick={onClick}
         {...restEventHandlers}
       >
-        {lines}
+        {content}
       </group>
-
-      {/* TransformControls for annotate mode */}
-      {isAnnotateMode && isSelectedForTransform && (
-        <TransformControls
-          ref={transformControlsRef}
-          object={groupRef}
-          mode={transformMode}
-          space={transformSpace}
-          onMouseDown={handleTransformStart}
-          onMouseUp={handleTransformEnd}
-          onObjectChange={onTransformChange}
-        />
-      )}
-    </>
+    </TransformControlsWrapper>
   );
 };
