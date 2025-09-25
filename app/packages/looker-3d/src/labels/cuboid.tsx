@@ -22,6 +22,8 @@ export interface CuboidProps extends OverlayProps {
   transformSpace?: TransformSpace;
   onTransformStart?: () => void;
   onTransformEnd?: () => void;
+  onTransformChange?: () => void;
+  transformControlsRef?: React.RefObject<any>;
 }
 
 export const Cuboid = ({
@@ -43,6 +45,8 @@ export const Cuboid = ({
   transformSpace = "world",
   onTransformStart,
   onTransformEnd,
+  onTransformChange,
+  transformControlsRef,
 }: CuboidProps) => {
   const geo = useMemo(
     () => dimensions && new THREE.BoxGeometry(...dimensions),
@@ -183,11 +187,13 @@ export const Cuboid = ({
       {/* TransformControls for annotate mode */}
       {isAnnotateMode && isSelectedForTransform && (
         <TransformControls
+          ref={transformControlsRef}
           object={groupRef}
           mode={transformMode}
           space={transformSpace}
           onMouseDown={handleTransformStart}
           onMouseUp={handleTransformEnd}
+          onObjectChange={onTransformChange}
         />
       )}
     </>

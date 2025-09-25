@@ -50,6 +50,7 @@ import { HoverMetadata } from "../types";
 import { FoSceneComponent } from "./FoScene";
 import { Gizmos } from "./Gizmos";
 import HoverMetadataHUD from "./HoverMetadataHUD";
+import { TransformHUD } from "./TransformHUD";
 import { Fo3dSceneContext } from "./context";
 import { SceneControls } from "./scene-controls/SceneControls";
 import {
@@ -732,6 +733,7 @@ export const MediaTypeFo3dComponent = () => {
       }}
     >
       <HoverMetadataHUD />
+      <TransformHUD />
       <PcdColorMapTunnel.Out />
       <Canvas
         id={CANVAS_WRAPPER_ID}

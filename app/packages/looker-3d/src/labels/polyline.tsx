@@ -20,11 +20,13 @@ export interface PolyLineProps extends OverlayProps {
   transformSpace?: TransformSpace;
   onTransformStart?: () => void;
   onTransformEnd?: () => void;
+  onTransformChange?: () => void;
+  transformControlsRef?: React.RefObject<any>;
 }
 
 export const Polyline = ({
   opacity,
-  filleds,
+  filled,
   rotation,
   points3d,
   color,
@@ -39,8 +41,9 @@ export const Polyline = ({
   transformSpace = "world",
   onTransformStart,
   onTransformEnd,
+  onTransformChange,
+  transformControlsRef,
 }: PolyLineProps) => {
-  const filled = true;
   const groupRef = useRef<THREE.Group>(null);
   const meshesRef = useRef<THREE.Mesh[]>([]);
 
@@ -57,12 +60,10 @@ export const Polyline = ({
   useCursor(isPolylineHovered);
 
   const handleTransformEnd = useCallback(() => {
-    console.log("Transform ended for polyline:", label._id);
     onTransformEnd?.();
   }, [label._id, onTransformEnd]);
 
   const handleTransformStart = useCallback(() => {
-    console.log("Transform started for polyline:", label._id);
     onTransformStart?.();
   }, [label._id, onTransformStart]);
 
@@ -177,11 +178,13 @@ export const Polyline = ({
         {/* TransformControls for annotate mode */}
         {isAnnotateMode && isSelectedForTransform && (
           <TransformControls
+            ref={transformControlsRef}
             object={groupRef}
             mode={transformMode}
             space={transformSpace}
             onMouseDown={handleTransformStart}
             onMouseUp={handleTransformEnd}
+            onObjectChange={onTransformChange}
           />
         )}
       </>
@@ -209,11 +212,13 @@ export const Polyline = ({
       {/* TransformControls for annotate mode */}
       {isAnnotateMode && isSelectedForTransform && (
         <TransformControls
+          ref={transformControlsRef}
           object={groupRef}
           mode={transformMode}
           space={transformSpace}
           onMouseDown={handleTransformStart}
           onMouseUp={handleTransformEnd}
+          onObjectChange={onTransformChange}
         />
       )}
     </>

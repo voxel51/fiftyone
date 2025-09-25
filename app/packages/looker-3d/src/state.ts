@@ -224,6 +224,40 @@ export const isTransformingAtom = atom<boolean>({
   default: false,
 });
 
+// Transform data for HUD display
+export interface TransformData {
+  dx?: number;
+  dy?: number;
+  dz?: number;
+  dimensionX?: number;
+  dimensionY?: number;
+  dimensionZ?: number;
+  rotationX?: number;
+  rotationY?: number;
+  rotationZ?: number;
+}
+
+export const transformDataAtom = atom<TransformData>({
+  key: "fo3d-transformData",
+  default: {},
+});
+
+// Transformed label data storage
+export interface TransformedLabelData {
+  worldPosition: [number, number, number];
+  dimensions: [number, number, number];
+  localRotation: [number, number, number];
+  worldRotation: [number, number, number];
+}
+
+// todo: we sync this with backend
+export const transformedLabelsAtom = atom<Record<string, TransformedLabelData>>(
+  {
+    key: "fo3d-transformedLabels",
+    default: {},
+  }
+);
+
 // Selector to clear all transform state
 export const clearTransformStateSelector = selector({
   key: "fo3d-clearTransformState",
@@ -233,5 +267,7 @@ export const clearTransformStateSelector = selector({
     set(transformModeAtom, "translate");
     set(transformSpaceAtom, "world");
     set(isTransformingAtom, false);
+    set(transformDataAtom, {});
+    // Note: We don't clear transformedLabelsAtom here as it should persist
   },
 });

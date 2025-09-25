@@ -4,8 +4,12 @@ import {
   clearTransformStateSelector,
   isTransformingAtom,
   selectedLabelForTransformAtom,
+  transformDataAtom,
+  transformedLabelsAtom,
   transformModeAtom,
   transformSpaceAtom,
+  type TransformData,
+  type TransformedLabelData,
   type TransformMode,
   type TransformSpace,
 } from "../state";
@@ -22,6 +26,10 @@ export const useTransformControls = () => {
     useRecoilState(transformSpaceAtom);
   const [isTransforming, setIsTransforming] =
     useRecoilState(isTransformingAtom);
+  const setTransformData = useSetRecoilState(transformDataAtom);
+  const [transformedLabels, setTransformedLabels] = useRecoilState(
+    transformedLabelsAtom
+  );
   const clearTransformState = useSetRecoilState(clearTransformStateSelector);
 
   const transformControlsRef = useRef<any>(null);
@@ -29,6 +37,11 @@ export const useTransformControls = () => {
     key: "",
     time: 0,
   });
+
+  const originalValuesRef = useRef<{
+    position: [number, number, number];
+    dimensions: [number, number, number];
+  } | null>(null);
 
   const selectLabelForTransform = useCallback(
     (label: OverlayLabel) => {
@@ -71,11 +84,130 @@ export const useTransformControls = () => {
 
   const handleTransformStart = useCallback(() => {
     setIsTransforming(true);
-  }, [setIsTransforming]);
+    // Reset transform data when transformation starts
+    setTransformData({});
+
+    // Store original values for delta calculation
+    if (selectedLabelForTransform) {
+      const labelId = selectedLabelForTransform._id;
+      const existingTransform = transformedLabels[labelId];
+      const labelWithProps = selectedLabelForTransform as any;
+
+      originalValuesRef.current = {
+        position: existingTransform?.worldPosition ||
+          labelWithProps.location || [0, 0, 0],
+        dimensions: existingTransform?.dimensions ||
+          labelWithProps.dimensions || [1, 1, 1],
+      };
+    }
+  }, [
+    setIsTransforming,
+    setTransformData,
+    selectedLabelForTransform,
+    transformedLabels,
+  ]);
 
   const handleTransformEnd = useCallback(() => {
     setIsTransforming(false);
-  }, [setIsTransforming]);
+    // Reset transform data when transformation ends
+    setTransformData({});
+
+    // Save the final transformed values
+    if (
+      transformControlsRef.current &&
+      selectedLabelForTransform &&
+      originalValuesRef.current
+    ) {
+      const controls = transformControlsRef.current;
+      const object = controls.object;
+      const labelId = selectedLabelForTransform._id;
+
+      if (object) {
+        const newTransformedData: TransformedLabelData = {
+          worldPosition: [
+            object.position.x,
+            object.position.y,
+            object.position.z,
+          ],
+          dimensions:
+            transformMode === "scale"
+              ? [
+                  originalValuesRef.current.dimensions[0] * object.scale.x,
+                  originalValuesRef.current.dimensions[1] * object.scale.y,
+                  originalValuesRef.current.dimensions[2] * object.scale.z,
+                ]
+              : transformedLabels[labelId]?.dimensions ||
+                (selectedLabelForTransform as any).dimensions || [1, 1, 1],
+          localRotation: (selectedLabelForTransform as any).rotation || [
+            0, 0, 0,
+          ],
+          worldRotation: [
+            (object.rotation.x * 180) / Math.PI,
+            (object.rotation.y * 180) / Math.PI,
+            (object.rotation.z * 180) / Math.PI,
+          ],
+        };
+
+        setTransformedLabels((prev) => ({
+          ...prev,
+          [labelId]: newTransformedData,
+        }));
+      }
+    }
+
+    originalValuesRef.current = null;
+  }, [
+    setIsTransforming,
+    setTransformData,
+    transformControlsRef,
+    selectedLabelForTransform,
+    transformMode,
+    transformedLabels,
+    setTransformedLabels,
+  ]);
+
+  const handleTransformChange = useCallback(() => {
+    if (
+      !transformControlsRef.current ||
+      !selectedLabelForTransform ||
+      !originalValuesRef.current
+    )
+      return;
+
+    const controls = transformControlsRef.current;
+    const object = controls.object;
+
+    if (!object) return;
+
+    const newTransformData: TransformData = {};
+
+    switch (transformMode) {
+      case "translate":
+        // Show delta from original position
+        const originalPos = originalValuesRef.current.position;
+        newTransformData.dx = object.position.x - originalPos[0];
+        newTransformData.dy = object.position.y - originalPos[1];
+        newTransformData.dz = object.position.z - originalPos[2];
+        break;
+
+      case "scale":
+        // Show absolute dimensions (original dimensions * scale)
+        const originalDims = originalValuesRef.current.dimensions;
+        newTransformData.dimensionX = originalDims[0] * object.scale.x;
+        newTransformData.dimensionY = originalDims[1] * object.scale.y;
+        newTransformData.dimensionZ = originalDims[2] * object.scale.z;
+        break;
+
+      case "rotate":
+        // Show absolute rotation in degrees
+        newTransformData.rotationX = (object.rotation.x * 180) / Math.PI;
+        newTransformData.rotationY = (object.rotation.y * 180) / Math.PI;
+        newTransformData.rotationZ = (object.rotation.z * 180) / Math.PI;
+        break;
+    }
+
+    setTransformData(newTransformData);
+  }, [transformMode, selectedLabelForTransform, setTransformData]);
 
   /**
    * This effect handles keyboard events for transform controls.
@@ -159,6 +291,7 @@ export const useTransformControls = () => {
     setSpace,
     handleTransformStart,
     handleTransformEnd,
+    handleTransformChange,
     transformControlsRef,
   };
 };

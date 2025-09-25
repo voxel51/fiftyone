@@ -45,7 +45,9 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
     transformSpace,
     handleTransformStart,
     handleTransformEnd,
+    handleTransformChange,
     clearSelectedLabel,
+    transformControlsRef,
   } = useTransformControls();
 
   const settings = fop.usePluginSettings<Looker3dSettings>(
@@ -202,6 +204,8 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
             transformSpace={transformSpace}
             onTransformStart={handleTransformStart}
             onTransformEnd={handleTransformEnd}
+            onTransformChange={handleTransformChange}
+            transformControlsRef={transformControlsRef}
           />
         );
       } else if (
@@ -226,6 +230,8 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
             transformSpace={transformSpace}
             onTransformStart={handleTransformStart}
             onTransformEnd={handleTransformEnd}
+            onTransformChange={handleTransformChange}
+            transformControlsRef={transformControlsRef}
           />
         );
       }
@@ -239,6 +245,13 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
     handleSelect,
     tooltip,
     settings,
+    selectedLabelForTransform,
+    transformMode,
+    transformSpace,
+    handleTransformStart,
+    handleTransformEnd,
+    handleTransformChange,
+    transformControlsRef,
   ]);
 
   const getOnShiftClickLabelCallback = useOnShiftClickLabel();
