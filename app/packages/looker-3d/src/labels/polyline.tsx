@@ -134,7 +134,7 @@ export const Polyline = ({
   }, [filled, points3d, rotation, material, label._id]);
 
   // Calculate centroid of polylines for transform controls
-  const centerPosition = useMemo(() => {
+  const centroid = useMemo(() => {
     if (points3d.length === 0) return [0, 0, 0];
 
     const allPoints = points3d.flat();
@@ -182,6 +182,31 @@ export const Polyline = ({
     });
   }, [isAnnotateMode, points3d, label._id, strokeAndFillColor]);
 
+  const centroidMarker = useMemo(() => {
+    if (!isAnnotateMode || !isSelectedForAnnotation) return null;
+
+    const centroidColor = chroma(strokeAndFillColor)
+      .set("hsl.h", "+180")
+      .brighten(1.5)
+      .hex();
+
+    return (
+      <PolylinePointMarker
+        key={`centroid-${label._id}`}
+        position={new THREE.Vector3(...centroid)}
+        color={centroidColor}
+        size={0.05}
+        pulsate={false}
+      />
+    );
+  }, [
+    isAnnotateMode,
+    isSelectedForAnnotation,
+    centroid,
+    strokeAndFillColor,
+    label._id,
+  ]);
+
   // Cleanup meshes on unmount
   useEffect(() => {
     return () => {
@@ -212,6 +237,7 @@ export const Polyline = ({
       {filled && filledMeshes}
       {lines}
       {pointMarkers}
+      {centroidMarker}
     </>
   );
 
@@ -225,7 +251,7 @@ export const Polyline = ({
       onTransformEnd={handleTransformEnd}
       onTransformChange={onTransformChange}
       transformControlsRef={transformControlsRef}
-      transformControlsPosition={centerPosition as THREE.Vector3Tuple}
+      transformControlsPosition={centroid as THREE.Vector3Tuple}
     >
       <group
         onPointerOver={() => {
