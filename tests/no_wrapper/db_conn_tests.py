@@ -7,34 +7,33 @@ Multiprocess tests.
 """
 import unittest
 from pymongo.errors import InvalidOperation
-
+import fiftyone as fo
 import fiftyone.core.odm as foo
 
 
 class GetDbConnTests(unittest.TestCase):
     def test_get_db_conn(self):
         # initial connection
-        conn = foo.get_db_conn()
-        doc = conn.datasets.find_one({}, {"_id": 1})
-        self.assertIsNotNone(doc)
-        disconnected = False
+        datasets = fo.list_datasets(glob_patt="unittest*")
+        self.assertIsNotNone(datasets)
 
         # close connection
+        conn = foo.get_db_conn()
         conn.client.close()
         self.assertTrue(conn.client._closed)
+
+        # confirm closed
         try:
-            conn.datasets.find_one({}, {"_id": 1})
+            list(conn.datasets.find({}, limit=1))
         except InvalidOperation:
-            disconnected = True
-            doc = None
-        self.assertTrue(disconnected)
-        self.assertIsNone(doc)
+            datasets = None
+        self.assertIsNone(datasets)
 
         # should reconnect
+        datasets = fo.list_datasets(glob_patt="unittest*")
+        self.assertIsNotNone(datasets)
         conn = foo.get_db_conn()
-        doc = conn.datasets.find_one({}, {"_id": 1})
         self.assertFalse(conn.client._closed)
-        self.assertIsNotNone(doc)
 
 
 class GetAsyncDbConnTests(unittest.TestCase):
