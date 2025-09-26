@@ -4,7 +4,7 @@ import { useSetRecoilState } from "recoil";
 import * as THREE from "three";
 import { PolylinePointMarker } from "../fo3d/components/PolylinePointMarker";
 import { hoveredLabelAtom } from "../state";
-import { Line } from "./line";
+import { Line as LineDrei } from "@react-three/drei";
 import { createFilledPolygonMeshes } from "./polygon-fill-utils";
 import type { OverlayProps } from "./shared";
 import {
@@ -70,26 +70,16 @@ export const Polyline = ({
   const lines = useMemo(
     () =>
       points3d.map((pts, i) => (
-        <Line
+        <LineDrei
           key={`polyline-${label._id}-${i}`}
-          width={lineWidth}
+          lineWidth={lineWidth}
+          segments
           points={pts}
-          opacity={opacity}
           color={strokeAndFillColor}
-          label={label}
           rotation={rotation}
-          selected={selected}
         />
       )),
-    [
-      points3d,
-      opacity,
-      strokeAndFillColor,
-      label,
-      lineWidth,
-      rotation,
-      selected,
-    ]
+    [points3d, strokeAndFillColor, lineWidth, rotation]
   );
 
   const material = useMemo(() => {
