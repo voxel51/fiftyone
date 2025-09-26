@@ -238,11 +238,26 @@ def establish_db_conn(config):
         _update_fc_version(_client)
 
 
+def _is_client_closed(client):
+    # check if the pymongo or motor client is closed or None
+    if client is None:
+        return True
+
+    # check pymongo client
+    if getattr(client, "_closed", False):
+        return True
+
+    # check motor client
+    if isinstance(client, mtr.AsyncIOMotorClient):
+        return getattr(client.delegate, "_closed", False)
+
+    return False
+
+
 def _connect():
     global _client
-    if _client is None:
-        global _connection_kwargs
-
+    if _is_client_closed(_client):
+        _client = None
         establish_db_conn(fo.config)
 
 
@@ -273,7 +288,7 @@ def _async_connect(use_global=False):
     _connect()
 
     global _async_client
-    if not use_global or _async_client is None:
+    if not use_global or _is_client_closed(_async_client):
         global _connection_kwargs
         client = mtr.AsyncIOMotorClient(
             **_connection_kwargs, appname=foc.DATABASE_APPNAME
