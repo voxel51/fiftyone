@@ -75,6 +75,7 @@ export const PolylinePointMarker = ({
 
       setSelectedPoint(newSelectedPoint);
       setIsPointTransformMode(true);
+      setIsPointTransforming(true); // Show HUD immediately when point is clicked
       setTransformMode("translate");
     },
     [
@@ -85,6 +86,7 @@ export const PolylinePointMarker = ({
       position,
       setSelectedPoint,
       setIsPointTransformMode,
+      setIsPointTransforming,
     ]
   );
 
@@ -100,8 +102,20 @@ export const PolylinePointMarker = ({
     if (transformControlsRef.current && onPointMove) {
       const newPosition = transformControlsRef.current.position.clone();
       onPointMove(newPosition);
+
+      // Update the selectedPoint position in the atom to reflect current position in HUD
+      if (isSelected) {
+        setSelectedPoint((prev) =>
+          prev
+            ? {
+                ...prev,
+                position: [newPosition.x, newPosition.y, newPosition.z],
+              }
+            : null
+        );
+      }
     }
-  }, [onPointMove]);
+  }, [onPointMove, isSelected, setSelectedPoint]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {

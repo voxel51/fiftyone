@@ -6,8 +6,10 @@ import styled from "styled-components";
 import {
   hoveredLabelAtom,
   hoveredPolylineInfoAtom,
+  isPointTransformingAtom,
   isTransformingAtom,
   selectedLabelForAnnotationAtom,
+  selectedPointAtom,
   transformDataAtom,
   transformModeAtom,
   transformedLabelsAtom,
@@ -58,6 +60,8 @@ const formatNumber = (
 
 export const TransformHUD = () => {
   const isTransforming = useRecoilValue(isTransformingAtom);
+  const isPointTransforming = useRecoilValue(isPointTransformingAtom);
+  const selectedPoint = useRecoilValue(selectedPointAtom);
   const transformMode = useRecoilValue(transformModeAtom);
   const selectedLabel = useRecoilValue(selectedLabelForAnnotationAtom);
   const transformData = useRecoilValue(transformDataAtom);
@@ -90,6 +94,26 @@ export const TransformHUD = () => {
     }
     return [0, 0, 0];
   }, [hoveredLabel]);
+
+  const renderPolylinePointTransformMode = () => {
+    if (!selectedPoint) return null;
+
+    return (
+      <TransformHUDContainer>
+        <TransformModeLabel>point transform</TransformModeLabel>
+        <br />
+        <ValueLabel>segment:</ValueLabel>
+        <ValueNumber>{selectedPoint.segmentIndex + 1}</ValueNumber>
+        <br />
+        <ValueLabel>point:</ValueLabel>
+        <ValueNumber>
+          {formatNumber(selectedPoint.position[0])},{" "}
+          {formatNumber(selectedPoint.position[1])},{" "}
+          {formatNumber(selectedPoint.position[2])}
+        </ValueNumber>
+      </TransformHUDContainer>
+    );
+  };
 
   const renderTransformMode = () => {
     const renderTransformValues = () => {
@@ -358,12 +382,17 @@ export const TransformHUD = () => {
     );
   };
 
-  // Mode 1: Actively transforming
+  // Mode 1: Polyline point selected (highest priority)
+  if (selectedPoint) {
+    return renderPolylinePointTransformMode();
+  }
+
+  // Mode 2: Actively transforming
   if (isTransforming && selectedLabel) {
     return renderTransformMode();
   }
 
-  // Mode 2: Hovering in annotate mode
+  // Mode 3: Hovering in annotate mode
   if (mode === "annotate" && hoveredLabel) {
     return renderHoverMode();
   }
