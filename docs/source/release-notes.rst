@@ -3,6 +3,24 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.11.2
+--------------------------
+*Released September 25, 2025*
+
+Includes all updates from :ref:`FiftyOne 1.8.1 <release-notes-v1.8.1>`, plus:
+
+- Fixed a security vulnerability in `formidable`
+
+.. _release-notes-v1.8.1:
+
+FiftyOne 1.8.1
+--------------
+*Released September 25, 2025*
+
+- Fixed a bug where certain plugin form inputs would cause the form to not
+  render properly. `#6351 <https://github.com/voxel51/fiftyone/pull/6351>`_
+
+
 FiftyOne Enterprise 2.11.1
 --------------------------
 *Released September 11, 2025*
