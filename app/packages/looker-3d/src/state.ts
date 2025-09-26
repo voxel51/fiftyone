@@ -114,6 +114,16 @@ export const isLevaConfigPanelOnAtom = atom<boolean>({
   default: false,
 });
 
+export const annotationToolbarPositionAtom = atom<number>({
+  key: "fo3d-annotationToolbarPosition",
+  default: 50,
+  effects: [
+    getBrowserStorageEffectForKey("fo3d-annotationToolbarPosition", {
+      valueClass: "number",
+    }),
+  ],
+});
+
 export const gridCellSizeAtom = atom<number>({
   key: "fo3d-gridCellSize",
   default: 1,
@@ -336,4 +346,17 @@ export const activePolylineLabelAtom = atom<string | null>({
 export const temporaryVerticesAtom = atom<Vector3Tuple[]>({
   key: "fo3d-temporaryVertices",
   default: [],
+});
+
+// Selected polyline point for transformation
+export interface SelectedPolylinePoint {
+  labelId: string;
+  segmentIndex: number; // Index of the segment within the polyline
+  pointIndex: number; // Index of the point within the segment (0 or 1)
+  position: Vector3Tuple;
+}
+
+export const selectedPolylinePointAtom = atom<SelectedPolylinePoint | null>({
+  key: "fo3d-selectedPolylinePoint",
+  default: null,
 });

@@ -1,0 +1,162 @@
+import { Add, OpenWith, RotateRight, Straighten } from "@mui/icons-material";
+import { Typography } from "@mui/material";
+import { useCallback, useMemo } from "react";
+import { useRecoilState } from "recoil";
+import {
+  isInTransformModeAtom,
+  polylineEditModeAtom,
+  selectedLabelForAnnotationAtom,
+  transformModeAtom,
+  transformSpaceAtom,
+  type TransformMode,
+  type TransformSpace,
+} from "../state";
+import type { AnnotationActionGroup } from "./types";
+
+export const useAnnotationActions = () => {
+  const [selectedLabelForAnnotation, setSelectedLabelForAnnotation] =
+    useRecoilState(selectedLabelForAnnotationAtom);
+  const [isInTransformMode, setIsInTransformMode] = useRecoilState(
+    isInTransformModeAtom
+  );
+  const [transformMode, setTransformMode] = useRecoilState(transformModeAtom);
+  const [transformSpace, setTransformSpace] =
+    useRecoilState(transformSpaceAtom);
+  const [polylineEditMode, setPolylineEditMode] =
+    useRecoilState(polylineEditModeAtom);
+
+  const hasSelectedLabel = !!selectedLabelForAnnotation;
+
+  const handleNewVertex = useCallback(() => {
+    // Toggle polyline segment addition mode
+    setPolylineEditMode(polylineEditMode === "adding" ? "idle" : "adding");
+  }, [polylineEditMode, setPolylineEditMode]);
+
+  const handleTransformModeChange = useCallback(
+    (mode: TransformMode) => {
+      if (hasSelectedLabel) {
+        setTransformMode(mode);
+        if (!isInTransformMode) {
+          setIsInTransformMode(true);
+        }
+      }
+    },
+    [
+      hasSelectedLabel,
+      setTransformMode,
+      isInTransformMode,
+      setIsInTransformMode,
+    ]
+  );
+
+  const handleTransformSpaceChange = useCallback(
+    (space: TransformSpace) => {
+      setTransformSpace(space);
+    },
+    [setTransformSpace]
+  );
+
+  const actions: AnnotationActionGroup[] = useMemo(
+    () =>
+      [
+        {
+          id: "polyline-actions",
+          label: "Polyline",
+          actions: [
+            {
+              id: "new-segment",
+              label: "New Segment",
+              icon: <Add />,
+              shortcut: "V",
+              tooltip: "Add new polyline segment",
+              isActive: polylineEditMode === "adding",
+              onClick: handleNewVertex,
+            },
+          ],
+        },
+        {
+          id: "transform-actions",
+          label: "Transform",
+          actions: [
+            {
+              id: "translate",
+              label: "Translate",
+              icon: <OpenWith />,
+              shortcut: "G",
+              tooltip: "Move object (Grab)",
+              isActive: isInTransformMode && transformMode === "translate",
+              isDisabled: !hasSelectedLabel,
+              onClick: () => handleTransformModeChange("translate"),
+            },
+            {
+              id: "rotate",
+              label: "Rotate",
+              icon: <RotateRight />,
+              shortcut: "R",
+              tooltip: "Rotate object",
+              isActive: isInTransformMode && transformMode === "rotate",
+              isDisabled: !hasSelectedLabel,
+              onClick: () => handleTransformModeChange("rotate"),
+            },
+            {
+              id: "scale",
+              label: "Scale",
+              icon: <Straighten />,
+              shortcut: "S",
+              tooltip: "Scale object",
+              isActive: isInTransformMode && transformMode === "scale",
+              isDisabled: !hasSelectedLabel,
+              onClick: () => handleTransformModeChange("scale"),
+            },
+          ],
+        },
+        {
+          id: "space-actions",
+          label: "Space",
+          isHidden: !isInTransformMode,
+          actions: [
+            {
+              id: "world-space",
+              label: "World Space",
+              icon: <Typography variant="caption">W</Typography>,
+              shortcut: "X/Y/Z",
+              tooltip: "Transform in world space",
+              isActive: transformSpace === "world",
+              isDisabled: !isInTransformMode,
+              isVisible: isInTransformMode,
+              onClick: () => handleTransformSpaceChange("world"),
+            },
+            {
+              id: "local-space",
+              label: "Local Space",
+              icon: <Typography variant="caption">L</Typography>,
+              shortcut: "XX/YY/ZZ",
+              tooltip: "Transform in local space",
+              isActive: transformSpace === "local",
+              isDisabled: !isInTransformMode,
+              isVisible: isInTransformMode,
+              onClick: () => handleTransformSpaceChange("local"),
+            },
+          ],
+        },
+      ] as AnnotationActionGroup[],
+    [
+      polylineEditMode,
+      handleNewVertex,
+      isInTransformMode,
+      hasSelectedLabel,
+      transformMode,
+      handleTransformModeChange,
+      transformSpace,
+      handleTransformSpaceChange,
+    ]
+  );
+
+  return {
+    actions,
+    hasSelectedLabel,
+    isInTransformMode,
+    transformMode,
+    transformSpace,
+  };
+};

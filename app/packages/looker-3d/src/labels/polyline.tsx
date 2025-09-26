@@ -7,20 +7,23 @@ import { hoveredLabelAtom } from "../state";
 import { Line } from "./line";
 import { createFilledPolygonMeshes } from "./polygon-fill-utils";
 import type { OverlayProps } from "./shared";
-import { TransformControlsWrapper } from "./shared/TransformControls";
 import {
   useEventHandlers,
   useHoverState,
   useLabelColor,
   useTransformHandlers,
 } from "./shared/hooks";
+import { TransformControlsWrapper } from "./shared/TransformControls";
 
 export interface PolyLineProps extends OverlayProps {
+  // Array of line segments, where each segment is an array of 3D points
   points3d: THREE.Vector3Tuple[][];
   filled: boolean;
   lineWidth?: number;
   // We ignore closed for now
   closed?: boolean;
+  isSelectedForAnnotation?: boolean;
+  isSelectedForTransform?: boolean;
 }
 
 export const Polyline = ({
@@ -34,6 +37,7 @@ export const Polyline = ({
   onClick,
   tooltip,
   label,
+  isSelectedForAnnotation,
   isSelectedForTransform,
   isAnnotateMode,
   transformMode = "translate",
@@ -50,10 +54,11 @@ export const Polyline = ({
     tooltip,
     label
   );
-  const { strokeAndFillColor, isSimilarLabelHovered } = useLabelColor(
+  const { strokeAndFillColor } = useLabelColor(
     { selected, color },
     isHovered,
-    label
+    label,
+    isSelectedForAnnotation
   );
   const { handleTransformStart, handleTransformEnd } = useTransformHandlers(
     label,
@@ -156,11 +161,11 @@ export const Polyline = ({
       .set("hsl.h", "+180")
       .hex();
 
-    return points3d.flatMap((pts, polylineIndex) => {
+    return points3d.flatMap((segment, segmentIndex) => {
       let visitedPoints = new Set();
 
-      return pts.map((point) => {
-        const key = `${point[0]}-${point[1]}-${point[2]}-${polylineIndex}`;
+      return segment.map((point) => {
+        const key = `${point[0]}-${point[1]}-${point[2]}-${segmentIndex}}`;
 
         if (visitedPoints.has(key)) return null;
 

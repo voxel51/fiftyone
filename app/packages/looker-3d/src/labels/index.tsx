@@ -105,11 +105,9 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
     (label: OverlayLabel, e: ThreeEvent<MouseEvent>) => {
       // In annotate mode, handle transform selection
       if (mode === "annotate") {
-        // If clicking the same label that's already selected, deselect it
         if (selectedLabelForAnnotation?._id === label._id) {
           clearSelectedLabel();
         } else {
-          // Otherwise, select the new label
           selectLabelForAnnotation(label);
         }
 
