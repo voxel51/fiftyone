@@ -1,9 +1,11 @@
 import * as fos from "@fiftyone/state";
 import { useAtomValue } from "jotai";
+import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import {
   hoveredLabelAtom,
+  hoveredPolylineInfoAtom,
   isTransformingAtom,
   selectedLabelForAnnotationAtom,
   transformDataAtom,
@@ -60,8 +62,34 @@ export const TransformHUD = () => {
   const selectedLabel = useRecoilValue(selectedLabelForAnnotationAtom);
   const transformData = useRecoilValue(transformDataAtom);
   const hoveredLabel = useRecoilValue(hoveredLabelAtom);
+  const hoveredPolylineInfo = useRecoilValue(hoveredPolylineInfoAtom);
   const transformedLabels = useRecoilValue(transformedLabelsAtom);
   const mode = useAtomValue(fos.modalMode);
+
+  // Calculate centroid for polylines
+  // todo: needs to use transformed points, if any
+  const centroid = useMemo(() => {
+    if (hoveredLabel?._cls === "Polyline" && hoveredLabel?.points3d) {
+      const allPoints = hoveredLabel.points3d.flat();
+      if (allPoints.length === 0) return [0, 0, 0];
+
+      const sum = allPoints.reduce(
+        (acc, point) => [
+          acc[0] + point[0],
+          acc[1] + point[1],
+          acc[2] + point[2],
+        ],
+        [0, 0, 0]
+      );
+
+      return [
+        sum[0] / allPoints.length,
+        sum[1] / allPoints.length,
+        sum[2] / allPoints.length,
+      ] as [number, number, number];
+    }
+    return [0, 0, 0];
+  }, [hoveredLabel]);
 
   const renderTransformMode = () => {
     const renderTransformValues = () => {
@@ -188,7 +216,37 @@ export const TransformHUD = () => {
 
     const getPolylineLines = () => {
       if (hoveredLabel._cls === "Polyline" && hoveredLabel.points3d) {
-        return hoveredLabel.points3d;
+        // Only show content if we have specific hover info
+        if (
+          hoveredPolylineInfo &&
+          hoveredPolylineInfo.labelId === hoveredLabel._id
+        ) {
+          // Special case for centroid marker (segmentIndex = -1, pointIndex = -1)
+          if (
+            hoveredPolylineInfo.segmentIndex === -1 &&
+            hoveredPolylineInfo.pointIndex === -1
+          ) {
+            // For centroid, we don't show any specific points, just return empty
+            return [];
+          }
+
+          const segment =
+            hoveredLabel.points3d[hoveredPolylineInfo.segmentIndex];
+          if (segment) {
+            // If hovering over a specific point, show only that point
+            if (
+              hoveredPolylineInfo.pointIndex !== undefined &&
+              hoveredPolylineInfo.pointIndex >= 0
+            ) {
+              const point = segment[hoveredPolylineInfo.pointIndex];
+              return point ? [[point]] : [];
+            }
+            // If hovering over a segment, show all points in that segment
+            return [segment];
+          }
+        }
+
+        return [];
       }
       return [];
     };
@@ -200,30 +258,78 @@ export const TransformHUD = () => {
 
     // Special handling for polylines
     if (hoveredLabel._cls === "Polyline") {
+      const isHoveringCentroid =
+        hoveredPolylineInfo &&
+        hoveredPolylineInfo.segmentIndex === -1 &&
+        hoveredPolylineInfo.pointIndex === -1;
+      const isHoveringSpecificPoint =
+        hoveredPolylineInfo &&
+        hoveredPolylineInfo.pointIndex !== undefined &&
+        hoveredPolylineInfo.pointIndex >= 0;
+      const isHoveringSegment =
+        hoveredPolylineInfo && hoveredPolylineInfo.pointIndex === undefined;
+
+      // Only show HUD if we have specific hover info
+      if (!hoveredPolylineInfo) {
+        return null;
+      }
+
       return (
         <TransformHUDContainer>
-          <ValueLabel>lines:</ValueLabel>
-          <br />
-          {polylineLines.map((line, lineIndex) => (
-            <div key={lineIndex}>
-              <ValueLabel>L{lineIndex + 1}:</ValueLabel>
+          {isHoveringCentroid ? (
+            <>
+              <ValueLabel>centroid:</ValueLabel>
               <br />
-              {line.map((point, pointIndex) => (
-                <div key={pointIndex} style={{ marginLeft: "1em" }}>
-                  <ValueNumber>
-                    {formatNumber(point[0])}, {formatNumber(point[1])},{" "}
-                    {formatNumber(point[2])}
-                  </ValueNumber>
+              <ValueNumber>
+                {formatNumber(centroid[0])}, {formatNumber(centroid[1])},{" "}
+                {formatNumber(centroid[2])}
+              </ValueNumber>
+              <br />
+              <ValueLabel>rot:</ValueLabel>
+              <ValueNumber>
+                {formatNumber(worldRot[0])}°, {formatNumber(worldRot[1])}°,{" "}
+                {formatNumber(worldRot[2])}°
+              </ValueNumber>
+            </>
+          ) : isHoveringSpecificPoint ? (
+            <>
+              <ValueLabel>point:</ValueLabel>
+              <br />
+              {polylineLines.map((line, lineIndex) => (
+                <div key={lineIndex}>
+                  {line.map((point, pointIndex) => (
+                    <div key={pointIndex} style={{ marginLeft: "1em" }}>
+                      <ValueNumber>
+                        {formatNumber(point[0])}, {formatNumber(point[1])},{" "}
+                        {formatNumber(point[2])}
+                      </ValueNumber>
+                    </div>
+                  ))}
                 </div>
               ))}
-            </div>
-          ))}
-          <br />
-          <ValueLabel>rot:</ValueLabel>
-          <ValueNumber>
-            {formatNumber(worldRot[0])}°, {formatNumber(worldRot[1])}°,{" "}
-            {formatNumber(worldRot[2])}°
-          </ValueNumber>
+            </>
+          ) : isHoveringSegment ? (
+            <>
+              <ValueLabel>segment:</ValueLabel>
+              <br />
+              {polylineLines.map((line, lineIndex) => (
+                <div key={lineIndex}>
+                  <ValueLabel>
+                    S{hoveredPolylineInfo.segmentIndex + 1}:
+                  </ValueLabel>
+                  <br />
+                  {line.map((point, pointIndex) => (
+                    <div key={pointIndex} style={{ marginLeft: "1em" }}>
+                      <ValueNumber>
+                        {formatNumber(point[0])}, {formatNumber(point[1])},{" "}
+                        {formatNumber(point[2])}
+                      </ValueNumber>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </>
+          ) : null}
         </TransformHUDContainer>
       );
     }

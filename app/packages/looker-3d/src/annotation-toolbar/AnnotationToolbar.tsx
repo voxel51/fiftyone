@@ -6,55 +6,65 @@ import { annotationToolbarPositionAtom } from "../state";
 import type { AnnotationToolbarProps } from "./types";
 
 const ToolbarContainer = styled(Box)<{
-  topPosition: number;
-  isDragging?: boolean;
-}>(({ theme, topPosition, isDragging }) => ({
-  position: "absolute",
-  top: `${topPosition}%`,
-  left: "8px",
-  transform: "translateY(-50%)",
-  display: "flex",
-  flexDirection: "column",
-  backgroundColor: theme.palette.background.paper,
-  borderRadius: "6px",
-  boxShadow: isDragging
-    ? "0 4px 16px rgba(0, 0, 0, 0.2)"
-    : "0 2px 8px rgba(0, 0, 0, 0.12)",
-  border: `1px solid ${theme.palette.divider}`,
-  zIndex: 1000,
-  minWidth: "36px",
-  opacity: isDragging ? 0.95 : 0.75,
-  userSelect: "none",
-  transition: isDragging ? "none" : "opacity 0.2s ease, box-shadow 0.2s ease",
+  topposition: number;
+  isdragging?: string;
+}>(({ theme, topposition, isdragging }) => {
+  const isDraggingBool = isdragging === "true";
 
-  "&:hover": {
-    opacity: 0.95,
-  },
-}));
-
-const DraggableHeader = styled(Box)<{ isDragging?: boolean }>(
-  ({ theme, isDragging }) => ({
-    width: "100%",
-    height: "12px",
-    borderRadius: "6px 6px 0 0",
-    cursor: isDragging ? "grabbing" : "grab",
-    opacity: 0,
-    transition: "opacity 0.2s ease",
-    margin: "2px 2px 0 2px",
-    position: "relative",
+  return {
+    position: "absolute",
+    top: `${topposition}%`,
+    left: "8px",
+    transform: "translateY(-50%)",
     display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
+    flexDirection: "column",
+    backgroundColor: theme.palette.background.paper,
+    borderRadius: "6px",
+    boxShadow: isDraggingBool
+      ? "0 4px 16px rgba(0, 0, 0, 0.2)"
+      : "0 2px 8px rgba(0, 0, 0, 0.12)",
+    border: `1px solid ${theme.palette.divider}`,
+    zIndex: 1000,
+    minWidth: "36px",
+    opacity: isDraggingBool ? 0.95 : 0.75,
+    userSelect: "none",
+    transition: isDraggingBool
+      ? "none"
+      : "opacity 0.2s ease, box-shadow 0.2s ease",
 
-    ".MuiBox-root:hover &": {
-      opacity: 0.8,
+    "&:hover": {
+      opacity: 0.95,
     },
+  };
+});
 
-    // rotate drag handler by 90 degrees
-    "& > *": {
-      transform: "rotate(90deg)",
-    },
-  })
+const DraggableHeader = styled(Box)<{ isdragging?: string }>(
+  ({ theme, isdragging }) => {
+    const isDraggingBool = isdragging === "true";
+
+    return {
+      width: "100%",
+      height: "12px",
+      borderRadius: "6px 6px 0 0",
+      cursor: isDraggingBool ? "grabbing" : "grab",
+      opacity: 0,
+      transition: "opacity 0.2s ease",
+      margin: "2px 2px 0 2px",
+      position: "relative",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+
+      ".MuiBox-root:hover &": {
+        opacity: 0.8,
+      },
+
+      // rotate drag handler by 90 degrees
+      "& > *": {
+        transform: "rotate(90deg)",
+      },
+    };
+  }
 );
 
 const ToolbarContent = styled(Box)({
@@ -81,19 +91,28 @@ const GroupLabel = styled(Typography)(({ theme }) => ({
   letterSpacing: "0.3px",
 }));
 
-const ActionButton = styled(IconButton)<{ isActive?: boolean }>(
-  ({ theme, isActive }) => ({
+const ActionButton = styled(IconButton)<{
+  isactive?: string;
+  isdisabled?: string;
+}>(({ theme, isactive, isdisabled }) => {
+  const isActiveBool = isactive === "true";
+  const isDisabledBool = isdisabled === "true";
+
+  return {
     width: "28px",
     height: "28px",
-    backgroundColor: isActive ? theme.palette.primary.main : "transparent",
-    color: isActive
+    cursor: isDisabledBool ? "not-allowed" : "pointer",
+    backgroundColor: isActiveBool ? theme.palette.primary.main : "transparent",
+    color: isActiveBool
       ? theme.palette.primary.contrastText
+      : isDisabledBool
+      ? theme.palette.text.disabled
       : theme.palette.text.primary,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     "&:hover": {
-      backgroundColor: isActive
+      backgroundColor: isActiveBool
         ? theme.palette.primary.dark
         : theme.palette.action.hover,
     },
@@ -104,8 +123,8 @@ const ActionButton = styled(IconButton)<{ isActive?: boolean }>(
     "& .MuiSvgIcon-root": {
       fontSize: "18px",
     },
-  })
-);
+  };
+});
 
 export const AnnotationToolbar = ({
   isVisible,
@@ -177,11 +196,11 @@ export const AnnotationToolbar = ({
     <ToolbarContainer
       ref={containerRef}
       className={className}
-      topPosition={position}
-      isDragging={isDragging}
+      topposition={position}
+      isdragging={String(isDragging)}
     >
       <DraggableHeader
-        isDragging={isDragging}
+        isdragging={String(isDragging)}
         onMouseDown={handleHeaderMouseDown}
       >
         <DragIndicator />
@@ -214,9 +233,11 @@ export const AnnotationToolbar = ({
                     disableHoverListener={false}
                   >
                     <ActionButton
-                      onClick={() => handleActionClick(action.onClick)}
-                      disabled={action.isDisabled}
-                      isActive={action.isActive}
+                      onClick={() =>
+                        !action.isDisabled && handleActionClick(action.onClick)
+                      }
+                      isdisabled={String(action.isDisabled)}
+                      isactive={String(action.isActive)}
                       size="small"
                     >
                       {action.icon}

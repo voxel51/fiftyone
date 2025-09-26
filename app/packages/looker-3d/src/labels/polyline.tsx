@@ -1,10 +1,10 @@
+import { Line as LineDrei } from "@react-three/drei";
 import chroma from "chroma-js";
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSetRecoilState } from "recoil";
 import * as THREE from "three";
 import { PolylinePointMarker } from "../fo3d/components/PolylinePointMarker";
-import { hoveredLabelAtom } from "../state";
-import { Line as LineDrei } from "@react-three/drei";
+import { hoveredLabelAtom, hoveredPolylineInfoAtom } from "../state";
 import { createFilledPolygonMeshes } from "./polygon-fill-utils";
 import type { OverlayProps } from "./shared";
 import {
@@ -48,6 +48,8 @@ export const Polyline = ({
   transformControlsRef,
 }: PolyLineProps) => {
   const meshesRef = useRef<THREE.Mesh[]>([]);
+  const [localPoints3d, setLocalPoints3d] =
+    useState<THREE.Vector3Tuple[][]>(points3d);
 
   const { isHovered, setIsHovered } = useHoverState();
   const { onPointerOver, onPointerOut, restEventHandlers } = useEventHandlers(
@@ -66,10 +68,34 @@ export const Polyline = ({
     onTransformEnd
   );
   const setHoveredLabel = useSetRecoilState(hoveredLabelAtom);
+  const setHoveredPolylineInfo = useSetRecoilState(hoveredPolylineInfoAtom);
+
+  const handlePointMove = useCallback(
+    (segmentIndex: number, pointIndex: number, newPosition: THREE.Vector3) => {
+      setLocalPoints3d((prev) => {
+        const newPoints = [...prev];
+        if (newPoints[segmentIndex] && newPoints[segmentIndex][pointIndex]) {
+          newPoints[segmentIndex] = [...newPoints[segmentIndex]];
+          newPoints[segmentIndex][pointIndex] = [
+            newPosition.x,
+            newPosition.y,
+            newPosition.z,
+          ];
+        }
+        return newPoints;
+      });
+    },
+    []
+  );
+
+  // Update local points when props change
+  useEffect(() => {
+    setLocalPoints3d(points3d);
+  }, [points3d]);
 
   const lines = useMemo(
     () =>
-      points3d.map((pts, i) => (
+      localPoints3d.map((pts, i) => (
         <LineDrei
           key={`polyline-${label._id}-${i}`}
           lineWidth={lineWidth}
@@ -77,9 +103,31 @@ export const Polyline = ({
           points={pts}
           color={strokeAndFillColor}
           rotation={rotation}
+          onPointerOver={() => {
+            if (isAnnotateMode) {
+              setHoveredPolylineInfo({
+                labelId: label._id,
+                segmentIndex: i,
+                // pointIndex is undefined when hovering over the segment
+              });
+            }
+          }}
+          onPointerOut={() => {
+            if (isAnnotateMode) {
+              setHoveredPolylineInfo(null);
+            }
+          }}
         />
       )),
-    [points3d, strokeAndFillColor, lineWidth, rotation]
+    [
+      localPoints3d,
+      strokeAndFillColor,
+      lineWidth,
+      rotation,
+      label._id,
+      isAnnotateMode,
+      setHoveredPolylineInfo,
+    ]
   );
 
   const material = useMemo(() => {
@@ -109,7 +157,7 @@ export const Polyline = ({
       }
     });
 
-    const meshes = createFilledPolygonMeshes(points3d, material);
+    const meshes = createFilledPolygonMeshes(localPoints3d, material);
     meshesRef.current = meshes || [];
 
     if (!meshes) return null;
@@ -121,13 +169,13 @@ export const Polyline = ({
         rotation={rotation as unknown as THREE.Euler}
       />
     ));
-  }, [filled, points3d, rotation, material, label._id]);
+  }, [filled, localPoints3d, rotation, material, label._id]);
 
   // Calculate centroid of polylines for transform controls
   const centroid = useMemo(() => {
-    if (points3d.length === 0) return [0, 0, 0];
+    if (localPoints3d.length === 0) return [0, 0, 0];
 
-    const allPoints = points3d.flat();
+    const allPoints = localPoints3d.flat();
     if (allPoints.length === 0) return [0, 0, 0];
 
     const sum = allPoints.reduce(
@@ -140,7 +188,7 @@ export const Polyline = ({
       sum[1] / allPoints.length,
       sum[2] / allPoints.length,
     ] as [number, number, number];
-  }, [points3d]);
+  }, [localPoints3d]);
 
   const pointMarkers = useMemo(() => {
     if (!isAnnotateMode) return null;
@@ -151,11 +199,11 @@ export const Polyline = ({
       .set("hsl.h", "+180")
       .hex();
 
-    return points3d.flatMap((segment, segmentIndex) => {
+    return localPoints3d.flatMap((segment, segmentIndex) => {
       let visitedPoints = new Set();
 
-      return segment.map((point) => {
-        const key = `${point[0]}-${point[1]}-${point[2]}-${segmentIndex}}`;
+      return segment.map((point, pointIndex) => {
+        const key = `${point[0]}-${point[1]}-${point[2]}-${segmentIndex}-${pointIndex}`;
 
         if (visitedPoints.has(key)) return null;
 
@@ -166,11 +214,25 @@ export const Polyline = ({
             key={key}
             position={new THREE.Vector3(...point)}
             color={complementaryColor}
+            isDraggable={true}
+            labelId={label._id}
+            segmentIndex={segmentIndex}
+            pointIndex={pointIndex}
+            onPointMove={(newPosition) =>
+              handlePointMove(segmentIndex, pointIndex, newPosition)
+            }
+            pulsate={false}
           />
         );
       });
     });
-  }, [isAnnotateMode, points3d, label._id, strokeAndFillColor]);
+  }, [
+    isAnnotateMode,
+    localPoints3d,
+    label._id,
+    strokeAndFillColor,
+    handlePointMove,
+  ]);
 
   const centroidMarker = useMemo(() => {
     if (!isAnnotateMode || !isSelectedForAnnotation) return null;
@@ -187,6 +249,10 @@ export const Polyline = ({
         color={centroidColor}
         size={0.05}
         pulsate={false}
+        isDraggable={false}
+        labelId={label._id}
+        segmentIndex={-1}
+        pointIndex={-1}
       />
     );
   }, [
@@ -197,7 +263,6 @@ export const Polyline = ({
     label._id,
   ]);
 
-  // Cleanup meshes on unmount
   useEffect(() => {
     return () => {
       meshesRef.current.forEach((mesh) => {
@@ -226,9 +291,15 @@ export const Polyline = ({
     <>
       {filled && filledMeshes}
       {lines}
-      {pointMarkers}
       {centroidMarker}
     </>
+  );
+
+  const markers = (
+    <group>
+      {pointMarkers}
+      {centroidMarker}
+    </group>
   );
 
   return (
@@ -243,6 +314,7 @@ export const Polyline = ({
       transformControlsRef={transformControlsRef}
       transformControlsPosition={centroid as THREE.Vector3Tuple}
     >
+      {markers}
       <group
         onPointerOver={() => {
           setIsHovered(true);

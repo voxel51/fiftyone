@@ -6,7 +6,7 @@ import {
   nullableModalSampleId,
 } from "@fiftyone/state";
 import { atom, atomFamily, selector } from "recoil";
-import { Vector3, type Vector3Tuple } from "three";
+import { Vector3 } from "three";
 import { SHADE_BY_HEIGHT } from "./constants";
 import type { FoSceneNode } from "./hooks";
 import type { Actions, AssetLoadingLog, ShadeBy } from "./types";
@@ -196,6 +196,19 @@ export const hoveredLabelAtom = atom<any | null>({
   default: null,
 });
 
+// Hover state for specific polyline points/segments
+export interface HoveredPolylineInfo {
+  labelId: string;
+  segmentIndex: number;
+  // undefined means hovering over the segment, not a specific point
+  pointIndex?: number;
+}
+
+export const hoveredPolylineInfoAtom = atom<HoveredPolylineInfo | null>({
+  key: "fo3d-hoveredPolylineInfo",
+  default: null,
+});
+
 export const cuboidLabelLineWidthAtom = atom({
   key: "fo3d-cuboidLabelLineWidth",
   default: 3,
@@ -242,6 +255,29 @@ export const transformSpaceAtom = atom<TransformSpace>({
 
 export const isTransformingAtom = atom<boolean>({
   key: "fo3d-isTransforming",
+  default: false,
+});
+
+// Individual point selection and transform controls
+export interface SelectedPoint {
+  labelId: string;
+  segmentIndex: number;
+  pointIndex: number;
+  position: [number, number, number];
+}
+
+export const selectedPointAtom = atom<SelectedPoint | null>({
+  key: "fo3d-selectedPoint",
+  default: null,
+});
+
+export const isPointTransformModeAtom = atom<boolean>({
+  key: "fo3d-isPointTransformMode",
+  default: false,
+});
+
+export const isPointTransformingAtom = atom<boolean>({
+  key: "fo3d-isPointTransforming",
   default: false,
 });
 
@@ -305,58 +341,9 @@ export const clearTransformStateSelector = selector({
     set(transformSpaceAtom, "world");
     set(isTransformingAtom, false);
     set(transformDataAtom, {});
+    set(selectedPointAtom, null);
+    set(isPointTransformModeAtom, false);
+    set(isPointTransformingAtom, false);
     // Note: We don't clear transformedLabelsAtom here as it should persist
   },
-});
-
-// Polyline segment addition state
-export interface NewPolylineSegment {
-  vertices: Vector3Tuple[];
-  isTemporary?: boolean; // For preview while placing
-}
-
-export interface PolylineSegmentEditState {
-  segments: NewPolylineSegment[];
-  activeVertexIndex?: number; // Index of vertex being transformed
-}
-
-// Map of label ID to new segments
-export const polylineSegmentEditsAtom = atom<
-  Record<string, PolylineSegmentEditState>
->({
-  key: "fo3d-polylineSegmentEdits",
-  default: {},
-});
-
-// Current mode for polyline editing
-export type PolylineEditMode = "idle" | "adding" | "editing";
-
-export const polylineEditModeAtom = atom<PolylineEditMode>({
-  key: "fo3d-polylineEditMode",
-  default: "idle",
-});
-
-// Label ID of the polyline currently being edited
-export const activePolylineLabelAtom = atom<string | null>({
-  key: "fo3d-activePolylineLabel",
-  default: null,
-});
-
-// Temporary vertices being placed (before confirming the segment)
-export const temporaryVerticesAtom = atom<Vector3Tuple[]>({
-  key: "fo3d-temporaryVertices",
-  default: [],
-});
-
-// Selected polyline point for transformation
-export interface SelectedPolylinePoint {
-  labelId: string;
-  segmentIndex: number; // Index of the segment within the polyline
-  pointIndex: number; // Index of the point within the segment (0 or 1)
-  position: Vector3Tuple;
-}
-
-export const selectedPolylinePointAtom = atom<SelectedPolylinePoint | null>({
-  key: "fo3d-selectedPolylinePoint",
-  default: null,
 });

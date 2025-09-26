@@ -4,7 +4,6 @@ import { useCallback, useMemo } from "react";
 import { useRecoilState } from "recoil";
 import {
   isInTransformModeAtom,
-  polylineEditModeAtom,
   selectedLabelForAnnotationAtom,
   transformModeAtom,
   transformSpaceAtom,
@@ -22,15 +21,8 @@ export const useAnnotationActions = () => {
   const [transformMode, setTransformMode] = useRecoilState(transformModeAtom);
   const [transformSpace, setTransformSpace] =
     useRecoilState(transformSpaceAtom);
-  const [polylineEditMode, setPolylineEditMode] =
-    useRecoilState(polylineEditModeAtom);
 
   const hasSelectedLabel = !!selectedLabelForAnnotation;
-
-  const handleNewVertex = useCallback(() => {
-    // Toggle polyline segment addition mode
-    setPolylineEditMode(polylineEditMode === "adding" ? "idle" : "adding");
-  }, [polylineEditMode, setPolylineEditMode]);
 
   const handleTransformModeChange = useCallback(
     (mode: TransformMode) => {
@@ -70,8 +62,10 @@ export const useAnnotationActions = () => {
             icon: <Add />,
             shortcut: "V",
             tooltip: "Add new polyline segment",
-            isActive: polylineEditMode === "adding",
-            onClick: handleNewVertex,
+            isActive: false,
+            onClick: () => {
+              alert("Not implemented! :(");
+            },
           },
         ],
       },
@@ -142,8 +136,6 @@ export const useAnnotationActions = () => {
       },
     ] as AnnotationActionGroup[];
   }, [
-    polylineEditMode,
-    handleNewVertex,
     isInTransformMode,
     hasSelectedLabel,
     transformMode,

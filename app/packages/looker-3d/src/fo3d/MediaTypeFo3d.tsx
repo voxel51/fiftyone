@@ -44,7 +44,10 @@ import {
   clearTransformStateSelector,
   currentHoveredPointAtom,
   isFo3dBackgroundOnAtom,
+  isPointTransformModeAtom,
+  isPointTransformingAtom,
   isTransformingAtom,
+  selectedPointAtom,
 } from "../state";
 import { HoverMetadata } from "../types";
 import { FoSceneComponent } from "./FoScene";
@@ -223,6 +226,7 @@ export const MediaTypeFo3dComponent = () => {
   const cameraRef = useRef<THREE.PerspectiveCamera>();
   const cameraControlsRef = useRef<CameraControls>();
   const isTransforming = useRecoilValue(isTransformingAtom);
+  const isPointTransforming = useRecoilValue(isPointTransformingAtom);
 
   const keyState = useRef({
     shiftRight: false,
@@ -236,13 +240,13 @@ export const MediaTypeFo3dComponent = () => {
    */
   useEffect(() => {
     updateCameraControlsConfig();
-  }, [isTransforming]);
+  }, [isTransforming, isPointTransforming]);
 
   const updateCameraControlsConfig = useCallback(() => {
     if (!cameraControlsRef.current) return;
 
     // Disable camera controls when transforming
-    if (isTransforming) {
+    if (isTransforming || isPointTransforming) {
       cameraControlsRef.current.enabled = false;
       return;
     }
@@ -260,7 +264,7 @@ export const MediaTypeFo3dComponent = () => {
       cameraControlsRef.current.mouseButtons.left =
         CameraControlsImpl.ACTION.ROTATE;
     }
-  }, [keyState, isTransforming]);
+  }, [keyState, isTransforming, isPointTransforming]);
 
   fos.useEventHandler(document, "keydown", (e: KeyboardEvent) => {
     if (e.code === "ShiftRight") keyState.current.shiftRight = true;
@@ -403,6 +407,8 @@ export const MediaTypeFo3dComponent = () => {
         set(activeNodeAtom, null);
         set(currentHoveredPointAtom, null);
         set(clearTransformStateSelector, null);
+        set(selectedPointAtom, null);
+        set(isPointTransformModeAtom, false);
         setAutoRotate(false);
       },
     []

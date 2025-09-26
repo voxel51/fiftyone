@@ -83,6 +83,9 @@ export const LABEL_3D_HOVERED_COLOR = "#f2f0ef";
 export const LABEL_3D_INSTANCE_HOVERED_COLOR = "#ffffff";
 export const LABEL_3D_SIMILAR_SELECTED_COLOR = "#ffa500";
 
+export const LABEL_3D_ANNOTATION_POINT_SELECTED_FOR_TRANSFORMATION_COLOR =
+  "#ff0000";
+
 // ray casting for points
 export const RAY_CASTING_SENSITIVITY = {
   // Very precise: only registers hits when the ray is extremely close to the point.
