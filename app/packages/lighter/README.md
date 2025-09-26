@@ -13,7 +13,7 @@ interaction handling, and overlay representation.
 ┌─────────────────────────────────────────────────────────────────┐
 │                        Application Layer                        │
 ├─────────────────────────────────────────────────────────────────┤
-│  React Hooks (useLighter, useSceneSelectionState, etc.)        │
+│  React Hooks (useLighter, useSceneSelectionState, etc.)         │
 │  LighterSampleRenderer Component                                │
 ├─────────────────────────────────────────────────────────────────┤
 │                        Scene Layer                              │
@@ -29,9 +29,9 @@ interaction handling, and overlay representation.
 │                      Overlay Layer                              │
 ├─────────────────────────────────────────────────────────────────┤
 │  BaseOverlay ──┐                                                │
-│                ├── ImageOverlay (CanonicalMedia)               │
-│                ├── BoundingBoxOverlay (Spatial, Selectable)    │
-│                ├── ClassificationOverlay (Selectable)          │
+│                ├── ImageOverlay (CanonicalMedia)                │
+│                ├── BoundingBoxOverlay (Spatial, Selectable)     │
+│                ├── ClassificationOverlay (Selectable)           │
 │                └── Custom Overlays                              │
 ├─────────────────────────────────────────────────────────────────┤
 │                     Renderer Layer                              │
