@@ -44,6 +44,7 @@ export const PolylinePointMarker = ({
 
   const setHoveredPolylineInfo = useSetRecoilState(hoveredPolylineInfoAtom);
   const setIsPointTransforming = useSetRecoilState(isPointTransformingAtom);
+  const setTransformMode = useSetRecoilState(transformModeAtom);
 
   const [selectedPoint, setSelectedPoint] = useRecoilState(selectedPointAtom);
   const [isPointTransformMode, setIsPointTransformMode] = useRecoilState(
@@ -74,6 +75,7 @@ export const PolylinePointMarker = ({
 
       setSelectedPoint(newSelectedPoint);
       setIsPointTransformMode(true);
+      setTransformMode("translate");
     },
     [
       isDraggable,

@@ -1,9 +1,10 @@
 import { Add, OpenWith, RotateRight, Straighten } from "@mui/icons-material";
 import { Typography } from "@mui/material";
 import { useCallback, useMemo } from "react";
-import { useRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import {
   isInTransformModeAtom,
+  isPointTransformModeAtom,
   selectedLabelForAnnotationAtom,
   transformModeAtom,
   transformSpaceAtom,
@@ -18,6 +19,7 @@ export const useAnnotationActions = () => {
   const [isInTransformMode, setIsInTransformMode] = useRecoilState(
     isInTransformModeAtom
   );
+  const isPointTransformMode = useRecoilValue(isPointTransformModeAtom);
   const [transformMode, setTransformMode] = useRecoilState(transformModeAtom);
   const [transformSpace, setTransformSpace] =
     useRecoilState(transformSpaceAtom);
@@ -79,8 +81,10 @@ export const useAnnotationActions = () => {
             icon: <OpenWith />,
             shortcut: "G",
             tooltip: "Move object (Grab)",
-            isActive: isInTransformMode && transformMode === "translate",
-            isDisabled: !hasSelectedLabel,
+            isActive:
+              (isInTransformMode || isPointTransformMode) &&
+              transformMode === "translate",
+            isDisabled: !hasSelectedLabel && !isPointTransformMode,
             onClick: () => handleTransformModeChange("translate"),
           },
           {
@@ -139,6 +143,7 @@ export const useAnnotationActions = () => {
     isInTransformMode,
     hasSelectedLabel,
     transformMode,
+    isPointTransformMode,
     handleTransformModeChange,
     transformSpace,
     handleTransformSpaceChange,
