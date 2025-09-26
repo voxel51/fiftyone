@@ -23,7 +23,7 @@ const ToolbarContainer = styled(Box)<{
   border: `1px solid ${theme.palette.divider}`,
   zIndex: 1000,
   minWidth: "36px",
-  opacity: isDragging ? 0.95 : 0.55,
+  opacity: isDragging ? 0.95 : 0.75,
   userSelect: "none",
   transition: isDragging ? "none" : "opacity 0.2s ease, box-shadow 0.2s ease",
 

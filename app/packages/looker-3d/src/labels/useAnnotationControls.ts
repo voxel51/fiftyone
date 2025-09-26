@@ -50,14 +50,24 @@ export const useAnnotationControls = () => {
   const selectLabelForAnnotation = useCallback(
     (label: OverlayLabel) => {
       setSelectedLabelForAnnotation(label);
+
+      // We only support translate for polylines for now
+      if (
+        label._cls === "Polyline" &&
+        (transformMode === "rotate" || transformMode === "scale")
+      ) {
+        setTransformMode("translate");
+      }
     },
-    [setSelectedLabelForAnnotation]
+    [setSelectedLabelForAnnotation, transformMode, setTransformMode]
   );
 
   const enterTransformMode = useCallback(() => {
     if (selectedLabelForAnnotation) {
       setIsInTransformMode(true);
-      setTransformMode("translate");
+      // Always start with translate mode for polylines, or current mode for other labels
+      const isPolyline = selectedLabelForAnnotation._cls === "Polyline";
+      setTransformMode(isPolyline ? "translate" : transformMode);
       setTransformSpace("world");
     }
   }, [
@@ -65,6 +75,7 @@ export const useAnnotationControls = () => {
     setIsInTransformMode,
     setTransformMode,
     setTransformSpace,
+    transformMode,
   ]);
 
   const exitTransformMode = useCallback(() => {
@@ -268,6 +279,8 @@ export const useAnnotationControls = () => {
         e.preventDefault();
         e.stopPropagation();
 
+        const isPolyline = selectedLabelForAnnotation._cls === "Polyline";
+
         // Enter transform mode if not already in it
         if (!isInTransformMode) {
           enterTransformMode();
@@ -276,9 +289,9 @@ export const useAnnotationControls = () => {
         // Set the appropriate transform mode
         if (key === "g") {
           setMode("translate");
-        } else if (key === "r") {
+        } else if (key === "r" && !isPolyline) {
           setMode("rotate");
-        } else if (key === "s") {
+        } else if (key === "s" && !isPolyline) {
           setMode("scale");
         }
       }
