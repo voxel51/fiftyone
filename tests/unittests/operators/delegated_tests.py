@@ -868,7 +868,8 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         mock_get_operator,
     ):
         mock_process = mock.MagicMock()
-        mock_process.is_alive.side_effect = [True, False, False]
+
+        mock_process.is_alive.side_effect = [True, True, True, False, False]
 
         mock_context = mock.MagicMock()
         mock_context.Process.return_value = mock_process
@@ -883,65 +884,33 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         )
         self.docs_to_delete.append(doc)
 
+        # First call returns running doc, second call returns completed doc
+        running_doc = copy.deepcopy(doc)
+        running_doc.run_state = ExecutionRunState.RUNNING
+
         completed_doc = copy.deepcopy(doc)
         completed_doc.run_state = ExecutionRunState.COMPLETED
         completed_doc.result = ExecutionResult(result={"executed": True})
 
-        with patch.object(self.svc, "get", return_value=completed_doc), patch(
+        with patch.object(
+            self.svc, "get", side_effect=[running_doc, completed_doc]
+        ), patch(
             "fiftyone.operators.delegated._execute_operator_in_child_process"
-        ):
+        ), patch.object(
+            self.svc._repo, "ping"
+        ) as mock_ping:
             result = self.svc.execute_operation(
                 operation=doc,
                 log=False,
                 monitor=True,
             )
+
+            # Verify ping was called with the operation ID
+            mock_ping.assert_called_once_with(doc.id)
 
         self.assertIsNotNone(result)
         self.assertIsNone(result.error)
         self.assertEqual(result.result, {"executed": True})
-
-    @patch("logging.handlers.QueueListener")
-    @patch("multiprocessing.get_context")
-    def test_execute_operation_monitor_internal_fail(
-        self,
-        mock_get_context,
-        mock_listener,
-        mock_get_operator,
-    ):
-        mock_process = mock.MagicMock()
-        mock_process.is_alive.side_effect = [True, False, False]
-
-        mock_context = mock.MagicMock()
-        mock_context.Process.return_value = mock_process
-        mock_context.Queue.return_value = mock.MagicMock()
-        mock_get_context.return_value = mock_context
-
-        doc = self.svc.queue_operation(
-            operator=f"{TEST_DO_PREFIX}/operator/monitor_fail",
-            context=ExecutionContext(
-                request_params={"dataset_id": str(ObjectId())}
-            ),
-        )
-        self.docs_to_delete.append(doc)
-
-        failed_doc = copy.deepcopy(doc)
-        failed_doc.run_state = ExecutionRunState.FAILED
-        failed_doc.result = ExecutionResult(
-            error="MockOperator failed internally"
-        )
-
-        with patch.object(self.svc, "get", return_value=failed_doc), patch(
-            "fiftyone.operators.delegated._execute_operator_in_child_process"
-        ):
-            result = self.svc.execute_operation(
-                operation=doc,
-                log=False,
-                monitor=True,
-            )
-
-        self.assertIsNotNone(result)
-        self.assertIsNotNone(result.error)
-        self.assertIn("MockOperator failed internally", result.error)
 
     @patch("psutil.Process")
     @patch("logging.handlers.QueueListener")
@@ -955,7 +924,14 @@ class DelegatedOperationServiceTests(unittest.TestCase):
     ):
         mock_process = mock.MagicMock()
         mock_process.pid = 12345
-        mock_process.is_alive.side_effect = [True, True, False]
+
+        mock_process.is_alive.side_effect = [
+            True,  # 1st loop: while condition
+            True,  # 1st loop: after join
+            True,  # 2nd loop: while condition
+            True,  # 2nd loop: after join
+            False,  # after termination
+        ]
 
         mock_context = mock.MagicMock()
         mock_context.Process.return_value = mock_process
@@ -973,16 +949,28 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         )
         self.docs_to_delete.append(doc)
 
+        # We need two document states for our simulation
+        running_doc = copy.deepcopy(doc)
+        running_doc.run_state = ExecutionRunState.RUNNING
+
         failed_doc = copy.deepcopy(doc)
         failed_doc.run_state = ExecutionRunState.FAILED
         failed_doc.result = ExecutionResult(error="marked as failed by test")
 
-        with patch.object(self.svc, "get", return_value=failed_doc), patch(
-            "time.sleep", return_value=None
-        ):
+        with patch.object(
+            self.svc, "get", side_effect=[running_doc, failed_doc]
+        ), patch("time.sleep", return_value=None), patch.object(
+            self.svc._repo, "ping"
+        ) as mock_ping:
             result = self.svc.execute_operation(
-                operation=doc, log=False, monitor=True
+                operation=doc,
+                log=False,
+                monitor=True,
+                check_interval_seconds=1,
             )
+
+            # This assertion will now pass
+            mock_ping.assert_called_once_with(doc.id)
 
         mock_psutil_process.assert_called_once_with(mock_process.pid)
         mock_psutil_parent.children.assert_called_once_with(recursive=True)
@@ -992,7 +980,187 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertIn("Operation marked as FAILED externally", result.error)
 
         mock_process.start.assert_called_once()
-        mock_process.join.assert_called()
+        self.assertGreaterEqual(mock_process.join.call_count, 2)
+
+    @patch("logging.handlers.QueueListener")
+    @patch("multiprocessing.get_context")
+    def test_execute_operation_monitor_internal_fail(
+        self,
+        mock_get_context,
+        mock_listener,
+        mock_get_operator,
+    ):
+        mock_process = mock.MagicMock()
+        mock_process.is_alive.side_effect = [
+            True,
+            True,  # Cycle 1
+            True,
+            True,  # Cycle 2
+            False,
+            False,  # Subsequent checks
+        ]
+
+        mock_context = mock.MagicMock()
+        mock_context.Process.return_value = mock_process
+        mock_context.Queue.return_value = mock.MagicMock()
+        mock_get_context.return_value = mock_context
+
+        doc = self.svc.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/operator/monitor_fail",
+            context=ExecutionContext(
+                request_params={"dataset_id": str(ObjectId())}
+            ),
+        )
+        self.docs_to_delete.append(doc)
+
+        # First call returns running doc, second call returns failed doc
+        running_doc = copy.deepcopy(doc)
+        running_doc.run_state = ExecutionRunState.RUNNING
+
+        failed_doc = copy.deepcopy(doc)
+        failed_doc.run_state = ExecutionRunState.FAILED
+        failed_doc.result = ExecutionResult(
+            error="MockOperator failed internally"
+        )
+
+        with patch.object(
+            self.svc, "get", side_effect=[running_doc, failed_doc]
+        ), patch(
+            "fiftyone.operators.delegated._execute_operator_in_child_process"
+        ), patch.object(
+            self.svc._repo, "ping"
+        ) as mock_ping, patch(
+            "psutil.Process"
+        ) as mock_psutil_process:
+            mock_psutil_parent = mock.MagicMock()
+            mock_psutil_process.return_value = mock_psutil_parent
+
+            result = self.svc.execute_operation(
+                operation=doc,
+                log=False,
+                monitor=True,
+            )
+
+            # Verify ping was called with the operation ID (before failure detected)
+            mock_ping.assert_called_once_with(doc.id)
+
+        self.assertIsNotNone(result)
+        self.assertIsNotNone(result.error)
+        self.assertIn("Operation FAILED (detected by monitor):", result.error)
+        self.assertIn("MockOperator failed internally", result.error)
+
+    @patch("logging.handlers.QueueListener")
+    @patch("multiprocessing.get_context")
+    def test_execute_operation_monitor_ping_exception(
+        self,
+        mock_get_context,
+        mock_listener,
+        mock_get_operator,
+    ):
+        """Test that monitoring handles ping exceptions gracefully"""
+        mock_process = mock.MagicMock()
+        mock_process.is_alive.side_effect = [True, True, False]
+        mock_process.pid = 12345
+
+        mock_context = mock.MagicMock()
+        mock_context.Process.return_value = mock_process
+        mock_context.Queue.return_value = mock.MagicMock()
+        mock_get_context.return_value = mock_context
+
+        doc = self.svc.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/operator/monitor_ping_fail",
+            context=ExecutionContext(
+                request_params={"dataset_id": str(ObjectId())}
+            ),
+        )
+        self.docs_to_delete.append(doc)
+
+        # Mock get to return running operation first time, then completed
+        running_doc = copy.deepcopy(doc)
+        running_doc.run_state = ExecutionRunState.RUNNING
+
+        # Mock ping to raise an exception
+        ping_exception = Exception("Database connection failed")
+
+        with patch.object(self.svc, "get", return_value=running_doc), patch(
+            "fiftyone.operators.delegated._execute_operator_in_child_process"
+        ), patch.object(
+            self.svc._repo, "ping", side_effect=ping_exception
+        ), patch(
+            "psutil.Process"
+        ) as mock_psutil_process, patch(
+            "time.sleep", return_value=None
+        ):
+            mock_psutil_parent = mock.MagicMock()
+            mock_psutil_process.return_value = mock_psutil_parent
+
+            result = self.svc.execute_operation(
+                operation=doc, log=False, monitor=True
+            )
+
+            # Should terminate the process due to ping exception
+            mock_psutil_process.assert_called_once_with(mock_process.pid)
+            mock_psutil_parent.children.assert_called_once_with(recursive=True)
+            mock_psutil_parent.terminate.assert_called_once()
+
+        self.assertIsNotNone(result)
+        self.assertIn("Error in monitoring loop", result.error)
+        self.assertIn("Database connection failed", result.error)
+
+    @patch("logging.handlers.QueueListener")
+    @patch("multiprocessing.get_context")
+    def test_execute_operation_monitor_get_exception(
+        self,
+        mock_get_context,
+        mock_listener,
+        mock_get_operator,
+    ):
+        """Test that monitoring handles get operation exceptions gracefully"""
+        mock_process = mock.MagicMock()
+        mock_process.is_alive.side_effect = [True, True, False]
+        mock_process.pid = 12345
+
+        mock_context = mock.MagicMock()
+        mock_context.Process.return_value = mock_process
+        mock_context.Queue.return_value = mock.MagicMock()
+        mock_get_context.return_value = mock_context
+
+        doc = self.svc.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/operator/monitor_get_fail",
+            context=ExecutionContext(
+                request_params={"dataset_id": str(ObjectId())}
+            ),
+        )
+        self.docs_to_delete.append(doc)
+
+        # Mock get to raise an exception
+        get_exception = Exception("Failed to retrieve operation")
+
+        with patch.object(self.svc, "get", side_effect=get_exception), patch(
+            "fiftyone.operators.delegated._execute_operator_in_child_process"
+        ), patch.object(self.svc._repo, "ping") as mock_ping, patch(
+            "psutil.Process"
+        ) as mock_psutil_process, patch(
+            "time.sleep", return_value=None
+        ):
+            mock_psutil_parent = mock.MagicMock()
+            mock_psutil_process.return_value = mock_psutil_parent
+
+            result = self.svc.execute_operation(
+                operation=doc, log=False, monitor=True
+            )
+
+            # Ping should not be called if get fails
+            mock_ping.assert_not_called()
+
+            # Should terminate the process due to get exception
+            mock_psutil_process.assert_called_once_with(mock_process.pid)
+            mock_psutil_parent.children.assert_called_once_with(recursive=True)
+            mock_psutil_parent.terminate.assert_called_once()
+
+        self.assertIsNotNone(result)
+        self.assertIn("Error in monitoring loop", result.error)
+        self.assertIn("Failed to retrieve operation", result.error)
 
     def test_execute_with_renamed_dataset(self, get_op_mock):
         # setup

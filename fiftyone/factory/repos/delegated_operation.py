@@ -140,6 +140,10 @@ class DelegatedOperationRepo(object):
         """Count all operations."""
         raise NotImplementedError("subclass must implement count()")
 
+    def ping(self, _id: ObjectId) -> DelegatedOperationDocument:
+        """Updates the updated_at field of an operation to keep it alive."""
+        raise NotImplementedError("subclass must implement ping()")
+
 
 class MongoDelegatedOperationRepo(DelegatedOperationRepo):
     COLLECTION_NAME = "delegated_ops"
@@ -532,6 +536,14 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             query.update(self._extract_search_query(search))
 
         return self._collection.count_documents(filter=query)
+
+    def ping(self, _id: ObjectId):
+        doc = self._collection.find_one_and_update(
+            filter={"_id": _id},
+            update={"$set": {"updated_at": datetime.utcnow()}},
+            return_document=pymongo.ReturnDocument.AFTER,
+        )
+        return DelegatedOperationDocument().from_pymongo(doc)
 
     def _extract_search_query(self, search):
         if search:
