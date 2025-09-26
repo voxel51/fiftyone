@@ -2,7 +2,7 @@ import { TransformControls, useCursor } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
-import { Vector3 } from "three";
+import { Mesh, Vector3 } from "three";
 import { LABEL_3D_ANNOTATION_POINT_SELECTED_FOR_TRANSFORMATION_COLOR } from "../../constants";
 import {
   hoveredPolylineInfoAtom,
@@ -37,7 +37,7 @@ export const PolylinePointMarker = ({
   pointIndex,
   onPointMove,
 }: PolylinePointMarkerProps) => {
-  const meshRef = useRef<any>(null);
+  const meshRef = useRef<Mesh>(null);
   const transformControlsRef = useRef<any>(null);
 
   const [isHovered, setIsHovered] = useState(false);
@@ -100,7 +100,9 @@ export const PolylinePointMarker = ({
 
   const handleTransformChange = useCallback(() => {
     if (transformControlsRef.current && onPointMove) {
-      const newPosition = transformControlsRef.current.position.clone();
+      const object = transformControlsRef.current.object;
+      const newPosition = object.position.clone();
+
       onPointMove(newPosition);
 
       // Update the selectedPoint position in the atom to reflect current position in HUD
@@ -198,8 +200,7 @@ export const PolylinePointMarker = ({
           mode={transformMode}
           space={transformSpace}
           onMouseDown={handleTransformStart}
-          onMouseUp={handleTransformEnd}
-          onObjectChange={handleTransformChange}
+          onMouseUp={handleTransformChange}
         />
       )}
     </>
