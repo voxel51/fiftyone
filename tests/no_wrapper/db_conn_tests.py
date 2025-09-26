@@ -20,20 +20,16 @@ class GetDbConnTests(unittest.TestCase):
         # close connection
         conn = foo.get_db_conn()
         conn.client.close()
-        self.assertTrue(conn.client._closed)
+        self.assertTrue(foo.database._client._closed)
 
         # confirm closed
-        try:
+        with self.assertRaises(InvalidOperation):
             list(conn.datasets.find({}, limit=1))
-        except InvalidOperation:
-            datasets = None
-        self.assertIsNone(datasets)
 
-        # should reconnect
+        # should reconnect and execute without error
         datasets = fo.list_datasets(glob_patt="unittest*")
         self.assertIsNotNone(datasets)
-        conn = foo.get_db_conn()
-        self.assertFalse(conn.client._closed)
+        self.assertFalse(foo.database._client._closed)
 
 
 class GetAsyncDbConnTests(unittest.TestCase):
