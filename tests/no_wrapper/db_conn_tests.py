@@ -10,14 +10,11 @@ from pymongo.errors import InvalidOperation
 
 import fiftyone.core.odm as foo
 
-# from fiftyone.factory.repos.delegated_operation import DelegatedOperationRepo
-
 
 class GetDbConnTests(unittest.TestCase):
     def test_get_db_conn(self):
         # initial connection
         conn = foo.get_db_conn()
-        # do_svc = DelegatedOperationRepo()
         doc = conn.datasets.find_one({}, {"_id": 1})
         self.assertIsNotNone(doc)
         disconnected = False
