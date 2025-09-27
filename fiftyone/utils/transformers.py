@@ -30,7 +30,6 @@ fou.ensure_package("transformers")
 import transformers
 
 
-
 logger = logging.getLogger(__name__)
 
 DEFAULT_CLASSIFICATION_PATH = "google/vit-base-patch16-224"
@@ -42,7 +41,6 @@ DEFAULT_ZERO_SHOT_DETECTION_PATH = "google/owlvit-base-patch32"
 DEFAULT_POSE_ESTIMATION_PATH = "usyd-community/vitpose-base-simple"
 
 
-
 def convert_transformers_model(model, task=None, **kwargs):
     """Converts the given Hugging Face transformers model into a FiftyOne
     model.
@@ -51,7 +49,7 @@ def convert_transformers_model(model, task=None, **kwargs):
         model: a ``transformers`` model
         task (None): the task of the model. Supported values are
             ``"image-classification"``, ``"object-detection"``,
-            ``"semantic-segmentation"``, and ``"depth-estimation"``.
+            ``"semantic-segmentation"``, ``"depth-estimation"``, and ``"pose-estimation"``.
             If not specified, the task is automatically inferred from the model
 
     Returns:
@@ -105,6 +103,7 @@ def get_model_type(model, task=None):
         "object-detection",
         "semantic-segmentation",
         "depth-estimation",
+        "pose-estimation",
     )
     if task is not None and task not in supported_tasks:
         raise ValueError(
@@ -691,9 +690,7 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
             return output
 
     def _forward_pass(self, args):
-        return self._model(
-            **args, output_hidden_states=self._output_hidden_states
-        )
+        return self._model(**args)
 
     def _load_transforms(self, config):
         processor = super()._load_transforms(config)
@@ -1077,102 +1074,6 @@ class FiftyOneTransformerForSemanticSegmentation(FiftyOneTransformer):
         self.transforms.return_image_sizes = True
 
 
-class TransformersPoseEstimationOutputProcessor(fout.OutputProcessor):
-    """Output processor for pose estimation models."""
-    
-    # COCO keypoint info
-    COCO_KEYPOINT_NAMES = [
-        "nose", "left_eye", "right_eye", "left_ear", "right_ear",
-        "left_shoulder", "right_shoulder", "left_elbow", "right_elbow", 
-        "left_wrist", "right_wrist", "left_hip", "right_hip",
-        "left_knee", "right_knee", "left_ankle", "right_ankle"
-    ]
-    
-    COCO_SKELETON = [
-        [16, 14], [14, 12], [17, 15], [15, 13], [12, 13],
-        [6, 12], [7, 13], [6, 7], [6, 8], [7, 9],
-        [8, 10], [9, 11], [2, 3], [1, 2], [1, 3],
-        [2, 4], [3, 5], [4, 6], [5, 7]
-    ]
-    
-    def __init__(self, classes=None, processor=None):
-        super().__init__(classes)
-        self._processor = processor
-    
-    def __call__(self, output, image_sizes, confidence_thresh=None, box_prompts=None):
-        """Process pose estimation outputs to FiftyOne format."""
-        
-        if isinstance(image_sizes, torch.Tensor):
-            image_sizes = image_sizes.tolist()
-        
-        if hasattr(output, 'heatmaps') and isinstance(output.heatmaps, torch.Tensor):
-            output.heatmaps = output.heatmaps.detach()
-        
-        if hasattr(self._processor, 'post_process_pose_estimation'):
-            pose_results = self._processor.post_process_pose_estimation(
-                output, 
-                boxes=box_prompts
-            )
-        else:
-            pose_results = []
-            if hasattr(output, 'keypoints'):
-                keypoints = output.keypoints
-                scores = output.scores if hasattr(output, 'scores') else None
-                
-                for i in range(keypoints.shape[0]):
-                    batch_results = []
-                    for j in range(keypoints.shape[1]):
-                        person_kpts = keypoints[i, j].detach().cpu().numpy()
-                        person_scores = scores[i, j].detach().cpu().numpy() if scores is not None else np.ones(17)
-                        batch_results.append({
-                            'keypoints': person_kpts,
-                            'scores': person_scores
-                        })
-                    pose_results.append(batch_results)
-        
-        batch_keypoints = []
-        for pose_result, (height, width) in zip(pose_results, image_sizes):
-            height = float(height) if height is not None else None
-            width = float(width) if width is not None else None
-            
-            persons = []
-            if pose_result:
-                for person_result in pose_result:
-                    if not isinstance(person_result, dict):
-                        continue
-                    kpts = person_result.get("keypoints", [])
-                    scores = person_result.get("scores", None)
-                    if isinstance(kpts, torch.Tensor):
-                        kpts = kpts.detach().cpu().numpy()
-                    if isinstance(scores, torch.Tensor):
-                        scores = scores.detach().cpu().numpy()
-                    if scores is None:
-                        scores = np.ones(len(kpts), dtype=float)
-                    
-                    points, confs = [], []
-                    for kp, sc in zip(kpts, scores):
-                        sc = float(sc)
-                        if confidence_thresh is not None and sc < confidence_thresh:
-                            points.append(None)
-                            confs.append(sc)
-                            continue
-                        x = float(kp[0])
-                        y = float(kp[1])
-                        x_rel = (x / width) if width else x
-                        y_rel = (y / height) if height else y
-                        points.append((x_rel, y_rel))
-                        confs.append(sc)
-                    
-                    if any(p is not None for p in points):
-                        persons.append(
-                            fol.Keypoint(label="person", points=points, confidence=confs)
-                        )
-            
-            batch_keypoints.append(fol.Keypoints(keypoints=persons, skeleton=self.COCO_SKELETON))
-        
-        return batch_keypoints
-
-
 class FiftyOneTransformerForPoseEstimationConfig(FiftyOneTransformerConfig):
     """Configuration for a :class:`FiftyOneTransformerForPoseEstimation`.
 
@@ -1188,171 +1089,149 @@ class FiftyOneTransformerForPoseEstimationConfig(FiftyOneTransformerConfig):
         ):
             d["name_or_path"] = DEFAULT_POSE_ESTIMATION_PATH
         super().__init__(d)
-        
-        self.box_prompt_field = self.parse_string(d, "box_prompt_field", default=None)
 
 
-class FiftyOneTransformerForPoseEstimation(FiftyOneTransformer):
+class ImageDetectionGetItem(fout.ImageGetItem):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def __call__(self, d):
+        img = fout._load_image(
+            d["filepath"],
+            use_numpy=self.use_numpy,
+            force_rgb=True,
+        )
+        if self.transform is not None:
+            boxes = d["box_prompts"]
+            img = self.transform({"images": img, "boxes": boxes})
+
+        if self.raw_inputs:
+            return img
+
+        if self.using_half_precision and torch.is_tensor(img):
+            img = img.half()
+
+        return img
+
+    @property
+    def required_keys(self):
+        return ["filepath", "box_prompts"]
+
+
+class FiftyOneTransformerForPoseEstimation(
+    fout.TorchSamplesMixin, FiftyOneTransformer
+):
     """FiftyOne wrapper around a ``transformers`` model for pose estimation.
-    
+
     VitPose models require person detection as a first step, then estimate
     keypoints within each detected person.
-    
+
     Args:
-        config: a `FiftyOneTransformerForPoseEstimationConfig`
+        config: a :class:`FiftyOneTransformerForPoseEstimationConfig`
     """
 
-    
     def __init__(self, config):
-        # Set transforms defaults BEFORE calling super().__init__()
-        # This follows the project convention per reviewer feedback  
-        if config.transforms_fcn is None:
-            config.transforms_fcn = "transformers.AutoProcessor.from_pretrained"
-        if config.transforms_args is None:
-            config.transforms_args = {}
-        if "pretrained_model_name_or_path" not in config.transforms_args:
-            config.transforms_args["pretrained_model_name_or_path"] = config.name_or_path
-        
         if config.entrypoint_fcn is None:
             config.entrypoint_fcn = (
                 "transformers.VitPoseForPoseEstimation.from_pretrained"
             )
-        
+
         if config.output_processor_cls is None:
             config.output_processor_cls = "fiftyone.utils.transformers.TransformersPoseEstimationOutputProcessor"
-        
-        super().__init__(config)
-        
-        if hasattr(self._output_processor, "processor"):
-            self._output_processor.processor = self.transforms.processor
-        else:
-            self._output_processor._processor = self.transforms.processor
-        
+
+        fout.TorchSamplesMixin.__init__(self)
+        FiftyOneTransformer.__init__(self, config)
+
+        self._output_processor.processor = self.transforms.processor
+
         self.transforms.return_image_sizes = True
-    
-    def predict(self, img_or_sample):
-        """Performs prediction on the given image or sample.
-        
-        Args:
-            img_or_sample: either an image or a FiftyOne sample with box_prompt_field
-        
-        Returns:
-            a :class:`fiftyone.core.labels.Keypoints` instance
-        """
-        if hasattr(img_or_sample, "filepath") and self.config.box_prompt_field:
-            sample = img_or_sample
-            img = sample.filepath
-            
-            prompt_value = sample[self.config.box_prompt_field] if self.config.box_prompt_field in sample else None
-            if prompt_value and hasattr(prompt_value, 'detections'):
-                boxes = []
-                md = getattr(sample, "metadata", None)
-                width = getattr(md, "width", None)
-                height = getattr(md, "height", None)
-                if width is None or height is None:
-                    with Image.open(img) as _im:
-                        width, height = _im.size
-                for det in prompt_value.detections:
-                    if det.label == 'person':
-                        x, y, w, h = det.bounding_box
-                        boxes.append([x * width, y * height, w * width, h * height])
-                if boxes:
-                    self.set_box_prompts([boxes])
+        self._box_prompts = None
+
+    def predict_all(self, imgs, samples=None):
+        field_name = self._get_field()
+        if field_name is not None and samples is not None:
+            self._box_prompts = self._get_box_prompts(samples, field_name)
+            self.transforms.box_prompts = self._box_prompts
+
+        return self._predict_all(imgs)
+
+    def _get_box_prompts(self, samples, field_name):
+        prompts = []
+        for sample in samples:
+            value = sample.get_field(field_name)
+            if value is not None:
+                prompts.append(value)
+            else:
+                raise ValueError(
+                    "Sample %s is missing a prompt in field '%s'"
+                    % (sample.id, field_name)
+                )
+
+        return prompts
+
+    def _get_field(self):
+        if "prompt_field" in self.needs_fields:
+            prompt_field = self.needs_fields["prompt_field"]
         else:
-            img = img_or_sample
-        
-        if isinstance(img, str):
-            img = Image.open(img)
-        
-        return self._predict_all([img])[0]
-    
-    def _predict_all(self, imgs):
-        """Perform pose estimation on images.
-        
-        Args:
-            imgs: a list of images
-        
-        Returns:
-            a list of :class:`fiftyone.core.labels.Keypoints`
-        """
-        box_prompts = self._box_prompts if hasattr(self, '_box_prompts') and self._box_prompts else None
-        
-        if box_prompts is None:
-            box_prompts = []
-            for img in imgs:
-                if isinstance(img, Image.Image):
-                    w, h = img.size
-                elif isinstance(img, np.ndarray):
-                    h, w = img.shape[:2]
-                elif isinstance(img, torch.Tensor):
-                    if img.dim() == 3:
-                        h, w = img.shape[1:]
-                    else:
-                        h, w = img.shape[:2]
-                else:
-                    w, h = 640, 480
-                
-                box_prompts.append([[0, 0, float(w), float(h)]])
-        
+            prompt_field = next(iter(self.needs_fields.values()), None)
+
+        return prompt_field
+
+    def _predict_all(self, args):
         if self.preprocess:
-            processed = [
-                self.transforms({"images": img, "boxes": [boxes]})
-                for img, boxes in zip(imgs, box_prompts)
-            ]
-            imgs = self.collate_fn(processed)
-        
-        if isinstance(imgs, dict) and 'pixel_values' in imgs:
-            batch_size = imgs['pixel_values'].shape[0]
-        else:
-            batch_size = len(imgs) if isinstance(imgs, list) else 1
-        
-        image_sizes = imgs.pop("fo_image_size", None)
-        if isinstance(image_sizes, torch.Tensor):
-            image_sizes = image_sizes.tolist()
-        if image_sizes is None:
-            image_sizes = []
-            for i in range(batch_size):
-                image_sizes.append((None, None))
-        
-        for k, v in imgs.items():
-            if isinstance(v, torch.Tensor):
-                imgs[k] = v.to(self.device)
-                if self._using_half_precision:
-                    imgs[k] = imgs[k].half()
-        
-        output = self._forward_pass(imgs)
-        
+            args = {"images": args, "boxes": self._box_prompts}
+            args = self.collate_fn(self.transforms(args))
+
+        image_sizes = args.pop("fo_image_size", [(None, None)])
+        boxes = args.pop("boxes", None)
+        print(len(boxes), len(image_sizes))
+        print(image_sizes)
+        print(boxes)
+        for k, v in args.items():
+            args[k] = v.to(self.device)
+
+        output = self._forward_pass(args)
+
         if self._output_processor is not None:
             return self._output_processor(
                 output,
                 image_sizes,
                 confidence_thresh=self.config.confidence_thresh,
-                box_prompts=box_prompts
+                box_prompts=boxes,
             )
-        
-        return output
-    
-    def set_box_prompts(self, boxes):
-        """Set box prompts for pose estimation.
-        
-        Args:
-            boxes: detection boxes to use as prompts
-        """
-        self._box_prompts = boxes
-    
-    def _forward_pass(self, args):
-        """Forward pass with MoE model support."""
-        if (hasattr(self._model.config, 'backbone_config') and 
-            hasattr(self._model.config.backbone_config, 'num_experts') and 
-            self._model.config.backbone_config.num_experts > 1):
-            batch_size = args['pixel_values'].shape[0]
-            return self._model(
-                pixel_values=args['pixel_values'],
-                dataset_index=torch.zeros(batch_size, dtype=torch.long).to(self.device)
-            )
+
         else:
-            return self._model(**args, output_hidden_states=self._output_hidden_states)
-       
+            return output
+
+    def build_get_item(self, field_mapping=None):
+        if field_mapping is None:
+            field_mapping = {}
+        if "box_prompts" not in field_mapping:
+            field_mapping["box_prompts"] = self._get_field()
+
+        return ImageDetectionGetItem(
+            transform=self._transforms,
+            raw_inputs=self.config.raw_inputs,
+            using_half_precision=self._using_half_precision,
+            use_numpy=False,
+            field_mapping=field_mapping,
+        )
+
+    @staticmethod
+    def collate_fn(batch):
+        images = torch.cat([b["pixel_values"] for b in batch], dim=0)
+        boxes = []
+        img_sizes = []
+        for b in batch:
+            boxes.extend(b["boxes"])
+            img_sizes.extend(b["fo_image_size"])
+        return {
+            "pixel_values": images,
+            "boxes": boxes,
+            "fo_image_size": img_sizes,
+        }
+
+
 class FiftyOneTransformerForDepthEstimationConfig(FiftyOneTransformerConfig):
     """Configuration for a :class:`FiftyOneTransformerForDepthEstimation`.
 
@@ -1394,6 +1273,7 @@ class FiftyOneTransformerForDepthEstimation(FiftyOneTransformer):
         self._output_processor.processor = self.transforms.processor
         # ew
         self.transforms.return_image_sizes = True
+
 
 def _has_text_and_image_features(model):
     return hasattr(model.base_model, "get_image_features") and hasattr(
@@ -1451,8 +1331,10 @@ def _is_transformer_for_semantic_segmentation(model):
 def _is_transformer_for_depth_estimation(model):
     return "ForDepthEstimation" in _get_model_type_string(model)
 
+
 def _is_transformer_for_pose_estimation(model):
     return "ForPoseEstimation" in _get_model_type_string(model)
+
 
 def _is_transformer_base_model(model):
     model_type = _get_model_type_string(model)
@@ -1475,6 +1357,7 @@ class _HFTransformsHandler:
         self.text_per_image = False  # passed in by model after init
 
     def __call__(self, args):
+        image_size = None
         if isinstance(args, dict):
             # multiple inputs
             if self.return_image_sizes:
@@ -1484,7 +1367,24 @@ class _HFTransformsHandler:
                         if isinstance(args["images"], list)
                         else [_get_image_size(args["images"])]
                     )
+            if args.get("boxes"):
+                boxes = []
+                # for img_sz, detections in zip(image_size, args["boxes"]):
+                img_sz = image_size[0]
+                detections = args["boxes"]
+                height, width = img_sz
+                img_boxes = np.array(
+                    [d.bounding_box for d in detections.detections]
+                )
+                img_boxes[:, 0] *= width
+                img_boxes[:, 1] *= height
+                img_boxes[:, 2] *= width
+                img_boxes[:, 3] *= height
+                boxes.append(img_boxes.tolist())
+                args.update({"boxes": boxes})
+
             res = self.processor(**args, **self.kwargs)
+            res["boxes"] = boxes
         else:
             # single input, most likely either a list of images or a single image
             num_images = len(args) if isinstance(args, list) else 1
@@ -1619,7 +1519,68 @@ class TransformersDepthEstimatorOutputProcessor(fout.OutputProcessor):
         )
         output = output / np.max(output, axis=(1, 2), keepdims=True)
         return [fol.Heatmap(map=o) for o in output]
-            
+
+
+class TransformersPoseEstimationOutputProcessor(fout.KeypointOutputProcessor):
+    """Output processor for pose estimation models."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._processor = None
+        self._pose_estimation_post_processor = None
+
+    @property
+    def processor(self):
+        if self._processor is None:
+            raise ValueError(
+                "Processor not set. Please make sure the processor is set."
+            )
+        return self._processor
+
+    @processor.setter
+    def processor(self, processor):
+        self._processor = processor
+        if self._processor is not None:
+            if hasattr(self._processor, "post_process_pose_estimation"):
+                self._pose_estimation_post_processor = (
+                    self._processor.post_process_pose_estimation
+                )
+            else:
+                raise ValueError(
+                    "Processor does not have a post_process_pose_estimation."
+                )
+
+    def __call__(
+        self, output, image_sizes, confidence_thresh=None, box_prompts=None
+    ):
+        """Process pose estimation outputs to FiftyOne format."""
+        output.heatmaps = output.heatmaps.detach()
+        output = self._pose_estimation_post_processor(
+            output, boxes=box_prompts
+        )
+        results = []
+        for im_out in output:
+            result = {"keypoints": [], "keypoints_scores": []}
+            for d in im_out:
+                result["keypoints"].append(d["keypoints"])
+                result["keypoints_scores"].append(d["scores"])
+
+            result["keypoints"] = torch.stack(result["keypoints"])
+            result["keypoints_scores"] = torch.stack(
+                result["keypoints_scores"]
+            )
+            results.append(result)
+
+        return [
+            self._parse_output(
+                result,
+                (int(image_sizes[i][1]), int(image_sizes[i][0])),
+                confidence_thresh,
+            )
+            for i, result in enumerate(results)
+        ]
+
+
 def _get_image_size(img):
     if isinstance(img, torch.Tensor):
         height, width = img.size()[-2:]
@@ -1629,6 +1590,7 @@ def _get_image_size(img):
         height, width = img.shape[:2]
 
     return height, width
+
 
 MODEL_TYPE_TO_CONFIG_CLASS = {
     "base-model": FiftyOneTransformerConfig,
