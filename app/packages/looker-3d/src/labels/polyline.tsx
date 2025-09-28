@@ -268,7 +268,6 @@ export const Polyline = ({
         color={centroidColor}
         size={0.05}
         pulsate={false}
-        isDraggable={false}
         labelId={label._id}
         segmentIndex={-1}
         pointIndex={-1}
