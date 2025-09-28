@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import {
+  currentPointPositionAtom,
   hoveredLabelAtom,
   hoveredPolylineInfoAtom,
   isPointTransformingAtom,
@@ -62,6 +63,7 @@ export const TransformHUD = () => {
   const isTransforming = useRecoilValue(isTransformingAtom);
   const isPointTransforming = useRecoilValue(isPointTransformingAtom);
   const selectedPoint = useRecoilValue(selectedPointAtom);
+  const currentPointPosition = useRecoilValue(currentPointPositionAtom);
   const transformMode = useRecoilValue(transformModeAtom);
   const selectedLabel = useRecoilValue(selectedLabelForAnnotationAtom);
   const transformData = useRecoilValue(transformDataAtom);
@@ -105,12 +107,32 @@ export const TransformHUD = () => {
         <ValueLabel>segment:</ValueLabel>
         <ValueNumber>{selectedPoint.segmentIndex + 1}</ValueNumber>
         <br />
-        <ValueLabel>point:</ValueLabel>
-        <ValueNumber>
-          {formatNumber(selectedPoint.position[0])},{" "}
-          {formatNumber(selectedPoint.position[1])},{" "}
-          {formatNumber(selectedPoint.position[2])}
-        </ValueNumber>
+        {isPointTransforming && currentPointPosition ? (
+          <>
+            <ValueLabel>original:</ValueLabel>
+            <ValueNumber>
+              {formatNumber(selectedPoint.position[0])},{" "}
+              {formatNumber(selectedPoint.position[1])},{" "}
+              {formatNumber(selectedPoint.position[2])}
+            </ValueNumber>
+            <br />
+            <ValueLabel>current:</ValueLabel>
+            <ValueNumber>
+              {formatNumber(currentPointPosition[0])},{" "}
+              {formatNumber(currentPointPosition[1])},{" "}
+              {formatNumber(currentPointPosition[2])}
+            </ValueNumber>
+          </>
+        ) : (
+          <>
+            <ValueLabel>point:</ValueLabel>
+            <ValueNumber>
+              {formatNumber(selectedPoint.position[0])},{" "}
+              {formatNumber(selectedPoint.position[1])},{" "}
+              {formatNumber(selectedPoint.position[2])}
+            </ValueNumber>
+          </>
+        )}
       </TransformHUDContainer>
     );
   };

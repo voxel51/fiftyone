@@ -6,16 +6,19 @@ import {
   isInTransformModeAtom,
   isPointTransformModeAtom,
   selectedLabelForAnnotationAtom,
+  selectedPointAtom,
   transformModeAtom,
   transformSpaceAtom,
   type TransformMode,
   type TransformSpace,
 } from "../state";
-import type { AnnotationActionGroup } from "./types";
+import { CoordinateInputs } from "./CoordinateInputs";
+import type { AnnotationAction, AnnotationActionGroup } from "./types";
 
 export const useAnnotationActions = () => {
-  const [selectedLabelForAnnotation, setSelectedLabelForAnnotation] =
-    useRecoilState(selectedLabelForAnnotationAtom);
+  const selectedLabelForAnnotation = useRecoilValue(
+    selectedLabelForAnnotationAtom
+  );
   const [isInTransformMode, setIsInTransformMode] = useRecoilState(
     isInTransformModeAtom
   );
@@ -23,6 +26,7 @@ export const useAnnotationActions = () => {
   const [transformMode, setTransformMode] = useRecoilState(transformModeAtom);
   const [transformSpace, setTransformSpace] =
     useRecoilState(transformSpaceAtom);
+  const selectedPoint = useRecoilValue(selectedPointAtom);
 
   const hasSelectedLabel = !!selectedLabelForAnnotation;
 
@@ -53,7 +57,7 @@ export const useAnnotationActions = () => {
   const actions: AnnotationActionGroup[] = useMemo(() => {
     const isPolyline = selectedLabelForAnnotation?._cls === "Polyline";
 
-    return [
+    const baseActions: AnnotationActionGroup[] = [
       {
         id: "polyline-actions",
         label: "Polyline",
@@ -138,7 +142,29 @@ export const useAnnotationActions = () => {
           },
         ],
       },
-    ] as AnnotationActionGroup[];
+    ];
+
+    if (selectedPoint) {
+      const coordinateInputAction: AnnotationAction = {
+        id: "coordinate-inputs-component",
+        label: "Coordinates",
+        icon: <Typography variant="caption">XYZ</Typography>,
+        tooltip: "Edit point coordinates",
+        isActive: false,
+        isDisabled: false,
+        isVisible: true,
+        // No-op since this is a custom component
+        onClick: () => {},
+        customComponent: <CoordinateInputs />,
+      };
+
+      baseActions.push({
+        id: "coordinate-inputs",
+        actions: [coordinateInputAction],
+      });
+    }
+
+    return baseActions;
   }, [
     isInTransformMode,
     hasSelectedLabel,
@@ -148,6 +174,7 @@ export const useAnnotationActions = () => {
     transformSpace,
     handleTransformSpaceChange,
     selectedLabelForAnnotation,
+    selectedPoint,
   ]);
 
   return {

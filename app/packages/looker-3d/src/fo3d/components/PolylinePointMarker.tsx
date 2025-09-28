@@ -5,6 +5,7 @@ import { useRecoilState, useSetRecoilState } from "recoil";
 import { Mesh, Vector3 } from "three";
 import { LABEL_3D_ANNOTATION_POINT_SELECTED_FOR_TRANSFORMATION_COLOR } from "../../constants";
 import {
+  currentPointPositionAtom,
   hoveredPolylineInfoAtom,
   isPointTransformModeAtom,
   isPointTransformingAtom,
@@ -45,6 +46,7 @@ export const PolylinePointMarker = ({
   const setHoveredPolylineInfo = useSetRecoilState(hoveredPolylineInfoAtom);
   const setIsPointTransforming = useSetRecoilState(isPointTransformingAtom);
   const setTransformMode = useSetRecoilState(transformModeAtom);
+  const setCurrentPointPosition = useSetRecoilState(currentPointPositionAtom);
 
   const [selectedPoint, setSelectedPoint] = useRecoilState(selectedPointAtom);
   const [isPointTransformMode, setIsPointTransformMode] = useRecoilState(
@@ -75,7 +77,6 @@ export const PolylinePointMarker = ({
 
       setSelectedPoint(newSelectedPoint);
       setIsPointTransformMode(true);
-      setIsPointTransforming(true); // Show HUD immediately when point is clicked
       setTransformMode("translate");
     },
     [
@@ -94,11 +95,19 @@ export const PolylinePointMarker = ({
     setIsPointTransforming(true);
   }, [setIsPointTransforming]);
 
-  const handleTransformEnd = useCallback(() => {
-    setIsPointTransforming(false);
-  }, [setIsPointTransforming]);
-
   const handleTransformChange = useCallback(() => {
+    if (transformControlsRef.current) {
+      const object = transformControlsRef.current.object;
+      const currentPosition = object.position.clone();
+      setCurrentPointPosition([
+        currentPosition.x,
+        currentPosition.y,
+        currentPosition.z,
+      ]);
+    }
+  }, [setCurrentPointPosition]);
+
+  const handleTransformEnd = useCallback(() => {
     if (transformControlsRef.current && onPointMove) {
       const object = transformControlsRef.current.object;
       const newPosition = object.position.clone();
@@ -117,7 +126,9 @@ export const PolylinePointMarker = ({
         );
       }
     }
-  }, [onPointMove, isSelected, setSelectedPoint]);
+    setIsPointTransforming(false);
+    setCurrentPointPosition(null);
+  }, [onPointMove, isSelected, setSelectedPoint, setCurrentPointPosition]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -125,6 +136,7 @@ export const PolylinePointMarker = ({
         setSelectedPoint(null);
         setIsPointTransformMode(false);
         setIsPointTransforming(false);
+        setCurrentPointPosition(null);
         event.stopPropagation();
         event.preventDefault();
       }
@@ -135,7 +147,12 @@ export const PolylinePointMarker = ({
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [setSelectedPoint, setIsPointTransformMode, setIsPointTransforming]);
+  }, [
+    setSelectedPoint,
+    setIsPointTransformMode,
+    setIsPointTransforming,
+    setCurrentPointPosition,
+  ]);
 
   // Apply pulsating effect for visibility (if enabled)
   useFrame(({ clock, camera }) => {
@@ -151,7 +168,7 @@ export const PolylinePointMarker = ({
       }
     } else {
       // Static scale based on distance only
-      const scale = distance * 0.12;
+      const scale = Math.min(distance * 0.08, 20);
 
       if (meshRef.current) {
         meshRef.current.scale.set(scale, scale, scale);
@@ -200,7 +217,8 @@ export const PolylinePointMarker = ({
           mode={transformMode}
           space={transformSpace}
           onMouseDown={handleTransformStart}
-          onMouseUp={handleTransformChange}
+          onMouseUp={handleTransformEnd}
+          onObjectChange={handleTransformChange}
         />
       )}
     </>

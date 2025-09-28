@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSetRecoilState } from "recoil";
 import * as THREE from "three";
 import { PolylinePointMarker } from "../fo3d/components/PolylinePointMarker";
+import { usePointUpdateRegistry } from "../hooks/usePointUpdateRegistry";
 import { hoveredLabelAtom, hoveredPolylineInfoAtom } from "../state";
 import { createFilledPolygonMeshes } from "./polygon-fill-utils";
 import type { OverlayProps } from "./shared";
@@ -69,6 +70,8 @@ export const Polyline = ({
   );
   const setHoveredLabel = useSetRecoilState(hoveredLabelAtom);
   const setHoveredPolylineInfo = useSetRecoilState(hoveredPolylineInfoAtom);
+  const { registerPointUpdateCallback, unregisterPointUpdateCallback } =
+    usePointUpdateRegistry();
 
   const handlePointMove = useCallback(
     (segmentIndex: number, pointIndex: number, newPosition: THREE.Vector3) => {
@@ -87,6 +90,21 @@ export const Polyline = ({
     },
     []
   );
+
+  useEffect(() => {
+    if (!isSelectedForAnnotation) return;
+
+    registerPointUpdateCallback(handlePointMove);
+
+    return () => {
+      unregisterPointUpdateCallback();
+    };
+  }, [
+    isSelectedForAnnotation,
+    handlePointMove,
+    registerPointUpdateCallback,
+    unregisterPointUpdateCallback,
+  ]);
 
   // Update local points when props change
   useEffect(() => {
@@ -191,7 +209,7 @@ export const Polyline = ({
   }, [localPoints3d]);
 
   const pointMarkers = useMemo(() => {
-    if (!isAnnotateMode) return null;
+    if (!isAnnotateMode || !isSelectedForAnnotation) return null;
 
     // this is to have contrast for annotation,
     // or else the point markers would be invisible with large line widths
@@ -228,6 +246,7 @@ export const Polyline = ({
     });
   }, [
     isAnnotateMode,
+    isSelectedForAnnotation,
     localPoints3d,
     label._id,
     strokeAndFillColor,

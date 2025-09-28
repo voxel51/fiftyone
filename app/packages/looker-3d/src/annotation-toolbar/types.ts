@@ -10,6 +10,7 @@ export interface AnnotationAction {
   isDisabled?: boolean;
   isVisible?: boolean;
   onClick: () => void;
+  customComponent?: ReactNode;
 }
 
 export interface AnnotationActionGroup {

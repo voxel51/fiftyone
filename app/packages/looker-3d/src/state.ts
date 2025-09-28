@@ -281,6 +281,12 @@ export const isPointTransformingAtom = atom<boolean>({
   default: false,
 });
 
+// Current position during point transformation
+export const currentPointPositionAtom = atom<[number, number, number] | null>({
+  key: "fo3d-currentPointPosition",
+  default: null,
+});
+
 // Transform data for HUD display
 export interface TransformData {
   // Delta X
@@ -344,6 +350,7 @@ export const clearTransformStateSelector = selector({
     set(selectedPointAtom, null);
     set(isPointTransformModeAtom, false);
     set(isPointTransformingAtom, false);
+    set(currentPointPositionAtom, null);
     // Note: We don't clear transformedLabelsAtom here as it should persist
   },
 });

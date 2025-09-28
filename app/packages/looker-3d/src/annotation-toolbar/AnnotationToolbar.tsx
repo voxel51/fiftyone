@@ -213,37 +213,46 @@ export const AnnotationToolbar = ({
               {group.label && <GroupLabel>{group.label}</GroupLabel>}
               {group.actions
                 .filter((action) => action.isVisible !== false)
-                .map((action) => (
-                  <Tooltip
-                    key={action.id}
-                    title={
-                      <Box>
-                        <Typography variant="body2">
-                          {action.tooltip || action.label}
-                        </Typography>
-                        {action.shortcut && (
-                          <Typography variant="caption" sx={{ opacity: 0.7 }}>
-                            {action.shortcut}
+                .map((action) => {
+                  // Render custom component if provided
+                  if (action.customComponent) {
+                    return <Box key={action.id}>{action.customComponent}</Box>;
+                  }
+
+                  // Render regular action button if no custom component is provided
+                  return (
+                    <Tooltip
+                      key={action.id}
+                      title={
+                        <Box>
+                          <Typography variant="body2">
+                            {action.tooltip || action.label}
                           </Typography>
-                        )}
-                      </Box>
-                    }
-                    placement="left"
-                    arrow
-                    disableHoverListener={false}
-                  >
-                    <ActionButton
-                      onClick={() =>
-                        !action.isDisabled && handleActionClick(action.onClick)
+                          {action.shortcut && (
+                            <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                              {action.shortcut}
+                            </Typography>
+                          )}
+                        </Box>
                       }
-                      isdisabled={String(action.isDisabled)}
-                      isactive={String(action.isActive)}
-                      size="small"
+                      placement="left"
+                      arrow
+                      disableHoverListener={false}
                     >
-                      {action.icon}
-                    </ActionButton>
-                  </Tooltip>
-                ))}
+                      <ActionButton
+                        onClick={() =>
+                          !action.isDisabled &&
+                          handleActionClick(action.onClick)
+                        }
+                        isdisabled={String(action.isDisabled)}
+                        isactive={String(action.isActive)}
+                        size="small"
+                      >
+                        {action.icon}
+                      </ActionButton>
+                    </Tooltip>
+                  );
+                })}
             </ActionGroup>
           ))}
       </ToolbarContent>

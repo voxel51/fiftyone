@@ -403,7 +403,12 @@ export const MediaTypeFo3dComponent = () => {
 
   const resetActiveNode = useRecoilCallback(
     ({ set }) =>
-      () => {
+      (event: MouseEvent | null) => {
+        // Don't handle right click since that might mean we're panning the camera
+        if (event?.type === "contextmenu") {
+          return;
+        }
+
         set(activeNodeAtom, null);
         set(currentHoveredPointAtom, null);
         set(clearTransformStateSelector, null);
@@ -423,7 +428,7 @@ export const MediaTypeFo3dComponent = () => {
   }, [isSceneInitialized]);
 
   useEffect(() => {
-    resetActiveNode();
+    resetActiveNode(null);
   }, [isSceneInitialized, resetActiveNode]);
 
   const onChangeView = useCallback(
