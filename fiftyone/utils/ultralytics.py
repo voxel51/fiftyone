@@ -666,10 +666,12 @@ class FiftyOneYOLOClassificationModel(FiftyOneYOLOModel):
 
     def _ultralytics_preprocess(self, img):
         # Taken from ultralytics.models.yolo.classify.predict.
-        is_legacy_transform = any(
-            self._model.predictor._legacy_transform_name in str(transform)
-            for transform in self.transforms.transforms
-        )
+        is_legacy_transform = False
+        if hasattr(self._model.predictor, "_legacy_transform_name"):
+            is_legacy_transform = any(
+                self._model.predictor._legacy_transform_name in str(transform)
+                for transform in self.transforms.transforms
+            )
         if is_legacy_transform:
             img = torch.stack(
                 [self._model.predictor.transforms(im) for im in img], dim=0
