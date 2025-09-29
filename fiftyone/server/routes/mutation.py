@@ -1,4 +1,3 @@
-# fiftyone/server/sample.py
 """
 FiftyOne Server /sample endpoint.
 
