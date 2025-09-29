@@ -17,7 +17,7 @@ from fiftyone.server.decorators import route
 
 class Sample(HTTPEndpoint):
     @route
-    async def patch(self, request: Request, data: dict) -> dict:
+    async def patch(self, request: Request, data: list) -> dict:
         """Applies a list of patches to a sample.
 
         The "path" attribute of the patch must refer to a field of
