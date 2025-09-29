@@ -8173,6 +8173,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     validate=False,
                 )
 
+            # pylint: disable=possibly-used-before-assignment
             if not dynamic and field_name in schema:
                 continue
 
@@ -8210,6 +8211,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if field_name == "_id":
                     continue
 
+                # pylint: disable=possibly-used-before-assignment
                 if not dynamic and field_name in schema:
                     continue
 
@@ -9654,65 +9656,11 @@ def _clone_run(run_doc):
     return _run_doc
 
 
-def _ensure_index(dataset, db_field, unique=False):
-    # For some reason the ID index is not reported by `index_information()` as
-    # being unique like other manually created indexes, but it is
-    if db_field == "_id":
-        return False, False
-
-    coll = dataset._sample_collection
-
-    # db_field -> (name, unique)
-    index_map = _get_single_index_map(coll)
-
-    new = False
-    dropped = False
-
-    if db_field in index_map:
-        name, _unique = index_map[db_field]
-        if _unique or (_unique == unique):
-            # Satisfactory index already exists
-            return new, dropped
-
-        # Must upgrade to unique index
-        coll.drop_index(name)
-        dropped = True
-
-    coll.create_index(db_field, unique=True)
-    new = True
-
-    return new, dropped
-
-
-def _cleanup_index(dataset, db_field, new_index, dropped_index):
-    coll = dataset._sample_collection
-
-    if new_index:
-        # db_field -> (name, unique)
-        index_map = _get_single_index_map(coll)
-
-        name = index_map[db_field][0]
-        if name in coll.index_information():
-            coll.drop_index(name)
-
-    if dropped_index:
-        coll.create_index(db_field)
-
-
 def _cleanup_frame_index(dataset, index):
     coll = dataset._frame_collection
 
     if index in coll.index_information():
         coll.drop_index(index)
-
-
-def _get_single_index_map(coll):
-    # db_field -> (name, unique)
-    return {
-        v["key"][0][0]: (k, v.get("unique", False))
-        for k, v in coll.index_information().items()
-        if len(v["key"]) == 1
-    }
 
 
 def _get_collstats(coll):
@@ -10133,6 +10081,10 @@ def _merge_samples_pipeline(
     #
     # Prepare frames merge pipeline
     #
+    # @todo this implementation creates a unique index on a temporary
+    # `frame_key_field`, which means that users will get errors if they try to
+    # create new frames while a merge is in progress. We need to fix this
+    #
     # The implementation of merging video frames is currently a bit complex.
     # It may be possible to simplify this...
     #
@@ -10237,33 +10189,20 @@ def _merge_samples_pipeline(
     # the actual merges
     #
 
-    new_src_index = None
-    dropped_src_index = None
-    new_dst_index = None
-    dropped_dst_index = None
     dst_frame_index = None
     src_frame_index = None
 
     try:
-        # Create unique index on merge key, if necessary
-        new_src_index, dropped_src_index = _ensure_index(
-            src_dataset, key_field, unique=True
-        )
-        new_dst_index, dropped_dst_index = _ensure_index(
-            dst_dataset, key_field, unique=True
-        )
+        # Create unique indexes, if necessary
+        src_dataset.create_index(in_key_field, unique=True)
+        dst_dataset.create_index(in_key_field, unique=True)
 
         if contains_videos:
-            _index_frames(dst_dataset, key_field, frame_key_field)
-            _index_frames(src_dataset, key_field, frame_key_field)
-
-            # Create unique index on frame merge key
-            frame_index_spec = [(frame_key_field, 1), ("frame_number", 1)]
-            dst_frame_index = dst_dataset._frame_collection.create_index(
-                frame_index_spec, unique=True
+            dst_frame_index = _index_frames(
+                dst_dataset, key_field, frame_key_field
             )
-            src_frame_index = src_dataset._frame_collection.create_index(
-                frame_index_spec, unique=True
+            src_frame_index = _index_frames(
+                src_dataset, key_field, frame_key_field
             )
 
         # Merge samples
@@ -10282,14 +10221,6 @@ def _merge_samples_pipeline(
             # Finalize IDs
             _finalize_frames(dst_videos, key_field, frame_key_field)
     finally:
-        # Cleanup indexes
-        _cleanup_index(
-            src_dataset, key_field, new_src_index, dropped_src_index
-        )
-        _cleanup_index(
-            dst_dataset, key_field, new_dst_index, dropped_dst_index
-        )
-
         if contains_videos:
             # Cleanup indexes
             _cleanup_frame_index(dst_dataset, dst_frame_index)
@@ -10800,6 +10731,10 @@ def _index_frames(dataset, key_field, frame_key_field):
         frame_keys,
         expand_schema=False,
         _allow_missing=True,
+    )
+
+    return dataset._frame_collection.create_index(
+        [(frame_key_field, 1), ("frame_number", 1)], unique=True
     )
 
 

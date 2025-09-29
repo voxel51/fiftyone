@@ -148,11 +148,28 @@ class VideoTests(unittest.TestCase):
         dataset.create_index("frames.id", unique=True)  # already exists
         dataset.create_index("frames.id")  # sufficient index exists
         with self.assertRaises(ValueError):
-            dataset.drop_index("frames.id")  # can't drop default
+            dataset.drop_index("frames.id")  # can't drop default index
+
+        with self.assertRaises(ValueError):
+            dataset.drop_index("frames.created_at")  # can't drop default index
 
         name = dataset.create_index("frames.field")
         self.assertEqual(name, "frames.field")
         self.assertIn("frames.field", dataset.list_indexes())
+
+        dataset.create_index("frames.field", unique=True)
+        indexes = dataset.get_index_information()
+        self.assertTrue(indexes["frames.field"]["unique"])
+
+        dataset.create_index("frames.field", unique=False)
+        indexes = dataset.get_index_information()
+        self.assertTrue(indexes["frames.field"]["unique"])  # still unique
+
+        dataset.create_index("frames.field", unique=False, force=True)
+        indexes = dataset.get_index_information()
+        self.assertFalse(
+            indexes["frames.field"].get("unique", False)
+        )  # now non-unique
 
         dataset.drop_index("frames.field")
         self.assertNotIn("frames.field", dataset.list_indexes())
@@ -164,13 +181,61 @@ class VideoTests(unittest.TestCase):
         dataset.drop_index("frames.cls.label")
         self.assertNotIn("frames.cls.label", dataset.list_indexes())
 
-        compound_index_name = dataset.create_index(
-            [("frames.id", 1), ("frames.field", 1)]
-        )
-        self.assertIn(compound_index_name, dataset.list_indexes())
+        dataset.create_index([("frames.field", -1)])
+        indexes = dataset.get_index_information()
+        indexes["frames.field"]["key"] == [("field", -1)]
 
-        dataset.drop_index(compound_index_name)
-        self.assertNotIn(compound_index_name, dataset.list_indexes())
+        dataset.create_index([("frames.field", 1)])
+        indexes = dataset.get_index_information()
+        self.assertEqual(
+            indexes["frames.field"]["key"], [("field", -1)]
+        )  # still -1
+
+        dataset.create_index([("frames.field", 1)], force=True)
+        indexes = dataset.get_index_information()
+        self.assertEqual(
+            indexes["frames.field"]["key"], [("field", 1)]
+        )  # now 1
+
+        dataset.create_index([("frames.field", 1), ("frames.id", 1)])
+        self.assertIn("frames.field_1__id_1", dataset.list_indexes())
+
+        dataset.create_index(
+            [("frames.field", 1), ("frames.id", 1)], unique=True
+        )
+        indexes = dataset.get_index_information()
+        self.assertTrue(
+            indexes["frames.field_1__id_1"]["unique"]
+        )  # now unique
+
+        dataset.create_index(
+            [("frames.field", 1), ("frames.id", 1)], unique=False
+        )
+        indexes = dataset.get_index_information()
+        self.assertTrue(
+            indexes["frames.field_1__id_1"]["unique"]
+        )  # still unique
+
+        dataset.create_index(
+            [("frames.field", 1), ("frames.id", 1)], unique=False, force=True
+        )
+        indexes = dataset.get_index_information()
+        self.assertFalse(
+            indexes["frames.field_1__id_1"].get("unique", False)
+        )  # now non-unique
+
+        dataset.create_index([("frames.field", -1), ("frames.id", 1)])
+        self.assertTrue("frames.field_1__id_1" in dataset.list_indexes())
+        self.assertFalse("frames.field_-1__id_1" in dataset.list_indexes())
+
+        dataset.create_index(
+            [("frames.field", -1), ("frames.id", 1)], force=True
+        )
+        self.assertFalse("frames.field_1__id_1" in dataset.list_indexes())
+        self.assertTrue("frames.field_-1__id_1" in dataset.list_indexes())
+
+        dataset.drop_index("frames.field_-1__id_1")
+        self.assertNotIn("frames.field_-1__id_1", dataset.list_indexes())
 
         with self.assertRaises(ValueError):
             dataset.create_index("frames.non_existent_field")
@@ -1156,14 +1221,33 @@ class VideoTests(unittest.TestCase):
         self.assertTrue(dataset2.has_frame_field("field2"))
 
         dataset3 = fo.Dataset()
+        dataset3.media_type = "video"
+
+        indexes1_before = dataset1.get_index_information()
+        indexes2_before = dataset2.get_index_information()
+        indexes3_before = dataset3.get_index_information()
+
+        self.assertFalse(indexes1_before["filepath"].get("unique", False))
+        self.assertFalse(indexes2_before["filepath"].get("unique", False))
+        self.assertFalse(indexes3_before["filepath"].get("unique", False))
+
         dataset3.merge_samples(dataset1)
         dataset3.merge_samples(dataset2)
         frame3 = dataset3.first().frames.first()
+        indexes1_after = dataset1.get_index_information()
+        indexes2_after = dataset2.get_index_information()
+        indexes3_after = dataset3.get_index_information()
 
         self.assertTrue(dataset3.has_frame_field("field1"))
         self.assertTrue(dataset3.has_frame_field("field2"))
         self.assertEqual(frame3["field1"], "a")
         self.assertEqual(frame3["field2"], "b")
+        self.assertTrue(indexes1_after["filepath"]["unique"])
+        self.assertTrue(indexes2_after["filepath"]["unique"])
+        self.assertTrue(indexes3_after["filepath"]["unique"])
+        self.assertSetEqual(set(indexes1_before), set(indexes1_after))
+        self.assertSetEqual(set(indexes2_before), set(indexes2_after))
+        self.assertSetEqual(set(indexes3_before), set(indexes3_after))
 
         dataset4 = fo.Dataset()
         dataset4.merge_samples(view1)

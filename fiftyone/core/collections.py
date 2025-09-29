@@ -15,6 +15,7 @@ import itertools
 import logging
 import operator
 import os
+from packaging.version import Version
 import random
 import string
 import timeit
@@ -10451,7 +10452,14 @@ class SampleCollection(object):
 
         return index_info
 
-    def create_index(self, field_or_spec, unique=False, wait=True, **kwargs):
+    def create_index(
+        self,
+        field_or_spec,
+        unique=False,
+        force=False,
+        wait=True,
+        **kwargs,
+    ):
         """Creates an index on the given field or with the given specification,
         if necessary.
 
@@ -10462,22 +10470,18 @@ class SampleCollection(object):
 
         .. note::
 
-            If an index with the same field(s) but different order(s) already
-            exists, no new index will be created.
+            If a matching non-unique index exists and you request a unique
+            index, the existing index will be converted to a unique index.
 
-            Use :meth:`drop_index` to drop an existing index first if you wish
-            to replace an existing index with new properties.
+            If a matching unique index exists and you request a non-unique
+            index, the existing index will **only** be converted to a
+            non-unique index if you specify ``force=True``.
 
         .. note::
 
-            If you are indexing a single field and it already has a unique
-            constraint, it will be retained regardless of the ``unique`` value
-            you specify. Conversely, if the given field already has a
-            non-unique index but you requested a unique index, the existing
-            index will be replaced with a unique index.
-
-            Use :meth:`drop_index` to drop an existing index first if you wish
-            to replace an existing index with new properties.
+            If an index with the same field(s) but different order(s) already
+            exists, the existing index will **only** be replaced with a new
+            index if you specify ``force=True``.
 
         Args:
             field_or_spec: the field name, ``embedded.field.name``, or index
@@ -10485,6 +10489,10 @@ class SampleCollection(object):
                 :meth:`pymongo:pymongo.collection.Collection.create_index` for
                 supported values
             unique (False): whether to add a uniqueness constraint to the index
+            force (False): whether to convert an existing unique index to a
+                non-unique index or replace an existing index with different
+                orderings with a new index. By default, existing indexes will
+                not be modified in these cases
             wait (True): whether to wait for index creation to finish
             **kwargs: optional keyword arguments for
                 :meth:`pymongo:pymongo.collection.Collection.create_index`
@@ -10497,49 +10505,16 @@ class SampleCollection(object):
         else:
             input_spec = list(field_or_spec)
 
-        single_field_index = len(input_spec) == 1
-        index_info = self.get_index_information()
-
-        # For single field indexes, provide special handling based on `unique`
-        # constraint
-        if single_field_index:
-            field = input_spec[0][0]
-
-            if field in index_info:
-                _unique = index_info[field].get("unique", False)
-                if _unique or (unique == _unique):
-                    # Satisfactory index already exists
-                    return field
-
-                _field, is_frame_field = self._handle_frame_field(field)
-
-                if _field == "id":
-                    # For some reason ID indexes are not reported by
-                    # `get_index_information()` as being unique like other
-                    # manually created indexes, but they are, so nothing needs
-                    # to be done here
-                    return field
-
-                if _field in self._get_default_indexes(frames=is_frame_field):
-                    raise ValueError(
-                        "Cannot modify default index '%s'" % field
-                    )
-
-                # We need to drop existing index and replace with a unique one
-                self.drop_index(field)
-
+        has_frames = self._has_frame_fields()
         is_frame_fields = []
         index_spec = []
         for field, option in input_spec:
-            has_frames = self._has_frame_fields()
-            if field != "$**" and (
-                not has_frames or field != "frames.$**"
-            ):  # global wildcard indexes
+            if field != "$**" and (not has_frames or field != "frames.$**"):
                 self._validate_root_field(field, include_private=True)
 
             _field, _, _ = self._handle_id_fields(field)
-            _field, is_frame_field = self._handle_frame_field(_field)
-            is_frame_fields.append(is_frame_field)
+            _field, _is_frame_field = self._handle_frame_field(_field)
+            is_frame_fields.append(_is_frame_field)
             index_spec.append((_field, option))
 
         if len(set(is_frame_fields)) > 1:
@@ -10548,42 +10523,115 @@ class SampleCollection(object):
                 "or all frame-level fields"
             )
 
-        is_frame_index = all(is_frame_fields)
+        to_db_name = lambda spec: "_".join("%s_%s" % (f, o) for f, o in spec)
+        normalize = lambda name: name.replace("-1", "1")
 
-        if single_field_index:
+        is_frame_index = all(is_frame_fields)
+        db_name = to_db_name(index_spec)
+
+        if len(input_spec) == 1:
+            # We use field name, not pymongo name, for single field indexes
             index_name = input_spec[0][0]
         else:
-            index_name = "_".join("%s_%s" % (f, o) for f, o in index_spec)
+            index_name = db_name
+            if is_frame_index:
+                index_name = self._FRAMES_PREFIX + index_name
+
+        _index_name, _ = self._handle_frame_field(index_name)
 
         if is_frame_index:
-            index_name = self._FRAMES_PREFIX + index_name
+            coll = self._dataset._frame_collection
+            coll_name = self._dataset._frame_collection_name
+        else:
+            coll = self._dataset._sample_collection
+            coll_name = self._dataset._sample_collection_name
 
-        normalize = lambda name: name.replace("-1", "1")
-        _index_name = normalize(index_name)
-        if any(_index_name == normalize(name) for name in index_info.keys()):
-            # Satisfactory index already exists
+        # Handle ID indexes
+        if _index_name == "id" and (unique or not force):
+            # ID indexes are not reported by `get_index_information()` as being
+            # unique like other manually created indexes, but they are, so
+            # nothing needs to be done here
             return index_name
 
-        # Setting `w=0` sets `acknowledged=False` in pymongo
-        write_concern = None if wait else WriteConcern(w=0)
+        # Handle default indexes
+        if (
+            _index_name in self._get_default_indexes(frames=is_frame_index)
+            and index_name != "filepath"  # allow 'filepath' to be modified
+        ):
+            raise ValueError(f"Cannot modify default index '{index_name}'")
 
-        if is_frame_index:
-            coll = self._dataset._get_frame_collection(
-                write_concern=write_concern
+        index_info = self.get_index_information()
+
+        # Check for existing indexes
+        _existing_name = None
+        _existing_db_name = None
+        _existing_unique = None
+        for _name, _info in index_info.items():
+            if normalize(_name) == normalize(index_name):
+                _existing_name = _name
+                _existing_db_name = to_db_name(_info["key"])
+                _existing_unique = _info.get("unique", False)
+
+        # Handle existing indexes
+        convert_to_unique = False
+        replace_existing = False
+        if _existing_name is not None:
+            if db_name != _existing_db_name and force:
+                # Replace existing index with different orderings
+                replace_existing = True
+            elif unique and not _existing_unique:
+                # Upgrade existing index to unique
+                convert_to_unique = True
+            elif _existing_unique and not unique and force:
+                # Downgrade existing index to non-unique
+                replace_existing = True
+            elif _existing_unique or (unique == _existing_unique):
+                # Satisfactory index already exists
+                return _existing_name
+
+        # Convert existing index to unique, if necessary
+        if convert_to_unique:
+            logger.info(
+                f"Converting existing index '{index_name}' to unique "
+                f"on dataset '{self._dataset.name}'"
             )
-        else:
-            coll = self._dataset._get_sample_collection(
-                write_concern=write_concern
-            )
 
-        name = coll.create_index(index_spec, unique=unique, **kwargs)
+            try:
+                index = {"name": _existing_db_name, "unique": True}
+                foo.get_db_conn().command("collMod", coll_name, index=index)
 
-        if single_field_index:
-            name = input_spec[0][0]
-        elif is_frame_index:
-            name = self._FRAMES_PREFIX + name
+                return _existing_name
+            except:
+                if foo.get_db_version() < Version("6"):
+                    replace_existing = True
+                else:
+                    raise
 
-        return name
+        # Drop existing index, if necessary
+        if replace_existing:
+            if not convert_to_unique:
+                logger.info(
+                    f"Replacing existing index '{index_name}' "
+                    f"on dataset '{self._dataset.name}'"
+                )
+
+            coll.drop_index(_existing_db_name)
+
+        # Create new index, if necessary
+        if not wait:
+            # Setting `w=0` sets `acknowledged=False` in pymongo
+            if is_frame_index:
+                coll = self._dataset._get_frame_collection(
+                    write_concern=WriteConcern(w=0)
+                )
+            else:
+                coll = self._dataset._get_sample_collection(
+                    write_concern=WriteConcern(w=0)
+                )
+
+        coll.create_index(index_spec, unique=unique, **kwargs)
+
+        return index_name
 
     def drop_index(self, field_or_name):
         """Drops the index for the given field or name, if necessary.
