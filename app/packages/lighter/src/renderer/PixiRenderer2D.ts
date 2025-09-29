@@ -9,6 +9,8 @@ import {
   FONT_FAMILY,
   FONT_SIZE,
   FONT_WEIGHT,
+  HANDLE_COLOR,
+  HANDLE_FACTOR,
 } from "../constants";
 import type { EventBus } from "../event/EventBus";
 import { LIGHTER_EVENTS } from "../event/EventBus";
@@ -120,8 +122,59 @@ export class PixiRenderer2D implements Renderer2D {
     this.tickHandler = undefined;
   }
 
+  drawBoxes(
+    graphics: PIXI.Graphics,
+    bounds: Rect,
+    width: number,
+    color: number | string,
+    alpha: number
+  ): void {
+    const halfWidth = width / 2;
+
+    graphics.rect(bounds.x - halfWidth, bounds.y - halfWidth, width, width);
+    graphics.rect(
+      bounds.x + bounds.width - halfWidth,
+      bounds.y - halfWidth,
+      width,
+      width
+    );
+    graphics.rect(
+      bounds.x - halfWidth,
+      bounds.y + bounds.height - halfWidth,
+      width,
+      width
+    );
+    graphics.rect(
+      bounds.x + bounds.width - halfWidth,
+      bounds.y + bounds.height - halfWidth,
+      width,
+      width
+    );
+
+    graphics.setFillStyle({
+      width,
+      color,
+      alpha,
+    });
+    graphics.fill();
+  }
+
+  drawHandles(
+    graphics: PIXI.Graphics,
+    bounds: Rect,
+    width: number,
+    color: number | string,
+    alpha: number
+  ): void {
+    width *= HANDLE_FACTOR;
+
+    this.drawBoxes(graphics, bounds, width + 2, color, alpha);
+    this.drawBoxes(graphics, bounds, width, HANDLE_COLOR, alpha);
+  }
+
   drawRect(bounds: Rect, style: DrawStyle, containerId: string): void {
     const graphics = new PIXI.Graphics();
+    const width = style.lineWidth || 1;
 
     if (style.fillStyle) {
       graphics.rect(bounds.x, bounds.y, bounds.width, bounds.height);
@@ -129,21 +182,26 @@ export class PixiRenderer2D implements Renderer2D {
     }
 
     if (style.strokeStyle) {
-      const { color, alpha } = parseColorWithAlpha(style.strokeStyle);
+      const colorObj = parseColorWithAlpha(style.strokeStyle);
+      const color = colorObj.color;
+      const alpha = colorObj.alpha * (style.opacity || 1);
+
       if (style.dashPattern && style.dashPattern.length > 0) {
         const dashLine = new DashLine(graphics, {
           dash: style.dashPattern,
-          width: style.lineWidth || 1,
-          color: color,
-          alpha: alpha * (style.opacity || 1),
+          width,
+          color,
+          alpha,
         });
         dashLine.drawRect(bounds.x, bounds.y, bounds.width, bounds.height);
+
+        this.drawHandles(graphics, bounds, width, color, alpha);
       } else {
         graphics.rect(bounds.x, bounds.y, bounds.width, bounds.height);
         graphics.setStrokeStyle({
-          width: style.lineWidth || 1,
-          color: color,
-          alpha: alpha * (style.opacity || 1),
+          width,
+          color,
+          alpha,
         });
         graphics.stroke();
       }

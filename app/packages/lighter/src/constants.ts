@@ -24,3 +24,9 @@ export const STROKE_WIDTH = 3;
 export const FONT_SIZE = 16;
 export const FONT_FAMILY = "Palanquin";
 export const FONT_WEIGHT = "bold";
+
+/**
+ * settings related to resize handles
+ */
+export const HANDLE_FACTOR = 3;
+export const HANDLE_COLOR = "white";
