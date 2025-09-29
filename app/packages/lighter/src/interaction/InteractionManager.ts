@@ -186,6 +186,10 @@ export class InteractionManager {
       handler = this.findHandlerAtPoint(point);
     }
 
+    if (handler && this.selectionManager.isSelected(handler.id)) {
+      this.canvas.style.cursor = "grabbing";
+    }
+
     if (handler?.onPointerDown?.(point, event)) {
       this.dragHandler = handler;
 
@@ -218,6 +222,9 @@ export class InteractionManager {
   private handlePointerMove = (event: PointerEvent): void => {
     this.currentPixelCoordinates = this.getCanvasPoint(event);
 
+    const handler = this.findHandlerAtPoint(this.currentPixelCoordinates);
+    const isSelected = handler && this.selectionManager.isSelected(handler.id);
+
     const interactiveHandler = this.getInteractiveHandler();
 
     if (!interactiveHandler) {
@@ -226,7 +233,7 @@ export class InteractionManager {
       this.handleHover(this.currentPixelCoordinates, event, this.isDragging);
     }
 
-    if (this.dragHandler && !this.isDragging) {
+    if (this.dragHandler && !this.isDragging && isSelected) {
       // Check if we've moved enough to start dragging
       if (this.clickStartPoint) {
         const distance = Math.sqrt(
@@ -268,7 +275,12 @@ export class InteractionManager {
 
   private handlePointerUp = (event: PointerEvent): void => {
     const point = this.getCanvasPoint(event);
+    const handler = this.findHandlerAtPoint(point);
     const now = Date.now();
+
+    if (handler && this.selectionManager.isSelected(handler.id)) {
+      this.canvas.style.cursor = "grab";
+    }
 
     if (this.isDragging && this.dragHandler) {
       // Handle drag end
@@ -443,10 +455,12 @@ export class InteractionManager {
       return;
     }
 
-    if (isDragging) {
-      this.canvas.style.cursor = "grab";
-    } else {
+    if (!this.selectionManager.isSelected(handler.id)) {
       this.canvas.style.cursor = "pointer";
+    } else if (isDragging) {
+      this.canvas.style.cursor = "grabbing";
+    } else {
+      this.canvas.style.cursor = "grab";
     }
 
     // If we are dragging, we should unhover the previous one
