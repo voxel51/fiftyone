@@ -10596,15 +10596,36 @@ class SampleCollection(object):
                 f"on dataset '{self._dataset.name}'"
             )
 
+            db = foo.get_db_conn()
+
             try:
-                index = {"name": _existing_db_name, "unique": True}
-                foo.get_db_conn().command("collMod", coll_name, index=index)
+                # https://www.mongodb.com/docs/manual/core/index-unique/convert-to-unique
+                db.command(
+                    "collMod",
+                    coll_name,
+                    index={"name": _existing_db_name, "prepareUnique": True},
+                )
+                db.command(
+                    "collMod",
+                    coll_name,
+                    index={"name": _existing_db_name, "unique": True},
+                )
 
                 return _existing_name
             except:
                 if foo.get_db_version() < Version("6"):
+                    # index conversion was introduced in MongoDB 6
                     replace_existing = True
                 else:
+                    db.command(
+                        "collMod",
+                        coll_name,
+                        index={
+                            "name": _existing_db_name,
+                            "prepareUnique": False,
+                        },
+                    )
+
                     raise
 
         # Drop existing index, if necessary
