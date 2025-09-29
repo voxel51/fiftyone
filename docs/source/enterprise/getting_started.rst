@@ -1,10 +1,10 @@
-.. _getting-started-with-foe:
+.. _enterprise-getting-started:
 
 Getting Started with FiftyOne Enterprise
 ========================================
 .. default-role:: code
 
-This guide provides comprehensive instructions to successfully upload your first dataset to FiftyOne Enterprise (FOE).
+This guide provides comprehensive instructions to successful upload your first dataset to FiftyOne Enterprise (FOE). 
 
 Upload Cloud Credentials to your Deployment
 -------------------------------------------
@@ -16,8 +16,12 @@ Configure cloud credentials to enable rendering of cloud-backed media within Fif
    :alt: getting-started-cloud-creds
    :align: center
 
-Set Cloud Credentials Locally
+Create a dataset via the SDK 
 -----------------------------
+
+Set Cloud Credentials Locally
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 Next, configure the appropriate environment variables for your cloud provider within your local environment
 
 .. tab-set::
@@ -59,8 +63,8 @@ Next, configure the appropriate environment variables for your cloud provider wi
          export MINIO_SECRET_ACCESS_KEY=...
          export MINIO_DEFAULT_REGION=...
 
-Install the FOE Python SDK
-------------------------
+Install the FiftyOne Enterprise Python SDK
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 1. Navigate to the **Settings** page in the FiftyOne Enterprise UI
 2. Select the **API** tab  
@@ -71,9 +75,9 @@ Install the FOE Python SDK
    :align: center
 
 Connect to Your Deployment
---------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-To establish a connection between the FOE Python SDK and your deployment, configure the ``FIFTYONE_API_KEY`` and ``FIFTYONE_API_URI`` environment variables. For detailed setup instructions, refer to the `API Connection Documentation <https://voxel51.com/docs/fiftyone/api/>`_.
+To establish a connection between the FiftyOne Enterprise Python SDK and your deployment, configure the ``FIFTYONE_API_KEY`` and ``FIFTYONE_API_URI`` environment variables. For detailed setup instructions, refer to the `API Connection Documentation <https://voxel51.com/docs/fiftyone/api/>`_.
 
 Verify that your API connection is working correctly using the following method:
 
@@ -93,7 +97,7 @@ You can use ``fiftyone.config`` to debug and verify your configuration:
    print(fo.config)
 
 Create a Dataset and Add Samples
-----------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. tab-set::
 
@@ -181,7 +185,7 @@ Create a Dataset and Add Samples
    
 
 Compute Metadata
-------------------------
+~~~~~~~~~~~~~~~~
 
 Improve app performance by computing sample metadata:
 
@@ -196,3 +200,32 @@ Verify all samples have metadata by running the following:
    len(dataset.exists("metadata", False))  # Should be 0
 .. note::
    For video datasets, ensure ffmpeg is installed to enable metadata computation.
+
+Create a dataset via the UI 
+-----------------------------
+Install the IO Plugin 
+~~~~~~~~~~~~~~~~~~~~~
+The IO plugin allows you to import data from your cloud storage buckets directly. The IO plugin can be downloaded from the following `repository <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/io>`_. Zip the folder and upload it to the Plugin section of the **Settings** page.
+
+.. note::
+   To install plugins to your deployment, you must have admin privileges and also set your deployment to be in Dedicated Plugins mode. It is also highly recommended to add Delegated Operators to your deployment.
+
+.. image:: /images/enterprise/getting_started_install_io_plugin.gif
+   :alt: getting-started-install-sdk
+   :align: center
+
+Import Your Dataset
+~~~~~~~~~~~~~~~~~~~
+Schedule the **import_samples**  operator to import your dataset from your cloud storage bucket.
+
+.. image:: /images/enterprise/getting_started_import_samples.gif
+   :alt: getting-started-install-sdk
+   :align: center
+
+Compute Metadata
+~~~~~~~~~~~~~~~~
+To improve app performance, compute sample metadata by scheduling the **compute_metadata** operator as a delegated operation.
+
+.. image:: /images/enterprise/getting_started_schedule_compute_metadata.gif
+   :alt: getting-started-compute-metadata
+   :align: center
