@@ -2142,6 +2142,19 @@ class UniqueFilenameMaker(object):
 
         count = self._filename_counts[key]
         if count > 1:
+            # Handle existing filenames that use `-%d` suffix
+            if not self.ignore_existing:
+                while True:
+                    _key = name + ("-%d" % count)
+                    if not self.ignore_exts:
+                        _key += ext
+
+                    if _key in self._filename_counts:
+                        self._filename_counts[key] += 1
+                        count += 1
+                    else:
+                        break
+
             filename = name + ("-%d" % count) + ext
 
         if self.chunk_size is not None:

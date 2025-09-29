@@ -67,8 +67,8 @@ def objects_to_segmentations(
             ``output_dir`` that match the shape of the input paths. The path is
             converted to an absolute path (if necessary) via
             :func:`fiftyone.core.storage.normalize_path`
-        overwrite (False): whether to delete ``output_dir`` prior to exporting
-            if it exists
+        overwrite (False): whether to overwrite any existing files in
+            ``output_dir``
         save_mask_targets (False): whether to store the ``mask_targets`` on the
             dataset
         progress (None): whether to render a progress bar (True/False), use the
@@ -99,12 +99,12 @@ def objects_to_segmentations(
 
     samples = sample_collection.select_fields(in_field)
 
-    if overwrite and output_dir is not None:
-        etau.delete_dir(output_dir)
-
     if output_dir is not None:
         filename_maker = fou.UniqueFilenameMaker(
-            output_dir=output_dir, rel_dir=rel_dir, idempotent=False
+            output_dir=output_dir,
+            rel_dir=rel_dir,
+            ignore_existing=overwrite,
+            idempotent=False,
         )
 
     for sample in samples.iter_samples(autosave=True, progress=progress):
@@ -195,8 +195,8 @@ def export_segmentations(
             converted to an absolute path (if necessary) via
             :func:`fiftyone.core.storage.normalize_path`
         update (True): whether to delete the arrays from the database
-        overwrite (False): whether to delete ``output_dir`` prior to exporting
-            if it exists
+        overwrite (False): whether to overwrite any existing files in
+            ``output_dir``
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
@@ -217,11 +217,11 @@ def export_segmentations(
 
     samples = sample_collection.select_fields(select_fields)
 
-    if overwrite:
-        etau.delete_dir(output_dir)
-
     filename_maker = fou.UniqueFilenameMaker(
-        output_dir=output_dir, rel_dir=rel_dir, idempotent=False
+        output_dir=output_dir,
+        rel_dir=rel_dir,
+        ignore_existing=overwrite,
+        idempotent=False,
     )
 
     for sample in samples.iter_samples(autosave=True, progress=progress):
@@ -379,8 +379,8 @@ def transform_segmentations(
         update (True): whether to update the mask paths on the instances
         update_mask_targets (False): whether to update the mask targets on the
             dataset to reflect the transformed targets
-        overwrite (False): whether to delete ``output_dir`` prior to exporting
-            if it exists
+        overwrite (False): whether to overwrite any existing files in
+            ``output_dir``
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
@@ -404,11 +404,11 @@ def transform_segmentations(
     samples = sample_collection.select_fields(select_fields)
 
     if output_dir is not None:
-        if overwrite:
-            etau.delete_dir(output_dir)
-
         filename_maker = fou.UniqueFilenameMaker(
-            output_dir=output_dir, rel_dir=rel_dir, idempotent=False
+            output_dir=output_dir,
+            rel_dir=rel_dir,
+            ignore_existing=overwrite,
+            idempotent=False,
         )
 
     for sample in samples.iter_samples(autosave=True, progress=progress):
@@ -508,8 +508,8 @@ def segmentations_to_detections(
             subdirectories in ``output_dir`` that match the shape of the input
             paths. The path is converted to an absolute path (if necessary) via
             :func:`fiftyone.core.storage.normalize_path`
-        overwrite (False): whether to delete ``output_dir`` prior to exporting
-            if it exists
+        overwrite (False): whether to overwrite any existing files in
+            ``output_dir``
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
@@ -535,12 +535,12 @@ def segmentations_to_detections(
 
     samples = sample_collection.select_fields(select_fields)
 
-    if overwrite and output_dir is not None:
-        etau.delete_dir(output_dir)
-
     if output_dir is not None:
         filename_maker = fou.UniqueFilenameMaker(
-            output_dir=output_dir, rel_dir=rel_dir, idempotent=False
+            output_dir=output_dir,
+            rel_dir=rel_dir,
+            ignore_existing=overwrite,
+            idempotent=False,
         )
 
     for sample in samples.iter_samples(autosave=True, progress=progress):
@@ -600,8 +600,8 @@ def binarize_instances(
             subdirectories in ``output_dir`` that match the shape of the input
             paths. The path is converted to an absolute path (if necessary) via
             :func:`fiftyone.core.storage.normalize_path`
-        overwrite (False): whether to delete ``output_dir`` prior to exporting
-            if it exists
+        overwrite (False): whether to overwrite any existing files in
+            ``output_dir``
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
@@ -626,12 +626,12 @@ def binarize_instances(
 
     samples = sample_collection.select_fields(in_field)
 
-    if overwrite and output_dir is not None:
-        etau.delete_dir(output_dir)
-
     if output_dir is not None:
         filename_maker = fou.UniqueFilenameMaker(
-            output_dir=output_dir, rel_dir=rel_dir, idempotent=False
+            output_dir=output_dir,
+            rel_dir=rel_dir,
+            ignore_existing=overwrite,
+            idempotent=False,
         )
 
     for sample in samples.iter_samples(autosave=True, progress=progress):
