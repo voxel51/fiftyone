@@ -10,7 +10,6 @@ from enum import Enum
 from typing import Dict, Any, List
 
 from starlette.endpoints import HTTPEndpoint
-from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import Response
 
@@ -19,23 +18,29 @@ import fiftyone.core.dataset as fod
 from fiftyone.server.decorators import route
 
 
-class LabelType(str, Enum):
+class FieldType(str, Enum):
     LABEL = "label"
     DETECTIONS = "detections"
 
 
+class OpType(str, Enum):
+    DELETE = "delete"
+    UPSERT = "upsert"
+
+
 @dataclass
 class Patch:
-    op: str
+    op: OpType
     path: str
-    type: LabelType
+    type: FieldType
     value: Dict[str, Any]
 
     def __post_init__(self):
-        if self.op not in ("delete", "upsert"):
-            raise ValueError(f"Unsupported operation '{self.op}'")
-        if "id" not in self.value:
-            raise ValueError("Patch 'value' must contain an 'id' field.")
+        if not isinstance(self.op, OpType):
+            self.op = OpType(self.op)
+
+        if not isinstance(self.type, FieldType):
+            self.type = FieldType(self.type)
 
 
 class Sample(HTTPEndpoint):
@@ -59,7 +64,7 @@ class Sample(HTTPEndpoint):
 
         try:
             patches: List[Patch] = [Patch(**p) for p in data]
-        except (TypeError, ValueError) as e:
+        except Exception as e:
             return Response(
                 status_code=400,
                 content=f"Invalid patch format: {e}",
