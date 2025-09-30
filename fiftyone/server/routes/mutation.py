@@ -108,7 +108,12 @@ class SampleMutation(HTTPEndpoint):
         errors = []
         for patch in patches:
             try:
-                self._apply_patch(sample, patch)
+                if patch.op == OpType.DELETE:
+                    self._apply_delete(sample, patch)
+                elif patch.op == OpType.UPSERT:
+                    self._apply_upsert(sample, patch)
+                else:
+                    raise ValueError(f"Unsupported op '{patch.op}'")
             except Exception as e:
                 logger.error("Error applying patch %s: %s", patch, e)
                 errors.append(str(e))
@@ -118,14 +123,6 @@ class SampleMutation(HTTPEndpoint):
             "patched_sample_id": str(sample.id),
             "errors": errors,
         }
-
-    def _apply_patch(self, sample: Sample, patch: Patch):
-        if patch.op == OpType.DELETE:
-            self._apply_delete(sample, patch)
-        elif patch.op == OpType.UPSERT:
-            self._apply_upsert(sample, patch)
-        else:
-            raise ValueError(f"Unsupported op '{patch.op}'")
 
     def _apply_delete(self, sample: Sample, patch: Patch):
         logger.info("Applying delete patch: %s to sample %s", patch, sample.id)
