@@ -98,11 +98,12 @@ class SampleMutation(HTTPEndpoint):
                 content=f"Dataset '{dataset_name}' not found",
             )
 
-        sample = dataset[sample_id]
-        if sample is None:
+        try:
+            sample = dataset[sample_id]
+        except KeyError:
             return Response(
                 status_code=404,
-                content=f"Sample '{sample_id}' not found in dataset",
+                content=f"Sample '{sample_id}' not found in dataset '{dataset_name}'",
             )
 
         errors = []
