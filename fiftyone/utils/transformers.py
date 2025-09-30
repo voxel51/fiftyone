@@ -1091,7 +1091,7 @@ class FiftyOneTransformerForPoseEstimationConfig(FiftyOneTransformerConfig):
         super().__init__(d)
 
 
-class ImageDetectionGetItem(fout.ImageGetItem):
+class PoseEstimationGetItem(fout.ImageGetItem):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -1151,7 +1151,7 @@ class FiftyOneTransformerForPoseEstimation(
         field_name = self._get_field()
         if field_name is not None and samples is not None:
             self._box_prompts = self._get_box_prompts(samples, field_name)
-            self.transforms.box_prompts = self._box_prompts
+            # self.transforms.box_prompts = self._box_prompts
 
         return self._predict_all(imgs)
 
@@ -1184,9 +1184,7 @@ class FiftyOneTransformerForPoseEstimation(
 
         image_sizes = args.pop("fo_image_size", [(None, None)])
         boxes = args.pop("boxes", None)
-        print(len(boxes), len(image_sizes))
-        print(image_sizes)
-        print(boxes)
+
         for k, v in args.items():
             args[k] = v.to(self.device)
 
@@ -1209,7 +1207,7 @@ class FiftyOneTransformerForPoseEstimation(
         if "box_prompts" not in field_mapping:
             field_mapping["box_prompts"] = self._get_field()
 
-        return ImageDetectionGetItem(
+        return PoseEstimationGetItem(
             transform=self._transforms,
             raw_inputs=self.config.raw_inputs,
             using_half_precision=self._using_half_precision,
@@ -1219,6 +1217,8 @@ class FiftyOneTransformerForPoseEstimation(
 
     @staticmethod
     def collate_fn(batch):
+        if isinstance(batch, transformers.BatchFeature):
+            return batch
         images = torch.cat([b["pixel_values"] for b in batch], dim=0)
         boxes = []
         img_sizes = []
@@ -1369,22 +1369,24 @@ class _HFTransformsHandler:
                     )
             if args.get("boxes"):
                 boxes = []
-                # for img_sz, detections in zip(image_size, args["boxes"]):
-                img_sz = image_size[0]
                 detections = args["boxes"]
-                height, width = img_sz
-                img_boxes = np.array(
-                    [d.bounding_box for d in detections.detections]
-                )
-                img_boxes[:, 0] *= width
-                img_boxes[:, 1] *= height
-                img_boxes[:, 2] *= width
-                img_boxes[:, 3] *= height
-                boxes.append(img_boxes.tolist())
+                img_sz = image_size[0]
+                if isinstance(args["boxes"], list):
+                    for idx, detections in enumerate(args["boxes"]):
+                        if len(image_size) > 1:
+                            img_sz = image_size[idx]
+                        img_boxes = _get_image_boxes(
+                            img_sz, detections.detections
+                        )
+                        boxes.append(img_boxes)
+                else:
+                    detections = args["boxes"]
+                    img_boxes = _get_image_boxes(img_sz, detections.detections)
+                    boxes.append(img_boxes)
                 args.update({"boxes": boxes})
 
             res = self.processor(**args, **self.kwargs)
-            res["boxes"] = boxes
+            res["boxes"] = args.get("boxes")
         else:
             # single input, most likely either a list of images or a single image
             num_images = len(args) if isinstance(args, list) else 1
@@ -1405,7 +1407,7 @@ class _HFTransformsHandler:
             else:
                 res = self.processor(images=args, **self.kwargs)
 
-        if self.return_image_sizes:
+        if self.return_image_sizes and image_size:
             res.update({"fo_image_size": torch.tensor(image_size)})
 
         return res
@@ -1562,14 +1564,16 @@ class TransformersPoseEstimationOutputProcessor(fout.KeypointOutputProcessor):
         for im_out in output:
             result = {"keypoints": [], "keypoints_scores": []}
             for d in im_out:
-                result["keypoints"].append(d["keypoints"])
-                result["keypoints_scores"].append(d["scores"])
+                if len(d["keypoints"]):
+                    result["keypoints"].append(d["keypoints"])
+                    result["keypoints_scores"].append(d["scores"])
 
-            result["keypoints"] = torch.stack(result["keypoints"])
-            result["keypoints_scores"] = torch.stack(
-                result["keypoints_scores"]
-            )
-            results.append(result)
+            if len(result["keypoints"]):
+                result["keypoints"] = torch.stack(result["keypoints"])
+                result["keypoints_scores"] = torch.stack(
+                    result["keypoints_scores"]
+                )
+                results.append(result)
 
         return [
             self._parse_output(
@@ -1590,6 +1594,18 @@ def _get_image_size(img):
         height, width = img.shape[:2]
 
     return height, width
+
+
+def _get_image_boxes(img_sz, detections):
+    height, width = img_sz
+    img_boxes = np.array([d.bounding_box for d in detections])
+    if len(img_boxes) == 0:
+        return []
+    img_boxes[:, 0] *= width
+    img_boxes[:, 1] *= height
+    img_boxes[:, 2] *= width
+    img_boxes[:, 3] *= height
+    return img_boxes.tolist()
 
 
 MODEL_TYPE_TO_CONFIG_CLASS = {
