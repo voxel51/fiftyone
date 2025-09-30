@@ -16,10 +16,9 @@ import fiftyone as fo
 import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
 import fiftyone.core.odm.utils as focu
-import fiftyone.core.stages as focs
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
-from fiftyone.operators import constants
+from fiftyone.operators import constants, pipeline
 from fiftyone.operators.decorators import coroutine_timeout
 from fiftyone.operators.message import GeneratedMessage, MessageType
 from fiftyone.operators.operations import Operations
@@ -238,8 +237,7 @@ async def execute_or_delegate_operator(
     prepared = await prepare_operator_executor(operator_uri, request_params)
     if isinstance(prepared, ExecutionResult):
         raise prepared.to_exception()
-    else:
-        operator, executor, ctx, inputs = prepared
+    operator, executor, ctx, inputs = prepared
 
     execution_options = operator.resolve_execution_options(ctx)
     if (
@@ -268,6 +266,27 @@ async def execute_or_delegate_operator(
             )
             should_delegate = True
 
+    # Validate PipelineOperators
+
+    pipeline_stages = []
+    if isinstance(operator, pipeline.PipelineOperator):
+        try:
+            pipeline_stages = operator.resolve_pipeline(ctx)
+            if not pipeline_stages or not isinstance(pipeline_stages, list):
+                raise TypeError("Pipeline must be a list of stages")
+            if not all(
+                isinstance(s, pipeline.PipelineStage) for s in pipeline_stages
+            ):
+                raise TypeError(
+                    "Pipeline stages must be of type PipelineStage"
+                )
+        except Exception as e:
+            return ExecutionResult(
+                executor=executor,
+                error=traceback.format_exc(),
+                error_message=f"Failed to resolve pipeline: {str(e)}",
+            )
+
     if should_delegate:
         try:
             from .delegated import DelegatedOperationService
@@ -277,10 +296,14 @@ async def execute_or_delegate_operator(
                 ctx.num_distributed_tasks
                 or "num_distributed_tasks" in ctx.request_params
             ):
-                logger.warning(
-                    "Distributed execution only supported in FiftyOne Enterprise"
+                raise ValueError(
+                    "Distributed execution is only supported in FiftyOne Enterprise"
                 )
-                ctx.request_params.pop("num_distributed_tasks", None)
+            if isinstance(operator, pipeline.PipelineOperator):
+                raise ValueError(
+                    "Pipeline operators require a distributed executor, "
+                    "available only in FiftyOne Enterprise"
+                )
 
             ctx.request_params["delegated"] = True
             metadata = {"inputs_schema": None, "outputs_schema": None}
@@ -299,6 +322,7 @@ async def execute_or_delegate_operator(
                 delegation_target=ctx.delegation_target,
                 label=operator.resolve_run_name(ctx),
                 metadata=metadata,
+                pipeline=None,  # pipelines not supported in this repo
             )
 
             execution = ExecutionResult(
@@ -317,8 +341,13 @@ async def execute_or_delegate_operator(
                 error_message=str(error),
             )
     else:
+        if isinstance(operator, pipeline.PipelineOperator):
+            raise NotImplementedError(
+                "Immediate execution of pipeline operators is not supported"
+            )
         # Not delegated, force distributed execution off
         ctx.request_params.pop("num_distributed_tasks", None)
+
         try:
             result = await do_execute_operator(operator, ctx, exhaust=exhaust)
         except Exception as error:

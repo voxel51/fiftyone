@@ -6,7 +6,7 @@ FiftyOne operators.
 |
 """
 
-from .types import Object, PromptView
+from .types import PromptView
 
 
 BUILTIN_OPERATOR_PREFIX = "@voxel51/operators"

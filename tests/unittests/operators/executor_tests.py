@@ -7,6 +7,7 @@ from unittest.mock import patch
 import fiftyone as fo
 from fiftyone.operators import constants
 import fiftyone.operators.types as types
+from fiftyone.operators.delegated import DelegatedOperationService
 from fiftyone.operators.operator import Operator
 from fiftyone.operators.executor import (
     execute_or_delegate_operator,
@@ -129,7 +130,7 @@ ECHO_URI = "@voxel51/operators/echo"
 class EchoOperator(Operator):
     @property
     def config(self):
-        return OperatorConfig(name="echo")
+        return OperatorConfig(name="echo", allow_delegated_execution=True)
 
     def resolve_input(self, ctx):
         inputs = types.Object()
@@ -156,3 +157,22 @@ async def test_execute_or_delegate_operator(list_operators):
     assert isinstance(result, ExecutionResult)
     json_result = result.to_json()
     assert json_result["result"]["message"] == "Hello, World!"
+
+
+@pytest.mark.asyncio
+@patch("fiftyone.operators.registry.OperatorRegistry.list_operators")
+async def test_delegate_operator(list_operators):
+    list_operators.return_value = [EchoOperator(_builtin=True)]
+
+    request_params = {
+        "dataset_name": "test_dataset",
+        "operator_uri": ECHO_URI,
+        "params": {"message": "Hello, World!"},
+        "request_delegation": True,
+    }
+    result = await execute_or_delegate_operator(ECHO_URI, request_params)
+    assert isinstance(result, ExecutionResult)
+    assert result.delegated is True
+    dos = DelegatedOperationService()
+    assert dos.get(result.result["id"]) is not None
+    dos.delete_operation(result.result["id"])
