@@ -183,7 +183,7 @@ class VideoTests(unittest.TestCase):
 
         dataset.create_index([("frames.field", -1)])
         indexes = dataset.get_index_information()
-        indexes["frames.field"]["key"] == [("field", -1)]
+        self.assertEqual(indexes["frames.field"]["key"], [("field", -1)])
 
         dataset.create_index([("frames.field", 1)])
         indexes = dataset.get_index_information()

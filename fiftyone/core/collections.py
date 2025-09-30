@@ -10546,31 +10546,20 @@ class SampleCollection(object):
             coll = self._dataset._sample_collection
             coll_name = self._dataset._sample_collection_name
 
-        # Handle ID indexes
-        if _index_name == "id" and (unique or not force):
-            # ID indexes are not reported by `get_index_information()` as being
-            # unique like other manually created indexes, but they are, so
-            # nothing needs to be done here
-            return index_name
-
-        # Handle default indexes
-        if (
-            _index_name in self._get_default_indexes(frames=is_frame_index)
-            and index_name != "filepath"  # allow 'filepath' to be modified
-        ):
-            raise ValueError(f"Cannot modify default index '{index_name}'")
-
-        index_info = self.get_index_information()
-
         # Check for existing indexes
         _existing_name = None
         _existing_db_name = None
         _existing_unique = None
-        for _name, _info in index_info.items():
+        for _name, _info in self.get_index_information().items():
             if normalize(_name) == normalize(index_name):
                 _existing_name = _name
                 _existing_db_name = to_db_name(_info["key"])
                 _existing_unique = _info.get("unique", False)
+
+        if _index_name == "id":
+            # ID indexes are not reported by `get_index_information()` as being
+            # unique like other manually created indexes, but they are
+            _existing_unique = True
 
         # Handle existing indexes
         convert_to_unique = False
@@ -10588,6 +10577,13 @@ class SampleCollection(object):
             elif _existing_unique or (unique == _existing_unique):
                 # Satisfactory index already exists
                 return _existing_name
+
+            # Handle default indexes
+            if (
+                _index_name in self._get_default_indexes(frames=is_frame_index)
+                and index_name != "filepath"  # allow 'filepath' to be modified
+            ):
+                raise ValueError(f"Cannot modify default index '{index_name}'")
 
         # Convert existing index to unique, if necessary
         if convert_to_unique:

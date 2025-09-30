@@ -733,7 +733,7 @@ class DatasetTests(unittest.TestCase):
 
         dataset.create_index([("field", -1)])
         indexes = dataset.get_index_information()
-        indexes["field"]["key"] == [("field", -1)]
+        self.assertEqual(indexes["field"]["key"], [("field", -1)])
 
         dataset.create_index([("field", 1)])
         indexes = dataset.get_index_information()
