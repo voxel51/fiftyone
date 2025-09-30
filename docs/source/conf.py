@@ -22,6 +22,7 @@ from custom_directives import (
     CustomCardItemDirective,
     CustomImageLinkDirective,
     CustomGuidesCardDirective,
+    CustomAnimatedCTADirective,
 )
 from redirects import generate_redirects
 
@@ -277,3 +278,4 @@ def setup(app):
     app.add_directive("customcarditem", CustomCardItemDirective)
     app.add_directive("customimagelink", CustomImageLinkDirective)
     app.add_directive("customguidescard", CustomGuidesCardDirective)
+    app.add_directive("customanimatedcta", CustomAnimatedCTADirective)

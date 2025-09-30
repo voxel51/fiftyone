@@ -18,7 +18,7 @@ Built-in datasets
 The Dataset Zoo provides built-in access to dozens of datasets that you can
 load into FiftyOne with a single command.
 
-.. custombutton::
+.. customanimatedcta::
     :button_text: Explore the datasets in the zoo
     :button_link: datasets.html
 
@@ -28,7 +28,7 @@ Remotely-sourced datasets
 The Dataset Zoo also supports loading datasets whose download/preparation
 methods are provided via GitHub repositories or URLs.
 
-.. custombutton::
+.. customanimatedcta::
     :button_text: Learn how to download remote datasets
     :button_link: remote.html
 
@@ -38,7 +38,7 @@ API reference
 The Dataset Zoo can be accessed via the Python library and the CLI. Consult the
 API reference below to see how to download, load, and manage zoo datasets.
 
-.. custombutton::
+.. customanimatedcta::
     :button_text: Check out the API reference
     :button_link: api.html
 

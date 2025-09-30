@@ -32,7 +32,7 @@ Built-in models
 The Model Zoo provides built-in access to hundreds of pre-trained models that
 you can apply to your datasets with a few simple commands.
 
-.. custombutton::
+.. customanimatedcta::
     :button_text: Explore the models in the zoo
     :button_link: models.html
 
@@ -49,7 +49,7 @@ Remotely-sourced models
 The Model Zoo also supports downloading and applying models whose definitions
 are provided via GitHub repositories or URLs.
 
-.. custombutton::
+.. customanimatedcta::
     :button_text: Learn how to download remote models
     :button_link: remote.html
 
@@ -60,7 +60,7 @@ All models in the Model Zoo are exposed via the |Model| class, which defines a
 common interface for loading models and generating predictions with
 defined input and output data formats.
 
-.. custombutton::
+.. customanimatedcta::
     :button_text: Grok the Model interface
     :button_link: design.html
 
@@ -70,7 +70,7 @@ API reference
 The Model Zoo can be accessed via the Python library and the CLI. Consult the
 API reference below to see how to download, apply, and manage zoo models.
 
-.. custombutton::
+.. customanimatedcta::
     :button_text: Check out the API reference
     :button_link: api.html
 
