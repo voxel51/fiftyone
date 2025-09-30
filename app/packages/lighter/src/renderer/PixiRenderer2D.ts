@@ -11,6 +11,7 @@ import {
   FONT_WEIGHT,
   HANDLE_COLOR,
   HANDLE_FACTOR,
+  HANDLE_OUTLINE,
 } from "../constants";
 import type { EventBus } from "../event/EventBus";
 import { LIGHTER_EVENTS } from "../event/EventBus";
@@ -168,7 +169,8 @@ export class PixiRenderer2D implements Renderer2D {
   ): void {
     width *= HANDLE_FACTOR;
 
-    this.drawBoxes(graphics, bounds, width + 2, color, alpha);
+    const outline = 2 * HANDLE_OUTLINE;
+    this.drawBoxes(graphics, bounds, width + outline, color, alpha);
     this.drawBoxes(graphics, bounds, width, HANDLE_COLOR, alpha);
   }
 

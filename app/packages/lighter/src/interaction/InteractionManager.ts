@@ -34,7 +34,7 @@ export interface InteractionHandler {
    * @param event - The original pointer event.
    * @returns True if the event was handled.
    */
-  onDrag?(point: Point, event: PointerEvent): boolean;
+  onMove?(point: Point, event: PointerEvent): boolean;
 
   /**
    * Handle pointer up event.
@@ -252,9 +252,9 @@ export class InteractionManager {
     if (this.isDragging && this.dragHandler) {
       // Handle drag move
       if (!interactiveHandler) {
-        this.dragHandler.onDrag?.(this.currentPixelCoordinates, event);
+        this.dragHandler.onMove?.(this.currentPixelCoordinates, event);
       } else {
-        interactiveHandler.onDrag?.(this.currentPixelCoordinates, event);
+        interactiveHandler.onMove?.(this.currentPixelCoordinates, event);
       }
 
       // Emit drag move event with bounds information

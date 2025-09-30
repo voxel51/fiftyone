@@ -28,5 +28,7 @@ export const FONT_WEIGHT = "bold";
 /**
  * settings related to resize handles
  */
+export const EDGE_THRESHOLD = 10;
 export const HANDLE_FACTOR = 3;
 export const HANDLE_COLOR = "white";
+export const HANDLE_OUTLINE = 2;

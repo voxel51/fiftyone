@@ -7,6 +7,7 @@ import {
   DEFAULT_TEXT_PADDING,
   LABEL_ARCHETYPE_PRIORITY,
   STROKE_WIDTH,
+  EDGE_THRESHOLD,
 } from "../constants";
 import { CONTAINS } from "../core/Scene2D";
 import type { Renderer2D } from "../renderer/Renderer2D";
@@ -42,9 +43,22 @@ export interface BoundingBoxOptions {
   label: BoundingBoxLabel;
   confidence?: number;
   draggable?: boolean;
+  resizeable?: boolean;
   selectable?: boolean;
   field?: string;
 }
+
+export type MoveState =
+  | "NONE"
+  | "DRAGGING"
+  | "RESIZE_N"
+  | "RESIZE_NE"
+  | "RESIZE_E"
+  | "RESIZE_SE"
+  | "RESIZE_S"
+  | "RESIZE_SW"
+  | "RESIZE_W"
+  | "RESIZE_NW";
 
 /**
  * Bounding box overlay implementation with drag support, selection, and spatial coordinates.
@@ -54,8 +68,10 @@ export class BoundingBoxOverlay
   implements Movable, Selectable, BoundedOverlay, Spatial, Hoverable
 {
   private isDraggable: boolean;
-  private dragStartPoint?: Point;
-  private dragStartBounds?: Rect;
+  private isResizeable: boolean;
+  private moveState: MoveState = "NONE";
+  private moveStartPoint?: Point;
+  private moveStartBounds?: Rect;
   private isSelectedState = false;
   private relativeBounds: Rect;
   private absoluteBounds: Rect;
@@ -70,6 +86,7 @@ export class BoundingBoxOverlay
       `bbox_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     super(id, options.sampleId, options.label, options.field);
     this.isDraggable = options.draggable !== false;
+    this.isResizeable = options.resizeable !== false;
 
     // Initialize bounds
     if (options.relativeBounds) {
@@ -241,29 +258,108 @@ export class BoundingBoxOverlay
 
   // Interaction handlers
   onPointerDown(point: Point, event: PointerEvent): boolean {
-    if (!this.isDraggable) return false;
+    const { x, y, height, width } = this.absoluteBounds;
+
+    const isNorth = point.y <= y + EDGE_THRESHOLD;
+    const isEast = point.x >= x + width - EDGE_THRESHOLD;
+    const isSouth = point.y >= y + height - EDGE_THRESHOLD;
+    const isWest = point.x <= x + EDGE_THRESHOLD;
+
+    const moveState =
+      isNorth && isWest
+        ? "RESIZE_NW"
+        : isNorth && isEast
+        ? "RESIZE_NE"
+        : isNorth
+        ? "RESIZE_N"
+        : isSouth && isWest
+        ? "RESIZE_SW"
+        : isSouth && isEast
+        ? "RESIZE_SE"
+        : isSouth
+        ? "RESIZE_S"
+        : isWest
+        ? "RESIZE_W"
+        : isEast
+        ? "RESIZE_E"
+        : "DRAGGING";
+
+    if (moveState === "DRAGGING" && !this.isDraggable) return false;
+    if (moveState.startsWith("RESIZE_") && !this.isResizeable) return false;
 
     // Store drag start information
-    this.dragStartPoint = point;
-    this.dragStartBounds = { ...this.absoluteBounds };
+    this.moveState = moveState;
+    this.moveStartPoint = point;
+    this.moveStartBounds = { ...this.absoluteBounds };
 
     return true;
   }
 
-  onDrag(point: Point, event: PointerEvent): boolean {
-    if (!this.dragStartPoint || !this.dragStartBounds) return false;
+  onMove(point: Point, event: PointerEvent): boolean {
+    if (this.moveState === "DRAGGING") {
+      return this.onDrag(point, event);
+    } else if (this.moveState.startsWith("RESIZE_")) {
+      return this.onResize(point, event);
+    } else {
+      return false;
+    }
+  }
+
+  private onDrag(point: Point, event: PointerEvent): boolean {
+    if (!this.moveStartPoint || !this.moveStartBounds) return false;
 
     const delta = {
-      x: point.x - this.dragStartPoint.x,
-      y: point.y - this.dragStartPoint.y,
+      x: point.x - this.moveStartPoint.x,
+      y: point.y - this.moveStartPoint.y,
     };
 
     // Update absolute bounds
     this.absoluteBounds = {
-      x: this.dragStartBounds.x + delta.x,
-      y: this.dragStartBounds.y + delta.y,
-      width: this.dragStartBounds.width,
-      height: this.dragStartBounds.height,
+      x: this.moveStartBounds.x + delta.x,
+      y: this.moveStartBounds.y + delta.y,
+      width: this.moveStartBounds.width,
+      height: this.moveStartBounds.height,
+    };
+
+    this.markDirty();
+
+    return true;
+  }
+
+  private onResize(point: Point, event: PointerEvent): boolean {
+    if (!this.moveStartPoint || !this.moveStartBounds) return false;
+
+    const delta = {
+      x: point.x - this.moveStartPoint.x,
+      y: point.y - this.moveStartPoint.y,
+    };
+
+    let { x, y, width, height } = this.moveStartBounds;
+
+    if (["RESIZE_NW", "RESIZE_N", "RESIZE_NE"].includes(this.moveState)) {
+      y += delta.y;
+      height -= delta.y;
+    }
+
+    if (["RESIZE_NW", "RESIZE_W", "RESIZE_SW"].includes(this.moveState)) {
+      x += delta.x;
+      width -= delta.x;
+    }
+
+    if (["RESIZE_SW", "RESIZE_S", "RESIZE_SE"].includes(this.moveState)) {
+      height += delta.y;
+    }
+
+    if (["RESIZE_NE", "RESIZE_E", "RESIZE_SE"].includes(this.moveState)) {
+      width += delta.x;
+    }
+
+    // Update absolute bounds
+    this.absoluteBounds = {
+      x,
+      y,
+      width,
+      height,
     };
 
     this.markDirty();
@@ -272,12 +368,13 @@ export class BoundingBoxOverlay
   }
 
   onPointerUp(point: Point, event: PointerEvent): boolean {
-    if (!this.dragStartPoint || !this.dragStartBounds) return false;
+    if (!this.moveStartPoint || !this.moveStartBounds) return false;
 
     // Mark final position for relative-coordinate update and reset drag state
     this.markForCoordinateUpdate();
-    this.dragStartPoint = undefined;
-    this.dragStartBounds = undefined;
+    this.moveState = "NONE";
+    this.moveStartPoint = undefined;
+    this.moveStartBounds = undefined;
 
     return true;
   }
@@ -345,6 +442,22 @@ export class BoundingBoxOverlay
    */
   getDraggable(): boolean {
     return this.isDraggable;
+  }
+
+  /**
+   * Sets whether this overlay can be resized.
+   * @param resizeable - Whether the overlay should be resizeable.
+   */
+  setResizeable(resizeable: boolean): void {
+    this.isResizeable = resizeable;
+  }
+
+  /**
+   * Gets whether this overlay is resizeable.
+   * @returns True if the overlay is resizeable.
+   */
+  getResizeable(): boolean {
+    return this.isResizeable;
   }
 
   /**
