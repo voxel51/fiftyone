@@ -3769,7 +3769,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         .. note::
 
             This method requires the ability to create *unique* indexes on the
-            ``key_field`` of each collection.
+            ``key_field`` of each collection, if they don't already exist.
 
             See :meth:`add_collection` if you want to add samples from one
             collection to another dataset without a uniqueness constraint.
@@ -10173,6 +10173,15 @@ def _merge_samples_pipeline(
     #
 
     # Create unique indexes, if necessary
+    #
+    # These are required for the sample and frame $merge aggregations to work.
+    # If the indexes already exist, these are no-ops.
+    #
+    # Note that we don't cleanup these indexes after the operation completes
+    # because index creation/destruction can be expensive and thus we optimize
+    # for the case where the user will perform subsequent merges or other
+    # actions that would require this index to exist. Users are free to drop
+    # the index themselves via `drop_index()` if desired
     src_dataset.create_index(in_key_field, unique=True)
     dst_dataset.create_index(in_key_field, unique=True)
 
