@@ -3,7 +3,7 @@
     var allButton = document.querySelector('.tutorial-filter[data-tag="all"]');
     if (allButton) {
       var count = document.querySelectorAll(".tutorials-card-container").length;
-      allButton.textContent = `All (${count})`;
+      allButton.textContent = `All`;
     }
   }
 

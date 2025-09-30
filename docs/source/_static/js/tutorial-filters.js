@@ -141,7 +141,7 @@ $(document).ready(function () {
           var visibleCount = document.querySelectorAll(
             ".tutorials-card-container"
           ).length;
-          allButton.textContent = `All (${visibleCount})`;
+          allButton.textContent = `All`;
         }
       }
 
