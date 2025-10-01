@@ -1038,6 +1038,7 @@ class FiftyOneTransformerForSemanticSegmentationConfig(
     Args:
         model (None): a ``transformers`` model
         name_or_path (None): the name or path to a checkpoint file to load
+        dataset_index (0):  dataset index to use in the Mixture-of-Experts (MoE) blocks of the backbone.
     """
 
     def __init__(self, d):
@@ -1082,6 +1083,7 @@ class FiftyOneTransformerForPoseEstimationConfig(FiftyOneTransformerConfig):
     Args:
         model (None): a ``transformers`` model
         name_or_path (None): the name or path to a checkpoint file to load
+
     """
 
     def __init__(self, d):
@@ -1091,6 +1093,7 @@ class FiftyOneTransformerForPoseEstimationConfig(FiftyOneTransformerConfig):
         ):
             d["name_or_path"] = DEFAULT_POSE_ESTIMATION_PATH
         super().__init__(d)
+        self.dataset_index = self.parse_int(d, "dataset_index", default=0)
 
 
 class PoseEstimationGetItem(fout.ImageGetItem):
@@ -1156,7 +1159,6 @@ class FiftyOneTransformerForPoseEstimation(
         field_name = self._get_field()
         if field_name is not None and samples is not None:
             self._box_prompts = self._get_box_prompts(samples, field_name)
-            # self.transforms.box_prompts = self._box_prompts
 
         return self._predict_all(imgs)
 
@@ -1189,6 +1191,9 @@ class FiftyOneTransformerForPoseEstimation(
 
         image_sizes = args.pop("fo_image_size", [(None, None)])
         boxes = args.pop("boxes", None)
+        args["dataset_index"] = torch.tensor(
+            [self.config.dataset_index] * len(args["pixel_values"])
+        )
 
         for k, v in args.items():
             args[k] = v.to(self.device)
