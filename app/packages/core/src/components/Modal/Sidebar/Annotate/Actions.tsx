@@ -1,21 +1,11 @@
-import {
-  BoundingBoxOptions,
-  BoundingBoxOverlay,
-  InteractiveDetectionHandler,
-  LIGHTER_EVENTS,
-  useLighter,
-} from "@fiftyone/lighter";
-import { DetectionLabel } from "@fiftyone/looker/src/overlays/detection";
-import * as fos from "@fiftyone/state";
-import { DETECTION, objectId } from "@fiftyone/utilities";
-import { atom, getDefaultStore, useSetAtom } from "jotai";
-import { useCallback, useState } from "react";
-import { useRecoilValue } from "recoil";
+import { useLighter } from "@fiftyone/lighter";
+import { CLASSIFICATION, DETECTION } from "@fiftyone/utilities";
+import { atom, useAtomValue } from "jotai";
+import React from "react";
 import styled from "styled-components";
 import { ItemLeft, ItemRight } from "./Components";
-import { editing } from "./Edit";
-import { interactiveModeInput } from "./Edit/state";
-import { activeSchemas } from "./state";
+import useCreate from "./Edit/useCreate";
+import { classificationFields, detectionFields } from "./state";
 import useShowModal from "./useShowModal";
 
 const ActionsDiv = styled.div`
@@ -33,33 +23,31 @@ const Line = styled.div`
   width: 2px;
 `;
 
-const Container = styled.div<{ ison?: string }>`
+const Container = styled.div`
   align-items: center;
   display: flex;
-  cursor: pointer;
   flex-direction: column;
   height: 2.5rem;
   justify-content: center;
+  column-gap: 0.25rem;
   padding: 0.25rem;
   width: 2.5rem;
-  margin: 0 0.5rem;
+  cursor: pointer;
+  opacity: 1;
   color: ${({ theme }) => theme.text.secondary};
 
-  &:hover {
+  &.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &:not(.disabled):hover {
     background: ${({ theme }) => theme.background.level1};
   }
 
-  &:hover path {
+  &:not(.disabled):hover path {
     fill: ${({ theme }) => theme.primary.plainColor};
   }
-
-  ${({ ison, theme }) =>
-    ison === "true" &&
-    `
-    path {
-      fill: ${theme.primary.plainColor};
-    }
-  `}
 `;
 
 const Round = styled(Container)`
@@ -91,6 +79,7 @@ const Square = styled(Container)`
 const Arrow = () => {
   return (
     <Square
+      className="enabled"
       onClick={() => {
         alert("NAVIGATION");
       }}
@@ -116,6 +105,7 @@ const Arrow = () => {
 const Move = () => {
   return (
     <Square
+      className="enabled"
       onClick={() => {
         alert("Move");
       }}
@@ -137,12 +127,15 @@ const Move = () => {
   );
 };
 
+const hasClassifications = atom((get) => get(classificationFields));
+
 const Classification = () => {
+  const create = useCreate(CLASSIFICATION);
+  const enabled = useAtomValue(hasClassifications);
   return (
     <Square
-      onClick={() => {
-        alert("Classification");
-      }}
+      className={enabled ? "" : "disabled"}
+      onClick={enabled ? () => create() : undefined}
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -161,121 +154,15 @@ const Classification = () => {
   );
 };
 
+const hasDetections = atom((get) => get(detectionFields));
+
 const Detection = () => {
-  const { scene, addOverlay, removeOverlay, overlayFactory } = useLighter();
-  const currentSampleId = useRecoilValue(fos.currentSampleId);
-  const [isInteractiveModeOnLocal, setIsInteractiveModeOnLocal] =
-    useState(false);
-
-  const setEditing = useSetAtom(editing);
-
-  // Handle escape key to exit interactive mode
-  fos.useKeydownHandler((e: KeyboardEvent) => {
-    if (e.key === "Escape" && scene) {
-      scene.exitInteractiveMode();
-      setIsInteractiveModeOnLocal(false);
-    }
-  });
-
-  const toggleInteractiveMode = useCallback(() => {
-    if (!scene) return;
-
-    if (isInteractiveModeOnLocal) {
-      scene.exitInteractiveMode();
-      setIsInteractiveModeOnLocal(false);
-      return;
-    }
-
-    const activeSchemasVal = getDefaultStore().get(activeSchemas);
-
-    if (!activeSchemasVal || Object.keys(activeSchemasVal).length === 0) return;
-
-    const handler = new InteractiveDetectionHandler(
-      currentSampleId,
-      Object.keys(activeSchemasVal)[0],
-      addOverlay,
-      removeOverlay,
-      overlayFactory,
-      (tempOverlay) => {
-        // Show the interactive input modal for label name and field selection
-        const absoluteBounds = tempOverlay.getAbsoluteBounds();
-        getDefaultStore().set(interactiveModeInput, {
-          inputType: "new-bounding-box",
-          payload: {
-            x: absoluteBounds.x + absoluteBounds.width,
-            y: absoluteBounds.y + absoluteBounds.height / 2,
-          },
-          onComplete: (value: { labelName: string; field: string }) => {
-            const relativeBounds = tempOverlay.getRelativeBounds();
-
-            const detection = overlayFactory.create<
-              BoundingBoxOptions,
-              BoundingBoxOverlay
-            >("bounding-box", {
-              field: value.field,
-              sampleId: currentSampleId,
-              label: {
-                id: objectId(),
-                label: value.labelName,
-                tags: [],
-                bounding_box: [
-                  relativeBounds.x,
-                  relativeBounds.y,
-                  relativeBounds.width,
-                  relativeBounds.height,
-                ],
-              },
-              relativeBounds: relativeBounds,
-              draggable: true,
-              selectable: true,
-            });
-
-            addOverlay(detection, true);
-
-            // Persist the overlay
-            scene.dispatchSafely({
-              type: LIGHTER_EVENTS.DO_PERSIST_OVERLAY,
-              detail: {
-                id: detection.id,
-                field: value.field,
-                sampleId: currentSampleId,
-                label: detection.label?.label ?? "",
-                bounds: detection.getRelativeBounds(),
-                misc: {},
-              },
-            });
-
-            // Set editing state
-            if (detection.label) {
-              setEditing(
-                atom<fos.AnnotationLabel>({
-                  id: detection.label?.id,
-                  data: detection.label as DetectionLabel,
-                  path: detection.field,
-                  expandedPath: detection.field + ".detections",
-                  type: DETECTION,
-                })
-              );
-            }
-
-            scene.exitInteractiveMode();
-          },
-          onDismiss: () => {
-            scene.exitInteractiveMode();
-            setIsInteractiveModeOnLocal(false);
-          },
-        });
-      }
-    );
-
-    scene.enterInteractiveMode(handler);
-    setIsInteractiveModeOnLocal(true);
-  }, [scene, currentSampleId, addOverlay, removeOverlay, overlayFactory]);
-
+  const create = useCreate(DETECTION);
+  const enabled = useAtomValue(hasDetections);
   return (
     <Square
-      onClick={toggleInteractiveMode}
-      ison={String(isInteractiveModeOnLocal)}
+      onClick={enabled ? () => create() : undefined}
+      className={enabled ? "" : "disabled"}
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -287,7 +174,7 @@ const Detection = () => {
         <title>Detection</title>
         <path
           d="M4.25 15.75C3.8375 15.75 3.48438 15.6031 3.19063 15.3094C2.89687 15.0156 2.75 14.6625 2.75 14.25V3.75C2.75 3.3375 2.89687 2.98438 3.19063 2.69063C3.48438 2.39687 3.8375 2.25 4.25 2.25H14.75C15.1625 2.25 15.5156 2.39687 15.8094 2.69063C16.1031 2.98438 16.25 3.3375 16.25 3.75V14.25C16.25 14.6625 16.1031 15.0156 15.8094 15.3094C15.5156 15.6031 15.1625 15.75 14.75 15.75H4.25ZM4.25 14.25H14.75V3.75H4.25V14.25Z"
-          fill={isInteractiveModeOnLocal ? "#007bff" : "#999999"}
+          fill="#999999"
         />
       </svg>
     </Square>
@@ -295,16 +182,10 @@ const Detection = () => {
 };
 
 export const Undo = () => {
-  const { undo, canUndo } = useLighter();
+  const { undo, canUndo: enabled } = useLighter();
 
   return (
-    <Round
-      onClick={undo}
-      style={{
-        opacity: canUndo ? 1 : 0.5,
-        cursor: canUndo ? "pointer" : "not-allowed",
-      }}
-    >
+    <Round onClick={undo} className={enabled ? "" : "disabled"}>
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="13"
@@ -323,16 +204,10 @@ export const Undo = () => {
 };
 
 export const Redo = () => {
-  const { redo, canRedo } = useLighter();
+  const { redo, canRedo: enabled } = useLighter();
 
   return (
-    <Round
-      onClick={redo}
-      style={{
-        opacity: canRedo ? 1 : 0.5,
-        cursor: canRedo ? "pointer" : "not-allowed",
-      }}
-    >
+    <Round onClick={redo} className={enabled ? "" : "disabled"}>
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="13"

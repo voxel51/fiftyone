@@ -88,13 +88,9 @@ const Annotate = () => {
     return <Loading />;
   }
 
-  if (editing) {
-    return <Edit />;
-  }
-
   return (
     <>
-      {showImport ? <ImportSchema /> : <AnnotateSidebar />}
+      {editing ? <Edit /> : showImport ? <ImportSchema /> : <AnnotateSidebar />}
       {showSchemaModal && <SchemaManager />}
     </>
   );

@@ -20,7 +20,7 @@ const SidebarContainer = ({
     <Resizable
       data-cy="sidebar"
       size={{ height: "100%", width }}
-      minWidth={200}
+      minWidth={260}
       maxWidth={600}
       direction={modal ? "left" : "right"}
       onResizeStop={(e, direction, ref, { width: delta }) => {

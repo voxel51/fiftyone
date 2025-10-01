@@ -9,6 +9,7 @@ import { Column } from "./Components";
 import { editing } from "./Edit";
 import { ICONS } from "./Icons";
 import { fieldType } from "./state";
+import useColor from "./useColor";
 import { hoveringLabelIds } from "./useHover";
 
 const Container = animated(styled.div`
@@ -53,13 +54,13 @@ const Line = styled.div<{ fill: string }>`
 const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
   const [isHoveringThisRow, setIsHoveringThisRow] = useState(false);
   const label = useAtomValue(atom);
-  const type = useAtomValue(fieldType(label.path));
+  const type = useAtomValue(fieldType(label.path ?? ""));
   const setEditing = useSetAtom(editing);
   const Icon = ICONS[type] ?? ICONS;
   const hoveringLabelIdsList = useAtomValue(hoveringLabelIds);
   const { scene } = useLighter();
 
-  const isHovering = hoveringLabelIdsList.includes(label.id);
+  const isHovering = hoveringLabelIdsList.includes(label.data.id);
 
   useEffect(() => {
     if (!scene) return;
@@ -67,16 +68,17 @@ const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
     if (isHoveringThisRow) {
       scene.dispatchSafely({
         type: LIGHTER_EVENTS.DO_OVERLAY_HOVER,
-        detail: { id: label.id, tooltip: false },
+        detail: { id: label.data.id, tooltip: false },
       });
     } else {
       scene.dispatchSafely({
         type: LIGHTER_EVENTS.DO_OVERLAY_UNHOVER,
-        detail: { id: label.id },
+        detail: { id: label.data.id },
       });
     }
-  }, [scene, isHoveringThisRow, label.id]);
+  }, [scene, isHoveringThisRow, label.data.id]);
 
+  const color = useColor(label.path);
   return (
     <Container
       onClick={() => {
@@ -86,10 +88,10 @@ const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
       onMouseEnter={() => setIsHoveringThisRow(true)}
       onMouseLeave={() => setIsHoveringThisRow(false)}
     >
-      <Line fill="white" />
+      <Line fill={color} />
       <Header>
         <Column>
-          <Icon fill="white" />
+          <Icon fill={color} />
           <div>{label.data.label}</div>
         </Column>
 

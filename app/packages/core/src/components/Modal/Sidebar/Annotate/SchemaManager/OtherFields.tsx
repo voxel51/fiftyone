@@ -6,13 +6,14 @@ import { atomFamily } from "jotai/utils";
 import React, { useCallback } from "react";
 import { useSetRecoilState } from "recoil";
 import { RoundButton } from "../Actions";
+import { ItemLeft, ItemRight } from "../Components";
 import {
   addToActiveSchemas,
   deleteSchemas,
   inactivePaths,
   schema,
 } from "../state";
-import { Container, ItemLeft, ItemRight, MutedItem } from "./Components";
+import { Container, MutedItem } from "./Components";
 import FieldRow from "./FieldRow";
 import Footer from "./Footer";
 import { Header } from "./Modal";
@@ -162,7 +163,6 @@ const FallbackItem = () => {
 const OtherFields = () => {
   const activate = useActivate();
   const [selected, setSelected] = useAtom(selectedFields);
-  const addToActiveSchema = useSetAtom(addToActiveSchemas);
 
   return (
     <>

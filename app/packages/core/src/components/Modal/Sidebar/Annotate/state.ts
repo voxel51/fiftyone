@@ -58,7 +58,7 @@ export const inactivePaths = atom((get) =>
 export const inactiveSchemas = atom((get) =>
   selectSchemas(get(schemas) ?? {}, (schema) => !schema?.active)
 );
-export const currentPath = atom<null | string>();
+
 export const schemas = atom<AnnotationSchemas | null>(null);
 
 export const fieldTypes = atom<{ [key: string]: string }>({});
@@ -96,6 +96,7 @@ export const schema = atomFamily((path: string) =>
 export const schemaConfig = atomFamily((path: string) =>
   atom(
     (get) => {
+      console.log(path, get(schemas));
       return get(schema(path))?.config;
     },
     (get, set, config?: object) => {
@@ -112,3 +113,13 @@ export const deleteSchemas = atom(null, (_, set, paths: string[]) => {
 });
 
 export const showModal = atom(false);
+
+export const classificationFields = atom((get) => {
+  const fields = get(activeSchemas);
+  return fields;
+});
+
+export const detectionFields = atom((get) => {
+  const fields = get(activeSchemas);
+  return fields;
+});

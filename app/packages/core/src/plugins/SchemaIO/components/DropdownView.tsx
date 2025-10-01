@@ -1,5 +1,6 @@
 import { IconButton, MenuItem, Select, Tooltip } from "@mui/material";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { AutocompleteView } from ".";
 import { useKey } from "../hooks";
 import { getComponentProps, getFieldSx } from "../utils";
 import autoFocus from "../utils/auto-focus";
@@ -7,7 +8,6 @@ import { ViewPropsType } from "../utils/types";
 import AlertView from "./AlertView";
 import ChoiceMenuItemBody from "./ChoiceMenuItemBody";
 import FieldWrapper from "./FieldWrapper";
-import { AutocompleteView } from ".";
 
 // if we want to support more icons in the future, add them here
 const iconImports: {
@@ -218,7 +218,7 @@ export default function DropdownView(props: ViewPropsType) {
         >
           {choices.map(({ value, ...choice }) => (
             <MenuItem
-              disabled={readOnly}
+              disabled={readOnly ?? choice.readOnly}
               key={value}
               value={value}
               onClick={() => {

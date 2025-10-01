@@ -2,6 +2,11 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
+import { editing } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/state";
+
+import { AnnotationLabel } from "@fiftyone/state";
+import { objectId } from "@fiftyone/utilities";
+import { atom, getDefaultStore } from "jotai";
 import { BoundingBoxOverlay } from "../overlay/BoundingBoxOverlay";
 import { OverlayFactory } from "../overlay/OverlayFactory";
 import { useLighter } from "../react";
@@ -95,9 +100,27 @@ export class InteractiveDetectionHandler implements InteractionHandler {
       return true;
     }
 
-    if (this.tempOverlay) {
-      this.onInteractionEnd(this.tempOverlay);
-    }
+    // Remove temporary overlay first
+
+    // Show the interactive input modal for label name and field selection
+    const id = objectId();
+    getDefaultStore().set(
+      editing,
+      atom<AnnotationLabel>({
+        id,
+        data: {
+          id,
+          bounding_box: [
+            this.currentBounds.x,
+            this.currentBounds.y,
+            this.currentBounds.width,
+            this.currentBounds.height / 2,
+          ],
+          tags: [],
+        },
+        type: "Detection",
+      })
+    );
 
     return true;
   }

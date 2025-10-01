@@ -4,12 +4,13 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import React, { useMemo } from "react";
 import { createPortal } from "react-dom";
 import styled from "styled-components";
-import { activeSchemaTab, currentPath, schema, showModal } from "../state";
+import { ItemLeft } from "../Components";
+import { activeSchemaTab, schema, showModal } from "../state";
 import ActiveSchema from "./ActiveSchema";
-import { ItemLeft } from "./Components";
 import EditAnnotationFieldSchema from "./EditAnnotationFieldSchema";
 import FieldsTabs from "./FieldsTabs";
 import OtherFields from "./OtherFields";
+import { currentField } from "./state";
 
 const Back = styled(BackIcon)`
   cursor: pointer;
@@ -72,7 +73,7 @@ export const Header = styled.div`
 `;
 
 const Heading = () => {
-  const [field, setField] = useAtom(currentPath);
+  const [field, setField] = useAtom(currentField);
   const type = useAtomValue(schema(field ?? ""))?.type;
   if (!field) {
     return <Typography variant="h5">Schema manager</Typography>;
@@ -90,7 +91,7 @@ const Heading = () => {
 };
 
 const Subheading = () => {
-  const field = useAtomValue(currentPath);
+  const field = useAtomValue(currentField);
 
   if (field) {
     return null;
@@ -109,7 +110,7 @@ const Subheading = () => {
 };
 
 const Page = () => {
-  const field = useAtomValue(currentPath);
+  const field = useAtomValue(currentField);
   const tab = useAtomValue(activeSchemaTab);
 
   if (field) {

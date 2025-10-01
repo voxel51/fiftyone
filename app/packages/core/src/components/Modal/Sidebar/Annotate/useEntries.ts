@@ -14,11 +14,13 @@ const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
   const loadingValue = useAtomValue(loading);
   const labelEntries = useMemo(
     () =>
-      atoms.map((atom) => ({
-        kind: EntryKind.LABEL,
-        atom,
-        id: store.get(atom).id,
-      })),
+      atoms.map((atom) => {
+        return {
+          kind: EntryKind.LABEL,
+          atom,
+          id: store.get(atom).data._id,
+        };
+      }),
     [atoms]
   );
 

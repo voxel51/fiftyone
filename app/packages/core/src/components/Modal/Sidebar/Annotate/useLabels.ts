@@ -28,24 +28,24 @@ const handleSample = async ({
 }: {
   filter: PathFilterSelector;
   getFieldType: (path: string) => Promise<string>;
-  paths: [string, string][];
+  paths: { [key: string]: string };
   sample: ModalSample;
   schemas: AnnotationSchemas;
 }) => {
   const data = sample.sample;
   const labels: AnnotationLabel[] = [];
 
-  for (const [path, expandedPath] of paths) {
+  for (const path in paths) {
     if (!schemas[path]?.active) {
       continue;
     }
-    const type = await getFieldType(expandedPath);
-    const result = get(data, expandedPath);
+    const type = await getFieldType(paths[path]);
+    const result = get(data, paths[path]);
 
     const array = Array.isArray(result) ? result : result ? [result] : [];
 
     for (const data of array) {
-      labels.push({ data, path, expandedPath, id: data._id, type });
+      labels.push({ data, path, id: data._id, type });
     }
   }
 
@@ -55,8 +55,23 @@ const handleSample = async ({
 };
 
 export const labels = atom<Array<AnnotationLabel>>([]);
-export const labelAtoms = splitAtom(labels, ({ id }) => id);
+export const labelAtoms = splitAtom(labels, ({ data: { _id } }) => _id);
+export const labelsByPath = atom((get) => {
+  const map = {};
+  for (const label of get(labels)) {
+    if (!label.path) {
+      continue;
+    }
 
+    if (!map[label.path]) {
+      map[label.path] = [];
+    }
+
+    map[label.path].push(label);
+  }
+
+  return map;
+});
 export const addLabel = atom(null, (get, set, label: AnnotationLabel) => {
   set(labels, [...get(labels), label]);
 });
@@ -64,23 +79,23 @@ export const addLabel = atom(null, (get, set, label: AnnotationLabel) => {
 export const removeLabel = atom(null, (get, set, id: string) => {
   set(
     labels,
-    get(labels).filter((label) => label.id !== id)
+    get(labels).filter((label) => label.data._id !== id)
   );
 });
 
 export const labelMap = atom((get) => {
   const atoms = get(labelAtoms);
-  return Object.fromEntries(atoms.map((atom) => [get(atom).id, atom]));
+  return Object.fromEntries(atoms.map((atom) => [get(atom).data._id, atom]));
 });
 export const loading = atom(true);
 
-const pathMap = selector<[string, string][]>({
+const pathMap = selector<{ [key: string]: string }>({
   key: "annotationPathMap",
   get: ({ get }) => {
     const paths = get(activeFields({ expanded: false, modal: true }));
     const expandedPaths = get(activeFields({ expanded: true, modal: true }));
 
-    return paths.map((path, i) => [path, expandedPaths[i]]);
+    return Object.fromEntries(paths.map((path, i) => [path, expandedPaths[i]]));
   },
 });
 

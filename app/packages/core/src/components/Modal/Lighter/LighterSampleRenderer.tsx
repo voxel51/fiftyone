@@ -98,6 +98,9 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
 
       for (const atom of labelAtomsList) {
         const label = store.get(atom);
+        if (!FROM_FO[label.type]) {
+          continue;
+        }
         const overlay = FROM_FO[label.type](label.path, label.data)[0];
         if (overlay instanceof DetectionOverlay) {
           // Convert legacy overlay to lighter overlay with relative coordinates

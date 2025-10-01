@@ -1,9 +1,11 @@
-import { MuiButton, MuiIconFont } from "@fiftyone/components";
-import { InfoOutlined } from "@mui/icons-material";
+import { MuiButton } from "@fiftyone/components";
+import { InfoOutlined, LabelOutlined } from "@mui/icons-material";
 import { Alert, Typography } from "@mui/material";
+import { useSetAtom } from "jotai";
 import React from "react";
 import styled from "styled-components";
-import useShowModal from "./useShowModal";
+import { activeSchemaTab } from "../state";
+import useShowModal from "../useShowModal";
 
 const Container = styled.div`
   flex: 1;
@@ -13,33 +15,37 @@ const Container = styled.div`
   align-items: center;
   padding: 1rem;
   position: relative;
+  height: 100%;
 `;
 
-const ImportSchema = () => {
+const AddSchema = ({ type }: { type: string }) => {
   const canManage = true;
   const showModal = useShowModal();
+  const setActiveTab = useSetAtom(activeSchemaTab);
   return (
     <Container>
-      <MuiIconFont
+      <LabelOutlined
         sx={{
           fontSize: 64,
           color: "#FF9950",
           marginBottom: 2,
         }}
-        name={"draw"}
       />
       <Typography variant="h6" textAlign="center">
-        Annotate faster than ever
+        No {type.toLowerCase()} fields available
       </Typography>
       <Typography color="secondary" textAlign="center" sx={{ marginBottom: 2 }}>
-        Add your annnotation schemas to access and edit labels, set up
-        attributes, and start annotating right away.
+        Add and activate {type.toLocaleLowerCase()} annotation schemas to access
+        and edit labels
       </Typography>
       <MuiButton
         variant="contained"
         color="primary"
         disabled={!canManage}
-        onClick={showModal}
+        onClick={() => {
+          setActiveTab("other");
+          showModal();
+        }}
       >
         Add schema
       </MuiButton>
@@ -64,4 +70,4 @@ const ImportSchema = () => {
   );
 };
 
-export default ImportSchema;
+export default AddSchema;

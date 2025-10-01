@@ -106,17 +106,28 @@ export interface PathEntry {
   shown: boolean;
 }
 
-export interface AnnotationLabel {
-  id: string;
-  data: ClassificationLabel | DetectionLabel;
-  path: string;
-  expandedPath: string;
-  type: string;
+interface Label {
+  path?: string;
 }
+
+interface ClassificationAnnotationLabel extends Label {
+  data: ClassificationLabel;
+  type: "Classification";
+}
+
+interface DetectionAnnotationLabel extends Label {
+  data: DetectionLabel;
+  type: "Detection";
+}
+
+export type AnnotationLabel =
+  | ClassificationAnnotationLabel
+  | DetectionAnnotationLabel;
 
 export interface LabelEntry {
   kind: EntryKind.LABEL;
   atom: PrimitiveAtom<AnnotationLabel>;
+  id: string;
 }
 
 export interface LoadingEntry {
