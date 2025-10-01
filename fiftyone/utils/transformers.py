@@ -690,7 +690,9 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
             return output
 
     def _forward_pass(self, args):
-        return self._model(**args)
+        return self._model(
+            **args, output_hidden_states=self._output_hidden_states
+        )
 
     def _load_transforms(self, config):
         processor = super()._load_transforms(config)
@@ -1092,6 +1094,9 @@ class FiftyOneTransformerForPoseEstimationConfig(FiftyOneTransformerConfig):
 
 
 class PoseEstimationGetItem(fout.ImageGetItem):
+    """A :class:`GetItem` that loads images and bounding boxes to feed to
+    :class:`FiftyOneTransformerForPoseEstimation` instances."""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
