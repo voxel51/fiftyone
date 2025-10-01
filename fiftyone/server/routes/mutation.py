@@ -140,7 +140,7 @@ class SampleMutation(HTTPEndpoint):
     def _delete_label_from_list(self, sample: Sample, patch: Patch):
         """Generic helper to delete a label from a list within a label field."""
         if "id" not in patch.value:
-            raise ValueError(f"Deleting a {patch.type} requires an ID.")
+            raise ValueError(f"Deleting a {patch.type.value} requires an ID.")
 
         label_list = sample.get_field(patch.path)
 
