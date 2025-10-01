@@ -6,6 +6,7 @@ FiftyOne Server mutation endpoints.
 |
 """
 import logging
+import typing as t
 
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
@@ -29,7 +30,9 @@ LABEL_CLASS_MAP = {
 
 class SampleMutation(HTTPEndpoint):
     @route
-    async def patch(self, request: Request, data: list) -> dict:
+    async def patch(
+        self, request: Request, data: list
+    ) -> t.Union[dict, Response]:
         """Applies a list of field updates to a sample.
 
         Args:
@@ -77,12 +80,15 @@ class SampleMutation(HTTPEndpoint):
                 content=f"Sample '{sample_id}' not found in dataset '{dataset_name}'",
             )
 
+        errors = []
         patches = {}
         for patch in data:
-            for field_name, value in patch.items():
-                patches[field_name] = value
+            if isinstance(patch, dict):
+                for field_name, value in patch.items():
+                    patches[field_name] = value
+            else:
+                errors.append(f"Invalid patch operation format: {patch}")
 
-        errors = []
         for field_name, value in patches.items():
             try:
                 if value is None:
