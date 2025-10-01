@@ -30,15 +30,21 @@ LABEL_CLASS_MAP = {
 class SampleMutation(HTTPEndpoint):
     @route
     async def patch(self, request: Request, data: list) -> dict:
-        """Applies a list of patches to a sample.
+        """Applies a list of field updates to a sample.
 
-        The "path" attribute of the patch must refer to a field of
-        embedded documents, e.g., "ground_truth.detections".
+        Args:
+            request: Starlette request with dataset_id and sample_id in path params
+            data: A list of dicts mapping field names to values. Each dict can
+                  contain one or more field updates. If the same field appears
+                  multiple times, the last value wins.
 
-        Supported ops:
-        -   "delete": deletes the document with the given "id" from the list
-        -   "upsert": updates the document with the given "id" in the list,
-            or adds it if it does not exist
+        Field value handling:
+        -   None: deletes the field
+        -   dict with "_cls" key: deserializes as a FiftyOne label using from_dict
+        -   other: assigns the value directly to the field
+
+        Returns:
+            dict with "status", "patched_sample_id", and "errors" keys
         """
         dataset_name = request.path_params["dataset_id"]
         sample_id = request.path_params["sample_id"]
