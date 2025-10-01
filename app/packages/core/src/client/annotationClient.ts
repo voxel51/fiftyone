@@ -3,7 +3,7 @@ import { encodeURIPath } from "./util";
 /**
  * Label types which currently support mutation via {@link patchSample}.
  */
-type MutableLabelTypes =
+export type MutableLabelTypes =
   | "Classification"
   | "Classifications"
   | "Detection"
@@ -16,9 +16,10 @@ type MutableLabelTypes =
  *  - `null` indicating the field should be deleted, OR
  *  - an object containing at least the `_cls` field to specify the label type
  */
-type FieldSpecification =
-  | null
-  | ({ _cls: MutableLabelTypes } & Record<string, never>);
+export type FieldSpecification = null | {
+  _cls: MutableLabelTypes;
+  [key: string]: unknown;
+};
 
 export type PatchSampleRequest = {
   datasetId: string;
