@@ -205,7 +205,8 @@ class CustomCalloutItemDirective(Directive):
                 button_link=button_link,
                 classes=classes,
                 attributes=attributes,
-                image='<img src="%s">' % image,
+                image='<div style="margin-top: 16px;"><img src="%s"></div>'
+                % image,
             )
 
         else:
@@ -236,7 +237,16 @@ _CUSTOM_CALLOUT_TEMPLATE = """
         <div class="text-container">
             <h3>{header}</h3>
             <p class="body-paragraph">{description}</p>
-            <p><a class="btn {classes} callout-button" href="{button_link}"{attributes}>{button_text}</a></p>
+            <a href="{button_link}" class="sd-btn sd-btn-primary book-a-demo" rel="noopener noreferrer" data-cta-dynamic="true"{attributes}>
+                <div class="arrow">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="size-3">
+                    <path stroke="currentColor" stroke-width="1.5"
+                            d="M1.458 11.995h20.125M11.52 22.063 21.584 12 11.521 1.937"
+                            vector-effect="non-scaling-stroke"></path>
+                    </svg>  
+                </div>
+                <div class="text">{button_text}</div>
+            </a>
             <div>{image}</div>
         </div>
     </div>
