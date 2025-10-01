@@ -193,6 +193,50 @@ class SampleMutationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(updated_detection.label, label)
         self.assertEqual(updated_detection.confidence, confidence)
 
+    async def test_dedup_edit(self):
+        """
+        Tests adding a new classification
+        """
+        label = "sunny"
+        new_label = "cloudy"
+        confidence = 0.99
+        patch_payload = [
+            {
+                "weather": {
+                    "_cls": "Classification",
+                    "label": label,
+                    "confidence": confidence,
+                },
+            },
+            {
+                "weather": {
+                    "_cls": "Classification",
+                    "label": new_label,
+                    "confidence": confidence,
+                },
+            },
+        ]
+
+        mock_request = MagicMock()
+        mock_request.path_params = {
+            "dataset_id": self.dataset.name,
+            "sample_id": str(self.sample.id),
+        }
+        mock_request.body = AsyncMock(
+            return_value=json_util.dumps(patch_payload).encode("utf-8")
+        )
+        response = await self.mutator.patch(mock_request)
+        response_dict = json.loads(response.body)
+        self.assertIsInstance(response_dict, dict)
+        self.assertEqual(response_dict["status"], "ok")
+        self.assertEqual(
+            response_dict["patched_sample_id"], str(self.sample.id)
+        )
+        self.assertEqual(len(response_dict["errors"]), 0)
+        updated_detection = self.sample.weather
+        self.assertEqual(updated_detection.label, new_label)
+        self.assertEqual(updated_detection.confidence, confidence)
+
     async def test_dataset_not_found(self):
         """Tests that a 404 Response is returned for a non-existent dataset."""
         mock_request = MagicMock()
