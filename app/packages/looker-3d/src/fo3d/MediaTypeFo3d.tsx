@@ -223,6 +223,7 @@ export const MediaTypeFo3dComponent = () => {
     setUpVectorVal(getDefaultUpVector());
   }, [foScene, upVector, getDefaultUpVector]);
 
+  const containerRef = useRef<HTMLDivElement>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera>();
   const cameraControlsRef = useRef<CameraControls>();
   const isTransforming = useRecoilValue(isTransformingAtom);
@@ -743,65 +744,79 @@ export const MediaTypeFo3dComponent = () => {
         pluginSettings: settings,
       }}
     >
-      <HoverMetadataHUD />
-      <TransformHUD />
-      <PcdColorMapTunnel.Out />
-      <Canvas
-        id={CANVAS_WRAPPER_ID}
-        onPointerMissed={resetActiveNode}
-        key={upVector ? upVector.toArray().join(",") : null}
-        raycaster={{
-          params: {
-            Points: {
-              threshold:
-                RAY_CASTING_SENSITIVITY[
-                  pointCloudSettings.rayCastingSensitivity
-                ],
-            },
-          },
+      <main
+        ref={containerRef}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          height: "100%",
+          width: "100%",
         }}
       >
-        <StatusTunnel.Out />
-        <PerspectiveCameraDrei
-          makeDefault
-          ref={cameraRef}
-          position={defaultCameraPositionComputed}
-          up={upVector ?? [0, 1, 0]}
-          fov={foScene?.cameraProps.fov ?? 50}
-          near={foScene?.cameraProps.near ?? 0.1}
-          far={foScene?.cameraProps.far ?? 2500}
-          aspect={foScene?.cameraProps.aspect ?? 1}
-          onUpdate={(cam) => cam.updateProjectionMatrix()}
-        />
-        <AdaptiveDpr pixelated />
-        <AdaptiveEvents />
-        {!autoRotate && (
-          <CameraControls
-            smoothTime={0.1}
-            dollySpeed={0.1}
-            dollyToCursor
-            ref={cameraControlsRef}
+        <HoverMetadataHUD />
+        <TransformHUD />
+        <PcdColorMapTunnel.Out />
+        <Canvas
+          id={CANVAS_WRAPPER_ID}
+          eventSource={containerRef}
+          onPointerMissed={resetActiveNode}
+          key={upVector ? upVector.toArray().join(",") : null}
+          raycaster={{
+            params: {
+              Points: {
+                threshold:
+                  RAY_CASTING_SENSITIVITY[
+                    pointCloudSettings.rayCastingSensitivity
+                  ],
+              },
+            },
+          }}
+        >
+          <StatusTunnel.Out />
+          <PerspectiveCameraDrei
+            makeDefault
+            ref={cameraRef}
+            position={defaultCameraPositionComputed}
+            up={upVector ?? [0, 1, 0]}
+            fov={foScene?.cameraProps.fov ?? 50}
+            near={foScene?.cameraProps.near ?? 0.1}
+            far={foScene?.cameraProps.far ?? 2500}
+            aspect={foScene?.cameraProps.aspect ?? 1}
+            onUpdate={(cam) => cam.updateProjectionMatrix()}
           />
-        )}
-        {autoRotate && <OrbitControls autoRotate={autoRotate} makeDefault />}
-        <SceneControls scene={foScene} cameraControlsRef={cameraControlsRef} />
-        <Gizmos />
+          <AdaptiveDpr pixelated />
+          <AdaptiveEvents />
+          {!autoRotate && (
+            <CameraControls
+              smoothTime={0.1}
+              dollySpeed={0.1}
+              dollyToCursor
+              ref={cameraControlsRef}
+            />
+          )}
+          {autoRotate && <OrbitControls autoRotate={autoRotate} makeDefault />}
+          <SceneControls
+            scene={foScene}
+            cameraControlsRef={cameraControlsRef}
+          />
+          <Gizmos />
 
-        {!isSceneInitialized && <SpinningCube />}
+          {!isSceneInitialized && <SpinningCube />}
 
-        <Bvh firstHitOnly enabled={pointCloudSettings.enableTooltip}>
-          <group ref={assetsGroupRef} visible={isSceneInitialized}>
-            <FoSceneComponent scene={foScene} />
-          </group>
-        </Bvh>
+          <Bvh firstHitOnly enabled={pointCloudSettings.enableTooltip}>
+            <group ref={assetsGroupRef} visible={isSceneInitialized}>
+              <FoSceneComponent scene={foScene} />
+            </group>
+          </Bvh>
 
-        {isSceneInitialized && (
-          <ThreeDLabels sampleMap={{ fo3d: sample as any }} />
-        )}
-      </Canvas>
-      <StatusBarRootContainer>
-        <StatusBar cameraRef={cameraRef} />
-      </StatusBarRootContainer>
+          {isSceneInitialized && (
+            <ThreeDLabels sampleMap={{ fo3d: sample as any }} />
+          )}
+        </Canvas>
+        <StatusBarRootContainer>
+          <StatusBar cameraRef={cameraRef} />
+        </StatusBarRootContainer>
+      </main>
     </Fo3dSceneContext.Provider>
   );
 };
