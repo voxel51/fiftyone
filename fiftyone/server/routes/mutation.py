@@ -81,6 +81,7 @@ class SampleMutation(HTTPEndpoint):
             try:
                 if value is None:
                     sample.clear_field(field_name)
+                    continue
 
                 if isinstance(value, dict) and "_cls" in value:
                     cls_name = value.get("_cls")
