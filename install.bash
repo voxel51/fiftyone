@@ -21,6 +21,7 @@ Custom installations:
 -e      Source install of voxel51-eta.
 -m      Install MongoDB from scratch, rather than installing fiftyone-db.
 -p      Install only the core python package, not the App.
+-o      Install docs dependencies.
 "
 }
 
@@ -28,10 +29,11 @@ Custom installations:
 SHOW_HELP=false
 SOURCE_BRAIN_INSTALL=false
 DEV_INSTALL=false
+DOCS_INSTALL=false
 SOURCE_ETA_INSTALL=false
 SCRATCH_MONGODB_INSTALL=false
 BUILD_APP=true
-while getopts "hbdemp" FLAG; do
+while getopts "hbdempo" FLAG; do
     case "${FLAG}" in
         h) SHOW_HELP=true ;;
         b) SOURCE_BRAIN_INSTALL=true ;;
@@ -39,6 +41,7 @@ while getopts "hbdemp" FLAG; do
         e) SOURCE_ETA_INSTALL=true ;;
         m) SCRATCH_MONGODB_INSTALL=true ;;
         p) BUILD_APP=false ;;
+        o) DOCS_INSTALL=true ;;
         *) usage ;;
     esac
 done
@@ -57,7 +60,11 @@ if [ ${BUILD_APP} = true ]; then
     [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
     nvm install ${NODE_VERSION}
     nvm use ${NODE_VERSION}
-    npm -g install yarn
+    if ! command -v yarn &> /dev/null; then
+        npm install -g yarn
+    else
+        echo "yarn is already installed, skipping installation"
+    fi
     if [ -f ~/.bashrc ]; then
         source ~/.bashrc
     elif [ -f ~/.bash_profile ]; then
@@ -121,16 +128,24 @@ fi
 
 echo "***** INSTALLING FIFTYONE-BRAIN *****"
 if [ ${SOURCE_BRAIN_INSTALL} = true ]; then
-    git clone https://github.com/voxel51/fiftyone-brain
-    cd fiftyone-brain
+    if [[ ! -d "fiftyone-brain" ]] && [[ ! -d "../fiftyone-brain" ]]; then
+        echo "Cloning FiftyOne Brain repository"
+        git clone https://github.com/voxel51/fiftyone-brain
+    fi
+    if [[ -d "../fiftyone-brain" ]]; then
+        cd ../fiftyone-brain
+    else
+        cd fiftyone-brain
+    fi
     if [ ${DEV_INSTALL} = true ]; then
+        echo "Performing dev install"
         bash install.bash -d
     else
+        echo "Performing install"
         pip install .
     fi
-    cd ..
+    cd -
 else
-    echo "Cloning FiftyOne Brain repository"
     pip install --upgrade fiftyone-brain
 fi
 
@@ -140,28 +155,38 @@ if [ ${DEV_INSTALL} = true ]; then
     pip install -r requirements/dev.txt
     pre-commit install
     pip install -e .
+elif [ ${DOCS_INSTALL} = true ]; then
+    echo "Performing docs install"
+    pip install -r requirements/docs.txt
+    pip install -e .
 else
+    echo "Performing install"
     pip install .
 fi
 
 if [ ${SOURCE_ETA_INSTALL} = true ]; then
-    echo "***** INSTALLING ETA *****"
-    if [[ ! -d "eta" ]]; then
+    echo "***** INSTALLING ETA FROM SOURCE *****"
+    if [[ ! -d "eta" ]] && [[ ! -d "../eta" ]]; then
         echo "Cloning ETA repository"
         git clone https://github.com/voxel51/eta
     fi
-    cd eta
+    if [[ -d "../eta" ]]; then
+        cd ../eta
+    else
+        cd eta
+    fi
     if [ ${DEV_INSTALL} = true ]; then
+        echo "Performing dev install"
         pip install -e .
     else
+        echo "Performing install"
         pip install .
     fi
     if [[ ! -f eta/config.json ]]; then
         echo "Installing default ETA config"
         cp config-example.json eta/config.json
     fi
-    cd ..
+    cd -
 fi
-
 
 echo "***** INSTALLATION COMPLETE *****"

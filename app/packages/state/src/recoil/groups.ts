@@ -537,7 +537,7 @@ export const groupStatistics = atomFamily<"group" | "slice", boolean>({
 
 /**
  * A group view, i.e. all slices of a group, can potentially be of a dynamic
- * group. The GroupBy stage is filtered to accomodate this
+ * group. The GroupBy stage is filtered to accommodate this
  */
 export const groupView = selector<State.Stage[]>({
   key: "groupView",

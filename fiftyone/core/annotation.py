@@ -83,11 +83,11 @@ class AnnotationResults(BaseRunResults):
     pass
 
 
-def compute_annotation_schema(collection, field_name):
+def compute_annotation_schema(collection, field_name, scan_samples=True):
     """Compute the annotation schema for a collection's field
 
     An annotation schema is defined by a type. A field type and an annotation
-    type informs the annotation form type and allowed values
+    type informs the form type and allowed values
 
     Annotation types are:
         - checkbox
@@ -123,7 +123,9 @@ def compute_annotation_schema(collection, field_name):
             return {
                 "default": None,
                 "type": "checkbox" if is_list else "select",
-                "values": collection.distinct(field_name),
+                "values": (
+                    collection.distinct(field_name) if scan_samples else []
+                ),
             }
         except:
             # too many distinct values
@@ -156,7 +158,6 @@ def compute_annotation_schema(collection, field_name):
     if not isinstance(field, fof.EmbeddedDocumentField):
         raise ValueError(f"unsupported annotation field {field}")
 
-    _type = str(field.document_type.__name__).lower()
     if issubclass(field.document_type, fol._HasLabelList):
         field_name = f"{field_name}.{field.document_type._LABEL_LIST_FIELD}"
         field = collection.get_field(field_name).field
@@ -165,7 +166,11 @@ def compute_annotation_schema(collection, field_name):
     classes = []
     for f in field.fields:
         if f.name == "label":
-            classes = collection.distinct(f"{field_name}.label")
+            classes = (
+                collection.distinct(f"{field_name}.label")
+                if scan_samples
+                else []
+            )
             continue
 
         if f.name == "bounding_box" and field.document_type == fol.Detection:
@@ -181,7 +186,6 @@ def compute_annotation_schema(collection, field_name):
             pass
 
     return {
-        "type": _type,
         "attributes": attributes,
         "classes": classes,
     }

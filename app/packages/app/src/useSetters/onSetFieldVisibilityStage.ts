@@ -1,9 +1,9 @@
 import {
   setFieldVisibilityStage,
-  subscribeBefore,
   type setFieldVisibilityStageMutation,
+  subscribeBefore,
 } from "@fiftyone/relay";
-import { stateSubscription, type State } from "@fiftyone/state";
+import { type State, stateSubscription } from "@fiftyone/state";
 import { DefaultValue } from "recoil";
 import { commitMutation } from "relay-runtime";
 import { pendingEntry } from "../Renderer";

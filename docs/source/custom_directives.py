@@ -10,6 +10,64 @@ from docutils.statemachine import StringList
 from docutils import nodes
 
 
+class CustomGuidesCardDirective(Directive):
+    """A custom guides card for use on getting started pages that contain guided learning experiences.
+
+    The guides card provides a title, description, level, time estimate, and a link to the guide.
+
+    Example usage::
+
+        .. customguidescard::
+            :title: Medical Imaging Guide
+            :description: Explore medical imaging workflows with DICOM, CT scans, and volumetric data.
+            :level: Beginner
+            :time: 15-25 min
+            :link: getting_started_guides/medical_imaging/index.html
+    """
+
+    option_spec = {
+        "title": directives.unchanged,
+        "description": directives.unchanged,
+        "level": directives.unchanged,
+        "time": directives.unchanged,
+        "link": directives.unchanged,
+    }
+
+    def run(self):
+        title = self.options.get("title", "")
+        description = self.options.get("description", "")
+        level = self.options.get("level", "")
+        time = self.options.get("time", "")
+        link = self.options.get("link", "")
+
+        html = _CUSTOM_GUIDES_CARD_TEMPLATE.format(
+            title=title,
+            description=description,
+            level=level,
+            time=time,
+            link=link,
+        )
+
+        return [nodes.raw("", html, format="html")]
+
+
+_CUSTOM_GUIDES_CARD_TEMPLATE = """
+    <div class="col-md-4 getting-started-card mb-4">
+        <div class="card h-100 guides-card">
+            <div class="card-body d-flex flex-column">
+                <h5 class="card-title">{title}</h5>
+                <p class="card-text">{description}</p>
+                <div class="d-flex align-items-center" style="margin-bottom: 15px;">
+                    <span class="badge">{level}</span>
+                    <span class="badge bg-secondary">{time}</span>
+                </div>
+                <a href="{link}" class="btn btn-outline-primary btn-sm mt-auto">Start Guide</a>
+            </div>
+        </div>
+    </div>
+"""
+
+
 class CustomCardItemDirective(Directive):
     """A custom card item for use on pages that contain a list of links with
     short descriptions and optional images.
@@ -72,21 +130,25 @@ class CustomCardItemDirective(Directive):
 _CUSTOM_CARD_TEMPLATE = """
 .. raw:: html
 
-    <div class="col-md-12 tutorials-card-container" data-tags={tags}>
+    <div class="col-md-6 tutorials-card-container" data-tags={tags}>
 
     <div class="card tutorials-card" link={link}>
 
     <div class="card-body">
 
+    <div class="tutorials-image">{image}</div>
+    
+    <div class="tutorials-card-content">
+
     <div class="card-title-container">
-        <h4>{header}</h4>
+        <strong>{header}</strong>
     </div>
 
     <p class="card-summary">{description}</p>
 
     <p class="tags">{tags}</p>
-
-    <div class="tutorials-image">{image}</div>
+    
+    </div>
 
     </div>
 

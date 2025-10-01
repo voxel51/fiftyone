@@ -19,6 +19,7 @@ import fiftyone.utils.torch as fout
 import fiftyone.core.utils as fou
 import fiftyone.zoo.models as fozm
 
+
 ultralytics = fou.lazy_import("ultralytics")
 torch = fou.lazy_import("torch")
 torchvision = fou.lazy_import("torchvision")
@@ -89,7 +90,7 @@ def to_detections(results, confidence_thresh=None):
 
 def _to_detections(result, confidence_thresh=None):
     if result.boxes is None:
-        return None
+        return fol.Detections()
 
     classes = np.rint(result.boxes.cls.detach().cpu().numpy()).astype(int)
     boxes = result.boxes.xywhn.detach().cpu().numpy().astype(float)
@@ -141,7 +142,7 @@ def to_instances(results, confidence_thresh=None):
 
 def _to_instances(result, confidence_thresh=None):
     if result.masks is None:
-        return None
+        return fol.Detections()
 
     classes = np.rint(result.boxes.cls.detach().cpu().numpy()).astype(int)
     boxes = result.boxes.xywhn.detach().cpu().numpy().astype(float)
@@ -190,7 +191,7 @@ def to_classifications(results, confidence_thresh=None, store_logits=False):
 
     Args:
         results: a single or list of ``ultralytics.engine.results.Results``
-        confidence_thresh (None): a confidence threshold to filter clasifications
+        confidence_thresh (None): a confidence threshold to filter classifications
 
     Returns:
         a single or list of :class:`fiftyone.core.labels.Classification`
@@ -226,6 +227,7 @@ def _to_classifications(result, confidence_thresh=None, store_logits=False):
         )
         if store_logits:
             classification.logits = logits
+
     return classification
 
 
@@ -258,7 +260,8 @@ def obb_to_polylines(results, confidence_thresh=None, filled=False):
 
 def _obb_to_polylines(result, filled, confidence_thresh=None):
     if result.obb is None:
-        return None
+        return fol.Polylines()
+
     classes = np.rint(result.obb.cls.detach().cpu().numpy()).astype(int)
     confs = result.obb.conf.detach().cpu().numpy().astype(float)
     points = result.obb.xyxyxyxyn.detach().cpu().numpy()
@@ -279,6 +282,7 @@ def _obb_to_polylines(result, filled, confidence_thresh=None):
             filled=filled,
         )
         polylines.append(polyline)
+
     return fol.Polylines(polylines=polylines)
 
 
@@ -314,7 +318,7 @@ def to_polylines(results, confidence_thresh=None, tolerance=2, filled=True):
 
 def _to_polylines(result, tolerance, filled, confidence_thresh=None):
     if result.masks is None:
-        return None
+        return fol.Polylines()
 
     classes = np.rint(result.boxes.cls.detach().cpu().numpy()).astype(int)
     confs = result.boxes.conf.detach().cpu().numpy().astype(float)
@@ -380,7 +384,7 @@ def to_keypoints(results, confidence_thresh=None):
 
 def _to_keypoints(result, confidence_thresh=None):
     if result.keypoints is None:
-        return None
+        return fol.Keypoints()
 
     classes = np.rint(result.boxes.cls.detach().cpu().numpy()).astype(int)
     points = result.keypoints.xyn.detach().cpu().numpy().astype(float)
@@ -480,9 +484,10 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         return model
 
     def _load_model(self, config):
-        if config.entrypoint_args:
-            if config.model_path:
-                config.entrypoint_args["model"] = config.model_path
+        if config.model_path:
+            if not config.entrypoint_args:
+                config.entrypoint_args = {}
+            config.entrypoint_args["model"] = config.model_path
 
         if config.model is not None:
             model = config.model
@@ -646,11 +651,17 @@ class FiftyOneRTDETRModel(FiftyOneYOLOModel):
         return self._model.predictor.pre_transform(im)
 
 
+class FiftyOneYOLOClassificationModelConfig(FiftyOneYOLOModelConfig):
+    """Configuration for a :class:`FiftyOneYOLOClassificationModel`."""
+
+    pass
+
+
 class FiftyOneYOLOClassificationModel(FiftyOneYOLOModel):
     """FiftyOne wrapper around Ultralytics YOLO Classification model.
 
     Args:
-        config: a :class:`FiftyOneYOLOModelConfig`
+        config: a :class:`FiftyOneYOLOClassificationModelConfig`
     """
 
     def _ultralytics_preprocess(self, img):
@@ -677,7 +688,7 @@ class FiftyOneYOLOClassificationModel(FiftyOneYOLOModel):
 
 
 def _convert_yolo_classification_model(model):
-    config = FiftyOneYOLOModelConfig(
+    config = FiftyOneYOLOClassificationModelConfig(
         {
             "model": model,
             "output_processor_cls": UltralyticsClassificationOutputProcessor,
@@ -843,7 +854,8 @@ class UltralyticsDetectionOutputProcessor(
 
     def _parse_output(self, output, frame_size, confidence_thresh):
         if not output:
-            return None
+            return fol.Detections()
+
         detections = super()._parse_output(
             output, frame_size, confidence_thresh
         )

@@ -42,7 +42,6 @@ If you're looking to scale to production-grade, collaborative, cloud-native
 enterprise workloads, check out
 **[FiftyOne Enterprise](http://voxel51.com/enterprise)** 🚀
 
-
 <div id='installation'/>
 
 ## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> &nbsp; installation &nbsp; 💻
@@ -354,7 +353,7 @@ on the installer to run it, and follow the steps in the installer.
 -   Activate the environment typing this in the command line window
     `fiftyone_env\Scripts\activate`
 -   After activation, your command prompt should change and show the name of
-    the virtual environment `(fiftyon_env) C:\path\to\your\project`
+    the virtual environment `(fiftyone_env) C:\path\to\your\project`
 
 #### 5. Install FFmpeg (optional)
 
@@ -408,7 +407,6 @@ Note that if you are running the above code in a script, you must include
 `session.wait()` to block execution until you close the App. See
 [this page](https://voxel51.com/docs/fiftyone/user_guide/app.html#creating-a-session)
 for more information.
-
 
 <div id='key-features'>
 
@@ -475,7 +473,6 @@ Full documentation for FiftyOne is available at
 Want to securely collaborate on billions of samples in the cloud and connect to
 your compute resources to automate your workflows? Check out
 [FiftyOne Enterprise](https://voxel51.com/enterprise).
-
 
 <div id='faq'/>
 

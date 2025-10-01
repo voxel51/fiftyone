@@ -70,6 +70,7 @@ class SampleFieldDocument(EmbeddedDocument):
     description = StringField(null=True)
     info = DictField(null=True)
     read_only = BooleanField(default=False)
+    schema = DictField(null=True)
     created_at = DateTimeField(null=True, default=None)
 
     def _set_created_at(self, created_at):
@@ -108,6 +109,7 @@ class SampleFieldDocument(EmbeddedDocument):
             description=self.description,
             info=self.info,
             read_only=self.read_only,
+            schema=self.schema,
             created_at=self.created_at,
         )
 
@@ -137,6 +139,7 @@ class SampleFieldDocument(EmbeddedDocument):
             description=field.description,
             info=field.info,
             read_only=field.read_only,
+            schema=field.schema,
             created_at=field.created_at,
         )
 
@@ -299,7 +302,7 @@ class ColorScheme(EmbeddedDocument):
             -   ``list`` (optional): a list of dicts of colorscale values
 
                 -   ``value``: a float number between 0 and 1. A valid list
-                    must have have colors defined for 0 and 1
+                    must have colors defined for 0 and 1
                 -   ``color``: an RGB color string
         colorscales (None): an optional list of dicts of per-field custom
             colorscales with the following keys:
@@ -312,7 +315,7 @@ class ColorScheme(EmbeddedDocument):
                 the following keys:
 
                 -   ``value``: a float number between 0 and 1. A valid list
-                    must have have colors defined for 0 and 1
+                    must have colors defined for 0 and 1
                 -   ``color``: an RGB color string
         label_tags (None): an optional dict specifying custom colors for label
             tags with the following keys:

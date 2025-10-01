@@ -196,7 +196,7 @@ export default <T extends AbstractLooker<BaseState>>(
 
         if (create === ImaVidLooker) {
           const totalFrameCountPromise = getPromise(
-            dynamicGroupsElementCount(sample._group)
+            dynamicGroupsElementCount({ value: sample._group })
           );
           const page = snapshot
             .getLoadable(

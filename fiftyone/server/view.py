@@ -43,11 +43,10 @@ async def load_view(
     form: Optional[ExtendedViewForm] = None,
     view_name: Optional[str] = None,
 ) -> foc.SampleCollection:
-
     form = form if form else ExtendedViewForm()
 
     def run() -> foc.SampleCollection:
-        dataset = fod.load_dataset(dataset_name)
+        dataset = fod.load_dataset(dataset_name, reload=True)
         if view_name:
             view = dataset.load_saved_view(view_name)
             if serialized_view:
@@ -119,10 +118,7 @@ def get_view(
 
     def run(dataset, stages):
         if isinstance(dataset, str):
-            dataset = fod.load_dataset(dataset)
-
-        if reload:
-            dataset.reload()
+            dataset = fod.load_dataset(dataset, reload=reload)
 
         if view_name is not None:
             return dataset.load_saved_view(view_name)
@@ -236,7 +232,6 @@ def get_extended_view(
 
     for stage in view._stages:
         if isinstance(stage, fosg.GroupBy):
-
             view = view.mongo(
                 [{"$addFields": {"_group": stage._get_group_expr(view)[0]}}]
             )
@@ -698,7 +693,12 @@ def _make_scalar_expression(f, args, field, list_field=None, is_label=False):
     if _is_support(field):
         if "range" in args:
             mn, mx = args["range"]
-            expr = (f[0] >= mn) & (f[1] <= mx)
+            if mn is not None and mx is not None:
+                expr = (f[0] >= mn) & (f[1] <= mx)
+            elif mn is not None:
+                expr = f[0] >= mn
+            elif mx is not None:
+                expr = f[1] <= mx
     elif isinstance(field, fof.ListField):
         if isinstance(list_field, str):
             return f.filter(
@@ -723,14 +723,10 @@ def _make_scalar_expression(f, args, field, list_field=None, is_label=False):
         if not true and not false:
             expr = (f != True) & (f != False)
     elif _is_datetime(field):
-        if "range" in args:
-            mn, mx = args["range"]
-            p = fou.timestamp_to_datetime
-            expr = (f >= p(mn)) & (f <= p(mx))
+        expr = _make_range_expr(f, args, convert=fou.timestamp_to_datetime)
     elif isinstance(field, (fof.FloatField, fof.IntField)):
-        if "range" in args:
-            mn, mx = args["range"]
-            expr = (f >= mn) & (f <= mx)
+        expr = _make_range_expr(f, args)
+
     else:
         values = args["values"]
         if not values:
@@ -757,6 +753,22 @@ def _make_scalar_expression(f, args, field, list_field=None, is_label=False):
         return expr
 
     return _apply_others(expr, f, args, is_label)
+
+
+def _make_range_expr(f, args, convert=lambda v: v):
+    if "range" not in args:
+        return None
+
+    expr = None
+    mn, mx = args["range"]
+    if mn is not None and mx is not None:
+        expr = (f >= convert(mn)) & (f <= convert(mx))
+    elif mn is not None:
+        expr = f >= convert(mn)
+    elif mx is not None:
+        expr = f <= convert(mx)
+
+    return expr
 
 
 def _make_keypoint_list_filter(args, view, path, field):

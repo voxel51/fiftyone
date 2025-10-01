@@ -24,7 +24,7 @@ jobs:
           - windows-x86_64
     steps:
       - name: Clone fiftyone
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -84,9 +84,9 @@ jobs:
       FIFTYONE_DO_NOT_TRACK: true
     steps:
       - name: Clone fiftyone
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Download fiftyone-db
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: dist-sdist
           path: downloads
@@ -111,12 +111,12 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/db-v')
     steps:
       - name: Download
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: downloads
       - name: Install dependencies
         run: |
-          pip install twine
+          pip3 install -U twine packaging
       - name: Set environment
         env:
           RELEASE_TAG: ${{ github.ref }}
@@ -128,4 +128,4 @@ jobs:
           TWINE_USERNAME: __token__
           TWINE_NON_INTERACTIVE: 1
         run: |
-          python -m twine upload downloads/dist-*/*
+          python3 -m twine upload downloads/dist-*/*

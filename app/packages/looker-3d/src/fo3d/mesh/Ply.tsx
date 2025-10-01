@@ -1,12 +1,11 @@
 import { getSampleSrc } from "@fiftyone/state";
-import { useLoader } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   type BufferGeometry,
   Mesh,
   Points,
   type Quaternion,
-  type Vector3,
+  Vector3,
 } from "three";
 import { PLYLoader } from "three/examples/jsm/loaders/PLYLoader";
 import type {
@@ -15,11 +14,13 @@ import type {
   FoPointcloudMaterialProps,
   PlyAsset,
 } from "../../hooks";
+import { useFoLoader } from "../../hooks/use-fo-loaders";
 import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";
+import { usePointCloudHover } from "../../hooks/use-point-cloud-hover";
+import { HoveredPointMarker } from "../components/HoveredPointMarker";
 import { useFo3dContext } from "../context";
 import { usePcdMaterial } from "../point-cloud/use-pcd-material";
 import { getBasePathForTextures, getResolvedUrlForFo3dAsset } from "../utils";
-import { useFoLoader } from "../../hooks/use-fo-loaders";
 
 interface PlyProps {
   name: string;
@@ -34,10 +35,18 @@ const PlyWithPointsMaterial = ({
   name,
   geometry,
   defaultMaterial,
+  quaternion,
+  position,
+  scale,
+  vertexColorsAvailable,
 }: {
   name: string;
   geometry: BufferGeometry;
   defaultMaterial: FoMeshMaterial;
+  quaternion: Quaternion;
+  position: Vector3;
+  scale: Vector3;
+  vertexColorsAvailable: boolean;
 }) => {
   const overrideMaterial = {
     shadingMode: "height",
@@ -49,23 +58,48 @@ const PlyWithPointsMaterial = ({
 
   const pointsContainerRef = useRef();
 
-  const pointsMaterialElement = usePcdMaterial(
+  const { pointsMaterial, shadingMode } = usePcdMaterial(
     name,
     geometry,
     overrideMaterial,
-    pointsContainerRef
+    pointsContainerRef,
+    quaternion,
+    vertexColorsAvailable
   );
 
   const mesh = useMemo(() => new Points(geometry), [geometry]);
 
-  if (!geometry || !pointsMaterialElement) {
+  const { hoverProps, currentHoveredPoint } = usePointCloudHover({
+    geometry,
+    assetName: name,
+    shadingMode,
+    position,
+    quaternion,
+    scale,
+  });
+
+  const { setHoverMetadata } = useFo3dContext();
+
+  useEffect(() => {
+    setHoverMetadata((prev) => ({
+      ...prev,
+      renderModeDescriptor: shadingMode,
+    }));
+  }, [shadingMode]);
+
+  if (!geometry || !pointsMaterial) {
     return null;
   }
 
   return (
-    <primitive ref={pointsContainerRef} object={mesh}>
-      {pointsMaterialElement}
-    </primitive>
+    <>
+      {currentHoveredPoint && (
+        <HoveredPointMarker position={currentHoveredPoint} />
+      )}
+      <primitive ref={pointsContainerRef} object={mesh} {...hoverProps}>
+        {pointsMaterial}
+      </primitive>
+    </>
   );
 };
 
@@ -192,6 +226,10 @@ export const Ply = ({
           name={name}
           geometry={geometry}
           defaultMaterial={defaultMaterial}
+          quaternion={quaternion}
+          position={position}
+          scale={scale}
+          vertexColorsAvailable={isUsingVertexColors}
         />
       );
     }
@@ -220,6 +258,9 @@ export const Ply = ({
     isPcd,
     name,
     defaultMaterial,
+    position,
+    scale,
+    quaternion,
   ]);
 
   if (!mesh) {

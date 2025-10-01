@@ -1,9 +1,9 @@
 import {
+  DiscordLink,
   DocsLink,
   GitHubLink,
   Header,
   IconButton,
-  DiscordLink,
   iconContainer,
 } from "@fiftyone/components";
 import { ViewBar } from "@fiftyone/core";

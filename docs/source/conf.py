@@ -14,12 +14,14 @@ import re
 import sys
 
 sys.path.insert(0, os.path.abspath("."))
+sys.path.insert(0, os.path.abspath("../extensions"))
 
 from custom_directives import (
     CustomButtonDirective,
     CustomCalloutItemDirective,
     CustomCardItemDirective,
     CustomImageLinkDirective,
+    CustomGuidesCardDirective,
 )
 from redirects import generate_redirects
 
@@ -48,7 +50,7 @@ if setup_version != foc.VERSION:
 # -- Project information -----------------------------------------------------
 
 project = "FiftyOne"
-copyright = foc.COPYRIGHT
+copyright = foc.COPYRIGHT.rsplit(".", 1)[0]
 author = foc.AUTHOR
 release = foc.VERSION
 
@@ -62,11 +64,16 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.intersphinx",
     "sphinx.ext.napoleon",
+    "sphinxcontrib.jquery",
     "nbsphinx",
     "sphinx_tabs.tabs",
     "sphinx_copybutton",
+    "sphinx_pushfeedback",
+    "sphinx_docsearch",
+    "sphinx_design",
     "autodocsumm",
     "myst_parser",
+    "llms_txt",
 ]
 
 # Types of class members to generate documentation for.
@@ -107,7 +114,7 @@ nbsphinx_requirejs_path = ""
 nbsphinx_execute = "never"
 
 # Adds helpful external links to the built HTML
-ref = "v%s" % foc.VERSION
+ref = os.getenv("FO_DOCS_REF", f"v{foc.VERSION}")
 nbsphinx_prolog = """
 
 .. raw:: html
@@ -115,17 +122,17 @@ nbsphinx_prolog = """
     <table class="fo-notebook-links" align="left">
         <td>
             <a target="_blank" href="https://colab.research.google.com/github/voxel51/fiftyone/blob/%s/docs/source/{{ env.doc2path(env.docname, base=None) }}">
-                <img src="../_static/images/icons/colab-logo-256px.png"> &nbsp; Run in Google Colab
+                <img src="https://cdn.voxel51.com/colab-logo-256px.png"> &nbsp; Run in Google Colab
             </a>
         </td>
         <td>
             <a target="_blank" href="https://github.com/voxel51/fiftyone/blob/%s/docs/source/{{ env.doc2path(env.docname, base=None) }}">
-                <img src="../_static/images/icons/github-logo-256px.png"> &nbsp; View source on GitHub
+                <img src="https://cdn.voxel51.com/github-logo-256px.png"> &nbsp; View source on GitHub
             </a>
         </td>
         <td>
             <a target="_blank" href="https://raw.githubusercontent.com/voxel51/fiftyone/%s/docs/source/{{ env.doc2path(env.docname, base=None) }}" download>
-                <img src="../_static/images/icons/cloud-icon-256px.png"> &nbsp; Download notebook
+                <img src="https://cdn.voxel51.com/cloud-icon-256px.png"> &nbsp; Download notebook
             </a>
         </td>
     </table>
@@ -161,13 +168,21 @@ intersphinx_mapping = {
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = "pytorch_sphinx_theme"
-html_theme_path = ["../theme"]
+html_logo = "_static/images/voxel51-logo.svg"
+
+html_theme = "pydata_sphinx_theme"
 html_theme_options = {
-    "pytorch_project": "docs",
+    "navbar_start": ["navbar-logo"],
+    "navbar_center": ["navbar-links"],
+    "navbar_end": ["book-a-demo"],
+    "navbar_persistent": [],
+    "footer_start": ["copyright"],
+    "footer_end": ["footer-links"],
 }
 
-html_favicon = "favicon.ico"
+html_sidebars = {"**": ["algolia.html", "sidebar-nav"]}
+
+html_favicon = "_static/favicon/favicon.ico"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -177,45 +192,72 @@ html_static_path = ["_static"]
 # These paths are either relative to html_static_path
 # or fully qualified paths (eg. https://...)
 html_css_files = ["css/voxel51-website.css", "css/custom.css"]
-html_js_files = ["js/voxel51-website.js", "js/custom.js"]
+html_js_files = [
+    "https://cdn.jsdelivr.net/npm/list.js@2.3.1/dist/list.min.js",
+    "js/custom.js",
+    "js/tutorial-filters.js",
+]
 
 # Prevent RST source files from being included in output
 html_copy_source = False
 
+
+# -- Options for pushfeedback extension ---------------------------------------
+pushfeedback_project = "1nx7ekqhts"
+pushfeedback_feedback_button_text = "Feedback"
+pushfeedback_button_position = "center-right"
+pushfeedback_modal_position = "sidebar-right"
+
+# -- Options for sphinx-docsearch --------------------------------------------
+docsearch_app_id = os.environ.get("DOCSEARCH_APP_ID", "8ZYQ0G7IMC")
+docsearch_api_key = os.environ.get("DOCSEARCH_API_KEY", "")
+docsearch_index_name = os.environ.get("DOCSEARCH_INDEX_NAME", "voxel51")
+docsearch_container = "#searchbox"
+
+# -- Options for theme -------------------------------------------------------
 html_context = {
-    "address_main_line1": "330 E Liberty St",
-    "address_main_line2": "Ann Arbor, MI 48104",
-    "phone_main": "+1 734-519-0955",
-    "email_info": "info@voxel51.com",
-    # Links - copied from website config
-    "link_blog": "https://voxel51.com/blog/",
-    "link_contactus": "mailto:solutions@voxel51.com?subject=[Voxel51]%20Contact%20us",
+    # https://pydata-sphinx-theme.readthedocs.io/en/stable/user_guide/light-dark.html#configure-default-theme-mode
+    "default_mode": "light",
+    "docsearch_app_id": docsearch_app_id,
+    "docsearch_api_key": docsearch_api_key,
+    "docsearch_index_name": docsearch_index_name,
     "link_docs_fiftyone": "https://docs.voxel51.com/",
-    "link_fiftyone": "https://voxel51.com/fiftyone/",
-    "link_fiftyone_enterprise": "https://voxel51.com/enterprise/",
-    "link_usecases": "https://voxel51.com/computer-vision-use-cases/",
-    "link_success_stories": "https://voxel51.com/success-stories/",
-    "link_talk_to_sales": "https://voxel51.com/talk-to-sales/",
-    "link_workshop": "https://voxel51.com/book-a-demo/",
-    "link_fiftyone_tutorials": "https://docs.voxel51.com/tutorials/index.html",
-    "link_fiftyone_examples": "https://github.com/voxel51/fiftyone-examples",
-    "link_fiftyone_quickstart": "https://colab.research.google.com/github/voxel51/fiftyone-examples/blob/master/examples/quickstart.ipynb",
-    "link_home": "https://voxel51.com/",
-    "link_ourstory": "https://voxel51.com/ourstory/",
     "link_events": "https://voxel51.com/computer-vision-events/",
-    "link_voxel51_jobs": "https://voxel51.com/jobs/",
-    "link_press": "https://voxel51.com/press/",
-    "link_privacypolicy": "https://voxel51.com/privacy/",
-    "link_termsofservice": "https://voxel51.com/terms/",
-    "link_voxel51_facebook": "https://www.facebook.com/voxel51/",
-    "link_voxel51_github": "https://github.com/voxel51/",
-    "link_voxel51_linkedin": "https://www.linkedin.com/company/voxel51/",
-    "link_voxel51_discord": "https://community.voxel51.com",
-    "link_voxel51_slack": "https://slack.voxel51.com",
-    "link_voxel51_twitter": "https://twitter.com/voxel51",
     "link_voxel51_blog": "https://voxel51.com/blog/",
-    "og_image": "https://voxel51.com/wp-content/uploads/2024/03/3.24_webpages_Home_AV.png",
+    "link_annotation": "https://voxel51.com/annotation",
+    "link_curation": "https://voxel51.com/curation",
+    "link_evaluation": "https://voxel51.com/evaluation",
+    "link_integrations": "https://voxel51.com/integrations",
+    "link_plugins": "https://voxel51.com/plugins",
+    "link_pricing": "https://voxel51.com/pricing",
+    "link_agriculture": "https://voxel51.com/industries/agriculture",
+    "link_autonomous_systems": "https://voxel51.com/industries/autonomous-vehicles-systems",
+    "link_aviation": "https://voxel51.com/industries/aviation",
+    "link_defense": "https://voxel51.com/industries/defense",
+    "link_healthcare": "https://voxel51.com/industries/healthcare",
+    "link_manufacturing": "https://voxel51.com/industries/manufacturing",
+    "link_research": "https://voxel51.com/research",
+    "link_retail": "https://voxel51.com/industries/retail",
+    "link_robotics": "https://voxel51.com/industries/robotics",
+    "link_security": "https://voxel51.com/industries/security",
+    "link_sports": "https://voxel51.com/industries/sports",
+    "link_customers": "https://voxel51.com/customers",
+    "link_webinars": "https://voxel51.com/webinars",
+    "link_whitepapers": "https://voxel51.com/whitepapers",
+    "link_community": "https://voxel51.com/community",
+    "link_press": "https://voxel51.com/press",
+    "link_sales": "https://voxel51.com/sales",
+    "link_glossary": "https://voxel51.com/glossary",
+    "link_model_zoo": "https://docs.voxel51.com/model_zoo/models.html",
+    "link_dataset_zoo": "https://docs.voxel51.com/dataset_zoo/datasets.html",
+    "link_about": "https://voxel51.com/about",
+    "link_careers": "https://voxel51.com/careers",
+    "link_linkedin": "https://www.linkedin.com/company/voxel51/",
+    "link_twitter": "https://x.com/voxel51",
+    "link_youtube": "https://www.youtube.com/@voxel51",
+    "link_voxel51_discord": "https://community.voxel51.com",
 }
+
 
 # -- Custom app setup --------------------------------------------------------
 
@@ -230,3 +272,4 @@ def setup(app):
     app.add_directive("customcalloutitem", CustomCalloutItemDirective)
     app.add_directive("customcarditem", CustomCardItemDirective)
     app.add_directive("customimagelink", CustomImageLinkDirective)
+    app.add_directive("customguidescard", CustomGuidesCardDirective)

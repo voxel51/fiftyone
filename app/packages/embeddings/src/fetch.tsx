@@ -32,7 +32,7 @@ export async function fetchPlot({
     labelField,
     slices,
   });
-  return handleErrors(res);
+  return res;
 }
 
 function handleErrors(res) {

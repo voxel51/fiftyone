@@ -47,14 +47,16 @@ export function getMatrix(
   config,
   maskTargets?,
   compareMaskTargets?,
-  plot?
+  plot?,
+  isCompare?
 ) {
   if (!matrices) return;
   const { sortBy = "az", limit } = config;
+  const colorscale_key_suffix = isCompare ? "colorscale_blues" : "colorscale";
   const parsedLimit = typeof limit === "number" ? limit : undefined;
   const originalClasses = matrices[`${sortBy}_classes`];
   const originalMatrix = matrices[`${sortBy}_matrix`];
-  const originalColorscale = matrices[`${sortBy}_colorscale`];
+  const originalColorscale = matrices[`${sortBy}_${colorscale_key_suffix}`];
   const chosenClasses = config?.classes;
   const hasChosenClasses =
     Array.isArray(chosenClasses) && chosenClasses?.length;
@@ -119,6 +121,7 @@ export function getMatrix(
 }
 
 export function getClasses(matrices, maskTargets?) {
+  if (!matrices) return [];
   const sortBy = "az";
   const classes = matrices[`${sortBy}_classes`];
   return classes.map((c) => {
@@ -187,3 +190,48 @@ export const selectedModelEvaluation = atom<string | null>({
   key: "selectedModelEvaluation",
   default: null,
 });
+
+export function getEvaluationType(evaluation) {
+  const config = evaluation?.info?.config;
+  const method = config?.method;
+  const type = config?.type;
+  if (type === "classification") {
+    return method === "binary"
+      ? "binary_classification"
+      : "multiclass_classification";
+  }
+  return type;
+}
+
+export function getInapplicableMetrics(evaluation) {
+  const type = getEvaluationType(evaluation);
+
+  const isObjectDetection = type === "detection";
+  const isSegmentation = type === "segmentation";
+  const isMulticlassClassification = type === "multiclass_classification";
+
+  const inapplicableMetrics: string[] = [];
+
+  if (isSegmentation) {
+    inapplicableMetrics.push(
+      "prediction_statistics",
+      "confidence_distribution",
+      "average_confidence",
+      "tp",
+      "fp",
+      "fn"
+    );
+  }
+
+  if (!isObjectDetection) {
+    inapplicableMetrics.push("iou", "mAP", "mAR");
+  }
+
+  if (isMulticlassClassification) {
+    inapplicableMetrics.push("tp", "fp", "fn");
+  } else {
+    inapplicableMetrics.push("correct", "incorrect");
+  }
+
+  return inapplicableMetrics;
+}

@@ -1,0 +1,79 @@
+.dropdown
+  position: relative
+  
+  .dropdown-toggle
+    cursor: default
+
+    &::after
+      display: none
+
+  .dropdown-menu
+    opacity: 0
+    visibility: hidden
+    transform: translateY(-10px) scale(0.95)
+    transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1)
+    transform-origin: top center
+    background-color: var(--color-dropdown-background)
+    border: 4px solid #fff
+    border-radius: 12px
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1)
+    min-width: 200px
+    top: 100%
+    left: 0
+    padding: 8px
+    z-index: 1000
+    margin-top: 16px
+
+    &.show
+      display: none
+
+    .dropdown-item
+      font-size: 14px
+      font-weight: 500
+      color: #181a1b
+      padding: 8px
+      transition: all 0.2s ease
+      border-radius: 8px
+      opacity: 0
+      transform: translateY(10px)
+      animation-fill-mode: both
+      
+      &:hover
+        background-color: var(--color-background)
+        
+    .dropdown-divider
+      border-top: 1px solid rgba(0, 0, 0, 0.125)
+      margin: 0.5rem 0
+
+  &:hover
+    .dropdown-menu
+      opacity: 1
+      visibility: visible
+      transform: translateY(0) scale(1)
+      display: block
+      
+      .dropdown-item
+        opacity: 1
+        transform: translateY(0)
+        animation: fadeInUp 0.3s ease-out forwards
+      
+  .dropdown-menu:hover
+    opacity: 1
+    visibility: visible
+    transform: translateY(0) scale(1)
+    display: block
+
+@keyframes fadeInUp
+  from
+    opacity: 0
+    transform: translateY(10px)
+  to
+    opacity: 1
+    transform: translateY(0)
+
+@media (max-width: 960px)
+  #pst-primary-sidebar-modal       
+    .dropdown-menu
+      display: none !important
+      visibility: hidden !important
+      opacity: 0 !important

@@ -14,6 +14,7 @@
 :: -e      Source install of voxel51-eta.
 :: -m      Install MongoDB from scratch, rather than installing fiftyone-db.
 :: -p      Install only the core python package, not the App.
+:: -o      Install docs dependencies.
 
 set SHOW_HELP=false
 set SOURCE_BRAIN_INSTALL=false
@@ -22,6 +23,7 @@ set SOURCE_ETA_INSTALL=false
 set SCRATCH_MONGODB_INSTALL=false
 set BUILD_APP=true
 set USE_FIFTY_ONE_DB=true
+set DOCS_INSTALL=false
 
 :parse
 IF "%~1"=="" GOTO endparse
@@ -31,6 +33,7 @@ IF "%~1"=="-d" set DEV_INSTALL=true
 IF "%~1"=="-e" set SOURCE_ETA_INSTALL=true
 IF "%~1"=="-m" set USE_FIFTY_ONE_DB=false
 IF "%~1"=="-p" set BUILD_APP=false
+IF "%~1"=="-o" set DOCS_INSTALL=true
 SHIFT
 GOTO parse
 :endparse
@@ -55,15 +58,26 @@ IF %USE_FIFTY_ONE_DB%==true (
 
 echo ***** INSTALLING FIFTYONE-BRAIN *****
 IF %SOURCE_BRAIN_INSTALL%==true (
-  echo Cloning FiftyOne Brain repository
-  git clone https://github.com/voxel51/fiftyone-brain
-  cd fiftyone-brain
+  if not exist "fiftyone-brain\" (
+    if not exist "..\fiftyone-brain\" (
+      echo Cloning FiftyOne Brain repository
+      git clone https://github.com/voxel51/fiftyone-brain
+    )
+  )
+  pushd .
+  if exist "..\fiftyone-brain\" (
+    cd ..\fiftyone-brain
+  ) else (
+    cd fiftyone-brain
+  )
   IF %DEV_INSTALL%==true (
+    echo Performing dev install
     CALL install.bat -d
   ) else (
+    echo Performing install
     pip install .
   )
-  cd ..
+  popd
 ) else (
   pip install --upgrade fiftyone-brain
 )
@@ -74,27 +88,43 @@ IF %DEV_INSTALL%==true (
   pip install -r requirements/dev.txt
   pre-commit install
   pip install .
+) else if %DOCS_INSTALL%==true (
+  echo Performing docs install
+  pip install -r requirements/docs.txt
+  pip install -e .
 ) else (
+  echo Performing install
   pip install -r requirements.txt
   pip install .
 )
 
 IF %SOURCE_ETA_INSTALL%==true (
-  echo ***** INSTALLING ETA *****
+  echo ***** INSTALLING ETA FROM SOURCE *****
   if not exist "eta\" (
-    echo Cloning ETA repository
-    git clone https://github.com/voxel51/eta
+    if not exist "..\eta\" (
+      echo Cloning ETA repository
+      git clone https://github.com/voxel51/eta
+    )
   )
-  cd eta
-  pip install .
+  pushd .
+  if exist "..\eta\" (
+    cd ..\eta
+  ) else (
+    cd eta
+  )
+  IF %DEV_INSTALL%==true (
+    echo Performing dev install
+    pip install .
+  ) else (
+    echo Performing install
+    pip install .
+  )
   if not exist "eta\config.json" (
     echo "Installing default ETA config"
     xcopy /y ".\config-example.json" ".\eta\config.*"
   )
-  cd ..
+  popd
 )
-
-
 
 echo ***** INSTALLATION COMPLETE *****
 exit /b
@@ -107,4 +137,5 @@ echo -d      Install developer dependencies.
 echo -e      Source install of voxel51-eta.
 echo -m      Use local mongodb instead of installing fiftyone-db.
 echo -p      Install only the core python package, not the App.
+echo -o      Install docs dependencies.
 exit /b

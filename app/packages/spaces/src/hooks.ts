@@ -320,6 +320,30 @@ export function usePanelStateCallback<T>(
   );
 }
 
+/**
+ * Get a callback function that can be used to update the panel state.
+ *
+ * @param callback - A function that takes a panelId, panelState, and args.
+ * @param local - Whether the panel state is local to the panel.
+ * @param scope - The scope of the panel.
+ * @returns A callback function that can be used to update the panel state. The
+ * callback is called with the panelId, panelState, and args.
+ *
+ * Example:
+ * ```ts
+ * const resolvePanelState = (panelId, panelState, args) => {
+ *   const [countInc] = args;
+ *   // do something with the panelState
+ *   const count = panelState.count + countInc;
+ *   return { ...panelState, count };
+ * };
+ * const local = true; // true = local state, false = global state
+ * const setPanelState = usePanelStateByIdCallback(resolvePanelState, local, scope);
+ * const usePanelId = usePanelId();
+ * const countInc = 10;
+ * setPanelState("panelId", panelState, [countInc]);
+ * ```
+ */
 export function usePanelStateByIdCallback<T>(
   callback: (panelId: string, panelState: T, args: any[]) => void,
   local?: boolean,

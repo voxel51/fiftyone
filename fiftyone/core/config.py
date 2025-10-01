@@ -216,11 +216,31 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_DEFAULT_APP_ADDRESS",
             default="localhost",
         )
+        self.logging_destination = self.parse_string(
+            d,
+            "logging_destination",
+            env_var="FIFTYONE_LOGGING_DESTINATION",
+            default="stdout",
+        )
+        self.logging_format = self.parse_string(
+            d,
+            "logging_format",
+            env_var="FIFTYONE_LOGGING_FORMAT",
+            default="text",
+        )
         self.logging_level = self.parse_string(
             d,
             "logging_level",
             env_var="FIFTYONE_LOGGING_LEVEL",
             default="INFO",
+        )
+        # comma-separated list of non-FiftyOne debug loggers,
+        # e.g. "pymongo.command,hypercorn.access"
+        self.logging_debug_targets = self.parse_string(
+            d,
+            "logging_debug_targets",
+            env_var="FIFTYONE_LOGGING_DEBUG_TARGETS",
+            default="",
         )
         self._show_progress_bars = None  # declare
         self.show_progress_bars = self.parse_bool(
@@ -278,6 +298,12 @@ class FiftyOneConfig(EnvConfig):
             d,
             "execution_cache_enabled",
             env_var="FIFTYONE_EXECUTION_CACHE_ENABLED",
+            default=True,
+        )
+        self.singleton_cache = self.parse_bool(
+            d,
+            "singleton_cache",
+            env_var="FIFTYONE_SINGLETON_CACHE",
             default=True,
         )
         self._init()
@@ -340,6 +366,10 @@ class FiftyOneConfig(EnvConfig):
                         idx,
                         e,
                     )
+
+        # Default no singleton cache for fiftyone app server
+        if os.environ.get("FIFTYONE_SERVER", False):
+            self.singleton_cache = False
 
         if self.timezone and self.timezone.lower() not in {"local", "utc"}:
             try:

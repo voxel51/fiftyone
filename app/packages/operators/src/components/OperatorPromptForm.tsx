@@ -4,11 +4,12 @@ import OperatorIO from "../OperatorIO";
 
 export function OperatorPromptForm({ operatorPrompt }) {
   const setFormState = useCallback(
-    (data) => {
+    (data, liteValues) => {
       const formData = { ...data };
       for (const field in formData) {
         operatorPrompt.setFieldValue(field, formData[field]);
       }
+      operatorPrompt.setLiteValues(liteValues);
     },
     [operatorPrompt]
   );

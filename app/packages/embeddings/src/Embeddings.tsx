@@ -1,4 +1,4 @@
-import { MuiButton, Selector, useTheme } from "@fiftyone/components";
+import { Selector, useTheme } from "@fiftyone/components";
 import { OperatorPlacements, types } from "@fiftyone/operators";
 import { usePanelStatePartial, useSetPanelCloseEffect } from "@fiftyone/spaces";
 import { constants, useExternalLink } from "@fiftyone/utilities";
@@ -14,6 +14,7 @@ import {
 import { Fragment, useEffect, useRef, useState } from "react";
 import EmbeddingsCTA from "./EmbeddingsCTA";
 import { EmbeddingsPlot } from "./EmbeddingsPlot";
+import EmbeddingsPlotError from "./EmbeddingsPlotError";
 import {
   EmbeddingsContainer,
   PlotOption,
@@ -38,7 +39,7 @@ export default function Embeddings({ containerHeight, dimensions }) {
   const brainResultSelector = useBrainResultsSelector();
   const labelSelector = useLabelSelector();
   const canSelect = brainResultSelector.canSelect;
-  const showPlot = brainResultSelector.hasSelection;
+  const showPlot = brainResultSelector.showPlot;
   const plotSelection = usePlotSelection();
   const [dragMode, setDragMode] = usePanelStatePartial(
     "dragMode",
@@ -59,6 +60,11 @@ export default function Embeddings({ containerHeight, dimensions }) {
       plotSelection.clearSelection();
     });
   }, [setPanelCloseEffect, plotSelection]);
+  const [loadingPlotError] = usePanelStatePartial(
+    "loadingPlotError",
+    null,
+    true
+  );
 
   const selectorStyle = {
     background: theme.neutral.softBg,
@@ -67,7 +73,21 @@ export default function Embeddings({ containerHeight, dimensions }) {
     padding: "0.25rem",
   };
 
-  if (canSelect && !showCTA)
+  if (canSelect && !showCTA) {
+    let content = null;
+    if (loadingPlotError) {
+      content = <EmbeddingsPlotError error={loadingPlotError} />;
+    } else if (showPlot) {
+      content = (
+        <EmbeddingsPlot
+          labelSelectorLoading={labelSelector.isLoading}
+          plotSelection={plotSelection}
+          bounds={dimensions.bounds}
+          labelField={labelSelector.label}
+        />
+      );
+    }
+
     return (
       <EmbeddingsContainer ref={el} data-cy="embeddings-container">
         <Selectors>
@@ -81,17 +101,19 @@ export default function Embeddings({ containerHeight, dimensions }) {
               resultsPlacement="bottom-start"
               containerStyle={selectorStyle}
             />
-            {brainResultSelector.hasSelection && !labelSelector.isLoading && (
-              <Selector
-                cy="embeddings-colorby"
-                {...labelSelector.handlers}
-                placeholder={"Color by"}
-                overflow={true}
-                component={Value}
-                resultsPlacement="bottom-start"
-                containerStyle={selectorStyle}
-              />
-            )}
+            {brainResultSelector.hasSelection &&
+              !brainResultSelector.hasLoadingError &&
+              !labelSelector.isLoading && (
+                <Selector
+                  cy="embeddings-colorby"
+                  {...labelSelector.handlers}
+                  placeholder={"Color by"}
+                  overflow={true}
+                  component={Value}
+                  resultsPlacement="bottom-start"
+                  containerStyle={selectorStyle}
+                />
+              )}
             <PlotOption
               to={() => {
                 if (constants.IS_APP_MODE_FIFTYONE) {
@@ -157,19 +179,10 @@ export default function Embeddings({ containerHeight, dimensions }) {
             <OperatorPlacements place={types.Places.EMBEDDINGS_ACTIONS} />
           </div>
         </Selectors>
-        {showPlot && (
-          <EmbeddingsPlot
-            labelSelectorLoading={labelSelector.isLoading}
-            plotSelection={plotSelection}
-            bounds={dimensions.bounds}
-            el={el}
-            brainKey={brainResultSelector.brainKey}
-            labelField={labelSelector.label}
-            containerHeight={containerHeight}
-          />
-        )}
+        {content}
       </EmbeddingsContainer>
     );
+  }
   return (
     <EmbeddingsCTA
       mode={canSelect ? "default" : "onboarding"}

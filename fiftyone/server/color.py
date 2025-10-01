@@ -96,7 +96,7 @@ class ColorBy(Enum):
 @gql.type
 class ColorScheme:
     id: gql.ID = gql.field(default_factory=lambda: str(ObjectId()))
-    color_pool: t.List[str]
+    color_pool: t.Optional[t.List[str]] = None
     color_by: t.Optional[ColorBy] = None
     fields: t.Optional[t.List[CustomizeColor]] = None
     label_tags: t.Optional[LabelTagColor] = None
@@ -198,7 +198,7 @@ class SetColorScheme:
             color_scheme.id = str(ObjectId())
 
         def run():
-            dataset = fo.load_dataset(dataset_name)
+            dataset = fo.load_dataset(dataset_name, reload=True)
             dataset.app_config.color_scheme = (
                 _to_odm_color_scheme(color_scheme) if color_scheme else None
             )

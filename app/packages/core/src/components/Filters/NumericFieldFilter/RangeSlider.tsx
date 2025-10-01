@@ -80,7 +80,7 @@ const RangeSlider = ({
           valueAtom={fos.rangeAtom({
             modal,
             path,
-            withBounds: true,
+            withBounds: false,
           })}
           boundsAtom={fos.boundsAtom({
             path,

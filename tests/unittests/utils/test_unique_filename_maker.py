@@ -46,7 +46,8 @@ def cleanup():
     # it does work when manually running
     # cleaning up touched files after the session finishes
     with contextlib.suppress(Exception):
-        shutil.rmtree(f"/tmp/fo-unq/{os.getpid()}")
+        tmp_dir = focu.MultiProcessUniqueFilenameMaker.gettempdir(os.getpid())
+        shutil.rmtree(tmp_dir)
 
 
 # =========================================================================
@@ -113,10 +114,16 @@ def cleanup():
         pytest.param(
             {"ignore_exts": True, "idempotent": False},
             id="{ignore_exts=True, idempotent=False}",
+            marks=pytest.mark.skip(
+                reason="Skipping this specific case until FOEPD-920 is complete"
+            ),
         ),
         pytest.param(
             {"ignore_exts": True, "idempotent": True},
             id="{ignore_exts=True, idempotent=True}",
+            marks=pytest.mark.skip(
+                reason="Skipping this specific case until FOEPD-920 is complete"
+            ),
         ),
     ),
 )

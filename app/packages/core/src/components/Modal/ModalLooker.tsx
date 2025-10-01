@@ -1,14 +1,17 @@
-import { useTheme } from "@fiftyone/components";
+import { LoadingDots, useTheme } from "@fiftyone/components";
 import type { ImageLooker } from "@fiftyone/looker";
+import { isNativeMediaType } from "@fiftyone/looker/src/util";
 import * as fos from "@fiftyone/state";
+import { useAtomValue } from "jotai";
 import React, { useMemo } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { ImaVidLookerReact } from "./ImaVidLooker";
+import { LighterSampleRenderer } from "./Lighter/LighterSampleRenderer";
+import { MetadataLooker } from "./MetadataLooker";
+import { labelAtoms, loading } from "./Sidebar/Annotate/useLabels";
 import { VideoLookerReact } from "./VideoLooker";
 import useLooker from "./use-looker";
 import { useImageModalSelectiveRendering } from "./use-modal-selective-rendering";
-import { isNativeMediaType } from "@fiftyone/looker/src/util";
-import { MetadataLooker } from "./MetadataLooker";
 
 export const useShowOverlays = () => {
   return useRecoilCallback(({ set }) => async (event: CustomEvent) => {
@@ -27,11 +30,28 @@ export const useClearSelectedLabels = () => {
 
 interface LookerProps {
   sample: fos.ModalSample;
+
+  // note: this is a hack we're using while migrating to lighter
+  // a lot of components depend on lighterRef being defined (see `useVisibleSampleLabels` for example)
+  // we'll remove this once we've migrated to lighter
+  // `ghost` means looker will render but with width and height set to 0
+  ghost?: boolean;
 }
+
+const Load = ({ children }) => {
+  const isLoading = useAtomValue(loading);
+  const mode = useAtomValue(fos.modalMode);
+  if (mode === "annotate" && isLoading) {
+    return <LoadingDots />;
+  }
+
+  return <>{children}</>;
+};
 
 const ModalLookerNoTimeline = React.memo((props: LookerProps) => {
   const { id, ref, looker } = useLooker<ImageLooker>(props);
   const theme = useTheme();
+
   useImageModalSelectiveRendering(id, looker);
 
   return (
@@ -40,8 +60,8 @@ const ModalLookerNoTimeline = React.memo((props: LookerProps) => {
       id={id}
       data-cy="modal-looker-container"
       style={{
-        width: "100%",
-        height: "100%",
+        width: props.ghost ? 0 : "100%",
+        height: props.ghost ? 0 : "100%",
         background: theme.background.level2,
         position: "relative",
       }}
@@ -52,7 +72,7 @@ const ModalLookerNoTimeline = React.memo((props: LookerProps) => {
 export const ModalLooker = React.memo(
   ({ sample: propsSampleData }: LookerProps) => {
     const modalSampleData = useRecoilValue(fos.modalSample);
-
+    const mode = useAtomValue(fos.modalMode);
     const sample = useMemo(() => {
       if (propsSampleData) {
         return {
@@ -82,7 +102,14 @@ export const ModalLooker = React.memo(
     if (
       isNativeMediaType(sample.sample.media_type ?? sample.sample._media_type)
     ) {
-      return <ModalLookerNoTimeline sample={sample} />;
+      return (
+        <>
+          {mode === "annotate" && (
+            <LighterSampleRenderer sample={sample} labels={labelAtoms} />
+          )}
+          <ModalLookerNoTimeline sample={sample} ghost={mode === "annotate"} />
+        </>
+      );
     }
 
     return <MetadataLooker sample={sample} />;

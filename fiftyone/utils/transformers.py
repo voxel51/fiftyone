@@ -14,6 +14,7 @@ import warnings
 import numpy as np
 from PIL import Image
 
+import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 from fiftyone.core.models import EmbeddingsMixin, PromptMixin
@@ -295,7 +296,7 @@ class FiftyOneTransformerConfig(fout.TorchImageModelConfig, HasZooModel):
         super().__init__(d)
         self.name_or_path = self.parse_string(d, "name_or_path", default=None)
         self.hf_config = transformers.AutoConfig.from_pretrained(
-            self.name_or_path
+            self.name_or_path, cache_dir=fo.config.model_zoo_dir
         )
 
         self._load_classes(d)
@@ -367,7 +368,8 @@ class FiftyOneZeroShotTransformerConfig(FiftyOneTransformerConfig):
 
     def _load_classes(self, d):
         if self.classes is None:
-            raise ValueError("Classes must be set for zero-shot models")
+            if self.hf_config.id2label is not None:
+                self.classes = list(self.hf_config.id2label.values())
 
 
 class TransformerEmbeddingsMixin(EmbeddingsMixin):
@@ -509,26 +511,22 @@ class ZeroShotTransformerEmbeddingsMixin(EmbeddingsMixin):
 
     @property
     def has_embeddings(self):
-        return _has_text_and_image_features(self._model)
+        return hasattr(self._model, "get_image_features")
 
     def embed(self, arg):
-        return self._embed(arg)[0]
+        return self.embed_all([arg])[0]
 
     def embed_all(self, args):
-        return self._embed(args)
-
-    def _embed(self, args):
-        # don't use the regular TransformerEmbeddingsMixin
-        # because doing the whole forward pass is slow
-        # and because HFT offer a cleaner way to do this
-        # via get_image_features
         if self.preprocess:
-            inputs = self.processor(images=args, return_tensors="pt")
+            args = {"images": args}
+            args = self.collate_fn(self.transforms(args))
+
         with torch.no_grad():
-            image_features = self._model.get_image_features(
-                **inputs.to(self._device)
+            for k, v in args.items():
+                args[k] = v.to(self.device)
+            return (
+                self._model.get_image_features(**args).detach().cpu().numpy()
             )
-        return image_features.cpu().numpy()
 
 
 class ZeroShotTransformerPromptMixin(PromptMixin):
@@ -577,6 +575,8 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
                 "pretrained_model_name_or_path"
             ] = config.name_or_path
 
+        config.entrypoint_args["cache_dir"] = fo.config.model_zoo_dir
+
         # default transforms
         if config.transforms_fcn is None:
             config.transforms_fcn = (
@@ -590,6 +590,7 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
             "pretrained_model_name_or_path": config.name_or_path,
             "use_fast": True,
             **config.transforms_args,
+            "cache_dir": fo.config.model_zoo_dir,
         }
         config.ragged_batches = False
 
