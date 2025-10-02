@@ -648,17 +648,8 @@ class ExecutionContext(object):
         """
         target = self.params.get(param_name)
 
-        # If no target is specified, default to the base view if the
-        #   current view is generated, otherwise default to the entire dataset
         if not target:
-            target = (
-                constants.ViewTarget.BASE_VIEW
-                if (
-                    self.view and self.view._is_generated
-                )  # pylint: disable=protected-access
-                else constants.ViewTarget.DATASET
-            )
-
+            return self.view
         if target == constants.ViewTarget.CURRENT_VIEW:
             return self.view
         if target == constants.ViewTarget.DATASET:
