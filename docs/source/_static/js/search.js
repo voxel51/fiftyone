@@ -8,7 +8,10 @@
   }
 
   function bindSearch() {
-    var searchInput = document.getElementById("plugin-search");
+    var searchInput =
+      document.getElementById("plugin-search") ||
+      document.getElementById("model-search") ||
+      document.getElementById("dataset-search");
     if (!searchInput || !window.tutorialList) return;
 
     var tutorialList = window.tutorialList;

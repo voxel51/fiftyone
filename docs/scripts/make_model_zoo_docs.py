@@ -1,6 +1,6 @@
 """
 Script for generating the model zoo docs page contents
-``docs/source/user_guide/model_zoo/models.rst``.
+``docs/source/model_zoo/model_zoo_ecosystem/``.
 
 | Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -10,41 +10,32 @@ Script for generating the model zoo docs page contents
 import logging
 import os
 import re
+from pathlib import Path
 
 from jinja2 import Environment, BaseLoader
 
 import eta.core.utils as etau
-
 import fiftyone.zoo as foz
 
 
 logger = logging.getLogger(__name__)
 
 
-_HEADER = """
-.. _model-zoo-models:
-
-Built-In Zoo Models
-===================
-
-.. default-role:: code
-
-This page lists all of the natively available models in the FiftyOne Model Zoo.
-
-Check out the :ref:`API reference <model-zoo-api>` for complete instructions
-for using the Model Zoo.
+_CARD_MODEL_TEMPLATE = """
+.. customcarditem::
+    :header: {{ header }}
+    :description: {{ description }}
+    :link: {{ link }}
+    :tags: {{ tags }}
 """
-
-
-_SECTION_TEMPLATE = """
-.. _model-zoo-{{ link_name }}-models:
-
-{{ header_name }} models
-{{ '-' * (header_name|length + 7) }}
-"""
-
 
 _MODEL_TEMPLATE = """
+.. breadcrumb::
+    :text: Model Zoo
+    :link: ../index.html
+    :text: {{ name }}
+    :link: #
+
 .. _model-zoo-{{ name }}:
 
 {{ header_name }}
@@ -276,85 +267,47 @@ _MODEL_TEMPLATE = """
 """
 
 
-_CARD_SECTION_START = """
-.. raw:: html
+def _render_card_model_content(template, model_name):
+    """Render card content for a model (following original pattern)."""
+    zoo_model = foz.get_zoo_model(model_name)
 
-    <div id="tutorial-cards-container">
+    tags = []
+    for tag in zoo_model.tags:
+        if tag == "tf1":
+            tags.append("TensorFlow-1")
+        elif tag == "tf2":
+            tags.append("TensorFlow-2")
+        elif tag == "tf":
+            tags.append("TensorFlow")
+        elif tag == "torch":
+            tags.append("PyTorch")
+        else:
+            tags.append(tag.capitalize().replace(" ", "-"))
 
-    <nav class="navbar navbar-expand-lg navbar-light tutorials-nav col-12">
-        <div class="tutorial-tags-container">
-            <div id="dropdown-filter-tags">
-                <div class="tutorial-filter-menu">
-                    <div class="tutorial-filter filter-btn all-tag-selected" data-tag="all">All</div>
-                </div>
-            </div>
-        </div>
-    </nav>
+    tags_str = ",".join(tags)
 
-    <hr class="tutorials-hr">
+    # Create link to individual model page
+    model_slug = model_name.replace(".", "_").replace("-", "_")
+    link = f"model_zoo_ecosystem/{model_slug}.html"
 
-    <div class="row">
+    description = zoo_model.description
+    description = description.replace("`_", '"')
+    description = description.replace("`", '"')
+    description = re.sub(" <.*>", "", description)
 
-    <div id="tutorial-cards">
-    <div class="list">
-"""
-
-
-_CARD_SECTION_END = """
-.. raw:: html
-
-    </div>
-
-    <div class="pagination d-flex justify-content-center"></div>
-
-    </div>
-
-    </div>
-"""
-
-
-_CARD_MODEL_TEMPLATE = """
-.. customcarditem::
-    :header: {{ header }}
-    :description: {{ description }}
-    :link: {{ link }}
-    :tags: {{ tags }}
-"""
-
-
-def _render_section_content(template, all_models, print_source, header_name):
-    models = []
-    for model_name, source, _ in all_models:
-        if source != print_source:
-            continue
-
-        zoo_model = foz.get_zoo_model(model_name)
-
-        tags_str = ", ".join(zoo_model.tags)
-
-        models.append({"name": model_name, "tags_str": tags_str})
-
-    col1_width = 2 * max(len(m["name"]) for m in models) + 22
-    col2_width = max(len(m["tags_str"]) for m in models) + 2
-
-    return template.render(
-        link_name=print_source,
-        header_name=header_name,
-        col1_width=col1_width,
-        col2_width=col2_width,
-        models=models,
+    content = template.render(
+        header=zoo_model.name,
+        description=description,
+        link=link,
+        tags=tags_str,
     )
+
+    return content
 
 
 def _render_model_content(template, model_name):
+    """Render individual model page content (following original pattern)."""
     zoo_model = foz.get_zoo_model(model_name)
-
-    if "torch" in zoo_model.tags:
-        source = "torch"
-    elif any(t in zoo_model.tags for t in ("tf", "tf1", "tf2")):
-        source = "tensorflow"
-    else:
-        source = "other"
 
     header_name = model_name
 
@@ -412,101 +365,52 @@ def _render_model_content(template, model_name):
         gpu_packages=gpu_packages,
     )
 
-    return source, content
-
-
-def _render_card_model_content(template, model_name):
-    zoo_model = foz.get_zoo_model(model_name)
-
-    tags = []
-
-    for tag in zoo_model.tags:
-        if tag == "tf1":
-            tags.append("TensorFlow-1")
-        elif tag == "tf2":
-            tags.append("TensorFlow-2")
-        elif tag == "tf":
-            tags.append("TensorFlow")
-        elif tag == "torch":
-            tags.append("PyTorch")
-        else:
-            tags.append(tag.capitalize().replace(" ", "-"))
-
-    tags = ",".join(tags)
-
-    link = "models.html#%s" % zoo_model.name.replace(".", "-")
-
-    description = zoo_model.description
-
-    # remove paper links from descriptions
-    description = description.replace("`_", '"')
-    description = description.replace("`", '"')
-    description = re.sub(" <.*>", "", description)
-
-    content = template.render(
-        header=zoo_model.name, description=description, link=link, tags=tags
-    )
-
-    return content
-
-
-def _generate_section(template, all_models, print_source, header_name):
-    content = [
-        _render_section_content(
-            template, all_models, print_source, header_name
-        )
-    ]
-
-    for _, source, model_content in all_models:
-        if source == print_source:
-            content.append(model_content)
-
     return content
 
 
 def main():
-    # Render model sections
-
+    """Main function to generate model zoo documentation."""
     environment = Environment(
         loader=BaseLoader,
         trim_blocks=True,
         lstrip_blocks=True,
     )
 
-    section_template = environment.from_string(_SECTION_TEMPLATE)
-    model_template = environment.from_string(_MODEL_TEMPLATE)
     card_model_template = environment.from_string(_CARD_MODEL_TEMPLATE)
+    model_template = environment.from_string(_MODEL_TEMPLATE)
 
-    models = []
-    for model_name in foz.list_zoo_models():
-        source, content = _render_model_content(model_template, model_name)
-        models.append((model_name, source, content))
+    docs_dir = "/".join(os.path.realpath(__file__).split("/")[:-2])
+    docs_source_dir = os.path.join(docs_dir, "source")
+    model_zoo_ecosystem_dir = os.path.join(
+        docs_source_dir, "model_zoo", "model_zoo_ecosystem"
+    )
 
-    # Generate page content
+    os.makedirs(model_zoo_ecosystem_dir, exist_ok=True)
 
-    content = [_HEADER]
-    content.append(_CARD_SECTION_START)
-    for model_name in foz.list_zoo_models():
+    all_models = foz.list_zoo_models()
+    if not all_models:
+        logger.warning("No models found in Model Zoo")
+        return
+
+    logger.info(f"Found {len(all_models)} models")
+
+    model_cards_content = []
+    for model_name in all_models:
         card_content = _render_card_model_content(
             card_model_template, model_name
         )
-        content.append(card_content)
+        model_cards_content.append(card_content)
 
-    content.append(_CARD_SECTION_END)
-    content.extend(
-        _generate_section(section_template, models, "torch", "Torch")
-    )
-    content.extend(
-        _generate_section(section_template, models, "tensorflow", "TensorFlow")
-    )
+    cards_path = os.path.join(model_zoo_ecosystem_dir, "model_cards.rst")
+    etau.write_file("\n".join(model_cards_content), cards_path)
 
-    # Write docs page
+    for model_name in all_models:
+        model_content = _render_model_content(model_template, model_name)
+        model_slug = model_name.replace(".", "_").replace("-", "_")
+        model_path = os.path.join(model_zoo_ecosystem_dir, f"{model_slug}.rst")
+        etau.write_file(model_content, model_path)
 
-    docs_dir = "/".join(os.path.realpath(__file__).split("/")[:-2])
-    outpath = os.path.join(docs_dir, "source/model_zoo/models.rst")
-
-    print("Writing '%s'" % outpath)
-    etau.write_file("\n".join(content), outpath)
+    logger.info("Model zoo documentation generated successfully!")
 
 
 if __name__ == "__main__":

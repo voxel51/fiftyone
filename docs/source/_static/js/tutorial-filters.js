@@ -90,7 +90,13 @@ $(document).ready(function () {
 
       function updateList() {
         var selectedTags = [];
-        var searchTerm = (document.getElementById("plugin-search")?.value || "")
+        var searchTerm = (
+          (
+            document.getElementById("plugin-search") ||
+            document.getElementById("model-search") ||
+            document.getElementById("dataset-search")
+          )?.value || ""
+        )
           .toLowerCase()
           .trim();
 
@@ -162,7 +168,10 @@ $(document).ready(function () {
         updateList();
       });
 
-      var searchInput = document.getElementById("plugin-search");
+      var searchInput =
+        document.getElementById("plugin-search") ||
+        document.getElementById("model-search") ||
+        document.getElementById("dataset-search");
       if (searchInput) {
         searchInput.addEventListener("input", function () {
           updateList();
