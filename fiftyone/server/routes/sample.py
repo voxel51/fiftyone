@@ -7,12 +7,12 @@ FiftyOne Server sample endpoints.
 """
 import logging
 import typing as t
+import json
 
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 from starlette.responses import Response
 
-import fiftyone.core.dataset as fod
 import fiftyone.core.labels as fol
 import fiftyone.core.odm.utils as fou
 from fiftyone.server.decorators import route
@@ -46,7 +46,7 @@ class Sample(HTTPEndpoint):
         -   other: assigns the value directly to the field
 
         Returns:
-            dict with update "sample" and a list of "errors" for any failed edits
+            the final state of the sample as a dict
         """
         dataset_id = request.path_params["dataset_id"]
         sample_id = request.path_params["sample_id"]
@@ -79,7 +79,7 @@ class Sample(HTTPEndpoint):
                 content=f"Sample '{sample_id}' not found in dataset '{dataset_id}'",
             )
 
-        errors = []
+        errors = {}
         for field_name, value in data.items():
             try:
                 if value is None:
@@ -93,23 +93,21 @@ class Sample(HTTPEndpoint):
                         try:
                             sample[field_name] = label_cls.from_dict(value)
                         except Exception as e:
-                            errors.append(
-                                f"Failed to parse field '{field_name}': {str(e)}"
-                            )
+                            errors[field_name] = str(e)
                     else:
-                        errors.append(
-                            f"Unsupported label class '{cls_name}' for field '{field_name}'"
-                        )
+                        errors[
+                            field_name
+                        ] = f"Unsupported label class '{cls_name}'"
                 else:
                     sample[field_name] = value
             except Exception as e:
-                errors.append(
-                    f"Failed to update field '{field_name}': {str(e)}"
-                )
+                errors[field_name] = {str(e)}
 
+        if errors:
+            return Response(
+                status_code=400,
+                content=json.dumps(errors),
+            )
         sample.save()
 
-        return {
-            "sample": sample.to_dict(),
-            "errors": errors,
-        }
+        return sample.to_dict(include_private=True)

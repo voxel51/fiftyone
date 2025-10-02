@@ -86,13 +86,11 @@ class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
         )
         response = await self.mutator.patch(mock_request)
         response_dict = json.loads(response.body)
-
         self.assertIsInstance(response, Response)
         self.assertEqual(response.status_code, 200)
         # Assertions on the response
         self.assertIsInstance(response_dict, dict)
-        self.assertIsNotNone(response_dict["sample"])
-        sample = fo.Sample.from_dict(response_dict["sample"])
+        sample = fo.Sample.from_dict(response_dict)
         self.assertEqual(
             sample.ground_truth.detections[0].id,
             str(self.initial_detection_id),
@@ -101,7 +99,6 @@ class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
             sample.ground_truth.detections[0].bounding_box, bounding_box
         )
         self.assertEqual(sample.ground_truth.detections[0].label, label)
-        self.assertEqual(len(response_dict["errors"]), 0)
 
         # Verify changes in the dataset by reloading the sample
         self.sample.reload()
@@ -149,8 +146,6 @@ class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
         response = await self.mutator.patch(mock_request)
         response_dict = json.loads(response.body)
         self.assertIsInstance(response_dict, dict)
-        self.assertIsNotNone(response_dict["sample"])
-        self.assertEqual(len(response_dict["errors"]), 0)
         updated_detection = self.sample.ground_truth_2.detections[0]
         self.assertEqual(updated_detection.bounding_box, bounding_box)
         self.assertEqual(updated_detection.confidence, confidence)
@@ -180,7 +175,6 @@ class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
         response = await self.mutator.patch(mock_request)
         response_dict = json.loads(response.body)
         self.assertIsInstance(response_dict, dict)
-        self.assertEqual(len(response_dict["errors"]), 0)
         updated_detection = self.sample.weather
         self.assertEqual(updated_detection.label, label)
         self.assertEqual(updated_detection.confidence, confidence)
@@ -241,11 +235,10 @@ class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
         )
         response = await self.mutator.patch(mock_request)
         response_dict = json.loads(response.body)
-
-        self.assertEqual(len(response_dict["errors"]), 1)
+        print(response.body)
         self.assertIn(
             "Unsupported label class 'NonExistentLabelType'",
-            response_dict["errors"][0],
+            response_dict["bad_label"],
         )
 
         # Verify the sample was not modified
@@ -277,9 +270,9 @@ class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
         response = await self.mutator.patch(mock_request)
         response_dict = json.loads(response.body)
 
-        self.assertEqual(len(response_dict["errors"]), 1)
         self.assertIn(
-            "Failed to parse field 'ground_truth'", response_dict["errors"][0]
+            "Invalid data to create a `Detections` instance.",
+            response_dict["ground_truth"],
         )
 
         # Verify the original field was not overwritten
