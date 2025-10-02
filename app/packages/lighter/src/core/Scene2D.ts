@@ -19,6 +19,7 @@ import {
   DoLighterEvent,
   LIGHTER_EVENTS,
   type LighterEvent,
+  LighterEventDetail,
 } from "../event/EventBus";
 import type { InteractionHandler } from "../interaction/InteractionManager";
 import { InteractionManager } from "../interaction/InteractionManager";
@@ -1064,7 +1065,10 @@ export class Scene2D {
    * @param type - The event type to listen for.
    * @param listener - The event listener function.
    */
-  on(type: LighterEvent["type"], listener: (e: CustomEvent) => void): void {
+  on<T extends LighterEvent["type"]>(
+    type: T,
+    listener: (e: CustomEvent<LighterEventDetail<T>>) => void
+  ): void {
     this.config.eventBus.on(type, listener);
   }
 
@@ -1074,7 +1078,10 @@ export class Scene2D {
    * @param type - The event type.
    * @param listener - The event listener function.
    */
-  off(type: LighterEvent["type"], listener: (e: CustomEvent) => void): void {
+  off<T extends LighterEvent["type"]>(
+    type: T,
+    listener: (e: CustomEvent<LighterEventDetail<T>>) => void
+  ): void {
     this.config.eventBus.off(type, listener);
   }
 

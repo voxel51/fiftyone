@@ -10,7 +10,7 @@ import { useOperatorExecutor } from "@fiftyone/operators";
 import { DETECTION } from "@fiftyone/utilities";
 import { useSetAtom } from "jotai";
 import { useCallback, useEffect } from "react";
-import { LIGHTER_EVENTS, Scene2D } from "@fiftyone/lighter";
+import { LIGHTER_EVENTS, OverlayEventDetail, Scene2D } from "@fiftyone/lighter";
 
 /**
  * Hook that handles overlay persistence events.
@@ -23,7 +23,11 @@ export const useOverlayPersistence = (scene: Scene2D | null) => {
   const removeLabelEffect = useSetAtom(removeLabel);
 
   const handlePersistOverlay = useCallback(
-    (event: CustomEvent) => {
+    (
+      event: CustomEvent<
+        OverlayEventDetail<typeof LIGHTER_EVENTS.DO_PERSIST_OVERLAY>
+      >
+    ) => {
       const overlay = event.detail;
 
       if (overlay) {
@@ -60,11 +64,15 @@ export const useOverlayPersistence = (scene: Scene2D | null) => {
         );
       }
     },
-    [addBoundingBox]
+    [addBoundingBox, addLabelEffect]
   );
 
   const handleRemoveOverlay = useCallback(
-    (event: CustomEvent) => {
+    (
+      event: CustomEvent<
+        OverlayEventDetail<typeof LIGHTER_EVENTS.DO_REMOVE_OVERLAY>
+      >
+    ) => {
       const { id, sampleId, path } = event.detail;
       try {
         console.log("removing bounding box", id, sampleId, path);
@@ -79,7 +87,7 @@ export const useOverlayPersistence = (scene: Scene2D | null) => {
         console.error("Error removing bounding box", error);
       }
     },
-    [removeBoundingBox]
+    [removeBoundingBox, removeLabelEffect]
   );
 
   useEffect(() => {
