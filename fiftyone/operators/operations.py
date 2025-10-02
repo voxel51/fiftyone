@@ -703,6 +703,19 @@ class Operations(object):
         """Toggle the visibility of the App's sidebar."""
         return self._ctx.trigger("toggle_sidebar")
 
+    def browser_download(self, url, filename=None):
+        """Download a file from a URL using the browser's download functionality.
+
+        Args:
+            url: the URL of the file to download
+            filename: optional filename for the download (will use URL filename if not provided)
+        """
+        params = {"url": url}
+        if filename is not None:
+            params["filename"] = filename
+
+        return self._ctx.trigger("browser_download", params=params)
+
 
 def _serialize_view(view):
     return json.loads(json_util.dumps(view._serialize()))

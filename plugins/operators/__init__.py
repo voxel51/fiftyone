@@ -2701,6 +2701,32 @@ def _get_non_default_frame_fields(dataset):
     return schema
 
 
+class DownloadFileOperator(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="download_file",
+            label="Download file",
+            unlisted=True,
+        )
+
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+        inputs.str(
+            "url",
+            required=True,
+            label="URL",
+            description="The URL of the file to download",
+        )
+        return types.Property(inputs, view=types.View(label="Download file"))
+
+    def execute(self, ctx):
+        # NOTE: this only calls the browser_download operator
+        # in OSS, in teams it resolves cloud bucket urls
+        url = ctx.params["url"]
+        ctx.ops.browser_download(url)
+
+
 def _parse_spaces(ctx, spaces):
     if isinstance(spaces, str):
         spaces = json.loads(spaces)
@@ -2742,6 +2768,7 @@ def register(p):
     p.register(DeleteWorkspace)
     p.register(SyncLastModifiedAt)
     p.register(ListFiles)
+    p.register(DownloadFileOperator)
     p.register(ConfigureScenario)
 
     # view stages
