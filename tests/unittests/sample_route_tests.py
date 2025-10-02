@@ -15,19 +15,20 @@ import fiftyone.core.labels as fol
 from bson import ObjectId, json_util
 from starlette.responses import Response
 
-from fiftyone.server.routes.mutation import SampleMutation
+import fiftyone.server.routes.sample as fors
 
 
-class SampleMutationTests(unittest.IsolatedAsyncioTestCase):
+class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         """Sets up a persistent dataset with a sample for each test."""
-        self.mutator = SampleMutation(
+        self.mutator = fors.Sample(
             scope={"type": "http"},
             receive=AsyncMock(),
             send=AsyncMock(),
         )
         self.dataset = fo.Dataset()
         self.dataset.persistent = True
+        self.dataset_id = self.dataset._doc.id
 
         sample = fo.Sample(filepath="/tmp/test_sample.jpg", tags=["initial"])
 
@@ -55,33 +56,29 @@ class SampleMutationTests(unittest.IsolatedAsyncioTestCase):
         """
         Tests updating an existing detection
         """
-        patch_payload = [
-            {
-                "ground_truth": {
-                    "_cls": "Detections",
-                    "detections": [
-                        {
-                            "_cls": "Detection",
-                            "id": str(self.initial_detection_id),
-                            "label": "cat",
-                            "bounding_box": [
-                                0.15,
-                                0.15,
-                                0.25,
-                                0.25,
-                            ],  # updated
-                            "confidence": 0.99,
-                        }
-                    ],
-                },
+        label = "cat"
+        confidence = 0.99
+        bounding_box = [0.15, 0.15, 0.25, 0.25]
+        patch_payload = {
+            "ground_truth": {
+                "_cls": "Detections",
+                "detections": [
+                    {
+                        "_cls": "Detection",
+                        "id": str(self.initial_detection_id),
+                        "label": label,
+                        "bounding_box": bounding_box,  # updated
+                        "confidence": confidence,
+                    }
+                ],
             },
-            {"reviewer": "John Doe"},
-            {"tags": None},
-        ]
+            "reviewer": "John Doe",
+            "tags": None,
+        }
 
         mock_request = MagicMock()
         mock_request.path_params = {
-            "dataset_id": self.dataset.name,
+            "dataset_id": self.dataset_id,
             "sample_id": str(self.sample.id),
         }
         mock_request.body = AsyncMock(
@@ -94,10 +91,16 @@ class SampleMutationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.status_code, 200)
         # Assertions on the response
         self.assertIsInstance(response_dict, dict)
-        self.assertEqual(response_dict["status"], "ok")
+        self.assertIsNotNone(response_dict["sample"])
+        sample = fo.Sample.from_dict(response_dict["sample"])
         self.assertEqual(
-            response_dict["patched_sample_id"], str(self.sample.id)
+            sample.ground_truth.detections[0].id,
+            str(self.initial_detection_id),
         )
+        self.assertEqual(
+            sample.ground_truth.detections[0].bounding_box, bounding_box
+        )
+        self.assertEqual(sample.ground_truth.detections[0].label, label)
         self.assertEqual(len(response_dict["errors"]), 0)
 
         # Verify changes in the dataset by reloading the sample
@@ -121,25 +124,23 @@ class SampleMutationTests(unittest.IsolatedAsyncioTestCase):
         """
         bounding_box = [0.15, 0.15, 0.25, 0.25]
         confidence = 0.99
-        patch_payload = [
-            {
-                "ground_truth_2": {
-                    "_cls": "Detections",
-                    "detections": [
-                        {
-                            "_cls": "Detection",
-                            "label": "cat",
-                            "bounding_box": bounding_box,
-                            "confidence": confidence,
-                        }
-                    ],
-                },
-            }
-        ]
+        patch_payload = {
+            "ground_truth_2": {
+                "_cls": "Detections",
+                "detections": [
+                    {
+                        "_cls": "Detection",
+                        "label": "cat",
+                        "bounding_box": bounding_box,
+                        "confidence": confidence,
+                    }
+                ],
+            },
+        }
 
         mock_request = MagicMock()
         mock_request.path_params = {
-            "dataset_id": self.dataset.name,
+            "dataset_id": self.dataset_id,
             "sample_id": str(self.sample.id),
         }
         mock_request.body = AsyncMock(
@@ -148,10 +149,7 @@ class SampleMutationTests(unittest.IsolatedAsyncioTestCase):
         response = await self.mutator.patch(mock_request)
         response_dict = json.loads(response.body)
         self.assertIsInstance(response_dict, dict)
-        self.assertEqual(response_dict["status"], "ok")
-        self.assertEqual(
-            response_dict["patched_sample_id"], str(self.sample.id)
-        )
+        self.assertIsNotNone(response_dict["sample"])
         self.assertEqual(len(response_dict["errors"]), 0)
         updated_detection = self.sample.ground_truth_2.detections[0]
         self.assertEqual(updated_detection.bounding_box, bounding_box)
@@ -163,19 +161,17 @@ class SampleMutationTests(unittest.IsolatedAsyncioTestCase):
         """
         label = "sunny"
         confidence = 0.99
-        patch_payload = [
-            {
-                "weather": {
-                    "_cls": "Classification",
-                    "label": label,
-                    "confidence": confidence,
-                },
-            }
-        ]
+        patch_payload = {
+            "weather": {
+                "_cls": "Classification",
+                "label": label,
+                "confidence": confidence,
+            },
+        }
 
         mock_request = MagicMock()
         mock_request.path_params = {
-            "dataset_id": self.dataset.name,
+            "dataset_id": self.dataset_id,
             "sample_id": str(self.sample.id),
         }
         mock_request.body = AsyncMock(
@@ -184,57 +180,9 @@ class SampleMutationTests(unittest.IsolatedAsyncioTestCase):
         response = await self.mutator.patch(mock_request)
         response_dict = json.loads(response.body)
         self.assertIsInstance(response_dict, dict)
-        self.assertEqual(response_dict["status"], "ok")
-        self.assertEqual(
-            response_dict["patched_sample_id"], str(self.sample.id)
-        )
         self.assertEqual(len(response_dict["errors"]), 0)
         updated_detection = self.sample.weather
         self.assertEqual(updated_detection.label, label)
-        self.assertEqual(updated_detection.confidence, confidence)
-
-    async def test_dedup_edit(self):
-        """
-        Tests adding a new classification
-        """
-        label = "sunny"
-        new_label = "cloudy"
-        confidence = 0.99
-        patch_payload = [
-            {
-                "weather": {
-                    "_cls": "Classification",
-                    "label": label,
-                    "confidence": confidence,
-                },
-            },
-            {
-                "weather": {
-                    "_cls": "Classification",
-                    "label": new_label,
-                    "confidence": confidence,
-                },
-            },
-        ]
-
-        mock_request = MagicMock()
-        mock_request.path_params = {
-            "dataset_id": self.dataset.name,
-            "sample_id": str(self.sample.id),
-        }
-        mock_request.body = AsyncMock(
-            return_value=json_util.dumps(patch_payload).encode("utf-8")
-        )
-        response = await self.mutator.patch(mock_request)
-        response_dict = json.loads(response.body)
-        self.assertIsInstance(response_dict, dict)
-        self.assertEqual(response_dict["status"], "ok")
-        self.assertEqual(
-            response_dict["patched_sample_id"], str(self.sample.id)
-        )
-        self.assertEqual(len(response_dict["errors"]), 0)
-        updated_detection = self.sample.weather
-        self.assertEqual(updated_detection.label, new_label)
         self.assertEqual(updated_detection.confidence, confidence)
 
     async def test_dataset_not_found(self):
@@ -246,7 +194,7 @@ class SampleMutationTests(unittest.IsolatedAsyncioTestCase):
         }
 
         mock_request.body = AsyncMock(
-            return_value=json_util.dumps([]).encode("utf-8")
+            return_value=json_util.dumps({}).encode("utf-8")
         )
         response = await self.mutator.patch(mock_request)
 
@@ -261,12 +209,12 @@ class SampleMutationTests(unittest.IsolatedAsyncioTestCase):
         bad_id = str(ObjectId())
         mock_request = MagicMock()
         mock_request.path_params = {
-            "dataset_id": self.dataset.name,
+            "dataset_id": self.dataset_id,
             "sample_id": bad_id,
         }
 
         mock_request.body = AsyncMock(
-            return_value=json_util.dumps([]).encode("utf-8")
+            return_value=json_util.dumps({}).encode("utf-8")
         )
         response = await self.mutator.patch(mock_request)
 
@@ -276,17 +224,15 @@ class SampleMutationTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_unsupported_label_class(self):
         """Tests that an error is reported for an unknown _cls value."""
-        patch_payload = [
-            {
-                "bad_label": {
-                    "_cls": "NonExistentLabelType",
-                    "label": "invalid",
-                }
+        patch_payload = {
+            "bad_label": {
+                "_cls": "NonExistentLabelType",
+                "label": "invalid",
             }
-        ]
+        }
         mock_request = MagicMock()
         mock_request.path_params = {
-            "dataset_id": self.dataset.name,
+            "dataset_id": self.dataset_id,
             "sample_id": str(self.sample.id),
         }
 
@@ -311,19 +257,17 @@ class SampleMutationTests(unittest.IsolatedAsyncioTestCase):
         Tests that an error is reported when label data is malformed and
         cannot be deserialized by from_dict.
         """
-        patch_payload = [
-            {
-                # Detections object is missing the required 'detections' list
-                "ground_truth": {
-                    "_cls": "Detections",
-                    "detections": {"some messed up map"},
-                }
+        patch_payload = {
+            # Detections object is missing the required 'detections' list
+            "ground_truth": {
+                "_cls": "Detections",
+                "detections": {"some messed up map"},
             }
-        ]
+        }
 
         mock_request = MagicMock()
         mock_request.path_params = {
-            "dataset_id": self.dataset.name,
+            "dataset_id": self.dataset_id,
             "sample_id": str(self.sample.id),
         }
 

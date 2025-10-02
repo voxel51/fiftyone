@@ -1,5 +1,5 @@
 """
-FiftyOne Server mutation endpoints.
+FiftyOne Server sample endpoints.
 
 | Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -14,6 +14,7 @@ from starlette.responses import Response
 
 import fiftyone.core.dataset as fod
 import fiftyone.core.labels as fol
+import fiftyone.core.odm.utils as fou
 from fiftyone.server.decorators import route
 
 logger = logging.getLogger(__name__)
@@ -28,10 +29,10 @@ LABEL_CLASS_MAP = {
 }
 
 
-class SampleMutation(HTTPEndpoint):
+class Sample(HTTPEndpoint):
     @route
     async def patch(
-        self, request: Request, data: list
+        self, request: Request, data: dict
     ) -> t.Union[dict, Response]:
         """Applies a list of field updates to a sample.
 
@@ -47,29 +48,29 @@ class SampleMutation(HTTPEndpoint):
         -   other: assigns the value directly to the field
 
         Returns:
-            dict with "status", "patched_sample_id", and "errors" keys
+            dict with "sample" and "errors"
         """
-        dataset_name = request.path_params["dataset_id"]
+        dataset_id = request.path_params["dataset_id"]
         sample_id = request.path_params["sample_id"]
 
         logger.info(
             "Received patch request for sample %s in dataset %s",
             sample_id,
-            dataset_name,
+            dataset_id,
         )
 
-        if not isinstance(data, list):
+        if not isinstance(data, dict):
             return Response(
                 status_code=400,
                 content="Request body must be a JSON array of patch operations",
             )
 
         try:
-            dataset = fod.load_dataset(dataset_name)
+            dataset = fou.load_dataset(id=dataset_id)
         except ValueError:
             return Response(
                 status_code=404,
-                content=f"Dataset '{dataset_name}' not found",
+                content=f"Dataset '{dataset_id}' not found",
             )
 
         try:
@@ -77,19 +78,11 @@ class SampleMutation(HTTPEndpoint):
         except KeyError:
             return Response(
                 status_code=404,
-                content=f"Sample '{sample_id}' not found in dataset '{dataset_name}'",
+                content=f"Sample '{sample_id}' not found in dataset '{dataset_id}'",
             )
 
         errors = []
-        patches = {}
-        for patch in data:
-            if isinstance(patch, dict):
-                for field_name, value in patch.items():
-                    patches[field_name] = value
-            else:
-                errors.append(f"Invalid patch operation format: {patch}")
-
-        for field_name, value in patches.items():
+        for field_name, value in data.items():
             try:
                 if value is None:
                     sample.clear_field(field_name)
@@ -119,10 +112,6 @@ class SampleMutation(HTTPEndpoint):
         sample.save()
 
         return {
-            "status": "ok",
-            "patched_sample_id": str(sample.id),
+            "sample": sample.to_dict(),
             "errors": errors,
         }
-
-
-MutationRoutes = [("/dataset/{dataset_id}/sample/{sample_id}", SampleMutation)]
