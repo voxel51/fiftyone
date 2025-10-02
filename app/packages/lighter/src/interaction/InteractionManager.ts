@@ -226,7 +226,7 @@ export class InteractionManager {
     this.currentPixelCoordinates = point;
 
     const interactiveHandler = this.getInteractiveHandler();
-    const handler = this.findHandlerAtPoint(point);
+    const handler = this.findMovingHandler() || this.findHandlerAtPoint(point);
 
     if (!interactiveHandler) {
       // we don't want to handle hover in interactive mode
