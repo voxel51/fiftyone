@@ -291,6 +291,14 @@ export type LighterEvent =
   | DoLighterEvent;
 
 /**
+ * Type for Lighter event payloads.
+ */
+export type LighterEventDetail<T extends LighterEvent["type"]> = Extract<
+  LighterEvent,
+  { type: T }
+>["detail"];
+
+/**
  * Event bus for communication between components.
  */
 export class EventBus extends EventTarget {
@@ -310,9 +318,9 @@ export class EventBus extends EventTarget {
    * @param abortController - The abort controller to use for the event listener.
    * Calling `abort` on this will remove the event listener.
    */
-  on(
-    type: LighterEvent["type"],
-    listener: (e: CustomEvent) => void,
+  on<T extends LighterEvent["type"]>(
+    type: T,
+    listener: (e: CustomEvent<LighterEventDetail<T>>) => void,
     abortController?: AbortController
   ): void {
     if (abortController) {
@@ -329,7 +337,10 @@ export class EventBus extends EventTarget {
    * @param type - The event type.
    * @param listener - The event listener function.
    */
-  off(type: LighterEvent["type"], listener: (e: CustomEvent) => void): void {
+  off<T extends LighterEvent["type"]>(
+    type: T,
+    listener: (e: CustomEvent<LighterEventDetail<T>>) => void
+  ): void {
     this.removeEventListener(type, listener as EventListener);
   }
 }
