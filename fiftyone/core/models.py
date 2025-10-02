@@ -1025,13 +1025,6 @@ def compute_embeddings(
             embeddings_field
         )
 
-        if "." in embeddings_field:
-            ftype = "frame" if _is_frame_field else "sample"
-            raise ValueError(
-                "Invalid `embeddings_field=%s`. Expected a top-level %s field "
-                "name that contains no '.'" % (embeddings_field, ftype)
-            )
-
         if dataset.media_type == fom.VIDEO and model.media_type == "image":
             if not dataset.has_frame_field(embeddings_field):
                 dataset.add_frame_field(embeddings_field, fof.VectorField)
@@ -1097,7 +1090,11 @@ def compute_embeddings(
 def _compute_image_embeddings_single(
     samples, model, embeddings_field, skip_failures, progress
 ):
-    samples = samples.select_fields()
+    if embeddings_field is not None and "." in embeddings_field:
+        root_field = embeddings_field.split(".", 1)[0]
+        samples = samples.select_fields(root_field)
+    else:
+        samples = samples.select_fields()
 
     embeddings = []
     errors = False
@@ -1141,7 +1138,11 @@ def _compute_image_embeddings_single(
 def _compute_image_embeddings_batch(
     samples, model, embeddings_field, batch_size, skip_failures, progress
 ):
-    samples = samples.select_fields()
+    if embeddings_field is not None and "." in embeddings_field:
+        root_field = embeddings_field.split(".", 1)[0]
+        samples = samples.select_fields(root_field)
+    else:
+        samples = samples.select_fields()
 
     embeddings = []
     errors = False
@@ -1209,7 +1210,11 @@ def _compute_image_embeddings_data_loader(
         field_mapping,
     )
 
-    samples = samples.select_fields()
+    if embeddings_field is not None and "." in embeddings_field:
+        root_field = embeddings_field.split(".", 1)[0]
+        samples = samples.select_fields(root_field)
+    else:
+        samples = samples.select_fields()
 
     embeddings = []
     errors = False
@@ -1284,7 +1289,11 @@ def _compute_frame_embeddings_single(
     frame_counts, total_frame_count = _get_frame_counts(samples)
     is_clips = samples._dataset._is_clips
 
-    samples = samples.select_fields()
+    if embeddings_field is not None and "." in embeddings_field:
+        root_field = embeddings_field.split(".", 1)[0]
+        samples = samples.select_fields(root_field)
+    else:
+        samples = samples.select_fields()
 
     embeddings_dict = {}
 
@@ -1350,7 +1359,11 @@ def _compute_frame_embeddings_batch(
     frame_counts, total_frame_count = _get_frame_counts(samples)
     is_clips = samples._dataset._is_clips
 
-    samples = samples.select_fields()
+    if embeddings_field is not None and "." in embeddings_field:
+        root_field = embeddings_field.split(".", 1)[0]
+        samples = samples.select_fields(root_field)
+    else:
+        samples = samples.select_fields()
 
     embeddings_dict = {}
 
@@ -1420,7 +1433,11 @@ def _compute_video_embeddings(
 ):
     is_clips = samples._dataset._is_clips
 
-    samples = samples.select_fields()
+    if embeddings_field is not None and "." in embeddings_field:
+        root_field = embeddings_field.split(".", 1)[0]
+        samples = samples.select_fields(root_field)
+    else:
+        samples = samples.select_fields()
 
     embeddings = []
     errors = False
