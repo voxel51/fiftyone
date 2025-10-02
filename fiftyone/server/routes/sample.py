@@ -60,7 +60,7 @@ class Sample(HTTPEndpoint):
         if not isinstance(data, dict):
             return Response(
                 status_code=400,
-                content="Request body must be a JSON array of patch operations",
+                content="Request body must be a JSON object mapping field names to values",
             )
 
         try:
