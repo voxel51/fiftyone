@@ -100,6 +100,12 @@ export interface Spatial {
 
   /** Mark coordinate update as complete */
   markCoordinateUpdateComplete(): void;
+
+  /** get current position */
+  getPosition(): Point;
+
+  /** get position from start of drag/resize */
+  getMoveStartPosition(): Point | undefined;
 }
 
 /**

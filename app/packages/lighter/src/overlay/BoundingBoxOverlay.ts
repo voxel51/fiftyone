@@ -71,6 +71,7 @@ export class BoundingBoxOverlay
   private isResizeable: boolean;
   private moveState: MoveState = "NONE";
   private moveStartPoint?: Point;
+  private moveStartPosition?: Point;
   private moveStartBounds?: Rect;
   private isSelectedState = false;
   private relativeBounds: Rect;
@@ -176,8 +177,7 @@ export class BoundingBoxOverlay
       isSelected: this.isSelectedState,
     };
 
-    if (!style.dashPattern && overlayStrokeColor && overlayDash) {
-    } else if (style.dashPattern) {
+    if (style.dashPattern && !overlayStrokeColor && !overlayDash) {
       mainStrokeStyle.dashPattern = style.dashPattern;
     }
 
@@ -259,6 +259,10 @@ export class BoundingBoxOverlay
     this.markForCoordinateUpdate();
   }
 
+  getMoveStartPosition(): Point | undefined {
+    return this.moveStartPosition;
+  }
+
   private calculateMoving(point: Point) {
     if (!this.isSelected() || !this.moveStartPoint || this.moveState !== "NONE")
       return;
@@ -308,14 +312,13 @@ export class BoundingBoxOverlay
   getCursor(point: Point): string {
     if (!this.isSelected()) return "pointer";
 
-    const cursorRegion =
-      this.moveState === "DRAGGING"
-        ? this.moveState
-        : this.getResizeRegion(point);
+    const resizeRegion = this.getResizeRegion(point);
 
-    switch (cursorRegion) {
-      case "DRAGGING":
-        return "grabbing";
+    if (!resizeRegion) {
+      return this.moveStartPoint ? "grabbing" : "grab";
+    }
+
+    switch (resizeRegion) {
       case "RESIZE_N":
       case "RESIZE_S":
         return "ns-resize";
@@ -334,7 +337,7 @@ export class BoundingBoxOverlay
   }
 
   // Interaction handlers
-  onPointerDown(point: Point, event: PointerEvent): boolean {
+  onPointerDown(point: Point, _event: PointerEvent): boolean {
     const resizeRegion = this.getResizeRegion(point);
     const cursorRegion = resizeRegion || "DRAGGING";
 
@@ -343,6 +346,7 @@ export class BoundingBoxOverlay
 
     // Store move start information
     this.moveStartPoint = point;
+    this.moveStartPosition = this.getPosition();
     this.moveStartBounds = { ...this.absoluteBounds };
 
     return true;
@@ -429,6 +433,7 @@ export class BoundingBoxOverlay
     this.markForCoordinateUpdate();
     this.moveState = "NONE";
     this.moveStartPoint = undefined;
+    this.moveStartPosition = undefined;
     this.moveStartBounds = undefined;
 
     return true;
@@ -637,13 +642,13 @@ export class BoundingBoxOverlay
   }
 
   // Hoverable interface implementation
-  onHoverEnter(point: Point, event: PointerEvent): boolean {
+  onHoverEnter(_point: Point, _event: PointerEvent): boolean {
     this.isHoveredState = true;
     this.markDirty();
     return true;
   }
 
-  onHoverLeave(point: Point, event: PointerEvent): boolean {
+  onHoverLeave(_point: Point, _event: PointerEvent): boolean {
     this.isHoveredState = false;
     this.markDirty();
     return true;

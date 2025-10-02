@@ -2,12 +2,10 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import type { Movable } from "../commands/MoveOverlayCommand";
 import { UndoRedoManager } from "../commands/UndoRedoManager";
 import { TypeGuards } from "../core/Scene2D";
 import type { EventBus } from "../event/EventBus";
 import { LIGHTER_EVENTS } from "../event/EventBus";
-import type { BaseOverlay } from "../overlay/BaseOverlay";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { SelectionManager } from "../selection/SelectionManager";
 import type { Point } from "../types";
@@ -29,6 +27,11 @@ export interface InteractionHandler {
    * Returns the type of cursor that is currently appropriate
    */
   getCursor?(point: Point): string;
+
+  /**
+   * Returns the position from the start of handler movement
+   */
+  getMoveStartPosition(): Point | undefined;
 
   /**
    * Handle pointer down event.
@@ -108,32 +111,18 @@ export interface InteractionHandler {
 }
 
 /**
- * Drag state information for tracking overlay movements.
- */
-interface DragState {
-  overlay: BaseOverlay & Movable;
-  startPoint: Point;
-  startPosition: Point;
-}
-
-/**
  * Manages all interaction events and coordinates with overlays.
  * Now knows about overlays and manages drag state internally.
  */
 export class InteractionManager {
   private handlers: InteractionHandler[] = [];
-  private dragHandler?: InteractionHandler;
   private hoveredHandler?: InteractionHandler;
-  private isDragging = false;
   private clickStartTime = 0;
   private clickStartPoint?: Point;
   private lastClickTime = 0;
   private lastClickPoint?: Point;
 
   private canonicalMediaId?: string;
-
-  // Drag state management
-  private dragState?: DragState;
 
   // Configuration
   private readonly CLICK_THRESHOLD = 0.1;
@@ -197,30 +186,20 @@ export class InteractionManager {
     }
 
     if (handler?.onPointerDown?.(point, event)) {
-      this.dragHandler = handler;
-
-      const cursor = handler.getCursor?.(point) || this.canvas.style.cursor;
-      this.canvas.style.cursor = cursor === "grab" ? "grabbing" : cursor;
+      this.canvas.style.cursor =
+        handler.getCursor?.(point) || this.canvas.style.cursor;
 
       // If this is a movable overlay, track drag state
-      if (TypeGuards.isMovable(handler)) {
-        this.dragState = {
-          overlay: handler,
-          startPoint: point,
-          startPosition: handler.getPosition(),
-        };
-
-        if (TypeGuards.isSpatial(handler)) {
-          this.eventBus.emit({
-            type: LIGHTER_EVENTS.OVERLAY_DRAG_START,
-            detail: {
-              id: handler.id,
-              startPosition: this.dragState.startPosition,
-              absoluteBounds: handler.getAbsoluteBounds(),
-              relativeBounds: handler.getRelativeBounds(),
-            },
-          });
-        }
+      if (TypeGuards.isMovable(handler) && TypeGuards.isSpatial(handler)) {
+        this.eventBus.emit({
+          type: LIGHTER_EVENTS.OVERLAY_DRAG_START,
+          detail: {
+            id: handler.id,
+            startPosition: handler.getPosition(),
+            absoluteBounds: handler.getAbsoluteBounds(),
+            relativeBounds: handler.getRelativeBounds(),
+          },
+        });
       }
 
       this.canvas.setPointerCapture(event.pointerId);
@@ -229,9 +208,11 @@ export class InteractionManager {
   };
 
   private handlePointerMove = (event: PointerEvent): void => {
-    this.currentPixelCoordinates = this.getCanvasPoint(event);
+    const point = this.getCanvasPoint(event);
+    this.currentPixelCoordinates = point;
 
     const interactiveHandler = this.getInteractiveHandler();
+    const handler = this.findHandlerAtPoint(point);
 
     if (!interactiveHandler) {
       // we don't want to handle hover in interactive mode
@@ -239,32 +220,29 @@ export class InteractionManager {
       this.handleHover(this.currentPixelCoordinates, event);
     }
 
-    if (this.dragHandler) {
+    if (handler) {
       // Handle drag move
       if (!interactiveHandler) {
-        this.dragHandler.onMove?.(this.currentPixelCoordinates, event);
+        handler.onMove?.(point, event);
       } else {
-        interactiveHandler.onMove?.(this.currentPixelCoordinates, event);
+        interactiveHandler.onMove?.(point, event);
       }
 
-      const movingHandler = this.findMovingHandler();
-      if (movingHandler) {
-        this.canvas.style.cursor =
-          movingHandler.getCursor?.(this.currentPixelCoordinates!) ||
-          this.canvas.style.cursor;
+      if (handler.isMoving?.()) {
         this.renderer.disableZoomPan();
-      }
+        this.canvas.style.cursor =
+          handler.getCursor?.(this.currentPixelCoordinates!) ||
+          this.canvas.style.cursor;
 
-      // TODO: emit resize event
-      if (this.isDragging) {
+        // TODO: emit resize event
         // Emit drag move event with bounds information
-        if (this.dragState && TypeGuards.isSpatial(this.dragState.overlay)) {
+        if (TypeGuards.isSpatial(handler)) {
           this.eventBus.emit({
             type: LIGHTER_EVENTS.OVERLAY_DRAG_MOVE,
             detail: {
-              id: this.dragState.overlay.id,
-              absoluteBounds: this.dragState.overlay.getAbsoluteBounds(),
-              relativeBounds: this.dragState.overlay.getRelativeBounds(),
+              id: handler.id,
+              absoluteBounds: handler.getAbsoluteBounds(),
+              relativeBounds: handler.getRelativeBounds(),
             },
           });
         }
@@ -280,6 +258,8 @@ export class InteractionManager {
     const now = Date.now();
 
     if (handler?.isMoving?.()) {
+      const startPosition = handler.getMoveStartPosition()!;
+
       // Handle drag end
       handler.onPointerUp?.(point, event);
 
@@ -287,23 +267,20 @@ export class InteractionManager {
         handler.getCursor?.(point) || this.canvas.style.cursor;
 
       // Emit drag end event with bounds information
-      if (this.dragState && TypeGuards.isSpatial(this.dragState.overlay)) {
+      if (TypeGuards.isSpatial(handler)) {
         this.eventBus.emit({
           type: LIGHTER_EVENTS.OVERLAY_DRAG_END,
           detail: {
-            id: this.dragState.overlay.id,
-            startPosition: this.dragState.startPosition,
-            endPosition: this.dragState.overlay.getPosition(),
-            absoluteBounds: this.dragState.overlay.getAbsoluteBounds(),
-            relativeBounds: this.dragState.overlay.getRelativeBounds(),
+            id: handler.id,
+            startPosition,
+            endPosition: handler.getPosition(),
+            absoluteBounds: handler.getAbsoluteBounds(),
+            relativeBounds: handler.getRelativeBounds(),
           },
         });
       }
 
       this.canvas.releasePointerCapture(event.pointerId);
-      this.isDragging = false;
-      this.dragHandler = undefined;
-      this.dragState = undefined;
       // Re-enable zoom/pan after overlay dragging ends
       this.renderer.enableZoomPan();
       event.preventDefault();
@@ -314,8 +291,6 @@ export class InteractionManager {
       // Clean up drag handler
       handler.onPointerUp?.(point, event);
       this.canvas.releasePointerCapture(event.pointerId);
-      this.dragHandler = undefined;
-      this.dragState = undefined;
     } else {
       // Handle click
       this.handleClick(point, event, now);
@@ -326,11 +301,10 @@ export class InteractionManager {
   };
 
   private handlePointerCancel = (event: PointerEvent): void => {
-    if (this.isDragging && this.dragHandler) {
+    const movingHandler = this.findMovingHandler();
+
+    if (movingHandler) {
       this.canvas.releasePointerCapture(event.pointerId);
-      this.isDragging = false;
-      this.dragHandler = undefined;
-      this.dragState = undefined;
       // Re-enable zoom/pan after drag cancellation
       this.renderer.enableZoomPan();
     }
@@ -502,7 +476,8 @@ export class InteractionManager {
       });
     }
 
-    this.canvas.style.cursor = movingHandler?.getCursor?.(point);
+    this.canvas.style.cursor =
+      movingHandler?.getCursor?.(point) || this.canvas.style.cursor;
 
     // Update the hovered handler
     this.hoveredHandler = handler;
@@ -606,11 +581,6 @@ export class InteractionManager {
     }
 
     // Clear references if this was the active handler
-    if (this.dragHandler === handler) {
-      this.dragHandler = undefined;
-      this.isDragging = false;
-      this.dragState = undefined;
-    }
     if (this.hoveredHandler === handler) {
       this.hoveredHandler = undefined;
     }
@@ -621,10 +591,7 @@ export class InteractionManager {
    */
   clearHandlers(): void {
     this.handlers = [];
-    this.dragHandler = undefined;
     this.hoveredHandler = undefined;
-    this.isDragging = false;
-    this.dragState = undefined;
   }
 
   /**
