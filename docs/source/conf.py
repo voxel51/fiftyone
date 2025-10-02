@@ -187,6 +187,7 @@ html_sidebars = {"**": ["algolia.html", "sidebar-nav"]}
 remove_from_toctrees = [
     "plugins/plugins_ecosystem/*",
     "model_zoo/model_zoo_ecosystem/*",
+    "dataset_zoo/dataset_zoo_ecosystem/*",
 ]
 
 html_favicon = "_static/favicon/favicon.ico"

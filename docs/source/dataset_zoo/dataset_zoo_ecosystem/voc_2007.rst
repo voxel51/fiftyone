@@ -1,0 +1,65 @@
+.. _dataset-zoo-voc-2007:
+
+VOC-2007
+--------
+
+The dataset for the PASCAL Visual Object Classes Challenge 2007
+(VOC2007) for the detection competition.
+
+A total of 9,963 images are included in this dataset, where each image
+contains a set of objects, out of 20 different classes, making a total of
+24,640 annotated objects.
+
+Note that, as per the official dataset, the test set of VOC2007 does not
+contain annotations.
+
+**Details**
+
+-   Dataset name: ``voc-2007``
+-   Dataset source: http://host.robots.ox.ac.uk/pascal/VOC/voc2007
+-   Dataset size: 868.85 MB
+-   Tags: ``image, detection``
+-   Supported splits: ``train, validation, test``
+-   ZooDataset classes:
+
+    -   :class:`VOC2007Dataset <fiftyone.zoo.datasets.tf.VOC2007Dataset>` (TF backend)
+    -   :class:`VOC2007Dataset <fiftyone.zoo.datasets.torch.VOC2007Dataset>` (Torch backend)
+
+.. note::
+
+    The ``test`` split is only available via the
+    :ref:`TensorFlow backend <dataset-zoo-ml-backend>`.
+
+.. note::
+
+    You must have the
+    :ref:`Torch or TensorFlow backend(s) <dataset-zoo-ml-backend>` installed to
+    load this dataset.
+
+**Example usage**
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("voc-2007", split="validation")
+
+        session = fo.launch_app(dataset)
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        fiftyone zoo datasets load voc-2007 --split validation
+
+        fiftyone app launch voc-2007-validation
+
+.. image:: /images/dataset_zoo/voc-2007-validation.png
+   :alt: voc-2007-validation
+   :align: center
