@@ -17,6 +17,7 @@ from .frames import Frames
 from .geo import GeoPoints
 from .get_similar_labels_frames import GetSimilarLabelsFrameCollection
 from .media import Media
+from .sample import Sample
 from .plugins import Plugins
 from .screenshot import Screenshot
 from .sort import Sort
@@ -37,6 +38,7 @@ routes = (
         ("/geo", GeoPoints),
         ("/media", Media),
         ("/plugins", Plugins),
+        ("/dataset/{dataset_id}/sample/{sample_id}", Sample),
         ("/sort", Sort),
         ("/screenshot/{img:str}", Screenshot),
         ("/tag", Tag),
