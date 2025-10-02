@@ -38,9 +38,7 @@ class Sample(HTTPEndpoint):
 
         Args:
             request: Starlette request with dataset_id and sample_id in path params
-            data: A list of dicts mapping field names to values. Each dict can
-                  contain one or more field updates. If the same field appears
-                  multiple times, the last value wins.
+            data: A dict mapping field names to values.
 
         Field value handling:
         -   None: deletes the field
@@ -48,7 +46,7 @@ class Sample(HTTPEndpoint):
         -   other: assigns the value directly to the field
 
         Returns:
-            dict with "sample" and "errors"
+            dict with update "sample" and a list of "errors" for any failed edits
         """
         dataset_id = request.path_params["dataset_id"]
         sample_id = request.path_params["sample_id"]
