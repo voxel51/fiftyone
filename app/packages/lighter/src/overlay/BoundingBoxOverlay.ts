@@ -48,9 +48,7 @@ export interface BoundingBoxOptions {
   field?: string;
 }
 
-export type MoveState =
-  | "NONE"
-  | "DRAGGING"
+export type ResizeRegion =
   | "RESIZE_N"
   | "RESIZE_NE"
   | "RESIZE_E"
@@ -59,6 +57,8 @@ export type MoveState =
   | "RESIZE_SW"
   | "RESIZE_W"
   | "RESIZE_NW";
+
+export type MoveState = ResizeRegion | "NONE" | "DRAGGING";
 
 /**
  * Bounding box overlay implementation with drag support, selection, and spatial coordinates.
@@ -78,6 +78,9 @@ export class BoundingBoxOverlay
 
   private _needsCoordinateUpdate = false;
   private textBounds?: Rect;
+
+  public cursor = "pointer";
+  private readonly CLICK_THRESHOLD = 0.1;
 
   constructor(private options: BoundingBoxOptions) {
     const id =
@@ -256,8 +259,26 @@ export class BoundingBoxOverlay
     this.markForCoordinateUpdate();
   }
 
-  // Interaction handlers
-  onPointerDown(point: Point, event: PointerEvent): boolean {
+  private calculateMoving(point: Point) {
+    if (!this.isSelected() || !this.moveStartPoint || this.moveState !== "NONE")
+      return;
+
+    const distance = Math.sqrt(
+      Math.pow(point.x - this.moveStartPoint.x, 2) +
+        Math.pow(point.y - this.moveStartPoint.y, 2)
+    );
+
+    if (distance > this.CLICK_THRESHOLD) {
+      const resizeRegion = this.getResizeRegion(point);
+      this.moveState = resizeRegion || "DRAGGING";
+    }
+  }
+
+  isMoving() {
+    return this.moveState !== "NONE";
+  }
+
+  private getResizeRegion(point: Point): ResizeRegion | null {
     const { x, y, height, width } = this.absoluteBounds;
 
     const isNorth = point.y <= y + EDGE_THRESHOLD;
@@ -265,30 +286,62 @@ export class BoundingBoxOverlay
     const isSouth = point.y >= y + height - EDGE_THRESHOLD;
     const isWest = point.x <= x + EDGE_THRESHOLD;
 
-    const moveState =
-      isNorth && isWest
-        ? "RESIZE_NW"
-        : isNorth && isEast
-        ? "RESIZE_NE"
-        : isNorth
-        ? "RESIZE_N"
-        : isSouth && isWest
-        ? "RESIZE_SW"
-        : isSouth && isEast
-        ? "RESIZE_SE"
-        : isSouth
-        ? "RESIZE_S"
-        : isWest
-        ? "RESIZE_W"
-        : isEast
-        ? "RESIZE_E"
-        : "DRAGGING";
+    return isNorth && isWest
+      ? "RESIZE_NW"
+      : isNorth && isEast
+      ? "RESIZE_NE"
+      : isNorth
+      ? "RESIZE_N"
+      : isSouth && isWest
+      ? "RESIZE_SW"
+      : isSouth && isEast
+      ? "RESIZE_SE"
+      : isSouth
+      ? "RESIZE_S"
+      : isWest
+      ? "RESIZE_W"
+      : isEast
+      ? "RESIZE_E"
+      : null;
+  }
 
-    if (moveState === "DRAGGING" && !this.isDraggable) return false;
-    if (moveState.startsWith("RESIZE_") && !this.isResizeable) return false;
+  getCursor(point: Point): string {
+    if (!this.isSelected()) return "pointer";
 
-    // Store drag start information
-    this.moveState = moveState;
+    const cursorRegion =
+      this.moveState === "DRAGGING"
+        ? this.moveState
+        : this.getResizeRegion(point);
+
+    switch (cursorRegion) {
+      case "DRAGGING":
+        return "grabbing";
+      case "RESIZE_N":
+      case "RESIZE_S":
+        return "ns-resize";
+      case "RESIZE_E":
+      case "RESIZE_W":
+        return "ew-resize";
+      case "RESIZE_NE":
+      case "RESIZE_SW":
+        return "nesw-resize";
+      case "RESIZE_NW":
+      case "RESIZE_SE":
+        return "nwse-resize";
+      default:
+        return "grab";
+    }
+  }
+
+  // Interaction handlers
+  onPointerDown(point: Point, event: PointerEvent): boolean {
+    const resizeRegion = this.getResizeRegion(point);
+    const cursorRegion = resizeRegion || "DRAGGING";
+
+    if (cursorRegion === "DRAGGING" && !this.isDraggable) return false;
+    if (cursorRegion.startsWith("RESIZE_") && !this.isResizeable) return false;
+
+    // Store move start information
     this.moveStartPoint = point;
     this.moveStartBounds = { ...this.absoluteBounds };
 
@@ -296,6 +349,8 @@ export class BoundingBoxOverlay
   }
 
   onMove(point: Point, event: PointerEvent): boolean {
+    this.calculateMoving(point);
+
     if (this.moveState === "DRAGGING") {
       return this.onDrag(point, event);
     } else if (this.moveState.startsWith("RESIZE_")) {
@@ -305,7 +360,7 @@ export class BoundingBoxOverlay
     }
   }
 
-  private onDrag(point: Point, event: PointerEvent): boolean {
+  private onDrag(point: Point, _event: PointerEvent): boolean {
     if (!this.moveStartPoint || !this.moveStartBounds) return false;
 
     const delta = {
@@ -326,7 +381,7 @@ export class BoundingBoxOverlay
     return true;
   }
 
-  private onResize(point: Point, event: PointerEvent): boolean {
+  private onResize(point: Point, _event: PointerEvent): boolean {
     if (!this.moveStartPoint || !this.moveStartBounds) return false;
 
     const delta = {
@@ -367,7 +422,7 @@ export class BoundingBoxOverlay
     return true;
   }
 
-  onPointerUp(point: Point, event: PointerEvent): boolean {
+  onPointerUp(_point: Point, _event: PointerEvent): boolean {
     if (!this.moveStartPoint || !this.moveStartBounds) return false;
 
     // Mark final position for relative-coordinate update and reset drag state
