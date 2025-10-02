@@ -36,6 +36,13 @@ workflows.
 .. Add recipe cards below
 
 .. customcarditem::
+    :header: Retrieving a sample by ID
+    :description: Directly access a single sample in a FiftyOne dataset using its unique sample ID (sid).
+    :link: sid_get_item.html
+    :image: https://cdn.voxel51.com/recipes_sid_get_item/notebook1/sid_get_item.webp
+    :tags: Basics,Dataset-Curation
+
+.. customcarditem::
     :header: Creating views and using view expressions
     :description: Create views to easily query and explore your datasets in FiftyOne.
     :link: creating_views.html
@@ -136,6 +143,7 @@ workflows.
    :maxdepth: 1
    :hidden:
 
+   Retrieving a sample by ID __SUB_NEW__ <sid_get_item.ipynb>
    Creating views <creating_views.ipynb>
    Removing duplicate images <image_deduplication.ipynb>
    Removing duplicate objects <remove_duplicate_annos.ipynb>
