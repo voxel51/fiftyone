@@ -101,7 +101,7 @@ class Sample(HTTPEndpoint):
                 else:
                     sample[field_name] = value
             except Exception as e:
-                errors[field_name] = {str(e)}
+                errors[field_name] = str(e)
 
         if errors:
             return Response(

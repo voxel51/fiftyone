@@ -235,7 +235,6 @@ class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
         )
         response = await self.mutator.patch(mock_request)
         response_dict = json.loads(response.body)
-        print(response.body)
         self.assertIn(
             "Unsupported label class 'NonExistentLabelType'",
             response_dict["bad_label"],
