@@ -1,10 +1,6 @@
 import { encodeURIPath } from "./util";
 import { Sample } from "@fiftyone/looker";
-import {
-  MalformedRequestError,
-  NetworkError,
-  NotFoundError,
-} from "@fiftyone/utilities";
+import { MalformedRequestError, NotFoundError } from "@fiftyone/utilities";
 
 /**
  * Label types which currently support mutation via {@link patchSample}.
