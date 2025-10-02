@@ -2707,6 +2707,7 @@ class DownloadFileOperator(foo.Operator):
         return foo.OperatorConfig(
             name="download_file",
             label="Download file",
+            unlisted=True,
         )
 
     def resolve_input(self, ctx):
@@ -2720,6 +2721,8 @@ class DownloadFileOperator(foo.Operator):
         return types.Property(inputs, view=types.View(label="Download file"))
 
     def execute(self, ctx):
+        # NOTE: this only calls the browser_download operator
+        # in OSS, in teams it resolves cloud bucket urls
         url = ctx.params["url"]
         ctx.ops.browser_download(url)
 

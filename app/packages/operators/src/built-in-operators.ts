@@ -1508,6 +1508,7 @@ class BrowserDownload extends Operator {
     return new OperatorConfig({
       name: "browser_download",
       label: "Download file",
+      unlisted: true,
     });
   }
   async resolveInput(): Promise<types.Property> {
