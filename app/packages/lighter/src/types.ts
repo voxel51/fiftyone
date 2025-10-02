@@ -106,6 +106,12 @@ export interface Spatial {
 
   /** get position from start of drag/resize */
   getMoveStartPosition(): Point | undefined;
+
+  /** return true if being dragged */
+  isDragging(): boolean;
+
+  /** return true if being resized */
+  isResizing(): boolean;
 }
 
 /**

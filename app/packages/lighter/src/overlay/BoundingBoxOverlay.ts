@@ -282,6 +282,14 @@ export class BoundingBoxOverlay
     return this.moveState !== "NONE";
   }
 
+  isDragging() {
+    return this.moveState === "DRAGGING";
+  }
+
+  isResizing() {
+    return this.moveState.startsWith("RESIZE_");
+  }
+
   private getResizeRegion(point: Point): ResizeRegion | null {
     const { x, y, height, width } = this.absoluteBounds;
 

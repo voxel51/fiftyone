@@ -51,6 +51,12 @@ export const LIGHTER_EVENTS = {
   OVERLAY_DRAG_MOVE: "overlay-drag-move",
   /** Emitted when an overlay drag ends */
   OVERLAY_DRAG_END: "overlay-drag-end",
+  /** Emitted when an overlay starts being resized */
+  OVERLAY_RESIZE_START: "overlay-resize-start",
+  /** Emitted when an overlay is being resized */
+  OVERLAY_RESIZE_MOVE: "overlay-resize-move",
+  /** Emitted when an overlay resize ends */
+  OVERLAY_RESIZE_END: "overlay-resize-end",
   /** Emitted when an overlay is clicked */
   OVERLAY_CLICK: "overlay-click",
   /** Emitted when an overlay is double-clicked */
@@ -161,6 +167,29 @@ export type InteractionEvent =
     }
   | {
       type: typeof LIGHTER_EVENTS.OVERLAY_DRAG_END;
+      detail: {
+        id: string;
+        startPosition: Point;
+        endPosition: Point;
+        absoluteBounds: Rect;
+        relativeBounds: Rect;
+      };
+    }
+  | {
+      type: typeof LIGHTER_EVENTS.OVERLAY_RESIZE_START;
+      detail: {
+        id: string;
+        startPosition: Point;
+        absoluteBounds: Rect;
+        relativeBounds: Rect;
+      };
+    }
+  | {
+      type: typeof LIGHTER_EVENTS.OVERLAY_RESIZE_MOVE;
+      detail: { id: string; absoluteBounds: Rect; relativeBounds: Rect };
+    }
+  | {
+      type: typeof LIGHTER_EVENTS.OVERLAY_RESIZE_END;
       detail: {
         id: string;
         startPosition: Point;

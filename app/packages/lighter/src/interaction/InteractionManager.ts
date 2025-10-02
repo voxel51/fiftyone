@@ -24,6 +24,16 @@ export interface InteractionHandler {
   isMoving?(): boolean;
 
   /**
+   * Returns true if the handler is being dragged.
+   */
+  isDragging?(): boolean;
+
+  /**
+   * Returns true if the handler is being resized.
+   */
+  isResizing?(): boolean;
+
+  /**
    * Returns the type of cursor that is currently appropriate
    */
   getCursor?(point: Point): string;
@@ -189,10 +199,14 @@ export class InteractionManager {
       this.canvas.style.cursor =
         handler.getCursor?.(point) || this.canvas.style.cursor;
 
-      // If this is a movable overlay, track drag state
+      // If this is a movable overlay, track move state
       if (TypeGuards.isMovable(handler) && TypeGuards.isSpatial(handler)) {
+        const type = handler.isDragging?.()
+          ? LIGHTER_EVENTS.OVERLAY_DRAG_START
+          : LIGHTER_EVENTS.OVERLAY_RESIZE_START;
+
         this.eventBus.emit({
-          type: LIGHTER_EVENTS.OVERLAY_DRAG_START,
+          type,
           detail: {
             id: handler.id,
             startPosition: handler.getPosition(),
@@ -234,11 +248,14 @@ export class InteractionManager {
           handler.getCursor?.(this.currentPixelCoordinates!) ||
           this.canvas.style.cursor;
 
-        // TODO: emit resize event
-        // Emit drag move event with bounds information
+        // Emit move event with bounds information
         if (TypeGuards.isSpatial(handler)) {
+          const type = handler.isDragging?.()
+            ? LIGHTER_EVENTS.OVERLAY_DRAG_MOVE
+            : LIGHTER_EVENTS.OVERLAY_RESIZE_MOVE;
+
           this.eventBus.emit({
-            type: LIGHTER_EVENTS.OVERLAY_DRAG_MOVE,
+            type,
             detail: {
               id: handler.id,
               absoluteBounds: handler.getAbsoluteBounds(),
@@ -266,10 +283,14 @@ export class InteractionManager {
       this.canvas.style.cursor =
         handler.getCursor?.(point) || this.canvas.style.cursor;
 
-      // Emit drag end event with bounds information
+      // Emit move end event with bounds information
       if (TypeGuards.isSpatial(handler)) {
+        const type = handler.isDragging?.()
+          ? LIGHTER_EVENTS.OVERLAY_DRAG_END
+          : LIGHTER_EVENTS.OVERLAY_RESIZE_END;
+
         this.eventBus.emit({
-          type: LIGHTER_EVENTS.OVERLAY_DRAG_END,
+          type,
           detail: {
             id: handler.id,
             startPosition,
