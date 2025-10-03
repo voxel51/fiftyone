@@ -1,3 +1,11 @@
+"""
+FiftyOne operation execution tests.
+
+| Copyright 2017-2025, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
+
 import unittest
 
 import bson
@@ -81,7 +89,7 @@ class TestOperatorExecutionContext(unittest.TestCase):
         self.assertIsNone(delegated_ctx.num_distributed_tasks)
 
     def test_target_view(self):
-        ds = fo.Dataset(persistent=True)
+        ds = fo.Dataset()
         view = ds.limit(3)
         selected = bson.ObjectId()
         selected_label = bson.ObjectId()
@@ -94,8 +102,8 @@ class TestOperatorExecutionContext(unittest.TestCase):
                     constants.ViewTarget.SELECTED_SAMPLES,
                     view.select([selected]),
                 ),
-                ("TESTING_DEFAULT", ds),
-                (None, ds),
+                ("TESTING_INVALID", view),
+                (None, view),
             ]
             for target_view, expected_view in tests:
                 request_params = {

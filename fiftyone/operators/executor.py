@@ -632,12 +632,8 @@ class ExecutionContext(object):
 
         return self._view
 
-    def target_view(
-        self,
-        param_name="view_target",
-    ):
-        """The target :class:`fiftyone.core.view.DatasetView` for the operator
-        being executed.
+    def target_view(self, param_name="view_target"):
+        """The target view for the operator being executed.
 
         Args:
             param_name ("view_target"): the name of the enum parameter defining
@@ -647,17 +643,6 @@ class ExecutionContext(object):
             a :class:`fiftyone.core.collections.SampleCollection`
         """
         target = self.params.get(param_name)
-
-        # If no target is specified, default to the base view if the
-        #   current view is generated, otherwise default to the entire dataset
-        if not target:
-            target = (
-                constants.ViewTarget.BASE_VIEW
-                if (
-                    self.view and self.view._is_generated
-                )  # pylint: disable=protected-access
-                else constants.ViewTarget.DATASET
-            )
 
         if target == constants.ViewTarget.CURRENT_VIEW:
             return self.view
@@ -672,7 +657,7 @@ class ExecutionContext(object):
         if target == constants.ViewTarget.DATASET_VIEW:
             return self.dataset.view()
 
-        return self.dataset
+        return self.view if self.has_custom_view else self.dataset
 
     # Alias for common word reversal
     view_target = target_view
