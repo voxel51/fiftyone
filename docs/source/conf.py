@@ -115,7 +115,7 @@ nbsphinx_requirejs_path = ""
 nbsphinx_execute = "never"
 
 # Adds helpful external links to the built HTML
-ref = os.getenv("FO_DOCS_REF", f"v{foc.VERSION}")
+ref = "main"
 nbsphinx_prolog = """
 
 .. raw:: html
