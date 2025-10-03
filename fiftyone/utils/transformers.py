@@ -1111,7 +1111,7 @@ class PoseEstimationGetItem(fout.ImageGetItem):
         )
         boxes = d["box_prompts"]
         if self.transform is None:
-            raise AssertionError(
+            raise ValueError(
                 "Transform cannot be None for PoseEstimationGetItem."
             )
 
@@ -1204,9 +1204,7 @@ class FiftyOneTransformerForPoseEstimation(
                 confidence_thresh=self.config.confidence_thresh,
                 box_prompts=boxes,
             )
-
-        else:
-            return output
+        return output
 
     def build_get_item(self, field_mapping=None):
         if field_mapping is None:
@@ -1374,8 +1372,12 @@ class _HFTransformsHandler:
                         if isinstance(args["images"], list)
                         else [_get_image_size(args["images"])]
                     )
-            if args.get("boxes"):
+            if args.get("boxes") is not None:
                 abs_boxes = []
+                if image_size is None:
+                    raise ValueError(
+                        "Image size required for scaling box prompts."
+                    )
                 img_sz = image_size[0]
                 if isinstance(args["boxes"], list):
                     for idx, detections in enumerate(args["boxes"]):
