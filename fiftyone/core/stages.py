@@ -6135,7 +6135,9 @@ class Materialize(ViewStage):
             name = None
 
         try:
-            last_dataset = fod.load_dataset(name)
+            # Always reload the main dataset, the `reload` parameter is for
+            #   reloading materialized dataset
+            last_dataset = fod.load_dataset(name, reload=True)
         except:
             last_dataset = None
 
