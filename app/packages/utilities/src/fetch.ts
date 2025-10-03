@@ -31,7 +31,7 @@ export type FetchFunctionConfig<T> = {
   result?: FetchResultType;
   retries?: number;
   retryCodes?: number[];
-  errorHandler?: (response: Response) => void;
+  errorHandler?: (response: Response) => void | Promise<void>;
 };
 
 export interface FetchFunction {
@@ -42,7 +42,7 @@ export interface FetchFunction {
     result?: FetchResultType,
     retries?: number,
     retryCodes?: number[],
-    errorHandler?: (response: Response) => void
+    errorHandler?: (response: Response) => void | Promise<void>
   ): Promise<R>;
 }
 
@@ -176,7 +176,7 @@ export const setFetchFunction = (
 
     if (!response.ok) {
       if (errorHandler) {
-        errorHandler(response);
+        await errorHandler(response);
       }
       // if custom error handler doesn't throw, use default error handling
 

@@ -68,19 +68,18 @@ export class PatchApplicationError extends Error {
 const handleErrorResponse = async (response: Response) => {
   if (response.status === 400) {
     // either a malformed request, or a list of errors from applying the patch
-    let errorResponse: ErrorResponse;
+    let errorResponse: ErrorResponse | undefined;
     try {
       // expected error response: '["error 1","error 2"]'
       const body = await response.text();
       const errorList = JSON.parse(body);
-      if (errorList && typeof errorList === typeof []) {
+      if (Array.isArray(errorList)) {
         errorResponse = { errors: errorList };
       }
     } catch (err) {
       // doesn't look like a list of errors
-      errorResponse = {} as ErrorResponse;
     }
-    if (errorResponse.errors) {
+    if (errorResponse?.errors) {
       throw new PatchApplicationError(errorResponse.errors.join(", "));
     }
 
