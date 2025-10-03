@@ -858,13 +858,10 @@ export class Scene2D {
     if (withUndo) {
       const command = new AddOverlayCommand(this, overlay);
       this.executeCommand(command);
-<<<<<<< HEAD
       return;
     }
 
     if (this.overlays.has(overlay.id)) {
-=======
->>>>>>> feat/human-annotation
       return;
     }
 
@@ -1611,10 +1608,7 @@ export class Scene2D {
    */
   public exitInteractiveMode(): void {
     if (!this.interactiveMode) {
-<<<<<<< HEAD
-=======
       this.setCursor("default");
->>>>>>> feat/human-annotation
       return;
     }
 

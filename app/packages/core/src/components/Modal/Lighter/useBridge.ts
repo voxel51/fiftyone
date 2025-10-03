@@ -6,11 +6,7 @@ import { Scene2D } from "@fiftyone/lighter";
 import { colorScheme, colorSeed } from "@fiftyone/state";
 import { useEffect } from "react";
 import { useRecoilValue } from "recoil";
-<<<<<<< HEAD
-import { useLighterOverlayPersistence } from "./useLighterOverlayPersistence";
-=======
 import { useOverlayPersistence } from "./useOverlayPersistence";
->>>>>>> feat/human-annotation
 import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
 
 /**
@@ -25,10 +21,7 @@ export const useBridge = (scene: Scene2D | null) => {
   const currentColorSeed = useRecoilValue(colorSeed);
 
   useLighterTooltipEventHandler(scene);
-<<<<<<< HEAD
-=======
   useOverlayPersistence(scene);
->>>>>>> feat/human-annotation
 
   // Effect to update scene with color scheme changes
   useEffect(() => {

@@ -650,21 +650,13 @@ export class BoundingBoxOverlay
   }
 
   // Hoverable interface implementation
-<<<<<<< HEAD
   onHoverEnter(_point: Point, _event: PointerEvent): boolean {
-=======
-  onHoverEnter(point: Point, event: PointerEvent): boolean {
->>>>>>> feat/human-annotation
     this.isHoveredState = true;
     this.markDirty();
     return true;
   }
 
-<<<<<<< HEAD
   onHoverLeave(_point: Point, _event: PointerEvent): boolean {
-=======
-  onHoverLeave(point: Point, event: PointerEvent): boolean {
->>>>>>> feat/human-annotation
     this.isHoveredState = false;
     this.markDirty();
     return true;

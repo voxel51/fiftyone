@@ -1,14 +1,11 @@
 /**
  * Copyright 2017-2025, Voxel51, Inc.
  */
-<<<<<<< HEAD
-=======
 import { editing } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit";
 import {
   labelAtoms,
   labels,
 } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useLabels";
->>>>>>> feat/human-annotation
 import {
   ImageOptions,
   ImageOverlay,
@@ -16,11 +13,7 @@ import {
   useLighter,
   useLighterSetupWithPixi,
 } from "@fiftyone/lighter";
-<<<<<<< HEAD
-import { loadOverlays } from "@fiftyone/looker/src/overlays";
-=======
-import { FROM_FO } from "@fiftyone/looker/src/overlays";
->>>>>>> feat/human-annotation
+import { FROM_FO, loadOverlays } from "@fiftyone/looker/src/overlays";
 import DetectionOverlay from "@fiftyone/looker/src/overlays/detection";
 import * as fos from "@fiftyone/state";
 import { Sample, getSampleSrc } from "@fiftyone/state";
@@ -60,6 +53,10 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
 
   const setEditing = useSetAtom(editing);
 
+  const schema = fos.useAssertedRecoilValue(
+    fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
+  );
+
   /**
    * This effect is responsible for loading the sample and adding the overlays to the scene.
    */
@@ -85,7 +82,6 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
       scene.setCanonicalMedia(mediaOverlay);
     }
 
-<<<<<<< HEAD
     const overlays = loadOverlays(sample.sample, schema, false);
 
     for (const overlay of overlays) {
@@ -99,12 +95,10 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
       }
     }
 
-=======
->>>>>>> feat/human-annotation
     return () => {
       scene.destroy();
     };
-  }, [isReady, addOverlay, sample, scene]);
+  }, [isReady, addOverlay, sample, scene, schema]);
 
   useEffect(() => {
     if (!scene || !sample) return;

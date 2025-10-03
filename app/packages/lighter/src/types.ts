@@ -201,6 +201,7 @@ export interface Hoverable {
  */
 export class BoundingBoxPersistence {
   constructor(
+    public readonly id: string,
     public readonly path: string,
     public readonly field: string,
     public readonly sampleId: string,
