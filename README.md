@@ -32,7 +32,7 @@ models**
 </p>
 </div>
 
-# 👋 hey there!
+# 👋 hey there !
 
 We created **[FiftyOne](https://fiftyone.ai)** to supercharge your visual AI
 projects by enabling you to visualize datasets, analyze models, and improve
