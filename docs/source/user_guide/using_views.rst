@@ -1036,7 +1036,7 @@ downstream operations on the view.
     view = (
         dataset
         .filter_labels("ground_truth", F("label") == "person")
-        .sort_by(F("ground_truth.detections.label").length(), reverse=True)
+        .sort_by(F("ground_truth.detections").length(), reverse=True)
         .limit(10)
     )
 
