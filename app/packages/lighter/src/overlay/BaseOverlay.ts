@@ -273,7 +273,7 @@ export abstract class BaseOverlay implements InteractionHandler {
    * @param event - The original pointer event.
    * @returns True if the event was handled.
    */
-  onDrag?(point: Point, event: PointerEvent): boolean;
+  onMove?(point: Point, event: PointerEvent): boolean;
 
   /**
    * Handle pointer up event.

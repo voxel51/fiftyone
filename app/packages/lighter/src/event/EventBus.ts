@@ -3,7 +3,7 @@
  */
 
 import { BaseOverlay } from "../overlay/BaseOverlay";
-import type { Point, Rect } from "../types";
+import type { BoundingBoxPersistence, Point, Rect } from "../types";
 
 /**
  * Event type constants for lighter events.
@@ -51,6 +51,12 @@ export const LIGHTER_EVENTS = {
   OVERLAY_DRAG_MOVE: "overlay-drag-move",
   /** Emitted when an overlay drag ends */
   OVERLAY_DRAG_END: "overlay-drag-end",
+  /** Emitted when an overlay starts being resized */
+  OVERLAY_RESIZE_START: "overlay-resize-start",
+  /** Emitted when an overlay is being resized */
+  OVERLAY_RESIZE_MOVE: "overlay-resize-move",
+  /** Emitted when an overlay resize ends */
+  OVERLAY_RESIZE_END: "overlay-resize-end",
   /** Emitted when an overlay is clicked */
   OVERLAY_CLICK: "overlay-click",
   /** Emitted when an overlay is double-clicked */
@@ -172,6 +178,29 @@ export type InteractionEvent =
       };
     }
   | {
+      type: typeof LIGHTER_EVENTS.OVERLAY_RESIZE_START;
+      detail: {
+        id: string;
+        startPosition: Point;
+        absoluteBounds: Rect;
+        relativeBounds: Rect;
+      };
+    }
+  | {
+      type: typeof LIGHTER_EVENTS.OVERLAY_RESIZE_MOVE;
+      detail: { id: string; absoluteBounds: Rect; relativeBounds: Rect };
+    }
+  | {
+      type: typeof LIGHTER_EVENTS.OVERLAY_RESIZE_END;
+      detail: {
+        id: string;
+        startPosition: Point;
+        endPosition: Point;
+        absoluteBounds: Rect;
+        relativeBounds: Rect;
+      };
+    }
+  | {
       type: typeof LIGHTER_EVENTS.OVERLAY_CLICK;
       detail: { id: string; point: Point };
     }
@@ -264,14 +293,7 @@ export type DoLighterEvent =
     }
   | {
       type: typeof LIGHTER_EVENTS.DO_PERSIST_OVERLAY;
-      detail: {
-        id: string;
-        field: string;
-        sampleId: string;
-        label: string;
-        bounds: Rect;
-        misc?: Record<string, any>;
-      };
+      detail: BoundingBoxPersistence;
     }
   | {
       type: typeof LIGHTER_EVENTS.DO_REMOVE_OVERLAY;

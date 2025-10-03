@@ -100,6 +100,18 @@ export interface Spatial {
 
   /** Mark coordinate update as complete */
   markCoordinateUpdateComplete(): void;
+
+  /** get current position */
+  getPosition(): Point;
+
+  /** get position from start of drag/resize */
+  getMoveStartPosition(): Point | undefined;
+
+  /** return true if being dragged */
+  isDragging(): boolean;
+
+  /** return true if being resized */
+  isResizing(): boolean;
 }
 
 /**
@@ -182,4 +194,19 @@ export interface Hoverable {
 
   /** Handle hover move event */
   onHoverMove?(point: Point, event: PointerEvent): boolean;
+}
+
+/**
+ * Persistence PDOs for adding bounding boxes.
+ */
+export class BoundingBoxPersistence {
+  constructor(
+    public readonly id: string,
+    public readonly path: string,
+    public readonly field: string,
+    public readonly sampleId: string,
+    public readonly label: string,
+    public readonly bounds: Rect,
+    public readonly misc: Record<string, any> = {}
+  ) {}
 }

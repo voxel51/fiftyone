@@ -862,6 +862,10 @@ export class Scene2D {
       return;
     }
 
+    if (this.overlays.has(overlay.id)) {
+      return;
+    }
+
     this.renderingState.setStatus(overlay.id, OVERLAY_STATUS_PENDING);
     // Inject renderer into overlay
     overlay.setRenderer(this.config.renderer);

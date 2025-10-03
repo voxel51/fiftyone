@@ -13,7 +13,7 @@ import {
   useLighter,
   useLighterSetupWithPixi,
 } from "@fiftyone/lighter";
-import { FROM_FO } from "@fiftyone/looker/src/overlays";
+import { FROM_FO, loadOverlays } from "@fiftyone/looker/src/overlays";
 import DetectionOverlay from "@fiftyone/looker/src/overlays/detection";
 import * as fos from "@fiftyone/state";
 import { Sample, getSampleSrc } from "@fiftyone/state";
@@ -53,6 +53,10 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
 
   const setEditing = useSetAtom(editing);
 
+  const schema = fos.useAssertedRecoilValue(
+    fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
+  );
+
   /**
    * This effect is responsible for loading the sample and adding the overlays to the scene.
    */
@@ -78,10 +82,23 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
       scene.setCanonicalMedia(mediaOverlay);
     }
 
+    const overlays = loadOverlays(sample.sample, schema, false);
+
+    for (const overlay of overlays) {
+      if (overlay instanceof DetectionOverlay) {
+        // Convert legacy overlay to lighter overlay with relative coordinates
+        const lighterOverlay = convertLegacyToLighterDetection(
+          overlay,
+          sample.id
+        );
+        addOverlay(lighterOverlay, false);
+      }
+    }
+
     return () => {
       scene.destroy();
     };
-  }, [isReady, addOverlay, sample, scene]);
+  }, [isReady, addOverlay, sample, scene, schema]);
 
   useEffect(() => {
     if (!scene || !sample) return;
