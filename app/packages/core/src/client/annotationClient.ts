@@ -108,7 +108,7 @@ export const patchSample = (
       request.sampleId,
     ]),
     method: "PATCH",
-    body: request,
+    body: request.delta,
     errorHandler: handleErrorResponse,
   });
 };

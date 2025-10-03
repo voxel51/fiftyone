@@ -11,6 +11,9 @@ let fetchFunctionSingleton: FetchFunction;
 let fetchHeaders: HeadersInit;
 let fetchPathPrefix = "";
 
+/**
+ * Supported methods for accessing response data.
+ */
 export type FetchResultType =
   | "json"
   | "blob"
@@ -18,6 +21,9 @@ export type FetchResultType =
   | "arrayBuffer"
   | "json-stream";
 
+/**
+ * Configuration for a `fetch` call.
+ */
 export type FetchFunctionConfig<T> = {
   method: string;
   path: string;
@@ -44,6 +50,10 @@ export const getFetchFunction = () => {
   return fetchFunctionSingleton;
 };
 
+/**
+ * Wrapper for {@link getFetchFunction} which provides configration via
+ * {@link FetchFunctionConfig}.
+ */
 export const getFetchFunctionConfigurable =
   (): (<A, R>(config: FetchFunctionConfig<A>) => Promise<R>) =>
   <A>(config: FetchFunctionConfig<A>) =>
