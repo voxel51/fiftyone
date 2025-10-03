@@ -1,6 +1,10 @@
 import { encodeURIPath } from "./util";
 import { Sample } from "@fiftyone/looker";
-import { MalformedRequestError, NotFoundError } from "@fiftyone/utilities";
+import {
+  getFetchFunctionConfigurable,
+  MalformedRequestError,
+  NotFoundError,
+} from "@fiftyone/utilities";
 
 /**
  * Label types which currently support mutation via {@link patchSample}.
@@ -63,14 +67,21 @@ export class PatchApplicationError extends Error {
 
 const handleErrorResponse = async (response: Response) => {
   if (response.status === 400) {
-    let body: ErrorResponse;
+    // either a malformed request, or a list of errors from applying the patch
+    let errorResponse: ErrorResponse;
     try {
-      body = await response.json();
+      // expected error response: '["error 1","error 2"]'
+      const body = await response.text();
+      const errorList = JSON.parse(body);
+      if (errorList && typeof errorList === typeof []) {
+        errorResponse = { errors: errorList };
+      }
     } catch (err) {
-      body = {} as ErrorResponse;
+      // doesn't look like a list of errors
+      errorResponse = {} as ErrorResponse;
     }
-    if (body.errors) {
-      throw new PatchApplicationError(body.errors.join(", "));
+    if (errorResponse.errors) {
+      throw new PatchApplicationError(errorResponse.errors.join(", "));
     }
 
     throw new MalformedRequestError();
@@ -86,23 +97,18 @@ const handleErrorResponse = async (response: Response) => {
  *
  * @param request Patch sample request
  */
-export const patchSample = async (
+export const patchSample = (
   request: PatchSampleRequest
 ): Promise<PatchSampleResponse> => {
-  const httpResponse = await fetch(
-    encodeURIPath(["dataset", request.datasetId, "sample", request.sampleId]),
-    {
-      method: "PATCH",
-      body: JSON.stringify(request.delta),
-      headers: {
-        "content-type": "application/json",
-      },
-    }
-  );
-
-  if (httpResponse.ok) {
-    return httpResponse.json();
-  } else {
-    await handleErrorResponse(httpResponse);
-  }
+  return getFetchFunctionConfigurable()({
+    path: encodeURIPath([
+      "dataset",
+      request.datasetId,
+      "sample",
+      request.sampleId,
+    ]),
+    method: "PATCH",
+    body: request,
+    errorHandler: handleErrorResponse,
+  });
 };
