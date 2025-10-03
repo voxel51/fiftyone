@@ -1514,14 +1514,10 @@ class InstanceSegmenterOutputProcessor(OutputProcessor):
 
 
 class KeypointOutputProcessor(OutputProcessor):
-    """Output processor for keypoint prediction models.
+    """Output processor for keypoint prediction models."""
 
-    Args:
-        classes (None): the list of class labels for the model
-    """
-
-    def __init__(self, classes=None):
-        self.classes = classes
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
     def __call__(self, output, frame_size, confidence_thresh=None):
         """Parses the model output.
