@@ -3,7 +3,7 @@ on:
   workflow_dispatch: {}
   schedule:
     # 4:05AM On Thursdays for vuln assessments.
-    - cron: '5 4 * * 4'
+    - cron: "5 4 * * 4"
 jobs:
   build-app:
     uses: ./.github/workflows/build.yml
@@ -12,8 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-app]
     permissions:
-      contents: 'read'
-      id-token: 'write'
+      contents: "read"
+      id-token: "write"
     strategy:
       matrix:
         python:

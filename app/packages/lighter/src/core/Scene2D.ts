@@ -858,10 +858,13 @@ export class Scene2D {
     if (withUndo) {
       const command = new AddOverlayCommand(this, overlay);
       this.executeCommand(command);
+<<<<<<< HEAD
       return;
     }
 
     if (this.overlays.has(overlay.id)) {
+=======
+>>>>>>> feat/human-annotation
       return;
     }
 
@@ -954,6 +957,15 @@ export class Scene2D {
    */
   getOverlay(id: string): BaseOverlay | undefined {
     return this.overlays.get(id);
+  }
+
+  /**
+   * Checks if an overlay with the given ID exists in the scene.
+   * @param id - The overlay ID to check.
+   * @returns True if the overlay exists, false otherwise.
+   */
+  hasOverlay(id: string): boolean {
+    return this.overlays.has(id);
   }
 
   /**
@@ -1599,6 +1611,10 @@ export class Scene2D {
    */
   public exitInteractiveMode(): void {
     if (!this.interactiveMode) {
+<<<<<<< HEAD
+=======
+      this.setCursor("default");
+>>>>>>> feat/human-annotation
       return;
     }
 

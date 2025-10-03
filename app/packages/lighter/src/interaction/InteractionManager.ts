@@ -2,6 +2,10 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
+<<<<<<< HEAD
+=======
+import type { Movable } from "../commands/MoveOverlayCommand";
+>>>>>>> feat/human-annotation
 import { UndoRedoManager } from "../commands/UndoRedoManager";
 import { TypeGuards } from "../core/Scene2D";
 import type { EventBus } from "../event/EventBus";
@@ -17,6 +21,7 @@ import { InteractiveDetectionHandler } from "./InteractiveDetectionHandler";
 export interface InteractionHandler {
   readonly id: string;
   readonly cursor?: string;
+<<<<<<< HEAD
 
   /**
    * Returns true if the handler is being dragged or resized.
@@ -42,6 +47,8 @@ export interface InteractionHandler {
    * Returns the position from the start of handler movement
    */
   getMoveStartPosition(): Point | undefined;
+=======
+>>>>>>> feat/human-annotation
 
   /**
    * Handle pointer down event.
@@ -113,6 +120,15 @@ export interface InteractionHandler {
    * @returns True if this handler can handle events at the point.
    */
   containsPoint(point: Point): boolean;
+<<<<<<< HEAD
+=======
+
+  /**
+   * Release any resources held by the handler.
+   */
+  cleanup?(): void;
+}
+>>>>>>> feat/human-annotation
 
   /**
    * Release any resources held by the handler.
@@ -196,6 +212,7 @@ export class InteractionManager {
     }
 
     if (handler?.onPointerDown?.(point, event)) {
+<<<<<<< HEAD
       this.canvas.style.cursor =
         handler.getCursor?.(point) || this.canvas.style.cursor;
 
@@ -214,6 +231,29 @@ export class InteractionManager {
             relativeBounds: handler.getRelativeBounds(),
           },
         });
+=======
+      this.dragHandler = handler;
+
+      // If this is a movable overlay, track drag state
+      if (TypeGuards.isMovable(handler)) {
+        this.dragState = {
+          overlay: handler,
+          startPoint: point,
+          startPosition: handler.getPosition(),
+        };
+
+        if (TypeGuards.isSpatial(handler)) {
+          this.eventBus.emit({
+            type: LIGHTER_EVENTS.OVERLAY_DRAG_START,
+            detail: {
+              id: handler.id,
+              startPosition: this.dragState.startPosition,
+              absoluteBounds: handler.getAbsoluteBounds(),
+              relativeBounds: handler.getRelativeBounds(),
+            },
+          });
+        }
+>>>>>>> feat/human-annotation
       }
 
       this.canvas.setPointerCapture(event.pointerId);
@@ -226,7 +266,16 @@ export class InteractionManager {
     this.currentPixelCoordinates = point;
 
     const interactiveHandler = this.getInteractiveHandler();
+<<<<<<< HEAD
     const handler = this.findMovingHandler() || this.findHandlerAtPoint(point);
+=======
+
+    if (!interactiveHandler) {
+      // we don't want to handle hover in interactive mode
+      // for instance, no tooltips, no hover states, etc
+      this.handleHover(this.currentPixelCoordinates, event, this.isDragging);
+    }
+>>>>>>> feat/human-annotation
 
     if (!interactiveHandler) {
       // we don't want to handle hover in interactive mode
@@ -237,9 +286,27 @@ export class InteractionManager {
     if (handler) {
       // Handle drag move
       if (!interactiveHandler) {
+<<<<<<< HEAD
         handler.onMove?.(point, event);
       } else {
         interactiveHandler.onMove?.(point, event);
+=======
+        this.dragHandler.onDrag?.(this.currentPixelCoordinates, event);
+      } else {
+        interactiveHandler.onDrag?.(this.currentPixelCoordinates, event);
+      }
+
+      // Emit drag move event with bounds information
+      if (this.dragState && TypeGuards.isSpatial(this.dragState.overlay)) {
+        this.eventBus.emit({
+          type: LIGHTER_EVENTS.OVERLAY_DRAG_MOVE,
+          detail: {
+            id: this.dragState.overlay.id,
+            absoluteBounds: this.dragState.overlay.getAbsoluteBounds(),
+            relativeBounds: this.dragState.overlay.getRelativeBounds(),
+          },
+        });
+>>>>>>> feat/human-annotation
       }
 
       if (handler.isMoving?.()) {
@@ -280,6 +347,7 @@ export class InteractionManager {
       // Handle drag end
       handler.onPointerUp?.(point, event);
 
+<<<<<<< HEAD
       this.canvas.style.cursor =
         handler.getCursor?.(point) || this.canvas.style.cursor;
 
@@ -289,14 +357,26 @@ export class InteractionManager {
           ? LIGHTER_EVENTS.OVERLAY_DRAG_END
           : LIGHTER_EVENTS.OVERLAY_RESIZE_END;
 
+=======
+      // Emit drag end event with bounds information
+      if (this.dragState && TypeGuards.isSpatial(this.dragState.overlay)) {
+>>>>>>> feat/human-annotation
         this.eventBus.emit({
           type,
           detail: {
+<<<<<<< HEAD
             id: handler.id,
             startPosition,
             endPosition: handler.getPosition(),
             absoluteBounds: handler.getAbsoluteBounds(),
             relativeBounds: handler.getRelativeBounds(),
+=======
+            id: this.dragState.overlay.id,
+            startPosition: this.dragState.startPosition,
+            endPosition: this.dragState.overlay.getPosition(),
+            absoluteBounds: this.dragState.overlay.getAbsoluteBounds(),
+            relativeBounds: this.dragState.overlay.getRelativeBounds(),
+>>>>>>> feat/human-annotation
           },
         });
       }
@@ -638,6 +718,7 @@ export class InteractionManager {
   }
 
   /**
+<<<<<<< HEAD
    * Finds a handler that is being dragged or resized.
    * @returns The handler if found, undefined otherwise.
    */
@@ -646,6 +727,8 @@ export class InteractionManager {
   }
 
   /**
+=======
+>>>>>>> feat/human-annotation
    * Reorders handlers to match the overlay order.
    * Handlers for overlays that appear later in the overlay order should be processed first for interaction.
    * This maintains strict coupling between overlay rendering order and interaction priority.

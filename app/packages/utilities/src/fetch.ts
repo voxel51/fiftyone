@@ -83,7 +83,7 @@ export const setFetchFunction = (
     body = null,
     result = "json",
     retries = 2,
-    retryCodes = [502, 503, 504],
+    retryCodes = [502, 503, 504]
   ) => {
     let url: string;
     const controller = new AbortController();
@@ -152,7 +152,7 @@ export const setFetchFunction = (
         if (error.stack) errorMetadata.stack = error?.stack;
         errorMetadata.message = error?.message;
         if (error?.stack) {
-          console.error(error.stack)
+          console.error(error.stack);
         }
         ErrorClass = ServerError;
       } catch {

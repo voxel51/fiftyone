@@ -554,7 +554,6 @@ export class PixiRenderer2D implements Renderer2D {
       }
       return false;
     }
-
     // Test all containers if no ID specified
     for (const container of this.containers.values()) {
       if (this.hitTestElement(container, point)) {

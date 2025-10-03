@@ -3,7 +3,11 @@
  */
 
 import { BaseOverlay } from "../overlay/BaseOverlay";
+<<<<<<< HEAD
 import type { BoundingBoxPersistence, Point, Rect } from "../types";
+=======
+import type { Point, Rect } from "../types";
+>>>>>>> feat/human-annotation
 
 /**
  * Event type constants for lighter events.
@@ -103,6 +107,11 @@ export const LIGHTER_EVENTS = {
   DO_OVERLAY_UNHOVER: "do-overlay-unhover",
   /** Emitted when the overlay needs to be persisted */
   DO_PERSIST_OVERLAY: "do-persist-overlay",
+<<<<<<< HEAD
+=======
+  /** Emitted when the overlay needs to be removed */
+  DO_REMOVE_OVERLAY: "do-remove-overlay",
+>>>>>>> feat/human-annotation
 } as const;
 
 /**
@@ -173,6 +182,7 @@ export type InteractionEvent =
         endPosition: Point;
         absoluteBounds: Rect;
         relativeBounds: Rect;
+<<<<<<< HEAD
       };
     }
   | {
@@ -196,6 +206,8 @@ export type InteractionEvent =
         endPosition: Point;
         absoluteBounds: Rect;
         relativeBounds: Rect;
+=======
+>>>>>>> feat/human-annotation
       };
     }
   | {
@@ -291,7 +303,22 @@ export type DoLighterEvent =
     }
   | {
       type: typeof LIGHTER_EVENTS.DO_PERSIST_OVERLAY;
+<<<<<<< HEAD
       detail: BoundingBoxPersistence;
+=======
+      detail: {
+        id: string;
+        field: string;
+        sampleId: string;
+        label: string;
+        bounds: Rect;
+        misc?: Record<string, any>;
+      };
+    }
+  | {
+      type: typeof LIGHTER_EVENTS.DO_REMOVE_OVERLAY;
+      detail: { id: string; sampleId: string; path: string };
+>>>>>>> feat/human-annotation
     };
 
 /**

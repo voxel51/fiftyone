@@ -9,8 +9,6 @@ import { useWarnings } from "./useWarnings";
 import { PlotErrorResponse, PlotResponse, PlotSuccessResponse } from "./types";
 import { NetworkError } from "@fiftyone/utilities";
 
-
-
 export function useViewChangeEffect() {
   const colorSeed = useRecoilValue(fos.colorSeed);
   const datasetName = useRecoilValue(fos.datasetName);
@@ -48,10 +46,9 @@ export function useViewChangeEffect() {
         if (err instanceof NetworkError) {
           setLoadingPlotError({
             message: "Network Error",
-            stack: [
-              err.stack,
-              "See console for network error details."
-            ].join("\n"),
+            stack: [err.stack, "See console for network error details."].join(
+              "\n"
+            ),
           });
         } else {
           setLoadingPlotError({
@@ -65,7 +62,7 @@ export function useViewChangeEffect() {
 
         if (!res) return;
 
-        if ('error' in res && res.error) {
+        if ("error" in res && res.error) {
           res = res as PlotErrorResponse;
           setLoadingPlotError({
             message: res.error,

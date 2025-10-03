@@ -1,6 +1,14 @@
 /**
  * Copyright 2017-2025, Voxel51, Inc.
  */
+<<<<<<< HEAD
+=======
+import { editing } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit";
+import {
+  labelAtoms,
+  labels,
+} from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useLabels";
+>>>>>>> feat/human-annotation
 import {
   ImageOptions,
   ImageOverlay,
@@ -8,16 +16,15 @@ import {
   useLighter,
   useLighterSetupWithPixi,
 } from "@fiftyone/lighter";
+<<<<<<< HEAD
 import { loadOverlays } from "@fiftyone/looker/src/overlays";
+=======
+import { FROM_FO } from "@fiftyone/looker/src/overlays";
+>>>>>>> feat/human-annotation
 import DetectionOverlay from "@fiftyone/looker/src/overlays/detection";
 import * as fos from "@fiftyone/state";
-import {
-  fieldSchema,
-  getSampleSrc,
-  Sample,
-  State,
-  useAssertedRecoilValue,
-} from "@fiftyone/state";
+import { Sample, getSampleSrc } from "@fiftyone/state";
+import { getDefaultStore, useSetAtom } from "jotai";
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { singletonCanvas } from "./SharedCanvas";
@@ -51,9 +58,7 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
   // Get access to the lighter instance
   const { scene, isReady, addOverlay } = useLighter();
 
-  const schema = useAssertedRecoilValue(
-    fieldSchema({ space: State.SPACE.SAMPLE })
-  );
+  const setEditing = useSetAtom(editing);
 
   /**
    * This effect is responsible for loading the sample and adding the overlays to the scene.
@@ -80,6 +85,7 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
       scene.setCanonicalMedia(mediaOverlay);
     }
 
+<<<<<<< HEAD
     const overlays = loadOverlays(sample.sample, schema, false);
 
     for (const overlay of overlays) {
@@ -93,10 +99,59 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
       }
     }
 
+=======
+>>>>>>> feat/human-annotation
     return () => {
       scene.destroy();
     };
-  }, [isReady, addOverlay, sample, scene, schema]);
+  }, [isReady, addOverlay, sample, scene]);
+
+  useEffect(() => {
+    if (!scene || !sample) return;
+
+    const store = getDefaultStore();
+
+    // hack: this is how we execute it once
+    let areOverlaysAdded = false;
+
+    const unsub = store.sub(labels, () => {
+      const labelAtomsList = store.get(labelAtoms);
+
+      if (areOverlaysAdded) return;
+
+      for (const atom of labelAtomsList) {
+        const label = store.get(atom);
+        if (!FROM_FO[label.type]) {
+          continue;
+        }
+        const overlay = FROM_FO[label.type](label.path, label.data)[0];
+        if (overlay instanceof DetectionOverlay) {
+          // Convert legacy overlay to lighter overlay with relative coordinates
+          const lighterOverlay = convertLegacyToLighterDetection(
+            overlay,
+            sample.id
+          );
+
+          addOverlay(lighterOverlay, false);
+        }
+        areOverlaysAdded = true;
+      }
+    });
+
+    return () => {
+      unsub();
+      areOverlaysAdded = false;
+    };
+  }, [scene, sample, addOverlay, labelAtoms]);
+
+  /**
+   * This effect runs cleanup when the component unmounts
+   */
+  useEffect(() => {
+    return () => {
+      setEditing(null);
+    };
+  }, []);
 
   return (
     <div

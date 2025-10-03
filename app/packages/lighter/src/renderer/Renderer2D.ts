@@ -48,6 +48,17 @@ export interface ImageOptions {
 }
 
 /**
+ * Generic options for resource operations.
+ */
+export interface ResourceOptions {
+  opacity?: number;
+  rotation?: number; // in radians
+  scaleX?: number;
+  scaleY?: number;
+}
+
+/**
+ * 2D renderer interface (merges backend and strategy responsibilities).
  * 2D renderer interface.
  */
 export interface Renderer2D {

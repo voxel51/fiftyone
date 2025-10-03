@@ -2,7 +2,7 @@ import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
 import { cloneDeep, get, set } from "lodash";
 import { useCallback, useEffect, useRef } from "react";
 import DynamicIO from "./components/DynamicIO";
-import { clearUseKeyStores, SchemaIOContext } from "./hooks";
+import { SchemaIOContext, clearUseKeyStores } from "./hooks";
 import { coerceValue, getLiteValue } from "./utils";
 
 export function SchemaIOComponent(props) {
@@ -11,6 +11,8 @@ export function SchemaIOComponent(props) {
   const autoFocused = useRef(false);
   const schemaIOContext = { id };
   const storeRef = useRef({ liteValues: {} });
+
+  console.log(props.schema);
 
   useEffect(() => {
     return () => {

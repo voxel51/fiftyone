@@ -4,10 +4,10 @@
 
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { TransformOptions } from "../commands/TransformOverlayCommand";
 import type { RenderCallback } from "../core/Scene2D";
 import { lighterSceneAtom, overlayFactory } from "../index";
 import { BaseOverlay } from "../overlay/BaseOverlay";
-import type { TransformOptions } from "../commands/TransformOverlayCommand";
 
 /**
  * Hook for accessing the current lighter instance without side effects.

@@ -1,12 +1,14 @@
-import { useTheme } from "@fiftyone/components";
+import { LoadingDots, useTheme } from "@fiftyone/components";
 import type { ImageLooker } from "@fiftyone/looker";
 import { isNativeMediaType } from "@fiftyone/looker/src/util";
 import * as fos from "@fiftyone/state";
+import { useAtomValue } from "jotai";
 import React, { useMemo } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { ImaVidLookerReact } from "./ImaVidLooker";
 import { LighterSampleRenderer } from "./Lighter/LighterSampleRenderer";
 import { MetadataLooker } from "./MetadataLooker";
+import { labelAtoms, loading } from "./Sidebar/Annotate/useLabels";
 import { VideoLookerReact } from "./VideoLooker";
 import useLooker from "./use-looker";
 import { useImageModalSelectiveRendering } from "./use-modal-selective-rendering";
@@ -36,6 +38,16 @@ interface LookerProps {
   ghost?: boolean;
 }
 
+const Load = ({ children }) => {
+  const isLoading = useAtomValue(loading);
+  const mode = useAtomValue(fos.modalMode);
+  if (mode === "annotate" && isLoading) {
+    return <LoadingDots />;
+  }
+
+  return <>{children}</>;
+};
+
 const ModalLookerNoTimeline = React.memo((props: LookerProps) => {
   const { id, ref, looker } = useLooker<ImageLooker>(props);
   const theme = useTheme();
@@ -60,7 +72,7 @@ const ModalLookerNoTimeline = React.memo((props: LookerProps) => {
 export const ModalLooker = React.memo(
   ({ sample: propsSampleData }: LookerProps) => {
     const modalSampleData = useRecoilValue(fos.modalSample);
-
+    const mode = useAtomValue(fos.modalMode);
     const sample = useMemo(() => {
       if (propsSampleData) {
         return {
@@ -92,8 +104,10 @@ export const ModalLooker = React.memo(
     ) {
       return (
         <>
-          <LighterSampleRenderer sample={sample} />
-          <ModalLookerNoTimeline sample={sample} ghost />
+          {mode === "annotate" && (
+            <LighterSampleRenderer sample={sample} labels={labelAtoms} />
+          )}
+          <ModalLookerNoTimeline sample={sample} ghost={mode === "annotate"} />
         </>
       );
     }
