@@ -51,26 +51,26 @@ class VideoTests(unittest.TestCase):
         self.assertFalse(4 in frames)
         self.assertTrue(5 in frames)
 
-        self.assertTrue(list(frames.keys()), [1, 3, 5])
+        self.assertEqual(list(frames.keys()), [1, 3, 5])
 
         frame_numbers = []
         for frame_number, frame in frames.items():
             frame_numbers.append(frame_number)
             self.assertEqual(frame_number, frame.frame_number)
 
-        self.assertTrue(frame_numbers, [1, 3, 5])
+        self.assertEqual(frame_numbers, [1, 3, 5])
 
         del frames[3]
 
         self.assertFalse(3 in frames)
-        self.assertTrue(list(frames.keys()), [1, 5])
+        self.assertEqual(list(frames.keys()), [1, 5])
 
         frame_numbers = []
         for frame_number, frame in frames.items():
             frame_numbers.append(frame_number)
             self.assertEqual(frame_number, frame.frame_number)
 
-        self.assertTrue(frame_numbers, [1, 5])
+        self.assertEqual(frame_numbers, [1, 5])
 
         dataset = fo.Dataset()
         dataset.add_sample(sample)
@@ -83,7 +83,7 @@ class VideoTests(unittest.TestCase):
         self.assertIsInstance(frame1.sample_id, str)
         self.assertIsInstance(frame1._sample_id, ObjectId)
 
-        self.assertTrue(len(sample.frames), 2)
+        self.assertEqual(len(sample.frames), 2)
 
         self.assertTrue(1 in sample.frames)
         self.assertFalse(2 in sample.frames)
@@ -96,7 +96,7 @@ class VideoTests(unittest.TestCase):
             frame_numbers.append(frame_number)
             self.assertEqual(frame_number, frame.frame_number)
 
-        self.assertTrue(frame_numbers, [1, 5])
+        self.assertEqual(frame_numbers, [1, 5])
 
     @drop_datasets
     def test_video_dataset_frames_init(self):
@@ -1100,8 +1100,8 @@ class VideoTests(unittest.TestCase):
 
         sample1_view = view.first()
 
-        self.assertTrue(len(sample1_view.frames), 2)
-        self.assertTrue(list(sample1_view.frames.keys()), [1, 2])
+        self.assertEqual(len(sample1_view.frames), 2)
+        self.assertEqual(list(sample1_view.frames.keys()), [1, 2])
 
         frame_numbers = []
         for frame_number, frame in sample1_view.frames.items():
@@ -2457,7 +2457,7 @@ class VideoTests(unittest.TestCase):
         dataset.save_view("test", view)
 
         self.assertTrue(view._dataset.persistent)
-        self.assertTrue(view.name, "test")
+        self.assertEqual(view.name, "test")
         self.assertEqual(make_clips_dataset.call_count, 1)
 
         name = view._dataset.name
@@ -2473,7 +2473,7 @@ class VideoTests(unittest.TestCase):
 
         self.assertEqual(view.values("events.label"), ["nap"])
         self.assertTrue(view._dataset.persistent)
-        self.assertTrue(view.name, "test")
+        self.assertEqual(view.name, "test")
         self.assertEqual(make_clips_dataset.call_count, 2)
 
         view_doc2 = dataset._get_saved_view_doc("test")
@@ -2490,8 +2490,8 @@ class VideoTests(unittest.TestCase):
         view_doc3 = dataset._get_saved_view_doc("test")
         last_modified_at3 = view_doc3.last_modified_at
 
-        self.assertTrue(also_view.name, "test")
-        self.assertTrue(also_view._dataset.name, name)
+        self.assertEqual(also_view.name, "test")
+        self.assertEqual(also_view._dataset.name, name)
         self.assertEqual(last_modified_at2, last_modified_at3)
         self.assertEqual(make_clips_dataset.call_count, 2)
 
@@ -3368,7 +3368,7 @@ class VideoTests(unittest.TestCase):
         dataset.save_view("test", view)
 
         self.assertTrue(view._dataset.persistent)
-        self.assertTrue(view.name, "test")
+        self.assertEqual(view.name, "test")
         self.assertEqual(make_frames_dataset.call_count, 1)
 
         name = view._dataset.name
@@ -3387,7 +3387,7 @@ class VideoTests(unittest.TestCase):
             ["dog"],
         )
         self.assertTrue(view._dataset.persistent)
-        self.assertTrue(view.name, "test")
+        self.assertEqual(view.name, "test")
         self.assertEqual(make_frames_dataset.call_count, 2)
 
         view_doc2 = dataset._get_saved_view_doc("test")
@@ -3404,8 +3404,8 @@ class VideoTests(unittest.TestCase):
         view_doc3 = dataset._get_saved_view_doc("test")
         last_modified_at3 = view_doc3.last_modified_at
 
-        self.assertTrue(also_view.name, "test")
-        self.assertTrue(also_view._dataset.name, name)
+        self.assertEqual(also_view.name, "test")
+        self.assertEqual(also_view._dataset.name, name)
         self.assertEqual(last_modified_at2, last_modified_at3)
         self.assertEqual(make_frames_dataset.call_count, 2)
 

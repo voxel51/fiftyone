@@ -1217,7 +1217,7 @@ class PatchesTests(unittest.TestCase):
         dataset.save_view("test", view)
 
         self.assertTrue(view._dataset.persistent)
-        self.assertTrue(view.name, "test")
+        self.assertEqual(view.name, "test")
         self.assertEqual(make_patches_dataset.call_count, 1)
 
         name = view._dataset.name
@@ -1233,7 +1233,7 @@ class PatchesTests(unittest.TestCase):
 
         self.assertEqual(view.values("ground_truth.label"), ["dog"])
         self.assertTrue(view._dataset.persistent)
-        self.assertTrue(view.name, "test")
+        self.assertEqual(view.name, "test")
         self.assertEqual(make_patches_dataset.call_count, 2)
 
         view_doc2 = dataset._get_saved_view_doc("test")
@@ -1250,8 +1250,8 @@ class PatchesTests(unittest.TestCase):
         view_doc3 = dataset._get_saved_view_doc("test")
         last_modified_at3 = view_doc3.last_modified_at
 
-        self.assertTrue(also_view.name, "test")
-        self.assertTrue(also_view._dataset.name, name)
+        self.assertEqual(also_view.name, "test")
+        self.assertEqual(also_view._dataset.name, name)
         self.assertEqual(last_modified_at2, last_modified_at3)
         self.assertEqual(make_patches_dataset.call_count, 2)
 
@@ -1326,7 +1326,7 @@ class PatchesTests(unittest.TestCase):
         dataset.save_view("test", view)
 
         self.assertTrue(view._dataset.persistent)
-        self.assertTrue(view.name, "test")
+        self.assertEqual(view.name, "test")
         self.assertEqual(make_evaluation_patches_dataset.call_count, 1)
 
         name = view._dataset.name
@@ -1345,7 +1345,7 @@ class PatchesTests(unittest.TestCase):
             ["bar"],
         )
         self.assertTrue(view._dataset.persistent)
-        self.assertTrue(view.name, "test")
+        self.assertEqual(view.name, "test")
         self.assertEqual(make_evaluation_patches_dataset.call_count, 2)
 
         view_doc2 = dataset._get_saved_view_doc("test")
@@ -1362,8 +1362,8 @@ class PatchesTests(unittest.TestCase):
         view_doc3 = dataset._get_saved_view_doc("test")
         last_modified_at3 = view_doc3.last_modified_at
 
-        self.assertTrue(also_view.name, "test")
-        self.assertTrue(also_view._dataset.name, name)
+        self.assertEqual(also_view.name, "test")
+        self.assertEqual(also_view._dataset.name, name)
         self.assertEqual(last_modified_at2, last_modified_at3)
         self.assertEqual(make_evaluation_patches_dataset.call_count, 2)
 
