@@ -143,6 +143,12 @@ export interface Renderer2D {
   screenToWorld(screenPoint: Point): Point;
 
   /**
+   * Returns current scaling factor of the viewport.
+   * @returns Current scaling factor.
+   */
+  getScale(): number;
+
+  /**
    * Reset tick handler, and remove all children from the viewport.
    */
   cleanUp(): void;
