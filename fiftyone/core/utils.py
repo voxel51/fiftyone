@@ -10,7 +10,7 @@ import abc
 import atexit
 from bson import json_util
 from base64 import b64encode, b64decode
-from collections import defaultdict
+from collections import defaultdict, deque
 from contextlib import contextmanager, suppress
 from copy import deepcopy
 from datetime import date, datetime
@@ -36,6 +36,7 @@ import subprocess
 import sys
 import shutil
 import tempfile
+import threading
 import timeit
 import types
 import uuid
@@ -3219,16 +3220,27 @@ def async_executor(
         Exception: if a task raises an exception and ``skip_failures == False``
     """
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = []
+        futures = deque()
+        lock = threading.Lock()
+
+        def remove(future):
+            with lock:
+                try:
+                    futures.remove(future)
+                except ValueError:
+                    pass
 
         def submit(*args, **kwargs):
             future = executor.submit(*args, **kwargs)
-            futures.append(future)
+            with lock:
+                futures.append(future)
+            future.add_done_callback(remove)
             return future
 
         yield submit
 
-        for future in futures:
+        while futures:
+            future = futures.popleft()
             try:
                 future.result()
             except Exception as e:
@@ -3277,18 +3289,29 @@ def async_iterator(
             logger.warning(warning, exc_info=True)
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = []
+        futures = deque()
+        lock = threading.Lock()
+
+        def remove(future):
+            with lock:
+                try:
+                    futures.remove(future)
+                except ValueError:
+                    pass
 
         def submit(*args, **kwargs):
             future = executor.submit(*args, **kwargs)
-            futures.append(future)
+            with lock:
+                futures.append(future)
+            future.add_done_callback(remove)
             return future
 
         for item in iterator:
             yield submit, item
 
             while len(futures) > limit:
-                wait_for_task(futures.pop(0))
+                wait_for_task(futures.popleft())
 
-        for future in futures:
+        while futures:
+            future = futures.popleft()
             wait_for_task(future)
