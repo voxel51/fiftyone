@@ -31,7 +31,7 @@ To build the documentation locally, follow these steps:
 
     ```shell
     cd ..
-    bash install.bash
+    bash install.sh
     ```
 
 2. Install documentation-specific requirements:
