@@ -263,17 +263,17 @@ export class BoundingBoxOverlay
     return this.moveStartPosition;
   }
 
-  private calculateMoving(point: Point) {
+  private calculateMoving(point: Point, worldPoint: Point, scale: number) {
     if (!this.isSelected() || !this.moveStartPoint || this.moveState !== "NONE")
       return;
 
     const distance = Math.sqrt(
-      Math.pow(point.x - this.moveStartPoint.x, 2) +
-        Math.pow(point.y - this.moveStartPoint.y, 2)
+      Math.pow((point.x - this.moveStartPoint.x) / scale, 2) +
+        Math.pow((point.y - this.moveStartPoint.y) / scale, 2)
     );
 
     if (distance > this.CLICK_THRESHOLD) {
-      const resizeRegion = this.getResizeRegion(point);
+      const resizeRegion = this.getResizeRegion(worldPoint, scale);
       this.moveState = resizeRegion || "DRAGGING";
     }
   }
@@ -290,13 +290,16 @@ export class BoundingBoxOverlay
     return this.moveState.startsWith("RESIZE_");
   }
 
-  private getResizeRegion(point: Point): ResizeRegion | null {
+  private getResizeRegion(
+    worldPoint: Point,
+    scale: number
+  ): ResizeRegion | null {
     const { x, y, height, width } = this.absoluteBounds;
 
-    const isNorth = point.y <= y + EDGE_THRESHOLD;
-    const isEast = point.x >= x + width - EDGE_THRESHOLD;
-    const isSouth = point.y >= y + height - EDGE_THRESHOLD;
-    const isWest = point.x <= x + EDGE_THRESHOLD;
+    const isNorth = worldPoint.y <= y + EDGE_THRESHOLD / scale;
+    const isEast = worldPoint.x >= x + width - EDGE_THRESHOLD / scale;
+    const isSouth = worldPoint.y >= y + height - EDGE_THRESHOLD / scale;
+    const isWest = worldPoint.x <= x + EDGE_THRESHOLD / scale;
 
     return isNorth && isWest
       ? "RESIZE_NW"
@@ -317,10 +320,10 @@ export class BoundingBoxOverlay
       : null;
   }
 
-  getCursor(point: Point): string {
+  getCursor(worldPoint: Point, scale: number): string {
     if (!this.isSelected()) return "pointer";
 
-    const resizeRegion = this.getResizeRegion(point);
+    const resizeRegion = this.getResizeRegion(worldPoint, scale);
 
     if (!resizeRegion) {
       return this.moveStartPoint ? "grabbing" : "grab";
@@ -345,8 +348,13 @@ export class BoundingBoxOverlay
   }
 
   // Interaction handlers
-  onPointerDown(point: Point, _event: PointerEvent): boolean {
-    const resizeRegion = this.getResizeRegion(point);
+  onPointerDown(
+    point: Point,
+    worldPoint: Point,
+    _event: PointerEvent,
+    scale: number
+  ): boolean {
+    const resizeRegion = this.getResizeRegion(worldPoint, scale);
     const cursorRegion = resizeRegion || "DRAGGING";
 
     if (cursorRegion === "DRAGGING" && !this.isDraggable) return false;
@@ -360,24 +368,29 @@ export class BoundingBoxOverlay
     return true;
   }
 
-  onMove(point: Point, event: PointerEvent): boolean {
-    this.calculateMoving(point);
+  onMove(
+    point: Point,
+    worldPoint: Point,
+    event: PointerEvent,
+    scale: number
+  ): boolean {
+    this.calculateMoving(point, worldPoint, scale);
 
     if (this.moveState === "DRAGGING") {
-      return this.onDrag(point, event);
+      return this.onDrag(point, event, scale);
     } else if (this.moveState.startsWith("RESIZE_")) {
-      return this.onResize(point, event);
+      return this.onResize(point, event, scale);
     } else {
       return false;
     }
   }
 
-  private onDrag(point: Point, _event: PointerEvent): boolean {
+  private onDrag(point: Point, _event: PointerEvent, scale: number): boolean {
     if (!this.moveStartPoint || !this.moveStartBounds) return false;
 
     const delta = {
-      x: point.x - this.moveStartPoint.x,
-      y: point.y - this.moveStartPoint.y,
+      x: (point.x - this.moveStartPoint.x) / scale,
+      y: (point.y - this.moveStartPoint.y) / scale,
     };
 
     // Update absolute bounds
@@ -393,12 +406,12 @@ export class BoundingBoxOverlay
     return true;
   }
 
-  private onResize(point: Point, _event: PointerEvent): boolean {
+  private onResize(point: Point, _event: PointerEvent, scale: number): boolean {
     if (!this.moveStartPoint || !this.moveStartBounds) return false;
 
     const delta = {
-      x: point.x - this.moveStartPoint.x,
-      y: point.y - this.moveStartPoint.y,
+      x: (point.x - this.moveStartPoint.x) / scale,
+      y: (point.y - this.moveStartPoint.y) / scale,
     };
 
     let { x, y, width, height } = this.moveStartBounds;

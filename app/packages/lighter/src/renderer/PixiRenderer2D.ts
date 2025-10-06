@@ -441,6 +441,14 @@ export class PixiRenderer2D implements Renderer2D {
   }
 
   /**
+   * Returns current scaling factor of the viewport.
+   * @returns Current scaling factor.
+   */
+  getScale(): number {
+    return this.viewport?.scaled ?? 1;
+  }
+
+  /**
    * Check if the renderer is initialized
    */
   isReady(): boolean {

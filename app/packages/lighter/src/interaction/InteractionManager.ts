@@ -35,8 +35,10 @@ export interface InteractionHandler {
 
   /**
    * Returns the type of cursor that is currently appropriate
+   * @param worldPoint - Current screen location translated to viewport location.
+   * @param scale - The current scaling factor of the renderer.
    */
-  getCursor?(point: Point): string;
+  getCursor?(worldPoint: Point, scale: number): string;
 
   /**
    * Returns the position from the start of handler movement
@@ -46,34 +48,50 @@ export interface InteractionHandler {
   /**
    * Handle pointer down event.
    * @param point - The point where the event occurred.
+   * @param worldPoint - Screen point translated to viewport point.
    * @param event - The original pointer event.
+   * @param scale - The current scaling factor of the renderer.
    * @returns True if the event was handled and should not propagate.
    */
-  onPointerDown?(point: Point, event: PointerEvent): boolean;
+  onPointerDown?(
+    point: Point,
+    worldoint: Point,
+    event: PointerEvent,
+    scale: number
+  ): boolean;
 
   /**
    * Handle pointer move event.
    * @param point - The point where the event occurred.
+   * @param worldPoint - Screen point translated to viewport point.
    * @param event - The original pointer event.
+   * @param scale - The current scaling factor of the renderer.
    * @returns True if the event was handled.
    */
-  onMove?(point: Point, event: PointerEvent): boolean;
+  onMove?(
+    point: Point,
+    worldPoint: Point,
+    event: PointerEvent,
+    sclae: number
+  ): boolean;
 
   /**
    * Handle pointer up event.
    * @param point - The point where the event occurred.
    * @param event - The original pointer event.
+   * @param scale - The current scaling factor of the renderer.
    * @returns True if the event was handled.
    */
-  onPointerUp?(point: Point, event: PointerEvent): boolean;
+  onPointerUp?(point: Point, event: PointerEvent, scale: number): boolean;
 
   /**
    * Handle click event.
    * @param point - The point where the event occurred.
    * @param event - The original pointer event.
+   * @param scale - The current scaling factor of the renderer.
    * @returns True if the event was handled.
    */
-  onClick?(point: Point, event: PointerEvent): boolean;
+  onClick?(point: Point, event: PointerEvent, scale: number): boolean;
 
   /**
    * Handle double-click event.
@@ -182,6 +200,9 @@ export class InteractionManager {
 
   private handlePointerDown = (event: PointerEvent): void => {
     const point = this.getCanvasPoint(event);
+    const worldPoint = this.renderer.screenToWorld(point);
+    const scale = this.renderer.getScale();
+
     this.clickStartTime = Date.now();
     this.clickStartPoint = point;
 
@@ -195,9 +216,9 @@ export class InteractionManager {
       handler = this.findHandlerAtPoint(point);
     }
 
-    if (handler?.onPointerDown?.(point, event)) {
+    if (handler?.onPointerDown?.(point, worldPoint, event, scale)) {
       this.canvas.style.cursor =
-        handler.getCursor?.(point) || this.canvas.style.cursor;
+        handler.getCursor?.(worldPoint, scale) || this.canvas.style.cursor;
 
       // If this is a movable overlay, track move state
       if (TypeGuards.isMovable(handler) && TypeGuards.isSpatial(handler)) {
@@ -223,6 +244,8 @@ export class InteractionManager {
 
   private handlePointerMove = (event: PointerEvent): void => {
     const point = this.getCanvasPoint(event);
+    const worldPoint = this.renderer.screenToWorld(point);
+    const scale = this.renderer.getScale();
     this.currentPixelCoordinates = point;
 
     const interactiveHandler = this.getInteractiveHandler();
@@ -237,16 +260,15 @@ export class InteractionManager {
     if (handler) {
       // Handle drag move
       if (!interactiveHandler) {
-        handler.onMove?.(point, event);
+        handler.onMove?.(point, worldPoint, event, scale);
       } else {
-        interactiveHandler.onMove?.(point, event);
+        interactiveHandler.onMove?.(point, worldPoint, event, scale);
       }
 
       if (handler.isMoving?.()) {
         this.renderer.disableZoomPan();
         this.canvas.style.cursor =
-          handler.getCursor?.(this.currentPixelCoordinates!) ||
-          this.canvas.style.cursor;
+          handler.getCursor?.(worldPoint, scale) || this.canvas.style.cursor;
 
         // Emit move event with bounds information
         if (TypeGuards.isSpatial(handler)) {
@@ -271,6 +293,8 @@ export class InteractionManager {
 
   private handlePointerUp = (event: PointerEvent): void => {
     const point = this.getCanvasPoint(event);
+    const worldPoint = this.renderer.screenToWorld(point);
+    const scale = this.renderer.getScale();
     const handler = this.findHandlerAtPoint(point);
     const now = Date.now();
 
@@ -278,10 +302,10 @@ export class InteractionManager {
       const startPosition = handler.getMoveStartPosition()!;
 
       // Handle drag end
-      handler.onPointerUp?.(point, event);
+      handler.onPointerUp?.(point, event, scale);
 
       this.canvas.style.cursor =
-        handler.getCursor?.(point) || this.canvas.style.cursor;
+        handler.getCursor?.(worldPoint, scale) || this.canvas.style.cursor;
 
       // Emit move end event with bounds information
       if (TypeGuards.isSpatial(handler)) {
@@ -310,7 +334,7 @@ export class InteractionManager {
       this.handleClick(point, event, now);
 
       // Clean up drag handler
-      handler.onPointerUp?.(point, event);
+      handler.onPointerUp?.(point, event, scale);
       this.canvas.releasePointerCapture(event.pointerId);
     } else {
       // Handle click
@@ -318,7 +342,7 @@ export class InteractionManager {
     }
 
     this.canvas.style.cursor =
-      handler?.getCursor?.(point) || this.canvas.style.cursor;
+      handler?.getCursor?.(worldPoint, scale) || this.canvas.style.cursor;
   };
 
   private handlePointerCancel = (event: PointerEvent): void => {
@@ -411,7 +435,7 @@ export class InteractionManager {
         event.preventDefault();
       }
       // Otherwise, handle regular click
-      else if (handler?.onClick?.(point, event)) {
+      else if (handler?.onClick?.(point, event, this.renderer.getScale())) {
         event.preventDefault();
       }
       // If no handler was found, clear selection
@@ -425,6 +449,9 @@ export class InteractionManager {
   }
 
   private handleHover(point: Point, event: PointerEvent): void {
+    const worldPoint = this.renderer.screenToWorld(point);
+    const scale = this.renderer.getScale();
+
     const handler = this.findHandlerAtPoint(point);
     const movingHandler = this.findMovingHandler();
 
@@ -478,7 +505,7 @@ export class InteractionManager {
     if (handler && this.hoveredHandler !== handler && !movingHandler) {
       handler.onHoverEnter?.(point, event);
       this.canvas.style.cursor =
-        handler.getCursor?.(point) || this.canvas.style.cursor;
+        handler.getCursor?.(worldPoint, scale) || this.canvas.style.cursor;
 
       this.eventBus?.emit({
         type: LIGHTER_EVENTS.OVERLAY_HOVER,
@@ -489,7 +516,7 @@ export class InteractionManager {
     // If we are hovering on the same overlay, move the hover
     if (this.hoveredHandler === handler) {
       this.canvas.style.cursor =
-        handler.getCursor?.(point) || this.canvas.style.cursor;
+        handler.getCursor?.(worldPoint, scale) || this.canvas.style.cursor;
 
       this.eventBus.emit({
         type: LIGHTER_EVENTS.OVERLAY_HOVER_MOVE,
@@ -498,7 +525,7 @@ export class InteractionManager {
     }
 
     this.canvas.style.cursor =
-      movingHandler?.getCursor?.(point) || this.canvas.style.cursor;
+      movingHandler?.getCursor?.(worldPoint, scale) || this.canvas.style.cursor;
 
     // Update the hovered handler
     this.hoveredHandler = handler;

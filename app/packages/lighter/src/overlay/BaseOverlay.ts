@@ -261,19 +261,33 @@ export abstract class BaseOverlay implements InteractionHandler {
    * Handle pointer down event.
    * Override in subclasses to implement custom behavior.
    * @param point - The point where the event occurred.
+   * @param worldPoint - Screen point translated to viewport point.
    * @param event - The original pointer event.
+   * @param scale - The current scaling factor of the viewport.
    * @returns True if the event was handled.
    */
-  onPointerDown?(point: Point, event: PointerEvent): boolean;
+  onPointerDown?(
+    point: Point,
+    worldPoint: Point,
+    event: PointerEvent,
+    scale: number
+  ): boolean;
 
   /**
    * Handle drag event.
    * Override in subclasses to implement custom behavior.
    * @param point - The point where the event occurred.
+   * @param worldPoint - Screen point translated to viewport point.
    * @param event - The original pointer event.
+   * @param scale - The current scaling factor of the viewport.
    * @returns True if the event was handled.
    */
-  onMove?(point: Point, event: PointerEvent): boolean;
+  onMove?(
+    point: Point,
+    worldPoint: Point,
+    event: PointerEvent,
+    scale: number
+  ): boolean;
 
   /**
    * Handle pointer up event.
