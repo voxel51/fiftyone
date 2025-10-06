@@ -4,7 +4,6 @@
 
 import type { Movable } from "../commands/MoveOverlayCommand";
 import {
-  DEFAULT_TEXT_PADDING,
   LABEL_ARCHETYPE_PRIORITY,
   STROKE_WIDTH,
   EDGE_THRESHOLD,

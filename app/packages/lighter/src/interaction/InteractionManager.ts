@@ -4,7 +4,7 @@
 
 import { UndoRedoManager } from "../commands/UndoRedoManager";
 import { TypeGuards } from "../core/Scene2D";
-import type { EventBus, SceneEvent } from "../event/EventBus";
+import type { EventBus, LighterEventDetail } from "../event/EventBus";
 import { LIGHTER_EVENTS } from "../event/EventBus";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { SelectionManager } from "../selection/SelectionManager";
@@ -537,7 +537,9 @@ export class InteractionManager {
     this.hoveredHandler = handler;
   }
 
-  private handleZoomed = (_event: SceneEvent): void => {
+  private handleZoomed = (
+    _event: CustomEvent<LighterEventDetail<"zoomed">>
+  ): void => {
     this.handlers?.forEach((handler) => handler.markDirty());
   };
 
@@ -662,6 +664,7 @@ export class InteractionManager {
     this.canvas.removeEventListener("pointercancel", this.handlePointerCancel);
     this.canvas.removeEventListener("pointerleave", this.handlePointerLeave);
     document.removeEventListener("keydown", this.handleKeyDown);
+    this.eventBus.off(LIGHTER_EVENTS.ZOOMED, this.handleZoomed);
     this.clearHandlers();
   }
 
