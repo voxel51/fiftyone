@@ -240,6 +240,9 @@ export class PixiRenderer2D implements Renderer2D {
       return { width: 0, height: 0 };
     }
 
+    const padding =
+      (options?.padding ?? DEFAULT_TEXT_PADDING) / this.getScale();
+
     const textStyle = new PIXI.TextStyle({
       fontFamily: options?.font || FONT_FAMILY,
       fontSize: options?.fontSize || FONT_SIZE,
@@ -251,8 +254,8 @@ export class PixiRenderer2D implements Renderer2D {
     });
 
     const pixiText = new PIXI.Text({ text, style: textStyle });
-    pixiText.x = position.x;
-    pixiText.y = position.y;
+    pixiText.x = position.x + padding;
+    pixiText.y = position.y - padding;
     pixiText.scale.set(1 / this.getScale());
 
     const textBounds = pixiText.getLocalBounds();
@@ -261,19 +264,17 @@ export class PixiRenderer2D implements Renderer2D {
       (options?.height || textBounds.height) / this.getScale();
     const finalWidth = textBounds.width / this.getScale();
 
+    pixiText.y -= finalHeight;
+
     if (options?.backgroundColor) {
       const background = new PIXI.Graphics();
-      const xyPadding =
-        (options.padding ?? DEFAULT_TEXT_PADDING) / this.getScale();
-      const whPadding =
-        ((options.padding ?? DEFAULT_TEXT_PADDING) * 2) / this.getScale();
 
       background
         .rect(
-          position.x - xyPadding,
-          position.y - xyPadding,
-          finalWidth + whPadding * 2,
-          finalHeight + whPadding * 2
+          position.x,
+          position.y - finalHeight - padding * 2,
+          finalWidth + padding * 2,
+          finalHeight + padding * 2
         )
         .fill(options.backgroundColor);
       this.addToContainer(background, containerId);
