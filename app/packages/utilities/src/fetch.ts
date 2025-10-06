@@ -11,20 +11,61 @@ let fetchFunctionSingleton: FetchFunction;
 let fetchHeaders: HeadersInit;
 let fetchPathPrefix = "";
 
+/**
+ * Supported methods for accessing response data.
+ */
+export type FetchResultType =
+  | "json"
+  | "blob"
+  | "text"
+  | "arrayBuffer"
+  | "json-stream";
+
+/**
+ * Configuration for a `fetch` call.
+ */
+export type FetchFunctionConfig<T> = {
+  method: string;
+  path: string;
+  body?: T;
+  result?: FetchResultType;
+  retries?: number;
+  retryCodes?: number[];
+  errorHandler?: (response: Response) => void | Promise<void>;
+};
+
 export interface FetchFunction {
   <A, R>(
     method: string,
     path: string,
     body?: A,
-    result?: "json" | "blob" | "text" | "arrayBuffer" | "json-stream",
+    result?: FetchResultType,
     retries?: number,
-    retryCodes?: number[]
+    retryCodes?: number[],
+    errorHandler?: (response: Response) => void | Promise<void>
   ): Promise<R>;
 }
 
 export const getFetchFunction = () => {
   return fetchFunctionSingleton;
 };
+
+/**
+ * Wrapper for {@link getFetchFunction} which provides configuration via
+ * {@link FetchFunctionConfig}.
+ */
+export const getFetchFunctionConfigurable =
+  (): (<A, R>(config: FetchFunctionConfig<A>) => Promise<R>) =>
+  <A>(config: FetchFunctionConfig<A>) =>
+    getFetchFunction()(
+      config.method,
+      config.path,
+      config.body,
+      config.result,
+      config.retries,
+      config.retryCodes,
+      config.errorHandler
+    );
 
 export const getFetchHeaders = () => {
   return fetchHeaders;
@@ -83,7 +124,8 @@ export const setFetchFunction = (
     body = null,
     result = "json",
     retries = 2,
-    retryCodes = [502, 503, 504]
+    retryCodes = [502, 503, 504],
+    errorHandler = null
   ) => {
     let url: string;
     const controller = new AbortController();
@@ -132,40 +174,47 @@ export const setFetchFunction = (
       referrerPolicy: "same-origin",
     });
 
-    if (response.status >= 400) {
-      const errorMetadata = {
-        code: response.status,
-        statusText: response.statusText,
-        bodyResponse: "",
-        route: response.url,
-        payload: body as object,
-        stack: null,
-        requestHeaders: headers,
-        responseHeaders: response.headers,
-        message: "",
-      };
-      let ErrorClass = NetworkError;
-
-      try {
-        const error = await response.json();
-        errorMetadata.bodyResponse = error;
-        if (error.stack) errorMetadata.stack = error?.stack;
-        errorMetadata.message = error?.message;
-        if (error?.stack) {
-          console.error(error.stack);
-        }
-        ErrorClass = ServerError;
-      } catch {
-        // if response body is not JSON
-        try {
-          errorMetadata.bodyResponse = await response.text();
-        } catch {
-          // skip response body if it cannot be read as text
-        }
-        errorMetadata.message = response.statusText;
+    if (!response.ok) {
+      if (errorHandler) {
+        await errorHandler(response);
       }
+      // if custom error handler doesn't throw, use default error handling
 
-      throw new ErrorClass(errorMetadata, errorMetadata.message);
+      if (response.status >= 400) {
+        const errorMetadata = {
+          code: response.status,
+          statusText: response.statusText,
+          bodyResponse: "",
+          route: response.url,
+          payload: body as object,
+          stack: null,
+          requestHeaders: headers,
+          responseHeaders: response.headers,
+          message: "",
+        };
+        let ErrorClass = NetworkError;
+
+        try {
+          const error = await response.json();
+          errorMetadata.bodyResponse = error;
+          if (error.stack) errorMetadata.stack = error?.stack;
+          errorMetadata.message = error?.message;
+          if (error?.stack) {
+            console.error(error.stack);
+          }
+          ErrorClass = ServerError;
+        } catch {
+          // if response body is not JSON
+          try {
+            errorMetadata.bodyResponse = await response.text();
+          } catch {
+            // skip response body if it cannot be read as text
+          }
+          errorMetadata.message = response.statusText;
+        }
+
+        throw new ErrorClass(errorMetadata, errorMetadata.message);
+      }
     }
 
     if (result === "json-stream") {
