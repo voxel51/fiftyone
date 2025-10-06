@@ -51,7 +51,7 @@ export const getFetchFunction = () => {
 };
 
 /**
- * Wrapper for {@link getFetchFunction} which provides configration via
+ * Wrapper for {@link getFetchFunction} which provides configuration via
  * {@link FetchFunctionConfig}.
  */
 export const getFetchFunctionConfigurable =

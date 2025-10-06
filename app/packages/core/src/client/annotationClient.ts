@@ -53,7 +53,7 @@ export type ErrorResponse = {
   errors: string[];
 };
 
-export type PatchSampleResponse = ErrorResponse | Sample;
+export type PatchSampleResponse = Sample;
 
 /**
  * Error resulting from a failed update operation.
@@ -87,8 +87,6 @@ const handleErrorResponse = async (response: Response) => {
   } else if (response.status === 404) {
     throw new NotFoundError({ path: "sample" });
   }
-
-  throw new Error(`http error: ${response.status} ${response.statusText}`);
 };
 
 /**
