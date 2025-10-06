@@ -20,6 +20,7 @@ import eta.core.video as etav
 import eta.core.web as etaw
 
 import fiftyone as fo
+from fiftyone.core.config import Config, Configurable
 import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
@@ -2241,6 +2242,65 @@ class Model(etal.Model):
             containing the predictions
         """
         return [self.predict(arg) for arg in args]
+
+
+class Model2Config(Config):
+    def __init__(self, path=None, **kwargs):
+        super().__init__(**kwargs)
+        self.path = path
+
+    @property
+    def cls(self):
+        """The fully-qualified name of this :class:`Model2Config` class."""
+        return etau.get_class_name(self)
+
+    @property
+    def model_cls(self):
+        """The :class:`Model2` class associated with this config."""
+        return etau.get_class(self.cls[: -len("Config")])
+
+    def build(self):
+        """Builds the :class:`Model2` instance associated with this config.
+
+        Returns:
+            a :class:`BaseRun` instance
+        """
+        return self.model_cls(self)
+
+
+class Model2(Configurable):
+    def __init__(self, config: Model2Config):
+        super().__init__(config)
+        self._get_item = None
+
+    def build_get_item(self, field_mapping=None):
+        raise NotImplementedError("subclasses must implement build_get_item")
+
+    @property
+    def get_item(self, field_mapping=None) -> fout.GetItem:
+        if self._get_item is None:
+            self._get_item = self.build_get_item(field_mapping=field_mapping)
+        self._get_item.field_mapping = field_mapping
+        return self._get_item
+
+    def collate_fn(self, batch):
+        return batch
+
+    def predict_samples(self, samples):
+        """
+        Performs prediction on the given samples.
+
+        Args:
+            samples: a :class:`fiftyone.core.collections.SampleCollection`
+
+        Returns:
+            a batch of predictions
+        """
+        return self.predict_batch(self.collate_fn(self.get_item(samples)))
+
+    def predict_batch(self, batch):
+        """ """
+        raise NotImplementedError("subclasses must implement predict()")
 
 
 class LogitsMixin(object):
