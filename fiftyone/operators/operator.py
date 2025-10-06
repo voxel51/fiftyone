@@ -343,3 +343,25 @@ class Operator(object):
         if not self._plugin_secrets:
             self._plugin_secrets = []
         self._plugin_secrets.extend(secrets)
+
+
+class PipelineOperator(Operator):
+    def resolve_pipeline(self, ctx):
+        """Returns the resolved pipeline of the operator.
+
+        Subclasses can implement this method to define the pipeline of the
+        operator.
+
+        Args:
+            ctx: the :class:`fiftyone.operators.executor.ExecutionContext`
+
+        Returns:
+            a :class:`fiftyone.operators.types.Pipeline`,
+        """
+        raise NotImplementedError("subclass must implement resolve_pipeline")
+
+    def execute(self, ctx):
+        """Not used for pipeline operators; pipelines are executed via stages"""
+        raise NotImplementedError(
+            "execute() not implemented for PipelineOperators"
+        )

@@ -16,7 +16,7 @@ from fiftyone.operators.executor import (
     ExecutionRunState,
     ExecutionProgress,
 )
-from fiftyone.operators.pipeline import PipelineStage
+from fiftyone.operators.types import Pipeline
 
 logger = logging.getLogger(__name__)
 
@@ -132,9 +132,7 @@ class DelegatedOperationDocument(object):
                 self.status.updated_at = doc["status"]["updated_at"]
 
         if "pipeline" in doc and doc["pipeline"] is not None:
-            self.pipeline = [
-                PipelineStage(**stage) for stage in doc["pipeline"]
-            ]
+            self.pipeline = Pipeline.from_json(doc["pipeline"])
 
         return self
 
@@ -145,9 +143,7 @@ class DelegatedOperationDocument(object):
                 "request_params": self.context._get_serialized_request_params()
             }
         if self.pipeline:
-            d["pipeline"] = [
-                dataclasses.asdict(stage) for stage in self.pipeline
-            ]
+            d["pipeline"] = self.pipeline.to_json()
 
         d.pop("_doc", None)
         d.pop("id", None)

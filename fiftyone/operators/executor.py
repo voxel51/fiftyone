@@ -18,10 +18,11 @@ import fiftyone.core.media as fom
 import fiftyone.core.odm.utils as focu
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
-from fiftyone.operators import constants, pipeline
+from fiftyone.operators import constants
 from fiftyone.operators.decorators import coroutine_timeout
 from fiftyone.operators.message import GeneratedMessage, MessageType
 from fiftyone.operators.operations import Operations
+from fiftyone.operators.operator import PipelineOperator
 from fiftyone.operators.panel import PanelRef
 from fiftyone.operators.registry import OperatorRegistry
 from fiftyone.operators.store import ExecutionStore
@@ -267,15 +268,16 @@ async def execute_or_delegate_operator(
             should_delegate = True
 
     # Validate PipelineOperators
-
-    pipeline_stages = []
-    if isinstance(operator, pipeline.PipelineOperator):
+    pipeline = None
+    if isinstance(operator, PipelineOperator):
         try:
-            pipeline_stages = operator.resolve_pipeline(ctx)
-            if not pipeline_stages or not isinstance(pipeline_stages, list):
-                raise TypeError("Pipeline must be a list of stages")
+            pipeline = operator.resolve_pipeline(ctx)
+            if not pipeline or not isinstance(pipeline, types.Pipeline):
+                raise TypeError(
+                    "Pipeline must be a fiftyone.operators.types.Pipeline"
+                )
             if not all(
-                isinstance(s, pipeline.PipelineStage) for s in pipeline_stages
+                isinstance(s, types.PipelineStage) for s in pipeline.stages
             ):
                 raise TypeError(
                     "Pipeline stages must be of type PipelineStage"
@@ -299,7 +301,7 @@ async def execute_or_delegate_operator(
                 raise ValueError(
                     "Distributed execution is only supported in FiftyOne Enterprise"
                 )
-            if isinstance(operator, pipeline.PipelineOperator):
+            if isinstance(operator, PipelineOperator):
                 raise ValueError(
                     "Pipeline operators require a distributed executor, "
                     "available only in FiftyOne Enterprise"
@@ -333,6 +335,11 @@ async def execute_or_delegate_operator(
                 if execution.result["context"]
                 else None
             )
+            execution.result["pipeline"] = (
+                execution.result["pipeline"].to_json()
+                if execution.result["pipeline"]
+                else None
+            )
             return execution
         except Exception as error:
             return ExecutionResult(
@@ -341,7 +348,7 @@ async def execute_or_delegate_operator(
                 error_message=str(error),
             )
     else:
-        if isinstance(operator, pipeline.PipelineOperator):
+        if isinstance(operator, PipelineOperator):
             raise NotImplementedError(
                 "Immediate execution of pipeline operators is not supported"
             )
