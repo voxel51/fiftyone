@@ -242,24 +242,31 @@ export class PixiRenderer2D implements Renderer2D {
       wordWrap: true,
       wordWrapWidth: options?.maxWidth || 200,
     });
+
     const pixiText = new PIXI.Text({ text, style: textStyle });
     pixiText.x = position.x;
     pixiText.y = position.y;
+    pixiText.scale.set(1 / this.getScale());
 
     const textBounds = pixiText.getLocalBounds();
 
-    const finalHeight = options?.height || textBounds.height;
-    const finalWidth = textBounds.width;
+    const finalHeight =
+      (options?.height || textBounds.height) / this.getScale();
+    const finalWidth = textBounds.width / this.getScale();
 
     if (options?.backgroundColor) {
-      const padding = options.padding ?? DEFAULT_TEXT_PADDING;
       const background = new PIXI.Graphics();
+      const xyPadding =
+        (options.padding ?? DEFAULT_TEXT_PADDING) / this.getScale();
+      const whPadding =
+        ((options.padding ?? DEFAULT_TEXT_PADDING) * 2) / this.getScale();
+
       background
         .rect(
-          position.x - padding,
-          position.y - padding,
-          finalWidth + padding * 2,
-          finalHeight + padding * 2
+          position.x - xyPadding,
+          position.y - xyPadding,
+          finalWidth + whPadding * 2,
+          finalHeight + whPadding * 2
         )
         .fill(options.backgroundColor);
       this.addToContainer(background, containerId);

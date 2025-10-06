@@ -206,8 +206,10 @@ export class BoundingBoxOverlay
 
     if (this.options.label && this.options.label.label?.length > 0) {
       const labelPosition = {
-        x: this.absoluteBounds.x + DEFAULT_TEXT_PADDING - 1,
-        y: this.absoluteBounds.y - 20,
+        x:
+          this.absoluteBounds.x +
+          (DEFAULT_TEXT_PADDING - 1) / renderer.getScale(),
+        y: this.absoluteBounds.y - 20 / renderer.getScale(),
       };
 
       let textToDraw = this.options.label.label;
