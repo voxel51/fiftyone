@@ -12,6 +12,8 @@ import {
   HANDLE_COLOR,
   HANDLE_FACTOR,
   HANDLE_OUTLINE,
+  SELECTED_ALPHA,
+  SELECTED_COLOR,
 } from "../constants";
 import type { EventBus } from "../event/EventBus";
 import { LIGHTER_EVENTS } from "../event/EventBus";
@@ -200,6 +202,11 @@ export class PixiRenderer2D implements Renderer2D {
       const alpha = colorObj.alpha * (style.opacity || 1);
 
       if (style.dashPattern && style.dashPattern.length > 0) {
+        graphics
+          .rect(bounds.x, bounds.y, bounds.width, bounds.height)
+          .setFillStyle({ color: SELECTED_COLOR, alpha: SELECTED_ALPHA })
+          .fill();
+
         const dashLine = new DashLine(graphics, {
           dash: style.dashPattern.map((dash) => dash / this.getScale()),
           width,

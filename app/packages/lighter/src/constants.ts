@@ -30,5 +30,11 @@ export const FONT_WEIGHT = "bold";
  */
 export const EDGE_THRESHOLD = 10;
 export const HANDLE_FACTOR = 3;
-export const HANDLE_COLOR = "white";
+export const HANDLE_COLOR = 0xffffff;
 export const HANDLE_OUTLINE = 2;
+
+/**
+ * Opacity of selected bounding boxes
+ */
+export const SELECTED_ALPHA = 0.1;
+export const SELECTED_COLOR = 0x000000;
