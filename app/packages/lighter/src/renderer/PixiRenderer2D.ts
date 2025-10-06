@@ -201,7 +201,7 @@ export class PixiRenderer2D implements Renderer2D {
 
       if (style.dashPattern && style.dashPattern.length > 0) {
         const dashLine = new DashLine(graphics, {
-          dash: style.dashPattern,
+          dash: style.dashPattern.map((dash) => dash / this.getScale()),
           width,
           color,
           alpha,
