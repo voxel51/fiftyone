@@ -103,9 +103,9 @@ def _extract_description(section_content: str) -> str:
     description = re.sub(r"\s+", " ", description)
 
     if "." in description:
-        first_sentence = description.split(".")[0] + "."
-        if len(first_sentence) <= 150:
-            return first_sentence
+        sentences = description.split(".")
+        if len(sentences) >= 2 and len(sentences[0] + sentences[1]) <= 150:
+            return sentences[0].strip() + ". " + sentences[1].strip() + "."
 
     if len(description) > 150:
         return description[:147] + "..."
@@ -165,8 +165,13 @@ def main():
     for slug, title, section_content in datasets:
         link_slug = _normalize_slug(slug)
         dataset_path = out_dir / f"{link_slug}.rst"
+        section_lines = section_content.strip().splitlines()
+        if section_lines and section_lines[0].startswith(".. _dataset-zoo-"):
+            section_lines = section_lines[1:]
+            if section_lines and not section_lines[0].strip():
+                section_lines = section_lines[1:]
         dataset_path.write_text(
-            section_content.strip() + "\n", encoding="utf-8"
+            "\n".join(section_lines) + "\n", encoding="utf-8"
         )
 
     logger.info("Dataset zoo documentation generated successfully!")
