@@ -478,13 +478,6 @@ def _apply_image_model_data_loader(
     with contextlib.ExitStack() as context:
         pb = context.enter_context(fou.ProgressBar(samples, progress=progress))
         ctx = context.enter_context(foc.SaveContext(samples))
-        submit = context.enter_context(
-            fou.async_executor(
-                max_workers=1,
-                skip_failures=skip_failures,
-                warning="Async failure labeling batches",
-            )
-        )
 
         def save_batch(sample_batch, labels_batch):
             with _handle_batch_error(skip_failures, sample_batch):
@@ -514,7 +507,7 @@ def _apply_image_model_data_loader(
                 else:
                     labels_batch = model.predict_all(imgs)
 
-                submit(save_batch, sample_batch, labels_batch)
+                save_batch(sample_batch, labels_batch)
 
             pb.update(len(sample_batch))
 
@@ -1221,14 +1214,6 @@ def _compute_image_embeddings_data_loader(
         else:
             ctx = None
 
-        submit = context.enter_context(
-            fou.async_executor(
-                max_workers=1,
-                skip_failures=skip_failures,
-                warning="Async failure saving embeddings",
-            )
-        )
-
         def save_batch(sample_batch, embeddings_batch):
             with _handle_batch_error(skip_failures, sample_batch):
                 for sample, embedding in zip(sample_batch, embeddings_batch):
@@ -1260,7 +1245,7 @@ def _compute_image_embeddings_data_loader(
                 )
 
             if embeddings_field is not None:
-                submit(save_batch, sample_batch, embeddings_batch)
+                save_batch(sample_batch, embeddings_batch)
             else:
                 embeddings.extend(embeddings_batch)
 
