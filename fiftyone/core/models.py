@@ -2277,7 +2277,7 @@ class Model2(Configurable):
         raise NotImplementedError("subclasses must implement build_get_item")
 
     @property
-    def get_item(self, field_mapping=None) -> fout.GetItem:
+    def get_item(self, field_mapping=None):
         if self._get_item is None:
             self._get_item = self.build_get_item(field_mapping=field_mapping)
         self._get_item.field_mapping = field_mapping
