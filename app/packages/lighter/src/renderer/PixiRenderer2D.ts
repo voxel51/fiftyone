@@ -86,6 +86,17 @@ export class PixiRenderer2D implements Renderer2D {
     // Activate drag, pinch, and wheel plugins.
     this.viewport.drag().pinch().wheel();
 
+    // to re-render the scene with updated scaling
+    // TODO: throttle?
+    this.viewport.on("zoomed", (_data) => {
+      if (this.viewport && this.eventBus) {
+        this.eventBus.emit({
+          type: LIGHTER_EVENTS.ZOOMED,
+          detail: { scale: this.viewport.scaled },
+        });
+      }
+    });
+
     this.foregroundContainer = new PIXI.Container();
     this.backgroundContainer = new PIXI.Container();
 
@@ -169,14 +180,14 @@ export class PixiRenderer2D implements Renderer2D {
   ): void {
     width *= HANDLE_FACTOR;
 
-    const outline = 2 * HANDLE_OUTLINE;
+    const outline = (2 * HANDLE_OUTLINE) / this.getScale();
     this.drawBoxes(graphics, bounds, width + outline, color, alpha);
     this.drawBoxes(graphics, bounds, width, HANDLE_COLOR, alpha);
   }
 
   drawRect(bounds: Rect, style: DrawStyle, containerId: string): void {
     const graphics = new PIXI.Graphics();
-    const width = style.lineWidth || 1;
+    const width = (style.lineWidth || 1) / this.getScale();
 
     if (style.fillStyle) {
       graphics.rect(bounds.x, bounds.y, bounds.width, bounds.height);

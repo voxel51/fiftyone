@@ -93,6 +93,8 @@ export const LIGHTER_EVENTS = {
   SCENE_OPTIONS_CHANGED: "scene-options-changed",
   /** Emitted when the scene interactive mode changes */
   SCENE_INTERACTIVE_MODE_CHANGED: "scene-interactive-mode-changed",
+  /** Emitted when the viewport is zoomed (via wheel, pinch, or programmatic zoom) */
+  ZOOMED: "zoomed",
 
   // ============================================================================
   // "DO" EVENTS USERS CAN EMIT TO FORCE STATE CHANGES OR ACTIONS
@@ -277,6 +279,10 @@ export type SceneEvent =
   | {
       type: typeof LIGHTER_EVENTS.SCENE_INTERACTIVE_MODE_CHANGED;
       detail: { interactiveMode: boolean };
+    }
+  | {
+      type: typeof LIGHTER_EVENTS.ZOOMED;
+      detail: { scale: number };
     };
 
 /**
