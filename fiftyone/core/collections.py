@@ -236,6 +236,26 @@ class SaveContext(object):
             self._reload_parents.clear()
 
 
+class AsyncSaveContext(SaveContext):
+    def __init__(self, *args, executor=None, **kwargs):
+        if executor is None:
+            raise ValueError("executor must be specified")
+        super().__init__(*args, **kwargs)
+        self.executor = executor
+
+    def __enter__(self):
+        super().__enter__()
+        self.executor.__enter__()
+        return self
+
+    def __exit__(self, *args):
+        super().__exit__(*args)
+        self.executor.__exit__(*args)
+
+    def _save_batch(self):
+        self.executor.submit(super()._save_batch)
+
+
 class SampleCollection(object):
     """Abstract class representing an ordered collection of
     :class:`fiftyone.core.sample.Sample` instances in a
