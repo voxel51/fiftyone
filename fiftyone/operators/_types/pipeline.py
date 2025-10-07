@@ -81,6 +81,7 @@ class Pipeline:
                 for the stage, optional
             params: optional parameters to pass to the operator, overwriting
                 any existing parameters
+            **kwargs: reserved for future use
 
         Returns:
             a :class:`PipelineStage`
