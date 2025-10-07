@@ -18,7 +18,16 @@ const useEscape = () => {
           }
 
           const modal = await snapshot.getPromise(fos.modalSelector);
-          modal === null && reset(fos.selectedSamples);
+          // TODO: modal is always `null` here right after a modal closes, so this isn't the condition we want
+          if (modal === null) {
+            if (
+              confirm(
+                "You are about to clear all selections. This cannot be undone. Are you sure?"
+              )
+            ) {
+              reset(fos.selectedSamples);
+            }
+          }
         },
       []
     )

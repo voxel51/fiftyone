@@ -37,6 +37,13 @@ export class LookerElement<State extends BaseState> extends BaseElement<
               shouldHandleKeyEvents || matchedControl.alwaysHandle;
             if (enabled) {
               matchedControl.action(update, dispatchEvent, e.key, e.shiftKey);
+
+              // If this is a Modal, we don't want Escape to bubble up to the Grid
+              // Hack: `lookerOptions` only sets showControl=true when a Modal
+              const isModal = state.options.showControls === true;
+              if (e.key === "Escape" && isModal) {
+                e.stopPropagation();
+              }
             }
           }
 
