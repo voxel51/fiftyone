@@ -1,0 +1,176 @@
+import {
+  AdaptiveDpr,
+  AdaptiveEvents,
+  Bvh,
+  CameraControls,
+  OrbitControls,
+  OrthographicCamera,
+  PerspectiveCamera as PerspectiveCameraDrei,
+} from "@react-three/drei";
+import * as THREE from "three";
+import { Vector3 } from "three";
+import { SpinningCube } from "../SpinningCube";
+import { StatusTunnel } from "../StatusBar";
+import { ThreeDLabels } from "../labels";
+import { FoSceneComponent } from "./FoScene";
+import { Gizmos } from "./Gizmos";
+import { SceneControls } from "./scene-controls/SceneControls";
+
+type ProjectionType = "Perspective" | "Orthographic";
+
+interface Fo3dSceneContentProps {
+  /**
+   * Camera position
+   */
+  cameraPosition: Vector3;
+  /**
+   * Up vector for the camera
+   */
+  upVector: Vector3 | null;
+  /**
+   * Camera field of view
+   */
+  fov?: number;
+  /**
+   * Camera near plane
+   */
+  near?: number;
+  /**
+   * Camera far plane
+   */
+  far?: number;
+  /**
+   * Camera aspect ratio
+   */
+  aspect?: number;
+  /**
+   * Camera zoom (for orthographic)
+   */
+  zoom?: number;
+  /**
+   * Whether auto-rotate is enabled
+   */
+  autoRotate: boolean;
+  /**
+   * Reference to camera controls
+   */
+  cameraControlsRef: React.RefObject<CameraControls>;
+  /**
+   * The 3D scene to render
+   */
+  foScene: any;
+  /**
+   * Whether the scene is initialized
+   */
+  isSceneInitialized: boolean;
+  /**
+   * Sample data for labels
+   */
+  sample: any;
+  /**
+   * Point cloud settings
+   */
+  pointCloudSettings: any;
+  /**
+   * Reference to the assets group
+   */
+  assetsGroupRef: React.RefObject<THREE.Group>;
+  /**
+   * Camera projection type
+   */
+  projection?: ProjectionType;
+  /**
+   * Reference to perspective camera
+   */
+  perspectiveCameraRef?: React.RefObject<THREE.PerspectiveCamera>;
+  /**
+   * Reference to orthographic camera
+   */
+  orthographicCameraRef?: React.RefObject<THREE.OrthographicCamera>;
+  /**
+   * Whether or not to render gizmo helper.
+   */
+  isGizmoHelperVisible?: boolean;
+}
+
+export const Fo3dSceneContent = ({
+  cameraPosition,
+  upVector,
+  fov = 50,
+  near = 0.1,
+  far = 2500,
+  aspect = 1,
+  zoom = 100,
+  autoRotate,
+  cameraControlsRef,
+  foScene,
+  isSceneInitialized,
+  isGizmoHelperVisible,
+  sample,
+  pointCloudSettings,
+  assetsGroupRef,
+  projection = "Perspective",
+  perspectiveCameraRef,
+  orthographicCameraRef,
+}: Fo3dSceneContentProps) => {
+  return (
+    <>
+      <StatusTunnel.Out />
+      <AdaptiveDpr pixelated />
+      <AdaptiveEvents />
+
+      {projection === "Perspective" ? (
+        <PerspectiveCameraDrei
+          makeDefault
+          ref={perspectiveCameraRef}
+          position={cameraPosition}
+          up={upVector ?? [0, 1, 0]}
+          fov={foScene?.cameraProps.fov ?? fov}
+          near={foScene?.cameraProps.near ?? near}
+          far={foScene?.cameraProps.far ?? far}
+          aspect={foScene?.cameraProps.aspect ?? aspect}
+          onUpdate={(cam) => cam.updateProjectionMatrix()}
+        />
+      ) : (
+        <OrthographicCamera
+          makeDefault
+          ref={orthographicCameraRef}
+          position={cameraPosition}
+          up={upVector ?? [0, 1, 0]}
+          zoom={100}
+          near={foScene?.cameraProps.near ?? near}
+          far={foScene?.cameraProps.far ?? far}
+          onUpdate={(cam) => cam.updateProjectionMatrix()}
+        />
+      )}
+
+      {!autoRotate && (
+        <CameraControls
+          smoothTime={0.1}
+          dollySpeed={projection === "Perspective" ? 0.1 : 0.8}
+          dollyToCursor
+          ref={cameraControlsRef}
+        />
+      )}
+      {autoRotate && <OrbitControls autoRotate={autoRotate} makeDefault />}
+
+      <SceneControls scene={foScene} cameraControlsRef={cameraControlsRef} />
+
+      <Gizmos
+        isGizmoHelperVisible={isGizmoHelperVisible}
+        isGridVisible={true}
+      />
+      {!isSceneInitialized && <SpinningCube />}
+
+      <Bvh firstHitOnly enabled={pointCloudSettings.enableTooltip}>
+        <group ref={assetsGroupRef} visible={isSceneInitialized}>
+          <FoSceneComponent scene={foScene} />
+        </group>
+      </Bvh>
+
+      {isSceneInitialized && (
+        <ThreeDLabels sampleMap={{ fo3d: sample as any }} />
+      )}
+    </>
+  );
+};

@@ -211,7 +211,9 @@ export const Looker3d = () => {
             hoveringRef.current = false;
           }}
         />
-        <AnnotationToolbar isVisible={isAnnotateMode} actions={actions} />
+        {mode === "annotate" && (
+          <AnnotationToolbar isVisible={isAnnotateMode} actions={actions} />
+        )}
       </Container>
     </Fo3dErrorBoundary>
   );

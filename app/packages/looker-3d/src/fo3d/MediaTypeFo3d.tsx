@@ -2,14 +2,7 @@ import { LoadingDots } from "@fiftyone/components";
 import { usePluginSettings } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { useBrowserStorage } from "@fiftyone/state";
-import {
-  AdaptiveDpr,
-  AdaptiveEvents,
-  Bvh,
-  CameraControls,
-  OrbitControls,
-  PerspectiveCamera as PerspectiveCameraDrei,
-} from "@react-three/drei";
+import { CameraControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import CameraControlsImpl from "camera-controls";
 import {
@@ -24,19 +17,16 @@ import { useRecoilCallback, useRecoilValue } from "recoil";
 import * as THREE from "three";
 import { Vector3 } from "three";
 import { CAMERA_POSITION_KEY } from "../Environment";
-import { SpinningCube } from "../SpinningCube";
-import { StatusBar, StatusTunnel } from "../StatusBar";
+import { StatusBar } from "../StatusBar";
 import { PcdColorMapTunnel } from "../components/PcdColormapModal";
 import {
   DEFAULT_CAMERA_POSITION,
-  RAY_CASTING_SENSITIVITY,
   SET_EGO_VIEW_EVENT,
   SET_TOP_VIEW_EVENT,
 } from "../constants";
 import { StatusBarRootContainer } from "../containers";
 import { useFo3d, useHotkey, useTrackStatus } from "../hooks";
 import { useFo3dBounds } from "../hooks/use-bounds";
-import { ThreeDLabels } from "../labels";
 import type { Looker3dSettings } from "../settings";
 import {
   activeNodeAtom,
@@ -47,15 +37,15 @@ import {
   isPointTransformModeAtom,
   isPointTransformingAtom,
   isTransformingAtom,
+  selectedLabelForAnnotationAtom,
   selectedPointAtom,
 } from "../state";
 import { HoverMetadata } from "../types";
-import { FoSceneComponent } from "./FoScene";
-import { Gizmos } from "./Gizmos";
+import { Fo3dSceneContent } from "./Fo3dCanvas";
 import HoverMetadataHUD from "./HoverMetadataHUD";
+import { MultiPanelView } from "./MultiPanelView";
 import { TransformHUD } from "./TransformHUD";
 import { Fo3dSceneContext } from "./context";
-import { SceneControls } from "./scene-controls/SceneControls";
 import {
   getFo3dRoot,
   getMediaPathForFo3dSample,
@@ -125,6 +115,9 @@ const calculateCameraPositionForUpVector = (
 export const MediaTypeFo3dComponent = () => {
   const sample = useRecoilValue(fos.fo3dSample);
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
+  const selectedLabelForAnnotation = useRecoilValue(
+    selectedLabelForAnnotationAtom
+  );
 
   const settings = usePluginSettings<Looker3dSettings>("3d");
 
@@ -744,79 +737,50 @@ export const MediaTypeFo3dComponent = () => {
         pluginSettings: settings,
       }}
     >
-      <main
-        ref={containerRef}
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          height: "100%",
-          width: "100%",
-        }}
-      >
-        <HoverMetadataHUD />
-        <TransformHUD />
-        <PcdColorMapTunnel.Out />
-        <Canvas
-          id={CANVAS_WRAPPER_ID}
-          eventSource={containerRef}
-          onPointerMissed={resetActiveNode}
-          key={upVector ? upVector.toArray().join(",") : null}
-          raycaster={{
-            params: {
-              Points: {
-                threshold:
-                  RAY_CASTING_SENSITIVITY[
-                    pointCloudSettings.rayCastingSensitivity
-                  ],
-              },
-            },
+      {selectedLabelForAnnotation ? (
+        <MultiPanelView foScene={foScene} sample={sample} />
+      ) : (
+        <main
+          ref={containerRef}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            height: "100%",
+            width: "100%",
           }}
         >
-          <StatusTunnel.Out />
-          <PerspectiveCameraDrei
-            makeDefault
-            ref={cameraRef}
-            position={defaultCameraPositionComputed}
-            up={upVector ?? [0, 1, 0]}
-            fov={foScene?.cameraProps.fov ?? 50}
-            near={foScene?.cameraProps.near ?? 0.1}
-            far={foScene?.cameraProps.far ?? 2500}
-            aspect={foScene?.cameraProps.aspect ?? 1}
-            onUpdate={(cam) => cam.updateProjectionMatrix()}
-          />
-          <AdaptiveDpr pixelated />
-          <AdaptiveEvents />
-          {!autoRotate && (
-            <CameraControls
-              smoothTime={0.1}
-              dollySpeed={0.1}
-              dollyToCursor
-              ref={cameraControlsRef}
+          <HoverMetadataHUD />
+          <TransformHUD />
+          <PcdColorMapTunnel.Out />
+          <Canvas
+            id={CANVAS_WRAPPER_ID}
+            eventSource={containerRef}
+            onPointerMissed={resetActiveNode}
+            key={upVector ? upVector.toArray().join(",") : null}
+            frameloop="demand"
+          >
+            <Fo3dSceneContent
+              cameraPosition={defaultCameraPositionComputed}
+              upVector={upVector}
+              fov={foScene?.cameraProps.fov ?? 50}
+              near={foScene?.cameraProps.near ?? 0.1}
+              far={foScene?.cameraProps.far ?? 2500}
+              aspect={foScene?.cameraProps.aspect ?? 1}
+              autoRotate={autoRotate}
+              cameraControlsRef={cameraControlsRef}
+              foScene={foScene}
+              isSceneInitialized={isSceneInitialized}
+              sample={sample}
+              pointCloudSettings={pointCloudSettings}
+              assetsGroupRef={assetsGroupRef}
+              perspectiveCameraRef={cameraRef}
             />
-          )}
-          {autoRotate && <OrbitControls autoRotate={autoRotate} makeDefault />}
-          <SceneControls
-            scene={foScene}
-            cameraControlsRef={cameraControlsRef}
-          />
-          <Gizmos />
-
-          {!isSceneInitialized && <SpinningCube />}
-
-          <Bvh firstHitOnly enabled={pointCloudSettings.enableTooltip}>
-            <group ref={assetsGroupRef} visible={isSceneInitialized}>
-              <FoSceneComponent scene={foScene} />
-            </group>
-          </Bvh>
-
-          {isSceneInitialized && (
-            <ThreeDLabels sampleMap={{ fo3d: sample as any }} />
-          )}
-        </Canvas>
-        <StatusBarRootContainer>
-          <StatusBar cameraRef={cameraRef} />
-        </StatusBarRootContainer>
-      </main>
+          </Canvas>
+          <StatusBarRootContainer>
+            <StatusBar cameraRef={cameraRef} />
+          </StatusBarRootContainer>
+        </main>
+      )}
     </Fo3dSceneContext.Provider>
   );
 };
