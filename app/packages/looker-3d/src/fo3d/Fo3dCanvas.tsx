@@ -80,13 +80,11 @@ interface Fo3dSceneContentProps {
    */
   projection?: ProjectionType;
   /**
-   * Reference to perspective camera
+   * Reference to camera
    */
-  perspectiveCameraRef?: React.RefObject<THREE.PerspectiveCamera>;
-  /**
-   * Reference to orthographic camera
-   */
-  orthographicCameraRef?: React.RefObject<THREE.OrthographicCamera>;
+  cameraRef?: React.RefObject<
+    THREE.PerspectiveCamera | THREE.OrthographicCamera
+  >;
   /**
    * Whether or not to render gizmo helper.
    */
@@ -109,9 +107,8 @@ export const Fo3dSceneContent = ({
   sample,
   pointCloudSettings,
   assetsGroupRef,
+  cameraRef,
   projection = "Perspective",
-  perspectiveCameraRef,
-  orthographicCameraRef,
 }: Fo3dSceneContentProps) => {
   return (
     <>
@@ -122,7 +119,7 @@ export const Fo3dSceneContent = ({
       {projection === "Perspective" ? (
         <PerspectiveCameraDrei
           makeDefault
-          ref={perspectiveCameraRef}
+          ref={cameraRef as React.MutableRefObject<THREE.PerspectiveCamera>}
           position={cameraPosition}
           up={upVector ?? [0, 1, 0]}
           fov={foScene?.cameraProps.fov ?? fov}
@@ -134,7 +131,7 @@ export const Fo3dSceneContent = ({
       ) : (
         <OrthographicCamera
           makeDefault
-          ref={orthographicCameraRef}
+          ref={cameraRef as React.MutableRefObject<THREE.OrthographicCamera>}
           position={cameraPosition}
           up={upVector ?? [0, 1, 0]}
           zoom={100}

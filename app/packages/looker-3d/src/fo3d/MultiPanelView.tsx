@@ -18,6 +18,7 @@ import { Vector3 } from "three";
 import { PcdColorMapTunnel } from "../components/PcdColormapModal";
 import { DEFAULT_CAMERA_POSITION } from "../constants";
 import { StatusBarRootContainer } from "../containers";
+import { FoScene } from "../hooks";
 import { ThreeDLabels } from "../labels";
 import { SpinningCube } from "../SpinningCube";
 import {
@@ -66,11 +67,20 @@ const defaultState: MultiPanelViewState = {
 };
 
 interface MultiPanelViewProps {
-  foScene: any;
+  cameraControlsRef: React.MutableRefObject<CameraControlsImpl>;
+  cameraRef: React.MutableRefObject<
+    THREE.PerspectiveCamera | THREE.OrthographicCamera
+  >;
+  foScene: FoScene;
   sample: any;
 }
 
-export const MultiPanelView = ({ foScene, sample }: MultiPanelViewProps) => {
+export const MultiPanelView = ({
+  cameraControlsRef,
+  cameraRef,
+  foScene,
+  sample,
+}: MultiPanelViewProps) => {
   const { isSceneInitialized, upVector } = useFo3dContext();
   const [panelState, setPanelState] = useBrowserStorage<MultiPanelViewState>(
     "fo3d-multi-panel-state",
@@ -78,9 +88,6 @@ export const MultiPanelView = ({ foScene, sample }: MultiPanelViewProps) => {
   );
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const perspectiveCameraRef = useRef<THREE.PerspectiveCamera>();
-  const orthographicCameraRef = useRef<THREE.OrthographicCamera>();
-  const cameraControlsRef = useRef<CameraControls>();
   const isTransforming = useRecoilValue(isTransformingAtom);
   const isPointTransforming = useRecoilValue(isPointTransformingAtom);
 
@@ -216,8 +223,7 @@ export const MultiPanelView = ({ foScene, sample }: MultiPanelViewProps) => {
       <MainPanel
         projection={panelState.projection}
         setProjection={setProjection}
-        perspectiveCameraRef={perspectiveCameraRef}
-        orthographicCameraRef={orthographicCameraRef}
+        cameraRef={cameraRef}
         cameraControlsRef={cameraControlsRef}
         autoRotate={autoRotate}
         foScene={foScene}
@@ -262,7 +268,7 @@ export const MultiPanelView = ({ foScene, sample }: MultiPanelViewProps) => {
       />
 
       <StatusBarRootContainer>
-        <StatusBar cameraRef={perspectiveCameraRef} />
+        <StatusBar cameraRef={cameraRef} />
       </StatusBarRootContainer>
     </main>
   );
@@ -271,8 +277,7 @@ export const MultiPanelView = ({ foScene, sample }: MultiPanelViewProps) => {
 const MainPanel = ({
   projection,
   setProjection,
-  perspectiveCameraRef,
-  orthographicCameraRef,
+  cameraRef,
   cameraControlsRef,
   autoRotate,
   foScene,
@@ -284,8 +289,9 @@ const MainPanel = ({
 }: {
   projection: ProjectionType;
   setProjection: (projection: ProjectionType) => void;
-  perspectiveCameraRef: React.RefObject<THREE.PerspectiveCamera>;
-  orthographicCameraRef: React.RefObject<THREE.OrthographicCamera>;
+  cameraRef: React.RefObject<
+    THREE.PerspectiveCamera | THREE.OrthographicCamera
+  >;
   cameraControlsRef: React.RefObject<CameraControls>;
   autoRotate: boolean;
   foScene: any;
@@ -329,8 +335,7 @@ const MainPanel = ({
           pointCloudSettings={pointCloudSettings}
           assetsGroupRef={assetsGroupRef}
           projection={projection}
-          perspectiveCameraRef={perspectiveCameraRef}
-          orthographicCameraRef={orthographicCameraRef}
+          cameraRef={cameraRef}
         />
       </View>
 

@@ -20,7 +20,7 @@ import {
   useState,
 } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
-import type { PerspectiveCamera, Vector3 } from "three";
+import type { OrthographicCamera, PerspectiveCamera, Vector3 } from "three";
 import tunnel from "tunnel-rat";
 import { StatusBarContainer } from "./containers";
 import { activeNodeAtom, isStatusBarOnAtom } from "./state";
@@ -321,7 +321,7 @@ const PerfStats = () => {
 export const StatusBar = ({
   cameraRef,
 }: {
-  cameraRef: RefObject<PerspectiveCamera>;
+  cameraRef: RefObject<PerspectiveCamera | OrthographicCamera>;
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [showPerfStatus, setShowPerfStatus] = useRecoilState(isStatusBarOnAtom);

@@ -5,6 +5,7 @@ import { useBrowserStorage } from "@fiftyone/state";
 import { CameraControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import CameraControlsImpl from "camera-controls";
+import { useAtomValue } from "jotai";
 import {
   useCallback,
   useEffect,
@@ -125,6 +126,8 @@ export const MediaTypeFo3dComponent = () => {
     () => getMediaPathForFo3dSample(sample, mediaField),
     [mediaField, sample]
   );
+
+  const mode = useAtomValue(fos.modalMode);
 
   const mediaUrl = useMemo(() => fos.getSampleSrc(mediaPath), [mediaPath]);
 
@@ -737,8 +740,13 @@ export const MediaTypeFo3dComponent = () => {
         pluginSettings: settings,
       }}
     >
-      {selectedLabelForAnnotation ? (
-        <MultiPanelView foScene={foScene} sample={sample} />
+      {selectedLabelForAnnotation && mode === "annotate" ? (
+        <MultiPanelView
+          foScene={foScene}
+          sample={sample}
+          cameraRef={cameraRef}
+          cameraControlsRef={cameraControlsRef}
+        />
       ) : (
         <main
           ref={containerRef}
@@ -773,7 +781,7 @@ export const MediaTypeFo3dComponent = () => {
               sample={sample}
               pointCloudSettings={pointCloudSettings}
               assetsGroupRef={assetsGroupRef}
-              perspectiveCameraRef={cameraRef}
+              cameraRef={cameraRef}
             />
           </Canvas>
           <StatusBarRootContainer>
