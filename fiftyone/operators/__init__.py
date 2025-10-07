@@ -5,7 +5,7 @@ FiftyOne operators.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from .operator import Operator, OperatorConfig
+from .operator import Operator, OperatorConfig, PipelineOperator
 from .registry import (
     OperatorRegistry,
     get_operator,
@@ -21,7 +21,6 @@ from .executor import (
 )
 from .utils import ProgressHandler, is_new
 from .panel import Panel, PanelConfig
-from .pipeline import PipelineOperator, PipelineStage
 from .store import ExecutionStore
 from .categories import Categories
 from .cache import execution_cache

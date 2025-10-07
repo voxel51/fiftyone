@@ -6,15 +6,12 @@ FiftyOne delegated operator related unit tests.
 |
 """
 import copy
-import signal
-import threading
 import time
 import unittest
 from unittest import mock
 from unittest.mock import patch
 
 import bson
-import psutil
 import pytest
 
 from bson import ObjectId
@@ -31,7 +28,7 @@ from fiftyone.operators.executor import (
     ExecutionResult,
     ExecutionRunState,
 )
-from fiftyone.operators import PipelineStage
+from fiftyone.operators.types import Pipeline, PipelineStage
 from fiftyone.factory.repos import (
     DelegatedOperationDocument,
     delegated_operation,
@@ -207,10 +204,12 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         mock_load_dataset.return_value.name = dataset_name
         mock_load_dataset.return_value._doc.id = dataset_id
 
-        pipeline = [
-            PipelineStage(name="one", operator_uri="@test/op1"),
-            PipelineStage(name="two", operator_uri="@test/op2"),
-        ]
+        pipeline = Pipeline(
+            [
+                PipelineStage(name="one", operator_uri="@test/op1"),
+                PipelineStage(name="two", operator_uri="@test/op2"),
+            ]
+        )
         doc = self.svc.queue_operation(
             operator=f"{TEST_DO_PREFIX}/operator/foo",
             label=mock_get_operator.return_value.config.label,
