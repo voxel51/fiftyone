@@ -9,6 +9,7 @@ FiftyOne models.
 import contextlib
 import inspect
 import logging
+from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 
@@ -477,7 +478,11 @@ def _apply_image_model_data_loader(
 
     with contextlib.ExitStack() as context:
         pb = context.enter_context(fou.ProgressBar(samples, progress=progress))
-        ctx = context.enter_context(foc.SaveContext(samples))
+        ctx = context.enter_context(
+            foc.AsyncSaveContext(
+                samples, executor=ThreadPoolExecutor(max_workers=1)
+            )
+        )
 
         def save_batch(sample_batch, labels_batch):
             with _handle_batch_error(skip_failures, sample_batch):
@@ -1210,7 +1215,11 @@ def _compute_image_embeddings_data_loader(
     with contextlib.ExitStack() as context:
         pb = context.enter_context(fou.ProgressBar(samples, progress=progress))
         if embeddings_field is not None:
-            ctx = context.enter_context(foc.SaveContext(samples))
+            ctx = context.enter_context(
+                foc.AsyncSaveContext(
+                    samples, executor=ThreadPoolExecutor(max_workers=1)
+                )
+            )
         else:
             ctx = None
 
