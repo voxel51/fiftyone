@@ -712,9 +712,14 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
             # the transforms batch processed the input
             # no need to collate
             return batch
-        keys = batch[0].keys()
+        bkeys = list(batch[0].keys())
+        non_tensor_keys = [
+            k for k in bkeys if not isinstance(batch[0][k], torch.Tensor)
+        ]
         res = {}
-        for k in keys:
+        for k in bkeys:
+            if k in non_tensor_keys:
+                continue
             # Gather shapes for dimension analysis
             shapes = [b[k].shape for b in batch]
             # Find the max size in each dimension
@@ -727,13 +732,19 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
             for bdict in batch:
                 t = bdict[k]
                 pad_amounts = []
-                for d in reversed(range(len(t.shape))):
+                for d in reversed(range(1, len(t.shape))):
                     diff = max_dims[d] - t.shape[d]
                     pad_amounts.extend([0, diff])  # (left_pad, right_pad)
                 padded_tensors.append(torch.nn.functional.pad(t, pad_amounts))
 
             # Concatenate along the first dimension
             res[k] = torch.cat(padded_tensors, dim=0)
+
+        for k in non_tensor_keys:
+            vals = []
+            for b in batch:
+                vals.extend(b[k])
+            res[k] = vals
 
         return res
 
@@ -1096,12 +1107,26 @@ class FiftyOneTransformerForPoseEstimationConfig(FiftyOneTransformerConfig):
         self.dataset_index = self.parse_int(d, "dataset_index", default=0)
 
 
-class PoseEstimationGetItem(fout.ImageGetItem):
+class PoseEstimationGetItem(fout.GetItem):
     """A :class:`GetItem` that loads images and bounding boxes to feed to
-    :class:`FiftyOneTransformerForPoseEstimation` instances."""
+    :class:`FiftyOneTransformerForPoseEstimation` instances.
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    Args:
+        field_mapping (None): the user-supplied dict mapping keys in
+            :attr:`required_keys` to field names of their dataset that contain
+            the required values
+        transform (None): a ``_HFTransformsHandler`` instance to apply
+        use_numpy (False): whether to use numpy arrays rather than PIL images
+            and Torch tensors when loading data
+    """
+
+    def __init__(
+        self, field_mapping=None, transform=None, use_numpy=None, **kwargs
+    ):
+        super().__init__(field_mapping=field_mapping, **kwargs)
+
+        self.transform = transform
+        self.use_numpy = use_numpy
 
     def __call__(self, d):
         img = fout._load_image(
@@ -1109,17 +1134,25 @@ class PoseEstimationGetItem(fout.ImageGetItem):
             use_numpy=self.use_numpy,
             force_rgb=True,
         )
-        boxes = d["box_prompts"]
+
+        height, width = _get_image_size(img)
+        detections = d["prompt_field"]
+        img_boxes = _get_image_boxes((height, width), detections.detections)
+
+        if len(img_boxes) == 0:
+            raise ValueError(
+                "At least one box prompt is required for each image."
+            )
         if self.transform is None:
             raise ValueError(
                 "Transform cannot be None for PoseEstimationGetItem."
             )
 
-        return self.transform({"images": img, "boxes": boxes})
+        return self.transform({"images": img, "boxes": [img_boxes]})
 
     @property
     def required_keys(self):
-        return ["filepath", "box_prompts"]
+        return ["filepath", "prompt_field"]
 
 
 class FiftyOneTransformerForPoseEstimation(
@@ -1162,9 +1195,11 @@ class FiftyOneTransformerForPoseEstimation(
     def _get_box_prompts(self, samples, field_name):
         prompts = []
         for sample in samples:
-            value = sample.get_field(field_name)
-            if value is not None:
-                prompts.append(value)
+            detections = sample.get_field(field_name)
+            if not isinstance(detections, fol.Detections):
+                raise ValueError("Only Detections can be used as box prompts")
+            if detections is not None:
+                prompts.append(detections)
             else:
                 raise ValueError(
                     "Sample %s is missing a prompt in field '%s'"
@@ -1183,11 +1218,22 @@ class FiftyOneTransformerForPoseEstimation(
 
     def _predict_all(self, args):
         if self.preprocess:
-            args = {"images": args, "boxes": self._box_prompts}
+            images_hw = [_get_image_size(img) for img in args]
+            images_boxes = []
+            for detections, img_hw in zip(self._box_prompts, images_hw):
+                images_boxes.append(
+                    _get_image_boxes(img_hw, detections.detections)
+                )
+            args = {
+                "images": args,
+                "boxes": images_boxes,
+                "fo_image_size": images_hw,
+            }
             args = self.collate_fn(self.transforms(args))
 
         image_sizes = args.pop("fo_image_size", [(None, None)])
         boxes = args.pop("boxes", None)
+
         args["dataset_index"] = torch.tensor(
             [self.config.dataset_index] * len(args["pixel_values"])
         )
@@ -1207,34 +1253,11 @@ class FiftyOneTransformerForPoseEstimation(
         return output
 
     def build_get_item(self, field_mapping=None):
-        if field_mapping is None:
-            field_mapping = {}
-        if "box_prompts" not in field_mapping:
-            field_mapping["box_prompts"] = self._get_field()
-
         return PoseEstimationGetItem(
             transform=self._transforms,
-            raw_inputs=self.config.raw_inputs,
-            using_half_precision=self._using_half_precision,
             use_numpy=False,
             field_mapping=field_mapping,
         )
-
-    @staticmethod
-    def collate_fn(batch):
-        if isinstance(batch, transformers.BatchFeature):
-            return batch
-        images = torch.cat([b["pixel_values"] for b in batch], dim=0)
-        boxes = []
-        img_sizes = []
-        for b in batch:
-            boxes.extend(b["boxes"])
-            img_sizes.extend(b["fo_image_size"])
-        return {
-            "pixel_values": images,
-            "boxes": boxes,
-            "fo_image_size": img_sizes,
-        }
 
 
 class FiftyOneTransformerForDepthEstimationConfig(FiftyOneTransformerConfig):
@@ -1366,35 +1389,17 @@ class _HFTransformsHandler:
         if isinstance(args, dict):
             # multiple inputs
             if self.return_image_sizes:
-                if args.get("images", None) is not None:
+                if args.get("fo_image_size"):
+                    image_size = args.pop("fo_image_size")
+                if not image_size and args.get("images", None) is not None:
                     image_size = (
                         [_get_image_size(img) for img in args["images"]]
                         if isinstance(args["images"], list)
                         else [_get_image_size(args["images"])]
                     )
-            if args.get("boxes") is not None:
-                abs_boxes = []
-                if image_size is None:
-                    raise ValueError(
-                        "Image size required for scaling box prompts."
-                    )
-                img_sz = image_size[0]
-                if isinstance(args["boxes"], list):
-                    for idx, detections in enumerate(args["boxes"]):
-                        if len(image_size) > 1:
-                            img_sz = image_size[idx]
-                        img_boxes = _get_image_boxes(
-                            img_sz, detections.detections
-                        )
-                        abs_boxes.append(img_boxes)
-                else:
-                    detections = args["boxes"]
-                    img_boxes = _get_image_boxes(img_sz, detections.detections)
-                    abs_boxes.append(img_boxes)
-                args.update({"boxes": abs_boxes})
 
             res = self.processor(**args, **self.kwargs)
-            res["boxes"] = args.get("boxes")
+            res["boxes"] = args.get("boxes", [])
         else:
             # single input, most likely either a list of images or a single image
             num_images = len(args) if isinstance(args, list) else 1

@@ -176,6 +176,7 @@ def apply_model(
     if supports_get_item and needs_samples:
         field_mapping = kwargs.pop("field_mapping", {})
         needs_fields = kwargs.pop("needs_fields", {})
+        field_mapping.update(kwargs)
         needs_fields.update(kwargs)
     elif supports_get_item:
         field_mapping = kwargs.pop("field_mapping", {})
