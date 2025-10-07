@@ -2244,6 +2244,129 @@ class Model(etal.Model):
         return [self.predict(arg) for arg in args]
 
 
+class GetItem(object):
+    """A class that defines how to load the input for a model.
+
+    Models that implement the :class:`fiftyone.core.models.SupportsGetItem`
+    mixin use this class to define how :class:`FiftyOneTorchDataset` should
+    load their inputs.
+
+    The :meth:`__call__` method should accept a dictionary mapping the keys
+    defined by :attr:`required_keys` to values extracted from the input
+    :class:`fiftyone.core.sample.Sample` instance according to the mapping
+    defined by :attr:`field_mapping`.
+
+    Args:
+        field_mapping (None): a user-supplied dict mapping keys in
+            :attr:`required_keys` to field names of their dataset that contain
+            the required values
+    """
+
+    def __init__(self, field_mapping=None, **kwargs):
+        super().__init__(**kwargs)
+
+        # By default, we assume that any keys not specified by `field_mapping`
+        # will exist under field names that exactly match `required_keys`
+        self._field_mapping = {k: k for k in self.required_keys}
+
+        # This updates `_field_mapping` via the attribute setter
+        self.field_mapping = field_mapping
+
+    def __call__(self, d):
+        """Prepares the model input for a given sample's data.
+
+        Args:
+            d: a dict mapping the :meth:`required_keys` to values from the
+                sample being processed
+
+        Returns:
+            the model input
+        """
+        raise NotImplementedError("subclasses must implement __call__()")
+
+    @property
+    def required_keys(self):
+        """The list of keys that must exist on the dicts provided to the
+        :meth:`__call__` method at runtime.
+
+        The user supplies the field names from which to extract these values
+        from their samples via :attr:`field_mapping`.
+        """
+        raise NotImplementedError("subclasses must implement required_keys")
+
+    @property
+    def field_mapping(self):
+        """A user-supplied dictionary mappings keys in :attr:`required_keys`
+        to field names of their dataset that contain the required values.
+        """
+        return self._field_mapping
+
+    @field_mapping.setter
+    def field_mapping(self, value):
+        if value is None:
+            return
+
+        for k, v in value.items():
+            if k not in self.required_keys:
+                raise ValueError(
+                    f"Unknown key '{k}'. The supported keys are {self.required_keys}"
+                )
+
+            self._field_mapping[k] = v
+
+    def apply_field_mapping(self, sample):
+        """Applies the field mapping to the given sample.
+
+        Args:
+            sample: a :class:`fiftyone.core.sample.Sample`
+
+        Returns:
+            a dict mapping the :attr:`required_keys` to values extracted from
+            the sample according to the mapping defined by
+            :attr:`field_mapping`
+        """
+        return {k: sample[v] for k, v in self.field_mapping.items()}
+
+
+class PostProcessor(object):
+    """A class that defines how to postprocess the raw output of a model's
+    forward pass.
+
+    Models that implement the :class:`fiftyone.core.models.SupportsPostProcessing`
+    mixin use this class to define how to convert their raw outputs into
+    :class:`fiftyone.core.labels.Label` instances.
+
+    Args:
+        field_mapping (None): a user-supplied dict mapping keys in
+            :attr:`required_keys` to field names of their dataset that contain
+            the required values
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def __call__(self, output, input=None):
+        """Postprocesses the raw output of a model's forward pass.
+
+        Args:
+            output: the raw output of the model's forward pass
+            input: postprocessor input from :meth:`GetItem.__call__`, if any
+
+        Returns:
+            Postprocessed output. Usually a :class:`fiftyone.core.labels.Label` instance.
+        """
+        raise NotImplementedError("subclasses must implement __call__()")
+
+    def required_keys(self):
+        """The list of keys that must exist on the dicts provided to the
+        :meth:`GetItem.__call__` method at runtime, if any.
+
+        The user supplies the field names from which to extract these values
+        from their samples via :attr:`field_mapping`.
+        """
+        return []
+
+
 class Model2Config(Config):
     def __init__(self, path=None, **kwargs):
         super().__init__(**kwargs)
@@ -2272,35 +2395,96 @@ class Model2(Configurable):
     def __init__(self, config: Model2Config):
         super().__init__(config)
         self._get_item = None
+        self._postprocessor = None
+        self._postprocess = False
 
-    def build_get_item(self, field_mapping=None):
+    def build_get_item(self, field_mapping=None) -> GetItem:
         raise NotImplementedError("subclasses must implement build_get_item")
 
+    def build_postprocessor(self, *args, **kwargs) -> PostProcessor:
+        raise NotImplementedError(
+            "subclasses must implement build_postprocessor"
+        )
+
     @property
-    def get_item(self, field_mapping=None):
+    def get_item(self):
         if self._get_item is None:
-            self._get_item = self.build_get_item(field_mapping=field_mapping)
-        self._get_item.field_mapping = field_mapping
+            self._get_item = self.build_get_item()
         return self._get_item
+
+    @property
+    def postprocessor(self):
+        """Postprocess the output of the forward pass."""
+        if self._postprocessor is None:
+            self._postprocessor = self.build_postprocessor()
+        return self._postprocessor
+
+    @property
+    def postprocess(self):
+        """Whether to apply :attr:`postprocessor` during inference (True) or
+        return the raw output of :meth:`forward` (False).
+        """
+        return self._postprocess
 
     def collate_fn(self, batch):
         return batch
 
-    def predict_samples(self, samples):
-        """
-        Performs prediction on the given samples.
+    def predict(self, input):
+        if isinstance(input, fo.Sample):
+            processed = self.collate_fn(
+                # pylint: disable=not-callable
+                [self.get_item(self.get_item.apply_field_mapping(input))]
+            )
+        else:
+            processed = input
 
+        postprocessor_inputs = None
+        if self.postprocess:
+            postprocessor_inputs = {
+                k: input[k].copy() for k in self.postprocessor.required_keys
+            }
+
+        output = self.forward(processed)
+
+        if self.postprocess:
+            # pylint: disable=not-callable
+            return self.postprocessor(output, postprocessor_inputs)
+
+        return output
+
+    def forward(self, batch):
+        """GPU intensive forward pass on a processed batch."""
+        raise NotImplementedError("subclasses must implement forward")
+
+    def predict_all(self, batch):
+        """
         Args:
-            samples: a :class:`fiftyone.core.collections.SampleCollection`
-
-        Returns:
-            a batch of predictions
+            - batch: samples or processed batch
         """
-        return self.predict_batch(self.collate_fn(self.get_item(samples)))
+        # should this be samplecollection or list of samples?
+        if isinstance(batch, foc.SampleCollection):
+            batch = [
+                # pylint: disable=not-callable
+                self.get_item(self.get_item.apply_field_mapping(sample))
+                for sample in batch
+            ]
+            batch = self.collate_fn(batch)
 
-    def predict_batch(self, batch):
-        """ """
-        raise NotImplementedError("subclasses must implement predict()")
+        postprocessor_inputs = None
+        if self.postprocess:
+            postprocessor_inputs = [
+                {k: sample[k].copy() for k in self.postprocessor.required_keys}
+                for sample in batch
+            ]
+
+        # batch must be processed by this point
+        output = self.forward(batch)
+
+        if self.postprocess:
+            # pylint: disable=not-callable
+            return self.postprocessor(output, postprocessor_inputs)
+
+        return output
 
 
 class LogitsMixin(object):
