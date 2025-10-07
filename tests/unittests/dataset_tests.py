@@ -679,20 +679,47 @@ class DatasetTests(unittest.TestCase):
         dataset.create_index("id", unique=True)  # already exists
         dataset.create_index("id")  # sufficient index exists
         with self.assertRaises(ValueError):
-            dataset.drop_index("id")  # can't drop default
+            dataset.drop_index("id")  # can't drop default index
 
         dataset.create_index("filepath")  # already exists
 
         with self.assertRaises(ValueError):
-            # can't upgrade default index to unique
-            dataset.create_index("filepath", unique=True)
-
-        with self.assertRaises(ValueError):
             dataset.drop_index("filepath")  # can't drop default index
+
+        # converting 'filepath' index to unique *is* allowed
+        dataset.create_index("filepath", unique=True)
+
+        indexes = dataset.get_index_information()
+        self.assertTrue(indexes["filepath"]["unique"])
+
+        dataset.create_index("filepath")  # sufficient index already exists
+        indexes = dataset.get_index_information()
+        self.assertTrue(indexes["filepath"]["unique"])  # still unique
+
+        # downgrading 'filepath' to non-unique *is* allowed
+        dataset.create_index("filepath", unique=False, force=True)
+        indexes = dataset.get_index_information()
+        self.assertFalse(
+            indexes["filepath"].get("unique", False)
+        )  # now non-unique
 
         name = dataset.create_index("field")
         self.assertEqual(name, "field")
         self.assertIn("field", dataset.list_indexes())
+
+        dataset.create_index("field", unique=True)
+        indexes = dataset.get_index_information()
+        self.assertTrue(indexes["field"]["unique"])
+
+        dataset.create_index("field", unique=False)
+        indexes = dataset.get_index_information()
+        self.assertTrue(indexes["field"]["unique"])  # still unique
+
+        dataset.create_index("field", unique=False, force=True)
+        indexes = dataset.get_index_information()
+        self.assertFalse(
+            indexes["field"].get("unique", False)
+        )  # now non-unique
 
         dataset.drop_index("field")
         self.assertNotIn("field", dataset.list_indexes())
@@ -704,11 +731,47 @@ class DatasetTests(unittest.TestCase):
         dataset.drop_index("cls.label")
         self.assertNotIn("cls.label", dataset.list_indexes())
 
-        compound_index_name = dataset.create_index([("id", 1), ("field", 1)])
-        self.assertIn(compound_index_name, dataset.list_indexes())
+        dataset.create_index([("field", -1)])
+        indexes = dataset.get_index_information()
+        self.assertEqual(indexes["field"]["key"], [("field", -1)])
 
-        dataset.drop_index(compound_index_name)
-        self.assertNotIn(compound_index_name, dataset.list_indexes())
+        dataset.create_index([("field", 1)])
+        indexes = dataset.get_index_information()
+        self.assertEqual(indexes["field"]["key"], [("field", -1)])  # still -1
+
+        dataset.create_index([("field", 1)], force=True)
+        indexes = dataset.get_index_information()
+        self.assertEqual(indexes["field"]["key"], [("field", 1)])  # now 1
+
+        dataset.create_index([("field", 1), ("id", 1)])
+        self.assertIn("field_1__id_1", dataset.list_indexes())
+
+        dataset.create_index([("field", 1), ("id", 1)], unique=True)
+        indexes = dataset.get_index_information()
+        self.assertTrue(indexes["field_1__id_1"]["unique"])  # now unique
+
+        dataset.create_index([("field", 1), ("id", 1)], unique=False)
+        indexes = dataset.get_index_information()
+        self.assertTrue(indexes["field_1__id_1"]["unique"])  # still unique
+
+        dataset.create_index(
+            [("field", 1), ("id", 1)], unique=False, force=True
+        )
+        indexes = dataset.get_index_information()
+        self.assertFalse(
+            indexes["field_1__id_1"].get("unique", False)
+        )  # now non-unique
+
+        dataset.create_index([("field", -1), ("id", 1)])
+        self.assertTrue("field_1__id_1" in dataset.list_indexes())
+        self.assertFalse("field_-1__id_1" in dataset.list_indexes())
+
+        dataset.create_index([("field", -1), ("id", 1)], force=True)
+        self.assertFalse("field_1__id_1" in dataset.list_indexes())
+        self.assertTrue("field_-1__id_1" in dataset.list_indexes())
+
+        dataset.drop_index("field_-1__id_1")
+        self.assertNotIn("field_-1__id_1", dataset.list_indexes())
 
         with self.assertRaises(ValueError):
             dataset.create_index("non_existent_field")
@@ -2310,11 +2373,21 @@ class DatasetTests(unittest.TestCase):
         # Standard merge
 
         dataset12 = dataset1.clone()
+
         created_at1 = dataset12.values("created_at")
         last_modified_at1 = dataset12.values("last_modified_at")
+        indexes1_before = dataset12.get_index_information()
+        indexes2_before = dataset2.get_index_information()
+
+        self.assertFalse(indexes1_before["filepath"].get("unique", False))
+        self.assertFalse(indexes2_before["filepath"].get("unique", False))
+
         dataset12.merge_samples(dataset2)
+
         created_at2 = dataset12.values("created_at")
         last_modified_at2 = dataset12.values("last_modified_at")
+        indexes1_after = dataset12.get_index_information()
+        indexes2_after = dataset2.get_index_information()
 
         self.assertEqual(len(dataset12), 3)
         self.assertListEqual(
@@ -2330,6 +2403,10 @@ class DatasetTests(unittest.TestCase):
         )
         self.assertTrue(sample2.created_at < created_at2[2])
         self.assertTrue(sample2.last_modified_at < last_modified_at2[2])
+        self.assertTrue(indexes1_after["filepath"]["unique"])
+        self.assertTrue(indexes2_after["filepath"]["unique"])
+        self.assertSetEqual(set(indexes1_before), set(indexes1_after))
+        self.assertSetEqual(set(indexes2_before), set(indexes2_after))
 
         common12_view = dataset12.match(F("filepath") == common_filepath)
 
