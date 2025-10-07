@@ -72,6 +72,7 @@ export const labelsByPath = atom((get) => {
 
   return map;
 });
+
 export const addLabel = atom(null, (get, set, label: AnnotationLabel) => {
   set(labels, [...get(labels), label]);
 });
@@ -131,9 +132,9 @@ export default function useLabels() {
         sample: modalSampleData.contents,
         getFieldType,
         schemas: schemaMap,
-      }).then((r) => {
+      }).then((result) => {
         setLoading(false);
-        setLabels(r);
+        setLabels(result);
       });
     } else {
       setLoading(true);

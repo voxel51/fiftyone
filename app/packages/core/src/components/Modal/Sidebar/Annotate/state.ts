@@ -96,7 +96,6 @@ export const schema = atomFamily((path: string) =>
 export const schemaConfig = atomFamily((path: string) =>
   atom(
     (get) => {
-      console.log(path, get(schemas));
       return get(schema(path))?.config;
     },
     (get, set, config?: object) => {
@@ -113,13 +112,3 @@ export const deleteSchemas = atom(null, (_, set, paths: string[]) => {
 });
 
 export const showModal = atom(false);
-
-export const classificationFields = atom((get) => {
-  const fields = get(activeSchemas);
-  return fields;
-});
-
-export const detectionFields = atom((get) => {
-  const fields = get(activeSchemas);
-  return fields;
-});

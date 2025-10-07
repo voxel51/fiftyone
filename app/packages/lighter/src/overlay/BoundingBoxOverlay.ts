@@ -4,21 +4,14 @@
 
 import type { Movable } from "../commands/MoveOverlayCommand";
 import {
+  EDGE_THRESHOLD,
   LABEL_ARCHETYPE_PRIORITY,
   STROKE_WIDTH,
-  EDGE_THRESHOLD,
 } from "../constants";
 import { CONTAINS } from "../core/Scene2D";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { Selectable } from "../selection/Selectable";
-import type {
-  BoundedOverlay,
-  Hoverable,
-  Point,
-  RawLookerLabel,
-  Rect,
-  Spatial,
-} from "../types";
+import type { BoundedOverlay, Hoverable, Point, Rect, Spatial } from "../types";
 import {
   getInstanceStrokeStyles,
   getSimpleStrokeStyles,
@@ -26,25 +19,18 @@ import {
 import { distanceFromLineSegment } from "../utils/geometry";
 import { BaseOverlay } from "./BaseOverlay";
 
-export type BoundingBoxLabel = RawLookerLabel & {
-  label: string;
-  bounding_box: number[];
-  confidence?: number;
-};
-
 /**
  * Options for creating a bounding box overlay.
  */
 export interface BoundingBoxOptions {
-  sampleId: string;
+  id: string;
   // Relative bounds [0,1]
   relativeBounds?: Rect;
-  label: BoundingBoxLabel;
-  confidence?: number;
+  text?: string;
+  field: string;
   draggable?: boolean;
   resizeable?: boolean;
   selectable?: boolean;
-  field?: string;
 }
 
 export type ResizeRegion =
@@ -83,11 +69,7 @@ export class BoundingBoxOverlay
   private readonly CLICK_THRESHOLD = 0.1;
 
   constructor(private options: BoundingBoxOptions) {
-    const id =
-      options.label["_id"] ??
-      options.label.id ??
-      `bbox_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-    super(id, options.sampleId, options.label, options.field);
+    super(options.id);
     this.isDraggable = options.draggable !== false;
     this.isResizeable = options.resizeable !== false;
 
@@ -203,7 +185,7 @@ export class BoundingBoxOverlay
       );
     }
 
-    if (this.options.label && this.options.label.label?.length > 0) {
+    if (this.options.text && this.options.text.length > 0) {
       const offset = style.lineWidth
         ? style.lineWidth / renderer.getScale() / 2
         : 0;
@@ -218,7 +200,7 @@ export class BoundingBoxOverlay
             y: this.absoluteBounds.y - offset,
           };
 
-      let textToDraw = this.options.label.label;
+      let textToDraw = this.options.text;
 
       if (
         typeof this.options.label.confidence !== "undefined" &&
@@ -386,11 +368,12 @@ export class BoundingBoxOverlay
 
     if (this.moveState === "DRAGGING") {
       return this.onDrag(point, event, scale);
-    } else if (this.moveState.startsWith("RESIZE_")) {
-      return this.onResize(point, event, scale);
-    } else {
-      return false;
     }
+    if (this.moveState.startsWith("RESIZE_")) {
+      return this.onResize(point, event, scale);
+    }
+
+    return false;
   }
 
   private onDrag(point: Point, _event: PointerEvent, scale: number): boolean {
@@ -499,22 +482,6 @@ export class BoundingBoxOverlay
   setBounds(bounds: Rect): void {
     this.absoluteBounds = { ...bounds };
     this.markForCoordinateUpdate();
-  }
-
-  /**
-   * Gets the label text.
-   * @returns The label text, if any.
-   */
-  getLabel(): string | undefined {
-    return this.options.label.label;
-  }
-
-  /**
-   * Gets the confidence score.
-   * @returns The confidence score, if any.
-   */
-  getConfidence(): number | undefined {
-    return this.options.label?.confidence;
   }
 
   /**

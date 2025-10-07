@@ -31,7 +31,6 @@ export class InteractiveDetectionHandler implements InteractionHandler {
 
   constructor(
     private sampleId: string,
-    private maybeField: string,
     private addOverlay: ReturnType<typeof useLighter>["addOverlay"],
     private removeOverlay: ReturnType<typeof useLighter>["removeOverlay"],
     private overlayFactory: OverlayFactory,
@@ -117,7 +116,6 @@ export class InteractiveDetectionHandler implements InteractionHandler {
 
     // Create temporary overlay for live preview
     this.tempOverlay = this.overlayFactory.create("bounding-box", {
-      field: this.maybeField,
       sampleId: this.sampleId,
       label: {
         id: `temp-detection-${Math.random().toString(36).substring(2, 9)}`,

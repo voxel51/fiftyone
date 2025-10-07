@@ -3,7 +3,7 @@ import type { AnnotationLabel } from "@fiftyone/state";
 import { animated } from "@react-spring/web";
 import type { PrimitiveAtom } from "jotai";
 import { useAtomValue, useSetAtom } from "jotai";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
 import { Column } from "./Components";
 import { editing } from "./Edit";
@@ -78,7 +78,14 @@ const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
     }
   }, [scene, isHoveringThisRow, label.data.id]);
 
-  const color = useColor(label.path);
+  if (!scene) {
+    throw new Error("E");
+  }
+  const overlay = useMemo(
+    () => scene?.getOverlay(label.data._id),
+    [label, scene]
+  );
+  const color = useColor(overlay);
   return (
     <Container
       onClick={() => {

@@ -9,6 +9,7 @@ export default function AutocompleteView(props) {
   const { onChange, path, schema, data } = props;
   const { view = {} } = schema;
   const { choices = [], readOnly } = view;
+  console.log(props);
 
   const multiple = schema.type === "array";
   const allowDups = view.allow_duplicates !== false;

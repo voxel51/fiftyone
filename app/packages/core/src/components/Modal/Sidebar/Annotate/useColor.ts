@@ -1,10 +1,16 @@
 import { useTheme } from "@fiftyone/components";
-import { pathColor } from "@fiftyone/state";
-import { useRecoilValue } from "recoil";
+import type { BaseOverlay } from "@fiftyone/lighter";
+import { getOverlayColor } from "@fiftyone/lighter";
+import { useMemo } from "react";
+import useColorMappingContext from "../../Lighter/useColorMappingContext";
 
-export default function useColor(path?: string) {
-  const color = useRecoilValue(pathColor(path ?? ""));
+export default function useColor(overlay: BaseOverlay) {
+  const coloring = useColorMappingContext();
   const brand = useTheme().primary.plainColor;
 
-  return path ? color : brand;
+  return useMemo(() => {
+    const strokeStyle = getOverlayColor(overlay, coloring);
+
+    return strokeStyle ?? brand;
+  }, [brand, coloring, overlay]);
 }

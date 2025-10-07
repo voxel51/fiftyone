@@ -1,7 +1,12 @@
+import {
+  BoundingBoxOverlay,
+  UpdateLabelCommand,
+  useLighter,
+} from "@fiftyone/lighter";
 import { useAtom, useAtomValue } from "jotai";
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
-import { current, currentSchema } from "./state";
+import { currentData, currentSchema } from "./state";
 
 const createInput = (name: string) => {
   return {
@@ -14,20 +19,36 @@ const createInput = (name: string) => {
   };
 };
 
+const createTags = (name: string, choices: string[]) => {
+  return {
+    type: "array",
+    view: {
+      name: "AutocompleteView",
+      label: name,
+      component: "AutocompleteView",
+      allow_user_input: false,
+      choices: choices.map((choice) => ({
+        name: "Choice",
+        label: choice,
+        value: choice,
+      })),
+    },
+    required: true,
+  };
+};
+
 const createSelect = (name: string, choices: string[]) => {
   return {
-    [name]: {
-      type: "string",
-      view: {
-        name: "DropdownView",
-        label: "Classes",
-        component: "DropdownView",
-        choices: choices.map((choice) => ({
-          name: "Choice",
-          label: choice,
-          value: choice,
-        })),
-      },
+    type: "string",
+    view: {
+      name: "DropdownView",
+      label: name,
+      component: "DropdownView",
+      choices: choices.map((choice) => ({
+        name: "Choice",
+        label: choice,
+        value: choice,
+      })),
     },
   };
 };
@@ -40,35 +61,54 @@ const useSchema = () => {
 
     const attributes = config?.attributes;
 
-    for (const attr in attributes) {
-      properties[attr] = createInput(attr);
-    }
+    properties.label = createSelect("label", config?.classes ?? []);
 
-    console.log(properties);
+    for (const attr in attributes) {
+      if (attributes[attr].type === "input") {
+        properties[attr] = createInput(attr);
+      }
+
+      if (attributes[attr].type === "tags") {
+        properties[attr] = createTags(attr, attributes[attr].values);
+      }
+
+      if (attributes[attr].type === "text") {
+        throw "text";
+      }
+    }
 
     return {
       type: "object",
       view: {
         component: "ObjectView",
       },
-      properties: {
-        classes: createSelect("Classes", config?.classes),
-        ...properties,
-      },
+      properties,
     };
   }, [config]);
 };
 
 const AnnotationSchema = () => {
   const schema = useSchema();
-  const [label, setLabel] = useAtom(current);
+  const [data, save] = useAtom(currentData);
+  const lighter = useLighter();
+
   return (
     <div>
       <SchemaIOComponent
         schema={schema}
-        data={{ _classes: label?.data.label }}
-        onChange={(...a) => {
-          console.log(a);
+        data={data}
+        onChange={(changes) => {
+          save(changes);
+          const overlay = lighter.getOverlay(data?._id);
+
+          if (overlay instanceof BoundingBoxOverlay) {
+            lighter.scene?.executeCommand(
+              new UpdateLabelCommand(overlay, overlay.label, {
+                ...overlay.label,
+                ...changes,
+              })
+            );
+          }
         }}
       />
     </div>

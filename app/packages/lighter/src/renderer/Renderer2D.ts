@@ -2,7 +2,7 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import { EventBus } from "../event/EventBus";
+import type { EventBus } from "../event/EventBus";
 import type {
   Dimensions2D,
   DrawStyle,

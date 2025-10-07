@@ -7,11 +7,11 @@ import { useAtom } from "jotai";
 import { useEffect, useRef } from "react";
 import {
   EventBus,
-  globalPixiResourceLoader,
   LIGHTER_EVENTS,
-  lighterSceneAtom,
   PixiRenderer2D,
   Scene2D,
+  globalPixiResourceLoader,
+  lighterSceneAtom,
 } from "../index";
 
 // TODO: Ultimately, we'll want to remove dependency on "looker" and create our own options type

@@ -53,7 +53,7 @@ class SingletonCanvas {
    * The canvas element itself is preserved for reuse.
    */
   detach(): void {
-    if (this.canvas && this.canvas.parentNode) {
+    if (this.canvas?.parentNode) {
       this.canvas.parentNode.removeChild(this.canvas);
       this.isAttached = false;
       this.container = null;

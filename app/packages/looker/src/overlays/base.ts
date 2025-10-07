@@ -16,9 +16,9 @@ export enum CONTAINS {
 }
 
 export interface BaseLabel {
-  id: string;
+  id?: string;
   frame_number?: number;
-  tags: string[];
+  tags?: string[];
   index?: number;
   _renderStatus?: DenseLabelRenderStatus;
 

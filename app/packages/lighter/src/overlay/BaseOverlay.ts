@@ -8,16 +8,14 @@ import { LIGHTER_EVENTS } from "../event/EventBus";
 import type { InteractionHandler } from "../interaction/InteractionManager";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { ResourceLoader } from "../resource/ResourceLoader";
-import type { DrawStyle, Point, RawLookerLabel } from "../types";
+import type { DrawStyle, Point } from "../types";
 
 /**
  * Base abstract class for all overlays.
  */
 export abstract class BaseOverlay implements InteractionHandler {
   readonly id: string;
-  readonly sampleId: string;
-  readonly label: RawLookerLabel;
-  readonly field?: string;
+  readonly field: string;
   readonly cursor?: string;
 
   protected isHoveredState = false;
@@ -26,22 +24,15 @@ export abstract class BaseOverlay implements InteractionHandler {
    *
    * See also `markDirty` and `markClean`.
    */
-  protected isDirty: boolean = false;
+  protected isDirty = false;
 
   protected renderer?: Renderer2D;
   protected eventBus?: EventBus;
   protected resourceLoader?: ResourceLoader;
   protected currentStyle?: DrawStyle;
 
-  constructor(
-    id: string,
-    sampleId: string,
-    label: RawLookerLabel = null,
-    field?: string
-  ) {
+  constructor(id: string, field: string) {
     this.id = id;
-    this.sampleId = sampleId;
-    this.label = label;
     this.field = field;
     this.cursor = "default";
   }
@@ -209,10 +200,10 @@ export abstract class BaseOverlay implements InteractionHandler {
    */
   getMouseDistance(point: Point): number {
     // Default implementation - subclasses should override for more accurate distance calculation
-    if (!this.renderer) return Infinity;
+    if (!this.renderer) return Number.POSITIVE_INFINITY;
 
     const bounds = this.renderer.getBounds(this.containerId);
-    if (!bounds) return Infinity;
+    if (!bounds) return Number.POSITIVE_INFINITY;
 
     const centerX = bounds.x + bounds.width / 2;
     const centerY = bounds.y + bounds.height / 2;

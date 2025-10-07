@@ -1,11 +1,6 @@
 /**
  * Copyright 2017-2025, Voxel51, Inc.
  */
-import { editing } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit";
-import {
-  labelAtoms,
-  labels,
-} from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useLabels";
 import {
   ImageOptions,
   ImageOverlay,
@@ -13,15 +8,12 @@ import {
   useLighter,
   useLighterSetupWithPixi,
 } from "@fiftyone/lighter";
-import { FROM_FO, loadOverlays } from "@fiftyone/looker/src/overlays";
-import DetectionOverlay from "@fiftyone/looker/src/overlays/detection";
+import type { Sample } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
-import { Sample, getSampleSrc } from "@fiftyone/state";
-import { getDefaultStore, useSetAtom } from "jotai";
+import { getSampleSrc } from "@fiftyone/state";
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { singletonCanvas } from "./SharedCanvas";
-import { convertLegacyToLighterDetection } from "./looker-lighter-bridge";
 import { useBridge } from "./useBridge";
 
 export interface LighterSampleRendererProps {
@@ -34,10 +26,10 @@ export interface LighterSampleRendererProps {
 /**
  * Lighter unit sample renderer with PixiJS renderer.
  */
-export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
+export const LighterSampleRenderer = ({
   className = "",
   sample,
-}) => {
+}: LighterSampleRendererProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   // we have this hack to force a re-render on layout effect, so that containerRef.current is defined
@@ -50,12 +42,6 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
 
   // Get access to the lighter instance
   const { scene, isReady, addOverlay } = useLighter();
-
-  const setEditing = useSetAtom(editing);
-
-  const schema = fos.useAssertedRecoilValue(
-    fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
-  );
 
   /**
    * This effect is responsible for loading the sample and adding the overlays to the scene.
@@ -82,70 +68,10 @@ export const LighterSampleRenderer: React.FC<LighterSampleRendererProps> = ({
       scene.setCanonicalMedia(mediaOverlay);
     }
 
-    const overlays = loadOverlays(sample.sample, schema, false);
-
-    for (const overlay of overlays) {
-      if (overlay instanceof DetectionOverlay) {
-        // Convert legacy overlay to lighter overlay with relative coordinates
-        const lighterOverlay = convertLegacyToLighterDetection(
-          overlay,
-          sample.id
-        );
-        addOverlay(lighterOverlay, false);
-      }
-    }
-
     return () => {
       scene.destroy();
     };
-  }, [isReady, addOverlay, sample, scene, schema]);
-
-  useEffect(() => {
-    if (!scene || !sample) return;
-
-    const store = getDefaultStore();
-
-    // hack: this is how we execute it once
-    let areOverlaysAdded = false;
-
-    const unsub = store.sub(labels, () => {
-      const labelAtomsList = store.get(labelAtoms);
-
-      if (areOverlaysAdded) return;
-
-      for (const atom of labelAtomsList) {
-        const label = store.get(atom);
-        if (!FROM_FO[label.type]) {
-          continue;
-        }
-        const overlay = FROM_FO[label.type](label.path, label.data)[0];
-        if (overlay instanceof DetectionOverlay) {
-          // Convert legacy overlay to lighter overlay with relative coordinates
-          const lighterOverlay = convertLegacyToLighterDetection(
-            overlay,
-            sample.id
-          );
-
-          addOverlay(lighterOverlay, false);
-        }
-        areOverlaysAdded = true;
-      }
-    });
-
-    return () => {
-      unsub();
-      areOverlaysAdded = false;
-    };
-  }, [scene, sample, addOverlay, labelAtoms]);
-
-  /**
-   * This effect runs cleanup when the component unmounts
-   */
-  useEffect(() => {
-    return () => {
-      setEditing(null);
-    };
-  }, []);
+  }, [isReady, addOverlay, sample, scene]);
 
   return (
     <div
@@ -174,7 +100,7 @@ const LighterSetupImpl = (props: {
     fos.lookerOptions({ modal: true, withFilter: false })
   );
 
-  const canvas = singletonCanvas.getCanvas(containerRef.current!);
+  const canvas = singletonCanvas.getCanvas(containerRef.current);
 
   const { scene } = useLighterSetupWithPixi(canvas, options);
 

@@ -1,3 +1,4 @@
+import { DETECTION } from "@fiftyone/utilities";
 import { useAtom, useAtomValue } from "jotai";
 import React from "react";
 import styled from "styled-components";
@@ -5,6 +6,7 @@ import AnnotationSchema from "./AnnotationSchema";
 import Field from "./Field";
 import Footer from "./Footer";
 import Header from "./Header";
+import Position from "./Position";
 import { current, currentField } from "./state";
 
 const ContentContainer = styled.div`
@@ -40,6 +42,7 @@ export default function Edit() {
       <Header label={label} />
       <Content>
         <Field />
+        {label.type === DETECTION && <Position />}
         {field && <AnnotationSchema />}
       </Content>
       <Footer />

@@ -1,4 +1,5 @@
 import { LoadingSpinner } from "@fiftyone/components";
+import { lighterSceneAtom } from "@fiftyone/lighter";
 import { EntryKind } from "@fiftyone/state";
 import { Typography } from "@mui/material";
 import { atom, useAtomValue } from "jotai";
@@ -83,8 +84,9 @@ const Annotate = () => {
   const showImport = useAtomValue(showImportPage);
   const loading = useAtomValue(schemas) === null;
   const editing = useAtomValue(isEditing);
+  const scene = useAtomValue(lighterSceneAtom);
 
-  if (loading) {
+  if (loading || !scene) {
     return <Loading />;
   }
 

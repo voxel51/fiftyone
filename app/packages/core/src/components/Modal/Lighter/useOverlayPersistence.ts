@@ -6,11 +6,12 @@ import {
   addLabel,
   removeLabel,
 } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useLabels";
+import type { OverlayEventDetail, Scene2D } from "@fiftyone/lighter";
+import { LIGHTER_EVENTS } from "@fiftyone/lighter";
 import { useOperatorExecutor } from "@fiftyone/operators";
 import { DETECTION } from "@fiftyone/utilities";
 import { useSetAtom } from "jotai";
 import { useCallback, useEffect } from "react";
-import { LIGHTER_EVENTS, OverlayEventDetail, Scene2D } from "@fiftyone/lighter";
 
 /**
  * Hook that handles overlay persistence events.
@@ -102,5 +103,5 @@ export const useOverlayPersistence = (scene: Scene2D | null) => {
       scene.off(LIGHTER_EVENTS.DO_PERSIST_OVERLAY, handlePersistOverlay);
       scene.off(LIGHTER_EVENTS.DO_REMOVE_OVERLAY, handleRemoveOverlay);
     };
-  }, [scene]);
+  }, [handlePersistOverlay, handleRemoveOverlay, scene]);
 };

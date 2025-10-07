@@ -2,6 +2,7 @@ import { useTheme } from "@fiftyone/components";
 import {
   LockOpenOutlined,
   LockOutlined,
+  PolylineOutlined,
   VisibilityOffOutlined,
   VisibilityOutlined,
 } from "@mui/icons-material";
@@ -55,6 +56,14 @@ export const Detection = ({ fill }: { fill: string }) => {
   );
 };
 
+export const Polyline = ({ fill }: { fill: string }) => {
+  return (
+    <Container>
+      <PolylineOutlined style={{ color: fill }} />
+    </Container>
+  );
+};
+
 export const Locking = ({ on }: { on: boolean }) => {
   const theme = useTheme();
   const color = on ? theme.text.secondary : theme.text.disabled;
@@ -80,6 +89,8 @@ export const Shown = ({ on }: { on: boolean }) => {
 export const ICONS = {
   Classification: Classification,
   Classifications: Classification,
-  Detections: Detection,
   Detection: Detection,
+  Detections: Detection,
+  Polyline: Polyline,
+  Polylines: Polyline,
 };

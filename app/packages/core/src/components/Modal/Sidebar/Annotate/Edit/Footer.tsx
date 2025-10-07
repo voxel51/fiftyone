@@ -17,7 +17,13 @@ const SaveFooter = () => {
 
   return (
     <>
-      <Button onClick={() => setEditingAtom(null)}>Save</Button>
+      <Button
+        onClick={() => {
+          setEditingAtom(null);
+        }}
+      >
+        Save
+      </Button>
       <RoundButton
         onClick={() => {
           setEditingAtom(null);
