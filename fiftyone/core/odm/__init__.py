@@ -14,6 +14,7 @@ from .database import (
     establish_db_conn,
     get_db_client,
     get_db_conn,
+    get_db_version,
     get_async_db_client,
     get_async_db_conn,
     drop_database,

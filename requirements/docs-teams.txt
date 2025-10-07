@@ -1,0 +1,4 @@
+# fiftyone-teams docs requirements
+backoff==2.2.1
+lz4==4.4.4
+websocket-client==1.8.0

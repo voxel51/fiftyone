@@ -16,13 +16,13 @@ import fiftyone as fo
 import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
 import fiftyone.core.odm.utils as focu
-import fiftyone.core.stages as focs
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 from fiftyone.operators import constants
 from fiftyone.operators.decorators import coroutine_timeout
 from fiftyone.operators.message import GeneratedMessage, MessageType
 from fiftyone.operators.operations import Operations
+from fiftyone.operators.operator import PipelineOperator
 from fiftyone.operators.panel import PanelRef
 from fiftyone.operators.registry import OperatorRegistry
 from fiftyone.operators.store import ExecutionStore
@@ -238,8 +238,7 @@ async def execute_or_delegate_operator(
     prepared = await prepare_operator_executor(operator_uri, request_params)
     if isinstance(prepared, ExecutionResult):
         raise prepared.to_exception()
-    else:
-        operator, executor, ctx, inputs = prepared
+    operator, executor, ctx, inputs = prepared
 
     execution_options = operator.resolve_execution_options(ctx)
     if (
@@ -268,6 +267,28 @@ async def execute_or_delegate_operator(
             )
             should_delegate = True
 
+    # Validate PipelineOperators
+    pipeline = None
+    if isinstance(operator, PipelineOperator):
+        try:
+            pipeline = operator.resolve_pipeline(ctx)
+            if not pipeline or not isinstance(pipeline, types.Pipeline):
+                raise TypeError(
+                    "Pipeline must be a fiftyone.operators.types.Pipeline"
+                )
+            if not all(
+                isinstance(s, types.PipelineStage) for s in pipeline.stages
+            ):
+                raise TypeError(
+                    "Pipeline stages must be of type PipelineStage"
+                )
+        except Exception as e:
+            return ExecutionResult(
+                executor=executor,
+                error=traceback.format_exc(),
+                error_message=f"Failed to resolve pipeline: {str(e)}",
+            )
+
     if should_delegate:
         try:
             from .delegated import DelegatedOperationService
@@ -277,10 +298,14 @@ async def execute_or_delegate_operator(
                 ctx.num_distributed_tasks
                 or "num_distributed_tasks" in ctx.request_params
             ):
-                logger.warning(
-                    "Distributed execution only supported in FiftyOne Enterprise"
+                raise ValueError(
+                    "Distributed execution is only supported in FiftyOne Enterprise"
                 )
-                ctx.request_params.pop("num_distributed_tasks", None)
+            if isinstance(operator, PipelineOperator):
+                raise ValueError(
+                    "Pipeline operators require a distributed executor, "
+                    "available only in FiftyOne Enterprise"
+                )
 
             ctx.request_params["delegated"] = True
             metadata = {"inputs_schema": None, "outputs_schema": None}
@@ -299,6 +324,7 @@ async def execute_or_delegate_operator(
                 delegation_target=ctx.delegation_target,
                 label=operator.resolve_run_name(ctx),
                 metadata=metadata,
+                pipeline=None,  # pipelines not supported in this repo
             )
 
             execution = ExecutionResult(
@@ -309,6 +335,11 @@ async def execute_or_delegate_operator(
                 if execution.result["context"]
                 else None
             )
+            execution.result["pipeline"] = (
+                execution.result["pipeline"].to_json()
+                if execution.result["pipeline"]
+                else None
+            )
             return execution
         except Exception as error:
             return ExecutionResult(
@@ -317,8 +348,13 @@ async def execute_or_delegate_operator(
                 error_message=str(error),
             )
     else:
+        if isinstance(operator, PipelineOperator):
+            raise NotImplementedError(
+                "Immediate execution of pipeline operators is not supported"
+            )
         # Not delegated, force distributed execution off
         ctx.request_params.pop("num_distributed_tasks", None)
+
         try:
             result = await do_execute_operator(operator, ctx, exhaust=exhaust)
         except Exception as error:
@@ -522,8 +558,6 @@ class ExecutionContext(object):
         self._secrets = {}
         self._secrets_client = PluginSecretsResolver()
         self._required_secret_keys = required_secrets
-        self._has_generated_view = None
-        self._has_custom_generated_view = None
 
         self._prompt_id = request_params.get("prompt_id", None)
 
@@ -605,12 +639,8 @@ class ExecutionContext(object):
 
         return self._view
 
-    def target_view(
-        self,
-        param_name="view_target",
-    ):
-        """The target :class:`fiftyone.core.view.DatasetView` for the operator
-        being executed.
+    def target_view(self, param_name="view_target"):
+        """The target view for the operator being executed.
 
         Args:
             param_name ("view_target"): the name of the enum parameter defining
@@ -620,19 +650,13 @@ class ExecutionContext(object):
             a :class:`fiftyone.core.collections.SampleCollection`
         """
         target = self.params.get(param_name)
-        if not target:
-            target = (
-                constants.ViewTarget.BASE_VIEW
-                if self.has_generated_view
-                else constants.ViewTarget.DATASET
-            )
 
         if target == constants.ViewTarget.CURRENT_VIEW:
             return self.view
         if target == constants.ViewTarget.DATASET:
             return self.dataset
         if target == constants.ViewTarget.BASE_VIEW:
-            return self.view._base_view
+            return self.view._base_view  # pylint: disable=protected-access
         if target == constants.ViewTarget.SELECTED_SAMPLES:
             return self.view.select(self.selected)
         if target == constants.ViewTarget.SELECTED_LABELS:
@@ -640,64 +664,10 @@ class ExecutionContext(object):
         if target == constants.ViewTarget.DATASET_VIEW:
             return self.dataset.view()
 
-        return self.dataset
+        return self.view if self.has_custom_view else self.dataset
 
     # Alias for common word reversal
     view_target = target_view
-
-    def _init_has_generated_view(self):
-        stages = self.request_params.get("view", None)
-        generated_view_stages = {
-            f"{stage_class.__module__}.{stage_class.__name__}"
-            for stage_class in (
-                focs.ToClips,
-                focs.ToEvaluationPatches,
-                focs.ToFrames,
-                focs.ToPatches,
-            )
-        }
-
-        self._has_generated_view = self._has_custom_generated_view = False
-
-        for idx, stage in enumerate(stages or []):
-            if stage.get("_cls") in generated_view_stages:
-                has_filters = bool(self.request_params.get("filters", None))
-                has_extended = bool(self.request_params.get("extended", None))
-                has_more_stages = len(stages[idx + 1 :]) > 0
-                has_additional_filters = (
-                    has_filters or has_extended or has_more_stages
-                )
-                self._has_generated_view = True
-                self._has_custom_generated_view = has_additional_filters
-                break
-
-    @property
-    def has_generated_view(self):
-        """Whether the context's view is a generated view
-
-        This method inspects the request params only and does not actually
-        load the view. Therefore, it may be inaccurate for saved views.
-
-        Returns: ``True`` if the context's view is a generated view
-        """
-        if self._has_generated_view is None:
-            self._init_has_generated_view()
-        return self._has_generated_view
-
-    @property
-    def has_custom_generated_view(self):
-        """Whether the context's view is a generated view AND it has
-        additional filters.
-
-        This method inspects the request params only and does not actually
-        load the view. Therefore, it may be inaccurate for saved views.
-
-        Returns: ``True`` if the context's view is a generated view and
-            it has additional filters on top of the base view
-        """
-        if self._has_custom_generated_view is None:
-            self._init_has_generated_view()
-        return self._has_custom_generated_view
 
     @property
     def has_custom_view(self):

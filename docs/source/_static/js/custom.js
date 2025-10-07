@@ -412,9 +412,11 @@ function initTabsSlidingIndicator() {
       if (activeTab) {
         const left = activeTab.offsetLeft;
         const width = activeTab.offsetWidth;
+        const top = activeTab.offsetTop + activeTab.offsetHeight - 1;
 
         slidingIndicator.style.left = `${left}px`;
         slidingIndicator.style.width = `${width}px`;
+        slidingIndicator.style.top = `${top}px`;
         slidingIndicator.style.opacity = "1";
       } else {
         slidingIndicator.style.opacity = "0";
@@ -505,6 +507,96 @@ function initMobileNavDropdown() {
   });
 }
 
+/* KAPA AI Integration */
+const initKapaAI = () => {
+  const logo =
+    "https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png";
+  const script = document.createElement("script");
+  Object.assign(script, {
+    src: "https://widget.kapa.ai/kapa-widget.bundle.js",
+    async: true,
+  });
+  Object.assign(script.dataset, {
+    websiteId: "eb6a5a18-9704-41fc-9351-cae28372e763",
+    projectName: "Voxel51",
+    projectColor: "#212529",
+    buttonHide: "true",
+    projectLogo: logo,
+    modalZIndex: "9999",
+    modalYOffset: "5vh",
+    modalExampleQuestions:
+      "How can I import my data?,How can I compute embeddings?, How can I create my own plugin?, How can I evaluate my model?",
+    modalDisclaimer:
+      "Your AI guide to all things FiftyOne and its community, powered by the complete [FiftyOne documentation](https://docs.voxel51.com/).",
+  });
+
+  document.head.appendChild(script);
+
+  const floatingButton = Object.assign(document.createElement("button"), {
+    className: "kapa-ai-button",
+    innerHTML: `<span class="kapa-text">Ask AI</span><div class="kapa-logo"><img src="${logo}" alt="FiftyOne Logo" /></div>`,
+  });
+  floatingButton.addEventListener("click", () => {
+    if (window.Kapa) {
+      window.Kapa.open();
+    }
+  });
+  document.body.appendChild(floatingButton);
+
+  const createAskAIButton = (query) => {
+    const button = Object.assign(document.createElement("button"), {
+      className: "kapa-ask-ai-button",
+      innerHTML: `<span class="kapa-text"></span><div class="kapa-logo"><img src="${logo}" alt="FiftyOne Logo" /></div>`,
+    });
+    button.querySelector(".kapa-text").textContent = `Ask AI about "${query}"`;
+
+    button.addEventListener("click", () => {
+      if (window.Kapa) {
+        window.Kapa.open({ mode: "ai", query, submit: true });
+      }
+    });
+    return button;
+  };
+
+  let currentQuery = "",
+    askAIButton = null;
+  const addAskAIButton = (query) => {
+    const container = document.querySelector(".DocSearch-Container");
+    if (!container) return;
+
+    const hits = container.querySelector(".DocSearch-Hits");
+    if (!hits) return;
+
+    askAIButton?.remove();
+    askAIButton = createAskAIButton(query);
+    hits.insertBefore(askAIButton, hits.firstChild);
+    currentQuery = query;
+  };
+
+  const removeAskAIButton = () => {
+    askAIButton?.remove();
+    askAIButton = null;
+    currentQuery = "";
+  };
+
+  document.addEventListener("input", (e) => {
+    if (e.target.id === "docsearch-input") {
+      const query = e.target.value.trim();
+      if (query.length > 0) {
+        addAskAIButton(query);
+      } else {
+        removeAskAIButton();
+      }
+    }
+  });
+
+  document.addEventListener("click", (e) => {
+    if (e.target.closest(".DocSearch-Button")) {
+      removeAskAIButton();
+    }
+  });
+};
+
 document.addEventListener("DOMContentLoaded", () => {
   initSidebarToggle();
   initSlidingNavBar();
@@ -512,21 +604,5 @@ document.addEventListener("DOMContentLoaded", () => {
   markLineNumbers();
   initTabsSlidingIndicator();
   initMobileNavDropdown();
-});
-
-document.addEventListener("DOMContentLoaded", function () {
-  var script = document.createElement("script");
-  script.src = "https://widget.kapa.ai/kapa-widget.bundle.js";
-  script.setAttribute(
-    "data-website-id",
-    "eb6a5a18-9704-41fc-9351-cae28372e763"
-  );
-  script.setAttribute("data-project-name", "Voxel51");
-  script.setAttribute("data-project-color", "#212529");
-  script.setAttribute(
-    "data-project-logo",
-    "https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png"
-  );
-  script.async = true;
-  document.head.appendChild(script);
+  initKapaAI();
 });

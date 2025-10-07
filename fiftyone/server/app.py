@@ -103,7 +103,7 @@ app = Starlette(
         Middleware(
             CORSMiddleware,
             allow_origins=["*"],
-            allow_methods=["GET", "POST", "HEAD", "OPTIONS"],
+            allow_methods=["GET", "PATCH", "POST", "HEAD", "OPTIONS"],
             allow_headers=[
                 "access-control-allow-origin",
                 "authorization",

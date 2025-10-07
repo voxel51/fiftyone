@@ -1807,6 +1807,7 @@ class DynamicGroupTests(unittest.TestCase):
         counts = dataset.count_values("sample_id")
 
         view1 = dataset.group_by("sample_id")
+
         self.assertEqual(view1.media_type, "group")
         self.assertIsNone(view1.group_field)
         self.assertIsNone(view1.group_slice)
@@ -1815,10 +1816,7 @@ class DynamicGroupTests(unittest.TestCase):
         self.assertIsNone(view1.group_media_types)
         self.assertTrue(view1._is_dynamic_groups)
         self.assertEqual(len(view1), 2)
-        self.assertSetEqual(
-            set(dataset.list_indexes()),
-            default_indexes | {"sample_id"},
-        )
+        self.assertSetEqual(set(dataset.list_indexes()), default_indexes)
 
         sample = view1.first()
         group_id = sample.sample_id
@@ -1859,9 +1857,20 @@ class DynamicGroupTests(unittest.TestCase):
         self.assertListEqual(frame_numbers, [2, 1])
         self.assertListEqual(also_frame_numbers, [2, 1])
 
+        view3 = dataset.group_by("sample_id", create_index=True)
+
+        self.assertEqual(len(view3), 2)
+        self.assertSetEqual(
+            set(dataset.list_indexes()),
+            default_indexes | {"sample_id"},
+        )
+
     @drop_datasets
     def test_group_by_ordered(self):
         dataset = _make_group_by_dataset()
+
+        default_indexes = {"id", "filepath", "created_at", "last_modified_at"}
+
         sample_id1, sample_id2 = dataset.limit(2).values("sample_id")
         counts = dataset.count_values("sample_id")
 
@@ -1877,16 +1886,7 @@ class DynamicGroupTests(unittest.TestCase):
         self.assertIsNone(view1.group_media_types)
         self.assertTrue(view1._is_dynamic_groups)
         self.assertEqual(len(view1), 2)
-        self.assertSetEqual(
-            set(dataset.list_indexes()),
-            {
-                "id",
-                "filepath",
-                "created_at",
-                "last_modified_at",
-                "_sample_id_1_frame_number_-1",
-            },
-        )
+        self.assertSetEqual(set(dataset.list_indexes()), default_indexes)
 
         sample = view1.first()
         group_id = sample.sample_id
@@ -1926,6 +1926,19 @@ class DynamicGroupTests(unittest.TestCase):
         self.assertListEqual(sample_ids, [sample_id2])
         self.assertListEqual(frame_numbers, [2, 1])
         self.assertListEqual(also_frame_numbers, [2, 1])
+
+        view3 = dataset.group_by(
+            "sample_id",
+            order_by="frame_number",
+            reverse=True,
+            create_index=True,
+        )
+
+        self.assertEqual(len(view3), 2)
+        self.assertSetEqual(
+            set(dataset.list_indexes()),
+            default_indexes | {"_sample_id_1_frame_number_-1"},
+        )
 
     @drop_datasets
     def test_group_by_compound(self):
@@ -1974,28 +1987,39 @@ class DynamicGroupTests(unittest.TestCase):
         view = dataset.group_by(("sample_id", "device_id"))
 
         self.assertEqual(len(view), 4)
-        self.assertSetEqual(
-            set(dataset.list_indexes()),
-            default_indexes | {"_sample_id_1_device_id_1"},
-        )
+        self.assertSetEqual(set(dataset.list_indexes()), default_indexes)
 
         also_view = fo.DatasetView._build(dataset, view._serialize())
 
         self.assertEqual(len(also_view), 4)
         self.assertEqual(also_view.media_type, "group")
 
+        view = dataset.group_by(("sample_id", "device_id"), create_index=True)
+
+        self.assertEqual(len(view), 4)
+        self.assertSetEqual(
+            set(dataset.list_indexes()),
+            default_indexes | {"_sample_id_1_device_id_1"},
+        )
+
+        dataset.drop_index("_sample_id_1_device_id_1")
+
         dataset2 = dataset.clone()
         view2 = dataset2.group_by(E([F("sample_id"), F("device_id")]))
 
         self.assertEqual(len(view2), 4)
-        self.assertSetEqual(
-            set(dataset2.list_indexes()),
-            default_indexes | {"_sample_id_1_device_id_1"},
-        )
+        self.assertSetEqual(set(dataset2.list_indexes()), default_indexes)
 
         also_view2 = fo.DatasetView._build(dataset2, view2._serialize())
 
         self.assertEqual(len(also_view2), 4)
+        self.assertSetEqual(set(dataset2.list_indexes()), default_indexes)
+
+        view2 = dataset2.group_by(
+            E([F("sample_id"), F("device_id")]), create_index=True
+        )
+
+        self.assertEqual(len(view2), 4)
         self.assertSetEqual(
             set(dataset2.list_indexes()),
             default_indexes | {"_sample_id_1_device_id_1"},
@@ -2006,19 +2030,23 @@ class DynamicGroupTests(unittest.TestCase):
             ("sample_id", "device_id"), order_by="created_at"
         )
         self.assertEqual(len(view), 4)
-        self.assertSetEqual(
-            set(dataset.list_indexes()),
-            default_indexes
-            | {
-                "_sample_id_1_device_id_1",
-                "_sample_id_1_device_id_1_created_at_1",
-            },
-        )
+        self.assertSetEqual(set(dataset.list_indexes()), default_indexes)
 
         also_view = fo.DatasetView._build(dataset, view._serialize())
 
         self.assertEqual(len(also_view), 4)
         self.assertEqual(also_view.media_type, "group")
+
+        view = dataset.group_by(
+            ("sample_id", "device_id"),
+            order_by="created_at",
+            create_index=True,
+        )
+        self.assertEqual(len(view), 4)
+        self.assertSetEqual(
+            set(dataset.list_indexes()),
+            default_indexes | {"_sample_id_1_device_id_1_created_at_1"},
+        )
 
     @drop_datasets
     def test_group_by_complex(self):

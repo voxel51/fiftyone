@@ -1340,77 +1340,7 @@ class CreateIndex(foo.Operator):
     def resolve_input(self, ctx):
         inputs = types.Object()
 
-        schema = ctx.dataset.get_field_schema(flat=True)
-        if ctx.dataset._has_frame_fields():
-            frame_schema = ctx.dataset.get_frame_field_schema(flat=True)
-            schema.update(
-                {
-                    ctx.dataset._FRAMES_PREFIX + path: field
-                    for path, field in frame_schema.items()
-                }
-            )
-
-        categorical_field_types = (
-            fo.StringField,
-            fo.BooleanField,
-            fo.ObjectIdField,
-        )
-        numeric_field_types = (
-            fo.FloatField,
-            fo.IntField,
-            fo.DateField,
-            fo.DateTimeField,
-        )
-        valid_field_types = categorical_field_types + numeric_field_types
-
-        path_keys = [
-            p
-            for p, f in schema.items()
-            if (
-                isinstance(f, valid_field_types)
-                or (
-                    isinstance(f, fo.ListField)
-                    and isinstance(f.field, valid_field_types)
-                )
-            )
-        ]
-
-        indexes = set(ctx.dataset.list_indexes())
-
-        field_keys = [p for p in path_keys if p not in indexes]
-        field_selector = types.AutocompleteView()
-        for key in field_keys:
-            field_selector.add_choice(key, label=key)
-
-        inputs.enum(
-            "field_name",
-            field_selector.values(),
-            required=True,
-            label="Field name",
-            description="The field to index",
-            view=field_selector,
-        )
-
-        inputs.bool(
-            "unique",
-            default=False,
-            required=False,
-            label="Unique",
-            description="Whether to add a uniqueness constraint to the index",
-        )
-
-        if ctx.dataset.media_type == fom.GROUP:
-            inputs.bool(
-                "group_index",
-                default=True,
-                required=False,
-                label="Group index",
-                description=(
-                    "Whether to also add a compound group index. This "
-                    "optimizes sidebar queries when viewing specific group "
-                    "slice(s)"
-                ),
-            )
+        _create_index_inputs(ctx, inputs)
 
         return types.Property(inputs, view=types.View(label="Create index"))
 
@@ -1423,9 +1353,127 @@ class CreateIndex(foo.Operator):
             group_path = ctx.dataset.group_field + ".name"
             index_spec = [(group_path, 1), (field_name, 1)]
 
-            ctx.dataset.create_index(index_spec, unique=unique, wait=False)
+            ctx.dataset.create_index(
+                index_spec, unique=unique, force=True, wait=False
+            )
 
-        ctx.dataset.create_index(field_name, unique=unique, wait=False)
+        ctx.dataset.create_index(
+            field_name, unique=unique, force=True, wait=False
+        )
+
+
+def _create_index_inputs(ctx, inputs):
+    schema = ctx.dataset.get_field_schema(flat=True)
+    if ctx.dataset._has_frame_fields():
+        frame_schema = ctx.dataset.get_frame_field_schema(flat=True)
+        schema.update(
+            {
+                ctx.dataset._FRAMES_PREFIX + path: field
+                for path, field in frame_schema.items()
+            }
+        )
+
+    categorical_field_types = (
+        fo.StringField,
+        fo.BooleanField,
+        fo.ObjectIdField,
+    )
+    numeric_field_types = (
+        fo.FloatField,
+        fo.IntField,
+        fo.DateField,
+        fo.DateTimeField,
+    )
+    valid_field_types = categorical_field_types + numeric_field_types
+
+    path_keys = [
+        p
+        for p, f in schema.items()
+        if (
+            isinstance(f, valid_field_types)
+            or (
+                isinstance(f, fo.ListField)
+                and isinstance(f.field, valid_field_types)
+            )
+        )
+    ]
+
+    indexes = ctx.dataset.get_index_information()
+
+    default_indexes = set(ctx.dataset._get_default_indexes())
+    default_indexes.discard("filepath")  # modifying 'filepath' index is okay
+    if ctx.dataset._has_frame_fields():
+        for i in ctx.dataset._get_default_indexes(frames=True):
+            default_indexes.add(ctx.dataset._FRAMES_PREFIX + i)
+
+    field_selector = types.AutocompleteView()
+    for key in path_keys:
+        if key in default_indexes:
+            continue
+
+        field_selector.add_choice(key, label=key)
+
+    inputs.enum(
+        "field_name",
+        field_selector.values(),
+        required=True,
+        label="Field name",
+        description="The field to index",
+        view=field_selector,
+    )
+
+    inputs.bool(
+        "unique",
+        default=False,
+        required=False,
+        label="Unique",
+        description="Whether to add a uniqueness constraint to the index",
+    )
+
+    if ctx.dataset.media_type == fom.GROUP:
+        inputs.bool(
+            "group_index",
+            default=True,
+            required=False,
+            label="Group index",
+            description=(
+                "Whether to also add a compound group index. This "
+                "optimizes sidebar queries when viewing specific group "
+                "slice(s)"
+            ),
+        )
+
+    field_name = ctx.params.get("field_name", None)
+    existing_index = field_name in indexes
+    if existing_index:
+        unique = ctx.params.get("unique", False)
+        existing_unique = indexes.get(field_name, {}).get("unique", False)
+
+        if unique and not existing_unique:
+            message = types.Notice(
+                label=(
+                    f"You are about to upgrade the existing `{field_name}` "
+                    "index to a unique index"
+                )
+            )
+            inputs.view("message", message)
+        elif existing_unique and not unique:
+            message = types.Notice(
+                label=(
+                    f"You are about to downgrade the existing `{field_name}` "
+                    "index to a non-unique index"
+                )
+            )
+            inputs.view("message", message)
+        else:
+            message = types.Warning(
+                label=(
+                    f"A `{field_name}` index already exists with "
+                    f"`unique={existing_unique}`"
+                )
+            )
+            prop = inputs.view("message", message)
+            prop.invalid = True
 
 
 class DropIndex(foo.Operator):
@@ -2713,6 +2761,32 @@ def _get_non_default_frame_fields(dataset):
     return schema
 
 
+class DownloadFileOperator(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="download_file",
+            label="Download file",
+            unlisted=True,
+        )
+
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+        inputs.str(
+            "url",
+            required=True,
+            label="URL",
+            description="The URL of the file to download",
+        )
+        return types.Property(inputs, view=types.View(label="Download file"))
+
+    def execute(self, ctx):
+        # NOTE: this only calls the browser_download operator
+        # in OSS, in teams it resolves cloud bucket urls
+        url = ctx.params["url"]
+        ctx.ops.browser_download(url)
+
+
 def _parse_spaces(ctx, spaces):
     if isinstance(spaces, str):
         spaces = json.loads(spaces)
@@ -2754,6 +2828,7 @@ def register(p):
     p.register(DeleteWorkspace)
     p.register(SyncLastModifiedAt)
     p.register(ListFiles)
+    p.register(DownloadFileOperator)
     p.register(ConfigureScenario)
 
     # view stages
