@@ -3,6 +3,202 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.11.2
+--------------------------
+*Released September 25, 2025*
+
+Includes all updates from :ref:`FiftyOne 1.8.1 <release-notes-v1.8.1>`, plus:
+
+- Fixed a security vulnerability in `formidable`
+
+.. _release-notes-v1.8.1:
+
+FiftyOne 1.8.1
+--------------
+*Released September 25, 2025*
+
+- Fixed a bug where certain plugin form inputs would cause the form to not
+  render properly. `#6351 <https://github.com/voxel51/fiftyone/pull/6351>`_
+
+
+FiftyOne Enterprise 2.11.1
+--------------------------
+*Released September 11, 2025*
+
+- Fixed a permissioning edge case that could cause users to view the names of
+  datasets they didn't have access to.
+
+FiftyOne Enterprise 2.11.0
+--------------------------
+*Released September 3, 2025*
+
+Includes all updates from :ref:`FiftyOne 1.8.0 <release-notes-v1.8.0>`, plus:
+
+- Introduced support for
+  :ref:`running delegated operations on-demand <enterprise-on-demand-compute>`
+  on a connected Databricks or Anyscale cluster
+- Introduced support for
+  :ref:`distributed execution of delegated operations <enterprise-distributed-execution>`,
+  which splits execution of compatible operations across multiple parallel
+  workers, enabling large operations to complete in less time. Users can easily
+  modify their existing operators to support distribution by following
+  :ref:`these simple instructions <writing-distributed-operators>`
+- Added support for identity pool credentials (WIF) and impersonated
+  credentials when configuring
+  :ref:`cloud credentials <enterprise-cloud-credentials>`
+- Fixed `sizeEstimate` fields on datasets and dataset snapshots to return
+  floats indicating size in megabytes instead of bytes, preventing GraphQL
+  errors with large estimates
+- Fixed a memory leak in the server
+
+Logging
+
+- Logging now outputs in structured JSON format when the
+  `FIFTYONE_LOGGING_FORMAT='json'` environment variable is set
+- Removed duplicate and otherwise noisy server logs to improve performance and
+  reduce unnecessary logging
+- Ensure timestamp is included on more logs
+- Distinguish more clearly between missing token and invalid token errors when
+  authentication fails
+
+Dependencies
+
+- Updated `urllib3` dependency to resolve CVE-2025-50181
+- Updated `sha.js` dependency to resolve CVE-2025-9288
+- Pinned `libssl-dev`, `libssl3`, and `openssl` dependencies to avoid issues
+  caused by OpenSSL 3.0.17
+
+.. _release-notes-v1.8.0:
+
+FiftyOne 1.8.0
+--------------
+*Released September 3, 2025*
+
+App
+
+- Optimized lasso performance in the :ref:`Map panel <app-map-panel>`
+  `#6150 <https://github.com/voxel51/fiftyone/pull/6150>`_
+- Introduced a number of point-cloud fixes: point-cloud height shader and
+  tooltip hover coordinates account for asset-level transformations, PLY point
+  clouds that have vertex normals render with correct shading
+  `#6254 <https://github.com/voxel51/fiftyone/pull/6254>`_
+- Reduced the need for manual refreshes in the App by disabling the in-memory
+  singleton cache in the App server
+  `#6161 <https://github.com/voxel51/fiftyone/pull/6161>`_
+
+Plugins
+
+- Added a :ref:`target view utility <operator-target-view>` to the operator
+  framework that provides a builtin mechanism for giving users the choice of
+  operating on a full dataset, current view, or current selection
+  `#6235 <https://github.com/voxel51/fiftyone/pull/6235>`_
+
+Annotation
+
+- Fixed a bug in :ref:`CVAT <cvat-integration>` and IoU utilities handling of
+  instance segmentation masks
+  `#6274 <https://github.com/voxel51/fiftyone/pull/6274>`_
+- Fixed :ref:`CVAT <cvat-integration>` instance segmentation mask resolution
+  `#5972 <https://github.com/voxel51/fiftyone/pull/5972>`_
+- Fixed an error when loading non-list tag attributes from
+  :ref:`CVAT <cvat-integration>`
+  `#6094 <https://github.com/voxel51/fiftyone/pull/6094>`_
+
+Model Zoo
+
+- Added 6 SegFormer semantic segmentation models to the
+  :ref:`model zoo <model-zoo-models>` (b0-b5 variants)
+  `#6217 <https://github.com/voxel51/fiftyone/pull/6217>`_
+- Added OWL-ViT large-patch14 to the :ref:`model zoo <model-zoo-models>` for
+  zero-shot object detection
+  `#6196 <https://github.com/voxel51/fiftyone/pull/6196>`_
+- Added 5 new D-FINE real-time object detection models to the
+  :ref:`model zoo <model-zoo-models>` (nano through xlarge)
+  `#6143 <https://github.com/voxel51/fiftyone/pull/6143>`_
+- Added 2 new RT-DETRv2 real-time object detection models to the
+  :ref:`model zoo <model-zoo-models>` (small and medium variants)
+  `#6106 <https://github.com/voxel51/fiftyone/pull/6106>`_
+- Added OWL-ViT base-patch32 model to the :ref:`model zoo <model-zoo-models>`
+  for zero-shot object detection
+  `#6140 <https://github.com/voxel51/fiftyone/pull/6140>`_
+- Added 4 new Swin V2 hierarchical transformer models to the
+  :ref:`model zoo <model-zoo-models>` (tiny, small, base, large)
+  `#6100 <https://github.com/voxel51/fiftyone/pull/6100>`_
+- Added 13 new image classification models to the
+  :ref:`model zoo <model-zoo-models>`: ConvNeXt (tiny, small, base, large,
+  xlarge) and EfficientNet (b0-b7)
+  `#6084 <https://github.com/voxel51/fiftyone/pull/6084>`_
+- Zero-shot HuggingFace models no longer require classes to be set by the user
+  when using :meth:`load_zoo_model() <fiftyone.zoo.models.load_zoo_model>`
+  `#6159 <https://github.com/voxel51/fiftyone/pull/6159>`_
+- All semantic segmentation torch models in the
+  :ref:`model zoo <model-zoo-models>` now support confidence thresholding and
+  the class indices start at 1 for segmentation masks
+  `#6231 <https://github.com/voxel51/fiftyone/pull/6231>`_
+- All models in the :ref:`model zoo <model-zoo-models>` now have clear,
+  user-friendly descriptions that explain what each model does and its intended
+  use case, making it easier to find the right model for your task
+  `#6184 <https://github.com/voxel51/fiftyone/pull/6184>`_
+- Official models in the :ref:`model zoo <model-zoo-models>` are now
+  consistently marked with the `official` tag to help users identify
+  authoritative model implementations
+  `#6192 <https://github.com/voxel51/fiftyone/pull/6192>`_
+- TensorFlow 1.x models in the :ref:`model zoo <model-zoo-models>` are now
+  tagged as `legacy` to indicate they are no longer actively maintained due to
+  TF1's deprecation
+  `#6187 <https://github.com/voxel51/fiftyone/pull/6187>`_
+- YOLO segmentation models in the :ref:`model zoo <model-zoo-models>` are now
+  tagged as `instances` rather than `segmentation` to reflect that they perform
+  instance segmentation
+  `#6219 <https://github.com/voxel51/fiftyone/pull/6219>`_
+- Fixed incorrect file size metadata for the ConvNeXt-XLarge model in the
+  :ref:`model zoo <model-zoo-models>`
+  `#6195 <https://github.com/voxel51/fiftyone/pull/6195>`_
+- Fixed missing file sizes for ConvNeXt and EfficientNet models in the
+  :ref:`model zoo <model-zoo-models>`, enabling accurate download progress
+  tracking and storage requirement validation
+  `#6104 <https://github.com/voxel51/fiftyone/pull/6104>`_
+- Fixed missing model size information in the
+  :ref:`model zoo <model-zoo-models>` for vit-base-patch16-224-imagenet-torch,
+  siglip-base-patch16-224-torch, and group-vit-segmentation-transformer-torch
+  models
+  `#6175 <https://github.com/voxel51/fiftyone/pull/6175>`_
+- Fixed a bug that prevented extracting embeddings from zero-shot transformer
+  models
+  `#6109 <https://github.com/voxel51/fiftyone/pull/6109>`_
+- Fixed issue when computing DINO patch embeddings on patches of size <14
+  `#6172 <https://github.com/voxel51/fiftyone/pull/6172>`_
+
+Docs
+
+- Introduced a :ref:`getting started page <getting-started-guides>` organized
+  by use case to help users quickly discover guides relevant to their needs
+  `#6237 <https://github.com/voxel51/fiftyone/pull/6237>`_
+- Added comprehensive :ref:`getting started guides <getting-started-guides>`
+  for object detection, medical imaging, model evaluation, self-driving, and
+  3D visual AI
+  `#5967 <https://github.com/voxel51/fiftyone/pull/5967>`_
+- Added the Kapa AI agent widget to the documentation site to assist users with
+  AI-powered support
+  `#6218 <https://github.com/voxel51/fiftyone/pull/6218>`_
+- Added a new example notebook showing how to use DINOv3 from Hugging Face with
+  FiftyOne for classification, visual search, and PCA-based foreground
+  segmentation
+  `#6261 <https://github.com/voxel51/fiftyone/pull/6261>`_
+
+Logging
+
+- Added support for specifying additional debug loggers via configuration or
+  environment variable
+  `#6220 <https://github.com/voxel51/fiftyone/pull/6220>`_
+
+Deprecations
+
+- FiftyOne no longer supports MongoDB <6. Users running MongoDB 5 or older are
+  :ref:`advised to upgrade <deprecation-mongodb-5.0>` their instance
+  `#6091 <https://github.com/voxel51/fiftyone/pull/6091>`_,
+  `#5984 <https://github.com/voxel51/fiftyone/pull/5984>`_
+
 FiftyOne Enterprise 2.10.2
 --------------------------
 *Released Aug 5, 2025*

@@ -168,6 +168,12 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_DEFAULT_BATCHER",
             default="latency",
         )
+        self.delegated_operation_monitor_interval = self.parse_int(
+            d,
+            "delegated_operation_monitor_interval",
+            env_var="FIFTYONE_DELEGATED_OPERATION_MONITOR_INTERVAL",
+            default=60,
+        )
         self.batcher_static_size = self.parse_int(
             d,
             "batcher_static_size",
@@ -895,6 +901,26 @@ def locate_annotation_config():
         return foc.FIFTYONE_ANNOTATION_CONFIG_PATH
 
     return os.environ["FIFTYONE_ANNOTATION_CONFIG_PATH"]
+
+
+class HTTPRetryConfig(object):
+    """Values used to configure the behavior of the retry logic of HTTP calls
+    made throughout the library.
+
+    NOTE: calls made directly through storage clients (GCS, S3) use their own
+    internal retry logic implementation and may not perfectly match this
+    configuration. This configuration is for direct HTTP requests.
+    """
+
+    # HTTP codes that should trigger a retry
+    RETRY_CODES = {408, 429, 500, 502, 503, 504, 509}
+
+    # Exponential backoff factor
+    # See https://github.com/litl/backoff/blob/master/backoff/_wait_gen.py#L17
+    FACTOR = 0.1
+
+    # Maximum number of times to execute a retry before throwing an exception
+    MAX_TRIES = 10
 
 
 def locate_evaluation_config():

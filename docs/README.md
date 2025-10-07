@@ -15,8 +15,8 @@ Before building the docs locally, ensure you have:
     [virtual environment](https://docs.voxel51.com/getting_started/virtualenv.html)
     created specifically for documentation.
 
-    **Note:** Do **NOT** use the same environment where you ran `install.bash`
-    with the `-d` (dev mode) flag, as docs dependencies conflict with test
+    **Note:** Do **NOT** use the same environment where you ran `install.sh`
+    with the `-d` (dev mode) flag, as docs dependencies may conflict with test
     dependencies.
 
 -   [pandoc](https://pandoc.org/installing.html) installed.
@@ -29,27 +29,34 @@ To build the documentation locally, follow these steps:
 
 1. Install FiftyOne:
 
-```shell
-cd ..
-bash install.bash
-```
+    ```shell
+    cd ..
+    bash install.sh
+    ```
 
 2. Install documentation-specific requirements:
 
-```shell
-pip install -r requirements/docs.txt
-```
+    ```shell
+    pip install -r requirements/docs.txt
+    ```
 
-3.  To use the `fiftyone` repository to autogenerate docs, you need to add it
-    to your `PYTHONPATH`:
+3. If you are going to include FiftyOne Enterprise SDK components in your local
+   docs build, you need to install some additional dependencies as well:
 
-```shell
-export PYTHONPATH=$PYTHONPATH:/path/to/fiftyone
-```
+    ```shell
+    pip install -r requirements/docs-teams.txt
+    ```
+
+4. To use the `fiftyone` repository to autogenerate docs, you need to add it to
+   your `PYTHONPATH`:
+
+    ```shell
+    export PYTHONPATH=$PYTHONPATH:/path/to/fiftyone
+    ```
 
 **Tip:** to avoid running this every time you build the docs, add the previous
-line to your `~/.bashrc`, `~/.zshrc`, system path or the appropriate file for
-your shell.
+line to your `~/.bashrc`, `~/.zshrc`, or the appropriate shell profile for your
+environment.
 
 ## Building
 

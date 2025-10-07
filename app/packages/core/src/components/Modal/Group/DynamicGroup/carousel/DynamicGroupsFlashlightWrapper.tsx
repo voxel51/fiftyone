@@ -37,7 +37,7 @@ const pageParams = selector({
           };
           return {
             ...params,
-            dynamicGroup: get(fos.groupByFieldValue),
+            dynamicGroup: await snapshot.getPromise(fos.groupByFieldValue),
             filter: {},
             after: page ? String(page * pageSize - 1) : null,
             count: pageSize,

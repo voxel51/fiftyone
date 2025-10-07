@@ -1,11 +1,11 @@
-import { usePanelStateByIdCallback } from "@fiftyone/spaces";
+import { usePanelId, usePanelStateByIdCallback } from "@fiftyone/spaces";
 import { useNotification } from "@fiftyone/state";
 import { PanelEventError } from "@fiftyone/utilities";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useActivePanelEventsCount } from "./hooks";
-import { executeOperator, OperatorResult } from "./operators";
+import { OperatorResult, executeOperator } from "./operators";
 import { usePromptOperatorInput } from "./state";
-import { ExecutionCallback } from "./types-internal";
+import { ExecutionCallback, ParamsType } from "./types-internal";
 
 type HandlerOptions = {
   params: { [name: string]: unknown };
@@ -172,4 +172,29 @@ export function usePendingPanelEventError(): {
   }, [pendingError]);
 
   return { setPendingError, pendingError };
+}
+
+export function useTriggerPanelEvent() {
+  const panelId = usePanelId();
+  const handleEvent = usePanelEvent();
+
+  const triggerEvent = useCallback(
+    (
+      event: string,
+      params?: ParamsType,
+      prompt?: boolean,
+      callback?: ExecutionCallback
+    ) => {
+      handleEvent(panelId, {
+        operator: event,
+        params,
+        prompt,
+        callback,
+        panelId,
+      });
+    },
+    [handleEvent, panelId]
+  );
+
+  return triggerEvent;
 }

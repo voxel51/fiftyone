@@ -9,6 +9,7 @@ import pytest
 
 from fiftyone.factory import repos
 from fiftyone.operators import ExecutionContext
+from fiftyone.operators.types import Pipeline, PipelineStage
 
 
 class TestDelegatedOperationDoc:
@@ -56,6 +57,32 @@ class TestDelegatedOperationDoc:
         for k, v in update_dict.items():
             setattr(op_doc, k, v)
 
-        #####
         assert op_doc.num_distributed_tasks == expected_num_tasks
-        #####
+
+    def test_serialize_pipeline(self):
+        op_doc = repos.DelegatedOperationDocument()
+
+        op_doc.pipeline = Pipeline(
+            [
+                PipelineStage(name="one", operator_uri="@test/op1"),
+                PipelineStage(name="two", operator_uri="@test/op2"),
+            ]
+        )
+        out = op_doc.to_pymongo()
+        assert out["pipeline"] == [
+            {
+                "name": "one",
+                "operator_uri": "@test/op1",
+                "num_distributed_tasks": None,
+                "params": None,
+            },
+            {
+                "name": "two",
+                "operator_uri": "@test/op2",
+                "num_distributed_tasks": None,
+                "params": None,
+            },
+        ]
+        op_doc2 = repos.DelegatedOperationDocument()
+        op_doc2.from_pymongo(out)
+        assert op_doc2.pipeline == op_doc.pipeline
