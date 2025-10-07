@@ -10646,6 +10646,10 @@ class SampleCollection(object):
                     write_concern=WriteConcern(w=0)
                 )
 
+        logger.debug(
+            f"Creating index '{index_name}': "
+            f"index_spec={index_spec}, unique={unique}, kwargs={kwargs}"
+        )
         coll.create_index(index_spec, unique=unique, **kwargs)
 
         return index_name
