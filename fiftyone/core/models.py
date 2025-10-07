@@ -353,11 +353,7 @@ def _apply_image_model_single(
 ):
     needs_samples = isinstance(model, SamplesMixin)
 
-    if needs_samples:
-        fields = list(model.needs_fields.values())
-        samples = samples.select_fields(fields)
-    else:
-        samples = samples.select_fields()
+    samples = _select_fields_for_inference(samples, model)
 
     with contextlib.ExitStack() as context:
         pb = context.enter_context(fou.ProgressBar(progress=progress))
@@ -400,11 +396,7 @@ def _apply_image_model_batch(
 ):
     needs_samples = isinstance(model, SamplesMixin)
 
-    if needs_samples:
-        fields = list(model.needs_fields.values())
-        samples = samples.select_fields(fields)
-    else:
-        samples = samples.select_fields()
+    samples = _select_fields_for_inference(samples, model)
 
     with contextlib.ExitStack() as context:
         pb = context.enter_context(fou.ProgressBar(samples, progress=progress))
@@ -469,11 +461,7 @@ def _apply_image_model_data_loader(
         field_mapping,
     )
 
-    if needs_samples:
-        fields = list(model.needs_fields.values())
-        samples = samples.select_fields(fields)
-    else:
-        samples = samples.select_fields()
+    samples = _select_fields_for_inference(samples, model)
 
     with contextlib.ExitStack() as context:
         pb = context.enter_context(fou.ProgressBar(samples, progress=progress))
@@ -532,11 +520,7 @@ def _apply_image_model_to_frames_single(
     frame_counts, total_frame_count = _get_frame_counts(samples)
     is_clips = samples._dataset._is_clips
 
-    if needs_samples:
-        fields = list(model.needs_fields.values())
-        samples = samples.select_fields(fields)
-    else:
-        samples = samples.select_fields()
+    samples = _select_fields_for_inference(samples, model)
 
     with contextlib.ExitStack() as context:
         pb = context.enter_context(
@@ -599,11 +583,7 @@ def _apply_image_model_to_frames_batch(
     frame_counts, total_frame_count = _get_frame_counts(samples)
     is_clips = samples._dataset._is_clips
 
-    if needs_samples:
-        fields = list(model.needs_fields.values())
-        samples = samples.select_fields(fields)
-    else:
-        samples = samples.select_fields()
+    samples = _select_fields_for_inference(samples, model)
 
     with contextlib.ExitStack() as context:
         pb = context.enter_context(
@@ -670,11 +650,7 @@ def _apply_video_model(
     needs_samples = isinstance(model, SamplesMixin)
     is_clips = samples._dataset._is_clips
 
-    if needs_samples:
-        fields = list(model.needs_fields.values())
-        samples = samples.select_fields(fields)
-    else:
-        samples = samples.select_fields()
+    samples = _select_fields_for_inference(samples, model)
 
     with contextlib.ExitStack() as context:
         pb = context.enter_context(fou.ProgressBar(progress=progress))
@@ -709,6 +685,14 @@ def _apply_video_model(
                     raise e
 
                 logger.warning("Sample: %s\nError: %s\n", sample.id, e)
+
+
+def _select_fields_for_inference(samples, model):
+    if isinstance(model, SamplesMixin):
+        fields = list(model.needs_fields.values())
+        return samples.select_fields(fields)
+    else:
+        return samples.select_fields()
 
 
 def _export_arrays(label, input_path, filename_maker):
@@ -1090,11 +1074,7 @@ def compute_embeddings(
 def _compute_image_embeddings_single(
     samples, model, embeddings_field, skip_failures, progress
 ):
-    if embeddings_field is not None and "." in embeddings_field:
-        root_field = embeddings_field.split(".", 1)[0]
-        samples = samples.select_fields(root_field)
-    else:
-        samples = samples.select_fields()
+    samples = _select_fields_for_embeddings(samples, embeddings_field)
 
     embeddings = []
     errors = False
@@ -1138,11 +1118,7 @@ def _compute_image_embeddings_single(
 def _compute_image_embeddings_batch(
     samples, model, embeddings_field, batch_size, skip_failures, progress
 ):
-    if embeddings_field is not None and "." in embeddings_field:
-        root_field = embeddings_field.split(".", 1)[0]
-        samples = samples.select_fields(root_field)
-    else:
-        samples = samples.select_fields()
+    samples = _select_fields_for_embeddings(samples, embeddings_field)
 
     embeddings = []
     errors = False
@@ -1210,11 +1186,7 @@ def _compute_image_embeddings_data_loader(
         field_mapping,
     )
 
-    if embeddings_field is not None and "." in embeddings_field:
-        root_field = embeddings_field.split(".", 1)[0]
-        samples = samples.select_fields(root_field)
-    else:
-        samples = samples.select_fields()
+    samples = _select_fields_for_embeddings(samples, embeddings_field)
 
     embeddings = []
     errors = False
@@ -1289,11 +1261,7 @@ def _compute_frame_embeddings_single(
     frame_counts, total_frame_count = _get_frame_counts(samples)
     is_clips = samples._dataset._is_clips
 
-    if embeddings_field is not None and "." in embeddings_field:
-        root_field = embeddings_field.split(".", 1)[0]
-        samples = samples.select_fields(root_field)
-    else:
-        samples = samples.select_fields()
+    samples = _select_fields_for_embeddings(samples, embeddings_field)
 
     embeddings_dict = {}
 
@@ -1359,11 +1327,7 @@ def _compute_frame_embeddings_batch(
     frame_counts, total_frame_count = _get_frame_counts(samples)
     is_clips = samples._dataset._is_clips
 
-    if embeddings_field is not None and "." in embeddings_field:
-        root_field = embeddings_field.split(".", 1)[0]
-        samples = samples.select_fields(root_field)
-    else:
-        samples = samples.select_fields()
+    samples = _select_fields_for_embeddings(samples, embeddings_field)
 
     embeddings_dict = {}
 
@@ -1433,11 +1397,7 @@ def _compute_video_embeddings(
 ):
     is_clips = samples._dataset._is_clips
 
-    if embeddings_field is not None and "." in embeddings_field:
-        root_field = embeddings_field.split(".", 1)[0]
-        samples = samples.select_fields(root_field)
-    else:
-        samples = samples.select_fields()
+    samples = _select_fields_for_embeddings(samples, embeddings_field)
 
     embeddings = []
     errors = False
@@ -1482,6 +1442,14 @@ def _compute_video_embeddings(
         return np.empty((0, 0), dtype=float)
 
     return np.stack(embeddings)
+
+
+def _select_fields_for_embeddings(samples, embeddings_field):
+    if embeddings_field is not None and "." in embeddings_field:
+        root_field = embeddings_field.split(".", 1)[0]
+        return samples.select_fields(root_field)
+    else:
+        return samples.select_fields()
 
 
 def compute_patch_embeddings(
@@ -1706,7 +1674,7 @@ def _embed_patches(
     skip_failures,
     progress,
 ):
-    samples = samples.select_fields(patches_field)
+    samples = _select_fields_for_patch_embeddings(samples, patches_field)
 
     if embeddings_field is not None:
         label_parser = _make_label_parser(samples, patches_field)
@@ -1821,7 +1789,7 @@ def _embed_patches_data_loader(
         skip_failures,
     )
 
-    samples = samples.select_fields(patches_field)
+    samples = _select_fields_for_patch_embeddings(samples, patches_field)
 
     if embeddings_field is not None:
         label_parser = _make_label_parser(samples, patches_field)
@@ -1884,9 +1852,9 @@ def _embed_frame_patches(
 ):
     frame_counts, total_frame_count = _get_frame_counts(samples)
     is_clips = samples._dataset._is_clips
-
     _patches_field = samples._FRAMES_PREFIX + patches_field
-    samples = samples.select_fields(_patches_field)
+
+    samples = _select_fields_for_patch_embeddings(samples, _patches_field)
 
     if embeddings_field is not None:
         label_parser = _make_label_parser(samples, _patches_field)
@@ -2023,6 +1991,10 @@ def _parse_batch_size(batch_size, model, use_data_loader):
         batch_size = 1
 
     return batch_size
+
+
+def _select_fields_for_patch_embeddings(samples, patches_field):
+    return samples.select_fields(patches_field)
 
 
 def _make_label_parser(samples, patches_field):
