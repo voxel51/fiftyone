@@ -1,8 +1,10 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { Box3, type Group } from "three";
+import { DEFAULT_BOUNDING_BOX } from "../constants";
 
 const BOUNDING_BOX_POLLING_INTERVAL = 50;
 const UNCHANGED_COUNT_THRESHOLD = 6;
+const MAX_BOUNDING_BOX_RETRIES = 5;
 
 /**
  * Calculates the bounding box of the object with the given ref.
@@ -20,6 +22,7 @@ export const useFo3dBounds = (
 
   const unchangedCount = useRef(0);
   const previousBox = useRef<Box3>(null);
+  const retryCount = useRef(0);
 
   const timeOutIdRef = useRef<number | null>(null);
 
@@ -39,6 +42,11 @@ export const useFo3dBounds = (
       if (!isMounted) return;
 
       if (!objectRef.current) {
+        retryCount.current += 1;
+        if (retryCount.current >= MAX_BOUNDING_BOX_RETRIES) {
+          setSceneBoundingBox(DEFAULT_BOUNDING_BOX);
+          return;
+        }
         timeOutIdRef.current = window.setTimeout(
           getBoundingBox,
           BOUNDING_BOX_POLLING_INTERVAL
@@ -49,6 +57,11 @@ export const useFo3dBounds = (
       const box = new Box3().setFromObject(objectRef.current);
 
       if (Math.abs(box.max?.x) === Number.POSITIVE_INFINITY) {
+        retryCount.current += 1;
+        if (retryCount.current >= MAX_BOUNDING_BOX_RETRIES) {
+          setSceneBoundingBox(DEFAULT_BOUNDING_BOX);
+          return;
+        }
         timeOutIdRef.current = window.setTimeout(
           getBoundingBox,
           BOUNDING_BOX_POLLING_INTERVAL
