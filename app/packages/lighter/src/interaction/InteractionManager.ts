@@ -4,7 +4,7 @@
 
 import { UndoRedoManager } from "../commands/UndoRedoManager";
 import { TypeGuards } from "../core/Scene2D";
-import type { EventBus } from "../event/EventBus";
+import type { EventBus, LighterEventDetail } from "../event/EventBus";
 import { LIGHTER_EVENTS } from "../event/EventBus";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { SelectionManager } from "../selection/SelectionManager";
@@ -133,6 +133,11 @@ export interface InteractionHandler {
   containsPoint(point: Point): boolean;
 
   /**
+   * Marks the overlay as dirty, indicating it needs to be re-rendered.
+   */
+  markDirty(): void;
+
+  /**
    * Release any resources held by the handler.
    */
   cleanup?(): void;
@@ -196,6 +201,7 @@ export class InteractionManager {
     this.canvas.addEventListener("pointercancel", this.handlePointerCancel);
     this.canvas.addEventListener("pointerleave", this.handlePointerLeave);
     document.addEventListener("keydown", this.handleKeyDown);
+    this.eventBus.on(LIGHTER_EVENTS.ZOOMED, this.handleZoomed);
   }
 
   private handlePointerDown = (event: PointerEvent): void => {
@@ -531,6 +537,12 @@ export class InteractionManager {
     this.hoveredHandler = handler;
   }
 
+  private handleZoomed = (
+    _event: CustomEvent<LighterEventDetail<"zoomed">>
+  ): void => {
+    this.handlers?.forEach((handler) => handler.markDirty());
+  };
+
   private isDoubleClick(point: Point, now: number): boolean {
     if (!this.lastClickPoint || !this.lastClickTime) return false;
 
@@ -652,6 +664,7 @@ export class InteractionManager {
     this.canvas.removeEventListener("pointercancel", this.handlePointerCancel);
     this.canvas.removeEventListener("pointerleave", this.handlePointerLeave);
     document.removeEventListener("keydown", this.handleKeyDown);
+    this.eventBus.off(LIGHTER_EVENTS.ZOOMED, this.handleZoomed);
     this.clearHandlers();
   }
 

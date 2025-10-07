@@ -4,7 +4,6 @@
 
 import type { Movable } from "../commands/MoveOverlayCommand";
 import {
-  DEFAULT_TEXT_PADDING,
   LABEL_ARCHETYPE_PRIORITY,
   STROKE_WIDTH,
   EDGE_THRESHOLD,
@@ -205,10 +204,19 @@ export class BoundingBoxOverlay
     }
 
     if (this.options.label && this.options.label.label?.length > 0) {
-      const labelPosition = {
-        x: this.absoluteBounds.x + DEFAULT_TEXT_PADDING - 1,
-        y: this.absoluteBounds.y - 20,
-      };
+      const offset = style.lineWidth
+        ? style.lineWidth / renderer.getScale() / 2
+        : 0;
+
+      const labelPosition = this.isSelected()
+        ? {
+            x: this.absoluteBounds.x + offset * 6,
+            y: this.absoluteBounds.y - offset * 3,
+          }
+        : {
+            x: this.absoluteBounds.x - offset,
+            y: this.absoluteBounds.y - offset,
+          };
 
       let textToDraw = this.options.label.label;
 
