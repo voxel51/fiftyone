@@ -240,6 +240,7 @@ class AsyncSaveContext(SaveContext):
             raise ValueError("executor must be specified")
         super().__init__(*args, **kwargs)
         self.executor = executor
+        self.futures = []
 
     def __enter__(self):
         super().__enter__()
@@ -247,11 +248,14 @@ class AsyncSaveContext(SaveContext):
         return self
 
     def __exit__(self, *args):
+        for future in self.futures:
+            future.result()
         super().__exit__(*args)
         self.executor.__exit__(*args)
 
     def _save_batch(self):
-        self.executor.submit(super()._save_batch)
+        future = self.executor.submit(super()._save_batch)
+        self.futures.append(future)
 
 
 class SampleCollection(object):
