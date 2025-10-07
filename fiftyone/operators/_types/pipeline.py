@@ -34,9 +34,11 @@ class PipelineStage:
         if not self.operator_uri:
             raise ValueError("operator_uri must be a non-empty string")
 
+        if self.num_distributed_tasks is not None:
+            self.num_distributed_tasks = int(self.num_distributed_tasks)
         if (
             self.num_distributed_tasks is not None
-            and int(self.num_distributed_tasks) < 1
+            and self.num_distributed_tasks < 1
         ):
             raise ValueError("num_distributed_tasks must be >= 1")
 
@@ -67,7 +69,8 @@ class Pipeline:
         name=None,
         num_distributed_tasks=None,
         params=None,
-        **kwargs
+        # kwargs accepted for forward compatibility
+        **kwargs  # pylint: disable=unused-argument
     ):
         """Adds a stage to the end of the pipeline.
 
