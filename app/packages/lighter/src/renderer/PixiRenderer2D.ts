@@ -9,6 +9,7 @@ import {
   FONT_FAMILY,
   FONT_SIZE,
   FONT_WEIGHT,
+  HANDLE_ALPHA,
   HANDLE_COLOR,
   HANDLE_FACTOR,
   HANDLE_OUTLINE,
@@ -177,17 +178,16 @@ export class PixiRenderer2D implements Renderer2D {
     graphics: PIXI.Graphics,
     bounds: Rect,
     width: number,
-    color: number | string,
-    alpha: number
+    color: number | string
   ): void {
     width *= HANDLE_FACTOR;
 
     const outline = (2 * HANDLE_OUTLINE) / this.getScale();
-    this.drawBoxes(graphics, bounds, width + outline, color, alpha);
-    this.drawBoxes(graphics, bounds, width, HANDLE_COLOR, alpha);
+    this.drawBoxes(graphics, bounds, width + outline, color, HANDLE_ALPHA);
+    this.drawBoxes(graphics, bounds, width, HANDLE_COLOR, HANDLE_ALPHA);
   }
 
-  drawSpotlight(bounds: Rect, containerId: string): void {
+  drawScrim(bounds: Rect, containerId: string): void {
     const sceneDimensions = this.getContainerDimensions();
     const mask = new PIXI.Graphics();
 
@@ -197,6 +197,8 @@ export class PixiRenderer2D implements Renderer2D {
 
     mask.rect(bounds.x, bounds.y, bounds.width, bounds.height);
     mask.cut();
+
+    mask.eventMode = "none";
 
     this.addToContainer(mask, containerId);
   }
@@ -216,7 +218,7 @@ export class PixiRenderer2D implements Renderer2D {
       const alpha = colorObj.alpha * (style.opacity || 1);
 
       if (style.dashPattern && style.dashPattern.length > 0) {
-        this.drawSpotlight(bounds, containerId);
+        this.drawScrim(bounds, containerId);
 
         const dashLine = new DashLine(graphics, {
           dash: style.dashPattern.map((dash) => dash / this.getScale()),
@@ -226,7 +228,7 @@ export class PixiRenderer2D implements Renderer2D {
         });
         dashLine.drawRect(bounds.x, bounds.y, bounds.width, bounds.height);
 
-        this.drawHandles(graphics, bounds, width, color, alpha);
+        this.drawHandles(graphics, bounds, width, color);
       } else {
         graphics.rect(bounds.x, bounds.y, bounds.width, bounds.height);
         graphics.setStrokeStyle({
@@ -637,6 +639,11 @@ export class PixiRenderer2D implements Renderer2D {
 
     if (children.length > 0) {
       for (const child of children) {
+        // e.g. the scrim
+        if (child.eventMode === "none") {
+          continue;
+        }
+
         const bounds = child.getBounds();
 
         if (

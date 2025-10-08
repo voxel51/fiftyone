@@ -180,8 +180,6 @@ export class BoundingBoxOverlay
       mainStrokeStyle.dashPattern = style.dashPattern;
     }
 
-    renderer.drawRect(this.absoluteBounds, mainStrokeStyle, this.containerId);
-
     if (hoverStrokeColor) {
       renderer.drawRect(
         this.absoluteBounds,
@@ -202,6 +200,8 @@ export class BoundingBoxOverlay
         this.containerId
       );
     }
+
+    renderer.drawRect(this.absoluteBounds, mainStrokeStyle, this.containerId);
 
     if (this.options.label && this.options.label.label?.length > 0) {
       const offset = style.lineWidth

@@ -6,8 +6,8 @@ import type { ColorSchemeInput } from "@fiftyone/relay";
 import { getColor } from "@fiftyone/utilities";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
 
-// Green for info (selection, here)
-const INFO_COLOR = "#00ff00";
+// White for info (selection, here)
+const INFO_COLOR = "#ffffff";
 // Yellow for hover effect
 const HOVER_COLOR = "#FFDE01";
 
