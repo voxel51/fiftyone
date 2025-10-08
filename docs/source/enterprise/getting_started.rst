@@ -4,12 +4,11 @@ Getting Started with FiftyOne Enterprise
 ========================================
 .. default-role:: code
 
-This guide provides comprehensive instructions to successful upload your first dataset to FiftyOne Enterprise (FOE). 
+This guide provides comprehensive instructions to successfully upload your first dataset to FiftyOne Enterprise (FOE).
 
 Upload Cloud Credentials to your Deployment
 -------------------------------------------
 
-.. default-role:: code
 Configure cloud credentials to enable rendering of cloud-backed media within FiftyOne Enterprise.
 
 .. image:: /images/enterprise/getting_started_cloud_creds.gif
@@ -19,10 +18,70 @@ Configure cloud credentials to enable rendering of cloud-backed media within Fif
 Create a dataset via the SDK 
 -----------------------------
 
+Install the FiftyOne Enterprise Python SDK
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+1. Navigate to the **Settings** page in the FiftyOne Enterprise UI
+2. Select the **API** tab  
+3. Copy and execute the provided bash command to install the SDK in your virtual environment
+
+.. image:: /images/enterprise/getting_started_install_sdk.gif
+   :alt: getting-started-install-sdk
+   :align: center
+
+Working with Video Data
+^^^^^^^^^^^^^^^^^^^^^^^
+For video datasets, ensure that ffmpeg is installed in your environment to enable video support. You can install ffmpeg using the following command:
+
+.. tabs::
+
+   .. tab:: Ubuntu/Debian
+
+      .. code-block:: bash
+
+         sudo apt-get install ffmpeg
+
+   .. tab:: macOS
+
+      .. code-block:: bash
+
+         brew install ffmpeg
+
+   .. tab:: Windows
+
+      .. code-block:: powershell
+
+         # Using Chocolatey
+         choco install ffmpeg
+
+
+Connect to Your Deployment
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To establish a connection between the FiftyOne Enterprise Python SDK and your deployment, configure the ``FIFTYONE_API_KEY`` and ``FIFTYONE_API_URI`` environment variables. For detailed setup instructions, refer to the :ref:`API connection documentation <enterprise-api-connection>`.
+
+Verify that your API connection is working correctly using the following method:
+
+.. code-block:: python
+
+   import fiftyone.management as fom  # if this fails, you may have the open-source SDK installed
+
+   fom.test_api_connection()  # API connection succeeded
+
+You can use ``fiftyone.config`` to verify that you have correctly set the ``FIFTYONE_API_KEY`` and ``FIFTYONE_API_URI`` environment variables:
+
+.. code-block:: python
+
+   import fiftyone as fo
+
+   print(fo.config)
+
+
+
 Set Cloud Credentials Locally
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Next, configure the appropriate environment variables for your cloud provider within your local environment
+Next, configure the appropriate environment variables for your :ref:`cloud credentials <enterprise-cloud-credentials>` within your local environment
 
 .. tab-set::
 
@@ -63,38 +122,8 @@ Next, configure the appropriate environment variables for your cloud provider wi
          export MINIO_SECRET_ACCESS_KEY=...
          export MINIO_DEFAULT_REGION=...
 
-Install the FiftyOne Enterprise Python SDK
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-1. Navigate to the **Settings** page in the FiftyOne Enterprise UI
-2. Select the **API** tab  
-3. Copy and execute the provided bash command to install the SDK in your virtual environment
-
-.. image:: /images/enterprise/getting_started_install_sdk.gif
-   :alt: getting-started-install-sdk
-   :align: center
-
-Connect to Your Deployment
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-To establish a connection between the FiftyOne Enterprise Python SDK and your deployment, configure the ``FIFTYONE_API_KEY`` and ``FIFTYONE_API_URI`` environment variables. For detailed setup instructions, refer to the `API Connection Documentation <https://voxel51.com/docs/fiftyone/api/>`_.
-
-Verify that your API connection is working correctly using the following method:
-
-.. code-block:: python
-
-   import fiftyone.management as fom  # if this fails, you may have the open-source SDK installed
-
-   fom.test_api_connection()  # API connection succeeded
-
- 
-You can use ``fiftyone.config`` to debug and verify your configuration:
-
-.. code-block:: python
-
-   import fiftyone as fo
-
-   print(fo.config)
+Learn more about how to interact with cloud-backed media witht the FiftyOne 
+Enterprise Python SDK in the :ref:`Cloud Media Guide <enterprise-cloud-media>`.
 
 Create a Dataset and Add Samples
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -187,32 +216,27 @@ Create a Dataset and Add Samples
 Compute Metadata
 ~~~~~~~~~~~~~~~~
 
-Improve app performance by computing sample metadata:
+:meth:`compute_metadata() <fiftyone.core.metadata.compute_metadata>` is a
+builtin method that effeciently populates basic metadata such as file size,
+image height and width, etc for all of the samples in your dataset. Keeping the
+metadata field populated for all samples of your datasets is recommended
+because it enables the sample grid's tiling algorithm to run more efficiently
 
 .. code-block:: python
 
    dataset.compute_metadata()
+   sample = dataset.first()
+   print(sample.metadata) #shows example metadata for the first sample
 
 Verify all samples have metadata by running the following:
 
 .. code-block:: python
 
    len(dataset.exists("metadata", False))  # Should be 0
-.. note::
-   For video datasets, ensure ffmpeg is installed to enable metadata computation.
+
 
 Create a dataset via the UI 
------------------------------
-Install the IO Plugin 
-~~~~~~~~~~~~~~~~~~~~~
-The IO plugin allows you to import data from your cloud storage buckets directly. The IO plugin can be downloaded from the following `repository <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/io>`_. Zip the folder and upload it to the Plugin section of the **Settings** page.
-
-.. note::
-   To install plugins to your deployment, you must have admin privileges and also set your deployment to be in Dedicated Plugins mode. It is also highly recommended to add Delegated Operators to your deployment.
-
-.. image:: /images/enterprise/getting_started_install_io_plugin.gif
-   :alt: getting-started-install-sdk
-   :align: center
+---------------------------
 
 Import Your Dataset
 ~~~~~~~~~~~~~~~~~~~
@@ -224,8 +248,20 @@ Schedule the **import_samples**  operator to import your dataset from your cloud
 
 Compute Metadata
 ~~~~~~~~~~~~~~~~
-To improve app performance, compute sample metadata by scheduling the **compute_metadata** operator as a delegated operation.
+**compute_metadata** is a builtin operator that effeciently populates basic
+metadata such as file size, image height and width, etc for all of the samples 
+in your dataset. Keeping the metadata field populated for all samples of your
+datasets is recommended because it enables the sample grid's tiling algorithm
+to run more efficiently
 
 .. image:: /images/enterprise/getting_started_schedule_compute_metadata.gif
    :alt: getting-started-compute-metadata
    :align: center
+
+.. note::
+
+    An admin must follow :ref:`these instructions <enterprise-plugins-install>`
+    to install the
+    `@voxel51/io <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/
+    io/README.md>`_
+    plugin in order to perform imports via the Enterprise UI. 
