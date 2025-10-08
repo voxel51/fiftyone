@@ -252,9 +252,10 @@ class AsyncSaveContext(SaveContext):
         return self
 
     def __exit__(self, *args):
+        super().__exit__(*args)
         for future in self.futures:
             future.result()
-        super().__exit__(*args)
+        self.futures.clear()
         self.executor.__exit__(*args)
 
     def save(self, sample):
