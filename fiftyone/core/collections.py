@@ -257,8 +257,13 @@ class AsyncSaveContext(SaveContext):
 
     def __exit__(self, *args):
         super().__exit__(*args)
-        for future in self.futures:
-            future.result()
+        # Loop-drain self.futures so any submissions triggered by
+        # super().__exit__() are awaited.
+        while self.futures:
+            futures = self.futures
+            self.futures = []
+            for future in futures:
+                future.result()
         self.futures.clear()
         self.executor.__exit__(*args)
 
