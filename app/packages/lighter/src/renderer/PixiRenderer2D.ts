@@ -187,6 +187,20 @@ export class PixiRenderer2D implements Renderer2D {
     this.drawBoxes(graphics, bounds, width, HANDLE_COLOR, alpha);
   }
 
+  drawSpotlight(bounds: Rect, containerId: string): void {
+    const sceneDimensions = this.getContainerDimensions();
+    const mask = new PIXI.Graphics();
+
+    mask.rect(0, 0, sceneDimensions.width, sceneDimensions.height);
+    mask.setFillStyle({ color: SELECTED_COLOR, alpha: SELECTED_ALPHA });
+    mask.fill();
+
+    mask.rect(bounds.x, bounds.y, bounds.width, bounds.height);
+    mask.cut();
+
+    this.addToContainer(mask, containerId);
+  }
+
   drawRect(bounds: Rect, style: DrawStyle, containerId: string): void {
     const graphics = new PIXI.Graphics();
     const width = (style.lineWidth || 1) / this.getScale();
@@ -202,10 +216,7 @@ export class PixiRenderer2D implements Renderer2D {
       const alpha = colorObj.alpha * (style.opacity || 1);
 
       if (style.dashPattern && style.dashPattern.length > 0) {
-        graphics
-          .rect(bounds.x, bounds.y, bounds.width, bounds.height)
-          .setFillStyle({ color: SELECTED_COLOR, alpha: SELECTED_ALPHA })
-          .fill();
+        this.drawSpotlight(bounds, containerId);
 
         const dashLine = new DashLine(graphics, {
           dash: style.dashPattern.map((dash) => dash / this.getScale()),
