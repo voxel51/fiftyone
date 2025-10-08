@@ -13,6 +13,7 @@ import json
 import fiftyone as fo
 import fiftyone.core.labels as fol
 from bson import ObjectId, json_util
+from starlette.exceptions import HTTPException
 from starlette.responses import Response
 
 import fiftyone.server.routes.sample as fors
@@ -180,7 +181,7 @@ class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(updated_detection.confidence, confidence)
 
     async def test_dataset_not_found(self):
-        """Tests that a 404 Response is returned for a non-existent dataset."""
+        """Tests that a 404 HTTPException is raised for a non-existent dataset."""
         mock_request = MagicMock()
         mock_request.path_params = {
             "dataset_id": "non-existent-dataset",
@@ -190,16 +191,16 @@ class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
         mock_request.body = AsyncMock(
             return_value=json_util.dumps({}).encode("utf-8")
         )
-        response = await self.mutator.patch(mock_request)
+        with self.assertRaises(HTTPException) as cm:
+            await self.mutator.patch(mock_request)
 
-        self.assertIsInstance(response, Response)
-        self.assertEqual(response.status_code, 404)
-        self.assertIn(
-            "Dataset 'non-existent-dataset' not found", response.body.decode()
+        self.assertEqual(cm.exception.status_code, 404)
+        self.assertEqual(
+            cm.exception.detail, "Dataset 'non-existent-dataset' not found"
         )
 
     async def test_sample_not_found(self):
-        """Tests that a 404 Response is returned for a non-existent sample."""
+        """Tests that a 404 HTTPException is raised for a non-existent sample."""
         bad_id = str(ObjectId())
         mock_request = MagicMock()
         mock_request.path_params = {
@@ -210,14 +211,17 @@ class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
         mock_request.body = AsyncMock(
             return_value=json_util.dumps({}).encode("utf-8")
         )
-        response = await self.mutator.patch(mock_request)
+        with self.assertRaises(HTTPException) as cm:
+            await self.mutator.patch(mock_request)
 
-        self.assertIsInstance(response, Response)
-        self.assertEqual(response.status_code, 404)
-        self.assertIn(f"Sample '{bad_id}' not found", response.body.decode())
+        self.assertEqual(cm.exception.status_code, 404)
+        self.assertEqual(
+            cm.exception.detail,
+            f"Sample '{bad_id}' not found in dataset '{self.dataset_id}'",
+        )
 
     async def test_unsupported_label_class(self):
-        """Tests that an error is reported for an unknown _cls value."""
+        """Tests that an HTTPException is raised for an unknown _cls value."""
         patch_payload = {
             "bad_label": {
                 "_cls": "NonExistentLabelType",
@@ -233,11 +237,13 @@ class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
         mock_request.body = AsyncMock(
             return_value=json_util.dumps(patch_payload).encode("utf-8")
         )
-        response = await self.mutator.patch(mock_request)
-        response_dict = json.loads(response.body)
-        self.assertIn(
+        with self.assertRaises(HTTPException) as cm:
+            await self.mutator.patch(mock_request)
+
+        self.assertEqual(cm.exception.status_code, 400)
+        self.assertEqual(
+            cm.exception.detail["bad_label"],
             "Unsupported label class 'NonExistentLabelType'",
-            response_dict["bad_label"],
         )
 
         # Verify the sample was not modified
@@ -246,7 +252,7 @@ class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_malformed_label_data(self):
         """
-        Tests that an error is reported when label data is malformed and
+        Tests that an HTTPException is raised when label data is malformed and
         cannot be deserialized by from_dict.
         """
         patch_payload = {
@@ -266,8 +272,11 @@ class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
         mock_request.body = AsyncMock(
             return_value=json_util.dumps(patch_payload).encode("utf-8")
         )
-        response = await self.mutator.patch(mock_request)
-        response_dict = json.loads(response.body)
+        with self.assertRaises(HTTPException) as cm:
+            await self.mutator.patch(mock_request)
+
+        self.assertEqual(cm.exception.status_code, 400)
+        response_dict = cm.exception.detail
 
         self.assertIn(
             "Invalid data to create a `Detections` instance.",

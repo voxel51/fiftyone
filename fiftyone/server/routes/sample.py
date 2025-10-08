@@ -6,12 +6,10 @@ FiftyOne Server sample endpoints.
 |
 """
 import logging
-import typing as t
-import json
 
 from starlette.endpoints import HTTPEndpoint
+from starlette.exceptions import HTTPException
 from starlette.requests import Request
-from starlette.responses import Response
 
 import fiftyone.core.labels as fol
 import fiftyone.core.odm.utils as fou
@@ -31,9 +29,7 @@ LABEL_CLASS_MAP = {
 
 class Sample(HTTPEndpoint):
     @route
-    async def patch(
-        self, request: Request, data: dict
-    ) -> t.Union[dict, Response]:
+    async def patch(self, request: Request, data: dict) -> dict:
         """Applies a list of field updates to a sample.
 
         Args:
@@ -58,25 +54,25 @@ class Sample(HTTPEndpoint):
         )
 
         if not isinstance(data, dict):
-            return Response(
+            raise HTTPException(
                 status_code=400,
-                content="Request body must be a JSON object mapping field names to values",
+                detail="Request body must be a JSON object mapping field names to values",
             )
 
         try:
             dataset = fou.load_dataset(id=dataset_id)
         except ValueError:
-            return Response(
+            raise HTTPException(
                 status_code=404,
-                content=f"Dataset '{dataset_id}' not found",
+                detail=f"Dataset '{dataset_id}' not found",
             )
 
         try:
             sample = dataset[sample_id]
         except KeyError:
-            return Response(
+            raise HTTPException(
                 status_code=404,
-                content=f"Sample '{sample_id}' not found in dataset '{dataset_id}'",
+                detail=f"Sample '{sample_id}' not found in dataset '{dataset_id}'",
             )
 
         errors = {}
@@ -104,9 +100,9 @@ class Sample(HTTPEndpoint):
                 errors[field_name] = str(e)
 
         if errors:
-            return Response(
+            raise HTTPException(
                 status_code=400,
-                content=json.dumps(errors),
+                detail=errors,
             )
         sample.save()
 

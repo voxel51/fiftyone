@@ -15,7 +15,7 @@ Before building the docs locally, ensure you have:
     [virtual environment](https://docs.voxel51.com/getting_started/virtualenv.html)
     created specifically for documentation.
 
-    **Note:** Do **NOT** use the same environment where you ran `install.bash`
+    **Note:** Do **NOT** use the same environment where you ran `install.sh`
     with the `-d` (dev mode) flag, as docs dependencies may conflict with test
     dependencies.
 
@@ -31,7 +31,7 @@ To build the documentation locally, follow these steps:
 
     ```shell
     cd ..
-    bash install.bash
+    bash install.sh
     ```
 
 2. Install documentation-specific requirements:

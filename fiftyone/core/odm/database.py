@@ -501,6 +501,16 @@ def get_db_conn():
     return _apply_options(db)
 
 
+def get_db_version():
+    """Returns the database version.
+
+    Returns:
+        a ``packaging.version.Version``
+    """
+    client = get_db_client()
+    return Version(client.server_info()["version"])
+
+
 def get_async_db_client(use_global=False):
     """Returns an async database client.
 

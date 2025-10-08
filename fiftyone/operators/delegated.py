@@ -128,8 +128,8 @@ class DelegatedOperationService(object):
             metadata (None): an optional metadata dict containing properties below:
                 - inputs_schema: the schema of the operator's inputs
                 - outputs_schema: the schema of the operator's outputs
-            pipeline (None): an optional list of
-                :class:`fiftyone.operators.PipelineStage` to use for
+            pipeline (None): an optional
+                :class:`fiftyone.operators.types.Pipeline` to use for
                 the operation, if this is a pipeline operator
 
         Returns:
