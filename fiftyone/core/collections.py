@@ -325,25 +325,27 @@ class AsyncSaveContext(SaveContext):
         encoded_size = -1
         if self._sample_ops:
             with self.samples_lock:
-                res = foo.bulk_write(
-                    self._sample_ops,
-                    self._sample_coll,
-                    ordered=False,
-                    batcher=False,
-                )[0]
-                encoded_size += res.bulk_api_result.get("nBytes", 0)
+                sample_ops = self._sample_ops.copy()
                 self._sample_ops.clear()
+            res = foo.bulk_write(
+                sample_ops,
+                self._sample_coll,
+                ordered=False,
+                batcher=False,
+            )[0]
+            encoded_size += res.bulk_api_result.get("nBytes", 0)
 
         if self._frame_ops:
             with self.frames_lock:
-                res = foo.bulk_write(
-                    self._frame_ops,
-                    self._frame_coll,
-                    ordered=False,
-                    batcher=False,
-                )[0]
-                encoded_size += res.bulk_api_result.get("nBytes", 0)
+                frame_ops = self._frame_ops.copy()
                 self._frame_ops.clear()
+            res = foo.bulk_write(
+                frame_ops,
+                self._frame_coll,
+                ordered=False,
+                batcher=False,
+            )[0]
+            encoded_size += res.bulk_api_result.get("nBytes", 0)
 
         self._encoding_ratio = (
             self._curr_batch_size_bytes / encoded_size
@@ -353,15 +355,16 @@ class AsyncSaveContext(SaveContext):
 
         if self._batch_ids and self._is_generated:
             with self.batch_ids_lock:
-                self.sample_collection._sync_source(ids=self._batch_ids)
+                batch_ids = self._batch_ids.copy()
                 self._batch_ids.clear()
+            self.sample_collection._sync_source(ids=batch_ids)
 
         if self._reload_parents:
             with self.reloading_lock:
-                for sample in self._reload_parents:
-                    sample._reload_parents()
-
+                reload_parents = self._reload_parents.copy()
                 self._reload_parents.clear()
+            for sample in reload_parents:
+                sample._reload_parents()
 
     def _save_batch(self):
         future = self.executor.submit(self._do_save_batch)
