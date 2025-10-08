@@ -244,7 +244,11 @@ class AsyncSaveContext(SaveContext):
         super().__init__(*args, **kwargs)
         self.executor = executor
         self.futures = []
-        self.lock = threading.Lock()
+
+        self.samples_lock = threading.Lock()
+        self.frames_lock = threading.Lock()
+        self.batch_ids_lock = threading.Lock()
+        self.reloading_lock = threading.Lock()
 
     def __enter__(self):
         super().__enter__()
@@ -259,15 +263,108 @@ class AsyncSaveContext(SaveContext):
         self.executor.__exit__(*args)
 
     def save(self, sample):
-        with self.lock:
-            super().save(sample)
+        """Registers the sample for saving in the next batch.
+
+        Args:
+            sample: a :class:`fiftyone.core.sample.Sample` or
+                :class:`fiftyone.core.sample.SampleView`
+        """
+        if sample._in_db and sample._dataset is not self._dataset:
+            raise ValueError(
+                "Dataset context '%s' cannot save sample from dataset '%s'"
+                % (self._dataset.name, sample._dataset.name)
+            )
+
+        sample_ops, frame_ops = sample._save(deferred=True)
+        updated = sample_ops or frame_ops
+
+        if sample_ops:
+            with self.samples_lock:
+                self._sample_ops.extend(sample_ops)
+
+        if frame_ops:
+            with self.frames_lock:
+                self._frame_ops.extend(frame_ops)
+
+        if updated and self._is_generated:
+            with self.batch_ids_lock:
+                self._batch_ids.append(sample.id)
+
+        if updated and isinstance(sample, fosa.SampleView):
+            with self.reloading_lock:
+                self._reload_parents.append(sample)
+
+        if self._batching_strategy == "static":
+            self._curr_batch_size += 1
+            if self._curr_batch_size >= self.batch_size:
+                self._save_batch()
+                self._curr_batch_size = 0
+        elif self._batching_strategy == "size":
+            if sample_ops:
+                self._curr_batch_size_bytes += sum(
+                    len(str(op)) for op in sample_ops
+                )
+
+            if frame_ops:
+                self._curr_batch_size_bytes += sum(
+                    len(str(op)) for op in frame_ops
+                )
+
+            if (
+                self._curr_batch_size_bytes
+                >= self.batch_size * self._encoding_ratio
+            ):
+                self._save_batch()
+                self._curr_batch_size_bytes = 0
+        elif self._batching_strategy == "latency":
+            if timeit.default_timer() - self._last_time >= self.batch_size:
+                self._save_batch()
+                self._last_time = timeit.default_timer()
+
+    def _do_save_batch(self):
+        encoded_size = -1
+        if self._sample_ops:
+            with self.samples_lock:
+                res = foo.bulk_write(
+                    self._sample_ops,
+                    self._sample_coll,
+                    ordered=False,
+                    batcher=False,
+                )[0]
+                encoded_size += res.bulk_api_result.get("nBytes", 0)
+                self._sample_ops.clear()
+
+        if self._frame_ops:
+            with self.frames_lock:
+                res = foo.bulk_write(
+                    self._frame_ops,
+                    self._frame_coll,
+                    ordered=False,
+                    batcher=False,
+                )[0]
+                encoded_size += res.bulk_api_result.get("nBytes", 0)
+                self._frame_ops.clear()
+
+        self._encoding_ratio = (
+            self._curr_batch_size_bytes / encoded_size
+            if encoded_size > 0 and self._curr_batch_size_bytes
+            else 1.0
+        )
+
+        if self._batch_ids and self._is_generated:
+            with self.batch_ids_lock:
+                self.sample_collection._sync_source(ids=self._batch_ids)
+                self._batch_ids.clear()
+
+        if self._reload_parents:
+            with self.reloading_lock:
+                for sample in self._reload_parents:
+                    sample._reload_parents()
+
+                self._reload_parents.clear()
 
     def _save_batch(self):
-        def flush(_self):
-            with self.lock:
-                super(AsyncSaveContext, _self)._save_batch()
-
-        future = self.executor.submit(flush, self)
+        future = self.executor.submit(self._do_save_batch)
         self.futures.append(future)
 
 
