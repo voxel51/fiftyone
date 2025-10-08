@@ -63,9 +63,12 @@ def route(func):
             if isinstance(e, HTTPException):
                 # Cast to JSON when starlette HTTPException has a dict detail
                 if isinstance(e.detail, dict):
-                    return JSONResponse(
-                        e.detail,
-                        status_code=e.status_code,
+                    headers = e.headers or {}
+                    headers.update({"Content-Type": "application/json"})
+                    return Response(
+                        json_util.dumps(e.detail, cls=Encoder),
+                        e.status_code,
+                        headers,
                     )
 
                 # Immediately re-raise starlette HTTPException
