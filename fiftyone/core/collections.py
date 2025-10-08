@@ -18,6 +18,7 @@ import os
 from packaging.version import Version
 import random
 import string
+import threading
 import timeit
 import warnings
 
@@ -243,6 +244,7 @@ class AsyncSaveContext(SaveContext):
         super().__init__(*args, **kwargs)
         self.executor = executor
         self.futures = []
+        self.lock = threading.Lock()
 
     def __enter__(self):
         super().__enter__()
@@ -255,8 +257,16 @@ class AsyncSaveContext(SaveContext):
         super().__exit__(*args)
         self.executor.__exit__(*args)
 
+    def save(self, sample):
+        with self.lock:
+            super().save(sample)
+
     def _save_batch(self):
-        future = self.executor.submit(super()._save_batch)
+        def flush(_self):
+            with self.lock:
+                super(AsyncSaveContext, _self)._save_batch()
+
+        future = self.executor.submit(flush, self)
         self.futures.append(future)
 
 
