@@ -60,11 +60,18 @@ def route(func):
             return await create_response(response)
 
         except Exception as e:
-            # Immediately re-raise starlette HTTP exceptions
             if isinstance(e, HTTPException):
+                # Cast to JSON when starlette HTTPException has a dict detail
+                if isinstance(e.detail, dict):
+                    return JSONResponse(
+                        e.detail,
+                        status_code=e.status_code,
+                    )
+
+                # Immediately re-raise starlette HTTPException
                 raise e
 
-            # Cast non-starlette HTTP exceptions as JSON with 500 status code
+            # Cast non-starlette HTTPExceptions as JSON with 500 status code
             logging.exception(e)
             return JSONResponse(
                 {
