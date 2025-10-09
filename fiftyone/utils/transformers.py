@@ -1049,7 +1049,6 @@ class FiftyOneTransformerForSemanticSegmentationConfig(
     Args:
         model (None): a ``transformers`` model
         name_or_path (None): the name or path to a checkpoint file to load
-        dataset_index (0):  dataset index to use in the Mixture-of-Experts (MoE) blocks of the backbone.
     """
 
     def __init__(self, d):
@@ -1094,7 +1093,7 @@ class FiftyOneTransformerForPoseEstimationConfig(FiftyOneTransformerConfig):
     Args:
         model (None): a ``transformers`` model
         name_or_path (None): the name or path to a checkpoint file to load
-
+        dataset_index (0):  dataset index to use in the Mixture-of-Experts (MoE) blocks of the backbone.
     """
 
     def __init__(self, d):
@@ -1191,11 +1190,11 @@ class FiftyOneTransformerForPoseEstimation(
         self._box_prompts = None
 
     def predict_all(self, imgs, samples=None):
-        field_name = self._get_field()
-        if field_name is not None and samples is not None:
+        self._box_prompts = None
+        if self.preprocess and samples is not None:
+            # Only required when preprocessing
+            field_name = self._get_field()
             self._box_prompts = self._get_box_prompts(samples, field_name)
-        if samples is None:
-            self._box_prompts = None
         return self._predict_all(imgs)
 
     def _get_box_prompts(self, samples, field_name):
