@@ -746,6 +746,7 @@ export const MediaTypeFo3dComponent = () => {
           sample={sample}
           cameraRef={cameraRef}
           cameraControlsRef={cameraControlsRef}
+          defaultCameraPosition={defaultCameraPositionComputed}
         />
       ) : (
         <main
@@ -765,7 +766,6 @@ export const MediaTypeFo3dComponent = () => {
             eventSource={containerRef}
             onPointerMissed={resetActiveNode}
             key={upVector ? upVector.toArray().join(",") : null}
-            frameloop="demand"
           >
             <Fo3dSceneContent
               cameraPosition={defaultCameraPositionComputed}

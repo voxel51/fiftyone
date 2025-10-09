@@ -141,15 +141,16 @@ export const Fo3dSceneContent = ({
         />
       )}
 
-      {!autoRotate && (
+      {!autoRotate && projection === "Perspective" ? (
         <CameraControls
           smoothTime={0.1}
-          dollySpeed={projection === "Perspective" ? 0.1 : 0.8}
+          dollySpeed={0.1}
           dollyToCursor
           ref={cameraControlsRef}
         />
+      ) : (
+        <OrbitControls autoRotate={autoRotate} makeDefault />
       )}
-      {autoRotate && <OrbitControls autoRotate={autoRotate} makeDefault />}
 
       <SceneControls scene={foScene} cameraControlsRef={cameraControlsRef} />
 

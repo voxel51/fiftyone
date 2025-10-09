@@ -11,12 +11,11 @@ import {
 } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import CameraControlsImpl from "camera-controls";
-import { useCallback, useLayoutEffect, useMemo, useRef } from "react";
+import { useCallback, useLayoutEffect, useRef } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import * as THREE from "three";
 import { Vector3 } from "three";
 import { PcdColorMapTunnel } from "../components/PcdColormapModal";
-import { DEFAULT_CAMERA_POSITION } from "../constants";
 import { StatusBarRootContainer } from "../containers";
 import { FoScene } from "../hooks";
 import { ThreeDLabels } from "../labels";
@@ -71,6 +70,7 @@ interface MultiPanelViewProps {
   cameraRef: React.MutableRefObject<
     THREE.PerspectiveCamera | THREE.OrthographicCamera
   >;
+  defaultCameraPosition: Vector3;
   foScene: FoScene;
   sample: any;
 }
@@ -78,6 +78,7 @@ interface MultiPanelViewProps {
 export const MultiPanelView = ({
   cameraControlsRef,
   cameraRef,
+  defaultCameraPosition,
   foScene,
   sample,
 }: MultiPanelViewProps) => {
@@ -205,7 +206,6 @@ export const MultiPanelView = ({
       <Canvas
         id={CANVAS_WRAPPER_ID}
         eventSource={containerRef}
-        frameloop="demand"
         onPointerMissed={resetActiveNode}
         key={upVector ? upVector.toArray().join(",") : null}
         style={{
@@ -225,6 +225,7 @@ export const MultiPanelView = ({
         setProjection={setProjection}
         cameraRef={cameraRef}
         cameraControlsRef={cameraControlsRef}
+        defaultCameraPosition={defaultCameraPosition}
         autoRotate={autoRotate}
         foScene={foScene}
         upVector={upVector}
@@ -279,6 +280,7 @@ const MainPanel = ({
   setProjection,
   cameraRef,
   cameraControlsRef,
+  defaultCameraPosition,
   autoRotate,
   foScene,
   upVector,
@@ -293,6 +295,7 @@ const MainPanel = ({
     THREE.PerspectiveCamera | THREE.OrthographicCamera
   >;
   cameraControlsRef: React.RefObject<CameraControls>;
+  defaultCameraPosition: THREE.Vector3;
   autoRotate: boolean;
   foScene: any;
   upVector: Vector3 | null;
@@ -301,9 +304,7 @@ const MainPanel = ({
   pointCloudSettings: any;
   assetsGroupRef: React.RefObject<THREE.Group>;
 }) => {
-  const defaultCameraPosition = useMemo(() => DEFAULT_CAMERA_POSITION(), []);
   const theme = useTheme();
-
   return (
     <div
       id="main-panel"
@@ -319,7 +320,6 @@ const MainPanel = ({
         }}
       >
         <Fo3dSceneContent
-          cameraPosition={defaultCameraPosition}
           upVector={upVector}
           fov={foScene?.cameraProps.fov ?? 50}
           near={foScene?.cameraProps.near ?? 0.1}
@@ -328,6 +328,7 @@ const MainPanel = ({
           zoom={10}
           autoRotate={autoRotate}
           cameraControlsRef={cameraControlsRef}
+          cameraPosition={defaultCameraPosition}
           foScene={foScene}
           isSceneInitialized={isSceneInitialized}
           isGizmoHelperVisible={false}
