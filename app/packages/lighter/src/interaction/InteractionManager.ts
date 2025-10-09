@@ -301,7 +301,7 @@ export class InteractionManager {
     const point = this.getCanvasPoint(event);
     const worldPoint = this.renderer.screenToWorld(point);
     const scale = this.renderer.getScale();
-    const handler = this.findHandlerAtPoint(point);
+    const handler = this.findMovingHandler() || this.findHandlerAtPoint(point);
     const now = Date.now();
 
     if (handler?.isMoving?.()) {
