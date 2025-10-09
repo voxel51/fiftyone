@@ -9,6 +9,8 @@ import {
   EDGE_THRESHOLD,
   SELECTED_DASH_LENGTH,
   HOVERED_DASH_LENGTH,
+  HANDLE_OFFSET_X,
+  HANDLE_OFFSET_Y,
 } from "../constants";
 import { CONTAINS } from "../core/Scene2D";
 import type { Renderer2D } from "../renderer/Renderer2D";
@@ -21,6 +23,7 @@ import type {
   Rect,
   Spatial,
 } from "../types";
+import { parseColorWithAlpha } from "../utils/color";
 import {
   getInstanceStrokeStyles,
   getSimpleStrokeStyles,
@@ -191,7 +194,7 @@ export class BoundingBoxOverlay
         this.absoluteBounds,
         {
           strokeStyle: hoverStrokeColor,
-          lineWidth: style.lineWidth || 2,
+          lineWidth: style.lineWidth || STROKE_WIDTH,
         },
         this.containerId
       );
@@ -207,6 +210,19 @@ export class BoundingBoxOverlay
       );
     }
 
+    if (this.isSelected() && style.strokeStyle) {
+      const colorObj = parseColorWithAlpha(style.strokeStyle);
+      const color = colorObj.color;
+
+      renderer.drawScrim(this.absoluteBounds, this.containerId);
+      renderer.drawHandles(
+        this.absoluteBounds,
+        style.lineWidth || STROKE_WIDTH,
+        color,
+        this.containerId
+      );
+    }
+
     if (this.options.label && this.options.label.label?.length > 0) {
       const offset = style.lineWidth
         ? style.lineWidth / renderer.getScale() / 2
@@ -214,8 +230,8 @@ export class BoundingBoxOverlay
 
       const labelPosition = this.isSelected()
         ? {
-            x: this.absoluteBounds.x + offset * 6,
-            y: this.absoluteBounds.y - offset * 3,
+            x: this.absoluteBounds.x + offset * HANDLE_OFFSET_X,
+            y: this.absoluteBounds.y - offset * HANDLE_OFFSET_Y,
           }
         : {
             x: this.absoluteBounds.x - offset,

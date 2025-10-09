@@ -175,16 +175,19 @@ export class PixiRenderer2D implements Renderer2D {
   }
 
   drawHandles(
-    graphics: PIXI.Graphics,
     bounds: Rect,
     width: number,
-    color: number | string
+    color: number | string,
+    containerId: string
   ): void {
     width *= HANDLE_FACTOR;
-
+    const graphics = new PIXI.Graphics();
     const outline = (2 * HANDLE_OUTLINE) / this.getScale();
+
     this.drawBoxes(graphics, bounds, width + outline, color, HANDLE_ALPHA);
     this.drawBoxes(graphics, bounds, width, HANDLE_COLOR, HANDLE_ALPHA);
+
+    this.addToContainer(graphics, containerId);
   }
 
   drawScrim(bounds: Rect, containerId: string): void {
@@ -218,8 +221,6 @@ export class PixiRenderer2D implements Renderer2D {
       const alpha = colorObj.alpha * (style.opacity || 1);
 
       if (style.dashPattern && style.dashPattern.length > 0) {
-        this.drawScrim(bounds, containerId);
-
         const dashLine = new DashLine(graphics, {
           dash: style.dashPattern.map((dash) => dash / this.getScale()),
           width,
@@ -227,8 +228,6 @@ export class PixiRenderer2D implements Renderer2D {
           alpha,
         });
         dashLine.drawRect(bounds.x, bounds.y, bounds.width, bounds.height);
-
-        this.drawHandles(graphics, bounds, width, color);
       } else {
         graphics.rect(bounds.x, bounds.y, bounds.width, bounds.height);
         graphics.setStrokeStyle({

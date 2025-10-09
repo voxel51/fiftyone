@@ -35,6 +35,8 @@ export const HANDLE_ALPHA = 0.9;
 export const HANDLE_FACTOR = 3;
 export const HANDLE_COLOR = 0xffffff;
 export const HANDLE_OUTLINE = 2;
+export const HANDLE_OFFSET_X = 6;
+export const HANDLE_OFFSET_Y = 3;
 
 /**
  * Opacity of selected bounding boxes
