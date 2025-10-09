@@ -11,20 +11,15 @@ from starlette.endpoints import HTTPEndpoint
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
 
+import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.core.odm.utils as fou
+from typing import List
+from fiftyone.server.utils.json_patch import Operation, parse
+from fiftyone.server.utils.transform_patch import transform
 from fiftyone.server.decorators import route
 
 logger = logging.getLogger(__name__)
-
-LABEL_CLASS_MAP = {
-    "Classification": fol.Classification,
-    "Classifications": fol.Classifications,
-    "Detection": fol.Detection,
-    "Detections": fol.Detections,
-    "Polyline": fol.Polyline,
-    "Polylines": fol.Polylines,
-}
 
 
 class Sample(HTTPEndpoint):
@@ -53,12 +48,6 @@ class Sample(HTTPEndpoint):
             dataset_id,
         )
 
-        if not isinstance(data, dict):
-            raise HTTPException(
-                status_code=400,
-                detail="Request body must be a JSON object mapping field names to values",
-            )
-
         try:
             dataset = fou.load_dataset(id=dataset_id)
         except ValueError:
@@ -75,6 +64,18 @@ class Sample(HTTPEndpoint):
                 detail=f"Sample '{sample_id}' not found in dataset '{dataset_id}'",
             )
 
+        content_type = request.headers.get("Content-Type", "")
+        if content_type == "application/json":
+            return await self._handle_patch(sample, data)
+        elif content_type == "application/json-patch+json":
+            return await self._handle_json_patch(sample, data)
+        else:
+            raise HTTPException(
+                status_code=415,
+                detail=f"Unsupported Content-Type '{content_type}'",
+            )
+
+    async def _handle_patch(self, sample: fo.Sample, data: dict) -> dict:
         errors = {}
         for field_name, value in data.items():
             try:
@@ -82,20 +83,7 @@ class Sample(HTTPEndpoint):
                     sample.clear_field(field_name)
                     continue
 
-                if isinstance(value, dict) and "_cls" in value:
-                    cls_name = value.get("_cls")
-                    if cls_name in LABEL_CLASS_MAP:
-                        label_cls = LABEL_CLASS_MAP[cls_name]
-                        try:
-                            sample[field_name] = label_cls.from_dict(value)
-                        except Exception as e:
-                            errors[field_name] = str(e)
-                    else:
-                        errors[
-                            field_name
-                        ] = f"Unsupported label class '{cls_name}'"
-                else:
-                    sample[field_name] = value
+                sample[field_name] = transform(value)
             except Exception as e:
                 errors[field_name] = str(e)
 
@@ -105,5 +93,41 @@ class Sample(HTTPEndpoint):
                 detail=errors,
             )
         sample.save()
-
         return sample.to_dict(include_private=True)
+
+    # TODO: FIX THIS IT DONT WORK
+    async def _handle_json_patch(
+        self, sample: fo.Sample, patch_list: List[dict]
+    ) -> dict:
+        """Applies a list of JSON patch operations to a sample."""
+        try:
+            patches = parse(*patch_list)
+            if not isinstance(patches, list):
+                patches = [patches]
+        except ValueError as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid patch format: {e}",
+            )
+
+        try:
+            for p in patches:
+                kwargs = {}
+                if p.op in (Operation.ADD, Operation.REPLACE, Operation.TEST):
+                    kwargs["transform"] = transform
+
+                p.apply(sample, **kwargs)
+        except (
+            ValueError,
+            AttributeError,
+            IndexError,
+            TypeError,
+            RuntimeError,
+        ) as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Failed to apply patch: {e}",
+            )
+
+        sample.save()
+        return sample.to_dict()

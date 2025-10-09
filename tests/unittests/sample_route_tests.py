@@ -53,6 +53,20 @@ class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
         if self.dataset and fo.dataset_exists(self.dataset.name):
             fo.delete_dataset(self.dataset.name)
 
+    def _create_mock_request(self, payload, content_type="application/json"):
+        """Helper to create a mock request object."""
+        mock_request = MagicMock()
+        mock_request.path_params = {
+            "dataset_id": self.dataset_id,
+            "sample_id": str(self.sample.id),
+        }
+        mock_request.headers = {"Content-Type": content_type}
+
+        mock_request.body = AsyncMock(
+            return_value=json_util.dumps(payload).encode("utf-8")
+        )
+        return mock_request
+
     async def test_update_detection(self):
         """
         Tests updating an existing detection
@@ -77,15 +91,9 @@ class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
             "tags": None,
         }
 
-        mock_request = MagicMock()
-        mock_request.path_params = {
-            "dataset_id": self.dataset_id,
-            "sample_id": str(self.sample.id),
-        }
-        mock_request.body = AsyncMock(
-            return_value=json_util.dumps(patch_payload).encode("utf-8")
+        response = await self.mutator.patch(
+            self._create_mock_request(patch_payload)
         )
-        response = await self.mutator.patch(mock_request)
         response_dict = json.loads(response.body)
         self.assertIsInstance(response, Response)
         self.assertEqual(response.status_code, 200)
@@ -136,15 +144,9 @@ class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
             },
         }
 
-        mock_request = MagicMock()
-        mock_request.path_params = {
-            "dataset_id": self.dataset_id,
-            "sample_id": str(self.sample.id),
-        }
-        mock_request.body = AsyncMock(
-            return_value=json_util.dumps(patch_payload).encode("utf-8")
+        response = await self.mutator.patch(
+            self._create_mock_request(patch_payload)
         )
-        response = await self.mutator.patch(mock_request)
         response_dict = json.loads(response.body)
         self.assertIsInstance(response_dict, dict)
         updated_detection = self.sample.ground_truth_2.detections[0]
@@ -165,15 +167,9 @@ class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
             },
         }
 
-        mock_request = MagicMock()
-        mock_request.path_params = {
-            "dataset_id": self.dataset_id,
-            "sample_id": str(self.sample.id),
-        }
-        mock_request.body = AsyncMock(
-            return_value=json_util.dumps(patch_payload).encode("utf-8")
+        response = await self.mutator.patch(
+            self._create_mock_request(patch_payload)
         )
-        response = await self.mutator.patch(mock_request)
         response_dict = json.loads(response.body)
         self.assertIsInstance(response_dict, dict)
         updated_detection = self.sample.weather
@@ -228,22 +224,13 @@ class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
                 "label": "invalid",
             }
         }
-        mock_request = MagicMock()
-        mock_request.path_params = {
-            "dataset_id": self.dataset_id,
-            "sample_id": str(self.sample.id),
-        }
-
-        mock_request.body = AsyncMock(
-            return_value=json_util.dumps(patch_payload).encode("utf-8")
-        )
         with self.assertRaises(HTTPException) as cm:
-            await self.mutator.patch(mock_request)
+            await self.mutator.patch(self._create_mock_request(patch_payload))
 
         self.assertEqual(cm.exception.status_code, 400)
         self.assertEqual(
             cm.exception.detail["bad_label"],
-            "Unsupported label class 'NonExistentLabelType'",
+            "No transform registered for class 'NonExistentLabelType'",
         )
 
         # Verify the sample was not modified
@@ -263,17 +250,8 @@ class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
             }
         }
 
-        mock_request = MagicMock()
-        mock_request.path_params = {
-            "dataset_id": self.dataset_id,
-            "sample_id": str(self.sample.id),
-        }
-
-        mock_request.body = AsyncMock(
-            return_value=json_util.dumps(patch_payload).encode("utf-8")
-        )
         with self.assertRaises(HTTPException) as cm:
-            await self.mutator.patch(mock_request)
+            await self.mutator.patch(self._create_mock_request(patch_payload))
 
         self.assertEqual(cm.exception.status_code, 400)
         response_dict = cm.exception.detail
@@ -289,6 +267,155 @@ class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             self.sample.ground_truth.detections[0].id,
             str(self.initial_detection_id),
+        )
+
+    async def test_patch_replace_primitive_field(self):
+        """Tests 'replace' on a primitive field with json-patch."""
+        new_value = "updated_value"
+        patch_payload = [
+            {"op": "replace", "path": "/primitive_field", "value": new_value}
+        ]
+
+        mock_request = self._create_mock_request(
+            patch_payload, content_type="application/json-patch+json"
+        )
+
+        response = await self.mutator.patch(mock_request)
+        response_dict = json.loads(response.body)
+        self.assertEqual(response_dict["primitive_field"], new_value)
+
+        self.sample.reload()
+        self.assertEqual(self.sample.primitive_field, new_value)
+
+    async def test_patch_replace_nested_label_attribute(self):
+        """Tests 'replace' on a nested attribute of a label with json-patch."""
+        new_label = "dog"
+        patch_payload = [
+            {
+                "op": "replace",
+                "path": "/ground_truth/detections/0/label",
+                "value": new_label,
+            }
+        ]
+        mock_request = self._create_mock_request(
+            patch_payload, content_type="application/json-patch+json"
+        )
+        await self.mutator.patch(mock_request)
+
+        self.sample.reload()
+        self.assertEqual(
+            self.sample.ground_truth.detections[0].label, new_label
+        )
+
+    async def test_patch_add_detection_to_list(self):
+        """Tests 'add' to a list of labels, testing the transform function."""
+        new_detection = {
+            "_cls": "Detection",
+            "label": "dog",
+            "bounding_box": [0.5, 0.5, 0.2, 0.2],
+        }
+        patch_payload = [
+            {
+                "op": "add",
+                "path": "/ground_truth/detections",  # Path to the list
+                "value": new_detection,
+            }
+        ]
+        mock_request = self._create_mock_request(
+            patch_payload, content_type="application/json-patch+json"
+        )
+
+        await self.mutator.patch(mock_request)
+
+        self.sample.reload()
+        self.assertEqual(len(self.sample.ground_truth.detections), 2)
+        self.assertIsInstance(
+            self.sample.ground_truth.detections[1], fol.Detection
+        )
+        self.assertEqual(self.sample.ground_truth.detections[1].label, "dog")
+
+    async def test_patch_remove_detection_from_list(self):
+        """Tests 'remove' from a list of labels."""
+        self.assertEqual(len(self.sample.ground_truth.detections), 1)
+
+        patch_payload = [
+            {"op": "remove", "path": "/ground_truth/detections/0"}
+        ]
+        mock_request = self._create_mock_request(
+            patch_payload, content_type="application/json-patch+json"
+        )
+
+        await self.mutator.patch(mock_request)
+
+        self.sample.reload()
+        self.assertEqual(len(self.sample.ground_truth.detections), 0)
+
+    async def test_patch_multiple_operations(self):
+        """Tests a patch request with multiple operations."""
+        patch_payload = [
+            {"op": "replace", "path": "/primitive_field", "value": "multi-op"},
+            {"op": "remove", "path": "/ground_truth/detections/0"},
+        ]
+        mock_request = self._create_mock_request(
+            patch_payload, content_type="application/json-patch+json"
+        )
+
+        await self.mutator.patch(mock_request)
+
+        self.sample.reload()
+        self.assertEqual(self.sample.primitive_field, "multi-op")
+        self.assertEqual(len(self.sample.ground_truth.detections), 0)
+
+    async def test_patch_invalid_path(self):
+        """Tests that a 400 is raised for an invalid path."""
+        patch_payload = [
+            {"op": "replace", "path": "/non_existent_field", "value": "test"}
+        ]
+        mock_request = self._create_mock_request(
+            patch_payload, content_type="application/json-patch+json"
+        )
+
+        with self.assertRaises(HTTPException) as cm:
+            await self.mutator.patch(mock_request)
+
+        self.assertEqual(cm.exception.status_code, 400)
+        self.assertIn("Failed to apply patch", cm.exception.detail)
+        self.assertIn("Unable to get value at path", cm.exception.detail)
+
+    async def test_patch_invalid_format(self):
+        """Tests that a 400 is raised for a malformed patch operation."""
+        patch_payload = [
+            {"path": "/primitive_field", "value": "test"}
+        ]  # missing 'op'
+        mock_request = self._create_mock_request(
+            patch_payload, content_type="application/json-patch+json"
+        )
+
+        with self.assertRaises(HTTPException) as cm:
+            await self.mutator.patch(mock_request)
+
+        self.assertEqual(cm.exception.status_code, 400)
+        self.assertIn("Invalid patch format", cm.exception.detail)
+
+    async def test_patch_invalid_operation_for_type(self):
+        """Tests a 400 for an operation on an incorrect type (e.g., add to non-list)."""
+        patch_payload = [
+            {
+                "op": "add",
+                "path": "/primitive_field",
+                "value": "should fail",
+            }
+        ]
+        mock_request = self._create_mock_request(
+            patch_payload, content_type="application/json-patch+json"
+        )
+
+        with self.assertRaises(HTTPException) as cm:
+            await self.mutator.patch(mock_request)
+
+        self.assertEqual(cm.exception.status_code, 400)
+        self.assertIn(
+            "Failed to apply patch: Can only add to lists", cm.exception.detail
         )
 
 
