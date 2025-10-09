@@ -31,7 +31,6 @@ def _extract_table_tags(content: str) -> Dict[str, str]:
     pattern = r"\| :ref:`([^<]+) <dataset-zoo-([^>]+)>`\s*\|\s*([^|]+)\s*\|"
 
     for match in re.finditer(pattern, content, re.MULTILINE):
-        name = match.group(1).strip()
         slug = match.group(2).strip()
         tags_raw = match.group(3).strip()
         tags = ",".join(tag.strip() for tag in tags_raw.split(","))

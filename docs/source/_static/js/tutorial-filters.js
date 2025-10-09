@@ -73,7 +73,7 @@ $(document).ready(function () {
     bind: function () {
       var options = {
         valueNames: [{ data: ["tags"] }],
-        page: "6",
+        page: "10",
         pagination: true,
       };
 

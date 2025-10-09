@@ -635,6 +635,8 @@ function initDynamicCTAs() {
     updateAll();
   }
   window.addEventListener("resize", updateAll);
+}
+
 /* Direct Agent Modal Access via URL Parameter */
 function initDirectAgentAccess() {
   const openAgent = new URLSearchParams(window.location.search).get("agent");
