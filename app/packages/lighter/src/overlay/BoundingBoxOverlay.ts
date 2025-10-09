@@ -462,6 +462,16 @@ export class BoundingBoxOverlay
       width += delta.x;
     }
 
+    if (width < 0) {
+      width *= -1;
+      x -= width;
+    }
+
+    if (height < 0) {
+      height *= -1;
+      y -= height;
+    }
+
     // Update absolute bounds
     this.absoluteBounds = {
       x,
