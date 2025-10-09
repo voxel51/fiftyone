@@ -186,13 +186,6 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                 )
             )
 
-        if "dataset_id_1" not in index_names:
-            indices_to_create.append(
-                IndexModel(
-                    [("dataset_id", pymongo.ASCENDING)], name="dataset_id_1"
-                )
-            )
-
         if "parent_id_1" not in index_names:
             indices_to_create.append(
                 IndexModel(
@@ -201,25 +194,15 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                 )
             )
 
-        if "parent_id_1_run_state_1" not in index_names:
-            indices_to_create.append(
-                IndexModel(
-                    [
-                        ("parent_id", pymongo.ASCENDING),
-                        ("run_state", pymongo.ASCENDING),
-                    ],
-                    name="parent_id_1_run_state_1",
-                )
-            )
-
-        if "dataset_id_1_run_state_1" not in index_names:
+        if "dataset_id_1_parent_id_1_scheduled_at_1" not in index_names:
             indices_to_create.append(
                 IndexModel(
                     [
                         ("dataset_id", pymongo.ASCENDING),
-                        ("run_state", pymongo.ASCENDING),
+                        ("parent_id", pymongo.ASCENDING),
+                        ("scheduled_at", pymongo.DESCENDING),
                     ],
-                    name="dataset_id_1_run_state_1",
+                    name="dataset_id_1_parent_id_1_scheduled_at_1",
                 )
             )
 
