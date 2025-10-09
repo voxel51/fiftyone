@@ -9,6 +9,7 @@ FiftyOne dataset-related unit tests.
 from collections import Counter
 from copy import deepcopy, copy
 from datetime import date, datetime, timedelta
+from functools import partial
 import gc
 import os
 import random
@@ -27,6 +28,7 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
+import fiftyone.core.utils as fou
 from fiftyone.operators.store import ExecutionStoreService
 import fiftyone.utils.data as foud
 from fiftyone import ViewField as F
@@ -2067,6 +2069,82 @@ class DatasetTests(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             _ = dataset.one(F("filepath").ends_with(".jpg"), exact=True)
+
+    @drop_datasets
+    def test_add_samples_batcher(self):
+        samples = [fo.Sample(filepath=f"image{i}.jpg") for i in range(10)]
+
+        # No batching
+        dataset = fo.Dataset()
+
+        original_get_default_batcher = fou.get_default_batcher
+
+        # Mock `get_default_batcher` to verify the `batcher` argument
+        with patch(
+            "fiftyone.core.utils.get_default_batcher"
+        ) as mock_get_batcher:
+            mock_get_batcher.side_effect = (
+                lambda *args, **kwargs: original_get_default_batcher(
+                    *args, **kwargs
+                )
+            )
+
+            # Call `add_samples` with no batcher
+            custom_batcher = False
+            dataset.add_samples(samples, batcher=custom_batcher)
+
+            # Verify `get_default_batcher` was called with expected args
+            self.assertEqual(mock_get_batcher.call_count, 1)
+            _, kwargs = mock_get_batcher.call_args
+            self.assertIs(kwargs["batcher"], custom_batcher)
+            self.assertIs(kwargs["total"], samples)
+            tf = kwargs["transform_fn"]
+            self.assertEqual(
+                getattr(tf, "func", None), dataset._transform_sample
+            )
+            self.assertEqual(
+                getattr(tf, "keywords", None),
+                dict(
+                    expand_schema=True, dynamic=False, validate=True, copy=True
+                ),
+            )
+
+        assert len(dataset) == 10
+
+        # Custom batcher
+        dataset = fo.Dataset()
+
+        # Mock `get_default_batcher` to verify the `batcher` argument
+        with patch(
+            "fiftyone.core.utils.get_default_batcher"
+        ) as mock_get_batcher:
+            mock_get_batcher.side_effect = (
+                lambda *args, **kwargs: original_get_default_batcher(
+                    *args, **kwargs
+                )
+            )
+
+            # Call `add_samples` with a custom batcher
+            custom_batcher = partial(fou.StaticBatcher, batch_size=5)
+            dataset.add_samples(samples, batcher=custom_batcher)
+
+            # Verify `get_default_batcher` was called with expected args
+            self.assertEqual(mock_get_batcher.call_count, 1)
+            _, kwargs = mock_get_batcher.call_args
+            self.assertIs(kwargs["batcher"], custom_batcher)
+            self.assertIs(kwargs["total"], samples)
+            tf = kwargs["transform_fn"]
+            self.assertEqual(
+                getattr(tf, "func", None), dataset._transform_sample
+            )
+            self.assertEqual(
+                getattr(tf, "keywords", None),
+                dict(
+                    expand_schema=True, dynamic=False, validate=True, copy=True
+                ),
+            )
+
+        assert len(dataset) == 10
 
     @drop_datasets
     def test_add_samples_generator(self):
