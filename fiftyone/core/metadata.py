@@ -537,7 +537,6 @@ def get_image_info(f):
 def _compute_metadata(
     sample_collection,
     overwrite=False,
-    batch_size=1000,
     progress=None,
     skip_failures=True,
     warn_failures=True,
@@ -557,7 +556,6 @@ def _compute_metadata(
     logger.info("Computing metadata...")
 
     cache = {}
-    values = {}
     inputs = zip(
         ids,
         filepaths,
@@ -565,37 +563,34 @@ def _compute_metadata(
         itertools.repeat(cache),
     )
 
-    try:
-        with fou.ProgressBar(total=num_samples, progress=progress) as pb:
-            for args in pb(inputs):
-                (
-                    sample_id,
-                    filepath,
-                    media_type,
-                    cache,
-                ) = args
-                metadata = _compute_sample_metadata(
-                    filepath,
-                    media_type,
-                    skip_failures=skip_failures,
-                    cache=cache,
-                    warn_failures=warn_failures,
-                )
-                values[sample_id] = metadata
-                if len(values) >= batch_size:
-                    sample_collection.set_values(
-                        "metadata", values, key_field="id"
-                    )
-                    values.clear()
-    finally:
-        sample_collection.set_values("metadata", values, key_field="id")
+    def _do_compute_metadata(args):
+        sample_id, filepath, media_type, cache = args
+        metadata = _compute_sample_metadata(
+            filepath,
+            media_type,
+            skip_failures=skip_failures,
+            cache=cache,
+            warn_failures=warn_failures,
+        )
+        return sample_id, metadata
+
+    tasks = map(_do_compute_metadata, inputs)
+
+    batcher = fou.get_default_batcher(
+        tasks, progress=progress, total=num_samples
+    )
+
+    with batcher:
+        for batch in batcher:
+            sample_collection.set_values(
+                "metadata", dict(batch), key_field="id"
+            )
 
 
 def _compute_metadata_multi(
     sample_collection,
     num_workers,
     overwrite=False,
-    batch_size=1000,
     progress=None,
     skip_failures=True,
     warn_failures=True,
@@ -615,7 +610,6 @@ def _compute_metadata_multi(
     logger.info("Computing metadata...")
 
     cache = {}
-    values = {}
     inputs = zip(
         ids,
         filepaths,
@@ -623,32 +617,29 @@ def _compute_metadata_multi(
         itertools.repeat(cache),
     )
 
-    try:
-        with multiprocessing.dummy.Pool(processes=num_workers) as pool:
-            with fou.ProgressBar(total=num_samples, progress=progress) as pb:
-                for sample_id, metadata in pb(
-                    pool.imap_unordered(
-                        lambda args: (
-                            args[0],
-                            _compute_sample_metadata(
-                                filepath=args[1],
-                                media_type=args[2],
-                                skip_failures=skip_failures,
-                                cache=args[3],
-                                warn_failures=warn_failures,
-                            ),
-                        ),
-                        inputs,
-                    )
-                ):
-                    values[sample_id] = metadata
-                    if len(values) >= batch_size:
-                        sample_collection.set_values(
-                            "metadata", values, key_field="id"
-                        )
-                        values.clear()
-    finally:
-        sample_collection.set_values("metadata", values, key_field="id")
+    def _do_compute_metadata(args):
+        sample_id, filepath, media_type, cache = args
+        metadata = _compute_sample_metadata(
+            filepath,
+            media_type,
+            skip_failures=skip_failures,
+            cache=cache,
+            warn_failures=warn_failures,
+        )
+        return sample_id, metadata
+
+    with multiprocessing.dummy.Pool(processes=num_workers) as pool:
+        tasks = pool.imap_unordered(_do_compute_metadata, inputs)
+
+        batcher = fou.get_default_batcher(
+            tasks, progress=progress, total=num_samples
+        )
+
+        with batcher:
+            for batch in batcher:
+                sample_collection.set_values(
+                    "metadata", dict(batch), key_field="id"
+                )
 
 
 def _compute_sample_metadata(
