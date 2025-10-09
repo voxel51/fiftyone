@@ -9,6 +9,7 @@ FiftyOne dataset-related unit tests.
 from collections import Counter
 from copy import deepcopy, copy
 from datetime import date, datetime, timedelta
+from functools import partial
 import gc
 import os
 import random
@@ -27,6 +28,7 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
+import fiftyone.core.utils as fou
 from fiftyone.operators.store import ExecutionStoreService
 import fiftyone.utils.data as foud
 from fiftyone import ViewField as F
