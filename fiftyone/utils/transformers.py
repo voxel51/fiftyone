@@ -1148,7 +1148,13 @@ class PoseEstimationGetItem(fout.GetItem):
                 "Transform cannot be None for PoseEstimationGetItem."
             )
 
-        return self.transform({"images": img, "boxes": [img_boxes]})
+        return self.transform(
+            {
+                "images": img,
+                "boxes": [img_boxes],
+                "fo_image_size": [(height, width)],
+            }
+        )
 
     @property
     def required_keys(self):
@@ -1253,6 +1259,12 @@ class FiftyOneTransformerForPoseEstimation(
         return output
 
     def build_get_item(self, field_mapping=None):
+        if (
+            isinstance(field_mapping, dict)
+            and "prompt_field" not in field_mapping
+        ):
+            # TODO: remove this when GetItem is used in SAM for box prompts.
+            field_mapping["prompt_field"] = self._get_field()
         return PoseEstimationGetItem(
             transform=self._transforms,
             use_numpy=False,
