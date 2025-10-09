@@ -17,6 +17,8 @@ export const DEFAULT_TEXT_PADDING = 4;
  * Default stroke width for overlays (matches Looker's STROKE_WIDTH)
  */
 export const STROKE_WIDTH = 3;
+export const SELECTED_DASH_LENGTH = 8;
+export const HOVERED_DASH_LENGTH = 4;
 
 /**
  * Default font settings

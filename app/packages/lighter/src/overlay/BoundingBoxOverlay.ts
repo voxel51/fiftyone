@@ -7,6 +7,8 @@ import {
   LABEL_ARCHETYPE_PRIORITY,
   STROKE_WIDTH,
   EDGE_THRESHOLD,
+  SELECTED_DASH_LENGTH,
+  HOVERED_DASH_LENGTH,
 } from "../constants";
 import { CONTAINS } from "../core/Scene2D";
 import type { Renderer2D } from "../renderer/Renderer2D";
@@ -167,7 +169,9 @@ export class BoundingBoxOverlay
             isSelected: this.isSelectedState,
             strokeColor: style.strokeStyle || "#ffffff",
             isHovered: this.isHoveredState,
-            dashLength: 8,
+            dashLength: this.isSelectedState
+              ? SELECTED_DASH_LENGTH
+              : HOVERED_DASH_LENGTH,
           });
 
     const mainStrokeStyle = {
@@ -179,6 +183,8 @@ export class BoundingBoxOverlay
     if (style.dashPattern && !overlayStrokeColor && !overlayDash) {
       mainStrokeStyle.dashPattern = style.dashPattern;
     }
+
+    renderer.drawRect(this.absoluteBounds, mainStrokeStyle, this.containerId);
 
     if (hoverStrokeColor) {
       renderer.drawRect(
@@ -200,8 +206,6 @@ export class BoundingBoxOverlay
         this.containerId
       );
     }
-
-    renderer.drawRect(this.absoluteBounds, mainStrokeStyle, this.containerId);
 
     if (this.options.label && this.options.label.label?.length > 0) {
       const offset = style.lineWidth

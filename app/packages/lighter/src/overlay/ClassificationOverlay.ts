@@ -2,7 +2,11 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import { FONT_SIZE, LABEL_ARCHETYPE_PRIORITY } from "../constants";
+import {
+  FONT_SIZE,
+  LABEL_ARCHETYPE_PRIORITY,
+  SELECTED_DASH_LENGTH,
+} from "../constants";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { Selectable } from "../selection/Selectable";
 import type { Hoverable, Point, RawLookerLabel } from "../types";
@@ -67,7 +71,7 @@ export class ClassificationOverlay
     const { overlayStrokeColor, overlayDash } = getSimpleStrokeStyles({
       isSelected: this.isSelectedState,
       strokeColor: style.strokeStyle || "#000000",
-      dashLength: 8,
+      dashLength: this.isSelectedState ? SELECTED_DASH_LENGTH : undefined,
     });
 
     // Draw the classification text
