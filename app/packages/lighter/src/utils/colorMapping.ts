@@ -8,9 +8,9 @@ import { SELECTED_DASH_LENGTH } from "../constants";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
 
 // White for info (selection, here)
-const INFO_COLOR = "#ffffff";
-// Yellow for hover effect
-const HOVER_COLOR = "#FFDE01";
+const INFO_COLOR = "#FFFFFF";
+// White for hover effect as well
+const HOVER_COLOR = "#FFFFFF";
 
 export interface ColorMappingContext {
   colorScheme: ColorSchemeInput;

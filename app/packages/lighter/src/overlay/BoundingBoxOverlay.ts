@@ -183,9 +183,7 @@ export class BoundingBoxOverlay
       isSelected: this.isSelectedState,
     };
 
-    if (style.dashPattern && !overlayStrokeColor && !overlayDash) {
-      mainStrokeStyle.dashPattern = style.dashPattern;
-    }
+    delete mainStrokeStyle.dashPattern;
 
     renderer.drawRect(this.absoluteBounds, mainStrokeStyle, this.containerId);
 
