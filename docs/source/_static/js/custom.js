@@ -597,6 +597,19 @@ const initKapaAI = () => {
   });
 };
 
+/* Direct Agent Modal Access via URL Parameter */
+function initDirectAgentAccess() {
+  const openAgent = new URLSearchParams(window.location.search).get("agent");
+  if (openAgent === "true") {
+    setTimeout(() => {
+      const floatingButton = document.querySelector(".kapa-ai-button");
+      if (floatingButton) {
+        floatingButton.click();
+      }
+    }, 2000);
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   initSidebarToggle();
   initSlidingNavBar();
@@ -605,4 +618,5 @@ document.addEventListener("DOMContentLoaded", () => {
   initTabsSlidingIndicator();
   initMobileNavDropdown();
   initKapaAI();
+  initDirectAgentAccess();
 });
