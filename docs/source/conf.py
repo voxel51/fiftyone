@@ -22,6 +22,7 @@ from custom_directives import (
     CustomCardItemDirective,
     CustomImageLinkDirective,
     CustomGuidesCardDirective,
+    CustomAnimatedCTADirective,
 )
 from redirects import generate_redirects
 
@@ -183,7 +184,11 @@ html_theme_options = {
 
 html_sidebars = {"**": ["algolia.html", "sidebar-nav"]}
 
-remove_from_toctrees = ["plugins/plugins_ecosystem/*"]
+remove_from_toctrees = [
+    "plugins/plugins_ecosystem/*",
+    "model_zoo/models/*",
+    "dataset_zoo/datasets/*",
+]
 
 html_favicon = "_static/favicon/favicon.ico"
 
@@ -199,7 +204,7 @@ html_js_files = [
     "https://cdn.jsdelivr.net/npm/list.js@2.3.1/dist/list.min.js",
     "js/custom.js",
     "js/tutorial-filters.js",
-    "js/plugins-search.js",
+    "js/search.js",
 ]
 
 # Prevent RST source files from being included in output
@@ -277,3 +282,4 @@ def setup(app):
     app.add_directive("customcarditem", CustomCardItemDirective)
     app.add_directive("customimagelink", CustomImageLinkDirective)
     app.add_directive("customguidescard", CustomGuidesCardDirective)
+    app.add_directive("customanimatedcta", CustomAnimatedCTADirective)

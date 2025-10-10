@@ -597,6 +597,46 @@ const initKapaAI = () => {
   });
 };
 
+/* Dynamic CTA shift for arrow/text */
+function initDynamicCTAs() {
+  const ctas = document.querySelectorAll('[data-cta-dynamic="true"]');
+  if (!ctas.length) return;
+
+  const compute = (btn) => {
+    const arrow = btn.querySelector(".arrow");
+    const text = btn.querySelector(".text");
+    if (!arrow || !text) return;
+
+    const btnRect = btn.getBoundingClientRect();
+    const arrowRect = arrow.getBoundingClientRect();
+    const textRect = text.getBoundingClientRect();
+
+    const spaceRight =
+      btnRect.width - (arrowRect.left - btnRect.left) - arrowRect.width;
+    const arrowShift = Math.max(0, spaceRight - 5);
+
+    const textShift = -Math.min(
+      Math.max(arrowRect.width, 30),
+      btnRect.width * 0.5
+    );
+
+    btn.style.setProperty(
+      "--cta-arrow-shift",
+      `${Math.min(arrowShift, 320)}px`
+    );
+    btn.style.setProperty("--cta-text-shift", `${textShift}px`);
+  };
+
+  const updateAll = () => ctas.forEach(compute);
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", updateAll, { once: true });
+  } else {
+    updateAll();
+  }
+  window.addEventListener("resize", updateAll);
+}
+
 /* Direct Agent Modal Access via URL Parameter */
 function initDirectAgentAccess() {
   const openAgent = new URLSearchParams(window.location.search).get("agent");
@@ -618,5 +658,6 @@ document.addEventListener("DOMContentLoaded", () => {
   initTabsSlidingIndicator();
   initMobileNavDropdown();
   initKapaAI();
+  initDynamicCTAs();
   initDirectAgentAccess();
 });

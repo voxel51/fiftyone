@@ -1917,7 +1917,7 @@ Kinetics by passing them to
 
 .. note::
 
-    Unlike other versions, Kinteics 400 does not have zips available by class
+    Unlike other versions, Kinetics 400 does not have zips available by class
     so whenever either `classes` or `max_samples` is provided, videos will be
     downloaded from YouTube.
 

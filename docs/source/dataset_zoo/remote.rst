@@ -26,7 +26,7 @@ Working with remotely-sourced datasets
 --------------------------------------
 
 Working with remotely-sourced zoo datasets is just like
-:ref:`built-in zoo datasets <dataset-zoo-datasets>`, as both varieties support
+:ref:`built-in zoo datasets <dataset-zoo>`, as both varieties support
 the :ref:`full zoo API <dataset-zoo-api>`.
 
 When specifying remote sources, you can provide any of the following:

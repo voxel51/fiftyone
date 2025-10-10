@@ -29,20 +29,10 @@ will transform FiftyOne into your bespoke visual AI development workbench.
         </div>
     </div>
 
-.. raw:: html
-
-    <div style="margin:0; width: 100%; display:flex; justify-content:flex-end;">
-        <a href="https://github.com/voxel51/fiftyone-plugins?tab=readme-ov-file#contributing" target="_blank" class="sd-btn sd-btn-primary book-a-demo plugins-cta" rel="noopener noreferrer">
-            <div class="arrow">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="size-3">
-                <path stroke="currentColor" stroke-width="1.5"
-                        d="M1.458 11.995h20.125M11.52 22.063 21.584 12 11.521 1.937"
-                        vector-effect="non-scaling-stroke"></path>
-                </svg>  
-            </div>
-            <div class="text">Showcase your own plugin</div>
-        </a>
-    </div>
+.. customanimatedcta::
+    :button_text: Showcase your own plugin
+    :button_link: https://github.com/voxel51/fiftyone-plugins?tab=readme-ov-file#contributing
+    :align: right
     
 .. Plugins cards section -----------------------------------------------------
 
