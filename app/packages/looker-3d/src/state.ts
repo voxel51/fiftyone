@@ -281,7 +281,6 @@ export const isPointTransformingAtom = atom<boolean>({
   default: false,
 });
 
-// Current position during point transformation
 export const currentPointPositionAtom = atom<[number, number, number] | null>({
   key: "fo3d-currentPointPosition",
   default: null,
@@ -336,6 +335,20 @@ export const transformedLabelsAtom = atom<Record<string, TransformedLabelData>>(
   }
 );
 
+// Polyline point transformations - stores modified points for each label
+export interface PolylinePointTransform {
+  segmentIndex: number;
+  pointIndex: number;
+  position: [number, number, number];
+}
+
+export const polylinePointTransformsAtom = atom<
+  Record<string, PolylinePointTransform[]>
+>({
+  key: "fo3d-polylinePointTransforms",
+  default: {},
+});
+
 // Selector to clear all transform state
 export const clearTransformStateSelector = selector({
   key: "fo3d-clearTransformState",
@@ -352,5 +365,6 @@ export const clearTransformStateSelector = selector({
     set(isPointTransformingAtom, false);
     set(currentPointPositionAtom, null);
     // Note: We don't clear transformedLabelsAtom here as it should persist
+    set(polylinePointTransformsAtom, {});
   },
 });

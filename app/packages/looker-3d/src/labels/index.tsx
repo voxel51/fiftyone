@@ -190,7 +190,7 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
             rotation={overlayRotation}
             itemRotation={itemRotation}
             opacity={labelAlpha}
-            {...(overlay as unknown as CuboidProps)}
+            {...(overlay as CuboidProps)}
             onClick={(e) => handleSelect(overlay, e)}
             label={overlay}
             tooltip={tooltip}
@@ -213,7 +213,7 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
         );
       } else if (
         overlay._cls === "Polyline" &&
-        (overlay as unknown as PolyLineProps).points3d
+        (overlay as PolyLineProps).points3d
       ) {
         newPolylineOverlays.push(
           <Polyline
@@ -221,7 +221,7 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
             rotation={overlayRotation}
             opacity={labelAlpha}
             lineWidth={polylineWidth}
-            {...(overlay as unknown as PolyLineProps)}
+            {...(overlay as PolyLineProps)}
             label={overlay}
             onClick={(e) => handleSelect(overlay, e)}
             tooltip={tooltip}

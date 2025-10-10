@@ -1,5 +1,5 @@
 import { useCursor } from "@react-three/drei";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { use3dLabelColor } from "../../hooks/use-3d-label-color";
 import { useSimilarLabels3d } from "../../hooks/use-similar-labels-3d";
 import type { BaseOverlayProps, EventHandlers, HoverState } from "./types";
@@ -56,27 +56,5 @@ export const useLabelColor = (
   return {
     strokeAndFillColor,
     isSimilarLabelHovered,
-  };
-};
-
-/**
- * Custom hook for managing transform event handlers
- */
-export const useTransformHandlers = (
-  label: any,
-  onTransformStart?: () => void,
-  onTransformEnd?: () => void
-) => {
-  const handleTransformStart = useCallback(() => {
-    onTransformStart?.();
-  }, [label._id, onTransformStart]);
-
-  const handleTransformEnd = useCallback(() => {
-    onTransformEnd?.();
-  }, [label._id, onTransformEnd]);
-
-  return {
-    handleTransformStart,
-    handleTransformEnd,
   };
 };

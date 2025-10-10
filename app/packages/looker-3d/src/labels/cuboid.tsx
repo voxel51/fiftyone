@@ -8,12 +8,7 @@ import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeome
 import { hoveredLabelAtom } from "../state";
 import type { OverlayProps } from "./shared";
 import { TransformControlsWrapper } from "./shared/TransformControls";
-import {
-  useEventHandlers,
-  useHoverState,
-  useLabelColor,
-  useTransformHandlers,
-} from "./shared/hooks";
+import { useEventHandlers, useHoverState, useLabelColor } from "./shared/hooks";
 
 extend({ LineSegments2, LineMaterial, LineSegmentsGeometry });
 
@@ -86,11 +81,7 @@ export const Cuboid = ({
     label,
     isSelectedForAnnotation
   );
-  const { handleTransformStart, handleTransformEnd } = useTransformHandlers(
-    label,
-    onTransformStart,
-    onTransformEnd
-  );
+
   const setHoveredLabel = useSetRecoilState(hoveredLabelAtom);
 
   const edgesGeo = useMemo(() => new THREE.EdgesGeometry(geo), [geo]);
@@ -146,8 +137,8 @@ export const Cuboid = ({
       isAnnotateMode={isAnnotateMode}
       transformMode={transformMode}
       transformSpace={transformSpace}
-      onTransformStart={handleTransformStart}
-      onTransformEnd={handleTransformEnd}
+      onTransformStart={onTransformStart}
+      onTransformEnd={onTransformEnd}
       onTransformChange={onTransformChange}
       transformControlsRef={transformControlsRef}
       transformControlsPosition={[loc.x, loc.y, loc.z]}

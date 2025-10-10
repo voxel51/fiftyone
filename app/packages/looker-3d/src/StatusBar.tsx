@@ -30,7 +30,7 @@ export const StatusTunnel = tunnel();
 const CameraInfo = ({
   cameraRef,
 }: {
-  cameraRef: RefObject<PerspectiveCamera>;
+  cameraRef: RefObject<PerspectiveCamera | OrthographicCamera>;
 }) => {
   const [cameraPosition, setCameraPosition] = useState<Vector3>();
 
