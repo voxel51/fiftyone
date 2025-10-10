@@ -180,7 +180,7 @@ class WriteOnlyError(Exception):
     """Error raised when trying to read a write-only property."""
 
 
-class PanelRefBase(object):
+class PanelRefBase(object):  # pylint: disable=no-member
     """Base class for panel state and data.
 
     Args:
@@ -188,8 +188,9 @@ class PanelRefBase(object):
     """
 
     def __init__(self, ctx):
-        self._data = {}
-        self._ctx = ctx
+        # Use object.__setattr__ to avoid triggering custom __setattr__
+        object.__setattr__(self, "_data", {})
+        object.__setattr__(self, "_ctx", ctx)
 
     def set(self, key, value=None):
         """Sets some value(s) in the dictionary.
@@ -214,25 +215,27 @@ class PanelRefBase(object):
         Returns:
             the value
         """
-        return pydash.get(self._data, key, default)
+        # use object.__getattribute__ to avoid recursion
+        data = object.__getattribute__(self, "_data")
+        return pydash.get(data, key, default)
 
     def clear(self):
         """Clears the dictionary."""
-        self._data = {}
+        object.__setattr__(self, "_data", {})
 
     def __setattr__(self, key, value):
         if key.startswith("_"):
-            super().__setattr__(key, value)
+            # always use base setattr to avoid recursion
+            object.__setattr__(self, key, value)
         else:
             self.set(key, value)
 
     def __getattr__(self, key):
-        if key == "_data":
-            return self._data
-        elif key == "_ctx":
-            return self._ctx
-        else:
-            return self.get(key)
+        # Use object.__getattribute__ to avoid recursion
+        data = object.__getattribute__(self, "_data")
+        if isinstance(data, dict):
+            return pydash.get(data, key, None)
+        return getattr(data, key, None)
 
 
 class PanelRefState(PanelRefBase):
@@ -244,7 +247,8 @@ class PanelRefState(PanelRefBase):
 
     def __init__(self, ctx):
         super().__init__(ctx)
-        self._data = ctx.panel_state
+        # Set attributes using object.__setattr__ to avoid recursion
+        object.__setattr__(self, "_data", ctx.panel_state)
 
     def set(self, key, value=None):
         """Sets some panel state.
