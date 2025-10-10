@@ -256,3 +256,24 @@ def test_panel_ref_set_data_deep_path_dict(mock_ctx):
     mock_ctx.ops.patch_panel_data.assert_called_with(
         {"nested.key.path": "test_value"}
     )
+
+
+import copy
+
+
+def test_panel_deepcopy_full(mock_ctx):
+    panel = PanelRef(mock_ctx)
+
+    # Set some state and data
+    panel.set_state("x.y", 123)
+    panel.set_data("a.b", [1, 2, 3])
+
+    # Attempt deepcopy
+    panel_copy = copy.deepcopy(panel)
+
+    # The copy should have the same state
+    assert panel_copy.get_state("x.y") == 123
+
+    # Panel data is write-only, so .data.get should raise
+    with pytest.raises(Exception):
+        _ = panel_copy.data.get("a.b")
