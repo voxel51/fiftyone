@@ -219,7 +219,7 @@ Compute Metadata
 ~~~~~~~~~~~~~~~~
 
 :meth:`compute_metadata() <fiftyone.core.metadata.compute_metadata>` is a
-builtin method that effeciently populates basic metadata such as file size,
+builtin method that efficiently populates basic metadata such as file size,
 image height and width, etc for all of the samples in your dataset. Keeping the
 metadata field populated for all samples of your datasets is recommended
 because it enables the sample grid's tiling algorithm to run more efficiently
