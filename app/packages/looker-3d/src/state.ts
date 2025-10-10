@@ -238,8 +238,8 @@ export const selectedLabelForAnnotationAtom = atom<any | null>({
   default: null,
 });
 
-export const isInTransformModeAtom = atom<boolean>({
-  key: "fo3d-isInTransformMode",
+export const isInEntireLabelTransformModeAtom = atom<boolean>({
+  key: "fo3d-isInEntireLabelTransformMode",
   default: false,
 });
 
@@ -355,7 +355,7 @@ export const clearTransformStateSelector = selector({
   get: () => null,
   set: ({ set }) => {
     set(selectedLabelForAnnotationAtom, null);
-    set(isInTransformModeAtom, false);
+    set(isInEntireLabelTransformModeAtom, false);
     set(transformModeAtom, "translate");
     set(transformSpaceAtom, "world");
     set(isTransformingAtom, false);

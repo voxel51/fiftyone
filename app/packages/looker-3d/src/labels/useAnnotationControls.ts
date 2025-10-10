@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
 import {
   clearTransformStateSelector,
-  isInTransformModeAtom,
+  isInEntireLabelTransformModeAtom,
   isTransformingAtom,
   selectedLabelForAnnotationAtom,
   transformDataAtom,
@@ -22,8 +22,8 @@ import type { OverlayLabel } from "./loader";
 export const useAnnotationControls = () => {
   const [selectedLabelForAnnotation, setSelectedLabelForAnnotation] =
     useRecoilState(selectedLabelForAnnotationAtom);
-  const [isInTransformMode, setIsInTransformMode] = useRecoilState(
-    isInTransformModeAtom
+  const [isInEntireLabelTransformMode, setIsInTransformMode] = useRecoilState(
+    isInEntireLabelTransformModeAtom
   );
   const [transformMode, setTransformMode] = useRecoilState(transformModeAtom);
   const [transformSpace, setTransformSpace] =
@@ -121,7 +121,7 @@ export const useAnnotationControls = () => {
     setTransformData({});
 
     // Store original values for delta calculation
-    if (selectedLabelForAnnotation && isInTransformMode) {
+    if (selectedLabelForAnnotation && isInEntireLabelTransformMode) {
       const labelId = selectedLabelForAnnotation._id;
       const existingTransform = transformedLabels[labelId];
       const labelWithProps = selectedLabelForAnnotation as any;
@@ -137,20 +137,18 @@ export const useAnnotationControls = () => {
     setIsTransforming,
     setTransformData,
     selectedLabelForAnnotation,
-    isInTransformMode,
+    isInEntireLabelTransformMode,
     transformedLabels,
   ]);
 
   const handleTransformEnd = useCallback(() => {
     setIsTransforming(false);
-    // Reset transform data when transformation ends
     setTransformData({});
 
-    // Save the final transformed values
     if (
       transformControlsRef.current &&
       selectedLabelForAnnotation &&
-      isInTransformMode &&
+      isInEntireLabelTransformMode &&
       originalValuesRef.current
     ) {
       const controls = transformControlsRef.current;
@@ -198,7 +196,7 @@ export const useAnnotationControls = () => {
     setTransformData,
     transformControlsRef,
     selectedLabelForAnnotation,
-    isInTransformMode,
+    isInEntireLabelTransformMode,
     transformMode,
     transformedLabels,
     setTransformedLabels,
@@ -208,7 +206,7 @@ export const useAnnotationControls = () => {
     if (
       !transformControlsRef.current ||
       !selectedLabelForAnnotation ||
-      !isInTransformMode ||
+      !isInEntireLabelTransformMode ||
       !originalValuesRef.current
     )
       return;
@@ -254,7 +252,7 @@ export const useAnnotationControls = () => {
   }, [
     transformMode,
     selectedLabelForAnnotation,
-    isInTransformMode,
+    isInEntireLabelTransformMode,
     setTransformData,
   ]);
 
@@ -282,7 +280,7 @@ export const useAnnotationControls = () => {
         const isPolyline = selectedLabelForAnnotation._cls === "Polyline";
 
         // Enter transform mode if not already in it
-        if (!isInTransformMode) {
+        if (!isInEntireLabelTransformMode) {
           enterTransformMode();
         }
 
@@ -297,7 +295,10 @@ export const useAnnotationControls = () => {
       }
 
       // Axis constraints (X, Y, Z for world, XX, YY, ZZ for local) - only when in transform mode
-      if ((key === "x" || key === "y" || key === "z") && isInTransformMode) {
+      if (
+        (key === "x" || key === "y" || key === "z") &&
+        isInEntireLabelTransformMode
+      ) {
         e.preventDefault();
         e.stopPropagation();
 
@@ -323,7 +324,7 @@ export const useAnnotationControls = () => {
       }
 
       // ESC to exit transform mode (but keep annotation selection)
-      if (key === "escape" && isInTransformMode) {
+      if (key === "escape" && isInEntireLabelTransformMode) {
         exitTransformMode();
         e.stopPropagation();
       }
@@ -335,7 +336,7 @@ export const useAnnotationControls = () => {
     };
   }, [
     selectedLabelForAnnotation,
-    isInTransformMode,
+    isInEntireLabelTransformMode,
     enterTransformMode,
     exitTransformMode,
     setMode,
@@ -344,7 +345,7 @@ export const useAnnotationControls = () => {
 
   return {
     selectedLabelForAnnotation,
-    isInTransformMode,
+    isInEntireLabelTransformMode,
     selectLabelForAnnotation,
     enterTransformMode,
     exitTransformMode,

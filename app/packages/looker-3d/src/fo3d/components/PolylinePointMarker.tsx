@@ -7,6 +7,7 @@ import { LABEL_3D_ANNOTATION_POINT_SELECTED_FOR_TRANSFORMATION_COLOR } from "../
 import {
   currentPointPositionAtom,
   hoveredPolylineInfoAtom,
+  isInEntireLabelTransformModeAtom,
   isPointTransformModeAtom,
   isPointTransformingAtom,
   selectedPointAtom,
@@ -54,6 +55,9 @@ export const PolylinePointMarker = ({
   );
   const [transformMode] = useRecoilState(transformModeAtom);
   const [transformSpace] = useRecoilState(transformSpaceAtom);
+  const setIsInEntireLabelTransformMode = useSetRecoilState(
+    isInEntireLabelTransformModeAtom
+  );
 
   const isSelected =
     selectedPoint?.labelId === labelId &&
@@ -68,6 +72,8 @@ export const PolylinePointMarker = ({
 
       event.stopPropagation();
 
+      setIsInEntireLabelTransformMode(false);
+
       const newSelectedPoint: SelectedPoint = {
         labelId,
         segmentIndex,
@@ -79,16 +85,7 @@ export const PolylinePointMarker = ({
       setIsPointTransformMode(true);
       setTransformMode("translate");
     },
-    [
-      isDraggable,
-      labelId,
-      segmentIndex,
-      pointIndex,
-      position,
-      setSelectedPoint,
-      setIsPointTransformMode,
-      setIsPointTransforming,
-    ]
+    [isDraggable, labelId, segmentIndex, pointIndex, position]
   );
 
   const handleTransformStart = useCallback(() => {

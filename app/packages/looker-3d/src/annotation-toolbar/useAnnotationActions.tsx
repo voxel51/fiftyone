@@ -1,9 +1,15 @@
-import { Add, OpenWith, RotateRight, Straighten } from "@mui/icons-material";
+import {
+  Add,
+  Close,
+  OpenWith,
+  RotateRight,
+  Straighten,
+} from "@mui/icons-material";
 import { Typography } from "@mui/material";
 import { useCallback, useMemo } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import {
-  isInTransformModeAtom,
+  isInEntireLabelTransformModeAtom,
   isPointTransformModeAtom,
   selectedLabelForAnnotationAtom,
   selectedPointAtom,
@@ -16,11 +22,10 @@ import { CoordinateInputs } from "./CoordinateInputs";
 import type { AnnotationAction, AnnotationActionGroup } from "./types";
 
 export const useAnnotationActions = () => {
-  const selectedLabelForAnnotation = useRecoilValue(
-    selectedLabelForAnnotationAtom
-  );
-  const [isInTransformMode, setIsInTransformMode] = useRecoilState(
-    isInTransformModeAtom
+  const [selectedLabelForAnnotation, setSelectedLabelForAnnotation] =
+    useRecoilState(selectedLabelForAnnotationAtom);
+  const [isInEntireLabelTransformMode, setIsInTransformMode] = useRecoilState(
+    isInEntireLabelTransformModeAtom
   );
   const isPointTransformMode = useRecoilValue(isPointTransformModeAtom);
   const [transformMode, setTransformMode] = useRecoilState(transformModeAtom);
@@ -34,7 +39,7 @@ export const useAnnotationActions = () => {
     (mode: TransformMode) => {
       if (hasSelectedLabel) {
         setTransformMode(mode);
-        if (!isInTransformMode) {
+        if (!isInEntireLabelTransformMode) {
           setIsInTransformMode(true);
         }
       }
@@ -42,7 +47,7 @@ export const useAnnotationActions = () => {
     [
       hasSelectedLabel,
       setTransformMode,
-      isInTransformMode,
+      isInEntireLabelTransformMode,
       setIsInTransformMode,
     ]
   );
@@ -58,6 +63,23 @@ export const useAnnotationActions = () => {
     const isPolyline = selectedLabelForAnnotation?._cls === "Polyline";
 
     const baseActions: AnnotationActionGroup[] = [
+      {
+        id: "edit-actions",
+        label: "Edit",
+        isHidden: selectedLabelForAnnotation === null,
+        actions: [
+          {
+            id: "exit-edit-mode",
+            label: "Deselect",
+            icon: <Close />,
+            shortcut: "Esc",
+            tooltip: "Exit edit mode and deselect annotation",
+            isActive: false,
+            isVisible: selectedLabelForAnnotation !== null,
+            onClick: () => setSelectedLabelForAnnotation(null),
+          },
+        ],
+      },
       {
         id: "polyline-actions",
         label: "Polyline",
@@ -86,7 +108,7 @@ export const useAnnotationActions = () => {
             shortcut: "G",
             tooltip: "Move object (Grab)",
             isActive:
-              (isInTransformMode || isPointTransformMode) &&
+              (isInEntireLabelTransformMode || isPointTransformMode) &&
               transformMode === "translate",
             isDisabled: !hasSelectedLabel && !isPointTransformMode,
             onClick: () => handleTransformModeChange("translate"),
@@ -97,7 +119,8 @@ export const useAnnotationActions = () => {
             icon: <RotateRight />,
             shortcut: "R",
             tooltip: "Rotate object",
-            isActive: isInTransformMode && transformMode === "rotate",
+            isActive:
+              isInEntireLabelTransformMode && transformMode === "rotate",
             isDisabled: !hasSelectedLabel || isPolyline,
             onClick: () => handleTransformModeChange("rotate"),
           },
@@ -107,7 +130,7 @@ export const useAnnotationActions = () => {
             icon: <Straighten />,
             shortcut: "S",
             tooltip: "Scale object",
-            isActive: isInTransformMode && transformMode === "scale",
+            isActive: isInEntireLabelTransformMode && transformMode === "scale",
             isDisabled: !hasSelectedLabel || isPolyline,
             onClick: () => handleTransformModeChange("scale"),
           },
@@ -116,7 +139,7 @@ export const useAnnotationActions = () => {
       {
         id: "space-actions",
         label: "Space",
-        isHidden: !isInTransformMode,
+        isHidden: !isInEntireLabelTransformMode,
         actions: [
           {
             id: "world-space",
@@ -125,8 +148,8 @@ export const useAnnotationActions = () => {
             shortcut: "X/Y/Z",
             tooltip: "Transform in world space",
             isActive: transformSpace === "world",
-            isDisabled: !isInTransformMode,
-            isVisible: isInTransformMode,
+            isDisabled: !isInEntireLabelTransformMode,
+            isVisible: isInEntireLabelTransformMode,
             onClick: () => handleTransformSpaceChange("world"),
           },
           {
@@ -136,8 +159,8 @@ export const useAnnotationActions = () => {
             shortcut: "XX/YY/ZZ",
             tooltip: "Transform in local space",
             isActive: transformSpace === "local",
-            isDisabled: !isInTransformMode,
-            isVisible: isInTransformMode,
+            isDisabled: !isInEntireLabelTransformMode,
+            isVisible: isInEntireLabelTransformMode,
             onClick: () => handleTransformSpaceChange("local"),
           },
         ],
@@ -166,7 +189,7 @@ export const useAnnotationActions = () => {
 
     return baseActions;
   }, [
-    isInTransformMode,
+    isInEntireLabelTransformMode,
     hasSelectedLabel,
     transformMode,
     isPointTransformMode,
@@ -180,7 +203,7 @@ export const useAnnotationActions = () => {
   return {
     actions,
     hasSelectedLabel,
-    isInTransformMode,
+    isInEntireLabelTransformMode,
     transformMode,
     transformSpace,
   };

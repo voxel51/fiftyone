@@ -40,7 +40,7 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
 
   const {
     selectedLabelForAnnotation,
-    isInTransformMode,
+    isInEntireLabelTransformMode,
     selectLabelForAnnotation,
     transformMode,
     transformSpace,
@@ -103,13 +103,8 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
 
   const handleSelect = useCallback(
     (label: OverlayLabel, e: ThreeEvent<MouseEvent>) => {
-      // In annotate mode, handle transform selection
       if (mode === "annotate") {
-        if (selectedLabelForAnnotation?._id === label._id) {
-          clearSelectedLabel();
-        } else {
-          selectLabelForAnnotation(label);
-        }
+        selectLabelForAnnotation(label);
 
         return;
       }
@@ -200,7 +195,7 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
             }
             isSelectedForTransform={
               selectedLabelForAnnotation?._id === overlay._id &&
-              isInTransformMode
+              isInEntireLabelTransformMode
             }
             isAnnotateMode={mode === "annotate"}
             transformMode={transformMode}
@@ -230,7 +225,7 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
             }
             isSelectedForTransform={
               selectedLabelForAnnotation?._id === overlay._id &&
-              isInTransformMode
+              isInEntireLabelTransformMode
             }
             isAnnotateMode={mode === "annotate"}
             transformMode={transformMode}
@@ -253,7 +248,7 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
     tooltip,
     settings,
     selectedLabelForAnnotation,
-    isInTransformMode,
+    isInEntireLabelTransformMode,
     transformMode,
     transformSpace,
     handleTransformStart,
