@@ -1,7 +1,7 @@
-.. _model-zoo-ecosystem:
+.. _model-zoo:
 
-Model Zoo Ecosystem
-===================
+Model Zoo
+=========
 
 .. default-role:: code
 
@@ -29,7 +29,7 @@ apply cutting-edge computer vision techniques to your data.
     </div>
 
 .. customanimatedcta::
-    :button_text: Learn more about Model Zoo
+    :button_text: Learn more about the Model Zoo
     :button_link: api.html
     :align: right
     
@@ -57,7 +57,7 @@ apply cutting-edge computer vision techniques to your data.
 
 .. Add model cards below
 
-.. include:: model_zoo_ecosystem/model_cards.rst
+.. include:: models/model_cards.rst
 
 .. End of model cards
 
@@ -82,4 +82,4 @@ apply cutting-edge computer vision techniques to your data.
    Remote models <remote>
    Model interface <design>
    API reference <api>
-   model_zoo_ecosystem/*
+   models/*

@@ -1,6 +1,6 @@
 """
 Script for generating the model zoo docs page contents
-``docs/source/model_zoo/model_zoo_ecosystem/``.
+``docs/source/model_zoo/models/``.
 
 | Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -288,7 +288,7 @@ def _render_card_model_content(template, model_name):
 
     # Create link to individual model page
     model_slug = model_name.replace(".", "_").replace("-", "_")
-    link = f"model_zoo_ecosystem/{model_slug}.html"
+    link = f"models/{model_slug}.html"
 
     description = zoo_model.description
     description = description.replace("`_", '"')
@@ -381,11 +381,9 @@ def main():
 
     docs_dir = "/".join(os.path.realpath(__file__).split("/")[:-2])
     docs_source_dir = os.path.join(docs_dir, "source")
-    model_zoo_ecosystem_dir = os.path.join(
-        docs_source_dir, "model_zoo", "model_zoo_ecosystem"
-    )
+    models_dir = os.path.join(docs_source_dir, "model_zoo", "models")
 
-    os.makedirs(model_zoo_ecosystem_dir, exist_ok=True)
+    os.makedirs(models_dir, exist_ok=True)
 
     all_models = foz.list_zoo_models()
     if not all_models:
@@ -401,13 +399,13 @@ def main():
         )
         model_cards_content.append(card_content)
 
-    cards_path = os.path.join(model_zoo_ecosystem_dir, "model_cards.rst")
+    cards_path = os.path.join(models_dir, "model_cards.rst")
     etau.write_file("\n".join(model_cards_content), cards_path)
 
     for model_name in all_models:
         model_content = _render_model_content(model_template, model_name)
         model_slug = model_name.replace(".", "_").replace("-", "_")
-        model_path = os.path.join(model_zoo_ecosystem_dir, f"{model_slug}.rst")
+        model_path = os.path.join(models_dir, f"{model_slug}.rst")
         etau.write_file(model_content, model_path)
 
     logger.info("Model zoo documentation generated successfully!")

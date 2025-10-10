@@ -186,7 +186,7 @@ html_sidebars = {"**": ["algolia.html", "sidebar-nav"]}
 
 remove_from_toctrees = [
     "plugins/plugins_ecosystem/*",
-    "model_zoo/model_zoo_ecosystem/*",
+    "model_zoo/models/*",
     "dataset_zoo/datasets/*",
 ]
 

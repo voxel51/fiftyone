@@ -1,4 +1,4 @@
-.. _model-overview:
+.. _model-zoo-overview:
 
 Model Zoo Overview
 ==================
@@ -34,7 +34,7 @@ you can apply to your datasets with a few simple commands.
 
 .. customanimatedcta::
     :button_text: Explore the models in the zoo
-    :button_link: models.html
+    :button_link: index.html
 
 .. note::
 
