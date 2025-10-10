@@ -112,7 +112,8 @@ export interface PathEntry {
 }
 
 interface Label {
-  path?: string;
+  path: string;
+  isNew?: boolean;
 }
 
 interface ClassificationAnnotationLabel extends Label {
@@ -129,7 +130,7 @@ interface DetectionAnnotationLabel extends Label {
 
 interface PolylineAnnotationLabel extends Label {
   data: PolylineLabel;
-  overlay: ClassificationOverlay; //tmp
+  overlay: ClassificationOverlay;
   type: "Polyline";
 }
 

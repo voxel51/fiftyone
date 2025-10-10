@@ -59,7 +59,7 @@ export class BoundingBoxOverlay
   private moveStartPosition?: Point;
   private moveStartBounds?: Rect;
   private isSelectedState = false;
-  private relativeBounds: Rect;
+  private relativeBounds?: Rect;
   private absoluteBounds: Rect;
 
   private _needsCoordinateUpdate = false;
@@ -69,18 +69,13 @@ export class BoundingBoxOverlay
   private readonly CLICK_THRESHOLD = 0.1;
 
   constructor(private options: BoundingBoxOptions) {
-    super(options.id);
+    super(options.id, options.field);
     this.isDraggable = options.draggable !== false;
     this.isResizeable = options.resizeable !== false;
 
-    // Initialize bounds
-    if (options.relativeBounds) {
-      this.relativeBounds = { ...options.relativeBounds };
-      this.absoluteBounds = { x: 0, y: 0, width: 0, height: 0 }; // Will be set by scene
-      this._needsCoordinateUpdate = true;
-    } else {
-      throw new Error("Either bounds or relativeBounds must be provided");
-    }
+    this.relativeBounds = options.relativeBounds;
+    this.absoluteBounds = { x: 0, y: 0, width: 0, height: 0 }; // Will be set by scene
+    this._needsCoordinateUpdate = true;
   }
 
   getOverlayType(): string {

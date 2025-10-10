@@ -1,5 +1,4 @@
 import { Button } from "@fiftyone/components";
-import { LIGHTER_EVENTS, useLighter } from "@fiftyone/lighter";
 import * as fos from "@fiftyone/state";
 import { DeleteOutline } from "@mui/icons-material";
 import { useAtomValue, useSetAtom } from "jotai";
@@ -7,43 +6,29 @@ import React from "react";
 import { useRecoilValue } from "recoil";
 import { RoundButton } from "../Actions";
 import { Row } from "./Components";
-import { current, currentField, editing } from "./state";
+import { currentField, deleteValue, editing, saveValue } from "./state";
 
 const SaveFooter = () => {
-  const setEditingAtom = useSetAtom(editing);
-  const { scene } = useLighter();
-  const currentSampleId = useRecoilValue(fos.currentSampleId);
-  const currentLabel = useAtomValue(current);
+  const saveCurrent = useSetAtom(saveValue);
+  const deleteCurrent = useSetAtom(deleteValue);
+  const sampleId = useRecoilValue(fos.currentSampleId);
+  const datasetId = fos.useAssertedRecoilValue(fos.datasetId);
 
   return (
     <>
       <Button
         onClick={() => {
-          setEditingAtom(null);
+          saveCurrent({ datasetId, sampleId });
         }}
       >
         Save
       </Button>
       <RoundButton
         onClick={() => {
-          setEditingAtom(null);
-          if (!currentLabel?.path) return;
-
-          if (!scene) return;
-
-          scene.removeOverlay(currentLabel.data.id);
-
-          scene.dispatchSafely({
-            type: LIGHTER_EVENTS.DO_REMOVE_OVERLAY,
-            detail: {
-              id: currentLabel.data.id,
-              sampleId: currentSampleId,
-              path: currentLabel.path,
-            },
-          });
+          deleteCurrent({ datasetId, sampleId });
         }}
       >
-        {currentLabel && <DeleteOutline />}
+        <DeleteOutline />
         Delete
       </RoundButton>
     </>

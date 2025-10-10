@@ -5,6 +5,7 @@ import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import { current } from "./state";
 
 export default function Position() {
+  return null;
   const [state, setState] = useState(null);
   const currentLabel = useAtomValue(current);
 
@@ -36,7 +37,7 @@ export default function Position() {
       });
     });
     scene?.on("overlay-drag-move", (event) => {
-      const overlay = scene?.getOverlay(currentLabel.id);
+      const overlay = scene?.getOverlay(currentLabel?.data._id);
       if (!(overlay instanceof BoundingBoxOverlay)) {
         throw new Error("");
       }

@@ -32,7 +32,6 @@ const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
           ? [{ kind: EntryKind.LOADING }]
           : labelEntries
         : []),
-      { kind: EntryKind.GROUP, name: "Primitives" },
     ] as SidebarEntry[],
     () => {},
   ];

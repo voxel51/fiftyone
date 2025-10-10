@@ -3,7 +3,7 @@ import { lighterSceneAtom } from "@fiftyone/lighter";
 import { EntryKind } from "@fiftyone/state";
 import { Typography } from "@mui/material";
 import { atom, useAtomValue } from "jotai";
-import React, { useEffect } from "react";
+import React from "react";
 import styled from "styled-components";
 import Sidebar from "../../../Sidebar";
 import Actions from "./Actions";
@@ -39,12 +39,11 @@ const Loading = () => {
   );
 };
 
-const AnnotateSidebar = React.memo(() => {
-  const { handleSampleData } = useLabels();
+const AnnotateSidebar = () => {
+  useLabels();
+  const editing = useAtomValue(isEditing);
 
-  useEffect(() => {
-    handleSampleData();
-  }, [handleSampleData]);
+  if (editing) return null;
 
   return (
     <>
@@ -77,7 +76,7 @@ const AnnotateSidebar = React.memo(() => {
       />
     </>
   );
-});
+};
 
 const Annotate = () => {
   const showSchemaModal = useAtomValue(showModal);
@@ -92,8 +91,13 @@ const Annotate = () => {
 
   return (
     <>
-      {editing ? <Edit /> : showImport ? <ImportSchema /> : <AnnotateSidebar />}
-      {showSchemaModal && <SchemaManager />}
+      {editing && <Edit key="edit" />}
+      {showImport ? (
+        <ImportSchema key="import" />
+      ) : (
+        <AnnotateSidebar key="annotate" />
+      )}
+      {showSchemaModal && <SchemaManager key="manage" />}
     </>
   );
 };

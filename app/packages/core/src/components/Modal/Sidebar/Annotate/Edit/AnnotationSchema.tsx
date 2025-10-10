@@ -4,7 +4,7 @@ import {
   useLighter,
 } from "@fiftyone/lighter";
 import { useAtom, useAtomValue } from "jotai";
-import { useMemo } from "react";
+import React, { useMemo } from "react";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import { currentData, currentSchema } from "./state";
 
@@ -14,6 +14,7 @@ const createInput = (name: string) => {
     view: {
       name: "PrimitiveView",
       label: name,
+      readOnly: name === "id",
       component: "PrimitiveView",
     },
   };
@@ -60,10 +61,13 @@ const useSchema = () => {
     const properties = {};
 
     const attributes = config?.attributes;
-
+    properties.id = createInput("id");
     properties.label = createSelect("label", config?.classes ?? []);
 
     for (const attr in attributes) {
+      if (attr === "id") {
+        continue;
+      }
       if (attributes[attr].type === "input") {
         properties[attr] = createInput(attr);
       }
@@ -89,18 +93,17 @@ const useSchema = () => {
 
 const AnnotationSchema = () => {
   const schema = useSchema();
-  const [data, save] = useAtom(currentData);
+  const [{ _id: id, ...data }, save] = useAtom(currentData);
   const lighter = useLighter();
 
   return (
     <div>
       <SchemaIOComponent
         schema={schema}
-        data={data}
-        onChange={(changes) => {
-          save(changes);
-          const overlay = lighter.getOverlay(data?._id);
-
+        data={{ id, ...data }}
+        onChange={(data) => {
+          save(data);
+          return;
           if (overlay instanceof BoundingBoxOverlay) {
             lighter.scene?.executeCommand(
               new UpdateLabelCommand(overlay, overlay.label, {

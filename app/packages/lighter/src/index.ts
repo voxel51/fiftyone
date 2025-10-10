@@ -42,7 +42,6 @@ export type {
 // Interaction exports
 export { InteractionManager } from "./interaction/InteractionManager";
 export type { InteractionHandler } from "./interaction/InteractionManager";
-export { InteractiveDetectionHandler } from "./interaction/InteractiveDetectionHandler";
 
 // Selection exports
 export type { Selectable } from "./selection/Selectable";

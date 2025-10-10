@@ -60,7 +60,7 @@ const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
   const hoveringLabelIdsList = useAtomValue(hoveringLabelIds);
   const { scene } = useLighter();
 
-  const isHovering = hoveringLabelIdsList.includes(label.data.id);
+  const isHovering = hoveringLabelIdsList.includes(label.overlay.id);
 
   useEffect(() => {
     if (!scene) return;
@@ -68,21 +68,18 @@ const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
     if (isHoveringThisRow) {
       scene.dispatchSafely({
         type: LIGHTER_EVENTS.DO_OVERLAY_HOVER,
-        detail: { id: label.data.id, tooltip: false },
+        detail: { id: label.overlay.id, tooltip: false },
       });
     } else {
       scene.dispatchSafely({
         type: LIGHTER_EVENTS.DO_OVERLAY_UNHOVER,
-        detail: { id: label.data.id },
+        detail: { id: label.overlay.id },
       });
     }
-  }, [scene, isHoveringThisRow, label.data.id]);
+  }, [scene, isHoveringThisRow, label.overlay.id]);
 
-  if (!scene) {
-    throw new Error("E");
-  }
   const overlay = useMemo(
-    () => scene?.getOverlay(label.data._id),
+    () => scene?.getOverlay(label.overlay.id),
     [label, scene]
   );
   const color = useColor(overlay);
@@ -99,7 +96,9 @@ const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
       <Header>
         <Column>
           <Icon fill={color} />
-          <div>{label.data.label}</div>
+          <div style={!label.data.label ? { color } : {}}>
+            {label.data.label ?? "None"}
+          </div>
         </Column>
 
         {/*

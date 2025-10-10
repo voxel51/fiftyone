@@ -11,9 +11,11 @@ import type { PrimitiveAtom } from "jotai";
 import { atom } from "jotai";
 import { atomFamily } from "jotai/utils";
 import { activeSchemas, fieldType, schemaConfig } from "../state";
-import { labelsByPath } from "../useLabels";
+import { addLabel, labels, labelsByPath } from "../useLabels";
 
-export const editing = atom<PrimitiveAtom<AnnotationLabel> | null>(null);
+export const editing = atom<PrimitiveAtom<AnnotationLabel> | LabelType | null>(
+  null
+);
 
 const IS_CLASSIFICIATION = new Set([CLASSIFICATION, CLASSIFICATIONS]);
 const IS_DETECTION = new Set([DETECTION, DETECTIONS]);
@@ -34,7 +36,7 @@ export const current = atom(
   (get) => {
     const currentEditing = get(editing);
 
-    if (currentEditing) {
+    if (currentEditing && typeof currentEditing !== "string") {
       return get(currentEditing);
     }
 
@@ -43,8 +45,8 @@ export const current = atom(
   (get, set, label: AnnotationLabel) => {
     const currentEditing = get(editing);
 
-    if (currentEditing) {
-      return set(currentEditing, label);
+    if (currentEditing && typeof currentEditing !== "string") {
+      set(currentEditing, label);
     }
   }
 );
@@ -54,7 +56,7 @@ export const currentData = atom(
   (get, set, data: Partial<AnnotationLabel["data"]>) => {
     const currentEditing = get(editing);
 
-    if (currentEditing) {
+    if (currentEditing && typeof currentEditing !== "string") {
       const current = get(currentEditing);
       return set(currentEditing, {
         ...current,
@@ -66,14 +68,19 @@ export const currentData = atom(
 
 export const currentFields = atom((get) => get(fieldsOfType(get(currentType))));
 
-export const currentField = atom((get) => {
-  const path = get(current)?.path;
-  if (path) {
-    return path;
+export const currentField = atom(
+  (get) => {
+    return get(current)?.path;
+  },
+  (get, set, path: string) => {
+    const label = get(current);
+    if (!label) {
+      return;
+    }
+    label.overlay.updateField(path);
+    set(current, { ...label, path });
   }
-
-  return get(defaultField(get(currentType)));
-});
+);
 
 export const currentOverlay = atom((get) => {
   return get(current)?.overlay;
@@ -113,6 +120,12 @@ export const disabledFields = atomFamily((type: LabelType) =>
 );
 
 export const currentType = atom<LabelType>((get) => {
+  const value = get(editing);
+
+  if (typeof value === "string") {
+    return value;
+  }
+
   const type = get(current)?.type;
   if (type) {
     for (const [kind, values] of Object.entries(IS)) {
@@ -126,6 +139,10 @@ export const currentType = atom<LabelType>((get) => {
 });
 
 export const isEditing = atom((get) => get(editing) !== null);
+
+export const isNew = atom((get) => {
+  return typeof get(editing) === "string" || get(current).isNew;
+});
 
 const fieldsOfType = atomFamily((type: LabelType) =>
   atom((get) => {
@@ -151,4 +168,40 @@ export const defaultField = atomFamily((type: LabelType) =>
 
     return null;
   })
+);
+
+export const saveValue = atom(
+  undefined,
+  (
+    get,
+    set,
+    { datasetId, sampleId }: { datasetId: string; sampleId: string }
+  ) => {
+    const { isNew, ...value } = get(current);
+
+    if (isNew) {
+      set(addLabel, value);
+    }
+
+    set(editing, null);
+  }
+);
+
+export const deleteValue = atom(
+  null,
+  (
+    get,
+    set,
+    { datasetId, sampleId }: { datasetId: string; sampleId: string }
+  ) => {
+    const valueId = get(current).data._id;
+
+    // patchSample({ datasetId, sampleId, delta });
+    set(
+      labels,
+      get(labels).filter((label) => label.data._id !== valueId)
+    );
+
+    set(editing, null);
+  }
 );

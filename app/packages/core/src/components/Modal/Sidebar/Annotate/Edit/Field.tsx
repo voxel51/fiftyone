@@ -3,11 +3,12 @@ import React, { useMemo } from "react";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import AddSchema from "./AddSchema";
 import {
-  current,
   currentDisabledFields,
   currentField,
   currentFields,
   currentType,
+  editing,
+  isNew,
 } from "./state";
 
 const createSchema = (choices: string[], disabled: Set<string>) => ({
@@ -43,9 +44,9 @@ const Field = () => {
     [disabled, fields]
   );
   const type = useAtomValue(currentType);
-  const label = useAtomValue(current);
+  const state = useAtomValue(editing);
 
-  if (label?.path) {
+  if (!useAtomValue(isNew)) {
     return null;
   }
 
@@ -56,15 +57,13 @@ const Field = () => {
           <SchemaIOComponent
             schema={schema}
             data={{ field: currentFieldValue }}
-            onChange={(...a) => {
-              console.log(a);
+            onChange={({ field }) => {
+              setCurrentField(field);
             }}
           />
         </div>
       )}
-      {!label?.path && fields.length === disabled.size && (
-        <AddSchema type={type} />
-      )}
+      {typeof state === "string" && <AddSchema type={type} />}
     </>
   );
 };

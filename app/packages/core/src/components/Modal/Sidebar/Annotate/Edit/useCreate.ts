@@ -1,12 +1,18 @@
 import {
+  BoundingBoxOptions,
+  BoundingBoxOverlay,
   ClassificationOptions,
   ClassificationOverlay,
-  InteractiveDetectionHandler,
-  LIGHTER_EVENTS,
   useLighter,
 } from "@fiftyone/lighter";
+import { InteractiveDetectionHandler } from "@fiftyone/lighter/src/interaction/InteractiveDetectionHandler";
 import type { AnnotationLabel } from "@fiftyone/state";
-import { CLASSIFICATION, POLYLINE, objectId } from "@fiftyone/utilities";
+import {
+  CLASSIFICATION,
+  DETECTION,
+  POLYLINE,
+  objectId,
+} from "@fiftyone/utilities";
 import { atom, getDefaultStore, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import type { LabelType } from "./state";
@@ -33,90 +39,29 @@ const useCreateAnnotationLabel = () => {
           id,
         });
         addOverlay(overlay);
-        return { data, overlay };
+        return { data, overlay, path: field, type };
       }
 
-      throw new Error("E");
-    },
-    [addOverlay, overlayFactory]
-  );
-};
-
-const useCreateLighterOverlay = () => {
-  return useCallback(
-    (id: string, type: LabelType) => {
-      if (type === CLASSIFICATION) {
-        return overlay;
+      if (type === DETECTION) {
+        const overlay = overlayFactory.create<
+          BoundingBoxOptions,
+          BoundingBoxOverlay
+        >("bounding-box", {
+          field,
+          id,
+          label: {},
+        });
+        addOverlay(overlay);
+        const handler = new InteractiveDetectionHandler(overlay);
+        scene?.enterInteractiveMode(handler);
+        return { data, overlay, path: field, type };
       }
 
       if (type === POLYLINE) {
-        return;
+        throw new Error("todo");
       }
-
-      const handler = new InteractiveDetectionHandler(
-        currentSampleId,
-        addOverlay,
-        removeOverlay,
-        overlayFactory,
-        (tempOverlay) => {
-          const absoluteBounds = tempOverlay.getAbsoluteBounds();
-          return;
-          store.set(interactiveModeInput, {
-            inputType: "new-bounding-box",
-            payload: {
-              x: absoluteBounds.x + absoluteBounds.width,
-              y: absoluteBounds.y + absoluteBounds.height / 2,
-            },
-            onComplete: (value: { labelName: string; field: string }) => {
-              const relativeBounds = tempOverlay.getRelativeBounds();
-
-              const detection = overlayFactory.create<
-                BoundingBoxOptions,
-                BoundingBoxOverlay
-              >("bounding-box", {
-                field: value.field,
-                sampleId: currentSampleId,
-                label: {
-                  id: objectId(),
-                  label: value.labelName,
-                  tags: [],
-                  bounding_box: [
-                    relativeBounds.x,
-                    relativeBounds.y,
-                    relativeBounds.width,
-                    relativeBounds.height,
-                  ],
-                },
-                relativeBounds: relativeBounds,
-                draggable: true,
-                selectable: true,
-              });
-
-              addOverlay(detection, true);
-
-              // Persist the overlay
-              scene.dispatchSafely({
-                type: LIGHTER_EVENTS.DO_PERSIST_OVERLAY,
-                detail: {
-                  id: detection.id,
-                  field: value.field,
-                  sampleId: currentSampleId,
-                  label: detection.label?.label ?? "",
-                  bounds: detection.getRelativeBounds(),
-                  misc: {},
-                },
-              });
-
-              scene.exitInteractiveMode();
-            },
-            onDismiss: () => {},
-          });
-        }
-      );
-
-      scene?.enterInteractiveMode(handler);
     },
-    [scene, addOverlay, removeOverlay, overlayFactory]
+    [addOverlay, overlayFactory, scene]
   );
 };
 
@@ -125,6 +70,15 @@ export default function useCreate(type: LabelType) {
   const createAnnotationLabel = useCreateAnnotationLabel();
 
   return useCallback(() => {
-    setEditing(atom<AnnotationLabel>({ type, ...createAnnotationLabel(type) }));
+    const label = createAnnotationLabel(type);
+
+    setEditing(
+      label
+        ? atom<AnnotationLabel>({
+            isNew: true,
+            ...label,
+          })
+        : type
+    );
   }, [createAnnotationLabel, setEditing, type]);
 }

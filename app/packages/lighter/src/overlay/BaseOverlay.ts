@@ -306,4 +306,8 @@ export abstract class BaseOverlay implements InteractionHandler {
    * @returns True if the event was handled.
    */
   onDoubleClick?(point: Point, event: PointerEvent): boolean;
+
+  updateField(field: string) {
+    this.field = field;
+  }
 }

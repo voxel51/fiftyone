@@ -1,5 +1,5 @@
 import { DETECTION } from "@fiftyone/utilities";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtomValue } from "jotai";
 import React from "react";
 import styled from "styled-components";
 import AnnotationSchema from "./AnnotationSchema";
@@ -7,7 +7,7 @@ import Field from "./Field";
 import Footer from "./Footer";
 import Header from "./Header";
 import Position from "./Position";
-import { current, currentField } from "./state";
+import { currentField, currentOverlay, currentType } from "./state";
 
 const ContentContainer = styled.div`
   margin: 0.25rem 1rem;
@@ -30,19 +30,16 @@ const Content = styled.div`
 `;
 
 export default function Edit() {
-  const [label] = useAtom(current);
   const field = useAtomValue(currentField);
-
-  if (!label) {
-    return null;
-  }
+  const overlay = useAtomValue(currentOverlay);
+  const type = useAtomValue(currentType);
 
   return (
     <ContentContainer>
-      <Header label={label} />
+      <Header />
       <Content>
         <Field />
-        {label.type === DETECTION && <Position />}
+        {type === DETECTION && overlay && <Position />}
         {field && <AnnotationSchema />}
       </Content>
       <Footer />

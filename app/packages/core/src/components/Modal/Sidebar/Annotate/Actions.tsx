@@ -2,6 +2,7 @@ import { useLighter } from "@fiftyone/lighter";
 import { is3DDataset } from "@fiftyone/state";
 import { CLASSIFICATION, DETECTION, POLYLINE } from "@fiftyone/utilities";
 import { PolylineOutlined } from "@mui/icons-material";
+import React from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ItemLeft, ItemRight } from "./Components";

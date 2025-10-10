@@ -67,7 +67,7 @@ export type LabelMask = {
 };
 
 export interface RegularLabel extends BaseLabel {
-  _id?: string;
+  _id: string;
   label?: string;
   confidence?: number | NONFINITE;
 }
