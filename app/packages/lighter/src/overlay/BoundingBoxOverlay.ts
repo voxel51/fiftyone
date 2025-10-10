@@ -24,6 +24,12 @@ import {
 import { distanceFromLineSegment } from "../utils/geometry";
 import { BaseOverlay } from "./BaseOverlay";
 
+export type BoundingBoxLabel = RawLookerLabel & {
+  label: string;
+  bounding_box: number[];
+  confidence?: number;
+};
+
 /**
  * Options for creating a bounding box overlay.
  */
@@ -31,7 +37,7 @@ export interface BoundingBoxOptions {
   id: string;
   // Relative bounds [0,1]
   relativeBounds?: Rect;
-  text?: string;
+  label: BoundingBoxLabel;
   field: string;
   draggable?: boolean;
   resizeable?: boolean;
@@ -217,7 +223,7 @@ export class BoundingBoxOverlay
             y: this.absoluteBounds.y - offset,
           };
 
-      let textToDraw = this.options.text;
+      let textToDraw = this.options.label.label;
 
       if (
         typeof this.options.label.confidence !== "undefined" &&
