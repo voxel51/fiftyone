@@ -1513,6 +1513,62 @@ class InstanceSegmenterOutputProcessor(OutputProcessor):
         return fol.Detections(detections=detections)
 
 
+class KeypointOutputProcessor(OutputProcessor):
+    """Output processor for keypoint prediction models."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def __call__(self, output, frame_size, confidence_thresh=None):
+        """Parses the model output.
+
+        Args:
+            output: a batch of predictions ``output = List[Dict[Tensor]]``,
+                where each dict has the following keys:
+
+                -   keypoints (``FloatTensor[N, K, ...]``): the predicted
+                    keypoints for each instance in ``[x, y, ...]`` format
+                -   keypoint_scores (``Tensor[N]``): the scores for each keypoint
+
+            frame_size: the ``(width, height)`` of the frames in the batch
+            confidence_thresh (None): an optional confidence threshold to use
+                to filter any applicable predictions
+
+        Returns:
+            a list of :class:`fiftyone.core.labels.Label` dicts
+        """
+        return [
+            self._parse_output(o, frame_size, confidence_thresh)
+            for o in output
+        ]
+
+    def _parse_output(self, output, frame_size, confidence_thresh):
+        width, height = frame_size
+
+        keypoints = output["keypoints"].detach().cpu().numpy()
+        keypoints_scores = (
+            torch.sigmoid(output["keypoints_scores"]).detach().cpu().numpy()
+        )
+
+        _keypoints = []
+        for kpts, kpt_scores in zip(keypoints, keypoints_scores):
+            points = []
+            for p, p_conf in zip(kpts, kpt_scores):
+                if confidence_thresh and p_conf < confidence_thresh:
+                    # Low confidence
+                    points.append((float("nan"), float("nan")))
+                else:
+                    points.append((p[0] / width, p[1] / height))
+            _keypoints.append(
+                fol.Keypoint(
+                    points=points,
+                    confidence=kpt_scores.tolist(),
+                )
+            )
+
+        return fol.Keypoints(keypoints=_keypoints)
+
+
 class KeypointDetectorOutputProcessor(OutputProcessor):
     """Output processor for keypoint detection models.
 
