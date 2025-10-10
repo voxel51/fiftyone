@@ -212,7 +212,11 @@ export class BoundingBoxOverlay
       const colorObj = parseColorWithAlpha(style.strokeStyle);
       const color = colorObj.color;
 
-      renderer.drawScrim(this.absoluteBounds, this.containerId);
+      renderer.drawScrim(
+        this.absoluteBounds,
+        style.lineWidth || STROKE_WIDTH,
+        this.containerId
+      );
       renderer.drawHandles(
         this.absoluteBounds,
         style.lineWidth || STROKE_WIDTH,

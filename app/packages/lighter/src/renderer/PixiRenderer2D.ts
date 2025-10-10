@@ -195,7 +195,7 @@ export class PixiRenderer2D implements Renderer2D {
     this.addToContainer(graphics, containerId);
   }
 
-  drawScrim(bounds: Rect, containerId: string): void {
+  drawScrim(bounds: Rect, borderWidth: number, containerId: string): void {
     const sceneDimensions = this.getContainerDimensions();
     const mask = new PIXI.Graphics();
 
@@ -203,7 +203,13 @@ export class PixiRenderer2D implements Renderer2D {
     mask.setFillStyle({ color: SELECTED_COLOR, alpha: SELECTED_ALPHA });
     mask.fill();
 
-    mask.rect(bounds.x, bounds.y, bounds.width, bounds.height);
+    const halfWidth = borderWidth / 2;
+    mask.rect(
+      bounds.x - halfWidth,
+      bounds.y - halfWidth,
+      bounds.width + borderWidth,
+      bounds.height + borderWidth
+    );
     mask.cut();
 
     mask.eventMode = "none";
