@@ -4,12 +4,13 @@
 
 import type { ColorSchemeInput } from "@fiftyone/relay";
 import { getColor } from "@fiftyone/utilities";
+import { SELECTED_DASH_LENGTH } from "../constants";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
 
-// Green for info (selection, here)
-const INFO_COLOR = "#00ff00";
-// Yellow for hover effect
-const HOVER_COLOR = "#FFDE01";
+// White for info (selection, here)
+const INFO_COLOR = "#FFFFFF";
+// White for hover effect as well
+const HOVER_COLOR = "#FFFFFF";
 
 export interface ColorMappingContext {
   colorScheme: ColorSchemeInput;
@@ -165,7 +166,7 @@ export function getSimpleStrokeStyles({
   isSelected,
   strokeColor,
   isHovered,
-  dashLength = 8,
+  dashLength,
 }: {
   isSelected: boolean;
   strokeColor: string;
@@ -178,6 +179,9 @@ export function getSimpleStrokeStyles({
 
   if (isSelected) {
     overlayStrokeColor = INFO_COLOR;
+    overlayDash = dashLength || SELECTED_DASH_LENGTH;
+  } else if (isHovered && dashLength) {
+    overlayStrokeColor = HOVER_COLOR;
     overlayDash = dashLength;
   } else if (isHovered) {
     hoverStrokeColor = HOVER_COLOR;

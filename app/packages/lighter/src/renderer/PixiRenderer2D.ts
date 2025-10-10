@@ -9,6 +9,7 @@ import {
   FONT_FAMILY,
   FONT_SIZE,
   FONT_WEIGHT,
+  HANDLE_ALPHA,
   HANDLE_COLOR,
   HANDLE_FACTOR,
   HANDLE_OUTLINE,
@@ -63,6 +64,11 @@ export class PixiRenderer2D implements Renderer2D {
         const { width, height } = entry.contentRect;
         if (this.app && this.isReady()) {
           this.app.renderer.resize(width, height);
+
+          // Force immediate render to prevent black flash
+          if (this.viewport) {
+            this.app.renderer.render(this.app.stage);
+          }
 
           if (this.eventBus) {
             this.eventBus.emit({
@@ -174,17 +180,41 @@ export class PixiRenderer2D implements Renderer2D {
   }
 
   drawHandles(
-    graphics: PIXI.Graphics,
     bounds: Rect,
     width: number,
     color: number | string,
-    alpha: number
+    containerId: string
   ): void {
     width *= HANDLE_FACTOR;
-
+    const graphics = new PIXI.Graphics();
     const outline = (2 * HANDLE_OUTLINE) / this.getScale();
-    this.drawBoxes(graphics, bounds, width + outline, color, alpha);
-    this.drawBoxes(graphics, bounds, width, HANDLE_COLOR, alpha);
+
+    this.drawBoxes(graphics, bounds, width + outline, color, HANDLE_ALPHA);
+    this.drawBoxes(graphics, bounds, width, HANDLE_COLOR, HANDLE_ALPHA);
+
+    this.addToContainer(graphics, containerId);
+  }
+
+  drawScrim(bounds: Rect, borderWidth: number, containerId: string): void {
+    const sceneDimensions = this.getContainerDimensions();
+    const mask = new PIXI.Graphics();
+
+    mask.rect(0, 0, sceneDimensions.width, sceneDimensions.height);
+    mask.setFillStyle({ color: SELECTED_COLOR, alpha: SELECTED_ALPHA });
+    mask.fill();
+
+    const halfWidth = borderWidth / 2;
+    mask.rect(
+      bounds.x - halfWidth,
+      bounds.y - halfWidth,
+      bounds.width + borderWidth,
+      bounds.height + borderWidth
+    );
+    mask.cut();
+
+    mask.eventMode = "none";
+
+    this.addToContainer(mask, containerId);
   }
 
   drawRect(bounds: Rect, style: DrawStyle, containerId: string): void {
@@ -202,11 +232,6 @@ export class PixiRenderer2D implements Renderer2D {
       const alpha = colorObj.alpha * (style.opacity || 1);
 
       if (style.dashPattern && style.dashPattern.length > 0) {
-        graphics
-          .rect(bounds.x, bounds.y, bounds.width, bounds.height)
-          .setFillStyle({ color: SELECTED_COLOR, alpha: SELECTED_ALPHA })
-          .fill();
-
         const dashLine = new DashLine(graphics, {
           dash: style.dashPattern.map((dash) => dash / this.getScale()),
           width,
@@ -214,8 +239,6 @@ export class PixiRenderer2D implements Renderer2D {
           alpha,
         });
         dashLine.drawRect(bounds.x, bounds.y, bounds.width, bounds.height);
-
-        this.drawHandles(graphics, bounds, width, color, alpha);
       } else {
         graphics.rect(bounds.x, bounds.y, bounds.width, bounds.height);
         graphics.setStrokeStyle({
@@ -626,6 +649,11 @@ export class PixiRenderer2D implements Renderer2D {
 
     if (children.length > 0) {
       for (const child of children) {
+        // e.g. the scrim
+        if (child.eventMode === "none") {
+          continue;
+        }
+
         const bounds = child.getBounds();
 
         if (

@@ -70,6 +70,13 @@ export interface Renderer2D {
   resetTickHandler(): void;
 
   // Drawing methods
+  drawHandles(
+    bounds: Rect,
+    width: number,
+    color: number | string,
+    containerId: string
+  ): void;
+  drawScrim(bounds: Rect, borderWidth: number, containerId: string): void;
   drawRect(bounds: Rect, style: DrawStyle, containerId: string): void;
   drawText(
     text: string,

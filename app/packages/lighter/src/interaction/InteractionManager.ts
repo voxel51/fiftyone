@@ -66,13 +66,15 @@ export interface InteractionHandler {
    * @param worldPoint - Screen point translated to viewport point.
    * @param event - The original pointer event.
    * @param scale - The current scaling factor of the renderer.
+   * @param maintainAspectRatio - Maintain aspect ratio during resize (shift key held).
    * @returns True if the event was handled.
    */
   onMove?(
     point: Point,
     worldPoint: Point,
     event: PointerEvent,
-    sclae: number
+    scale: number,
+    maintainAspectRatio?: boolean
   ): boolean;
 
   /**
@@ -154,6 +156,7 @@ export class InteractionManager {
   private clickStartPoint?: Point;
   private lastClickTime = 0;
   private lastClickPoint?: Point;
+  private maintainAspectRatio = false;
 
   private canonicalMediaId?: string;
 
@@ -201,6 +204,7 @@ export class InteractionManager {
     this.canvas.addEventListener("pointercancel", this.handlePointerCancel);
     this.canvas.addEventListener("pointerleave", this.handlePointerLeave);
     document.addEventListener("keydown", this.handleKeyDown);
+    document.addEventListener("keyup", this.handleKeyUp);
     this.eventBus.on(LIGHTER_EVENTS.ZOOMED, this.handleZoomed);
   }
 
@@ -266,9 +270,21 @@ export class InteractionManager {
     if (handler) {
       // Handle drag move
       if (!interactiveHandler) {
-        handler.onMove?.(point, worldPoint, event, scale);
+        handler.onMove?.(
+          point,
+          worldPoint,
+          event,
+          scale,
+          this.maintainAspectRatio
+        );
       } else {
-        interactiveHandler.onMove?.(point, worldPoint, event, scale);
+        interactiveHandler.onMove?.(
+          point,
+          worldPoint,
+          event,
+          scale,
+          this.maintainAspectRatio
+        );
       }
 
       if (handler.isMoving?.()) {
@@ -301,7 +317,7 @@ export class InteractionManager {
     const point = this.getCanvasPoint(event);
     const worldPoint = this.renderer.screenToWorld(point);
     const scale = this.renderer.getScale();
-    const handler = this.findHandlerAtPoint(point);
+    const handler = this.findMovingHandler() || this.findHandlerAtPoint(point);
     const now = Date.now();
 
     if (handler?.isMoving?.()) {
@@ -371,7 +387,7 @@ export class InteractionManager {
   };
 
   /**
-   * Handles keyboard events for undo/redo shortcuts.
+   * Handles keyboard events for undo/redo shortcuts and shift modifier to maintain aspect ratio.
    * @param event - The keyboard event.
    */
   private handleKeyDown = (event: KeyboardEvent): void => {
@@ -409,6 +425,30 @@ export class InteractionManager {
       this.undoRedoManager.redo();
       return;
     }
+
+    if (event.shiftKey) {
+      this.maintainAspectRatio = event.shiftKey;
+      return;
+    }
+  };
+
+  /**
+   * Handles keyboard events for release of shift modifier to maintain aspect ratio.
+   * @param event - The keyboard event.
+   */
+  private handleKeyUp = (event: KeyboardEvent): void => {
+    // Check if we're in an input field - don't handle shortcuts there
+    const activeElement = document.activeElement;
+    if (
+      activeElement &&
+      (activeElement.tagName === "INPUT" ||
+        activeElement.tagName === "TEXTAREA" ||
+        (activeElement as HTMLElement).contentEditable === "true")
+    ) {
+      return;
+    }
+
+    this.maintainAspectRatio = event.shiftKey;
   };
 
   private handleClick(point: Point, event: PointerEvent, now: number): void {
@@ -664,6 +704,7 @@ export class InteractionManager {
     this.canvas.removeEventListener("pointercancel", this.handlePointerCancel);
     this.canvas.removeEventListener("pointerleave", this.handlePointerLeave);
     document.removeEventListener("keydown", this.handleKeyDown);
+    document.removeEventListener("keyup", this.handleKeyUp);
     this.eventBus.off(LIGHTER_EVENTS.ZOOMED, this.handleZoomed);
     this.clearHandlers();
   }
