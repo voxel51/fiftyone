@@ -24,28 +24,22 @@ class Object(Protocol[K, V]):
     """Protocol for any object supporting __delitem__, __getattr__, and
     __setattr__."""
 
-    def __delattr__(self, name: K) -> None:
-        ...
+    def __delattr__(self, name: K) -> None: ...
 
-    def __getattr__(self, name: K) -> V:
-        ...
+    def __getattr__(self, name: K) -> V: ...
 
-    def __setattr__(self, name: K, value: V) -> None:
-        ...
+    def __setattr__(self, name: K, value: V) -> None: ...
 
 
 class Subscriptable(Protocol[K, V]):
     """Protocol for any object supporting __delitem__, __getitem__, and
     __setitem__."""
 
-    def __delitem__(self, key: K) -> V:
-        ...
+    def __delitem__(self, key: K) -> V: ...
 
-    def __getitem__(self, key: K) -> V:
-        ...
+    def __getitem__(self, key: K) -> V: ...
 
-    def __setitem__(self, key: K, value: V) -> None:
-        ...
+    def __setitem__(self, key: K, value: V) -> None: ...
 
 
 class Operation(str, enum.Enum):
@@ -76,30 +70,32 @@ def delvalue(
         IndexError: If the object is a list and the index is out of bound.
     """
 
+    if hasattr(src, "__getitem__"):
+        try:
+            del src[accessor]
+            return
+        except Exception as err:
+            if isinstance(err, TypeError):
+                if "list indices must be integers or slices" in str(err):
+                    try:
+                        accessor = int(accessor)
+                    except ValueError as val_err:
+                        raise val_err
+
+                    if not 0 <= accessor < len(src):
+                        raise IndexError("List index out of range") from err
+
+                    src.pop(int(accessor))
+
+                    return
+
+            if isinstance(err, KeyError):
+                raise err
+
     try:
         delattr(src, accessor)
     except AttributeError as err:
-        if not hasattr(src, "__getitem__"):
-            raise err
-
-        try:
-            del src[accessor]
-        except TypeError as type_err:
-            if "list indices must be integers or slices" in str(type_err):
-                try:
-                    accessor = int(accessor)
-                except ValueError as val_err:
-                    raise val_err
-
-                if not 0 <= accessor < len(src):
-                    raise IndexError("List index out of range") from type_err
-
-                src.pop(int(accessor))
-
-                return
-            raise type_err
-        except KeyError as key_err:
-            raise key_err
+        raise err
 
 
 def getvalue(src: Union[Object[K, V], Subscriptable[K, V]], accessor: K) -> V:
@@ -155,14 +151,10 @@ def setvalue(
         ValueError: If the object is a list and the index is not an integer.
         IndexError: If the object is a list and the index is out of bounds.
     """
-    try:
-        setattr(src, accessor, value)
-    except AttributeError as err:
-        if not hasattr(src, "__getitem__"):
-            raise err
-
+    if hasattr(src, "__getitem__"):
         try:
             src[accessor] = value
+            return
         except TypeError as type_err:
             if "list indices must be integers or slices" in str(type_err):
                 # TODO: move to add as it's special to JSON patch and convert
@@ -176,13 +168,20 @@ def setvalue(
                         raise val_err
 
                     if not 0 <= accessor <= len(src):
-                        raise IndexError("List index out of range") from err
+                        raise IndexError(
+                            "List index out of range"
+                        ) from type_err
 
                     src.insert(accessor, value)
 
                 return
 
             raise type_err
+
+    try:
+        setattr(src, accessor, value)
+    except AttributeError as err:
+        raise err
 
 
 @functools.lru_cache(maxsize=None)
