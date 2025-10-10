@@ -65,6 +65,11 @@ export class PixiRenderer2D implements Renderer2D {
         if (this.app && this.isReady()) {
           this.app.renderer.resize(width, height);
 
+          // Force immediate render to prevent black flash
+          if (this.viewport) {
+            this.app.renderer.render(this.app.stage);
+          }
+
           if (this.eventBus) {
             this.eventBus.emit({
               type: LIGHTER_EVENTS.RESIZE,
