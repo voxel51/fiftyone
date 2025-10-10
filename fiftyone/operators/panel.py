@@ -50,7 +50,7 @@ class PanelConfig(OperatorConfig):
         allow_multiple=False,
         surfaces: PANEL_SURFACE = "grid",
         priority=None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(name)
         self.name = name
@@ -231,6 +231,13 @@ class PanelRefBase(object):  # pylint: disable=no-member
             self.set(key, value)
 
     def __getattr__(self, key):
+        # Raise AttributeError for special methods to prevent deepcopy issues
+        # Python's copy/pickle machinery expects these to not exist, not return None
+        if key.startswith("__") and key.endswith("__"):
+            raise AttributeError(
+                f"'{type(self).__name__}' object has no attribute '{key}'"
+            )
+
         # Use object.__getattribute__ to avoid recursion
         data = object.__getattribute__(self, "_data")
         if isinstance(data, dict):
