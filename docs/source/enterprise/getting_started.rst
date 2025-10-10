@@ -9,7 +9,9 @@ This guide provides comprehensive instructions to successfully upload your first
 Upload Cloud Credentials to your Deployment
 -------------------------------------------
 
-Configure cloud credentials to enable rendering of cloud-backed media within FiftyOne Enterprise.
+Configure cloud credentials to enable rendering of cloud-backed media within
+FiftyOne Enterprise. This is a one-time setup that only needs to be performed
+by an administrator.
 
 .. image:: /images/enterprise/getting_started_cloud_creds.gif
    :alt: getting-started-cloud-creds
@@ -248,7 +250,7 @@ Schedule the **import_samples**  operator to import your dataset from your cloud
 
 Compute Metadata
 ~~~~~~~~~~~~~~~~
-**compute_metadata** is a builtin operator that effeciently populates basic
+**compute_metadata** is an operator that efficiently populates basic
 metadata such as file size, image height and width, etc for all of the samples 
 in your dataset. Keeping the metadata field populated for all samples of your
 datasets is recommended because it enables the sample grid's tiling algorithm
@@ -263,5 +265,7 @@ to run more efficiently
     An admin must follow :ref:`these instructions <enterprise-plugins-install>`
     to install the
     `@voxel51/io <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/
-    io/README.md>`_
-    plugin in order to perform imports via the Enterprise UI. 
+    io/README.md>`_ and `@voxel51/utils <https://github.com/voxel51/
+    fiftyone-plugins/blob/main/plugins/
+    utils/README.md>`_ plugins in order to perform imports and compute metadata 
+    via the Enterprise UI. 
