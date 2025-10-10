@@ -5,8 +5,11 @@ FiftyOne operator messages.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
+import dataclasses
 from enum import Enum
 import json
+from typing import Optional, Any, Dict
 
 
 class MessageType(Enum):
@@ -33,3 +36,65 @@ class GeneratedMessage(object):
 
     def to_json_line(self):
         return json.dumps(self.to_json()) + "\n"
+
+
+@dataclasses.dataclass
+class MessageMetadata:
+    """Metadata for a store notification message."""
+
+    operation_type: Optional[str] = None
+    dataset_id: Optional[str] = None
+    timestamp: Optional[str] = None
+
+
+@dataclasses.dataclass
+class MessageData:
+    """Data structure for messages sent by the notification service."""
+
+    key: str
+    value: Any
+    metadata: MessageMetadata
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "MessageData":
+        """Create a MessageData instance from a dictionary.
+
+        Args:
+            data: Dictionary containing message data
+
+        Returns:
+            MessageData instance
+        """
+        metadata = MessageMetadata(**data.get("metadata", {}))
+        return cls(
+            key=data.get("key", ""), value=data.get("value"), metadata=metadata
+        )
+
+    @classmethod
+    def from_json(cls, json_str: str) -> "MessageData":
+        """Create a MessageData instance from a JSON string.
+
+        Args:
+            json_str: JSON string containing message data
+
+        Returns:
+            MessageData instance
+        """
+        data = json.loads(json_str)
+        return cls.from_dict(data)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert the MessageData instance to a dictionary.
+
+        Returns:
+            Dictionary representation
+        """
+        return dataclasses.asdict(self)
+
+    def to_json(self) -> str:
+        """Convert the MessageData instance to a JSON string.
+
+        Returns:
+            JSON string representation
+        """
+        return json.dumps(self.to_dict())

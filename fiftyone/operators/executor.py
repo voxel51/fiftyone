@@ -364,6 +364,11 @@ async def execute_or_delegate_operator(
                 error_message=str(error),
             )
 
+        if hasattr(operator, "IS_SSE_OPERATOR"):
+            return ExecutionResult(
+                result=result, executor=executor, is_sse=True
+            )
+
         return ExecutionResult(result=result, executor=executor)
 
 
@@ -1025,6 +1030,8 @@ class ExecutionResult(object):
         delegated (False): whether execution was delegated
         outputs_schema (None): a JSON dict representing the output schema of
             the operator
+        is_sse (False): whether execution was from an operator handling
+            server-sent events (SSE)
     """
 
     def __init__(
@@ -1036,6 +1043,7 @@ class ExecutionResult(object):
         validation_ctx=None,
         delegated=False,
         outputs_schema=None,
+        is_sse=False,
     ):
         self.result = result
         self.executor = executor
@@ -1044,6 +1052,7 @@ class ExecutionResult(object):
         self.validation_ctx = validation_ctx
         self.delegated = delegated
         self.outputs_schema = outputs_schema
+        self.is_sse = is_sse
 
     @property
     def is_generator(self):
