@@ -1,3 +1,4 @@
+import * as fos from "@fiftyone/state";
 import {
   AdaptiveDpr,
   AdaptiveEvents,
@@ -7,10 +8,12 @@ import {
   OrthographicCamera,
   PerspectiveCamera as PerspectiveCameraDrei,
 } from "@react-three/drei";
+import { useAtomValue } from "jotai";
 import * as THREE from "three";
 import { Vector3 } from "three";
 import { SpinningCube } from "../SpinningCube";
 import { StatusTunnel } from "../StatusBar";
+import { SegmentPolylineRenderer } from "../components/SegmentPolylineRenderer";
 import { ThreeDLabels } from "../labels";
 import { FoSceneComponent } from "./FoScene";
 import { Gizmos } from "./Gizmos";
@@ -110,6 +113,8 @@ export const Fo3dSceneContent = ({
   cameraRef,
   projection = "Perspective",
 }: Fo3dSceneContentProps) => {
+  const mode = useAtomValue(fos.modalMode);
+
   return (
     <>
       <StatusTunnel.Out />
@@ -169,6 +174,16 @@ export const Fo3dSceneContent = ({
       {isSceneInitialized && (
         <ThreeDLabels sampleMap={{ fo3d: sample as any }} />
       )}
+
+      {mode === "annotate" && <AnnotationControls />}
+    </>
+  );
+};
+
+const AnnotationControls = () => {
+  return (
+    <>
+      <SegmentPolylineRenderer />
     </>
   );
 };

@@ -349,6 +349,48 @@ export const polylinePointTransformsAtom = atom<
   default: {},
 });
 
+export interface SegmentPolylineState {
+  isActive: boolean;
+  vertices: [number, number, number][];
+  currentMousePosition: [number, number, number] | null;
+  isClosed: boolean;
+}
+
+export const segmentPolylineStateAtom = atom<SegmentPolylineState>({
+  key: "fo3d-segmentPolylineState",
+  default: {
+    isActive: false,
+    vertices: [],
+    currentMousePosition: null,
+    isClosed: false,
+  },
+});
+
+export const isActivelySegmentingSelector = selector<boolean>({
+  key: "fo3d-isActivelySegmentingSelector",
+  get: ({ get }) => {
+    return get(segmentPolylineStateAtom).isActive;
+  },
+});
+
+export const isSegmentingPointerDownAtom = atom<boolean>({
+  key: "fo3d-isSegmentingPointerDownAtom",
+  default: false,
+});
+
+export interface TempPolyline {
+  id: string;
+  vertices: [number, number, number][];
+  isClosed: boolean;
+  color: string;
+  lineWidth: number;
+}
+
+export const tempPolylinesAtom = atom<TempPolyline[]>({
+  key: "fo3d-tempPolylines",
+  default: [],
+});
+
 // Selector to clear all transform state
 export const clearTransformStateSelector = selector({
   key: "fo3d-clearTransformState",
@@ -366,5 +408,11 @@ export const clearTransformStateSelector = selector({
     set(currentPointPositionAtom, null);
     // Note: We don't clear transformedLabelsAtom here as it should persist
     set(polylinePointTransformsAtom, {});
+    set(segmentPolylineStateAtom, {
+      isActive: false,
+      vertices: [],
+      currentMousePosition: null,
+      isClosed: false,
+    });
   },
 });

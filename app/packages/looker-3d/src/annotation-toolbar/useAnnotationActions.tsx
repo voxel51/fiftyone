@@ -11,8 +11,10 @@ import { useRecoilState, useRecoilValue } from "recoil";
 import {
   isInEntireLabelTransformModeAtom,
   isPointTransformModeAtom,
+  segmentPolylineStateAtom,
   selectedLabelForAnnotationAtom,
   selectedPointAtom,
+  tempPolylinesAtom,
   transformModeAtom,
   transformSpaceAtom,
   type TransformMode,
@@ -32,6 +34,10 @@ export const useAnnotationActions = () => {
   const [transformSpace, setTransformSpace] =
     useRecoilState(transformSpaceAtom);
   const selectedPoint = useRecoilValue(selectedPointAtom);
+  const [segmentPolylineState, setSegmentPolylineState] = useRecoilState(
+    segmentPolylineStateAtom
+  );
+  const [tempPolylines, setTempPolylines] = useRecoilState(tempPolylinesAtom);
 
   const hasSelectedLabel = !!selectedLabelForAnnotation;
 
@@ -58,6 +64,28 @@ export const useAnnotationActions = () => {
     },
     [setTransformSpace]
   );
+
+  const handleStartSegmentPolyline = useCallback(() => {
+    setSegmentPolylineState({
+      isActive: true,
+      vertices: [],
+      currentMousePosition: null,
+      isClosed: false,
+    });
+  }, [setSegmentPolylineState]);
+
+  const handleCancelSegmentPolyline = useCallback(() => {
+    setSegmentPolylineState({
+      isActive: false,
+      vertices: [],
+      currentMousePosition: null,
+      isClosed: false,
+    });
+  }, [setSegmentPolylineState]);
+
+  const handleClearTempPolylines = useCallback(() => {
+    setTempPolylines([]);
+  }, [setTempPolylines]);
 
   const actions: AnnotationActionGroup[] = useMemo(() => {
     const isPolyline = selectedLabelForAnnotation?._cls === "Polyline";
@@ -90,10 +118,20 @@ export const useAnnotationActions = () => {
             icon: <Add />,
             shortcut: "V",
             tooltip: "Add new polyline segment",
+            isActive: segmentPolylineState.isActive,
+            onClick: segmentPolylineState.isActive
+              ? handleCancelSegmentPolyline
+              : handleStartSegmentPolyline,
+          },
+          {
+            id: "clear-temp-polylines",
+            label: "Clear Temp",
+            icon: <Close />,
+            shortcut: "C",
+            tooltip: "Clear temporary polylines",
             isActive: false,
-            onClick: () => {
-              alert("Not implemented! :(");
-            },
+            isVisible: tempPolylines.length > 0,
+            onClick: handleClearTempPolylines,
           },
         ],
       },
@@ -198,6 +236,11 @@ export const useAnnotationActions = () => {
     handleTransformSpaceChange,
     selectedLabelForAnnotation,
     selectedPoint,
+    segmentPolylineState,
+    tempPolylines,
+    handleStartSegmentPolyline,
+    handleCancelSegmentPolyline,
+    handleClearTempPolylines,
   ]);
 
   return {

@@ -23,7 +23,11 @@ import { useRecoilState, useSetRecoilState } from "recoil";
 import type { OrthographicCamera, PerspectiveCamera, Vector3 } from "three";
 import tunnel from "tunnel-rat";
 import { StatusBarContainer } from "./containers";
-import { activeNodeAtom, isStatusBarOnAtom } from "./state";
+import {
+  activeNodeAtom,
+  isStatusBarOnAtom,
+  segmentPolylineStateAtom,
+} from "./state";
 
 export const StatusTunnel = tunnel();
 
@@ -326,6 +330,7 @@ export const StatusBar = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [showPerfStatus, setShowPerfStatus] = useRecoilState(isStatusBarOnAtom);
   const setActiveNode = useSetRecoilState(activeNodeAtom);
+  const segmentPolylineState = useRecoilState(segmentPolylineStateAtom)[0];
 
   const springProps = useSpring({
     transform: showPerfStatus ? "translateY(10%)" : "translateY(0%)",
@@ -342,6 +347,30 @@ export const StatusBar = ({
         <IconButton style={{ opacity: 0.5 }} onClick={onClickHandler}>
           <InfoIcon />
         </IconButton>
+      )}
+
+      {segmentPolylineState.isActive && (
+        <div
+          style={{
+            position: "fixed",
+            top: "0px",
+            left: "50%",
+            opacity: 0.7,
+            transform: "translateX(-50%)",
+            color: "#e0e0e0",
+            padding: "8px 12px",
+            borderRadius: "4px",
+            fontSize: "12px",
+            fontWeight: "400",
+            zIndex: 1000,
+            border: "1px solid rgba(255, 255, 255, 0.1)",
+            maxWidth: "320px",
+          }}
+        >
+          <div style={{ fontSize: "11px", opacity: 0.8 }}>
+            Click to add vertices • Double click to finish • Escape to cancel
+          </div>
+        </div>
       )}
 
       {showPerfStatus && (

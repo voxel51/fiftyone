@@ -1,7 +1,10 @@
 import {
   type BufferAttribute,
+  type Camera,
   type InterleavedBufferAttribute,
+  Plane,
   Quaternion,
+  type Raycaster,
   Vector3,
   type Vector3Tuple,
   type Vector4Tuple,
@@ -86,6 +89,9 @@ class InvalidSceneError extends Error {
 /**
  * Reads a raw JSON scene from FiftyOne and returns counts
  * of different media types in the scene.
+ *
+ * @param scene - The FiftyOne scene JSON object
+ * @returns Object containing counts of different media types
  */
 export const getFiftyoneSceneSummary = (scene: FiftyoneSceneRawJson) => {
   if (
@@ -136,11 +142,17 @@ export const getFiftyoneSceneSummary = (scene: FiftyoneSceneRawJson) => {
 
 /**
  * Converts degrees to radians.
+ *
+ * @param degrees - The angle in degrees
+ * @returns The angle in radians
  */
 export const deg2rad = (degrees: number) => degrees * (Math.PI / 180);
 
 /**
  * Converts an array of degrees to an array of radians.
+ *
+ * @param degreesArr - Array of angles in degrees
+ * @returns Array of angles in radians
  */
 export const toEulerFromDegreesArray = (degreesArr: Vector3Tuple) => {
   return degreesArr.map(deg2rad) as Vector3Tuple;
@@ -148,6 +160,9 @@ export const toEulerFromDegreesArray = (degreesArr: Vector3Tuple) => {
 
 /**
  * Computes the min and max values for a color buffer attribute.
+ *
+ * @param colorAttribute - The color buffer attribute to analyze
+ * @returns Object containing min and max values
  */
 export const computeMinMaxForColorBufferAttribute = (
   colorAttribute: BufferAttribute | InterleavedBufferAttribute
@@ -166,6 +181,9 @@ export const computeMinMaxForColorBufferAttribute = (
 
 /**
  * Computes the min and max values for a scalar buffer attribute (like intensity in pcd)
+ *
+ * @param attribute - The scalar buffer attribute to analyze
+ * @returns Object containing min and max values
  */
 export const computeMinMaxForScalarBufferAttribute = (
   attribute: BufferAttribute | InterleavedBufferAttribute
@@ -181,6 +199,12 @@ export const computeMinMaxForScalarBufferAttribute = (
   return { min: mn, max: mx };
 };
 
+/**
+ * Gets a color from the color pool based on a string hash.
+ *
+ * @param str - The string to hash
+ * @returns A color from the color pool
+ */
 export const getColorFromPoolBasedOnHash = (str: string) => {
   const hash = str.split("").reduce((acc, char, idx) => {
     const charCode = char.charCodeAt(0);
@@ -189,6 +213,12 @@ export const getColorFromPoolBasedOnHash = (str: string) => {
   return COLOR_POOL[hash % COLOR_POOL.length];
 };
 
+/**
+ * Calculates a quaternion to align a grid with a custom up vector.
+ *
+ * @param upVectorNormalized - The normalized up vector
+ * @returns A quaternion representing the rotation
+ */
 export const getGridQuaternionFromUpVector = (upVectorNormalized: Vector3) => {
   // calculate angle between custom up direction and default up direction (y-axis in three-js)
   const angle = Math.acos(upVectorNormalized.dot(new Vector3(0, 1, 0)));
@@ -201,3 +231,65 @@ export const getGridQuaternionFromUpVector = (upVectorNormalized: Vector3) => {
   // quaternion to represent the rotation around an axis perpendicular to both the default up direction and the custom up direction
   return new Quaternion().setFromAxisAngle(axis, angle);
 };
+
+/**
+ * Converts a pointer event to Normalized Device Coordinates (NDC).
+ * NDC coordinates range from -1 to 1 in both x and y directions,
+ * with (0, 0) at the center of the canvas.
+ *
+ * @param ev - The pointer event to convert
+ * @param canvas - The HTML canvas element to get bounds from
+ * @returns An object with x and y coordinates in NDC space
+ */
+export function toNDC(ev: PointerEvent, canvas: HTMLCanvasElement) {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: ((ev.clientX - rect.left) / rect.width) * 2 - 1,
+    y: -((ev.clientY - rect.top) / rect.height) * 2 + 1,
+  };
+}
+
+/**
+ * Calculates the intersection point between a ray and a plane.
+ *
+ * @param raycaster - The THREE.js raycaster instance
+ * @param camera - The THREE.js camera
+ * @param ndc - Normalized device coordinates
+ * @param plane - The THREE.js plane to intersect with
+ * @returns The intersection point if it exists, null otherwise
+ */
+export function getPlaneIntersection(
+  raycaster: Raycaster,
+  camera: Camera,
+  ndc: { x: number; y: number },
+  plane: Plane
+): Vector3 | null {
+  raycaster.setFromCamera(ndc as any, camera);
+  const point = new Vector3();
+  if (raycaster.ray.intersectPlane(plane, point)) {
+    return point;
+  }
+  return null;
+}
+
+/**
+ * Creates a THREE.js plane from normal and constant values.
+ *
+ * @param normal - The plane normal vector
+ * @param constant - The plane constant
+ * @returns A new THREE.js plane
+ */
+export function createPlane(normal: Vector3, constant: number): Plane {
+  return new Plane(normal.clone().normalize(), -constant);
+}
+
+/**
+ * Checks if a pointer event matches the specified button.
+ *
+ * @param ev - The pointer event to check
+ * @param button - The button number to match (0 = left, 1 = middle, 2 = right)
+ * @returns True if the button matches, false otherwise
+ */
+export function isButtonMatch(ev: PointerEvent, button: number): boolean {
+  return ev.button === button;
+}

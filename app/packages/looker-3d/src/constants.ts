@@ -108,3 +108,5 @@ export const RAY_CASTING_SENSITIVITY = {
   // Useful for sparse clouds, large points, or user-friendly selection modes.
   low: 0.25,
 };
+
+export const SNAP_TOLERANCE = 1.5;

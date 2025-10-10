@@ -34,9 +34,11 @@ import {
   cameraPositionAtom,
   clearTransformStateSelector,
   currentHoveredPointAtom,
+  isActivelySegmentingSelector,
   isFo3dBackgroundOnAtom,
   isPointTransformModeAtom,
   isPointTransformingAtom,
+  isSegmentingPointerDownAtom,
   isTransformingAtom,
   selectedLabelForAnnotationAtom,
   selectedPointAtom,
@@ -224,6 +226,8 @@ export const MediaTypeFo3dComponent = () => {
   const cameraControlsRef = useRef<CameraControls>();
   const isTransforming = useRecoilValue(isTransformingAtom);
   const isPointTransforming = useRecoilValue(isPointTransformingAtom);
+  const isActivelySegmenting = useRecoilValue(isActivelySegmentingSelector);
+  const isSegmentingPointerDown = useRecoilValue(isSegmentingPointerDownAtom);
 
   const keyState = useRef({
     shiftRight: false,
@@ -237,13 +241,13 @@ export const MediaTypeFo3dComponent = () => {
    */
   useEffect(() => {
     updateCameraControlsConfig();
-  }, [isTransforming, isPointTransforming]);
+  }, [isTransforming, isPointTransforming, isSegmentingPointerDown]);
 
   const updateCameraControlsConfig = useCallback(() => {
     if (!cameraControlsRef.current) return;
 
     // Disable camera controls when transforming
-    if (isTransforming || isPointTransforming) {
+    if (isTransforming || isPointTransforming || isSegmentingPointerDown) {
       cameraControlsRef.current.enabled = false;
       return;
     }
@@ -261,7 +265,7 @@ export const MediaTypeFo3dComponent = () => {
       cameraControlsRef.current.mouseButtons.left =
         CameraControlsImpl.ACTION.ROTATE;
     }
-  }, [keyState, isTransforming, isPointTransforming]);
+  }, [keyState, isTransforming, isPointTransforming, isSegmentingPointerDown]);
 
   fos.useEventHandler(document, "keydown", (e: KeyboardEvent) => {
     if (e.code === "ShiftRight") keyState.current.shiftRight = true;
@@ -406,6 +410,10 @@ export const MediaTypeFo3dComponent = () => {
           return;
         }
 
+        if (isActivelySegmenting) {
+          return;
+        }
+
         set(activeNodeAtom, null);
         set(currentHoveredPointAtom, null);
         set(clearTransformStateSelector, null);
@@ -413,7 +421,7 @@ export const MediaTypeFo3dComponent = () => {
         set(isPointTransformModeAtom, false);
         setAutoRotate(false);
       },
-    []
+    [isActivelySegmenting]
   );
 
   useLayoutEffect(() => {
