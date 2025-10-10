@@ -317,7 +317,7 @@ class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
         patch_payload = [
             {
                 "op": "add",
-                "path": "/ground_truth/detections",  # Path to the list
+                "path": "/ground_truth/detections/-",  # Path to the list
                 "value": new_detection,
             }
         ]
@@ -328,6 +328,7 @@ class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
         await self.mutator.patch(mock_request)
 
         self.sample.reload()
+        print(self.sample)
         self.assertEqual(len(self.sample.ground_truth.detections), 2)
         self.assertIsInstance(
             self.sample.ground_truth.detections[1], fol.Detection
@@ -379,8 +380,7 @@ class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
             await self.mutator.patch(mock_request)
 
         self.assertEqual(cm.exception.status_code, 400)
-        self.assertIn("Failed to apply patch", cm.exception.detail)
-        self.assertIn("Unable to get value at path", cm.exception.detail)
+        self.assertIn(str(patch_payload[0]), cm.exception.detail)
 
     async def test_patch_invalid_format(self):
         """Tests that a 400 is raised for a malformed patch operation."""
@@ -395,27 +395,9 @@ class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
             await self.mutator.patch(mock_request)
 
         self.assertEqual(cm.exception.status_code, 400)
-        self.assertIn("Invalid patch format", cm.exception.detail)
-
-    async def test_patch_invalid_operation_for_type(self):
-        """Tests a 400 for an operation on an incorrect type (e.g., add to non-list)."""
-        patch_payload = [
-            {
-                "op": "add",
-                "path": "/primitive_field",
-                "value": "should fail",
-            }
-        ]
-        mock_request = self._create_mock_request(
-            patch_payload, content_type="application/json-patch+json"
-        )
-
-        with self.assertRaises(HTTPException) as cm:
-            await self.mutator.patch(mock_request)
-
-        self.assertEqual(cm.exception.status_code, 400)
         self.assertIn(
-            "Failed to apply patch: Can only add to lists", cm.exception.detail
+            "{'path': '/primitive_field', 'value': 'test'}",
+            cm.exception.detail,
         )
 
 

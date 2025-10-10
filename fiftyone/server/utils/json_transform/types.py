@@ -1,4 +1,10 @@
-from fiftyone.server.utils.transform_patch import register
+"""Json types registery.
+
+| Copyright 2017-2025, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
+from fiftyone.server.utils.json_transform.transform import register
 import fiftyone.core.labels as fol
 
 
