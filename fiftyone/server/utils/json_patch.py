@@ -353,14 +353,14 @@ class Copy(_PatchWithFrom):
 
         try:
             # get the parent location to remove from
-            parent = functools.reduce(getvalue, self.path[:-1], src)
+            parent = functools.reduce(getvalue, self.path_parts[:-1], src)
         except Exception as err:
             raise AttributeError(
                 f"Cannot resolve 'to' path: {self.path}"
             ) from err
 
         try:
-            setvalue(parent, self.path[-1], value)
+            setvalue(parent, self.path_parts[-1], value)
         except Exception as err:
             raise ValueError(
                 f"Unable to move value with path: {self.path}"
@@ -490,12 +490,12 @@ class Replace(_PatchWithValue[V]):
             raise AttributeError(f"Cannot resolve path: {self.path}") from err
 
         try:
-            delvalue(parent, self.path[-1])
+            delvalue(parent, self.path_parts[-1])
             try:
-                setvalue(parent, self.path[-1], self.value)
+                setvalue(parent, self.path_parts[-1], self.value)
             except Exception as err:
                 # try to restore the original value if the setvalue fails
-                setvalue(parent, self.path[-1], value)
+                setvalue(parent, self.path_parts[-1], value)
                 raise err
         except Exception as err:
             raise ValueError(
