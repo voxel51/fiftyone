@@ -59,7 +59,7 @@ def handle_json_patch(target: Any, patch_list: List[dict]) -> Any:
     errors = {}
     for p in patch_list:
         try:
-            if "value" in patch_list:
+            if "value" in p:
                 p["value"] = transform_json(p["value"])
             patch = parse(p)
             patch.apply(target)

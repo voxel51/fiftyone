@@ -328,7 +328,6 @@ class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
         await self.mutator.patch(mock_request)
 
         self.sample.reload()
-        print(self.sample)
         self.assertEqual(len(self.sample.ground_truth.detections), 2)
         self.assertIsInstance(
             self.sample.ground_truth.detections[1], fol.Detection
