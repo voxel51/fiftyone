@@ -74,18 +74,22 @@ def _extract_description(section_content: str) -> str:
     lines = section_content.split("\n")
     description_lines = []
     found_title = False
+    adornment_chars = set("=~`^\"'*+-_#<>")
+
     for line in lines:
-        line = line.strip()
-        if not line or line.startswith(".. _dataset-zoo-"):
+        stripped = line.strip()
+        if not stripped or stripped.startswith(".. _dataset-zoo-"):
             continue
         if (
             found_title
-            and line
-            and not line.startswith("-")
-            and not line.startswith("**")
+            and stripped
+            and not stripped.startswith("-")
+            and not stripped.startswith("**")
         ):
+            if set(stripped).issubset(adornment_chars):
+                continue
             if any(
-                marker in line
+                marker in stripped
                 for marker in [
                     "**Notes**",
                     "**Details**",
@@ -94,21 +98,22 @@ def _extract_description(section_content: str) -> str:
                 ]
             ):
                 break
-            description_lines.append(line)
-        elif line and not line.startswith("-") and not line.startswith("**"):
+            description_lines.append(stripped)
+        elif (
+            stripped
+            and not stripped.startswith("-")
+            and not stripped.startswith("**")
+        ):
             found_title = True
             continue
     description = " ".join(description_lines).strip()
     description = re.sub(r"\s+", " ", description)
-
     if "." in description:
         sentences = description.split(".")
         if len(sentences) >= 2 and len(sentences[0] + sentences[1]) <= 150:
             return sentences[0].strip() + ". " + sentences[1].strip() + "."
-
     if len(description) > 150:
         return description[:147] + "..."
-
     return description
 
 

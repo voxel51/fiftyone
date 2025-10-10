@@ -287,13 +287,15 @@ def _render_card_model_content(template, model_name):
     tags_str = ",".join(tags)
 
     # Create link to individual model page
-    model_slug = model_name.replace(".", "_").replace("-", "_")
+    model_slug = (
+        model_name.replace("/", "_").replace(".", "_").replace("-", "_")
+    )
     link = f"models/{model_slug}.html"
 
     description = zoo_model.description
     description = description.replace("`_", '"')
     description = description.replace("`", '"')
-    description = re.sub(" <.*>", "", description)
+    description = re.sub(r" <[^>]+>", "", description)
 
     content = template.render(
         header=zoo_model.name,
@@ -404,7 +406,9 @@ def main():
 
     for model_name in all_models:
         model_content = _render_model_content(model_template, model_name)
-        model_slug = model_name.replace(".", "_").replace("-", "_")
+        model_slug = (
+            model_name.replace("/", "_").replace(".", "_").replace("-", "_")
+        )
         model_path = os.path.join(models_dir, f"{model_slug}.rst")
         etau.write_file(model_content, model_path)
 
