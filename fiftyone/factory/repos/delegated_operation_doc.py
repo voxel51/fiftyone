@@ -6,7 +6,6 @@ FiftyOne delegated operation repository document.
 |
 """
 import copy
-import dataclasses
 import logging
 from datetime import datetime
 
@@ -137,7 +136,18 @@ class DelegatedOperationDocument(object):
         return self
 
     def to_pymongo(self) -> dict:
-        d = copy.deepcopy(self.__dict__)
+        # We make a copy of self.__dict__ so that changes we make below do not
+        # affect the actual object. We exclude certain keys that we don't want
+        # to serialize directly. "context" is particularly important we do not
+        # try to copy because it may contain big, complicated, non-serializable
+        # objects that may cause issues with copying.
+
+        ignore_keys = {"_doc", "id", "context", "pipeline"}
+        d = {
+            k: copy.deepcopy(v)
+            for k, v in self.__dict__.items()
+            if k not in ignore_keys
+        }
         if self.context:
             d["context"] = {
                 "request_params": self.context._get_serialized_request_params()
@@ -145,6 +155,4 @@ class DelegatedOperationDocument(object):
         if self.pipeline:
             d["pipeline"] = self.pipeline.to_json()
 
-        d.pop("_doc", None)
-        d.pop("id", None)
         return d

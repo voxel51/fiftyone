@@ -1671,3 +1671,34 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         #####
         self.assertRaises(PermissionError, dos.set_queued, op_id)
         #####
+
+    def test_queue_panel_delegated_op(self, mock_get_operator):
+        """Queue DO that comes from a panel"""
+        self.mock_is_remote_service.return_value = True
+        db = delegated_operation.MongoDelegatedOperationRepo()
+        dos = DelegatedOperationService(repo=db)
+        ctx = ExecutionContext(
+            request_params={
+                "params": {
+                    "panel_id": bson.ObjectId(),
+                    "panel_state": {"foo2": "bar2"},
+                }
+            }
+        )
+        ctx.request_params = {"foo": "bar"}
+        ctx.params = {
+            "panel_id": bson.ObjectId(),
+            "panel_state": {"foo2": "bar2"},
+        }
+
+        #####
+        doc = dos.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/operator/foo",
+            label=mock_get_operator.return_value.name,
+            delegation_target="test_target",
+            context=ctx,
+        )
+        #####
+
+        self.docs_to_delete.append(doc)
+        self.assertEqual(doc.run_state, ExecutionRunState.SCHEDULED)
