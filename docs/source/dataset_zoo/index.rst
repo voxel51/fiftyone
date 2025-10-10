@@ -1,7 +1,7 @@
-.. _dataset-zoo-ecosystem:
+.. _dataset-zoo:
 
-Dataset Zoo Ecosystem
-=====================
+Dataset Zoo
+===========
 
 .. default-role:: code
 
@@ -29,7 +29,7 @@ vision datasets for your research and development.
     </div>
 
 .. customanimatedcta::
-    :button_text: Learn more about Dataset Zoo
+    :button_text: Learn more about the Dataset Zoo
     :button_link: overview.html
     :align: right
     
@@ -57,7 +57,7 @@ vision datasets for your research and development.
 
 .. Add dataset cards below
 
-.. include:: dataset_zoo_ecosystem/dataset_cards.rst
+.. include:: datasets/dataset_cards.rst
 
 .. End of dataset cards
 
@@ -81,4 +81,4 @@ vision datasets for your research and development.
    Overview <overview>
    Remote datasets <remote>
    API reference <api>
-   dataset_zoo_ecosystem/*
+   datasets/*

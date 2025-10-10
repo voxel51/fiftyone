@@ -1,6 +1,6 @@
-.. _dataset-zoo:
+.. _dataset-zoo-overview:
 
-FiftyOne Dataset Zoo
+Dataset Zoo Overview
 ====================
 
 .. default-role:: code
@@ -20,7 +20,7 @@ load into FiftyOne with a single command.
 
 .. customanimatedcta::
     :button_text: Explore the datasets in the zoo
-    :button_link: datasets.html
+    :button_link: index.html
 
 Remotely-sourced datasets
 -------------------------

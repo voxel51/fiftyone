@@ -16,7 +16,7 @@ _CARD_TEMPLATE = """
 .. customcarditem::
     :header: {{ header }}
     :description: {{ description }}
-    :link: dataset_zoo_ecosystem/{{ link_slug }}.html
+    :link: datasets/{{ link_slug }}.html
     :image: {{ image_rel }}
     :tags: {{ tags }}
 """
@@ -132,7 +132,7 @@ def main():
     docs_dir = Path(__file__).resolve().parent.parent
     source_dir = docs_dir / "source"
     dataset_rst = source_dir / "dataset_zoo" / "dataset.rst"
-    out_dir = source_dir / "dataset_zoo" / "dataset_zoo_ecosystem"
+    out_dir = source_dir / "dataset_zoo" / "datasets"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     content = dataset_rst.read_text(encoding="utf-8")
@@ -165,10 +165,6 @@ def main():
         link_slug = _normalize_slug(slug)
         dataset_path = out_dir / f"{link_slug}.rst"
         section_lines = section_content.strip().splitlines()
-        if section_lines and section_lines[0].startswith(".. _dataset-zoo-"):
-            section_lines = section_lines[1:]
-            if section_lines and not section_lines[0].strip():
-                section_lines = section_lines[1:]
         dataset_path.write_text(
             "\n".join(section_lines) + "\n", encoding="utf-8"
         )
