@@ -24,6 +24,38 @@ super_gradients = fou.lazy_import(
 logger = logging.getLogger(__name__)
 
 
+def _patch_super_gradients_urls():
+    """Patch super-gradients download to use AWS S3 instead of defunct sghub.deci.ai.
+
+    After NVIDIA acquired Deci, the sghub.deci.ai domain was shut down and model
+    weights were moved to sg-hub-nv.s3.amazonaws.com. This intercepts downloads
+    and redirects to the new URL without modifying MODEL_URLS (which would break
+    the hardcoded URL parsing in checkpoint_utils.py).
+    """
+    try:
+        import torch.hub
+
+        # Save original download function
+        original_load_state_dict = torch.hub.load_state_dict_from_url
+
+        def patched_load_state_dict_from_url(url, *args, **kwargs):
+            # Redirect dead sghub.deci.ai URLs to working AWS S3 URLs
+            if 'sghub.deci.ai' in url:
+                url = url.replace('sghub.deci.ai', 'sg-hub-nv.s3.amazonaws.com')
+                logger.debug(f"Redirected super-gradients download to AWS S3")
+
+            return original_load_state_dict(url, *args, **kwargs)
+
+        # Replace with patched version
+        torch.hub.load_state_dict_from_url = patched_load_state_dict_from_url
+
+    except Exception as e:
+        logger.warning(f"Could not patch super-gradients URL downloads: {e}")
+
+
+_patch_super_gradients_urls()
+
+
 def convert_super_gradients_model(model):
     """Converts the given SuperGradients model into a FiftyOne model.
 
