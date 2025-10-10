@@ -160,15 +160,16 @@ class SampleField(HTTPEndpoint):
         )
 
         sample = get_sample(dataset_id, sample_id)
-        field_list = sample.get_field(path)
 
-        if field_list is None:
+        try:
+            field_list = sample.get_field(path)
+        except Exception as e:
             raise HTTPException(
                 status_code=404,
                 detail=f"Field '{path}' not found in sample '{sample_id}'",
             )
 
-        if not isinstance(field_list, (list, dict)):
+        if not isinstance(field_list, list):
             raise HTTPException(
                 status_code=400,
                 detail=f"Field '{path}' is not a list",
@@ -183,7 +184,7 @@ class SampleField(HTTPEndpoint):
 
         result = handle_json_patch(field, data)
         sample.save()
-        return result.to_dict(include_private=True)
+        return result.to_dict()
 
 
 SampleRoutes = [
