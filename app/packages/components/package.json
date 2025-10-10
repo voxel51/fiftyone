@@ -33,6 +33,7 @@
         "jotai": "*",
         "re-resizable": "*",
         "react": "*",
+        "react-markdown": "*",
         "react-relay": "*",
         "recoil": "*",
         "styled-components": "*"
@@ -48,8 +49,10 @@
         "classnames": "^2.3.1",
         "framer-motion": "^6.2.7",
         "material-icons": "^1.13.12",
+        "re-resizable": "^6.9.17",
         "react-input-autosize": "^3.0.0",
         "react-laag": "^2.0.3",
+        "react-markdown": "^8.0.7",
         "react-syntax-highlighter": "^15.5.0",
         "react-use": "^17.5.1"
     }

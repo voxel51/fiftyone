@@ -22,6 +22,18 @@ from fiftyone.core.odm.workspace import default_workspace_factory
 
 from .group_by import GroupBy
 from .model_evaluation import ConfigureScenario
+from .annotation import (
+    ActivateAnnotationSchemas,
+    AddBoundingBox,
+    RemoveBoundingBox,
+    ComputeAnnotationSchema,
+    DeactivateAnnotationSchemas,
+    DeleteAnnotationSchema,
+    GetAnnotationSchemas,
+    SaveAnnotationSchema,
+)
+
+logger = logging.getLogger(__name__)
 
 logger = logging.getLogger(__name__)
 
@@ -2821,3 +2833,13 @@ def register(p):
 
     # view stages
     p.register(GroupBy)
+
+    # annotation
+    p.register(ActivateAnnotationSchemas)
+    p.register(AddBoundingBox)
+    p.register(RemoveBoundingBox)
+    p.register(ComputeAnnotationSchema)
+    p.register(DeactivateAnnotationSchemas)
+    p.register(DeleteAnnotationSchema)
+    p.register(GetAnnotationSchemas)
+    p.register(SaveAnnotationSchema)

@@ -112,14 +112,18 @@ def cleanup():
             id="{ignore_existing=True, idempotent=True}",
         ),
         pytest.param(
-           {"ignore_exts": True, "idempotent": False},
+            {"ignore_exts": True, "idempotent": False},
             id="{ignore_exts=True, idempotent=False}",
-            marks=pytest.mark.skip(reason="Skipping this specific case until FOEPD-920 is complete")
+            marks=pytest.mark.skip(
+                reason="Skipping this specific case until FOEPD-920 is complete"
+            ),
         ),
         pytest.param(
             {"ignore_exts": True, "idempotent": True},
             id="{ignore_exts=True, idempotent=True}",
-            marks=pytest.mark.skip(reason="Skipping this specific case until FOEPD-920 is complete")
+            marks=pytest.mark.skip(
+                reason="Skipping this specific case until FOEPD-920 is complete"
+            ),
         ),
     ),
 )

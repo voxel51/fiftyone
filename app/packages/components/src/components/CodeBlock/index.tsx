@@ -14,6 +14,8 @@ export default function CodeBlock({ text, ...props }: CodeBlockProps) {
   return (
     <Box
       sx={{
+        width: "100%",
+        height: "100%",
         position: "relative",
         fontFamily: "Roboto Mono, monospace",
         fontSize: props?.fontSize || 14,

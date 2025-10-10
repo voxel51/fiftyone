@@ -40,4 +40,12 @@ operators:
   - list_files
   - download_file
   - model_evaluation_configure_scenario
+  - activate_annotation_schemas
+  - compute_annotation_schema
+  - deactivate_annotation_schemas
+  - delete_annotation_schema
+  - get_annotation_schemas
+  - save_annotation_schema
   - load_group_by
+  - add_bounding_box
+  - remove_bounding_box

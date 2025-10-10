@@ -83,11 +83,28 @@ function SnackbarLinks() {
   ) : null;
 }
 
+function SnackbarMessage() {
+  const [message, setSnackMessage] = useRecoilState(fos.snackbarMessage);
+
+  return message ? (
+    <Toast
+      duration={SNACK_VISIBLE_DURATION}
+      layout={LAYOUT}
+      message={<div style={{ width: "100%" }}>{message}</div>}
+      onHandleClose={() => setSnackMessage(null)}
+      primary={() => {
+        return <Dismiss onClick={() => setSnackMessage(null)} />;
+      }}
+    />
+  ) : null;
+}
+
 export default function Snackbar() {
   return (
     <>
       <SnackbarErrors />
       <SnackbarLinks />
+      <SnackbarMessage />
     </>
   );
 }
