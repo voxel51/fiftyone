@@ -91,6 +91,12 @@ class Sample(HTTPEndpoint):
         dataset_id = request.path_params["dataset_id"]
         sample_id = request.path_params["sample_id"]
 
+        logger.info(
+            "Received patch request for sample %s in dataset %s",
+            sample_id,
+            dataset_id,
+        )
+
         sample = get_sample(dataset_id, sample_id)
 
         content_type = request.headers.get("Content-Type", "")
@@ -144,6 +150,14 @@ class SampleField(HTTPEndpoint):
         sample_id = request.path_params["sample_id"]
         path = request.path_params["field_path"]
         field_id = request.path_params["field_id"]
+
+        logger.info(
+            "Received patch request for field %s with ID %s on sample %s in dataset %s",
+            path,
+            field_id,
+            sample_id,
+            dataset_id,
+        )
 
         sample = get_sample(dataset_id, sample_id)
         field_list = sample.get_field(path)
