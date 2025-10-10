@@ -124,7 +124,7 @@ Next, configure the appropriate environment variables for your :ref:`cloud crede
          export MINIO_SECRET_ACCESS_KEY=...
          export MINIO_DEFAULT_REGION=...
 
-Learn more about how to interact with cloud-backed media witht the FiftyOne 
+Learn more about how to interact with cloud-backed media with the FiftyOne 
 Enterprise Python SDK in the :ref:`Cloud Media Guide <enterprise-cloud-media>`.
 
 Create a Dataset and Add Samples
