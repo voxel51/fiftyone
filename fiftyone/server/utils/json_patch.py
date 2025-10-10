@@ -24,18 +24,28 @@ class Object(Protocol[K, V]):
     """Protocol for any object supporting __delitem__, __getattr__, and
     __setattr__."""
 
-    def __delattr__(self, name: K) -> None: ...
-    def __getattr__(self, name: K) -> V: ...
-    def __setattr__(self, name: K, value: V) -> None: ...
+    def __delattr__(self, name: K) -> None:
+        ...
+
+    def __getattr__(self, name: K) -> V:
+        ...
+
+    def __setattr__(self, name: K, value: V) -> None:
+        ...
 
 
 class Subscriptable(Protocol[K, V]):
     """Protocol for any object supporting __delitem__, __getitem__, and
     __setitem__."""
 
-    def __delitem__(self, key: K) -> V: ...
-    def __getitem__(self, key: K) -> V: ...
-    def __setitem__(self, key: K, value: V) -> None: ...
+    def __delitem__(self, key: K) -> V:
+        ...
+
+    def __getitem__(self, key: K) -> V:
+        ...
+
+    def __setitem__(self, key: K, value: V) -> None:
+        ...
 
 
 class Operation(str, enum.Enum):
@@ -539,7 +549,7 @@ _patch_map = {
 }
 
 
-def parse(*patches: dict[str, Any]) -> Union[Patch, list[Patch]]:
+def parse(*patches: dict[str, Any]) -> list[Patch]:
     """Parses the provided JSON patch dicts into Patch objects.
 
     Raises:
@@ -571,4 +581,4 @@ def parse(*patches: dict[str, Any]) -> Union[Patch, list[Patch]]:
         except Exception as err:
             raise ValueError(f"Invalid operation '{op}'") from err
 
-    return parsed if len(parsed) > 1 else parsed[0]
+    return parsed

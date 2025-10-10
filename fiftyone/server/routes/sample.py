@@ -14,7 +14,7 @@ from starlette.requests import Request
 import fiftyone as fo
 import fiftyone.core.odm.utils as fou
 from typing import List
-from fiftyone.server.utils.json_patch import parse
+from fiftyone.server.utils.json_patch import parse, Operation
 from fiftyone.server.utils import transform_json
 from fiftyone.server.decorators import route
 from typing import Any
@@ -56,16 +56,24 @@ def get_sample(dataset_id: str, sample_id: str) -> fo.Sample:
 
 def handle_json_patch(target: Any, patch_list: List[dict]) -> Any:
     """Applies a list of JSON patch operations to a target object."""
+    try:
+        patches = parse(*patch_list)
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Failed to parse patches due to: {e}",
+        )
+
     errors = {}
-    for p in patch_list:
+    for i, p in enumerate(patches):
         try:
-            if "value" in p:
-                p["value"] = transform_json(p["value"])
-            patch = parse(p)
-            patch.apply(target)
+            if p.op in (Operation.ADD, Operation.REPLACE, Operation.TEST):
+                p.value = transform_json(p.value)
+            p.apply(target)
         except Exception as e:
             logger.error("Error applying patch %s: %s", p, e)
-            errors[str(p)] = str(e)
+            errors[str(patch_list[i])] = str(e)
+
     if errors:
         raise HTTPException(
             status_code=400,

@@ -395,7 +395,7 @@ class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(cm.exception.status_code, 400)
         self.assertIn(
-            "{'path': '/primitive_field', 'value': 'test'}",
+            "Failed to parse patches due to",
             cm.exception.detail,
         )
 
