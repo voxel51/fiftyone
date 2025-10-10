@@ -17,6 +17,8 @@ export const DEFAULT_TEXT_PADDING = 4;
  * Default stroke width for overlays (matches Looker's STROKE_WIDTH)
  */
 export const STROKE_WIDTH = 3;
+export const SELECTED_DASH_LENGTH = 8;
+export const HOVERED_DASH_LENGTH = 4;
 
 /**
  * Default font settings
@@ -29,9 +31,12 @@ export const FONT_WEIGHT = "bold";
  * settings related to resize handles
  */
 export const EDGE_THRESHOLD = 10;
+export const HANDLE_ALPHA = 0.9;
 export const HANDLE_FACTOR = 3;
 export const HANDLE_COLOR = 0xffffff;
 export const HANDLE_OUTLINE = 2;
+export const HANDLE_OFFSET_X = 6;
+export const HANDLE_OFFSET_Y = 3;
 
 /**
  * Opacity of selected bounding boxes

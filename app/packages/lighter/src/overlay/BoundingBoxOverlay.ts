@@ -7,6 +7,10 @@ import {
   LABEL_ARCHETYPE_PRIORITY,
   STROKE_WIDTH,
   EDGE_THRESHOLD,
+  SELECTED_DASH_LENGTH,
+  HOVERED_DASH_LENGTH,
+  HANDLE_OFFSET_X,
+  HANDLE_OFFSET_Y,
 } from "../constants";
 import { CONTAINS } from "../core/Scene2D";
 import type { Renderer2D } from "../renderer/Renderer2D";
@@ -19,6 +23,7 @@ import type {
   Rect,
   Spatial,
 } from "../types";
+import { parseColorWithAlpha } from "../utils/color";
 import {
   getInstanceStrokeStyles,
   getSimpleStrokeStyles,
@@ -167,7 +172,9 @@ export class BoundingBoxOverlay
             isSelected: this.isSelectedState,
             strokeColor: style.strokeStyle || "#ffffff",
             isHovered: this.isHoveredState,
-            dashLength: 8,
+            dashLength: this.isSelectedState
+              ? SELECTED_DASH_LENGTH
+              : HOVERED_DASH_LENGTH,
           });
 
     const mainStrokeStyle = {
@@ -176,9 +183,7 @@ export class BoundingBoxOverlay
       isSelected: this.isSelectedState,
     };
 
-    if (style.dashPattern && !overlayStrokeColor && !overlayDash) {
-      mainStrokeStyle.dashPattern = style.dashPattern;
-    }
+    delete mainStrokeStyle.dashPattern;
 
     renderer.drawRect(this.absoluteBounds, mainStrokeStyle, this.containerId);
 
@@ -187,7 +192,7 @@ export class BoundingBoxOverlay
         this.absoluteBounds,
         {
           strokeStyle: hoverStrokeColor,
-          lineWidth: style.lineWidth || 2,
+          lineWidth: style.lineWidth || STROKE_WIDTH,
         },
         this.containerId
       );
@@ -203,6 +208,23 @@ export class BoundingBoxOverlay
       );
     }
 
+    if (this.isSelected() && style.strokeStyle) {
+      const colorObj = parseColorWithAlpha(style.strokeStyle);
+      const color = colorObj.color;
+
+      renderer.drawScrim(
+        this.absoluteBounds,
+        style.lineWidth || STROKE_WIDTH,
+        this.containerId
+      );
+      renderer.drawHandles(
+        this.absoluteBounds,
+        style.lineWidth || STROKE_WIDTH,
+        color,
+        this.containerId
+      );
+    }
+
     if (this.options.label && this.options.label.label?.length > 0) {
       const offset = style.lineWidth
         ? style.lineWidth / renderer.getScale() / 2
@@ -210,8 +232,8 @@ export class BoundingBoxOverlay
 
       const labelPosition = this.isSelected()
         ? {
-            x: this.absoluteBounds.x + offset * 6,
-            y: this.absoluteBounds.y - offset * 3,
+            x: this.absoluteBounds.x + offset * HANDLE_OFFSET_X,
+            y: this.absoluteBounds.y - offset * HANDLE_OFFSET_Y,
           }
         : {
             x: this.absoluteBounds.x - offset,
@@ -380,14 +402,15 @@ export class BoundingBoxOverlay
     point: Point,
     worldPoint: Point,
     event: PointerEvent,
-    scale: number
+    scale: number,
+    maintainAspectRatio?: boolean
   ): boolean {
     this.calculateMoving(point, worldPoint, scale);
 
     if (this.moveState === "DRAGGING") {
       return this.onDrag(point, event, scale);
     } else if (this.moveState.startsWith("RESIZE_")) {
-      return this.onResize(point, event, scale);
+      return this.onResize(point, event, scale, maintainAspectRatio);
     } else {
       return false;
     }
@@ -414,7 +437,12 @@ export class BoundingBoxOverlay
     return true;
   }
 
-  private onResize(point: Point, _event: PointerEvent, scale: number): boolean {
+  private onResize(
+    point: Point,
+    _event: PointerEvent,
+    scale: number,
+    maintainAspectRatio: boolean = false
+  ): boolean {
     if (!this.moveStartPoint || !this.moveStartBounds) return false;
 
     const delta = {
@@ -422,24 +450,83 @@ export class BoundingBoxOverlay
       y: (point.y - this.moveStartPoint.y) / scale,
     };
 
+    let maintainX = 0;
+    let maintainY = 0;
+
+    if (maintainAspectRatio) {
+      const aspectRatio =
+        this.moveStartBounds.width / this.moveStartBounds.height;
+
+      if (
+        Math.abs(delta.x / this.absoluteBounds.width) >
+        Math.abs(delta.y / this.absoluteBounds.height)
+      ) {
+        maintainY = delta.x / aspectRatio;
+      } else {
+        maintainX = delta.y * aspectRatio;
+      }
+    }
+
     let { x, y, width, height } = this.moveStartBounds;
 
     if (["RESIZE_NW", "RESIZE_N", "RESIZE_NE"].includes(this.moveState)) {
-      y += delta.y;
-      height -= delta.y;
+      maintainY = this.moveState === "RESIZE_NE" ? maintainY * -1 : maintainY;
+      maintainY = this.moveState === "RESIZE_E" ? 0 : maintainY;
+
+      y += maintainY || delta.y;
+      height -= maintainY || delta.y;
+
+      if (this.moveState === "RESIZE_N") {
+        x += maintainX / 2;
+        width -= maintainX;
+      }
     }
 
     if (["RESIZE_NW", "RESIZE_W", "RESIZE_SW"].includes(this.moveState)) {
-      x += delta.x;
-      width -= delta.x;
+      maintainX = this.moveState === "RESIZE_SW" ? maintainX * -1 : maintainX;
+      maintainX = this.moveState === "RESIZE_W" ? 0 : maintainX;
+
+      x += maintainX || delta.x;
+      width -= maintainX || delta.x;
+
+      if (this.moveState === "RESIZE_W") {
+        y += maintainY / 2;
+        height -= maintainY;
+      }
     }
 
     if (["RESIZE_SW", "RESIZE_S", "RESIZE_SE"].includes(this.moveState)) {
-      height += delta.y;
+      maintainY = this.moveState === "RESIZE_SW" ? maintainY * -1 : maintainY;
+      maintainY = this.moveState === "RESIZE_S" ? 0 : maintainY;
+
+      height += maintainY || delta.y;
+
+      if (this.moveState === "RESIZE_S") {
+        x -= maintainX / 2;
+        width += maintainX;
+      }
     }
 
     if (["RESIZE_NE", "RESIZE_E", "RESIZE_SE"].includes(this.moveState)) {
-      width += delta.x;
+      maintainX = this.moveState === "RESIZE_NE" ? maintainX * -1 : maintainX;
+      maintainX = this.moveState === "RESIZE_E" ? 0 : maintainX;
+
+      width += maintainX || delta.x;
+
+      if (this.moveState === "RESIZE_E") {
+        y -= maintainY / 2;
+        height += maintainY;
+      }
+    }
+
+    if (width < 0) {
+      width *= -1;
+      x -= width;
+    }
+
+    if (height < 0) {
+      height *= -1;
+      y -= height;
     }
 
     // Update absolute bounds
