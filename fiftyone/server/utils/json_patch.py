@@ -10,7 +10,16 @@ import abc
 import dataclasses
 import enum
 import functools
-from typing import Any, ClassVar, Generic, Protocol, TypeVar, Union
+from typing import (
+    Any,
+    Callable,
+    ClassVar,
+    Generic,
+    Optional,
+    Protocol,
+    TypeVar,
+    Union,
+)
 
 import jsonpointer
 
@@ -24,22 +33,28 @@ class Object(Protocol[K, V]):
     """Protocol for any object supporting __delitem__, __getattr__, and
     __setattr__."""
 
-    def __delattr__(self, name: K) -> None: ...
+    def __delattr__(self, name: K) -> None:
+        ...
 
-    def __getattr__(self, name: K) -> V: ...
+    def __getattr__(self, name: K) -> V:
+        ...
 
-    def __setattr__(self, name: K, value: V) -> None: ...
+    def __setattr__(self, name: K, value: V) -> None:
+        ...
 
 
 class Subscriptable(Protocol[K, V]):
     """Protocol for any object supporting __delitem__, __getitem__, and
     __setitem__."""
 
-    def __delitem__(self, key: K) -> V: ...
+    def __delitem__(self, key: K) -> V:
+        ...
 
-    def __getitem__(self, key: K) -> V: ...
+    def __getitem__(self, key: K) -> V:
+        ...
 
-    def __setitem__(self, key: K, value: V) -> None: ...
+    def __setitem__(self, key: K, value: V) -> None:
+        ...
 
 
 class Operation(str, enum.Enum):
@@ -548,7 +563,10 @@ _patch_map = {
 }
 
 
-def parse(*patches: dict[str, Any]) -> list[Patch]:
+def parse(
+    *patches: dict[str, Any],
+    transform_fn: Optional[Callable[[Any], Any]] = None,
+) -> list[Patch]:
     """Parses the provided JSON patch dicts into Patch objects.
 
     Raises:
@@ -571,7 +589,10 @@ def parse(*patches: dict[str, Any]) -> list[Patch]:
         kwargs = {"path": patch["path"]}
 
         if op in (Operation.ADD, Operation.REPLACE, Operation.TEST):
-            kwargs.update(value=patch["value"])
+            value = patch["value"]
+            if transform_fn:
+                value = transform_fn(value)
+            kwargs.update(value=value)
         if op in (Operation.COPY, Operation.MOVE):
             kwargs.update(from_=patch["from"])
 

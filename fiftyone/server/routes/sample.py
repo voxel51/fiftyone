@@ -57,7 +57,7 @@ def get_sample(dataset_id: str, sample_id: str) -> fo.Sample:
 def handle_json_patch(target: Any, patch_list: List[dict]) -> Any:
     """Applies a list of JSON patch operations to a target object."""
     try:
-        patches = parse(*patch_list)
+        patches = parse(*patch_list, transform_fn=transform_json)
     except Exception as e:
         raise HTTPException(
             status_code=400,
@@ -67,8 +67,6 @@ def handle_json_patch(target: Any, patch_list: List[dict]) -> Any:
     errors = {}
     for i, p in enumerate(patches):
         try:
-            if p.op in (Operation.ADD, Operation.REPLACE, Operation.TEST):
-                p.value = transform_json(p.value)
             p.apply(target)
         except Exception as e:
             logger.error("Error applying patch %s: %s", p, e)
