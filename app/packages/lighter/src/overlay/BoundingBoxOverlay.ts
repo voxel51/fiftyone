@@ -398,14 +398,15 @@ export class BoundingBoxOverlay
     point: Point,
     worldPoint: Point,
     event: PointerEvent,
-    scale: number
+    scale: number,
+    maintainAspectRatio?: boolean
   ): boolean {
     this.calculateMoving(point, worldPoint, scale);
 
     if (this.moveState === "DRAGGING") {
       return this.onDrag(point, event, scale);
     } else if (this.moveState.startsWith("RESIZE_")) {
-      return this.onResize(point, event, scale);
+      return this.onResize(point, event, scale, maintainAspectRatio);
     } else {
       return false;
     }
@@ -432,7 +433,12 @@ export class BoundingBoxOverlay
     return true;
   }
 
-  private onResize(point: Point, _event: PointerEvent, scale: number): boolean {
+  private onResize(
+    point: Point,
+    _event: PointerEvent,
+    scale: number,
+    maintainAspectRatio: boolean = false
+  ): boolean {
     if (!this.moveStartPoint || !this.moveStartBounds) return false;
 
     const delta = {
@@ -440,24 +446,73 @@ export class BoundingBoxOverlay
       y: (point.y - this.moveStartPoint.y) / scale,
     };
 
+    let maintainX = 0;
+    let maintainY = 0;
+
+    if (maintainAspectRatio) {
+      const aspectRatio =
+        this.moveStartBounds.width / this.moveStartBounds.height;
+
+      if (
+        Math.abs(delta.x / this.absoluteBounds.width) >
+        Math.abs(delta.y / this.absoluteBounds.height)
+      ) {
+        maintainY = delta.x / aspectRatio;
+      } else {
+        maintainX = delta.y * aspectRatio;
+      }
+    }
+
     let { x, y, width, height } = this.moveStartBounds;
 
     if (["RESIZE_NW", "RESIZE_N", "RESIZE_NE"].includes(this.moveState)) {
-      y += delta.y;
-      height -= delta.y;
+      maintainY = this.moveState === "RESIZE_NE" ? maintainY * -1 : maintainY;
+      maintainY = this.moveState === "RESIZE_E" ? 0 : maintainY;
+
+      y += maintainY || delta.y;
+      height -= maintainY || delta.y;
+
+      if (this.moveState === "RESIZE_N") {
+        x += maintainX / 2;
+        width -= maintainX;
+      }
     }
 
     if (["RESIZE_NW", "RESIZE_W", "RESIZE_SW"].includes(this.moveState)) {
-      x += delta.x;
-      width -= delta.x;
+      maintainX = this.moveState === "RESIZE_SW" ? maintainX * -1 : maintainX;
+      maintainX = this.moveState === "RESIZE_W" ? 0 : maintainX;
+
+      x += maintainX || delta.x;
+      width -= maintainX || delta.x;
+
+      if (this.moveState === "RESIZE_W") {
+        y += maintainY / 2;
+        height -= maintainY;
+      }
     }
 
     if (["RESIZE_SW", "RESIZE_S", "RESIZE_SE"].includes(this.moveState)) {
-      height += delta.y;
+      maintainY = this.moveState === "RESIZE_SW" ? maintainY * -1 : maintainY;
+      maintainY = this.moveState === "RESIZE_S" ? 0 : maintainY;
+
+      height += maintainY || delta.y;
+
+      if (this.moveState === "RESIZE_S") {
+        x -= maintainX / 2;
+        width += maintainX;
+      }
     }
 
     if (["RESIZE_NE", "RESIZE_E", "RESIZE_SE"].includes(this.moveState)) {
-      width += delta.x;
+      maintainX = this.moveState === "RESIZE_NE" ? maintainX * -1 : maintainX;
+      maintainX = this.moveState === "RESIZE_E" ? 0 : maintainX;
+
+      width += maintainX || delta.x;
+
+      if (this.moveState === "RESIZE_E") {
+        y -= maintainY / 2;
+        height += maintainY;
+      }
     }
 
     if (width < 0) {
