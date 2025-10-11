@@ -14,7 +14,7 @@ import CameraControlsImpl from "camera-controls";
 import { useCallback, useLayoutEffect, useRef } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import * as THREE from "three";
-import { Vector3 } from "three";
+import { Box3, Vector3 } from "three";
 import { PcdColorMapTunnel } from "../components/PcdColormapModal";
 import { StatusBarRootContainer } from "../containers";
 import { FoScene } from "../hooks";
@@ -38,14 +38,87 @@ import { TransformHUD } from "./TransformHUD";
 
 const CANVAS_WRAPPER_ID = "sample3d-canvas-wrapper";
 
-// Camera positions for different views
-const cameraPositions = {
-  Top: [0, 10, 0] as [number, number, number],
-  Bottom: [0, -10, 0] as [number, number, number],
-  Left: [-10, 0, 0] as [number, number, number],
-  Right: [10, 0, 0] as [number, number, number],
-  Back: [0, 0, -10] as [number, number, number],
-  Front: [0, 0, 10] as [number, number, number],
+/**
+ * Calculate camera position for different side panel views based on upVector and lookAt point
+ */
+const calculateCameraPositionForSidePanel = (
+  viewType: ViewType,
+  upVector: Vector3,
+  lookAt: Vector3,
+  sceneBoundingBox: Box3 | null
+): Vector3 => {
+  if (!sceneBoundingBox) {
+    // Fallback to default positions if no bounding box
+    const defaultPositions = {
+      Top: [0, 10, 0] as [number, number, number],
+      Bottom: [0, -10, 0] as [number, number, number],
+      Left: [-10, 0, 0] as [number, number, number],
+      Right: [10, 0, 0] as [number, number, number],
+      Back: [0, 0, -10] as [number, number, number],
+      Front: [0, 0, 10] as [number, number, number],
+    };
+    return new Vector3(...defaultPositions[viewType]);
+  }
+
+  const size = new Vector3();
+  sceneBoundingBox.getSize(size);
+  const maxSize = Math.max(size.x, size.y, size.z);
+  const distance = maxSize * 2.5;
+
+  const upDir = upVector.clone().normalize();
+  const center = lookAt.clone();
+
+  // Create orthogonal vectors for different views
+  let direction: Vector3;
+
+  switch (viewType) {
+    case "Top":
+      direction = upDir.clone();
+      break;
+    case "Bottom":
+      direction = upDir.clone().negate();
+      break;
+    case "Left":
+      // Create a vector perpendicular to up vector
+      if (Math.abs(upDir.y) > 0.9) {
+        // If up is mostly Y, use X axis
+        direction = new Vector3(-1, 0, 0);
+      } else {
+        // Create perpendicular vector
+        direction = new Vector3(0, 1, 0).cross(upDir).normalize();
+      }
+      break;
+    case "Right":
+      // Opposite of Left
+      if (Math.abs(upDir.y) > 0.9) {
+        direction = new Vector3(1, 0, 0);
+      } else {
+        direction = new Vector3(0, 1, 0).cross(upDir).normalize().negate();
+      }
+      break;
+    case "Front":
+      // Create a vector perpendicular to both up and left
+      if (Math.abs(upDir.y) > 0.9) {
+        direction = new Vector3(0, 0, 1);
+      } else {
+        const left = new Vector3(0, 1, 0).cross(upDir).normalize();
+        direction = upDir.clone().cross(left).normalize();
+      }
+      break;
+    case "Back":
+      // Opposite of Front
+      if (Math.abs(upDir.y) > 0.9) {
+        direction = new Vector3(0, 0, -1);
+      } else {
+        const left = new Vector3(0, 1, 0).cross(upDir).normalize();
+        direction = upDir.clone().cross(left).normalize().negate();
+      }
+      break;
+    default:
+      direction = upDir.clone();
+  }
+
+  return center.clone().add(direction.multiplyScalar(distance));
 };
 
 type ViewType = "Top" | "Bottom" | "Left" | "Right" | "Front" | "Back";
@@ -82,7 +155,8 @@ export const MultiPanelView = ({
   foScene,
   sample,
 }: MultiPanelViewProps) => {
-  const { isSceneInitialized, upVector } = useFo3dContext();
+  const { isSceneInitialized, upVector, lookAt, sceneBoundingBox } =
+    useFo3dContext();
   const [panelState, setPanelState] = useBrowserStorage<MultiPanelViewState>(
     "fo3d-multi-panel-state",
     defaultState
@@ -241,6 +315,8 @@ export const MultiPanelView = ({
         setView={(view) => setPanelView("top", view)}
         foScene={foScene}
         upVector={upVector}
+        lookAt={lookAt}
+        sceneBoundingBox={sceneBoundingBox}
         isSceneInitialized={isSceneInitialized}
         sample={sample}
         pointCloudSettings={pointCloudSettings}
@@ -252,6 +328,8 @@ export const MultiPanelView = ({
         setView={(view) => setPanelView("middle", view)}
         foScene={foScene}
         upVector={upVector}
+        lookAt={lookAt}
+        sceneBoundingBox={sceneBoundingBox}
         isSceneInitialized={isSceneInitialized}
         sample={sample}
         pointCloudSettings={pointCloudSettings}
@@ -263,6 +341,8 @@ export const MultiPanelView = ({
         setView={(view) => setPanelView("bottom", view)}
         foScene={foScene}
         upVector={upVector}
+        lookAt={lookAt}
+        sceneBoundingBox={sceneBoundingBox}
         isSceneInitialized={isSceneInitialized}
         sample={sample}
         pointCloudSettings={pointCloudSettings}
@@ -379,6 +459,8 @@ const SidePanel = ({
   setView,
   foScene,
   upVector,
+  lookAt,
+  sceneBoundingBox,
   isSceneInitialized,
   sample,
   pointCloudSettings,
@@ -388,11 +470,21 @@ const SidePanel = ({
   setView: (view: ViewType) => void;
   foScene: any;
   upVector: Vector3 | null;
+  lookAt: Vector3 | null;
+  sceneBoundingBox: Box3 | null;
   isSceneInitialized: boolean;
   sample: any;
   pointCloudSettings: any;
 }) => {
-  const position = cameraPositions[view];
+  const position =
+    upVector && lookAt
+      ? calculateCameraPositionForSidePanel(
+          view,
+          upVector,
+          lookAt,
+          sceneBoundingBox
+        )
+      : new Vector3(0, 10, 0);
   const theme = useTheme();
 
   const cameraRef = useRef<THREE.OrthographicCamera>();
@@ -419,7 +511,7 @@ const SidePanel = ({
           position={position}
           up={upVector ?? [0, 1, 0]}
           zoom={zoom}
-          near={foScene?.cameraProps.near ?? 0.1}
+          near={0}
           far={foScene?.cameraProps.far ?? 2500}
           onUpdate={(cam) => cam.updateProjectionMatrix()}
         />

@@ -1,8 +1,9 @@
-import { IconButton, InfoIcon } from "@fiftyone/components";
+import { IconButton, InfoIcon, useTheme } from "@fiftyone/components";
 import { Close } from "@mui/icons-material";
 import BubbleChartIcon from "@mui/icons-material/BubbleChart";
 import CallSplitIcon from "@mui/icons-material/CallSplit";
 import CodeIcon from "@mui/icons-material/Code";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import LayersIcon from "@mui/icons-material/Layers";
 import SpeedIcon from "@mui/icons-material/Speed";
 import TextureIcon from "@mui/icons-material/Texture";
@@ -327,6 +328,7 @@ export const StatusBar = ({
 }: {
   cameraRef: RefObject<PerspectiveCamera | OrthographicCamera>;
 }) => {
+  const theme = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   const [showPerfStatus, setShowPerfStatus] = useRecoilState(isStatusBarOnAtom);
   const setActiveNode = useSetRecoilState(activeNodeAtom);
@@ -355,7 +357,7 @@ export const StatusBar = ({
             position: "fixed",
             top: "0px",
             left: "50%",
-            opacity: 0.7,
+            opacity: 0.6,
             transform: "translateX(-50%)",
             color: "#e0e0e0",
             padding: "8px 12px",
@@ -363,12 +365,24 @@ export const StatusBar = ({
             fontSize: "12px",
             fontWeight: "400",
             zIndex: 1000,
-            border: "1px solid rgba(255, 255, 255, 0.1)",
-            maxWidth: "320px",
+            border: `1px solid ${theme.primary.main}`,
+            maxWidth: "340px",
+            userSelect: "none",
           }}
         >
-          <div style={{ fontSize: "11px", opacity: 0.8 }}>
-            Click to add vertices • Double click to finish • Escape to cancel
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              fontSize: "10px",
+            }}
+          >
+            <InfoOutlinedIcon
+              style={{ fontSize: "14px", color: theme.primary.main }}
+            />
+            Snap to first vertex to close • Double click to finish • Escape to
+            cancel
           </div>
         </div>
       )}

@@ -40,7 +40,6 @@ import {
   isPointTransformingAtom,
   isSegmentingPointerDownAtom,
   isTransformingAtom,
-  selectedLabelForAnnotationAtom,
   selectedPointAtom,
 } from "../state";
 import { HoverMetadata } from "../types";
@@ -118,9 +117,6 @@ const calculateCameraPositionForUpVector = (
 export const MediaTypeFo3dComponent = () => {
   const sample = useRecoilValue(fos.fo3dSample);
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
-  const selectedLabelForAnnotation = useRecoilValue(
-    selectedLabelForAnnotationAtom
-  );
 
   const settings = usePluginSettings<Looker3dSettings>("3d");
 
@@ -213,6 +209,9 @@ export const MediaTypeFo3dComponent = () => {
     }
   );
 
+  // todo: reconcile with lookAt from foScene, too
+  const [lookAt, setLookAt] = useState<Vector3 | null>(null);
+
   useEffect(() => {
     if (!foScene || upVector) {
       return;
@@ -285,6 +284,13 @@ export const MediaTypeFo3dComponent = () => {
 
   const assetsGroupRef = useRef<THREE.Group>();
   const sceneBoundingBox = useFo3dBounds(assetsGroupRef);
+
+  useEffect(() => {
+    if (sceneBoundingBox && !lookAt) {
+      const center = sceneBoundingBox.getCenter(new Vector3());
+      setLookAt(center);
+    }
+  }, [sceneBoundingBox, lookAt]);
 
   const topCameraPosition = useMemo(() => {
     if (
@@ -739,6 +745,8 @@ export const MediaTypeFo3dComponent = () => {
         setUpVector,
         fo3dRoot,
         sceneBoundingBox,
+        lookAt,
+        setLookAt,
         autoRotate,
         setAutoRotate,
         pointCloudSettings,
@@ -748,7 +756,7 @@ export const MediaTypeFo3dComponent = () => {
         pluginSettings: settings,
       }}
     >
-      {selectedLabelForAnnotation && mode === "annotate" ? (
+      {mode === "annotate" && isSceneInitialized ? (
         <MultiPanelView
           foScene={foScene}
           sample={sample}
