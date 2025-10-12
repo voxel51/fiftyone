@@ -117,6 +117,7 @@ const calculateCameraPositionForUpVector = (
 export const MediaTypeFo3dComponent = () => {
   const sample = useRecoilValue(fos.fo3dSample);
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
+  const is2DSampleViewerVisible = useRecoilValue(fos.groupMediaIsMainVisible);
 
   const settings = usePluginSettings<Looker3dSettings>("3d");
 
@@ -756,7 +757,7 @@ export const MediaTypeFo3dComponent = () => {
         pluginSettings: settings,
       }}
     >
-      {mode === "annotate" && isSceneInitialized ? (
+      {mode === "annotate" && !is2DSampleViewerVisible && isSceneInitialized ? (
         <MultiPanelView
           foScene={foScene}
           sample={sample}

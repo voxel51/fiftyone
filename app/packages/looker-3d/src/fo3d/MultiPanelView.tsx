@@ -519,15 +519,12 @@ const SidePanel = ({
         <MapControls makeDefault screenSpacePanning enableRotate={false} />
 
         <Gizmos isGridVisible={false} isGizmoHelperVisible={false} />
-
         {!isSceneInitialized && <SpinningCube />}
-
         <Bvh firstHitOnly enabled={pointCloudSettings.enableTooltip}>
           <group visible={isSceneInitialized}>
             <FoSceneComponent scene={foScene} />
           </group>
         </Bvh>
-
         {isSceneInitialized && (
           <ThreeDLabels sampleMap={{ fo3d: sample as any }} />
         )}
