@@ -11,10 +11,11 @@ import {
 } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import CameraControlsImpl from "camera-controls";
-import { useCallback, useLayoutEffect, useRef } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import * as THREE from "three";
 import { Box3, Vector3 } from "three";
+import { Crosshair3D } from "../components/Crosshair3D";
 import { PcdColorMapTunnel } from "../components/PcdColormapModal";
 import { StatusBarRootContainer } from "../containers";
 import { FoScene } from "../hooks";
@@ -133,8 +134,8 @@ interface MultiPanelViewState {
 
 const defaultState: MultiPanelViewState = {
   projection: "Perspective",
-  top: "Back",
-  middle: "Top",
+  top: "Top",
+  middle: "Front",
   bottom: "Right",
 };
 
@@ -476,15 +477,19 @@ const SidePanel = ({
   sample: any;
   pointCloudSettings: any;
 }) => {
-  const position =
-    upVector && lookAt
-      ? calculateCameraPositionForSidePanel(
-          view,
-          upVector,
-          lookAt,
-          sceneBoundingBox
-        )
-      : new Vector3(0, 10, 0);
+  const position = useMemo(
+    () =>
+      upVector && lookAt
+        ? calculateCameraPositionForSidePanel(
+            view,
+            upVector,
+            lookAt,
+            sceneBoundingBox
+          )
+        : new Vector3(0, 10, 0),
+    [view, upVector, lookAt, sceneBoundingBox]
+  );
+
   const theme = useTheme();
 
   const cameraRef = useRef<THREE.OrthographicCamera>();
@@ -528,6 +533,7 @@ const SidePanel = ({
         {isSceneInitialized && (
           <ThreeDLabels sampleMap={{ fo3d: sample as any }} />
         )}
+        <Crosshair3D />
       </View>
       <div
         style={{

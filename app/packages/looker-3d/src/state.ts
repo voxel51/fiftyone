@@ -391,6 +391,11 @@ export const tempPolylinesAtom = atom<TempPolyline[]>({
   default: [],
 });
 
+export const sharedCursorPositionAtom = atom<[number, number, number] | null>({
+  key: "fo3d-sharedCursorPosition",
+  default: null,
+});
+
 // Selector to clear all transform state
 export const clearTransformStateSelector = selector({
   key: "fo3d-clearTransformState",

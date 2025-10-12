@@ -8,6 +8,7 @@ import { useEmptyCanvasInteraction } from "../hooks/use-empty-canvas-interaction
 import {
   isSegmentingPointerDownAtom,
   segmentPolylineStateAtom,
+  sharedCursorPositionAtom,
   tempPolylinesAtom,
   type TempPolyline,
 } from "../state";
@@ -32,6 +33,7 @@ export const SegmentPolylineRenderer = ({
   const setIsActivelySegmenting = useSetRecoilState(
     isSegmentingPointerDownAtom
   );
+  const setSharedCursorPosition = useSetRecoilState(sharedCursorPositionAtom);
   const { upVector } = useFo3dContext();
 
   // Check if current position is close to first vertex for closing
@@ -90,8 +92,10 @@ export const SegmentPolylineRenderer = ({
         ...prev,
         currentMousePosition: [worldPos.x, worldPos.y, worldPos.z],
       }));
+
+      setSharedCursorPosition([worldPos.x, worldPos.y, worldPos.z]);
     },
-    [segmentState.isActive, setSegmentState]
+    [segmentState.isActive]
   );
 
   useEmptyCanvasInteraction({

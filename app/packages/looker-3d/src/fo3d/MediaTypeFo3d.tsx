@@ -118,6 +118,7 @@ export const MediaTypeFo3dComponent = () => {
   const sample = useRecoilValue(fos.fo3dSample);
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
   const is2DSampleViewerVisible = useRecoilValue(fos.groupMediaIsMainVisible);
+  const isGroup = useRecoilValue(fos.isGroup);
 
   const settings = usePluginSettings<Looker3dSettings>("3d");
 
@@ -757,7 +758,9 @@ export const MediaTypeFo3dComponent = () => {
         pluginSettings: settings,
       }}
     >
-      {mode === "annotate" && !is2DSampleViewerVisible && isSceneInitialized ? (
+      {mode === "annotate" &&
+      !(isGroup && is2DSampleViewerVisible) &&
+      isSceneInitialized ? (
         <MultiPanelView
           foScene={foScene}
           sample={sample}
