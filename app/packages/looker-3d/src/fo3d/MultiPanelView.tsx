@@ -15,6 +15,7 @@ import { useCallback, useLayoutEffect, useMemo, useRef } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import * as THREE from "three";
 import { Box3, Vector3 } from "three";
+import { AnnotationPlane } from "../components/AnnotationPlane";
 import { Crosshair3D } from "../components/Crosshair3D";
 import { PcdColorMapTunnel } from "../components/PcdColormapModal";
 import { StatusBarRootContainer } from "../containers";
@@ -533,6 +534,7 @@ const SidePanel = ({
         {isSceneInitialized && (
           <ThreeDLabels sampleMap={{ fo3d: sample as any }} />
         )}
+        <AnnotationPlane showTransformControls={false} />
         <Crosshair3D />
       </View>
       <div

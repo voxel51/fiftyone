@@ -396,6 +396,31 @@ export const sharedCursorPositionAtom = atom<[number, number, number] | null>({
   default: null,
 });
 
+export interface AnnotationPlaneState {
+  enabled: boolean;
+  position: [number, number, number];
+  quaternion: [number, number, number, number];
+}
+
+export const annotationPlaneAtom = atom<AnnotationPlaneState>({
+  key: "fo3d-annotationPlane",
+  default: {
+    enabled: false,
+    position: [0, 0, 0],
+    quaternion: [0, 0, 0, 1],
+  },
+  effects: [
+    getBrowserStorageEffectForKey("fo3d-annotationPlane", {
+      useJsonSerialization: true,
+    }),
+  ],
+});
+
+export const isAnnotationPlaneTransformingAtom = atom<boolean>({
+  key: "fo3d-isAnnotationPlaneTransforming",
+  default: false,
+});
+
 // Selector to clear all transform state
 export const clearTransformStateSelector = selector({
   key: "fo3d-clearTransformState",

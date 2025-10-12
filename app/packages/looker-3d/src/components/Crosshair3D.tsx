@@ -3,6 +3,7 @@ import { useThree } from "@react-three/fiber";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import * as THREE from "three";
+import { useFo3dContext } from "../fo3d/context";
 import { segmentPolylineStateAtom, sharedCursorPositionAtom } from "../state";
 
 const CROSS_HAIR_SIZE = 20;
@@ -12,13 +13,23 @@ const OPACITY = 0.7;
 
 export const Crosshair3D = () => {
   const { camera } = useThree();
+  const { sceneBoundingBox } = useFo3dContext();
 
   const worldPosition = useRecoilValue(sharedCursorPositionAtom);
   const isSegmenting = useRecoilValue(segmentPolylineStateAtom).isActive;
 
-  const worldVector = worldPosition
-    ? new THREE.Vector3(...worldPosition)
-    : null;
+  const worldVector = useMemo(() => {
+    if (!worldPosition) return null;
+
+    const vector = new THREE.Vector3(...worldPosition);
+
+    // Constrain position to scene bounds
+    if (sceneBoundingBox && !sceneBoundingBox.isEmpty()) {
+      vector.clamp(sceneBoundingBox.min, sceneBoundingBox.max);
+    }
+
+    return vector;
+  }, [worldPosition, sceneBoundingBox]);
 
   // Convert 3D world position to 2D screen coordinates
   const screenPosition = useMemo(() => {

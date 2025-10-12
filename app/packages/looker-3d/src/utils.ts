@@ -293,3 +293,59 @@ export function createPlane(normal: Vector3, constant: number): Plane {
 export function isButtonMatch(ev: PointerEvent, button: number): boolean {
   return ev.button === button;
 }
+
+/**
+ * Converts a normal vector to a quaternion that represents the rotation
+ * needed to align the Z-axis with the given normal.
+ *
+ * @param normal - The normal vector to convert to quaternion
+ * @returns A quaternion representing the rotation
+ */
+export function getQuaternionForNormal(normal: Vector3): Quaternion {
+  const quaternion = new Quaternion();
+  const up = new Vector3(0, 0, 1);
+
+  // If normal is already pointing up, return identity quaternion
+  if (normal.equals(up)) {
+    return quaternion;
+  }
+
+  // If normal is pointing down, rotate 180 degrees around X axis
+  if (normal.equals(new Vector3(0, 0, -1))) {
+    quaternion.setFromAxisAngle(new Vector3(1, 0, 0), Math.PI);
+    return quaternion;
+  }
+
+  // Calculate rotation axis (cross product of up and normal)
+  const axis = new Vector3().crossVectors(up, normal).normalize();
+
+  // Calculate rotation angle (dot product gives us the angle)
+  const angle = Math.acos(Math.max(-1, Math.min(1, up.dot(normal))));
+
+  quaternion.setFromAxisAngle(axis, angle);
+  return quaternion;
+}
+
+/**
+ * Creates a THREE.js plane from stored position and quaternion state.
+ *
+ * @param position - The plane position as [x, y, z]
+ * @param quaternion - The plane rotation as [x, y, z, w]
+ * @returns A new THREE.js plane
+ */
+export function getPlaneFromPositionAndQuaternion(
+  position: [number, number, number],
+  quaternion: [number, number, number, number]
+): Plane {
+  const pos = new Vector3(...position);
+  const quat = new Quaternion(...quaternion);
+
+  // Extract normal from quaternion by rotating the Z-axis
+  const normal = new Vector3(0, 0, 1).applyQuaternion(quat).normalize();
+
+  // Create plane with normal and position
+  const plane = new Plane();
+  plane.setFromNormalAndCoplanarPoint(normal, pos);
+
+  return plane;
+}

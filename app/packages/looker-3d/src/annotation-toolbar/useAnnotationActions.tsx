@@ -1,6 +1,7 @@
 import {
   Add,
   Close,
+  GridOn,
   OpenWith,
   RotateRight,
   Straighten,
@@ -8,7 +9,10 @@ import {
 import { Typography } from "@mui/material";
 import { useCallback, useMemo } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
+import * as THREE from "three";
+import { useFo3dContext } from "../fo3d/context";
 import {
+  annotationPlaneAtom,
   isInEntireLabelTransformModeAtom,
   isPointTransformModeAtom,
   segmentPolylineStateAtom,
@@ -20,6 +24,7 @@ import {
   type TransformMode,
   type TransformSpace,
 } from "../state";
+import { getQuaternionForNormal } from "../utils";
 import { CoordinateInputs } from "./CoordinateInputs";
 import type { AnnotationAction, AnnotationActionGroup } from "./types";
 
@@ -38,6 +43,9 @@ export const useAnnotationActions = () => {
     segmentPolylineStateAtom
   );
   const [tempPolylines, setTempPolylines] = useRecoilState(tempPolylinesAtom);
+  const [annotationPlane, setAnnotationPlane] =
+    useRecoilState(annotationPlaneAtom);
+  const { sceneBoundingBox, upVector } = useFo3dContext();
 
   const hasSelectedLabel = !!selectedLabelForAnnotation;
 
@@ -87,6 +95,31 @@ export const useAnnotationActions = () => {
     setTempPolylines([]);
   }, [setTempPolylines]);
 
+  const handleToggleAnnotationPlane = useCallback(() => {
+    if (!annotationPlane.enabled) {
+      // Initialize plane at center of scene bounding box with upVector normal
+      if (sceneBoundingBox && upVector) {
+        const center = sceneBoundingBox.getCenter(new THREE.Vector3());
+        const quaternion = getQuaternionForNormal(upVector);
+
+        setAnnotationPlane({
+          enabled: true,
+          position: [center.x, center.y, center.z],
+          quaternion: [quaternion.x, quaternion.y, quaternion.z, quaternion.w],
+        });
+      } else {
+        // Fallback to origin with Y-up
+        setAnnotationPlane({
+          enabled: true,
+          position: [0, 0, 0],
+          quaternion: [0, 0, 0, 1],
+        });
+      }
+    } else {
+      setAnnotationPlane((prev) => ({ ...prev, enabled: false }));
+    }
+  }, [annotationPlane.enabled, sceneBoundingBox, upVector, setAnnotationPlane]);
+
   const actions: AnnotationActionGroup[] = useMemo(() => {
     const isPolyline = selectedLabelForAnnotation?._cls === "Polyline";
 
@@ -116,7 +149,6 @@ export const useAnnotationActions = () => {
             id: "new-segment",
             label: "New Segment",
             icon: <Add />,
-            shortcut: "V",
             tooltip: "Add new polyline segment",
             isActive: segmentPolylineState.isActive,
             onClick: segmentPolylineState.isActive
@@ -127,11 +159,18 @@ export const useAnnotationActions = () => {
             id: "clear-temp-polylines",
             label: "Clear Temp",
             icon: <Close />,
-            shortcut: "C",
             tooltip: "Clear temporary polylines",
             isActive: false,
             isVisible: tempPolylines.length > 0,
             onClick: handleClearTempPolylines,
+          },
+          {
+            id: "toggle-annotation-plane",
+            label: "Annotation Plane",
+            icon: <GridOn />,
+            tooltip: "Toggle annotation plane for z-drift prevention",
+            isActive: annotationPlane.enabled,
+            onClick: handleToggleAnnotationPlane,
           },
         ],
       },
@@ -238,9 +277,11 @@ export const useAnnotationActions = () => {
     selectedPoint,
     segmentPolylineState,
     tempPolylines,
+    annotationPlane,
     handleStartSegmentPolyline,
     handleCancelSegmentPolyline,
     handleClearTempPolylines,
+    handleToggleAnnotationPlane,
   ]);
 
   return {

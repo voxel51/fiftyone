@@ -1,15 +1,22 @@
 import { useCursor } from "@react-three/drei";
 import { useMemo, useState } from "react";
+import { useRecoilValue } from "recoil";
 import { use3dLabelColor } from "../../hooks/use-3d-label-color";
 import { useSimilarLabels3d } from "../../hooks/use-similar-labels-3d";
+import { segmentPolylineStateAtom } from "../../state";
 import type { BaseOverlayProps, EventHandlers, HoverState } from "./types";
 
 /**
  * Custom hook for managing hover state and cursor behavior
  */
 export const useHoverState = (): HoverState => {
+  const isSegmenting = useRecoilValue(segmentPolylineStateAtom).isActive;
   const [isHovered, setIsHovered] = useState(false);
-  useCursor(isHovered);
+  useCursor(
+    isHovered,
+    isSegmenting ? "crosshair" : "pointer",
+    isSegmenting ? "crosshair" : "auto"
+  );
 
   return {
     isHovered,

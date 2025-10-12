@@ -21,7 +21,11 @@ import { useRecoilState, useRecoilValue } from "recoil";
 import { PANEL_ORDER_LABELS } from "../constants";
 import { usePathFilter } from "../hooks";
 import { type Looker3dSettings, defaultPluginSettings } from "../settings";
-import { cuboidLabelLineWidthAtom, polylineLabelLineWidthAtom } from "../state";
+import {
+  cuboidLabelLineWidthAtom,
+  polylineLabelLineWidthAtom,
+  segmentPolylineStateAtom,
+} from "../state";
 import { toEulerFromDegreesArray } from "../utils";
 import { Cuboid, type CuboidProps } from "./cuboid";
 import { type OverlayLabel, load3dOverlays } from "./loader";
@@ -37,6 +41,7 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
   const schema = useRecoilValue(fieldSchema({ space: fos.State.SPACE.SAMPLE }));
   const { coloring, selectedLabelTags, customizeColorSetting, labelTagColors } =
     useRecoilValue(fos.lookerOptions({ withFilter: true, modal: true }));
+  const isSegmenting = useRecoilValue(segmentPolylineStateAtom).isActive;
 
   const {
     selectedLabelForAnnotation,
@@ -103,6 +108,8 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
 
   const handleSelect = useCallback(
     (label: OverlayLabel, e: ThreeEvent<MouseEvent>) => {
+      if (isSegmenting) return;
+
       if (mode === "annotate") {
         selectLabelForAnnotation(label);
 
@@ -125,6 +132,7 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
       selectLabelForAnnotation,
       clearSelectedLabel,
       selectedLabelForAnnotation,
+      isSegmenting,
     ]
   );
 

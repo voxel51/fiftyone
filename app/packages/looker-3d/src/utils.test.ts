@@ -15,7 +15,9 @@ import {
   deg2rad,
   getColorFromPoolBasedOnHash,
   getGridQuaternionFromUpVector,
+  getPlaneFromPositionAndQuaternion,
   getPlaneIntersection,
+  getQuaternionForNormal,
   toEulerFromDegreesArray,
   toNDC,
 } from "./utils";
@@ -207,5 +209,187 @@ describe("getPlaneIntersection", () => {
     const result = getPlaneIntersection(raycaster, camera, ndc, plane);
 
     expect(result).toBeNull();
+  });
+});
+
+describe("getQuaternionForNormal", () => {
+  it("returns identity quaternion for Z-axis normal", () => {
+    const normal = new Vector3(0, 0, 1);
+    const result = getQuaternionForNormal(normal);
+
+    expect(result).toBeInstanceOf(Quaternion);
+    expect(result.w).toBeCloseTo(1);
+    expect(result.x).toBeCloseTo(0);
+    expect(result.y).toBeCloseTo(0);
+    expect(result.z).toBeCloseTo(0);
+  });
+
+  it("returns 180-degree rotation around X-axis for negative Z-axis normal", () => {
+    const normal = new Vector3(0, 0, -1);
+    const result = getQuaternionForNormal(normal);
+
+    expect(result).toBeInstanceOf(Quaternion);
+    expect(result.w).toBeCloseTo(0);
+    expect(result.x).toBeCloseTo(1);
+    expect(result.y).toBeCloseTo(0);
+    expect(result.z).toBeCloseTo(0);
+  });
+
+  it("returns correct quaternion for X-axis normal", () => {
+    const normal = new Vector3(1, 0, 0);
+    const result = getQuaternionForNormal(normal);
+
+    expect(result).toBeInstanceOf(Quaternion);
+    // Should rotate Z-axis to X-axis (90 degrees around Y-axis)
+    expect(result.w).toBeCloseTo(Math.sqrt(2) / 2);
+    expect(result.x).toBeCloseTo(0);
+    expect(result.y).toBeCloseTo(Math.sqrt(2) / 2);
+    expect(result.z).toBeCloseTo(0);
+  });
+
+  it("returns correct quaternion for Y-axis normal", () => {
+    const normal = new Vector3(0, 1, 0);
+    const result = getQuaternionForNormal(normal);
+
+    expect(result).toBeInstanceOf(Quaternion);
+    // Should rotate Z-axis to Y-axis (90 degrees around X-axis)
+    // The cross product (0,0,1) × (0,1,0) = (-1,0,0), so rotation axis is (-1,0,0)
+    expect(result.w).toBeCloseTo(Math.sqrt(2) / 2);
+    expect(result.x).toBeCloseTo(-Math.sqrt(2) / 2);
+    expect(result.y).toBeCloseTo(0);
+    expect(result.z).toBeCloseTo(0);
+  });
+
+  it("handles arbitrary normal vectors", () => {
+    const normal = new Vector3(1, 1, 0).normalize();
+    const result = getQuaternionForNormal(normal);
+
+    expect(result).toBeInstanceOf(Quaternion);
+    // Verify it's a valid quaternion (unit quaternion)
+    const magnitude = Math.sqrt(
+      result.x * result.x +
+        result.y * result.y +
+        result.z * result.z +
+        result.w * result.w
+    );
+    expect(magnitude).toBeCloseTo(1);
+  });
+
+  it("handles normalized diagonal normal", () => {
+    const normal = new Vector3(1, 1, 1).normalize();
+    const result = getQuaternionForNormal(normal);
+
+    expect(result).toBeInstanceOf(Quaternion);
+    // Verify it's a valid quaternion
+    const magnitude = Math.sqrt(
+      result.x * result.x +
+        result.y * result.y +
+        result.z * result.z +
+        result.w * result.w
+    );
+    expect(magnitude).toBeCloseTo(1);
+  });
+});
+
+describe("getPlaneFromPositionAndQuaternion", () => {
+  it("creates plane with identity quaternion at origin", () => {
+    const position: [number, number, number] = [0, 0, 0];
+    const quaternion: [number, number, number, number] = [0, 0, 0, 1];
+    const result = getPlaneFromPositionAndQuaternion(position, quaternion);
+
+    expect(result).toBeInstanceOf(Plane);
+    expect(result.normal.x).toBeCloseTo(0);
+    expect(result.normal.y).toBeCloseTo(0);
+    expect(result.normal.z).toBeCloseTo(1);
+    expect(result.constant).toBeCloseTo(0);
+  });
+
+  it("creates plane with identity quaternion at offset position", () => {
+    const position: [number, number, number] = [1, 2, 3];
+    const quaternion: [number, number, number, number] = [0, 0, 0, 1];
+    const result = getPlaneFromPositionAndQuaternion(position, quaternion);
+
+    expect(result).toBeInstanceOf(Plane);
+    expect(result.normal.x).toBeCloseTo(0);
+    expect(result.normal.y).toBeCloseTo(0);
+    expect(result.normal.z).toBeCloseTo(1);
+    expect(result.constant).toBeCloseTo(-3);
+  });
+
+  it("creates plane with 90-degree rotation around Y-axis", () => {
+    const position: [number, number, number] = [0, 0, 0];
+    const quaternion: [number, number, number, number] = [
+      0,
+      Math.sqrt(2) / 2,
+      0,
+      Math.sqrt(2) / 2,
+    ];
+    const result = getPlaneFromPositionAndQuaternion(position, quaternion);
+
+    expect(result).toBeInstanceOf(Plane);
+    expect(result.normal.x).toBeCloseTo(1);
+    expect(result.normal.y).toBeCloseTo(0);
+    expect(result.normal.z).toBeCloseTo(0);
+    expect(result.constant).toBeCloseTo(0);
+  });
+
+  it("creates plane with 90-degree rotation around X-axis", () => {
+    const position: [number, number, number] = [0, 0, 0];
+    const quaternion: [number, number, number, number] = [
+      Math.sqrt(2) / 2,
+      0,
+      0,
+      Math.sqrt(2) / 2,
+    ];
+    const result = getPlaneFromPositionAndQuaternion(position, quaternion);
+
+    expect(result).toBeInstanceOf(Plane);
+    expect(result.normal.x).toBeCloseTo(0);
+    expect(result.normal.y).toBeCloseTo(-1);
+    expect(result.normal.z).toBeCloseTo(0);
+    expect(result.constant).toBeCloseTo(0);
+  });
+
+  it("creates plane with 180-degree rotation around X-axis", () => {
+    const position: [number, number, number] = [0, 0, 0];
+    const quaternion: [number, number, number, number] = [1, 0, 0, 0];
+    const result = getPlaneFromPositionAndQuaternion(position, quaternion);
+
+    expect(result).toBeInstanceOf(Plane);
+    expect(result.normal.x).toBeCloseTo(0);
+    expect(result.normal.y).toBeCloseTo(0);
+    expect(result.normal.z).toBeCloseTo(-1);
+    expect(result.constant).toBeCloseTo(0);
+  });
+
+  it("creates plane with arbitrary rotation and position", () => {
+    const position: [number, number, number] = [2, 3, 4];
+    const quaternion: [number, number, number, number] = [0.1, 0.2, 0.3, 0.9];
+    const result = getPlaneFromPositionAndQuaternion(position, quaternion);
+
+    expect(result).toBeInstanceOf(Plane);
+    // Verify the normal is normalized
+    const normalMagnitude = Math.sqrt(
+      result.normal.x * result.normal.x +
+        result.normal.y * result.normal.y +
+        result.normal.z * result.normal.z
+    );
+    expect(normalMagnitude).toBeCloseTo(1);
+  });
+
+  it("creates plane with diagonal normal from quaternion", () => {
+    const position: [number, number, number] = [0, 0, 0];
+    // Quaternion that rotates Z-axis to diagonal direction
+    const quaternion: [number, number, number, number] = [0.5, 0.5, 0.5, 0.5];
+    const result = getPlaneFromPositionAndQuaternion(position, quaternion);
+
+    expect(result).toBeInstanceOf(Plane);
+    // Verify the normal is normalized
+    const normalMagnitude = Math.sqrt(
+      result.normal.x * result.normal.x +
+        result.normal.y * result.normal.y +
+        result.normal.z * result.normal.z
+    );
+    expect(normalMagnitude).toBeCloseTo(1);
   });
 });

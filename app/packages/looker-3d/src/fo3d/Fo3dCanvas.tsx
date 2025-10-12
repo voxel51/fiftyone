@@ -13,6 +13,7 @@ import * as THREE from "three";
 import { Vector3 } from "three";
 import { SpinningCube } from "../SpinningCube";
 import { StatusTunnel } from "../StatusBar";
+import { AnnotationPlane } from "../components/AnnotationPlane";
 import { SegmentPolylineRenderer } from "../components/SegmentPolylineRenderer";
 import { ThreeDLabels } from "../labels";
 import { FoSceneComponent } from "./FoScene";
@@ -183,6 +184,7 @@ export const Fo3dSceneContent = ({
 const AnnotationControls = () => {
   return (
     <>
+      <AnnotationPlane />
       <SegmentPolylineRenderer />
     </>
   );

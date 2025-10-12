@@ -35,6 +35,7 @@ import {
   clearTransformStateSelector,
   currentHoveredPointAtom,
   isActivelySegmentingSelector,
+  isAnnotationPlaneTransformingAtom,
   isFo3dBackgroundOnAtom,
   isPointTransformModeAtom,
   isPointTransformingAtom,
@@ -229,6 +230,9 @@ export const MediaTypeFo3dComponent = () => {
   const isPointTransforming = useRecoilValue(isPointTransformingAtom);
   const isActivelySegmenting = useRecoilValue(isActivelySegmentingSelector);
   const isSegmentingPointerDown = useRecoilValue(isSegmentingPointerDownAtom);
+  const isAnnotationPlaneTransforming = useRecoilValue(
+    isAnnotationPlaneTransformingAtom
+  );
 
   const keyState = useRef({
     shiftRight: false,
@@ -242,13 +246,23 @@ export const MediaTypeFo3dComponent = () => {
    */
   useEffect(() => {
     updateCameraControlsConfig();
-  }, [isTransforming, isPointTransforming, isSegmentingPointerDown]);
+  }, [
+    isTransforming,
+    isPointTransforming,
+    isSegmentingPointerDown,
+    isAnnotationPlaneTransforming,
+  ]);
 
   const updateCameraControlsConfig = useCallback(() => {
     if (!cameraControlsRef.current) return;
 
     // Disable camera controls when transforming
-    if (isTransforming || isPointTransforming || isSegmentingPointerDown) {
+    if (
+      isTransforming ||
+      isPointTransforming ||
+      isSegmentingPointerDown ||
+      isAnnotationPlaneTransforming
+    ) {
       cameraControlsRef.current.enabled = false;
       return;
     }
@@ -266,7 +280,13 @@ export const MediaTypeFo3dComponent = () => {
       cameraControlsRef.current.mouseButtons.left =
         CameraControlsImpl.ACTION.ROTATE;
     }
-  }, [keyState, isTransforming, isPointTransforming, isSegmentingPointerDown]);
+  }, [
+    keyState,
+    isTransforming,
+    isPointTransforming,
+    isSegmentingPointerDown,
+    isAnnotationPlaneTransforming,
+  ]);
 
   fos.useEventHandler(document, "keydown", (e: KeyboardEvent) => {
     if (e.code === "ShiftRight") keyState.current.shiftRight = true;

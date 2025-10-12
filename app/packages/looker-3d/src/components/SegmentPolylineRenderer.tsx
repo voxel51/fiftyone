@@ -1,17 +1,19 @@
 import { Line as LineDrei } from "@react-three/drei";
 import { useCallback, useEffect, useMemo } from "react";
-import { useRecoilState, useSetRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
 import { SNAP_TOLERANCE } from "../constants";
 import { useFo3dContext } from "../fo3d/context";
 import { useEmptyCanvasInteraction } from "../hooks/use-empty-canvas-interaction";
 import {
+  annotationPlaneAtom,
   isSegmentingPointerDownAtom,
   segmentPolylineStateAtom,
   sharedCursorPositionAtom,
   tempPolylinesAtom,
   type TempPolyline,
 } from "../state";
+import { getPlaneFromPositionAndQuaternion } from "../utils";
 
 interface SegmentPolylineRendererProps {
   color?: string;
@@ -34,7 +36,8 @@ export const SegmentPolylineRenderer = ({
     isSegmentingPointerDownAtom
   );
   const setSharedCursorPosition = useSetRecoilState(sharedCursorPositionAtom);
-  const { upVector } = useFo3dContext();
+  const annotationPlane = useRecoilValue(annotationPlaneAtom);
+  const { upVector, sceneBoundingBox } = useFo3dContext();
 
   // Check if current position is close to first vertex for closing
   const shouldCloseLoop = useCallback(
@@ -53,7 +56,19 @@ export const SegmentPolylineRenderer = ({
 
       if (!segmentState.isActive) return;
 
-      if (shouldCloseLoop(worldPos)) {
+      // Project vertex to annotation plane for z-drift prevention
+      let finalPos = worldPos;
+      if (annotationPlane.enabled) {
+        const plane = getPlaneFromPositionAndQuaternion(
+          annotationPlane.position,
+          annotationPlane.quaternion
+        );
+        const projectedPos = new THREE.Vector3();
+        plane.projectPoint(worldPos, projectedPos);
+        finalPos = projectedPos;
+      }
+
+      if (shouldCloseLoop(finalPos)) {
         const tempPolyline: TempPolyline = {
           id: `temp-polyline-${Date.now()}`,
           vertices: segmentState.vertices,
@@ -77,10 +92,16 @@ export const SegmentPolylineRenderer = ({
       // Add new vertex
       setSegmentState((prev) => ({
         ...prev,
-        vertices: [...prev.vertices, [worldPos.x, worldPos.y, worldPos.z]],
+        vertices: [...prev.vertices, [finalPos.x, finalPos.y, finalPos.z]],
       }));
     },
-    [segmentState, shouldCloseLoop, setSegmentState, setTempPolylines]
+    [
+      segmentState,
+      shouldCloseLoop,
+      setSegmentState,
+      setTempPolylines,
+      annotationPlane,
+    ]
   );
 
   // Handle mouse move for rubber band effect
@@ -88,14 +109,31 @@ export const SegmentPolylineRenderer = ({
     (worldPos: THREE.Vector3) => {
       if (!segmentState.isActive) return;
 
+      // Project cursor position to annotation plane if enabled
+      let finalPos = worldPos;
+      if (annotationPlane.enabled) {
+        const plane = getPlaneFromPositionAndQuaternion(
+          annotationPlane.position,
+          annotationPlane.quaternion
+        );
+        const projectedPos = new THREE.Vector3();
+        plane.projectPoint(worldPos, projectedPos);
+        finalPos = projectedPos;
+      }
+
+      // Constrain position to scene bounds
+      if (sceneBoundingBox && !sceneBoundingBox.isEmpty()) {
+        finalPos.clamp(sceneBoundingBox.min, sceneBoundingBox.max);
+      }
+
       setSegmentState((prev) => ({
         ...prev,
-        currentMousePosition: [worldPos.x, worldPos.y, worldPos.z],
+        currentMousePosition: [finalPos.x, finalPos.y, finalPos.z],
       }));
 
-      setSharedCursorPosition([worldPos.x, worldPos.y, worldPos.z]);
+      setSharedCursorPosition([finalPos.x, finalPos.y, finalPos.z]);
     },
-    [segmentState.isActive]
+    [segmentState.isActive, annotationPlane, sceneBoundingBox]
   );
 
   useEmptyCanvasInteraction({
