@@ -3,6 +3,12 @@
  */
 
 import * as PIXI from "pixi.js";
+import { TextureStyle } from "pixi.js";
+
+// Set global default for pixelated rendering ("nearest")
+// instead of smoothed out ("linear")
+// This must be set before any textures are created
+TextureStyle.defaultOptions.scaleMode = "nearest";
 
 /**
  * Singleton PIXI Application that can be shared across multiple renderers.
