@@ -8,7 +8,7 @@ import { LIGHTER_EVENTS } from "../event/EventBus";
 import type { InteractionHandler } from "../interaction/InteractionManager";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { ResourceLoader } from "../resource/ResourceLoader";
-import type { DrawStyle, Point } from "../types";
+import type { DrawStyle, Point, Rect } from "../types";
 
 /**
  * Base abstract class for all overlays.
@@ -30,6 +30,12 @@ export abstract class BaseOverlay implements InteractionHandler {
   protected eventBus?: EventBus;
   protected resourceLoader?: ResourceLoader;
   protected currentStyle?: DrawStyle;
+
+  static validBounds(bounds: Rect): boolean {
+    return ["x", "y", "width", "height"].every(
+      (prop) => typeof bounds[prop] === "number" && bounds[prop]
+    );
+  }
 
   constructor(id: string, field: string) {
     this.id = id;

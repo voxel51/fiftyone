@@ -10,6 +10,7 @@ import type { Renderer2D } from "../renderer/Renderer2D";
 import type { SelectionManager } from "../selection/SelectionManager";
 import type { Point } from "../types";
 import { InteractiveDetectionHandler } from "./InteractiveDetectionHandler";
+import { BoundingBoxOverlay } from "../overlay/BoundingBoxOverlay";
 
 /**
  * Interface for objects that can handle interaction events.
@@ -17,6 +18,7 @@ import { InteractiveDetectionHandler } from "./InteractiveDetectionHandler";
 export interface InteractionHandler {
   readonly id: string;
   readonly cursor?: string;
+  overlay?: BoundingBoxOverlay;
 
   /**
    * Returns true if the handler is being dragged or resized.
@@ -221,7 +223,7 @@ export class InteractionManager {
     const interactiveHandler = this.getInteractiveHandler();
 
     if (interactiveHandler) {
-      handler = interactiveHandler;
+      handler = interactiveHandler.overlay || interactiveHandler;
     } else {
       handler = this.findHandlerAtPoint(point);
     }
@@ -259,7 +261,7 @@ export class InteractionManager {
     this.currentPixelCoordinates = point;
 
     const interactiveHandler = this.getInteractiveHandler();
-    const handler = this.findMovingHandler() || this.findHandlerAtPoint(point);
+    let handler = this.findMovingHandler() || this.findHandlerAtPoint(point);
 
     if (!interactiveHandler) {
       // we don't want to handle hover in interactive mode
@@ -278,7 +280,9 @@ export class InteractionManager {
           this.maintainAspectRatio
         );
       } else {
-        interactiveHandler.onMove?.(
+        handler = interactiveHandler.overlay || interactiveHandler;
+
+        handler.onMove?.(
           point,
           worldPoint,
           event,
@@ -317,8 +321,10 @@ export class InteractionManager {
     const point = this.getCanvasPoint(event);
     const worldPoint = this.renderer.screenToWorld(point);
     const scale = this.renderer.getScale();
-    const handler = this.findMovingHandler() || this.findHandlerAtPoint(point);
     const now = Date.now();
+
+    let handler = this.findMovingHandler() || this.findHandlerAtPoint(point);
+    handler = handler?.overlay || handler;
 
     if (handler?.isMoving?.()) {
       const startPosition = handler.getMoveStartPosition()!;

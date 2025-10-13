@@ -52,6 +52,7 @@ const useCreateAnnotationLabel = () => {
           label: {},
         });
         addOverlay(overlay);
+        overlay.setSelected(true);
         const handler = new InteractiveDetectionHandler(overlay);
         scene?.enterInteractiveMode(handler);
         return { data, overlay, path: field, type };

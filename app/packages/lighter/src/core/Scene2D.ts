@@ -21,12 +21,12 @@ import {
   type LighterEvent,
   LighterEventDetail,
 } from "../event/EventBus";
-import type { InteractionHandler } from "../interaction/InteractionManager";
+import { BaseOverlay } from "../overlay/BaseOverlay";
 import { InteractionManager } from "../interaction/InteractionManager";
-import type { BaseOverlay } from "../overlay/BaseOverlay";
+import { SelectionManager } from "../selection/SelectionManager";
+import type { InteractionHandler } from "../interaction/InteractionManager";
 import type { Selectable } from "../selection/Selectable";
 import type { SelectionOptions } from "../selection/SelectionManager";
-import { SelectionManager } from "../selection/SelectionManager";
 import type {
   CanonicalMedia,
   CoordinateSystem,
@@ -1436,11 +1436,15 @@ export class Scene2D {
     overlay: BaseOverlay & Spatial
   ): void {
     const absoluteBounds = overlay.getAbsoluteBounds();
-    const relativeBounds =
-      this.coordinateSystem.absoluteToRelative(absoluteBounds);
 
-    // Update the overlays relative bounds
-    overlay.setRelativeBounds(relativeBounds);
+    if (BaseOverlay.validBounds(absoluteBounds)) {
+      const relativeBounds =
+        this.coordinateSystem.absoluteToRelative(absoluteBounds);
+
+      // Update the overlays relative bounds
+      overlay.setRelativeBounds(relativeBounds);
+      overlay.markCoordinateUpdateComplete();
+    }
   }
 
   /**
@@ -1462,7 +1466,6 @@ export class Scene2D {
     for (const overlay of this.overlays.values()) {
       if (TypeGuards.isSpatial(overlay) && overlay.needsCoordinateUpdate()) {
         this.updateSpatialOverlayRelativeBounds(overlay);
-        overlay.markCoordinateUpdateComplete();
 
         this.dispatch({
           type: LIGHTER_EVENTS.OVERLAY_BOUNDS_CHANGED,
