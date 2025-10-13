@@ -15,7 +15,7 @@ from starlette.requests import Request
 import fiftyone as fo
 import fiftyone.core.odm.utils as fou
 from typing import List
-from fiftyone.server.utils.json_patch import parse, Operation
+from fiftyone.server.utils.json_patch import parse
 from fiftyone.server.utils import transform_json
 from fiftyone.server.decorators import route
 from typing import Any
