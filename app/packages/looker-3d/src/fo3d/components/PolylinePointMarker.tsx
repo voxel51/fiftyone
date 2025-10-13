@@ -151,25 +151,23 @@ export const PolylinePointMarker = ({
     setCurrentPointPosition,
   ]);
 
-  // Apply pulsating effect for visibility (if enabled)
+  // Apply distance-based scaling
   useFrame(({ clock, camera }) => {
     const distance = camera.position.distanceTo(position);
+
+    // Base scale factor - far objects appear slightly bigger, close objects medium size
+    const baseScale = Math.max(0.8, Math.min(2.0, 1.0 + distance * 0.05));
+
+    let finalScale = baseScale;
 
     if (pulsate) {
       const t = clock.getElapsedTime();
       const pulse = 0.8 + 0.2 * Math.sin(t * 3);
-      const scale = pulse * (distance * 0.08);
+      finalScale = baseScale * pulse;
+    }
 
-      if (meshRef.current) {
-        meshRef.current.scale.set(scale, scale, scale);
-      }
-    } else {
-      // Static scale based on distance only
-      const scale = Math.min(distance * 0.08, 20);
-
-      if (meshRef.current) {
-        meshRef.current.scale.set(scale, scale, scale);
-      }
+    if (meshRef.current) {
+      meshRef.current.scale.set(finalScale, finalScale, finalScale);
     }
   });
 
