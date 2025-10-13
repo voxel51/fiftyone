@@ -4,13 +4,13 @@
 
 import type { Movable } from "../commands/MoveOverlayCommand";
 import {
-  LABEL_ARCHETYPE_PRIORITY,
-  STROKE_WIDTH,
   EDGE_THRESHOLD,
-  SELECTED_DASH_LENGTH,
-  HOVERED_DASH_LENGTH,
   HANDLE_OFFSET_X,
   HANDLE_OFFSET_Y,
+  HOVERED_DASH_LENGTH,
+  LABEL_ARCHETYPE_PRIORITY,
+  SELECTED_DASH_LENGTH,
+  STROKE_WIDTH,
 } from "../constants";
 import { CONTAINS } from "../core/Scene2D";
 import type { Renderer2D } from "../renderer/Renderer2D";
@@ -41,15 +41,14 @@ export type BoundingBoxLabel = RawLookerLabel & {
  * Options for creating a bounding box overlay.
  */
 export interface BoundingBoxOptions {
-  sampleId: string;
+  id: string;
   // Relative bounds [0,1]
   relativeBounds?: Rect;
   label: BoundingBoxLabel;
-  confidence?: number;
+  field: string;
   draggable?: boolean;
   resizeable?: boolean;
   selectable?: boolean;
-  field?: string;
 }
 
 export type ResizeRegion =
@@ -78,7 +77,7 @@ export class BoundingBoxOverlay
   private moveStartPosition?: Point;
   private moveStartBounds?: Rect;
   private isSelectedState = false;
-  private relativeBounds: Rect;
+  private relativeBounds?: Rect;
   private absoluteBounds: Rect;
 
   private _needsCoordinateUpdate = false;
@@ -87,23 +86,14 @@ export class BoundingBoxOverlay
   public cursor = "pointer";
   private readonly CLICK_THRESHOLD = 0.1;
 
-  constructor(private options: BoundingBoxOptions) {
-    const id =
-      options.label["_id"] ??
-      options.label.id ??
-      `bbox_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-    super(id, options.sampleId, options.label, options.field);
+  constructor(options: BoundingBoxOptions) {
+    super(options.id, options.field, options.label);
     this.isDraggable = options.draggable !== false;
     this.isResizeable = options.resizeable !== false;
 
-    // Initialize bounds
-    if (options.relativeBounds) {
-      this.relativeBounds = { ...options.relativeBounds };
-      this.absoluteBounds = { x: 0, y: 0, width: 0, height: 0 }; // Will be set by scene
-      this._needsCoordinateUpdate = true;
-    } else {
-      throw new Error("Either bounds or relativeBounds must be provided");
-    }
+    this.relativeBounds = options.relativeBounds;
+    this.absoluteBounds = { x: 0, y: 0, width: 0, height: 0 }; // Will be set by scene
+    this._needsCoordinateUpdate = true;
   }
 
   getOverlayType(): string {
@@ -157,7 +147,7 @@ export class BoundingBoxOverlay
     if (!style) return;
 
     // Check if this label has an instance to determine stroke styling
-    const hasInstance = this.options.label.instance?._id !== undefined;
+    const hasInstance = this.label?.instance?._id !== undefined;
 
     // Get stroke styles based on whether the label has an instance
     const { strokeColor, overlayStrokeColor, overlayDash, hoverStrokeColor } =
@@ -225,7 +215,7 @@ export class BoundingBoxOverlay
       );
     }
 
-    if (this.options.label && this.options.label.label?.length > 0) {
+    if (this.label && this.label.label?.length > 0) {
       const offset = style.lineWidth
         ? style.lineWidth / renderer.getScale() / 2
         : 0;
@@ -240,13 +230,13 @@ export class BoundingBoxOverlay
             y: this.absoluteBounds.y - offset,
           };
 
-      let textToDraw = this.options.label.label;
+      let textToDraw = this.label?.label;
 
       if (
-        typeof this.options.label.confidence !== "undefined" &&
-        !isNaN(this.options.label.confidence)
+        typeof this.label?.confidence !== "undefined" &&
+        !isNaN(this.label?.confidence)
       ) {
-        textToDraw += ` (${this.options.label.confidence.toFixed(2)})`;
+        textToDraw += ` (${this.label?.confidence.toFixed(2)})`;
       }
 
       // Draw text and store the dimensions for accurate header detection
@@ -409,11 +399,13 @@ export class BoundingBoxOverlay
 
     if (this.moveState === "DRAGGING") {
       return this.onDrag(point, event, scale);
-    } else if (this.moveState.startsWith("RESIZE_")) {
-      return this.onResize(point, event, scale, maintainAspectRatio);
-    } else {
-      return false;
     }
+
+    if (this.moveState.startsWith("RESIZE_")) {
+      return this.onResize(point, event, scale, maintainAspectRatio);
+    }
+
+    return false;
   }
 
   private onDrag(point: Point, _event: PointerEvent, scale: number): boolean {
@@ -586,22 +578,6 @@ export class BoundingBoxOverlay
   setBounds(bounds: Rect): void {
     this.absoluteBounds = { ...bounds };
     this.markForCoordinateUpdate();
-  }
-
-  /**
-   * Gets the label text.
-   * @returns The label text, if any.
-   */
-  getLabel(): string | undefined {
-    return this.options.label.label;
-  }
-
-  /**
-   * Gets the confidence score.
-   * @returns The confidence score, if any.
-   */
-  getConfidence(): number | undefined {
-    return this.options.label?.confidence;
   }
 
   /**

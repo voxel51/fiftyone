@@ -1,11 +1,15 @@
-import { useAtom, useAtomValue } from "jotai";
-import React from "react";
+import { LIGHTER_EVENTS, useLighter } from "@fiftyone/lighter";
+import { DETECTION } from "@fiftyone/utilities";
+import { useAtomValue, useSetAtom } from "jotai";
+import React, { useEffect } from "react";
 import styled from "styled-components";
 import AnnotationSchema from "./AnnotationSchema";
 import Field from "./Field";
 import Footer from "./Footer";
 import Header from "./Header";
-import { current, currentField } from "./state";
+import Id from "./Id";
+import Position from "./Position";
+import { currentField, currentOverlay, currentType, editing } from "./state";
 
 const ContentContainer = styled.div`
   margin: 0.25rem 1rem;
@@ -28,18 +32,29 @@ const Content = styled.div`
 `;
 
 export default function Edit() {
-  const [label] = useAtom(current);
   const field = useAtomValue(currentField);
+  const overlay = useAtomValue(currentOverlay);
+  const type = useAtomValue(currentType);
+  const setEditing = useSetAtom(editing);
 
-  if (!label) {
-    return null;
-  }
+  const { scene } = useLighter();
+  useEffect(() => {
+    const handler = () => setEditing(null);
+
+    scene?.on(LIGHTER_EVENTS.OVERLAY_DESELECT, handler);
+
+    return () => {
+      scene?.off(LIGHTER_EVENTS.OVERLAY_DESELECT, handler);
+    };
+  }, [scene, setEditing]);
 
   return (
     <ContentContainer>
-      <Header label={label} />
+      <Header />
       <Content>
         <Field />
+        <Id />
+        {type === DETECTION && overlay && <Position />}
         {field && <AnnotationSchema />}
       </Content>
       <Footer />

@@ -15,9 +15,6 @@ import type { DrawStyle, Point, RawLookerLabel } from "../types";
  */
 export abstract class BaseOverlay implements InteractionHandler {
   readonly id: string;
-  readonly sampleId: string;
-  readonly label: RawLookerLabel;
-  readonly field?: string;
   readonly cursor?: string;
 
   protected isHoveredState = false;
@@ -26,23 +23,19 @@ export abstract class BaseOverlay implements InteractionHandler {
    *
    * See also `markDirty` and `markClean`.
    */
-  protected isDirty: boolean = false;
+  protected isDirty = false;
 
   protected renderer?: Renderer2D;
   protected eventBus?: EventBus;
   protected resourceLoader?: ResourceLoader;
   protected currentStyle?: DrawStyle;
+  protected field: string;
+  protected label: RawLookerLabel;
 
-  constructor(
-    id: string,
-    sampleId: string,
-    label: RawLookerLabel = null,
-    field?: string
-  ) {
+  constructor(id: string, field: string, label: RawLookerLabel) {
     this.id = id;
-    this.sampleId = sampleId;
-    this.label = label;
     this.field = field;
+    this.label = label;
     this.cursor = "default";
   }
 
@@ -116,6 +109,14 @@ export abstract class BaseOverlay implements InteractionHandler {
    */
   getIsDirty(): boolean {
     return this.isDirty;
+  }
+
+  /**
+   * Gets the overlay label.
+   * @returns The overlay's raw label.
+   */
+  getLabel() {
+    return this.label;
   }
 
   /**
@@ -209,10 +210,10 @@ export abstract class BaseOverlay implements InteractionHandler {
    */
   getMouseDistance(point: Point): number {
     // Default implementation - subclasses should override for more accurate distance calculation
-    if (!this.renderer) return Infinity;
+    if (!this.renderer) return Number.POSITIVE_INFINITY;
 
     const bounds = this.renderer.getBounds(this.containerId);
-    if (!bounds) return Infinity;
+    if (!bounds) return Number.POSITIVE_INFINITY;
 
     const centerX = bounds.x + bounds.width / 2;
     const centerY = bounds.y + bounds.height / 2;
@@ -315,4 +316,14 @@ export abstract class BaseOverlay implements InteractionHandler {
    * @returns True if the event was handled.
    */
   onDoubleClick?(point: Point, event: PointerEvent): boolean;
+
+  updateField(field: string) {
+    this.field = field;
+    this.markDirty();
+  }
+
+  updateLabel(label: RawLookerLabel) {
+    this.label = label;
+    this.markDirty();
+  }
 }

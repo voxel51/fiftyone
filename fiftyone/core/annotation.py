@@ -121,8 +121,8 @@ def compute_annotation_schema(collection, field_name, scan_samples=True):
     if isinstance(field, fof.StringField):
         try:
             return {
-                "default": None,
-                "type": "checkbox" if is_list else "select",
+                "default": [] if is_list else None,
+                "type": "tags" if is_list else "select",
                 "values": (
                     collection.distinct(field_name) if scan_samples else []
                 ),

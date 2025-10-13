@@ -1,5 +1,4 @@
 import { Button } from "@fiftyone/components";
-import { LIGHTER_EVENTS, useLighter } from "@fiftyone/lighter";
 import * as fos from "@fiftyone/state";
 import { DeleteOutline } from "@mui/icons-material";
 import { useAtomValue, useSetAtom } from "jotai";
@@ -7,38 +6,38 @@ import React from "react";
 import { useRecoilValue } from "recoil";
 import { RoundButton } from "../Actions";
 import { Row } from "./Components";
-import { current, currentField, editing } from "./state";
+import { currentField, deleteValue, editing, isNew, saveValue } from "./state";
 
 const SaveFooter = () => {
-  const setEditingAtom = useSetAtom(editing);
-  const { scene } = useLighter();
-  const currentSampleId = useRecoilValue(fos.currentSampleId);
-  const currentLabel = useAtomValue(current);
+  const saveCurrent = useSetAtom(saveValue);
+  const deleteCurrent = useSetAtom(deleteValue);
+  const sampleId = useRecoilValue(fos.currentSampleId);
+  const datasetId = fos.useAssertedRecoilValue(fos.datasetId);
+
+  const showCancel = useAtomValue(isNew);
 
   return (
     <>
-      <Button onClick={() => setEditingAtom(null)}>Save</Button>
-      <RoundButton
+      <Button
         onClick={() => {
-          setEditingAtom(null);
-          if (!currentLabel?.path) return;
-
-          if (!scene) return;
-
-          scene.removeOverlay(currentLabel.data.id);
-
-          scene.dispatchSafely({
-            type: LIGHTER_EVENTS.DO_REMOVE_OVERLAY,
-            detail: {
-              id: currentLabel.data.id,
-              sampleId: currentSampleId,
-              path: currentLabel.path,
-            },
-          });
+          saveCurrent({ datasetId, sampleId });
         }}
       >
-        {currentLabel && <DeleteOutline />}
-        Delete
+        Save
+      </Button>
+      <RoundButton
+        onClick={() => {
+          deleteCurrent({ datasetId, sampleId });
+        }}
+      >
+        {showCancel ? (
+          "Cancel"
+        ) : (
+          <>
+            <DeleteOutline />
+            Delete
+          </>
+        )}
       </RoundButton>
     </>
   );

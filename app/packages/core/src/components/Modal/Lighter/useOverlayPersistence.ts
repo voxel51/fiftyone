@@ -2,15 +2,10 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import {
-  addLabel,
-  removeLabel,
-} from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useLabels";
+import type { OverlayEventDetail, Scene2D } from "@fiftyone/lighter";
+import { LIGHTER_EVENTS } from "@fiftyone/lighter";
 import { useOperatorExecutor } from "@fiftyone/operators";
-import { DETECTION } from "@fiftyone/utilities";
-import { useSetAtom } from "jotai";
 import { useCallback, useEffect } from "react";
-import { LIGHTER_EVENTS, OverlayEventDetail, Scene2D } from "@fiftyone/lighter";
 
 /**
  * Hook that handles overlay persistence events.
@@ -18,9 +13,6 @@ import { LIGHTER_EVENTS, OverlayEventDetail, Scene2D } from "@fiftyone/lighter";
 export const useOverlayPersistence = (scene: Scene2D | null) => {
   const addBoundingBox = useOperatorExecutor("add_bounding_box");
   const removeBoundingBox = useOperatorExecutor("remove_bounding_box");
-
-  const addLabelEffect = useSetAtom(addLabel);
-  const removeLabelEffect = useSetAtom(removeLabel);
 
   const handlePersistOverlay = useCallback(
     (
@@ -45,14 +37,6 @@ export const useOverlayPersistence = (scene: Scene2D | null) => {
             label: overlay.label ?? "",
             bounding_box: bbox,
           });
-
-          addLabelEffect({
-            id: overlay.id,
-            data: overlay,
-            path: overlay.field,
-            expandedPath: overlay.field + ".detections",
-            type: DETECTION,
-          });
         } catch (error) {
           console.error("Error adding bounding box", error);
         }
@@ -64,7 +48,7 @@ export const useOverlayPersistence = (scene: Scene2D | null) => {
         );
       }
     },
-    [addBoundingBox, addLabelEffect]
+    [addBoundingBox]
   );
 
   const handleRemoveOverlay = useCallback(
@@ -81,13 +65,11 @@ export const useOverlayPersistence = (scene: Scene2D | null) => {
           path,
           sample_id: sampleId,
         });
-
-        removeLabelEffect(id);
       } catch (error) {
         console.error("Error removing bounding box", error);
       }
     },
-    [removeBoundingBox, removeLabelEffect]
+    [removeBoundingBox]
   );
 
   useEffect(() => {
@@ -102,5 +84,5 @@ export const useOverlayPersistence = (scene: Scene2D | null) => {
       scene.off(LIGHTER_EVENTS.DO_PERSIST_OVERLAY, handlePersistOverlay);
       scene.off(LIGHTER_EVENTS.DO_REMOVE_OVERLAY, handleRemoveOverlay);
     };
-  }, [scene]);
+  }, [handlePersistOverlay, handleRemoveOverlay, scene]);
 };

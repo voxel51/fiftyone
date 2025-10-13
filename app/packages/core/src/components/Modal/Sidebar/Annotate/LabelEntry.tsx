@@ -2,7 +2,7 @@ import { LIGHTER_EVENTS, useLighter } from "@fiftyone/lighter";
 import type { AnnotationLabel } from "@fiftyone/state";
 import { animated } from "@react-spring/web";
 import type { PrimitiveAtom } from "jotai";
-import { useAtomValue, useSetAtom } from "jotai";
+import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import { Column } from "./Components";
@@ -60,7 +60,7 @@ const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
   const hoveringLabelIdsList = useAtomValue(hoveringLabelIds);
   const { scene } = useLighter();
 
-  const isHovering = hoveringLabelIdsList.includes(label.data.id);
+  const isHovering = hoveringLabelIdsList.includes(label.overlay.id);
 
   useEffect(() => {
     if (!scene) return;
@@ -68,21 +68,23 @@ const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
     if (isHoveringThisRow) {
       scene.dispatchSafely({
         type: LIGHTER_EVENTS.DO_OVERLAY_HOVER,
-        detail: { id: label.data.id, tooltip: false },
+        detail: { id: label.overlay.id, tooltip: false },
       });
     } else {
       scene.dispatchSafely({
         type: LIGHTER_EVENTS.DO_OVERLAY_UNHOVER,
-        detail: { id: label.data.id },
+        detail: { id: label.overlay.id },
       });
     }
-  }, [scene, isHoveringThisRow, label.data.id]);
+  }, [scene, isHoveringThisRow, label.overlay.id]);
 
-  const color = useColor(label.path);
+  const color = useColor(label.overlay);
   return (
     <Container
       onClick={() => {
         setEditing(atom);
+        const store = getDefaultStore();
+        store.get(atom).overlay.setSelected(true);
       }}
       className={isHovering ? "hovering" : ""}
       onMouseEnter={() => setIsHoveringThisRow(true)}
@@ -92,7 +94,9 @@ const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
       <Header>
         <Column>
           <Icon fill={color} />
-          <div>{label.data.label}</div>
+          <div style={!label.data.label ? { color } : {}}>
+            {label.data.label ?? "None"}
+          </div>
         </Column>
 
         {/*

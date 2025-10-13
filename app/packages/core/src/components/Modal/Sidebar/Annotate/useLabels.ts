@@ -7,27 +7,31 @@ import { activeFields, field, modalSample, pathFilter } from "@fiftyone/state";
 import { atom, useAtomValue, useSetAtom } from "jotai";
 import { splitAtom } from "jotai/utils";
 import { get } from "lodash";
-import { useCallback } from "react";
+import { useEffect } from "react";
 import {
   selector,
   useRecoilCallback,
   useRecoilValue,
   useRecoilValueLoadable,
 } from "recoil";
+import type { LabelType } from "./Edit/state";
 import type { AnnotationSchemas } from "./state";
 import { schemas } from "./state";
+import { useAddAnnotationLabel } from "./useAddAnnotationLabel";
 import useFocus from "./useFocus";
 import useHover from "./useHover";
 
 const handleSample = async ({
+  addLabel,
   filter,
   getFieldType,
   paths,
   sample,
   schemas,
 }: {
+  addLabel: ReturnType<typeof useAddAnnotationLabel>;
   filter: PathFilterSelector;
-  getFieldType: (path: string) => Promise<string>;
+  getFieldType: (path: string) => Promise<LabelType>;
   paths: { [key: string]: string };
   sample: ModalSample;
   schemas: AnnotationSchemas;
@@ -45,7 +49,8 @@ const handleSample = async ({
     const array = Array.isArray(result) ? result : result ? [result] : [];
 
     for (const data of array) {
-      labels.push({ data, path, id: data._id, type });
+      const label = addLabel(path, type, data);
+      labels.push(label);
     }
   }
 
@@ -53,6 +58,18 @@ const handleSample = async ({
     (a.data.label ?? "").localeCompare(b.data?.label ?? "")
   );
 };
+
+export const addLabel = atom(undefined, (get, set, label: AnnotationLabel) => {
+  const list = get(labels);
+  const newList = [...list, label];
+
+  set(
+    labels,
+    newList.sort((a, b) =>
+      (a.data.label ?? "").localeCompare(b.data?.label ?? "")
+    )
+  );
+});
 
 export const labels = atom<Array<AnnotationLabel>>([]);
 export const labelAtoms = splitAtom(labels, ({ data: { _id } }) => _id);
@@ -71,16 +88,6 @@ export const labelsByPath = atom((get) => {
   }
 
   return map;
-});
-export const addLabel = atom(null, (get, set, label: AnnotationLabel) => {
-  set(labels, [...get(labels), label]);
-});
-
-export const removeLabel = atom(null, (get, set, id: string) => {
-  set(
-    labels,
-    get(labels).filter((label) => label.data._id !== id)
-  );
 });
 
 export const labelMap = atom((get) => {
@@ -106,6 +113,7 @@ export default function useLabels() {
   const setLabels = useSetAtom(labels);
   const setLoading = useSetAtom(loading);
   const schemaMap = useAtomValue(schemas);
+  const addLabel = useAddAnnotationLabel();
   const getFieldType = useRecoilCallback(
     ({ snapshot }) =>
       async (path: string) => {
@@ -119,26 +127,29 @@ export default function useLabels() {
           throw new Error("no type");
         }
 
-        return type;
-      }
+        return type as LabelType;
+      },
+    []
   );
 
-  const handleSampleData = useCallback(() => {
+  const handleSampleData = useEffect(() => {
     if (modalSampleData.state !== "loading" && schemaMap) {
       handleSample({
+        addLabel,
         paths,
         filter,
         sample: modalSampleData.contents,
         getFieldType,
         schemas: schemaMap,
-      }).then((r) => {
+      }).then((result) => {
         setLoading(false);
-        setLabels(r);
+        setLabels(result);
       });
     } else {
       setLoading(true);
     }
   }, [
+    addLabel,
     filter,
     getFieldType,
     modalSampleData,

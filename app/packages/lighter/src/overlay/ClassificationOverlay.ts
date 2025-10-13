@@ -8,43 +8,22 @@ import {
   SELECTED_DASH_LENGTH,
 } from "../constants";
 import type { Renderer2D } from "../renderer/Renderer2D";
-import type { Selectable } from "../selection/Selectable";
-import type { Hoverable, Point, RawLookerLabel } from "../types";
-import { getSimpleStrokeStyles } from "../utils/colorMapping";
 import { BaseOverlay } from "./BaseOverlay";
-
-export type ClassificationLabel = RawLookerLabel & {
-  label: string;
-};
 
 /**
  * Options for creating a classification overlay.
  */
 export interface ClassificationOptions {
-  sampleId: string;
-  label: ClassificationLabel;
-  confidence: number;
-  position: Point;
-  showConfidence?: boolean;
-  selectable?: boolean;
-  field?: string;
+  id: string;
+  field: string;
 }
 
 /**
  * Classification overlay implementation with selection support.
  */
-export class ClassificationOverlay
-  extends BaseOverlay
-  implements Selectable, Hoverable
-{
-  private isSelectedState = false;
-
-  constructor(private options: ClassificationOptions) {
-    const id =
-      options.label["_id"] ??
-      options.label.id ??
-      `cls_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-    super(id, options.sampleId, options.label, options.field);
+export class ClassificationOverlay extends BaseOverlay {
+  constructor(options: ClassificationOptions) {
+    super(options.id, options.field);
   }
 
   getOverlayType(): string {
@@ -56,6 +35,7 @@ export class ClassificationOverlay
   }
 
   protected renderImpl(renderer: Renderer2D): void {
+    return;
     // Dispose of old elements before creating new ones
     renderer.dispose(this.containerId);
 
@@ -130,95 +110,5 @@ export class ClassificationOverlay
 
   getSelectionPriority(): number {
     return LABEL_ARCHETYPE_PRIORITY.CLASSIFICATION;
-  }
-
-  /**
-   * Gets the classification label.
-   * @returns The label text.
-   */
-  getLabel(): string {
-    return this.options.label.label;
-  }
-
-  /**
-   * Gets the confidence score.
-   * @returns The confidence score.
-   */
-  getConfidence(): number {
-    return this.options.confidence;
-  }
-
-  /**
-   * Gets the position.
-   * @returns The position where the classification is displayed.
-   */
-  getPosition(): Point {
-    return this.options.position;
-  }
-
-  /**
-   * Sets the position.
-   * @param position - The new position for the classification.
-   */
-  setPosition(position: Point): void {
-    this.options.position = position;
-    this.markDirty();
-  }
-
-  /**
-   * Gets the bounds of the classification text.
-   * @returns The bounding rectangle of the classification.
-   */
-  getBounds(): { x: number; y: number; width: number; height: number } {
-    // For classifications, we'll estimate bounds based on text size
-    const textLength = this.options.label.label.length;
-    const estimatedWidth = Math.max(textLength * 8, 50); // Rough estimate
-    const estimatedHeight = 20; // Standard text height
-
-    return {
-      x: this.options.position.x,
-      y: this.options.position.y,
-      width: estimatedWidth,
-      height: estimatedHeight,
-    };
-  }
-
-  /**
-   * Sets the bounds of the classification.
-   * For classifications, this only updates the position (x, y).
-   * @param bounds - The new bounds.
-   */
-  setBounds(bounds: {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  }): void {
-    this.options.position = { x: bounds.x, y: bounds.y };
-    this.markDirty();
-  }
-
-  /**
-   * Checks if confidence should be shown.
-   * @returns True if confidence should be displayed.
-   */
-  shouldShowConfidence(): boolean {
-    return this.options.showConfidence ?? false;
-  }
-
-  getTooltipInfo(): {
-    color: string;
-    field: string;
-    label: any;
-    type: string;
-    coordinates?: Point;
-  } | null {
-    return {
-      color: "#4ecdc4", // This should come from the overlay's style
-      field: this.field || "unknown",
-      label: this.label,
-      type: "Classification",
-      coordinates: this.options.position,
-    };
   }
 }

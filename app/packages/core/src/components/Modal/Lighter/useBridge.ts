@@ -2,12 +2,9 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import { Scene2D } from "@fiftyone/lighter";
-import { colorScheme, colorSeed } from "@fiftyone/state";
+import type { Scene2D } from "@fiftyone/lighter";
 import { useEffect } from "react";
-import { useRecoilValue } from "recoil";
-import { useOverlayPersistence } from "./useOverlayPersistence";
-import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
+import useColorMappingContext from "./useColorMappingContext";
 
 /**
  * Hook that bridges FiftyOne state management system with Lighter.
@@ -17,11 +14,9 @@ import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
  * 2. We trigger certain events into "FiftyOne state" world based on user interactions in Lighter.
  */
 export const useBridge = (scene: Scene2D | null) => {
-  const currentColorScheme = useRecoilValue(colorScheme);
-  const currentColorSeed = useRecoilValue(colorSeed);
-
-  useLighterTooltipEventHandler(scene);
-  useOverlayPersistence(scene);
+  // useLighterTooltipEventHandler(scene);
+  // useOverlayPersistence(scene);
+  const context = useColorMappingContext();
 
   // Effect to update scene with color scheme changes
   useEffect(() => {
@@ -30,14 +25,11 @@ export const useBridge = (scene: Scene2D | null) => {
     }
 
     // Update the scene's color mapping context
-    scene.updateColorMappingContext({
-      colorScheme: currentColorScheme,
-      seed: currentColorSeed,
-    });
+    scene.updateColorMappingContext(context);
 
     // Mark all overlays as dirty to trigger re-rendering with new colors
-    scene.getAllOverlays().forEach((overlay) => {
+    for (const overlay of scene.getAllOverlays()) {
       overlay.markDirty();
-    });
-  }, [scene, currentColorScheme, currentColorSeed]);
+    }
+  }, [scene, context]);
 };

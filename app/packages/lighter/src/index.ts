@@ -42,7 +42,6 @@ export type {
 // Interaction exports
 export { InteractionManager } from "./interaction/InteractionManager";
 export type { InteractionHandler } from "./interaction/InteractionManager";
-export { InteractiveDetectionHandler } from "./interaction/InteractiveDetectionHandler";
 
 // Selection exports
 export type { Selectable } from "./selection/Selectable";
@@ -54,6 +53,7 @@ export type { Command } from "./commands/Command";
 export { MoveOverlayCommand } from "./commands/MoveOverlayCommand";
 export type { Movable } from "./commands/MoveOverlayCommand";
 export { UndoRedoManager } from "./commands/UndoRedoManager";
+export { UpdateLabelCommand } from "./commands/UpdateLabelCommand";
 
 // Plugin exports
 // TODO: PluginRegistry is currently unused - this needs to be hooked with fiftyone plugins
@@ -77,3 +77,5 @@ export type {
   TextOptions,
   TransformMatrix,
 } from "./types";
+
+export { getOverlayColor } from "./utils/colorMapping";

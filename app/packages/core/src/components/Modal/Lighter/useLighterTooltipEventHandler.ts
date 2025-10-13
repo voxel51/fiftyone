@@ -2,11 +2,12 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
+import type { Scene2D } from "@fiftyone/lighter";
+import { LIGHTER_EVENTS } from "@fiftyone/lighter";
+import type { Hoverable } from "@fiftyone/lighter/src/types";
 import * as fos from "@fiftyone/state";
 import { useEffect } from "react";
 import { useRecoilCallback } from "recoil";
-import { LIGHTER_EVENTS, Scene2D } from "@fiftyone/lighter";
-import type { Hoverable } from "@fiftyone/lighter/src/types";
 
 /**
  * Hook that handles tooltip events for lighter overlays.

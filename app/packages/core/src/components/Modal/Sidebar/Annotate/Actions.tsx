@@ -1,11 +1,12 @@
 import { useLighter } from "@fiftyone/lighter";
-import { CLASSIFICATION, DETECTION } from "@fiftyone/utilities";
-import { atom, useAtomValue } from "jotai";
+import { is3DDataset } from "@fiftyone/state";
+import { CLASSIFICATION, DETECTION, POLYLINE } from "@fiftyone/utilities";
+import { PolylineOutlined } from "@mui/icons-material";
 import React from "react";
+import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ItemLeft, ItemRight } from "./Components";
 import useCreate from "./Edit/useCreate";
-import { classificationFields, detectionFields } from "./state";
 import useShowModal from "./useShowModal";
 
 const ActionsDiv = styled.div`
@@ -127,16 +128,10 @@ const Move = () => {
   );
 };
 
-const hasClassifications = atom((get) => get(classificationFields));
-
 const Classification = () => {
   const create = useCreate(CLASSIFICATION);
-  const enabled = useAtomValue(hasClassifications);
   return (
-    <Square
-      className={enabled ? "" : "disabled"}
-      onClick={enabled ? () => create() : undefined}
-    >
+    <Square onClick={create}>
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="19"
@@ -154,16 +149,10 @@ const Classification = () => {
   );
 };
 
-const hasDetections = atom((get) => get(detectionFields));
-
 const Detection = () => {
   const create = useCreate(DETECTION);
-  const enabled = useAtomValue(hasDetections);
   return (
-    <Square
-      onClick={enabled ? () => create() : undefined}
-      className={enabled ? "" : "disabled"}
-    >
+    <Square onClick={create}>
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="19"
@@ -177,6 +166,15 @@ const Detection = () => {
           fill="#999999"
         />
       </svg>
+    </Square>
+  );
+};
+
+const Polyline = () => {
+  const create = useCreate(POLYLINE);
+  return (
+    <Square onClick={create}>
+      <PolylineOutlined />
     </Square>
   );
 };
@@ -231,6 +229,7 @@ const Schema = () => {
 };
 
 const Actions = () => {
+  const is3D = useRecoilValue(is3DDataset);
   return (
     <>
       <ActionsDiv>
@@ -238,7 +237,7 @@ const Actions = () => {
           <Arrow />
           <Move />
           <Classification />
-          <Detection />
+          {is3D ? <Polyline /> : <Detection />}
         </ItemLeft>
 
         <ItemRight>

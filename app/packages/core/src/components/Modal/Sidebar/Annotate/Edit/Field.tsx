@@ -3,11 +3,12 @@ import React, { useMemo } from "react";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import AddSchema from "./AddSchema";
 import {
-  current,
+  currentDisabledFields,
   currentField,
   currentFields,
   currentType,
-  disabledFields,
+  editing,
+  isNew,
 } from "./state";
 
 const createSchema = (choices: string[], disabled: Set<string>) => ({
@@ -16,12 +17,12 @@ const createSchema = (choices: string[], disabled: Set<string>) => ({
     component: "ObjectView",
   },
   properties: {
-    Field: {
+    field: {
       type: "string",
       view: {
         name: "DropdownView",
-        label: "Label field",
-        placeholder: "Select a label field",
+        label: "field",
+        placeholder: "Select a field",
         component: "DropdownView",
         choices: choices.map((choice) => ({
           name: "Choice",
@@ -36,14 +37,18 @@ const createSchema = (choices: string[], disabled: Set<string>) => ({
 
 const Field = () => {
   const fields = useAtomValue(currentFields);
-  const disabled = useAtomValue(disabledFields);
+  const disabled = useAtomValue(currentDisabledFields);
   const [currentFieldValue, setCurrentField] = useAtom(currentField);
   const schema = useMemo(
     () => createSchema(fields, disabled),
     [disabled, fields]
   );
   const type = useAtomValue(currentType);
-  const label = useAtomValue(current);
+  const state = useAtomValue(editing);
+
+  if (!useAtomValue(isNew)) {
+    return null;
+  }
 
   return (
     <>
@@ -51,16 +56,14 @@ const Field = () => {
         <div>
           <SchemaIOComponent
             schema={schema}
-            data={{ Field: currentFieldValue }}
-            onChange={(...a) => {
-              console.log(a);
+            data={{ field: currentFieldValue }}
+            onChange={({ field }) => {
+              setCurrentField(field);
             }}
           />
         </div>
       )}
-      {!label?.path && fields.length === disabled.size && (
-        <AddSchema type={type} />
-      )}
+      {typeof state === "string" && <AddSchema type={type} />}
     </>
   );
 };

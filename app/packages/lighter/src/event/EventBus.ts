@@ -2,6 +2,7 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
+import { Command } from "../commands/Command";
 import { BaseOverlay } from "../overlay/BaseOverlay";
 import type { BoundingBoxPersistence, Point, Rect } from "../types";
 
@@ -134,7 +135,7 @@ export type OverlayEvent =
 export type CommandEvent =
   | {
       type: typeof LIGHTER_EVENTS.COMMAND_EXECUTED;
-      detail: { commandId: string; isUndoable: boolean };
+      detail: { commandId: string; isUndoable: boolean; command: Command };
     }
   | { type: typeof LIGHTER_EVENTS.UNDO; detail: { commandId: string } }
   | { type: typeof LIGHTER_EVENTS.REDO; detail: { commandId: string } };

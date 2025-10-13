@@ -1,5 +1,10 @@
+import type {
+  BoundingBoxOverlay,
+  ClassificationOverlay,
+} from "@fiftyone/lighter";
 import { ClassificationLabel } from "@fiftyone/looker/src/overlays/classifications";
 import { DetectionLabel } from "@fiftyone/looker/src/overlays/detection";
+import { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
 import type {
   frameFieldsFragment$key,
   sampleFieldsFragment$key,
@@ -107,22 +112,32 @@ export interface PathEntry {
 }
 
 interface Label {
-  path?: string;
+  path: string;
+  isNew?: boolean;
 }
 
 interface ClassificationAnnotationLabel extends Label {
   data: ClassificationLabel;
+  overlay: ClassificationOverlay;
   type: "Classification";
 }
 
 interface DetectionAnnotationLabel extends Label {
   data: DetectionLabel;
+  overlay: BoundingBoxOverlay;
   type: "Detection";
+}
+
+interface PolylineAnnotationLabel extends Label {
+  data: PolylineLabel;
+  overlay: ClassificationOverlay;
+  type: "Polyline";
 }
 
 export type AnnotationLabel =
   | ClassificationAnnotationLabel
-  | DetectionAnnotationLabel;
+  | DetectionAnnotationLabel
+  | PolylineAnnotationLabel;
 
 export interface LabelEntry {
   kind: EntryKind.LABEL;

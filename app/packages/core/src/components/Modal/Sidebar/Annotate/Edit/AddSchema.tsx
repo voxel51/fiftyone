@@ -1,11 +1,17 @@
 import { MuiButton } from "@fiftyone/components";
-import { InfoOutlined, LabelOutlined } from "@mui/icons-material";
+import {
+  LabelOutlined as Classification,
+  CropSquare as Detection,
+  InfoOutlined,
+  Polyline,
+} from "@mui/icons-material";
 import { Alert, Typography } from "@mui/material";
 import { useSetAtom } from "jotai";
 import React from "react";
 import styled from "styled-components";
 import { activeSchemaTab } from "../state";
 import useShowModal from "../useShowModal";
+import { editing } from "./state";
 
 const Container = styled.div`
   flex: 1;
@@ -18,13 +24,21 @@ const Container = styled.div`
   height: 100%;
 `;
 
+const ICONS = {
+  Classification,
+  Detection,
+  Polyline,
+};
+
 const AddSchema = ({ type }: { type: string }) => {
   const canManage = true;
   const showModal = useShowModal();
   const setActiveTab = useSetAtom(activeSchemaTab);
+  const Icon = ICONS[type];
+  const setEditing = useSetAtom(editing);
   return (
     <Container>
-      <LabelOutlined
+      <Icon
         sx={{
           fontSize: 64,
           color: "#FF9950",
@@ -44,6 +58,7 @@ const AddSchema = ({ type }: { type: string }) => {
         disabled={!canManage}
         onClick={() => {
           setActiveTab("other");
+          setEditing(null);
           showModal();
         }}
       >
