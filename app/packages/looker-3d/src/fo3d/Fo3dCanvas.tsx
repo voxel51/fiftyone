@@ -5,7 +5,6 @@ import {
   Bvh,
   CameraControls,
   OrbitControls,
-  OrthographicCamera,
   PerspectiveCamera as PerspectiveCameraDrei,
 } from "@react-three/drei";
 import { useAtomValue } from "jotai";
@@ -19,8 +18,6 @@ import { ThreeDLabels } from "../labels";
 import { FoSceneComponent } from "./FoScene";
 import { Gizmos } from "./Gizmos";
 import { SceneControls } from "./scene-controls/SceneControls";
-
-type ProjectionType = "Perspective" | "Orthographic";
 
 interface Fo3dSceneContentProps {
   /**
@@ -80,15 +77,9 @@ interface Fo3dSceneContentProps {
    */
   assetsGroupRef: React.RefObject<THREE.Group>;
   /**
-   * Camera projection type
-   */
-  projection?: ProjectionType;
-  /**
    * Reference to camera
    */
-  cameraRef?: React.RefObject<
-    THREE.PerspectiveCamera | THREE.OrthographicCamera
-  >;
+  cameraRef?: React.RefObject<THREE.PerspectiveCamera>;
   /**
    * Whether or not to render gizmo helper.
    */
@@ -112,7 +103,6 @@ export const Fo3dSceneContent = ({
   pointCloudSettings,
   assetsGroupRef,
   cameraRef,
-  projection = "Perspective",
 }: Fo3dSceneContentProps) => {
   const mode = useAtomValue(fos.modalMode);
 
@@ -122,32 +112,19 @@ export const Fo3dSceneContent = ({
       <AdaptiveDpr pixelated />
       <AdaptiveEvents />
 
-      {projection === "Perspective" ? (
-        <PerspectiveCameraDrei
-          makeDefault
-          ref={cameraRef as React.MutableRefObject<THREE.PerspectiveCamera>}
-          position={cameraPosition}
-          up={upVector ?? [0, 1, 0]}
-          fov={foScene?.cameraProps.fov ?? fov}
-          near={foScene?.cameraProps.near ?? near}
-          far={foScene?.cameraProps.far ?? far}
-          aspect={foScene?.cameraProps.aspect ?? aspect}
-          onUpdate={(cam) => cam.updateProjectionMatrix()}
-        />
-      ) : (
-        <OrthographicCamera
-          makeDefault
-          ref={cameraRef as React.MutableRefObject<THREE.OrthographicCamera>}
-          position={cameraPosition}
-          up={upVector ?? [0, 1, 0]}
-          zoom={100}
-          near={foScene?.cameraProps.near ?? near}
-          far={foScene?.cameraProps.far ?? far}
-          onUpdate={(cam) => cam.updateProjectionMatrix()}
-        />
-      )}
+      <PerspectiveCameraDrei
+        makeDefault
+        ref={cameraRef as React.MutableRefObject<THREE.PerspectiveCamera>}
+        position={cameraPosition}
+        up={upVector ?? [0, 1, 0]}
+        fov={foScene?.cameraProps.fov ?? fov}
+        near={foScene?.cameraProps.near ?? near}
+        far={foScene?.cameraProps.far ?? far}
+        aspect={foScene?.cameraProps.aspect ?? aspect}
+        onUpdate={(cam) => cam.updateProjectionMatrix()}
+      />
 
-      {!autoRotate && projection === "Perspective" ? (
+      {!autoRotate ? (
         <CameraControls
           smoothTime={0.1}
           dollySpeed={0.1}

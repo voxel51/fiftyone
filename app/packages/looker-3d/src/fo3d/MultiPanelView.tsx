@@ -124,17 +124,14 @@ const calculateCameraPositionForSidePanel = (
 };
 
 type ViewType = "Top" | "Bottom" | "Left" | "Right" | "Front" | "Back";
-type ProjectionType = "Perspective" | "Orthographic";
 
 interface MultiPanelViewState {
-  projection: ProjectionType;
   top: ViewType;
   middle: ViewType;
   bottom: ViewType;
 }
 
 const defaultState: MultiPanelViewState = {
-  projection: "Perspective",
   top: "Top",
   middle: "Front",
   bottom: "Right",
@@ -142,9 +139,7 @@ const defaultState: MultiPanelViewState = {
 
 interface MultiPanelViewProps {
   cameraControlsRef: React.MutableRefObject<CameraControlsImpl>;
-  cameraRef: React.MutableRefObject<
-    THREE.PerspectiveCamera | THREE.OrthographicCamera
-  >;
+  cameraRef: React.MutableRefObject<THREE.PerspectiveCamera>;
   defaultCameraPosition: Vector3;
   foScene: FoScene;
   sample: any;
@@ -251,13 +246,6 @@ export const MultiPanelView = ({
     [setPanelState]
   );
 
-  const setProjection = useCallback(
-    (projection: ProjectionType) => {
-      setPanelState((prev) => ({ ...prev, projection }));
-    },
-    [setPanelState]
-  );
-
   return (
     <main
       ref={containerRef}
@@ -297,8 +285,6 @@ export const MultiPanelView = ({
       </Canvas>
 
       <MainPanel
-        projection={panelState.projection}
-        setProjection={setProjection}
         cameraRef={cameraRef}
         cameraControlsRef={cameraControlsRef}
         defaultCameraPosition={defaultCameraPosition}
@@ -358,8 +344,6 @@ export const MultiPanelView = ({
 };
 
 const MainPanel = ({
-  projection,
-  setProjection,
   cameraRef,
   cameraControlsRef,
   defaultCameraPosition,
@@ -371,11 +355,7 @@ const MainPanel = ({
   pointCloudSettings,
   assetsGroupRef,
 }: {
-  projection: ProjectionType;
-  setProjection: (projection: ProjectionType) => void;
-  cameraRef: React.RefObject<
-    THREE.PerspectiveCamera | THREE.OrthographicCamera
-  >;
+  cameraRef: React.RefObject<THREE.PerspectiveCamera>;
   cameraControlsRef: React.RefObject<CameraControls>;
   defaultCameraPosition: THREE.Vector3;
   autoRotate: boolean;
@@ -386,7 +366,6 @@ const MainPanel = ({
   pointCloudSettings: any;
   assetsGroupRef: React.RefObject<THREE.Group>;
 }) => {
-  const theme = useTheme();
   return (
     <div
       id="main-panel"
@@ -417,40 +396,9 @@ const MainPanel = ({
           sample={sample}
           pointCloudSettings={pointCloudSettings}
           assetsGroupRef={assetsGroupRef}
-          projection={projection}
           cameraRef={cameraRef}
         />
       </View>
-
-      <div
-        style={{
-          position: "absolute",
-          top: "10px",
-          left: "10px",
-          zIndex: 1000,
-        }}
-      >
-        <Select
-          value={projection}
-          onChange={(e) => setProjection(e.target.value as ProjectionType)}
-          size="small"
-          sx={{
-            backgroundColor: (theme as any).background.level3,
-            "& .MuiSelect-select": {
-              padding: "8px 12px",
-              fontSize: "14px",
-            },
-          }}
-          MenuProps={{
-            sx: {
-              zIndex: 1002,
-            },
-          }}
-        >
-          <MenuItem value="Perspective">Perspective</MenuItem>
-          <MenuItem value="Orthographic">Orthographic</MenuItem>
-        </Select>
-      </div>
     </div>
   );
 };
