@@ -5,6 +5,7 @@ FiftyOne Server sample endpoints.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 
 from starlette.endpoints import HTTPEndpoint
@@ -57,7 +58,7 @@ def get_sample(dataset_id: str, sample_id: str) -> fo.Sample:
 def handle_json_patch(target: Any, patch_list: List[dict]) -> Any:
     """Applies a list of JSON patch operations to a target object."""
     try:
-        patches = parse(*patch_list, transform_fn=transform_json)
+        patches = parse(patch_list, transform_fn=transform_json)
     except Exception as e:
         raise HTTPException(
             status_code=400,

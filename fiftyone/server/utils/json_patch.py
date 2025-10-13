@@ -15,10 +15,12 @@ from typing import (
     Callable,
     ClassVar,
     Generic,
+    Iterable,
     Optional,
     Protocol,
     TypeVar,
     Union,
+    overload,
 )
 
 import jsonpointer
@@ -33,28 +35,22 @@ class Object(Protocol[K, V]):
     """Protocol for any object supporting __delitem__, __getattr__, and
     __setattr__."""
 
-    def __delattr__(self, name: K) -> None:
-        ...
+    def __delattr__(self, name: K) -> None: ...
 
-    def __getattr__(self, name: K) -> V:
-        ...
+    def __getattr__(self, name: K) -> V: ...
 
-    def __setattr__(self, name: K, value: V) -> None:
-        ...
+    def __setattr__(self, name: K, value: V) -> None: ...
 
 
 class Subscriptable(Protocol[K, V]):
     """Protocol for any object supporting __delitem__, __getitem__, and
     __setitem__."""
 
-    def __delitem__(self, key: K) -> V:
-        ...
+    def __delitem__(self, key: K) -> V: ...
 
-    def __getitem__(self, key: K) -> V:
-        ...
+    def __getitem__(self, key: K) -> V: ...
 
-    def __setitem__(self, key: K, value: V) -> None:
-        ...
+    def __setitem__(self, key: K, value: V) -> None: ...
 
 
 class Operation(str, enum.Enum):
@@ -88,7 +84,6 @@ def delvalue(
     if hasattr(src, "__getitem__"):
         try:
             del src[accessor]
-            return
         except Exception as err:
             if isinstance(err, TypeError):
                 if "list indices must be integers or slices" in str(err):
@@ -100,12 +95,17 @@ def delvalue(
                     if not 0 <= accessor < len(src):
                         raise IndexError("List index out of range") from err
 
-                    src.pop(int(accessor))
+                    src.pop(accessor)
 
                     return
 
+                raise err
+
             if isinstance(err, KeyError):
                 raise err
+        else:
+            if accessor not in src:
+                return
 
     try:
         delattr(src, accessor)
@@ -138,14 +138,14 @@ def getvalue(src: Union[Object[K, V], Subscriptable[K, V]], accessor: K) -> V:
         except TypeError as type_err:
             if "list indices must be integers or slices" in str(type_err):
                 try:
-                    accessor = int(accessor)
+                    idx = int(accessor)
                 except ValueError as val_err:
                     raise val_err
 
-                if not 0 <= accessor <= len(src):
+                if not 0 <= idx <= len(src):
                     raise IndexError("List index out of range") from err
 
-                return src[accessor]
+                return src[idx]
 
         except KeyError as key_err:
             raise key_err
@@ -169,30 +169,24 @@ def setvalue(
     if hasattr(src, "__getitem__"):
         try:
             src[accessor] = value
-            return
         except TypeError as type_err:
             if "list indices must be integers or slices" in str(type_err):
-                # TODO: move to add as it's special to JSON patch and convert
-                # to len(src)
-                if accessor == "-":
-                    src.append(value)
-                else:
-                    try:
-                        accessor = int(accessor)
-                    except ValueError as val_err:
-                        raise val_err
+                try:
+                    idx = int(accessor)
+                except ValueError as val_err:
+                    raise val_err
 
-                    if not 0 <= accessor <= len(src):
-                        raise IndexError(
-                            "List index out of range"
-                        ) from type_err
+                if not 0 <= idx <= len(src):
+                    raise IndexError("List index out of range") from type_err
 
-                    src.insert(accessor, value)
+                src.insert(idx, value)
 
                 return
 
             raise type_err
-
+        else:
+            if src[accessor] == value:
+                return
     try:
         setattr(src, accessor, value)
     except AttributeError as err:
@@ -244,12 +238,16 @@ class Patch(abc.ABC):
 
 
 @dataclasses.dataclass
-class _PatchWithValue(Patch, Generic[T], abc.ABC):
+class PatchWithValue(Patch, Generic[T], abc.ABC):
+    """A JSON Patch operation that requires a value."""
+
     value: T
 
 
 @dataclasses.dataclass
-class _PatchWithFrom(Patch, abc.ABC):
+class PatchWithFrom(Patch, abc.ABC):
+    """A JSON Patch operation that requires a from path."""
+
     from_: str
 
     @property
@@ -268,7 +266,7 @@ class _PatchWithFrom(Patch, abc.ABC):
 
 
 @dataclasses.dataclass
-class Add(_PatchWithValue[V]):
+class Add(PatchWithValue[V]):
     """The "add" operation performs one of the following functions,
      depending upon what the target location references:
 
@@ -313,8 +311,12 @@ class Add(_PatchWithValue[V]):
         except Exception as err:
             raise AttributeError(f"Cannot resolve path: {self.path}") from err
 
+        accessor = self.path_parts[-1]
         try:
-            setvalue(parent, self.path_parts[-1], self.value)
+            if isinstance(parent, list) and accessor == "-":
+                parent.append(self.value)
+            else:
+                setvalue(parent, accessor, self.value)
         except Exception as err:
             raise ValueError(
                 f"Unable to setvalue value with path: {self.path}"
@@ -324,7 +326,7 @@ class Add(_PatchWithValue[V]):
 
 
 @dataclasses.dataclass
-class Copy(_PatchWithFrom):
+class Copy(PatchWithFrom):
     """The "copy" operation copies the value at a specified location to the
     target location.
 
@@ -368,7 +370,7 @@ class Copy(_PatchWithFrom):
 
 
 @dataclasses.dataclass
-class Move(_PatchWithFrom):
+class Move(PatchWithFrom):
     """The "move" operation removes the value at a specified location and
     adds it to the target location.
 
@@ -462,7 +464,7 @@ class Remove(Patch):
 
 
 @dataclasses.dataclass
-class Replace(_PatchWithValue[V]):
+class Replace(PatchWithValue[V]):
     """The "replace" operation replaces the value at the target location
     with a new value.  The operation object MUST contain a "value" member
     whose content specifies the replacement value.
@@ -506,7 +508,7 @@ class Replace(_PatchWithValue[V]):
 
 
 @dataclasses.dataclass
-class Test(_PatchWithValue[V]):
+class Test(PatchWithValue[V]):
     """The "test" operation tests that a value at the target location is
     equal to a specified value.
 
@@ -553,7 +555,7 @@ class Test(_PatchWithValue[V]):
         return src
 
 
-_patch_map = {
+__PATCH_MAP = {
     Operation.ADD: Add,
     Operation.COPY: Copy,
     Operation.MOVE: Move,
@@ -563,42 +565,88 @@ _patch_map = {
 }
 
 
+@overload
 def parse(
-    *patches: dict[str, Any],
+    patch: dict[str, Any],
+    *,
+    transform_fn: Optional[Callable[[Any], Any]] = None,
+) -> Patch:
+    """Parses the provided JSON patch dict into a Patch object.
+
+    Args:
+        patches (dict[str, Any]): The JSON patch dict to parse.
+        transform_fn (Optional[Callable[[Any], Any]], optional): A function to
+          transform the patch values. Defaults to None.
+    Raises:
+        TypeError: If the patch operation is invalid.
+        ValueError: If the patch is invalid.
+
+    Returns:
+        Patch: The parsed Patch object.
+    """
+
+
+@overload
+def parse(
+    patches: Iterable[dict[str, Any]],
+    *,
     transform_fn: Optional[Callable[[Any], Any]] = None,
 ) -> list[Patch]:
     """Parses the provided JSON patch dicts into Patch objects.
 
-    Raises:
-        TypeError: Any of the patches operations are invalid.
-        ValueError: Any of the patches are invalid.
+    Args:
+        patches (Iterable[dict[str, Any]]): The JSON patch dicts to parse.
+        transform_fn (Optional[Callable[[Any], Any]], optional): A function to
+          transform the patch values. Defaults to None.
 
     Returns:
-        Union[Patch, list[Patch]]: A single Patch if one patch dict was
-          provided, otherwise a list of Patch objects.
+        list[Patch]: The parsed Patch objects.
     """
+
+
+def parse(
+    patches: Union[dict[str, Any], Iterable[dict[str, Any]]],
+    *,
+    transform_fn: Optional[Callable[[Any], Any]] = None,
+) -> Union[Patch, list[Patch]]:
+    """Parses the provided JSON patch dicts into Patch objects."""
+
+    return_one = False
+    if isinstance(patches, dict):
+        patches = [patches]
+        return_one = True
+    elif not isinstance(patches, Iterable):
+        raise TypeError("Patches must be a dict or an iterable of dicts")
 
     parsed = []
     for patch in patches:
         try:
-            op = Operation(patch["op"])
-            patch_cls = _patch_map[op]
+            op = patch["op"]
+            path = patch["path"]
+        except KeyError as err:
+            raise ValueError(f"Missing {err} field") from err
+
+        try:
+            patch_cls = __PATCH_MAP[Operation(op)]
         except (ValueError, KeyError) as err:
             raise TypeError(f"Unsupported operation '{patch['op']}'") from err
 
-        kwargs = {"path": patch["path"]}
-
-        if op in (Operation.ADD, Operation.REPLACE, Operation.TEST):
-            value = patch["value"]
-            if transform_fn:
-                value = transform_fn(value)
-            kwargs.update(value=value)
-        if op in (Operation.COPY, Operation.MOVE):
-            kwargs.update(from_=patch["from"])
-
+        kwargs = {"path": path}
         try:
+            if op in (Operation.ADD, Operation.REPLACE, Operation.TEST):
+                kwargs.update(
+                    value=(
+                        transform_fn(patch["value"])
+                        if transform_fn
+                        else patch["value"]
+                    )
+                )
+
+            if op in (Operation.COPY, Operation.MOVE):
+                kwargs.update(from_=patch["from"])
+
             parsed.append(patch_cls(**kwargs))
         except Exception as err:
             raise ValueError(f"Invalid operation '{op}'") from err
 
-    return parsed
+    return parsed if not return_one else parsed[0]
