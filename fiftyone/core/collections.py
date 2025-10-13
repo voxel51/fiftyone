@@ -275,7 +275,7 @@ class AsyncSaveContext(SaveContext):
         finally:
             self.executor.__exit__(*args)
 
-        if error:
+        if error and (not args or args[0] is not None):
             raise error
 
     def save(self, sample):
