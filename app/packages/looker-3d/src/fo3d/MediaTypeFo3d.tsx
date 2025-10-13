@@ -19,6 +19,7 @@ import * as THREE from "three";
 import { Vector3 } from "three";
 import { CAMERA_POSITION_KEY } from "../Environment";
 import { StatusBar } from "../StatusBar";
+import { AnnotationToolbar } from "../annotation-toolbar";
 import { PcdColorMapTunnel } from "../components/PcdColormapModal";
 import {
   DEFAULT_CAMERA_POSITION,
@@ -31,6 +32,7 @@ import { useFo3dBounds } from "../hooks/use-bounds";
 import type { Looker3dSettings } from "../settings";
 import {
   activeNodeAtom,
+  annotationPlaneAtom,
   cameraPositionAtom,
   clearTransformStateSelector,
   currentHoveredPointAtom,
@@ -305,7 +307,9 @@ export const MediaTypeFo3dComponent = () => {
   });
 
   const assetsGroupRef = useRef<THREE.Group>();
-  const sceneBoundingBox = useFo3dBounds(assetsGroupRef);
+
+  const { boundingBox: sceneBoundingBox, recomputeBounds } =
+    useFo3dBounds(assetsGroupRef);
 
   useEffect(() => {
     if (sceneBoundingBox && !lookAt) {
@@ -754,6 +758,22 @@ export const MediaTypeFo3dComponent = () => {
     null
   );
 
+  const isAnnotationPlaneEnabled = useRecoilValue(annotationPlaneAtom).enabled;
+
+  const shouldRenderMultiPanelView = useMemo(
+    () =>
+      mode === "annotate" &&
+      !(isGroup && is2DSampleViewerVisible) &&
+      isSceneInitialized,
+    [mode, isGroup, is2DSampleViewerVisible, isSceneInitialized]
+  );
+
+  useEffect(() => {
+    if (shouldRenderMultiPanelView) {
+      recomputeBounds();
+    }
+  }, [shouldRenderMultiPanelView, isAnnotationPlaneEnabled, recomputeBounds]);
+
   if (isParsingFo3d) {
     return <LoadingDots />;
   }
@@ -778,10 +798,9 @@ export const MediaTypeFo3dComponent = () => {
         pluginSettings: settings,
       }}
     >
-      {mode === "annotate" &&
-      !(isGroup && is2DSampleViewerVisible) &&
-      isSceneInitialized ? (
+      {shouldRenderMultiPanelView ? (
         <MultiPanelView
+          assetsGroupRef={assetsGroupRef}
           foScene={foScene}
           sample={sample}
           cameraRef={cameraRef}
@@ -829,6 +848,7 @@ export const MediaTypeFo3dComponent = () => {
           </StatusBarRootContainer>
         </main>
       )}
+      {mode === "annotate" && <AnnotationToolbar />}
     </Fo3dSceneContext.Provider>
   );
 };

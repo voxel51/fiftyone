@@ -17,7 +17,6 @@ import {
   getGridQuaternionFromUpVector,
   getPlaneFromPositionAndQuaternion,
   getPlaneIntersection,
-  getQuaternionForNormal,
   toEulerFromDegreesArray,
   toNDC,
 } from "./utils";
@@ -209,85 +208,6 @@ describe("getPlaneIntersection", () => {
     const result = getPlaneIntersection(raycaster, camera, ndc, plane);
 
     expect(result).toBeNull();
-  });
-});
-
-describe("getQuaternionForNormal", () => {
-  it("returns identity quaternion for Z-axis normal", () => {
-    const normal = new Vector3(0, 0, 1);
-    const result = getQuaternionForNormal(normal);
-
-    expect(result).toBeInstanceOf(Quaternion);
-    expect(result.w).toBeCloseTo(1);
-    expect(result.x).toBeCloseTo(0);
-    expect(result.y).toBeCloseTo(0);
-    expect(result.z).toBeCloseTo(0);
-  });
-
-  it("returns 180-degree rotation around X-axis for negative Z-axis normal", () => {
-    const normal = new Vector3(0, 0, -1);
-    const result = getQuaternionForNormal(normal);
-
-    expect(result).toBeInstanceOf(Quaternion);
-    expect(result.w).toBeCloseTo(0);
-    expect(result.x).toBeCloseTo(1);
-    expect(result.y).toBeCloseTo(0);
-    expect(result.z).toBeCloseTo(0);
-  });
-
-  it("returns correct quaternion for X-axis normal", () => {
-    const normal = new Vector3(1, 0, 0);
-    const result = getQuaternionForNormal(normal);
-
-    expect(result).toBeInstanceOf(Quaternion);
-    // Should rotate Z-axis to X-axis (90 degrees around Y-axis)
-    expect(result.w).toBeCloseTo(Math.sqrt(2) / 2);
-    expect(result.x).toBeCloseTo(0);
-    expect(result.y).toBeCloseTo(Math.sqrt(2) / 2);
-    expect(result.z).toBeCloseTo(0);
-  });
-
-  it("returns correct quaternion for Y-axis normal", () => {
-    const normal = new Vector3(0, 1, 0);
-    const result = getQuaternionForNormal(normal);
-
-    expect(result).toBeInstanceOf(Quaternion);
-    // Should rotate Z-axis to Y-axis (90 degrees around X-axis)
-    // The cross product (0,0,1) × (0,1,0) = (-1,0,0), so rotation axis is (-1,0,0)
-    expect(result.w).toBeCloseTo(Math.sqrt(2) / 2);
-    expect(result.x).toBeCloseTo(-Math.sqrt(2) / 2);
-    expect(result.y).toBeCloseTo(0);
-    expect(result.z).toBeCloseTo(0);
-  });
-
-  it("handles arbitrary normal vectors", () => {
-    const normal = new Vector3(1, 1, 0).normalize();
-    const result = getQuaternionForNormal(normal);
-
-    expect(result).toBeInstanceOf(Quaternion);
-    // Verify it's a valid quaternion (unit quaternion)
-    const magnitude = Math.sqrt(
-      result.x * result.x +
-        result.y * result.y +
-        result.z * result.z +
-        result.w * result.w
-    );
-    expect(magnitude).toBeCloseTo(1);
-  });
-
-  it("handles normalized diagonal normal", () => {
-    const normal = new Vector3(1, 1, 1).normalize();
-    const result = getQuaternionForNormal(normal);
-
-    expect(result).toBeInstanceOf(Quaternion);
-    // Verify it's a valid quaternion
-    const magnitude = Math.sqrt(
-      result.x * result.x +
-        result.y * result.y +
-        result.z * result.z +
-        result.w * result.w
-    );
-    expect(magnitude).toBeCloseTo(1);
   });
 });
 

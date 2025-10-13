@@ -97,7 +97,7 @@ export const Cuboid = ({
     () =>
       new LineMaterial({
         opacity: opacity,
-        transparent: false,
+        transparent: opacity < 0.2,
         color: strokeAndFillColor,
         linewidth: lineWidth,
       }),

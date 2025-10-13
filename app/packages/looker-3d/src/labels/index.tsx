@@ -34,9 +34,13 @@ import { useAnnotationControls } from "./useAnnotationControls";
 
 export interface ThreeDLabelsProps {
   sampleMap: { [sliceOrFilename: string]: Sample } | fos.Sample[];
+  globalOpacity?: number;
 }
 
-export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
+export const ThreeDLabels = ({
+  sampleMap,
+  globalOpacity,
+}: ThreeDLabelsProps) => {
   const mode = useAtomValue(fos.modalMode);
   const schema = useRecoilValue(fieldSchema({ space: fos.State.SPACE.SAMPLE }));
   const { coloring, selectedLabelTags, customizeColorSetting, labelTagColors } =
@@ -71,7 +75,7 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
   );
   const selectedLabels = useRecoilValue(fos.selectedLabelMap);
   const tooltip = fos.useTooltip();
-  const labelAlpha = colorScheme.opacity;
+  const labelAlpha = globalOpacity ?? colorScheme.opacity;
 
   const constLabelLevaControls = {
     cuboidLineWidget: {

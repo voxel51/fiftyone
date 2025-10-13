@@ -24,7 +24,7 @@ import {
   type TransformMode,
   type TransformSpace,
 } from "../state";
-import { getQuaternionForNormal } from "../utils";
+import { getGridQuaternionFromUpVector } from "../utils";
 import { CoordinateInputs } from "./CoordinateInputs";
 import type { AnnotationAction, AnnotationActionGroup } from "./types";
 
@@ -100,7 +100,10 @@ export const useAnnotationActions = () => {
       // Initialize plane at center of scene bounding box with upVector normal
       if (sceneBoundingBox && upVector) {
         const center = sceneBoundingBox.getCenter(new THREE.Vector3());
-        const quaternion = getQuaternionForNormal(upVector);
+        const quaternion = getGridQuaternionFromUpVector(
+          upVector,
+          new THREE.Vector3(0, 0, 1)
+        );
 
         setAnnotationPlane({
           enabled: true,

@@ -8,7 +8,6 @@ import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { ActionBar } from "./action-bar";
-import { AnnotationToolbar, useAnnotationActions } from "./annotation-toolbar";
 import { Container } from "./containers";
 import { Fo3dErrorBoundary } from "./ErrorBoundary";
 import { Leva } from "./fo3d/Leva";
@@ -51,10 +50,6 @@ export const Looker3d = () => {
   const setFo3dHasBackground = useSetRecoilState(fo3dContainsBackground);
 
   const thisSampleId = useRecoilValue(fos.modalSampleId);
-
-  // Annotation toolbar
-  const { actions } = useAnnotationActions();
-  const isAnnotateMode = mode === "annotate";
 
   useEffect(() => {
     return () => {
@@ -211,9 +206,6 @@ export const Looker3d = () => {
             hoveringRef.current = false;
           }}
         />
-        {mode === "annotate" && (
-          <AnnotationToolbar isVisible={isAnnotateMode} actions={actions} />
-        )}
       </Container>
     </Fo3dErrorBoundary>
   );

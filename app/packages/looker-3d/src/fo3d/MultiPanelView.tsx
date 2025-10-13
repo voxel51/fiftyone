@@ -127,17 +127,16 @@ type ViewType = "Top" | "Bottom" | "Left" | "Right" | "Front" | "Back";
 
 interface MultiPanelViewState {
   top: ViewType;
-  middle: ViewType;
   bottom: ViewType;
 }
 
 const defaultState: MultiPanelViewState = {
-  top: "Top",
-  middle: "Front",
+  top: "Front",
   bottom: "Right",
 };
 
 interface MultiPanelViewProps {
+  assetsGroupRef: React.RefObject<THREE.Group>;
   cameraControlsRef: React.MutableRefObject<CameraControlsImpl>;
   cameraRef: React.MutableRefObject<THREE.PerspectiveCamera>;
   defaultCameraPosition: Vector3;
@@ -146,6 +145,7 @@ interface MultiPanelViewProps {
 }
 
 export const MultiPanelView = ({
+  assetsGroupRef,
   cameraControlsRef,
   cameraRef,
   defaultCameraPosition,
@@ -169,8 +169,6 @@ export const MultiPanelView = ({
     controlRight: false,
     controlLeft: false,
   });
-
-  const assetsGroupRef = useRef<THREE.Group>();
 
   const updateCameraControlsConfig = useCallback(() => {
     if (!cameraControlsRef.current) return;
@@ -238,7 +236,7 @@ export const MultiPanelView = ({
 
   const setPanelView = useCallback(
     (
-      which: keyof Pick<MultiPanelViewState, "top" | "middle" | "bottom">,
+      which: keyof Pick<MultiPanelViewState, "top" | "bottom">,
       view: ViewType
     ) => {
       setPanelState((prev) => ({ ...prev, [which]: view }));
@@ -253,14 +251,13 @@ export const MultiPanelView = ({
         display: "grid",
         gridTemplateAreas: `
             "main top"
-            "main middle"
             "main bottom"
           `,
-        gridTemplateColumns: "2fr 1fr",
-        gridTemplateRows: "1fr 1fr 1fr",
+        gridTemplateColumns: "2fr 1.1fr",
+        gridTemplateRows: "1fr 1fr",
         height: "100%",
         width: "100%",
-        gap: "4px",
+        gap: "1px",
       }}
     >
       <HoverMetadataHUD />
@@ -301,19 +298,6 @@ export const MultiPanelView = ({
         which="top"
         view={panelState.top}
         setView={(view) => setPanelView("top", view)}
-        foScene={foScene}
-        upVector={upVector}
-        lookAt={lookAt}
-        sceneBoundingBox={sceneBoundingBox}
-        isSceneInitialized={isSceneInitialized}
-        sample={sample}
-        pointCloudSettings={pointCloudSettings}
-      />
-
-      <SidePanel
-        which="middle"
-        view={panelState.middle}
-        setView={(view) => setPanelView("middle", view)}
         foScene={foScene}
         upVector={upVector}
         lookAt={lookAt}
@@ -480,9 +464,24 @@ const SidePanel = ({
           </group>
         </Bvh>
         {isSceneInitialized && (
-          <ThreeDLabels sampleMap={{ fo3d: sample as any }} />
+          <ThreeDLabels
+            sampleMap={{ fo3d: sample as any }}
+            globalOpacity={0.15}
+          />
         )}
-        <AnnotationPlane showTransformControls={false} />
+        <AnnotationPlane
+          showTransformControls={false}
+          panelType="side"
+          viewType={
+            view.toLowerCase() as
+              | "top"
+              | "bottom"
+              | "right"
+              | "left"
+              | "front"
+              | "back"
+          }
+        />
         <Crosshair3D />
       </View>
       <div
@@ -510,8 +509,6 @@ const SidePanel = ({
             },
           }}
         >
-          <MenuItem value="Top">Top</MenuItem>
-          <MenuItem value="Bottom">Bottom</MenuItem>
           <MenuItem value="Left">Left</MenuItem>
           <MenuItem value="Right">Right</MenuItem>
           <MenuItem value="Front">Front</MenuItem>

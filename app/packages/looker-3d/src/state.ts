@@ -412,6 +412,7 @@ export const annotationPlaneAtom = atom<AnnotationPlaneState>({
   effects: [
     getBrowserStorageEffectForKey("fo3d-annotationPlane", {
       useJsonSerialization: true,
+      sessionStorage: true,
     }),
   ],
 });

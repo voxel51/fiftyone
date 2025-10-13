@@ -4,6 +4,7 @@ import React, { useCallback, useRef, useState } from "react";
 import { useRecoilState } from "recoil";
 import { annotationToolbarPositionAtom } from "../state";
 import type { AnnotationToolbarProps } from "./types";
+import { useAnnotationActions } from "./useAnnotationActions";
 
 const ToolbarContainer = styled(Box)<{
   topposition: number;
@@ -126,11 +127,8 @@ const ActionButton = styled(IconButton)<{
   };
 });
 
-export const AnnotationToolbar = ({
-  isVisible,
-  actions,
-  className,
-}: AnnotationToolbarProps) => {
+export const AnnotationToolbar = ({ className }: AnnotationToolbarProps) => {
+  const { actions } = useAnnotationActions();
   const [position, setPosition] = useRecoilState(annotationToolbarPositionAtom);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ y: 0, position: 0 });
@@ -187,10 +185,6 @@ export const AnnotationToolbar = ({
       };
     }
   }, [isDragging, handleMouseMove, handleMouseUp]);
-
-  if (!isVisible) {
-    return null;
-  }
 
   return (
     <ToolbarContainer

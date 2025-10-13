@@ -161,7 +161,7 @@ export const Fo3dSceneContent = ({
 const AnnotationControls = () => {
   return (
     <>
-      <AnnotationPlane />
+      <AnnotationPlane panelType="main" viewType="top" />
       <SegmentPolylineRenderer />
     </>
   );

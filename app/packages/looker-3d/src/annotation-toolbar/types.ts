@@ -21,7 +21,5 @@ export interface AnnotationActionGroup {
 }
 
 export interface AnnotationToolbarProps {
-  isVisible: boolean;
-  actions: AnnotationActionGroup[];
   className?: string;
 }

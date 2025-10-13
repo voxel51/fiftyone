@@ -107,8 +107,6 @@ export const SegmentPolylineRenderer = ({
   // Handle mouse move for rubber band effect
   const handleMouseMove = useCallback(
     (worldPos: THREE.Vector3) => {
-      if (!segmentState.isActive) return;
-
       // Project cursor position to annotation plane if enabled
       let finalPos = worldPos;
       if (annotationPlane.enabled) {
@@ -133,7 +131,7 @@ export const SegmentPolylineRenderer = ({
 
       setSharedCursorPosition([finalPos.x, finalPos.y, finalPos.z]);
     },
-    [segmentState.isActive, annotationPlane, sceneBoundingBox]
+    [annotationPlane, sceneBoundingBox]
   );
 
   useEmptyCanvasInteraction({
@@ -141,7 +139,7 @@ export const SegmentPolylineRenderer = ({
     onPointerDown: segmentState.isActive
       ? () => setIsActivelySegmenting(true)
       : undefined,
-    onPointerMove: segmentState.isActive ? handleMouseMove : undefined,
+    onPointerMove: handleMouseMove,
     planeNormal: upVector || new THREE.Vector3(0, 0, 1),
     planeConstant: 0,
   });
@@ -209,12 +207,12 @@ export const SegmentPolylineRenderer = ({
     return segments;
   }, [segmentState.vertices, segmentState.isClosed, color, lineWidth]);
 
-  // Render temporary polylines
+  // Temporary polylines
   const tempPolylineElements = useMemo(() => {
     return tempPolylines.map((polyline) => {
       const segments = [];
 
-      // Create line segments between consecutive vertices
+      // Line segments between consecutive vertices
       for (let i = 0; i < polyline.vertices.length - 1; i++) {
         segments.push(
           <LineDrei
@@ -245,7 +243,7 @@ export const SegmentPolylineRenderer = ({
     });
   }, [tempPolylines]);
 
-  // Render rubber band from last vertex to current mouse position
+  // Rubber band from last vertex to current mouse position
   const rubberBand = useMemo(() => {
     if (
       !segmentState.isActive ||
@@ -276,7 +274,6 @@ export const SegmentPolylineRenderer = ({
     rubberBandLineWidth,
   ]);
 
-  // Render vertex markers
   const vertexMarkers = useMemo(() => {
     if (segmentState.vertices.length === 0) return null;
 

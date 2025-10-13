@@ -64,7 +64,7 @@ export const usePcdMaterial = (
 ) => {
   const { upVector, pluginSettings } = useFo3dContext();
 
-  const pcdBoundingBox = useFo3dBounds(
+  const { boundingBox: pcdBoundingBox } = useFo3dBounds(
     pcdContainerRef,
     useCallback(() => {
       return !!geometry;

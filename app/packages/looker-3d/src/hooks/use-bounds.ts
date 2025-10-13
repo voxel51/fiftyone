@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { Box3, type Group } from "three";
 import { DEFAULT_BOUNDING_BOX } from "../constants";
 
@@ -12,19 +12,35 @@ const MAX_BOUNDING_BOX_RETRIES = 5;
  * @param objectRef - Ref to the object
  * @param predicate - Optional predicate to check before calculating the bounding box.
  * IMPORTANT: Make sure this predicate is memoized using useCallback
- * @returns Bounding box of the object
+ * @returns Object containing the bounding box and a function to recompute it
  */
 export const useFo3dBounds = (
   objectRef: React.RefObject<Group>,
   predicate?: () => boolean
 ) => {
-  const [sceneBoundingBox, setSceneBoundingBox] = useState<Box3>(null);
+  const [boundingBox, setBoundingBox] = useState<Box3>(null);
 
   const unchangedCount = useRef(0);
   const previousBox = useRef<Box3>(null);
   const retryCount = useRef(0);
 
   const timeOutIdRef = useRef<number | null>(null);
+
+  const recomputeBounds = useCallback(() => {
+    if (!objectRef.current) {
+      setBoundingBox(DEFAULT_BOUNDING_BOX);
+      return;
+    }
+
+    const box = new Box3().setFromObject(objectRef.current);
+
+    if (Math.abs(box.max?.x) === Number.POSITIVE_INFINITY) {
+      setBoundingBox(DEFAULT_BOUNDING_BOX);
+      return;
+    }
+
+    setBoundingBox(box);
+  }, [objectRef]);
 
   useLayoutEffect(() => {
     if (predicate && !predicate()) {
@@ -44,7 +60,7 @@ export const useFo3dBounds = (
       if (!objectRef.current) {
         retryCount.current += 1;
         if (retryCount.current >= MAX_BOUNDING_BOX_RETRIES) {
-          setSceneBoundingBox(DEFAULT_BOUNDING_BOX);
+          setBoundingBox(DEFAULT_BOUNDING_BOX);
           return;
         }
         timeOutIdRef.current = window.setTimeout(
@@ -59,7 +75,7 @@ export const useFo3dBounds = (
       if (Math.abs(box.max?.x) === Number.POSITIVE_INFINITY) {
         retryCount.current += 1;
         if (retryCount.current >= MAX_BOUNDING_BOX_RETRIES) {
-          setSceneBoundingBox(DEFAULT_BOUNDING_BOX);
+          setBoundingBox(DEFAULT_BOUNDING_BOX);
           return;
         }
         timeOutIdRef.current = window.setTimeout(
@@ -78,7 +94,7 @@ export const useFo3dBounds = (
       previousBox.current = box;
 
       if (unchangedCount.current >= UNCHANGED_COUNT_THRESHOLD) {
-        setSceneBoundingBox(box);
+        setBoundingBox(box);
       } else {
         timeOutIdRef.current = window.setTimeout(
           getBoundingBox,
@@ -87,7 +103,7 @@ export const useFo3dBounds = (
       }
     };
 
-    // this is a hack, yet to find a better way than polling to know when the scene is done loading
+    // this is a hack, yet to find a better way than polling to know when the asset is done loading
     // callbacks in loaders are not reliable
     timeOutIdRef.current = window.setTimeout(
       getBoundingBox,
@@ -104,5 +120,5 @@ export const useFo3dBounds = (
     };
   }, [objectRef, predicate]);
 
-  return sceneBoundingBox;
+  return { boundingBox, recomputeBounds };
 };

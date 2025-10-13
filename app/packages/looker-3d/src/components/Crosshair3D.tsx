@@ -16,7 +16,6 @@ export const Crosshair3D = () => {
   const { sceneBoundingBox } = useFo3dContext();
 
   const worldPosition = useRecoilValue(sharedCursorPositionAtom);
-  const isSegmenting = useRecoilValue(segmentPolylineStateAtom).isActive;
 
   const worldVector = useMemo(() => {
     if (!worldPosition) return null;
@@ -38,7 +37,7 @@ export const Crosshair3D = () => {
     return worldVector.clone().project(camera);
   }, [worldVector, camera]);
 
-  if (!screenPosition || !isSegmenting) {
+  if (!screenPosition) {
     return null;
   }
 

@@ -1,4 +1,5 @@
-import { TransformControls, useCursor } from "@react-three/drei";
+import { Line, TransformControls, useCursor } from "@react-three/drei";
+import { useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
@@ -11,10 +12,16 @@ import {
 
 interface AnnotationPlaneProps {
   showTransformControls?: boolean;
+  viewType?: "top" | "bottom" | "right" | "left" | "front" | "back";
+  panelType?: "side" | "main";
+  transformMode?: "translate" | "rotate" | "scale";
 }
 
 export const AnnotationPlane = ({
   showTransformControls = true,
+  viewType = "top",
+  panelType = "main",
+  transformMode = "translate",
 }: AnnotationPlaneProps) => {
   const [annotationPlane, setAnnotationPlane] =
     useRecoilState(annotationPlaneAtom);
@@ -23,21 +30,61 @@ export const AnnotationPlane = ({
   );
   const isSegmenting = useRecoilValue(segmentPolylineStateAtom).isActive;
 
-  const { sceneBoundingBox } = useFo3dContext();
+  const { sceneBoundingBox, upVector } = useFo3dContext();
   const meshRef = useRef<THREE.Mesh>(null);
+  const lineRef = useRef<any>(null);
+  const materialRef = useRef<THREE.MeshBasicMaterial>(null);
   const transformControlsRef = useRef<any>(null);
   const [isHovered, setIsHovered] = useState(false);
   const [isSelected, setIsSelected] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [isMouseDown, setIsMouseDown] = useState(false);
+  const [dragStartPosition, setDragStartPosition] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+
+  // When up vector changes, set isSelected and isEnabled to false
+  useEffect(() => {
+    setIsSelected(false);
+    setAnnotationPlane((prev) => ({ ...prev, enabled: false }));
+  }, [upVector]);
 
   // Calculate plane size based on scene bounding box
   const planeSize = useMemo(() => {
     if (!sceneBoundingBox) return 10;
 
     const size = sceneBoundingBox.getSize(new THREE.Vector3());
-    // Use max of width/depth, minimum 10
-    return Math.max(size.x, size.z, 10);
-  }, [sceneBoundingBox]);
+
+    if (upVector) {
+      // Find the two dimensions that are most orthogonal to the up vector
+      const upAbs = new THREE.Vector3(
+        Math.abs(upVector.x),
+        Math.abs(upVector.y),
+        Math.abs(upVector.z)
+      );
+
+      // Get the two largest orthogonal dimensions
+      const dimensions = [size.x, size.y, size.z];
+      const orthogonalSizes = [];
+
+      // Find dimensions where up vector component is smallest (most orthogonal)
+      for (let i = 0; i < 3; i++) {
+        if (upAbs.toArray()[i] < 0.5) {
+          // Less than 0.5 means mostly orthogonal
+          orthogonalSizes.push(Math.round(dimensions[i]));
+        }
+      }
+
+      // If we found orthogonal dimensions, use 1.25x the max of those
+      if (orthogonalSizes.length > 0) {
+        return Math.max(...orthogonalSizes, 10) * 1.25;
+      }
+    }
+
+    // Fallback: use 1.25x max of X and Y (assumes Z-up)
+    return Math.max(size.x, 10, size.y) * 1.25;
+  }, [sceneBoundingBox, upVector]);
 
   const position = useMemo(
     () => new THREE.Vector3(...annotationPlane.position),
@@ -48,11 +95,86 @@ export const AnnotationPlane = ({
     [annotationPlane]
   );
 
+  // Determine which axes to show based on upVector and mode
+  const transformControlsProps = useMemo(() => {
+    // For rotate mode, always show all axes
+    if (transformMode === "rotate") {
+      return { showX: true, showY: true, showZ: true };
+    }
+
+    if (!upVector) {
+      return { showX: true, showY: true, showZ: true };
+    }
+
+    // Find which axis is most aligned with the up vector
+    const upAbs = new THREE.Vector3(
+      Math.abs(upVector.x),
+      Math.abs(upVector.y),
+      Math.abs(upVector.z)
+    );
+
+    const maxComponent = Math.max(upAbs.x, upAbs.y, upAbs.z);
+
+    // Determine which axis is the up axis
+    const isXUp = Math.abs(upVector.x) === maxComponent;
+    const isYUp = Math.abs(upVector.y) === maxComponent;
+    const isZUp = Math.abs(upVector.z) === maxComponent;
+
+    // For translate mode, only show the axis aligned with upVector
+    return {
+      showX: isXUp,
+      showY: isYUp,
+      showZ: isZUp,
+    };
+  }, [upVector, transformMode]);
+
   useCursor(
     isHovered && isSelected && !isSegmenting,
     "pointer",
     isSegmenting ? "crosshair" : "auto"
   );
+
+  // Simple pulsing animation for scale and opacity for visibility
+  useFrame((state) => {
+    if (materialRef.current && meshRef.current && panelType === "main") {
+      const time = state.clock.getElapsedTime();
+
+      const baseOpacity = isSelected ? 0.2 : 0.08;
+      const pulseOpacity = Math.sin(time * 2) * 0.05;
+      materialRef.current.opacity = baseOpacity + pulseOpacity;
+
+      const baseScale = 1;
+      const pulseScale = Math.sin(time * 1.5) * 0.01;
+      meshRef.current.scale.setScalar(baseScale + pulseScale);
+    }
+  });
+
+  const handleMouseDown = useCallback((event: any) => {
+    setIsMouseDown(true);
+    setDragStartPosition({ x: event.clientX, y: event.clientY });
+  }, []);
+
+  const handleMouseMove = useCallback(
+    (event: any) => {
+      if (isMouseDown && dragStartPosition) {
+        const deltaX = Math.abs(event.clientX - dragStartPosition.x);
+        const deltaY = Math.abs(event.clientY - dragStartPosition.y);
+        const threshold = 5; // pixels
+
+        if (deltaX > threshold || deltaY > threshold) {
+          setIsDragging(true);
+        }
+      }
+    },
+    [isMouseDown, dragStartPosition]
+  );
+
+  const handleMouseUp = useCallback(() => {
+    setIsMouseDown(false);
+    setDragStartPosition(null);
+    // Reset dragging state after a short delay to allow click handlers to check it
+    setTimeout(() => setIsDragging(false), 0);
+  }, []);
 
   const handlePlaneClick = useCallback(
     (event: any) => {
@@ -127,7 +249,11 @@ export const AnnotationPlane = ({
     return null;
   }
 
-  if (showTransformControls) {
+  const shouldShowFullPlane =
+    panelType === "main" ||
+    (panelType === "side" && (viewType === "top" || viewType === "bottom"));
+
+  if (showTransformControls && shouldShowFullPlane) {
     return (
       <>
         <mesh
@@ -136,11 +262,15 @@ export const AnnotationPlane = ({
           quaternion={quaternion}
           onPointerOver={() => setIsHovered(true)}
           onPointerOut={() => setIsHovered(false)}
+          onPointerDown={handleMouseDown}
+          onPointerMove={handleMouseMove}
+          onPointerUp={handleMouseUp}
           onClick={handlePlaneClick}
           renderOrder={1000}
         >
           <planeGeometry args={[planeSize, planeSize]} />
           <meshBasicMaterial
+            ref={materialRef}
             color={isSelected ? "#ff6b35" : "#00bcd4"}
             transparent
             opacity={isSelected ? 0.2 : 0.08}
@@ -151,8 +281,12 @@ export const AnnotationPlane = ({
           <TransformControls
             ref={transformControlsRef}
             object={meshRef}
-            mode="translate"
+            translationSnap={0.001}
+            mode={transformMode}
             space="world"
+            showX={transformControlsProps.showX}
+            showY={transformControlsProps.showY}
+            showZ={transformControlsProps.showZ}
             onMouseDown={handleTransformStart}
             onMouseUp={handleTransformEnd}
             onObjectChange={handleTransformChange}
@@ -161,24 +295,41 @@ export const AnnotationPlane = ({
       </>
     );
   } else {
-    // For side panels - render a thicker plane so it's visible from all angles
-    // 2% of plane size for thickness
-    const thickness = planeSize * 0.02;
+    const halfSize = planeSize / 2;
+    let points: [number, number, number][];
+
+    if (viewType === "left" || viewType === "right") {
+      points = [
+        [0, -halfSize, 0],
+        [0, halfSize, 0],
+      ];
+    } else {
+      points = [
+        [-halfSize, 0, 0],
+        [halfSize, 0, 0],
+      ];
+    }
+
     return (
       <group
         position={position}
         quaternion={quaternion}
+        onPointerOver={() => setIsHovered(true)}
+        onPointerOut={() => setIsHovered(false)}
+        onPointerDown={handleMouseDown}
+        onPointerMove={handleMouseMove}
+        onPointerUp={handleMouseUp}
         onClick={handlePlaneClick}
       >
-        <mesh renderOrder={1000}>
-          <boxGeometry args={[planeSize, planeSize, thickness]} />
-          <meshBasicMaterial
-            color="#00bcd4"
-            transparent
-            opacity={0.1}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
+        <Line
+          ref={lineRef}
+          points={points}
+          color="orangered"
+          lineWidth={2}
+          transparent
+          opacity={0.8}
+          renderOrder={0}
+        />
       </group>
     );
   }
