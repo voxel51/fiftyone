@@ -13,25 +13,25 @@ REGISTRY: dict[Type[T], Callable[[dict], T]] = {}
 
 def register(
     cls: Type[T],  # pylint: disable=redefined-builtin
-) -> Callable[[Callable[[str], None]], Callable[[str], None]]:
+) -> Callable[[Callable[[dict], T]], Callable[[dict], T]]:
     """Register a validator function for a resource type.
 
     Args:
         cls Type[T]: The resource type
 
     Returns:
-        Callable[[Callable[[str], None]], Callable[[str], None]]: A decorator
+        Callable[[Callable[[dict], T]], Callable[[dict], T]]: A decorator
           that registers the decorated function as a validator for the given
           resource type.
     """
 
-    def inner(fn: Callable[[str], None]) -> Callable[[dict], T]:
+    def inner(fn: Callable[[dict], T]) -> Callable[[dict], T]:
         if not callable(fn):
             raise TypeError("fn must be callable")
 
         if cls in REGISTRY:
             raise ValueError(
-                f"Resource type '{type}' validator already registered"
+                f"Resource type '{cls.__name__}' validator already registered"
             )
 
         REGISTRY[cls] = fn
@@ -42,11 +42,11 @@ def register(
 
 
 def transform(
-    value: dict,
+    value: Any,
 ) -> Any:
     """Transforms a patch value if there is a registered transform method.
     Args:
-        value (dict): The patch value optionally containing "_cls" key.
+        value (Any): The patch value optionally containing "_cls" key.
 
     Returns:
         Any: The transformed value or the original value if no transform is found.
@@ -54,6 +54,7 @@ def transform(
     if not isinstance(value, dict):
         return value
 
+    func = None
     cls_name = value.get("_cls")
     if cls_name:
         func = next(

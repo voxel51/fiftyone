@@ -107,14 +107,15 @@ class Sample(HTTPEndpoint):
         sample = get_sample(dataset_id, sample_id)
 
         content_type = request.headers.get("Content-Type", "")
-        if content_type == "application/json":
+        ctype = content_type.split(";", 1)[0].strip().lower()
+        if ctype == "application/json":
             result = self._handle_patch(sample, data)
-        elif content_type == "application/json-patch+json":
+        elif ctype == "application/json-patch+json":
             result = handle_json_patch(sample, data)
         else:
             raise HTTPException(
                 status_code=415,
-                detail=f"Unsupported Content-Type '{content_type}'",
+                detail=f"Unsupported Content-Type '{ctype}'",
             )
         sample.save()
         return result.to_dict(include_private=True)
