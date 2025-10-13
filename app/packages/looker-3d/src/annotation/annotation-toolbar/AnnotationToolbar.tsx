@@ -2,7 +2,7 @@ import { DragIndicator } from "@mui/icons-material";
 import { Box, IconButton, Tooltip, Typography, styled } from "@mui/material";
 import React, { useCallback, useRef, useState } from "react";
 import { useRecoilState } from "recoil";
-import { annotationToolbarPositionAtom } from "../state";
+import { annotationToolbarPositionAtom } from "../../state";
 import type { AnnotationToolbarProps } from "./types";
 import { useAnnotationActions } from "./useAnnotationActions";
 

@@ -10,7 +10,7 @@ import { Typography } from "@mui/material";
 import { useCallback, useMemo } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import * as THREE from "three";
-import { useFo3dContext } from "../fo3d/context";
+import { useFo3dContext } from "../../fo3d/context";
 import {
   annotationPlaneAtom,
   isInEntireLabelTransformModeAtom,
@@ -23,8 +23,8 @@ import {
   transformSpaceAtom,
   type TransformMode,
   type TransformSpace,
-} from "../state";
-import { getGridQuaternionFromUpVector } from "../utils";
+} from "../../state";
+import { getGridQuaternionFromUpVector } from "../../utils";
 import { CoordinateInputs } from "./CoordinateInputs";
 import type { AnnotationAction, AnnotationActionGroup } from "./types";
 

@@ -3,7 +3,7 @@ import chroma from "chroma-js";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
 import * as THREE from "three";
-import { PolylinePointMarker } from "../fo3d/components/PolylinePointMarker";
+import { PolylinePointMarker } from "../annotation/PolylinePointMarker";
 import { usePointUpdateRegistry } from "../hooks/usePointUpdateRegistry";
 import {
   hoveredLabelAtom,

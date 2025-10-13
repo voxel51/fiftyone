@@ -2,12 +2,12 @@ import { Box, TextField } from "@mui/material";
 import { useCallback, useEffect, useState } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { Vector3 } from "three";
-import { usePointUpdateRegistry } from "../hooks/usePointUpdateRegistry";
+import { usePointUpdateRegistry } from "../../hooks/usePointUpdateRegistry";
 import {
   selectedLabelForAnnotationAtom,
   selectedPointAtom,
   transformedLabelsAtom,
-} from "../state";
+} from "../../state";
 
 interface CoordinateInputsProps {
   className?: string;

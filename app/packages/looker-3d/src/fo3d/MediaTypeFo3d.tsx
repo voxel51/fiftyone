@@ -19,7 +19,9 @@ import * as THREE from "three";
 import { Vector3 } from "three";
 import { CAMERA_POSITION_KEY } from "../Environment";
 import { StatusBar } from "../StatusBar";
-import { AnnotationToolbar } from "../annotation-toolbar";
+import { MultiPanelView } from "../annotation/MultiPanelView";
+import { TransformHUD } from "../annotation/TransformHUD";
+import { AnnotationToolbar } from "../annotation/annotation-toolbar/AnnotationToolbar";
 import { PcdColorMapTunnel } from "../components/PcdColormapModal";
 import {
   DEFAULT_CAMERA_POSITION,
@@ -48,8 +50,6 @@ import {
 import { HoverMetadata } from "../types";
 import { Fo3dSceneContent } from "./Fo3dCanvas";
 import HoverMetadataHUD from "./HoverMetadataHUD";
-import { MultiPanelView } from "./MultiPanelView";
-import { TransformHUD } from "./TransformHUD";
 import { Fo3dSceneContext } from "./context";
 import {
   getFo3dRoot,

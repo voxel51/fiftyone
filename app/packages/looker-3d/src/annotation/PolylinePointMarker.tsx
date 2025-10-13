@@ -3,7 +3,7 @@ import { useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
 import { Mesh, Vector3 } from "three";
-import { LABEL_3D_ANNOTATION_POINT_SELECTED_FOR_TRANSFORMATION_COLOR } from "../../constants";
+import { LABEL_3D_ANNOTATION_POINT_SELECTED_FOR_TRANSFORMATION_COLOR } from "../constants";
 import {
   currentPointPositionAtom,
   hoveredPolylineInfoAtom,
@@ -14,7 +14,7 @@ import {
   transformModeAtom,
   transformSpaceAtom,
   type SelectedPoint,
-} from "../../state";
+} from "../state";
 
 interface PolylinePointMarkerProps {
   position: Vector3;

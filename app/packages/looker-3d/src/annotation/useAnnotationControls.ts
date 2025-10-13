@@ -14,7 +14,7 @@ import {
   type TransformMode,
   type TransformSpace,
 } from "../state";
-import type { OverlayLabel } from "./loader";
+import type { OverlayLabel } from "../labels/loader";
 
 /**
  * This hook is used to handle annotation controls for 3D labels.

@@ -8,6 +8,7 @@ import {
   Vector3,
 } from "three";
 import { PLYLoader } from "three/examples/jsm/loaders/PLYLoader";
+import { HoveredPointMarker } from "../../components/HoveredPointMarker";
 import type {
   FoMeshBasicMaterialProps,
   FoMeshMaterial,
@@ -17,7 +18,6 @@ import type {
 import { useFoLoader } from "../../hooks/use-fo-loaders";
 import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";
 import { usePointCloudHover } from "../../hooks/use-point-cloud-hover";
-import { HoveredPointMarker } from "../components/HoveredPointMarker";
 import { useFo3dContext } from "../context";
 import { usePcdMaterial } from "../point-cloud/use-pcd-material";
 import { getBasePathForTextures, getResolvedUrlForFo3dAsset } from "../utils";

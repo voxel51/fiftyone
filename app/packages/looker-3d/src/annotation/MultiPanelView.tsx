@@ -15,10 +15,13 @@ import { useCallback, useLayoutEffect, useMemo, useRef } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import * as THREE from "three";
 import { Box3, Vector3 } from "three";
-import { AnnotationPlane } from "../components/AnnotationPlane";
-import { Crosshair3D } from "../components/Crosshair3D";
 import { PcdColorMapTunnel } from "../components/PcdColormapModal";
 import { StatusBarRootContainer } from "../containers";
+import { useFo3dContext } from "../fo3d/context";
+import { Fo3dSceneContent } from "../fo3d/Fo3dCanvas";
+import { FoSceneComponent } from "../fo3d/FoScene";
+import { Gizmos } from "../fo3d/Gizmos";
+import HoverMetadataHUD from "../fo3d/HoverMetadataHUD";
 import { FoScene } from "../hooks";
 import { ThreeDLabels } from "../labels";
 import { SpinningCube } from "../SpinningCube";
@@ -31,11 +34,9 @@ import {
   selectedPointAtom,
 } from "../state";
 import { StatusBar } from "../StatusBar";
-import { useFo3dContext } from "./context";
-import { Fo3dSceneContent } from "./Fo3dCanvas";
-import { FoSceneComponent } from "./FoScene";
-import { Gizmos } from "./Gizmos";
-import HoverMetadataHUD from "./HoverMetadataHUD";
+import { AnnotationPlane } from "./AnnotationPlane";
+import { Crosshair3D } from "./Crosshair3D";
+import { SegmentPolylineRenderer } from "./SegmentPolylineRenderer";
 import { TransformHUD } from "./TransformHUD";
 
 const CANVAS_WRAPPER_ID = "sample3d-canvas-wrapper";
@@ -427,7 +428,74 @@ const SidePanel = ({
 
   const cameraRef = useRef<THREE.OrthographicCamera>();
 
-  const zoom = view === "Front" || view === "Back" ? 10 : 10;
+  // Calculate camera position based on scene bounding box to fit the scene neatly
+  const adjustedPosition = useMemo(() => {
+    if (
+      !sceneBoundingBox ||
+      sceneBoundingBox.isEmpty() ||
+      !upVector ||
+      !lookAt
+    ) {
+      return position; // Use default position if no bounding box
+    }
+
+    const size = new Vector3();
+    sceneBoundingBox.getSize(size);
+    const maxSize = Math.max(size.x, size.y, size.z);
+
+    // Calculate distance based on scene size to ensure it fits in the viewport
+    // For orthographic cameras, we need to position the camera at an appropriate distance
+    // so the scene fits within the camera's view frustum
+    const distance = maxSize * 1.5; // 1.5x the max size for comfortable padding
+
+    const upDir = upVector.clone().normalize();
+    const center = lookAt.clone();
+
+    // Calculate direction based on view type
+    let direction: Vector3;
+    switch (view) {
+      case "Top":
+        direction = upDir.clone();
+        break;
+      case "Bottom":
+        direction = upDir.clone().negate();
+        break;
+      case "Left":
+        if (Math.abs(upDir.y) > 0.9) {
+          direction = new Vector3(-1, 0, 0);
+        } else {
+          direction = new Vector3(0, 1, 0).cross(upDir).normalize();
+        }
+        break;
+      case "Right":
+        if (Math.abs(upDir.y) > 0.9) {
+          direction = new Vector3(1, 0, 0);
+        } else {
+          direction = new Vector3(0, 1, 0).cross(upDir).normalize().negate();
+        }
+        break;
+      case "Front":
+        if (Math.abs(upDir.y) > 0.9) {
+          direction = new Vector3(0, 0, 1);
+        } else {
+          const left = new Vector3(0, 1, 0).cross(upDir).normalize();
+          direction = upDir.clone().cross(left).normalize();
+        }
+        break;
+      case "Back":
+        if (Math.abs(upDir.y) > 0.9) {
+          direction = new Vector3(0, 0, -1);
+        } else {
+          const left = new Vector3(0, 1, 0).cross(upDir).normalize();
+          direction = upDir.clone().cross(left).normalize().negate();
+        }
+        break;
+      default:
+        direction = upDir.clone();
+    }
+
+    return center.clone().add(direction.multiplyScalar(distance));
+  }, [position, sceneBoundingBox, upVector, lookAt, view]);
 
   return (
     <div
@@ -446,9 +514,9 @@ const SidePanel = ({
         <OrthographicCamera
           makeDefault
           ref={cameraRef}
-          position={position}
+          position={adjustedPosition}
           up={upVector ?? [0, 1, 0]}
-          zoom={zoom}
+          zoom={2}
           near={0}
           far={foScene?.cameraProps.far ?? 2500}
           onUpdate={(cam) => cam.updateProjectionMatrix()}
@@ -482,6 +550,7 @@ const SidePanel = ({
               | "back"
           }
         />
+        <SegmentPolylineRenderer />
         <Crosshair3D />
       </View>
       <div

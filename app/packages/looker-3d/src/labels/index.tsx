@@ -30,7 +30,7 @@ import { toEulerFromDegreesArray } from "../utils";
 import { Cuboid, type CuboidProps } from "./cuboid";
 import { type OverlayLabel, load3dOverlays } from "./loader";
 import { type PolyLineProps, Polyline } from "./polyline";
-import { useAnnotationControls } from "./useAnnotationControls";
+import { useAnnotationControls } from "../annotation/useAnnotationControls";
 
 export interface ThreeDLabelsProps {
   sampleMap: { [sliceOrFilename: string]: Sample } | fos.Sample[];

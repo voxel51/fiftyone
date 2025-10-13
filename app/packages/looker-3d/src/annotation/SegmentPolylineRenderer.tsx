@@ -14,6 +14,7 @@ import {
   type TempPolyline,
 } from "../state";
 import { getPlaneFromPositionAndQuaternion } from "../utils";
+import { PolylinePointMarker } from "./PolylinePointMarker";
 
 interface SegmentPolylineRendererProps {
   color?: string;
@@ -275,15 +276,69 @@ export const SegmentPolylineRenderer = ({
   ]);
 
   const vertexMarkers = useMemo(() => {
-    if (segmentState.vertices.length === 0) return null;
+    const markers = [];
 
-    return segmentState.vertices.map((vertex, index) => (
-      <mesh key={`vertex-${index}`} position={new THREE.Vector3(...vertex)}>
-        <sphereGeometry args={[0.05, 8, 8]} />
-        <meshBasicMaterial color={index === 0 ? "#ff0000" : color} />
-      </mesh>
-    ));
-  }, [segmentState.vertices, color]);
+    // Current segment vertices (while actively segmenting)
+    if (segmentState.vertices.length > 0) {
+      segmentState.vertices.forEach((vertex, index) => {
+        markers.push(
+          <PolylinePointMarker
+            key={`current-vertex-${index}`}
+            position={new THREE.Vector3(...vertex)}
+            color={index === 0 ? "#ff0000" : color}
+            size={0.05}
+            pulsate={false}
+            isDraggable={false}
+            labelId="segmenting"
+            segmentIndex={0}
+            pointIndex={index}
+          />
+        );
+      });
+    }
+
+    // Completed polylines vertices (for editing)
+    tempPolylines.forEach((polyline, polylineIndex) => {
+      polyline.vertices.forEach((vertex, vertexIndex) => {
+        markers.push(
+          <PolylinePointMarker
+            key={`temp-polyline-${polyline.id}-vertex-${vertexIndex}`}
+            position={new THREE.Vector3(...vertex)}
+            color={vertexIndex === 0 ? "#ff0000" : polyline.color}
+            size={0.05}
+            pulsate={false}
+            isDraggable={true}
+            labelId={polyline.id}
+            segmentIndex={0}
+            pointIndex={vertexIndex}
+            onPointMove={(newPosition) => {
+              // Update the vertex position in tempPolylines
+              setTempPolylines((prev) =>
+                prev.map((p) =>
+                  p.id === polyline.id
+                    ? {
+                        ...p,
+                        vertices: p.vertices.map((v, i) =>
+                          i === vertexIndex
+                            ? ([
+                                newPosition.x,
+                                newPosition.y,
+                                newPosition.z,
+                              ] as [number, number, number])
+                            : v
+                        ),
+                      }
+                    : p
+                )
+              );
+            }}
+          />
+        );
+      });
+    });
+
+    return markers.length > 0 ? markers : null;
+  }, [segmentState.vertices, tempPolylines, color, setTempPolylines]);
 
   if (
     !segmentState.isActive &&
