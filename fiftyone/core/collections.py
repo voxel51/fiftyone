@@ -258,6 +258,7 @@ class AsyncSaveContext(SaveContext):
     def __exit__(self, *args):
         super().__exit__(*args)
 
+        error = None
         try:
             # Loop-drain self.futures so any submissions triggered by
             # super().__exit__() are awaited.
@@ -265,10 +266,17 @@ class AsyncSaveContext(SaveContext):
                 futures = self.futures
                 self.futures = []
                 for future in futures:
-                    future.result()
+                    try:
+                        future.result()
+                    except Exception as e:
+                        if error is None:
+                            error = e
             self.futures.clear()
         finally:
             self.executor.__exit__(*args)
+
+        if error:
+            raise error
 
     def save(self, sample):
         """Registers the sample for saving in the next batch.
