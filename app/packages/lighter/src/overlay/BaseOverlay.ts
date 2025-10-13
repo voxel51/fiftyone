@@ -8,14 +8,13 @@ import { LIGHTER_EVENTS } from "../event/EventBus";
 import type { InteractionHandler } from "../interaction/InteractionManager";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { ResourceLoader } from "../resource/ResourceLoader";
-import type { DrawStyle, Point } from "../types";
+import type { DrawStyle, Point, RawLookerLabel } from "../types";
 
 /**
  * Base abstract class for all overlays.
  */
 export abstract class BaseOverlay implements InteractionHandler {
   readonly id: string;
-  readonly field: string;
   readonly cursor?: string;
 
   protected isHoveredState = false;
@@ -30,10 +29,13 @@ export abstract class BaseOverlay implements InteractionHandler {
   protected eventBus?: EventBus;
   protected resourceLoader?: ResourceLoader;
   protected currentStyle?: DrawStyle;
+  protected field: string;
+  protected label: RawLookerLabel;
 
-  constructor(id: string, field: string) {
+  constructor(id: string, field: string, label: RawLookerLabel) {
     this.id = id;
     this.field = field;
+    this.label = label;
     this.cursor = "default";
   }
 
@@ -107,6 +109,14 @@ export abstract class BaseOverlay implements InteractionHandler {
    */
   getIsDirty(): boolean {
     return this.isDirty;
+  }
+
+  /**
+   * Gets the overlay label.
+   * @returns The overlay's raw label.
+   */
+  getLabel() {
+    return this.label;
   }
 
   /**
@@ -309,5 +319,11 @@ export abstract class BaseOverlay implements InteractionHandler {
 
   updateField(field: string) {
     this.field = field;
+    this.markDirty();
+  }
+
+  updateLabel(label: RawLookerLabel) {
+    this.label = label;
+    this.markDirty();
   }
 }

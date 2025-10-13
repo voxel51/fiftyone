@@ -12,8 +12,6 @@ export function SchemaIOComponent(props) {
   const schemaIOContext = { id };
   const storeRef = useRef({ liteValues: {} });
 
-  console.log(props.schema);
-
   useEffect(() => {
     return () => {
       if (shouldClearUseKeyStores !== false) {

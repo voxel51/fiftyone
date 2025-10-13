@@ -24,11 +24,9 @@ export class UpdateLabelCommand implements Command {
 
   execute(): void {
     this.overlay.updateLabel(this.nextLabel);
-    this.overlay.markDirty();
   }
 
   undo(): void {
     this.overlay.updateLabel(this.currentLabel);
-    this.overlay.markDirty();
   }
 }

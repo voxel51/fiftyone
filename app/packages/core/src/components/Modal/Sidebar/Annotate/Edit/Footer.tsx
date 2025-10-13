@@ -6,13 +6,15 @@ import React from "react";
 import { useRecoilValue } from "recoil";
 import { RoundButton } from "../Actions";
 import { Row } from "./Components";
-import { currentField, deleteValue, editing, saveValue } from "./state";
+import { currentField, deleteValue, editing, isNew, saveValue } from "./state";
 
 const SaveFooter = () => {
   const saveCurrent = useSetAtom(saveValue);
   const deleteCurrent = useSetAtom(deleteValue);
   const sampleId = useRecoilValue(fos.currentSampleId);
   const datasetId = fos.useAssertedRecoilValue(fos.datasetId);
+
+  const showCancel = useAtomValue(isNew);
 
   return (
     <>
@@ -28,8 +30,14 @@ const SaveFooter = () => {
           deleteCurrent({ datasetId, sampleId });
         }}
       >
-        <DeleteOutline />
-        Delete
+        {showCancel ? (
+          "Cancel"
+        ) : (
+          <>
+            <DeleteOutline />
+            Delete
+          </>
+        )}
       </RoundButton>
     </>
   );

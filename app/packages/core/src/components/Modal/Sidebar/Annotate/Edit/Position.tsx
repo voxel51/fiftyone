@@ -1,56 +1,85 @@
-import { BoundingBoxOverlay, useLighter } from "@fiftyone/lighter";
+import {
+  BoundingBoxOverlay,
+  LIGHTER_EVENTS,
+  useLighter,
+} from "@fiftyone/lighter";
 import { useAtomValue } from "jotai";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
-import { current } from "./state";
+import { currentOverlay } from "./state";
+
+const createInput = (name: string) => {
+  return {
+    [name]: {
+      type: "number",
+      view: {
+        name: "View",
+        label: name,
+        component: "FieldView",
+      },
+      multipleOf: 0.01,
+    },
+  };
+};
+const createStack = () => {
+  return {
+    name: "HStackView",
+    component: "GridView",
+    orientation: "horizontal",
+    gap: 1,
+    align_x: "left",
+    align_y: "top",
+  };
+};
+
+interface Coordinates {
+  position: { x?: number; y?: number };
+  dimensions: { width?: number; height?: number };
+}
 
 export default function Position() {
-  return null;
-  const [state, setState] = useState(null);
-  const currentLabel = useAtomValue(current);
+  const [state, setState] = useState<Coordinates>({
+    position: {},
+    dimensions: {},
+  });
+  const overlay = useAtomValue(currentOverlay);
 
   const { scene } = useLighter();
 
-  const initial = useMemo(() => {
-    const overlay = scene?.getOverlay(currentLabel.id);
-
+  const initial = useEffect(() => {
     if (!(overlay instanceof BoundingBoxOverlay)) {
-      throw overlay;
+      return;
     }
+
     const rect = overlay.getAbsoluteBounds();
-    return {
+    setState({
       position: { x: rect.x, y: rect.y },
       dimensions: { width: rect.width, height: rect.height },
-    };
-  }, [scene, currentLabel]);
+    });
+  }, [overlay]);
 
   useEffect(() => {
-    scene?.on("overlay-bounds-changed", (event) => {
-      const overlay = scene?.getOverlay(currentLabel.id);
+    const handler = () => {
       if (!(overlay instanceof BoundingBoxOverlay)) {
-        throw new Error("");
+        return;
       }
       const rect = overlay.getAbsoluteBounds();
       setState({
         position: { x: rect.x, y: rect.y },
         dimensions: { width: rect.width, height: rect.height },
       });
-    });
-    scene?.on("overlay-drag-move", (event) => {
-      const overlay = scene?.getOverlay(currentLabel?.data._id);
-      if (!(overlay instanceof BoundingBoxOverlay)) {
-        throw new Error("");
-      }
-      const rect = overlay.getAbsoluteBounds();
-      setState({
-        position: { x: rect.x, y: rect.y },
-        dimensions: { width: rect.width, height: rect.height },
-      });
-    });
-  }, [scene]);
+    };
+    scene?.on(LIGHTER_EVENTS.OVERLAY_DRAG_MOVE, handler);
+    scene?.on(LIGHTER_EVENTS.OVERLAY_RESIZE_MOVE, handler);
+
+    return () => {
+      scene?.off(LIGHTER_EVENTS.OVERLAY_DRAG_MOVE, handler);
+      scene?.off(LIGHTER_EVENTS.OVERLAY_RESIZE_MOVE, handler);
+    };
+  }, [overlay, scene]);
 
   return (
-    <div>
+    <div style={{ width: "100%" }}>
       <SchemaIOComponent
         schema={{
           type: "object",
@@ -60,80 +89,34 @@ export default function Position() {
           properties: {
             position: {
               type: "object",
-              view: {
-                name: "HStackView",
-                component: "GridView",
-                orientation: "horizontal",
-                gap: 1,
-                align_x: "left",
-                align_y: "top",
-              },
+              view: createStack(),
               properties: {
-                x: {
-                  type: "number",
-                  view: {
-                    name: "View",
-                    label: "x",
-                    component: "FieldView",
-                  },
-                  multipleOf: 0.01,
-                },
-                y: {
-                  type: "number",
-                  view: {
-                    name: "View",
-                    label: "y",
-                    component: "FieldView",
-                  },
-                  multipleOf: 0.01,
-                },
+                ...createInput("x"),
+                ...createInput("y"),
               },
             },
             dimensions: {
               type: "object",
-              view: {
-                name: "HStackView",
-                component: "GridView",
-                orientation: "horizontal",
-                gap: 1,
-                align_x: "left",
-                align_y: "top",
-              },
+              view: createStack(),
               properties: {
-                width: {
-                  type: "number",
-                  view: {
-                    name: "View",
-                    label: "width",
-                    component: "FieldView",
-                  },
-                  multipleOf: 0.01,
-                },
-                height: {
-                  type: "number",
-                  view: {
-                    name: "View",
-                    label: "height",
-                    component: "FieldView",
-                  },
-                  multipleOf: 0.01,
-                },
+                ...createInput("width"),
+                ...createInput("height"),
               },
             },
           },
         }}
         data={state ?? initial}
-        onChange={(data) => {
-          if (!data?.dimensions?.Width) {
+        onChange={(data: Coordinates) => {
+          if (!(overlay instanceof BoundingBoxOverlay)) {
             return;
           }
-          const overlay = scene?.getOverlay(currentLabel.id);
-          if (!(overlay instanceof BoundingBoxOverlay)) {
-            throw new Error("");
-          }
-          const rect = overlay.getAbsoluteBounds();
 
-          overlay.setAbsoluteBounds({ ...rect, width: data.Dimensions.Width });
+          const rect = overlay.getAbsoluteBounds();
+          overlay.setAbsoluteBounds({
+            ...rect,
+            ...data.dimensions,
+            ...data.position,
+          });
         }}
       />
     </div>

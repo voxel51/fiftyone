@@ -18,8 +18,8 @@ import { STROKE_WIDTH } from "../constants";
 import {
   DoLighterEvent,
   LIGHTER_EVENTS,
-  type LighterEvent,
   LighterEventDetail,
+  type LighterEvent,
 } from "../event/EventBus";
 import type { InteractionHandler } from "../interaction/InteractionManager";
 import { InteractionManager } from "../interaction/InteractionManager";
@@ -1133,7 +1133,7 @@ export class Scene2D {
 
     this.dispatch({
       type: LIGHTER_EVENTS.COMMAND_EXECUTED,
-      detail: { commandId: command.id, isUndoable },
+      detail: { commandId: command.id, isUndoable, command },
     });
   }
 

@@ -18,6 +18,8 @@ import type { LabelType } from "./Edit/state";
 import type { AnnotationSchemas } from "./state";
 import { schemas } from "./state";
 import { useAddAnnotationLabel } from "./useAddAnnotationLabel";
+import useFocus from "./useFocus";
+import useHover from "./useHover";
 
 const handleSample = async ({
   addLabel,
@@ -157,8 +159,8 @@ export default function useLabels() {
     setLoading,
   ]);
 
-  // useHover();
-  // useFocus();
+  useHover();
+  useFocus();
 
   return {
     handleSampleData,

@@ -141,7 +141,7 @@ export const currentType = atom<LabelType>((get) => {
 export const isEditing = atom((get) => get(editing) !== null);
 
 export const isNew = atom((get) => {
-  return typeof get(editing) === "string" || get(current).isNew;
+  return typeof get(editing) === "string" || get(current)?.isNew;
 });
 
 const fieldsOfType = atomFamily((type: LabelType) =>
@@ -177,7 +177,13 @@ export const saveValue = atom(
     set,
     { datasetId, sampleId }: { datasetId: string; sampleId: string }
   ) => {
-    const { isNew, ...value } = get(current);
+    const data = get(current);
+
+    if (!data) {
+      throw new Error("no current label");
+    }
+
+    const { isNew, ...value } = data;
 
     if (isNew) {
       set(addLabel, value);
@@ -194,12 +200,16 @@ export const deleteValue = atom(
     set,
     { datasetId, sampleId }: { datasetId: string; sampleId: string }
   ) => {
-    const valueId = get(current).data._id;
+    const data = get(current);
+
+    if (!data) {
+      throw new Error("no current label");
+    }
 
     // patchSample({ datasetId, sampleId, delta });
     set(
       labels,
-      get(labels).filter((label) => label.data._id !== valueId)
+      get(labels).filter((label) => label.data._id !== data.data._id)
     );
 
     set(editing, null);
