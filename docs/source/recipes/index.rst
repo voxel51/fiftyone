@@ -36,6 +36,27 @@ workflows.
 .. Add recipe cards below
 
 .. customcarditem::
+    :header: Data Loading with Torch Datasets
+    :description: Directly access a single sample in a FiftyOne dataset using its unique sample ID (sid).
+    :link: fiftyone_torch_dataloader.html
+    :image: https://cdn.voxel51.com/recipes_sid_get_item/notebook1/sid_get_item.webp
+    :tags: Basics,Dataset-Curation
+
+.. customcarditem::
+    :header: Training on MNIST with Torch
+    :description: Train a simple PyTorch model on the MNIST dataset using `FiftyOneTorchDataset`, with train/validation/test splits managed in FiftyOne and a reusable training script.
+    :link: torch-dataset-examples/simple_training_example.html
+    :image: https://cdn.voxel51.com/recipes_fiftyone_torch_mnist_training/notebook_simple_training_example/fiftyone_torch_mnist_training.webp
+    :tags: Torch,Training,Datasets
+
+.. customcarditem::
+    :header: Speeding up with cached fields
+    :description: Improve training performance by preloading specific fields into memory using the `cache_field_names` argument with `FiftyOneTorchDataset`.
+    :link: torch-dataset-examples/the_cache_field_names_argument.html
+    :image: https://cdn.voxel51.com/recipes_fiftyone_torch_cache_fields/notebook_cache_field_names/fiftyone_torch_cache_fields.webp
+    :tags: Torch,Performance,Data-Loading
+    
+.. customcarditem::
     :header: Creating views and using view expressions
     :description: Create views to easily query and explore your datasets in FiftyOne.
     :link: creating_views.html
@@ -136,6 +157,9 @@ workflows.
    :maxdepth: 1
    :hidden:
 
+   Data Loading with Torch Datasets __SUB_NEW__ <fiftyone_torch_dataloader.ipynb>
+   Training on MNIST with Torch __SUB_NEW__ <torch-dataset-examples/simple_training_example.ipynb>
+   Speeding up with cached fields __SUB_NEW__ <torch-dataset-examples/the_cache_field_names_argument.ipynb>
    Creating views <creating_views.ipynb>
    Removing duplicate images <image_deduplication.ipynb>
    Removing duplicate objects <remove_duplicate_annos.ipynb>
