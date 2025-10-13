@@ -54,15 +54,16 @@ def parse(
     parsed = []
     for patch in patches:
         try:
-            op = patch["op"]
+            op_str = patch["op"]
             path = patch["path"]
         except KeyError as err:
             raise ValueError(f"Missing {err} field") from err
 
         try:
-            patch_cls = __PATCH_MAP[Operation(op)]
+            op = Operation(op_str)
+            patch_cls = __PATCH_MAP[op]
         except (ValueError, KeyError) as err:
-            raise TypeError(f"Unsupported operation '{patch['op']}'") from err
+            raise TypeError(f"Unsupported operation '{op_str}'") from err
 
         kwargs = {"path": path}
         try:
@@ -80,6 +81,6 @@ def parse(
 
             parsed.append(patch_cls(**kwargs))
         except Exception as err:
-            raise ValueError(f"Invalid operation '{op}'") from err
+            raise ValueError(f"Invalid operation '{op_str}'") from err
 
     return parsed if not return_one else parsed[0]

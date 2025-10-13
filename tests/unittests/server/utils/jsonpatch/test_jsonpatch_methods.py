@@ -95,7 +95,7 @@ class TestGet:
             #####
 
     @staticmethod
-    @pytest.mark.parametrize("idx", [-1, 10])
+    @pytest.mark.parametrize("idx", [-1, 2])
     def test_index_err(idx: int, person: Person):
         """Tests error is raised for out-of-bounds indices."""
 
@@ -177,7 +177,7 @@ class TestAdd:
             #####
 
     @staticmethod
-    @pytest.mark.parametrize("idx", [-1, 10])
+    @pytest.mark.parametrize("idx", [-1, 3])
     def test_index_out_of_bounds(idx: int, person: Person):
         """Tests error is raised for out-of-bounds indices."""
 
@@ -226,7 +226,7 @@ class TestAdd:
         assert res == person
 
     @staticmethod
-    @pytest.mark.parametrize("idx", [0, 1, 2])
+    @pytest.mark.parametrize("idx", [0, 1])
     def test_list_set_item(idx: int, person: Person):
         """Tests that list items are set."""
         length = len(person.pets)

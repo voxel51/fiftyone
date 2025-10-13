@@ -38,7 +38,6 @@ class Patch(abc.ABC):
     op: Operation
 
     def __init_subclass__(cls):
-        print(cls, inspect.isabstract(cls))
         if not inspect.isabstract(cls) and not isinstance(
             getattr(cls, "op", None), Operation
         ):

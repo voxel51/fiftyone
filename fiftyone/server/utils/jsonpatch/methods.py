@@ -62,7 +62,7 @@ def get(src: T, path: Union[str, jsonpointer.JsonPointer]) -> V:
                         ):
                             idx = int(name)
 
-                            if not 0 <= idx <= len(value):
+                            if not 0 <= idx < len(value):
                                 raise IndexError(
                                     "List index out of range"
                                 ) from err
@@ -137,7 +137,7 @@ def add(
                     except ValueError as val_err:
                         raise val_err
 
-                    if not 0 <= idx <= len(target):
+                    if not 0 <= idx < len(target):
                         raise IndexError(
                             "List index out of range"
                         ) from type_err
