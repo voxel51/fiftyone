@@ -43,6 +43,7 @@ jobs:
     env:
       FIFTYONE_DO_NOT_TRACK: true
       DOCSEARCH_API_KEY: ${{ secrets.DOCSEARCH_API_KEY }}
+      GITHUB_TOKEN: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
     steps:
       - name: Clone fiftyone for tag builds
         if: github.ref_type == 'tag'
