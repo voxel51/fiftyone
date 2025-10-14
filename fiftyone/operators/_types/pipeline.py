@@ -127,4 +127,4 @@ class Pipeline:
         Returns:
             JSON / python dict representation of the pipeline
         """
-        return {"stages": [stage.to_json() for stage in self.stages]}
+        return dataclasses.asdict(self)
