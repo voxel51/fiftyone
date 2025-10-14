@@ -59,8 +59,7 @@ def get_sample(request: Request) -> fo.Sample:
     if request.headers.get("If-Match"):
         etag, _ = utils.http.ETag.parse(request.headers["If-Match"])
 
-        current_etag = str(generate_sample_etag(sample))
-        if etag == current_etag:
+        if etag == str(generate_sample_etag(sample)):
             return sample
 
         if etag == sample.last_modified_at.isoformat():
@@ -69,11 +68,7 @@ def get_sample(request: Request) -> fo.Sample:
         if etag == str(sample.last_modified_at.timestamp()):
             return sample
 
-        raise HTTPException(
-            status_code=412,
-            detail="ETag does not match",
-            headers={"ETag": f'"{current_etag}"'},
-        )
+        raise HTTPException(status_code=412, detail="ETag does not match")
 
     return sample
 

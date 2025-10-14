@@ -256,7 +256,6 @@ class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
             # Update the sample to change its last_modified_at
             self.sample["primitive_field"] = f"new_value_{i}"
             self.sample.save()
-            etag = fors.generate_sample_etag(self.sample)
 
             mock_request = self._create_mock_request(
                 {"primitive_field": "newer_value"},
@@ -267,9 +266,8 @@ class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
                 await self.mutator.patch(mock_request)
 
             self.assertEqual(cm.exception.status_code, 412)
-            assert "ETag" in cm.exception.headers
-            assert isinstance(cm.exception.headers["ETag"], str)
-            assert cm.exception.headers["ETag"] == f'"{etag}"'
+            headers = cm.exception.headers or {}
+            assert "ETag" not in headers
 
     async def test_unsupported_label_class(self):
         """Tests that an HTTPException is raised for an unknown _cls value."""
@@ -621,7 +619,6 @@ class SampleFieldRouteTests(unittest.IsolatedAsyncioTestCase):
             # Update the sample to change its last_modified_at
             self.sample["primitive_field"] = f"new_value_{i}"
             self.sample.save()
-            etag = fors.generate_sample_etag(self.sample)
 
             patch_payload = [
                 {"op": "replace", "path": "/label", "value": f"new_label{i}"}
@@ -640,9 +637,8 @@ class SampleFieldRouteTests(unittest.IsolatedAsyncioTestCase):
                 await self.mutator.patch(mock_request)
 
             self.assertEqual(cm.exception.status_code, 412)
-            assert "ETag" in cm.exception.headers
-            assert isinstance(cm.exception.headers["ETag"], str)
-            assert cm.exception.headers["ETag"] == f'"{etag}"'
+            headers = cm.exception.headers or {}
+            assert "ETag" not in headers
 
     async def test_field_path_not_found(self):
         """Tests that a 404 is raised for a non-existent field path."""
