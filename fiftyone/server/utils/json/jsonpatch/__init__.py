@@ -6,17 +6,7 @@ Apply JSON patch to python objects.
 |
 """
 
-from typing import (
-    Any,
-    Callable,
-    Generic,
-    Iterable,
-    Optional,
-    TypeVar,
-    TypedDict,
-    Union,
-)
-from typing_extensions import Required
+from typing import Any, Callable, Iterable, Optional, Union
 
 
 from fiftyone.server.utils.json.jsonpatch.methods import (
@@ -39,7 +29,6 @@ from fiftyone.server.utils.json.jsonpatch.patch import (
     Test,
 )
 
-T = TypeVar("T")
 
 __PATCH_MAP = {
     Operation.ADD: Add,
