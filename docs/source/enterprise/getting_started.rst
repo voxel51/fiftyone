@@ -2,92 +2,112 @@
 
 Getting Started with FiftyOne Enterprise
 ========================================
+
 .. default-role:: code
 
-This guide provides comprehensive instructions to successfully upload your first dataset to FiftyOne Enterprise (FOE).
+Follow this guide to create your first dataset in FiftyOne Enterprise 🚀
 
-Upload Cloud Credentials to your Deployment
--------------------------------------------
+Configure cloud credentials
+---------------------------
 
-Configure cloud credentials to enable rendering of cloud-backed media within
-FiftyOne Enterprise. This is a one-time setup that only needs to be performed
-by an administrator.
+An :ref:`admin user <enterprise-admin>` must configure cloud credentials
+**once** for a deployment in order for users to view datasets:
 
 .. image:: /images/enterprise/getting_started_cloud_creds.gif
    :alt: getting-started-cloud-creds
    :align: center
 
+.. _enterprise-getting-started-sdk:
+
 Create a dataset via the SDK 
------------------------------
+----------------------------
 
 Install the FiftyOne Enterprise Python SDK
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-1. Navigate to the **Settings** page in the FiftyOne Enterprise UI
-2. Select the **API** tab  
-3. Copy and execute the provided bash command to install the SDK in your virtual environment
+1. Navigate to the **Settings > API keys** page
+2. Copy and execute the provided bash command to install the SDK in your
+   virtual environment
 
 .. image:: /images/enterprise/getting_started_install_sdk.gif
    :alt: getting-started-install-sdk
    :align: center
 
-Working with Video Data
-^^^^^^^^^^^^^^^^^^^^^^^
-For video datasets, ensure that ffmpeg is installed in your environment to enable video support. You can install ffmpeg using the following command:
+If you plan to work with video datasets, you'll also need to install
+`FFmpeg <https://ffmpeg.org>`_:
 
 .. tabs::
 
-   .. tab:: Ubuntu/Debian
+  .. group-tab:: Linux
 
-      .. code-block:: bash
+    .. code-block:: shell
 
-         sudo apt-get install ffmpeg
+        sudo apt install -y ffmpeg
 
-   .. tab:: macOS
+  .. group-tab:: macOS
 
-      .. code-block:: bash
+    .. code-block:: python
 
-         brew install ffmpeg
+        brew install ffmpeg
 
-   .. tab:: Windows
+  .. group-tab:: Windows
 
-      .. code-block:: powershell
+    You can download a Windows build from
+    `here <https://ffmpeg.org/download.html#build-windows>`_. Unzip it and be
+    sure to add it to your path.
 
-         # Using Chocolatey
-         choco install ffmpeg
-
-
-Connect to Your Deployment
+Connect to your deployment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-To establish a connection between the FiftyOne Enterprise Python SDK and your deployment, configure the ``FIFTYONE_API_KEY`` and ``FIFTYONE_API_URI`` environment variables. For detailed setup instructions, refer to the :ref:`API connection documentation <enterprise-api-connection>`.
+To connect to your FiftyOne Enterprise deployment, you must provide your
+:ref:`API URI and API key <enterprise-api-connection>`:
 
-Verify that your API connection is working correctly using the following method:
+.. code-block:: shell
+
+   export FIFTYONE_API_URI=XXXXXXXX
+   export FIFTYONE_API_KEY=YYYYYYYY
+
+You can create an API key and locate your deployment's URI on the
+**Settings > API keys** page of the FiftyOne Enterprise App:
+
+.. image:: /images/enterprise/api_key_generate.png
+   :alt: api-key-generate
+   :align: center
+
+You can use the :ref:`fiftyone config <cli-fiftyone-config>` CLI method to
+verify that you have correctly configured your API URI and API key:
+
+.. code-block:: shell
+
+   $ fiftyone config
+   {
+       ...
+       "api_uri": "XXXXXXXX",
+       "api_key": "YYYYYYYY",
+       ...
+   }
+
+You can also verify that your API connection is working correctly by executing
+the following method:
 
 .. code-block:: python
 
-   import fiftyone.management as fom  # if this fails, you may have the open-source SDK installed
+   # if this fails, you may have the open source SDK installed
+   import fiftyone.management as fom
 
-   fom.test_api_connection()  # API connection succeeded
+   # if this succeeds, your API connection is working
+   fom.test_api_connection()
 
-You can use ``fiftyone.config`` to verify that you have correctly set the ``FIFTYONE_API_KEY`` and ``FIFTYONE_API_URI`` environment variables:
-
-.. code-block:: python
-
-   import fiftyone as fo
-
-   print(fo.config)
-
-
-
-Set Cloud Credentials Locally
+Set cloud credentials locally
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Next, configure the appropriate environment variables for your :ref:`cloud credentials <enterprise-cloud-credentials>` within your local environment
+Next, configure the appropriate environment variables to register your
+:ref:`cloud credentials <enterprise-cloud-credentials>` in your local
+environment:
 
-.. tab-set::
+.. tabs::
 
-   .. tab-item:: AWS
+  .. group-tab:: AWS
 
       Set the following environment variables:
 
@@ -97,7 +117,7 @@ Next, configure the appropriate environment variables for your :ref:`cloud crede
          export AWS_SECRET_ACCESS_KEY=...
          export AWS_DEFAULT_REGION=...
 
-   .. tab-item:: GCP
+  .. group-tab:: GCP
 
       Set the following environment variable:
 
@@ -105,7 +125,7 @@ Next, configure the appropriate environment variables for your :ref:`cloud crede
 
          export GOOGLE_APPLICATION_CREDENTIALS="/path/to/your/service-account-key.json"
 
-   .. tab-item:: Azure
+  .. group-tab:: Azure
 
       Set the following environment variables:
 
@@ -114,7 +134,7 @@ Next, configure the appropriate environment variables for your :ref:`cloud crede
          export AZURE_STORAGE_ACCOUNT=...
          export AZURE_STORAGE_KEY=...
 
-   .. tab-item:: MinIO
+  .. group-tab:: MinIO
 
       Set the following environment variables:
 
@@ -124,148 +144,186 @@ Next, configure the appropriate environment variables for your :ref:`cloud crede
          export MINIO_SECRET_ACCESS_KEY=...
          export MINIO_DEFAULT_REGION=...
 
-Learn more about how to interact with cloud-backed media with the FiftyOne 
-Enterprise Python SDK in the :ref:`Cloud Media Guide <enterprise-cloud-media>`.
+Refer to :ref:`this page <enterprise-cloud-media>` for more information about
+interacting with cloud-backed media in FiftyOne Enterprise.
 
-Create a Dataset and Add Samples
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Import your data
+~~~~~~~~~~~~~~~~
 
-.. tab-set::
+The example code below shows the basic pattern for creating new datasets and
+populating them via the FiftyOne Enterprise Python SDK:
 
-   .. tab-item:: AWS S3
+.. tabs::
+
+  .. group-tab:: AWS
 
       .. code-block:: python
 
          import fiftyone as fo
          import fiftyone.core.storage as fos
 
-         s3_files = fos.list_files(dirpath="s3://YOUR_BUCKET/YOUR_PREFIX", abs_path=True)
-         dataset = fo.Dataset("YOUR_DATASET")
-         samples = []
+         dataset = fo.Dataset("<name>")
 
+         s3_files = fos.list_files("s3://<bucket>/<prefix>", abs_paths=True)
+
+         samples = []
          for s3_uri in s3_files:
              if s3_uri.lower().endswith(".jpeg"):
                  sample = fo.Sample(filepath=s3_uri)
                  samples.append(sample)
 
          dataset.add_samples(samples)
-         dataset.persistent = True  # will render the dataset in the UI
 
-   .. tab-item:: Google Cloud Storage (GCS)
+         # You must mark the dataset as persistent to access it in the UI
+         dataset.persistent = True
+
+  .. group-tab:: GCP
 
       .. code-block:: python
 
          import fiftyone as fo
          import fiftyone.core.storage as fos
 
-         gcs_files = fos.list_files(dirpath="gs://YOUR_BUCKET/YOUR_PREFIX", abs_path=True)
-         dataset = fo.Dataset("YOUR_DATASET")
-         samples = []
+         dataset = fo.Dataset("<name>")
 
+         gcs_files = fos.list_files("gs://<bucket>/<prefix>", abs_paths=True)
+
+         samples = []
          for gcs_uri in gcs_files:
              if gcs_uri.lower().endswith(".jpeg"):
                  sample = fo.Sample(filepath=gcs_uri)
                  samples.append(sample)
 
          dataset.add_samples(samples)
+
+         # You must mark the dataset as persistent to access it in the UI
          dataset.persistent = True
-   .. tab-item:: Azure Blob Storage
+
+  .. group-tab:: Azure
 
       .. code-block:: python
 
          import fiftyone as fo
          import fiftyone.core.storage as fos
 
-         azure_files = fos.list_files(
-             dirpath="https://<storage-account>.blob.core.windows.net/<container>/<prefix>",
-             abs_path=True
-         )
-         dataset = fo.Dataset("YOUR_DATASET")
-         samples = []
+         dataset = fo.Dataset("<name>")
 
+         azure_files = fos.list_files(
+             "https://<storage-account>.blob.core.windows.net/<container>/<prefix>",
+             abs_paths=True,
+         )
+
+         samples = []
          for azure_uri in azure_files:
              if azure_uri.lower().endswith(".jpeg"):
                  sample = fo.Sample(filepath=azure_uri)
                  samples.append(sample)
 
          dataset.add_samples(samples)
+
+         # You must mark the dataset as persistent to access it in the UI
          dataset.persistent = True     
 
-   .. tab-item:: MinIO
+  .. group-tab:: MinIO
 
       .. code-block:: python
 
          import fiftyone as fo
          import fiftyone.core.storage as fos
 
-         minio_files = fos.list_files(
-             dirpath="https://minio.example.com/bucket-name/prefix",
-             abs_path=True
-         )
-         dataset = fo.Dataset("YOUR_DATASET")
-         samples = []
+         dataset = fo.Dataset("<name>")
 
+         minio_files = fos.list_files(
+             "https://minio.example.com/<bucket>/<prefix>",
+             abs_paths=True,
+         )
+
+         samples = []
          for minio_uri in minio_files:
              if minio_uri.lower().endswith(".jpeg"):
                  sample = fo.Sample(filepath=minio_uri)
                  samples.append(sample)
 
          dataset.add_samples(samples)
+
+         # You must mark the dataset as persistent to access it in the UI
          dataset.persistent = True
 
-   
+Refer to :ref:`this page <importing-datasets>` for more information about
+importing your media and labels into FiftyOne via Python.
 
-Compute Metadata
+Compute metadata
 ~~~~~~~~~~~~~~~~
 
-:meth:`compute_metadata() <fiftyone.core.metadata.compute_metadata>` is a
-builtin method that efficiently populates basic metadata such as file size,
-image height and width, etc for all of the samples in your dataset. Keeping the
-metadata field populated for all samples of your datasets is recommended
-because it enables the sample grid's tiling algorithm to run more efficiently
+All datasets/views provide a builtin
+:meth:`compute_metadata() <fiftyone.core.collections.SampleCollection.compute_metadata>`
+method that you can invoke to efficiently populate the `metadata` field of your
+samples with basic media type-specific metadata such as file size and
+image/video dimensions for all samples in a collection:
 
 .. code-block:: python
 
    dataset.compute_metadata()
-   sample = dataset.first()
-   print(sample.metadata) #shows example metadata for the first sample
 
-Verify all samples have metadata by running the following:
+   sample = dataset.first()
+   print(sample.metadata)
+
+It is highly recommended to keep the `metadata` field populated for all samples
+of your datasets because it provides useful information upon which to
+search/filter and it enables the sample grid's tiling algorithm to run more
+efficiently.
+
+You can verify that all samples in a dataset/view have metadata as follows:
 
 .. code-block:: python
 
-   len(dataset.exists("metadata", False))  # Should be 0
+   assert len(dataset.exists("metadata", False)) == 0
 
+.. _enterprise-getting-started-ui:
 
 Create a dataset via the UI 
 ---------------------------
-
-Import Your Dataset
-~~~~~~~~~~~~~~~~~~~
-Schedule the **import_samples**  operator to import your dataset from your cloud storage bucket.
-
-.. image:: /images/enterprise/getting_started_import_samples.gif
-   :alt: getting-started-install-sdk
-   :align: center
-
-Compute Metadata
-~~~~~~~~~~~~~~~~
-**compute_metadata** is an operator that efficiently populates basic
-metadata such as file size, image height and width, etc for all of the samples 
-in your dataset. Keeping the metadata field populated for all samples of your
-datasets is recommended because it enables the sample grid's tiling algorithm
-to run more efficiently
-
-.. image:: /images/enterprise/getting_started_schedule_compute_metadata.gif
-   :alt: getting-started-compute-metadata
-   :align: center
 
 .. note::
 
     An admin must follow :ref:`these instructions <enterprise-plugins-install>`
     to install the
-    `@voxel51/io <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/
-    io/README.md>`_ and `@voxel51/utils <https://github.com/voxel51/
-    fiftyone-plugins/blob/main/plugins/
-    utils/README.md>`_ plugins in order to perform imports and compute metadata 
-    via the Enterprise UI. 
+    `@voxel51/io <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/io/README.md>`_
+    and
+    `@voxel51/utils <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/utils/README.md>`_
+    plugins in order for users to perform imports and compute metadata via the
+    FiftyOne Enterprise UI.
+
+Import your data
+~~~~~~~~~~~~~~~~
+
+To create a new dataset, click on the "New dataset" button in the upper right
+corner of the FiftyOne Enterprise homepage. A pop-up will appear alowing you to
+choose a name and optional description/tags for the dataset:
+
+.. image:: /images/enterprise/create_dataset.png
+   :alt: create-dataset
+   :align: center
+
+You can then use the **import_samples** operator to import media and labels
+stored in a cloud storage bucket:
+
+.. image:: /images/enterprise/getting_started_import_samples.gif
+   :alt: getting-started-install-sdk
+   :align: center
+
+Compute metadata
+~~~~~~~~~~~~~~~~
+
+You can use the **compute_metadata** operator to efficiently populate the
+`metadata` field of your samples with basic media type-specific metadata such
+as file size and image/video dimensions for all samples in a collection:
+
+.. image:: /images/enterprise/getting_started_schedule_compute_metadata.gif
+   :alt: getting-started-compute-metadata
+   :align: center
+
+It is highly recommended to keep the `metadata` field populated for all samples
+of your datasets because it provides useful information upon which to
+search/filter and it enables the sample grid's tiling algorithm to run more
+efficiently.
