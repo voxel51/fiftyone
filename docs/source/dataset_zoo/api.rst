@@ -19,6 +19,17 @@ You can interact with the Dataset Zoo either via the Python library or the CLI:
     provides convenient utilities for working with datasets in the FiftyOne
     Dataset Zoo.
 
+.. note::
+
+    Some datasets are loaded via the
+    `TorchVision Datasets <https://pytorch.org/vision/stable/datasets.html>`_
+    or `TensorFlow Datasets <https://www.tensorflow.org/datasets>`_ packages
+    under the hood.
+
+    If you do not have a :ref:`suitable package <dataset-zoo-ml-backend>`
+    installed when attempting to download a zoo dataset, you'll see an error
+    message that will help you install one.
+
 .. _dataset-zoo-list:
 
 Listing zoo datasets

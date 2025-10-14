@@ -19,6 +19,13 @@ You can interact with the Model Zoo either via the Python library or the CLI.
     provides convenient utilities for working with models in the FiftyOne Model
     Zoo.
 
+.. note::
+
+    Some models require additional packages to be installed. If you do not have
+    a :ref:`required package <model-zoo-requirements>` installed when loading a
+    zoo model, you'll see an error message that will help you install the
+    necessary package(s).
+
 .. _model-zoo-list:
 
 Listing zoo models
