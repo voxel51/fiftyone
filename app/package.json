@@ -56,5 +56,8 @@
         "colormap": "^2.3.2",
         "react-player": "^2.16.0",
         "react-plotly.js": "^2.6.0"
+    },
+    "resolutions": {
+        "brace-expansion": "^2.0.2"
     }
 }
