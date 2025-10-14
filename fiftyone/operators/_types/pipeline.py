@@ -96,28 +96,35 @@ class Pipeline:
         return stage
 
     @classmethod
-    def from_json(cls, json_list):
-        """Loads the pipeline from a list of JSON/python dicts.
+    def from_json(cls, json_dict):
+        """Loads the pipeline from a JSON/python dict.
 
-        Ex., [
-            {"operator_uri": "@voxel51/test/blah", "name": "my_stage", ...},
-            ...,
-        ]
+        Ex., {
+            "stages": [
+                {"operator_uri": "@voxel51/test/blah", "name": "my_stage"},
+                ...,
+            ]
+        }
 
         Args:
-            json_list: a list of JSON / python dicts
+            json_dict: a JSON / python dict representation of the pipeline
         """
-        stages = [PipelineStage(**stage) for stage in json_list]
+        stages = [
+            PipelineStage(**stage) for stage in json_dict.get("stages") or []
+        ]
         return cls(stages=stages)
 
     def to_json(self):
-        """Converts the pipeline to list of JSON/python dicts.
+        """Converts this pipeline to JSON/python dict representation
 
-        Ex., [
-            {"operator_uri": "@voxel51/test/blah", "name": "my_stage", ...},
-            ...,
-        ]
+        Ex., {
+            "stages": [
+                {"operator_uri": "@voxel51/test/blah", "name": "my_stage"},
+                ...,
+            ]
+        }
+
         Returns:
-            list of JSON / python dicts
+            JSON / python dict representation of the pipeline
         """
-        return [stage.to_json() for stage in self.stages]
+        return {"stages": [stage.to_json() for stage in self.stages]}
