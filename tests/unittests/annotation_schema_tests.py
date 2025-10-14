@@ -88,7 +88,7 @@ class AnnotationSchemaTests(unittest.TestCase):
         )
         self.assertEqual(
             compute_annotation_schema(dataset, "string_list_field"),
-            {"default": None, "type": "checkbox", "values": ["test"]},
+            {"default": [], "type": "tags", "values": ["test"]},
         )
 
     @drop_datasets
@@ -104,12 +104,10 @@ class AnnotationSchemaTests(unittest.TestCase):
             compute_annotation_schema(dataset, "classification_field"),
             {
                 "classes": ["test"],
-                "type": "classification",
                 "attributes": {
-                    "id": {"default": None, "type": "input"},
                     "tags": {
-                        "default": None,
-                        "type": "checkbox",
+                        "default": [],
+                        "type": "tags",
                         "values": [],
                     },
                 },
@@ -131,12 +129,10 @@ class AnnotationSchemaTests(unittest.TestCase):
             compute_annotation_schema(dataset, "classifications_field"),
             {
                 "classes": ["test"],
-                "type": "classifications",
                 "attributes": {
-                    "id": {"default": None, "type": "input"},
                     "tags": {
-                        "default": None,
-                        "type": "checkbox",
+                        "default": [],
+                        "type": "tags",
                         "values": [],
                     },
                 },
@@ -156,12 +152,10 @@ class AnnotationSchemaTests(unittest.TestCase):
             compute_annotation_schema(dataset, "detection_field"),
             {
                 "classes": ["test"],
-                "type": "detection",
                 "attributes": {
-                    "id": {"default": None, "type": "input"},
                     "tags": {
-                        "default": None,
-                        "type": "checkbox",
+                        "default": [],
+                        "type": "tags",
                         "values": [],
                     },
                 },
@@ -183,12 +177,10 @@ class AnnotationSchemaTests(unittest.TestCase):
             compute_annotation_schema(dataset, "detections_field"),
             {
                 "classes": ["test"],
-                "type": "detections",
                 "attributes": {
-                    "id": {"default": None, "type": "input"},
                     "tags": {
-                        "default": None,
-                        "type": "checkbox",
+                        "default": [],
+                        "type": "tags",
                         "values": [],
                     },
                 },
