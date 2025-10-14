@@ -7,6 +7,7 @@ import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ItemLeft, ItemRight } from "./Components";
 import useCreate from "./Edit/useCreate";
+import useCanManageSchema from "./useCanManageSchema";
 import useShowModal from "./useShowModal";
 
 const ActionsDiv = styled.div`
@@ -225,11 +226,13 @@ export const Redo = () => {
 
 const Schema = () => {
   const showModal = useShowModal();
+
   return <RoundButton onClick={showModal}>Schema</RoundButton>;
 };
 
 const Actions = () => {
   const is3D = useRecoilValue(is3DDataset);
+  const canManage = useCanManageSchema();
   return (
     <>
       <ActionsDiv>
@@ -249,7 +252,7 @@ const Actions = () => {
       </ActionsDiv>
       <ActionsDiv style={{ margin: "0 0.25rem", paddingBottom: "0.5rem" }}>
         <div>Click labels to edit</div>
-        <Schema />
+        {canManage && <Schema />}
       </ActionsDiv>
     </>
   );
