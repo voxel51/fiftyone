@@ -1,31 +1,20 @@
 import {
-<<<<<<< HEAD
-  BoundingBoxOverlay,
-  UpdateLabelCommand,
-  useLighter,
-} from "@fiftyone/lighter";
-=======
   LIGHTER_EVENTS,
   UpdateLabelCommand,
   useLighter,
 } from "@fiftyone/lighter";
 import { expandPath, field } from "@fiftyone/state";
 import { FLOAT_FIELD, INT_FIELD } from "@fiftyone/utilities";
->>>>>>> feat/human-annotation
 import { useAtom, useAtomValue } from "jotai";
 import React, { useEffect, useMemo } from "react";
 import { useRecoilCallback } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
-<<<<<<< HEAD
-import { currentData, currentSchema } from "./state";
-=======
 import {
   currentData,
   currentField,
   currentOverlay,
   currentSchema,
 } from "./state";
->>>>>>> feat/human-annotation
 
 const createInput = (name: string) => {
   return {
@@ -39,8 +28,6 @@ const createInput = (name: string) => {
   };
 };
 
-<<<<<<< HEAD
-=======
 const createRadio = (name: string, choices) => {
   return {
     type: "string",
@@ -57,7 +44,6 @@ const createRadio = (name: string, choices) => {
   };
 };
 
->>>>>>> feat/human-annotation
 const createTags = (name: string, choices: string[]) => {
   return {
     type: "array",
@@ -99,22 +85,12 @@ const useSchema = () => {
     const properties = {};
 
     const attributes = config?.attributes;
-<<<<<<< HEAD
-    properties.id = createInput("id");
-=======
->>>>>>> feat/human-annotation
     properties.label = createSelect("label", config?.classes ?? []);
 
     for (const attr in attributes) {
       if (attr === "id") {
         continue;
       }
-<<<<<<< HEAD
-      if (attributes[attr].type === "input") {
-        properties[attr] = createInput(attr);
-      }
-
-=======
 
       if (attributes[attr].type === "input") {
         properties[attr] = createInput(attr);
@@ -124,7 +100,6 @@ const useSchema = () => {
         properties[attr] = createRadio(attr, attributes[attr].values);
       }
 
->>>>>>> feat/human-annotation
       if (attributes[attr].type === "tags") {
         properties[attr] = createTags(attr, attributes[attr].values);
       }
@@ -146,31 +121,26 @@ const useSchema = () => {
 
 const useHandleChanges = () => {
   return useRecoilCallback(
-    ({ snapshot }) =>
-      async (currentField: string, path: string, data) => {
-        const expanded = await snapshot.getPromise(expandPath(currentField));
-        const schema = await snapshot.getPromise(field(`${expanded}.${path}`));
+    ({ snapshot }) => async (currentField: string, path: string, data) => {
+      const expanded = await snapshot.getPromise(expandPath(currentField));
+      const schema = await snapshot.getPromise(field(`${expanded}.${path}`));
 
-        if (schema?.ftype === FLOAT_FIELD) {
-          return Number.parseFloat(data);
-        }
+      if (schema?.ftype === FLOAT_FIELD) {
+        return Number.parseFloat(data);
+      }
 
-        if (schema?.ftype === INT_FIELD) {
-          return Number.parseInt(data);
-        }
+      if (schema?.ftype === INT_FIELD) {
+        return Number.parseInt(data);
+      }
 
-        return data;
-      },
+      return data;
+    },
     []
   );
 };
 
 const AnnotationSchema = () => {
   const schema = useSchema();
-<<<<<<< HEAD
-  const [{ _id: id, ...data }, save] = useAtom(currentData);
-  const lighter = useLighter();
-=======
   const [data, save] = useAtom(currentData);
   const overlay = useAtomValue(currentOverlay);
   const lighter = useLighter();
@@ -195,26 +165,11 @@ const AnnotationSchema = () => {
   if (!overlay) {
     throw new Error("no overlay");
   }
->>>>>>> feat/human-annotation
 
   return (
     <div>
       <SchemaIOComponent
         schema={schema}
-<<<<<<< HEAD
-        data={{ id, ...data }}
-        onChange={(data) => {
-          save(data);
-          return;
-          if (overlay instanceof BoundingBoxOverlay) {
-            lighter.scene?.executeCommand(
-              new UpdateLabelCommand(overlay, overlay.label, {
-                ...overlay.label,
-                ...changes,
-              })
-            );
-          }
-=======
         data={data}
         onChange={async (changes) => {
           const result = {};
@@ -226,7 +181,6 @@ const AnnotationSchema = () => {
           lighter.scene?.executeCommand(
             new UpdateLabelCommand(overlay, overlay.getLabel(), value)
           );
->>>>>>> feat/human-annotation
         }}
       />
     </div>

@@ -24,17 +24,11 @@ export class UpdateLabelCommand implements Command {
 
   execute(): void {
     this.overlay.updateLabel(this.nextLabel);
-<<<<<<< HEAD
     this.overlay.markDirty();
-=======
->>>>>>> feat/human-annotation
   }
 
   undo(): void {
     this.overlay.updateLabel(this.currentLabel);
-<<<<<<< HEAD
     this.overlay.markDirty();
-=======
->>>>>>> feat/human-annotation
   }
 }

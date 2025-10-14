@@ -79,22 +79,13 @@ export class BoundingBoxOverlay
   public cursor = "pointer";
   private readonly CLICK_THRESHOLD = 0.1;
 
-<<<<<<< HEAD
-  constructor(private options: BoundingBoxOptions) {
-    super(options.id, options.field);
-=======
   constructor(options: BoundingBoxOptions) {
     super(options.id, options.field, options.label);
->>>>>>> feat/human-annotation
     this.isDraggable = options.draggable !== false;
     this.isResizeable = options.resizeable !== false;
 
     this.relativeBounds = options.relativeBounds;
-<<<<<<< HEAD
     this.absoluteBounds = { x: NaN, y: NaN, width: NaN, height: NaN }; // Will be set by scene
-=======
-    this.absoluteBounds = { x: 0, y: 0, width: 0, height: 0 }; // Will be set by scene
->>>>>>> feat/human-annotation
     this._needsCoordinateUpdate = true;
   }
 
@@ -421,11 +412,7 @@ export class BoundingBoxOverlay
       return this.onDrag(point, event, scale);
     }
 
-<<<<<<< HEAD
     if (this.moveState === "SETTING" || this.moveState.startsWith("RESIZE_")) {
-=======
-    if (this.moveState.startsWith("RESIZE_")) {
->>>>>>> feat/human-annotation
       return this.onResize(point, event, scale, maintainAspectRatio);
     }
 

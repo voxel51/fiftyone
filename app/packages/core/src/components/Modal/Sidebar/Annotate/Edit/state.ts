@@ -141,11 +141,7 @@ export const currentType = atom<LabelType>((get) => {
 export const isEditing = atom((get) => get(editing) !== null);
 
 export const isNew = atom((get) => {
-<<<<<<< HEAD
-  return typeof get(editing) === "string" || get(current).isNew;
-=======
   return typeof get(editing) === "string" || get(current)?.isNew;
->>>>>>> feat/human-annotation
 });
 
 const fieldsOfType = atomFamily((type: LabelType) =>
@@ -181,9 +177,6 @@ export const saveValue = atom(
     set,
     { datasetId, sampleId }: { datasetId: string; sampleId: string }
   ) => {
-<<<<<<< HEAD
-    const { isNew, ...value } = get(current);
-=======
     const data = get(current);
 
     if (!data) {
@@ -191,7 +184,6 @@ export const saveValue = atom(
     }
 
     const { isNew, ...value } = data;
->>>>>>> feat/human-annotation
 
     if (isNew) {
       set(addLabel, value);
@@ -208,24 +200,16 @@ export const deleteValue = atom(
     set,
     { datasetId, sampleId }: { datasetId: string; sampleId: string }
   ) => {
-<<<<<<< HEAD
-    const valueId = get(current).data._id;
-=======
     const data = get(current);
 
     if (!data) {
       throw new Error("no current label");
     }
->>>>>>> feat/human-annotation
 
     // patchSample({ datasetId, sampleId, delta });
     set(
       labels,
-<<<<<<< HEAD
-      get(labels).filter((label) => label.data._id !== valueId)
-=======
       get(labels).filter((label) => label.data._id !== data.data._id)
->>>>>>> feat/human-annotation
     );
 
     set(editing, null);

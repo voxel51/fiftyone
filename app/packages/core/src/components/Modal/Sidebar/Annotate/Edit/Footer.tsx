@@ -6,22 +6,15 @@ import React from "react";
 import { useRecoilValue } from "recoil";
 import { RoundButton } from "../Actions";
 import { Row } from "./Components";
-<<<<<<< HEAD
-import { currentField, deleteValue, editing, saveValue } from "./state";
-=======
 import { currentField, deleteValue, editing, isNew, saveValue } from "./state";
->>>>>>> feat/human-annotation
 
 const SaveFooter = () => {
   const saveCurrent = useSetAtom(saveValue);
   const deleteCurrent = useSetAtom(deleteValue);
   const sampleId = useRecoilValue(fos.currentSampleId);
   const datasetId = fos.useAssertedRecoilValue(fos.datasetId);
-<<<<<<< HEAD
-=======
 
   const showCancel = useAtomValue(isNew);
->>>>>>> feat/human-annotation
 
   return (
     <>
@@ -37,10 +30,6 @@ const SaveFooter = () => {
           deleteCurrent({ datasetId, sampleId });
         }}
       >
-<<<<<<< HEAD
-        <DeleteOutline />
-        Delete
-=======
         {showCancel ? (
           "Cancel"
         ) : (
@@ -49,7 +38,6 @@ const SaveFooter = () => {
             Delete
           </>
         )}
->>>>>>> feat/human-annotation
       </RoundButton>
     </>
   );

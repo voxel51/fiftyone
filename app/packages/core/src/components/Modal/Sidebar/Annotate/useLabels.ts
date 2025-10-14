@@ -18,11 +18,8 @@ import type { LabelType } from "./Edit/state";
 import type { AnnotationSchemas } from "./state";
 import { schemas } from "./state";
 import { useAddAnnotationLabel } from "./useAddAnnotationLabel";
-<<<<<<< HEAD
-=======
 import useFocus from "./useFocus";
 import useHover from "./useHover";
->>>>>>> feat/human-annotation
 
 const handleSample = async ({
   addLabel,
@@ -118,20 +115,19 @@ export default function useLabels() {
   const schemaMap = useAtomValue(schemas);
   const addLabel = useAddAnnotationLabel();
   const getFieldType = useRecoilCallback(
-    ({ snapshot }) =>
-      async (path: string) => {
-        const loadable = await snapshot.getLoadable(field(path));
-        const type = loadable
-          .getValue()
-          ?.embeddedDocType?.split(".")
-          .slice(-1)[0];
+    ({ snapshot }) => async (path: string) => {
+      const loadable = await snapshot.getLoadable(field(path));
+      const type = loadable
+        .getValue()
+        ?.embeddedDocType?.split(".")
+        .slice(-1)[0];
 
-        if (!type) {
-          throw new Error("no type");
-        }
+      if (!type) {
+        throw new Error("no type");
+      }
 
-        return type as LabelType;
-      },
+      return type as LabelType;
+    },
     []
   );
 

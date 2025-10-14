@@ -1,26 +1,15 @@
-<<<<<<< HEAD
-import { DETECTION } from "@fiftyone/utilities";
-import { useAtomValue } from "jotai";
-import React from "react";
-=======
 import { LIGHTER_EVENTS, useLighter } from "@fiftyone/lighter";
 import { DETECTION } from "@fiftyone/utilities";
 import { useAtomValue, useSetAtom } from "jotai";
 import React, { useEffect } from "react";
->>>>>>> feat/human-annotation
 import styled from "styled-components";
 import AnnotationSchema from "./AnnotationSchema";
 import Field from "./Field";
 import Footer from "./Footer";
 import Header from "./Header";
-<<<<<<< HEAD
-import Position from "./Position";
-import { currentField, currentOverlay, currentType } from "./state";
-=======
 import Id from "./Id";
 import Position from "./Position";
 import { currentField, currentOverlay, currentType, editing } from "./state";
->>>>>>> feat/human-annotation
 
 const ContentContainer = styled.div`
   margin: 0.25rem 1rem;
@@ -46,8 +35,6 @@ export default function Edit() {
   const field = useAtomValue(currentField);
   const overlay = useAtomValue(currentOverlay);
   const type = useAtomValue(currentType);
-<<<<<<< HEAD
-=======
   const setEditing = useSetAtom(editing);
 
   const { scene } = useLighter();
@@ -60,17 +47,13 @@ export default function Edit() {
       scene?.off(LIGHTER_EVENTS.OVERLAY_DESELECT, handler);
     };
   }, [scene, setEditing]);
->>>>>>> feat/human-annotation
 
   return (
     <ContentContainer>
       <Header />
       <Content>
         <Field />
-<<<<<<< HEAD
-=======
         <Id />
->>>>>>> feat/human-annotation
         {type === DETECTION && overlay && <Position />}
         {field && <AnnotationSchema />}
       </Content>
