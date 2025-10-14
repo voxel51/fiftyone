@@ -32,7 +32,10 @@ const Sidebar = () => {
 
   return (
     <SidebarContainer modal={true}>
-      {!disableAnnotation && <Mode />}
+      {
+        // Hide Annotation for read only users
+        !disableAnnotation && <Mode />
+      }
       {mode === EXPLORE || disableAnnotation ? <Explore /> : <Annotate />}
     </SidebarContainer>
   );
