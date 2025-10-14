@@ -224,6 +224,7 @@ export class InteractionManager {
 
     if (interactiveHandler) {
       handler = interactiveHandler.overlay || interactiveHandler;
+      this.selectionManager.select(handler.id);
     } else {
       handler = this.findHandlerAtPoint(point);
     }
@@ -323,14 +324,26 @@ export class InteractionManager {
     const scale = this.renderer.getScale();
     const now = Date.now();
 
-    let handler = this.findMovingHandler() || this.findHandlerAtPoint(point);
-    handler = handler?.overlay || handler;
+    let handler: InteractionHandler | undefined = undefined;
+
+    const interactiveHandler = this.getInteractiveHandler();
+
+    if (interactiveHandler) {
+      handler = interactiveHandler.overlay || interactiveHandler;
+    } else {
+      handler = this.findMovingHandler() || this.findHandlerAtPoint(point);
+    }
 
     if (handler?.isMoving?.()) {
       const startPosition = handler.getMoveStartPosition()!;
 
       // Handle drag end
       handler.onPointerUp?.(point, event, scale);
+
+      if (interactiveHandler?.overlay === handler) {
+        this.removeHandler(interactiveHandler);
+        this.addHandler(handler);
+      }
 
       this.canvas.style.cursor =
         handler.getCursor?.(worldPoint, scale) || this.canvas.style.cursor;
@@ -617,6 +630,7 @@ export class InteractionManager {
     const candidates: InteractionHandler[] = [];
     for (let i = this.handlers.length - 1; i >= 0; i--) {
       const handler = this.handlers[i];
+
       if (skipCanonicalMedia && handler.id === this.canonicalMediaId) {
         continue;
       }

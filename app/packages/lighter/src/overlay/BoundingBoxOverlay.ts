@@ -291,7 +291,7 @@ export class BoundingBoxOverlay
 
     if (distance > this.CLICK_THRESHOLD) {
       const resizeRegion = this.getResizeRegion(worldPoint, scale);
-      this.moveState = this.needsCoordinateUpdate()
+      this.moveState = !this.hasValidBounds()
         ? "SETTING"
         : resizeRegion || "DRAGGING";
     }
@@ -340,6 +340,7 @@ export class BoundingBoxOverlay
   }
 
   getCursor(worldPoint: Point, scale: number): string {
+    if (!this.hasValidBounds()) return "crosshair";
     if (!this.isSelected()) return "pointer";
 
     const resizeRegion = this.getResizeRegion(worldPoint, scale);
@@ -374,14 +375,14 @@ export class BoundingBoxOverlay
     scale: number
   ): boolean {
     const resizeRegion = this.getResizeRegion(worldPoint, scale);
-    const cursorRegion = this.needsCoordinateUpdate()
+    const cursorRegion = !this.hasValidBounds()
       ? "SETTING"
       : resizeRegion || "DRAGGING";
 
     if (cursorRegion === "DRAGGING" && !this.isDraggable) return false;
     if (cursorRegion.startsWith("RESIZE_") && !this.isResizeable) return false;
 
-    if (this.needsCoordinateUpdate()) {
+    if (!this.hasValidBounds()) {
       this.absoluteBounds = {
         ...point,
         height: 0,
@@ -575,6 +576,14 @@ export class BoundingBoxOverlay
    */
   getCurrentBounds(): Rect | undefined {
     return this.getAbsoluteBounds();
+  }
+
+  /**
+   * Determines if current bounds are valid.
+   * @returns True if current bounds are valid
+   */
+  hasValidBounds(): boolean {
+    return BaseOverlay.validBounds(this.absoluteBounds);
   }
 
   /**

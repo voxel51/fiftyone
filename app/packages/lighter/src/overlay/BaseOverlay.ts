@@ -33,7 +33,7 @@ export abstract class BaseOverlay implements InteractionHandler {
 
   static validBounds(bounds: Rect): boolean {
     return ["x", "y", "width", "height"].every(
-      (prop) => typeof bounds[prop] === "number" && bounds[prop]
+      (prop) => typeof bounds[prop] === "number" && bounds[prop] >= 0
     );
   }
 
