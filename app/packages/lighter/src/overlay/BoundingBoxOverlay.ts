@@ -79,13 +79,22 @@ export class BoundingBoxOverlay
   public cursor = "pointer";
   private readonly CLICK_THRESHOLD = 0.1;
 
+<<<<<<< HEAD
   constructor(private options: BoundingBoxOptions) {
     super(options.id, options.field);
+=======
+  constructor(options: BoundingBoxOptions) {
+    super(options.id, options.field, options.label);
+>>>>>>> feat/human-annotation
     this.isDraggable = options.draggable !== false;
     this.isResizeable = options.resizeable !== false;
 
     this.relativeBounds = options.relativeBounds;
+<<<<<<< HEAD
     this.absoluteBounds = { x: NaN, y: NaN, width: NaN, height: NaN }; // Will be set by scene
+=======
+    this.absoluteBounds = { x: 0, y: 0, width: 0, height: 0 }; // Will be set by scene
+>>>>>>> feat/human-annotation
     this._needsCoordinateUpdate = true;
   }
 
@@ -144,7 +153,7 @@ export class BoundingBoxOverlay
     if (!style) return;
 
     // Check if this label has an instance to determine stroke styling
-    const hasInstance = this.options.label.instance?._id !== undefined;
+    const hasInstance = this.label?.instance?._id !== undefined;
 
     // Get stroke styles based on whether the label has an instance
     const { strokeColor, overlayStrokeColor, overlayDash, hoverStrokeColor } =
@@ -212,7 +221,7 @@ export class BoundingBoxOverlay
       );
     }
 
-    if (this.options.label && this.options.label.label?.length > 0) {
+    if (this.label && this.label.label?.length > 0) {
       const offset = style.lineWidth
         ? style.lineWidth / renderer.getScale() / 2
         : 0;
@@ -227,13 +236,13 @@ export class BoundingBoxOverlay
             y: this.absoluteBounds.y - offset,
           };
 
-      let textToDraw = this.options.label.label;
+      let textToDraw = this.label?.label;
 
       if (
-        typeof this.options.label.confidence !== "undefined" &&
-        !isNaN(this.options.label.confidence)
+        typeof this.label?.confidence !== "undefined" &&
+        !isNaN(this.label?.confidence)
       ) {
-        textToDraw += ` (${this.options.label.confidence.toFixed(2)})`;
+        textToDraw += ` (${this.label?.confidence.toFixed(2)})`;
       }
 
       // Draw text and store the dimensions for accurate header detection
@@ -412,7 +421,11 @@ export class BoundingBoxOverlay
       return this.onDrag(point, event, scale);
     }
 
+<<<<<<< HEAD
     if (this.moveState === "SETTING" || this.moveState.startsWith("RESIZE_")) {
+=======
+    if (this.moveState.startsWith("RESIZE_")) {
+>>>>>>> feat/human-annotation
       return this.onResize(point, event, scale, maintainAspectRatio);
     }
 

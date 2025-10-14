@@ -15,7 +15,10 @@ import type { DrawStyle, Point, Rect } from "../types";
  */
 export abstract class BaseOverlay implements InteractionHandler {
   readonly id: string;
+<<<<<<< HEAD
   readonly field: string;
+=======
+>>>>>>> feat/human-annotation
   readonly cursor?: string;
 
   protected isHoveredState = false;
@@ -30,7 +33,10 @@ export abstract class BaseOverlay implements InteractionHandler {
   protected eventBus?: EventBus;
   protected resourceLoader?: ResourceLoader;
   protected currentStyle?: DrawStyle;
+  protected field: string;
+  protected label: RawLookerLabel;
 
+<<<<<<< HEAD
   static validBounds(bounds: Rect): boolean {
     return ["x", "y", "width", "height"].every(
       (prop) => typeof bounds[prop] === "number" && bounds[prop] >= 0
@@ -38,8 +44,12 @@ export abstract class BaseOverlay implements InteractionHandler {
   }
 
   constructor(id: string, field: string) {
+=======
+  constructor(id: string, field: string, label: RawLookerLabel) {
+>>>>>>> feat/human-annotation
     this.id = id;
     this.field = field;
+    this.label = label;
     this.cursor = "default";
   }
 
@@ -113,6 +123,14 @@ export abstract class BaseOverlay implements InteractionHandler {
    */
   getIsDirty(): boolean {
     return this.isDirty;
+  }
+
+  /**
+   * Gets the overlay label.
+   * @returns The overlay's raw label.
+   */
+  getLabel() {
+    return this.label;
   }
 
   /**
@@ -315,5 +333,14 @@ export abstract class BaseOverlay implements InteractionHandler {
 
   updateField(field: string) {
     this.field = field;
+<<<<<<< HEAD
+=======
+    this.markDirty();
+  }
+
+  updateLabel(label: RawLookerLabel) {
+    this.label = label;
+    this.markDirty();
+>>>>>>> feat/human-annotation
   }
 }

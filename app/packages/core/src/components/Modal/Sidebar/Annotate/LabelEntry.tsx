@@ -2,8 +2,13 @@ import { LIGHTER_EVENTS, useLighter } from "@fiftyone/lighter";
 import type { AnnotationLabel } from "@fiftyone/state";
 import { animated } from "@react-spring/web";
 import type { PrimitiveAtom } from "jotai";
+<<<<<<< HEAD
 import { useAtomValue, useSetAtom } from "jotai";
 import React, { useEffect, useMemo, useState } from "react";
+=======
+import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
+import React, { useEffect, useState } from "react";
+>>>>>>> feat/human-annotation
 import styled from "styled-components";
 import { Column } from "./Components";
 import { editing } from "./Edit";
@@ -78,15 +83,21 @@ const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
     }
   }, [scene, isHoveringThisRow, label.overlay.id]);
 
+<<<<<<< HEAD
   const overlay = useMemo(
     () => scene?.getOverlay(label.overlay.id),
     [label, scene]
   );
   const color = useColor(overlay);
+=======
+  const color = useColor(label.overlay);
+>>>>>>> feat/human-annotation
   return (
     <Container
       onClick={() => {
         setEditing(atom);
+        const store = getDefaultStore();
+        store.get(atom).overlay.setSelected(true);
       }}
       className={isHovering ? "hovering" : ""}
       onMouseEnter={() => setIsHoveringThisRow(true)}

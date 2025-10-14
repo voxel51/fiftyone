@@ -18,6 +18,11 @@ import type { LabelType } from "./Edit/state";
 import type { AnnotationSchemas } from "./state";
 import { schemas } from "./state";
 import { useAddAnnotationLabel } from "./useAddAnnotationLabel";
+<<<<<<< HEAD
+=======
+import useFocus from "./useFocus";
+import useHover from "./useHover";
+>>>>>>> feat/human-annotation
 
 const handleSample = async ({
   addLabel,
