@@ -126,9 +126,11 @@ description, and tags for the dataset:
 
 .. note::
 
-   What next? Use the :ref:`Enterprise Python SDK <enterprise-python-sdk>` to upload new
+   What next? Use the
+   :ref:`FiftyOne Enterprise Python SDK <enterprise-python-sdk>` to upload new
    samples, labels, and metadata to your dataset. A common approach is to
-   automate this process via :ref:`cloud functions <enterprise-cloud-functions>`.
+   automate this process via
+   :ref:`cloud functions <enterprise-cloud-functions>`.
 
 .. _enterprise-using-datasets:
 
