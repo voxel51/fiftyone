@@ -35,6 +35,13 @@ Each guide is designed as a sequential learning experience with navigation betwe
 .. Add guide cards below
 
 .. customcarditem::
+    :header: Verified Auto-Labeling Guide
+    :description: Bootstrap datasets rapidly with Verified Auto-Labeling (VAL). Learn to configure GPU orchestrators, generate auto-labels with foundation models, and systematically review predictions with confidence-based filtering.
+    :link: verified_auto_labeling/index.html
+    :image: https://cdn.voxel51.com/val_confidence_slider.webp
+    :tags: Core-Fiftyone,Annotation,Teams
+
+.. customcarditem::
     :header: Object Detection Guide
     :description: Master object detection workflows with COCO, YOLOv8, and comprehensive model evaluation. Learn dataset curation, mistake analysis, and performance assessment through hands-on practice.
     :link: object_detection/index.html
@@ -108,11 +115,12 @@ Each guide is designed as a sequential learning experience with navigation betwe
    :maxdepth: 1
    :hidden:
 
+   Verified Auto-Labeling Guide <verified_auto_labeling/index>
    Object Detection Guide <object_detection/index>
    Medical Imaging Guide <medical_imaging/index>
    Self-Driving Guide <self_driving/index>
    3D Visual AI Guide <threed_visual_ai/index>
    Model Evaluation Guide <model_evaluation/index>
    Segmentation Guide <segmentation/index>
-   Model Dataset Zoo Guide <model_dataset_zoo/index> 
+   Model Dataset Zoo Guide <model_dataset_zoo/index>
    Manufacturing Guide <manufacturing/index>
