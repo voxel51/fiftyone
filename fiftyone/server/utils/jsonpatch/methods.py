@@ -29,9 +29,6 @@ def to_json_pointer(
         raise ValueError(f"Invalid JSON pointer path: {path}") from err
 
 
-def do_it(): ...
-
-
 def get(src: T, path: Union[str, jsonpointer.JsonPointer]) -> V:
     """Gets a value from an object.
 
@@ -232,7 +229,7 @@ def remove(src: T, path: Union[str, jsonpointer.JsonPointer]) -> T:
     name = pointer.parts[-1]
 
     # ensure value exists
-    get(target, f"/{name}")
+    get(target, jsonpointer.JsonPointer.from_parts([name]))
 
     try:
         if hasattr(target, "__delitem__"):
