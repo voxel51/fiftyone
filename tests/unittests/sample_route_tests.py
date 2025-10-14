@@ -5,7 +5,9 @@ FiftyOne Server mutation endpoint unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 # pylint: disable=no-value-for-parameter
+import datetime
 import unittest
 from unittest.mock import MagicMock, AsyncMock
 import json
@@ -13,8 +15,10 @@ import json
 import fiftyone as fo
 import fiftyone.core.labels as fol
 from bson import ObjectId, json_util
+import pytest
 from starlette.exceptions import HTTPException
 from starlette.responses import Response
+
 
 import fiftyone.server.routes.sample as fors
 
@@ -53,14 +57,16 @@ class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
         if self.dataset and fo.dataset_exists(self.dataset.name):
             fo.delete_dataset(self.dataset.name)
 
-    def _create_mock_request(self, payload, content_type="application/json"):
+    def _create_mock_request(
+        self, payload, content_type="application/json", headers={}
+    ):
         """Helper to create a mock request object."""
         mock_request = MagicMock()
         mock_request.path_params = {
             "dataset_id": self.dataset_id,
             "sample_id": str(self.sample.id),
         }
-        mock_request.headers = {"Content-Type": content_type}
+        mock_request.headers = headers | {"Content-Type": content_type}
 
         mock_request.body = AsyncMock(
             return_value=json_util.dumps(payload).encode("utf-8")
@@ -203,7 +209,6 @@ class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
             "dataset_id": self.dataset_id,
             "sample_id": bad_id,
         }
-
         mock_request.body = AsyncMock(
             return_value=json_util.dumps({}).encode("utf-8")
         )
@@ -215,6 +220,56 @@ class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
             cm.exception.detail,
             f"Sample '{bad_id}' not found in dataset '{self.dataset_id}'",
         )
+
+    async def test_if_match_header_success(self):
+        """Tests that the If-Match header is properly validated."""
+        for i, if_match_getter in enumerate(
+            (
+                fors.generate_sample_etag,
+                lambda sample: sample.last_modified_at.timestamp(),
+                lambda sample: sample.last_modified_at.isoformat(),
+            )
+        ):
+            self.sample.reload(hard=True)
+
+            mock_request = self._create_mock_request(
+                {"primitive_field": f"new_value_{i}"},
+                headers={"If-Match": str(if_match_getter(self.sample))},
+            )
+
+            response = await self.mutator.patch(mock_request)
+
+            self.assertEqual(response.status_code, 200)
+            assert "ETag" in response.headers
+            assert isinstance(response.headers["ETag"], str)
+
+    async def test_if_match_header_failure(self):
+        """Tests that a 412 HTTPException is raised for an invalid If-Match."""
+        for i, if_match in enumerate(
+            (
+                fors.generate_sample_etag(self.sample),
+                self.sample.last_modified_at.timestamp(),
+                self.sample.last_modified_at.isoformat(),
+            )
+        ):
+
+            # Update the sample to change its last_modified_at
+            self.sample["primitive_field"] = f"new_value_{i}"
+            self.sample.save()
+            etag = fors.generate_sample_etag(self.sample)
+
+            mock_request = self._create_mock_request(
+                {"primitive_field": "newer_value"},
+                headers={"If-Match": str(if_match)},
+            )
+
+            with self.assertRaises(HTTPException) as cm:
+                await self.mutator.patch(mock_request)
+
+            self.assertEqual(cm.exception.status_code, 412)
+            assert "ETag" in cm.exception.headers
+            assert isinstance(cm.exception.headers["ETag"], str)
+            assert cm.exception.headers["ETag"] == f'"{etag}"'
 
     async def test_unsupported_label_class(self):
         """Tests that an HTTPException is raised for an unknown _cls value."""
@@ -230,7 +285,7 @@ class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(cm.exception.status_code, 400)
         self.assertEqual(
             cm.exception.detail["bad_label"],
-            "No transform registered for class 'NonExistentLabelType'",
+            "No deserializer registered for class 'NonExistentLabelType'",
         )
 
         # Verify the sample was not modified
@@ -442,7 +497,7 @@ class SampleFieldRouteTests(unittest.IsolatedAsyncioTestCase):
         if self.dataset and fo.dataset_exists(self.dataset.name):
             fo.delete_dataset(self.dataset.name)
 
-    def _create_mock_request(self, payload, field_path, field_id):
+    def _create_mock_request(self, payload, field_path, field_id, headers={}):
         """Helper to create a mock request object for SampleField."""
         mock_request = MagicMock()
         mock_request.path_params = {
@@ -451,7 +506,7 @@ class SampleFieldRouteTests(unittest.IsolatedAsyncioTestCase):
             "field_path": field_path,
             "field_id": str(field_id),
         }
-        mock_request.headers = {"Content-Type": "application/json"}
+        mock_request.headers = headers | {"Content-Type": "application/json"}
 
         mock_request.body = AsyncMock(
             return_value=json_util.dumps(payload).encode("utf-8")
@@ -522,6 +577,72 @@ class SampleFieldRouteTests(unittest.IsolatedAsyncioTestCase):
             cm.exception.detail,
             f"Sample '{bad_id}' not found in dataset '{self.dataset_id}'",
         )
+
+    async def test_if_match_header_success(self):
+        """Tests that the If-Match header is properly validated."""
+        for i, if_match_getter in enumerate(
+            (
+                fors.generate_sample_etag,
+                lambda sample: sample.last_modified_at.timestamp(),
+                lambda sample: sample.last_modified_at.isoformat(),
+            )
+        ):
+            self.sample.reload(hard=True)
+
+            patch_payload = [
+                {"op": "replace", "path": "/label", "value": f"new_label{i}"}
+            ]
+            field_path = "ground_truth.detections"
+            field_id = self.detection_id_1
+
+            mock_request = self._create_mock_request(
+                patch_payload,
+                field_path,
+                field_id,
+                headers={"If-Match": str(if_match_getter(self.sample))},
+            )
+
+            response = await self.mutator.patch(mock_request)
+
+            self.assertEqual(response.status_code, 200)
+            assert "ETag" in response.headers
+            assert isinstance(response.headers["ETag"], str)
+
+    async def test_if_match_header_failure(self):
+        """Tests that a 412 HTTPException is raised for an invalid If-Match."""
+        for i, if_match in enumerate(
+            (
+                fors.generate_sample_etag(self.sample),
+                self.sample.last_modified_at.timestamp(),
+                self.sample.last_modified_at.isoformat(),
+            )
+        ):
+
+            # Update the sample to change its last_modified_at
+            self.sample["primitive_field"] = f"new_value_{i}"
+            self.sample.save()
+            etag = fors.generate_sample_etag(self.sample)
+
+            patch_payload = [
+                {"op": "replace", "path": "/label", "value": f"new_label{i}"}
+            ]
+            field_path = "ground_truth.detections"
+            field_id = self.detection_id_1
+
+            mock_request = self._create_mock_request(
+                patch_payload,
+                field_path,
+                field_id,
+                headers={"If-Match": str(if_match)},
+            )
+
+            with self.assertRaises(HTTPException) as cm:
+                await self.mutator.patch(mock_request)
+
+            self.assertEqual(cm.exception.status_code, 412)
+            assert "ETag" in cm.exception.headers
+            assert isinstance(cm.exception.headers["ETag"], str)
+            assert cm.exception.headers["ETag"] == f'"{etag}"'
 
     async def test_field_path_not_found(self):
         """Tests that a 404 is raised for a non-existent field path."""

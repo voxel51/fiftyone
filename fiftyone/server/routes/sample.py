@@ -6,7 +6,10 @@ FiftyOne Server sample endpoints.
 |
 """
 
+import datetime
 import logging
+import hashlib
+from typing import Any, List
 
 from starlette.endpoints import HTTPEndpoint
 from starlette.exceptions import HTTPException
@@ -14,21 +17,18 @@ from starlette.requests import Request
 
 import fiftyone as fo
 import fiftyone.core.odm.utils as fou
-from typing import List
-from fiftyone.server.utils.jsonpatch import parse
-from fiftyone.server.utils import transform_json
+
+from fiftyone.server import utils
 from fiftyone.server.decorators import route
-from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
-def get_sample(dataset_id: str, sample_id: str) -> fo.Sample:
+def get_sample(request: Request) -> fo.Sample:
     """Retrieves a sample from a dataset.
 
     Args:
-        dataset_id: the dataset ID
-        sample_id: the sample ID
+        request: The request object containing dataset ID and sample ID
 
     Returns:
         the sample
@@ -36,6 +36,10 @@ def get_sample(dataset_id: str, sample_id: str) -> fo.Sample:
     Raises:
         HTTPException: if the dataset or sample is not found
     """
+
+    dataset_id = request.path_params["dataset_id"]
+    sample_id = request.path_params["sample_id"]
+
     try:
         dataset = fou.load_dataset(id=dataset_id)
     except ValueError:
@@ -52,13 +56,34 @@ def get_sample(dataset_id: str, sample_id: str) -> fo.Sample:
             detail=f"Sample '{sample_id}' not found in dataset '{dataset_id}'",
         )
 
+    if request.headers.get("If-Match"):
+        etag, _ = utils.http.ETag.parse(request.headers["If-Match"])
+
+        current_etag = str(generate_sample_etag(sample))
+        if etag == current_etag:
+            return sample
+
+        if etag == sample.last_modified_at.isoformat():
+            return sample
+
+        if etag == str(sample.last_modified_at.timestamp()):
+            return sample
+
+        raise HTTPException(
+            status_code=412,
+            detail="ETag does not match",
+            headers={"ETag": f'"{current_etag}"'},
+        )
+
     return sample
 
 
 def handle_json_patch(target: Any, patch_list: List[dict]) -> Any:
     """Applies a list of JSON patch operations to a target object."""
     try:
-        patches = parse(patch_list, transform_fn=transform_json)
+        patches = utils.json.parse_jsonpatch(
+            patch_list, transform_fn=utils.json.deserialize
+        )
     except Exception as e:
         raise HTTPException(
             status_code=400,
@@ -79,6 +104,14 @@ def handle_json_patch(target: Any, patch_list: List[dict]) -> Any:
             detail=errors,
         )
     return target
+
+
+def generate_sample_etag(sample: fo.Sample) -> str:
+    """Generates an ETag for a sample."""
+    # pylint:disable-next=protected-access
+    content = f"{sample.last_modified_at.isoformat()}"
+    hex_digest = hashlib.md5(content.encode("utf-8")).hexdigest()
+    return int(hex_digest, 16)
 
 
 class Sample(HTTPEndpoint):
@@ -103,8 +136,7 @@ class Sample(HTTPEndpoint):
             sample_id,
             dataset_id,
         )
-
-        sample = get_sample(dataset_id, sample_id)
+        sample = get_sample(request)
 
         content_type = request.headers.get("Content-Type", "")
         ctype = content_type.split(";", 1)[0].strip().lower()
@@ -117,8 +149,13 @@ class Sample(HTTPEndpoint):
                 status_code=415,
                 detail=f"Unsupported Content-Type '{ctype}'",
             )
-        sample.save()
-        return result.to_dict(include_private=True)
+
+        result.save()
+
+        return utils.json.JSONResponse(
+            utils.json.serialize(result),
+            headers={"ETag": f'"{generate_sample_etag(result)}"'},
+        )
 
     def _handle_patch(self, sample: fo.Sample, data: dict) -> dict:
         errors = {}
@@ -128,7 +165,7 @@ class Sample(HTTPEndpoint):
                     sample.clear_field(field_name)
                     continue
 
-                sample[field_name] = transform_json(value)
+                sample[field_name] = utils.json.deserialize(value)
             except Exception as e:
                 errors[field_name] = str(e)
 
@@ -167,7 +204,7 @@ class SampleField(HTTPEndpoint):
             dataset_id,
         )
 
-        sample = get_sample(dataset_id, sample_id)
+        sample = get_sample(request)
 
         try:
             field_list = sample.get_field(path)
@@ -192,7 +229,11 @@ class SampleField(HTTPEndpoint):
 
         result = handle_json_patch(field, data)
         sample.save()
-        return result.to_dict()
+
+        return utils.json.JSONResponse(
+            utils.json.serialize(result),
+            headers={"ETag": f'"{generate_sample_etag(sample)}"'},
+        )
 
 
 SampleRoutes = [

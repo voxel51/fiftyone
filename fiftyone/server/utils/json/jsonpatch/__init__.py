@@ -6,9 +6,20 @@ Apply JSON patch to python objects.
 |
 """
 
-from typing import Any, Callable, Iterable, Optional, Union
+from typing import (
+    Any,
+    Callable,
+    Generic,
+    Iterable,
+    Optional,
+    TypeVar,
+    TypedDict,
+    Union,
+)
+from typing_extensions import Required
 
-from fiftyone.server.utils.jsonpatch.methods import (
+
+from fiftyone.server.utils.json.jsonpatch.methods import (
     add,
     copy,
     move,
@@ -16,7 +27,8 @@ from fiftyone.server.utils.jsonpatch.methods import (
     replace,
     test,
 )
-from fiftyone.server.utils.jsonpatch.patch import (
+
+from fiftyone.server.utils.json.jsonpatch.patch import (
     Patch,
     Operation,
     Add,
@@ -26,6 +38,8 @@ from fiftyone.server.utils.jsonpatch.patch import (
     Replace,
     Test,
 )
+
+T = TypeVar("T")
 
 __PATCH_MAP = {
     Operation.ADD: Add,
