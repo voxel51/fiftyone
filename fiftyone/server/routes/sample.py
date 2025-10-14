@@ -6,10 +6,11 @@ FiftyOne Server sample endpoints.
 |
 """
 
+import base64
+import contextlib
 import datetime
 import logging
-import hashlib
-from typing import Any, List
+from typing import Any, Generator, List, Union
 
 from starlette.endpoints import HTTPEndpoint
 from starlette.exceptions import HTTPException
@@ -24,53 +25,79 @@ from fiftyone.server.decorators import route
 logger = logging.getLogger(__name__)
 
 
-def get_sample(request: Request) -> fo.Sample:
-    """Retrieves a sample from a dataset.
+@contextlib.contextmanager
+def sample_manager(request) -> Generator[fo.Sample, None, None]:
+    """Context manager that retrieves a sample from a dataset and and handles
+    saving.
 
     Args:
         request: The request object containing dataset ID and sample ID
 
-    Returns:
-        the sample
+    Yields:
+        The sample
 
     Raises:
-        HTTPException: if the dataset or sample is not found
+        HTTPException: If the dataset or sample is not found or the If-Match
+          header is present and does not match the sample
     """
+
+    if_not_modified_since: Union[str, datetime.datetime, None] = None
+    if request.headers.get("If-Match"):
+        if_match, _ = utils.http.ETag.parse(request.headers["If-Match"])
+
+        # As ETag - Currently this is just a based64 encode string of
+        # last_modified_at
+        try:
+            if_not_modified_since = datetime.datetime.fromisoformat(
+                base64.b64decode(if_match.encode("utf-8")).decode("utf-8")
+            )
+        except Exception:
+            ...
+
+        # As ISO date
+        try:
+            if_not_modified_since = datetime.datetime.fromisoformat(if_match)
+        except Exception:
+            ...
+
+        # As Unix timestamp
+        try:
+            if_not_modified_since = datetime.datetime.fromtimestamp(float(if_match))
+        except ValueError:
+            ...
+
+        if if_not_modified_since is None:
+            raise HTTPException(
+                status_code=400, detail="Invalid If-Match header"
+            )
 
     dataset_id = request.path_params["dataset_id"]
     sample_id = request.path_params["sample_id"]
 
     try:
         dataset = fou.load_dataset(id=dataset_id)
-    except ValueError:
+    except ValueError as err:
         raise HTTPException(
             status_code=404,
             detail=f"Dataset '{dataset_id}' not found",
-        )
+        ) from err
 
     try:
         sample = dataset[sample_id]
-    except KeyError:
+    except KeyError as err:
         raise HTTPException(
             status_code=404,
             detail=f"Sample '{sample_id}' not found in dataset '{dataset_id}'",
-        )
+        ) from err
 
-    if request.headers.get("If-Match"):
-        etag, _ = utils.http.ETag.parse(request.headers["If-Match"])
+    yield sample
 
-        if etag == str(generate_sample_etag(sample)):
-            return sample
-
-        if etag == sample.last_modified_at.isoformat():
-            return sample
-
-        if etag == str(sample.last_modified_at.timestamp()):
-            return sample
-
-        raise HTTPException(status_code=412, detail="ETag does not match")
-
-    return sample
+    try:
+        sample.save(if_not_modified_since=if_not_modified_since)
+    except ValueError as err:
+        raise HTTPException(
+            status_code=412, detail="ETag does not match"
+        ) from err
 
 
 def handle_json_patch(target: Any, patch_list: List[dict]) -> Any:
@@ -79,11 +106,11 @@ def handle_json_patch(target: Any, patch_list: List[dict]) -> Any:
         patches = utils.json.parse_jsonpatch(
             patch_list, transform_fn=utils.json.deserialize
         )
-    except Exception as e:
+    except Exception as err:
         raise HTTPException(
             status_code=400,
-            detail=f"Failed to parse patches due to: {e}",
-        )
+            detail=f"Failed to parse patches due to: {err}",
+        ) from err
 
     errors = {}
     for i, p in enumerate(patches):
@@ -101,15 +128,29 @@ def handle_json_patch(target: Any, patch_list: List[dict]) -> Any:
     return target
 
 
-def generate_sample_etag(sample: fo.Sample) -> str:
+def generate_sample_etag(sample: Union[fo.Sample, datetime.datetime]) -> str:
     """Generates an ETag for a sample."""
-    # pylint:disable-next=protected-access
-    content = f"{sample.last_modified_at.isoformat()}"
-    hex_digest = hashlib.md5(content.encode("utf-8")).hexdigest()
-    return int(hex_digest, 16)
+
+    if isinstance(sample, datetime.datetime):
+        last_modified_at = sample
+    else:
+        # Ensure last_modified_at reflects persisted state before computing
+        # ETag
+        try:
+            sample.reload(hard=True)
+        except Exception:
+            # best-effort; still return response
+            ...
+        last_modified_at = sample.last_modified_at
+
+    return base64.b64encode(
+        last_modified_at.isoformat().encode("utf-8")
+    ).decode("utf-8")
 
 
 class Sample(HTTPEndpoint):
+    """Sample endpoints."""
+
     @route
     async def patch(self, request: Request, data: dict) -> dict:
         """Applies a list of field updates to a sample.
@@ -117,7 +158,8 @@ class Sample(HTTPEndpoint):
         See: https://datatracker.ietf.org/doc/html/rfc6902
 
         Args:
-            request: Starlette request with dataset_id and sample_id in path params
+            request: Starlette request with dataset_id and sample_id in path
+              params
             data: A dict mapping field names to values.
 
         Returns:
@@ -131,25 +173,23 @@ class Sample(HTTPEndpoint):
             sample_id,
             dataset_id,
         )
-        sample = get_sample(request)
 
-        content_type = request.headers.get("Content-Type", "")
-        ctype = content_type.split(";", 1)[0].strip().lower()
-        if ctype == "application/json":
-            result = self._handle_patch(sample, data)
-        elif ctype == "application/json-patch+json":
-            result = handle_json_patch(sample, data)
-        else:
-            raise HTTPException(
-                status_code=415,
-                detail=f"Unsupported Content-Type '{ctype}'",
-            )
-
-        result.save()
+        with sample_manager(request) as sample:
+            content_type = request.headers.get("Content-Type", "")
+            ctype = content_type.split(";", 1)[0].strip().lower()
+            if ctype == "application/json":
+                self._handle_patch(sample, data)
+            elif ctype == "application/json-patch+json":
+                handle_json_patch(sample, data)
+            else:
+                raise HTTPException(
+                    status_code=415,
+                    detail=f"Unsupported Content-Type '{ctype}'",
+                )
 
         return utils.json.JSONResponse(
-            utils.json.serialize(result),
-            headers={"ETag": f'"{generate_sample_etag(result)}"'},
+            utils.json.serialize(sample),
+            headers={"ETag": f'"{generate_sample_etag(sample)}"'},
         )
 
     def _handle_patch(self, sample: fo.Sample, data: dict) -> dict:
@@ -173,6 +213,8 @@ class Sample(HTTPEndpoint):
 
 
 class SampleField(HTTPEndpoint):
+    """Sample field endpoints."""
+
     @route
     async def patch(self, request: Request, data: dict) -> dict:
         """Applies a list of field updates to a sample field in a list by id.
@@ -180,7 +222,8 @@ class SampleField(HTTPEndpoint):
         See: https://datatracker.ietf.org/doc/html/rfc6902
 
         Args:
-            request: Starlette request with dataset_id and sample_id in path params
+            request: Starlette request with dataset_id and sample_id in path
+            params
             data: patch of type op, path, value.
 
         Returns:
@@ -192,38 +235,42 @@ class SampleField(HTTPEndpoint):
         field_id = request.path_params["field_id"]
 
         logger.info(
-            "Received patch request for field %s with ID %s on sample %s in dataset %s",
+            (
+                "Received patch request for field %s with ID %s on sample %s "
+                "in dataset %s"
+            ),
             path,
             field_id,
             sample_id,
             dataset_id,
         )
 
-        sample = get_sample(request)
+        with sample_manager(request) as sample:
+            try:
+                field_list = sample.get_field(path)
+            except Exception as err:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Field '{path}' not found in sample '{sample_id}'",
+                ) from err
 
-        try:
-            field_list = sample.get_field(path)
-        except Exception as e:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Field '{path}' not found in sample '{sample_id}'",
-            )
+            if not isinstance(field_list, list):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Field '{path}' is not a list",
+                )
 
-        if not isinstance(field_list, list):
-            raise HTTPException(
-                status_code=400,
-                detail=f"Field '{path}' is not a list",
-            )
+            field = next((f for f in field_list if f.id == field_id), None)
+            if field is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail=(
+                        f"Field with id '{field_id}' not found in field "
+                        f"'{path}'"
+                    ),
+                )
 
-        field = next((f for f in field_list if f.id == field_id), None)
-        if field is None:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Field with id '{field_id}' not found in field '{path}'",
-            )
-
-        result = handle_json_patch(field, data)
-        sample.save()
+            result = handle_json_patch(field, data)
 
         return utils.json.JSONResponse(
             utils.json.serialize(result),

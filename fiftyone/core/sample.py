@@ -5,6 +5,7 @@ Dataset samples.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import os
 
 from bson import ObjectId
@@ -547,9 +548,26 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
 
         super().reload(hard=hard)
 
-    def save(self):
+    def save(self, *, if_not_modified_since=None):
         """Saves the sample to the database."""
-        super().save()
+        if if_not_modified_since is not None:
+            d = self.to_mongo_dict(include_id=True)
+
+            # pylint:disable-next=protected-access
+            res = self.dataset._sample_collection.replace_one(
+                {
+                    "_id": self._id,
+                    "last_modified_at": {"$lte": if_not_modified_since},
+                },
+                d,
+            )
+
+            if res.modified_count == 0:
+                raise ValueError("Sample is out-of-date")
+
+            self.reload(hard=True)
+        else:
+            super().save()
 
     def _save(self, deferred=False):
         if not self._in_db:
