@@ -29,6 +29,9 @@ def to_json_pointer(
         raise ValueError(f"Invalid JSON pointer path: {path}") from err
 
 
+def do_it(): ...
+
+
 def get(src: T, path: Union[str, jsonpointer.JsonPointer]) -> V:
     """Gets a value from an object.
 
@@ -120,7 +123,7 @@ def add(
     name = pointer.parts[-1]
 
     try:
-        if hasattr(target, "__getitem__"):
+        if hasattr(target, "__setitem__"):
             try:
                 target[name] = value
             except TypeError as type_err:
@@ -137,7 +140,7 @@ def add(
                     except ValueError as val_err:
                         raise val_err
 
-                    if not 0 <= idx < len(target):
+                    if not 0 <= idx <= len(target):
                         raise IndexError(
                             "List index out of range"
                         ) from type_err

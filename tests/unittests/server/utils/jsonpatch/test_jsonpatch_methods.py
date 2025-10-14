@@ -5,7 +5,7 @@
 """
 
 import dataclasses
-from typing import Any, Literal
+from typing import Any, Literal, Union
 from unittest import mock
 
 import jsonpointer
@@ -240,11 +240,12 @@ class TestAdd:
         assert res == person
 
     @staticmethod
-    def test_append_list_item(person: Person):
-        """Tests that ValueError is raised for when the operation fails."""
+    @pytest.mark.parametrize("idx", ["-", 2])
+    def test_append_list_item(idx: Union[str, int], person: Person):
+        """Tests that list items are appended when using "-" or the index"""
 
         #####
-        res = add(person, "/pets/-", value := mock.Mock())
+        res = add(person, f"/pets/{idx}", value := mock.Mock())
         #####
 
         assert len(person.pets) == 3
