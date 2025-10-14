@@ -8,19 +8,9 @@ import type { LoadOptions, ResourceLoader } from "./ResourceLoader";
 
 // todo: make this more robust and idiomatic
 PIXI.loadTextures.test = (_url, resolvedAsset) => {
-  const format = resolvedAsset?.format;
-  if (
-    format === "jpg" ||
-    format === "jpeg" ||
-    format === "png" ||
-    format === "webp" ||
-    format === "avif"
-  ) {
-    resolvedAsset!.loadParser = "loadTextures";
-    return true;
-  }
-
-  return false;
+  resolvedAsset!.loadParser = "loadTextures";
+  // always return true for now
+  return true;
 };
 
 /**
