@@ -8,6 +8,7 @@ import type { LoadOptions, ResourceLoader } from "./ResourceLoader";
 
 // todo: make this more robust and idiomatic
 PIXI.loadTextures.test = (_url, resolvedAsset) => {
+  resolvedAsset!.loadParser = "loadTextures";
   // always return true for now
   return true;
 };
