@@ -1,5 +1,4 @@
 import { Autocomplete, MenuItem, TextField } from "@mui/material";
-import React from "react";
 import { useKey } from "../hooks";
 import { getComponentProps } from "../utils";
 import ChoiceMenuItemBody from "./ChoiceMenuItemBody";
@@ -9,7 +8,6 @@ export default function AutocompleteView(props) {
   const { onChange, path, schema, data } = props;
   const { view = {} } = schema;
   const { choices = [], readOnly } = view;
-  console.log(props);
 
   const multiple = schema.type === "array";
   const allowDups = view.allow_duplicates !== false;

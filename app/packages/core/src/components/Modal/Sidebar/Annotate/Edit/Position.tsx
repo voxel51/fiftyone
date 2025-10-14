@@ -46,7 +46,7 @@ export default function Position() {
 
   const { scene } = useLighter();
 
-  const initial = useEffect(() => {
+  useEffect(() => {
     if (!(overlay instanceof BoundingBoxOverlay)) {
       return;
     }
@@ -105,7 +105,7 @@ export default function Position() {
             },
           },
         }}
-        data={state ?? initial}
+        data={state}
         onChange={(data: Coordinates) => {
           if (!(overlay instanceof BoundingBoxOverlay)) {
             return;

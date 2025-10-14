@@ -7,6 +7,7 @@ export * from "./cache";
 export { freeVideos, getFrameNumber } from "./elements/util";
 export * from "./lookers";
 export type { PointInfo } from "./overlays";
+export type { DetectionLabel } from "./overlays/detection";
 export * from "./selective-rendering-events";
 export type {
   BaseState,

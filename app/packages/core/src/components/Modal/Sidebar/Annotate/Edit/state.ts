@@ -20,7 +20,7 @@ export const editing = atom<PrimitiveAtom<AnnotationLabel> | LabelType | null>(
 const IS_CLASSIFICIATION = new Set([CLASSIFICATION, CLASSIFICATIONS]);
 const IS_DETECTION = new Set([DETECTION, DETECTIONS]);
 const IS_POLYLINE = new Set([POLYLINE, POLYLINES]);
-const IS_LIST = new Set([CLASSIFICATIONS, DETECTIONS]);
+const IS_LIST = new Set([CLASSIFICATIONS, DETECTIONS, POLYLINES]);
 const IS = {
   [CLASSIFICATION]: IS_CLASSIFICIATION,
   [DETECTION]: IS_DETECTION,
