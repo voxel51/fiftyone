@@ -7,6 +7,7 @@ Interface for sample collections.
 """
 
 from collections import defaultdict, deque
+from concurrent.futures import ThreadPoolExecutor
 from copy import copy
 from datetime import datetime
 from operator import itemgetter
@@ -80,6 +81,32 @@ view_stage = _make_registrar()
 aggregation = _make_registrar()
 
 
+class DummyFuture:
+    def __init__(self, *, value=None, exception=None):
+        self.value = value
+        self.exception = exception
+
+    def result(self):
+        if self.exception:
+            raise self.exception
+        return self.value
+
+
+class DummyExecutor:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        pass
+
+    def submit(self, fn, *args, **kwargs):
+        try:
+            result = fn(*args, **kwargs)
+            return DummyFuture(value=result)
+        except Exception as e:
+            return DummyFuture(exception=e)
+
+
 class SaveContext(object):
     """Context that saves samples from a collection according to a configurable
     batching strategy.
@@ -109,6 +136,7 @@ class SaveContext(object):
         sample_collection,
         batch_size=None,
         batching_strategy=None,
+        async_writes=False,
     ):
         batch_size, batching_strategy = fou.parse_batching_strategy(
             batch_size=batch_size, batching_strategy=batching_strategy
@@ -133,6 +161,18 @@ class SaveContext(object):
         self._encoding_ratio = 1.0
         self._last_time = None
 
+        self.samples_lock = threading.Lock()
+        self.frames_lock = threading.Lock()
+        self.batch_ids_lock = threading.Lock()
+        self.reloading_lock = threading.Lock()
+
+        self.executor = (
+            ThreadPoolExecutor(max_workers=1)
+            if async_writes
+            else DummyExecutor()
+        )
+        self.futures = []
+
     def __enter__(self):
         if self._batching_strategy == "static":
             self._curr_batch_size = 0
@@ -141,122 +181,11 @@ class SaveContext(object):
         elif self._batching_strategy == "latency":
             self._last_time = timeit.default_timer()
 
-        return self
-
-    def __exit__(self, *args):
-        self._save_batch()
-
-    def save(self, sample):
-        """Registers the sample for saving in the next batch.
-
-        Args:
-            sample: a :class:`fiftyone.core.sample.Sample` or
-                :class:`fiftyone.core.sample.SampleView`
-        """
-        if sample._in_db and sample._dataset is not self._dataset:
-            raise ValueError(
-                "Dataset context '%s' cannot save sample from dataset '%s'"
-                % (self._dataset.name, sample._dataset.name)
-            )
-
-        sample_ops, frame_ops = sample._save(deferred=True)
-        updated = sample_ops or frame_ops
-
-        if sample_ops:
-            self._sample_ops.extend(sample_ops)
-
-        if frame_ops:
-            self._frame_ops.extend(frame_ops)
-
-        if updated and self._is_generated:
-            self._batch_ids.append(sample.id)
-
-        if updated and isinstance(sample, fosa.SampleView):
-            self._reload_parents.append(sample)
-
-        if self._batching_strategy == "static":
-            self._curr_batch_size += 1
-            if self._curr_batch_size >= self.batch_size:
-                self._save_batch()
-                self._curr_batch_size = 0
-        elif self._batching_strategy == "size":
-            if sample_ops:
-                self._curr_batch_size_bytes += sum(
-                    len(str(op)) for op in sample_ops
-                )
-
-            if frame_ops:
-                self._curr_batch_size_bytes += sum(
-                    len(str(op)) for op in frame_ops
-                )
-
-            if (
-                self._curr_batch_size_bytes
-                >= self.batch_size * self._encoding_ratio
-            ):
-                self._save_batch()
-                self._curr_batch_size_bytes = 0
-        elif self._batching_strategy == "latency":
-            if timeit.default_timer() - self._last_time >= self.batch_size:
-                self._save_batch()
-                self._last_time = timeit.default_timer()
-
-    def _save_batch(self):
-        encoded_size = -1
-        if self._sample_ops:
-            res = foo.bulk_write(
-                self._sample_ops,
-                self._sample_coll,
-                ordered=False,
-                batcher=False,
-            )[0]
-            encoded_size += res.bulk_api_result.get("nBytes", 0)
-            self._sample_ops.clear()
-
-        if self._frame_ops:
-            res = foo.bulk_write(
-                self._frame_ops, self._frame_coll, ordered=False, batcher=False
-            )[0]
-            encoded_size += res.bulk_api_result.get("nBytes", 0)
-            self._frame_ops.clear()
-
-        self._encoding_ratio = (
-            self._curr_batch_size_bytes / encoded_size
-            if encoded_size > 0 and self._curr_batch_size_bytes
-            else 1.0
-        )
-
-        if self._batch_ids and self._is_generated:
-            self.sample_collection._sync_source(ids=self._batch_ids)
-            self._batch_ids.clear()
-
-        if self._reload_parents:
-            for sample in self._reload_parents:
-                sample._reload_parents()
-
-            self._reload_parents.clear()
-
-
-class AsyncSaveContext(SaveContext):
-    def __init__(self, *args, executor=None, **kwargs):
-        if executor is None:
-            raise ValueError("executor must be specified")
-        super().__init__(*args, **kwargs)
-        self.executor = executor
-        self.futures = []
-
-        self.samples_lock = threading.Lock()
-        self.frames_lock = threading.Lock()
-        self.batch_ids_lock = threading.Lock()
-        self.reloading_lock = threading.Lock()
-
-    def __enter__(self):
-        super().__enter__()
         self.executor.__enter__()
         return self
 
     def __exit__(self, *args):
-        super().__exit__(*args)
+        self._save_batch()
 
         error = None
         try:
@@ -343,25 +272,37 @@ class AsyncSaveContext(SaveContext):
             with self.samples_lock:
                 sample_ops = self._sample_ops.copy()
                 self._sample_ops.clear()
-            res = foo.bulk_write(
-                sample_ops,
-                self._sample_coll,
-                ordered=False,
-                batcher=False,
-            )[0]
-            encoded_size += res.bulk_api_result.get("nBytes", 0)
+            try:
+                res = foo.bulk_write(
+                    sample_ops,
+                    self._sample_coll,
+                    ordered=False,
+                    batcher=False,
+                )[0]
+                encoded_size += res.bulk_api_result.get("nBytes", 0)
+            except Exception:
+                # requeue to avoid data loss
+                with self.samples_lock:
+                    self._sample_ops.extend(sample_ops)
+                raise
 
         if self._frame_ops:
             with self.frames_lock:
                 frame_ops = self._frame_ops.copy()
                 self._frame_ops.clear()
-            res = foo.bulk_write(
-                frame_ops,
-                self._frame_coll,
-                ordered=False,
-                batcher=False,
-            )[0]
-            encoded_size += res.bulk_api_result.get("nBytes", 0)
+            try:
+                res = foo.bulk_write(
+                    frame_ops,
+                    self._frame_coll,
+                    ordered=False,
+                    batcher=False,
+                )[0]
+                encoded_size += res.bulk_api_result.get("nBytes", 0)
+            except Exception as e:
+                # requeue to avoid data loss
+                with self.frames_lock:
+                    self._frame_ops.extend(frame_ops)
+                raise
 
         self._encoding_ratio = (
             self._curr_batch_size_bytes / encoded_size
