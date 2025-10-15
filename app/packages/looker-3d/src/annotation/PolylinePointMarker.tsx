@@ -125,15 +125,14 @@ export const PolylinePointMarker = ({
   useFrame(({ clock, camera }) => {
     const distance = camera.position.distanceTo(position);
 
-    // Base scale factor - far objects appear slightly bigger, close objects medium size
-    const baseScale = Math.max(0.8, Math.min(2.0, 1.0 + distance * 0.05));
-
-    let finalScale = baseScale;
+    // Scale proportionally with distance to compensate for perspective
+    const screenSpaceScale = distance * 0.1;
+    let finalScale = screenSpaceScale;
 
     if (pulsate) {
       const t = clock.getElapsedTime();
       const pulse = 0.8 + 0.2 * Math.sin(t * 3);
-      finalScale = baseScale * pulse;
+      finalScale = screenSpaceScale * pulse;
     }
 
     if (meshRef.current) {

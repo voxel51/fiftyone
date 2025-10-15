@@ -73,17 +73,7 @@ export const SegmentPolylineRenderer = ({
 
       if (!segmentState.isActive) return;
 
-      // Project vertex to annotation plane for z-drift prevention
-      let finalPos = worldPos;
-      if (annotationPlane.enabled || isSnapToAnnotationPlane) {
-        const plane = getPlaneFromPositionAndQuaternion(
-          annotationPlane.position,
-          annotationPlane.quaternion
-        );
-        const projectedPos = new THREE.Vector3();
-        plane.projectPoint(worldPos, projectedPos);
-        finalPos = projectedPos;
-      }
+      const finalPos = worldPos;
 
       const currentTime = Date.now();
       const isDoubleClick =
@@ -188,8 +178,6 @@ export const SegmentPolylineRenderer = ({
       shouldCloseLoop,
       setSegmentState,
       setTempPolylines,
-      annotationPlane,
-      isSnapToAnnotationPlane,
       snapCloseAutomatically,
     ]
   );
@@ -197,17 +185,7 @@ export const SegmentPolylineRenderer = ({
   // Handle mouse move for rubber band effect
   const handleMouseMove = useCallback(
     (worldPos: THREE.Vector3) => {
-      // Project cursor position to annotation plane if enabled
-      let finalPos = worldPos;
-      if (annotationPlane.enabled || isSnapToAnnotationPlane) {
-        const plane = getPlaneFromPositionAndQuaternion(
-          annotationPlane.position,
-          annotationPlane.quaternion
-        );
-        const projectedPos = new THREE.Vector3();
-        plane.projectPoint(worldPos, projectedPos);
-        finalPos = projectedPos;
-      }
+      const finalPos = worldPos;
 
       // Constrain position to scene bounds
       if (sceneBoundingBox && !sceneBoundingBox.isEmpty()) {
@@ -221,8 +199,27 @@ export const SegmentPolylineRenderer = ({
 
       setSharedCursorPosition([finalPos.x, finalPos.y, finalPos.z]);
     },
-    [annotationPlane, isSnapToAnnotationPlane, sceneBoundingBox]
+    [sceneBoundingBox]
   );
+
+  // Calculate the annotation plane for raycasting
+  const raycastPlane = useMemo(() => {
+    if (annotationPlane.enabled || isSnapToAnnotationPlane) {
+      const plane = getPlaneFromPositionAndQuaternion(
+        annotationPlane.position,
+        annotationPlane.quaternion
+      );
+      // Note: createPlane negates the constant, so we negate it here to cancel that out
+      return {
+        normal: plane.normal,
+        constant: -plane.constant,
+      };
+    }
+    return {
+      normal: upVector || new THREE.Vector3(0, 0, 1),
+      constant: 0,
+    };
+  }, [annotationPlane, isSnapToAnnotationPlane, upVector]);
 
   useEmptyCanvasInteraction({
     onPointerUp: segmentState.isActive ? handleClick : undefined,
@@ -230,8 +227,8 @@ export const SegmentPolylineRenderer = ({
       ? () => setIsActivelySegmenting(true)
       : undefined,
     onPointerMove: handleMouseMove,
-    planeNormal: upVector || new THREE.Vector3(0, 0, 1),
-    planeConstant: 0,
+    planeNormal: raycastPlane.normal,
+    planeConstant: raycastPlane.constant,
   });
 
   useEffect(() => {
