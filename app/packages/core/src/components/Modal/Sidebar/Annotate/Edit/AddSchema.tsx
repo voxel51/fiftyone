@@ -10,6 +10,7 @@ import { useSetAtom } from "jotai";
 import React from "react";
 import styled from "styled-components";
 import { activeSchemaTab } from "../state";
+import useCanManageSchema from "../useCanManageSchema";
 import useShowModal from "../useShowModal";
 import { editing } from "./state";
 
@@ -31,11 +32,12 @@ const ICONS = {
 };
 
 const AddSchema = ({ type }: { type: string }) => {
-  const canManage = true;
+  const canManage = useCanManageSchema();
   const showModal = useShowModal();
   const setActiveTab = useSetAtom(activeSchemaTab);
   const Icon = ICONS[type];
   const setEditing = useSetAtom(editing);
+
   return (
     <Container>
       <Icon

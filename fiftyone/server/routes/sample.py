@@ -5,26 +5,80 @@ FiftyOne Server sample endpoints.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 
 from starlette.endpoints import HTTPEndpoint
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
 
-import fiftyone.core.labels as fol
+import fiftyone as fo
 import fiftyone.core.odm.utils as fou
+from typing import List
+from fiftyone.server.utils.jsonpatch import parse
+from fiftyone.server.utils import transform_json
 from fiftyone.server.decorators import route
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
-LABEL_CLASS_MAP = {
-    "Classification": fol.Classification,
-    "Classifications": fol.Classifications,
-    "Detection": fol.Detection,
-    "Detections": fol.Detections,
-    "Polyline": fol.Polyline,
-    "Polylines": fol.Polylines,
-}
+
+def get_sample(dataset_id: str, sample_id: str) -> fo.Sample:
+    """Retrieves a sample from a dataset.
+
+    Args:
+        dataset_id: the dataset ID
+        sample_id: the sample ID
+
+    Returns:
+        the sample
+
+    Raises:
+        HTTPException: if the dataset or sample is not found
+    """
+    try:
+        dataset = fou.load_dataset(id=dataset_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Dataset '{dataset_id}' not found",
+        )
+
+    try:
+        sample = dataset[sample_id]
+    except KeyError:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Sample '{sample_id}' not found in dataset '{dataset_id}'",
+        )
+
+    return sample
+
+
+def handle_json_patch(target: Any, patch_list: List[dict]) -> Any:
+    """Applies a list of JSON patch operations to a target object."""
+    try:
+        patches = parse(patch_list, transform_fn=transform_json)
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Failed to parse patches due to: {e}",
+        )
+
+    errors = {}
+    for i, p in enumerate(patches):
+        try:
+            p.apply(target)
+        except Exception as e:
+            logger.error("Error applying patch %s: %s", p, e)
+            errors[str(patch_list[i])] = str(e)
+
+    if errors:
+        raise HTTPException(
+            status_code=400,
+            detail=errors,
+        )
+    return target
 
 
 class Sample(HTTPEndpoint):
@@ -32,14 +86,11 @@ class Sample(HTTPEndpoint):
     async def patch(self, request: Request, data: dict) -> dict:
         """Applies a list of field updates to a sample.
 
+        See: https://datatracker.ietf.org/doc/html/rfc6902
+
         Args:
             request: Starlette request with dataset_id and sample_id in path params
             data: A dict mapping field names to values.
-
-        Field value handling:
-        -   None: deletes the field
-        -   dict with "_cls" key: deserializes as a FiftyOne label using from_dict
-        -   other: assigns the value directly to the field
 
         Returns:
             the final state of the sample as a dict
@@ -53,28 +104,23 @@ class Sample(HTTPEndpoint):
             dataset_id,
         )
 
-        if not isinstance(data, dict):
-            raise HTTPException(
-                status_code=400,
-                detail="Request body must be a JSON object mapping field names to values",
-            )
+        sample = get_sample(dataset_id, sample_id)
 
-        try:
-            dataset = fou.load_dataset(id=dataset_id)
-        except ValueError:
+        content_type = request.headers.get("Content-Type", "")
+        ctype = content_type.split(";", 1)[0].strip().lower()
+        if ctype == "application/json":
+            result = self._handle_patch(sample, data)
+        elif ctype == "application/json-patch+json":
+            result = handle_json_patch(sample, data)
+        else:
             raise HTTPException(
-                status_code=404,
-                detail=f"Dataset '{dataset_id}' not found",
+                status_code=415,
+                detail=f"Unsupported Content-Type '{ctype}'",
             )
+        sample.save()
+        return result.to_dict(include_private=True)
 
-        try:
-            sample = dataset[sample_id]
-        except KeyError:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Sample '{sample_id}' not found in dataset '{dataset_id}'",
-            )
-
+    def _handle_patch(self, sample: fo.Sample, data: dict) -> dict:
         errors = {}
         for field_name, value in data.items():
             try:
@@ -82,20 +128,7 @@ class Sample(HTTPEndpoint):
                     sample.clear_field(field_name)
                     continue
 
-                if isinstance(value, dict) and "_cls" in value:
-                    cls_name = value.get("_cls")
-                    if cls_name in LABEL_CLASS_MAP:
-                        label_cls = LABEL_CLASS_MAP[cls_name]
-                        try:
-                            sample[field_name] = label_cls.from_dict(value)
-                        except Exception as e:
-                            errors[field_name] = str(e)
-                    else:
-                        errors[
-                            field_name
-                        ] = f"Unsupported label class '{cls_name}'"
-                else:
-                    sample[field_name] = value
+                sample[field_name] = transform_json(value)
             except Exception as e:
                 errors[field_name] = str(e)
 
@@ -104,6 +137,68 @@ class Sample(HTTPEndpoint):
                 status_code=400,
                 detail=errors,
             )
-        sample.save()
+        return sample
 
-        return sample.to_dict(include_private=True)
+
+class SampleField(HTTPEndpoint):
+    @route
+    async def patch(self, request: Request, data: dict) -> dict:
+        """Applies a list of field updates to a sample field in a list by id.
+
+        See: https://datatracker.ietf.org/doc/html/rfc6902
+
+        Args:
+            request: Starlette request with dataset_id and sample_id in path params
+            data: patch of type op, path, value.
+
+        Returns:
+            the final state of the sample as a dict
+        """
+        dataset_id = request.path_params["dataset_id"]
+        sample_id = request.path_params["sample_id"]
+        path = request.path_params["field_path"]
+        field_id = request.path_params["field_id"]
+
+        logger.info(
+            "Received patch request for field %s with ID %s on sample %s in dataset %s",
+            path,
+            field_id,
+            sample_id,
+            dataset_id,
+        )
+
+        sample = get_sample(dataset_id, sample_id)
+
+        try:
+            field_list = sample.get_field(path)
+        except Exception as e:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Field '{path}' not found in sample '{sample_id}'",
+            )
+
+        if not isinstance(field_list, list):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Field '{path}' is not a list",
+            )
+
+        field = next((f for f in field_list if f.id == field_id), None)
+        if field is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Field with id '{field_id}' not found in field '{path}'",
+            )
+
+        result = handle_json_patch(field, data)
+        sample.save()
+        return result.to_dict()
+
+
+SampleRoutes = [
+    ("/dataset/{dataset_id}/sample/{sample_id}", Sample),
+    (
+        "/dataset/{dataset_id}/sample/{sample_id}/{field_path}/{field_id}",
+        SampleField,
+    ),
+]

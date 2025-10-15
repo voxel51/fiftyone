@@ -50,23 +50,6 @@ _ALLOWED_PATCH_TYPES = (
 )
 
 
-@contextlib.contextmanager
-def _handle_batch_error(skip_failures, sample_batch):
-    try:
-        yield
-    except Exception as e:
-        if not skip_failures:
-            raise e
-
-        logger.warning(
-            "Batch: %s - %s\nError: %s\n",
-            sample_batch[0].id,
-            sample_batch[-1].id,
-            e,
-            exc_info=True,
-        )
-
-
 def apply_model(
     samples,
     model,
@@ -467,24 +450,11 @@ def _apply_image_model_data_loader(
         pb = context.enter_context(fou.ProgressBar(samples, progress=progress))
         ctx = context.enter_context(foc.SaveContext(samples))
 
-        def save_batch(sample_batch, labels_batch):
-            with _handle_batch_error(skip_failures, sample_batch):
-                for sample, labels in zip(sample_batch, labels_batch):
-                    if filename_maker is not None:
-                        _export_arrays(labels, sample.filepath, filename_maker)
-
-                    sample.add_labels(
-                        labels,
-                        label_field=label_field,
-                        confidence_thresh=confidence_thresh,
-                    )
-                    ctx.save(sample)
-
         for sample_batch, imgs in zip(
             fou.iter_batches(samples, batch_size),
             data_loader,
         ):
-            with _handle_batch_error(skip_failures, sample_batch):
+            try:
                 if isinstance(imgs, Exception):
                     raise imgs
 
@@ -495,7 +465,27 @@ def _apply_image_model_data_loader(
                 else:
                     labels_batch = model.predict_all(imgs)
 
-                save_batch(sample_batch, labels_batch)
+                for sample, labels in zip(sample_batch, labels_batch):
+                    if filename_maker is not None:
+                        _export_arrays(labels, sample.filepath, filename_maker)
+
+                    sample.add_labels(
+                        labels,
+                        label_field=label_field,
+                        confidence_thresh=confidence_thresh,
+                    )
+                    ctx.save(sample)
+            except Exception as e:
+                if not skip_failures:
+                    raise e
+
+                logger.warning(
+                    "Batch: %s - %s\nError: %s\n",
+                    sample_batch[0].id,
+                    sample_batch[-1].id,
+                    e,
+                    exc_info=True,
+                )
 
             pb.update(len(sample_batch))
 
@@ -1191,13 +1181,6 @@ def _compute_image_embeddings_data_loader(
         else:
             ctx = None
 
-        def save_batch(sample_batch, embeddings_batch):
-            with _handle_batch_error(skip_failures, sample_batch):
-                for sample, embedding in zip(sample_batch, embeddings_batch):
-                    sample[embeddings_field] = embedding
-                    if ctx:
-                        ctx.save(sample)
-
         for sample_batch, imgs in zip(
             fou.iter_batches(samples, batch_size),
             data_loader,
@@ -1222,7 +1205,24 @@ def _compute_image_embeddings_data_loader(
                 )
 
             if embeddings_field is not None:
-                save_batch(sample_batch, embeddings_batch)
+                try:
+                    for sample, embedding in zip(
+                        sample_batch, embeddings_batch
+                    ):
+                        sample[embeddings_field] = embedding
+                        if ctx:
+                            ctx.save(sample)
+                except Exception as e:
+                    if not skip_failures:
+                        raise e
+
+                    logger.warning(
+                        "Batch: %s - %s\nError: %s\n",
+                        sample_batch[0].id,
+                        sample_batch[-1].id,
+                        e,
+                        exc_info=True,
+                    )
             else:
                 embeddings.extend(embeddings_batch)
 

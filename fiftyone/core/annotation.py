@@ -165,6 +165,9 @@ def compute_annotation_schema(collection, field_name, scan_samples=True):
     attributes = {}
     classes = []
     for f in field.fields:
+        if f.name == "id":
+            continue
+
         if f.name == "label":
             classes = (
                 collection.distinct(f"{field_name}.label")
