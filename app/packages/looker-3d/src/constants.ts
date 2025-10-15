@@ -109,4 +109,4 @@ export const RAY_CASTING_SENSITIVITY = {
   low: 0.25,
 };
 
-export const SNAP_TOLERANCE = 1.5;
+export const SNAP_TOLERANCE = 0.5;

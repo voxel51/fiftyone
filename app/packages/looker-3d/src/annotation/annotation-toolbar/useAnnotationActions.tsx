@@ -6,6 +6,7 @@ import {
   RotateRight,
   Straighten,
 } from "@mui/icons-material";
+import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import { Typography } from "@mui/material";
 import { useCallback, useMemo } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
@@ -19,6 +20,7 @@ import {
   segmentPolylineStateAtom,
   selectedLabelForAnnotationAtom,
   selectedPolylineVertexAtom,
+  snapCloseAutomaticallyAtom,
   tempPolylinesAtom,
   transformModeAtom,
   transformSpaceAtom,
@@ -48,6 +50,9 @@ export const useAnnotationActions = () => {
   );
   const [isSnapToAnnotationPlane, setIsSnapToAnnotationPlane] = useRecoilState(
     isSnapToAnnotationPlaneAtom
+  );
+  const [snapCloseAutomatically, setSnapCloseAutomatically] = useRecoilState(
+    snapCloseAutomaticallyAtom
   );
   const [tempPolylines, setTempPolylines] = useRecoilState(tempPolylinesAtom);
   const [annotationPlane, setAnnotationPlane] =
@@ -93,12 +98,9 @@ export const useAnnotationActions = () => {
   const handleToggleAnnotationPlane = useCallback(() => {
     if (!annotationPlane.enabled) {
       if (sceneBoundingBox && upVector) {
-        let center = new THREE.Vector3(...annotationPlane.position);
-        let quaternion = new THREE.Quaternion(...annotationPlane.quaternion);
+        const center = new THREE.Vector3(...annotationPlane.position);
 
-        if (center[0] === 0 && center[1] === 0 && center[2] === 0) {
-          center = sceneBoundingBox.getCenter(new THREE.Vector3());
-        }
+        let quaternion = new THREE.Quaternion(...annotationPlane.quaternion);
 
         if (
           quaternion[0] === 0 &&
@@ -209,6 +211,15 @@ export const useAnnotationActions = () => {
             tooltip: "Toggle annotation plane for z-drift prevention",
             isActive: annotationPlane.enabled,
             onClick: handleToggleAnnotationPlane,
+          },
+          {
+            id: "snap-close-automatically",
+            label: "Snap Close Automatically",
+            icon: <RestartAltIcon />,
+            tooltip:
+              "When enabled, double-click closes polylines. When disabled, double-click ends segment at click location.",
+            isActive: snapCloseAutomatically,
+            onClick: () => setSnapCloseAutomatically(!snapCloseAutomatically),
           },
         ],
       },
@@ -327,6 +338,8 @@ export const useAnnotationActions = () => {
     handleToggleAnnotationPlane,
     isSnapToAnnotationPlane,
     setIsSnapToAnnotationPlane,
+    snapCloseAutomatically,
+    setSnapCloseAutomatically,
   ]);
 
   return {

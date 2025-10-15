@@ -6,7 +6,7 @@ import {
   nullableModalSampleId,
 } from "@fiftyone/state";
 import { atom, atomFamily, selector } from "recoil";
-import { Vector3 } from "three";
+import { Vector3, Vector3Tuple } from "three";
 import { SHADE_BY_HEIGHT } from "./constants";
 import type { FoSceneNode } from "./hooks";
 import { OverlayLabel } from "./labels/loader";
@@ -335,6 +335,11 @@ export const polylinePointTransformsAtom = atom<
   default: {},
 });
 
+export const polylineEffectivePointsAtom = atom<Vector3Tuple[][]>({
+  key: "fo3d-polylineEffectivePoints",
+  default: [],
+});
+
 export const selectedPolylinePositionSelector = selector<
   [number, number, number] | null
 >({
@@ -397,6 +402,11 @@ export const tempPolylinesAtom = atom<TempPolyline[]>({
   default: [],
 });
 
+export const snapCloseAutomaticallyAtom = atom<boolean>({
+  key: "fo3d-snapCloseAutomatically",
+  default: false,
+});
+
 export const sharedCursorPositionAtom = atom<[number, number, number] | null>({
   key: "fo3d-sharedCursorPosition",
   default: null,
@@ -431,7 +441,7 @@ export const annotationPlaneAtom = atom<AnnotationPlaneState>({
 
 export const isSnapToAnnotationPlaneAtom = atom<boolean>({
   key: "fo3d-isSnapToAnnotationPlane",
-  default: false,
+  default: true,
   effects: [
     getBrowserStorageEffectForKey("fo3d-isSnapToAnnotationPlane", {
       valueClass: "boolean",
@@ -450,8 +460,7 @@ export const clearTransformStateSelector = selector({
     set(selectedPolylineVertexAtom, null);
     set(currentArchetypeSelectedForTransformAtom, null);
     set(isCurrentlyTransformingAtom, false);
-    // Note: We don't clear transformedLabelsAtom here as it should persist
-    set(polylinePointTransformsAtom, {});
+    // Note: We don't clear polylinePointTransforms here as it should persist
     set(segmentPolylineStateAtom, {
       isActive: false,
       vertices: [],
