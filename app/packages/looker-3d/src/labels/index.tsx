@@ -17,20 +17,23 @@ import { useAtomValue } from "jotai";
 import { folder, useControls } from "leva";
 import { get as _get } from "lodash";
 import { useCallback, useEffect, useMemo } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import { PANEL_ORDER_LABELS } from "../constants";
 import { usePathFilter } from "../hooks";
 import { type Looker3dSettings, defaultPluginSettings } from "../settings";
 import {
   cuboidLabelLineWidthAtom,
+  currentArchetypeSelectedForTransformAtom,
   polylineLabelLineWidthAtom,
   segmentPolylineStateAtom,
+  selectedLabelForAnnotationAtom,
+  transformModeAtom,
 } from "../state";
+import { TransformArchetype } from "../types";
 import { toEulerFromDegreesArray } from "../utils";
 import { Cuboid, type CuboidProps } from "./cuboid";
 import { type OverlayLabel, load3dOverlays } from "./loader";
 import { type PolyLineProps, Polyline } from "./polyline";
-import { useAnnotationControls } from "../annotation/useAnnotationControls";
 
 export interface ThreeDLabelsProps {
   sampleMap: { [sliceOrFilename: string]: Sample } | fos.Sample[];
@@ -46,19 +49,6 @@ export const ThreeDLabels = ({
   const { coloring, selectedLabelTags, customizeColorSetting, labelTagColors } =
     useRecoilValue(fos.lookerOptions({ withFilter: true, modal: true }));
   const isSegmenting = useRecoilValue(segmentPolylineStateAtom).isActive;
-
-  const {
-    selectedLabelForAnnotation,
-    isInEntireLabelTransformMode,
-    selectLabelForAnnotation,
-    transformMode,
-    transformSpace,
-    handleTransformStart,
-    handleTransformEnd,
-    handleTransformChange,
-    clearSelectedLabel,
-    transformControlsRef,
-  } = useAnnotationControls();
 
   const settings = fop.usePluginSettings<Looker3dSettings>(
     "3d",
@@ -77,7 +67,16 @@ export const ThreeDLabels = ({
   const tooltip = fos.useTooltip();
   const labelAlpha = globalOpacity ?? colorScheme.opacity;
 
-  const constLabelLevaControls = {
+  const setSelectedLabelForAnnotation = useSetRecoilState(
+    selectedLabelForAnnotationAtom
+  );
+
+  const [transformMode, setTransformMode] = useRecoilState(transformModeAtom);
+  const setCurrentArchetypeSelectedForTransform = useSetRecoilState(
+    currentArchetypeSelectedForTransformAtom
+  );
+
+  const labelLevaControls = {
     cuboidLineWidget: {
       value: cuboidLineWidth,
       min: 0,
@@ -102,7 +101,7 @@ export const ThreeDLabels = ({
 
   const [labelConfig] = useControls(
     () => ({
-      Labels: folder(constLabelLevaControls, {
+      Labels: folder(labelLevaControls, {
         order: PANEL_ORDER_LABELS,
         collapsed: true,
       }),
@@ -110,12 +109,32 @@ export const ThreeDLabels = ({
     [setCuboidLineWidth, setPolylineWidth]
   );
 
+  const selectLabelForAnnotation = useCallback(
+    (label: OverlayLabel) => {
+      setSelectedLabelForAnnotation(label);
+
+      // We only support translate for polylines for now
+      if (
+        label._cls === "Polyline" &&
+        (transformMode === "rotate" || transformMode === "scale")
+      ) {
+        setTransformMode("translate");
+      }
+    },
+    [setSelectedLabelForAnnotation, transformMode, setTransformMode]
+  );
+
   const handleSelect = useCallback(
-    (label: OverlayLabel, e: ThreeEvent<MouseEvent>) => {
+    (
+      label: OverlayLabel,
+      archetype: TransformArchetype,
+      e: ThreeEvent<MouseEvent>
+    ) => {
       if (isSegmenting) return;
 
       if (mode === "annotate") {
         selectLabelForAnnotation(label);
+        setCurrentArchetypeSelectedForTransform(archetype);
 
         return;
       }
@@ -130,14 +149,7 @@ export const ThreeDLabels = ({
         },
       });
     },
-    [
-      onSelectLabel,
-      mode,
-      selectLabelForAnnotation,
-      clearSelectedLabel,
-      selectedLabelForAnnotation,
-      isSegmenting,
-    ]
+    [onSelectLabel, mode, selectLabelForAnnotation, isSegmenting]
   );
 
   const [overlayRotation, itemRotation] = useMemo(
@@ -198,24 +210,10 @@ export const ThreeDLabels = ({
             itemRotation={itemRotation}
             opacity={labelAlpha}
             {...(overlay as CuboidProps)}
-            onClick={(e) => handleSelect(overlay, e)}
+            onClick={(e) => handleSelect(overlay, null, e)}
             label={overlay}
             tooltip={tooltip}
             useLegacyCoordinates={settings.useLegacyCoordinates}
-            isSelectedForAnnotation={
-              selectedLabelForAnnotation?._id === overlay._id
-            }
-            isSelectedForTransform={
-              selectedLabelForAnnotation?._id === overlay._id &&
-              isInEntireLabelTransformMode
-            }
-            isAnnotateMode={mode === "annotate"}
-            transformMode={transformMode}
-            transformSpace={transformSpace}
-            onTransformStart={handleTransformStart}
-            onTransformEnd={handleTransformEnd}
-            onTransformChange={handleTransformChange}
-            transformControlsRef={transformControlsRef}
           />
         );
       } else if (
@@ -230,22 +228,8 @@ export const ThreeDLabels = ({
             lineWidth={polylineWidth}
             {...(overlay as PolyLineProps)}
             label={overlay}
-            onClick={(e) => handleSelect(overlay, e)}
+            onClick={(e) => handleSelect(overlay, "polyline", e)}
             tooltip={tooltip}
-            isSelectedForAnnotation={
-              selectedLabelForAnnotation?._id === overlay._id
-            }
-            isSelectedForTransform={
-              selectedLabelForAnnotation?._id === overlay._id &&
-              isInEntireLabelTransformMode
-            }
-            isAnnotateMode={mode === "annotate"}
-            transformMode={transformMode}
-            transformSpace={transformSpace}
-            onTransformStart={handleTransformStart}
-            onTransformEnd={handleTransformEnd}
-            onTransformChange={handleTransformChange}
-            transformControlsRef={transformControlsRef}
           />
         );
       }
@@ -259,14 +243,7 @@ export const ThreeDLabels = ({
     handleSelect,
     tooltip,
     settings,
-    selectedLabelForAnnotation,
-    isInEntireLabelTransformMode,
     transformMode,
-    transformSpace,
-    handleTransformStart,
-    handleTransformEnd,
-    handleTransformChange,
-    transformControlsRef,
   ]);
 
   const getOnShiftClickLabelCallback = useOnShiftClickLabel();

@@ -1,18 +1,16 @@
-import { TransformControls, useCursor } from "@react-three/drei";
+import { useCursor } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
 import { Mesh, Vector3 } from "three";
 import { LABEL_3D_ANNOTATION_POINT_SELECTED_FOR_TRANSFORMATION_COLOR } from "../constants";
+import { Transformable } from "../labels/shared/TransformControls";
 import {
-  currentPointPositionAtom,
+  currentArchetypeSelectedForTransformAtom,
   hoveredPolylineInfoAtom,
-  isInEntireLabelTransformModeAtom,
-  isPointTransformModeAtom,
-  isPointTransformingAtom,
-  selectedPointAtom,
+  segmentPolylineStateAtom,
+  selectedPolylineVertexAtom,
   transformModeAtom,
-  transformSpaceAtom,
   type SelectedPoint,
 } from "../state";
 
@@ -45,19 +43,16 @@ export const PolylinePointMarker = ({
   const [isHovered, setIsHovered] = useState(false);
 
   const setHoveredPolylineInfo = useSetRecoilState(hoveredPolylineInfoAtom);
-  const setIsPointTransforming = useSetRecoilState(isPointTransformingAtom);
   const setTransformMode = useSetRecoilState(transformModeAtom);
-  const setCurrentPointPosition = useSetRecoilState(currentPointPositionAtom);
 
-  const [selectedPoint, setSelectedPoint] = useRecoilState(selectedPointAtom);
-  const [isPointTransformMode, setIsPointTransformMode] = useRecoilState(
-    isPointTransformModeAtom
+  const [selectedPoint, setSelectedPoint] = useRecoilState(
+    selectedPolylineVertexAtom
   );
-  const [transformMode] = useRecoilState(transformModeAtom);
-  const [transformSpace] = useRecoilState(transformSpaceAtom);
-  const setIsInEntireLabelTransformMode = useSetRecoilState(
-    isInEntireLabelTransformModeAtom
+  const setCurrentArchetypeSelectedForTransform = useSetRecoilState(
+    currentArchetypeSelectedForTransformAtom
   );
+
+  const setSegmentPolylineState = useSetRecoilState(segmentPolylineStateAtom);
 
   const isSelected =
     selectedPoint?.labelId === labelId &&
@@ -72,68 +67,48 @@ export const PolylinePointMarker = ({
 
       event.stopPropagation();
 
-      setIsInEntireLabelTransformMode(false);
-
       const newSelectedPoint: SelectedPoint = {
         labelId,
         segmentIndex,
         pointIndex,
-        position: [position.x, position.y, position.z],
       };
 
       setSelectedPoint(newSelectedPoint);
-      setIsPointTransformMode(true);
+      setCurrentArchetypeSelectedForTransform("point");
       setTransformMode("translate");
+
+      setSegmentPolylineState((prev) => ({
+        ...prev,
+        isActive: false,
+      }));
     },
-    [isDraggable, labelId, segmentIndex, pointIndex, position]
+    [isDraggable, labelId, segmentIndex, pointIndex]
   );
-
-  const handleTransformStart = useCallback(() => {
-    setIsPointTransforming(true);
-  }, [setIsPointTransforming]);
-
-  const handleTransformChange = useCallback(() => {
-    if (transformControlsRef.current) {
-      const object = transformControlsRef.current.object;
-      const currentPosition = object.position.clone();
-      setCurrentPointPosition([
-        currentPosition.x,
-        currentPosition.y,
-        currentPosition.z,
-      ]);
-    }
-  }, [setCurrentPointPosition]);
 
   const handleTransformEnd = useCallback(() => {
     if (transformControlsRef.current && onPointMove) {
-      const object = transformControlsRef.current.object;
-      const newPosition = object.position.clone();
+      const delta = transformControlsRef.current.offset.clone();
+
+      const newPosition = position.clone().add(delta);
+
+      groupRef.current.position.set(0, 0, 0);
 
       onPointMove(newPosition);
 
-      // Update the selectedPoint position in the atom to reflect current position in HUD
-      if (isSelected) {
-        setSelectedPoint((prev) =>
-          prev
-            ? {
-                ...prev,
-                position: [newPosition.x, newPosition.y, newPosition.z],
-              }
-            : null
-        );
-      }
+      // note: this is a hack:
+      // transformControls is updating in a buggy way when the point is moved
+      const prevSelectedPoint = selectedPoint;
+      setSelectedPoint(null);
+      setTimeout(() => {
+        setSelectedPoint(prevSelectedPoint);
+      }, 0);
     }
-    setIsPointTransforming(false);
-    setCurrentPointPosition(null);
-  }, [onPointMove, isSelected, setSelectedPoint, setCurrentPointPosition]);
+  }, [onPointMove, selectedPoint, position]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setSelectedPoint(null);
-        setIsPointTransformMode(false);
-        setIsPointTransforming(false);
-        setCurrentPointPosition(null);
         event.stopPropagation();
         event.preventDefault();
       }
@@ -144,12 +119,7 @@ export const PolylinePointMarker = ({
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [
-    setSelectedPoint,
-    setIsPointTransformMode,
-    setIsPointTransforming,
-    setCurrentPointPosition,
-  ]);
+  }, [setSelectedPoint]);
 
   // Apply distance-based scaling
   useFrame(({ clock, camera }) => {
@@ -169,53 +139,59 @@ export const PolylinePointMarker = ({
     if (meshRef.current) {
       meshRef.current.scale.set(finalScale, finalScale, finalScale);
     }
+
+    if (transformControlsRef.current) {
+      transformControlsRef.current.position.set(0, 0, 0);
+      groupRef.current.updateMatrixWorld();
+      transformControlsRef.current.updateMatrixWorld();
+    }
   });
 
+  const groupRef = useRef(null);
+
   return (
-    <>
-      <mesh
-        ref={meshRef}
-        position={position}
-        onPointerOver={() => {
-          setIsHovered(true);
-          setHoveredPolylineInfo({
-            labelId,
-            segmentIndex,
-            pointIndex,
-          });
-        }}
-        onPointerOut={() => {
-          setIsHovered(false);
-          setHoveredPolylineInfo(null);
-        }}
-        onClick={handlePointClick}
-      >
-        <sphereGeometry args={[size, 10, 10]} />
-        <meshStandardMaterial
-          color={
-            isSelected
-              ? LABEL_3D_ANNOTATION_POINT_SELECTED_FOR_TRANSFORMATION_COLOR
-              : color
-          }
-          emissive={
-            isSelected
-              ? LABEL_3D_ANNOTATION_POINT_SELECTED_FOR_TRANSFORMATION_COLOR
-              : color
-          }
-          emissiveIntensity={isSelected ? 1 : 0.3}
-        />
-      </mesh>
-      {isSelected && isPointTransformMode && (
-        <TransformControls
-          ref={transformControlsRef}
-          object={meshRef}
-          mode={transformMode}
-          space={transformSpace}
-          onMouseDown={handleTransformStart}
-          onMouseUp={handleTransformEnd}
-          onObjectChange={handleTransformChange}
-        />
-      )}
-    </>
+    <Transformable
+      archetype="point"
+      isSelectedForTransform={isSelected}
+      explicitObjectRef={groupRef}
+      onTransformEnd={handleTransformEnd}
+      transformControlsRef={transformControlsRef}
+      transformControlsPosition={position.toArray()}
+    >
+      <group ref={groupRef}>
+        <mesh
+          ref={meshRef}
+          position={position}
+          onPointerOver={() => {
+            setIsHovered(true);
+            setHoveredPolylineInfo({
+              labelId,
+              segmentIndex,
+              pointIndex,
+            });
+          }}
+          onPointerOut={() => {
+            setIsHovered(false);
+            setHoveredPolylineInfo(null);
+          }}
+          onClick={handlePointClick}
+        >
+          <sphereGeometry args={[size, 10, 10]} />
+          <meshStandardMaterial
+            color={
+              isSelected
+                ? LABEL_3D_ANNOTATION_POINT_SELECTED_FOR_TRANSFORMATION_COLOR
+                : color
+            }
+            emissive={
+              isSelected
+                ? LABEL_3D_ANNOTATION_POINT_SELECTED_FOR_TRANSFORMATION_COLOR
+                : color
+            }
+            emissiveIntensity={isSelected ? 1 : 0.3}
+          />
+        </mesh>
+      </group>
+    </Transformable>
   );
 };

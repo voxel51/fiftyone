@@ -4,7 +4,7 @@ import { useRecoilValue } from "recoil";
 import { use3dLabelColor } from "../../hooks/use-3d-label-color";
 import { useSimilarLabels3d } from "../../hooks/use-similar-labels-3d";
 import { segmentPolylineStateAtom } from "../../state";
-import type { BaseOverlayProps, EventHandlers, HoverState } from "./types";
+import type { BaseOverlayProps, EventHandlers, HoverState } from "../../types";
 
 /**
  * Custom hook for managing hover state and cursor behavior

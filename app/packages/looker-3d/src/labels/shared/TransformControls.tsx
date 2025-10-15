@@ -1,48 +1,115 @@
+import * as fos from "@fiftyone/state";
 import { TransformControls } from "@react-three/drei";
-import { useRef } from "react";
+import { useAtomValue } from "jotai";
+import { useCallback, useEffect, useRef } from "react";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
-import type { TransformProps } from "./types";
+import {
+  currentArchetypeSelectedForTransformAtom,
+  isCurrentlyTransformingAtom,
+  transformModeAtom,
+  transformSpaceAtom,
+} from "../../state";
+import type { TransformArchetype, TransformProps } from "../../types";
 
-interface TransformControlsWrapperProps extends TransformProps {
-  children: React.ReactNode;
+type TransformableProps = {
+  archetype: TransformArchetype;
+  explicitObjectRef?: React.RefObject<any>;
   transformControlsPosition?: THREE.Vector3Tuple;
-}
+  children: React.ReactNode;
+} & Pick<
+  TransformProps,
+  | "isSelectedForTransform"
+  | "onTransformStart"
+  | "onTransformEnd"
+  | "onTransformChange"
+  | "transformControlsRef"
+  | "translationSnap"
+  | "rotationSnap"
+  | "scaleSnap"
+  | "showX"
+  | "showY"
+  | "showZ"
+>;
 
 /**
  * Shared component for rendering transform controls.
  */
-export const TransformControlsWrapper = ({
+export const Transformable = ({
+  archetype,
   children,
+  explicitObjectRef,
   isSelectedForTransform,
-  isAnnotateMode,
-  transformMode = "translate",
-  transformSpace = "world",
   onTransformStart,
   onTransformEnd,
   onTransformChange,
   transformControlsRef,
   transformControlsPosition = [0, 0, 0],
-}: TransformControlsWrapperProps) => {
+  ...transformControlsProps
+}: TransformableProps) => {
   const groupRef = useRef<any>(null);
+
+  const isAnnotateMode = useAtomValue(fos.modalMode);
+  const transformMode = useRecoilValue(transformModeAtom);
+  const transformSpace = useRecoilValue(transformSpaceAtom);
+  const currentArchetypeSelectedForTransform = useRecoilValue(
+    currentArchetypeSelectedForTransformAtom
+  );
+
+  const setIsCurrentlyTransforming = useSetRecoilState(
+    isCurrentlyTransformingAtom
+  );
+
+  const onTransformStartDecorated = useCallback(() => {
+    setIsCurrentlyTransforming(true);
+    onTransformStart?.();
+  }, [onTransformStart, archetype]);
+
+  const onTransformEndDecorated = useCallback(() => {
+    setIsCurrentlyTransforming(false);
+    onTransformEnd?.();
+  }, [onTransformEnd, archetype]);
+
+  const onObjectChangeDecorated = useCallback(() => {
+    onTransformChange?.();
+  }, [onTransformChange]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsCurrentlyTransforming(false);
+        event.stopPropagation();
+        event.preventDefault();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [archetype]);
 
   return (
     <>
-      <group ref={groupRef}>{children}</group>
+      {explicitObjectRef ? children : <group ref={groupRef}>{children}</group>}
 
-      {/* TransformControls for annotate mode */}
-      {isAnnotateMode && isSelectedForTransform && (
-        <group position={transformControlsPosition}>
-          <TransformControls
-            ref={transformControlsRef}
-            object={groupRef}
-            mode={transformMode}
-            space={transformSpace}
-            onMouseDown={onTransformStart}
-            onMouseUp={onTransformEnd}
-            onObjectChange={onTransformChange}
-          />
-        </group>
-      )}
+      {isAnnotateMode &&
+        isSelectedForTransform &&
+        currentArchetypeSelectedForTransform === archetype && (
+          <group position={new THREE.Vector3(...transformControlsPosition)}>
+            <TransformControls
+              ref={transformControlsRef}
+              object={explicitObjectRef?.current || groupRef.current}
+              mode={transformMode}
+              space={transformSpace}
+              onMouseDown={onTransformStartDecorated}
+              onMouseUp={onTransformEndDecorated}
+              onObjectChange={onObjectChangeDecorated}
+              {...transformControlsProps}
+            />
+          </group>
+        )}
     </>
   );
 };

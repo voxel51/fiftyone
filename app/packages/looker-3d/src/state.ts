@@ -9,7 +9,9 @@ import { atom, atomFamily, selector } from "recoil";
 import { Vector3 } from "three";
 import { SHADE_BY_HEIGHT } from "./constants";
 import type { FoSceneNode } from "./hooks";
+import { OverlayLabel } from "./labels/loader";
 import type { Actions, AssetLoadingLog, ShadeBy } from "./types";
+import { TransformArchetype } from "./types";
 
 const fo3dAssetsParseStatusLog = atomFamily<AssetLoadingLog[], string>({
   key: "fo3d-assetsParseStatusLogs",
@@ -233,14 +235,9 @@ export const polylineLabelLineWidthAtom = atom({
 export type TransformMode = "translate" | "rotate" | "scale";
 export type TransformSpace = "world" | "local";
 
-export const selectedLabelForAnnotationAtom = atom<any | null>({
+export const selectedLabelForAnnotationAtom = atom<OverlayLabel | null>({
   key: "fo3d-selectedLabelForAnnotation",
   default: null,
-});
-
-export const isInEntireLabelTransformModeAtom = atom<boolean>({
-  key: "fo3d-isInEntireLabelTransformMode",
-  default: false,
 });
 
 export const transformModeAtom = atom<TransformMode>({
@@ -253,37 +250,26 @@ export const transformSpaceAtom = atom<TransformSpace>({
   default: "world",
 });
 
-export const isTransformingAtom = atom<boolean>({
-  key: "fo3d-isTransforming",
-  default: false,
-});
-
-// Individual point selection and transform controls
+export interface Spatial {
+  position: [number, number, number];
+  quaternion?: [number, number, number, number];
+}
 export interface SelectedPoint {
   labelId: string;
   segmentIndex: number;
   pointIndex: number;
-  position: [number, number, number];
 }
 
-export const selectedPointAtom = atom<SelectedPoint | null>({
-  key: "fo3d-selectedPoint",
-  default: null,
-});
+export const currentArchetypeSelectedForTransformAtom =
+  atom<TransformArchetype | null>({
+    key: "fo3d-currentArchetypeSelectedForTransformAtom",
+    default: null,
+  });
 
-export const isPointTransformModeAtom = atom<boolean>({
-  key: "fo3d-isPointTransformMode",
+// True if ANY entity is being actively transformed
+export const isCurrentlyTransformingAtom = atom<boolean>({
+  key: "fo3d-isCurrentlyTransformingAtom",
   default: false,
-});
-
-export const isPointTransformingAtom = atom<boolean>({
-  key: "fo3d-isPointTransforming",
-  default: false,
-});
-
-export const currentPointPositionAtom = atom<[number, number, number] | null>({
-  key: "fo3d-currentPointPosition",
-  default: null,
 });
 
 // Transform data for HUD display
@@ -314,11 +300,6 @@ export interface TransformData {
   rotationZ?: number;
 }
 
-export const transformDataAtom = atom<TransformData>({
-  key: "fo3d-transformData",
-  default: {},
-});
-
 // Transformed label data storage
 export interface TransformedLabelData {
   worldPosition: [number, number, number];
@@ -342,11 +323,36 @@ export interface PolylinePointTransform {
   position: [number, number, number];
 }
 
+export const selectedPolylineVertexAtom = atom<SelectedPoint | null>({
+  key: "fo3d-selectedPolylineVertexAtom",
+  default: null,
+});
+
 export const polylinePointTransformsAtom = atom<
   Record<string, PolylinePointTransform[]>
 >({
   key: "fo3d-polylinePointTransforms",
   default: {},
+});
+
+export const selectedPolylinePositionSelector = selector<
+  [number, number, number] | null
+>({
+  key: "fo3d-selectedPolylinePositionSelector",
+  get: ({ get }) => {
+    const currentPoint = get(selectedPolylineVertexAtom);
+    if (!currentPoint) return null;
+
+    const transforms =
+      get(polylinePointTransformsAtom)[currentPoint.labelId] || [];
+    const transform = transforms.find(
+      (t) =>
+        t.segmentIndex === currentPoint.segmentIndex &&
+        t.pointIndex === currentPoint.pointIndex
+    );
+
+    return transform?.position ?? null;
+  },
 });
 
 export interface SegmentPolylineState {
@@ -400,6 +406,9 @@ export interface AnnotationPlaneState {
   enabled: boolean;
   position: [number, number, number];
   quaternion: [number, number, number, number];
+  showX: boolean;
+  showY: boolean;
+  showZ: boolean;
 }
 
 export const annotationPlaneAtom = atom<AnnotationPlaneState>({
@@ -408,6 +417,9 @@ export const annotationPlaneAtom = atom<AnnotationPlaneState>({
     enabled: false,
     position: [0, 0, 0],
     quaternion: [0, 0, 0, 1],
+    showX: true,
+    showY: true,
+    showZ: true,
   },
   effects: [
     getBrowserStorageEffectForKey("fo3d-annotationPlane", {
@@ -417,9 +429,14 @@ export const annotationPlaneAtom = atom<AnnotationPlaneState>({
   ],
 });
 
-export const isAnnotationPlaneTransformingAtom = atom<boolean>({
-  key: "fo3d-isAnnotationPlaneTransforming",
+export const isSnapToAnnotationPlaneAtom = atom<boolean>({
+  key: "fo3d-isSnapToAnnotationPlane",
   default: false,
+  effects: [
+    getBrowserStorageEffectForKey("fo3d-isSnapToAnnotationPlane", {
+      valueClass: "boolean",
+    }),
+  ],
 });
 
 // Selector to clear all transform state
@@ -428,15 +445,11 @@ export const clearTransformStateSelector = selector({
   get: () => null,
   set: ({ set }) => {
     set(selectedLabelForAnnotationAtom, null);
-    set(isInEntireLabelTransformModeAtom, false);
     set(transformModeAtom, "translate");
     set(transformSpaceAtom, "world");
-    set(isTransformingAtom, false);
-    set(transformDataAtom, {});
-    set(selectedPointAtom, null);
-    set(isPointTransformModeAtom, false);
-    set(isPointTransformingAtom, false);
-    set(currentPointPositionAtom, null);
+    set(selectedPolylineVertexAtom, null);
+    set(currentArchetypeSelectedForTransformAtom, null);
+    set(isCurrentlyTransformingAtom, false);
     // Note: We don't clear transformedLabelsAtom here as it should persist
     set(polylinePointTransformsAtom, {});
     set(segmentPolylineStateAtom, {

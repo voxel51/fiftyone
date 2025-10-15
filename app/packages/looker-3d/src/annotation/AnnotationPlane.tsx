@@ -1,34 +1,41 @@
-import { Line, TransformControls, useCursor } from "@react-three/drei";
+import { Line, useCursor } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import * as THREE from "three";
 import { useFo3dContext } from "../fo3d/context";
+import { Transformable } from "../labels/shared/TransformControls";
 import {
   annotationPlaneAtom,
-  isAnnotationPlaneTransformingAtom,
+  currentArchetypeSelectedForTransformAtom,
   segmentPolylineStateAtom,
+  transformModeAtom,
 } from "../state";
 
 interface AnnotationPlaneProps {
   showTransformControls?: boolean;
   viewType?: "top" | "bottom" | "right" | "left" | "front" | "back";
   panelType?: "side" | "main";
-  transformMode?: "translate" | "rotate" | "scale";
 }
 
 export const AnnotationPlane = ({
   showTransformControls = true,
   viewType = "top",
   panelType = "main",
-  transformMode = "translate",
 }: AnnotationPlaneProps) => {
   const [annotationPlane, setAnnotationPlane] =
     useRecoilState(annotationPlaneAtom);
-  const setIsAnnotationPlaneTransforming = useSetRecoilState(
-    isAnnotationPlaneTransformingAtom
-  );
+
   const isSegmenting = useRecoilValue(segmentPolylineStateAtom).isActive;
+  const transformMode = useRecoilValue(transformModeAtom);
+
+  const [
+    currentArchetypeSelectedForTransform,
+    setCurrentArchetypeSelectedForTransform,
+  ] = useRecoilState(currentArchetypeSelectedForTransformAtom);
+
+  const isSelected =
+    currentArchetypeSelectedForTransform === "annotation-plane";
 
   const { sceneBoundingBox, upVector } = useFo3dContext();
   const meshRef = useRef<THREE.Mesh>(null);
@@ -36,7 +43,6 @@ export const AnnotationPlane = ({
   const materialRef = useRef<THREE.MeshBasicMaterial>(null);
   const transformControlsRef = useRef<any>(null);
   const [isHovered, setIsHovered] = useState(false);
-  const [isSelected, setIsSelected] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isMouseDown, setIsMouseDown] = useState(false);
   const [dragStartPosition, setDragStartPosition] = useState<{
@@ -46,7 +52,7 @@ export const AnnotationPlane = ({
 
   // When up vector changes, set isSelected and isEnabled to false
   useEffect(() => {
-    setIsSelected(false);
+    setCurrentArchetypeSelectedForTransform(null);
     setAnnotationPlane((prev) => ({ ...prev, enabled: false }));
   }, [upVector]);
 
@@ -128,6 +134,18 @@ export const AnnotationPlane = ({
     };
   }, [upVector, transformMode]);
 
+  // This effect syncs the showX, showY, and showZ values with the transformControlsProps values
+  useEffect(() => {
+    if (!annotationPlane.enabled) return;
+
+    setAnnotationPlane((prev) => ({
+      ...prev,
+      showX: transformControlsProps.showX,
+      showY: transformControlsProps.showY,
+      showZ: transformControlsProps.showZ,
+    }));
+  }, [transformControlsProps, annotationPlane.enabled, isSelected]);
+
   useCursor(
     isHovered && isSelected && !isSegmenting,
     "pointer",
@@ -183,16 +201,17 @@ export const AnnotationPlane = ({
       event.stopPropagation();
 
       if (!isDragging) {
-        setIsSelected(!isSelected);
+        setCurrentArchetypeSelectedForTransform((prev) =>
+          prev === "annotation-plane" ? null : "annotation-plane"
+        );
       }
     },
-    [showTransformControls, isSelected, isDragging, isSegmenting]
+    [showTransformControls, isDragging, isSegmenting]
   );
 
   const handleTransformStart = useCallback(() => {
     setIsDragging(true);
-    setIsAnnotationPlaneTransforming(true);
-  }, [setIsAnnotationPlaneTransforming]);
+  }, []);
 
   const syncAnnotationPlaneTransformation = useCallback(() => {
     if (transformControlsRef.current && meshRef.current) {
@@ -220,7 +239,6 @@ export const AnnotationPlane = ({
   const handleTransformEnd = useCallback(() => {
     syncAnnotationPlaneTransformation();
     setIsDragging(false);
-    setIsAnnotationPlaneTransforming(false);
   }, [syncAnnotationPlaneTransformation]);
 
   const handleTransformChange = useCallback(() => {
@@ -230,9 +248,8 @@ export const AnnotationPlane = ({
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape" && isSelected) {
-        setIsSelected(false);
+        setCurrentArchetypeSelectedForTransform(null);
         setIsDragging(false);
-        setIsAnnotationPlaneTransforming(false);
         event.stopPropagation();
         event.preventDefault();
       }
@@ -243,7 +260,7 @@ export const AnnotationPlane = ({
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isSelected, setIsAnnotationPlaneTransforming]);
+  }, [isSelected]);
 
   if (!annotationPlane.enabled) {
     return null;
@@ -255,7 +272,19 @@ export const AnnotationPlane = ({
 
   if (showTransformControls && shouldShowFullPlane) {
     return (
-      <>
+      <Transformable
+        archetype="annotation-plane"
+        isSelectedForTransform={isSelected}
+        onTransformStart={handleTransformStart}
+        onTransformEnd={handleTransformEnd}
+        onTransformChange={handleTransformChange}
+        transformControlsRef={transformControlsRef}
+        translationSnap={0.001}
+        showX={transformControlsProps.showX}
+        showY={transformControlsProps.showY}
+        showZ={transformControlsProps.showZ}
+        explicitObjectRef={meshRef}
+      >
         <mesh
           ref={meshRef}
           position={position}
@@ -277,22 +306,7 @@ export const AnnotationPlane = ({
             side={THREE.DoubleSide}
           />
         </mesh>
-        {isSelected && (
-          <TransformControls
-            ref={transformControlsRef}
-            object={meshRef}
-            translationSnap={0.001}
-            mode={transformMode}
-            space="world"
-            showX={transformControlsProps.showX}
-            showY={transformControlsProps.showY}
-            showZ={transformControlsProps.showZ}
-            onMouseDown={handleTransformStart}
-            onMouseUp={handleTransformEnd}
-            onObjectChange={handleTransformChange}
-          />
-        )}
-      </>
+      </Transformable>
     );
   } else {
     const halfSize = planeSize / 2;

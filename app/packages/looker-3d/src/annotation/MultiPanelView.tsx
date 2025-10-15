@@ -27,11 +27,10 @@ import { ThreeDLabels } from "../labels";
 import { SpinningCube } from "../SpinningCube";
 import {
   activeNodeAtom,
+  currentArchetypeSelectedForTransformAtom,
   currentHoveredPointAtom,
-  isPointTransformModeAtom,
-  isPointTransformingAtom,
-  isTransformingAtom,
-  selectedPointAtom,
+  isCurrentlyTransformingAtom,
+  selectedPolylineVertexAtom,
 } from "../state";
 import { StatusBar } from "../StatusBar";
 import { AnnotationPlane } from "./AnnotationPlane";
@@ -161,8 +160,7 @@ export const MultiPanelView = ({
   );
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const isTransforming = useRecoilValue(isTransformingAtom);
-  const isPointTransforming = useRecoilValue(isPointTransformingAtom);
+  const isCurrentlyTransforming = useRecoilValue(isCurrentlyTransformingAtom);
 
   const keyState = useRef({
     shiftRight: false,
@@ -174,7 +172,7 @@ export const MultiPanelView = ({
   const updateCameraControlsConfig = useCallback(() => {
     if (!cameraControlsRef.current) return;
 
-    if (isTransforming || isPointTransforming) {
+    if (isCurrentlyTransforming) {
       cameraControlsRef.current.enabled = false;
       return;
     }
@@ -191,7 +189,7 @@ export const MultiPanelView = ({
       cameraControlsRef.current.mouseButtons.left =
         CameraControlsImpl.ACTION.ROTATE;
     }
-  }, [isTransforming, isPointTransforming]);
+  }, [isCurrentlyTransforming]);
 
   fos.useEventHandler(document, "keydown", (e: KeyboardEvent) => {
     if (e.code === "ShiftRight") keyState.current.shiftRight = true;
@@ -215,8 +213,8 @@ export const MultiPanelView = ({
         if (event?.type === "contextmenu") return;
         set(activeNodeAtom, null);
         set(currentHoveredPointAtom, null);
-        set(selectedPointAtom, null);
-        set(isPointTransformModeAtom, false);
+        set(selectedPolylineVertexAtom, null);
+        set(currentArchetypeSelectedForTransformAtom, null);
       },
     []
   );

@@ -4,14 +4,12 @@ import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import {
-  currentPointPositionAtom,
+  currentArchetypeSelectedForTransformAtom,
   hoveredLabelAtom,
   hoveredPolylineInfoAtom,
-  isPointTransformingAtom,
-  isTransformingAtom,
+  isCurrentlyTransformingAtom,
   selectedLabelForAnnotationAtom,
-  selectedPointAtom,
-  transformDataAtom,
+  selectedPolylineVertexAtom,
   transformModeAtom,
   transformedLabelsAtom,
 } from "../state";
@@ -60,13 +58,14 @@ const formatNumber = (
 };
 
 export const TransformHUD = () => {
-  const isTransforming = useRecoilValue(isTransformingAtom);
-  const isPointTransforming = useRecoilValue(isPointTransformingAtom);
-  const selectedPoint = useRecoilValue(selectedPointAtom);
-  const currentPointPosition = useRecoilValue(currentPointPositionAtom);
+  const isCurrentlyTransforming = useRecoilValue(isCurrentlyTransformingAtom);
+  const currentTransformingArchetype = useRecoilValue(
+    currentArchetypeSelectedForTransformAtom
+  );
+  const selectedPoint = useRecoilValue(selectedPolylineVertexAtom);
   const transformMode = useRecoilValue(transformModeAtom);
   const selectedLabel = useRecoilValue(selectedLabelForAnnotationAtom);
-  const transformData = useRecoilValue(transformDataAtom);
+  // const transformData = useRecoilValue(transformDataAtom);
   const hoveredLabel = useRecoilValue(hoveredLabelAtom);
   const hoveredPolylineInfo = useRecoilValue(hoveredPolylineInfoAtom);
   const transformedLabels = useRecoilValue(transformedLabelsAtom);
@@ -106,103 +105,6 @@ export const TransformHUD = () => {
         <br />
         <ValueLabel>segment:</ValueLabel>
         <ValueNumber>{selectedPoint.segmentIndex + 1}</ValueNumber>
-        <br />
-        {isPointTransforming && currentPointPosition ? (
-          <>
-            <ValueLabel>original:</ValueLabel>
-            <ValueNumber>
-              {formatNumber(selectedPoint.position[0])},{" "}
-              {formatNumber(selectedPoint.position[1])},{" "}
-              {formatNumber(selectedPoint.position[2])}
-            </ValueNumber>
-            <br />
-            <ValueLabel>current:</ValueLabel>
-            <ValueNumber>
-              {formatNumber(currentPointPosition[0])},{" "}
-              {formatNumber(currentPointPosition[1])},{" "}
-              {formatNumber(currentPointPosition[2])}
-            </ValueNumber>
-          </>
-        ) : (
-          <>
-            <ValueLabel>point:</ValueLabel>
-            <ValueNumber>
-              {formatNumber(selectedPoint.position[0])},{" "}
-              {formatNumber(selectedPoint.position[1])},{" "}
-              {formatNumber(selectedPoint.position[2])}
-            </ValueNumber>
-          </>
-        )}
-      </TransformHUDContainer>
-    );
-  };
-
-  const renderTransformMode = () => {
-    const renderTransformValues = () => {
-      switch (transformMode) {
-        case "translate":
-          return (
-            <>
-              <ValueLabel>dx:</ValueLabel>
-              <ValueNumber>{formatNumber(transformData.dx)}</ValueNumber>
-              <ValueLabel>dy:</ValueLabel>
-              <ValueNumber>{formatNumber(transformData.dy)}</ValueNumber>
-              <ValueLabel>dz:</ValueLabel>
-              <ValueNumber>{formatNumber(transformData.dz)}</ValueNumber>
-            </>
-          );
-
-        case "scale":
-          return (
-            <>
-              <ValueLabel>dimx:</ValueLabel>
-              <ValueNumber>
-                {formatNumber(transformData.dimensionX, 2)}
-              </ValueNumber>
-              <ValueLabel>dimy:</ValueLabel>
-              <ValueNumber>
-                {formatNumber(transformData.dimensionY, 2)}
-              </ValueNumber>
-              <ValueLabel>dimz:</ValueLabel>
-              <ValueNumber>
-                {formatNumber(transformData.dimensionZ, 2)}
-              </ValueNumber>
-            </>
-          );
-
-        case "rotate":
-          return (
-            <>
-              <ValueLabel>rx:</ValueLabel>
-              <ValueNumber>
-                {formatNumber(transformData.rotationX)}°
-              </ValueNumber>
-              <ValueLabel>ry:</ValueLabel>
-              <ValueNumber>
-                {formatNumber(transformData.rotationY)}°
-              </ValueNumber>
-              <ValueLabel>rz:</ValueLabel>
-              <ValueNumber>
-                {formatNumber(transformData.rotationZ)}°
-              </ValueNumber>
-            </>
-          );
-
-        default:
-          return null;
-      }
-    };
-
-    return (
-      <TransformHUDContainer>
-        <TransformModeLabel>{transformMode}</TransformModeLabel>
-        {renderTransformValues()}
-        <br />
-        <ValueLabel>pos:</ValueLabel>
-        <ValueNumber>
-          {formatNumber(transformData.x)}, {formatNumber(transformData.y)},{" "}
-          {formatNumber(transformData.z)}
-        </ValueNumber>
       </TransformHUDContainer>
     );
   };
@@ -410,8 +312,9 @@ export const TransformHUD = () => {
   }
 
   // Mode 2: Actively transforming
-  if (isTransforming && selectedLabel) {
-    return renderTransformMode();
+  if (isCurrentlyTransforming && selectedLabel) {
+    return null;
+    // return renderTransformMode();
   }
 
   // Mode 3: Hovering in annotate mode

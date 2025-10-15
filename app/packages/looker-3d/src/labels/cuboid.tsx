@@ -1,13 +1,10 @@
 import { extend } from "@react-three/fiber";
 import { useEffect, useMemo } from "react";
-import { useSetRecoilState } from "recoil";
 import * as THREE from "three";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry";
-import { hoveredLabelAtom } from "../state";
 import type { OverlayProps } from "./shared";
-import { TransformControlsWrapper } from "./shared/TransformControls";
 import { useEventHandlers, useHoverState, useLabelColor } from "./shared/hooks";
 
 extend({ LineSegments2, LineMaterial, LineSegmentsGeometry });
@@ -17,8 +14,6 @@ export interface CuboidProps extends OverlayProps {
   dimensions: THREE.Vector3Tuple;
   itemRotation: THREE.Vector3Tuple;
   lineWidth?: number;
-  isSelectedForAnnotation?: boolean;
-  isSelectedForTransform?: boolean;
 }
 
 export const Cuboid = ({
@@ -34,15 +29,6 @@ export const Cuboid = ({
   label,
   color,
   useLegacyCoordinates,
-  isSelectedForAnnotation,
-  isSelectedForTransform,
-  isAnnotateMode,
-  transformMode = "translate",
-  transformSpace = "world",
-  onTransformStart,
-  onTransformEnd,
-  onTransformChange,
-  transformControlsRef,
 }: CuboidProps) => {
   const geo = useMemo(
     () => dimensions && new THREE.BoxGeometry(...dimensions),
@@ -75,14 +61,13 @@ export const Cuboid = ({
     tooltip,
     label
   );
+
   const { strokeAndFillColor, isSimilarLabelHovered } = useLabelColor(
     { selected, color },
     isHovered,
     label,
-    isSelectedForAnnotation
+    false
   );
-
-  const setHoveredLabel = useSetRecoilState(hoveredLabelAtom);
 
   const edgesGeo = useMemo(() => new THREE.EdgesGeometry(geo), [geo]);
   const geometry = useMemo(
@@ -132,17 +117,7 @@ export const Cuboid = ({
    */
 
   return (
-    <TransformControlsWrapper
-      isSelectedForTransform={isSelectedForTransform}
-      isAnnotateMode={isAnnotateMode}
-      transformMode={transformMode}
-      transformSpace={transformSpace}
-      onTransformStart={onTransformStart}
-      onTransformEnd={onTransformEnd}
-      onTransformChange={onTransformChange}
-      transformControlsRef={transformControlsRef}
-      transformControlsPosition={[loc.x, loc.y, loc.z]}
-    >
+    <>
       {/* Outline */}
       {/* @ts-ignore */}
       <lineSegments2
@@ -159,16 +134,10 @@ export const Cuboid = ({
         onClick={onClick}
         onPointerOver={() => {
           setIsHovered(true);
-          if (isAnnotateMode) {
-            setHoveredLabel(label);
-          }
           onPointerOver();
         }}
         onPointerOut={() => {
           setIsHovered(false);
-          if (isAnnotateMode) {
-            setHoveredLabel(null);
-          }
           onPointerOut();
         }}
         {...restEventHandlers}
@@ -180,6 +149,6 @@ export const Cuboid = ({
           color={strokeAndFillColor}
         />
       </mesh>
-    </TransformControlsWrapper>
+    </>
   );
 };

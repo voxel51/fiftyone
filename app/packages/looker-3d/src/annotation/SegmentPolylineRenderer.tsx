@@ -166,6 +166,7 @@ export const SegmentPolylineRenderer = ({
 
         setIsActivelySegmenting(false);
 
+        event.preventDefault();
         event.stopPropagation();
       }
     };

@@ -1,104 +1,139 @@
 import { Box, TextField } from "@mui/material";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
-import { Vector3 } from "three";
-import { usePointUpdateRegistry } from "../../hooks/usePointUpdateRegistry";
+import type { PolyLineProps } from "../../labels/polyline";
 import {
+  annotationPlaneAtom,
+  polylinePointTransformsAtom,
   selectedLabelForAnnotationAtom,
-  selectedPointAtom,
-  transformedLabelsAtom,
+  selectedPolylineVertexAtom,
 } from "../../state";
 
 interface CoordinateInputsProps {
   className?: string;
+  hideTranslate?: boolean;
+  hideQuaternion?: boolean;
 }
 
-export const CoordinateInputs = ({ className }: CoordinateInputsProps) => {
-  const [selectedPoint, setSelectedPoint] = useRecoilState(selectedPointAtom);
-  const [transformedLabels, setTransformedLabels] = useRecoilState(
-    transformedLabelsAtom
+interface CoordinateFieldProps {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  onFocus: () => void;
+  onBlur: () => void;
+}
+
+const CoordinateField = ({
+  label,
+  value,
+  onChange,
+  onFocus,
+  onBlur,
+}: CoordinateFieldProps) => {
+  return (
+    <TextField
+      size="small"
+      label={label}
+      value={value}
+      onFocus={onFocus}
+      onBlur={onBlur}
+      onChange={(e) => onChange(e.target.value)}
+      type="number"
+      inputProps={{
+        step: "0.1",
+        style: { fontSize: "11px", padding: "4px 6px" },
+      }}
+      sx={{
+        "& .MuiInputLabel-root": { fontSize: "10px" },
+        "& .MuiOutlinedInput-root": { height: "24px" },
+        "& .MuiOutlinedInput-input": { padding: "4px 6px" },
+      }}
+    />
   );
-  const selectedLabel = useRecoilValue(selectedLabelForAnnotationAtom);
-  const { updatePoint } = usePointUpdateRegistry();
+};
+
+export const PlaneCoordinateInputs = ({
+  className,
+  hideTranslate = false,
+  hideQuaternion = true,
+}: CoordinateInputsProps) => {
+  const [annotationPlane, setAnnotationPlane] =
+    useRecoilState(annotationPlaneAtom);
   const [x, setX] = useState<string>("0");
   const [y, setY] = useState<string>("0");
   const [z, setZ] = useState<string>("0");
+  const [qx, setQx] = useState<string>("0");
+  const [qy, setQy] = useState<string>("0");
+  const [qz, setQz] = useState<string>("0");
+  const [qw, setQw] = useState<string>("1");
 
   const [isEditing, setIsEditing] = useState<boolean>(false);
 
-  // Update local state when selectedPoint changes
   useEffect(() => {
-    if (selectedPoint && !isEditing) {
-      setX(selectedPoint.position[0].toFixed(3));
-      setY(selectedPoint.position[1].toFixed(3));
-      setZ(selectedPoint.position[2].toFixed(3));
+    if (annotationPlane && !isEditing) {
+      setX(annotationPlane.position[0].toFixed(3));
+      setY(annotationPlane.position[1].toFixed(3));
+      setZ(annotationPlane.position[2].toFixed(3));
+      setQx(annotationPlane.quaternion[0].toFixed(3));
+      setQy(annotationPlane.quaternion[1].toFixed(3));
+      setQz(annotationPlane.quaternion[2].toFixed(3));
+      setQw(annotationPlane.quaternion[3].toFixed(3));
     }
-  }, [selectedPoint, isEditing]);
+  }, [annotationPlane, isEditing]);
 
-  const handleCoordinateChange = useCallback(
+  const handlePositionChange = useCallback(
     (axis: "x" | "y" | "z", value: string) => {
       // Always update local state to allow blank values while editing
       if (axis === "x") setX(value);
       else if (axis === "y") setY(value);
       else if (axis === "z") setZ(value);
 
-      // Only update the actual point position if we have a valid number
       const numValue = parseFloat(value);
       if (isNaN(numValue)) return;
 
-      // Update the selected point position
-      if (selectedPoint && selectedLabel) {
-        const newPosition: [number, number, number] = [
-          ...selectedPoint.position,
-        ];
-        if (axis === "x") newPosition[0] = numValue;
-        else if (axis === "y") newPosition[1] = numValue;
-        else if (axis === "z") newPosition[2] = numValue;
+      const newPosition: [number, number, number] = [
+        ...annotationPlane.position,
+      ];
+      if (axis === "x") newPosition[0] = numValue;
+      else if (axis === "y") newPosition[1] = numValue;
+      else if (axis === "z") newPosition[2] = numValue;
 
-        setSelectedPoint({
-          ...selectedPoint,
-          position: newPosition,
-        });
-
-        updatePoint(
-          selectedPoint.segmentIndex,
-          selectedPoint.pointIndex,
-          new Vector3(newPosition[0], newPosition[1], newPosition[2])
-        );
-
-        // Update the transformedLabelsAtom with the new point position
-        setTransformedLabels((prev) => {
-          const labelId = selectedLabel._id;
-          const currentTransform = prev[labelId] || {
-            worldPosition: [0, 0, 0] as [number, number, number],
-            dimensions: [1, 1, 1] as [number, number, number],
-            localRotation: [0, 0, 0] as [number, number, number],
-            worldRotation: [0, 0, 0] as [number, number, number],
-          };
-
-          // For polylines, we need to update the specific point in the points3d array
-          // This is a simplified approach - in a real implementation, you might want to
-          // store point-specific transformations
-          return {
-            ...prev,
-            [labelId]: {
-              ...currentTransform,
-              worldPosition: newPosition,
-            },
-          };
-        });
-      }
+      setAnnotationPlane((prev) => ({
+        ...prev,
+        position: newPosition,
+      }));
     },
-    [
-      selectedPoint,
-      setSelectedPoint,
-      selectedLabel,
-      setTransformedLabels,
-      updatePoint,
-    ]
+    [annotationPlane.position]
   );
 
-  if (!selectedPoint) {
+  const handleQuaternionChange = useCallback(
+    (axis: "x" | "y" | "z" | "w", value: string) => {
+      // Always update local state to allow blank values while editing
+      if (axis === "x") setQx(value);
+      else if (axis === "y") setQy(value);
+      else if (axis === "z") setQz(value);
+      else if (axis === "w") setQw(value);
+
+      const numValue = parseFloat(value);
+      if (isNaN(numValue)) return;
+
+      const newQuaternion: [number, number, number, number] = [
+        ...annotationPlane.quaternion,
+      ];
+      if (axis === "x") newQuaternion[0] = numValue;
+      else if (axis === "y") newQuaternion[1] = numValue;
+      else if (axis === "z") newQuaternion[2] = numValue;
+      else if (axis === "w") newQuaternion[3] = numValue;
+
+      setAnnotationPlane((prev) => ({
+        ...prev,
+        quaternion: newQuaternion,
+      }));
+    },
+    [annotationPlane.quaternion]
+  );
+
+  if (!annotationPlane.enabled) {
     return null;
   }
 
@@ -106,6 +141,7 @@ export const CoordinateInputs = ({ className }: CoordinateInputsProps) => {
     <Box
       className={className}
       sx={{
+        marginTop: "20px",
         display: "flex",
         flexDirection: "column",
         gap: 1,
@@ -119,60 +155,250 @@ export const CoordinateInputs = ({ className }: CoordinateInputsProps) => {
           width: "60px",
         }}
       >
-        <TextField
-          size="small"
-          label="X"
-          value={x}
-          onFocus={() => setIsEditing(true)}
-          onBlur={() => setIsEditing(false)}
-          onChange={(e) => handleCoordinateChange("x", e.target.value)}
-          type="number"
-          inputProps={{
-            step: "0.1",
-            style: { fontSize: "11px", padding: "4px 6px" },
-          }}
-          sx={{
-            "& .MuiInputLabel-root": { fontSize: "10px" },
-            "& .MuiOutlinedInput-root": { height: "24px" },
-            "& .MuiOutlinedInput-input": { padding: "4px 6px" },
-          }}
-        />
-        <TextField
-          size="small"
-          label="Y"
-          value={y}
-          onFocus={() => setIsEditing(true)}
-          onBlur={() => setIsEditing(false)}
-          onChange={(e) => handleCoordinateChange("y", e.target.value)}
-          type="number"
-          inputProps={{
-            step: "0.1",
-            style: { fontSize: "11px", padding: "4px 6px" },
-          }}
-          sx={{
-            "& .MuiInputLabel-root": { fontSize: "10px" },
-            "& .MuiOutlinedInput-root": { height: "24px" },
-            "& .MuiOutlinedInput-input": { padding: "4px 6px" },
-          }}
-        />
-        <TextField
-          size="small"
-          label="Z"
-          value={z}
-          onFocus={() => setIsEditing(true)}
-          onBlur={() => setIsEditing(false)}
-          onChange={(e) => handleCoordinateChange("z", e.target.value)}
-          type="number"
-          inputProps={{
-            step: "0.1",
-            style: { fontSize: "11px", padding: "4px 6px" },
-          }}
-          sx={{
-            "& .MuiInputLabel-root": { fontSize: "10px" },
-            "& .MuiOutlinedInput-root": { height: "24px" },
-            "& .MuiOutlinedInput-input": { padding: "4px 6px" },
-          }}
-        />
+        {!hideTranslate && (
+          <>
+            {annotationPlane.showX && (
+              <CoordinateField
+                label="X"
+                value={x}
+                onChange={(value) => handlePositionChange("x", value)}
+                onFocus={() => setIsEditing(true)}
+                onBlur={() => setIsEditing(false)}
+              />
+            )}
+            {annotationPlane.showY && (
+              <CoordinateField
+                label="Y"
+                value={y}
+                onChange={(value) => handlePositionChange("y", value)}
+                onFocus={() => setIsEditing(true)}
+                onBlur={() => setIsEditing(false)}
+              />
+            )}
+            {annotationPlane.showZ && (
+              <CoordinateField
+                label="Z"
+                value={z}
+                onChange={(value) => handlePositionChange("z", value)}
+                onFocus={() => setIsEditing(true)}
+                onBlur={() => setIsEditing(false)}
+              />
+            )}
+          </>
+        )}
+        {!hideQuaternion && (
+          <>
+            <CoordinateField
+              label="QX"
+              value={qx}
+              onChange={(value) => handleQuaternionChange("x", value)}
+              onFocus={() => setIsEditing(true)}
+              onBlur={() => setIsEditing(false)}
+            />
+            <CoordinateField
+              label="QY"
+              value={qy}
+              onChange={(value) => handleQuaternionChange("y", value)}
+              onFocus={() => setIsEditing(true)}
+              onBlur={() => setIsEditing(false)}
+            />
+            <CoordinateField
+              label="QZ"
+              value={qz}
+              onChange={(value) => handleQuaternionChange("z", value)}
+              onFocus={() => setIsEditing(true)}
+              onBlur={() => setIsEditing(false)}
+            />
+            <CoordinateField
+              label="QW"
+              value={qw}
+              onChange={(value) => handleQuaternionChange("w", value)}
+              onFocus={() => setIsEditing(true)}
+              onBlur={() => setIsEditing(false)}
+            />
+          </>
+        )}
+      </Box>
+    </Box>
+  );
+};
+
+export const VertexCoordinateInputs = ({
+  className,
+  hideTranslate = false,
+}: CoordinateInputsProps) => {
+  const selectedPoint = useRecoilValue(selectedPolylineVertexAtom);
+  const selectedLabel = useRecoilValue(selectedLabelForAnnotationAtom);
+  const [polylinePointTransforms, setPolylinePointTransforms] = useRecoilState(
+    polylinePointTransformsAtom
+  );
+  const selectedPointPosition = useMemo(() => {
+    if (!selectedPoint || !selectedLabel) return null;
+
+    const transforms = polylinePointTransforms[selectedPoint.labelId] || [];
+    const transform = transforms.find(
+      (t) =>
+        t.segmentIndex === selectedPoint.segmentIndex &&
+        t.pointIndex === selectedPoint.pointIndex
+    );
+
+    // Return transformed position if exists, otherwise return original position from label
+    if (transform) {
+      return transform.position;
+    }
+
+    const polylineLabel = selectedLabel as unknown as PolyLineProps;
+    if (
+      polylineLabel.points3d &&
+      selectedPoint.segmentIndex < polylineLabel.points3d.length &&
+      selectedPoint.pointIndex <
+        polylineLabel.points3d[selectedPoint.segmentIndex].length
+    ) {
+      return polylineLabel.points3d[selectedPoint.segmentIndex][
+        selectedPoint.pointIndex
+      ] as [number, number, number];
+    }
+
+    return null;
+  }, [selectedPoint, selectedLabel, polylinePointTransforms]);
+  const [x, setX] = useState<string>("0");
+  const [y, setY] = useState<string>("0");
+  const [z, setZ] = useState<string>("0");
+
+  const [isEditing, setIsEditing] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (selectedPointPosition && !isEditing) {
+      setX(selectedPointPosition[0].toFixed(3));
+      setY(selectedPointPosition[1].toFixed(3));
+      setZ(selectedPointPosition[2].toFixed(3));
+    }
+  }, [selectedPointPosition, isEditing]);
+
+  const handleCoordinateChange = useCallback(
+    (axis: "x" | "y" | "z", value: string) => {
+      // Always update local state to allow blank values while editing
+      if (axis === "x") setX(value);
+      else if (axis === "y") setY(value);
+      else if (axis === "z") setZ(value);
+
+      const numValue = parseFloat(value);
+      if (isNaN(numValue)) return;
+
+      if (selectedPoint && selectedLabel) {
+        const { segmentIndex, pointIndex, labelId } = selectedPoint;
+
+        setPolylinePointTransforms((prev) => {
+          const currentTransforms = prev[labelId] || [];
+
+          // Find existing transform for this point, or create new one
+          const existingTransformIndex = currentTransforms.findIndex(
+            (transform) =>
+              transform.segmentIndex === segmentIndex &&
+              transform.pointIndex === pointIndex
+          );
+
+          // Get current position (either from existing transform or original point)
+          let currentPosition: [number, number, number];
+          if (existingTransformIndex >= 0) {
+            currentPosition =
+              currentTransforms[existingTransformIndex].position;
+          } else if (selectedPointPosition) {
+            currentPosition = selectedPointPosition;
+          } else {
+            // Fallback to original position from label
+            const polylineLabel = selectedLabel as unknown as PolyLineProps;
+            if (
+              polylineLabel.points3d &&
+              segmentIndex < polylineLabel.points3d.length &&
+              pointIndex < polylineLabel.points3d[segmentIndex].length
+            ) {
+              currentPosition = polylineLabel.points3d[segmentIndex][
+                pointIndex
+              ] as [number, number, number];
+            } else {
+              currentPosition = [0, 0, 0];
+            }
+          }
+
+          const newPosition: [number, number, number] = [...currentPosition];
+          if (axis === "x") newPosition[0] = numValue;
+          else if (axis === "y") newPosition[1] = numValue;
+          else if (axis === "z") newPosition[2] = numValue;
+
+          const newTransform = {
+            segmentIndex,
+            pointIndex,
+            position: newPosition,
+          };
+
+          if (existingTransformIndex >= 0) {
+            // Update existing transform
+            const newTransforms = [...currentTransforms];
+            newTransforms[existingTransformIndex] = newTransform;
+            return { ...prev, [labelId]: newTransforms };
+          } else {
+            // Add new transform
+            return { ...prev, [labelId]: [...currentTransforms, newTransform] };
+          }
+        });
+      }
+    },
+    [
+      selectedPoint,
+      selectedLabel,
+      selectedPointPosition,
+      setPolylinePointTransforms,
+    ]
+  );
+
+  if (!selectedPoint) {
+    return null;
+  }
+
+  return (
+    <Box
+      className={className}
+      sx={{
+        marginTop: "20px",
+        display: "flex",
+        flexDirection: "column",
+        gap: 1,
+      }}
+    >
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 1.5,
+          width: "60px",
+        }}
+      >
+        {!hideTranslate && (
+          <>
+            <CoordinateField
+              label="X"
+              value={x}
+              onChange={(value) => handleCoordinateChange("x", value)}
+              onFocus={() => setIsEditing(true)}
+              onBlur={() => setIsEditing(false)}
+            />
+            <CoordinateField
+              label="Y"
+              value={y}
+              onChange={(value) => handleCoordinateChange("y", value)}
+              onFocus={() => setIsEditing(true)}
+              onBlur={() => setIsEditing(false)}
+            />
+            <CoordinateField
+              label="Z"
+              value={z}
+              onChange={(value) => handleCoordinateChange("z", value)}
+              onFocus={() => setIsEditing(true)}
+              onBlur={() => setIsEditing(false)}
+            />
+          </>
+        )}
       </Box>
     </Box>
   );
