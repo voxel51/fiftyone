@@ -5,6 +5,7 @@
 import type { Scene2D } from "@fiftyone/lighter";
 import { useEffect } from "react";
 import useColorMappingContext from "./useColorMappingContext";
+import { useOverlayPersistence } from "./useOverlayPersistence";
 
 /**
  * Hook that bridges FiftyOne state management system with Lighter.
@@ -15,7 +16,7 @@ import useColorMappingContext from "./useColorMappingContext";
  */
 export const useBridge = (scene: Scene2D | null) => {
   // useLighterTooltipEventHandler(scene);
-  // useOverlayPersistence(scene);
+  useOverlayPersistence(scene);
   const context = useColorMappingContext();
 
   // Effect to update scene with color scheme changes
