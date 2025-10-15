@@ -3278,6 +3278,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         expand_schema=True,
         dynamic=False,
         validate=True,
+        batcher=None,
         generator=False,
         progress=None,
         num_samples=None,
@@ -3299,6 +3300,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 document fields that are encountered
             validate (True): whether to validate that the fields of each sample
                 are compliant with the dataset schema before adding it
+            batcher (None): an optional :class:`fiftyone.core.utils.Batcher`
+                class to use to batch the samples, or ``False`` to add all
+                samples in a single batch. By default,
+                ``fiftyone.config.default_batcher`` is used
             generator (False): whether to yield ID batches as a generator as
                 samples are added to the dataset
             progress (None): whether to render a progress bar (True/False), use
@@ -3324,6 +3329,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         batcher = fou.get_default_batcher(
             samples,
+            batcher=batcher,
             transform_fn=transform_fn,
             size_calc_fn=self._calculate_size,
             progress=progress,
@@ -3438,6 +3444,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         expand_schema=True,
         dynamic=False,
         validate=True,
+        batcher=None,
         generator=False,
         progress=None,
         num_samples=None,
@@ -3453,6 +3460,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         batcher = fou.get_default_batcher(
             samples,
+            batcher=batcher,
             transform_fn=transform_fn,
             size_calc_fn=self._calculate_size,
             progress=progress,
