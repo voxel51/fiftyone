@@ -18,8 +18,7 @@ from starlette.requests import Request
 import fiftyone as fo
 import fiftyone.core.odm.utils as fou
 
-from fiftyone.server import utils
-from fiftyone.server.decorators import route
+from fiftyone.server import decorators, utils
 
 logger = logging.getLogger(__name__)
 
@@ -210,7 +209,7 @@ def handle_json_patch(target: Any, patch_list: List[dict]) -> Any:
 class Sample(HTTPEndpoint):
     """Sample endpoints."""
 
-    @route
+    @decorators.route
     async def patch(self, request: Request, data: dict) -> dict:
         """Applies a list of field updates to a sample.
 
@@ -274,7 +273,7 @@ class Sample(HTTPEndpoint):
 class SampleField(HTTPEndpoint):
     """Sample field endpoints."""
 
-    @route
+    @decorators.route
     async def patch(self, request: Request, data: dict) -> dict:
         """Applies a list of field updates to a sample field in a list by id.
 

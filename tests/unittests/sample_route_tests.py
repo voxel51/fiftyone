@@ -147,6 +147,11 @@ class TestSampleRoutes:
         response = await mutator.patch(mock_request)
         #####
 
+        sample.reload()
+        assert response.headers.get("ETag") == fors.generate_sample_etag(
+            sample
+        )
+
         response_dict = json.loads(response.body)
 
         assert isinstance(response, Response)
@@ -164,9 +169,6 @@ class TestSampleRoutes:
             == bounding_box
         )
         assert updated_sample.ground_truth.detections[0].label == label
-
-        # Verify changes in the dataset by reloading the sample
-        sample.reload()
 
         # Verify UPDATE
         updated_detection = sample.ground_truth.detections[0]
@@ -206,6 +208,11 @@ class TestSampleRoutes:
         response = await mutator.patch(mock_request)
         #####
 
+        sample.reload()
+        assert response.headers.get("ETag") == fors.generate_sample_etag(
+            sample
+        )
+
         response_dict = json.loads(response.body)
         assert isinstance(response_dict, dict)
 
@@ -232,6 +239,11 @@ class TestSampleRoutes:
         #####
         response = await mutator.patch(mock_request)
         #####
+
+        sample.reload()
+        assert response.headers.get("ETag") == fors.generate_sample_etag(
+            sample
+        )
 
         response_dict = json.loads(response.body)
         assert isinstance(response_dict, dict)
@@ -375,11 +387,14 @@ class TestSampleRoutes:
         #####
         response = await mutator.patch(mock_request)
         #####
+        sample.reload()
 
+        assert response.headers.get("ETag") == fors.generate_sample_etag(
+            sample
+        )
         response_dict = json.loads(response.body)
         assert response_dict["primitive_field"] == new_value
 
-        sample.reload()
         assert sample.primitive_field == new_value
 
     @pytest.mark.asyncio
@@ -399,10 +414,15 @@ class TestSampleRoutes:
         mock_request.headers["Content-Type"] = "application/json-patch+json"
 
         #####
-        await mutator.patch(mock_request)
+        response = await mutator.patch(mock_request)
         #####
 
         sample.reload()
+
+        assert response.headers.get("ETag") == fors.generate_sample_etag(
+            sample
+        )
+
         assert sample.ground_truth.detections[0].label == new_label
 
     @pytest.mark.asyncio
@@ -426,10 +446,15 @@ class TestSampleRoutes:
         mock_request.headers["Content-Type"] = "application/json-patch+json"
 
         #####
-        await mutator.patch(mock_request)
+        response = await mutator.patch(mock_request)
         #####
 
         sample.reload()
+
+        assert response.headers.get("ETag") == fors.generate_sample_etag(
+            sample
+        )
+
         assert len(sample.ground_truth.detections) == 2
         assert isinstance(sample.ground_truth.detections[1], fol.Detection)
         assert sample.ground_truth.detections[1].label == "dog"
@@ -447,10 +472,15 @@ class TestSampleRoutes:
         mock_request.headers["Content-Type"] = "application/json-patch+json"
 
         #####
-        await mutator.patch(mock_request)
+        response = await mutator.patch(mock_request)
         #####
 
         sample.reload()
+
+        assert response.headers.get("ETag") == fors.generate_sample_etag(
+            sample
+        )
+
         assert len(sample.ground_truth.detections) == 0
 
     @pytest.mark.asyncio
@@ -466,10 +496,15 @@ class TestSampleRoutes:
         mock_request.headers["Content-Type"] = "application/json-patch+json"
 
         #####
-        await mutator.patch(mock_request)
+        response = await mutator.patch(mock_request)
         #####
 
         sample.reload()
+
+        assert response.headers.get("ETag") == fors.generate_sample_etag(
+            sample
+        )
+
         assert sample.primitive_field == "multi-op"
         assert len(sample.ground_truth.detections) == 0
 
@@ -584,17 +619,21 @@ class TestSampleFieldRoute:
         #####
         response = await mutator.patch(mock_request)
         #####
+        sample.reload()
 
         response_dict = json.loads(response.body)
 
         assert isinstance(response, Response)
         assert response.status_code == 200
+        assert response.headers.get("ETag") == fors.generate_sample_etag(
+            sample
+        )
+
         # check response body
         assert response_dict["label"] == new_label
         assert response_dict["_id"]["$oid"] == str(self.DETECTION_ID_1)
 
         # check database state
-        sample.reload()
         detection1 = sample.ground_truth.detections[0]
         detection2 = sample.ground_truth.detections[1]
 
