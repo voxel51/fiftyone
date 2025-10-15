@@ -3,6 +3,7 @@ import { InfoOutlined } from "@mui/icons-material";
 import { Alert, Typography } from "@mui/material";
 import React from "react";
 import styled from "styled-components";
+import useCanManageSchema from "./useCanManageSchema";
 import useShowModal from "./useShowModal";
 
 const Container = styled.div`
@@ -16,7 +17,7 @@ const Container = styled.div`
 `;
 
 const ImportSchema = () => {
-  const canManage = true;
+  const canManage = useCanManageSchema();
   const showModal = useShowModal();
   return (
     <Container>
