@@ -15,8 +15,7 @@ from dacite.data import Data
 
 import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
-from fiftyone.server.utils import json
-from fiftyone.server.utils import http
+from fiftyone.server.utils import http, json
 
 
 _cache = cachetools.TTLCache(maxsize=10, ttl=900)  # ttl in seconds
