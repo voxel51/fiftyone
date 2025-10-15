@@ -307,7 +307,7 @@ export type DoLighterEvent =
     }
   | {
       type: typeof LIGHTER_EVENTS.DO_REMOVE_OVERLAY;
-      detail: { id: string; sampleId: string; path: string };
+      detail: AnnotationLabel;
     };
 
 /**

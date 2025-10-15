@@ -1,9 +1,7 @@
 import { Button } from "@fiftyone/components";
-import * as fos from "@fiftyone/state";
 import { DeleteOutline } from "@mui/icons-material";
 import { useAtomValue, useSetAtom } from "jotai";
 import React, { useCallback } from "react";
-import { useRecoilValue } from "recoil";
 import { RoundButton } from "../Actions";
 import { Row } from "./Components";
 import {
@@ -17,7 +15,6 @@ import { LIGHTER_EVENTS, useLighter } from "@fiftyone/lighter";
 const SaveFooter = () => {
   const { scene } = useLighter();
   const annotationLabel = useAtomValue(currentLabelAtom);
-  const sampleId = useRecoilValue(fos.currentSampleId);
   const showCancel = useAtomValue(isNew);
 
   const onSave = useCallback(() => {
@@ -30,13 +27,9 @@ const SaveFooter = () => {
   const onDelete = useCallback(() => {
     scene.dispatchSafely({
       type: LIGHTER_EVENTS.DO_REMOVE_OVERLAY,
-      detail: {
-        id: annotationLabel.data._id,
-        sampleId,
-        path: annotationLabel.path,
-      },
+      detail: { ...annotationLabel },
     });
-  }, [annotationLabel, sampleId, scene]);
+  }, [annotationLabel, scene]);
 
   return (
     <>

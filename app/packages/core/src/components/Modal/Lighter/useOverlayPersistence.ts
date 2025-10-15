@@ -5,12 +5,13 @@
 import type { OverlayEventDetail, Scene2D } from "@fiftyone/lighter";
 import { LIGHTER_EVENTS } from "@fiftyone/lighter";
 import { useCallback, useEffect, useState } from "react";
-import { patchSample } from "../../../client";
-import { useRecoilValue } from "recoil";
+import { JSONDeltas, patchSample } from "../../../client";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import * as fos from "@fiftyone/state";
+import { AnnotationLabel } from "@fiftyone/state";
 import { useVersionToken } from "../../../client/useVersionToken";
 import { parseTimestamp } from "../../../client/util";
-import { buildLabelDeltas } from "./deltas";
+import { buildJsonPath, buildLabelDeltas, OpType } from "./deltas";
 
 /**
  * Hook that handles overlay persistence events.
@@ -18,6 +19,8 @@ import { buildLabelDeltas } from "./deltas";
 export const useOverlayPersistence = (scene: Scene2D | null) => {
   const datasetId = useRecoilValue(fos.datasetId);
   const currentSample = useRecoilValue(fos.modalSample)?.sample;
+  const setSnackbarMessage = useSetRecoilState(fos.snackbarMessage);
+  const setSnackbarErrors = useSetRecoilState(fos.snackbarErrors);
 
   // todo replace with atom
   const [versionToken, setVersionToken] = useState<string | null>(null);
@@ -28,57 +31,84 @@ export const useOverlayPersistence = (scene: Scene2D | null) => {
       .toLowerCase(),
   }).then((token) => setVersionToken(token));
 
-  const handlePersistOverlay = useCallback(
-    async (
-      event: CustomEvent<
-        OverlayEventDetail<typeof LIGHTER_EVENTS.DO_PERSIST_OVERLAY>
-      >
-    ) => {
+  const handlePatchSample = useCallback(
+    async (sampleDeltas: JSONDeltas) => {
+      if (sampleDeltas.length > 0) {
+        try {
+          const patchResponse = await patchSample({
+            datasetId,
+            sampleId: currentSample._id,
+            deltas: sampleDeltas,
+            versionToken,
+          });
+
+          setVersionToken(patchResponse.versionToken);
+          setSnackbarMessage("Changes have been saved");
+        } catch (error) {
+          console.error("error patching sample", error);
+          setSnackbarErrors([error.message]);
+        }
+
+        // todo update sample data
+        // todo update lighter
+      }
+    },
+    [
+      currentSample,
+      datasetId,
+      setSnackbarErrors,
+      setSnackbarMessage,
+      versionToken,
+    ]
+  );
+
+  const handlePersistenceEvent = useCallback(
+    async (annotationLabel: AnnotationLabel, opType: OpType) => {
       if (!currentSample) {
         console.error("missing sample data!");
         return;
       }
-
-      const annotationLabel = event.detail;
 
       if (!annotationLabel) {
         console.error("missing annotation label!");
         return;
       }
 
-      const sampleDeltas = buildLabelDeltas(currentSample, annotationLabel).map(
-        (delta) => ({
-          ...delta,
-          // convert label delta to sample delta
-          path: `/${annotationLabel.path}${delta.path}`,
-        })
-      );
+      const sampleDeltas = buildLabelDeltas(
+        currentSample,
+        annotationLabel,
+        opType
+      ).map((delta) => ({
+        ...delta,
+        // convert label delta to sample delta
+        path: buildJsonPath(annotationLabel.path, delta.path),
+      }));
 
-      if (sampleDeltas.length > 0) {
-        const patchResponse = await patchSample({
-          datasetId,
-          sampleId: currentSample._id,
-          deltas: sampleDeltas,
-          versionToken,
-        });
-
-        setVersionToken(patchResponse.versionToken);
-
-        // todo update sample data
-      }
+      await handlePatchSample(sampleDeltas);
     },
-    [currentSample, datasetId, versionToken]
+    [currentSample, handlePatchSample]
+  );
+
+  const handlePersistOverlay = useCallback(
+    async (
+      event: CustomEvent<
+        OverlayEventDetail<typeof LIGHTER_EVENTS.DO_PERSIST_OVERLAY>
+      >
+    ) => {
+      await handlePersistenceEvent(event.detail, "mutate");
+    },
+    [handlePersistenceEvent]
   );
 
   const handleRemoveOverlay = useCallback(
-    (
+    async (
       event: CustomEvent<
         OverlayEventDetail<typeof LIGHTER_EVENTS.DO_REMOVE_OVERLAY>
       >
     ) => {
-      // todo
+      await handlePersistenceEvent(event.detail, "delete");
     },
-    [currentSample, datasetId, versionToken]
+    [handlePersistenceEvent]
   );
 
   useEffect(() => {
