@@ -321,8 +321,6 @@ class SampleField(HTTPEndpoint):
                 status_code=400, detail=f"Field '{path}' is not a list"
             )
 
-        print(field_list)
-
         field = next((f for f in field_list if f.id == field_id), None)
         if field is None:
             raise HTTPException(
