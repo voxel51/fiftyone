@@ -8,6 +8,7 @@ import { useEmptyCanvasInteraction } from "../hooks/use-empty-canvas-interaction
 import {
   annotationPlaneAtom,
   isSegmentingPointerDownAtom,
+  isSnapToAnnotationPlaneAtom,
   segmentPolylineStateAtom,
   sharedCursorPositionAtom,
   tempPolylinesAtom,
@@ -38,6 +39,7 @@ export const SegmentPolylineRenderer = ({
   );
   const setSharedCursorPosition = useSetRecoilState(sharedCursorPositionAtom);
   const annotationPlane = useRecoilValue(annotationPlaneAtom);
+  const isSnapToAnnotationPlane = useRecoilValue(isSnapToAnnotationPlaneAtom);
   const { upVector, sceneBoundingBox } = useFo3dContext();
 
   // Check if current position is close to first vertex for closing
@@ -59,7 +61,7 @@ export const SegmentPolylineRenderer = ({
 
       // Project vertex to annotation plane for z-drift prevention
       let finalPos = worldPos;
-      if (annotationPlane.enabled) {
+      if (annotationPlane.enabled || isSnapToAnnotationPlane) {
         const plane = getPlaneFromPositionAndQuaternion(
           annotationPlane.position,
           annotationPlane.quaternion
@@ -102,6 +104,7 @@ export const SegmentPolylineRenderer = ({
       setSegmentState,
       setTempPolylines,
       annotationPlane,
+      isSnapToAnnotationPlane,
     ]
   );
 
@@ -110,7 +113,7 @@ export const SegmentPolylineRenderer = ({
     (worldPos: THREE.Vector3) => {
       // Project cursor position to annotation plane if enabled
       let finalPos = worldPos;
-      if (annotationPlane.enabled) {
+      if (annotationPlane.enabled || isSnapToAnnotationPlane) {
         const plane = getPlaneFromPositionAndQuaternion(
           annotationPlane.position,
           annotationPlane.quaternion
@@ -132,7 +135,7 @@ export const SegmentPolylineRenderer = ({
 
       setSharedCursorPosition([finalPos.x, finalPos.y, finalPos.z]);
     },
-    [annotationPlane, sceneBoundingBox]
+    [annotationPlane, isSnapToAnnotationPlane, sceneBoundingBox]
   );
 
   useEmptyCanvasInteraction({

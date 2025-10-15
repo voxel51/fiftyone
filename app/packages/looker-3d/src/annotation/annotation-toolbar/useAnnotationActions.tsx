@@ -93,11 +93,24 @@ export const useAnnotationActions = () => {
   const handleToggleAnnotationPlane = useCallback(() => {
     if (!annotationPlane.enabled) {
       if (sceneBoundingBox && upVector) {
-        const center = sceneBoundingBox.getCenter(new THREE.Vector3());
-        const quaternion = getGridQuaternionFromUpVector(
-          upVector,
-          new THREE.Vector3(0, 0, 1)
-        );
+        let center = new THREE.Vector3(...annotationPlane.position);
+        let quaternion = new THREE.Quaternion(...annotationPlane.quaternion);
+
+        if (center[0] === 0 && center[1] === 0 && center[2] === 0) {
+          center = sceneBoundingBox.getCenter(new THREE.Vector3());
+        }
+
+        if (
+          quaternion[0] === 0 &&
+          quaternion[1] === 0 &&
+          quaternion[2] === 0 &&
+          quaternion[3] === 1
+        ) {
+          quaternion = getGridQuaternionFromUpVector(
+            upVector,
+            new THREE.Vector3(0, 0, 1)
+          );
+        }
 
         setAnnotationPlane({
           enabled: true,
@@ -182,8 +195,8 @@ export const useAnnotationActions = () => {
             ),
             tooltip:
               annotationPlane.enabled && !isSnapToAnnotationPlane
-                ? "Project vertices to the annotation plane"
-                : "Project vertices to the annotation plane whether or not it is enabled",
+                ? "Project new vertices to the annotation plane"
+                : "Project new vertices to the annotation plane whether or not it is enabled",
             isActive: isSnapToAnnotationPlane || annotationPlane.enabled,
             isDisabled: annotationPlane.enabled,
             isVisible: true,
