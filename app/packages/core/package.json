@@ -26,6 +26,7 @@
         "classnames": "^2.2.6",
         "color": "^4.2.3",
         "color-string": "^1.9.1",
+        "fast-json-patch": "^3.1.1",
         "framer-motion": "^6.2.8",
         "history": "^5.3.0",
         "json-edit-react": "^1.28.2",

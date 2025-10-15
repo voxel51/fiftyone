@@ -4,51 +4,70 @@
 
 import type { OverlayEventDetail, Scene2D } from "@fiftyone/lighter";
 import { LIGHTER_EVENTS } from "@fiftyone/lighter";
-import { useOperatorExecutor } from "@fiftyone/operators";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { patchSample } from "../../../client";
+import { useRecoilValue } from "recoil";
+import * as fos from "@fiftyone/state";
+import { useVersionToken } from "../../../client/useVersionToken";
+import { parseTimestamp } from "../../../client/util";
+import { buildLabelDeltas } from "./deltas";
 
 /**
  * Hook that handles overlay persistence events.
  */
 export const useOverlayPersistence = (scene: Scene2D | null) => {
-  const addBoundingBox = useOperatorExecutor("add_bounding_box");
-  const removeBoundingBox = useOperatorExecutor("remove_bounding_box");
+  const datasetId = useRecoilValue(fos.datasetId);
+  const currentSample = useRecoilValue(fos.modalSample)?.sample;
+
+  // todo replace with atom
+  const [versionToken, setVersionToken] = useState<string | null>(null);
+
+  useVersionToken({
+    source: (parseTimestamp(currentSample.last_modified_at) ?? new Date())
+      .toISOString()
+      .toLowerCase(),
+  }).then((token) => setVersionToken(token));
 
   const handlePersistOverlay = useCallback(
-    (
+    async (
       event: CustomEvent<
         OverlayEventDetail<typeof LIGHTER_EVENTS.DO_PERSIST_OVERLAY>
       >
     ) => {
-      const overlay = event.detail;
+      if (!currentSample) {
+        console.error("missing sample data!");
+        return;
+      }
 
-      if (overlay) {
-        try {
-          const bbox = [
-            overlay.bounds.x,
-            overlay.bounds.y,
-            overlay.bounds.width,
-            overlay.bounds.height,
-          ];
-          addBoundingBox.execute({
-            field: overlay.field,
-            sample_id: overlay.sampleId,
-            label_id: overlay.id,
-            label: overlay.label ?? "",
-            bounding_box: bbox,
-          });
-        } catch (error) {
-          console.error("Error adding bounding box", error);
-        }
-      } else {
-        console.error(
-          "Overlay",
-          overlay.constructor.name,
-          "not supported for persistence"
-        );
+      const annotationLabel = event.detail;
+
+      if (!annotationLabel) {
+        console.error("missing annotation label!");
+        return;
+      }
+
+      const sampleDeltas = buildLabelDeltas(currentSample, annotationLabel).map(
+        (delta) => ({
+          ...delta,
+          // convert label delta to sample delta
+          path: `/${annotationLabel.path}${delta.path}`,
+        })
+      );
+
+      if (sampleDeltas.length > 0) {
+        const patchResponse = await patchSample({
+          datasetId,
+          sampleId: currentSample._id,
+          deltas: sampleDeltas,
+          versionToken,
+        });
+
+        setVersionToken(patchResponse.versionToken);
+
+        // todo update sample data
       }
     },
-    [addBoundingBox]
+    [currentSample, datasetId, versionToken]
   );
 
   const handleRemoveOverlay = useCallback(
@@ -57,19 +76,9 @@ export const useOverlayPersistence = (scene: Scene2D | null) => {
         OverlayEventDetail<typeof LIGHTER_EVENTS.DO_REMOVE_OVERLAY>
       >
     ) => {
-      const { id, sampleId, path } = event.detail;
-      try {
-        console.log("removing bounding box", id, sampleId, path);
-        removeBoundingBox.execute({
-          id,
-          path,
-          sample_id: sampleId,
-        });
-      } catch (error) {
-        console.error("Error removing bounding box", error);
-      }
+      // todo
     },
-    [removeBoundingBox]
+    [currentSample, datasetId, versionToken]
   );
 
   useEffect(() => {

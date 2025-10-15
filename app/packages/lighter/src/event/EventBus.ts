@@ -2,9 +2,10 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
+import { AnnotationLabel } from "@fiftyone/state";
 import { Command } from "../commands/Command";
 import { BaseOverlay } from "../overlay/BaseOverlay";
-import type { BoundingBoxPersistence, Point, Rect } from "../types";
+import type { Point, Rect } from "../types";
 
 /**
  * Event type constants for lighter events.
@@ -300,7 +301,7 @@ export type DoLighterEvent =
     }
   | {
       type: typeof LIGHTER_EVENTS.DO_PERSIST_OVERLAY;
-      detail: BoundingBoxPersistence;
+      detail: AnnotationLabel;
     }
   | {
       type: typeof LIGHTER_EVENTS.DO_REMOVE_OVERLAY;
