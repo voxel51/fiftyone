@@ -11,22 +11,93 @@ import {
   Sample,
 } from "@fiftyone/state";
 
+type PolylinesParent = {
+  polylines: PolylineLabel[];
+};
+
+type DetectionsParent = {
+  detections: DetectionLabel[];
+};
+
 /**
- * Build a list of JSON deltas for the given sample and label.
+ * Operation type
+ */
+export type OpType = "mutate" | "delete";
+
+/**
+ * Build JSON-patch-compatible deltas for the specified changes to the sample.
+ *
+ * @param sample Sample containing unmodified label data
+ * @param label Current label state
+ * @param opType Operation type
+ */
+export const buildLabelDeltas = (
+  sample: Sample,
+  label: AnnotationLabel,
+  opType: OpType
+) => {
+  if (opType === "mutate") {
+    return buildMutationDeltas(sample, label);
+  } else if (opType === "delete") {
+    return buildDeletionDeltas(sample, label);
+  } else {
+    throw new Error(`Unsupported opType ${opType}`);
+  }
+};
+
+/**
+ * Build a list of JSON deltas for mutating the given sample and label.
  *
  * @param sample Sample containing unmodified label data
  * @param label Current label state
  */
-export const buildLabelDeltas = (
+export const buildMutationDeltas = (
   sample: Sample,
   label: AnnotationLabel
 ): JSONDeltas => {
   if (label.type === "Detection") {
-    return buildDetectionDeltas(sample, label);
+    return buildDetectionMutationDeltas(sample, label);
   } else if (label.type === "Classification") {
-    return buildClassificationDeltas(sample, label);
+    return buildClassificationMutationDeltas(sample, label);
   } else if (label.type === "Polyline") {
-    return buildPolylineDeltas(sample, label);
+    return buildPolylineMutationDeltas(sample, label);
+  } else {
+    throw new Error(`unknown label type '${label.type}'`);
+  }
+};
+
+/**
+ * Build a list of JSON deltas for deleting the given label from the sample.
+ *
+ * @param sample Sample containing unmodified label data
+ * @param label Current label state
+ */
+export const buildDeletionDeltas = (
+  sample: Sample,
+  label: AnnotationLabel
+): JSONDeltas => {
+  if (label.type === "Detection") {
+    const existingLabel = <DetectionsParent>(
+      extractNestedField(sample, label.path)
+    );
+    return generateJsonPatch(existingLabel, {
+      ...existingLabel,
+      detections: existingLabel.detections.filter(
+        (det) => det._id !== label.data._id
+      ),
+    });
+  } else if (label.type === "Classification") {
+    return [{ op: "remove", path: label.path }];
+  } else if (label.type === "Polyline") {
+    const existingLabel = <PolylinesParent>(
+      extractNestedField(sample, label.path)
+    );
+    return generateJsonPatch(existingLabel, {
+      ...existingLabel,
+      polylines: existingLabel.polylines.filter(
+        (ply) => ply._id !== label.data._id
+      ),
+    });
   } else {
     throw new Error(`unknown label type '${label.type}'`);
   }
@@ -41,7 +112,7 @@ export const buildLabelDeltas = (
  * @param sample Sample containing unmodified label data
  * @param label Current label state
  */
-export const buildDetectionDeltas = (
+export const buildDetectionMutationDeltas = (
   sample: Sample,
   label: DetectionAnnotationLabel
 ): JSONDeltas => {
@@ -84,7 +155,7 @@ export const buildDetectionDeltas = (
  * @param sample Sample containing unmodified label data
  * @param label Current label state
  */
-export const buildClassificationDeltas = (
+export const buildClassificationMutationDeltas = (
   sample: Sample,
   label: ClassificationAnnotationLabel
 ): JSONDeltas => {
@@ -103,7 +174,7 @@ export const buildClassificationDeltas = (
  * @param sample Sample containing unmodified label data
  * @param label Current label state
  */
-export const buildPolylineDeltas = (
+export const buildPolylineMutationDeltas = (
   sample: Sample,
   label: PolylineAnnotationLabel
 ): JSONDeltas => {
@@ -130,7 +201,7 @@ export const buildPolylineDeltas = (
 };
 
 /**
- * Upsert an array element.
+ * Upsert an array element in-place.
  *
  * If the specified element (as determined by `find`) exists, it is replaced.
  * Otherwise, the element is appended to the array.
@@ -151,4 +222,24 @@ const upsertArrayElement = <T>(
   } else {
     array.push(element);
   }
+};
+
+/**
+ * Build a JSON-patch-compatible path from the sample root.
+ *
+ * @param labelPath Dot-delimited path to label field
+ * @param operationPath Slash-delimited JSON-patch path to mutation field
+ */
+export const buildJsonPath = (
+  labelPath: string,
+  operationPath: string
+): string => {
+  const parts = labelPath.split(".");
+  parts.push(
+    ...operationPath
+      .split("/")
+      .filter((segment) => segment !== "/" && segment.length > 0)
+  );
+
+  return `/${parts.join("/")}`;
 };
