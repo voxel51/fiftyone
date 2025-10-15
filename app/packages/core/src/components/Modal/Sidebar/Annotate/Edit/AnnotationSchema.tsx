@@ -22,7 +22,6 @@ const createInput = (name: string) => {
     view: {
       name: "PrimitiveView",
       label: name,
-      readOnly: name === "id",
       component: "PrimitiveView",
     },
   };

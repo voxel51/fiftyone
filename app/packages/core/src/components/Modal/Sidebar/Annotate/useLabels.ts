@@ -158,8 +158,8 @@ export default function useLabels() {
     setLoading,
   ]);
 
-  // useHover();
-  // useFocus();
+  useHover();
+  useFocus();
 
   return {
     handleSampleData,
