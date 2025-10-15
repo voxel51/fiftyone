@@ -131,7 +131,8 @@ def generate_sample_etag(sample: fo.Sample) -> str:
     value = base64.b64encode(
         sample.last_modified_at.isoformat().encode("utf-8")
     ).decode("utf-8")
-    return f'"{value}"'
+
+    return utils.http.ETag.create(value)
 
 
 def save_sample(

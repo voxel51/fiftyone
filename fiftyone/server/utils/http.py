@@ -13,9 +13,17 @@ class ETag:
     """Utility class for creating and parsing ETag strings."""
 
     @staticmethod
-    def create(value: Any) -> str:
+    def create(value: Any, is_weak: bool = False) -> str:
         """Creates an ETag string from the given value."""
-        return f'"{value}"'
+        # Wrap in quotes if not already quoted
+        if not (value.startswith('"') and value.endswith('"')):
+            value = f'"{value}"'
+
+        # Add weak prefix if necessary
+        if is_weak:
+            return f'W/"{value}"'
+
+        return value
 
     @staticmethod
     def parse(etag: str) -> tuple[str, bool]:
