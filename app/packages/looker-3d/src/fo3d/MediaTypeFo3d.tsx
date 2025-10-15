@@ -15,6 +15,7 @@ import {
   useState,
 } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
+import styled from "styled-components";
 import * as THREE from "three";
 import { Vector3 } from "three";
 import { CAMERA_POSITION_KEY } from "../Environment";
@@ -55,6 +56,13 @@ import {
 } from "./utils";
 
 const CANVAS_WRAPPER_ID = "sample3d-canvas-wrapper";
+
+const MainContainer = styled.main`
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+`;
 
 const calculateCameraPositionForUpVector = (
   center: Vector3,
@@ -785,15 +793,7 @@ export const MediaTypeFo3dComponent = () => {
           defaultCameraPosition={defaultCameraPositionComputed}
         />
       ) : (
-        <main
-          ref={containerRef}
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            height: "100%",
-            width: "100%",
-          }}
-        >
+        <MainContainer ref={containerRef}>
           <HoverMetadataHUD />
           <TransformHUD />
           <PcdColorMapTunnel.Out />
@@ -823,7 +823,7 @@ export const MediaTypeFo3dComponent = () => {
           <StatusBarRootContainer>
             <StatusBar cameraRef={cameraRef} />
           </StatusBarRootContainer>
-        </main>
+        </MainContainer>
       )}
       {mode === "annotate" && <AnnotationToolbar />}
     </Fo3dSceneContext.Provider>

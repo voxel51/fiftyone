@@ -1,19 +1,58 @@
+import { useTheme } from "@fiftyone/components";
 import { Html } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
+import styled from "styled-components";
 import * as THREE from "three";
 import { useFo3dContext } from "../fo3d/context";
-import { segmentPolylineStateAtom, sharedCursorPositionAtom } from "../state";
+import { sharedCursorPositionAtom } from "../state";
 
 const CROSS_HAIR_SIZE = 20;
 const LINE_WIDTH = 2;
-const COLOR = "#00ffff";
 const OPACITY = 0.7;
+
+const HtmlContainer = styled.div`
+  position: relative;
+  pointer-events: none;
+  z-index: 1000;
+`;
+
+const CrosshairBox = styled.div`
+  position: absolute;
+  left: -${CROSS_HAIR_SIZE / 2}px;
+  top: -${CROSS_HAIR_SIZE / 2}px;
+  width: ${CROSS_HAIR_SIZE}px;
+  height: ${CROSS_HAIR_SIZE}px;
+  pointer-events: none;
+`;
+
+const Horizontal = styled.div<{ $color: string }>`
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 100%;
+  height: ${LINE_WIDTH}px;
+  background-color: ${(p) => p.$color};
+  opacity: ${OPACITY};
+  transform: translateY(-50%);
+`;
+
+const Vertical = styled.div<{ $color: string }>`
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: ${LINE_WIDTH}px;
+  height: 100%;
+  background-color: ${(p) => p.$color};
+  opacity: ${OPACITY};
+  transform: translateX(-50%);
+`;
 
 export const Crosshair3D = () => {
   const { camera } = useThree();
   const { sceneBoundingBox } = useFo3dContext();
+  const theme = useTheme();
 
   const worldPosition = useRecoilValue(sharedCursorPositionAtom);
 
@@ -47,50 +86,13 @@ export const Crosshair3D = () => {
   }
 
   return (
-    <Html
-      position={worldVector}
-      style={{
-        pointerEvents: "none",
-        zIndex: 1000,
-      }}
-    >
-      <div
-        style={{
-          position: "absolute",
-          left: -CROSS_HAIR_SIZE / 2,
-          top: -CROSS_HAIR_SIZE / 2,
-          width: CROSS_HAIR_SIZE,
-          height: CROSS_HAIR_SIZE,
-          pointerEvents: "none",
-        }}
-      >
-        {/* Horizontal line */}
-        <div
-          style={{
-            position: "absolute",
-            left: 0,
-            top: "50%",
-            width: "100%",
-            height: LINE_WIDTH,
-            backgroundColor: COLOR,
-            opacity: OPACITY,
-            transform: "translateY(-50%)",
-          }}
-        />
-        {/* Vertical line */}
-        <div
-          style={{
-            position: "absolute",
-            left: "50%",
-            top: 0,
-            width: LINE_WIDTH,
-            height: "100%",
-            backgroundColor: COLOR,
-            opacity: OPACITY,
-            transform: "translateX(-50%)",
-          }}
-        />
-      </div>
+    <Html position={worldVector}>
+      <HtmlContainer>
+        <CrosshairBox>
+          <Horizontal $color={theme.primary.main} />
+          <Vertical $color={theme.primary.main} />
+        </CrosshairBox>
+      </HtmlContainer>
     </Html>
   );
 };

@@ -13,6 +13,7 @@ import { Canvas } from "@react-three/fiber";
 import CameraControlsImpl from "camera-controls";
 import { useCallback, useLayoutEffect, useMemo, useRef } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
+import styled from "styled-components";
 import * as THREE from "three";
 import { Box3, Vector3 } from "three";
 import { PcdColorMapTunnel } from "../components/PcdColormapModal";
@@ -39,6 +40,43 @@ import { SegmentPolylineRenderer } from "./SegmentPolylineRenderer";
 import { TransformHUD } from "./TransformHUD";
 
 const CANVAS_WRAPPER_ID = "sample3d-canvas-wrapper";
+
+const GridMain = styled.main`
+  display: grid;
+  grid-template-areas: "main top" "main bottom";
+  grid-template-columns: 2fr 1.1fr;
+  grid-template-rows: 1fr 1fr;
+  height: 100%;
+  width: 100%;
+  gap: 1px;
+`;
+
+const AbsoluteFill = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+`;
+
+const MainPanelContainer = styled.div`
+  grid-area: main;
+  position: relative;
+  z-index: 2;
+`;
+
+const SidePanelContainer = styled.div<{ $area: string }>`
+  grid-area: ${(p) => p.$area};
+  position: relative;
+  z-index: 200;
+`;
+
+const ViewSelectorWrapper = styled.div`
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1000;
+`;
 
 /**
  * Calculate camera position for different side panel views based on upVector and lookAt point
@@ -244,21 +282,7 @@ export const MultiPanelView = ({
   );
 
   return (
-    <main
-      ref={containerRef}
-      style={{
-        display: "grid",
-        gridTemplateAreas: `
-            "main top"
-            "main bottom"
-          `,
-        gridTemplateColumns: "2fr 1.1fr",
-        gridTemplateRows: "1fr 1fr",
-        height: "100%",
-        width: "100%",
-        gap: "1px",
-      }}
-    >
+    <GridMain ref={containerRef}>
       <HoverMetadataHUD />
       <TransformHUD />
       <PcdColorMapTunnel.Out />
@@ -322,7 +346,7 @@ export const MultiPanelView = ({
       <StatusBarRootContainer>
         <StatusBar cameraRef={cameraRef} />
       </StatusBarRootContainer>
-    </main>
+    </GridMain>
   );
 };
 
@@ -350,10 +374,7 @@ const MainPanel = ({
   assetsGroupRef: React.RefObject<THREE.Group>;
 }) => {
   return (
-    <div
-      id="main-panel"
-      style={{ gridArea: "main", position: "relative", zIndex: 2 }}
-    >
+    <MainPanelContainer id="main-panel">
       <View
         style={{
           position: "absolute",
@@ -382,7 +403,7 @@ const MainPanel = ({
           cameraRef={cameraRef}
         />
       </View>
-    </div>
+    </MainPanelContainer>
   );
 };
 
@@ -496,10 +517,7 @@ const SidePanel = ({
   }, [position, sceneBoundingBox, upVector, lookAt, view]);
 
   return (
-    <div
-      id={`${which}-panel`}
-      style={{ gridArea: which, position: "relative", zIndex: 200 }}
-    >
+    <SidePanelContainer id={`${which}-panel`} $area={which}>
       <View
         style={{
           position: "absolute",
@@ -551,14 +569,7 @@ const SidePanel = ({
         <SegmentPolylineRenderer />
         <Crosshair3D />
       </View>
-      <div
-        style={{
-          position: "absolute",
-          top: "10px",
-          left: "10px",
-          zIndex: 1000,
-        }}
-      >
+      <ViewSelectorWrapper>
         <Select
           value={view}
           onChange={(e) => setView(e.target.value as ViewType)}
@@ -581,7 +592,7 @@ const SidePanel = ({
           <MenuItem value="Front">Front</MenuItem>
           <MenuItem value="Back">Back</MenuItem>
         </Select>
-      </div>
-    </div>
+      </ViewSelectorWrapper>
+    </SidePanelContainer>
   );
 };
