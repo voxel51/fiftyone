@@ -72,6 +72,7 @@ export class BoundingBoxOverlay
   private isSelectedState = false;
   private relativeBounds?: Rect;
   private absoluteBounds: Rect;
+  private settingBounds = false;
 
   private _needsCoordinateUpdate = false;
   private textBounds?: Rect;
@@ -291,7 +292,7 @@ export class BoundingBoxOverlay
 
     if (distance > this.CLICK_THRESHOLD) {
       const resizeRegion = this.getResizeRegion(worldPoint, scale);
-      this.moveState = !this.hasValidBounds()
+      this.moveState = this.settingBounds
         ? "SETTING"
         : resizeRegion || "DRAGGING";
     }
@@ -382,13 +383,14 @@ export class BoundingBoxOverlay
     if (cursorRegion === "DRAGGING" && !this.isDraggable) return false;
     if (cursorRegion.startsWith("RESIZE_") && !this.isResizeable) return false;
 
-    if (!this.hasValidBounds()) {
+    if (cursorRegion === "SETTING") {
+      this.settingBounds = true;
+      this.setPosition(worldPoint);
       this.absoluteBounds = {
-        ...point,
+        ...worldPoint,
         height: 0,
         width: 0,
       };
-      this.setPosition(point);
     }
 
     // Store move start information
@@ -458,7 +460,9 @@ export class BoundingBoxOverlay
 
     if (maintainAspectRatio) {
       const aspectRatio =
-        this.moveStartBounds.width / this.moveStartBounds.height;
+        this.moveStartBounds.width && this.moveStartBounds.height
+          ? this.moveStartBounds.width / this.moveStartBounds.height
+          : 1;
 
       if (
         Math.abs(delta.x / this.absoluteBounds.width) >
@@ -558,6 +562,7 @@ export class BoundingBoxOverlay
     this.moveStartPoint = undefined;
     this.moveStartPosition = undefined;
     this.moveStartBounds = undefined;
+    this.settingBounds = false;
 
     return true;
   }
