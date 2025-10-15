@@ -64,7 +64,7 @@ def get_if_last_modified_at(
             if_last_modified_at = datetime.datetime.fromtimestamp(
                 float(if_match)
             )
-        except ValueError:
+        except Exception:
             ...
 
         if if_last_modified_at is None:
@@ -149,6 +149,7 @@ def save_sample(
 
     if if_last_modified_at is not None:
         d = sample.to_mongo_dict(include_id=True)
+        d["last_modified_at"] = datetime.datetime.now(datetime.timezone.utc)
 
         # pylint:disable-next=protected-access
         update_result = sample.dataset._sample_collection.replace_one(
