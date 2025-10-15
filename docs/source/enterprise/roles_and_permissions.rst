@@ -5,14 +5,14 @@ Roles and permissions
 
 .. default-role:: code
 
-FiftyOne Enterprise is built for collaboration, with the goal of making it as easy
-as possible for engineers, data scientists, and stakeholders to work together
-to build high quality datasets and computer vision models.
+FiftyOne Enterprise is built for collaboration, with the goal of making it as
+easy as possible for engineers, data scientists, and stakeholders to work
+together to build high quality datasets and computer vision models.
 
-Accordingly, FiftyOne Enterprise gives you the flexibility to configure user roles,
-user groups and fine-grained permissions so that you can safely and securely
-collaborate both inside and outside your organization at all stages of your
-workflows.
+Accordingly, FiftyOne Enterprise gives you the flexibility to configure user
+roles, user groups and fine-grained permissions so that you can safely and
+securely collaborate both inside and outside your organization at all stages of
+your workflows.
 
 This page introduces the basic roles and permissions available in
 FiftyOne Enterprise.
@@ -38,9 +38,9 @@ invitation.
 
 .. note::
 
-   Invited users may login using any identity provider that has been enabled on your 
-   deployment. If you need more information about configuring IdPs or increasing
-   your user quotas, contact your Voxel51 CS engineer.
+   Invited users may login using any identity provider that has been enabled on
+   your  deployment. If you need more information about configuring IdPs or
+   increasing your user quotas, contact your Voxel51 support team.
 
 .. image:: /images/enterprise/user_invitation.png
    :alt: user-invitation
@@ -102,10 +102,10 @@ view other users of the deployment.
 Groups
 ------
 
-User groups in FiftyOne Enterprise allow organization admins to manage a collection
-of users as a single entity. This simplifies the process of assigning
-permissions to multiple users, making it more efficient to control access to
-datasets.
+User groups in FiftyOne Enterprise allow organization admins to manage a
+collection of users as a single entity. This simplifies the process of
+assigning permissions to multiple users, making it more efficient to control
+access to datasets.
 
 Admins can manage groups through the "Settings > Team > Groups" page.
 Each group can be given specific dataset access permissions, which apply to
@@ -141,9 +141,9 @@ Admins and users with the **Can manage** permission on a dataset can configure
 a dataset's permissions under the dataset's
 :ref:`Manage tab <enterprise-managing-datasets>` in the FiftyOne Enterprise App.
 
-In FiftyOne Enterprise, dataset permissions for a user are determined by both the
-access they receive from their groups' permissions and individual permissions
-assigned to them.
+In FiftyOne Enterprise, dataset permissions for a user are determined by both
+the access they receive from their groups' permissions and individual
+permissions assigned to them.
 
 A user’s permissions on a dataset is the maximum of their permissions from the
 following sources:
