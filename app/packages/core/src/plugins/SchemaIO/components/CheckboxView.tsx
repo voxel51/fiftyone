@@ -1,11 +1,11 @@
 import { Checkbox, FormControlLabel } from "@mui/material";
-import React from "react";
-import HeaderView from "./HeaderView";
-import autoFocus from "../utils/auto-focus";
-import { getComponentProps } from "../utils";
 import { useKey } from "../hooks";
+import { getComponentProps } from "../utils";
+import autoFocus from "../utils/auto-focus";
+import HeaderView from "./HeaderView";
 
 export default function CheckboxView(props) {
+  console.log(props);
   const { onChange, path, schema, data } = props;
   const [key, setUserChanged] = useKey(path, schema, data, true);
 

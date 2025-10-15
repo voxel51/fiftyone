@@ -2,9 +2,10 @@ import { Button } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { DeleteOutline } from "@mui/icons-material";
 import { useAtomValue, useSetAtom } from "jotai";
-import React from "react";
+import React, { useCallback } from "react";
 import { useRecoilValue } from "recoil";
 import { RoundButton } from "../Actions";
+import { useConfirmDelete } from "../Confirmation/useConfirmDelete";
 import { Row } from "./Components";
 import { currentField, deleteValue, editing, isNew, saveValue } from "./state";
 
@@ -15,6 +16,12 @@ const SaveFooter = () => {
   const datasetId = fos.useAssertedRecoilValue(fos.datasetId);
 
   const showCancel = useAtomValue(isNew);
+  const { confirmDelete, DeleteModal } = useConfirmDelete(
+    useCallback(
+      () => deleteCurrent({ datasetId, sampleId }),
+      [deleteCurrent, datasetId, sampleId]
+    )
+  );
 
   return (
     <>
@@ -25,11 +32,7 @@ const SaveFooter = () => {
       >
         Save
       </Button>
-      <RoundButton
-        onClick={() => {
-          deleteCurrent({ datasetId, sampleId });
-        }}
-      >
+      <RoundButton onClick={confirmDelete}>
         {showCancel ? (
           "Cancel"
         ) : (
@@ -39,6 +42,7 @@ const SaveFooter = () => {
           </>
         )}
       </RoundButton>
+      <DeleteModal />
     </>
   );
 };

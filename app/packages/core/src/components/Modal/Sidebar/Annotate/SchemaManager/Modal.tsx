@@ -126,9 +126,9 @@ const Page = () => {
 
 const Modal = () => {
   const element = useMemo(() => {
-    const el = document.getElementById("schemaManager");
+    const el = document.getElementById("annotation");
     if (!el) {
-      throw new Error("no schemaManager modal element");
+      throw new Error("no annotation modal element");
     }
     return el;
   }, []);
