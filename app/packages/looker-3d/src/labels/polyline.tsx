@@ -9,6 +9,7 @@ import { PolylinePointMarker } from "../annotation/PolylinePointMarker";
 import {
   hoveredLabelAtom,
   hoveredPolylineInfoAtom,
+  polylineEffectivePointsAtom,
   polylinePointTransformsAtom,
   selectedLabelForAnnotationAtom,
   type PolylinePointTransform,
@@ -88,23 +89,34 @@ export const Polyline = ({
       // Return updated transforms with only valid ones
       return { ...prev, [labelId]: validTransforms };
     });
-  }, [points3d, setPolylinePointTransforms, label._id]);
+  }, [points3d, label._id]);
+
+  const [effectivePoints3d, setPolylineEffectivePoints] = useRecoilState(
+    polylineEffectivePointsAtom
+  );
 
   // Compute the effective points by applying transformations
-  const effectivePoints3d = useMemo(() => {
+  useEffect(() => {
     const labelId = label._id;
     const transforms = polylinePointTransforms[labelId] || [];
 
     // Start with the original points
     const result = points3d.map((segment) => [...segment]);
 
-    // Apply transformations
     transforms.forEach((transform) => {
       const { segmentIndex, pointIndex, position } = transform;
+
+      if (result[segmentIndex] === undefined) {
+        result[segmentIndex] = [
+          [0, 0, 0],
+          [0, 0, 0],
+        ];
+      }
+
       result[segmentIndex][pointIndex] = position;
     });
 
-    return result;
+    setPolylineEffectivePoints(result);
   }, [polylinePointTransforms, label._id, points3d]);
 
   const lines = useMemo(

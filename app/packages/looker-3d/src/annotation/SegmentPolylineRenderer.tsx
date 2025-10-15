@@ -1,5 +1,5 @@
 import { Line as LineDrei } from "@react-three/drei";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
 import { SNAP_TOLERANCE } from "../constants";
@@ -9,8 +9,12 @@ import {
   annotationPlaneAtom,
   isSegmentingPointerDownAtom,
   isSnapToAnnotationPlaneAtom,
+  polylineEffectivePointsAtom,
+  PolylinePointTransform,
+  polylinePointTransformsAtom,
   segmentPolylineStateAtom,
   sharedCursorPositionAtom,
+  snapCloseAutomaticallyAtom,
   tempPolylinesAtom,
   type TempPolyline,
 } from "../state";
@@ -34,13 +38,23 @@ export const SegmentPolylineRenderer = ({
     segmentPolylineStateAtom
   );
   const [tempPolylines, setTempPolylines] = useRecoilState(tempPolylinesAtom);
+  const setPolylinePointTransforms = useSetRecoilState(
+    polylinePointTransformsAtom
+  );
+  const polylineEffectivePoints = useRecoilValue(polylineEffectivePointsAtom);
   const setIsActivelySegmenting = useSetRecoilState(
     isSegmentingPointerDownAtom
   );
   const setSharedCursorPosition = useSetRecoilState(sharedCursorPositionAtom);
   const annotationPlane = useRecoilValue(annotationPlaneAtom);
   const isSnapToAnnotationPlane = useRecoilValue(isSnapToAnnotationPlaneAtom);
+  const snapCloseAutomatically = useRecoilValue(snapCloseAutomaticallyAtom);
   const { upVector, sceneBoundingBox } = useFo3dContext();
+
+  // Track last click time for double-click detection
+  const lastClickTimeRef = useRef<number>(0);
+  const DOUBLE_CLICK_THRESHOLD_MS = 200;
+  const lastAddedVertexRef = useRef<[number, number, number] | null>(null);
 
   // Check if current position is close to first vertex for closing
   const shouldCloseLoop = useCallback(
@@ -71,6 +85,69 @@ export const SegmentPolylineRenderer = ({
         finalPos = projectedPos;
       }
 
+      const currentTime = Date.now();
+      const isDoubleClick =
+        currentTime - lastClickTimeRef.current < DOUBLE_CLICK_THRESHOLD_MS;
+
+      lastClickTimeRef.current = currentTime;
+
+      // Check for double-click behavior
+      if (isDoubleClick && lastAddedVertexRef.current) {
+        // Remove the last added vertex from the previous click
+        setSegmentState((prev) => ({
+          ...prev,
+          vertices: prev.vertices.slice(0, -1),
+        }));
+
+        // Get the vertices without the duplicate
+        const verticesWithoutDuplicate = segmentState.vertices.slice(0, -1);
+
+        if (snapCloseAutomatically) {
+          // Close the polyline automatically
+          const tempPolyline: TempPolyline = {
+            id: `temp-polyline-${Date.now()}`,
+            vertices: verticesWithoutDuplicate,
+            isClosed: true,
+            color: "#00ff00",
+            lineWidth: 3,
+          };
+
+          setTempPolylines((prev) => [...prev, tempPolyline]);
+
+          setSegmentState({
+            isActive: true,
+            vertices: [],
+            currentMousePosition: null,
+            isClosed: false,
+          });
+        } else {
+          // End the segment at the current position without closing
+          const tempPolyline: TempPolyline = {
+            id: `temp-polyline-${Date.now()}`,
+            vertices: [
+              ...verticesWithoutDuplicate,
+              [finalPos.x, finalPos.y, finalPos.z],
+            ],
+            isClosed: false,
+            color: "#00ff00",
+            lineWidth: 3,
+          };
+
+          setTempPolylines((prev) => [...prev, tempPolyline]);
+
+          setSegmentState({
+            isActive: true,
+            vertices: [],
+            currentMousePosition: null,
+            isClosed: false,
+          });
+        }
+
+        lastAddedVertexRef.current = null;
+        return;
+      }
+
+      // Check if we should close the loop by clicking near the first vertex
       if (shouldCloseLoop(finalPos)) {
         const tempPolyline: TempPolyline = {
           id: `temp-polyline-${Date.now()}`,
@@ -89,14 +166,22 @@ export const SegmentPolylineRenderer = ({
           isClosed: false,
         });
 
+        lastAddedVertexRef.current = null;
         return;
       }
 
-      // Add new vertex
+      // Add new vertex for single click
+      const newVertex: [number, number, number] = [
+        finalPos.x,
+        finalPos.y,
+        finalPos.z,
+      ];
       setSegmentState((prev) => ({
         ...prev,
-        vertices: [...prev.vertices, [finalPos.x, finalPos.y, finalPos.z]],
+        vertices: [...prev.vertices, newVertex],
       }));
+
+      lastAddedVertexRef.current = newVertex;
     },
     [
       segmentState,
@@ -105,6 +190,7 @@ export const SegmentPolylineRenderer = ({
       setTempPolylines,
       annotationPlane,
       isSnapToAnnotationPlane,
+      snapCloseAutomatically,
     ]
   );
 
@@ -289,7 +375,11 @@ export const SegmentPolylineRenderer = ({
           <PolylinePointMarker
             key={`current-vertex-${index}`}
             position={new THREE.Vector3(...vertex)}
-            color={index === 0 ? "#ff0000" : color}
+            color={
+              index === 0 || index === segmentState.vertices.length - 1
+                ? "#ff0000"
+                : color
+            }
             size={0.05}
             pulsate={false}
             isDraggable={false}
@@ -308,7 +398,11 @@ export const SegmentPolylineRenderer = ({
           <PolylinePointMarker
             key={`temp-polyline-${polyline.id}-vertex-${vertexIndex}`}
             position={new THREE.Vector3(...vertex)}
-            color={vertexIndex === 0 ? "#ff0000" : polyline.color}
+            color={
+              vertexIndex === 0 || vertexIndex === polyline.vertices.length - 1
+                ? "#ff0000"
+                : polyline.color
+            }
             size={0.05}
             pulsate={false}
             isDraggable={true}
@@ -343,6 +437,81 @@ export const SegmentPolylineRenderer = ({
 
     return markers.length > 0 ? markers : null;
   }, [segmentState.vertices, tempPolylines, color, setTempPolylines]);
+
+  // Sync with polylinePointTransformsAtom
+  useEffect(() => {
+    if (tempPolylines.length === 0) return;
+    // Pretend for now we're working with same label id
+    const MOCK_LABEL_ID = "68d53fbe1df25edfbaca2d9a";
+    const labelId = MOCK_LABEL_ID;
+
+    const newPolyline: PolylinePointTransform[] = [];
+
+    // Find the highest existing segment index so that we can start from the next one
+    const highestSegmentIndex =
+      polylineEffectivePoints.length > 0
+        ? polylineEffectivePoints.length - 1
+        : -1;
+
+    const segmentIndexOffset = highestSegmentIndex + 1;
+
+    // Each vertex gets a segmentIndex (which segment it belongs to) and pointIndex (0 or 1 for start/end of segment)
+    for (let i = 0; i < tempPolylines[0].vertices.length; i++) {
+      const vertex = tempPolylines[0].vertices[i];
+
+      // For each vertex, it can be either the start or end of a segment
+      // If it's the last vertex and the polyline is closed, it connects back to the first vertex
+      // Otherwise, it connects to the next vertex
+      if (i < tempPolylines[0].vertices.length - 1) {
+        // This vertex is the start of a segment that goes to the next vertex
+        newPolyline.push({
+          segmentIndex: segmentIndexOffset + i,
+          pointIndex: 0,
+          position: vertex,
+        });
+        // The next vertex is the end of this segment
+        newPolyline.push({
+          segmentIndex: segmentIndexOffset + i,
+          pointIndex: 1,
+          position: tempPolylines[0].vertices[i + 1],
+        });
+      } else if (
+        tempPolylines[0].isClosed &&
+        tempPolylines[0].vertices.length > 2
+      ) {
+        // Last vertex connects back to first vertex if closed
+        newPolyline.push({
+          segmentIndex: segmentIndexOffset + i,
+          pointIndex: 0,
+          position: vertex,
+        });
+        newPolyline.push({
+          segmentIndex: segmentIndexOffset + i,
+          pointIndex: 1,
+          position: tempPolylines[0].vertices[0],
+        });
+      }
+    }
+
+    setPolylinePointTransforms((prev) => {
+      return {
+        ...prev,
+        [labelId]: newPolyline,
+      };
+    });
+
+    // Get out of segmenting mode
+    setSegmentState({
+      isActive: false,
+      vertices: [],
+      currentMousePosition: null,
+      isClosed: false,
+    });
+
+    setIsActivelySegmenting(false);
+
+    setTempPolylines([]);
+  }, [tempPolylines, polylineEffectivePoints]);
 
   if (
     !segmentState.isActive &&
