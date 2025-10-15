@@ -1,5 +1,6 @@
+import { objectId } from "@fiftyone/utilities";
 import { Line as LineDrei } from "@react-three/drei";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
 import { SNAP_TOLERANCE } from "../constants";
@@ -13,6 +14,7 @@ import {
   PolylinePointTransform,
   polylinePointTransformsAtom,
   segmentPolylineStateAtom,
+  selectedLabelForAnnotationAtom,
   sharedCursorPositionAtom,
   snapCloseAutomaticallyAtom,
   tempPolylinesAtom,
@@ -22,6 +24,7 @@ import { getPlaneFromPositionAndQuaternion } from "../utils";
 import { PolylinePointMarker } from "./PolylinePointMarker";
 
 interface SegmentPolylineRendererProps {
+  ignoreEffects?: boolean;
   color?: string;
   lineWidth?: number;
   rubberBandColor?: string;
@@ -29,6 +32,7 @@ interface SegmentPolylineRendererProps {
 }
 
 export const SegmentPolylineRenderer = ({
+  ignoreEffects = false,
   color = "#00ff00",
   lineWidth = 3,
   rubberBandColor = "#ff0000",
@@ -41,7 +45,22 @@ export const SegmentPolylineRenderer = ({
   const setPolylinePointTransforms = useSetRecoilState(
     polylinePointTransformsAtom
   );
-  const polylineEffectivePoints = useRecoilValue(polylineEffectivePointsAtom);
+  const selectedLabelForAnnotation = useRecoilValue(
+    selectedLabelForAnnotationAtom
+  );
+
+  const [tempLabelId, setTempLabelId] = useState<string | null>(objectId());
+
+  useEffect(() => {
+    if (ignoreEffects) return;
+
+    const newObjectId = objectId();
+    setTempLabelId(newObjectId);
+  }, [segmentState.isActive]);
+
+  const polylineEffectivePoints = useRecoilValue(
+    polylineEffectivePointsAtom(selectedLabelForAnnotation?._id || tempLabelId)
+  );
   const setIsActivelySegmenting = useSetRecoilState(
     isSegmentingPointerDownAtom
   );
@@ -232,6 +251,7 @@ export const SegmentPolylineRenderer = ({
   });
 
   useEffect(() => {
+    if (ignoreEffects) return;
     if (segmentState.isActive) {
       document.body.style.cursor = "crosshair";
       return () => {
@@ -241,6 +261,8 @@ export const SegmentPolylineRenderer = ({
   }, [segmentState.isActive]);
 
   useEffect(() => {
+    if (ignoreEffects) return;
+
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape" && segmentState.isActive) {
         setSegmentState({
@@ -437,10 +459,10 @@ export const SegmentPolylineRenderer = ({
 
   // Sync with polylinePointTransformsAtom
   useEffect(() => {
+    if (ignoreEffects) return;
+
     if (tempPolylines.length === 0) return;
-    // Pretend for now we're working with same label id
-    const MOCK_LABEL_ID = "68d53fbe1df25edfbaca2d9a";
-    const labelId = MOCK_LABEL_ID;
+    const labelId = selectedLabelForAnnotation?._id || tempLabelId;
 
     const newPolyline: PolylinePointTransform[] = [];
 
@@ -491,9 +513,22 @@ export const SegmentPolylineRenderer = ({
     }
 
     setPolylinePointTransforms((prev) => {
+      const newTransforms = [...(prev[labelId] || []), ...newPolyline];
+
+      // Remove duplicates
+      const uniqueTransforms = newTransforms.filter(
+        (transform, index, self) =>
+          index ===
+          self.findIndex(
+            (t) =>
+              t.segmentIndex === transform.segmentIndex &&
+              t.pointIndex === transform.pointIndex
+          )
+      );
+
       return {
         ...prev,
-        [labelId]: newPolyline,
+        [labelId]: uniqueTransforms,
       };
     });
 
@@ -508,7 +543,7 @@ export const SegmentPolylineRenderer = ({
     setIsActivelySegmenting(false);
 
     setTempPolylines([]);
-  }, [tempPolylines, polylineEffectivePoints]);
+  }, [tempPolylines, polylineEffectivePoints, tempLabelId]);
 
   if (
     !segmentState.isActive &&

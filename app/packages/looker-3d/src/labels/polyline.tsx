@@ -63,36 +63,8 @@ export const Polyline = ({
   const setHoveredLabel = useSetRecoilState(hoveredLabelAtom);
   const setHoveredPolylineInfo = useSetRecoilState(hoveredPolylineInfoAtom);
 
-  // Sync with points3d when points3d changes
-  useEffect(() => {
-    const labelId = label._id;
-
-    setPolylinePointTransforms((prev) => {
-      const currentTransforms = prev[labelId] || [];
-
-      // Filter out transforms that are no longer valid (point doesn't exist in new points3d)
-      const validTransforms = currentTransforms.filter((transform) => {
-        const { segmentIndex, pointIndex } = transform;
-        return (
-          segmentIndex < points3d.length &&
-          pointIndex < points3d[segmentIndex]?.length
-        );
-      });
-
-      // If no valid transforms remain, remove the label entry entirely
-      if (validTransforms.length === 0) {
-        const newPrev = { ...prev };
-        delete newPrev[labelId];
-        return newPrev;
-      }
-
-      // Return updated transforms with only valid ones
-      return { ...prev, [labelId]: validTransforms };
-    });
-  }, [points3d, label._id]);
-
   const [effectivePoints3d, setPolylineEffectivePoints] = useRecoilState(
-    polylineEffectivePointsAtom
+    polylineEffectivePointsAtom(label._id)
   );
 
   // Compute the effective points by applying transformations

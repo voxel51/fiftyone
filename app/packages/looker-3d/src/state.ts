@@ -335,10 +335,12 @@ export const polylinePointTransformsAtom = atom<
   default: {},
 });
 
-export const polylineEffectivePointsAtom = atom<Vector3Tuple[][]>({
-  key: "fo3d-polylineEffectivePoints",
-  default: [],
-});
+export const polylineEffectivePointsAtom = atomFamily<Vector3Tuple[][], string>(
+  {
+    key: "fo3d-polylineEffectivePoints",
+    default: [],
+  }
+);
 
 export const selectedPolylinePositionSelector = selector<
   [number, number, number] | null

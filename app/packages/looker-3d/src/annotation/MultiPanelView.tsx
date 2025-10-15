@@ -566,7 +566,7 @@ const SidePanel = ({
               | "back"
           }
         />
-        <SegmentPolylineRenderer />
+        <SegmentPolylineRenderer ignoreEffects />
         <Crosshair3D />
       </View>
       <ViewSelectorWrapper>

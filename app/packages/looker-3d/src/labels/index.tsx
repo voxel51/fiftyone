@@ -18,13 +18,16 @@ import { folder, useControls } from "leva";
 import { get as _get } from "lodash";
 import { useCallback, useEffect, useMemo } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import * as THREE from "three";
 import { PANEL_ORDER_LABELS } from "../constants";
 import { usePathFilter } from "../hooks";
 import { type Looker3dSettings, defaultPluginSettings } from "../settings";
 import {
+  PolylinePointTransform,
   cuboidLabelLineWidthAtom,
   currentArchetypeSelectedForTransformAtom,
   polylineLabelLineWidthAtom,
+  polylinePointTransformsAtom,
   segmentPolylineStateAtom,
   selectedLabelForAnnotationAtom,
   transformModeAtom,
@@ -63,6 +66,7 @@ export const ThreeDLabels = ({
   const [polylineWidth, setPolylineWidth] = useRecoilState(
     polylineLabelLineWidthAtom
   );
+  const polylinePointTransforms = useRecoilValue(polylinePointTransformsAtom);
   const selectedLabels = useRecoilValue(fos.selectedLabelMap);
   const tooltip = fos.useTooltip();
   const labelAlpha = globalOpacity ?? colorScheme.opacity;
@@ -99,7 +103,9 @@ export const ThreeDLabels = ({
     },
   };
 
-  const [labelConfig] = useControls(
+  const currentSampleId = useRecoilValue(fos.currentSampleId);
+
+  useControls(
     () => ({
       Labels: folder(labelLevaControls, {
         order: PANEL_ORDER_LABELS,
@@ -234,6 +240,84 @@ export const ThreeDLabels = ({
         );
       }
     }
+
+    // Check for any label ids in polylinePointTransformsAtom that are not in newPolylineOverlays
+    // and create new polyline overlays for them
+    const existingPolylineIds = new Set(
+      rawOverlays
+        .filter((overlay) => overlay._cls === "Polyline")
+        .map((overlay) => overlay._id)
+    );
+
+    for (const [labelId, transforms] of Object.entries(
+      polylinePointTransforms
+    )) {
+      if (transforms.length === 0 || existingPolylineIds.has(labelId)) {
+        continue;
+      }
+
+      // Convert PolylinePointTransform[] to points3d format
+      const points3d: THREE.Vector3Tuple[][] = [];
+
+      // Group transforms by segmentIndex
+      const segmentsMap = new Map<number, PolylinePointTransform[]>();
+      transforms.forEach((transform) => {
+        const { segmentIndex } = transform;
+        if (!segmentsMap.has(segmentIndex)) {
+          segmentsMap.set(segmentIndex, []);
+        }
+        segmentsMap.get(segmentIndex)!.push(transform);
+      });
+
+      // Create segments from grouped transforms
+      segmentsMap.forEach((segmentTransforms) => {
+        // Sort by pointIndex to maintain order
+        segmentTransforms.sort((a, b) => a.pointIndex - b.pointIndex);
+
+        // Create segment points
+        const segmentPoints: THREE.Vector3Tuple[] = [];
+        segmentTransforms.forEach((transform) => {
+          segmentPoints[transform.pointIndex] = transform.position;
+        });
+
+        // Only add segment if it has at least 2 points
+        if (segmentPoints.length >= 2) {
+          points3d.push(segmentPoints);
+        }
+      });
+
+      // Only create overlay if we have valid segments
+      if (points3d.length > 0) {
+        const overlayLabel = {
+          _id: labelId,
+          _cls: "Polyline",
+          type: "Polyline",
+          // todo: THIS HAS TO CHANGE TO A REAL PATH
+          path: `polyline-${labelId.substring(0, 5)}`,
+          selected: false,
+          sampleId: currentSampleId,
+          tags: [],
+          points3d,
+        };
+
+        newPolylineOverlays.push(
+          <Polyline
+            key={`polyline-${labelId}`}
+            rotation={overlayRotation}
+            opacity={labelAlpha}
+            lineWidth={polylineWidth}
+            points3d={points3d}
+            filled={false}
+            selected={false}
+            {...(overlayLabel as unknown as PolyLineProps)}
+            label={overlayLabel}
+            onClick={(e) => handleSelect(overlayLabel, "polyline", e)}
+            tooltip={tooltip}
+          />
+        );
+      }
+    }
+
     return [newCuboidOverlays, newPolylineOverlays];
   }, [
     rawOverlays,
@@ -244,7 +328,16 @@ export const ThreeDLabels = ({
     tooltip,
     settings,
     transformMode,
+    polylinePointTransforms,
+    polylineWidth,
+    currentSampleId,
   ]);
+
+  console.log("polyline overlays length", polylineOverlays.length, "and ");
+
+  useEffect(() => {
+    console.log("polylinePointTransforms", polylinePointTransforms);
+  }, [polylinePointTransforms]);
 
   const getOnShiftClickLabelCallback = useOnShiftClickLabel();
 
