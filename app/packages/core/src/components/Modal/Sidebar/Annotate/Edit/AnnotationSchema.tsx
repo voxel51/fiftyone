@@ -40,7 +40,6 @@ const createInput = (name: string) => {
 };
 
 const createRadio = (name: string, choices) => {
-  console.log(choices);
   return {
     type: "string",
     view: {
