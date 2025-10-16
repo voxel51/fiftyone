@@ -243,13 +243,6 @@ export const MediaTypeFo3dComponent = () => {
     controlLeft: false,
   });
 
-  /**
-   * This effect updates the camera controls config when the transforming state changes
-   */
-  useEffect(() => {
-    updateCameraControlsConfig();
-  }, [isCurrentlyTransforming]);
-
   const updateCameraControlsConfig = useCallback(() => {
     if (!cameraControlsRef.current) return;
 
@@ -273,6 +266,13 @@ export const MediaTypeFo3dComponent = () => {
         CameraControlsImpl.ACTION.ROTATE;
     }
   }, [keyState, isCurrentlyTransforming, isSegmentingPointerDown]);
+
+  /**
+   * This effect updates the camera controls config when the transforming state changes
+   */
+  useEffect(() => {
+    updateCameraControlsConfig();
+  }, [updateCameraControlsConfig]);
 
   fos.useEventHandler(document, "keydown", (e: KeyboardEvent) => {
     if (e.code === "ShiftRight") keyState.current.shiftRight = true;

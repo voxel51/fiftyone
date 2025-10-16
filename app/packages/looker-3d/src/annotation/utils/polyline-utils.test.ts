@@ -12,6 +12,9 @@ import {
   shouldClosePolylineLoop,
 } from "./polyline-utils";
 
+// Import the positionsEqual function for testing (it's not exported, so we'll test it indirectly)
+// We'll test it through findSharedPointSegments which uses it internally
+
 describe("getVertexPosition", () => {
   const mockPoints3d: Vector3Tuple[][] = [
     [
@@ -179,12 +182,73 @@ describe("findSharedPointSegments", () => {
     expect(result).toEqual([]);
   });
 
-  it("handles floating point precision issues", () => {
+  it("handles floating point precision issues with epsilon tolerance", () => {
     const transforms: PolylinePointTransform[] = [
       { segmentIndex: 0, pointIndex: 0, position: [0.1, 0.2, 0.3] },
       { segmentIndex: 1, pointIndex: 0, position: [0.1, 0.2, 0.3] },
     ];
     const position: [number, number, number] = [0.1, 0.2, 0.3];
+
+    const result = findSharedPointSegments(transforms, position);
+
+    expect(result).toEqual([0, 1]);
+  });
+
+  it("handles floating point precision with small differences within epsilon", () => {
+    const transforms: PolylinePointTransform[] = [
+      { segmentIndex: 0, pointIndex: 0, position: [0.1, 0.2, 0.3] },
+      {
+        segmentIndex: 1,
+        pointIndex: 0,
+        position: [0.1000001, 0.2000001, 0.3000001],
+      },
+      { segmentIndex: 2, pointIndex: 0, position: [0.1, 0.2, 0.3] },
+    ];
+    const position: [number, number, number] = [0.1, 0.2, 0.3];
+
+    const result = findSharedPointSegments(transforms, position);
+
+    expect(result).toEqual([0, 1, 2]);
+  });
+
+  it("rejects positions with differences larger than epsilon", () => {
+    const transforms: PolylinePointTransform[] = [
+      { segmentIndex: 0, pointIndex: 0, position: [0.1, 0.2, 0.3] },
+      { segmentIndex: 1, pointIndex: 0, position: [0.1, 0.2, 0.3] },
+    ];
+    const position: [number, number, number] = [0.1, 0.2, 0.4]; // Different Z coordinate
+
+    const result = findSharedPointSegments(transforms, position);
+
+    expect(result).toEqual([]);
+  });
+
+  it("handles very small epsilon differences", () => {
+    const transforms: PolylinePointTransform[] = [
+      { segmentIndex: 0, pointIndex: 0, position: [1.0, 2.0, 3.0] },
+      {
+        segmentIndex: 1,
+        pointIndex: 0,
+        position: [1.0000005, 2.0000005, 3.0000005],
+      },
+    ];
+    const position: [number, number, number] = [1.0, 2.0, 3.0];
+
+    const result = findSharedPointSegments(transforms, position);
+
+    expect(result).toEqual([0, 1]);
+  });
+
+  it("handles negative coordinates with epsilon tolerance", () => {
+    const transforms: PolylinePointTransform[] = [
+      { segmentIndex: 0, pointIndex: 0, position: [-1.0, -2.0, -3.0] },
+      {
+        segmentIndex: 1,
+        pointIndex: 0,
+        position: [-1.0000001, -2.0000001, -3.0000001],
+      },
+    ];
+    const position: [number, number, number] = [-1.0, -2.0, -3.0];
 
     const result = findSharedPointSegments(transforms, position);
 

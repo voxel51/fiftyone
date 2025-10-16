@@ -7,24 +7,22 @@ import {
 } from "@fiftyone/state";
 import { atom, atomFamily, selector } from "recoil";
 import { Vector3, Vector3Tuple } from "three";
+import type {
+  AnnotationPlaneState,
+  HoveredPolylineInfo,
+  PolylinePointTransform,
+  SegmentPolylineState,
+  SelectedPoint,
+  TempPolyline,
+  TransformedLabelData,
+  TransformMode,
+  TransformSpace,
+} from "./annotation/types";
 import { SHADE_BY_HEIGHT } from "./constants";
 import type { FoSceneNode } from "./hooks";
 import { OverlayLabel } from "./labels/loader";
 import type { Actions, AssetLoadingLog, ShadeBy } from "./types";
 import { TransformArchetype } from "./types";
-import type {
-  HoveredPolylineInfo,
-  TransformMode,
-  TransformSpace,
-  Spatial,
-  SelectedPoint,
-  TransformData,
-  TransformedLabelData,
-  PolylinePointTransform,
-  SegmentPolylineState,
-  TempPolyline,
-  AnnotationPlaneState,
-} from "./annotation/types";
 
 const fo3dAssetsParseStatusLog = atomFamily<AssetLoadingLog[], string>({
   key: "fo3d-assetsParseStatusLogs",
@@ -57,7 +55,9 @@ export const cameraPositionAtom = atom<[number, number, number] | null>({
 export const shadeByAtom = atom<ShadeBy>({
   key: "fo3d-shadeBy",
   default: SHADE_BY_HEIGHT,
-  effects: [getBrowserStorageEffectForKey("shadeBy")],
+  effects: [
+    getBrowserStorageEffectForKey("shadeBy", { prependDatasetNameInKey: true }),
+  ],
 });
 
 export const customColorMapAtom = atom<{ [slice: string]: string } | null>({
@@ -66,6 +66,7 @@ export const customColorMapAtom = atom<{ [slice: string]: string } | null>({
   effects: [
     getBrowserStorageEffectForKey("customColorMap", {
       useJsonSerialization: true,
+      prependDatasetNameInKey: true,
     }),
   ],
 });
@@ -96,7 +97,11 @@ export const currentActionAtom = atom<Actions>({
 export const currentPointSizeAtom = atom<string>({
   key: "fo3d-pointSize",
   default: "2",
-  effects: [getBrowserStorageEffectForKey("pointSize")],
+  effects: [
+    getBrowserStorageEffectForKey("pointSize", {
+      prependDatasetNameInKey: true,
+    }),
+  ],
 });
 
 export const pointSizeRangeAtom = atom<Range>({
@@ -162,7 +167,11 @@ export const isGridInfinitelyLargeAtom = atom<boolean>({
 export const gridSizeAtom = atom<number>({
   key: "fo3d-gridSize",
   default: 1000,
-  effects: [getBrowserStorageEffectForKey("fo3d-gridSize")],
+  effects: [
+    getBrowserStorageEffectForKey("fo3d-gridSize", {
+      prependDatasetNameInKey: true,
+    }),
+  ],
 });
 
 export const shouldGridFadeAtom = atom<boolean>({
@@ -206,7 +215,7 @@ export const currentHoveredPointAtom = atom<Vector3 | null>({
 });
 
 // Hover state for labels in annotate mode
-export const hoveredLabelAtom = atom<any | null>({
+export const hoveredLabelAtom = atom<OverlayLabel | null>({
   key: "fo3d-hoveredLabel",
   default: null,
 });

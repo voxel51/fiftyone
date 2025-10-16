@@ -118,8 +118,8 @@ export const SegmentPolylineRenderer = ({
             id: `temp-polyline-${Date.now()}`,
             vertices: verticesWithoutDuplicate,
             isClosed: true,
-            color: "#00ff00",
-            lineWidth: 3,
+            color,
+            lineWidth,
           };
 
           setTempPolylines((prev) => [...prev, tempPolyline]);
@@ -139,8 +139,8 @@ export const SegmentPolylineRenderer = ({
               [finalPos.x, finalPos.y, finalPos.z],
             ],
             isClosed: false,
-            color: "#00ff00",
-            lineWidth: 3,
+            color,
+            lineWidth,
           };
 
           setTempPolylines((prev) => [...prev, tempPolyline]);
@@ -163,8 +163,8 @@ export const SegmentPolylineRenderer = ({
           id: `temp-polyline-${Date.now()}`,
           vertices: segmentState.vertices,
           isClosed: true,
-          color: "#00ff00",
-          lineWidth: 3,
+          color,
+          lineWidth,
         };
 
         setTempPolylines((prev) => [...prev, tempPolyline]);

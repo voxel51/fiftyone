@@ -86,7 +86,7 @@ export const AnnotationPlane = ({
       }
     }
 
-    return Math.max(size.x, 10, size.y) * 1.25;
+    return Math.max(size.x, size.y, size.z, 10) * 1.25;
   }, [sceneBoundingBox, upVector]);
 
   const position = useMemo(

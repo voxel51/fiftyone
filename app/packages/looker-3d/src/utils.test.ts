@@ -94,14 +94,106 @@ describe("getColorFromPoolBasedOnHash", () => {
 });
 
 describe("getGridQuaternionFromUpVector", () => {
-  it("returns a quaternion for up vector", () => {
+  it("returns identity quaternion when up vector matches target normal", () => {
     const up = new Vector3(0, 1, 0);
     const result = getGridQuaternionFromUpVector(up);
-    console.log(result);
     expect(result).toBeInstanceOf(Quaternion);
-    expect(result.w).toBe(1);
+    expect(result.w).toBeCloseTo(1);
     expect(result.x).toBeCloseTo(0);
     expect(result.y).toBeCloseTo(0);
+    expect(result.z).toBeCloseTo(0);
+  });
+
+  it("handles antiparallel up vector (opposite direction)", () => {
+    const up = new Vector3(0, -1, 0); // Opposite to target normal (0, 1, 0)
+    const result = getGridQuaternionFromUpVector(up);
+    expect(result).toBeInstanceOf(Quaternion);
+    // Should not be zero quaternion (0, 0, 0, 0) - at least one component should be non-zero
+    const hasNonZeroComponent =
+      result.w !== 0 || result.x !== 0 || result.y !== 0 || result.z !== 0;
+    expect(hasNonZeroComponent).toBe(true);
+    // Verify it's a valid quaternion (magnitude should be 1)
+    const magnitude = Math.sqrt(
+      result.w * result.w +
+        result.x * result.x +
+        result.y * result.y +
+        result.z * result.z
+    );
+    expect(magnitude).toBeCloseTo(1);
+    // For antiparallel vectors, we expect a 180-degree rotation
+    // The quaternion should represent a rotation that flips the Y-axis
+    expect(result.z).toBeCloseTo(1); // 180-degree rotation around Z-axis
+    expect(result.w).toBeCloseTo(0);
+    expect(result.x).toBeCloseTo(0);
+    expect(result.y).toBeCloseTo(0);
+  });
+
+  it("handles arbitrary up vector", () => {
+    const up = new Vector3(1, 0, 0).normalize();
+    const result = getGridQuaternionFromUpVector(up);
+    expect(result).toBeInstanceOf(Quaternion);
+    // Should not be zero quaternion
+    expect(result.w).not.toBe(0);
+    // Verify it's a valid quaternion
+    const magnitude = Math.sqrt(
+      result.w * result.w +
+        result.x * result.x +
+        result.y * result.y +
+        result.z * result.z
+    );
+    expect(magnitude).toBeCloseTo(1);
+  });
+
+  it("handles diagonal up vector", () => {
+    const up = new Vector3(1, 1, 0).normalize();
+    const result = getGridQuaternionFromUpVector(up);
+    expect(result).toBeInstanceOf(Quaternion);
+    // Should not be zero quaternion
+    expect(result.w).not.toBe(0);
+    // Verify it's a valid quaternion
+    const magnitude = Math.sqrt(
+      result.w * result.w +
+        result.x * result.x +
+        result.y * result.y +
+        result.z * result.z
+    );
+    expect(magnitude).toBeCloseTo(1);
+  });
+
+  it("handles custom target normal", () => {
+    const up = new Vector3(0, 0, 1);
+    const targetNormal = new Vector3(0, 0, 1);
+    const result = getGridQuaternionFromUpVector(up, targetNormal);
+    expect(result).toBeInstanceOf(Quaternion);
+    // Should be identity quaternion when vectors match
+    expect(result.w).toBeCloseTo(1);
+    expect(result.x).toBeCloseTo(0);
+    expect(result.y).toBeCloseTo(0);
+    expect(result.z).toBeCloseTo(0);
+  });
+
+  it("handles antiparallel with custom target normal", () => {
+    const up = new Vector3(0, 0, -1);
+    const targetNormal = new Vector3(0, 0, 1);
+    const result = getGridQuaternionFromUpVector(up, targetNormal);
+    expect(result).toBeInstanceOf(Quaternion);
+    // Should not be zero quaternion (0, 0, 0, 0) - at least one component should be non-zero
+    const hasNonZeroComponent =
+      result.w !== 0 || result.x !== 0 || result.y !== 0 || result.z !== 0;
+    expect(hasNonZeroComponent).toBe(true);
+    // Verify it's a valid quaternion (magnitude should be 1)
+    const magnitude = Math.sqrt(
+      result.w * result.w +
+        result.x * result.x +
+        result.y * result.y +
+        result.z * result.z
+    );
+    expect(magnitude).toBeCloseTo(1);
+    // For antiparallel vectors, we expect a 180-degree rotation
+    // The quaternion should represent a rotation that flips the Z-axis
+    expect(result.w).toBeCloseTo(0);
+    expect(result.x).toBeCloseTo(0);
+    expect(result.y).toBeCloseTo(-1); // 180-degree rotation around Y-axis
     expect(result.z).toBeCloseTo(0);
   });
 });

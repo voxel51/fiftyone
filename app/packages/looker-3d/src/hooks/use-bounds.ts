@@ -7,6 +7,21 @@ const UNCHANGED_COUNT_THRESHOLD = 6;
 const MAX_BOUNDING_BOX_RETRIES = 5;
 
 /**
+ * Checks if a bounding box has all finite values in its min and max components.
+ * Returns true if all components are finite, false otherwise.
+ */
+const isFiniteBox = (box: Box3): boolean => {
+  return (
+    Number.isFinite(box.min.x) &&
+    Number.isFinite(box.min.y) &&
+    Number.isFinite(box.min.z) &&
+    Number.isFinite(box.max.x) &&
+    Number.isFinite(box.max.y) &&
+    Number.isFinite(box.max.z)
+  );
+};
+
+/**
  * Calculates the bounding box of the object with the given ref.
  *
  * @param objectRef - Ref to the object
@@ -34,7 +49,7 @@ export const useFo3dBounds = (
 
     const box = new Box3().setFromObject(objectRef.current);
 
-    if (Math.abs(box.max?.x) === Number.POSITIVE_INFINITY) {
+    if (!isFiniteBox(box)) {
       setBoundingBox(DEFAULT_BOUNDING_BOX);
       return;
     }
@@ -60,6 +75,7 @@ export const useFo3dBounds = (
       if (!objectRef.current) {
         retryCount.current += 1;
         if (retryCount.current >= MAX_BOUNDING_BOX_RETRIES) {
+          retryCount.current = 0; // Reset retry count on fallback
           setBoundingBox(DEFAULT_BOUNDING_BOX);
           return;
         }
@@ -72,9 +88,10 @@ export const useFo3dBounds = (
 
       const box = new Box3().setFromObject(objectRef.current);
 
-      if (Math.abs(box.max?.x) === Number.POSITIVE_INFINITY) {
+      if (!isFiniteBox(box)) {
         retryCount.current += 1;
         if (retryCount.current >= MAX_BOUNDING_BOX_RETRIES) {
+          retryCount.current = 0;
           setBoundingBox(DEFAULT_BOUNDING_BOX);
           return;
         }
@@ -94,6 +111,7 @@ export const useFo3dBounds = (
       previousBox.current = box;
 
       if (unchangedCount.current >= UNCHANGED_COUNT_THRESHOLD) {
+        retryCount.current = 0;
         setBoundingBox(box);
       } else {
         timeOutIdRef.current = window.setTimeout(
@@ -113,6 +131,7 @@ export const useFo3dBounds = (
     // cleanup function to prevent memory leaks
     return () => {
       isMounted = false;
+      retryCount.current = 0;
 
       if (timeOutIdRef.current) {
         window.clearTimeout(timeOutIdRef.current);

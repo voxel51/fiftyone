@@ -223,16 +223,9 @@ export const getGridQuaternionFromUpVector = (
   upVectorNormalized: Vector3,
   targetNormal: Vector3 = new Vector3(0, 1, 0)
 ) => {
-  // calculate angle between custom up direction and default up direction (y-axis in three-js)
-  const angle = Math.acos(upVectorNormalized.dot(targetNormal));
-
-  // calculate axis perpendicular to both the default up direction and the custom up direction
-  const axis = new Vector3()
-    .crossVectors(targetNormal, upVectorNormalized)
-    .normalize();
-
-  // quaternion to represent the rotation around an axis perpendicular to both the default up direction and the custom up direction
-  return new Quaternion().setFromAxisAngle(axis, angle);
+  const from = targetNormal.clone().normalize();
+  const to = upVectorNormalized.clone();
+  return new Quaternion().setFromUnitVectors(from, to);
 };
 
 /**

@@ -27,14 +27,18 @@ import {
   transformModeAtom,
   transformSpaceAtom,
 } from "../../state";
-import type { TransformMode, TransformSpace } from "../types";
 import { getGridQuaternionFromUpVector } from "../../utils";
+import type {
+  AnnotationAction,
+  AnnotationActionGroup,
+  TransformMode,
+  TransformSpace,
+} from "../types";
 import { deletePolylinePoint } from "../utils/polyline-delete";
 import {
   PlaneCoordinateInputs,
   VertexCoordinateInputs,
 } from "./CoordinateInputs";
-import type { AnnotationAction, AnnotationActionGroup } from "../types";
 
 export const useAnnotationActions = () => {
   const [selectedLabelForAnnotation, setSelectedLabelForAnnotation] =
@@ -174,6 +178,20 @@ export const useAnnotationActions = () => {
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) {
+        return;
+      }
+
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.isContentEditable ||
+          target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA")
+      ) {
+        return;
+      }
+
       if (event.key === "Delete" || event.key === "Backspace") {
         handleContextualDelete();
       }
@@ -191,19 +209,10 @@ export const useAnnotationActions = () => {
       if (sceneBoundingBox && upVector) {
         const center = new THREE.Vector3(...annotationPlane.position);
 
-        let quaternion = new THREE.Quaternion(...annotationPlane.quaternion);
-
-        if (
-          quaternion[0] === 0 &&
-          quaternion[1] === 0 &&
-          quaternion[2] === 0 &&
-          quaternion[3] === 1
-        ) {
-          quaternion = getGridQuaternionFromUpVector(
-            upVector,
-            new THREE.Vector3(0, 0, 1)
-          );
-        }
+        const quaternion = getGridQuaternionFromUpVector(
+          upVector,
+          new THREE.Vector3(0, 0, 1)
+        );
 
         setAnnotationPlane({
           enabled: true,

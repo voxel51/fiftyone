@@ -113,6 +113,10 @@ const Modal = () => {
           }
         }
 
+        if (e.repeat) {
+          return;
+        }
+
         if (e.altKey && e.code === "Space") {
           const hoveringSampleId = (
             await snapshot.getPromise(fos.hoveredSample)

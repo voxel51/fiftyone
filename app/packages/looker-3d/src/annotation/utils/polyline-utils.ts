@@ -3,6 +3,29 @@ import type { Vector3Tuple } from "three";
 import { SNAP_TOLERANCE } from "../../constants";
 import type { PolylinePointTransform } from "../types";
 
+// Epsilon tolerance for floating-point position comparisons
+const EPS = 1e-6;
+
+/**
+ * Compares two 3D positions using epsilon tolerance for floating-point precision.
+ *
+ * @param p1 - First position
+ * @param p2 - Second position
+ * @param epsilon - Tolerance for comparison (default: EPS)
+ * @returns True if positions are equal within tolerance
+ */
+function positionsEqual(
+  p1: [number, number, number],
+  p2: [number, number, number],
+  epsilon: number = EPS
+): boolean {
+  return (
+    Math.abs(p1[0] - p2[0]) <= epsilon &&
+    Math.abs(p1[1] - p2[1]) <= epsilon &&
+    Math.abs(p1[2] - p2[2]) <= epsilon
+  );
+}
+
 /**
  * Gets the current position of a vertex, considering any applied transforms.
  *
@@ -80,11 +103,8 @@ export function findSharedPointSegments(
   transforms: PolylinePointTransform[],
   position: [number, number, number]
 ): number[] {
-  const segmentsWithThisPoint = transforms.filter(
-    (transform) =>
-      transform.position[0] === position[0] &&
-      transform.position[1] === position[1] &&
-      transform.position[2] === position[2]
+  const segmentsWithThisPoint = transforms.filter((transform) =>
+    positionsEqual(transform.position, position)
   );
 
   // Get unique segment indices

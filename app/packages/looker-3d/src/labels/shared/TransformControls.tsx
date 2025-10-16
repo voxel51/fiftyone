@@ -49,16 +49,16 @@ export const Transformable = ({
 }: TransformableProps) => {
   const groupRef = useRef<any>(null);
 
-  const isAnnotateMode = useAtomValue(fos.modalMode);
+  const modalMode = useAtomValue(fos.modalMode);
   const transformMode = useRecoilValue(transformModeAtom);
   const transformSpace = useRecoilValue(transformSpaceAtom);
   const currentArchetypeSelectedForTransform = useRecoilValue(
     currentArchetypeSelectedForTransformAtom
   );
-
   const [isCurrentlyTransforming, setIsCurrentlyTransforming] = useRecoilState(
     isCurrentlyTransformingAtom
   );
+  const isAnnotateMode = modalMode === "annotate";
 
   const onTransformStartDecorated = useCallback(() => {
     setIsCurrentlyTransforming(true);

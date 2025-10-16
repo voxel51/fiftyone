@@ -1,5 +1,4 @@
 import { useTheme } from "@fiftyone/components";
-import * as fos from "@fiftyone/state";
 import { useBrowserStorage } from "@fiftyone/state";
 import { MenuItem, Select } from "@mui/material";
 import {
@@ -19,7 +18,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import { useRecoilCallback } from "recoil";
 import styled from "styled-components";
 import * as THREE from "three";
 import { Box3, Vector3 } from "three";
@@ -36,7 +35,6 @@ import {
   activeNodeAtom,
   currentArchetypeSelectedForTransformAtom,
   currentHoveredPointAtom,
-  isCurrentlyTransformingAtom,
   selectedPolylineVertexAtom,
 } from "../state";
 import { StatusBar } from "../StatusBar";
@@ -203,52 +201,6 @@ export const MultiPanelView = ({
   );
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const isCurrentlyTransforming = useRecoilValue(isCurrentlyTransformingAtom);
-
-  const keyState = useRef({
-    shiftRight: false,
-    shiftLeft: false,
-    controlRight: false,
-    controlLeft: false,
-  });
-
-  const updateCameraControlsConfig = useCallback(() => {
-    if (!cameraControlsRef.current) return;
-
-    if (isCurrentlyTransforming) {
-      cameraControlsRef.current.enabled = false;
-      return;
-    }
-
-    cameraControlsRef.current.enabled = true;
-
-    if (keyState.current.shiftRight || keyState.current.shiftLeft) {
-      cameraControlsRef.current.mouseButtons.left =
-        CameraControlsImpl.ACTION.TRUCK;
-    } else if (keyState.current.controlRight || keyState.current.controlLeft) {
-      cameraControlsRef.current.mouseButtons.left =
-        CameraControlsImpl.ACTION.DOLLY;
-    } else {
-      cameraControlsRef.current.mouseButtons.left =
-        CameraControlsImpl.ACTION.ROTATE;
-    }
-  }, [isCurrentlyTransforming]);
-
-  fos.useEventHandler(document, "keydown", (e: KeyboardEvent) => {
-    if (e.code === "ShiftRight") keyState.current.shiftRight = true;
-    if (e.code === "ShiftLeft") keyState.current.shiftLeft = true;
-    if (e.code === "ControlRight") keyState.current.controlRight = true;
-    if (e.code === "ControlLeft") keyState.current.controlLeft = true;
-    updateCameraControlsConfig();
-  });
-
-  fos.useEventHandler(document, "keyup", (e: KeyboardEvent) => {
-    if (e.code === "ShiftRight") keyState.current.shiftRight = false;
-    if (e.code === "ShiftLeft") keyState.current.shiftLeft = false;
-    if (e.code === "ControlRight") keyState.current.controlRight = false;
-    if (e.code === "ControlLeft") keyState.current.controlLeft = false;
-    updateCameraControlsConfig();
-  });
 
   const resetActiveNode = useRecoilCallback(
     ({ set }) =>
@@ -331,7 +283,6 @@ export const MultiPanelView = ({
         sceneBoundingBox={sceneBoundingBox}
         isSceneInitialized={isSceneInitialized}
         sample={sample}
-        pointCloudSettings={pointCloudSettings}
       />
 
       <SidePanel
@@ -344,7 +295,6 @@ export const MultiPanelView = ({
         sceneBoundingBox={sceneBoundingBox}
         isSceneInitialized={isSceneInitialized}
         sample={sample}
-        pointCloudSettings={pointCloudSettings}
       />
 
       <StatusBarRootContainer>
@@ -421,18 +371,16 @@ const SidePanel = ({
   sceneBoundingBox,
   isSceneInitialized,
   sample,
-  pointCloudSettings,
 }: {
   which: "top" | "middle" | "bottom";
   view: ViewType;
   setView: (view: ViewType) => void;
-  foScene: any;
+  foScene: FoScene;
   upVector: Vector3 | null;
   lookAt: Vector3 | null;
   sceneBoundingBox: Box3 | null;
   isSceneInitialized: boolean;
   sample: any;
-  pointCloudSettings: any;
 }) => {
   const position = useMemo(
     () =>

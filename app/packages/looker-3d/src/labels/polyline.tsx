@@ -7,21 +7,20 @@ import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
 import { PolylinePointMarker } from "../annotation/PolylinePointMarker";
 import {
+  applyDeltaToAllPoints,
+  applyTransformsToPolyline,
+} from "../annotation/utils/polyline-utils";
+import {
   hoveredLabelAtom,
   hoveredPolylineInfoAtom,
   polylineEffectivePointsAtom,
   polylinePointTransformsAtom,
   selectedLabelForAnnotationAtom,
 } from "../state";
-import type { PolylinePointTransform } from "../annotation/types";
 import { createFilledPolygonMeshes } from "./polygon-fill-utils";
 import type { OverlayProps } from "./shared";
 import { useEventHandlers, useHoverState, useLabelColor } from "./shared/hooks";
 import { Transformable } from "./shared/TransformControls";
-import {
-  applyTransformsToPolyline,
-  applyDeltaToAllPoints,
-} from "../annotation/utils/polyline-utils";
 
 export interface PolyLineProps extends OverlayProps {
   // Array of line segments, where each segment is an array of 3D points
@@ -135,13 +134,8 @@ export const Polyline = ({
     // Dispose previous meshes
     meshesRef.current.forEach((mesh) => {
       if (mesh.geometry) mesh.geometry.dispose();
-      if (mesh.material) {
-        if (Array.isArray(mesh.material)) {
-          mesh.material.forEach((mat) => mat.dispose());
-        } else {
-          mesh.material.dispose();
-        }
-      }
+      // Don't dispose mesh.material here as it's a shared, memoized material
+      // that will be disposed by the effect below
     });
 
     const meshes = createFilledPolygonMeshes(effectivePoints3d, material);
@@ -286,13 +280,8 @@ export const Polyline = ({
   useEffect(() => {
     return () => {
       meshesRef.current.forEach((mesh) => {
-        if (mesh.geometry) mesh.geometry.dispose();
-        if (mesh.material) {
-          if (Array.isArray(mesh.material)) {
-            mesh.material.forEach((mat) => mat.dispose());
-          } else {
-            mesh.material.dispose();
-          }
+        if (mesh.geometry) {
+          mesh.geometry.dispose();
         }
       });
     };
