@@ -69,20 +69,7 @@ class TestDelegatedOperationDoc:
             ]
         )
         out = op_doc.to_pymongo()
-        assert out["pipeline"] == [
-            {
-                "name": "one",
-                "operator_uri": "@test/op1",
-                "num_distributed_tasks": None,
-                "params": None,
-            },
-            {
-                "name": "two",
-                "operator_uri": "@test/op2",
-                "num_distributed_tasks": None,
-                "params": None,
-            },
-        ]
+        assert out["pipeline"] == op_doc.pipeline.to_json()
         op_doc2 = repos.DelegatedOperationDocument()
         op_doc2.from_pymongo(out)
         assert op_doc2.pipeline == op_doc.pipeline

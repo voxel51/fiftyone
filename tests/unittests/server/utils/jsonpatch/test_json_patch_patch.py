@@ -9,7 +9,7 @@ from unittest import mock
 
 import pytest
 
-from fiftyone.server.utils.jsonpatch import methods, patch
+from fiftyone.server.utils.json.jsonpatch import methods, patch
 
 
 @pytest.mark.parametrize(
