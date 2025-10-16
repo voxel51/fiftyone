@@ -23,7 +23,14 @@ export const useOverlayPersistence = (scene: Scene2D | null) => {
 
   const versionToken = useMemo(() => {
     try {
-      return parseTimestamp(currentSample.last_modified_at)?.toISOString();
+      const isoTimestamp = parseTimestamp(
+        currentSample.last_modified_at
+      )?.toISOString();
+      if (isoTimestamp?.endsWith("Z")) {
+        return isoTimestamp.substring(0, isoTimestamp.length - 1);
+      } else {
+        return isoTimestamp;
+      }
     } catch (error) {
       return null;
     }
