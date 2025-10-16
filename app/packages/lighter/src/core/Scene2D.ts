@@ -209,6 +209,27 @@ export class Scene2D {
       this.abortController
     );
 
+    // Listen for OVERLAY_ESTABLISH events to trigger unrendering of overlays that were just set
+    config.eventBus.on(
+      LIGHTER_EVENTS.OVERLAY_ESTABLISH,
+      (event) => {
+        const overlay = this.getOverlay(event.detail.id);
+        if (overlay && TypeGuards.isMovable(overlay)) {
+          const { startBounds, absoluteBounds: endBounds } = event.detail;
+
+          const moveCommand = new MoveOverlayCommand(
+            overlay,
+            event.detail.id,
+            startBounds,
+            endBounds
+          );
+
+          this.undoRedo.push(moveCommand);
+        }
+      },
+      this.abortController
+    );
+
     // Listen for OVERLAY_DRAG_END events to trigger re-rendering of overlays that are currently dragged
     config.eventBus.on(
       LIGHTER_EVENTS.OVERLAY_DRAG_END,

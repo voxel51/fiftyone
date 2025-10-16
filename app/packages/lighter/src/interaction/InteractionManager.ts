@@ -10,7 +10,11 @@ import type { Renderer2D } from "../renderer/Renderer2D";
 import type { SelectionManager } from "../selection/SelectionManager";
 import type { Point, Rect } from "../types";
 import { InteractiveDetectionHandler } from "./InteractiveDetectionHandler";
-import { BoundingBoxOverlay } from "../overlay/BoundingBoxOverlay";
+import {
+  BoundingBoxOverlay,
+  type MoveState,
+} from "../overlay/BoundingBoxOverlay";
+import { BaseOverlay } from "../overlay/BaseOverlay";
 
 /**
  * Interface for objects that can handle interaction events.
@@ -41,6 +45,11 @@ export interface InteractionHandler {
    * @param scale - The current scaling factor of the renderer.
    */
   getCursor?(worldPoint: Point, scale: number): string;
+
+  /**
+   * Returns the current move state of the handler
+   */
+  getMoveState?(): MoveState;
 
   /**
    * Returns the position from the start of handler movement
@@ -255,7 +264,7 @@ export class InteractionManager {
             id: handler.id,
             startPosition: handler.getPosition(),
             absoluteBounds: handler.getAbsoluteBounds(),
-            relativeBounds: handler.getRelativeBounds(),
+            relativeBounds: handler.getAbsoluteBounds(),
           },
         });
       }
@@ -345,7 +354,7 @@ export class InteractionManager {
     }
 
     if (handler?.isMoving?.()) {
-      const isDragging = handler.isDragging?.();
+      const moveState = handler.getMoveState?.();
       const startBounds = handler.getMoveStartBounds()!;
       const startPosition = handler.getMoveStartPosition()!;
 
@@ -362,9 +371,12 @@ export class InteractionManager {
 
       // Emit move end event with bounds information
       if (TypeGuards.isSpatial(handler)) {
-        const type = isDragging
-          ? LIGHTER_EVENTS.OVERLAY_DRAG_END
-          : LIGHTER_EVENTS.OVERLAY_RESIZE_END;
+        const type =
+          moveState === "SETTING"
+            ? LIGHTER_EVENTS.OVERLAY_ESTABLISH
+            : moveState === "DRAGGING"
+            ? LIGHTER_EVENTS.OVERLAY_DRAG_END
+            : LIGHTER_EVENTS.OVERLAY_RESIZE_END;
 
         this.eventBus.emit({
           type,

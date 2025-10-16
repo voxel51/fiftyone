@@ -33,7 +33,9 @@ export abstract class BaseOverlay implements InteractionHandler {
   protected field: string;
   protected label: RawLookerLabel;
 
-  static validBounds(bounds: Rect): boolean {
+  static validBounds(bounds: Rect | undefined): boolean {
+    if (!bounds) return false;
+
     return ["x", "y", "width", "height"].every(
       (prop) => typeof bounds[prop] === "number" && bounds[prop] >= 0
     );
