@@ -264,7 +264,7 @@ export class InteractionManager {
             id: handler.id,
             startPosition: handler.getPosition(),
             absoluteBounds: handler.getAbsoluteBounds(),
-            relativeBounds: handler.getAbsoluteBounds(),
+            relativeBounds: handler.getRelativeBounds(),
           },
         });
       }
