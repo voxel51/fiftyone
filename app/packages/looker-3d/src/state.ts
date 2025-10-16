@@ -299,26 +299,6 @@ export const polylineEffectivePointsAtom = atomFamily<Vector3Tuple[][], string>(
   }
 );
 
-export const selectedPolylinePositionSelector = selector<
-  [number, number, number] | null
->({
-  key: "fo3d-selectedPolylinePositionSelector",
-  get: ({ get }) => {
-    const currentPoint = get(selectedPolylineVertexAtom);
-    if (!currentPoint) return null;
-
-    const transforms =
-      get(polylinePointTransformsAtom)[currentPoint.labelId] || [];
-    const transform = transforms.find(
-      (t) =>
-        t.segmentIndex === currentPoint.segmentIndex &&
-        t.pointIndex === currentPoint.pointIndex
-    );
-
-    return transform?.position ?? null;
-  },
-});
-
 export const segmentPolylineStateAtom = atom<SegmentPolylineState>({
   key: "fo3d-segmentPolylineState",
   default: {
