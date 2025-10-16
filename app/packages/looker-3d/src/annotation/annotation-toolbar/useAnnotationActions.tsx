@@ -1,6 +1,7 @@
 import {
   Add,
   Close,
+  Delete,
   GridOn,
   OpenWith,
   RotateRight,
@@ -8,8 +9,8 @@ import {
 } from "@mui/icons-material";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import { Typography } from "@mui/material";
-import { useCallback, useMemo } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useCallback, useEffect, useMemo } from "react";
+import { useRecoilState, useSetRecoilState } from "recoil";
 import * as THREE from "three";
 import MagnetIcon from "../../assets/icons/magnet.svg?react";
 import { useFo3dContext } from "../../fo3d/context";
@@ -17,6 +18,7 @@ import {
   annotationPlaneAtom,
   currentArchetypeSelectedForTransformAtom,
   isSnapToAnnotationPlaneAtom,
+  polylinePointTransformsAtom,
   segmentPolylineStateAtom,
   selectedLabelForAnnotationAtom,
   selectedPolylineVertexAtom,
@@ -28,6 +30,7 @@ import {
   type TransformSpace,
 } from "../../state";
 import { getGridQuaternionFromUpVector } from "../../utils";
+import { deletePolylinePoint } from "../utils/polyline-delete";
 import {
   PlaneCoordinateInputs,
   VertexCoordinateInputs,
@@ -44,7 +47,9 @@ export const useAnnotationActions = () => {
   const [transformMode, setTransformMode] = useRecoilState(transformModeAtom);
   const [transformSpace, setTransformSpace] =
     useRecoilState(transformSpaceAtom);
-  const selectedPoint = useRecoilValue(selectedPolylineVertexAtom);
+  const [selectedPoint, setSelectedPoint] = useRecoilState(
+    selectedPolylineVertexAtom
+  );
   const [segmentPolylineState, setSegmentPolylineState] = useRecoilState(
     segmentPolylineStateAtom
   );
@@ -55,6 +60,9 @@ export const useAnnotationActions = () => {
     snapCloseAutomaticallyAtom
   );
   const [tempPolylines, setTempPolylines] = useRecoilState(tempPolylinesAtom);
+  const setPolylinePointTransforms = useSetRecoilState(
+    polylinePointTransformsAtom
+  );
   const [annotationPlane, setAnnotationPlane] =
     useRecoilState(annotationPlaneAtom);
   const { sceneBoundingBox, upVector } = useFo3dContext();
@@ -94,6 +102,48 @@ export const useAnnotationActions = () => {
   const handleClearTempPolylines = useCallback(() => {
     setTempPolylines([]);
   }, [setTempPolylines]);
+
+  const handleDeleteSelectedPoint = useCallback(() => {
+    if (!selectedPoint) return;
+
+    const { labelId, segmentIndex, pointIndex } = selectedPoint;
+
+    setPolylinePointTransforms((prev) => {
+      const currentTransforms = prev[labelId] || [];
+      const result = deletePolylinePoint(
+        currentTransforms,
+        segmentIndex,
+        pointIndex
+      );
+
+      return {
+        ...prev,
+        [labelId]: result.newTransforms,
+      };
+    });
+
+    setSelectedPoint(null);
+    setCurrentArchetypeSelectedForTransform(null);
+  }, [
+    selectedPoint,
+    setPolylinePointTransforms,
+    setSelectedPoint,
+    setCurrentArchetypeSelectedForTransform,
+  ]);
+
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (event.key === "Delete" || event.key === "Backspace") {
+        handleDeleteSelectedPoint();
+      }
+    };
+
+    document.addEventListener("keydown", handler);
+
+    return () => {
+      document.removeEventListener("keydown", handler);
+    };
+  }, [handleDeleteSelectedPoint]);
 
   const handleToggleAnnotationPlane = useCallback(() => {
     if (!annotationPlane.enabled) {
@@ -220,6 +270,17 @@ export const useAnnotationActions = () => {
               "When enabled, double-click closes polylines. When disabled, double-click ends segment at click location.",
             isActive: snapCloseAutomatically,
             onClick: () => setSnapCloseAutomatically(!snapCloseAutomatically),
+          },
+          {
+            id: "delete-selected-point",
+            label: "Delete Point",
+            icon: <Delete />,
+            shortcut: "Delete",
+            tooltip: "Delete selected polyline point",
+            isActive: false,
+            isVisible: selectedPoint !== null,
+            isDisabled: selectedPoint === null,
+            onClick: handleDeleteSelectedPoint,
           },
         ],
       },
