@@ -1,4 +1,5 @@
 import { TransformControlsProps } from "@react-three/drei";
+import type { RefObject } from "react";
 import * as THREE from "three";
 import type {
   ACTION_SET_PCDS,
@@ -61,7 +62,7 @@ export interface TransformProps extends TransformControlsProps {
   onTransformStart?: () => void;
   onTransformEnd?: () => void;
   onTransformChange?: () => void;
-  transformControlsRef?: React.RefObject<any>;
+  transformControlsRef?: RefObject<any>;
 }
 
 export interface HoverState {

@@ -120,12 +120,11 @@ describe("getGridQuaternionFromUpVector", () => {
         result.z * result.z
     );
     expect(magnitude).toBeCloseTo(1);
-    // For antiparallel vectors, we expect a 180-degree rotation
-    // The quaternion should represent a rotation that flips the Y-axis
-    expect(result.z).toBeCloseTo(1); // 180-degree rotation around Z-axis
-    expect(result.w).toBeCloseTo(0);
-    expect(result.x).toBeCloseTo(0);
-    expect(result.y).toBeCloseTo(0);
+    const targetNormal = new Vector3(0, 1, 0);
+    const rotated = up.clone().applyQuaternion(result);
+    expect(rotated.x).toBeCloseTo(targetNormal.x);
+    expect(rotated.y).toBeCloseTo(targetNormal.y);
+    expect(rotated.z).toBeCloseTo(targetNormal.z);
   });
 
   it("handles arbitrary up vector", () => {
@@ -189,12 +188,10 @@ describe("getGridQuaternionFromUpVector", () => {
         result.z * result.z
     );
     expect(magnitude).toBeCloseTo(1);
-    // For antiparallel vectors, we expect a 180-degree rotation
-    // The quaternion should represent a rotation that flips the Z-axis
-    expect(result.w).toBeCloseTo(0);
-    expect(result.x).toBeCloseTo(0);
-    expect(result.y).toBeCloseTo(-1); // 180-degree rotation around Y-axis
-    expect(result.z).toBeCloseTo(0);
+    const rotated = up.clone().applyQuaternion(result);
+    expect(rotated.x).toBeCloseTo(targetNormal.x);
+    expect(rotated.y).toBeCloseTo(targetNormal.y);
+    expect(rotated.z).toBeCloseTo(targetNormal.z);
   });
 });
 

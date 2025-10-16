@@ -232,7 +232,9 @@ export const VertexCoordinateInputs = ({
   className,
   hideTranslate = false,
 }: CoordinateInputsProps) => {
-  const selectedPoint = useRecoilValue(selectedPolylineVertexAtom);
+  const [selectedPoint, setSelectedPoint] = useRecoilState(
+    selectedPolylineVertexAtom
+  );
   const selectedLabel = useRecoilValue(selectedLabelForAnnotationAtom);
   const [polylinePointTransforms, setPolylinePointTransforms] = useRecoilState(
     polylinePointTransformsAtom
@@ -331,6 +333,14 @@ export const VertexCoordinateInputs = ({
 
           return { ...prev, [labelId]: newTransforms };
         });
+
+        // Note: this is a hack because transform controls
+        // is updating in a buggy way when the point is moved
+        const prevSelectedPoint = selectedPoint;
+        setSelectedPoint(null);
+        setTimeout(() => {
+          setSelectedPoint(prevSelectedPoint);
+        }, 0);
       }
     },
     [

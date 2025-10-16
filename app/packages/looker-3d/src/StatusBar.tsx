@@ -111,6 +111,7 @@ const SegmentHint = styled.div<{ $border: string; $text: string }>`
   border: 1px solid ${(p) => p.$border};
   max-width: 340px;
   user-select: none;
+  pointer-events: none;
 `;
 
 const SegmentHintRow = styled.div`

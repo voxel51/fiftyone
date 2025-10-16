@@ -276,11 +276,7 @@ export function updateDuplicateVertices(
 
   effectivePoints3d.forEach((segmentPoints, segIdx) => {
     segmentPoints.forEach((candidatePoint, ptIdx) => {
-      if (
-        candidatePoint[0] === movedPoint[0] &&
-        candidatePoint[1] === movedPoint[1] &&
-        candidatePoint[2] === movedPoint[2]
-      ) {
+      if (positionsEqual(candidatePoint, movedPoint)) {
         duplicates.push({
           segmentIndex: segIdx,
           pointIndex: ptIdx,
