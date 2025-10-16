@@ -389,7 +389,6 @@ export const clearTransformStateSelector = selector({
   key: "fo3d-clearTransformState",
   get: () => null,
   set: ({ set }) => {
-    set(selectedLabelForAnnotationAtom, null);
     set(transformModeAtom, "translate");
     set(transformSpaceAtom, "world");
     set(selectedPolylineVertexAtom, null);

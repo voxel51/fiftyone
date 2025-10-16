@@ -1,23 +1,11 @@
 import * as fos from "@fiftyone/state";
 import { Line as LineDrei } from "@react-three/drei";
-import chroma from "chroma-js";
 import { useAtomValue } from "jotai";
-import { useCallback, useEffect, useMemo, useRef } from "react";
-import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import { useEffect, useMemo, useRef } from "react";
+import { useRecoilValue } from "recoil";
 import * as THREE from "three";
-import { PolylinePointMarker } from "../annotation/PolylinePointMarker";
-import {
-  applyDeltaToAllPoints,
-  applyTransformsToPolyline,
-  updateDuplicateVertices,
-} from "../annotation/utils/polyline-utils";
-import {
-  hoveredLabelAtom,
-  hoveredPolylineInfoAtom,
-  polylineEffectivePointsAtom,
-  polylinePointTransformsAtom,
-  selectedLabelForAnnotationAtom,
-} from "../state";
+import { usePolylineAnnotation } from "../annotation/usePolylineAnnotation";
+import { selectedLabelForAnnotationAtom } from "../state";
 import { createFilledPolygonMeshes } from "./polygon-fill-utils";
 import type { OverlayProps } from "./shared";
 import { useEventHandlers, useHoverState, useLabelColor } from "./shared/hooks";
@@ -45,18 +33,17 @@ export const Polyline = ({
   label,
 }: PolyLineProps) => {
   const meshesRef = useRef<THREE.Mesh[]>([]);
-  const [polylinePointTransforms, setPolylinePointTransforms] = useRecoilState(
-    polylinePointTransformsAtom
-  );
-  const isAnnotateMode = useAtomValue(fos.modalMode) === "annotate";
-  const isSelectedForAnnotation =
-    useRecoilValue(selectedLabelForAnnotationAtom)?._id === label._id;
 
   const { isHovered, setIsHovered } = useHoverState();
   const { onPointerOver, onPointerOut, restEventHandlers } = useEventHandlers(
     tooltip,
     label
   );
+
+  const isAnnotateMode = useAtomValue(fos.modalMode) === "annotate";
+  const isSelectedForAnnotation =
+    useRecoilValue(selectedLabelForAnnotationAtom)?._id === label._id;
+
   const { strokeAndFillColor } = useLabelColor(
     { selected, color },
     isHovered,
@@ -64,21 +51,24 @@ export const Polyline = ({
     isSelectedForAnnotation
   );
 
-  const setHoveredLabel = useSetRecoilState(hoveredLabelAtom);
-  const setHoveredPolylineInfo = useSetRecoilState(hoveredPolylineInfoAtom);
-
-  const [effectivePoints3d, setPolylineEffectivePoints] = useRecoilState(
-    polylineEffectivePointsAtom(label._id)
-  );
-
-  // Compute the effective points by applying transformations
-  useEffect(() => {
-    const labelId = label._id;
-    const transforms = polylinePointTransforms[labelId] || [];
-
-    const result = applyTransformsToPolyline(points3d, transforms);
-    setPolylineEffectivePoints(result);
-  }, [polylinePointTransforms, label._id, points3d]);
+  const {
+    effectivePoints3d,
+    centroid,
+    transformControlsRef,
+    contentRef,
+    markers,
+    handleTransformEnd,
+    handlePointerOver: handleAnnotationPointerOver,
+    handlePointerOut: handleAnnotationPointerOut,
+    handleSegmentPointerOver,
+    handleSegmentPointerOut,
+  } = usePolylineAnnotation({
+    label,
+    points3d,
+    strokeAndFillColor,
+    isAnnotateMode,
+    isSelectedForAnnotation,
+  });
 
   const lines = useMemo(
     () =>
@@ -90,20 +80,8 @@ export const Polyline = ({
           points={pts}
           color={strokeAndFillColor}
           rotation={rotation}
-          onPointerOver={() => {
-            if (isAnnotateMode) {
-              setHoveredPolylineInfo({
-                labelId: label._id,
-                segmentIndex: i,
-                // pointIndex is undefined when hovering over the segment
-              });
-            }
-          }}
-          onPointerOut={() => {
-            if (isAnnotateMode) {
-              setHoveredPolylineInfo(null);
-            }
-          }}
+          onPointerOver={() => handleSegmentPointerOver(i)}
+          onPointerOut={handleSegmentPointerOut}
         />
       )),
     [
@@ -112,8 +90,8 @@ export const Polyline = ({
       lineWidth,
       rotation,
       label._id,
-      isAnnotateMode,
-      setHoveredPolylineInfo,
+      handleSegmentPointerOver,
+      handleSegmentPointerOut,
     ]
   );
 
@@ -135,8 +113,6 @@ export const Polyline = ({
     // Dispose previous meshes
     meshesRef.current.forEach((mesh) => {
       if (mesh.geometry) mesh.geometry.dispose();
-      // Don't dispose mesh.material here as it's a shared, memoized material
-      // that will be disposed by the effect below
     });
 
     const meshes = createFilledPolygonMeshes(effectivePoints3d, material);
@@ -152,120 +128,6 @@ export const Polyline = ({
       />
     ));
   }, [filled, effectivePoints3d, rotation, material, label._id]);
-
-  // Calculate centroid of polylines for transform controls
-  const centroid = useMemo(() => {
-    if (effectivePoints3d.length === 0) return [0, 0, 0];
-
-    const allPoints = effectivePoints3d.flat();
-    if (allPoints.length === 0) return [0, 0, 0];
-
-    const sum = allPoints.reduce(
-      (acc, point) => [acc[0] + point[0], acc[1] + point[1], acc[2] + point[2]],
-      [0, 0, 0]
-    );
-
-    return [
-      sum[0] / allPoints.length,
-      sum[1] / allPoints.length,
-      sum[2] / allPoints.length,
-    ] as [number, number, number];
-  }, [effectivePoints3d]);
-
-  const pointMarkers = useMemo(() => {
-    if (!isAnnotateMode || !isSelectedForAnnotation) return null;
-
-    // this is to have contrast for annotation,
-    // or else the point markers would be invisible with large line widths
-    const complementaryColor = chroma(strokeAndFillColor)
-      .set("hsl.h", "+180")
-      .hex();
-
-    // Global deduplication set to prevent multiple markers for the same physical vertex
-    // This ensures that shared vertices between segments only get one draggable marker
-    const visitedPoints = new Set<string>();
-
-    return effectivePoints3d.flatMap((segment, segmentIndex) => {
-      return segment.map((point, pointIndex) => {
-        // Note: important to use a key based only on coordinates (not segment/point indices)
-        // This allows proper deduplication of vertices that appear in multiple segments
-        const key = `${point[0]}-${point[1]}-${point[2]}`;
-
-        // Skip creating a marker if we've already seen this vertex position
-        if (visitedPoints.has(key)) {
-          return null;
-        }
-
-        // Mark this vertex position as visited to prevent duplicates
-        visitedPoints.add(key);
-
-        return (
-          <PolylinePointMarker
-            key={key}
-            position={new THREE.Vector3(...point)}
-            color={complementaryColor}
-            isDraggable={true}
-            labelId={label._id}
-            segmentIndex={segmentIndex}
-            pointIndex={pointIndex}
-            onPointMove={(newPosition) => {
-              setPolylinePointTransforms((prev) => {
-                const labelId = label._id;
-                const currentTransforms = prev[labelId] || [];
-
-                const newTransforms = updateDuplicateVertices(
-                  point,
-                  [newPosition.x, newPosition.y, newPosition.z],
-                  effectivePoints3d,
-                  currentTransforms
-                );
-
-                return {
-                  ...prev,
-                  [labelId]: newTransforms,
-                };
-              });
-            }}
-            pulsate={false}
-          />
-        );
-      });
-    });
-  }, [
-    isAnnotateMode,
-    isSelectedForAnnotation,
-    effectivePoints3d,
-    label._id,
-    strokeAndFillColor,
-  ]);
-
-  const centroidMarker = useMemo(() => {
-    if (!isAnnotateMode || !isSelectedForAnnotation) return null;
-
-    const centroidColor = chroma(strokeAndFillColor)
-      .set("hsl.h", "+180")
-      .brighten(1.5)
-      .hex();
-
-    return (
-      <PolylinePointMarker
-        key={`centroid-${label._id}`}
-        position={new THREE.Vector3(...centroid)}
-        color={centroidColor}
-        size={0.05}
-        pulsate={false}
-        labelId={label._id}
-        segmentIndex={-1}
-        pointIndex={-1}
-      />
-    );
-  }, [
-    isAnnotateMode,
-    isSelectedForAnnotation,
-    centroid,
-    strokeAndFillColor,
-    label._id,
-  ]);
 
   useEffect(() => {
     return () => {
@@ -285,53 +147,11 @@ export const Polyline = ({
     };
   }, [material]);
 
-  const transformControlsRef = useRef(null);
-  const contentRef = useRef<THREE.Group>(null);
-
-  const handleTransformEnd = useCallback(() => {
-    const controls = transformControlsRef.current;
-    if (!controls) return;
-
-    const grp = contentRef.current;
-    if (!grp) return;
-
-    const worldDelta = controls.offset.clone();
-
-    setPolylinePointTransforms((prev) => {
-      const labelId = label._id;
-      const currentTransforms = prev[labelId] || [];
-
-      const newTransforms = applyDeltaToAllPoints(
-        effectivePoints3d,
-        points3d,
-        currentTransforms,
-        [worldDelta.x, worldDelta.y, worldDelta.z]
-      );
-
-      return { ...prev, [labelId]: newTransforms };
-    });
-
-    // Reset group position to prevent double-application
-    // This is important because transform controls are applied to the group
-    // Whereas we create polylines from the effective points
-    if (contentRef.current) {
-      contentRef.current.position.set(0, 0, 0);
-    }
-  }, [label._id, points3d, effectivePoints3d]);
-
   const content = (
     <>
       {filled && filledMeshes}
       {lines}
-      {centroidMarker}
     </>
-  );
-
-  const markers = (
-    <group>
-      {pointMarkers}
-      {centroidMarker}
-    </group>
   );
 
   return (
@@ -348,16 +168,12 @@ export const Polyline = ({
         <group
           onPointerOver={() => {
             setIsHovered(true);
-            if (isAnnotateMode) {
-              setHoveredLabel(label);
-            }
+            handleAnnotationPointerOver();
             onPointerOver();
           }}
           onPointerOut={() => {
             setIsHovered(false);
-            if (isAnnotateMode) {
-              setHoveredLabel(null);
-            }
+            handleAnnotationPointerOut();
             onPointerOut();
           }}
           onClick={onClick}
