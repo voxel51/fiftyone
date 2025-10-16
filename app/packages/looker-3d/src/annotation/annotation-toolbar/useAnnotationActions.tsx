@@ -2,11 +2,11 @@ import {
   Add,
   Close,
   Delete,
-  GridOn,
   OpenWith,
   RotateRight,
   Straighten,
 } from "@mui/icons-material";
+import RectangleIcon from "@mui/icons-material/Rectangle";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import { Typography } from "@mui/material";
 import { useCallback, useEffect, useMemo } from "react";
@@ -257,7 +257,7 @@ export const useAnnotationActions = () => {
           {
             id: "toggle-annotation-plane",
             label: "Annotation Plane",
-            icon: <GridOn />,
+            icon: <RectangleIcon />,
             tooltip: "Toggle annotation plane for z-drift prevention",
             isActive: annotationPlane.enabled,
             onClick: handleToggleAnnotationPlane,

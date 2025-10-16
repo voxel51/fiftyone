@@ -71,9 +71,8 @@ export const ThreeDLabels = ({
   const tooltip = fos.useTooltip();
   const labelAlpha = globalOpacity ?? colorScheme.opacity;
 
-  const setSelectedLabelForAnnotation = useSetRecoilState(
-    selectedLabelForAnnotationAtom
-  );
+  const [selectedLabelForAnnotation, setSelectedLabelForAnnotation] =
+    useRecoilState(selectedLabelForAnnotationAtom);
 
   const [transformMode, setTransformMode] = useRecoilState(transformModeAtom);
   const setCurrentArchetypeSelectedForTransform = useSetRecoilState(
@@ -139,6 +138,10 @@ export const ThreeDLabels = ({
       if (isSegmenting) return;
 
       if (mode === "annotate") {
+        if (archetype === "cuboid") {
+          return;
+        }
+
         selectLabelForAnnotation(label);
         setCurrentArchetypeSelectedForTransform(archetype);
 
@@ -157,6 +160,27 @@ export const ThreeDLabels = ({
     },
     [onSelectLabel, mode, selectLabelForAnnotation, isSegmenting]
   );
+
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (
+        event.key === "Escape" &&
+        mode === "annotate" &&
+        selectedLabelForAnnotation
+      ) {
+        setSelectedLabelForAnnotation(null);
+
+        event.stopImmediatePropagation();
+        event.preventDefault();
+      }
+    };
+
+    document.addEventListener("keydown", handler);
+
+    return () => {
+      document.removeEventListener("keydown", handler);
+    };
+  }, [setSelectedLabelForAnnotation, mode, selectedLabelForAnnotation]);
 
   const [overlayRotation, itemRotation] = useMemo(
     () => [
@@ -216,7 +240,7 @@ export const ThreeDLabels = ({
             itemRotation={itemRotation}
             opacity={labelAlpha}
             {...(overlay as CuboidProps)}
-            onClick={(e) => handleSelect(overlay, null, e)}
+            onClick={(e) => handleSelect(overlay, "cuboid", e)}
             label={overlay}
             tooltip={tooltip}
             useLegacyCoordinates={settings.useLegacyCoordinates}
@@ -332,12 +356,6 @@ export const ThreeDLabels = ({
     polylineWidth,
     currentSampleId,
   ]);
-
-  console.log("polyline overlays length", polylineOverlays.length, "and ");
-
-  useEffect(() => {
-    console.log("polylinePointTransforms", polylinePointTransforms);
-  }, [polylinePointTransforms]);
 
   const getOnShiftClickLabelCallback = useOnShiftClickLabel();
 

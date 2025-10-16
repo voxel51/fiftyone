@@ -250,7 +250,7 @@ export const AnnotationPlane = ({
       if (event.key === "Escape" && isSelected) {
         setCurrentArchetypeSelectedForTransform(null);
         setIsDragging(false);
-        event.stopPropagation();
+        event.stopImmediatePropagation();
         event.preventDefault();
       }
     };

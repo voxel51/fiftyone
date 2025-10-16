@@ -107,9 +107,9 @@ export const PolylinePointMarker = ({
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
+      if (event.key === "Escape" && selectedPoint) {
         setSelectedPoint(null);
-        event.stopPropagation();
+        event.stopImmediatePropagation();
         event.preventDefault();
       }
     };
@@ -119,7 +119,7 @@ export const PolylinePointMarker = ({
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [setSelectedPoint]);
+  }, [setSelectedPoint, selectedPoint]);
 
   // Apply distance-based scaling
   useFrame(({ clock, camera }) => {

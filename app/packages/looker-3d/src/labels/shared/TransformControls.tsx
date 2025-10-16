@@ -2,7 +2,7 @@ import * as fos from "@fiftyone/state";
 import { TransformControls } from "@react-three/drei";
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import * as THREE from "three";
 import {
   currentArchetypeSelectedForTransformAtom,
@@ -56,7 +56,7 @@ export const Transformable = ({
     currentArchetypeSelectedForTransformAtom
   );
 
-  const setIsCurrentlyTransforming = useSetRecoilState(
+  const [isCurrentlyTransforming, setIsCurrentlyTransforming] = useRecoilState(
     isCurrentlyTransformingAtom
   );
 
@@ -76,9 +76,9 @@ export const Transformable = ({
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
+      if (event.key === "Escape" && isCurrentlyTransforming) {
         setIsCurrentlyTransforming(false);
-        event.stopPropagation();
+        event.stopImmediatePropagation();
         event.preventDefault();
       }
     };
@@ -88,7 +88,7 @@ export const Transformable = ({
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [archetype]);
+  }, [archetype, isCurrentlyTransforming]);
 
   return (
     <>

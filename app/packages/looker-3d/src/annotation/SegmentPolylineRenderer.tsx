@@ -274,8 +274,8 @@ export const SegmentPolylineRenderer = ({
 
         setIsActivelySegmenting(false);
 
+        event.stopImmediatePropagation();
         event.preventDefault();
-        event.stopPropagation();
       }
     };
 
