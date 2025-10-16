@@ -10,6 +10,7 @@ import {
   getCurrentVertexPosition,
   getVertexPosition,
   shouldClosePolylineLoop,
+  updateDuplicateVertices,
 } from "./polyline-utils";
 
 // Import the positionsEqual function for testing (it's not exported, so we'll test it indirectly)
@@ -676,6 +677,312 @@ describe("applyDeltaToAllPoints", () => {
     expect(result).toEqual([
       { segmentIndex: 0, pointIndex: 0, position: [4, 4, 4] },
       { segmentIndex: 0, pointIndex: 1, position: [2, 2, 2] },
+    ]);
+  });
+});
+
+describe("updateDuplicateVertices", () => {
+  it("updates all duplicate vertices across segments", () => {
+    const movedPoint: Vector3Tuple = [1, 1, 1];
+    const newPosition: Vector3Tuple = [5, 5, 5];
+    const effectivePoints3d: Vector3Tuple[][] = [
+      [
+        [0, 0, 0],
+        [1, 1, 1], // This vertex appears in multiple segments
+        [2, 2, 2],
+      ],
+      [
+        [1, 1, 1], // Duplicate vertex
+        [3, 3, 3],
+      ],
+    ];
+    const currentTransforms: PolylinePointTransform[] = [];
+
+    const result = updateDuplicateVertices(
+      movedPoint,
+      newPosition,
+      effectivePoints3d,
+      currentTransforms
+    );
+
+    expect(result).toEqual([
+      { segmentIndex: 0, pointIndex: 1, position: [5, 5, 5] },
+      { segmentIndex: 1, pointIndex: 0, position: [5, 5, 5] },
+    ]);
+  });
+
+  it("updates existing transforms for duplicate vertices", () => {
+    const movedPoint: Vector3Tuple = [1, 1, 1];
+    const newPosition: Vector3Tuple = [5, 5, 5];
+    const effectivePoints3d: Vector3Tuple[][] = [
+      [
+        [0, 0, 0],
+        [1, 1, 1],
+        [2, 2, 2],
+      ],
+      [
+        [1, 1, 1],
+        [3, 3, 3],
+      ],
+    ];
+    const currentTransforms: PolylinePointTransform[] = [
+      { segmentIndex: 0, pointIndex: 1, position: [2, 2, 2] },
+      { segmentIndex: 1, pointIndex: 0, position: [3, 3, 3] },
+    ];
+
+    const result = updateDuplicateVertices(
+      movedPoint,
+      newPosition,
+      effectivePoints3d,
+      currentTransforms
+    );
+
+    expect(result).toEqual([
+      { segmentIndex: 0, pointIndex: 1, position: [5, 5, 5] },
+      { segmentIndex: 1, pointIndex: 0, position: [5, 5, 5] },
+    ]);
+  });
+
+  it("handles vertices with no duplicates", () => {
+    const movedPoint: Vector3Tuple = [1, 1, 1];
+    const newPosition: Vector3Tuple = [5, 5, 5];
+    const effectivePoints3d: Vector3Tuple[][] = [
+      [
+        [0, 0, 0],
+        [1, 1, 1],
+        [2, 2, 2],
+      ],
+      [
+        [3, 3, 3],
+        [4, 4, 4],
+      ],
+    ];
+    const currentTransforms: PolylinePointTransform[] = [];
+
+    const result = updateDuplicateVertices(
+      movedPoint,
+      newPosition,
+      effectivePoints3d,
+      currentTransforms
+    );
+
+    expect(result).toEqual([
+      { segmentIndex: 0, pointIndex: 1, position: [5, 5, 5] },
+    ]);
+  });
+
+  it("handles multiple segments with the same vertex", () => {
+    const movedPoint: Vector3Tuple = [1, 1, 1];
+    const newPosition: Vector3Tuple = [5, 5, 5];
+    const effectivePoints3d: Vector3Tuple[][] = [
+      [
+        [1, 1, 1], // First occurrence
+        [2, 2, 2],
+      ],
+      [
+        [1, 1, 1], // Second occurrence
+        [3, 3, 3],
+      ],
+      [
+        [1, 1, 1], // Third occurrence
+        [4, 4, 4],
+      ],
+    ];
+    const currentTransforms: PolylinePointTransform[] = [];
+
+    const result = updateDuplicateVertices(
+      movedPoint,
+      newPosition,
+      effectivePoints3d,
+      currentTransforms
+    );
+
+    expect(result).toEqual([
+      { segmentIndex: 0, pointIndex: 0, position: [5, 5, 5] },
+      { segmentIndex: 1, pointIndex: 0, position: [5, 5, 5] },
+      { segmentIndex: 2, pointIndex: 0, position: [5, 5, 5] },
+    ]);
+  });
+
+  it("preserves existing transforms for non-duplicate vertices", () => {
+    const movedPoint: Vector3Tuple = [1, 1, 1];
+    const newPosition: Vector3Tuple = [5, 5, 5];
+    const effectivePoints3d: Vector3Tuple[][] = [
+      [
+        [0, 0, 0],
+        [1, 1, 1],
+        [2, 2, 2],
+      ],
+      [
+        [1, 1, 1],
+        [3, 3, 3],
+      ],
+    ];
+    const currentTransforms: PolylinePointTransform[] = [
+      { segmentIndex: 0, pointIndex: 0, position: [10, 10, 10] },
+      { segmentIndex: 1, pointIndex: 1, position: [20, 20, 20] },
+    ];
+
+    const result = updateDuplicateVertices(
+      movedPoint,
+      newPosition,
+      effectivePoints3d,
+      currentTransforms
+    );
+
+    expect(result).toEqual([
+      { segmentIndex: 0, pointIndex: 0, position: [10, 10, 10] },
+      { segmentIndex: 1, pointIndex: 1, position: [20, 20, 20] },
+      { segmentIndex: 0, pointIndex: 1, position: [5, 5, 5] },
+      { segmentIndex: 1, pointIndex: 0, position: [5, 5, 5] },
+    ]);
+  });
+
+  it("handles empty effectivePoints3d array", () => {
+    const movedPoint: Vector3Tuple = [1, 1, 1];
+    const newPosition: Vector3Tuple = [5, 5, 5];
+    const effectivePoints3d: Vector3Tuple[][] = [];
+    const currentTransforms: PolylinePointTransform[] = [];
+
+    const result = updateDuplicateVertices(
+      movedPoint,
+      newPosition,
+      effectivePoints3d,
+      currentTransforms
+    );
+
+    expect(result).toEqual([]);
+  });
+
+  it("handles empty segments in effectivePoints3d", () => {
+    const movedPoint: Vector3Tuple = [1, 1, 1];
+    const newPosition: Vector3Tuple = [5, 5, 5];
+    const effectivePoints3d: Vector3Tuple[][] = [[], []];
+    const currentTransforms: PolylinePointTransform[] = [];
+
+    const result = updateDuplicateVertices(
+      movedPoint,
+      newPosition,
+      effectivePoints3d,
+      currentTransforms
+    );
+
+    expect(result).toEqual([]);
+  });
+
+  it("handles floating point precision in vertex matching", () => {
+    const movedPoint: Vector3Tuple = [1.0, 1.0, 1.0];
+    const newPosition: Vector3Tuple = [5, 5, 5];
+    const effectivePoints3d: Vector3Tuple[][] = [
+      [
+        [0, 0, 0],
+        [1.0, 1.0, 1.0], // Exact match
+        [2, 2, 2],
+      ],
+      [
+        [1.0, 1.0, 1.0], // Exact match
+        [3, 3, 3],
+      ],
+    ];
+    const currentTransforms: PolylinePointTransform[] = [];
+
+    const result = updateDuplicateVertices(
+      movedPoint,
+      newPosition,
+      effectivePoints3d,
+      currentTransforms
+    );
+
+    expect(result).toEqual([
+      { segmentIndex: 0, pointIndex: 1, position: [5, 5, 5] },
+      { segmentIndex: 1, pointIndex: 0, position: [5, 5, 5] },
+    ]);
+  });
+
+  it("handles negative coordinates", () => {
+    const movedPoint: Vector3Tuple = [-1, -1, -1];
+    const newPosition: Vector3Tuple = [5, 5, 5];
+    const effectivePoints3d: Vector3Tuple[][] = [
+      [
+        [0, 0, 0],
+        [-1, -1, -1],
+        [2, 2, 2],
+      ],
+      [
+        [-1, -1, -1],
+        [3, 3, 3],
+      ],
+    ];
+    const currentTransforms: PolylinePointTransform[] = [];
+
+    const result = updateDuplicateVertices(
+      movedPoint,
+      newPosition,
+      effectivePoints3d,
+      currentTransforms
+    );
+
+    expect(result).toEqual([
+      { segmentIndex: 0, pointIndex: 1, position: [5, 5, 5] },
+      { segmentIndex: 1, pointIndex: 0, position: [5, 5, 5] },
+    ]);
+  });
+
+  it("handles zero coordinates", () => {
+    const movedPoint: Vector3Tuple = [0, 0, 0];
+    const newPosition: Vector3Tuple = [5, 5, 5];
+    const effectivePoints3d: Vector3Tuple[][] = [
+      [
+        [0, 0, 0],
+        [1, 1, 1],
+        [2, 2, 2],
+      ],
+      [
+        [0, 0, 0],
+        [3, 3, 3],
+      ],
+    ];
+    const currentTransforms: PolylinePointTransform[] = [];
+
+    const result = updateDuplicateVertices(
+      movedPoint,
+      newPosition,
+      effectivePoints3d,
+      currentTransforms
+    );
+
+    expect(result).toEqual([
+      { segmentIndex: 0, pointIndex: 0, position: [5, 5, 5] },
+      { segmentIndex: 1, pointIndex: 0, position: [5, 5, 5] },
+    ]);
+  });
+
+  it("handles large coordinate values", () => {
+    const movedPoint: Vector3Tuple = [1000000, 2000000, 3000000];
+    const newPosition: Vector3Tuple = [5000000, 5000000, 5000000];
+    const effectivePoints3d: Vector3Tuple[][] = [
+      [
+        [0, 0, 0],
+        [1000000, 2000000, 3000000],
+        [2, 2, 2],
+      ],
+      [
+        [1000000, 2000000, 3000000],
+        [3, 3, 3],
+      ],
+    ];
+    const currentTransforms: PolylinePointTransform[] = [];
+
+    const result = updateDuplicateVertices(
+      movedPoint,
+      newPosition,
+      effectivePoints3d,
+      currentTransforms
+    );
+
+    expect(result).toEqual([
+      { segmentIndex: 0, pointIndex: 1, position: [5000000, 5000000, 5000000] },
+      { segmentIndex: 1, pointIndex: 0, position: [5000000, 5000000, 5000000] },
     ]);
   });
 });

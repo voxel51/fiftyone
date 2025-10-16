@@ -9,6 +9,7 @@ import { PolylinePointMarker } from "../annotation/PolylinePointMarker";
 import {
   applyDeltaToAllPoints,
   applyTransformsToPolyline,
+  updateDuplicateVertices,
 } from "../annotation/utils/polyline-utils";
 import {
   hoveredLabelAtom,
@@ -180,14 +181,22 @@ export const Polyline = ({
       .set("hsl.h", "+180")
       .hex();
 
+    // Global deduplication set to prevent multiple markers for the same physical vertex
+    // This ensures that shared vertices between segments only get one draggable marker
+    const visitedPoints = new Set<string>();
+
     return effectivePoints3d.flatMap((segment, segmentIndex) => {
-      let visitedPoints = new Set();
-
       return segment.map((point, pointIndex) => {
-        const key = `${point[0]}-${point[1]}-${point[2]}-${segmentIndex}-${pointIndex}`;
+        // Note: important to use a key based only on coordinates (not segment/point indices)
+        // This allows proper deduplication of vertices that appear in multiple segments
+        const key = `${point[0]}-${point[1]}-${point[2]}`;
 
-        if (visitedPoints.has(key)) return null;
+        // Skip creating a marker if we've already seen this vertex position
+        if (visitedPoints.has(key)) {
+          return null;
+        }
 
+        // Mark this vertex position as visited to prevent duplicates
         visitedPoints.add(key);
 
         return (
@@ -204,31 +213,12 @@ export const Polyline = ({
                 const labelId = label._id;
                 const currentTransforms = prev[labelId] || [];
 
-                const existingTransformIndex = currentTransforms.findIndex(
-                  (transform) =>
-                    transform.segmentIndex === segmentIndex &&
-                    transform.pointIndex === pointIndex
+                const newTransforms = updateDuplicateVertices(
+                  point,
+                  [newPosition.x, newPosition.y, newPosition.z],
+                  effectivePoints3d,
+                  currentTransforms
                 );
-
-                const newTransform = {
-                  segmentIndex,
-                  pointIndex,
-                  position: [newPosition.x, newPosition.y, newPosition.z] as [
-                    number,
-                    number,
-                    number
-                  ],
-                };
-
-                let newTransforms;
-                if (existingTransformIndex >= 0) {
-                  // Update existing transform
-                  newTransforms = [...currentTransforms];
-                  newTransforms[existingTransformIndex] = newTransform;
-                } else {
-                  // Add new transform
-                  newTransforms = [...currentTransforms, newTransform];
-                }
 
                 return {
                   ...prev,

@@ -254,3 +254,66 @@ export function applyDeltaToAllPoints(
 
   return newTransforms;
 }
+
+/**
+ * Updates all duplicate vertices across segments when a vertex is moved.
+ * This prevents tearing by ensuring all segments sharing a vertex move together.
+ *
+ * @param movedPoint - The original point that was moved
+ * @param newPosition - The new position to apply to all duplicates
+ * @param effectivePoints3d - Current effective points array
+ * @param currentTransforms - Existing transforms
+ * @returns Updated transforms array with new position applied to all duplicate vertices
+ */
+export function updateDuplicateVertices(
+  movedPoint: Vector3Tuple,
+  newPosition: Vector3Tuple,
+  effectivePoints3d: Vector3Tuple[][],
+  currentTransforms: PolylinePointTransform[]
+): PolylinePointTransform[] {
+  // Find all occurrences of this vertex across all segments
+  const duplicates: { segmentIndex: number; pointIndex: number }[] = [];
+
+  effectivePoints3d.forEach((segmentPoints, segIdx) => {
+    segmentPoints.forEach((candidatePoint, ptIdx) => {
+      if (
+        candidatePoint[0] === movedPoint[0] &&
+        candidatePoint[1] === movedPoint[1] &&
+        candidatePoint[2] === movedPoint[2]
+      ) {
+        duplicates.push({
+          segmentIndex: segIdx,
+          pointIndex: ptIdx,
+        });
+      }
+    });
+  });
+
+  // Start with existing transforms
+  let newTransforms = [...currentTransforms];
+
+  // Apply the new position to all duplicate vertices
+  duplicates.forEach(({ segmentIndex: dupSeg, pointIndex: dupPt }) => {
+    // Check if this vertex already has a transform
+    const existingTransformIndex = newTransforms.findIndex(
+      (transform) =>
+        transform.segmentIndex === dupSeg && transform.pointIndex === dupPt
+    );
+
+    // Create the new transform with the updated position
+    const newTransform = {
+      segmentIndex: dupSeg,
+      pointIndex: dupPt,
+      position: newPosition,
+    };
+
+    // Update existing transform or add new one
+    if (existingTransformIndex >= 0) {
+      newTransforms[existingTransformIndex] = newTransform;
+    } else {
+      newTransforms.push(newTransform);
+    }
+  });
+
+  return newTransforms;
+}
