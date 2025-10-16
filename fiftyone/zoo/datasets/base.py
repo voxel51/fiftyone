@@ -5,6 +5,7 @@ FiftyOne Zoo Datasets provided natively by the library.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 import os
 import shutil
@@ -706,7 +707,7 @@ class CityscapesDataset(FiftyOneDataset):
 
     @property
     def supported_splits(self):
-        return ("train", "validation", "test")
+        return ("train", "validation", "test", "train_extra")
 
     @property
     def requires_manual_download(self):
