@@ -3,7 +3,7 @@ import * as fos from "@fiftyone/state";
 import { useBrowserStorage } from "@fiftyone/state";
 import { MenuItem, Select } from "@mui/material";
 import {
-  Bvh,
+  Bounds,
   CameraControls,
   MapControls,
   OrthographicCamera,
@@ -11,7 +11,14 @@ import {
 } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import CameraControlsImpl from "camera-controls";
-import { useCallback, useLayoutEffect, useMemo, useRef } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import * as THREE from "three";
@@ -25,7 +32,6 @@ import { Gizmos } from "../fo3d/Gizmos";
 import HoverMetadataHUD from "../fo3d/HoverMetadataHUD";
 import { FoScene } from "../hooks";
 import { ThreeDLabels } from "../labels";
-import { SpinningCube } from "../SpinningCube";
 import {
   activeNodeAtom,
   currentArchetypeSelectedForTransformAtom,
@@ -447,74 +453,14 @@ const SidePanel = ({
 
   const cameraRef = useRef<THREE.OrthographicCamera>();
 
-  // Calculate camera position based on scene bounding box to fit the scene neatly
-  const adjustedPosition = useMemo(() => {
-    if (
-      !sceneBoundingBox ||
-      sceneBoundingBox.isEmpty() ||
-      !upVector ||
-      !lookAt
-    ) {
-      return position; // Use default position if no bounding box
-    }
+  // we need to observe the bounds for a short period of time to ensure the camera is in the correct position
+  // but turn it off so that users can pan/zoom and work with a stable scene
+  const [observe, setObserve] = useState(true);
 
-    const size = new Vector3();
-    sceneBoundingBox.getSize(size);
-    const maxSize = Math.max(size.x, size.y, size.z);
-
-    // Calculate distance based on scene size to ensure it fits in the viewport
-    // For orthographic cameras, we need to position the camera at an appropriate distance
-    // so the scene fits within the camera's view frustum
-    const distance = maxSize * 1.5; // 1.5x the max size for comfortable padding
-
-    const upDir = upVector.clone().normalize();
-    const center = lookAt.clone();
-
-    // Calculate direction based on view type
-    let direction: Vector3;
-    switch (view) {
-      case "Top":
-        direction = upDir.clone();
-        break;
-      case "Bottom":
-        direction = upDir.clone().negate();
-        break;
-      case "Left":
-        if (Math.abs(upDir.y) > 0.9) {
-          direction = new Vector3(-1, 0, 0);
-        } else {
-          direction = new Vector3(0, 1, 0).cross(upDir).normalize();
-        }
-        break;
-      case "Right":
-        if (Math.abs(upDir.y) > 0.9) {
-          direction = new Vector3(1, 0, 0);
-        } else {
-          direction = new Vector3(0, 1, 0).cross(upDir).normalize().negate();
-        }
-        break;
-      case "Front":
-        if (Math.abs(upDir.y) > 0.9) {
-          direction = new Vector3(0, 0, 1);
-        } else {
-          const left = new Vector3(0, 1, 0).cross(upDir).normalize();
-          direction = upDir.clone().cross(left).normalize();
-        }
-        break;
-      case "Back":
-        if (Math.abs(upDir.y) > 0.9) {
-          direction = new Vector3(0, 0, -1);
-        } else {
-          const left = new Vector3(0, 1, 0).cross(upDir).normalize();
-          direction = upDir.clone().cross(left).normalize().negate();
-        }
-        break;
-      default:
-        direction = upDir.clone();
-    }
-
-    return center.clone().add(direction.multiplyScalar(distance));
-  }, [position, sceneBoundingBox, upVector, lookAt, view]);
+  useEffect(() => {
+    const timer = setTimeout(() => setObserve(false), 1000);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <SidePanelContainer id={`${which}-panel`} $area={which}>
@@ -530,44 +476,39 @@ const SidePanel = ({
         <OrthographicCamera
           makeDefault
           ref={cameraRef}
-          position={adjustedPosition}
+          position={position}
           up={upVector ?? [0, 1, 0]}
-          zoom={2}
-          near={0}
-          far={foScene?.cameraProps.far ?? 2500}
-          onUpdate={(cam) => cam.updateProjectionMatrix()}
         />
 
         <MapControls makeDefault screenSpacePanning enableRotate={false} />
 
-        <Gizmos isGridVisible={false} isGizmoHelperVisible={false} />
-        {!isSceneInitialized && <SpinningCube />}
-        <Bvh firstHitOnly enabled={pointCloudSettings.enableTooltip}>
+        <Bounds fit clip observe={observe} margin={1.15}>
+          <Gizmos isGridVisible={false} isGizmoHelperVisible={false} />
           <group visible={isSceneInitialized}>
             <FoSceneComponent scene={foScene} />
           </group>
-        </Bvh>
-        {isSceneInitialized && (
-          <ThreeDLabels
-            sampleMap={{ fo3d: sample as any }}
-            globalOpacity={0.15}
+          {isSceneInitialized && (
+            <ThreeDLabels
+              sampleMap={{ fo3d: sample as any }}
+              globalOpacity={0.15}
+            />
+          )}
+          <AnnotationPlane
+            showTransformControls={false}
+            panelType="side"
+            viewType={
+              view.toLowerCase() as
+                | "top"
+                | "bottom"
+                | "right"
+                | "left"
+                | "front"
+                | "back"
+            }
           />
-        )}
-        <AnnotationPlane
-          showTransformControls={false}
-          panelType="side"
-          viewType={
-            view.toLowerCase() as
-              | "top"
-              | "bottom"
-              | "right"
-              | "left"
-              | "front"
-              | "back"
-          }
-        />
-        <SegmentPolylineRenderer ignoreEffects />
-        <Crosshair3D />
+          <SegmentPolylineRenderer ignoreEffects />
+          <Crosshair3D />
+        </Bounds>
       </View>
       <ViewSelectorWrapper>
         <Select

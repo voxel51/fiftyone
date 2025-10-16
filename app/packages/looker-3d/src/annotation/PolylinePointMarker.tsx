@@ -121,12 +121,14 @@ export const PolylinePointMarker = ({
     };
   }, [setSelectedPoint, selectedPoint]);
 
-  // Apply distance-based scaling
+  // Apply distance-based scaling with min/max bounds
   useFrame(({ clock, camera }) => {
     const distance = camera.position.distanceTo(position);
 
-    // Scale proportionally with distance to compensate for perspective
-    const screenSpaceScale = distance * 0.1;
+    const rawScale = distance;
+    const minScale = 2;
+    const maxScale = 10.0;
+    const screenSpaceScale = Math.max(minScale, Math.min(maxScale, rawScale));
     let finalScale = screenSpaceScale;
 
     if (pulsate) {

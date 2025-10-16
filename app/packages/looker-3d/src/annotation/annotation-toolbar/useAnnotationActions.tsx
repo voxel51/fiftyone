@@ -131,10 +131,52 @@ export const useAnnotationActions = () => {
     setCurrentArchetypeSelectedForTransform,
   ]);
 
+  const handleDeleteEntireTransform = useCallback(() => {
+    if (
+      !selectedLabelForAnnotation ||
+      selectedLabelForAnnotation._cls !== "Polyline"
+    )
+      return;
+
+    const labelId = selectedLabelForAnnotation._id;
+
+    setPolylinePointTransforms((prev) => {
+      const newTransforms = { ...prev };
+      delete newTransforms[labelId];
+      return newTransforms;
+    });
+
+    setSelectedLabelForAnnotation(null);
+    setCurrentArchetypeSelectedForTransform(null);
+    setSelectedPoint(null);
+  }, [
+    selectedLabelForAnnotation,
+    setPolylinePointTransforms,
+    setSelectedLabelForAnnotation,
+    setCurrentArchetypeSelectedForTransform,
+    setSelectedPoint,
+  ]);
+
+  const handleContextualDelete = useCallback(() => {
+    if (selectedPoint) {
+      handleDeleteSelectedPoint();
+    } else if (
+      selectedLabelForAnnotation &&
+      selectedLabelForAnnotation._cls === "Polyline"
+    ) {
+      handleDeleteEntireTransform();
+    }
+  }, [
+    selectedPoint,
+    handleDeleteSelectedPoint,
+    selectedLabelForAnnotation,
+    handleDeleteEntireTransform,
+  ]);
+
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
       if (event.key === "Delete" || event.key === "Backspace") {
-        handleDeleteSelectedPoint();
+        handleContextualDelete();
       }
     };
 
@@ -143,7 +185,7 @@ export const useAnnotationActions = () => {
     return () => {
       document.removeEventListener("keydown", handler);
     };
-  }, [handleDeleteSelectedPoint]);
+  }, [handleContextualDelete]);
 
   const handleToggleAnnotationPlane = useCallback(() => {
     if (!annotationPlane.enabled) {
@@ -223,13 +265,18 @@ export const useAnnotationActions = () => {
               : handleStartSegmentPolyline,
           },
           {
-            id: "clear-temp-polylines",
-            label: "Clear Temp",
-            icon: <Close />,
-            tooltip: "Clear temporary polylines",
+            id: "contextual-delete",
+            label: "Delete",
+            icon: <Delete />,
+            shortcut: "Delete",
+            tooltip: selectedPoint
+              ? "Delete selected polyline point"
+              : "Delete polyline",
             isActive: false,
-            isVisible: tempPolylines.length > 0,
-            onClick: handleClearTempPolylines,
+            isVisible:
+              selectedLabelForAnnotation !== null &&
+              selectedLabelForAnnotation._cls === "Polyline",
+            onClick: handleContextualDelete,
           },
           {
             id: "snap-to-annotation-plane",
@@ -270,17 +317,6 @@ export const useAnnotationActions = () => {
               "When enabled, double-click closes polylines. When disabled, double-click ends segment at click location.",
             isActive: snapCloseAutomatically,
             onClick: () => setSnapCloseAutomatically(!snapCloseAutomatically),
-          },
-          {
-            id: "delete-selected-point",
-            label: "Delete Point",
-            icon: <Delete />,
-            shortcut: "Delete",
-            tooltip: "Delete selected polyline point",
-            isActive: false,
-            isVisible: selectedPoint !== null,
-            isDisabled: selectedPoint === null,
-            onClick: handleDeleteSelectedPoint,
           },
         ],
       },
@@ -387,20 +423,17 @@ export const useAnnotationActions = () => {
     currentArchetypeSelectedForTransform,
     handleTransformModeChange,
     transformSpace,
+    handleContextualDelete,
     handleTransformSpaceChange,
     selectedLabelForAnnotation,
     selectedPoint,
     segmentPolylineState,
-    tempPolylines,
     annotationPlane,
     handleStartSegmentPolyline,
     handleCancelSegmentPolyline,
-    handleClearTempPolylines,
     handleToggleAnnotationPlane,
     isSnapToAnnotationPlane,
-    setIsSnapToAnnotationPlane,
     snapCloseAutomatically,
-    setSnapCloseAutomatically,
   ]);
 
   return {
