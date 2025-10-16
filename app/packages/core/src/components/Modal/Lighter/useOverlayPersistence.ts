@@ -4,72 +4,108 @@
 
 import type { OverlayEventDetail, Scene2D } from "@fiftyone/lighter";
 import { LIGHTER_EVENTS } from "@fiftyone/lighter";
-import { useOperatorExecutor } from "@fiftyone/operators";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
+import { JSONDeltas, patchSample } from "../../../client";
+import { useRecoilValue, useSetRecoilState } from "recoil";
+import * as fos from "@fiftyone/state";
+import { AnnotationLabel } from "@fiftyone/state";
+import { parseTimestamp } from "../../../client/util";
+import { buildJsonPath, buildLabelDeltas, OpType } from "./deltas";
 
 /**
  * Hook that handles overlay persistence events.
  */
 export const useOverlayPersistence = (scene: Scene2D | null) => {
-  const addBoundingBox = useOperatorExecutor("add_bounding_box");
-  const removeBoundingBox = useOperatorExecutor("remove_bounding_box");
+  const datasetId = useRecoilValue(fos.datasetId);
+  const currentSample = useRecoilValue(fos.modalSample)?.sample;
+  const setSnackbarMessage = useSetRecoilState(fos.snackbarMessage);
+  const setSnackbarErrors = useSetRecoilState(fos.snackbarErrors);
+
+  const versionToken = useMemo(() => {
+    try {
+      return parseTimestamp(currentSample.last_modified_at)?.toISOString();
+    } catch (error) {
+      return null;
+    }
+  }, [currentSample.last_modified_at]);
+
+  const handlePatchSample = useCallback(
+    async (sampleDeltas: JSONDeltas) => {
+      if (sampleDeltas.length > 0) {
+        try {
+          await patchSample({
+            datasetId,
+            sampleId: currentSample._id,
+            deltas: sampleDeltas,
+            versionToken,
+          });
+
+          setSnackbarMessage("Changes have been saved");
+        } catch (error) {
+          console.error("error patching sample", error);
+          setSnackbarErrors([error.message]);
+        }
+
+        // todo update sample data
+        // todo update lighter
+      }
+    },
+    [
+      currentSample,
+      datasetId,
+      setSnackbarErrors,
+      setSnackbarMessage,
+      versionToken,
+    ]
+  );
+
+  const handlePersistenceEvent = useCallback(
+    async (annotationLabel: AnnotationLabel, opType: OpType) => {
+      if (!currentSample) {
+        console.error("missing sample data!");
+        return;
+      }
+
+      if (!annotationLabel) {
+        console.error("missing annotation label!");
+        return;
+      }
+
+      const sampleDeltas = buildLabelDeltas(
+        currentSample,
+        annotationLabel,
+        opType
+      ).map((delta) => ({
+        ...delta,
+        // convert label delta to sample delta
+        path: buildJsonPath(annotationLabel.path, delta.path),
+      }));
+
+      await handlePatchSample(sampleDeltas);
+    },
+    [currentSample, handlePatchSample]
+  );
 
   const handlePersistOverlay = useCallback(
-    (
+    async (
       event: CustomEvent<
         OverlayEventDetail<typeof LIGHTER_EVENTS.DO_PERSIST_OVERLAY>
       >
     ) => {
-      const overlay = event.detail;
-
-      if (overlay) {
-        try {
-          const bbox = [
-            overlay.bounds.x,
-            overlay.bounds.y,
-            overlay.bounds.width,
-            overlay.bounds.height,
-          ];
-          addBoundingBox.execute({
-            field: overlay.field,
-            sample_id: overlay.sampleId,
-            label_id: overlay.id,
-            label: overlay.label ?? "",
-            bounding_box: bbox,
-          });
-        } catch (error) {
-          console.error("Error adding bounding box", error);
-        }
-      } else {
-        console.error(
-          "Overlay",
-          overlay.constructor.name,
-          "not supported for persistence"
-        );
-      }
+      await handlePersistenceEvent(event.detail, "mutate");
     },
-    [addBoundingBox]
+    [handlePersistenceEvent]
   );
 
   const handleRemoveOverlay = useCallback(
-    (
+    async (
       event: CustomEvent<
         OverlayEventDetail<typeof LIGHTER_EVENTS.DO_REMOVE_OVERLAY>
       >
     ) => {
-      const { id, sampleId, path } = event.detail;
-      try {
-        console.log("removing bounding box", id, sampleId, path);
-        removeBoundingBox.execute({
-          id,
-          path,
-          sample_id: sampleId,
-        });
-      } catch (error) {
-        console.error("Error removing bounding box", error);
-      }
+      await handlePersistenceEvent(event.detail, "delete");
     },
-    [removeBoundingBox]
+    [handlePersistenceEvent]
   );
 
   useEffect(() => {

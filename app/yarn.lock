@@ -2419,6 +2419,7 @@ __metadata:
     classnames: "npm:^2.2.6"
     color: "npm:^4.2.3"
     color-string: "npm:^1.9.1"
+    fast-json-patch: "npm:^3.1.1"
     framer-motion: "npm:^6.2.8"
     history: "npm:^5.3.0"
     json-edit-react: "npm:^1.28.2"
@@ -10355,6 +10356,13 @@ __metadata:
   dependencies:
     is-string-blank: "npm:^1.0.1"
   checksum: 10/88d2d32d98eb24d23caddf8946a3c22f4517a982b5810fe3d2b9556b8f16bc8c5e328545e708a41b2845fb5c8bc3e26e4c92119f720ec658381e803be5402179
+  languageName: node
+  linkType: hard
+
+"fast-json-patch@npm:^3.1.1":
+  version: 3.1.1
+  resolution: "fast-json-patch@npm:3.1.1"
+  checksum: 10/3e56304e1c95ad1862a50e5b3f557a74c65c0ff2ba5b15caab983b43e70e86ddbc5bc887e9f7064f0aacfd0f0435a29ab2f000fe463379e72b906486345e6671
   languageName: node
   linkType: hard
 

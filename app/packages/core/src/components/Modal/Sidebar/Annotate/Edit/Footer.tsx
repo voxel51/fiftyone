@@ -1,32 +1,42 @@
 import { Button } from "@fiftyone/components";
-import * as fos from "@fiftyone/state";
+import { LIGHTER_EVENTS, useLighter } from "@fiftyone/lighter";
 import { DeleteOutline } from "@mui/icons-material";
 import { useAtomValue, useSetAtom } from "jotai";
-import React, { useContext } from "react";
-import { useRecoilValue } from "recoil";
+import React, { useCallback, useContext } from "react";
 import { RoundButton } from "../Actions";
 import { ConfirmationContext } from "../Confirmation";
 import { Row } from "./Components";
-import { currentField, editing, isNew, saveValue } from "./state";
+import {
+  currentField,
+  current as currentLabelAtom,
+  editing,
+  isNew,
+} from "./state";
 
 const SaveFooter = () => {
-  const saveCurrent = useSetAtom(saveValue);
-  const sampleId = useRecoilValue(fos.currentSampleId);
-  const datasetId = fos.useAssertedRecoilValue(fos.datasetId);
-
+  const { scene } = useLighter();
+  const annotationLabel = useAtomValue(currentLabelAtom);
   const showCancel = useAtomValue(isNew);
   const { deleteAnnotation } = useContext(ConfirmationContext);
 
+  const onSave = useCallback(() => {
+    scene?.dispatchSafely({
+      type: LIGHTER_EVENTS.DO_PERSIST_OVERLAY,
+      detail: { ...annotationLabel },
+    });
+  }, [annotationLabel, scene]);
+
+  const onDelete = useCallback(() => {
+    scene?.dispatchSafely({
+      type: LIGHTER_EVENTS.DO_REMOVE_OVERLAY,
+      detail: { ...annotationLabel },
+    });
+  }, [annotationLabel, scene]);
+
   return (
     <>
-      <Button
-        onClick={() => {
-          saveCurrent({ datasetId, sampleId });
-        }}
-      >
-        Save
-      </Button>
-      <RoundButton onClick={deleteAnnotation}>
+      <Button onClick={onSave}>Save</Button>
+      <RoundButton onClick={onDelete}>
         {showCancel ? (
           "Cancel"
         ) : (

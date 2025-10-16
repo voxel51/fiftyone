@@ -1,59 +1,36 @@
 import { encodeURIPath } from "./util";
 import { Sample } from "@fiftyone/looker";
 import {
-  getFetchFunctionConfigurable,
+  FetchFunctionConfig,
+  FetchFunctionResult,
+  getFetchFunctionExtended,
   MalformedRequestError,
   NotFoundError,
 } from "@fiftyone/utilities";
+import * as jsonpatch from "fast-json-patch";
 
 /**
- * Label types which currently support mutation via {@link patchSample}.
+ * List of JSON-patch operation deltas between two versions of a json object.
  */
-export type MutableLabelTypes =
-  | "Classification"
-  | "Classifications"
-  | "Detection"
-  | "Detections"
-  | "Polyline"
-  | "Polylines";
-
-/**
- * Specification for a field which should be removed.
- */
-export type NullField = null;
-
-/**
- * Specification for a label field.
- */
-export type LabelField = {
-  _cls: MutableLabelTypes;
-  [key: string]: unknown;
-};
-
-/**
- * Specification for a top-level attribute field.
- */
-export type AttributeField = Record<string, unknown>;
-
-/**
- * A field specification can either be
- *  - `null` indicating the field should be deleted, OR
- *  - an object containing at least the `_cls` field to specify the label type, OR
- *  - an arbitrary mapping to primitives or objects
- */
-export type FieldSpecification = NullField | LabelField | AttributeField;
+export type JSONDeltas = jsonpatch.Operation[];
 
 export type PatchSampleRequest = {
   datasetId: string;
   sampleId: string;
-  delta: Record<string, FieldSpecification>;
+  deltas: JSONDeltas;
+  versionToken: string;
+  path?: string;
+  labelId?: string;
 };
 
 export type ErrorResponse = {
   errors: string[];
 };
 
-export type PatchSampleResponse = Sample;
+export type PatchSampleResponse = {
+  sample: Sample;
+  versionToken: string;
+};
 
 /**
  * Error resulting from a failed update operation.
@@ -90,22 +67,44 @@ const handleErrorResponse = async (response: Response) => {
 };
 
 /**
+ * `fetch` with headers, error handling, etc.
+ *
+ * @param config fetch configuration
+ */
+const doFetch = <A, R>(
+  config: FetchFunctionConfig<A>
+): Promise<FetchFunctionResult<R>> => {
+  return getFetchFunctionExtended()({
+    errorHandler: handleErrorResponse,
+    ...config,
+  });
+};
+
+/**
  * Patch a sample, applying the specified updates to its fields.
  *
  * @param request Patch sample request
  */
-export const patchSample = (
+export const patchSample = async (
   request: PatchSampleRequest
 ): Promise<PatchSampleResponse> => {
-  return getFetchFunctionConfigurable()({
-    path: encodeURIPath([
-      "dataset",
-      request.datasetId,
-      "sample",
-      request.sampleId,
-    ]),
+  const pathParts = ["dataset", request.datasetId, "sample", request.sampleId];
+  if (request.path && request.labelId) {
+    pathParts.push(request.path, request.labelId);
+  }
+
+  const response = await doFetch<JSONDeltas, Sample>({
+    path: encodeURIPath(pathParts),
     method: "PATCH",
-    body: request.delta,
-    errorHandler: handleErrorResponse,
+    body: request.deltas,
+    headers: {
+      "Content-Type": "application/json-patch+json",
+      "If-Match": `"${request.versionToken}"`,
+    },
   });
+
+  return {
+    sample: response.response,
+    versionToken: response.headers.get("ETag"),
+  };
 };

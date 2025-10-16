@@ -45,6 +45,7 @@ const LighterEvents = () => {
   const { scene } = useLighter();
   const { exit } = useContext(ConfirmationContext);
   useEffect(() => {
+    return;
     scene?.on(LIGHTER_EVENTS.OVERLAY_DESELECT, exit);
 
     return () => {

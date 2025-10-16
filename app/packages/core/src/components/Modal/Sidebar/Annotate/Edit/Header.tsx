@@ -1,4 +1,4 @@
-import { Close } from "@mui/icons-material";
+import { West as Back } from "@mui/icons-material";
 import { useAtomValue } from "jotai";
 import React, { useContext } from "react";
 import { Redo, Round, Undo } from "../Actions";
@@ -19,15 +19,15 @@ const Header = () => {
   return (
     <Row>
       <ItemLeft style={{ columnGap: "0.5rem" }}>
+        <Round onClick={exit}>
+          <Back />
+        </Round>
         <Icon fill={color} />
         <div>{type}</div>
       </ItemLeft>
       <ItemRight>
         <Undo />
         <Redo />
-        <Round onClick={exit}>
-          <Close />
-        </Round>
       </ItemRight>
     </Row>
   );
