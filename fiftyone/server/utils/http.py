@@ -15,6 +15,8 @@ class ETag:
     @staticmethod
     def create(value: Any, is_weak: bool = False) -> str:
         """Creates an ETag string from the given value."""
+        value = str(value)
+
         # Wrap in quotes if not already quoted
         if not (value.startswith('"') and value.endswith('"')):
             value = f'"{value}"'
