@@ -8,7 +8,7 @@ import type { EventBus, LighterEventDetail } from "../event/EventBus";
 import { LIGHTER_EVENTS } from "../event/EventBus";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { SelectionManager } from "../selection/SelectionManager";
-import type { Point } from "../types";
+import type { Point, Rect } from "../types";
 import { InteractiveDetectionHandler } from "./InteractiveDetectionHandler";
 import { BoundingBoxOverlay } from "../overlay/BoundingBoxOverlay";
 
@@ -46,6 +46,16 @@ export interface InteractionHandler {
    * Returns the position from the start of handler movement
    */
   getMoveStartPosition(): Point | undefined;
+
+  /**
+   * Returns the bounds of the handler
+   */
+  getAbsoluteBounds(): Rect;
+
+  /**
+   * Returns the position from the start of handler movement
+   */
+  getMoveStartBounds(): Rect | undefined;
 
   /**
    * Handle pointer down event.
@@ -335,6 +345,8 @@ export class InteractionManager {
     }
 
     if (handler?.isMoving?.()) {
+      const isDragging = handler.isDragging?.();
+      const startBounds = handler.getMoveStartBounds()!;
       const startPosition = handler.getMoveStartPosition()!;
 
       // Handle drag end
@@ -350,7 +362,7 @@ export class InteractionManager {
 
       // Emit move end event with bounds information
       if (TypeGuards.isSpatial(handler)) {
-        const type = handler.isDragging?.()
+        const type = isDragging
           ? LIGHTER_EVENTS.OVERLAY_DRAG_END
           : LIGHTER_EVENTS.OVERLAY_RESIZE_END;
 
@@ -358,6 +370,7 @@ export class InteractionManager {
           type,
           detail: {
             id: handler.id,
+            startBounds,
             startPosition,
             endPosition: handler.getPosition(),
             absoluteBounds: handler.getAbsoluteBounds(),
