@@ -4,12 +4,11 @@
 
 import type { OverlayEventDetail, Scene2D } from "@fiftyone/lighter";
 import { LIGHTER_EVENTS } from "@fiftyone/lighter";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { JSONDeltas, patchSample } from "../../../client";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import * as fos from "@fiftyone/state";
 import { AnnotationLabel } from "@fiftyone/state";
-import { useVersionToken } from "../../../client/useVersionToken";
 import { parseTimestamp } from "../../../client/util";
 import { buildJsonPath, buildLabelDeltas, OpType } from "./deltas";
 
@@ -22,27 +21,25 @@ export const useOverlayPersistence = (scene: Scene2D | null) => {
   const setSnackbarMessage = useSetRecoilState(fos.snackbarMessage);
   const setSnackbarErrors = useSetRecoilState(fos.snackbarErrors);
 
-  // todo replace with atom
-  const [versionToken, setVersionToken] = useState<string | null>(null);
-
-  useVersionToken({
-    source: (parseTimestamp(currentSample.last_modified_at) ?? new Date())
-      .toISOString()
-      .toLowerCase(),
-  }).then((token) => setVersionToken(token));
+  const versionToken = useMemo(() => {
+    try {
+      return parseTimestamp(currentSample.last_modified_at)?.toISOString();
+    } catch (error) {
+      return null;
+    }
+  }, [currentSample.last_modified_at]);
 
   const handlePatchSample = useCallback(
     async (sampleDeltas: JSONDeltas) => {
       if (sampleDeltas.length > 0) {
         try {
-          const patchResponse = await patchSample({
+          await patchSample({
             datasetId,
             sampleId: currentSample._id,
             deltas: sampleDeltas,
             versionToken,
           });
 
-          setVersionToken(patchResponse.versionToken);
           setSnackbarMessage("Changes have been saved");
         } catch (error) {
           console.error("error patching sample", error);
