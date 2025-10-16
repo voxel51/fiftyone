@@ -8,7 +8,11 @@ import {
   selectedLabelForAnnotationAtom,
   selectedPolylineVertexAtom,
 } from "../../state";
-import { getVertexPosition } from "../utils/polyline-utils";
+import {
+  getVertexPosition,
+  updateDuplicateVertices,
+  applyTransformsToPolyline,
+} from "../utils/polyline-utils";
 
 interface CoordinateInputsProps {
   className?: string;
@@ -274,16 +278,17 @@ export const VertexCoordinateInputs = ({
 
         setPolylinePointTransforms((prev) => {
           const currentTransforms = prev[labelId] || [];
+          const polylineLabel = selectedLabel as unknown as PolyLineProps;
+          const originalPoints = polylineLabel.points3d || [];
 
-          // Find existing transform for this point, or create new one
+          // Get current position (either from existing transform or original point)
+          let currentPosition: [number, number, number];
           const existingTransformIndex = currentTransforms.findIndex(
             (transform) =>
               transform.segmentIndex === segmentIndex &&
               transform.pointIndex === pointIndex
           );
 
-          // Get current position (either from existing transform or original point)
-          let currentPosition: [number, number, number];
           if (existingTransformIndex >= 0) {
             currentPosition =
               currentTransforms[existingTransformIndex].position;
@@ -291,15 +296,15 @@ export const VertexCoordinateInputs = ({
             currentPosition = selectedPointPosition;
           } else {
             // Fallback to original position from label
-            const polylineLabel = selectedLabel as unknown as PolyLineProps;
             if (
-              polylineLabel.points3d &&
-              segmentIndex < polylineLabel.points3d.length &&
-              pointIndex < polylineLabel.points3d[segmentIndex].length
+              segmentIndex < originalPoints.length &&
+              pointIndex < originalPoints[segmentIndex].length
             ) {
-              currentPosition = polylineLabel.points3d[segmentIndex][
-                pointIndex
-              ] as [number, number, number];
+              currentPosition = originalPoints[segmentIndex][pointIndex] as [
+                number,
+                number,
+                number
+              ];
             } else {
               currentPosition = [0, 0, 0];
             }
@@ -310,21 +315,21 @@ export const VertexCoordinateInputs = ({
           else if (axis === "y") newPosition[1] = numValue;
           else if (axis === "z") newPosition[2] = numValue;
 
-          const newTransform = {
-            segmentIndex,
-            pointIndex,
-            position: newPosition,
-          };
+          // Compute current effective points to find all shared vertices
+          const effectivePoints3d = applyTransformsToPolyline(
+            originalPoints,
+            currentTransforms
+          );
 
-          if (existingTransformIndex >= 0) {
-            // Update existing transform
-            const newTransforms = [...currentTransforms];
-            newTransforms[existingTransformIndex] = newTransform;
-            return { ...prev, [labelId]: newTransforms };
-          } else {
-            // Add new transform
-            return { ...prev, [labelId]: [...currentTransforms, newTransform] };
-          }
+          // Use updateDuplicateVertices to handle shared vertices
+          const newTransforms = updateDuplicateVertices(
+            currentPosition,
+            newPosition,
+            effectivePoints3d,
+            currentTransforms
+          );
+
+          return { ...prev, [labelId]: newTransforms };
         });
       }
     },
