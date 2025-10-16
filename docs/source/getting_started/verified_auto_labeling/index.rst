@@ -44,7 +44,14 @@ Prerequisites
 
 **Who Is This Guide For**
 
-This tutorial is designed for machine learning practitioners and data scientists who need to efficiently label large datasets. Whether you're bootstrapping a new project or improving existing annotations, VAL provides a systematic approach to leveraging model predictions while maintaining human oversight.
+.. note::
+      Verified Auto Labeling is available in
+      :ref:`FiftyOne Enterprise <fiftyone-enterprise>`.
+      If you are using open source FiftyOne and are
+      interested in this feature, please reach out to
+      `Voxel51 sales <https://voxel51.com/sales>`_.
+
+This guide is designed for machine learning practitioners and data scientists who need to efficiently label large datasets. Whether you're bootstrapping a new project or improving existing annotations, VAL provides a systematic approach to leveraging model predictions while maintaining human oversight.
 
 **Required Knowledge**
 
