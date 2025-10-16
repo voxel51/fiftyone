@@ -9,7 +9,7 @@ from unittest import mock
 
 import pytest
 
-from fiftyone.server.utils import jsonpatch
+from fiftyone.server.utils.json import jsonpatch
 
 
 class TestParse:

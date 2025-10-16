@@ -12,7 +12,7 @@ import inspect
 from typing import Any, Generic, TypeVar, Union
 
 
-from fiftyone.server.utils.jsonpatch import methods
+from fiftyone.server.utils.json.jsonpatch import methods
 
 T = TypeVar("T")
 V = TypeVar("V")
@@ -37,11 +37,13 @@ class Patch(abc.ABC):
 
     op: Operation
 
-    def __init_subclass__(cls):
+    def __init_subclass__(cls, **kwargs):
         if not inspect.isabstract(cls) and not isinstance(
             getattr(cls, "op", None), Operation
         ):
             raise TypeError("Subclass must define 'op' class variable")
+
+        super().__init_subclass__(**kwargs)
 
     def __init__(self, path: str):
         self._pointer = methods.to_json_pointer(path)
@@ -67,10 +69,10 @@ class Patch(abc.ABC):
         """
 
 
-class PatchWithValue(Patch, Generic[T], abc.ABC):
+class PatchWithValue(Patch, abc.ABC, Generic[V]):
     """A JSON Patch operation that requires a value."""
 
-    def __init__(self, path: str, value: T):
+    def __init__(self, path: str, value: V):
         super().__init__(path)
         self.value = value
 
@@ -88,7 +90,7 @@ class PatchWithFrom(Patch, abc.ABC):
         return self._from_pointer.path
 
 
-class Add(PatchWithValue):
+class Add(PatchWithValue[V], Generic[V]):
     """Helper class for JSON Patch "add" operation."""
 
     op = Operation.ADD
@@ -124,7 +126,7 @@ class Remove(Patch):
         return methods.remove(src, self._pointer)
 
 
-class Replace(PatchWithValue):
+class Replace(PatchWithValue[V], Generic[V]):
     """Helper class for JSON Patch "replace" operation."""
 
     op = Operation.REPLACE
@@ -133,7 +135,7 @@ class Replace(PatchWithValue):
         return methods.replace(src, self._pointer, self.value)
 
 
-class Test(PatchWithValue):
+class Test(PatchWithValue[V], Generic[V]):
     """Helper class for JSON Patch "test" operation."""
 
     op = Operation.TEST
