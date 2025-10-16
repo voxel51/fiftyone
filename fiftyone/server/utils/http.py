@@ -21,7 +21,7 @@ class ETag:
 
         # Add weak prefix if necessary
         if is_weak:
-            return f'W/"{value}"'
+            return f"W/{value}"
 
         return value
 
