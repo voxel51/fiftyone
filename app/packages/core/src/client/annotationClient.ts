@@ -99,7 +99,7 @@ export const patchSample = async (
     body: request.deltas,
     headers: {
       "Content-Type": "application/json-patch+json",
-      // "If-Match": request.versionToken,
+      "If-Match": `"${request.versionToken}"`,
     },
   });
 
