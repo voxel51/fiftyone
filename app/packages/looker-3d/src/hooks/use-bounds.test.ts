@@ -8,6 +8,7 @@ vi.useFakeTimers();
 vi.mock("three", () => {
   return {
     Box3: vi.fn(),
+    Vector3: vi.fn(),
   };
 });
 
@@ -17,18 +18,20 @@ describe("useFo3dBounds", () => {
     vi.resetAllMocks();
   });
 
-  it("does not set bounding box when objectRef.current is null", () => {
+  it("sets default bounding box when objectRef.current is null", () => {
     const objectRef = { current: null } as React.RefObject<Group>;
 
     const { result } = renderHook(() => useFo3dBounds(objectRef));
 
-    expect(result.current).toBeNull();
+    expect(result.current.boundingBox).toBeNull();
 
     act(() => {
       vi.advanceTimersByTime(500);
     });
 
-    expect(result.current).toBeNull();
+    // The hook should set DEFAULT_BOUNDING_BOX when objectRef.current is null
+    expect(result.current.boundingBox).not.toBeNull();
+    expect(result.current.boundingBox).toBeDefined();
   });
 
   it("sets bounding box when bounding box stabilizes", () => {
@@ -66,7 +69,7 @@ describe("useFo3dBounds", () => {
 
     const { result } = renderHook(() => useFo3dBounds(objectRef));
 
-    expect(result.current).toBeNull();
+    expect(result.current.boundingBox).toBeNull();
 
     act(() => {
       for (let i = 0; i < 10; i++) {
@@ -74,9 +77,9 @@ describe("useFo3dBounds", () => {
       }
     });
 
-    expect(result.current).not.toBeNull();
-    expect(result.current.min).toEqual(boxes[1].min);
-    expect(result.current.max).toEqual(boxes[1].max);
+    expect(result.current.boundingBox).not.toBeNull();
+    expect(result.current.boundingBox.min).toEqual(boxes[1].min);
+    expect(result.current.boundingBox.max).toEqual(boxes[1].max);
   });
 
   it("does not proceed if predicate returns false", () => {
@@ -85,13 +88,13 @@ describe("useFo3dBounds", () => {
 
     const { result } = renderHook(() => useFo3dBounds(objectRef, predicate));
 
-    expect(result.current).toBeNull();
+    expect(result.current.boundingBox).toBeNull();
     expect(predicate).toHaveBeenCalled();
 
     act(() => {
       vi.advanceTimersByTime(500);
     });
 
-    expect(result.current).toBeNull();
+    expect(result.current.boundingBox).toBeNull();
   });
 });
