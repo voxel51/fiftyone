@@ -292,8 +292,10 @@ export const MediaTypeFo3dComponent = () => {
 
   const assetsGroupRef = useRef<THREE.Group>();
 
-  const { boundingBox: sceneBoundingBox, recomputeBounds } =
-    useFo3dBounds(assetsGroupRef);
+  const { boundingBox: sceneBoundingBox, recomputeBounds } = useFo3dBounds(
+    assetsGroupRef,
+    useCallback(() => isSceneInitialized, [isSceneInitialized])
+  );
 
   useEffect(() => {
     if (sceneBoundingBox && !lookAt) {

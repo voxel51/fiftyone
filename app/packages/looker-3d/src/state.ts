@@ -167,11 +167,7 @@ export const isGridInfinitelyLargeAtom = atom<boolean>({
 export const gridSizeAtom = atom<number>({
   key: "fo3d-gridSize",
   default: 1000,
-  effects: [
-    getBrowserStorageEffectForKey("fo3d-gridSize", {
-      prependDatasetNameInKey: true,
-    }),
-  ],
+  effects: [getBrowserStorageEffectForKey("fo3d-gridSize")],
 });
 
 export const shouldGridFadeAtom = atom<boolean>({
@@ -195,6 +191,7 @@ export const isFo3dBackgroundOnAtom = atom<boolean>({
   effects: [
     getBrowserStorageEffectForKey("fo3d-isBackgroundON", {
       valueClass: "boolean",
+      prependDatasetNameInKey: true,
     }),
   ],
 });

@@ -75,7 +75,7 @@ export const useFo3dBounds = (
       if (!objectRef.current) {
         retryCount.current += 1;
         if (retryCount.current >= MAX_BOUNDING_BOX_RETRIES) {
-          retryCount.current = 0; // Reset retry count on fallback
+          retryCount.current = 0;
           setBoundingBox(DEFAULT_BOUNDING_BOX);
           return;
         }
