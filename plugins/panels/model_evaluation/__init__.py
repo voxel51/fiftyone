@@ -704,10 +704,11 @@ class EvaluationPanel(Panel):
             subset_def = subsets.get(subset, None)
 
             if error:
-                return ctx.ops.notify(
+                ctx.ops.notify(
                     f"Failed to load custom code subsets: {error}",
                     variant="error",
                 )
+                return
 
         if subset_def is not None:
             eval_view = foue.get_subset_view(eval_view, gt_field, subset_def)
@@ -1195,10 +1196,11 @@ class EvaluationPanel(Panel):
 
     def delete_scenario(self, ctx):
         if not self.can_delete_scenario(ctx):
-            return ctx.ops.notify(
+            ctx.ops.notify(
                 "You do not have permission to delete scenarios",
                 variant="error",
             )
+            return
         scenario_id = ctx.params.get("id", None)
         scenarios = get_scenarios(ctx)
         scenarios.pop(scenario_id, None)
