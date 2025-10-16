@@ -1,7 +1,7 @@
 import { MuiButton } from "@fiftyone/components";
 import { Typography } from "@mui/material";
 import { atom, useAtom, useSetAtom } from "jotai";
-import React, { useCallback, useState } from "react";
+import React, { useCallback } from "react";
 import styled from "styled-components";
 import Modal from "./Modal";
 
@@ -13,7 +13,7 @@ const Row = styled.div`
   justify-content: space-between;
 `;
 
-export default function Leave({
+function ExitChangesModal({
   exit,
   save,
 }: {
@@ -33,47 +33,52 @@ export default function Leave({
         <MuiButton color="secondary" onClick={close} variant="outlined">
           Cancel
         </MuiButton>
-        <MuiButton
-          color="error"
-          onClick={() => {
-            exit();
-            close();
-          }}
-          variant="contained"
-        >
-          Discard changes
-        </MuiButton>
-        <MuiButton
-          color="success"
-          onClick={() => {
-            save();
-            exit();
-            close();
-          }}
-          variant="contained"
-        >
-          Save and continue
-        </MuiButton>
+
+        <div style={{ display: "flex", columnGap: "0.5rem" }}>
+          <MuiButton
+            color="error"
+            onClick={() => {
+              exit();
+              close();
+            }}
+            variant="contained"
+          >
+            Discard changes
+          </MuiButton>
+          <MuiButton
+            color="success"
+            onClick={() => {
+              save();
+              exit();
+              close();
+            }}
+            variant="contained"
+          >
+            Save and continue
+          </MuiButton>
+        </div>
       </Row>
     </Modal>
   ) : null;
 }
 
-export const useConfirmUnsavedChanges = (
+export default function useConfirmExit(
   exit: () => void,
-  save: () => void
-) => {
-  const [unsavedChanges] = useState(true); // todo
+  saveAnnotation: () => void
+) {
+  const hasChanges = true;
   const showConfirmation = useSetAtom(showUnsavedChangesConfirmation);
   return {
     confirmExit: useCallback(() => {
-      if (unsavedChanges) {
+      if (hasChanges) {
         showConfirmation(true);
         return;
       }
 
       exit();
-    }, [exit, showConfirmation, unsavedChanges]),
-    LeaveChangesModal: () => <Leave exit={exit} save={save} />,
+    }, [exit, showConfirmation, hasChanges]),
+    ExitChangesModal: () => (
+      <ExitChangesModal exit={exit} save={saveAnnotation} />
+    ),
   };
-};
+}

@@ -1,7 +1,10 @@
+import { Close } from "@mui/icons-material";
 import { useAtomValue } from "jotai";
-import React from "react";
-import { Redo, Undo } from "../Actions";
+import React, { useContext } from "react";
+import { Redo, Round, Undo } from "../Actions";
 import { ItemLeft, ItemRight } from "../Components";
+
+import { ConfirmationContext } from "../Confirmation";
 import { ICONS } from "../Icons";
 import { Row } from "./Components";
 import { currentOverlay, currentType } from "./state";
@@ -11,6 +14,7 @@ const Header = () => {
   const type = useAtomValue(currentType);
   const Icon = ICONS[type];
   const color = useColor(useAtomValue(currentOverlay) ?? undefined);
+  const { exit } = useContext(ConfirmationContext);
 
   return (
     <Row>
@@ -21,6 +25,9 @@ const Header = () => {
       <ItemRight>
         <Undo />
         <Redo />
+        <Round onClick={exit}>
+          <Close />
+        </Round>
       </ItemRight>
     </Row>
   );

@@ -21,7 +21,7 @@ const Row = styled.div`
   justify-content: space-between;
 `;
 
-export default function Delete({ callback }: { callback: () => void }) {
+function DeleteModal({ deleteAnnotation }: { deleteAnnotation: () => void }) {
   const [shown, show] = useAtom(showDeleteConfirmation);
   const type = useAtomValue(currentType);
   const [askAgain, setAskAgain] = useAtom(askForDeleteConfirmation);
@@ -46,7 +46,7 @@ export default function Delete({ callback }: { callback: () => void }) {
         <MuiButton
           color="error"
           onClick={() => {
-            callback();
+            deleteAnnotation();
             close();
           }}
           variant="contained"
@@ -58,7 +58,7 @@ export default function Delete({ callback }: { callback: () => void }) {
   ) : null;
 }
 
-export const useConfirmDelete = (callback: () => void) => {
+export const useConfirmDelete = (deleteAnnotation: () => void) => {
   const askForConfirmation = useAtomValue(askForDeleteConfirmation);
   const showConfirmation = useSetAtom(showDeleteConfirmation);
   return {
@@ -68,8 +68,8 @@ export const useConfirmDelete = (callback: () => void) => {
         return;
       }
 
-      callback();
-    }, [askForConfirmation, callback, showConfirmation]),
-    DeleteModal: () => <Delete callback={callback} />,
+      deleteAnnotation();
+    }, [askForConfirmation, deleteAnnotation, showConfirmation]),
+    DeleteModal: () => <DeleteModal deleteAnnotation={deleteAnnotation} />,
   };
 };

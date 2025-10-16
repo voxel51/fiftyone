@@ -52,7 +52,7 @@ const Container = styled.div`
   }
 `;
 
-const Round = styled(Container)`
+export const Round = styled(Container)`
   border-radius: 1.25rem;
 
   &:hover {

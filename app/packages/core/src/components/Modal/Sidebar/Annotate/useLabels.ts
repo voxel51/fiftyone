@@ -43,12 +43,17 @@ const handleSample = async ({
     if (!schemas[path]?.active) {
       continue;
     }
+
     const type = await getFieldType(paths[path]);
     const result = get(data, paths[path]);
 
     const array = Array.isArray(result) ? result : result ? [result] : [];
 
     for (const data of array) {
+      if (!filter(path, data)) {
+        continue;
+      }
+
       const label = addLabel(path, type, data);
       labels.push(label);
     }

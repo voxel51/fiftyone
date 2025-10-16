@@ -132,7 +132,8 @@ export const pathFilter = selectorFamily<PathFilterSelector, boolean>({
             });
           });
 
-          f[path] = (value: unknown) => {
+          f[path] = (value: unknown, ...a) => {
+            console.log(value, a);
             const correctedValue = value?.[0] ? value[0] : value;
             if (hidden.has(value?.id)) {
               return false;

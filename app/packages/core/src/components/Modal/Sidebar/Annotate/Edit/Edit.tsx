@@ -1,15 +1,25 @@
 import { LIGHTER_EVENTS, useLighter } from "@fiftyone/lighter";
+import * as fos from "@fiftyone/state";
 import { DETECTION } from "@fiftyone/utilities";
 import { useAtomValue, useSetAtom } from "jotai";
-import React, { useEffect } from "react";
+import React, { useCallback, useContext, useEffect } from "react";
+import { useRecoilValue } from "recoil";
 import styled from "styled-components";
+import Confirmation, { ConfirmationContext } from "../Confirmation";
 import AnnotationSchema from "./AnnotationSchema";
 import Field from "./Field";
 import Footer from "./Footer";
 import Header from "./Header";
 import Id from "./Id";
 import Position from "./Position";
-import { currentField, currentOverlay, currentType, editing } from "./state";
+import {
+  currentField,
+  currentOverlay,
+  currentType,
+  deleteValue,
+  saveValue,
+} from "./state";
+import useExit from "./useExit";
 
 const ContentContainer = styled.div`
   margin: 0.25rem 1rem;
@@ -31,33 +41,52 @@ const Content = styled.div`
   row-gap: 0.5rem;
 `;
 
+const LighterEvents = () => {
+  const { scene } = useLighter();
+  const { exit } = useContext(ConfirmationContext);
+  useEffect(() => {
+    scene?.on(LIGHTER_EVENTS.OVERLAY_DESELECT, exit);
+
+    return () => {
+      scene?.off(LIGHTER_EVENTS.OVERLAY_DESELECT, exit);
+    };
+  }, [exit, scene]);
+
+  return null;
+};
+
 export default function Edit() {
   const field = useAtomValue(currentField);
   const overlay = useAtomValue(currentOverlay);
   const type = useAtomValue(currentType);
-  const setEditing = useSetAtom(editing);
-
-  const { scene } = useLighter();
-  useEffect(() => {
-    const handler = () => setEditing(null);
-
-    scene?.on(LIGHTER_EVENTS.OVERLAY_DESELECT, handler);
-
-    return () => {
-      scene?.off(LIGHTER_EVENTS.OVERLAY_DESELECT, handler);
-    };
-  }, [scene, setEditing]);
-
+  const exit = useExit();
+  const deleteAnnotation = useSetAtom(deleteValue);
+  const sampleId = useRecoilValue(fos.currentSampleId);
+  const datasetId = fos.useAssertedRecoilValue(fos.datasetId);
+  const saveAnnotation = useSetAtom(saveValue);
   return (
-    <ContentContainer>
-      <Header />
-      <Content>
-        <Field />
-        <Id />
-        {type === DETECTION && overlay && <Position />}
-        {field && <AnnotationSchema />}
-      </Content>
-      <Footer />
-    </ContentContainer>
+    <Confirmation
+      deleteAnnotation={useCallback(
+        () => deleteAnnotation({ datasetId, sampleId }),
+        [datasetId, deleteAnnotation, sampleId]
+      )}
+      exit={exit}
+      saveAnnotation={useCallback(
+        () => saveAnnotation({ datasetId, sampleId }),
+        [datasetId, sampleId, saveAnnotation]
+      )}
+    >
+      <LighterEvents />
+      <ContentContainer>
+        <Header />
+        <Content>
+          <Field />
+          <Id />
+          {type === DETECTION && overlay && <Position />}
+          {field && <AnnotationSchema />}
+        </Content>
+        <Footer />
+      </ContentContainer>
+    </Confirmation>
   );
 }
