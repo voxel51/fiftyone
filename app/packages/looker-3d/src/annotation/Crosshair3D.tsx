@@ -76,6 +76,14 @@ export const Crosshair3D = () => {
     return worldVector.clone().project(camera);
   }, [worldVector, camera]);
 
+  // Calculate scale based on camera zoom (inverse)
+  const scale = useMemo(() => {
+    if (camera instanceof THREE.OrthographicCamera) {
+      return 1 / camera.zoom;
+    }
+    return 1;
+  }, [camera]);
+
   if (!screenPosition) {
     return null;
   }
@@ -85,8 +93,18 @@ export const Crosshair3D = () => {
     return null;
   }
 
+  // Only render if the point is within the viewport bounds (NDC: -1 to 1)
+  if (
+    screenPosition.x < -1 ||
+    screenPosition.x > 1 ||
+    screenPosition.y < -1 ||
+    screenPosition.y > 1
+  ) {
+    return null;
+  }
+
   return (
-    <Html position={worldVector}>
+    <Html position={worldVector} scale={scale}>
       <HtmlContainer>
         <CrosshairBox>
           <Horizontal $color={theme.primary.main} />
