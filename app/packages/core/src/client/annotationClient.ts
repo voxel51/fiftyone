@@ -1,4 +1,4 @@
-import { encodeURIPath } from "./util";
+import { encodeURIPath, parseETag } from "./util";
 import { Sample } from "@fiftyone/looker";
 import {
   FetchFunctionConfig,
@@ -105,6 +105,6 @@ export const patchSample = async (
 
   return {
     sample: response.response,
-    versionToken: response.headers.get("ETag"),
+    versionToken: parseETag(response.headers.get("ETag")),
   };
 };
