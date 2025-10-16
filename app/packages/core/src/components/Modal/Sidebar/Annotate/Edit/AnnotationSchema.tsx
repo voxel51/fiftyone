@@ -16,6 +16,18 @@ import {
   currentSchema,
 } from "./state";
 
+const getLabel = (value) => {
+  if (typeof value === "boolean") {
+    return value ? "True" : "False";
+  }
+
+  if (value === null || value === undefined) {
+    return "None";
+  }
+
+  return value;
+};
+
 const createInput = (name: string) => {
   return {
     type: "string",
@@ -31,12 +43,11 @@ const createRadio = (name: string, choices) => {
   return {
     type: "string",
     view: {
-      name: "RadioView",
+      name: "RadioGroup",
       label: name,
       component: "RadioView",
       choices: choices.map((choice) => ({
-        name: "Choice",
-        label: choice,
+        label: getLabel(choice),
         value: choice,
       })),
     },
@@ -53,7 +64,7 @@ const createTags = (name: string, choices: string[]) => {
       allow_user_input: false,
       choices: choices.map((choice) => ({
         name: "Choice",
-        label: choice,
+        label: getLabel(choice),
         value: choice,
       })),
     },
@@ -70,7 +81,7 @@ const createSelect = (name: string, choices: string[]) => {
       component: "DropdownView",
       choices: choices.map((choice) => ({
         name: "Choice",
-        label: choice,
+        label: getLabel(choice),
         value: choice,
       })),
     },
@@ -120,20 +131,23 @@ const useSchema = () => {
 
 const useHandleChanges = () => {
   return useRecoilCallback(
-    ({ snapshot }) => async (currentField: string, path: string, data) => {
-      const expanded = await snapshot.getPromise(expandPath(currentField));
-      const schema = await snapshot.getPromise(field(`${expanded}.${path}`));
+    ({ snapshot }) =>
+      async (currentField: string, path: string, data) => {
+        const expanded = await snapshot.getPromise(expandPath(currentField));
+        const schema = await snapshot.getPromise(field(`${expanded}.${path}`));
 
-      if (schema?.ftype === FLOAT_FIELD) {
-        return Number.parseFloat(data);
-      }
+        if (typeof data === "string") {
+          if (schema?.ftype === FLOAT_FIELD) {
+            return data.length ? Number.parseFloat(data) : null;
+          }
 
-      if (schema?.ftype === INT_FIELD) {
-        return Number.parseInt(data);
-      }
+          if (schema?.ftype === INT_FIELD) {
+            return data.length ? Number.parseInt(data) : null;
+          }
+        }
 
-      return data;
-    },
+        return data;
+      },
     []
   );
 };
@@ -148,7 +162,8 @@ const AnnotationSchema = () => {
 
   useEffect(() => {
     const handler = () => {
-      save(overlay.getLabel());
+      const label = overlay?.getLabel();
+      label && save(label);
     };
 
     lighter.scene?.on(LIGHTER_EVENTS.COMMAND_EXECUTED, handler);
@@ -158,7 +173,7 @@ const AnnotationSchema = () => {
   }, [lighter.scene, overlay, save]);
 
   if (!field) {
-    throw new Error("no overlay");
+    throw new Error("no field");
   }
 
   if (!overlay) {
