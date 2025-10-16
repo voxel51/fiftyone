@@ -7,6 +7,7 @@ import { LABEL_3D_ANNOTATION_POINT_SELECTED_FOR_TRANSFORMATION_COLOR } from "../
 import { Transformable } from "../labels/shared/TransformControls";
 import {
   currentArchetypeSelectedForTransformAtom,
+  editSegmentsModeAtom,
   hoveredPolylineInfoAtom,
   segmentPolylineStateAtom,
   selectedPolylineVertexAtom,
@@ -53,6 +54,7 @@ export const PolylinePointMarker = ({
   );
 
   const setSegmentPolylineState = useSetRecoilState(segmentPolylineStateAtom);
+  const setEditSegmentsMode = useSetRecoilState(editSegmentsModeAtom);
 
   const isSelected =
     selectedPoint?.labelId === labelId &&
@@ -77,12 +79,24 @@ export const PolylinePointMarker = ({
       setCurrentArchetypeSelectedForTransform("point");
       setTransformMode("translate");
 
+      // Deactivate other modes when selecting a point
       setSegmentPolylineState((prev) => ({
         ...prev,
         isActive: false,
       }));
+      setEditSegmentsMode(false);
     },
-    [isDraggable, labelId, segmentIndex, pointIndex]
+    [
+      isDraggable,
+      labelId,
+      segmentIndex,
+      pointIndex,
+      setSelectedPoint,
+      setCurrentArchetypeSelectedForTransform,
+      setTransformMode,
+      setSegmentPolylineState,
+      setEditSegmentsMode,
+    ]
   );
 
   const handleTransformEnd = useCallback(() => {

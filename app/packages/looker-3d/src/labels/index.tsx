@@ -19,12 +19,14 @@ import { get as _get } from "lodash";
 import { useCallback, useEffect, useMemo } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
+import type { PolylinePointTransform } from "../annotation/types";
 import { PANEL_ORDER_LABELS } from "../constants";
 import { usePathFilter } from "../hooks";
 import { type Looker3dSettings, defaultPluginSettings } from "../settings";
 import {
   cuboidLabelLineWidthAtom,
   currentArchetypeSelectedForTransformAtom,
+  editSegmentsModeAtom,
   polylineLabelLineWidthAtom,
   polylinePointTransformsAtom,
   segmentPolylineStateAtom,
@@ -32,7 +34,6 @@ import {
   transformModeAtom,
 } from "../state";
 import { TransformArchetype } from "../types";
-import type { PolylinePointTransform } from "../annotation/types";
 import { toEulerFromDegreesArray } from "../utils";
 import { Cuboid, type CuboidProps } from "./cuboid";
 import { type OverlayLabel, load3dOverlays } from "./loader";
@@ -73,6 +74,7 @@ export const ThreeDLabels = ({
 
   const [selectedLabelForAnnotation, setSelectedLabelForAnnotation] =
     useRecoilState(selectedLabelForAnnotationAtom);
+  const setEditSegmentsMode = useSetRecoilState(editSegmentsModeAtom);
 
   const [transformMode, setTransformMode] = useRecoilState(transformModeAtom);
   const setCurrentArchetypeSelectedForTransform = useSetRecoilState(
@@ -169,6 +171,7 @@ export const ThreeDLabels = ({
         selectedLabelForAnnotation
       ) {
         setSelectedLabelForAnnotation(null);
+        setEditSegmentsMode(false);
 
         event.stopImmediatePropagation();
         event.preventDefault();

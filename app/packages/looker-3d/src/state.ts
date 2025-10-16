@@ -351,6 +351,11 @@ export const snapCloseAutomaticallyAtom = atom<boolean>({
   default: false,
 });
 
+export const editSegmentsModeAtom = atom<boolean>({
+  key: "fo3d-editSegmentsMode",
+  default: false,
+});
+
 export const sharedCursorPositionAtom = atom<[number, number, number] | null>({
   key: "fo3d-sharedCursorPosition",
   default: null,

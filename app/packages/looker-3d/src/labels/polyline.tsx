@@ -62,6 +62,7 @@ export const Polyline = ({
     handlePointerOut: handleAnnotationPointerOut,
     handleSegmentPointerOver,
     handleSegmentPointerOut,
+    handleSegmentClick,
   } = usePolylineAnnotation({
     label,
     points3d,
@@ -82,6 +83,7 @@ export const Polyline = ({
           rotation={rotation}
           onPointerOver={() => handleSegmentPointerOver(i)}
           onPointerOut={handleSegmentPointerOut}
+          onClick={handleSegmentClick}
         />
       )),
     [
@@ -92,6 +94,7 @@ export const Polyline = ({
       label._id,
       handleSegmentPointerOver,
       handleSegmentPointerOut,
+      handleSegmentClick,
     ]
   );
 

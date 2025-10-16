@@ -2,6 +2,7 @@ import {
   Add,
   Close,
   Delete,
+  Edit,
   OpenWith,
   RotateRight,
   Straighten,
@@ -17,6 +18,7 @@ import { useFo3dContext } from "../../fo3d/context";
 import {
   annotationPlaneAtom,
   currentArchetypeSelectedForTransformAtom,
+  editSegmentsModeAtom,
   isSnapToAnnotationPlaneAtom,
   polylinePointTransformsAtom,
   segmentPolylineStateAtom,
@@ -62,6 +64,8 @@ export const useAnnotationActions = () => {
   const [snapCloseAutomatically, setSnapCloseAutomatically] = useRecoilState(
     snapCloseAutomaticallyAtom
   );
+  const [editSegmentsMode, setEditSegmentsMode] =
+    useRecoilState(editSegmentsModeAtom);
   const [tempPolylines, setTempPolylines] = useRecoilState(tempPolylinesAtom);
   const setPolylinePointTransforms = useSetRecoilState(
     polylinePointTransformsAtom
@@ -239,6 +243,14 @@ export const useAnnotationActions = () => {
     }
   }, [annotationPlane.enabled, sceneBoundingBox, upVector]);
 
+  const handleToggleEditSegmentsMode = useCallback(() => {
+    setEditSegmentsMode(!editSegmentsMode);
+    // Deactivate other modes when entering edit segments mode
+    if (!editSegmentsMode) {
+      setSegmentPolylineState((prev) => ({ ...prev, isActive: false }));
+    }
+  }, [editSegmentsMode, setEditSegmentsMode, setSegmentPolylineState]);
+
   const actions: AnnotationActionGroup[] = useMemo(() => {
     const baseActions: AnnotationActionGroup[] = [
       {
@@ -271,6 +283,15 @@ export const useAnnotationActions = () => {
             onClick: segmentPolylineState.isActive
               ? handleCancelSegmentPolyline
               : handleStartSegmentPolyline,
+          },
+          {
+            id: "edit-segments",
+            label: "Edit Segments",
+            icon: <Edit />,
+            tooltip: "Click on a segment to add a new vertex",
+            isActive: editSegmentsMode,
+            isVisible: selectedLabelForAnnotation !== null,
+            onClick: handleToggleEditSegmentsMode,
           },
           {
             id: "contextual-delete",
@@ -442,6 +463,8 @@ export const useAnnotationActions = () => {
     handleToggleAnnotationPlane,
     isSnapToAnnotationPlane,
     snapCloseAutomatically,
+    editSegmentsMode,
+    handleToggleEditSegmentsMode,
   ]);
 
   return {

@@ -289,7 +289,6 @@ export function updateDuplicateVertices(
     });
   });
 
-  // Start with existing transforms
   let newTransforms = [...currentTransforms];
 
   // Apply the new position to all duplicate vertices
@@ -316,4 +315,226 @@ export function updateDuplicateVertices(
   });
 
   return newTransforms;
+}
+
+/**
+ * Finds the closest point on a line segment to a given click position.
+ *
+ * @param segmentStart - Start point of the segment
+ * @param segmentEnd - End point of the segment
+ * @param clickPosition - The position where the user clicked
+ * @returns The closest point on the segment and the parametric t value (0 to 1)
+ */
+export function findClosestPointOnSegment(
+  segmentStart: Vector3Tuple,
+  segmentEnd: Vector3Tuple,
+  clickPosition: Vector3Tuple
+): { closestPoint: Vector3Tuple; t: number } {
+  const start = new THREE.Vector3(...segmentStart);
+  const end = new THREE.Vector3(...segmentEnd);
+  const click = new THREE.Vector3(...clickPosition);
+
+  const segmentVector = new THREE.Vector3().subVectors(end, start);
+  const segmentLength = segmentVector.length();
+
+  // If segment has zero length, return the start point
+  if (segmentLength < EPS) {
+    return { closestPoint: segmentStart, t: 0 };
+  }
+
+  const clickVector = new THREE.Vector3().subVectors(click, start);
+
+  // Project click onto segment vector
+  const t = clickVector.dot(segmentVector) / (segmentLength * segmentLength);
+
+  // Clamp t to [0, 1] to stay on the segment
+  const clampedT = Math.max(0, Math.min(1, t));
+
+  const closestPoint = new THREE.Vector3()
+    .copy(start)
+    .add(segmentVector.multiplyScalar(clampedT));
+
+  return {
+    closestPoint: [closestPoint.x, closestPoint.y, closestPoint.z],
+    t: clampedT,
+  };
+}
+
+/**
+ * Inserts a new vertex into a polyline segment, splitting it into two segments.
+ * All subsequent segments have their indices incremented.
+ *
+ * @param originalPoints - Original polyline points array
+ * @param currentTransforms - Current transforms applied to the polyline
+ * @param targetSegmentIndex - Index of the segment to split
+ * @param newVertexPosition - Position of the new vertex to insert
+ * @returns New transforms array with the inserted vertex and renumbered segments, or null if the new vertex is too close to existing vertices
+ */
+export function insertVertexInSegment(
+  originalPoints: Vector3Tuple[][],
+  currentTransforms: PolylinePointTransform[],
+  targetSegmentIndex: number,
+  newVertexPosition: Vector3Tuple
+): PolylinePointTransform[] | null {
+  // Validate segment index
+  if (targetSegmentIndex < 0 || targetSegmentIndex >= originalPoints.length) {
+    throw new Error(`Invalid segment index: ${targetSegmentIndex}`);
+  }
+
+  const targetSegment = originalPoints[targetSegmentIndex];
+  if (targetSegment.length < 2) {
+    throw new Error(
+      `Segment ${targetSegmentIndex} must have at least 2 points`
+    );
+  }
+
+  // Get effective points for the target segment
+  const effectiveSegment = targetSegment.map((point, pointIndex) => {
+    const transform = currentTransforms.find(
+      (t) =>
+        t.segmentIndex === targetSegmentIndex && t.pointIndex === pointIndex
+    );
+    return transform ? transform.position : point;
+  });
+
+  // Check if the new vertex is too close to any existing vertex in the segment
+  // If so, we should not insert it to avoid redundant vertices
+  for (const existingVertex of effectiveSegment) {
+    if (positionsEqual(newVertexPosition, existingVertex)) {
+      // New vertex is too close to an existing vertex, skip insertion
+      return null;
+    }
+  }
+
+  // Step 1: Increment all segment indices >= targetSegmentIndex + 1
+  const transformsWithUpdatedIndices = currentTransforms.map((transform) => {
+    if (transform.segmentIndex > targetSegmentIndex) {
+      return {
+        ...transform,
+        segmentIndex: transform.segmentIndex + 1,
+      };
+    }
+    return transform;
+  });
+
+  // Step 2: Split the target segment
+  // Assume we are inserting a new vertex B between points A and C in segment N
+  // Original segment N: A -> C becomes:
+  // New segment N: A -> B (new vertex)
+  // New segment N+1: B (new vertex) -> C
+
+  // For segment N (keeping first point, adding new vertex as second point)
+  const segmentNTransforms: PolylinePointTransform[] = [
+    // Keep the first point of original segment as is (point 0)
+    ...transformsWithUpdatedIndices.filter(
+      (t) => t.segmentIndex === targetSegmentIndex && t.pointIndex === 0
+    ),
+    // Add new vertex as point 1 of segment N
+    {
+      segmentIndex: targetSegmentIndex,
+      pointIndex: 1,
+      position: newVertexPosition,
+    },
+  ];
+
+  // For segment N+1 (new vertex as first point, rest of original segment as subsequent points)
+  const segmentNPlus1Transforms: PolylinePointTransform[] = [
+    // New vertex as point 0 of segment N+1
+    {
+      segmentIndex: targetSegmentIndex + 1,
+      pointIndex: 0,
+      position: newVertexPosition,
+    },
+  ];
+
+  // Add the rest of the original segment's points (from point 1 onwards) to segment N+1
+  // but shifted: original point 1 becomes point 1, point 2 becomes point 2, etc.
+  for (let i = 1; i < effectiveSegment.length; i++) {
+    const originalTransform = transformsWithUpdatedIndices.find(
+      (t) => t.segmentIndex === targetSegmentIndex && t.pointIndex === i
+    );
+
+    // If there was a transform for this point, keep it but with adjusted indices
+    if (originalTransform) {
+      segmentNPlus1Transforms.push({
+        segmentIndex: targetSegmentIndex + 1,
+        pointIndex: i,
+        position: originalTransform.position,
+      });
+    } else {
+      // Otherwise, create a new transform from the effective point
+      segmentNPlus1Transforms.push({
+        segmentIndex: targetSegmentIndex + 1,
+        pointIndex: i,
+        position: effectiveSegment[i],
+      });
+    }
+  }
+
+  // Step 3: Combine all transforms
+  // - Remove old transforms for the target segment
+  // - Add new transforms for segments N and N+1
+  const finalTransforms = [
+    ...transformsWithUpdatedIndices.filter(
+      (t) => t.segmentIndex !== targetSegmentIndex
+    ),
+    ...segmentNTransforms,
+    ...segmentNPlus1Transforms,
+  ];
+
+  return finalTransforms;
+}
+
+/**
+ * Finds which segment was clicked based on the click position and effective points.
+ *
+ * @param effectivePoints - Current effective points of the polyline
+ * @param clickPosition - Position where user clicked
+ * @param maxDistance - Maximum distance to consider a click on a segment (default: 0.1)
+ * @returns Segment index and the new vertex position, or null if no segment was close enough
+ */
+export function findClickedSegment(
+  effectivePoints: Vector3Tuple[][],
+  clickPosition: Vector3Tuple,
+  maxDistance: number = 0.1
+): { segmentIndex: number; newVertexPosition: Vector3Tuple } | null {
+  let closestSegmentIndex = -1;
+  let closestDistance = Infinity;
+  let closestPoint: Vector3Tuple | null = null;
+
+  effectivePoints.forEach((segment, segmentIndex) => {
+    if (segment.length < 2) return;
+
+    // Check each line in the segment (between consecutive points)
+    for (let i = 0; i < segment.length - 1; i++) {
+      const start = segment[i];
+      const end = segment[i + 1];
+
+      const { closestPoint: pointOnSegment } = findClosestPointOnSegment(
+        start,
+        end,
+        clickPosition
+      );
+
+      const distance = new THREE.Vector3(...pointOnSegment).distanceTo(
+        new THREE.Vector3(...clickPosition)
+      );
+
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestSegmentIndex = segmentIndex;
+        closestPoint = pointOnSegment;
+      }
+    }
+  });
+
+  // Check if the closest distance is within the threshold
+  if (closestDistance <= maxDistance && closestPoint !== null) {
+    return {
+      segmentIndex: closestSegmentIndex,
+      newVertexPosition: closestPoint,
+    };
+  }
+
+  return null;
 }

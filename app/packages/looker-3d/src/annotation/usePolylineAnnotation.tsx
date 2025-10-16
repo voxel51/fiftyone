@@ -1,9 +1,11 @@
+import { ThreeEvent } from "@react-three/fiber";
 import chroma from "chroma-js";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { useRecoilState, useSetRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import type { Vector3Tuple } from "three";
 import * as THREE from "three";
 import {
+  editSegmentsModeAtom,
   hoveredLabelAtom,
   hoveredPolylineInfoAtom,
   polylineEffectivePointsAtom,
@@ -13,6 +15,8 @@ import { PolylinePointMarker } from "./PolylinePointMarker";
 import {
   applyDeltaToAllPoints,
   applyTransformsToPolyline,
+  findClickedSegment,
+  insertVertexInSegment,
   updateDuplicateVertices,
 } from "./utils/polyline-utils";
 
@@ -34,6 +38,8 @@ export const usePolylineAnnotation = ({
   const [polylinePointTransforms, setPolylinePointTransforms] = useRecoilState(
     polylinePointTransformsAtom
   );
+
+  const editSegmentsMode = useRecoilValue(editSegmentsModeAtom);
 
   const setHoveredLabel = useSetRecoilState(hoveredLabelAtom);
   const setHoveredPolylineInfo = useSetRecoilState(hoveredPolylineInfoAtom);
@@ -231,16 +237,86 @@ export const usePolylineAnnotation = ({
           segmentIndex,
           // pointIndex is undefined when hovering over the segment
         });
+
+        if (editSegmentsMode) {
+          document.body.style.cursor = "crosshair";
+        }
       }
     },
-    [isAnnotateMode, setHoveredPolylineInfo, label._id]
+    [isAnnotateMode, setHoveredPolylineInfo, label._id, editSegmentsMode]
   );
 
   const handleSegmentPointerOut = useCallback(() => {
     if (isAnnotateMode) {
       setHoveredPolylineInfo(null);
     }
-  }, [isAnnotateMode, setHoveredPolylineInfo]);
+
+    if (!editSegmentsMode) {
+      document.body.style.cursor = "default";
+    }
+  }, [isAnnotateMode, setHoveredPolylineInfo, editSegmentsMode]);
+
+  const handleSegmentClick = useCallback(
+    (event: ThreeEvent<MouseEvent>) => {
+      if (!editSegmentsMode || !isSelectedForAnnotation || !isAnnotateMode) {
+        return;
+      }
+
+      event.stopPropagation();
+
+      // Get the click position from the event
+      const clickPosition: Vector3Tuple = [
+        event.point.x,
+        event.point.y,
+        event.point.z,
+      ];
+
+      // Find which segment was clicked
+      const clickResult = findClickedSegment(
+        effectivePoints3d,
+        clickPosition,
+        // Distance threshold
+        0.2
+      );
+
+      if (clickResult) {
+        const { segmentIndex, newVertexPosition } = clickResult;
+
+        // Insert the new vertex into the segment
+        setPolylinePointTransforms((prev) => {
+          const labelId = label._id;
+          const currentTransforms = prev[labelId] || [];
+
+          const newTransforms = insertVertexInSegment(
+            points3d,
+            currentTransforms,
+            segmentIndex,
+            newVertexPosition
+          );
+
+          // If newTransforms is null, it means the new vertex was too close to an existing vertex
+          // In that case, we don't update the transforms
+          if (newTransforms === null) {
+            return prev;
+          }
+
+          return {
+            ...prev,
+            [labelId]: newTransforms,
+          };
+        });
+      }
+    },
+    [
+      editSegmentsMode,
+      isSelectedForAnnotation,
+      isAnnotateMode,
+      effectivePoints3d,
+      points3d,
+      label._id,
+      setPolylinePointTransforms,
+    ]
+  );
 
   const markers = useMemo(() => {
     if (!isAnnotateMode || !isSelectedForAnnotation) return null;
@@ -273,5 +349,6 @@ export const usePolylineAnnotation = ({
     handlePointerOut,
     handleSegmentPointerOver,
     handleSegmentPointerOut,
+    handleSegmentClick,
   };
 };
