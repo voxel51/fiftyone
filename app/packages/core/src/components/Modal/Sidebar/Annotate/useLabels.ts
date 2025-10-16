@@ -49,6 +49,10 @@ const handleSample = async ({
     const array = Array.isArray(result) ? result : result ? [result] : [];
 
     for (const data of array) {
+      if (!filter(path, data)) {
+        continue;
+      }
+
       const label = addLabel(path, type, data);
       labels.push(label);
     }
