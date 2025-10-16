@@ -12,8 +12,8 @@ Includes all updates from :ref:`FiftyOne 1.9.0 <release-notes-v1.9.0>`, plus:
 Plugins, Operators, and Orchestrators
 
 - Added ability to manually terminate an :ref:`Operator <using-operators>` 
-  while its running in any supported
-  :ref:`orchestrator <enterprise-delegated-orchestrator>`: built-in,
+  while it's running in any supported
+  :ref:`orchestrator <enterprise-delegated-orchestrator>`: builtin,
   Databricks, and Anyscale.
 - Updated expiration logic for Delegated :ref:`Operators <using-operators>`,
   and introduced `FIFTYONE_DO_EXPIRATION_MINUTES`. Instead of considering an
@@ -28,9 +28,9 @@ Plugins, Operators, and Orchestrators
 
 App
 
-- Added a plugin secret `FIFTYONE_ZOO_ALLOWED_MODEL_NAMES` that allows FOE
-  admins to configure which zoo models should be available to users when using
-  builtin App features, such as the
+- Added a plugin secret `FIFTYONE_ZOO_ALLOWED_MODEL_NAMES` that allows
+  Enterprise admins to configure which zoo models should be available to users
+  when using builtin App features, such as the
   :ref:`Embeddings Panel <app-embeddings-panel>` and the
   :ref:`Data Quality Panel <data-quality>`.
 - Ensure that user-provided brain/eval keys are valid in the
@@ -64,14 +64,6 @@ FiftyOne 1.9.0
 
 Plugins and Operators
 
-- Added `PipelineOperator`, an
-  :ref:`Operator <using-operators>` that can execute a multi-stage workflow,
-  including stages that support
-  :ref:`distributed execution <enterprise-distributed-execution>`. Added formal
-  `Pipeline` and `PipelineStage` types, as well as `PipelineOperator`, to
-  support pipeline-based workflows.
-  `#6341 <https://github.com/voxel51/fiftyone/pull/6341>`_, 
-  `#6385 <https://github.com/voxel51/fiftyone/pull/6385>`_
 - Added `download_file` :ref:`Operator <using-operators>` to download files
   in-browser. 
   `#6369 <https://github.com/voxel51/fiftyone/pull/6369>`_
@@ -86,11 +78,11 @@ Plugins and Operators
   :ref:`Operators <using-operators>` by excluding
   non-serializable fields during serialization. 
   `#6406 <https://github.com/voxel51/fiftyone/pull/6406>`_
-- Improved :ref:`Operator <using-operators>` monitoring with periodic backend pings and
-  stronger handling of ping/get failures. 
+- Improved :ref:`Operator <using-operators>` monitoring with periodic backend
+  pings and stronger handling of ping/get failures. 
   `#6359 <https://github.com/voxel51/fiftyone/pull/6359>`_
-- Fixed: :ref:`Operators <using-operators>` now honor the active view when one is set, instead of
-  silently falling back to the full dataset. 
+- Fixed: :ref:`Operators <using-operators>` now honor the active view when one
+  is set, instead of silently falling back to the full dataset. 
   `#6375 <https://github.com/voxel51/fiftyone/pull/6375>`_
 
 Core
