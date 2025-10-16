@@ -23,6 +23,7 @@ dist/
 
 /docs/build/
 /docs/source/api/
+/docs/source/plugins/plugins_ecosystem/
 
 /bin
 /lib

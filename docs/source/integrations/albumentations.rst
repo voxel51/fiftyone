@@ -89,7 +89,7 @@ Next, install the
 .. note::
 
     If you have the 
-    `FiftyOne Plugin Utils plugin <https://github.com/voxel51/fiftyone-plugins>`_ 
+    `@voxel51/plugins plugin <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/plugins>`_
     installed, you can also install the Albumentations plugin via the `install_plugin`
     operator, selecting the Albumentations plugin from the community dropdown menu.
 

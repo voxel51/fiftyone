@@ -167,11 +167,13 @@ class Panel(Operator):
         if hasattr(self, method_name):
             method = getattr(self, method_name)
             ctx.event_args = event_args
-            method(ctx)
+            result = method(ctx)
 
         # render
         panel_output = self.render(ctx)
         ctx.ops.show_panel_output(panel_output)
+
+        return result
 
 
 class WriteOnlyError(Exception):

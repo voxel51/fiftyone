@@ -6,47 +6,38 @@ FiftyOne Server decorators
 |
 """
 
-from json import JSONEncoder
 import traceback
 import typing as t
 import logging
 
-from bson import json_util
-import numpy as np
-
-from fiftyone.core.utils import run_sync_task
-
 from starlette.endpoints import HTTPEndpoint
+from starlette.exceptions import HTTPException
 from starlette.responses import JSONResponse, Response
 from starlette.requests import Request
 
-
-class Encoder(JSONEncoder):
-    def default(self, o):
-        if isinstance(o, np.floating):
-            return float(o)
-
-        if isinstance(o, np.integer):
-            return int(o)
-
-        return JSONEncoder.default(self, o)
+from fiftyone.core.utils import run_sync_task
+from fiftyone.server import utils
 
 
 async def create_response(response: dict):
+    """Creates a JSON response from the given dictionary."""
     return Response(
-        await run_sync_task(lambda: json_util.dumps(response, cls=Encoder)),
+        await run_sync_task(lambda: utils.json.dumps(response)),
         headers={"Content-Type": "application/json"},
     )
 
 
 def route(func):
+    """A decorator for HTTPEndpoint methods that parses JSON request bodies
+    and handles exceptions."""
+
     async def wrapper(
         endpoint: HTTPEndpoint, request: Request, *args
     ) -> t.Union[dict, Response]:
         try:
             body = await request.body()
             payload = body.decode("utf-8")
-            data = json_util.loads(payload) if payload else {}
+            data = utils.json.loads(payload)
             response = await func(endpoint, request, data, *args)
             if isinstance(response, Response):
                 return response
@@ -54,6 +45,11 @@ def route(func):
             return await create_response(response)
 
         except Exception as e:
+            # Immediately re-raise starlette HTTP exceptions
+            if isinstance(e, HTTPException):
+                raise e
+
+            # Cast non-starlette HTTP exceptions as JSON with 500 status code
             logging.exception(e)
             return JSONResponse(
                 {

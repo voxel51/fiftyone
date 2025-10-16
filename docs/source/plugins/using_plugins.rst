@@ -11,12 +11,11 @@ can access from within the App.
 
 .. note::
 
-    Check out the
-    `FiftyOne plugins <https://github.com/voxel51/fiftyone-plugins>`_
-    repository for a growing collection of plugins that you can easily
+    Check out the :ref:`Plugins Ecosystem <plugins-ecosystem>` for a growing
+    collection of plugins that you can easily
     :ref:`download <plugins-download>` and use locally.
 
-    Then, after you get comfortable using prebuilt plugins, try your hand at
+    Then, after you get comfortable using existing plugins, try your hand at
     :ref:`writing your own <developing-plugins>`!
 
 .. _plugins-download:
@@ -871,9 +870,9 @@ are executed in the background while you continue to work.
 
 .. note::
 
-    :ref:`FiftyOne Enterprise <enterprise-delegated-operations>` deployments come out of
-    the box with a connected compute cluster for executing delegated operations
-    at scale.
+    :ref:`FiftyOne Enterprise <enterprise-delegated-operations>` deployments
+    come out of the box with a connected compute cluster for executing
+    delegated operations at scale.
 
     In FiftyOne Open Source, you can use delegated operations at small scale
     by :ref:`running them locally <delegated-orchestrator-open-source>`.
@@ -936,21 +935,15 @@ in the environment where you run the App/SDK, e.g. by setting:
 
     export FIFTYONE_ALLOW_LEGACY_ORCHESTRATORS=true
 
-.. _delegated-orchestrator-teamas:
+.. _delegated-orchestrator-enterprise:
 
 FiftyOne Enterprise
 -------------------
 
-:ref:`FiftyOne Enterprise <enterprise-delegated-operations>` deployments come out of the
-box with a connected compute cluster for executing delegated operations at
-scale.
-
-.. note::
-
-    [ Beta ] FiftyOne Enterprise now supports on-demand compute via Databricks
-    and Anyscale. In order to configure an orchestrator for your Databricks or
-    Anyscale compute, administrators should consult the
-    `deployment guide <https://github.com/voxel51/fiftyone-teams-app-deploy/blob/main/docs/configuring-on-demand-orchestrator.md>`_
+:ref:`FiftyOne Enterprise <enterprise-delegated-operations>` deployments come
+out of the box with a connected compute cluster for executing delegated
+operations at scale. They can also be connected to your own compute solution,
+such as Databricks or Anyscale.
 
 This powerful feature allows users to install/build plugins that execute
 potentially long-running tasks in the background while users continue with

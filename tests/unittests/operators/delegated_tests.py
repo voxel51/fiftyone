@@ -14,7 +14,6 @@ from unittest.mock import patch
 import bson
 import pytest
 
-import fiftyone
 from bson import ObjectId
 
 from fiftyone import Dataset
@@ -29,6 +28,7 @@ from fiftyone.operators.executor import (
     ExecutionResult,
     ExecutionRunState,
 )
+from fiftyone.operators.types import Pipeline, PipelineStage
 from fiftyone.factory.repos import (
     DelegatedOperationDocument,
     delegated_operation,
@@ -203,6 +203,13 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         dataset_name = f"test_dataset_{dataset_id}"
         mock_load_dataset.return_value.name = dataset_name
         mock_load_dataset.return_value._doc.id = dataset_id
+
+        pipeline = Pipeline(
+            [
+                PipelineStage(name="one", operator_uri="@test/op1"),
+                PipelineStage(name="two", operator_uri="@test/op2"),
+            ]
+        )
         doc = self.svc.queue_operation(
             operator=f"{TEST_DO_PREFIX}/operator/foo",
             label=mock_get_operator.return_value.config.label,
@@ -210,12 +217,14 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             context=ExecutionContext(
                 request_params={"foo": "bar", "dataset_name": dataset_name},
             ),
+            pipeline=pipeline,
         )
         self.docs_to_delete.append(doc)
         self.assertIsNotNone(doc.queued_at)
         self.assertEqual(doc.label, "Mock Operator")
         self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
         self.assertEqual(doc.metadata, {})
+        self.assertEqual(doc.pipeline, pipeline)
 
         doc2_metadata = {"inputs_schema": {}}
         doc2 = self.svc.queue_operation(
@@ -470,7 +479,8 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
 
         results = self.svc.execute_queued_operations(
-            delegation_target="test_target"
+            delegation_target="test_target",
+            monitor=False,
         )
         self.assertEqual(len(results), 1)
         self.assertIsNone(results[0].error)
@@ -501,7 +511,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
 
         results = self.svc.execute_queued_operations(
-            delegation_target="test_target"
+            delegation_target="test_target", monitor=False
         )
         self.assertEqual(len(results), 1)
         self.assertIsNone(results[0].error)
@@ -538,7 +548,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
 
         results = self.svc.execute_queued_operations(
-            delegation_target="test_target_generator"
+            delegation_target="test_target_generator", monitor=False
         )
         self.assertEqual(len(results), 1)
         self.assertIsNone(results[0].error)
@@ -572,7 +582,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
 
         results = self.svc.execute_queued_operations(
-            delegation_target="test_target"
+            delegation_target="test_target", monitor=False
         )
         self.assertEqual(len(results), 1)
         self.assertIsNone(results[0].error)
@@ -609,7 +619,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             DelegatedOperationService, "set_progress"
         ) as set_progress:
             self.svc.execute_operation(
-                operation=doc, run_link="http://run.info"
+                operation=doc, run_link="http://run.info", monitor=False
             )
             self.assertEqual(set_progress.call_count, 10)
             for x in range(10):
@@ -644,7 +654,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         #   it's running elsewhere.
         self.svc.set_running(doc.id)
 
-        self.svc.execute_operation(doc)
+        self.svc.execute_operation(doc, monitor=False)
         operator.execute.assert_not_called()
 
         doc = self.svc.get(doc_id=doc.id)
@@ -673,7 +683,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
 
         results = self.svc.execute_queued_operations(
-            delegation_target="test_target"
+            delegation_target="test_target", monitor=False
         )
         self.assertEqual(len(results), 1)
         self.assertIsNotNone(results[0].error)
@@ -713,7 +723,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
 
         results = self.svc.execute_queued_operations(
-            delegation_target="test_target"
+            delegation_target="test_target", monitor=False
         )
         self.assertEqual(len(results), 1)
         self.assertIsNotNone(results[0].error)
@@ -737,7 +747,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertIsNone(rerun_doc.result)
 
         results = self.svc.execute_queued_operations(
-            delegation_target="test_target"
+            delegation_target="test_target", monitor=False
         )
         self.assertEqual(len(results), 1)
         self.assertIsNone(results[0].error)
@@ -774,7 +784,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         # Execute once with original dataset name
         results = self.svc.execute_queued_operations(
-            delegation_target="test_target"
+            delegation_target="test_target", monitor=False
         )
         self.assertEqual(len(results), 1)
         self.assertIsNotNone(results[0].error)
@@ -806,7 +816,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             self.assertIsNone(rerun_doc.result)
 
             results = self.svc.execute_queued_operations(
-                delegation_target="test_target"
+                delegation_target="test_target", monitor=False
             )
             self.assertEqual(len(results), 1)
             self.assertIsNone(results[0].error)
@@ -850,10 +860,313 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         )
         self.docs_to_delete.append(doc)
         doc = self.svc.set_running(doc.id)
-        result = self.svc.execute_operation(doc)
+        result = self.svc.execute_operation(doc, monitor=False)
         changed_doc = self.svc.get(doc_id=doc.id)
         self.assertEqual(changed_doc.status, doc.status)
         self.assertIsNone(result)
+
+    @patch("logging.handlers.QueueListener")
+    @patch("multiprocessing.get_context")
+    def test_execute_operation_monitor_success(
+        self,
+        mock_get_context,
+        mock_listener,
+        mock_get_operator,
+    ):
+        mock_process = mock.MagicMock()
+
+        mock_process.is_alive.side_effect = [True, True, True, False, False]
+
+        mock_context = mock.MagicMock()
+        mock_context.Process.return_value = mock_process
+        mock_context.Queue.return_value = mock.MagicMock()
+        mock_get_context.return_value = mock_context
+
+        doc = self.svc.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/operator/monitor_success",
+            context=ExecutionContext(
+                request_params={"dataset_id": str(ObjectId())}
+            ),
+        )
+        self.docs_to_delete.append(doc)
+
+        # First call returns running doc, second call returns completed doc
+        running_doc = copy.deepcopy(doc)
+        running_doc.run_state = ExecutionRunState.RUNNING
+
+        completed_doc = copy.deepcopy(doc)
+        completed_doc.run_state = ExecutionRunState.COMPLETED
+        completed_doc.result = ExecutionResult(result={"executed": True})
+
+        with patch.object(
+            self.svc, "get", side_effect=[running_doc, completed_doc]
+        ), patch(
+            "fiftyone.operators.delegated._execute_operator_in_child_process"
+        ), patch.object(
+            self.svc._repo, "ping"
+        ) as mock_ping:
+            result = self.svc.execute_operation(
+                operation=doc,
+                log=False,
+                monitor=True,
+            )
+
+            # Verify ping was called with the operation ID
+            mock_ping.assert_called_once_with(doc.id)
+
+        self.assertIsNotNone(result)
+        self.assertIsNone(result.error)
+        self.assertEqual(result.result, {"executed": True})
+
+    @patch("psutil.Process")
+    @patch("logging.handlers.QueueListener")
+    @patch("multiprocessing.get_context")
+    def test_execute_operation_monitor_external_fail(
+        self,
+        mock_get_context,
+        mock_listener,
+        mock_psutil_process,
+        mock_get_operator,
+    ):
+        mock_process = mock.MagicMock()
+        mock_process.pid = 12345
+
+        mock_process.is_alive.side_effect = [
+            True,  # 1st loop: while condition
+            True,  # 1st loop: after join
+            True,  # 2nd loop: while condition
+            True,  # 2nd loop: after join
+            False,  # after termination
+        ]
+
+        mock_context = mock.MagicMock()
+        mock_context.Process.return_value = mock_process
+        mock_context.Queue.return_value = mock.MagicMock()
+        mock_get_context.return_value = mock_context
+
+        mock_psutil_parent = mock.MagicMock()
+        mock_psutil_process.return_value = mock_psutil_parent
+
+        doc = self.svc.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/operator/monitor_external_fail",
+            context=ExecutionContext(
+                request_params={"dataset_id": str(ObjectId())}
+            ),
+        )
+        self.docs_to_delete.append(doc)
+
+        # We need two document states for our simulation
+        running_doc = copy.deepcopy(doc)
+        running_doc.run_state = ExecutionRunState.RUNNING
+
+        failed_doc = copy.deepcopy(doc)
+        failed_doc.run_state = ExecutionRunState.FAILED
+        failed_doc.result = ExecutionResult(error="marked as failed by test")
+
+        with patch.object(
+            self.svc, "get", side_effect=[running_doc, failed_doc]
+        ), patch("time.sleep", return_value=None), patch.object(
+            self.svc._repo, "ping"
+        ) as mock_ping:
+            result = self.svc.execute_operation(
+                operation=doc,
+                log=False,
+                monitor=True,
+                check_interval_seconds=1,
+            )
+
+            # This assertion will now pass
+            mock_ping.assert_called_once_with(doc.id)
+
+        mock_psutil_process.assert_called_once_with(mock_process.pid)
+        mock_psutil_parent.children.assert_called_once_with(recursive=True)
+        mock_psutil_parent.terminate.assert_called_once()
+
+        self.assertIsNotNone(result)
+        self.assertIn("Operation marked as FAILED externally", result.error)
+
+        mock_process.start.assert_called_once()
+        self.assertGreaterEqual(mock_process.join.call_count, 2)
+
+    @patch("logging.handlers.QueueListener")
+    @patch("multiprocessing.get_context")
+    def test_execute_operation_monitor_internal_fail(
+        self,
+        mock_get_context,
+        mock_listener,
+        mock_get_operator,
+    ):
+        mock_process = mock.MagicMock()
+        mock_process.is_alive.side_effect = [
+            True,
+            True,  # Cycle 1
+            True,
+            True,  # Cycle 2
+            False,
+            False,  # Subsequent checks
+        ]
+
+        mock_context = mock.MagicMock()
+        mock_context.Process.return_value = mock_process
+        mock_context.Queue.return_value = mock.MagicMock()
+        mock_get_context.return_value = mock_context
+
+        doc = self.svc.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/operator/monitor_fail",
+            context=ExecutionContext(
+                request_params={"dataset_id": str(ObjectId())}
+            ),
+        )
+        self.docs_to_delete.append(doc)
+
+        # First call returns running doc, second call returns failed doc
+        running_doc = copy.deepcopy(doc)
+        running_doc.run_state = ExecutionRunState.RUNNING
+
+        failed_doc = copy.deepcopy(doc)
+        failed_doc.run_state = ExecutionRunState.FAILED
+        failed_doc.result = ExecutionResult(
+            error="MockOperator failed internally"
+        )
+
+        with patch.object(
+            self.svc, "get", side_effect=[running_doc, failed_doc]
+        ), patch(
+            "fiftyone.operators.delegated._execute_operator_in_child_process"
+        ), patch.object(
+            self.svc._repo, "ping"
+        ) as mock_ping, patch(
+            "psutil.Process"
+        ) as mock_psutil_process:
+            mock_psutil_parent = mock.MagicMock()
+            mock_psutil_process.return_value = mock_psutil_parent
+
+            result = self.svc.execute_operation(
+                operation=doc,
+                log=False,
+                monitor=True,
+            )
+
+            # Verify ping was called with the operation ID (before failure detected)
+            mock_ping.assert_called_once_with(doc.id)
+
+        self.assertIsNotNone(result)
+        self.assertIsNotNone(result.error)
+        self.assertIn("Operation FAILED (detected by monitor):", result.error)
+        self.assertIn("MockOperator failed internally", result.error)
+
+    @patch("logging.handlers.QueueListener")
+    @patch("multiprocessing.get_context")
+    def test_execute_operation_monitor_ping_exception(
+        self,
+        mock_get_context,
+        mock_listener,
+        mock_get_operator,
+    ):
+        """Test that monitoring handles ping exceptions gracefully"""
+        mock_process = mock.MagicMock()
+        mock_process.is_alive.side_effect = [True, True, False]
+        mock_process.pid = 12345
+
+        mock_context = mock.MagicMock()
+        mock_context.Process.return_value = mock_process
+        mock_context.Queue.return_value = mock.MagicMock()
+        mock_get_context.return_value = mock_context
+
+        doc = self.svc.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/operator/monitor_ping_fail",
+            context=ExecutionContext(
+                request_params={"dataset_id": str(ObjectId())}
+            ),
+        )
+        self.docs_to_delete.append(doc)
+
+        # Mock get to return running operation first time, then completed
+        running_doc = copy.deepcopy(doc)
+        running_doc.run_state = ExecutionRunState.RUNNING
+
+        # Mock ping to raise an exception
+        ping_exception = Exception("Database connection failed")
+
+        with patch.object(self.svc, "get", return_value=running_doc), patch(
+            "fiftyone.operators.delegated._execute_operator_in_child_process"
+        ), patch.object(
+            self.svc._repo, "ping", side_effect=ping_exception
+        ), patch(
+            "psutil.Process"
+        ) as mock_psutil_process, patch(
+            "time.sleep", return_value=None
+        ):
+            mock_psutil_parent = mock.MagicMock()
+            mock_psutil_process.return_value = mock_psutil_parent
+
+            result = self.svc.execute_operation(
+                operation=doc, log=False, monitor=True
+            )
+
+            # Should terminate the process due to ping exception
+            mock_psutil_process.assert_called_once_with(mock_process.pid)
+            mock_psutil_parent.children.assert_called_once_with(recursive=True)
+            mock_psutil_parent.terminate.assert_called_once()
+
+        self.assertIsNotNone(result)
+        self.assertIn("Error in monitoring loop", result.error)
+        self.assertIn("Database connection failed", result.error)
+
+    @patch("logging.handlers.QueueListener")
+    @patch("multiprocessing.get_context")
+    def test_execute_operation_monitor_get_exception(
+        self,
+        mock_get_context,
+        mock_listener,
+        mock_get_operator,
+    ):
+        """Test that monitoring handles get operation exceptions gracefully"""
+        mock_process = mock.MagicMock()
+        mock_process.is_alive.side_effect = [True, True, False]
+        mock_process.pid = 12345
+
+        mock_context = mock.MagicMock()
+        mock_context.Process.return_value = mock_process
+        mock_context.Queue.return_value = mock.MagicMock()
+        mock_get_context.return_value = mock_context
+
+        doc = self.svc.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/operator/monitor_get_fail",
+            context=ExecutionContext(
+                request_params={"dataset_id": str(ObjectId())}
+            ),
+        )
+        self.docs_to_delete.append(doc)
+
+        # Mock get to raise an exception
+        get_exception = Exception("Failed to retrieve operation")
+
+        with patch.object(self.svc, "get", side_effect=get_exception), patch(
+            "fiftyone.operators.delegated._execute_operator_in_child_process"
+        ), patch.object(self.svc._repo, "ping") as mock_ping, patch(
+            "psutil.Process"
+        ) as mock_psutil_process, patch(
+            "time.sleep", return_value=None
+        ):
+            mock_psutil_parent = mock.MagicMock()
+            mock_psutil_process.return_value = mock_psutil_parent
+
+            result = self.svc.execute_operation(
+                operation=doc, log=False, monitor=True
+            )
+
+            # Ping should not be called if get fails
+            mock_ping.assert_not_called()
+
+            # Should terminate the process due to get exception
+            mock_psutil_process.assert_called_once_with(mock_process.pid)
+            mock_psutil_parent.children.assert_called_once_with(recursive=True)
+            mock_psutil_parent.terminate.assert_called_once()
+
+        self.assertIsNotNone(result)
+        self.assertIn("Error in monitoring loop", result.error)
+        self.assertIn("Failed to retrieve operation", result.error)
 
     def test_execute_with_renamed_dataset(self, get_op_mock):
         # setup
@@ -888,7 +1201,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         # Execute queued operation after saving the new dataset name
         try:
             results = self.svc.execute_queued_operations(
-                delegation_target="test_target"
+                delegation_target="test_target", monitor=False
             )
             self.assertEqual(len(results), 1)
             self.assertIsNone(results[0].error)
@@ -1358,3 +1671,34 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         #####
         self.assertRaises(PermissionError, dos.set_queued, op_id)
         #####
+
+    def test_queue_panel_delegated_op(self, mock_get_operator):
+        """Queue DO that comes from a panel"""
+        self.mock_is_remote_service.return_value = True
+        db = delegated_operation.MongoDelegatedOperationRepo()
+        dos = DelegatedOperationService(repo=db)
+        ctx = ExecutionContext(
+            request_params={
+                "params": {
+                    "panel_id": bson.ObjectId(),
+                    "panel_state": {"foo2": "bar2"},
+                }
+            }
+        )
+        ctx.request_params = {"foo": "bar"}
+        ctx.params = {
+            "panel_id": bson.ObjectId(),
+            "panel_state": {"foo2": "bar2"},
+        }
+
+        #####
+        doc = dos.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/operator/foo",
+            label=mock_get_operator.return_value.name,
+            delegation_target="test_target",
+            context=ctx,
+        )
+        #####
+
+        self.docs_to_delete.append(doc)
+        self.assertEqual(doc.run_state, ExecutionRunState.SCHEDULED)

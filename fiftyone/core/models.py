@@ -50,23 +50,6 @@ _ALLOWED_PATCH_TYPES = (
 )
 
 
-@contextlib.contextmanager
-def _handle_batch_error(skip_failures, sample_batch):
-    try:
-        yield
-    except Exception as e:
-        if not skip_failures:
-            raise e
-
-        logger.warning(
-            "Batch: %s - %s\nError: %s\n",
-            sample_batch[0].id,
-            sample_batch[-1].id,
-            e,
-            exc_info=True,
-        )
-
-
 def apply_model(
     samples,
     model,
@@ -353,11 +336,7 @@ def _apply_image_model_single(
 ):
     needs_samples = isinstance(model, SamplesMixin)
 
-    if needs_samples:
-        fields = list(model.needs_fields.values())
-        samples = samples.select_fields(fields)
-    else:
-        samples = samples.select_fields()
+    samples = _select_fields_for_inference(samples, model)
 
     with contextlib.ExitStack() as context:
         pb = context.enter_context(fou.ProgressBar(progress=progress))
@@ -400,11 +379,7 @@ def _apply_image_model_batch(
 ):
     needs_samples = isinstance(model, SamplesMixin)
 
-    if needs_samples:
-        fields = list(model.needs_fields.values())
-        samples = samples.select_fields(fields)
-    else:
-        samples = samples.select_fields()
+    samples = _select_fields_for_inference(samples, model)
 
     with contextlib.ExitStack() as context:
         pb = context.enter_context(fou.ProgressBar(samples, progress=progress))
@@ -469,41 +444,17 @@ def _apply_image_model_data_loader(
         field_mapping,
     )
 
-    if needs_samples:
-        fields = list(model.needs_fields.values())
-        samples = samples.select_fields(fields)
-    else:
-        samples = samples.select_fields()
+    samples = _select_fields_for_inference(samples, model)
 
     with contextlib.ExitStack() as context:
         pb = context.enter_context(fou.ProgressBar(samples, progress=progress))
         ctx = context.enter_context(foc.SaveContext(samples))
-        submit = context.enter_context(
-            fou.async_executor(
-                max_workers=1,
-                skip_failures=skip_failures,
-                warning="Async failure labeling batches",
-            )
-        )
-
-        def save_batch(sample_batch, labels_batch):
-            with _handle_batch_error(skip_failures, sample_batch):
-                for sample, labels in zip(sample_batch, labels_batch):
-                    if filename_maker is not None:
-                        _export_arrays(labels, sample.filepath, filename_maker)
-
-                    sample.add_labels(
-                        labels,
-                        label_field=label_field,
-                        confidence_thresh=confidence_thresh,
-                    )
-                    ctx.save(sample)
 
         for sample_batch, imgs in zip(
             fou.iter_batches(samples, batch_size),
             data_loader,
         ):
-            with _handle_batch_error(skip_failures, sample_batch):
+            try:
                 if isinstance(imgs, Exception):
                     raise imgs
 
@@ -514,7 +465,27 @@ def _apply_image_model_data_loader(
                 else:
                     labels_batch = model.predict_all(imgs)
 
-                submit(save_batch, sample_batch, labels_batch)
+                for sample, labels in zip(sample_batch, labels_batch):
+                    if filename_maker is not None:
+                        _export_arrays(labels, sample.filepath, filename_maker)
+
+                    sample.add_labels(
+                        labels,
+                        label_field=label_field,
+                        confidence_thresh=confidence_thresh,
+                    )
+                    ctx.save(sample)
+            except Exception as e:
+                if not skip_failures:
+                    raise e
+
+                logger.warning(
+                    "Batch: %s - %s\nError: %s\n",
+                    sample_batch[0].id,
+                    sample_batch[-1].id,
+                    e,
+                    exc_info=True,
+                )
 
             pb.update(len(sample_batch))
 
@@ -532,11 +503,7 @@ def _apply_image_model_to_frames_single(
     frame_counts, total_frame_count = _get_frame_counts(samples)
     is_clips = samples._dataset._is_clips
 
-    if needs_samples:
-        fields = list(model.needs_fields.values())
-        samples = samples.select_fields(fields)
-    else:
-        samples = samples.select_fields()
+    samples = _select_fields_for_inference(samples, model)
 
     with contextlib.ExitStack() as context:
         pb = context.enter_context(
@@ -599,11 +566,7 @@ def _apply_image_model_to_frames_batch(
     frame_counts, total_frame_count = _get_frame_counts(samples)
     is_clips = samples._dataset._is_clips
 
-    if needs_samples:
-        fields = list(model.needs_fields.values())
-        samples = samples.select_fields(fields)
-    else:
-        samples = samples.select_fields()
+    samples = _select_fields_for_inference(samples, model)
 
     with contextlib.ExitStack() as context:
         pb = context.enter_context(
@@ -670,11 +633,7 @@ def _apply_video_model(
     needs_samples = isinstance(model, SamplesMixin)
     is_clips = samples._dataset._is_clips
 
-    if needs_samples:
-        fields = list(model.needs_fields.values())
-        samples = samples.select_fields(fields)
-    else:
-        samples = samples.select_fields()
+    samples = _select_fields_for_inference(samples, model)
 
     with contextlib.ExitStack() as context:
         pb = context.enter_context(fou.ProgressBar(progress=progress))
@@ -709,6 +668,14 @@ def _apply_video_model(
                     raise e
 
                 logger.warning("Sample: %s\nError: %s\n", sample.id, e)
+
+
+def _select_fields_for_inference(samples, model):
+    if isinstance(model, SamplesMixin):
+        fields = list(model.needs_fields.values())
+        return samples.select_fields(fields)
+    else:
+        return samples.select_fields()
 
 
 def _export_arrays(label, input_path, filename_maker):
@@ -1025,13 +992,6 @@ def compute_embeddings(
             embeddings_field
         )
 
-        if "." in embeddings_field:
-            ftype = "frame" if _is_frame_field else "sample"
-            raise ValueError(
-                "Invalid `embeddings_field=%s`. Expected a top-level %s field "
-                "name that contains no '.'" % (embeddings_field, ftype)
-            )
-
         if dataset.media_type == fom.VIDEO and model.media_type == "image":
             if not dataset.has_frame_field(embeddings_field):
                 dataset.add_frame_field(embeddings_field, fof.VectorField)
@@ -1097,7 +1057,7 @@ def compute_embeddings(
 def _compute_image_embeddings_single(
     samples, model, embeddings_field, skip_failures, progress
 ):
-    samples = samples.select_fields()
+    samples = _select_fields_for_embeddings(samples, embeddings_field)
 
     embeddings = []
     errors = False
@@ -1141,7 +1101,7 @@ def _compute_image_embeddings_single(
 def _compute_image_embeddings_batch(
     samples, model, embeddings_field, batch_size, skip_failures, progress
 ):
-    samples = samples.select_fields()
+    samples = _select_fields_for_embeddings(samples, embeddings_field)
 
     embeddings = []
     errors = False
@@ -1209,7 +1169,7 @@ def _compute_image_embeddings_data_loader(
         field_mapping,
     )
 
-    samples = samples.select_fields()
+    samples = _select_fields_for_embeddings(samples, embeddings_field)
 
     embeddings = []
     errors = False
@@ -1220,21 +1180,6 @@ def _compute_image_embeddings_data_loader(
             ctx = context.enter_context(foc.SaveContext(samples))
         else:
             ctx = None
-
-        submit = context.enter_context(
-            fou.async_executor(
-                max_workers=1,
-                skip_failures=skip_failures,
-                warning="Async failure saving embeddings",
-            )
-        )
-
-        def save_batch(sample_batch, embeddings_batch):
-            with _handle_batch_error(skip_failures, sample_batch):
-                for sample, embedding in zip(sample_batch, embeddings_batch):
-                    sample[embeddings_field] = embedding
-                    if ctx:
-                        ctx.save(sample)
 
         for sample_batch, imgs in zip(
             fou.iter_batches(samples, batch_size),
@@ -1260,7 +1205,24 @@ def _compute_image_embeddings_data_loader(
                 )
 
             if embeddings_field is not None:
-                submit(save_batch, sample_batch, embeddings_batch)
+                try:
+                    for sample, embedding in zip(
+                        sample_batch, embeddings_batch
+                    ):
+                        sample[embeddings_field] = embedding
+                        if ctx:
+                            ctx.save(sample)
+                except Exception as e:
+                    if not skip_failures:
+                        raise e
+
+                    logger.warning(
+                        "Batch: %s - %s\nError: %s\n",
+                        sample_batch[0].id,
+                        sample_batch[-1].id,
+                        e,
+                        exc_info=True,
+                    )
             else:
                 embeddings.extend(embeddings_batch)
 
@@ -1284,7 +1246,7 @@ def _compute_frame_embeddings_single(
     frame_counts, total_frame_count = _get_frame_counts(samples)
     is_clips = samples._dataset._is_clips
 
-    samples = samples.select_fields()
+    samples = _select_fields_for_embeddings(samples, embeddings_field)
 
     embeddings_dict = {}
 
@@ -1350,7 +1312,7 @@ def _compute_frame_embeddings_batch(
     frame_counts, total_frame_count = _get_frame_counts(samples)
     is_clips = samples._dataset._is_clips
 
-    samples = samples.select_fields()
+    samples = _select_fields_for_embeddings(samples, embeddings_field)
 
     embeddings_dict = {}
 
@@ -1420,7 +1382,7 @@ def _compute_video_embeddings(
 ):
     is_clips = samples._dataset._is_clips
 
-    samples = samples.select_fields()
+    samples = _select_fields_for_embeddings(samples, embeddings_field)
 
     embeddings = []
     errors = False
@@ -1465,6 +1427,14 @@ def _compute_video_embeddings(
         return np.empty((0, 0), dtype=float)
 
     return np.stack(embeddings)
+
+
+def _select_fields_for_embeddings(samples, embeddings_field):
+    if embeddings_field is not None and "." in embeddings_field:
+        root_field = embeddings_field.split(".", 1)[0]
+        return samples.select_fields(root_field)
+    else:
+        return samples.select_fields()
 
 
 def compute_patch_embeddings(
@@ -1689,7 +1659,7 @@ def _embed_patches(
     skip_failures,
     progress,
 ):
-    samples = samples.select_fields(patches_field)
+    samples = _select_fields_for_patch_embeddings(samples, patches_field)
 
     if embeddings_field is not None:
         label_parser = _make_label_parser(samples, patches_field)
@@ -1804,7 +1774,7 @@ def _embed_patches_data_loader(
         skip_failures,
     )
 
-    samples = samples.select_fields(patches_field)
+    samples = _select_fields_for_patch_embeddings(samples, patches_field)
 
     if embeddings_field is not None:
         label_parser = _make_label_parser(samples, patches_field)
@@ -1867,9 +1837,9 @@ def _embed_frame_patches(
 ):
     frame_counts, total_frame_count = _get_frame_counts(samples)
     is_clips = samples._dataset._is_clips
-
     _patches_field = samples._FRAMES_PREFIX + patches_field
-    samples = samples.select_fields(_patches_field)
+
+    samples = _select_fields_for_patch_embeddings(samples, _patches_field)
 
     if embeddings_field is not None:
         label_parser = _make_label_parser(samples, _patches_field)
@@ -2006,6 +1976,10 @@ def _parse_batch_size(batch_size, model, use_data_loader):
         batch_size = 1
 
     return batch_size
+
+
+def _select_fields_for_patch_embeddings(samples, patches_field):
+    return samples.select_fields(patches_field)
 
 
 def _make_label_parser(samples, patches_field):
