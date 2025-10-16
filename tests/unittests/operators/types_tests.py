@@ -1,0 +1,95 @@
+"""
+FiftyOne operator type tests.
+
+| Copyright 2017-2025, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
+
+import unittest
+
+import bson
+
+import fiftyone as fo
+import fiftyone.operators as foo
+from fiftyone.operators import types
+
+
+class TestPipelineType(unittest.TestCase):
+    def test_pipeline_type(self):
+        pipeline = types.Pipeline()
+        self.assertListEqual(pipeline.stages, [])
+
+        pipeline = types.Pipeline(stages=[])
+        self.assertListEqual(pipeline.stages, [])
+
+        stage1 = types.PipelineStage(operator_uri="my/uri")
+        stage2 = types.PipelineStage(
+            operator_uri="my/uri2",
+            name="stage2",
+            num_distributed_tasks=5,
+            params={"foo": "bar"},
+        )
+        pipeline = types.Pipeline(stages=[stage1, stage2])
+        self.assertListEqual(pipeline.stages, [stage1, stage2])
+
+        pipeline = types.Pipeline()
+        pipeline.stage(stage1.operator_uri)
+        pipeline.stage(
+            stage2.operator_uri,
+            stage2.name,
+            stage2.num_distributed_tasks,
+            stage2.params,
+        )
+        self.assertListEqual(pipeline.stages, [stage1, stage2])
+
+    def test_serialize(self):
+        pipeline = types.Pipeline(
+            stages=[
+                types.PipelineStage(operator_uri="my/uri"),
+                types.PipelineStage(
+                    operator_uri="my/uri2",
+                    name="stage2",
+                    num_distributed_tasks=5,
+                    params={"foo": "bar"},
+                ),
+            ]
+        )
+        dict_rep = pipeline.to_json()
+        self.assertDictEqual(
+            dict_rep,
+            {
+                "stages": [
+                    {
+                        "operator_uri": "my/uri",
+                        "name": None,
+                        "num_distributed_tasks": None,
+                        "params": None,
+                    },
+                    {
+                        "operator_uri": "my/uri2",
+                        "name": "stage2",
+                        "num_distributed_tasks": 5,
+                        "params": {"foo": "bar"},
+                    },
+                ],
+            },
+        )
+        new_obj = types.Pipeline.from_json(dict_rep)
+        self.assertEqual(new_obj, pipeline)
+
+    def test_validation(self):
+        with self.assertRaises(ValueError):
+            types.PipelineStage(operator_uri=None)
+
+        with self.assertRaises(ValueError):
+            types.PipelineStage(operator_uri="my/uri", num_distributed_tasks=0)
+
+        with self.assertRaises(ValueError):
+            types.PipelineStage(
+                operator_uri="my/uri", num_distributed_tasks=-5
+            )
+
+        pipe = types.Pipeline()
+        with self.assertRaises(ValueError):
+            pipe.stage("my/uri", num_distributed_tasks=-5)
