@@ -8,6 +8,7 @@ import {
   selectedLabelForAnnotationAtom,
   selectedPolylineVertexAtom,
 } from "../../state";
+import { getVertexPosition } from "../utils/polyline-utils";
 
 interface CoordinateInputsProps {
   className?: string;
@@ -235,31 +236,14 @@ export const VertexCoordinateInputs = ({
   const selectedPointPosition = useMemo(() => {
     if (!selectedPoint || !selectedLabel) return null;
 
-    const transforms = polylinePointTransforms[selectedPoint.labelId] || [];
-    const transform = transforms.find(
-      (t) =>
-        t.segmentIndex === selectedPoint.segmentIndex &&
-        t.pointIndex === selectedPoint.pointIndex
-    );
-
-    // Return transformed position if exists, otherwise return original position from label
-    if (transform) {
-      return transform.position;
-    }
-
     const polylineLabel = selectedLabel as unknown as PolyLineProps;
-    if (
-      polylineLabel.points3d &&
-      selectedPoint.segmentIndex < polylineLabel.points3d.length &&
-      selectedPoint.pointIndex <
-        polylineLabel.points3d[selectedPoint.segmentIndex].length
-    ) {
-      return polylineLabel.points3d[selectedPoint.segmentIndex][
-        selectedPoint.pointIndex
-      ] as [number, number, number];
-    }
+    const transforms = polylinePointTransforms[selectedPoint.labelId] || [];
 
-    return null;
+    return getVertexPosition(
+      selectedPoint,
+      polylineLabel.points3d || [],
+      transforms
+    );
   }, [selectedPoint, selectedLabel, polylinePointTransforms]);
   const [x, setX] = useState<string>("0");
   const [y, setY] = useState<string>("0");

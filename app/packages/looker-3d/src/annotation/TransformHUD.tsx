@@ -13,6 +13,7 @@ import {
   transformModeAtom,
   transformedLabelsAtom,
 } from "../state";
+import { calculatePolylineCentroid } from "./utils/polyline-utils";
 
 const TransformHUDContainer = styled.div`
   position: absolute;
@@ -75,23 +76,7 @@ export const TransformHUD = () => {
   // todo: needs to use transformed points, if any
   const centroid = useMemo(() => {
     if (hoveredLabel?._cls === "Polyline" && hoveredLabel?.points3d) {
-      const allPoints = hoveredLabel.points3d.flat();
-      if (allPoints.length === 0) return [0, 0, 0];
-
-      const sum = allPoints.reduce(
-        (acc, point) => [
-          acc[0] + point[0],
-          acc[1] + point[1],
-          acc[2] + point[2],
-        ],
-        [0, 0, 0]
-      );
-
-      return [
-        sum[0] / allPoints.length,
-        sum[1] / allPoints.length,
-        sum[2] / allPoints.length,
-      ] as [number, number, number];
+      return calculatePolylineCentroid(hoveredLabel.points3d);
     }
     return [0, 0, 0];
   }, [hoveredLabel]);

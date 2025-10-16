@@ -18,6 +18,10 @@ import { createFilledPolygonMeshes } from "./polygon-fill-utils";
 import type { OverlayProps } from "./shared";
 import { useEventHandlers, useHoverState, useLabelColor } from "./shared/hooks";
 import { Transformable } from "./shared/TransformControls";
+import {
+  applyTransformsToPolyline,
+  applyDeltaToAllPoints,
+} from "../annotation/utils/polyline-utils";
 
 export interface PolyLineProps extends OverlayProps {
   // Array of line segments, where each segment is an array of 3D points
@@ -72,22 +76,7 @@ export const Polyline = ({
     const labelId = label._id;
     const transforms = polylinePointTransforms[labelId] || [];
 
-    // Start with the original points
-    const result = points3d.map((segment) => [...segment]);
-
-    transforms.forEach((transform) => {
-      const { segmentIndex, pointIndex, position } = transform;
-
-      if (result[segmentIndex] === undefined) {
-        result[segmentIndex] = [
-          [0, 0, 0],
-          [0, 0, 0],
-        ];
-      }
-
-      result[segmentIndex][pointIndex] = position;
-    });
-
+    const result = applyTransformsToPolyline(points3d, transforms);
     setPolylineEffectivePoints(result);
   }, [polylinePointTransforms, label._id, points3d]);
 
@@ -333,35 +322,12 @@ export const Polyline = ({
       const labelId = label._id;
       const currentTransforms = prev[labelId] || [];
 
-      // helper to get current effective point for (segmentIndex, pointIndex)
-      const getCurrent = (
-        segmentIndex: number,
-        pointIndex: number
-      ): [number, number, number] => {
-        const t = currentTransforms.find(
-          (x) => x.segmentIndex === segmentIndex && x.pointIndex === pointIndex
-        );
-        return (t?.position ?? points3d[segmentIndex][pointIndex]) as [
-          number,
-          number,
-          number
-        ];
-      };
-
-      const newTransforms: PolylinePointTransform[] = [];
-
-      // Always rebuild from current effective positions + worldDelta
-      effectivePoints3d.forEach((segment, segmentIndex) => {
-        segment.forEach((_, pointIndex) => {
-          const base = getCurrent(segmentIndex, pointIndex);
-          const p = new THREE.Vector3(...base).add(worldDelta);
-          newTransforms.push({
-            segmentIndex,
-            pointIndex,
-            position: [p.x, p.y, p.z],
-          });
-        });
-      });
+      const newTransforms = applyDeltaToAllPoints(
+        effectivePoints3d,
+        points3d,
+        currentTransforms,
+        [worldDelta.x, worldDelta.y, worldDelta.z]
+      );
 
       return { ...prev, [labelId]: newTransforms };
     });

@@ -85,15 +85,6 @@ export const Looker3d = () => {
   useHotkey(
     "Escape",
     async ({ snapshot, set }) => {
-      const selectedLabelForAnnotation = await snapshot.getPromise(
-        selectedLabelForAnnotationAtom
-      );
-
-      if (selectedLabelForAnnotation) {
-        set(clearTransformStateSelector, null);
-        return;
-      }
-
       const isTooltipLocked = await snapshot.getPromise(fos.isTooltipLocked);
 
       if (isTooltipLocked) {

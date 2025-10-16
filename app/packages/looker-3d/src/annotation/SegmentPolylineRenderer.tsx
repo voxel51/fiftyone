@@ -22,6 +22,7 @@ import {
 } from "../state";
 import { getPlaneFromPositionAndQuaternion } from "../utils";
 import { PolylinePointMarker } from "./PolylinePointMarker";
+import { shouldClosePolylineLoop } from "./utils/polyline-utils";
 
 interface SegmentPolylineRendererProps {
   ignoreEffects?: boolean;
@@ -78,12 +79,13 @@ export const SegmentPolylineRenderer = ({
   // Check if current position is close to first vertex for closing
   const shouldCloseLoop = useCallback(
     (currentPos: THREE.Vector3): boolean => {
-      if (segmentState.vertices.length < 3) return false;
-
-      const firstVertex = new THREE.Vector3(...segmentState.vertices[0]);
-      return currentPos.distanceTo(firstVertex) < SNAP_TOLERANCE;
+      return shouldClosePolylineLoop(
+        segmentState.vertices,
+        [currentPos.x, currentPos.y, currentPos.z],
+        SNAP_TOLERANCE
+      );
     },
-    [segmentState.vertices, SNAP_TOLERANCE]
+    [segmentState.vertices]
   );
 
   const handleClick = useCallback(
