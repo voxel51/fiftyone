@@ -176,6 +176,7 @@ export type InteractionEvent =
         id: string;
         startPosition: Point;
         endPosition: Point;
+        startBounds: Rect;
         absoluteBounds: Rect;
         relativeBounds: Rect;
       };
@@ -199,6 +200,7 @@ export type InteractionEvent =
         id: string;
         startPosition: Point;
         endPosition: Point;
+        startBounds: Rect;
         absoluteBounds: Rect;
         relativeBounds: Rect;
       };

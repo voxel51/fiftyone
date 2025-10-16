@@ -11,7 +11,10 @@ export default function useFocus() {
     const store = getDefaultStore();
 
     scene?.on(LIGHTER_EVENTS.OVERLAY_SELECT, (event) => {
-      store.set(editing, store.get(labelMap)[event.detail.id]);
+      const label = store.get(labelMap)[event.detail.id];
+      if (label) {
+        store.set(editing, label);
+      }
     });
   }, [scene]);
 }

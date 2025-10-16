@@ -21,12 +21,12 @@ import {
   LighterEventDetail,
   type LighterEvent,
 } from "../event/EventBus";
-import type { InteractionHandler } from "../interaction/InteractionManager";
+import { BaseOverlay } from "../overlay/BaseOverlay";
 import { InteractionManager } from "../interaction/InteractionManager";
-import type { BaseOverlay } from "../overlay/BaseOverlay";
+import { SelectionManager } from "../selection/SelectionManager";
+import type { InteractionHandler } from "../interaction/InteractionManager";
 import type { Selectable } from "../selection/Selectable";
 import type { SelectionOptions } from "../selection/SelectionManager";
-import { SelectionManager } from "../selection/SelectionManager";
 import type {
   CanonicalMedia,
   CoordinateSystem,
@@ -215,16 +215,44 @@ export class Scene2D {
       (event) => {
         const overlay = this.getOverlay(event.detail.id);
         if (overlay && TypeGuards.isMovable(overlay)) {
-          const { startPosition, endPosition } = event.detail;
+          const { startBounds, absoluteBounds: endBounds } = event.detail;
           const moved =
-            Math.abs(startPosition.x - endPosition.x) > 1 ||
-            Math.abs(startPosition.y - endPosition.y) > 1;
+            Math.abs(startBounds.x - endBounds.x) > 1 ||
+            Math.abs(startBounds.y - endBounds.y) > 1;
+
           if (moved) {
             const moveCommand = new MoveOverlayCommand(
               overlay,
               event.detail.id,
-              startPosition,
-              endPosition
+              startBounds,
+              endBounds
+            );
+            this.undoRedo.push(moveCommand);
+          }
+        }
+      },
+      this.abortController
+    );
+
+    // Listen for OVERLAY_RESIZE_END events to trigger re-rendering of overlays that are currently resized
+    config.eventBus.on(
+      LIGHTER_EVENTS.OVERLAY_RESIZE_END,
+      (event) => {
+        const overlay = this.getOverlay(event.detail.id);
+        if (overlay && TypeGuards.isMovable(overlay)) {
+          const { startBounds, absoluteBounds: endBounds } = event.detail;
+          const moved =
+            Math.abs(startBounds.x - endBounds.x) > 1 ||
+            Math.abs(startBounds.y - endBounds.y) > 1 ||
+            Math.abs(startBounds.width - endBounds.width) > 1 ||
+            Math.abs(startBounds.height - endBounds.height) > 1;
+
+          if (moved) {
+            const moveCommand = new MoveOverlayCommand(
+              overlay,
+              event.detail.id,
+              startBounds,
+              endBounds
             );
             this.undoRedo.push(moveCommand);
           }
@@ -1436,11 +1464,15 @@ export class Scene2D {
     overlay: BaseOverlay & Spatial
   ): void {
     const absoluteBounds = overlay.getAbsoluteBounds();
-    const relativeBounds =
-      this.coordinateSystem.absoluteToRelative(absoluteBounds);
 
-    // Update the overlays relative bounds
-    overlay.setRelativeBounds(relativeBounds);
+    if (BaseOverlay.validBounds(absoluteBounds)) {
+      const relativeBounds =
+        this.coordinateSystem.absoluteToRelative(absoluteBounds);
+
+      // Update the overlays relative bounds
+      overlay.setRelativeBounds(relativeBounds);
+      overlay.markCoordinateUpdateComplete();
+    }
   }
 
   /**
@@ -1462,7 +1494,6 @@ export class Scene2D {
     for (const overlay of this.overlays.values()) {
       if (TypeGuards.isSpatial(overlay) && overlay.needsCoordinateUpdate()) {
         this.updateSpatialOverlayRelativeBounds(overlay);
-        overlay.markCoordinateUpdateComplete();
 
         this.dispatch({
           type: LIGHTER_EVENTS.OVERLAY_BOUNDS_CHANGED,

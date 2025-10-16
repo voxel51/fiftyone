@@ -11,8 +11,8 @@ from unittest import mock
 import jsonpointer
 import pytest
 
-from fiftyone.server.utils.jsonpatch import methods
-from fiftyone.server.utils.jsonpatch.methods import (
+from fiftyone.server.utils.json.jsonpatch import methods
+from fiftyone.server.utils.json.jsonpatch.methods import (
     get,
     add,
     remove,

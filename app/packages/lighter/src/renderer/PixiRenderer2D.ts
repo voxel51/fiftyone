@@ -204,12 +204,16 @@ export class PixiRenderer2D implements Renderer2D {
     mask.fill();
 
     const halfWidth = borderWidth / 2;
-    mask.rect(
-      bounds.x - halfWidth,
-      bounds.y - halfWidth,
-      bounds.width + borderWidth,
-      bounds.height + borderWidth
-    );
+    const x = Math.max(bounds.x - halfWidth, 0);
+    const y = Math.max(bounds.y - halfWidth, 0);
+    const w =
+      Math.min(bounds.width + borderWidth, sceneDimensions.width - bounds.x) +
+      Math.min(bounds.x, 0);
+    const h =
+      Math.min(bounds.height + borderWidth, sceneDimensions.height - bounds.y) +
+      Math.min(bounds.y, 0);
+
+    mask.rect(x, y, w, h);
     mask.cut();
 
     mask.eventMode = "none";

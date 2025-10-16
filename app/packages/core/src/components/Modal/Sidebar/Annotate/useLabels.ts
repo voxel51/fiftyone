@@ -49,6 +49,10 @@ const handleSample = async ({
     const array = Array.isArray(result) ? result : result ? [result] : [];
 
     for (const data of array) {
+      if (!filter(path, data)) {
+        continue;
+      }
+
       const label = addLabel(path, type, data);
       labels.push(label);
     }
@@ -115,20 +119,19 @@ export default function useLabels() {
   const schemaMap = useAtomValue(schemas);
   const addLabel = useAddAnnotationLabel();
   const getFieldType = useRecoilCallback(
-    ({ snapshot }) =>
-      async (path: string) => {
-        const loadable = await snapshot.getLoadable(field(path));
-        const type = loadable
-          .getValue()
-          ?.embeddedDocType?.split(".")
-          .slice(-1)[0];
+    ({ snapshot }) => async (path: string) => {
+      const loadable = await snapshot.getLoadable(field(path));
+      const type = loadable
+        .getValue()
+        ?.embeddedDocType?.split(".")
+        .slice(-1)[0];
 
-        if (!type) {
-          throw new Error("no type");
-        }
+      if (!type) {
+        throw new Error("no type");
+      }
 
-        return type as LabelType;
-      },
+      return type as LabelType;
+    },
     []
   );
 
