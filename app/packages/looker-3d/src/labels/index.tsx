@@ -1,3 +1,4 @@
+import { activeSchemas } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/state";
 import {
   FO_LABEL_TOGGLED_EVENT,
   LabelToggledEvent,
@@ -50,6 +51,7 @@ export const ThreeDLabels = ({
 }: ThreeDLabelsProps) => {
   const mode = useAtomValue(fos.modalMode);
   const schema = useRecoilValue(fieldSchema({ space: fos.State.SPACE.SAMPLE }));
+  const annotationSchemas = useAtomValue(activeSchemas);
   const { coloring, selectedLabelTags, customizeColorSetting, labelTagColors } =
     useRecoilValue(fos.lookerOptions({ withFilter: true, modal: true }));
   const isSegmenting = useRecoilValue(segmentPolylineStateAtom).isActive;
@@ -213,7 +215,18 @@ export const ThreeDLabels = ({
 
           return { ...l, color, id: l._id };
         })
-        .filter((l) => pathFilter(l.path, l)),
+        .filter((l) => {
+          if (!pathFilter(l.path, l)) {
+            return false;
+          }
+
+          // In annotate mode, only show fields that exist in annotation schemas
+          if (mode === "annotate") {
+            return annotationSchemas && l.path in annotationSchemas;
+          }
+
+          return true;
+        }),
     [
       coloring,
       pathFilter,
@@ -223,6 +236,8 @@ export const ThreeDLabels = ({
       selectedLabelTags,
       labelTagColors,
       customizeColorSetting,
+      mode,
+      annotationSchemas,
     ]
   );
   const [cuboidOverlays, polylineOverlays] = useMemo(() => {

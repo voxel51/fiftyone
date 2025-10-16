@@ -81,6 +81,8 @@ export const Polyline = ({
           points={pts}
           color={strokeAndFillColor}
           rotation={rotation}
+          transparent={opacity < 0.2}
+          opacity={opacity}
           onPointerOver={() => handleSegmentPointerOver(i)}
           onPointerOut={handleSegmentPointerOut}
           onClick={handleSegmentClick}
