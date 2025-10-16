@@ -21,7 +21,6 @@ import { Vector3 } from "three";
 import { CAMERA_POSITION_KEY } from "../Environment";
 import { StatusBar } from "../StatusBar";
 import { MultiPanelView } from "../annotation/MultiPanelView";
-import { TransformHUD } from "../annotation/TransformHUD";
 import { AnnotationToolbar } from "../annotation/annotation-toolbar/AnnotationToolbar";
 import { PcdColorMapTunnel } from "../components/PcdColormapModal";
 import {
@@ -795,7 +794,6 @@ export const MediaTypeFo3dComponent = () => {
       ) : (
         <MainContainer ref={containerRef}>
           <HoverMetadataHUD />
-          <TransformHUD />
           <PcdColorMapTunnel.Out />
           <Canvas
             id={CANVAS_WRAPPER_ID}

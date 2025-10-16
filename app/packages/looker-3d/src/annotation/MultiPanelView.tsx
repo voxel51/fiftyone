@@ -43,7 +43,6 @@ import { StatusBar } from "../StatusBar";
 import { AnnotationPlane } from "./AnnotationPlane";
 import { Crosshair3D } from "./Crosshair3D";
 import { SegmentPolylineRenderer } from "./SegmentPolylineRenderer";
-import { TransformHUD } from "./TransformHUD";
 
 const CANVAS_WRAPPER_ID = "sample3d-canvas-wrapper";
 
@@ -290,7 +289,6 @@ export const MultiPanelView = ({
   return (
     <GridMain ref={containerRef}>
       <HoverMetadataHUD />
-      <TransformHUD />
       <PcdColorMapTunnel.Out />
 
       <Canvas
@@ -453,8 +451,8 @@ const SidePanel = ({
 
   const cameraRef = useRef<THREE.OrthographicCamera>();
 
-  // we need to observe the bounds for a short period of time to ensure the camera is in the correct position
-  // but turn it off so that users can pan/zoom and work with a stable scene
+  // We need to observe the bounds for a short period of time to ensure the camera is in the correct position
+  // But turn it off so that users can pan/zoom and work with a stable scene
   const [observe, setObserve] = useState(true);
 
   useEffect(() => {

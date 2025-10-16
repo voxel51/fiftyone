@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import type { Vector3Tuple } from "three";
 import { SNAP_TOLERANCE } from "../../constants";
-import type { PolylinePointTransform } from "../../state";
+import type { PolylinePointTransform } from "../types";
 
 /**
  * Gets the current position of a vertex, considering any applied transforms.

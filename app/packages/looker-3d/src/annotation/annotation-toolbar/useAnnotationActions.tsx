@@ -26,16 +26,15 @@ import {
   tempPolylinesAtom,
   transformModeAtom,
   transformSpaceAtom,
-  type TransformMode,
-  type TransformSpace,
 } from "../../state";
+import type { TransformMode, TransformSpace } from "../types";
 import { getGridQuaternionFromUpVector } from "../../utils";
 import { deletePolylinePoint } from "../utils/polyline-delete";
 import {
   PlaneCoordinateInputs,
   VertexCoordinateInputs,
 } from "./CoordinateInputs";
-import type { AnnotationAction, AnnotationActionGroup } from "./types";
+import type { AnnotationAction, AnnotationActionGroup } from "../types";
 
 export const useAnnotationActions = () => {
   const [selectedLabelForAnnotation, setSelectedLabelForAnnotation] =

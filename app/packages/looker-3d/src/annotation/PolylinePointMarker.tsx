@@ -11,8 +11,8 @@ import {
   segmentPolylineStateAtom,
   selectedPolylineVertexAtom,
   transformModeAtom,
-  type SelectedPoint,
 } from "../state";
+import type { SelectedPoint } from "./types";
 
 interface PolylinePointMarkerProps {
   position: Vector3;

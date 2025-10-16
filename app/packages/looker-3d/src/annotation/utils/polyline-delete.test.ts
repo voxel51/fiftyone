@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { PolylinePointTransform } from "../../state";
+import type { PolylinePointTransform } from "../types";
 import { deletePolylinePoint } from "./polyline-delete";
 
 describe("deletePolylinePoint", () => {

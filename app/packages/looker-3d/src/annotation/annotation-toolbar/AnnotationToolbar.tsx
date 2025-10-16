@@ -3,7 +3,7 @@ import { Box, IconButton, Tooltip, Typography, styled } from "@mui/material";
 import React, { useCallback, useRef, useState } from "react";
 import { useRecoilState } from "recoil";
 import { annotationToolbarPositionAtom } from "../../state";
-import type { AnnotationToolbarProps } from "./types";
+import type { AnnotationToolbarProps } from "../types";
 import { useAnnotationActions } from "./useAnnotationActions";
 
 const ToolbarContainer = styled(Box)<{
@@ -173,7 +173,6 @@ export const AnnotationToolbar = ({ className }: AnnotationToolbarProps) => {
     setIsDragging(false);
   }, []);
 
-  // Add global mouse event listeners when dragging
   React.useEffect(() => {
     if (isDragging) {
       document.addEventListener("mousemove", handleMouseMove);

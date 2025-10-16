@@ -12,6 +12,19 @@ import type { FoSceneNode } from "./hooks";
 import { OverlayLabel } from "./labels/loader";
 import type { Actions, AssetLoadingLog, ShadeBy } from "./types";
 import { TransformArchetype } from "./types";
+import type {
+  HoveredPolylineInfo,
+  TransformMode,
+  TransformSpace,
+  Spatial,
+  SelectedPoint,
+  TransformData,
+  TransformedLabelData,
+  PolylinePointTransform,
+  SegmentPolylineState,
+  TempPolyline,
+  AnnotationPlaneState,
+} from "./annotation/types";
 
 const fo3dAssetsParseStatusLog = atomFamily<AssetLoadingLog[], string>({
   key: "fo3d-assetsParseStatusLogs",
@@ -198,14 +211,6 @@ export const hoveredLabelAtom = atom<any | null>({
   default: null,
 });
 
-// Hover state for specific polyline points/segments
-export interface HoveredPolylineInfo {
-  labelId: string;
-  segmentIndex: number;
-  // undefined means hovering over the segment, not a specific point
-  pointIndex?: number;
-}
-
 export const hoveredPolylineInfoAtom = atom<HoveredPolylineInfo | null>({
   key: "fo3d-hoveredPolylineInfo",
   default: null,
@@ -231,10 +236,6 @@ export const polylineLabelLineWidthAtom = atom({
   ],
 });
 
-// Transform control state
-export type TransformMode = "translate" | "rotate" | "scale";
-export type TransformSpace = "world" | "local";
-
 export const selectedLabelForAnnotationAtom = atom<OverlayLabel | null>({
   key: "fo3d-selectedLabelForAnnotation",
   default: null,
@@ -250,16 +251,6 @@ export const transformSpaceAtom = atom<TransformSpace>({
   default: "world",
 });
 
-export interface Spatial {
-  position: [number, number, number];
-  quaternion?: [number, number, number, number];
-}
-export interface SelectedPoint {
-  labelId: string;
-  segmentIndex: number;
-  pointIndex: number;
-}
-
 export const currentArchetypeSelectedForTransformAtom =
   atom<TransformArchetype | null>({
     key: "fo3d-currentArchetypeSelectedForTransformAtom",
@@ -272,42 +263,6 @@ export const isCurrentlyTransformingAtom = atom<boolean>({
   default: false,
 });
 
-// Transform data for HUD display
-export interface TransformData {
-  // Delta X
-  dx?: number;
-  // Delta Y
-  dy?: number;
-  // Delta Z
-  dz?: number;
-  // Absolute world position X
-  x?: number;
-  // Absolute world position Y
-  y?: number;
-  // Absolute world position Z
-  z?: number;
-  // Dimensions X
-  dimensionX?: number;
-  // Dimensions Y
-  dimensionY?: number;
-  // Dimensions ZÒ
-  dimensionZ?: number;
-  // Local rotation X (in degrees)
-  rotationX?: number;
-  // Local rotation Y (in degrees)
-  rotationY?: number;
-  // Local rotation Z (in degrees)
-  rotationZ?: number;
-}
-
-// Transformed label data storage
-export interface TransformedLabelData {
-  worldPosition: [number, number, number];
-  dimensions: [number, number, number];
-  localRotation: [number, number, number];
-  worldRotation: [number, number, number];
-}
-
 // todo: we sync this with backend
 export const transformedLabelsAtom = atom<Record<string, TransformedLabelData>>(
   {
@@ -315,13 +270,6 @@ export const transformedLabelsAtom = atom<Record<string, TransformedLabelData>>(
     default: {},
   }
 );
-
-// Polyline point transformations - stores modified points for each label
-export interface PolylinePointTransform {
-  segmentIndex: number;
-  pointIndex: number;
-  position: [number, number, number];
-}
 
 export const selectedPolylineVertexAtom = atom<SelectedPoint | null>({
   key: "fo3d-selectedPolylineVertexAtom",
@@ -362,13 +310,6 @@ export const selectedPolylinePositionSelector = selector<
   },
 });
 
-export interface SegmentPolylineState {
-  isActive: boolean;
-  vertices: [number, number, number][];
-  currentMousePosition: [number, number, number] | null;
-  isClosed: boolean;
-}
-
 export const segmentPolylineStateAtom = atom<SegmentPolylineState>({
   key: "fo3d-segmentPolylineState",
   default: {
@@ -391,14 +332,6 @@ export const isSegmentingPointerDownAtom = atom<boolean>({
   default: false,
 });
 
-export interface TempPolyline {
-  id: string;
-  vertices: [number, number, number][];
-  isClosed: boolean;
-  color: string;
-  lineWidth: number;
-}
-
 export const tempPolylinesAtom = atom<TempPolyline[]>({
   key: "fo3d-tempPolylines",
   default: [],
@@ -413,15 +346,6 @@ export const sharedCursorPositionAtom = atom<[number, number, number] | null>({
   key: "fo3d-sharedCursorPosition",
   default: null,
 });
-
-export interface AnnotationPlaneState {
-  enabled: boolean;
-  position: [number, number, number];
-  quaternion: [number, number, number, number];
-  showX: boolean;
-  showY: boolean;
-  showZ: boolean;
-}
 
 export const annotationPlaneAtom = atom<AnnotationPlaneState>({
   key: "fo3d-annotationPlane",

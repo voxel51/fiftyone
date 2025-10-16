@@ -1,7 +1,7 @@
 import type { Vector3Tuple } from "three";
 import { describe, expect, it } from "vitest";
 import { SNAP_TOLERANCE } from "../../constants";
-import type { PolylinePointTransform } from "../../state";
+import type { PolylinePointTransform } from "../types";
 import {
   applyDeltaToAllPoints,
   applyTransformsToPolyline,

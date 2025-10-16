@@ -23,7 +23,6 @@ import { PANEL_ORDER_LABELS } from "../constants";
 import { usePathFilter } from "../hooks";
 import { type Looker3dSettings, defaultPluginSettings } from "../settings";
 import {
-  PolylinePointTransform,
   cuboidLabelLineWidthAtom,
   currentArchetypeSelectedForTransformAtom,
   polylineLabelLineWidthAtom,
@@ -33,6 +32,7 @@ import {
   transformModeAtom,
 } from "../state";
 import { TransformArchetype } from "../types";
+import type { PolylinePointTransform } from "../annotation/types";
 import { toEulerFromDegreesArray } from "../utils";
 import { Cuboid, type CuboidProps } from "./cuboid";
 import { type OverlayLabel, load3dOverlays } from "./loader";

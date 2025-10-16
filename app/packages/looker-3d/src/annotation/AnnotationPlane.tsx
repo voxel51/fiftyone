@@ -50,13 +50,11 @@ export const AnnotationPlane = ({
     y: number;
   } | null>(null);
 
-  // When up vector changes, set isSelected and isEnabled to false
   useEffect(() => {
     setCurrentArchetypeSelectedForTransform(null);
     setAnnotationPlane((prev) => ({ ...prev, enabled: false }));
   }, [upVector]);
 
-  // Calculate plane size based on scene bounding box
   const planeSize = useMemo(() => {
     if (!sceneBoundingBox) return 10;
 
@@ -82,13 +80,12 @@ export const AnnotationPlane = ({
         }
       }
 
-      // If we found orthogonal dimensions, use 1.25x the max of those
+      // 1.25 because we want to make the plane slightly larger than the scene
       if (orthogonalSizes.length > 0) {
         return Math.max(...orthogonalSizes, 10) * 1.25;
       }
     }
 
-    // Fallback: use 1.25x max of X and Y (assumes Z-up)
     return Math.max(size.x, 10, size.y) * 1.25;
   }, [sceneBoundingBox, upVector]);
 

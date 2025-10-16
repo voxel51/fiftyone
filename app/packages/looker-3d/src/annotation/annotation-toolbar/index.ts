@@ -3,5 +3,5 @@ export type {
   AnnotationAction,
   AnnotationActionGroup,
   AnnotationToolbarProps,
-} from "./types";
+} from "../types";
 export { useAnnotationActions } from "./useAnnotationActions";

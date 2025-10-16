@@ -11,15 +11,14 @@ import {
   isSegmentingPointerDownAtom,
   isSnapToAnnotationPlaneAtom,
   polylineEffectivePointsAtom,
-  PolylinePointTransform,
   polylinePointTransformsAtom,
   segmentPolylineStateAtom,
   selectedLabelForAnnotationAtom,
   sharedCursorPositionAtom,
   snapCloseAutomaticallyAtom,
   tempPolylinesAtom,
-  type TempPolyline,
 } from "../state";
+import type { PolylinePointTransform, TempPolyline } from "./types";
 import { getPlaneFromPositionAndQuaternion } from "../utils";
 import { PolylinePointMarker } from "./PolylinePointMarker";
 import { shouldClosePolylineLoop } from "./utils/polyline-utils";

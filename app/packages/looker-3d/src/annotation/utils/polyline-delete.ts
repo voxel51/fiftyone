@@ -1,4 +1,4 @@
-import type { PolylinePointTransform } from "../../state";
+import type { PolylinePointTransform } from "../types";
 
 export interface DeletePointResult {
   newTransforms: PolylinePointTransform[];

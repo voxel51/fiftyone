@@ -12,8 +12,8 @@ import {
   polylineEffectivePointsAtom,
   polylinePointTransformsAtom,
   selectedLabelForAnnotationAtom,
-  type PolylinePointTransform,
 } from "../state";
+import type { PolylinePointTransform } from "../annotation/types";
 import { createFilledPolygonMeshes } from "./polygon-fill-utils";
 import type { OverlayProps } from "./shared";
 import { useEventHandlers, useHoverState, useLabelColor } from "./shared/hooks";
