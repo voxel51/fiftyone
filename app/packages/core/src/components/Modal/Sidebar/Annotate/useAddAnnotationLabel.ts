@@ -6,7 +6,7 @@ import type {
 } from "@fiftyone/lighter";
 import { useLighter } from "@fiftyone/lighter";
 import type { AnnotationLabel } from "@fiftyone/state";
-import { CLASSIFICATION, DETECTION } from "@fiftyone/utilities";
+import { CLASSIFICATION, DETECTION, POLYLINE } from "@fiftyone/utilities";
 import { useCallback } from "react";
 import type { LabelType } from "./Edit/state";
 
@@ -31,6 +31,8 @@ export const useAddAnnotationLabel = () => {
       }
 
       if (type === DETECTION) {
+        const label = data as BoundingBoxOptions["label"];
+        const boundingBox = label?.bounding_box;
         const overlay = overlayFactory.create<
           BoundingBoxOptions,
           BoundingBoxOverlay
@@ -39,12 +41,12 @@ export const useAddAnnotationLabel = () => {
           id: data._id,
           draggable: true,
           selectable: true,
-          label: data,
+          label,
           relativeBounds: {
-            x: data.bounding_box[0],
-            y: data.bounding_box[1],
-            width: data.bounding_box[2],
-            height: data.bounding_box[3],
+            x: boundingBox[0],
+            y: boundingBox[1],
+            width: boundingBox[2],
+            height: boundingBox[3],
           },
         });
 
@@ -52,7 +54,11 @@ export const useAddAnnotationLabel = () => {
         return { data, overlay, path: field, type };
       }
 
-      throw new Error("E");
+      if (type === POLYLINE) {
+        throw new Error("todo");
+      }
+
+      throw new Error(`unable to create label of type '${type}'`);
     },
     [addOverlay, overlayFactory]
   );

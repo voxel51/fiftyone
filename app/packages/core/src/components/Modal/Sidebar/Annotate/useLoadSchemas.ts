@@ -51,7 +51,7 @@ export default function useLoadSchemas() {
         const paths: string[] = [];
         for (const path in schema) {
           const doc = schema[path].embeddedDocType;
-          if (doc && SUPPORTED_ANNOTATION_TYPES[type ?? ""].has(doc)) {
+          if (doc && SUPPORTED_ANNOTATION_TYPES[type ?? ""]?.has(doc)) {
             paths.push(path);
             types[path] = doc?.split(".").slice(-1)[0];
           }

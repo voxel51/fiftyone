@@ -8,7 +8,6 @@ const createId = () => {
     type: "string",
     view: {
       name: "PrimitiveView",
-      label: name,
       readOnly: true,
       component: "PrimitiveView",
     },

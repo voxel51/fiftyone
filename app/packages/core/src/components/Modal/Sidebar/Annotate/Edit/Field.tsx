@@ -45,8 +45,9 @@ const Field = () => {
   );
   const type = useAtomValue(currentType);
   const state = useAtomValue(editing);
+  const isCreating = useAtomValue(isNew);
 
-  if (!useAtomValue(isNew)) {
+  if (!isCreating) {
     return null;
   }
 

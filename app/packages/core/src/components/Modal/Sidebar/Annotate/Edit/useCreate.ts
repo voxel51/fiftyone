@@ -1,11 +1,10 @@
-import {
+import type {
   BoundingBoxOptions,
   BoundingBoxOverlay,
   ClassificationOptions,
   ClassificationOverlay,
-  useLighter,
 } from "@fiftyone/lighter";
-import { InteractiveDetectionHandler } from "@fiftyone/lighter/src/interaction/InteractiveDetectionHandler";
+import { InteractiveDetectionHandler, useLighter } from "@fiftyone/lighter";
 import type { AnnotationLabel } from "@fiftyone/state";
 import {
   CLASSIFICATION,
@@ -19,7 +18,7 @@ import type { LabelType } from "./state";
 import { defaultField, editing } from "./state";
 
 const useCreateAnnotationLabel = () => {
-  const { scene, addOverlay, removeOverlay, overlayFactory } = useLighter();
+  const { scene, addOverlay, overlayFactory } = useLighter();
   return useCallback(
     (type: LabelType) => {
       const id = objectId();
