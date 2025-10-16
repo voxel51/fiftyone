@@ -157,7 +157,7 @@ Kinetics by passing them to
         # Download the entire validation split
         #
         # Subsequent partial loads of the validation split will never require
-        # downloading any images
+        # downloading any videos
         #
 
         fiftyone zoo datasets load kinetics-700-2020 --split validation

@@ -61,7 +61,7 @@ Images V7 by passing them to
 
 -   **label_types** (*None*): a label type or list of label types to load.
     Supported values are
-    ``("detections", "classifications", "relationships", "points", segmentations")``.
+    ``("detections", "classifications", "relationships", "points", "segmentations")``.
     By default, all labels types are loaded
 
 -   **classes** (*None*): a string or list of strings specifying required

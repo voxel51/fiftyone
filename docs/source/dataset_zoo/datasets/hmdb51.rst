@@ -1,7 +1,7 @@
 .. _dataset-zoo-hmdb51:
 
-HMBD51
--------
+HMDB51
+------
 
 HMDB51 is an action recognition dataset containing a total of 6,766
 clips distributed across 51 action classes.

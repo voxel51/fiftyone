@@ -83,7 +83,7 @@
     :tags: image,classification
 
 .. customcarditem::
-    :header: HMBD51
+    :header: HMDB51
     :description: Action recognition dataset with 6,766 video clips across 51 action classes. Collected from movies and web videos with realistic human actions and diverse scenarios.
     :link: datasets/hmdb51.html
     :image: ../_images/hmdb51-test.png
