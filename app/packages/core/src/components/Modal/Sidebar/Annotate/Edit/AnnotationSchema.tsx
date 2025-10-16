@@ -120,21 +120,20 @@ const useSchema = () => {
 
 const useHandleChanges = () => {
   return useRecoilCallback(
-    ({ snapshot }) =>
-      async (currentField: string, path: string, data) => {
-        const expanded = await snapshot.getPromise(expandPath(currentField));
-        const schema = await snapshot.getPromise(field(`${expanded}.${path}`));
+    ({ snapshot }) => async (currentField: string, path: string, data) => {
+      const expanded = await snapshot.getPromise(expandPath(currentField));
+      const schema = await snapshot.getPromise(field(`${expanded}.${path}`));
 
-        if (schema?.ftype === FLOAT_FIELD) {
-          return Number.parseFloat(data);
-        }
+      if (schema?.ftype === FLOAT_FIELD) {
+        return Number.parseFloat(data);
+      }
 
-        if (schema?.ftype === INT_FIELD) {
-          return Number.parseInt(data);
-        }
+      if (schema?.ftype === INT_FIELD) {
+        return Number.parseInt(data);
+      }
 
-        return data;
-      },
+      return data;
+    },
     []
   );
 };
