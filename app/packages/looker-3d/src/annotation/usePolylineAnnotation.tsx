@@ -1,6 +1,6 @@
 import { ThreeEvent } from "@react-three/fiber";
 import chroma from "chroma-js";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import type { Vector3Tuple } from "three";
 import * as THREE from "three";
@@ -55,6 +55,7 @@ export const usePolylineAnnotation = ({
 
   const transformControlsRef = useRef(null);
   const contentRef = useRef<THREE.Group>(null);
+  const [startMatrix, setStartMatrix] = useState<THREE.Matrix4 | null>(null);
 
   const updateEffectivePoints = useCallback(() => {
     const labelId = label._id;
@@ -205,6 +206,14 @@ export const usePolylineAnnotation = ({
     });
   }, []);
 
+  const handleTransformStart = useCallback(() => {
+    const grp = contentRef.current;
+    if (!grp) return;
+
+    // Store the start matrix for computing delta later
+    setStartMatrix(grp.matrixWorld.clone());
+  }, []);
+
   const handleTransformChange = useCallback(() => {
     syncPolylineTransformationToTempStore();
   }, [syncPolylineTransformationToTempStore]);
@@ -216,15 +225,22 @@ export const usePolylineAnnotation = ({
   }, [label._id]);
 
   const handleTransformEnd = useCallback(() => {
-    const controls = transformControlsRef.current;
-    if (!controls) return;
-
     const grp = contentRef.current;
-    if (!grp) return;
+    if (!grp || !startMatrix) return;
 
     setTempPolylineTransforms(null);
 
-    const worldDelta = controls.offset.clone();
+    // Compute world-space delta from start and end matrices
+    const endMatrix = grp.matrixWorld.clone();
+    const deltaMatrix = endMatrix
+      .clone()
+      .multiply(startMatrix.clone().invert());
+
+    // Extract position delta from the delta matrix
+    const deltaPosition = new THREE.Vector3();
+    deltaPosition.setFromMatrixPosition(deltaMatrix);
+
+    const worldDelta = deltaPosition;
 
     setPolylinePointTransforms((prev) => {
       const labelId = label._id;
@@ -246,7 +262,15 @@ export const usePolylineAnnotation = ({
     if (contentRef.current) {
       contentRef.current.position.set(0, 0, 0);
     }
-  }, [label._id, points3d, effectivePoints3d, setPolylinePointTransforms]);
+
+    setStartMatrix(null);
+  }, [
+    label._id,
+    points3d,
+    effectivePoints3d,
+    setPolylinePointTransforms,
+    startMatrix,
+  ]);
 
   const handlePointerOver = useCallback(() => {
     if (isAnnotateMode) {
@@ -375,6 +399,7 @@ export const usePolylineAnnotation = ({
     markers,
 
     // Handlers
+    handleTransformStart,
     handleTransformChange,
     handleTransformEnd,
     handlePointerOver,

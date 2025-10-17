@@ -83,6 +83,8 @@ export const useFo3dBounds = (
         retryCount.current += 1;
         if (retryCount.current >= MAX_BOUNDING_BOX_RETRIES) {
           retryCount.current = 0;
+          unchangedCount.current = 0;
+          previousBox.current = null;
           setBoundingBox(null);
           setIsComputing(false);
           return;
@@ -100,6 +102,8 @@ export const useFo3dBounds = (
         retryCount.current += 1;
         if (retryCount.current >= MAX_BOUNDING_BOX_RETRIES) {
           retryCount.current = 0;
+          unchangedCount.current = 0;
+          previousBox.current = null;
           setBoundingBox(null);
           setIsComputing(false);
           return;

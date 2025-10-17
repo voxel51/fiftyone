@@ -60,6 +60,7 @@ export const Polyline = ({
     transformControlsRef,
     contentRef,
     markers,
+    handleTransformStart,
     handleTransformChange,
     handleTransformEnd,
     handlePointerOver: handleAnnotationPointerOver,
@@ -171,6 +172,7 @@ export const Polyline = ({
       isSelectedForTransform={isSelectedForAnnotation}
       transformControlsPosition={centroid as THREE.Vector3Tuple}
       transformControlsRef={transformControlsRef}
+      onTransformStart={handleTransformStart}
       onTransformEnd={handleTransformEnd}
       onTransformChange={handleTransformChange}
       explicitObjectRef={contentRef}

@@ -2,7 +2,7 @@ import { useCursor } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
-import { Mesh, Vector3 } from "three";
+import { Mesh, Vector3, Matrix4 } from "three";
 import { LABEL_3D_ANNOTATION_POINT_SELECTED_FOR_TRANSFORMATION_COLOR } from "../constants";
 import { Transformable } from "../labels/shared/TransformControls";
 import {
@@ -41,6 +41,7 @@ export const PolylinePointMarker = ({
 }: PolylinePointMarkerProps) => {
   const meshRef = useRef<Mesh>(null);
   const transformControlsRef = useRef<any>(null);
+  const [startMatrix, setStartMatrix] = useState<Matrix4 | null>(null);
 
   const [isHovered, setIsHovered] = useState(false);
 
@@ -110,13 +111,28 @@ export const PolylinePointMarker = ({
     }
   }, []);
 
+  const handleTransformStart = useCallback(() => {
+    if (groupRef.current) {
+      // Store the start matrix for computing delta later
+      setStartMatrix(groupRef.current.matrixWorld.clone());
+    }
+  }, []);
+
   const handleTransformEnd = useCallback(() => {
     setTempVertexTransforms(null);
 
-    if (transformControlsRef.current && onPointMove) {
-      const delta = transformControlsRef.current.offset.clone();
+    if (groupRef.current && onPointMove && startMatrix) {
+      // Compute world-space delta from start and end matrices
+      const endMatrix = groupRef.current.matrixWorld.clone();
+      const deltaMatrix = endMatrix
+        .clone()
+        .multiply(startMatrix.clone().invert());
 
-      const newPosition = position.clone().add(delta);
+      // Extract position delta from the delta matrix
+      const deltaPosition = new Vector3();
+      deltaPosition.setFromMatrixPosition(deltaMatrix);
+
+      const newPosition = position.clone().add(deltaPosition);
 
       groupRef.current.position.set(0, 0, 0);
 
@@ -129,8 +145,11 @@ export const PolylinePointMarker = ({
       setTimeout(() => {
         setSelectedPoint(prevSelectedPoint);
       }, 0);
+
+      // Clear the start matrix
+      setStartMatrix(null);
     }
-  }, [onPointMove, selectedPoint, position]);
+  }, [onPointMove, selectedPoint, position, startMatrix]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -192,6 +211,7 @@ export const PolylinePointMarker = ({
       archetype="point"
       isSelectedForTransform={isSelected}
       explicitObjectRef={groupRef}
+      onTransformStart={handleTransformStart}
       onTransformChange={syncPointTransformationToTempStore}
       onTransformEnd={handleTransformEnd}
       transformControlsRef={transformControlsRef}
