@@ -124,11 +124,11 @@ const calculateCameraPositionForSidePanel = (
     case "Left":
       // Create a vector perpendicular to up vector
       if (Math.abs(upDir.y) > 0.9) {
-        // If up is mostly Y, use X axis
+        // If up is mostly Y, use negative X axis for left
         direction = new Vector3(-1, 0, 0);
       } else {
-        // Create perpendicular vector
-        direction = new Vector3(0, 1, 0).cross(upDir).normalize();
+        const right = new Vector3(0, 1, 0).cross(upDir).normalize();
+        direction = right.negate();
       }
       break;
     case "Right":
@@ -136,7 +136,7 @@ const calculateCameraPositionForSidePanel = (
       if (Math.abs(upDir.y) > 0.9) {
         direction = new Vector3(1, 0, 0);
       } else {
-        direction = new Vector3(0, 1, 0).cross(upDir).normalize().negate();
+        direction = new Vector3(0, 1, 0).cross(upDir).normalize();
       }
       break;
     case "Front":
@@ -428,7 +428,7 @@ const SidePanel = ({
 
         <MapControls makeDefault screenSpacePanning enableRotate={false} />
 
-        <Bounds fit clip observe={observe} margin={1.15}>
+        <Bounds fit clip observe={observe} margin={1.25}>
           <Gizmos isGridVisible={false} isGizmoHelperVisible={false} />
           <group visible={isSceneInitialized}>
             <FoSceneComponent scene={foScene} />

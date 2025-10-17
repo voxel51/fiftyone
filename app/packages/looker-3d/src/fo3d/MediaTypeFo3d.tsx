@@ -828,6 +828,7 @@ export const MediaTypeFo3dComponent = () => {
               cameraPosition={defaultCameraPositionComputed}
               upVector={upVector}
               fov={foScene?.cameraProps.fov ?? 50}
+              isGizmoHelperVisible={true}
               near={foScene?.cameraProps.near ?? 0.1}
               far={foScene?.cameraProps.far ?? 2500}
               aspect={foScene?.cameraProps.aspect ?? 1}

@@ -142,7 +142,6 @@ export const Fo3dSceneContent = ({
         isGridVisible={true}
       />
       {!isSceneInitialized && <SpinningCube />}
-
       <Bvh firstHitOnly enabled={pointCloudSettings.enableTooltip}>
         <group ref={assetsGroupRef} visible={isSceneInitialized}>
           <FoSceneComponent scene={foScene} />

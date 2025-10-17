@@ -3,7 +3,7 @@ import { Line as LineDrei } from "@react-three/drei";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
-import { SNAP_TOLERANCE } from "../constants";
+import { SCENE_BOUNDS_EXPANSION_FACTOR, SNAP_TOLERANCE } from "../constants";
 import { useFo3dContext } from "../fo3d/context";
 import { useEmptyCanvasInteraction } from "../hooks/use-empty-canvas-interaction";
 import {
@@ -18,9 +18,9 @@ import {
   snapCloseAutomaticallyAtom,
   tempPolylinesAtom,
 } from "../state";
-import type { PolylinePointTransform, TempPolyline } from "./types";
-import { getPlaneFromPositionAndQuaternion } from "../utils";
+import { expandBoundingBox, getPlaneFromPositionAndQuaternion } from "../utils";
 import { PolylinePointMarker } from "./PolylinePointMarker";
+import type { PolylinePointTransform, TempPolyline } from "./types";
 import { shouldClosePolylineLoop } from "./utils/polyline-utils";
 
 interface SegmentPolylineRendererProps {
@@ -69,6 +69,14 @@ export const SegmentPolylineRenderer = ({
   const isSnapToAnnotationPlane = useRecoilValue(isSnapToAnnotationPlaneAtom);
   const snapCloseAutomatically = useRecoilValue(snapCloseAutomaticallyAtom);
   const { upVector, sceneBoundingBox } = useFo3dContext();
+
+  // We want annotation margin to be larger than the scene bounds
+  const expandedBoundingBox = useMemo(() => {
+    if (!sceneBoundingBox || sceneBoundingBox.isEmpty()) {
+      return null;
+    }
+    return expandBoundingBox(sceneBoundingBox, SCENE_BOUNDS_EXPANSION_FACTOR);
+  }, [sceneBoundingBox]);
 
   // Track last click time for double-click detection
   const lastClickTimeRef = useRef<number>(0);
@@ -207,9 +215,9 @@ export const SegmentPolylineRenderer = ({
     (worldPos: THREE.Vector3) => {
       const finalPos = worldPos;
 
-      // Constrain position to scene bounds
-      if (sceneBoundingBox && !sceneBoundingBox.isEmpty()) {
-        finalPos.clamp(sceneBoundingBox.min, sceneBoundingBox.max);
+      // Constrain position to expanded scene bounds
+      if (expandedBoundingBox) {
+        finalPos.clamp(expandedBoundingBox.min, expandedBoundingBox.max);
       }
 
       setSegmentState((prev) => ({
@@ -219,7 +227,7 @@ export const SegmentPolylineRenderer = ({
 
       setSharedCursorPosition([finalPos.x, finalPos.y, finalPos.z]);
     },
-    [sceneBoundingBox]
+    [expandedBoundingBox]
   );
 
   // Calculate the annotation plane for raycasting

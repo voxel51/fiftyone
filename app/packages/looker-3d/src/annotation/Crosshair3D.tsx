@@ -61,8 +61,7 @@ export const Crosshair3D = () => {
 
     const vector = new THREE.Vector3(...worldPosition);
 
-    // Constrain position to scene bounds
-    if (sceneBoundingBox && !sceneBoundingBox.isEmpty()) {
+    if (sceneBoundingBox) {
       vector.clamp(sceneBoundingBox.min, sceneBoundingBox.max);
     }
 

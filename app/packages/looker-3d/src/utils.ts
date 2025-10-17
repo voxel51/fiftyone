@@ -1,5 +1,6 @@
 import {
   type BufferAttribute,
+  Box3,
   type Camera,
   type InterleavedBufferAttribute,
   Plane,
@@ -312,4 +313,31 @@ export function getPlaneFromPositionAndQuaternion(
   plane.setFromNormalAndCoplanarPoint(normal, pos);
 
   return plane;
+}
+
+/**
+ * Expands a bounding box by a specified safety margin factor.
+ * The expansion is applied uniformly in all directions from the center.
+ *
+ * @param boundingBox - The original bounding box to expand
+ * @param safetyMargin - The expansion factor (e.g., 1.5 for 1.5x expansion)
+ * @returns A new expanded bounding box
+ */
+export function expandBoundingBox(
+  boundingBox: Box3,
+  safetyMargin: number = 1.5
+): Box3 {
+  if (!boundingBox || boundingBox.isEmpty()) {
+    return boundingBox;
+  }
+
+  const center = boundingBox.getCenter(new Vector3());
+  const size = boundingBox.getSize(new Vector3());
+
+  const expandedSize = size.clone().multiplyScalar(safetyMargin);
+
+  const expandedBox = new Box3();
+  expandedBox.setFromCenterAndSize(center, expandedSize);
+
+  return expandedBox;
 }

@@ -80,13 +80,13 @@ export const AnnotationPlane = ({
         }
       }
 
-      // 1.25 because we want to make the plane slightly larger than the scene
+      // 2 because we want to make the plane slightly larger than the scene
       if (orthogonalSizes.length > 0) {
-        return Math.max(...orthogonalSizes, 10) * 1.25;
+        return Math.max(...orthogonalSizes, 10) * 2;
       }
     }
 
-    return Math.max(size.x, size.y, size.z, 10) * 1.25;
+    return Math.max(size.x, size.y, size.z, 10) * 2;
   }, [sceneBoundingBox, upVector]);
 
   const position = useMemo(

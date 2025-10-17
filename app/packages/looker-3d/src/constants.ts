@@ -110,3 +110,5 @@ export const RAY_CASTING_SENSITIVITY = {
 };
 
 export const SNAP_TOLERANCE = 0.5;
+
+export const SCENE_BOUNDS_EXPANSION_FACTOR = 5;
