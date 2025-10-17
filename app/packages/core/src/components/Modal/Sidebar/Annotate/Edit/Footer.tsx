@@ -18,17 +18,22 @@ const SaveFooter = () => {
   const showCancel = useAtomValue(isNew);
 
   const onSave = useCallback(() => {
-    scene.dispatchSafely({
-      type: LIGHTER_EVENTS.DO_PERSIST_OVERLAY,
-      detail: { ...annotationLabel },
-    });
+    if (scene) {
+      console.log("emitting event");
+      scene.dispatchSafely({
+        type: LIGHTER_EVENTS.DO_PERSIST_OVERLAY,
+        detail: { ...annotationLabel },
+      });
+    }
   }, [annotationLabel, scene]);
 
   const onDelete = useCallback(() => {
-    scene.dispatchSafely({
-      type: LIGHTER_EVENTS.DO_REMOVE_OVERLAY,
-      detail: { ...annotationLabel },
-    });
+    if (scene) {
+      scene.dispatchSafely({
+        type: LIGHTER_EVENTS.DO_REMOVE_OVERLAY,
+        detail: { ...annotationLabel },
+      });
+    }
   }, [annotationLabel, scene]);
 
   return (

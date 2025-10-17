@@ -8,9 +8,10 @@ import { useCallback, useEffect, useMemo } from "react";
 import { JSONDeltas, patchSample } from "../../../client";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import * as fos from "@fiftyone/state";
-import { AnnotationLabel } from "@fiftyone/state";
+import { AnnotationLabel, Sample, useUpdateSamples } from "@fiftyone/state";
 import { parseTimestamp } from "../../../client/util";
 import { buildJsonPath, buildLabelDeltas, OpType } from "./deltas";
+import { transformSampleData } from "../../../client/transformer";
 
 /**
  * Hook that handles overlay persistence events.
@@ -20,6 +21,7 @@ export const useOverlayPersistence = (scene: Scene2D | null) => {
   const currentSample = useRecoilValue(fos.modalSample)?.sample;
   const setSnackbarMessage = useSetRecoilState(fos.snackbarMessage);
   const setSnackbarErrors = useSetRecoilState(fos.snackbarErrors);
+  const updateSamples = useUpdateSamples();
 
   const versionToken = useMemo(() => {
     const isoTimestamp = parseTimestamp(
@@ -31,27 +33,27 @@ export const useOverlayPersistence = (scene: Scene2D | null) => {
     } else {
       return isoTimestamp;
     }
-  }, [currentSample.last_modified_at]);
+  }, [currentSample?.last_modified_at]);
 
   const handlePatchSample = useCallback(
     async (sampleDeltas: JSONDeltas) => {
       if (sampleDeltas.length > 0) {
         try {
-          await patchSample({
+          const response = await patchSample({
             datasetId,
             sampleId: currentSample._id,
             deltas: sampleDeltas,
             versionToken,
           });
 
+          const cleanedSample = transformSampleData(response.sample);
+          updateSamples([[currentSample._id, cleanedSample as Sample]]);
+
           setSnackbarMessage("Changes have been saved");
         } catch (error) {
           console.error("error patching sample", error);
-          setSnackbarErrors([error.message]);
+          setSnackbarErrors([error.message ?? error]);
         }
-
-        // todo update sample data
-        // todo update lighter
       }
     },
     [
@@ -59,6 +61,7 @@ export const useOverlayPersistence = (scene: Scene2D | null) => {
       datasetId,
       setSnackbarErrors,
       setSnackbarMessage,
+      updateSamples,
       versionToken,
     ]
   );
