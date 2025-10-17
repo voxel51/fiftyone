@@ -18,7 +18,7 @@ describe("useFo3dBounds", () => {
     vi.resetAllMocks();
   });
 
-  it("sets default bounding box when objectRef.current is null", () => {
+  it("returns null when objectRef.current is null", () => {
     const objectRef = { current: null } as React.RefObject<Group>;
 
     const { result } = renderHook(() => useFo3dBounds(objectRef));
@@ -29,9 +29,8 @@ describe("useFo3dBounds", () => {
       vi.advanceTimersByTime(500);
     });
 
-    // The hook should set DEFAULT_BOUNDING_BOX when objectRef.current is null
-    expect(result.current.boundingBox).not.toBeNull();
-    expect(result.current.boundingBox).toBeDefined();
+    // The hook should return null when objectRef.current is null
+    expect(result.current.boundingBox).toBeNull();
   });
 
   it("sets bounding box when bounding box stabilizes", () => {
@@ -80,6 +79,32 @@ describe("useFo3dBounds", () => {
     expect(result.current.boundingBox).not.toBeNull();
     expect(result.current.boundingBox.min).toEqual(boxes[1].min);
     expect(result.current.boundingBox.max).toEqual(boxes[1].max);
+  });
+
+  it("returns null when bounds are incomputable (non-finite box)", () => {
+    const objectRef = { current: {} } as React.RefObject<Group>;
+
+    // Mock Box3 to return a box with non-finite values
+    const MockBox3 = vi.fn().mockImplementation(() => {
+      return {
+        min: { x: Infinity, y: 0, z: 0, equals: vi.fn(() => true) },
+        max: { x: 1, y: 1, z: 1, equals: vi.fn(() => true) },
+        setFromObject: vi.fn().mockReturnThis(),
+      };
+    });
+
+    (Box3 as unknown as Mock).mockImplementation(MockBox3);
+
+    const { result } = renderHook(() => useFo3dBounds(objectRef));
+
+    expect(result.current.boundingBox).toBeNull();
+
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    // The hook should return null when bounds are incomputable
+    expect(result.current.boundingBox).toBeNull();
   });
 
   it("does not proceed if predicate returns false", () => {

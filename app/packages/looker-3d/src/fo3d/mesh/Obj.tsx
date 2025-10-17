@@ -1,5 +1,4 @@
 import { getSampleSrc } from "@fiftyone/state";
-import { useLoader } from "@react-three/fiber";
 import { useEffect, useMemo } from "react";
 import {
   Mesh,
@@ -10,11 +9,11 @@ import {
 import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
 import type { ObjAsset } from "../../hooks";
+import { useFoLoader } from "../../hooks/use-fo-loaders";
 import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";
 import { getColorFromPoolBasedOnHash } from "../../utils";
 import { useFo3dContext } from "../context";
 import { getBasePathForTextures, getResolvedUrlForFo3dAsset } from "../utils";
-import { useFoLoader } from "../../hooks/use-fo-loaders";
 
 const ObjMeshDefaultMaterial = ({
   name,

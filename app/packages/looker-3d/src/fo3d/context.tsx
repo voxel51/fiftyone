@@ -13,6 +13,7 @@ interface Fo3dContextT {
   numPrimaryAssets: number;
   upVector: Vector3 | null;
   setUpVector: (upVector: Vector3) => void;
+  isComputingSceneBoundingBox: boolean;
   sceneBoundingBox: Box3 | null;
   lookAt: Vector3 | null;
   setLookAt: (lookAt: Vector3) => void;
@@ -31,6 +32,7 @@ const defaultContext: Fo3dContextT = {
   numPrimaryAssets: 0,
   upVector: null,
   setUpVector: () => {},
+  isComputingSceneBoundingBox: false,
   sceneBoundingBox: null,
   lookAt: null,
   setLookAt: () => {},

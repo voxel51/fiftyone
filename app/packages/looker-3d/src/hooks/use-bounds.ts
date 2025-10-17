@@ -1,10 +1,9 @@
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { Box3, type Group } from "three";
-import { DEFAULT_BOUNDING_BOX } from "../constants";
 
 const BOUNDING_BOX_POLLING_INTERVAL = 50;
 const UNCHANGED_COUNT_THRESHOLD = 6;
-const MAX_BOUNDING_BOX_RETRIES = 5;
+const MAX_BOUNDING_BOX_RETRIES = 1000;
 
 /**
  * Checks if a bounding box has all finite values in its min and max components.
@@ -27,13 +26,14 @@ const isFiniteBox = (box: Box3): boolean => {
  * @param objectRef - Ref to the object
  * @param predicate - Optional predicate to check before calculating the bounding box.
  * IMPORTANT: Make sure this predicate is memoized using useCallback
- * @returns Object containing the bounding box and a function to recompute it
+ * @returns Object containing the bounding box, a function to recompute it, and a flag indicating if computation is in progress
  */
 export const useFo3dBounds = (
   objectRef: React.RefObject<Group>,
   predicate?: () => boolean
 ) => {
   const [boundingBox, setBoundingBox] = useState<Box3>(null);
+  const [isComputing, setIsComputing] = useState(false);
 
   const unchangedCount = useRef(0);
   const previousBox = useRef<Box3>(null);
@@ -42,19 +42,24 @@ export const useFo3dBounds = (
   const timeOutIdRef = useRef<number | null>(null);
 
   const recomputeBounds = useCallback(() => {
+    setIsComputing(true);
+
     if (!objectRef.current) {
-      setBoundingBox(DEFAULT_BOUNDING_BOX);
+      setBoundingBox(null);
+      setIsComputing(false);
       return;
     }
 
     const box = new Box3().setFromObject(objectRef.current);
 
     if (!isFiniteBox(box)) {
-      setBoundingBox(DEFAULT_BOUNDING_BOX);
+      setBoundingBox(null);
+      setIsComputing(false);
       return;
     }
 
     setBoundingBox(box);
+    setIsComputing(false);
   }, [objectRef]);
 
   useLayoutEffect(() => {
@@ -72,11 +77,14 @@ export const useFo3dBounds = (
     const getBoundingBox = () => {
       if (!isMounted) return;
 
+      setIsComputing(true);
+
       if (!objectRef.current) {
         retryCount.current += 1;
         if (retryCount.current >= MAX_BOUNDING_BOX_RETRIES) {
           retryCount.current = 0;
-          setBoundingBox(DEFAULT_BOUNDING_BOX);
+          setBoundingBox(null);
+          setIsComputing(false);
           return;
         }
         timeOutIdRef.current = window.setTimeout(
@@ -92,7 +100,8 @@ export const useFo3dBounds = (
         retryCount.current += 1;
         if (retryCount.current >= MAX_BOUNDING_BOX_RETRIES) {
           retryCount.current = 0;
-          setBoundingBox(DEFAULT_BOUNDING_BOX);
+          setBoundingBox(null);
+          setIsComputing(false);
           return;
         }
         timeOutIdRef.current = window.setTimeout(
@@ -113,6 +122,7 @@ export const useFo3dBounds = (
       if (unchangedCount.current >= UNCHANGED_COUNT_THRESHOLD) {
         retryCount.current = 0;
         setBoundingBox(box);
+        setIsComputing(false);
       } else {
         timeOutIdRef.current = window.setTimeout(
           getBoundingBox,
@@ -132,6 +142,7 @@ export const useFo3dBounds = (
     return () => {
       isMounted = false;
       retryCount.current = 0;
+      setIsComputing(false);
 
       if (timeOutIdRef.current) {
         window.clearTimeout(timeOutIdRef.current);
@@ -139,5 +150,5 @@ export const useFo3dBounds = (
     };
   }, [objectRef, predicate]);
 
-  return { boundingBox, recomputeBounds };
+  return { boundingBox, recomputeBounds, isComputing };
 };

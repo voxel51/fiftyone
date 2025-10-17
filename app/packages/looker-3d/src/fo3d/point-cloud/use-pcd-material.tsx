@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 import type { BufferGeometry, Quaternion } from "three";
 import {
+  DEFAULT_BOUNDING_BOX,
   SHADE_BY_CUSTOM,
   SHADE_BY_HEIGHT,
   SHADE_BY_INTENSITY,
@@ -72,17 +73,15 @@ export const usePcdMaterial = (
   );
 
   const minMaxCoordinates = useMemo(() => {
-    if (!pcdBoundingBox) {
-      return null;
-    }
+    const effectiveBoundingBox = pcdBoundingBox || DEFAULT_BOUNDING_BOX;
 
     // note: we should deprecate minZ in the plugin settings, since it doesn't account for non-z up vectors
     if (pluginSettings?.pointCloud?.minZ) {
-      return [pluginSettings.pointCloud.minZ, pcdBoundingBox.max.z];
+      return [pluginSettings.pointCloud.minZ, effectiveBoundingBox.max.z];
     }
 
-    const min = pcdBoundingBox.min.dot(upVector);
-    const max = pcdBoundingBox.max.dot(upVector);
+    const min = effectiveBoundingBox.min.dot(upVector);
+    const max = effectiveBoundingBox.max.dot(upVector);
 
     return [min, max] as const;
   }, [upVector, pcdBoundingBox, pluginSettings]);
