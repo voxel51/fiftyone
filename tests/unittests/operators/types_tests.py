@@ -29,6 +29,7 @@ class TestPipelineType(unittest.TestCase):
             name="stage2",
             num_distributed_tasks=5,
             params={"foo": "bar"},
+            always_run=True,
         )
         pipeline = types.Pipeline(stages=[stage1, stage2])
         self.assertListEqual(pipeline.stages, [stage1, stage2])
@@ -37,9 +38,10 @@ class TestPipelineType(unittest.TestCase):
         pipeline.stage(stage1.operator_uri)
         pipeline.stage(
             stage2.operator_uri,
-            stage2.name,
-            stage2.num_distributed_tasks,
-            stage2.params,
+            always_run=stage2.always_run,
+            name=stage2.name,
+            num_distributed_tasks=stage2.num_distributed_tasks,
+            params=stage2.params,
         )
         self.assertListEqual(pipeline.stages, [stage1, stage2])
 

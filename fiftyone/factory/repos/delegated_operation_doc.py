@@ -144,7 +144,13 @@ class DelegatedOperationDocument(object):
         # try to copy because it may contain big, complicated, non-serializable
         # objects that may cause issues with copying.
 
-        ignore_keys = {"_doc", "id", "context", "pipeline"}
+        ignore_keys = {
+            "_doc",
+            "id",
+            "context",
+            "pipeline",
+            "pipeline_run_info",
+        }
         d = {
             k: copy.deepcopy(v)
             for k, v in self.__dict__.items()
