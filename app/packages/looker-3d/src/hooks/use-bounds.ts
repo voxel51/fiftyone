@@ -32,7 +32,7 @@ export const useFo3dBounds = (
   objectRef: React.RefObject<Group>,
   predicate?: () => boolean
 ) => {
-  const [boundingBox, setBoundingBox] = useState<Box3>(null);
+  const [boundingBox, setBoundingBox] = useState<Box3 | null>(null);
   const [isComputing, setIsComputing] = useState(false);
 
   const unchangedCount = useRef(0);

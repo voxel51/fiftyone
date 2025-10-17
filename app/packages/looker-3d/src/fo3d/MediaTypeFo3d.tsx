@@ -683,7 +683,6 @@ export const MediaTypeFo3dComponent = () => {
     ) {
       return;
     }
-    debugger;
 
     // restore camera position and target from localStorage if it exists
     const lastSavedCameraState = window?.localStorage.getItem(

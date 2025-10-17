@@ -76,7 +76,10 @@ export const usePcdMaterial = (
     const effectiveBoundingBox = pcdBoundingBox || DEFAULT_BOUNDING_BOX;
 
     // note: we should deprecate minZ in the plugin settings, since it doesn't account for non-z up vectors
-    if (pluginSettings?.pointCloud?.minZ) {
+    if (
+      pluginSettings?.pointCloud?.minZ !== null &&
+      pluginSettings?.pointCloud?.minZ !== undefined
+    ) {
       return [pluginSettings.pointCloud.minZ, effectiveBoundingBox.max.z];
     }
 
