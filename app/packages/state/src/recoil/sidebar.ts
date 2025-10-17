@@ -111,24 +111,24 @@ export interface PathEntry {
   shown: boolean;
 }
 
-interface Label {
+export interface Label {
   path: string;
   isNew?: boolean;
 }
 
-interface ClassificationAnnotationLabel extends Label {
+export interface ClassificationAnnotationLabel extends Label {
   data: ClassificationLabel;
   overlay: ClassificationOverlay;
   type: "Classification";
 }
 
-interface DetectionAnnotationLabel extends Label {
+export interface DetectionAnnotationLabel extends Label {
   data: DetectionLabel;
   overlay: BoundingBoxOverlay;
   type: "Detection";
 }
 
-interface PolylineAnnotationLabel extends Label {
+export interface PolylineAnnotationLabel extends Label {
   data: PolylineLabel;
   overlay: ClassificationOverlay;
   type: "Polyline";
