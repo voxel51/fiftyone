@@ -366,6 +366,16 @@ export const isSnapToAnnotationPlaneAtom = atom<boolean>({
   ],
 });
 
+export const avoidZFightingAtom = atom<boolean>({
+  key: "fo3d-avoidZFighting",
+  default: true,
+  effects: [
+    getBrowserStorageEffectForKey("fo3d-avoidZFighting", {
+      valueClass: "boolean",
+    }),
+  ],
+});
+
 // Selector to clear all transform state
 export const clearTransformStateSelector = selector({
   key: "fo3d-clearTransformState",

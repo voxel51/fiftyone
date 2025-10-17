@@ -153,11 +153,13 @@ export const getResolvedUrlForFo3dAsset = (
 };
 
 export const getThreeMaterialFromFo3dMaterial = (
-  foMtl: Record<string, number | string | boolean>
+  foMtl: Record<string, number | string | boolean>,
+  avoidZFighting: boolean = true
 ) => {
   const { _type, ...props } = foMtl;
   props["transparent"] = (props.opacity as number) < 1;
   props["side"] = DoubleSide;
+  props["depthWrite"] = !avoidZFighting;
 
   if (foMtl._type === "MeshBasicMaterial") {
     return new MeshBasicMaterial(props as FoMeshBasicMaterialProps);

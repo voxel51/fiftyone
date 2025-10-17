@@ -3,10 +3,11 @@ import { CameraControls } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { folder, useControls } from "leva";
 import { useMemo, useRef } from "react";
-import { useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import { Vector3 } from "three";
 import { PANEL_ORDER_SCENE_CONTROLS } from "../../constants";
 import { FoScene } from "../../hooks";
+import { avoidZFightingAtom } from "../../state";
 import { useFo3dContext } from "../context";
 import { getCameraPositionKey, getOrthonormalAxis } from "../utils";
 import { Lights } from "./lights/Lights";
@@ -29,6 +30,8 @@ export const SceneControls = ({
   } = useFo3dContext();
 
   const datasetName = useRecoilValue(fos.datasetName);
+  const [avoidZFighting, setAvoidZFighting] =
+    useRecoilState(avoidZFightingAtom);
 
   const dirFromUpVector = useMemo(
     () => getOrthonormalAxis(upVector),
@@ -84,6 +87,13 @@ export const SceneControls = ({
             label: "Auto Rotate",
             onChange: (value) => {
               setAutoRotate(value);
+            },
+          },
+          "Avoid Z fighting": {
+            value: avoidZFighting,
+            label: "Avoid Z fighting",
+            onChange: (value) => {
+              setAvoidZFighting(value);
             },
           },
         },
