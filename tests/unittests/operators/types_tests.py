@@ -97,6 +97,10 @@ class TestPipelineType(unittest.TestCase):
         with self.assertRaises(ValueError):
             pipe.stage("my/uri", num_distributed_tasks=-5)
 
+    def test_none(self):
+        self.assertIsNone(types.Pipeline.from_json(None))
+        self.assertIsNone(types.PipelineRunInfo.from_json(None))
+
     def test_pipeline_run_info(self):
         run_info = types.PipelineRunInfo(
             active=False, stage_index=2, expected_children=[1, 2]

@@ -132,6 +132,9 @@ class Pipeline:
         Args:
             json_dict: a JSON / python dict representation of the pipeline
         """
+        if json_dict is None:
+            return None
+
         if isinstance(json_dict, list):
             json_dict = {"stages": json_dict}
         stages = [
