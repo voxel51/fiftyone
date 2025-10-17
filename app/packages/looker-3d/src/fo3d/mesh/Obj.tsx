@@ -70,6 +70,10 @@ const ObjMeshDefaultMaterial = ({
     onLoad?.();
   }, [mesh, objUrl, material, onLoad]);
 
+  if (!mesh) {
+    return null;
+  }
+
   return <primitive object={mesh} />;
 };
 
@@ -133,6 +137,10 @@ const ObjMeshWithCustomMaterial = ({
       onLoad?.();
     }
   }, [mesh, onLoad]);
+
+  if (!mesh) {
+    return null;
+  }
 
   return <primitive object={mesh} />;
 };

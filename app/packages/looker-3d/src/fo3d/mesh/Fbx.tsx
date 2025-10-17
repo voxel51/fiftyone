@@ -10,6 +10,7 @@ import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls"
 import { usePercolateMaterial } from "../../hooks/use-set-scene-transparency";
 import { useFo3dContext } from "../context";
 import { getBasePathForTextures, getResolvedUrlForFo3dAsset } from "../utils";
+import { SkeletonUtils } from "three-stdlib";
 
 export const Fbx = ({
   name,
@@ -51,7 +52,8 @@ export const Fbx = ({
   // todo: optimize this with instanced mesh
   const fbx = useMemo(() => {
     if (isInMultiPanelView && fbx_) {
-      return fbx_.clone(true);
+      // Use SkeletonUtils otherwise skeletons might de-bind
+      return SkeletonUtils.clone(fbx_);
     }
     return fbx_;
   }, [fbx_, isInMultiPanelView]);

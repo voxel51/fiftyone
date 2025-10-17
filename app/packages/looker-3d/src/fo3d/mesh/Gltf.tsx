@@ -3,6 +3,7 @@ import { useGLTF } from "@react-three/drei";
 import { useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { AnimationMixer, type Quaternion, type Vector3 } from "three";
+import { SkeletonUtils } from "three-stdlib";
 import type { GltfAsset } from "../../hooks";
 import { useAnimationSelect } from "../../hooks/use-animation-select";
 import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";
@@ -55,7 +56,8 @@ export const Gltf = ({
   // todo: optimize this with instanced mesh
   const scene = useMemo(() => {
     if (isInMultiPanelView && scene_) {
-      return scene_.clone(true);
+      // Use SkeletonUtils otherwise skeletons might de-bind
+      return SkeletonUtils.clone(scene_);
     }
     return scene_;
   }, [scene_, isInMultiPanelView]);

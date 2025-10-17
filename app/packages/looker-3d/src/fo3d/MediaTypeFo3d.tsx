@@ -338,7 +338,7 @@ export const MediaTypeFo3dComponent = () => {
     );
 
     return lastSavedCameraPosition ? JSON.parse(lastSavedCameraPosition) : null;
-  }, []);
+  }, [datasetName]);
 
   const getDefaultCameraPosition = useCallback(
     (ignoreLastSavedCameraPosition = false) => {
