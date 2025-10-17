@@ -328,7 +328,11 @@ def _render_model_content(template, model_name):
 
     tags_str = ", ".join(zoo_model.tags)
 
-    base_packages = zoo_model.requirements.packages
+    base_packages = (
+        zoo_model.requirements.packages
+        if zoo_model.requirements is not None
+        else None
+    )
     if base_packages is not None:
         base_packages = ", ".join(base_packages)
 
@@ -337,7 +341,11 @@ def _render_model_content(template, model_name):
     else:
         supports_cpu = "no"
 
-    cpu_packages = zoo_model.requirements.cpu_packages
+    cpu_packages = (
+        zoo_model.requirements.cpu_packages
+        if zoo_model.requirements is not None
+        else None
+    )
     if cpu_packages is not None:
         cpu_packages = ", ".join(cpu_packages)
 
@@ -346,7 +354,11 @@ def _render_model_content(template, model_name):
     else:
         supports_gpu = "no"
 
-    gpu_packages = zoo_model.requirements.gpu_packages
+    gpu_packages = (
+        zoo_model.requirements.gpu_packages
+        if zoo_model.requirements is not None
+        else None
+    )
     if gpu_packages is not None:
         gpu_packages = ", ".join(gpu_packages)
 
