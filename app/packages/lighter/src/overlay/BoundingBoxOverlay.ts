@@ -281,6 +281,10 @@ export class BoundingBoxOverlay
     return this.moveStartPosition;
   }
 
+  getMoveStartBounds(): Rect | undefined {
+    return this.moveStartBounds;
+  }
+
   private calculateMoving(point: Point, worldPoint: Point, scale: number) {
     if (!this.isSelected() || !this.moveStartPoint || this.moveState !== "NONE")
       return;

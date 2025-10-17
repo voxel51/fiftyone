@@ -1,41 +1,36 @@
-import { Button } from "@fiftyone/components";
-import { LIGHTER_EVENTS, useLighter } from "@fiftyone/lighter";
+import { Button, MuiButton } from "@fiftyone/components";
 import { DeleteOutline } from "@mui/icons-material";
-import { useAtomValue, useSetAtom } from "jotai";
-import React, { useCallback, useContext } from "react";
+import { useAtomValue } from "jotai";
+import React, { default as React, default as React, useContext } from "react";
 import { RoundButton } from "../Actions";
 import { ConfirmationContext } from "../Confirmation";
 import { Row } from "./Components";
-import {
-  currentField,
-  current as currentLabelAtom,
-  editing,
-  isNew,
-} from "./state";
+import { currentField, isNew } from "./state";
+import useExit from "./useExit";
+import useHasChanges from "./useHasChanges";
+import useSave from "./useSave";
 
 const SaveFooter = () => {
-  const { scene } = useLighter();
-  const annotationLabel = useAtomValue(currentLabelAtom);
+  const { onDelete } = useContext(ConfirmationContext);
+  const onExit = useExit();
+  const onSave = useSave();
   const showCancel = useAtomValue(isNew);
-  const { deleteAnnotation } = useContext(ConfirmationContext);
 
-  const onSave = useCallback(() => {
-    scene?.dispatchSafely({
-      type: LIGHTER_EVENTS.DO_PERSIST_OVERLAY,
-      detail: { ...annotationLabel },
-    });
-  }, [annotationLabel, scene]);
-
-  const onDelete = useCallback(() => {
-    scene?.dispatchSafely({
-      type: LIGHTER_EVENTS.DO_REMOVE_OVERLAY,
-      detail: { ...annotationLabel },
-    });
-  }, [annotationLabel, scene]);
+  const hasChanges = useHasChanges();
 
   return (
     <>
-      <Button onClick={onSave}>Save</Button>
+      <MuiButton
+        disabled={!hasChanges}
+        onClick={() => {
+          onSave();
+          onExit();
+        }}
+        variant="contained"
+        color="primary"
+      >
+        Save
+      </MuiButton>
       <RoundButton onClick={onDelete}>
         {showCancel ? (
           "Cancel"
@@ -51,8 +46,9 @@ const SaveFooter = () => {
 };
 
 const CancelFooter = () => {
-  const setEditingAtom = useSetAtom(editing);
-  return <Button onClick={() => setEditingAtom(null)}>Cancel</Button>;
+  const { onDelete } = useContext(ConfirmationContext);
+
+  return <Button onClick={onDelete}>Cancel</Button>;
 };
 
 export default function Footer() {

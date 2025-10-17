@@ -235,6 +235,10 @@ class Sample(HTTPEndpoint):
         )
 
         if_last_modified_at = get_if_last_modified_at(request)
+        if if_last_modified_at is None:
+            raise HTTPException(
+                status_code=400, detail="Invalid If-Match header"
+            )
 
         sample = get_sample(dataset_id, sample_id, if_last_modified_at)
 
@@ -306,6 +310,10 @@ class SampleField(HTTPEndpoint):
         )
 
         if_last_modified_at = get_if_last_modified_at(request)
+        if if_last_modified_at is None:
+            raise HTTPException(
+                status_code=400, detail="Invalid If-Match header"
+            )
 
         sample = get_sample(dataset_id, sample_id, if_last_modified_at)
 

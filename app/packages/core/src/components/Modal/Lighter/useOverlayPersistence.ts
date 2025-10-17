@@ -4,13 +4,13 @@
 
 import type { OverlayEventDetail, Scene2D } from "@fiftyone/lighter";
 import { LIGHTER_EVENTS } from "@fiftyone/lighter";
-import { useCallback, useEffect, useMemo } from "react";
-import { JSONDeltas, patchSample } from "../../../client";
-import { useRecoilValue, useSetRecoilState } from "recoil";
 import * as fos from "@fiftyone/state";
 import { AnnotationLabel } from "@fiftyone/state";
+import { useCallback, useEffect, useMemo } from "react";
+import { useRecoilValue, useSetRecoilState } from "recoil";
+import { JSONDeltas, patchSample } from "../../../client";
 import { parseTimestamp } from "../../../client/util";
-import { buildJsonPath, buildLabelDeltas, OpType } from "./deltas";
+import { OpType, buildJsonPath, buildLabelDeltas } from "./deltas";
 
 /**
  * Hook that handles overlay persistence events.
@@ -22,10 +22,14 @@ export const useOverlayPersistence = (scene: Scene2D | null) => {
   const setSnackbarErrors = useSetRecoilState(fos.snackbarErrors);
 
   const versionToken = useMemo(() => {
-    try {
-      return parseTimestamp(currentSample.last_modified_at)?.toISOString();
-    } catch (error) {
-      return null;
+    const isoTimestamp = parseTimestamp(
+      currentSample?.last_modified_at
+    )?.toISOString();
+
+    if (isoTimestamp?.endsWith("Z")) {
+      return isoTimestamp.substring(0, isoTimestamp.length - 1);
+    } else {
+      return isoTimestamp;
     }
   }, [currentSample.last_modified_at]);
 

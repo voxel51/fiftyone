@@ -1,9 +1,7 @@
 import { LIGHTER_EVENTS, useLighter } from "@fiftyone/lighter";
-import * as fos from "@fiftyone/state";
 import { DETECTION } from "@fiftyone/utilities";
-import { useAtomValue, useSetAtom } from "jotai";
-import React, { useCallback, useContext, useEffect } from "react";
-import { useRecoilValue } from "recoil";
+import { useAtomValue } from "jotai";
+import React, { useContext, useEffect } from "react";
 import styled from "styled-components";
 import Confirmation, { ConfirmationContext } from "../Confirmation";
 import AnnotationSchema from "./AnnotationSchema";
@@ -12,14 +10,10 @@ import Footer from "./Footer";
 import Header from "./Header";
 import Id from "./Id";
 import Position from "./Position";
-import {
-  currentField,
-  currentOverlay,
-  currentType,
-  deleteValue,
-  saveValue,
-} from "./state";
+import { currentField, currentOverlay, currentType } from "./state";
+import useDelete from "./useDelete";
 import useExit from "./useExit";
+import useSave from "./useSave";
 
 const ContentContainer = styled.div`
   margin: 0.25rem 1rem;
@@ -60,29 +54,15 @@ export default function Edit() {
   const field = useAtomValue(currentField);
   const overlay = useAtomValue(currentOverlay);
   const type = useAtomValue(currentType);
-  const exit = useExit();
-  const deleteAnnotation = useSetAtom(deleteValue);
-  const sampleId = useRecoilValue(fos.currentSampleId);
-  const datasetId = fos.useAssertedRecoilValue(fos.datasetId);
-  const saveAnnotation = useSetAtom(saveValue);
+
   return (
-    <Confirmation
-      deleteAnnotation={useCallback(
-        () => deleteAnnotation({ datasetId, sampleId }),
-        [datasetId, deleteAnnotation, sampleId]
-      )}
-      exit={exit}
-      saveAnnotation={useCallback(
-        () => saveAnnotation({ datasetId, sampleId }),
-        [datasetId, sampleId, saveAnnotation]
-      )}
-    >
+    <Confirmation onDelete={useDelete()} onExit={useExit()} onSave={useSave()}>
       <LighterEvents />
       <ContentContainer>
         <Header />
         <Content>
-          <Field />
           <Id />
+          <Field />
           {type === DETECTION && overlay && <Position />}
           {field && <AnnotationSchema />}
         </Content>

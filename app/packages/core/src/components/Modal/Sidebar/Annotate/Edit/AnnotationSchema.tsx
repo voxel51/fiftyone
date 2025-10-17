@@ -4,7 +4,12 @@ import {
   useLighter,
 } from "@fiftyone/lighter";
 import { expandPath, field } from "@fiftyone/state";
-import { FLOAT_FIELD, INT_FIELD } from "@fiftyone/utilities";
+import {
+  BOOLEAN_FIELD,
+  FLOAT_FIELD,
+  INT_FIELD,
+  STRING_FIELD,
+} from "@fiftyone/utilities";
 import { useAtom, useAtomValue } from "jotai";
 import React, { useEffect, useMemo } from "react";
 import { useRecoilCallback } from "recoil";
@@ -28,9 +33,14 @@ const getLabel = (value) => {
   return value;
 };
 
-const createInput = (name: string) => {
+const createInput = (name: string, ftype: string) => {
   return {
-    type: "string",
+    type:
+      ftype === STRING_FIELD
+        ? "string"
+        : ftype === BOOLEAN_FIELD
+        ? "boolean"
+        : "number",
     view: {
       name: "PrimitiveView",
       label: name,

@@ -26,6 +26,9 @@ const createSchema = () => ({
 
 const Id = () => {
   const overlay = useAtomValue(currentOverlay);
+  if (!overlay) {
+    return null;
+  }
 
   return (
     <>

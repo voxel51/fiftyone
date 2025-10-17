@@ -41,9 +41,12 @@ def fixture_dataset_id(dataset):
     return dataset._doc.id
 
 
-@pytest.fixture(name="if_match", params=[None, "etag", "isodate", "timestamp"])
+_if_match_values = ["etag", "isodate", "timestamp"]
+
+
+@pytest.fixture(name="if_match", params=_if_match_values)
 def fixture_if_match(request, sample):
-    """Provides different database connections."""
+    """Provides parameterized If-Match header values."""
     if_match_type = request.param
 
     if if_match_type is None:
@@ -677,12 +680,19 @@ class TestSampleFieldRoute:
         )
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "if_match", [None] + _if_match_values, indirect=True
+    )
     async def test_if_match_header_failure(
         self, mutator, mock_request, sample, if_match
     ):
-        """Tests that a 412 HTTPException is raised for an invalid If-Match."""
+        """Tests that a 4xx HTTPException is raised for an invalid If-Match."""
         if if_match is None:
-            pytest.skip("Fixture returned None, skipping this test.")
+            expected_status = 400
+            expected_detail = "Invalid If-Match header"
+        else:
+            expected_status = 412
+            expected_detail = "If-Match condition failed"
 
         # Update the sample to change its last_modified_at
         sample["primitive_field"] = "new_value"
@@ -697,7 +707,8 @@ class TestSampleFieldRoute:
             await mutator.patch(mock_request)
             #####
 
-        assert exc_info.value.status_code == 412
+        assert exc_info.value.status_code == expected_status
+        assert exc_info.value.detail == expected_detail
 
     @pytest.mark.asyncio
     async def test_field_path_not_found(self, mutator, mock_request, sample):

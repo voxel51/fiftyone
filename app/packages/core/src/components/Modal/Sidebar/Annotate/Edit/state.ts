@@ -170,48 +170,29 @@ export const defaultField = atomFamily((type: LabelType) =>
   })
 );
 
-export const saveValue = atom(
-  undefined,
-  (
-    get,
-    set,
-    { datasetId, sampleId }: { datasetId: string; sampleId: string }
-  ) => {
-    const data = get(current);
+export const addValue = atom(undefined, (get, set) => {
+  const data = get(current);
 
-    if (!data) {
-      throw new Error("no current label");
-    }
-
-    const { isNew, ...value } = data;
-
-    if (isNew) {
-      set(addLabel, value);
-    }
-
-    set(editing, null);
+  if (!data) {
+    throw new Error("no current label");
   }
-);
 
-export const deleteValue = atom(
-  null,
-  (
-    get,
-    set,
-    { datasetId, sampleId }: { datasetId: string; sampleId: string }
-  ) => {
-    const data = get(current);
+  const { isNew, ...value } = data;
 
-    if (!data) {
-      throw new Error("no current label");
-    }
-
-    // patchSample({ datasetId, sampleId, delta });
-    set(
-      labels,
-      get(labels).filter((label) => label.data._id !== data.data._id)
-    );
-
-    set(editing, null);
+  if (isNew) {
+    set(addLabel, value);
   }
-);
+});
+
+export const deleteValue = atom(null, (get, set) => {
+  const data = get(current);
+
+  if (!data) {
+    throw new Error("no current label");
+  }
+
+  set(
+    labels,
+    get(labels).filter((label) => label.data._id !== data.data._id)
+  );
+});

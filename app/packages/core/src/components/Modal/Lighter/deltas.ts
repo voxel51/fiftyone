@@ -1,7 +1,5 @@
-import { JSONDeltas } from "../../../client";
-import { DetectionLabel } from "@fiftyone/looker/src/overlays/detection";
-import { extractNestedField, generateJsonPatch } from "../../../utils/json";
 import { ClassificationLabel } from "@fiftyone/looker/src/overlays/classifications";
+import { DetectionLabel } from "@fiftyone/looker/src/overlays/detection";
 import { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
 import {
   AnnotationLabel,
@@ -10,6 +8,8 @@ import {
   PolylineAnnotationLabel,
   Sample,
 } from "@fiftyone/state";
+import { JSONDeltas } from "../../../client";
+import { extractNestedField, generateJsonPatch } from "../../../utils/json";
 
 type PolylinesParent = {
   polylines: PolylineLabel[];
@@ -80,6 +80,13 @@ export const buildDeletionDeltas = (
     const existingLabel = <DetectionsParent>(
       extractNestedField(sample, label.path)
     );
+
+    if (!existingLabel || !Array.isArray(existingLabel.detections)) {
+      // label doesn't exist
+      console.warn(`can't delete label; no detections found at ${label.path}`);
+      return [];
+    }
+
     return generateJsonPatch(existingLabel, {
       ...existingLabel,
       detections: existingLabel.detections.filter(
@@ -87,11 +94,18 @@ export const buildDeletionDeltas = (
       ),
     });
   } else if (label.type === "Classification") {
-    return [{ op: "remove", path: label.path }];
+    return [{ op: "remove", path: "" }];
   } else if (label.type === "Polyline") {
     const existingLabel = <PolylinesParent>(
       extractNestedField(sample, label.path)
     );
+
+    if (!existingLabel || !Array.isArray(existingLabel.polylines)) {
+      // label doesn't exist
+      console.warn(`can't delete label; no polylines found at ${label.path}`);
+      return [];
+    }
+
     return generateJsonPatch(existingLabel, {
       ...existingLabel,
       polylines: existingLabel.polylines.filter(

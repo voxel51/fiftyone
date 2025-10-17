@@ -4,29 +4,26 @@ import { useConfirmDelete } from "./useConfirmDelete";
 import useConfirmExit from "./useConfirmExit";
 
 export const ConfirmationContext = createContext({
-  exit: () => {},
-  deleteAnnotation: () => {},
+  onDelete: () => {},
+  onExit: () => {},
 });
 
 export default function Confirmation({
   children,
-  exit,
-  saveAnnotation,
-  deleteAnnotation,
+  onDelete,
+  onExit,
+  onSave,
 }: PropsWithChildren<{
-  exit: () => void;
-  saveAnnotation: () => void;
-  deleteAnnotation: () => void;
+  onDelete: () => void;
+  onExit: () => void;
+  onSave: () => void;
 }>) {
-  const { confirmDelete, DeleteModal } = useConfirmDelete(deleteAnnotation);
-  const { confirmExit, ExitChangesModal } = useConfirmExit(
-    exit,
-    saveAnnotation
-  );
+  const { confirmDelete, DeleteModal } = useConfirmDelete(onDelete);
+  const { confirmExit, ExitChangesModal } = useConfirmExit(onExit, onSave);
 
   return (
     <ConfirmationContext.Provider
-      value={{ deleteAnnotation: confirmDelete, exit: confirmExit }}
+      value={{ onDelete: confirmDelete, onExit: confirmExit }}
     >
       {children}
       <DeleteModal />

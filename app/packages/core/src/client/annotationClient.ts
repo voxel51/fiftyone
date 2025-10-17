@@ -1,4 +1,3 @@
-import { encodeURIPath } from "./util";
 import { Sample } from "@fiftyone/looker";
 import {
   FetchFunctionConfig,
@@ -8,6 +7,7 @@ import {
   NotFoundError,
 } from "@fiftyone/utilities";
 import * as jsonpatch from "fast-json-patch";
+import { encodeURIPath, parseETag } from "./util";
 
 /**
  * List of JSON-patch operation deltas between two versions of a json object.
@@ -105,6 +105,6 @@ export const patchSample = async (
 
   return {
     sample: response.response,
-    versionToken: response.headers.get("ETag"),
+    versionToken: parseETag(response.headers.get("ETag")),
   };
 };

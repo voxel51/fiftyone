@@ -26,8 +26,10 @@ function DeleteModal({ deleteAnnotation }: { deleteAnnotation: () => void }) {
   const type = useAtomValue(currentType);
   const [askAgain, setAskAgain] = useAtom(askForDeleteConfirmation);
 
+  const close = useCallback(() => show(false), [show]);
+
   return shown ? (
-    <Modal close={() => show(false)} title={`Delete this ${type}?`}>
+    <Modal close={close} title={`Delete this ${type}?`}>
       <Typography color="secondary" padding="1rem 0">
         This will delete the label and its attributes. The action is permanent
         and cannot be reversed.

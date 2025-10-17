@@ -22,10 +22,37 @@ export const parseTimestamp = (timestamp?: DateTime): Date | null => {
   if (timestamp) {
     return typeof timestamp === "string"
       ? new Date(timestamp)
-      : timestamp.$date
+      : "$date" in timestamp
       ? new Date(timestamp.$date)
-      : new Date(timestamp.datetime);
+      : "datetime" in timestamp
+      ? new Date(timestamp.datetime)
+      : null;
   }
 
   return null;
+};
+
+/**
+ * Parse an ETag from a raw header value.
+ *
+ * ETags are often surrounded by quotes, and may be prefixed with W/.
+ *
+ * @param headerValue Raw header value
+ */
+export const parseETag = (headerValue?: string): string | null => {
+  if (!headerValue) {
+    return null;
+  }
+
+  let cleanedValue = headerValue;
+
+  if (cleanedValue.startsWith('"') && cleanedValue.endsWith('"')) {
+    cleanedValue = cleanedValue.substring(1, headerValue.length - 1);
+  }
+
+  if (cleanedValue.startsWith("W/")) {
+    cleanedValue = cleanedValue.substring(2);
+  }
+
+  return cleanedValue;
 };

@@ -49,18 +49,18 @@ export class MoveOverlayCommand implements Command {
   constructor(
     private overlay: Movable,
     private overlayId: string,
-    private oldPosition: Point,
-    private newPosition: Point
+    private oldBounds: Rect,
+    private newBounds: Rect
   ) {
     this.id = `move-${overlayId}-${Date.now()}`;
     this.description = `Move overlay ${overlayId}`;
   }
 
   execute(): void {
-    this.overlay.setPosition(this.newPosition);
+    this.overlay.setBounds(this.newBounds);
   }
 
   undo(): void {
-    this.overlay.setPosition(this.oldPosition);
+    this.overlay.setBounds(this.oldBounds);
   }
 }
