@@ -3,6 +3,8 @@
 Labeled Faces in the Wild
 -------------------------
 
+.. default-role:: code
+
 Labeled Faces in the Wild is a public benchmark for face verification,
 also known as pair matching.
 

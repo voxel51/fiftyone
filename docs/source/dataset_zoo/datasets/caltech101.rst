@@ -3,6 +3,8 @@
 Caltech-101
 -----------
 
+.. default-role:: code
+
 The Caltech-101 dataset of images.
 
 The dataset consists of pictures of objects belonging to 101 classes, plus

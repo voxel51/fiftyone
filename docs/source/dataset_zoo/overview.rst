@@ -12,38 +12,6 @@ It provides native access to dozens of popular benchmark datasets, and it also
 supports downloading arbitrary public or private datasets whose
 download/preparation methods are provided via GitHub repositories or URLs.
 
-Built-in datasets
------------------
-
-The Dataset Zoo provides built-in access to dozens of datasets that you can
-load into FiftyOne with a single command.
-
-.. customanimatedcta::
-    :button_text: Explore the datasets in the zoo
-    :button_link: index.html
-
-Remotely-sourced datasets
--------------------------
-
-The Dataset Zoo also supports loading datasets whose download/preparation
-methods are provided via GitHub repositories or URLs.
-
-.. customanimatedcta::
-    :button_text: Learn how to download remote datasets
-    :button_link: remote.html
-
-API reference
--------------
-
-The Dataset Zoo can be accessed via the Python library and the CLI. Consult the
-API reference below to see how to download, load, and manage zoo datasets.
-
-.. customanimatedcta::
-    :button_text: Check out the API reference
-    :button_link: api.html
-
-.. _dataset-zoo-basic-recipe:
-
 Basic recipe
 ------------
 
@@ -105,3 +73,44 @@ visualizing it in the App is shown below.
 .. image:: /images/dataset_zoo_coco_2017.png
    :alt: Dataset Zoo
    :align: center
+
+.. note::
+
+    Some datasets are loaded via the
+    `TorchVision Datasets <https://pytorch.org/vision/stable/datasets.html>`_
+    or `TensorFlow Datasets <https://www.tensorflow.org/datasets>`_ packages
+    under the hood.
+
+    If you do not have a :ref:`suitable package <dataset-zoo-ml-backend>`
+    installed when attempting to download a zoo dataset, you'll see an error
+    message that will help you install one.
+
+Built-in datasets
+-----------------
+
+The Dataset Zoo provides built-in access to dozens of datasets that you can
+load into FiftyOne with a single command.
+
+.. customanimatedcta::
+    :button_text: Explore the datasets in the zoo
+    :button_link: index.html
+
+Remotely-sourced datasets
+-------------------------
+
+The Dataset Zoo also supports loading datasets whose download/preparation
+methods are provided via GitHub repositories or URLs.
+
+.. customanimatedcta::
+    :button_text: Learn how to download remote datasets
+    :button_link: remote.html
+
+API reference
+-------------
+
+The Dataset Zoo can be accessed via the Python library and the CLI. Consult the
+API reference below to see how to download, load, and manage zoo datasets.
+
+.. customanimatedcta::
+    :button_text: Check out the API reference
+    :button_link: api.html

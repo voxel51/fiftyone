@@ -3,6 +3,8 @@
 MNIST
 -----
 
+.. default-role:: code
+
 The MNIST database of handwritten digits.
 
 The dataset consists of 70,000 28 x 28 grayscale images in 10 classes.

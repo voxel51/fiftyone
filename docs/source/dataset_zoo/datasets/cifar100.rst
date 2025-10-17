@@ -3,6 +3,8 @@
 CIFAR-100
 ---------
 
+.. default-role:: code
+
 The CIFAR-100 dataset of images.
 
 The dataset consists of 60,000 32 x 32 color images in 100 classes, with

@@ -3,6 +3,8 @@
 UCF101
 ------
 
+.. default-role:: code
+
 UCF101 is an action recognition data set of realistic action videos,
 collected from YouTube, having 101 action categories. This data set is an
 extension of UCF50 data set which has 50 action categories.

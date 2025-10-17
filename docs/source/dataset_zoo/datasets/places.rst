@@ -3,6 +3,8 @@
 Places
 ------
 
+.. default-role:: code
+
 Places is a scene recognition dataset of 10 million images comprising ~400
 unique scene categories.
 

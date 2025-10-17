@@ -3,6 +3,8 @@
 Fashion MNIST
 -------------
 
+.. default-role:: code
+
 The Fashion-MNIST database of Zalando's fashion article images.
 
 The dataset consists of 70,000 28 x 28 grayscale images in 10 classes.

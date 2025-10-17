@@ -3,6 +3,8 @@
 Caltech-256
 -----------
 
+.. default-role:: code
+
 The Caltech-256 dataset of images.
 
 The dataset consists of pictures of objects belonging to 256 classes, plus

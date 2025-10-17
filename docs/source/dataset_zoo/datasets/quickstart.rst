@@ -3,6 +3,8 @@
 Quickstart
 ----------
 
+.. default-role:: code
+
 A small dataset with ground truth bounding boxes and predictions.
 
 The dataset consists of 200 images from the validation split of COCO-2017,

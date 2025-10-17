@@ -3,6 +3,8 @@
 Sama-COCO
 ---------
 
+.. default-role:: code
+
 Sama-COCO is a relabeling of COCO-2017 and is a large-scale object detection
 and segmentation dataset. Masks in Sama-COCO are tighter and many crowd
 instances have been decomposed into their components.

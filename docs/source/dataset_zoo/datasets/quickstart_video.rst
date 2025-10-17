@@ -3,6 +3,8 @@
 Quickstart Video
 ----------------
 
+.. default-role:: code
+
 A small video dataset with dense annotations.
 
 The dataset consists of 10 video segments with dense object detections

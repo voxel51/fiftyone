@@ -30,7 +30,7 @@ apply cutting-edge computer vision techniques to your data.
 
 .. customanimatedcta::
     :button_text: Learn more about the Model Zoo
-    :button_link: api.html
+    :button_link: overview.html
     :align: right
     
 .. Model cards section -----------------------------------------------------

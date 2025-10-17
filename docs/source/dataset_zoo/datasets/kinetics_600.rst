@@ -3,6 +3,8 @@
 Kinetics 600
 ------------
 
+.. default-role:: code
+
 Kinetics is a collection of large-scale, high-quality datasets of URL links of
 up to 650,000 video clips that cover 400/600/700 human action classes,
 depending on the dataset version. The videos include human-object interactions

@@ -3,6 +3,8 @@
 Quickstart 3D
 -------------
 
+.. default-role:: code
+
 A small 3D dataset with meshes, point clouds, and oriented bounding boxes.
 
 The dataset consists of 200 3D mesh samples from the test split of the

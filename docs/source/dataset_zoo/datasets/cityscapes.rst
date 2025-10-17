@@ -3,6 +3,8 @@
 Cityscapes
 ----------
 
+.. default-role:: code
+
 Cityscapes is a large-scale dataset that contains a diverse set of
 stereo video sequences recorded in street scenes from 50 different cities,
 with high quality pixel-level annotations of 5,000 frames in addition to a

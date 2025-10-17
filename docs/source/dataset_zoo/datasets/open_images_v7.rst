@@ -3,6 +3,8 @@
 Open Images V7
 --------------
 
+.. default-role:: code
+
 Open Images V7 is a dataset of ~9 million images, roughly 2 million of which
 are annotated and available via this zoo dataset.
 

@@ -3,6 +3,8 @@
 Families in the Wild
 --------------------
 
+.. default-role:: code
+
 Families in the Wild is a public benchmark for recognizing families via facial
 images. The dataset contains over 26,642 images of 5,037 faces collected from
 978 families. A unique Family ID (FID) is assigned per family, ranging from

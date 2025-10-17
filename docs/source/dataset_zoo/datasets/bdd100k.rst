@@ -3,6 +3,8 @@
 BDD100K
 -------
 
+.. default-role:: code
+
 The Berkeley Deep Drive (BDD) dataset is one of the largest and most diverse
 video datasets for autonomous vehicles.
 

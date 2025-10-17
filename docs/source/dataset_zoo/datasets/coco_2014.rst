@@ -3,6 +3,8 @@
 COCO-2014
 ---------
 
+.. default-role:: code
+
 COCO is a large-scale object detection, segmentation, and captioning
 dataset.
 

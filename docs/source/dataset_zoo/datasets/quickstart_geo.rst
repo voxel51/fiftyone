@@ -3,6 +3,8 @@
 Quickstart Geo
 --------------
 
+.. default-role:: code
+
 A small dataset with geolocation data.
 
 The dataset consists of 500 images from the validation split of the BDD100K

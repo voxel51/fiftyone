@@ -3,6 +3,8 @@
 ActivityNet 200
 ---------------
 
+.. default-role:: code
+
 ActivityNet is a large-scale video dataset for human activity understanding
 supporting the tasks of global video classification, trimmed activity
 classification, and temporal activity detection.

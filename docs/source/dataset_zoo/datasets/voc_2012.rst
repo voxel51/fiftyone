@@ -3,6 +3,8 @@
 VOC-2012
 --------
 
+.. default-role:: code
+
 The dataset for the PASCAL Visual Object Classes Challenge 2012
 (VOC2012) for the detection competition.
 

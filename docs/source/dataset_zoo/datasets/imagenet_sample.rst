@@ -3,6 +3,8 @@
 ImageNet Sample
 ---------------
 
+.. default-role:: code
+
 A small sample of images from the ImageNet 2012 dataset.
 
 The dataset contains 1,000 images, one randomly chosen from each class of

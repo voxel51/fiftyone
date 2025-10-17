@@ -3,6 +3,8 @@
 Quickstart Groups
 -----------------
 
+.. default-role:: code
+
 A small dataset with grouped image and point cloud data.
 
 The dataset consists of 200 scenes from the train split of the KITTI dataset,

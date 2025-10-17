@@ -3,6 +3,8 @@
 ImageNet 2012
 -------------
 
+.. default-role:: code
+
 The ImageNet 2012 dataset.
 
 ImageNet, as known as ILSVRC 2012, is an image dataset organized according

@@ -3,6 +3,8 @@
 KITTI
 -----
 
+.. default-role:: code
+
 KITTI contains a suite of vision tasks built using an autonomous
 driving platform.
 

@@ -3,6 +3,8 @@
 VOC-2007
 --------
 
+.. default-role:: code
+
 The dataset for the PASCAL Visual Object Classes Challenge 2007
 (VOC2007) for the detection competition.
 
