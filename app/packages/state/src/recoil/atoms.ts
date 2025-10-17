@@ -407,3 +407,8 @@ export const editingFieldAtom = atom<boolean>({
   key: "editingFieldAtom",
   default: false,
 });
+
+export const isInMultiPanelViewAtom = atom<boolean>({
+  key: "isInMultiPanelViewAtom",
+  default: false,
+});

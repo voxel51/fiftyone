@@ -1,7 +1,11 @@
 import {
   type BufferAttribute,
+  Box3,
+  type Camera,
   type InterleavedBufferAttribute,
+  Plane,
   Quaternion,
+  type Raycaster,
   Vector3,
   type Vector3Tuple,
   type Vector4Tuple,
@@ -86,6 +90,9 @@ class InvalidSceneError extends Error {
 /**
  * Reads a raw JSON scene from FiftyOne and returns counts
  * of different media types in the scene.
+ *
+ * @param scene - The FiftyOne scene JSON object
+ * @returns Object containing counts of different media types
  */
 export const getFiftyoneSceneSummary = (scene: FiftyoneSceneRawJson) => {
   if (
@@ -136,11 +143,17 @@ export const getFiftyoneSceneSummary = (scene: FiftyoneSceneRawJson) => {
 
 /**
  * Converts degrees to radians.
+ *
+ * @param degrees - The angle in degrees
+ * @returns The angle in radians
  */
 export const deg2rad = (degrees: number) => degrees * (Math.PI / 180);
 
 /**
  * Converts an array of degrees to an array of radians.
+ *
+ * @param degreesArr - Array of angles in degrees
+ * @returns Array of angles in radians
  */
 export const toEulerFromDegreesArray = (degreesArr: Vector3Tuple) => {
   return degreesArr.map(deg2rad) as Vector3Tuple;
@@ -148,6 +161,9 @@ export const toEulerFromDegreesArray = (degreesArr: Vector3Tuple) => {
 
 /**
  * Computes the min and max values for a color buffer attribute.
+ *
+ * @param colorAttribute - The color buffer attribute to analyze
+ * @returns Object containing min and max values
  */
 export const computeMinMaxForColorBufferAttribute = (
   colorAttribute: BufferAttribute | InterleavedBufferAttribute
@@ -166,6 +182,9 @@ export const computeMinMaxForColorBufferAttribute = (
 
 /**
  * Computes the min and max values for a scalar buffer attribute (like intensity in pcd)
+ *
+ * @param attribute - The scalar buffer attribute to analyze
+ * @returns Object containing min and max values
  */
 export const computeMinMaxForScalarBufferAttribute = (
   attribute: BufferAttribute | InterleavedBufferAttribute
@@ -181,6 +200,12 @@ export const computeMinMaxForScalarBufferAttribute = (
   return { min: mn, max: mx };
 };
 
+/**
+ * Gets a color from the color pool based on a string hash.
+ *
+ * @param str - The string to hash
+ * @returns A color from the color pool
+ */
 export const getColorFromPoolBasedOnHash = (str: string) => {
   const hash = str.split("").reduce((acc, char, idx) => {
     const charCode = char.charCodeAt(0);
@@ -189,15 +214,130 @@ export const getColorFromPoolBasedOnHash = (str: string) => {
   return COLOR_POOL[hash % COLOR_POOL.length];
 };
 
-export const getGridQuaternionFromUpVector = (upVectorNormalized: Vector3) => {
-  // calculate angle between custom up direction and default up direction (y-axis in three-js)
-  const angle = Math.acos(upVectorNormalized.dot(new Vector3(0, 1, 0)));
-
-  // calculate axis perpendicular to both the default up direction and the custom up direction
-  const axis = new Vector3()
-    .crossVectors(new Vector3(0, 1, 0), upVectorNormalized)
-    .normalize();
-
-  // quaternion to represent the rotation around an axis perpendicular to both the default up direction and the custom up direction
-  return new Quaternion().setFromAxisAngle(axis, angle);
+/**
+ * Calculates a quaternion to align a grid with a custom up vector.
+ *
+ * @param upVectorNormalized - The normalized up vector
+ * @returns A quaternion representing the rotation
+ */
+export const getGridQuaternionFromUpVector = (
+  upVectorNormalized: Vector3,
+  targetNormal: Vector3 = new Vector3(0, 1, 0)
+) => {
+  const from = targetNormal.clone().normalize();
+  const to = upVectorNormalized.clone();
+  return new Quaternion().setFromUnitVectors(from, to);
 };
+
+/**
+ * Converts a pointer event to Normalized Device Coordinates (NDC).
+ * NDC coordinates range from -1 to 1 in both x and y directions,
+ * with (0, 0) at the center of the canvas.
+ *
+ * @param ev - The pointer event to convert
+ * @param canvas - The HTML canvas element to get bounds from
+ * @returns An object with x and y coordinates in NDC space
+ */
+export function toNDC(ev: PointerEvent, canvas: HTMLCanvasElement) {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: ((ev.clientX - rect.left) / rect.width) * 2 - 1,
+    y: -((ev.clientY - rect.top) / rect.height) * 2 + 1,
+  };
+}
+
+/**
+ * Calculates the intersection point between a ray and a plane.
+ *
+ * @param raycaster - The THREE.js raycaster instance
+ * @param camera - The THREE.js camera
+ * @param ndc - Normalized device coordinates
+ * @param plane - The THREE.js plane to intersect with
+ * @returns The intersection point if it exists, null otherwise
+ */
+export function getPlaneIntersection(
+  raycaster: Raycaster,
+  camera: Camera,
+  ndc: { x: number; y: number },
+  plane: Plane
+): Vector3 | null {
+  raycaster.setFromCamera(ndc as any, camera);
+  const point = new Vector3();
+  if (raycaster.ray.intersectPlane(plane, point)) {
+    return point;
+  }
+  return null;
+}
+
+/**
+ * Creates a THREE.js plane from normal and constant values.
+ *
+ * @param normal - The plane normal vector
+ * @param constant - The plane constant
+ * @returns A new THREE.js plane
+ */
+export function createPlane(normal: Vector3, constant: number): Plane {
+  return new Plane(normal.clone().normalize(), -constant);
+}
+
+/**
+ * Checks if a pointer event matches the specified button.
+ *
+ * @param ev - The pointer event to check
+ * @param button - The button number to match (0 = left, 1 = middle, 2 = right)
+ * @returns True if the button matches, false otherwise
+ */
+export function isButtonMatch(ev: PointerEvent, button: number): boolean {
+  return ev.button === button;
+}
+
+/**
+ * Creates a THREE.js plane from stored position and quaternion state.
+ *
+ * @param position - The plane position as [x, y, z]
+ * @param quaternion - The plane rotation as [x, y, z, w]
+ * @returns A new THREE.js plane
+ */
+export function getPlaneFromPositionAndQuaternion(
+  position: [number, number, number],
+  quaternion: [number, number, number, number]
+): Plane {
+  const pos = new Vector3(...position);
+  const quat = new Quaternion(...quaternion);
+
+  // Extract normal from quaternion by rotating the Z-axis
+  const normal = new Vector3(0, 0, 1).applyQuaternion(quat).normalize();
+
+  // Create plane with normal and position
+  const plane = new Plane();
+  plane.setFromNormalAndCoplanarPoint(normal, pos);
+
+  return plane;
+}
+
+/**
+ * Expands a bounding box by a specified safety margin factor.
+ * The expansion is applied uniformly in all directions from the center.
+ *
+ * @param boundingBox - The original bounding box to expand
+ * @param safetyMargin - The expansion factor (e.g., 1.5 for 1.5x expansion)
+ * @returns A new expanded bounding box
+ */
+export function expandBoundingBox(
+  boundingBox: Box3,
+  safetyMargin: number = 1.5
+): Box3 {
+  if (!boundingBox || boundingBox.isEmpty()) {
+    return boundingBox;
+  }
+
+  const center = boundingBox.getCenter(new Vector3());
+  const size = boundingBox.getSize(new Vector3());
+
+  const expandedSize = size.clone().multiplyScalar(safetyMargin);
+
+  const expandedBox = new Box3();
+  expandedBox.setFromCenterAndSize(center, expandedSize);
+
+  return expandedBox;
+}

@@ -113,6 +113,10 @@ const Modal = () => {
           }
         }
 
+        if (e.repeat) {
+          return;
+        }
+
         if (e.altKey && e.code === "Space") {
           const hoveringSampleId = (
             await snapshot.getPromise(fos.hoveredSample)
@@ -145,7 +149,10 @@ const Modal = () => {
           });
         } else if (e.key === "Escape") {
           const mediaType = await snapshot.getPromise(fos.mediaType);
-          if (activeLookerRef.current || mediaType === "3d") {
+          const is3dVisible = await snapshot.getPromise(
+            fos.groupMediaIs3dVisible
+          );
+          if (activeLookerRef.current || mediaType === "3d" || is3dVisible) {
             // we handle close logic in modal + other places
             return;
           }
@@ -156,7 +163,7 @@ const Modal = () => {
     []
   );
 
-  fos.useEventHandler(document, "keyup", keysHandler);
+  fos.useEventHandler(document, "keydown", keysHandler);
 
   const isFullScreen = useRecoilValue(fos.fullscreen);
 
