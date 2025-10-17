@@ -19,7 +19,6 @@ const SaveFooter = () => {
 
   const onSave = useCallback(() => {
     if (scene) {
-      console.log("emitting event");
       scene.dispatchSafely({
         type: LIGHTER_EVENTS.DO_PERSIST_OVERLAY,
         detail: { ...annotationLabel },

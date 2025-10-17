@@ -25,7 +25,7 @@ const DateTimeTransformer: FieldTransformer = {
     return isObject(data) && "$date" in (data as object);
   },
   transform: (data: unknown): { _cls: "DateTime"; datetime: number } => {
-    const date = new Date(data.$date);
+    const date = new Date((data as { $date: string }).$date);
     return { _cls: "DateTime", datetime: date.getTime() };
   },
 };
@@ -38,7 +38,7 @@ const ObjectIdTransformer: FieldTransformer = {
     return isObject(data) && "$oid" in (data as object);
   },
   transform: (data: unknown): string => {
-    return data.$oid;
+    return (data as { $oid: string }).$oid;
   },
 };
 
@@ -60,13 +60,11 @@ const SampleTransformer: DataTransformer = {
       }
 
       // otherwise recursively transform
-      if (isObject(innerData)) {
+      if (Array.isArray(innerData)) {
+        return innerData.map((e) => transformInner(e));
+      } else if (isObject(innerData)) {
         for (const key of Object.keys(innerData)) {
           innerData[key] = transformInner(innerData[key]);
-        }
-      } else if (Array.isArray(innerData)) {
-        for (const i in innerData) {
-          innerData[i] = transformInner(innerData[i]);
         }
       }
 
