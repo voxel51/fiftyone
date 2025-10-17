@@ -50,7 +50,7 @@ class PanelConfig(OperatorConfig):
         allow_multiple=False,
         surfaces: PANEL_SURFACE = "grid",
         priority=None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(name)
         self.name = name
@@ -163,6 +163,7 @@ class Panel(Operator):
         if method_name is None or method_name == "on_startup":
             return self.on_startup(ctx)
 
+        result = None
         # trigger the event
         if hasattr(self, method_name):
             method = getattr(self, method_name)
