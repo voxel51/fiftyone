@@ -5,7 +5,7 @@ FiftyOne Release Notes
 
 FiftyOne Enterprise 2.12.0
 --------------------------
-*Released October 17, 2025*
+*Released October 20, 2025*
 
 Includes all updates from :ref:`FiftyOne 1.9.0 <release-notes-v1.9.0>`, plus:
 
@@ -60,7 +60,7 @@ Security
 
 FiftyOne 1.9.0
 --------------
-*Released October 17, 2025*
+*Released October 20, 2025*
 
 Plugins and Operators
 
