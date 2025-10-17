@@ -1,5 +1,6 @@
-import { getSampleSrc } from "@fiftyone/state";
+import { getSampleSrc, isInMultiPanelViewAtom } from "@fiftyone/state";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRecoilValue } from "recoil";
 import {
   type BufferGeometry,
   Mesh,
@@ -172,6 +173,7 @@ export const Ply = ({
   children,
 }: PlyProps) => {
   const { fo3dRoot } = useFo3dContext();
+  const isInMultiPanelView = useRecoilValue(isInMultiPanelViewAtom);
 
   const plyUrl = useMemo(
     () =>
@@ -185,9 +187,17 @@ export const Ply = ({
     [fo3dRoot, plyUrl]
   );
 
-  const geometry = useFoLoader(PLYLoader, plyUrl, (loader) => {
+  const geometry_ = useFoLoader(PLYLoader, plyUrl, (loader) => {
     loader.resourcePath = resourcePath;
   });
+
+  // Clone geometry when in multipanel view to avoid React Three Fiber caching issues
+  const geometry = useMemo(() => {
+    if (isInMultiPanelView && geometry_) {
+      return geometry_.clone();
+    }
+    return geometry_;
+  }, [geometry_, isInMultiPanelView]);
 
   const [isUsingVertexColors, setIsUsingVertexColors] = useState(false);
   const [isGeometryResolved, setIsGeometryResolved] = useState(false);

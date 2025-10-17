@@ -1,7 +1,7 @@
 import { LoadingDots } from "@fiftyone/components";
 import { usePluginSettings } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import { useBrowserStorage } from "@fiftyone/state";
+import { isInMultiPanelViewAtom, useBrowserStorage } from "@fiftyone/state";
 import { CameraControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import CameraControlsImpl from "camera-controls";
@@ -14,7 +14,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import { useRecoilCallback, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import * as THREE from "three";
 import { Vector3 } from "three";
@@ -127,6 +127,7 @@ export const MediaTypeFo3dComponent = () => {
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
   const is2DSampleViewerVisible = useRecoilValue(fos.groupMediaIsMainVisible);
   const isGroup = useRecoilValue(fos.isGroup);
+  const setIsInMultiPanelView = useSetRecoilState(isInMultiPanelViewAtom);
 
   const settings = usePluginSettings<Looker3dSettings>("3d");
 
@@ -780,6 +781,10 @@ export const MediaTypeFo3dComponent = () => {
     }
   }, [shouldRenderMultiPanelView, isAnnotationPlaneEnabled, recomputeBounds]);
 
+  useEffect(() => {
+    setIsInMultiPanelView(shouldRenderMultiPanelView);
+  }, [shouldRenderMultiPanelView]);
+
   if (isParsingFo3d) {
     return <LoadingDots />;
   }
@@ -807,6 +812,7 @@ export const MediaTypeFo3dComponent = () => {
     >
       {shouldRenderMultiPanelView ? (
         <MultiPanelView
+          key={upVector ? upVector.toArray().join(",") : null}
           assetsGroupRef={assetsGroupRef}
           foScene={foScene}
           sample={sample}

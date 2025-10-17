@@ -1,5 +1,6 @@
-import { getSampleSrc } from "@fiftyone/state";
+import { getSampleSrc, isInMultiPanelViewAtom } from "@fiftyone/state";
 import { useEffect, useMemo } from "react";
+import { useRecoilValue } from "recoil";
 import {
   Mesh,
   MeshStandardMaterial,
@@ -27,6 +28,7 @@ const ObjMeshDefaultMaterial = ({
   const { objPath, preTransformedObjPath } = obj;
 
   const { fo3dRoot } = useFo3dContext();
+  const isInMultiPanelView = useRecoilValue(isInMultiPanelViewAtom);
 
   const objUrl = useMemo(
     () =>
@@ -35,7 +37,16 @@ const ObjMeshDefaultMaterial = ({
     [objPath, preTransformedObjPath, fo3dRoot]
   );
 
-  const mesh = useFoLoader(OBJLoader, objUrl);
+  const mesh_ = useFoLoader(OBJLoader, objUrl);
+
+  // Deep clone mesh when in multipanel view to avoid React Three Fiber caching issues
+  // todo: optimize this with instanced mesh
+  const mesh = useMemo(() => {
+    if (isInMultiPanelView && mesh_) {
+      return mesh_.clone(true);
+    }
+    return mesh_;
+  }, [mesh_, isInMultiPanelView]);
 
   const { material } = useMeshMaterialControls(name, obj.defaultMaterial);
 
@@ -63,6 +74,7 @@ const ObjMeshDefaultMaterial = ({
 };
 
 const ObjMeshWithCustomMaterial = ({
+  name,
   obj,
   onLoad,
 }: {
@@ -74,6 +86,7 @@ const ObjMeshWithCustomMaterial = ({
     obj;
 
   const { fo3dRoot } = useFo3dContext();
+  const isInMultiPanelView = useRecoilValue(isInMultiPanelViewAtom);
 
   const objUrl = useMemo(
     () =>
@@ -99,12 +112,21 @@ const ObjMeshWithCustomMaterial = ({
       loader.setResourcePath(resourcePath);
     }
   });
-  const mesh = useFoLoader(OBJLoader, objUrl, (loader) => {
+  const mesh_ = useFoLoader(OBJLoader, objUrl, (loader) => {
     if (mtlUrl) {
       materials.preload();
       loader.setMaterials(materials);
     }
   });
+
+  // Deep clone mesh when in multipanel view to avoid React Three Fiber caching issues
+  // todo: optimize this with instanced mesh
+  const mesh = useMemo(() => {
+    if (isInMultiPanelView && mesh_) {
+      return mesh_.clone(true);
+    }
+    return mesh_;
+  }, [mesh_, isInMultiPanelView]);
 
   useEffect(() => {
     if (mesh) {

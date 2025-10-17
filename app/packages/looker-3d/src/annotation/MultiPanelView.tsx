@@ -29,6 +29,7 @@ import { Fo3dSceneContent } from "../fo3d/Fo3dCanvas";
 import { FoSceneComponent } from "../fo3d/FoScene";
 import { Gizmos } from "../fo3d/Gizmos";
 import HoverMetadataHUD from "../fo3d/HoverMetadataHUD";
+import { Lights } from "../fo3d/scene-controls/lights/Lights";
 import { FoScene } from "../hooks";
 import { ThreeDLabels } from "../labels";
 import {
@@ -144,7 +145,7 @@ const calculateCameraPositionForSidePanel = (
       if (Math.abs(upDir.y) > 0.9) {
         direction = new Vector3(0, 0, 1);
       } else {
-        const left = new Vector3(0, 1, 0).cross(upDir).normalize();
+        const left = new Vector3(0, -1, 0).cross(upDir).normalize();
         direction = upDir.clone().cross(left).normalize();
       }
       break;
@@ -154,7 +155,7 @@ const calculateCameraPositionForSidePanel = (
         direction = new Vector3(0, 0, -1);
       } else {
         const left = new Vector3(0, 1, 0).cross(upDir).normalize();
-        direction = upDir.clone().cross(left).normalize().negate();
+        direction = upDir.clone().cross(left).normalize();
       }
       break;
     default:
@@ -425,9 +426,7 @@ const SidePanel = ({
           position={position}
           up={upVector ?? [0, 1, 0]}
         />
-
         <MapControls makeDefault screenSpacePanning enableRotate={false} />
-
         <Bounds fit clip observe={observe} margin={1.25}>
           <Gizmos isGridVisible={false} isGizmoHelperVisible={false} />
           <group visible={isSceneInitialized}>
@@ -455,6 +454,7 @@ const SidePanel = ({
           <SegmentPolylineRenderer ignoreEffects />
           <Crosshair3D />
         </Bounds>
+        <Lights lights={foScene?.lights} />
       </View>
       <ViewSelectorWrapper>
         <Select
