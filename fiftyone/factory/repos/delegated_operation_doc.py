@@ -15,7 +15,7 @@ from fiftyone.operators.executor import (
     ExecutionRunState,
     ExecutionProgress,
 )
-from fiftyone.operators.types import Pipeline
+from fiftyone.operators.types import Pipeline, PipelineRunInfo
 
 logger = logging.getLogger(__name__)
 
@@ -63,8 +63,8 @@ class DelegatedOperationDocument(object):
 
         # distributed task fields
         self.parent_id = None  # Only on children
-        self.pipeline_index = 0
         self.pipeline = None  # Only on pipeline parent
+        self.pipeline_run_info = None  # Only on pipeline parent
 
     @property
     def num_distributed_tasks(self):
@@ -130,8 +130,10 @@ class DelegatedOperationDocument(object):
             if "updated_at" in doc["status"]:
                 self.status.updated_at = doc["status"]["updated_at"]
 
-        if "pipeline" in doc and doc["pipeline"] is not None:
-            self.pipeline = Pipeline.from_json(doc["pipeline"])
+        self.pipeline = Pipeline.from_json(doc.get("pipeline"))
+        self.pipeline_run_info = PipelineRunInfo.from_json(
+            doc.get("pipeline_run_info")
+        )
 
         return self
 
@@ -154,5 +156,7 @@ class DelegatedOperationDocument(object):
             }
         if self.pipeline:
             d["pipeline"] = self.pipeline.to_json()
+        if self.pipeline_run_info:
+            d["pipeline_run_info"] = self.pipeline_run_info.to_json()
 
         return d

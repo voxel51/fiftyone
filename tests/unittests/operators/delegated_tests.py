@@ -206,8 +206,15 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         pipeline = Pipeline(
             [
-                PipelineStage(name="one", operator_uri="@test/op1"),
-                PipelineStage(name="two", operator_uri="@test/op2"),
+                PipelineStage(
+                    name="one",
+                    operator_uri="@test/op1",
+                    num_distributed_tasks=5,
+                    params={"foo": "bar"},
+                ),
+                PipelineStage(
+                    name="two", operator_uri="@test/op2", always_run=True
+                ),
             ]
         )
         doc = self.svc.queue_operation(
