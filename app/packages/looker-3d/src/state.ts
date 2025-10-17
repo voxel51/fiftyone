@@ -338,6 +338,28 @@ export const sharedCursorPositionAtom = atom<[number, number, number] | null>({
   default: null,
 });
 
+export const tempLabelTransformsAtom = atomFamily<
+  {
+    position: [number, number, number];
+    quaternion: [number, number, number, number];
+  } | null,
+  string
+>({
+  key: "fo3d-tempLabelTransforms",
+  default: null,
+});
+
+export const tempVertexTransformsAtom = atomFamily<
+  {
+    position: [number, number, number];
+    quaternion: [number, number, number, number];
+  } | null,
+  string
+>({
+  key: "fo3d-tempVertexTransforms",
+  default: null,
+});
+
 export const annotationPlaneAtom = atom<AnnotationPlaneState>({
   key: "fo3d-annotationPlane",
   default: {

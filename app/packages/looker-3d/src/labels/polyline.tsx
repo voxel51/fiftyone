@@ -5,7 +5,10 @@ import { useEffect, useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import * as THREE from "three";
 import { usePolylineAnnotation } from "../annotation/usePolylineAnnotation";
-import { selectedLabelForAnnotationAtom } from "../state";
+import {
+  selectedLabelForAnnotationAtom,
+  tempLabelTransformsAtom,
+} from "../state";
 import { createFilledPolygonMeshes } from "./polygon-fill-utils";
 import type { OverlayProps } from "./shared";
 import { useEventHandlers, useHoverState, useLabelColor } from "./shared/hooks";
@@ -57,6 +60,7 @@ export const Polyline = ({
     transformControlsRef,
     contentRef,
     markers,
+    handleTransformChange,
     handleTransformEnd,
     handlePointerOver: handleAnnotationPointerOver,
     handlePointerOut: handleAnnotationPointerOut,
@@ -152,6 +156,8 @@ export const Polyline = ({
     };
   }, [material]);
 
+  const tempTransforms = useRecoilValue(tempLabelTransformsAtom(label._id));
+
   const content = (
     <>
       {filled && filledMeshes}
@@ -166,9 +172,14 @@ export const Polyline = ({
       transformControlsPosition={centroid as THREE.Vector3Tuple}
       transformControlsRef={transformControlsRef}
       onTransformEnd={handleTransformEnd}
+      onTransformChange={handleTransformChange}
       explicitObjectRef={contentRef}
     >
-      <group ref={contentRef}>
+      <group
+        ref={contentRef}
+        position={tempTransforms?.position}
+        quaternion={tempTransforms?.quaternion}
+      >
         {markers}
         <group
           onPointerOver={() => {

@@ -11,6 +11,7 @@ import {
   hoveredPolylineInfoAtom,
   segmentPolylineStateAtom,
   selectedPolylineVertexAtom,
+  tempVertexTransformsAtom,
   transformModeAtom,
 } from "../state";
 import type { SelectedPoint } from "./types";
@@ -99,7 +100,19 @@ export const PolylinePointMarker = ({
     ]
   );
 
+  const syncPointTransformationToTempStore = useCallback(() => {
+    if (groupRef.current) {
+      const worldPosition = groupRef.current.position.clone();
+      setTempVertexTransforms({
+        position: [worldPosition.x, worldPosition.y, worldPosition.z],
+        quaternion: groupRef.current.quaternion.toArray(),
+      });
+    }
+  }, []);
+
   const handleTransformEnd = useCallback(() => {
+    setTempVertexTransforms(null);
+
     if (transformControlsRef.current && onPointMove) {
       const delta = transformControlsRef.current.offset.clone();
 
@@ -164,16 +177,31 @@ export const PolylinePointMarker = ({
 
   const groupRef = useRef(null);
 
+  const [tempVertexTransforms, setTempVertexTransforms] = useRecoilState(
+    tempVertexTransformsAtom(`${labelId}-${segmentIndex}-${pointIndex}`)
+  );
+
+  useEffect(() => {
+    return () => {
+      setTempVertexTransforms(null);
+    };
+  }, []);
+
   return (
     <Transformable
       archetype="point"
       isSelectedForTransform={isSelected}
       explicitObjectRef={groupRef}
+      onTransformChange={syncPointTransformationToTempStore}
       onTransformEnd={handleTransformEnd}
       transformControlsRef={transformControlsRef}
       transformControlsPosition={position.toArray()}
     >
-      <group ref={groupRef}>
+      <group
+        ref={groupRef}
+        position={tempVertexTransforms?.position}
+        quaternion={tempVertexTransforms?.quaternion}
+      >
         <mesh
           ref={meshRef}
           position={position}

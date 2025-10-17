@@ -10,6 +10,7 @@ import {
   hoveredPolylineInfoAtom,
   polylineEffectivePointsAtom,
   polylinePointTransformsAtom,
+  tempLabelTransformsAtom,
 } from "../state";
 import { PolylinePointMarker } from "./PolylinePointMarker";
 import {
@@ -46,6 +47,10 @@ export const usePolylineAnnotation = ({
 
   const [effectivePoints3d, setPolylineEffectivePoints] = useRecoilState(
     polylineEffectivePointsAtom(label._id)
+  );
+
+  const setTempPolylineTransforms = useSetRecoilState(
+    tempLabelTransformsAtom(label._id)
   );
 
   const transformControlsRef = useRef(null);
@@ -85,7 +90,6 @@ export const usePolylineAnnotation = ({
     ] as [number, number, number];
   }, [effectivePoints3d]);
 
-  // Point markers for annotation mode
   const pointMarkers = useMemo(() => {
     if (!isAnnotateMode || !isSelectedForAnnotation) return null;
 
@@ -186,12 +190,39 @@ export const usePolylineAnnotation = ({
     label._id,
   ]);
 
+  const syncPolylineTransformationToTempStore = useCallback(() => {
+    const controls = transformControlsRef.current;
+    if (!controls) return;
+
+    const grp = contentRef.current;
+    if (!grp) return;
+
+    const worldPosition = grp.position.clone();
+
+    setTempPolylineTransforms({
+      position: [worldPosition.x, worldPosition.y, worldPosition.z],
+      quaternion: grp.quaternion.toArray(),
+    });
+  }, []);
+
+  const handleTransformChange = useCallback(() => {
+    syncPolylineTransformationToTempStore();
+  }, [syncPolylineTransformationToTempStore]);
+
+  useEffect(() => {
+    return () => {
+      setTempPolylineTransforms(null);
+    };
+  }, [label._id]);
+
   const handleTransformEnd = useCallback(() => {
     const controls = transformControlsRef.current;
     if (!controls) return;
 
     const grp = contentRef.current;
     if (!grp) return;
+
+    setTempPolylineTransforms(null);
 
     const worldDelta = controls.offset.clone();
 
@@ -344,6 +375,7 @@ export const usePolylineAnnotation = ({
     markers,
 
     // Handlers
+    handleTransformChange,
     handleTransformEnd,
     handlePointerOver,
     handlePointerOut,

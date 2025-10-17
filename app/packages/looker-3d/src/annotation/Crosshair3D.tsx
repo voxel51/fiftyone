@@ -2,11 +2,14 @@ import { useTheme } from "@fiftyone/components";
 import { Html } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
 import { useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import * as THREE from "three";
 import { useFo3dContext } from "../fo3d/context";
-import { sharedCursorPositionAtom } from "../state";
+import {
+  isCurrentlyTransformingAtom,
+  sharedCursorPositionAtom,
+} from "../state";
 
 const CROSS_HAIR_SIZE = 20;
 const LINE_WIDTH = 2;
@@ -53,6 +56,7 @@ export const Crosshair3D = () => {
   const { camera } = useThree();
   const { sceneBoundingBox } = useFo3dContext();
   const theme = useTheme();
+  const isCurrentlyTransforming = useRecoilValue(isCurrentlyTransformingAtom);
 
   const worldPosition = useRecoilValue(sharedCursorPositionAtom);
 
@@ -82,6 +86,10 @@ export const Crosshair3D = () => {
     }
     return 1;
   }, [camera]);
+
+  if (isCurrentlyTransforming) {
+    return null;
+  }
 
   if (!screenPosition) {
     return null;
