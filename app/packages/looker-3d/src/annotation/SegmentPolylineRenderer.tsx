@@ -3,7 +3,7 @@ import { Line as LineDrei } from "@react-three/drei";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
-import { SCENE_BOUNDS_EXPANSION_FACTOR, SNAP_TOLERANCE } from "../constants";
+import { SNAP_TOLERANCE } from "../constants";
 import { useFo3dContext } from "../fo3d/context";
 import { useEmptyCanvasInteraction } from "../hooks/use-empty-canvas-interaction";
 import {
@@ -18,7 +18,7 @@ import {
   snapCloseAutomaticallyAtom,
   tempPolylinesAtom,
 } from "../state";
-import { expandBoundingBox, getPlaneFromPositionAndQuaternion } from "../utils";
+import { getPlaneFromPositionAndQuaternion } from "../utils";
 import { PolylinePointMarker } from "./PolylinePointMarker";
 import type { PolylinePointTransform, TempPolyline } from "./types";
 import { shouldClosePolylineLoop } from "./utils/polyline-utils";
@@ -69,14 +69,6 @@ export const SegmentPolylineRenderer = ({
   const isSnapToAnnotationPlane = useRecoilValue(isSnapToAnnotationPlaneAtom);
   const snapCloseAutomatically = useRecoilValue(snapCloseAutomaticallyAtom);
   const { upVector, sceneBoundingBox } = useFo3dContext();
-
-  // We want annotation margin to be larger than the scene bounds
-  const expandedBoundingBox = useMemo(() => {
-    if (!sceneBoundingBox || sceneBoundingBox.isEmpty()) {
-      return null;
-    }
-    return expandBoundingBox(sceneBoundingBox, SCENE_BOUNDS_EXPANSION_FACTOR);
-  }, [sceneBoundingBox]);
 
   // Track last click time for double-click detection
   const lastClickTimeRef = useRef<number>(0);
@@ -212,22 +204,23 @@ export const SegmentPolylineRenderer = ({
 
   // Handle mouse move for rubber band effect
   const handleMouseMove = useCallback(
-    (worldPos: THREE.Vector3) => {
-      const finalPos = worldPos;
-
-      // Constrain position to expanded scene bounds
-      if (expandedBoundingBox) {
-        finalPos.clamp(expandedBoundingBox.min, expandedBoundingBox.max);
-      }
-
+    (worldPos: THREE.Vector3, worldPosPerpendicular: THREE.Vector3 | null) => {
+      const segmentPos = worldPos.clone();
       setSegmentState((prev) => ({
         ...prev,
-        currentMousePosition: [finalPos.x, finalPos.y, finalPos.z],
+        currentMousePosition: [segmentPos.x, segmentPos.y, segmentPos.z],
       }));
 
-      setSharedCursorPosition([finalPos.x, finalPos.y, finalPos.z]);
+      const cursorPos =
+        !annotationPlane.enabled &&
+        !isSnapToAnnotationPlane &&
+        worldPosPerpendicular
+          ? worldPosPerpendicular.clone()
+          : worldPos.clone();
+
+      setSharedCursorPosition([cursorPos.x, cursorPos.y, cursorPos.z]);
     },
-    [expandedBoundingBox]
+    [sceneBoundingBox, annotationPlane.enabled, isSnapToAnnotationPlane]
   );
 
   // Calculate the annotation plane for raycasting
@@ -237,12 +230,14 @@ export const SegmentPolylineRenderer = ({
         annotationPlane.position,
         annotationPlane.quaternion
       );
-      // Note: createPlane negates the constant, so we negate it here to cancel that out
+
       return {
-        normal: plane.normal,
+        ...plane,
+        // Negative constant for raycasting
         constant: -plane.constant,
-      };
+      } as THREE.Plane;
     }
+
     return {
       normal: upVector || new THREE.Vector3(0, 0, 1),
       constant: 0,
@@ -257,6 +252,7 @@ export const SegmentPolylineRenderer = ({
     onPointerMove: handleMouseMove,
     planeNormal: raycastPlane.normal,
     planeConstant: raycastPlane.constant,
+    doubleRaycast: !ignoreEffects,
   });
 
   useEffect(() => {

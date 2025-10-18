@@ -11,10 +11,15 @@ import {
 type Options = {
   onPointerUp?: (pt: THREE.Vector3, ev: PointerEvent) => void;
   onPointerDown?: () => void;
-  onPointerMove?: (pt: THREE.Vector3, ev: PointerEvent) => void;
+  onPointerMove?: (
+    pt: THREE.Vector3,
+    ptPerpendicular: THREE.Vector3 | null,
+    ev: PointerEvent
+  ) => void;
   planeNormal?: THREE.Vector3;
   planeConstant?: number;
   button?: number;
+  doubleRaycast?: boolean;
 };
 
 export function useEmptyCanvasInteraction({
@@ -24,6 +29,7 @@ export function useEmptyCanvasInteraction({
   planeNormal = new THREE.Vector3(0, 1, 0),
   planeConstant = 0,
   button = 0,
+  doubleRaycast = false,
 }: Options = {}) {
   // Refs to avoid re-rendering
   const onPointerUpRef = useRef(onPointerUp);
@@ -41,6 +47,23 @@ export function useEmptyCanvasInteraction({
     [planeNormal, planeConstant]
   );
 
+  // Create perpendicular plane for cursor position
+  const perpendicularPlane = useMemo(() => {
+    const normalizedNormal = planeNormal.clone().normalize();
+
+    // If z-axis is the plane normal, use y-axis for perpendicular plane
+    if (Math.abs(normalizedNormal.z) > 0.9) {
+      return createPlane(new THREE.Vector3(0, 1, 0), planeConstant);
+    }
+    // If y-axis is the plane normal, use z-axis for perpendicular plane
+    if (Math.abs(normalizedNormal.y) > 0.9) {
+      return createPlane(new THREE.Vector3(0, 0, 1), planeConstant);
+    }
+
+    // Default fallback - use z-axis
+    return createPlane(new THREE.Vector3(0, 0, 1), planeConstant);
+  }, [planeNormal, planeConstant]);
+
   useEffect(() => {
     const el = (events.connected ?? gl.domElement) as HTMLCanvasElement;
 
@@ -48,7 +71,10 @@ export function useEmptyCanvasInteraction({
       if (!onPointerMoveRef.current) return;
       const ndc = toNDC(ev, el);
       const pt = getPlaneIntersection(raycaster, camera, ndc, plane);
-      if (pt) onPointerMoveRef.current(pt, ev);
+      const ptPerpendicular = doubleRaycast
+        ? getPlaneIntersection(raycaster, camera, ndc, perpendicularPlane)
+        : null;
+      onPointerMoveRef.current?.(pt, ptPerpendicular, ev);
     };
 
     const handleDown = (ev: PointerEvent) => {
@@ -72,5 +98,5 @@ export function useEmptyCanvasInteraction({
       el.removeEventListener("pointerdown", handleDown);
       el.removeEventListener("pointerup", handleUp);
     };
-  }, [gl, camera, scene, raycaster, events, plane, button]);
+  }, [gl, camera, scene, raycaster, events, plane, perpendicularPlane, button]);
 }

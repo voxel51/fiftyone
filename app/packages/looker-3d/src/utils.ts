@@ -1,6 +1,6 @@
 import {
-  type BufferAttribute,
   Box3,
+  type BufferAttribute,
   type Camera,
   type InterleavedBufferAttribute,
   Plane,
