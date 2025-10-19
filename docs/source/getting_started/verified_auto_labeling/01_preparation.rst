@@ -27,6 +27,11 @@ Setting Up Delegated Operators
 Dataset Preparation
 ------------------------------
 
+This guide presumes you have an unlabeled image dataset loaded into your FiftyOne Enterprise instance. This dataset should contain objects of interest as we will be performing object detection for our auto-labeling task.
+
+
+
+
 Identify Labeling Task
 ------------------------------
 

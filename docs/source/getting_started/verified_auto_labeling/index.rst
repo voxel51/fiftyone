@@ -9,7 +9,7 @@ Verified Auto-Labeling Guide
 
 **Level:** Intermediate | **Estimated Time:** 30-45 minutes | **Tags:** Auto-Labeling, Annotation, Delegated Operations, Model Inference
 
-This guide walks you through using FiftyOne's Verified Auto-Labeling (VAL) feature to rapidly bootstrap and refine labels on your dataset. You'll learn how to:
+This guide walks you through using FiftyOne's Verified Auto-Labeling (VAL) to rapidly bootstrap and refine labels on your dataset. You'll learn how to:
 
 - Configure GPU-enabled delegated operators (DOs) for efficient model inference
 - Generate high-quality auto-labels using state-of-the-art models
@@ -23,12 +23,10 @@ This guide walks you through using FiftyOne's Verified Auto-Labeling (VAL) featu
 Guide Overview
 --------------
 
-Verified Auto-Labeling combines model inference with human verification to dramatically accelerate dataset labeling while maintaining high quality standards. This guide demonstrates the complete workflow from initial setup through final label approval.
-
-The workflow consists of the following steps:
+Verified Auto-Labeling combines model inference with human verification to dramatically accelerate dataset labeling. The workflow consists of the following steps:
 
 1. **Gather Your Data** - Prepare your dataset in FiftyOne
-2. **Set Up Delegated Operators** - Configure GPU resources for delegated model inference
+2. **Set Up Delegated Operators** - Configure GPU resources for delegated model inference and embeddings computation
 3. **Identify Your Task** - Define the labeling objective (detection, classification, or segmentation)
 4. **Configure VAL Run** - Select target samples, models, classes, and confidence threshld
 5. **Execute and Monitor** - Launch the auto-labeling run and track progress
@@ -63,89 +61,9 @@ This guide is designed for machine learning practitioners and data scientists wh
 
 - **FiftyOne Enterprise:** This feature requires FiftyOne Enterprise with delegated operations
 - **GPU Access:** Orchestrator must have GPU resources for model inference
-- **Memory:** 16GB+ RAM recommended for typical workloads
-- **Storage:** Sufficient space for model weights and predictions
-
-.. _val-key-concepts:
-
-Key Concepts
-------------
-
-**Verified Auto-Labeling (VAL)**
-
-VAL is a human-in-the-loop workflow that combines automated model predictions with systematic human review. Unlike fully automated labeling, VAL ensures quality by requiring explicit approval of predictions before they become permanent dataset labels.
-
-**Delegated Operations**
-
-Model inference runs as a delegated operation on a configured orchestrator, enabling:
-- GPU-accelerated processing without local hardware requirements
-- Parallel execution across large datasets
-- Resource isolation and scalability
-
-**Three-Stage Review Process**
-
-1. **Analyze** - Initial review of all predictions, filtering by confidence
-2. **Approval** - Queue of predictions marked ready for final acceptance
-3. **Approved** - Finalized labels integrated into the dataset
-
-**Confidence-Based Filtering**
-
-The confidence slider enables dynamic filtering of predictions based on model confidence scores, allowing reviewers to:
-- Focus on uncertain predictions requiring verification
-- Batch approve high-confidence correct predictions
-- Identify systematic model failures at specific confidence ranges
+- **Storage:** Sufficient object storage space for dataset media and label fields
 
 .. _val-models-section:
-
-Supported Models
-----------------
-
-VAL works with models from FiftyOne's Model Zoo, including:
-
-**Object Detection**
-- YOLOv8 (all variants: nano, small, medium, large, extra-large)
-- Grounding DINO (zero-shot, text-prompted detection)
-- DINO (Detection Transformer)
-- Faster R-CNN variants
-
-**Classification**
-- CLIP (zero-shot image classification)
-- ResNet, EfficientNet (fine-tuned classifiers)
-- Vision Transformers (ViT)
-
-**Segmentation**
-- Segment Anything Model (SAM, SAM2)
-- Mask R-CNN
-
-.. _val-best-practices:
-
-Best Practices
---------------
-
-TBD
-
-.. _val-troubleshooting:
-
-Troubleshooting
----------------
-
-TBD
-
-.. _val-next-steps:
-
-Next Steps
-----------
-
-TBD
-
-.. _val-summary:
-
-Summary
--------
-
-Verified Auto-Labeling provides a systematic approach to dataset labeling that balances automation and human oversight. It uses state-of-the-art foundation modelswith an intuitive review workflow to accelerate annotation while maintaining high quality standards.
-
-The key to success with VAL is understanding it as an iterative process where you refine over multiple passes. Combined with FiftyOne's exploration and curation capabilities, VAL becomes a cornerstone of efficient, high-quality dataset development.
 
 .. toctree::
    :maxdepth: 1
