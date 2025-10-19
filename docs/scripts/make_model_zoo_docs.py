@@ -30,12 +30,6 @@ _CARD_MODEL_TEMPLATE = """
 """
 
 _MODEL_TEMPLATE = """
-.. breadcrumb::
-    :text: Model Zoo
-    :link: ../index.html
-    :text: {{ name }}
-    :link: #
-
 .. _model-zoo-{{ name }}:
 
 {{ header_name }}
