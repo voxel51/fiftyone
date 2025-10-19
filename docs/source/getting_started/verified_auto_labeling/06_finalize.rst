@@ -7,7 +7,8 @@ Step 6: Finalize Your VAL Workflow
 
 You've analyzed, approved, and tagged predictions. Now it's time to finalize the workflow, integrating approved labels into your dataset while discarding problematic predictions.
 
-**Pre-Finalization Checklist**:
+Pre-Finalization Checklist
+---------------------------
 
 Before finalizing, verify:
 
@@ -28,7 +29,9 @@ Before finalizing, verify:
    * - Noted any systematic model issues
      - ☐
 
-**Final Review of Approval Queue**:
+Final Review of Approval Queue
+------------------------------
+
 
 1. Switch to **Approval** tab
 2. Review label table statistics
@@ -37,7 +40,8 @@ Before finalizing, verify:
 5. Use "Undo" for any last-minute changes
 6. Confirm sample and label counts look reasonable
 
-**Understanding Finalization**:
+Understanding Finalization
+--------------------------
 
 When you finalize:
 
@@ -46,7 +50,8 @@ When you finalize:
 ✓ **Tagged samples** → Remain tagged for future work
 ✓ **Original samples** → Unchanged (non-destructive)
 
-**Finalize Process**:
+Finalize Process
+----------------
 
 1. Click **"Finalize Labels"** button in Approval tab
 2. Confirmation dialog displays:
@@ -57,7 +62,9 @@ When you finalize:
 4. Click **"Confirm"** to proceed
 5. Status changes to "Approved"
 
-**What Happens During Finalization**:
+What Happens During Finalization
+--------------------------------
+
 
 .. code-block:: python
 
@@ -71,7 +78,8 @@ When you finalize:
    
    dataset.save()
 
-**Post-Finalization**:
+Post-Finalization
+-----------------
 
 Panel switches to **Approved** tab showing:
 
@@ -80,7 +88,8 @@ Panel switches to **Approved** tab showing:
 - Summary statistics
 - No further edits possible (labels are now part of dataset)
 
-**Verifying Finalized Labels**:
+Verifying Finalized Labels
+--------------------------
 
 1. Exit Auto Labeling panel
 2. Main grid view now shows approved labels
