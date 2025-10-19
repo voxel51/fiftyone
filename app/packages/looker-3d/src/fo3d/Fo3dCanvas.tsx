@@ -14,6 +14,7 @@ import { SpinningCube } from "../SpinningCube";
 import { StatusTunnel } from "../StatusBar";
 import { AnnotationPlane } from "../annotation/AnnotationPlane";
 import { SegmentPolylineRenderer } from "../annotation/SegmentPolylineRenderer";
+import { useCameraViews } from "../hooks/use-camera-views";
 import { ThreeDLabels } from "../labels";
 import { FoSceneComponent } from "./FoScene";
 import { Gizmos } from "./Gizmos";
@@ -105,6 +106,10 @@ export const Fo3dSceneContent = ({
   cameraRef,
 }: Fo3dSceneContentProps) => {
   const mode = useAtomValue(fos.modalMode);
+
+  useCameraViews({
+    cameraControlsRef,
+  });
 
   return (
     <>

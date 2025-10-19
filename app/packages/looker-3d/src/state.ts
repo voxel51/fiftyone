@@ -398,6 +398,17 @@ export const avoidZFightingAtom = atom<boolean>({
   ],
 });
 
+export const cameraViewStatusAtom = atom<{
+  viewName: string | null;
+  timestamp: number | null;
+}>({
+  key: "fo3d-cameraViewStatus",
+  default: {
+    viewName: null,
+    timestamp: null,
+  },
+});
+
 // Selector to clear all transform state
 export const clearTransformStateSelector = selector({
   key: "fo3d-clearTransformState",
@@ -414,6 +425,12 @@ export const clearTransformStateSelector = selector({
       vertices: [],
       currentMousePosition: null,
       isClosed: false,
+    });
+    set(sharedCursorPositionAtom, null);
+    set(tempPolylinesAtom, []);
+    set(cameraViewStatusAtom, {
+      viewName: null,
+      timestamp: null,
     });
   },
 });

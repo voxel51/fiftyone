@@ -1,4 +1,5 @@
 import { IconButton, InfoIcon, useTheme } from "@fiftyone/components";
+import { isInMultiPanelViewAtom } from "@fiftyone/state";
 import { Close } from "@mui/icons-material";
 import BubbleChartIcon from "@mui/icons-material/BubbleChart";
 import CallSplitIcon from "@mui/icons-material/CallSplit";
@@ -19,13 +20,14 @@ import {
   useRef,
   useState,
 } from "react";
-import { useRecoilState, useSetRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import type { OrthographicCamera, PerspectiveCamera, Vector3 } from "three";
 import tunnel from "tunnel-rat";
 import { StatusBarContainer } from "./containers";
 import {
   activeNodeAtom,
+  cameraViewStatusAtom,
   isStatusBarOnAtom,
   segmentPolylineStateAtom,
 } from "./state";
@@ -141,6 +143,25 @@ const PerfPanel = styled.div<{ $bg: string }>`
 
 const MutedIconButton = styled(IconButton)`
   opacity: 0.5;
+`;
+
+const ViewStatusMessage = styled.div<{ $color: string; $multiview: boolean }>`
+  position: fixed;
+  top: 1em;
+  left: ${(p) => (p.$multiview ? "35%" : "50%")};
+  transform: translateX(-50%);
+  color: ${(p) => p.$color};
+  opacity: 0.6;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  user-select: none;
+  pointer-events: none;
 `;
 
 export const StatusTunnel = tunnel();
@@ -378,6 +399,8 @@ export const StatusBar = ({
   const [showPerfStatus, setShowPerfStatus] = useRecoilState(isStatusBarOnAtom);
   const setActiveNode = useSetRecoilState(activeNodeAtom);
   const segmentPolylineState = useRecoilState(segmentPolylineStateAtom)[0];
+  const cameraViewStatus = useRecoilValue(cameraViewStatusAtom);
+  const isMultiviewOn = useRecoilValue(isInMultiPanelViewAtom);
 
   const springProps = useSpring({
     transform: showPerfStatus ? "translateY(10%)" : "translateY(0%)",
@@ -388,12 +411,26 @@ export const StatusBar = ({
     setActiveNode(null);
   }, []);
 
+  const shouldShowViewStatus =
+    cameraViewStatus.viewName &&
+    cameraViewStatus.timestamp &&
+    Date.now() - cameraViewStatus.timestamp < 1000;
+
   return (
     <animated.div ref={containerRef} style={{ ...springProps }}>
       {!showPerfStatus && (
         <MutedIconButton onClick={onClickHandler}>
           <InfoIcon />
         </MutedIconButton>
+      )}
+
+      {shouldShowViewStatus && (
+        <ViewStatusMessage
+          $color={theme.primary.main}
+          $multiview={isMultiviewOn}
+        >
+          {cameraViewStatus.viewName}
+        </ViewStatusMessage>
       )}
 
       {segmentPolylineState.isActive && (

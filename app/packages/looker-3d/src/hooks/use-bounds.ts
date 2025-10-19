@@ -3,7 +3,7 @@ import { Box3, type Group } from "three";
 
 const BOUNDING_BOX_POLLING_INTERVAL = 50;
 const UNCHANGED_COUNT_THRESHOLD = 6;
-const MAX_BOUNDING_BOX_RETRIES = 1000;
+const MAX_BOUNDING_BOX_RETRIES = 10;
 
 /**
  * Checks if a bounding box has all finite values in its min and max components.
