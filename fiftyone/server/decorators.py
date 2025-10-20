@@ -6,40 +6,23 @@ FiftyOne Server decorators
 |
 """
 
-from json import JSONEncoder
 import traceback
 import typing as t
 import logging
 
 from bson import json_util
-import numpy as np
-
-from fiftyone.core.utils import run_sync_task
-
 from starlette.endpoints import HTTPEndpoint
+from starlette.exceptions import HTTPException
 from starlette.responses import JSONResponse, Response
 from starlette.requests import Request
 
-
-class Encoder(JSONEncoder):
-    def default(self, o):
-        if isinstance(o, np.floating):
-            return float(o)
-
-        if isinstance(o, np.integer):
-            return int(o)
-
-        return JSONEncoder.default(self, o)
-
-
-async def create_response(response: dict):
-    return Response(
-        await run_sync_task(lambda: json_util.dumps(response, cls=Encoder)),
-        headers={"Content-Type": "application/json"},
-    )
+from fiftyone.core.utils import create_response
 
 
 def route(func):
+    """A decorator for HTTPEndpoint methods that parses JSON request bodies
+    and handles exceptions."""
+
     async def wrapper(
         endpoint: HTTPEndpoint, request: Request, *args
     ) -> t.Union[dict, Response]:
@@ -54,6 +37,11 @@ def route(func):
             return await create_response(response)
 
         except Exception as e:
+            # Immediately re-raise starlette HTTP exceptions
+            if isinstance(e, HTTPException):
+                raise e
+
+            # Cast non-starlette HTTP exceptions as JSON with 500 status code
             logging.exception(e)
             return JSONResponse(
                 {

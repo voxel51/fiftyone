@@ -5080,12 +5080,12 @@ class ViewStageTests(unittest.TestCase):
             ]
         )
 
-        view1 = dataset.sort_by("field")
+        view1 = dataset.sort_by("field", create_index=True)
 
         self.assertListEqual(view1.values("field"), [1, 2, 3])
         self.assertIn("field", dataset.list_indexes())
 
-        view2 = dataset.sort_by([("foo", 1), ("field", 1)])
+        view2 = dataset.sort_by([("foo", 1), ("field", 1)], create_index=True)
 
         self.assertListEqual(view2.values("foo"), ["bar", "spam", "spam"])
         self.assertListEqual(view2.values("field"), [3, 1, 2])
@@ -5101,12 +5101,14 @@ class ViewStageTests(unittest.TestCase):
         self.assertIn("field", dataset2.list_indexes())
         self.assertIn("foo_1_field_1", dataset2.list_indexes())
 
-        view3 = dataset2.sort_by(F("field"))
+        view3 = dataset2.sort_by(F("field"), create_index=True)
 
         self.assertListEqual(view3.values("field"), [1, 2, 3])
         self.assertIn("field", dataset2.list_indexes())
 
-        view4 = dataset2.sort_by([(F("foo"), 1), (F("field"), 1)])
+        view4 = dataset2.sort_by(
+            [(F("foo"), 1), (F("field"), 1)], create_index=True
+        )
 
         self.assertListEqual(view4.values("foo"), ["bar", "spam", "spam"])
         self.assertListEqual(view4.values("field"), [3, 1, 2])

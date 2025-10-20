@@ -1502,6 +1502,110 @@ class ToggleSidebar extends Operator {
   }
 }
 
+class BrowserDownload extends Operator {
+  _builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "browser_download",
+      label: "Download file",
+      unlisted: true,
+    });
+  }
+  async resolveInput(): Promise<types.Property> {
+    const inputs = new types.Object();
+    inputs.str("url", {
+      label: "URL",
+      description: "The URL of the file to download",
+      required: true,
+    });
+    inputs.str("filename", {
+      label: "Filename",
+      description:
+        "Optional filename for the download (will use URL filename if not provided)",
+      required: false,
+    });
+    return new types.Property(inputs);
+  }
+  async execute({ params }: ExecutionContext) {
+    const url = params.url;
+    const filename = params.filename;
+
+    if (!url) {
+      throw new Error("URL is required");
+    }
+
+    try {
+      // Fetch the file first to ensure it's downloadable
+      const response = await fetch(url, {
+        method: "GET",
+        mode: "cors",
+        cache: "no-cache",
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch file: ${response.status} ${response.statusText}`
+        );
+      }
+
+      // Get the blob data
+      const blob = await response.blob();
+
+      // Determine filename - use provided filename, extract from URL, or use Content-Disposition header
+      let downloadFilename = filename;
+      if (!downloadFilename) {
+        // Try to get filename from Content-Disposition header
+        const contentDisposition = response.headers.get("Content-Disposition");
+        if (contentDisposition) {
+          const filenameMatch = contentDisposition.match(
+            /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/
+          );
+          if (filenameMatch && filenameMatch[1]) {
+            downloadFilename = filenameMatch[1].replace(/['"]/g, "");
+          }
+        }
+
+        // Fallback to URL filename
+        if (!downloadFilename) {
+          downloadFilename = url.split("/").pop() || "download";
+        }
+      }
+
+      // Create object URL for the blob
+      const blobUrl = URL.createObjectURL(blob);
+
+      // Create a temporary anchor element to trigger download
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = downloadFilename;
+      link.style.display = "none";
+
+      // Add to DOM, click, and remove
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Clean up the object URL
+      URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      // If fetch fails (CORS issues), fall back to direct link approach
+      console.warn("Direct fetch failed, falling back to direct link:", error);
+
+      const downloadFilename = filename || url.split("/").pop() || "download";
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = downloadFilename;
+      link.target = "_blank";
+      link.style.display = "none";
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  }
+}
+
 export function registerBuiltInOperators() {
   try {
     _registerBuiltInOperator(CopyViewAsJSON);
@@ -1558,6 +1662,7 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(ShowSidebar);
     _registerBuiltInOperator(HideSidebar);
     _registerBuiltInOperator(ToggleSidebar);
+    _registerBuiltInOperator(BrowserDownload);
     _registerBuiltInOperator(ClearActiveFields);
   } catch (e) {
     console.error("Error registering built-in operators");

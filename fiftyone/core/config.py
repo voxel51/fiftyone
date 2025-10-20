@@ -168,6 +168,12 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_DEFAULT_BATCHER",
             default="latency",
         )
+        self.delegated_operation_monitor_interval = self.parse_int(
+            d,
+            "delegated_operation_monitor_interval",
+            env_var="FIFTYONE_DELEGATED_OPERATION_MONITOR_INTERVAL",
+            default=60,
+        )
         self.batcher_static_size = self.parse_int(
             d,
             "batcher_static_size",

@@ -10,7 +10,7 @@
 /e2e-pw/                     @voxel51/frontend-devs
 /fiftyone/server/            @voxel51/frontend-devs
 /plugins/panels/             @voxel51/plugin-pros
-/fiftyone/operators/         @voxel51/plugin-pros
+/fiftyone/operators/         @voxel51/plugin-pros @voxel51/backend-squad
 
 # Backend
 /fiftyone/api/               @voxel51/backend-squad

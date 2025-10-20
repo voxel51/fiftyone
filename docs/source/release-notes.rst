@@ -3,6 +3,141 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.12.0
+--------------------------
+*Released October 20, 2025*
+
+Includes all updates from :ref:`FiftyOne 1.9.0 <release-notes-v1.9.0>`, plus:
+
+Plugins, Operators, and Orchestrators
+
+- Added ability to manually terminate an :ref:`Operator <using-operators>` 
+  while it's running in any supported
+  :ref:`orchestrator <enterprise-delegated-orchestrator>`: builtin,
+  Databricks, and Anyscale.
+- Updated expiration logic for Delegated :ref:`Operators <using-operators>`,
+  and introduced `FIFTYONE_DO_EXPIRATION_MINUTES`. Instead of considering an
+  Operator terminated one day after *starting*, we now only kill an Operator if
+  it hasn't *updated* in `FIFTYONE_DO_EXPIRATION_MINUTES` minutes. This enables
+  tighter control over execution, and allows for jobs to run for more than one
+  day.
+- Added connection retry logic to a number of
+  :ref:`orchestrators <enterprise-delegated-orchestrator>`-related requests in
+  order to improve resilience.
+- Improved logging and logging levels when plugin secrets are not provided.
+
+App
+
+- Added a plugin secret `FIFTYONE_ZOO_ALLOWED_MODEL_NAMES` that allows
+  Enterprise admins to configure which zoo models should be available to users
+  when using builtin App features, such as the
+  :ref:`Embeddings Panel <app-embeddings-panel>` and the
+  :ref:`Data Quality Panel <data-quality>`.
+- Ensure that user-provided brain/eval keys are valid in the
+  :ref:`Embeddings Panel <app-embeddings-panel>` and the
+  :ref:`Model Evaluation Panel <app-model-evaluation-panel>`
+  to prevent runtime errors.
+- Fixed a bug where, after a user first logged in, media in the Grid would fail
+  to load because the user's cloud credentials were delayed.
+
+Core
+
+- Reduced likelihood of timeouts when performing `delete_sample_fields`.
+- Improved performance of various operations on media files that can be
+  executed without downloading the full media file.
+- Added some additional logging in the API to aid in debugging and performance
+  monitoring.
+- Added "User-Agent" to a few requests that were missing it.
+
+Security
+
+- Updated a number of dependencies in order to resolve security
+  vulnerabilities: `axios`, `brace-expansion`, `next`, and `starlette`.
+
+
+
+.. _release-notes-v1.9.0:
+
+FiftyOne 1.9.0
+--------------
+*Released October 20, 2025*
+
+Plugins and Operators
+
+- Added `download_file` :ref:`Operator <using-operators>` to download files
+  in-browser. 
+  `#6369 <https://github.com/voxel51/fiftyone/pull/6369>`_
+- Added new hook for easily invoking :ref:`Python Panel <developing-panels>`
+  events from JS.
+  `#6179 <https://github.com/voxel51/fiftyone/pull/6179>`_
+- :ref:`Panel <developing-panels>` events now return their return-value as an
+  operator result. NOTE: operator results must be serializable. With this
+  change, non-serializable operator results will produce an error.
+  `#6179 <https://github.com/voxel51/fiftyone/pull/6179>`_
+- Improved reliability when queuing delegated
+  :ref:`Operators <using-operators>` by excluding
+  non-serializable fields during serialization. 
+  `#6406 <https://github.com/voxel51/fiftyone/pull/6406>`_
+- Improved :ref:`Operator <using-operators>` monitoring with periodic backend
+  pings and stronger handling of ping/get failures. 
+  `#6359 <https://github.com/voxel51/fiftyone/pull/6359>`_
+- Fixed: :ref:`Operators <using-operators>` now honor the active view when one
+  is set, instead of silently falling back to the full dataset. 
+  `#6375 <https://github.com/voxel51/fiftyone/pull/6375>`_
+
+Core
+
+- Optimizes and hardens the implementation of
+  :meth:`merge_samples() <fiftyone.core.dataset.Dataset.merge_samples>`
+  when applied to video collections.
+  `#6370 <https://github.com/voxel51/fiftyone/pull/6370>`_
+- Added support for updating existing indexes in-place (e.g. converting between
+  unique and non-unique). 
+  `#6365 <https://github.com/voxel51/fiftyone/pull/6365>`_
+- Allow
+  :meth:`compute_embeddings() <fiftyone.core.collections.SampleCollection.compute_embeddings>`
+  to write to embedded fields. 
+  `#6374 <https://github.com/voxel51/fiftyone/pull/6374>`_
+- Updated the :mod:`fiftyone.utils.labels` utilities with `overwrite=True`
+  options so that they now only overwrite the specific files being exported
+  (rather than deleting the entire directory). 
+  `#6364 <https://github.com/voxel51/fiftyone/pull/6364>`_
+- Optimization: Updated the default behavior of the
+  :meth:`sort_by() <fiftyone.core.collections.SampleCollection.sort_by>`,
+  :meth:`group_by() <fiftyone.core.collections.SampleCollection.group_by>`,
+  :meth:`geo_within() <fiftyone.core.collections.SampleCollection.geo_within>`,
+  and 
+  :meth:`geo_near() <fiftyone.core.collections.SampleCollection.geo_near>`
+  view stages to NOT automatically create an index when used. Indexing is
+  opt-in via `create_index=True`. 
+  `#6344 <https://github.com/voxel51/fiftyone/pull/6344>`_
+- Improved reliability of database connections by detecting closed synchronous
+  and asynchronous clients and automatically re-establishing connections to
+  avoid errors from stale or closed clients in long-running sessions. 
+  `#6354 <https://github.com/voxel51/fiftyone/pull/6354>`_
+- Fixed a bug where :mod:`fiftyone.utils.labels` utilities with
+  `overwrite=False` options would erroneously start overwriting existing files
+  if repeatedly executed more than 2 times. 
+  `#6364 <https://github.com/voxel51/fiftyone/pull/6364>`_
+- Fix for `#6069 <https://github.com/voxel51/fiftyone/pull/6069>`_ where
+  :ref:`YOLO classification models <ultralytics-image-classification>`
+  were failing for ultralytics>=8.3.158
+  `#6367 <https://github.com/voxel51/fiftyone/pull/6367>`_
+
+App
+
+- Fixed a bug in rare situations where an incorrect header was set that
+  resulted in a CORS error. 
+  `#6405 <https://github.com/voxel51/fiftyone/pull/6405>`_
+
+Security
+
+- Updated the `brace-expansion` dependency in order to resolve a security
+  vulnerability `#6413 <https://github.com/voxel51/fiftyone/pull/6413>`_
+
+
+
+
 FiftyOne Enterprise 2.11.2
 --------------------------
 *Released September 25, 2025*
@@ -5511,7 +5646,7 @@ Core
 - Updated the implementation of
   :meth:`Detection.to_polyline() <fiftyone.core.labels.Detection.to_polyline>`
   so that all attributes are included rather than just ETA-supported ones
-- Added support for including empty labels labels via an `include_missing`
+- Added support for including empty labels via an `include_missing`
   keyword argument in
   :func:`add_yolo_labels() <fiftyone.utils.yolo.add_yolo_labels>`
 - Added a

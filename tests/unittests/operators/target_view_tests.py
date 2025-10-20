@@ -17,7 +17,7 @@ from fiftyone.operators import types
 
 class TestResolveOperatorTargetViewInputs(unittest.TestCase):
     def test_all_options(self):
-        ds = fo.Dataset(persistent=True)
+        ds = fo.Dataset()
         try:
             request_params = {
                 "dataset_name": ds.name,
@@ -94,7 +94,7 @@ class TestResolveOperatorTargetViewInputs(unittest.TestCase):
             ds.delete()
 
     def test_no_options(self):
-        ds = fo.Dataset(persistent=True)
+        ds = fo.Dataset()
         try:
             request_params = {
                 "dataset_name": ds.name,
@@ -120,7 +120,7 @@ class TestResolveOperatorTargetViewInputs(unittest.TestCase):
             ds.delete()
 
     def test_label_description_override(self):
-        ds = fo.Dataset(persistent=True)
+        ds = fo.Dataset()
         try:
             request_params = {
                 "dataset_name": ds.name,

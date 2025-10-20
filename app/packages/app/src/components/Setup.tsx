@@ -1,8 +1,8 @@
 import {
+  DiscordLink,
   DocsLink,
   GitHubLink,
   Header,
-  DiscordLink,
   iconContainer,
   useTheme,
 } from "@fiftyone/components";

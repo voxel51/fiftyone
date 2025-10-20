@@ -227,28 +227,54 @@ class SceneMetadata(Metadata):
     asset_counts = fof.DictField()
 
     @classmethod
-    def build_for(cls, scene_path, mime_type=None, _cache=None):
+    def build_for(
+        cls,
+        scene_path,
+        mime_type=None,
+        _cache=None,
+        skip_failures=True,
+        warn_failures=True,
+    ):
         """Builds a :class:`SceneMetadata` object for the given 3D scene.
 
         Args:
             scene_path: a scene path
             mime_type (None): the MIME type of the scene. If not provided,
                 defaults to ``application/octet-stream``
+            skip_failures (True): whether to gracefully continue without raising an
+                error if metadata cannot be computed for a sample
+            warn_failures (True): whether to log a warning if metadata cannot
+                be computed for a sample
 
         Returns:
             a :class:`SceneMetadata`
         """
         if scene_path.startswith("http"):
             return cls._build_for_url(
-                scene_path, mime_type=mime_type, cache=_cache
+                scene_path,
+                mime_type=mime_type,
+                cache=_cache,
+                skip_failures=skip_failures,
+                warn_failures=warn_failures,
             )
 
         return cls._build_for_local(
-            scene_path, mime_type=mime_type, cache=_cache
+            scene_path,
+            mime_type=mime_type,
+            cache=_cache,
+            skip_failures=skip_failures,
+            warn_failures=warn_failures,
         )
 
     @classmethod
-    def _build_for_local(cls, scene_path, mime_type=None, cache=None):
+    def _build_for_local(
+        cls,
+        scene_path,
+        mime_type=None,
+        cache=None,
+        skip_failures=True,
+        warn_failures=True,
+    ):
         if mime_type is None:
             mime_type = "application/octet-stream"
 
@@ -256,7 +282,11 @@ class SceneMetadata(Metadata):
         scene = fo3d.Scene.from_fo3d(scene_path)
 
         asset_counts, asset_size = _parse_assets(
-            scene, scene_path, cache=cache
+            scene,
+            scene_path,
+            cache=cache,
+            skip_failures=skip_failures,
+            warn_failures=warn_failures,
         )
         size_bytes = scene_size + asset_size
 
@@ -267,13 +297,22 @@ class SceneMetadata(Metadata):
         )
 
     @classmethod
-    def _build_for_url(cls, scene_path, mime_type=None, cache=None):
+    def _build_for_url(
+        cls,
+        scene_path,
+        mime_type=None,
+        cache=None,
+        skip_failures=True,
+        warn_failures=True,
+    ):
         # Unclear how asset paths should be handled; the rest of the library is
         # not equipped to handle URL asset paths
         raise ValueError("Scene URLs are not currently supported")
 
 
-def _parse_assets(scene, scene_path, cache=None):
+def _parse_assets(
+    scene, scene_path, cache=None, skip_failures=True, warn_failures=True
+):
     asset_paths = scene.get_asset_paths()
 
     asset_counts = defaultdict(int)
@@ -301,11 +340,32 @@ def _parse_assets(scene, scene_path, cache=None):
     results = []
     if len(tasks) <= 1:
         for task in tasks:
-            results.append(_do_compute_metadata(task))
+            metadata = _compute_sample_metadata(
+                filepath=task[1],
+                media_type=task[2],
+                cache=task[3],
+                skip_failures=skip_failures,
+                warn_failures=warn_failures,
+            )
+            results.append((task[0], metadata))
     else:
         num_workers = fou.recommend_thread_pool_workers(min(len(tasks), 8))
         with multiprocessing.dummy.Pool(processes=num_workers) as pool:
-            results.extend(pool.imap(_do_compute_metadata, tasks))
+            results.extend(
+                pool.imap(
+                    lambda task: (
+                        task[0],
+                        _compute_sample_metadata(
+                            filepath=task[1],
+                            media_type=task[2],
+                            cache=task[3],
+                            skip_failures=skip_failures,
+                            warn_failures=warn_failures,
+                        ),
+                    ),
+                    tasks,
+                )
+            )
 
     for task, result in zip(tasks, results):
         metadata = result[1]
@@ -318,13 +378,13 @@ def _parse_assets(scene, scene_path, cache=None):
     return dict(asset_counts), asset_size
 
 
-def compute_sample_metadata(sample, overwrite=False, skip_failures=False):
+def compute_sample_metadata(sample, overwrite=False, skip_failures=True):
     """Populates the ``metadata`` field of the sample.
 
     Args:
         sample: a :class:`fiftyone.core.sample.Sample`
         overwrite (False): whether to overwrite existing metadata
-        skip_failures (False): whether to gracefully continue without raising
+        skip_failures (True): whether to gracefully continue without raising
             an error if metadata cannot be computed
     """
     if not overwrite and sample.metadata is not None:
@@ -361,7 +421,7 @@ def compute_metadata(
     overwrite=False,
     num_workers=None,
     skip_failures=True,
-    warn_failures=False,
+    warn_failures=True,
     progress=None,
 ):
     """Populates the ``metadata`` field of all samples in the collection.
@@ -376,7 +436,7 @@ def compute_metadata(
         num_workers (None): a suggested number of threads to use
         skip_failures (True): whether to gracefully continue without raising an
             error if metadata cannot be computed for a sample
-        warn_failures (False): whether to log a warning if metadata cannot
+        warn_failures (True): whether to log a warning if metadata cannot
             be computed for a sample
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
@@ -391,7 +451,11 @@ def compute_metadata(
 
     if num_workers <= 1:
         _compute_metadata(
-            sample_collection, overwrite=overwrite, progress=progress
+            sample_collection,
+            overwrite=overwrite,
+            progress=progress,
+            skip_failures=skip_failures,
+            warn_failures=warn_failures,
         )
     else:
         _compute_metadata_multi(
@@ -399,6 +463,8 @@ def compute_metadata(
             num_workers,
             overwrite=overwrite,
             progress=progress,
+            skip_failures=skip_failures,
+            warn_failures=warn_failures,
         )
 
     if skip_failures and not warn_failures:
@@ -469,7 +535,12 @@ def get_image_info(f):
 
 
 def _compute_metadata(
-    sample_collection, overwrite=False, batch_size=1000, progress=None
+    sample_collection,
+    overwrite=False,
+    batch_size=1000,
+    progress=None,
+    skip_failures=True,
+    warn_failures=True,
 ):
     if not overwrite:
         sample_collection = sample_collection.exists("metadata", False)
@@ -487,12 +558,29 @@ def _compute_metadata(
 
     cache = {}
     values = {}
-    inputs = zip(ids, filepaths, media_types, itertools.repeat(cache))
+    inputs = zip(
+        ids,
+        filepaths,
+        media_types,
+        itertools.repeat(cache),
+    )
 
     try:
         with fou.ProgressBar(total=num_samples, progress=progress) as pb:
             for args in pb(inputs):
-                sample_id, metadata = _do_compute_metadata(args)
+                (
+                    sample_id,
+                    filepath,
+                    media_type,
+                    cache,
+                ) = args
+                metadata = _compute_sample_metadata(
+                    filepath,
+                    media_type,
+                    skip_failures=skip_failures,
+                    cache=cache,
+                    warn_failures=warn_failures,
+                )
                 values[sample_id] = metadata
                 if len(values) >= batch_size:
                     sample_collection.set_values(
@@ -509,6 +597,8 @@ def _compute_metadata_multi(
     overwrite=False,
     batch_size=1000,
     progress=None,
+    skip_failures=True,
+    warn_failures=True,
 ):
     if not overwrite:
         sample_collection = sample_collection.exists("metadata", False)
@@ -526,13 +616,30 @@ def _compute_metadata_multi(
 
     cache = {}
     values = {}
-    inputs = zip(ids, filepaths, media_types, itertools.repeat(cache))
+    inputs = zip(
+        ids,
+        filepaths,
+        media_types,
+        itertools.repeat(cache),
+    )
 
     try:
         with multiprocessing.dummy.Pool(processes=num_workers) as pool:
             with fou.ProgressBar(total=num_samples, progress=progress) as pb:
                 for sample_id, metadata in pb(
-                    pool.imap_unordered(_do_compute_metadata, inputs)
+                    pool.imap_unordered(
+                        lambda args: (
+                            args[0],
+                            _compute_sample_metadata(
+                                filepath=args[1],
+                                media_type=args[2],
+                                skip_failures=skip_failures,
+                                cache=args[3],
+                                warn_failures=warn_failures,
+                            ),
+                        ),
+                        inputs,
+                    )
                 ):
                     values[sample_id] = metadata
                     if len(values) >= batch_size:
@@ -544,26 +651,32 @@ def _compute_metadata_multi(
         sample_collection.set_values("metadata", values, key_field="id")
 
 
-def _do_compute_metadata(args):
-    sample_id, filepath, media_type, cache = args
-    metadata = _compute_sample_metadata(
-        filepath, media_type, skip_failures=True, cache=cache
-    )
-    return sample_id, metadata
-
-
 def _compute_sample_metadata(
-    filepath, media_type, skip_failures=False, cache=None
+    filepath, media_type, skip_failures=True, cache=None, warn_failures=True
 ):
     try:
-        return _get_metadata(filepath, media_type, cache=cache)
-    except:
+        return _get_metadata(
+            filepath,
+            media_type,
+            cache=cache,
+            skip_failures=skip_failures,
+            warn_failures=warn_failures,
+        )
+    except Exception as e:
+        if warn_failures:
+            logger.warning(
+                "Failed to compute sample metadata for sample '%s' due to: %s",
+                filepath,
+                e,
+            )
         if skip_failures:
             return None
         raise
 
 
-def _get_metadata(filepath, media_type, cache=None):
+def _get_metadata(
+    filepath, media_type, cache=None, skip_failures=True, warn_failures=True
+):
     if cache is not None:
         metadata = cache.get(filepath, None)
         if metadata is not None:
@@ -574,7 +687,12 @@ def _get_metadata(filepath, media_type, cache=None):
     elif media_type == fom.VIDEO:
         metadata = VideoMetadata.build_for(filepath)
     elif media_type == fom.THREE_D:
-        metadata = SceneMetadata.build_for(filepath, _cache=cache)
+        metadata = SceneMetadata.build_for(
+            filepath,
+            _cache=cache,
+            skip_failures=skip_failures,
+            warn_failures=warn_failures,
+        )
     else:
         metadata = Metadata.build_for(filepath)
 

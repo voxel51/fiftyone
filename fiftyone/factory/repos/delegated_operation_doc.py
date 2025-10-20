@@ -5,7 +5,7 @@ FiftyOne delegated operation repository document.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-
+import copy
 import logging
 from datetime import datetime
 
@@ -15,6 +15,7 @@ from fiftyone.operators.executor import (
     ExecutionRunState,
     ExecutionProgress,
 )
+from fiftyone.operators.types import Pipeline
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +63,8 @@ class DelegatedOperationDocument(object):
 
         # distributed task fields
         self.parent_id = None  # Only on children
+        self.pipeline_index = 0
+        self.pipeline = None  # Only on pipeline parent
 
     @property
     def num_distributed_tasks(self):
@@ -95,7 +98,7 @@ class DelegatedOperationDocument(object):
         self.parent_id = doc.get("parent_id", None)
 
         # internal fields
-        self.id = doc["_id"]
+        self.id = doc.get("_id", doc.get("id"))
         self._doc = doc
 
         # nested fields
@@ -127,14 +130,29 @@ class DelegatedOperationDocument(object):
             if "updated_at" in doc["status"]:
                 self.status.updated_at = doc["status"]["updated_at"]
 
+        if "pipeline" in doc and doc["pipeline"] is not None:
+            self.pipeline = Pipeline.from_json(doc["pipeline"])
+
         return self
 
     def to_pymongo(self) -> dict:
-        d = self.__dict__
+        # We make a copy of self.__dict__ so that changes we make below do not
+        # affect the actual object. We exclude certain keys that we don't want
+        # to serialize directly. "context" is particularly important we do not
+        # try to copy because it may contain big, complicated, non-serializable
+        # objects that may cause issues with copying.
+
+        ignore_keys = {"_doc", "id", "context", "pipeline"}
+        d = {
+            k: copy.deepcopy(v)
+            for k, v in self.__dict__.items()
+            if k not in ignore_keys
+        }
         if self.context:
             d["context"] = {
                 "request_params": self.context._get_serialized_request_params()
             }
-        d.pop("_doc")
-        d.pop("id")
+        if self.pipeline:
+            d["pipeline"] = self.pipeline.to_json()
+
         return d

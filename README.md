@@ -116,7 +116,7 @@ Then run the install script:
 
 ```shell
 # Mac or Linux
-bash install.bash
+./install.sh
 
 # Windows
 .\install.bat
