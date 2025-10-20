@@ -32,20 +32,35 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
   protected resourceLoader?: ResourceLoader;
   protected currentStyle?: DrawStyle;
 
-  public field: string;
-  public label: Label;
+  constructor(id: string, field: string, label: Label) {
+    this.id = id;
+    this._field = field;
+    this._label = label;
+    this.cursor = "default";
+  }
+
+  private _field: string;
+  private _label: Label;
+
+  public get field(): string {
+    return this._field;
+  }
+  public set field(value: string) {
+    this._field = value;
+    this.markDirty();
+  }
+  public get label(): Label {
+    return this._label;
+  }
+  public set label(value: Label) {
+    this._label = value;
+    this.markDirty();
+  }
 
   static validBounds(bounds: Rect): boolean {
     return ["x", "y", "width", "height"].every(
       (prop) => typeof bounds[prop] === "number" && bounds[prop] >= 0
     );
-  }
-
-  constructor(id: string, field: string, label: Label) {
-    this.id = id;
-    this.field = field;
-    this.label = label;
-    this.cursor = "default";
   }
 
   /**
@@ -340,7 +355,6 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
    */
   updateField(field: string) {
     this.field = field;
-    this.markDirty();
   }
 
   /**
@@ -349,6 +363,5 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
    */
   updateLabel(label: Label) {
     this.label = label;
-    this.markDirty();
   }
 }
