@@ -15,6 +15,8 @@ from contextlib import contextmanager, suppress
 from copy import deepcopy
 from datetime import date, datetime
 from functools import partial
+from starlette.responses import Response
+from json import JSONEncoder
 import glob
 import hashlib
 import importlib
@@ -3190,6 +3192,27 @@ def validate_hex_color(value):
         raise ValueError(
             "%s is not a valid hex color string (eg: '#FF6D04')" % value
         )
+
+
+class Encoder(JSONEncoder):
+    """Custom JSON encoder that handles numpy types."""
+
+    def default(self, o):
+        if isinstance(o, np.floating):
+            return float(o)
+
+        if isinstance(o, np.integer):
+            return int(o)
+
+        return JSONEncoder.default(self, o)
+
+
+async def create_response(response: dict):
+    """Creates a JSON response from the given dictionary."""
+    return Response(
+        await run_sync_task(lambda: json_util.dumps(response, cls=Encoder)),
+        headers={"Content-Type": "application/json"},
+    )
 
 
 fos = lazy_import("fiftyone.core.storage")

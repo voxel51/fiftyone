@@ -2884,6 +2884,19 @@ and programmatically modify the current state.
     via their `ctx` argument and can use it to get/update panel state and
     trigger other operations.
 
+.. warning::
+
+    The return value of all panel events—including builtin events (such as 
+    `on_load`, `on_unload`, `on_change_ctx`, etc.) and custom events (such as
+    `on_change_brain_key`, `on_click_start`, etc.)—must be JSON-serializable.
+
+    If your panel event returns a value of a custom type (for example, a NumPy
+    array or a FiftyOne Sample or custom class), you must first convert it to a
+    JSON-serializable format (such as a Python list or dictionary).
+
+    Returning non-serializable objects will cause errors and prevent your panel
+    from functioning correctly.
+
 .. code-block:: python
     :linenos:
 
