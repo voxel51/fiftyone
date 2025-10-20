@@ -15,6 +15,7 @@ import { LIGHTER_EVENTS, useLighter } from "@fiftyone/lighter";
 const SaveFooter = () => {
   const { scene } = useLighter();
   const annotationLabel = useAtomValue(currentLabelAtom);
+  const setEditing = useSetAtom(editing);
   const showCancel = useAtomValue(isNew);
 
   const onSave = useCallback(() => {
@@ -30,10 +31,13 @@ const SaveFooter = () => {
     if (scene) {
       scene.dispatchSafely({
         type: LIGHTER_EVENTS.DO_REMOVE_OVERLAY,
-        detail: { ...annotationLabel },
+        detail: {
+          label: { ...annotationLabel },
+          onSuccess: () => setEditing(null),
+        },
       });
     }
-  }, [annotationLabel, scene]);
+  }, [annotationLabel, scene, setEditing]);
 
   return (
     <>
