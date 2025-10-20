@@ -724,6 +724,13 @@ export class InteractionManager {
   }
 
   /**
+   * Resets the hovered handler to undefined.
+   */
+  public resetHoveredHandler(): void {
+    this.hoveredHandler = undefined;
+  }
+
+  /**
    * Clears all handlers.
    */
   clearHandlers(): void {

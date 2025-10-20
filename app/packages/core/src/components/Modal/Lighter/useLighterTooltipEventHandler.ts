@@ -85,6 +85,51 @@ export const useLighterTooltipEventHandler = (scene: Scene2D | null) => {
       scene.off(LIGHTER_EVENTS.OVERLAY_HOVER_MOVE, handleHoverMove);
     };
   }, [scene, tooltipEventHandler]);
+
+  const handleDocumentMouseMove = useRecoilCallback(
+    ({ snapshot, set }) =>
+      (event: MouseEvent) => {
+        const isTooltipLocked = snapshot
+          .getLoadable(fos.isTooltipLocked)
+          .getValue();
+
+        if (isTooltipLocked || !scene) {
+          return;
+        }
+
+        const canvas = scene.getCanvasDangerously();
+
+        if (!canvas) {
+          return;
+        }
+
+        const rect = canvas.getBoundingClientRect();
+
+        const isOutsideCanvas =
+          event.clientX < rect.left ||
+          event.clientX > rect.right ||
+          event.clientY < rect.top ||
+          event.clientY > rect.bottom;
+
+        if (isOutsideCanvas) {
+          set(fos.tooltipDetail, null);
+          scene?.getInteractionManager()?.resetHoveredHandler();
+        }
+      },
+    [scene, tooltip]
+  );
+
+  useEffect(() => {
+    if (!scene) {
+      return;
+    }
+
+    document.addEventListener("mousemove", handleDocumentMouseMove);
+
+    return () => {
+      document.removeEventListener("mousemove", handleDocumentMouseMove);
+    };
+  }, [scene, handleDocumentMouseMove]);
 };
 
 /**
