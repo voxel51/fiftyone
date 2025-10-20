@@ -754,10 +754,10 @@ export const MediaTypeFo3dComponent = () => {
   );
 
   const [pointCloudSettings, setPointCloudSettings] = useBrowserStorage(
-    "fo3dPointCloudSettings",
+    "fo3d-pointCloudSettings",
     {
       enableTooltip: false,
-      rayCastingSensitivity: "medium",
+      rayCastingSensitivity: "high",
     }
   );
 

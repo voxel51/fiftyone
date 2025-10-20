@@ -224,9 +224,9 @@ export const MultiPanelView = ({
 
   const [autoRotate] = useBrowserStorage("fo3dAutoRotate", false);
 
-  const [pointCloudSettings] = useBrowserStorage("fo3dPointCloudSettings", {
+  const [pointCloudSettings] = useBrowserStorage("fo3d-pointCloudSettings", {
     enableTooltip: false,
-    rayCastingSensitivity: "medium",
+    rayCastingSensitivity: "high",
   });
 
   const setPanelView = useCallback(
