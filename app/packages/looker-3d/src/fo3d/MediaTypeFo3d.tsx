@@ -41,6 +41,7 @@ import {
   isActivelySegmentingSelector,
   isCurrentlyTransformingAtom,
   isFo3dBackgroundOnAtom,
+  isPolylineAnnotateActiveAtom,
   isSegmentingPointerDownAtom,
   selectedPolylineVertexAtom,
 } from "../state";
@@ -766,6 +767,7 @@ export const MediaTypeFo3dComponent = () => {
   );
 
   const isAnnotationPlaneEnabled = useRecoilValue(annotationPlaneAtom).enabled;
+  const isPolylineAnnotateActive = useRecoilValue(isPolylineAnnotateActiveAtom);
 
   const shouldRenderMultiPanelView = useMemo(
     () =>
@@ -853,7 +855,7 @@ export const MediaTypeFo3dComponent = () => {
           </StatusBarRootContainer>
         </MainContainer>
       )}
-      {mode === "annotate" && <AnnotationToolbar />}
+      {mode === "annotate" && isPolylineAnnotateActive && <AnnotationToolbar />}
     </Fo3dSceneContext.Provider>
   );
 };

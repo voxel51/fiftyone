@@ -435,3 +435,15 @@ export const clearTransformStateSelector = selector({
     });
   },
 });
+
+export const isPolylineAnnotateActiveAtom = atom<boolean>({
+  key: "fo3d-isPolylineAnnotateActive",
+  default: false,
+  effects: [
+    getBrowserStorageEffectForKey("fo3d-isPolylineAnnotateActive", {
+      valueClass: "boolean",
+      sessionStorage: true,
+      prependDatasetNameInKey: true,
+    }),
+  ],
+});

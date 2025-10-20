@@ -1,9 +1,12 @@
+import { useTheme } from "@fiftyone/components";
 import { useLighter } from "@fiftyone/lighter";
+import { isPolylineAnnotateActiveAtom } from "@fiftyone/looker-3d/src/state";
 import { is3DDataset } from "@fiftyone/state";
 import { CLASSIFICATION, DETECTION, POLYLINE } from "@fiftyone/utilities";
 import { PolylineOutlined } from "@mui/icons-material";
-import React from "react";
-import { useRecoilValue } from "recoil";
+import ThreeDIcon from "@mui/icons-material/ViewInAr";
+import { IconButton, Typography } from "@mui/material";
+import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ItemLeft } from "./Components";
 import useCreate from "./Edit/useCreate";
@@ -173,6 +176,40 @@ export const Redo = () => {
   );
 };
 
+export const ThreeDPolylines = () => {
+  const [
+    isPolylineAnnotateActive,
+    setIsPolylineAnnotateActive,
+  ] = useRecoilState(isPolylineAnnotateActiveAtom);
+  const theme = useTheme() as any;
+
+  return (
+    <IconButton
+      onClick={() => {
+        setIsPolylineAnnotateActive(!isPolylineAnnotateActive);
+      }}
+      sx={{
+        backgroundColor: isPolylineAnnotateActive
+          ? theme.background.level1
+          : "transparent",
+        color: isPolylineAnnotateActive
+          ? theme.primary.plainColor
+          : theme.text.secondary,
+        "&:hover": {
+          backgroundColor: theme.background.level1,
+          color: isPolylineAnnotateActive
+            ? theme.text.primary
+            : theme.primary.plainColor,
+        },
+        borderRadius: "5px",
+      }}
+    >
+      <ThreeDIcon />
+      <Typography style={{ marginLeft: "0.5rem" }}>3D Polylines</Typography>
+    </IconButton>
+  );
+};
+
 const Schema = () => {
   const showModal = useShowModal();
 
@@ -182,6 +219,7 @@ const Schema = () => {
 const Actions = () => {
   const is3D = useRecoilValue(is3DDataset);
   const canManage = useCanManageSchema();
+
   return (
     <ActionsDiv style={{ margin: "0 0.25rem", paddingBottom: "0.5rem" }}>
       <ItemLeft style={{ columnGap: "0.5rem" }}>
