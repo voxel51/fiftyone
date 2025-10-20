@@ -64,6 +64,15 @@ export const useCameraViews = ({ cameraControlsRef }: UseCameraViewsProps) => {
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
+      // If we're in input mode, don't handle camera views
+      const isInputMode =
+        event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLTextAreaElement;
+
+      if (isInputMode) {
+        return;
+      }
+
       if (
         !(event.code.startsWith("Numpad") || event.code.startsWith("Digit")) ||
         !upVector

@@ -3,6 +3,8 @@ import {
   type BufferAttribute,
   type Camera,
   type InterleavedBufferAttribute,
+  Euler,
+  type EulerOrder,
   Plane,
   Quaternion,
   type Raycaster,
@@ -340,4 +342,52 @@ export function expandBoundingBox(
   expandedBox.setFromCenterAndSize(center, expandedSize);
 
   return expandedBox;
+}
+
+/**
+ * Converts Euler angles (in degrees) to a quaternion.
+ *
+ * @param eulerAngles - Array of [x, y, z] Euler angles in degrees
+ * @param order - The order of rotations (default: 'XYZ')
+ * @returns Quaternion as [x, y, z, w] array
+ */
+export function eulerToQuaternion(
+  eulerAngles: [number, number, number],
+  order: EulerOrder = "XYZ"
+): [number, number, number, number] {
+  const euler = new Euler(
+    deg2rad(eulerAngles[0]),
+    deg2rad(eulerAngles[1]),
+    deg2rad(eulerAngles[2]),
+    order
+  );
+  const quaternion = new Quaternion();
+  quaternion.setFromEuler(euler);
+  return [quaternion.x, quaternion.y, quaternion.z, quaternion.w];
+}
+
+/**
+ * Converts a quaternion to Euler angles (in degrees).
+ *
+ * @param quaternion - Quaternion as [x, y, z, w] array
+ * @param order - The order of rotations (default: 'XYZ')
+ * @returns Array of [x, y, z] Euler angles in degrees
+ */
+export function quaternionToEuler(
+  quaternion: [number, number, number, number],
+  order: EulerOrder = "XYZ"
+): [number, number, number] {
+  const q = new Quaternion(
+    quaternion[0],
+    quaternion[1],
+    quaternion[2],
+    quaternion[3]
+  );
+  const euler = new Euler();
+  euler.setFromQuaternion(q, order);
+  return [
+    (euler.x * 180) / Math.PI,
+    (euler.y * 180) / Math.PI,
+    (euler.z * 180) / Math.PI,
+  ];
 }

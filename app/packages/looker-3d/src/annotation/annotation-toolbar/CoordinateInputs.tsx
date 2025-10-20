@@ -8,16 +8,17 @@ import {
   selectedLabelForAnnotationAtom,
   selectedPolylineVertexAtom,
 } from "../../state";
+import { eulerToQuaternion, quaternionToEuler } from "../../utils";
 import {
+  applyTransformsToPolyline,
   getVertexPosition,
   updateDuplicateVertices,
-  applyTransformsToPolyline,
 } from "../utils/polyline-utils";
 
 interface CoordinateInputsProps {
   className?: string;
   hideTranslate?: boolean;
-  hideQuaternion?: boolean;
+  hideRotation?: boolean;
 }
 
 interface CoordinateFieldProps {
@@ -60,17 +61,16 @@ const CoordinateField = ({
 export const PlaneCoordinateInputs = ({
   className,
   hideTranslate = false,
-  hideQuaternion = true,
+  hideRotation = false,
 }: CoordinateInputsProps) => {
   const [annotationPlane, setAnnotationPlane] =
     useRecoilState(annotationPlaneAtom);
   const [x, setX] = useState<string>("0");
   const [y, setY] = useState<string>("0");
   const [z, setZ] = useState<string>("0");
-  const [qx, setQx] = useState<string>("0");
-  const [qy, setQy] = useState<string>("0");
-  const [qz, setQz] = useState<string>("0");
-  const [qw, setQw] = useState<string>("1");
+  const [rx, setRx] = useState<string>("0");
+  const [ry, setRy] = useState<string>("0");
+  const [rz, setRz] = useState<string>("0");
 
   const [isEditing, setIsEditing] = useState<boolean>(false);
 
@@ -79,10 +79,12 @@ export const PlaneCoordinateInputs = ({
       setX(annotationPlane.position[0].toFixed(3));
       setY(annotationPlane.position[1].toFixed(3));
       setZ(annotationPlane.position[2].toFixed(3));
-      setQx(annotationPlane.quaternion[0].toFixed(3));
-      setQy(annotationPlane.quaternion[1].toFixed(3));
-      setQz(annotationPlane.quaternion[2].toFixed(3));
-      setQw(annotationPlane.quaternion[3].toFixed(3));
+
+      // Convert quaternion to Euler angles
+      const eulerAngles = quaternionToEuler(annotationPlane.quaternion);
+      setRx(eulerAngles[0].toFixed(1));
+      setRy(eulerAngles[1].toFixed(1));
+      setRz(eulerAngles[2].toFixed(1));
     }
   }, [annotationPlane, isEditing]);
 
@@ -111,24 +113,24 @@ export const PlaneCoordinateInputs = ({
     [annotationPlane.position]
   );
 
-  const handleQuaternionChange = useCallback(
-    (axis: "x" | "y" | "z" | "w", value: string) => {
-      // Always update local state to allow blank values while editing
-      if (axis === "x") setQx(value);
-      else if (axis === "y") setQy(value);
-      else if (axis === "z") setQz(value);
-      else if (axis === "w") setQw(value);
+  const handleRotationChange = useCallback(
+    (axis: "x" | "y" | "z", value: string) => {
+      // Update local state to allow blank values while editing
+      if (axis === "x") setRx(value);
+      else if (axis === "y") setRy(value);
+      else if (axis === "z") setRz(value);
 
       const numValue = parseFloat(value);
       if (isNaN(numValue)) return;
 
-      const newQuaternion: [number, number, number, number] = [
-        ...annotationPlane.quaternion,
-      ];
-      if (axis === "x") newQuaternion[0] = numValue;
-      else if (axis === "y") newQuaternion[1] = numValue;
-      else if (axis === "z") newQuaternion[2] = numValue;
-      else if (axis === "w") newQuaternion[3] = numValue;
+      // Get current Euler angles and update the changed axis
+      const currentEuler = quaternionToEuler(annotationPlane.quaternion);
+      const newEuler: [number, number, number] = [...currentEuler];
+      if (axis === "x") newEuler[0] = numValue;
+      else if (axis === "y") newEuler[1] = numValue;
+      else if (axis === "z") newEuler[2] = numValue;
+
+      const newQuaternion = eulerToQuaternion(newEuler);
 
       setAnnotationPlane((prev) => ({
         ...prev,
@@ -191,33 +193,26 @@ export const PlaneCoordinateInputs = ({
             )}
           </>
         )}
-        {!hideQuaternion && (
+        {!hideRotation && (
           <>
             <CoordinateField
-              label="QX"
-              value={qx}
-              onChange={(value) => handleQuaternionChange("x", value)}
+              label="RX"
+              value={rx}
+              onChange={(value) => handleRotationChange("x", value)}
               onFocus={() => setIsEditing(true)}
               onBlur={() => setIsEditing(false)}
             />
             <CoordinateField
-              label="QY"
-              value={qy}
-              onChange={(value) => handleQuaternionChange("y", value)}
+              label="RY"
+              value={ry}
+              onChange={(value) => handleRotationChange("y", value)}
               onFocus={() => setIsEditing(true)}
               onBlur={() => setIsEditing(false)}
             />
             <CoordinateField
-              label="QZ"
-              value={qz}
-              onChange={(value) => handleQuaternionChange("z", value)}
-              onFocus={() => setIsEditing(true)}
-              onBlur={() => setIsEditing(false)}
-            />
-            <CoordinateField
-              label="QW"
-              value={qw}
-              onChange={(value) => handleQuaternionChange("w", value)}
+              label="RZ"
+              value={rz}
+              onChange={(value) => handleRotationChange("z", value)}
               onFocus={() => setIsEditing(true)}
               onBlur={() => setIsEditing(false)}
             />

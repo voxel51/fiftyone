@@ -105,6 +105,16 @@ export const AnnotationPlane = ({
       return { showX: true, showY: true, showZ: true };
     }
 
+    // If it's a non-standard quaternion, show all axes
+    if (
+      annotationPlane.quaternion[0] !== 0 ||
+      annotationPlane.quaternion[1] !== 0 ||
+      annotationPlane.quaternion[2] !== 0 ||
+      annotationPlane.quaternion[3] !== 1
+    ) {
+      return { showX: true, showY: true, showZ: true };
+    }
+
     if (!upVector) {
       return { showX: true, showY: true, showZ: true };
     }
@@ -129,7 +139,7 @@ export const AnnotationPlane = ({
       showY: isYUp,
       showZ: isZUp,
     };
-  }, [upVector, transformMode]);
+  }, [upVector, transformMode, annotationPlane.quaternion]);
 
   // This effect syncs the showX, showY, and showZ values with the transformControlsProps values
   useEffect(() => {

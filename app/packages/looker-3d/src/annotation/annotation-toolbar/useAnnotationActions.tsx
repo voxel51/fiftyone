@@ -29,7 +29,6 @@ import {
   transformModeAtom,
   transformSpaceAtom,
 } from "../../state";
-import { getGridQuaternionFromUpVector } from "../../utils";
 import type {
   AnnotationAction,
   AnnotationActionGroup,
@@ -213,10 +212,7 @@ export const useAnnotationActions = () => {
       if (sceneBoundingBox && upVector) {
         const center = new THREE.Vector3(...annotationPlane.position);
 
-        const quaternion = getGridQuaternionFromUpVector(
-          upVector,
-          new THREE.Vector3(0, 0, 1)
-        );
+        const quaternion = new THREE.Quaternion(...annotationPlane.quaternion);
 
         setAnnotationPlane({
           enabled: true,
@@ -370,7 +366,9 @@ export const useAnnotationActions = () => {
             label: "Rotate",
             icon: <RotateRight />,
             tooltip: "Rotate object",
-            isVisible: currentArchetypeSelectedForTransform === "cuboid",
+            isVisible:
+              currentArchetypeSelectedForTransform === "annotation-plane" ||
+              currentArchetypeSelectedForTransform === "cuboid",
             isActive: transformMode === "rotate",
             onClick: () => handleTransformModeChange("rotate"),
           },
@@ -434,7 +432,7 @@ export const useAnnotationActions = () => {
         onClick: () => {},
         customComponent:
           currentArchetypeSelectedForTransform === "annotation-plane" ? (
-            <PlaneCoordinateInputs />
+            <PlaneCoordinateInputs hideRotation={false} />
           ) : (
             <VertexCoordinateInputs />
           ),
