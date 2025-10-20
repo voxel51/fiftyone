@@ -15,7 +15,6 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { singletonCanvas } from "./SharedCanvas";
 import { useBridge } from "./useBridge";
-import { generateHash } from "../../../utils/hash";
 
 export interface LighterSampleRendererProps {
   /** Custom CSS class name */
@@ -73,8 +72,10 @@ export const LighterSampleRenderer = ({
   }, [isReady, addOverlay, sample, scene]);
 
   useEffect(() => {
-    // get a new sceneId if the sample content has changed
-    generateHash(JSON.stringify(sample)).then((hash) => setSceneId(hash));
+    // sceneId should be deterministic, but unique for a given sample snapshot
+    setSceneId(
+      `${sample?.sample?._id}-${sample?.sample?.last_modified_at?.datetime}`
+    );
   }, [sample]);
 
   return (
