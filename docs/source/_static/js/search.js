@@ -3,12 +3,15 @@
     var allButton = document.querySelector('.tutorial-filter[data-tag="all"]');
     if (allButton) {
       var count = document.querySelectorAll(".tutorials-card-container").length;
-      allButton.textContent = `All (${count})`;
+      allButton.textContent = `All`;
     }
   }
 
   function bindSearch() {
-    var searchInput = document.getElementById("plugin-search");
+    var searchInput =
+      document.getElementById("plugin-search") ||
+      document.getElementById("model-search") ||
+      document.getElementById("dataset-search");
     if (!searchInput || !window.tutorialList) return;
 
     var tutorialList = window.tutorialList;

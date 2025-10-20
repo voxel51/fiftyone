@@ -103,6 +103,10 @@ class PluginDocGenerator:
             lambda m: " " if m.group(0) == "\n" else "\\:", description
         )
 
+    def _generate_github_badge(self, plugin: Plugin) -> str:
+        """Generate GitHub badge markdown for a plugin."""
+        return f'\n\n<a href="{plugin.github_url}" target="_blank">![GitHub Repo](https://img.shields.io/badge/GitHub-Repository-black?logo=github)</a>\n'
+
     def _parse_github_url(self, github_url: str) -> Tuple[str, str, str]:
         """Parse a GitHub URL and return (owner, repo, path)."""
         parts = urlparse(github_url).path.strip("/").split("/")
@@ -503,6 +507,8 @@ class PluginDocGenerator:
             readme_path = self.plugins_ecosystem_dir / f"{plugin_slug}.md"
 
             with open(readme_path, "w", encoding="utf-8") as f:
+                github_badge = self._generate_github_badge(plugin)
+
                 if plugin.category == "community":
                     community_note = """```{note}
 This is a **community plugin**, an external project maintained by its respective author.
@@ -511,9 +517,9 @@ Please review each plugin's documentation and license before use.
 ```
 
 """
-                    f.write(community_note + processed_readme)
+                    f.write(community_note + github_badge + processed_readme)
                 else:
-                    f.write(processed_readme)
+                    f.write(github_badge + processed_readme)
 
             repo_info = self.fetch_github_stars(owner, repo)
             image_path = self._extract_image_from_readme(
