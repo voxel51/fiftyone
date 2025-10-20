@@ -6,7 +6,7 @@ import useUpdateSamples from "./useUpdateSamples";
 import { useSetRecoilState } from "recoil";
 import { refresher } from "../recoil";
 import { useCallback } from "react";
-import { Sample } from "./useExpandSample";
+import { Sample } from "@fiftyone/looker";
 
 /**
  * Refresh a sample in both the modal and the grid.

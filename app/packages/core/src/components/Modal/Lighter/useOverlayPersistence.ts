@@ -18,6 +18,8 @@ import {
 import { parseTimestamp } from "../../../client/util";
 import { buildJsonPath, buildLabelDeltas, OpType } from "./deltas";
 import { transformSampleData } from "../../../client/transformer";
+import { Sample } from "@fiftyone/looker";
+import { isSampleIsh } from "@fiftyone/looker/src/util";
 
 /**
  * Hook that handles overlay persistence events.
@@ -60,7 +62,14 @@ export const useOverlayPersistence = (scene: Scene2D | null) => {
 
           // transform response data to match the graphql sample format
           const cleanedSample = transformSampleData(response.sample);
-          refreshSample(cleanedSample);
+          if (isSampleIsh(cleanedSample)) {
+            refreshSample(cleanedSample as Sample);
+          } else {
+            console.error(
+              "response data does not adhere to sample format",
+              cleanedSample
+            );
+          }
 
           setSnackbarMessage("Changes have been saved");
         } catch (error) {
