@@ -2,10 +2,11 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import type { Scene2D } from "@fiftyone/lighter";
+import { LIGHTER_EVENTS, type Scene2D } from "@fiftyone/lighter";
 import { useEffect } from "react";
 import useColorMappingContext from "./useColorMappingContext";
 import { useOverlayPersistence } from "./useOverlayPersistence";
+import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
 
 /**
  * Hook that bridges FiftyOne state management system with Lighter.
@@ -15,8 +16,9 @@ import { useOverlayPersistence } from "./useOverlayPersistence";
  * 2. We trigger certain events into "FiftyOne state" world based on user interactions in Lighter.
  */
 export const useBridge = (scene: Scene2D | null) => {
-  // useLighterTooltipEventHandler(scene);
+  useLighterTooltipEventHandler(scene);
   useOverlayPersistence(scene);
+
   const context = useColorMappingContext();
 
   // Effect to update scene with color scheme changes

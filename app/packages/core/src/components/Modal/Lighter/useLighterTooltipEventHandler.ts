@@ -18,16 +18,18 @@ export const useLighterTooltipEventHandler = (scene: Scene2D | null) => {
 
   const tooltipEventHandler = useRecoilCallback(
     ({ snapshot, set }) =>
-      (event: CustomEvent, scene: Scene2D) => {
+      (event: CustomEvent, scene: Scene2D, isUnhover: boolean) => {
         const isTooltipLocked = snapshot
           .getLoadable(fos.isTooltipLocked)
           .getValue();
 
-        if (event.detail) {
-          const { id, point } = event.detail;
-          const overlay = scene?.getOverlay?.(id);
+        const id = event.detail?.id;
+        const point = event.detail?.point;
+        const overlay = scene?.getOverlay?.(id);
 
+        if (!isUnhover) {
           if (overlay && isHoverable(overlay)) {
+            overlay.forceHoverEnter();
             const tooltipInfo = overlay.getTooltipInfo();
             if (tooltipInfo) {
               set(fos.tooltipDetail, tooltipInfo);
@@ -45,6 +47,12 @@ export const useLighterTooltipEventHandler = (scene: Scene2D | null) => {
         } else if (!isTooltipLocked) {
           set(fos.tooltipDetail, null);
         }
+
+        if (isUnhover) {
+          if (overlay && isHoverable(overlay)) {
+            overlay.forceHoverLeave();
+          }
+        }
       },
     [tooltip]
   );
@@ -55,15 +63,15 @@ export const useLighterTooltipEventHandler = (scene: Scene2D | null) => {
     }
 
     const handleHover = (event: CustomEvent) => {
-      tooltipEventHandler(event, scene);
+      tooltipEventHandler(event, scene, false);
     };
 
     const handleUnhover = (event: CustomEvent) => {
-      tooltipEventHandler({ ...event, detail: null }, scene);
+      tooltipEventHandler(event, scene, true);
     };
 
     const handleHoverMove = (event: CustomEvent) => {
-      tooltipEventHandler(event, scene);
+      tooltipEventHandler(event, scene, false);
     };
 
     scene.on(LIGHTER_EVENTS.OVERLAY_HOVER, handleHover);
@@ -76,6 +84,51 @@ export const useLighterTooltipEventHandler = (scene: Scene2D | null) => {
       scene.off(LIGHTER_EVENTS.OVERLAY_HOVER_MOVE, handleHoverMove);
     };
   }, [scene, tooltipEventHandler]);
+
+  const handleDocumentMouseMove = useRecoilCallback(
+    ({ snapshot, set }) =>
+      (event: MouseEvent) => {
+        const isTooltipLocked = snapshot
+          .getLoadable(fos.isTooltipLocked)
+          .getValue();
+
+        if (isTooltipLocked || !scene) {
+          return;
+        }
+
+        const canvas = scene.getCanvasDangerously();
+
+        if (!canvas) {
+          return;
+        }
+
+        const rect = canvas.getBoundingClientRect();
+
+        const isOutsideCanvas =
+          event.clientX < rect.left ||
+          event.clientX > rect.right ||
+          event.clientY < rect.top ||
+          event.clientY > rect.bottom;
+
+        if (isOutsideCanvas) {
+          set(fos.tooltipDetail, null);
+          scene?.getInteractionManager()?.resetHoveredHandler();
+        }
+      },
+    [scene, tooltip]
+  );
+
+  useEffect(() => {
+    if (!scene) {
+      return;
+    }
+
+    document.addEventListener("mousemove", handleDocumentMouseMove);
+
+    return () => {
+      document.removeEventListener("mousemove", handleDocumentMouseMove);
+    };
+  }, [scene, handleDocumentMouseMove]);
 };
 
 /**
