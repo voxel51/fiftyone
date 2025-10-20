@@ -7,8 +7,14 @@ import { LIGHTER_EVENTS } from "@fiftyone/lighter";
 import { useCallback, useEffect, useMemo } from "react";
 import { JSONDeltas, patchSample } from "../../../client";
 import { useRecoilValue, useSetRecoilState } from "recoil";
-import * as fos from "@fiftyone/state";
-import { AnnotationLabel, Sample, useUpdateSamples } from "@fiftyone/state";
+import {
+  AnnotationLabel,
+  datasetId as fosDatasetId,
+  modalSample,
+  snackbarErrors,
+  snackbarMessage,
+  useRefreshSample,
+} from "@fiftyone/state";
 import { parseTimestamp } from "../../../client/util";
 import { buildJsonPath, buildLabelDeltas, OpType } from "./deltas";
 import { transformSampleData } from "../../../client/transformer";
@@ -17,17 +23,23 @@ import { transformSampleData } from "../../../client/transformer";
  * Hook that handles overlay persistence events.
  */
 export const useOverlayPersistence = (scene: Scene2D | null) => {
-  const datasetId = useRecoilValue(fos.datasetId);
-  const currentSample = useRecoilValue(fos.modalSample)?.sample;
-  const setSnackbarMessage = useSetRecoilState(fos.snackbarMessage);
-  const setSnackbarErrors = useSetRecoilState(fos.snackbarErrors);
-  const updateSamples = useUpdateSamples();
+  const datasetId = useRecoilValue(fosDatasetId);
+  const currentSample = useRecoilValue(modalSample)?.sample;
+  const setSnackbarMessage = useSetRecoilState(snackbarMessage);
+  const setSnackbarErrors = useSetRecoilState(snackbarErrors);
+  const refreshSample = useRefreshSample();
 
+  // The annotation endpoint requires a version token in order to execute
+  // mutations.
+  // Updated version tokens are returned in the response body,
+  // but the server also allows the current sample timestamp to be used as
+  // a version token.
   const versionToken = useMemo(() => {
     const isoTimestamp = parseTimestamp(
       currentSample?.last_modified_at
     )?.toISOString();
 
+    // server doesn't like the iso timestamp ending in 'Z'
     if (isoTimestamp?.endsWith("Z")) {
       return isoTimestamp.substring(0, isoTimestamp.length - 1);
     } else {
@@ -46,8 +58,9 @@ export const useOverlayPersistence = (scene: Scene2D | null) => {
             versionToken,
           });
 
+          // transform response data to match the graphql sample format
           const cleanedSample = transformSampleData(response.sample);
-          updateSamples([[currentSample._id, cleanedSample as Sample]]);
+          refreshSample(cleanedSample);
 
           setSnackbarMessage("Changes have been saved");
         } catch (error) {
@@ -59,13 +72,14 @@ export const useOverlayPersistence = (scene: Scene2D | null) => {
     [
       currentSample,
       datasetId,
+      refreshSample,
       setSnackbarErrors,
       setSnackbarMessage,
-      updateSamples,
       versionToken,
     ]
   );
 
+  // callback which handles both mutation (upsert) and deletion
   const handlePersistenceEvent = useCallback(
     async (annotationLabel: AnnotationLabel, opType: OpType) => {
       if (!currentSample) {
@@ -78,6 +92,7 @@ export const useOverlayPersistence = (scene: Scene2D | null) => {
         return;
       }
 
+      // calculate label deltas between current sample data and new label data
       const sampleDeltas = buildLabelDeltas(
         currentSample,
         annotationLabel,

@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2025, Voxel51, Inc.
+ */
+
 import * as _ from "lodash";
 import { isObject } from "./util";
 
@@ -71,6 +75,7 @@ const SampleTransformer: DataTransformer = {
       return innerData;
     };
 
+    // transformation happens in-place, so create a new copy of the data first
     const result = _.cloneDeep(data);
     transformInner(result);
     return result;
