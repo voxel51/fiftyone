@@ -51,7 +51,6 @@ export const useLighterTooltipEventHandler = (scene: Scene2D | null) => {
         if (isUnhover) {
           if (overlay && isHoverable(overlay)) {
             overlay.forceHoverLeave();
-            overlay.markDirty();
           }
         }
       },

@@ -227,6 +227,7 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
    */
   forceHoverEnter(): void {
     this.isHoveredState = true;
+    this.markDirty();
   }
 
   /**
@@ -234,6 +235,7 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
    */
   forceHoverLeave(): void {
     this.isHoveredState = false;
+    this.markDirty();
   }
 
   /**
