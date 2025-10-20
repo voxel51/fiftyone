@@ -107,59 +107,59 @@ Annotation
 Model Zoo
 
 - Added 6 SegFormer semantic segmentation models to the
-  :ref:`model zoo <model-zoo-models>` (b0-b5 variants)
+  :ref:`model zoo <model-zoo>` (b0-b5 variants)
   `#6217 <https://github.com/voxel51/fiftyone/pull/6217>`_
-- Added OWL-ViT large-patch14 to the :ref:`model zoo <model-zoo-models>` for
+- Added OWL-ViT large-patch14 to the :ref:`model zoo <model-zoo>` for
   zero-shot object detection
   `#6196 <https://github.com/voxel51/fiftyone/pull/6196>`_
 - Added 5 new D-FINE real-time object detection models to the
-  :ref:`model zoo <model-zoo-models>` (nano through xlarge)
+  :ref:`model zoo <model-zoo>` (nano through xlarge)
   `#6143 <https://github.com/voxel51/fiftyone/pull/6143>`_
 - Added 2 new RT-DETRv2 real-time object detection models to the
-  :ref:`model zoo <model-zoo-models>` (small and medium variants)
+  :ref:`model zoo <model-zoo>` (small and medium variants)
   `#6106 <https://github.com/voxel51/fiftyone/pull/6106>`_
-- Added OWL-ViT base-patch32 model to the :ref:`model zoo <model-zoo-models>`
+- Added OWL-ViT base-patch32 model to the :ref:`model zoo <model-zoo>`
   for zero-shot object detection
   `#6140 <https://github.com/voxel51/fiftyone/pull/6140>`_
 - Added 4 new Swin V2 hierarchical transformer models to the
-  :ref:`model zoo <model-zoo-models>` (tiny, small, base, large)
+  :ref:`model zoo <model-zoo>` (tiny, small, base, large)
   `#6100 <https://github.com/voxel51/fiftyone/pull/6100>`_
 - Added 13 new image classification models to the
-  :ref:`model zoo <model-zoo-models>`: ConvNeXt (tiny, small, base, large,
+  :ref:`model zoo <model-zoo>`: ConvNeXt (tiny, small, base, large,
   xlarge) and EfficientNet (b0-b7)
   `#6084 <https://github.com/voxel51/fiftyone/pull/6084>`_
 - Zero-shot HuggingFace models no longer require classes to be set by the user
   when using :meth:`load_zoo_model() <fiftyone.zoo.models.load_zoo_model>`
   `#6159 <https://github.com/voxel51/fiftyone/pull/6159>`_
 - All semantic segmentation torch models in the
-  :ref:`model zoo <model-zoo-models>` now support confidence thresholding and
+  :ref:`model zoo <model-zoo>` now support confidence thresholding and
   the class indices start at 1 for segmentation masks
   `#6231 <https://github.com/voxel51/fiftyone/pull/6231>`_
-- All models in the :ref:`model zoo <model-zoo-models>` now have clear,
+- All models in the :ref:`model zoo <model-zoo>` now have clear,
   user-friendly descriptions that explain what each model does and its intended
   use case, making it easier to find the right model for your task
   `#6184 <https://github.com/voxel51/fiftyone/pull/6184>`_
-- Official models in the :ref:`model zoo <model-zoo-models>` are now
+- Official models in the :ref:`model zoo <model-zoo>` are now
   consistently marked with the `official` tag to help users identify
   authoritative model implementations
   `#6192 <https://github.com/voxel51/fiftyone/pull/6192>`_
-- TensorFlow 1.x models in the :ref:`model zoo <model-zoo-models>` are now
+- TensorFlow 1.x models in the :ref:`model zoo <model-zoo>` are now
   tagged as `legacy` to indicate they are no longer actively maintained due to
   TF1's deprecation
   `#6187 <https://github.com/voxel51/fiftyone/pull/6187>`_
-- YOLO segmentation models in the :ref:`model zoo <model-zoo-models>` are now
+- YOLO segmentation models in the :ref:`model zoo <model-zoo>` are now
   tagged as `instances` rather than `segmentation` to reflect that they perform
   instance segmentation
   `#6219 <https://github.com/voxel51/fiftyone/pull/6219>`_
 - Fixed incorrect file size metadata for the ConvNeXt-XLarge model in the
-  :ref:`model zoo <model-zoo-models>`
+  :ref:`model zoo <model-zoo>`
   `#6195 <https://github.com/voxel51/fiftyone/pull/6195>`_
 - Fixed missing file sizes for ConvNeXt and EfficientNet models in the
-  :ref:`model zoo <model-zoo-models>`, enabling accurate download progress
+  :ref:`model zoo <model-zoo>`, enabling accurate download progress
   tracking and storage requirement validation
   `#6104 <https://github.com/voxel51/fiftyone/pull/6104>`_
 - Fixed missing model size information in the
-  :ref:`model zoo <model-zoo-models>` for vit-base-patch16-224-imagenet-torch,
+  :ref:`model zoo <model-zoo>` for vit-base-patch16-224-imagenet-torch,
   siglip-base-patch16-224-torch, and group-vit-segmentation-transformer-torch
   models
   `#6175 <https://github.com/voxel51/fiftyone/pull/6175>`_
@@ -1768,7 +1768,7 @@ Zoo
   :ref:`Model Zoo <model-zoo>`
   `#4899 <https://github.com/voxel51/fiftyone/pull/4899>`_
 - Added generic model architecture and backbone tags to all relevant models
-  :ref:`in the zoo <model-zoo-models>` for easier navigation
+  :ref:`in the zoo <model-zoo>` for easier navigation
   `#4899 <https://github.com/voxel51/fiftyone/pull/4899>`_
 
 Core
@@ -6992,9 +6992,9 @@ CLI
 
 Docs
 
-- Added a :ref:`Dataset Zoo listing <dataset-zoo-datasets>` that describes all
+- Added a :ref:`Dataset Zoo listing <dataset-zoo>` that describes all
   datasets in the zoo
-- Added a :ref:`Model Zoo listing <model-zoo-models>` that describes all models
+- Added a :ref:`Model Zoo listing <model-zoo>` that describes all models
   in the zoo
 
 .. _release-notes-v0.7.0:
