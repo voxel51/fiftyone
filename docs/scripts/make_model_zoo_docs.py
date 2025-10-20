@@ -10,7 +10,6 @@ Script for generating the model zoo docs page contents
 import logging
 import os
 import re
-from pathlib import Path
 
 from jinja2 import Environment, BaseLoader
 
@@ -387,7 +386,9 @@ def main():
     card_model_template = environment.from_string(_CARD_MODEL_TEMPLATE)
     model_template = environment.from_string(_MODEL_TEMPLATE)
 
-    docs_dir = "/".join(os.path.realpath(__file__).split("/")[:-2])
+    docs_dir = os.path.normpath(
+        os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir)
+    )
     docs_source_dir = os.path.join(docs_dir, "source")
     models_dir = os.path.join(docs_source_dir, "model_zoo", "models")
 
