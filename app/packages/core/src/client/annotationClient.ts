@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2025, Voxel51, Inc.
+ */
+
 import { encodeURIPath, parseETag } from "./util";
 import { Sample } from "@fiftyone/looker";
 import {

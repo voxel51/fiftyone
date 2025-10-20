@@ -142,6 +142,7 @@ export class Scene2D {
   private rotation: number = 0;
   private interactiveMode: boolean = false;
   private interactiveHandler?: InteractionHandler;
+  private readonly sceneId: string | undefined;
 
   private abortController = new AbortController();
 
@@ -158,6 +159,7 @@ export class Scene2D {
       config.renderer
     );
     this.sceneOptions = config.options;
+    this.sceneId = config.sceneId;
 
     // Listen for scene options changes to trigger re-rendering
     config.eventBus.on(

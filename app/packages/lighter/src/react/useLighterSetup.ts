@@ -30,7 +30,8 @@ export type LighterOptions = Partial<ReturnType<typeof useLookerOptions>>;
  */
 export const useLighterSetupWithPixi = (
   stableCanvas: HTMLCanvasElement,
-  options: LighterOptions
+  options: LighterOptions,
+  sceneId: string
 ) => {
   const [scene, setScene] = useAtom(lighterSceneAtom);
 
@@ -38,7 +39,7 @@ export const useLighterSetupWithPixi = (
   const eventBusRef = useRef<EventBus | null>(null);
 
   useEffect(() => {
-    if (!stableCanvas) return;
+    if (!stableCanvas || !sceneId) return;
 
     const eventBus = new EventBus();
     eventBusRef.current = eventBus;
@@ -59,11 +60,12 @@ export const useLighterSetupWithPixi = (
       canvas: stableCanvas,
       resourceLoader: globalPixiResourceLoader,
       options: sceneOptions,
+      sceneId,
     });
     setScene(newScene);
 
     // note: do NOT add options as a dep here, we have another effect to sync scene with new options
-  }, [stableCanvas]);
+  }, [sceneId, stableCanvas]);
 
   useEffect(() => {
     if (!scene || scene.isDestroyed) return;
@@ -74,7 +76,6 @@ export const useLighterSetupWithPixi = (
 
     return () => {
       scene.destroy();
-      setScene(null);
     };
   }, [scene]);
 

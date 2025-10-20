@@ -56,3 +56,12 @@ export const parseETag = (headerValue?: string): string | null => {
 
   return cleanedValue;
 };
+
+/**
+ * Return true if the provided data is an object.
+ *
+ * @param data Data to check
+ */
+export const isObject = (data: unknown): boolean => {
+  return data && typeof data === "object" && !Array.isArray(data);
+};
