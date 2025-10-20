@@ -21,12 +21,12 @@ import {
   LighterEventDetail,
   type LighterEvent,
 } from "../event/EventBus";
-import { BaseOverlay } from "../overlay/BaseOverlay";
-import { InteractionManager } from "../interaction/InteractionManager";
-import { SelectionManager } from "../selection/SelectionManager";
 import type { InteractionHandler } from "../interaction/InteractionManager";
+import { InteractionManager } from "../interaction/InteractionManager";
+import { BaseOverlay } from "../overlay/BaseOverlay";
 import type { Selectable } from "../selection/Selectable";
 import type { SelectionOptions } from "../selection/SelectionManager";
+import { SelectionManager } from "../selection/SelectionManager";
 import type {
   CanonicalMedia,
   CoordinateSystem,
@@ -459,7 +459,16 @@ export class Scene2D {
    */
   rotateNext(): void {
     const previousOrder = [...this.overlayOrder];
-    this.rotation++;
+
+    const newRotation = Math.min(
+      this.rotation + 1,
+      this.overlayOrder.length - 1
+    );
+
+    if (newRotation !== this.rotation) {
+      this.rotation = newRotation;
+      this.emitUnHoverEventForCurrentPosition();
+    }
 
     this.recalculateOverlayOrder();
 
@@ -476,7 +485,13 @@ export class Scene2D {
    */
   rotatePrevious(): void {
     const previousOrder = [...this.overlayOrder];
-    this.rotation = Math.max(0, this.rotation - 1);
+
+    const newRotation = Math.max(0, this.rotation - 1);
+
+    if (newRotation !== this.rotation) {
+      this.rotation = newRotation;
+      this.emitUnHoverEventForCurrentPosition();
+    }
 
     this.recalculateOverlayOrder();
 
@@ -519,6 +534,29 @@ export class Scene2D {
         type: LIGHTER_EVENTS.OVERLAY_HOVER,
         detail: {
           id: topmostOverlay.id,
+          point: pixelCoordinates,
+        },
+      });
+    }
+  }
+
+  /**
+   * Emits an unhover event for the current mouse position.
+   * This is called before rotation to clear any existing hover state.
+   */
+  private emitUnHoverEventForCurrentPosition(): void {
+    const pixelCoordinates = this.interactionManager.getPixelCoordinates();
+    if (!pixelCoordinates) {
+      return;
+    }
+
+    const hoveredOverlay = this.findOverlayAtPoint(pixelCoordinates);
+
+    if (hoveredOverlay && hoveredOverlay.id !== this.canonicalMediaId) {
+      this.dispatch({
+        type: LIGHTER_EVENTS.OVERLAY_UNHOVER,
+        detail: {
+          id: hoveredOverlay.id,
           point: pixelCoordinates,
         },
       });

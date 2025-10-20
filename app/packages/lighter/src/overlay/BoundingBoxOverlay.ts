@@ -15,7 +15,14 @@ import {
 import { CONTAINS } from "../core/Scene2D";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { Selectable } from "../selection/Selectable";
-import type { BoundedOverlay, Hoverable, Point, Rect, Spatial } from "../types";
+import type {
+  BoundedOverlay,
+  Hoverable,
+  Point,
+  RawLookerLabel,
+  Rect,
+  Spatial,
+} from "../types";
 import { parseColorWithAlpha } from "../utils/color";
 import {
   getInstanceStrokeStyles,
@@ -60,7 +67,7 @@ export type MoveState = ResizeRegion | "NONE" | "DRAGGING" | "SETTING";
  * Bounding box overlay implementation with drag support, selection, and spatial coordinates.
  */
 export class BoundingBoxOverlay
-  extends BaseOverlay
+  extends BaseOverlay<BoundingBoxLabel>
   implements Movable, Selectable, BoundedOverlay, Spatial, Hoverable
 {
   private isDraggable: boolean;
@@ -96,6 +103,7 @@ export class BoundingBoxOverlay
 
   // Spatial interface implementation
   getRelativeBounds(): Rect {
+    if (!this.relativeBounds) return { x: 0, y: 0, width: 0, height: 0 };
     return { ...this.relativeBounds };
   }
 

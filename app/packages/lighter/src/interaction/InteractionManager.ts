@@ -6,11 +6,11 @@ import { UndoRedoManager } from "../commands/UndoRedoManager";
 import { TypeGuards } from "../core/Scene2D";
 import type { EventBus, LighterEventDetail } from "../event/EventBus";
 import { LIGHTER_EVENTS } from "../event/EventBus";
+import { BoundingBoxOverlay } from "../overlay/BoundingBoxOverlay";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { SelectionManager } from "../selection/SelectionManager";
 import type { Point, Rect } from "../types";
 import { InteractiveDetectionHandler } from "./InteractiveDetectionHandler";
-import { BoundingBoxOverlay } from "../overlay/BoundingBoxOverlay";
 
 /**
  * Interface for objects that can handle interaction events.
@@ -45,17 +45,17 @@ export interface InteractionHandler {
   /**
    * Returns the position from the start of handler movement
    */
-  getMoveStartPosition(): Point | undefined;
+  getMoveStartPosition?(): Point | undefined;
 
   /**
    * Returns the bounds of the handler
    */
-  getAbsoluteBounds(): Rect;
+  getAbsoluteBounds?(): Rect;
 
   /**
    * Returns the position from the start of handler movement
    */
-  getMoveStartBounds(): Rect | undefined;
+  getMoveStartBounds?(): Rect | undefined;
 
   /**
    * Handle pointer down event.
@@ -138,6 +138,16 @@ export interface InteractionHandler {
    * @returns True if the event was handled.
    */
   onHoverMove?(point: Point, event: PointerEvent): boolean;
+
+  /**
+   * Forces the overlay to be in hovered state.
+   */
+  forceHoverEnter?(): void;
+
+  /**
+   * Forces the overlay to be in unhovered state.
+   */
+  forceHoverLeave?(): void;
 
   /**
    * Check if this handler can handle events at the given point.
@@ -346,8 +356,10 @@ export class InteractionManager {
 
     if (handler?.isMoving?.()) {
       const isDragging = handler.isDragging?.();
-      const startBounds = handler.getMoveStartBounds()!;
-      const startPosition = handler.getMoveStartPosition()!;
+      const startBounds = handler.getMoveStartBounds?.();
+      const startPosition = handler.getMoveStartPosition?.();
+
+      if (!startBounds || !startPosition) return;
 
       // Handle drag end
       handler.onPointerUp?.(point, event, scale);
@@ -602,8 +614,7 @@ export class InteractionManager {
       });
     }
 
-    this.canvas.style.cursor =
-      movingHandler?.getCursor?.(worldPoint, scale) || this.canvas.style.cursor;
+    this.canvas.style.cursor = this.canvas.style.cursor;
 
     // Update the hovered handler
     this.hoveredHandler = handler;
