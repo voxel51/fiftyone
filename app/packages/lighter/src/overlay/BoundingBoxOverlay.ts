@@ -793,7 +793,7 @@ export class BoundingBoxOverlay
     type: string;
   } | null {
     return {
-      color: "#ff6b6b", // This should come from the overlay's style (owned by Scene2D)
+      color: this.currentStyle?.strokeStyle ?? "#ffffff",
       field: this.field || "unknown",
       label: this.label,
       type: "Detection",
