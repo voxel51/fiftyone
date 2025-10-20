@@ -340,7 +340,7 @@ Example plugin
 --------------
 
 The
-`Hello World plugin <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/hello-world>`_
+`Hello World plugin <https://github.com/voxel51/hello-world-plugin-js>`_
 defines both a JS Panel and a Python operator:
 
 .. tabs::
