@@ -118,7 +118,7 @@ def _process_zoo_redirects(app):
 
 
 def generate_redirects(app):
-    if not type(app.builder) == builders.StandaloneHTMLBuilder:
+    if not isinstance(app.builder, builders.StandaloneHTMLBuilder):
         logger.warning(
             "Page redirection is only supported for the 'html' builder. "
             "Skipping..."
