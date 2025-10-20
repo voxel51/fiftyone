@@ -29,6 +29,7 @@ class TestPipelineType(unittest.TestCase):
             name="stage2",
             num_distributed_tasks=5,
             params={"foo": "bar"},
+            always_run=True,
         )
         pipeline = types.Pipeline(stages=[stage1, stage2])
         self.assertListEqual(pipeline.stages, [stage1, stage2])
@@ -37,9 +38,10 @@ class TestPipelineType(unittest.TestCase):
         pipeline.stage(stage1.operator_uri)
         pipeline.stage(
             stage2.operator_uri,
-            stage2.name,
-            stage2.num_distributed_tasks,
-            stage2.params,
+            always_run=stage2.always_run,
+            name=stage2.name,
+            num_distributed_tasks=stage2.num_distributed_tasks,
+            params=stage2.params,
         )
         self.assertListEqual(pipeline.stages, [stage1, stage2])
 
@@ -52,6 +54,7 @@ class TestPipelineType(unittest.TestCase):
                     name="stage2",
                     num_distributed_tasks=5,
                     params={"foo": "bar"},
+                    always_run=True,
                 ),
             ]
         )
@@ -65,12 +68,14 @@ class TestPipelineType(unittest.TestCase):
                         "name": None,
                         "num_distributed_tasks": None,
                         "params": None,
+                        "always_run": False,
                     },
                     {
                         "operator_uri": "my/uri2",
                         "name": "stage2",
                         "num_distributed_tasks": 5,
                         "params": {"foo": "bar"},
+                        "always_run": True,
                     },
                 ],
             },
@@ -93,3 +98,23 @@ class TestPipelineType(unittest.TestCase):
         pipe = types.Pipeline()
         with self.assertRaises(ValueError):
             pipe.stage("my/uri", num_distributed_tasks=-5)
+
+    def test_none(self):
+        self.assertIsNone(types.Pipeline.from_json(None))
+        self.assertIsNone(types.PipelineRunInfo.from_json(None))
+
+    def test_pipeline_run_info(self):
+        run_info = types.PipelineRunInfo(
+            active=False, stage_index=2, expected_children=[1, 2]
+        )
+        dict_rep = run_info.to_json()
+        self.assertEqual(
+            dict_rep,
+            {
+                "active": False,
+                "stage_index": 2,
+                "expected_children": [1, 2],
+            },
+        )
+        new_obj = types.PipelineRunInfo.from_json(dict_rep)
+        self.assertEqual(new_obj, run_info)
