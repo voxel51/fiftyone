@@ -1,5 +1,4 @@
 import {
-  Add,
   Close,
   Delete,
   Edit,
@@ -9,6 +8,7 @@ import {
 } from "@mui/icons-material";
 import RectangleIcon from "@mui/icons-material/Rectangle";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
+import PolylineIcon from "@mui/icons-material/Timeline";
 import { Typography } from "@mui/material";
 import { useCallback, useEffect, useMemo } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
@@ -273,7 +273,7 @@ export const useAnnotationActions = () => {
           {
             id: "new-segment",
             label: "New Segment",
-            icon: <Add />,
+            icon: <PolylineIcon style={{ rotate: "90deg" }} />,
             tooltip: "Add new polyline segment",
             isActive: segmentPolylineState.isActive,
             onClick: segmentPolylineState.isActive
