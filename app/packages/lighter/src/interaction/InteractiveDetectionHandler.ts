@@ -3,7 +3,7 @@
  */
 
 import { BoundingBoxOverlay } from "../overlay/BoundingBoxOverlay";
-import type { Point } from "../types";
+import type { Point, Rect } from "../types";
 import type { InteractionHandler } from "./InteractionManager";
 
 const INTERACTIVE_DETECTION_HANDLER_ID = "interactive-detection-handler";
@@ -30,6 +30,14 @@ export class InteractiveDetectionHandler implements InteractionHandler {
 
   containsPoint(): boolean {
     return true;
+  }
+
+  getOverlay(): BoundingBoxOverlay {
+    return this.overlay;
+  }
+
+  resetOverlay(): void {
+    this.overlay.unsetBounds();
   }
 
   onPointerDown(point: Point, _, event: PointerEvent): boolean {

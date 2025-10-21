@@ -54,13 +54,16 @@ export class MoveOverlayCommand implements Command {
   ) {
     this.id = `move-${overlayId}-${Date.now()}`;
     this.description = `Move overlay ${overlayId}`;
+    console.log("[MoveOverlayCommand][create]", this.overlay);
   }
 
   execute(): void {
+    console.log("[MoveOverlayCommand][execute]", this.newBounds);
     this.overlay.setBounds(this.newBounds);
   }
 
   undo(): void {
+    console.log("[MoveOverlayCommand][undo]", this.oldBounds);
     this.overlay.setBounds(this.oldBounds);
   }
 }

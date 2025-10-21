@@ -46,6 +46,7 @@ import {
   RenderingStateManager,
 } from "./RenderingStateManager";
 import type { Scene2DConfig, SceneOptions } from "./SceneConfig";
+import { InteractiveDetectionHandler } from "../interaction/InteractiveDetectionHandler";
 
 export const TypeGuards = {
   isSelectable: (
@@ -209,22 +210,45 @@ export class Scene2D {
       this.abortController
     );
 
-    // Listen for OVERLAY_ESTABLISH events to trigger unrendering of overlays that were just set
+    // Listen for OVERLAY_CREATE events to trigger removal of overlays that were just added
     config.eventBus.on(
-      LIGHTER_EVENTS.OVERLAY_ESTABLISH,
+      LIGHTER_EVENTS.OVERLAY_CREATE,
       (event) => {
-        const overlay = this.getOverlay(event.detail.id);
-        if (overlay && TypeGuards.isMovable(overlay)) {
-          const { startBounds, absoluteBounds: endBounds } = event.detail;
+        const {
+          overlay,
+          startBounds,
+          absoluteBounds: endBounds,
+        } = event.detail;
 
-          const moveCommand = new MoveOverlayCommand(
+        if (overlay) {
+          const addCommand = new AddOverlayCommand(
+            this,
             overlay,
-            event.detail.id,
             startBounds,
             endBounds
           );
 
-          this.undoRedo.push(moveCommand);
+          this.undoRedo.push(addCommand);
+        }
+      },
+      this.abortController
+    );
+
+    // Listen for OVERLAY_ESTABLISH events to unset bounds of new overlay
+    config.eventBus.on(
+      LIGHTER_EVENTS.OVERLAY_ESTABLISH,
+      (event) => {
+        const { overlay, absoluteBounds, relativeBounds } = event.detail;
+
+        if (overlay) {
+          const addCommand = new AddOverlayCommand(
+            this,
+            overlay,
+            absoluteBounds,
+            relativeBounds
+          );
+
+          this.undoRedo.push(addCommand);
         }
       },
       this.abortController
@@ -1645,7 +1669,9 @@ export class Scene2D {
    * Enters interactive mode with the provided interaction handler.
    * @param handler - The interaction handler to use for interactive mode.
    */
-  public enterInteractiveMode(handler: InteractionHandler): void {
+  public enterInteractiveMode(
+    handler: InteractionHandler | InteractiveDetectionHandler
+  ): void {
     if (this.interactiveMode) {
       return;
     }

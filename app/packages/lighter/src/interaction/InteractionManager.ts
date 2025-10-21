@@ -40,6 +40,11 @@ export interface InteractionHandler {
   isResizing?(): boolean;
 
   /**
+   * Returns true if a new BoundingBoxOverlay is being created.
+   */
+  isSetting?(): boolean;
+
+  /**
    * Returns the type of cursor that is currently appropriate
    * @param worldPoint - Current screen location translated to viewport location.
    * @param scale - The current scaling factor of the renderer.
@@ -76,7 +81,7 @@ export interface InteractionHandler {
    */
   onPointerDown?(
     point: Point,
-    worldoint: Point,
+    worldPoint: Point,
     event: PointerEvent,
     scale: number
   ): boolean;
@@ -166,12 +171,14 @@ export interface InteractionHandler {
   cleanup?(): void;
 }
 
+export type Handler = InteractionHandler | InteractiveDetectionHandler;
+
 /**
  * Manages all interaction events and coordinates with overlays.
  * Now knows about overlays and manages drag state internally.
  */
 export class InteractionManager {
-  private handlers: InteractionHandler[] = [];
+  private handlers: Handler[] = [];
   private hoveredHandler?: InteractionHandler;
   private clickStartTime = 0;
   private clickStartPoint?: Point;
@@ -254,6 +261,12 @@ export class InteractionManager {
 
       // If this is a movable overlay, track move state
       if (TypeGuards.isMovable(handler) && TypeGuards.isSpatial(handler)) {
+        // const type = handler.isSetting?.()
+        //   ? LIGHTER_EVENTS.OVERLAY_CREATE
+        //   : handler.isDragging?.()
+        //   ? LIGHTER_EVENTS.OVERLAY_DRAG_START
+        //   : LIGHTER_EVENTS.OVERLAY_RESIZE_START;
+
         const type = handler.isDragging?.()
           ? LIGHTER_EVENTS.OVERLAY_DRAG_START
           : LIGHTER_EVENTS.OVERLAY_RESIZE_START;
@@ -313,8 +326,6 @@ export class InteractionManager {
 
       if (handler.isMoving?.()) {
         this.renderer.disableZoomPan();
-        this.canvas.style.cursor =
-          handler.getCursor?.(worldPoint, scale) || this.canvas.style.cursor;
 
         // Emit move event with bounds information
         if (TypeGuards.isSpatial(handler)) {
@@ -334,6 +345,9 @@ export class InteractionManager {
 
         event.preventDefault();
       }
+
+      this.canvas.style.cursor =
+        handler.getCursor?.(worldPoint, scale) || this.canvas.style.cursor;
     }
   };
 
@@ -348,7 +362,7 @@ export class InteractionManager {
     const interactiveHandler = this.getInteractiveHandler();
 
     if (interactiveHandler) {
-      handler = interactiveHandler.overlay || interactiveHandler;
+      handler = interactiveHandler.getOverlay();
     } else {
       handler = this.findMovingHandler() || this.findHandlerAtPoint(point);
     }
@@ -361,7 +375,7 @@ export class InteractionManager {
       // Handle drag end
       handler.onPointerUp?.(point, event, scale);
 
-      if (interactiveHandler?.overlay === handler) {
+      if (interactiveHandler?.getOverlay() === handler) {
         this.removeHandler(interactiveHandler);
         this.addHandler(handler);
       }
@@ -378,17 +392,29 @@ export class InteractionManager {
             ? LIGHTER_EVENTS.OVERLAY_DRAG_END
             : LIGHTER_EVENTS.OVERLAY_RESIZE_END;
 
-        this.eventBus.emit({
-          type,
-          detail: {
-            id: handler.id,
-            startBounds,
-            startPosition,
-            endPosition: handler.getPosition(),
-            absoluteBounds: handler.getAbsoluteBounds(),
-            relativeBounds: handler.getRelativeBounds(),
-          },
-        });
+        const detail = {
+          id: handler.id,
+          startBounds,
+          startPosition,
+          endPosition: handler.getPosition(),
+          absoluteBounds: handler.getAbsoluteBounds(),
+          relativeBounds: handler.getRelativeBounds(),
+        };
+
+        if (type === LIGHTER_EVENTS.OVERLAY_ESTABLISH) {
+          this.eventBus.emit({
+            type,
+            detail: {
+              ...detail,
+              overlay: interactiveHandler!,
+            },
+          });
+        } else {
+          this.eventBus.emit({
+            type,
+            detail,
+          });
+        }
       }
 
       this.canvas.releasePointerCapture(event.pointerId);
@@ -642,7 +668,7 @@ export class InteractionManager {
     );
   }
 
-  private getInteractiveHandler(): InteractionHandler | undefined {
+  private getInteractiveHandler(): InteractiveDetectionHandler | undefined {
     return this.handlers.find((h) => h instanceof InteractiveDetectionHandler);
   }
 
@@ -708,7 +734,7 @@ export class InteractionManager {
    * Removes an interaction handler.
    * @param handler - The handler to remove.
    */
-  removeHandler(handler: InteractionHandler): void {
+  removeHandler(handler: Handler): void {
     const index = this.handlers.indexOf(handler);
     if (index > -1) {
       const removedHandler = this.handlers.splice(index, 1);

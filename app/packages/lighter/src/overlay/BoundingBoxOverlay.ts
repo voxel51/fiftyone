@@ -56,7 +56,7 @@ export type ResizeRegion =
 
 export type MoveState = ResizeRegion | "NONE" | "DRAGGING" | "SETTING";
 
-const NO_BOUNDS = { x: NaN, y: NaN, width: NaN, height: NaN };
+export const NO_BOUNDS = { x: NaN, y: NaN, width: NaN, height: NaN };
 
 /**
  * Bounding box overlay implementation with drag support, selection, and spatial coordinates.
@@ -88,6 +88,7 @@ export class BoundingBoxOverlay
     this.isResizeable = options.resizeable !== false;
 
     this.relativeBounds = options.relativeBounds;
+    //console.log("-=-=", this.id, "initializing =-=-");
     this.absoluteBounds = NO_BOUNDS; // Will be set by scene
     this._needsCoordinateUpdate = true;
   }
@@ -96,18 +97,27 @@ export class BoundingBoxOverlay
     return "BoundingBoxOverlay";
   }
 
+  unsetBounds(): void {
+    this.absoluteBounds = NO_BOUNDS;
+    this.relativeBounds = NO_BOUNDS;
+    this._needsCoordinateUpdate = false;
+    this.markDirty();
+  }
+
   // Spatial interface implementation
   getRelativeBounds(): Rect {
     return { ...this.relativeBounds };
   }
 
   setAbsoluteBounds(bounds: Rect): void {
+    //console.trace("-=-= setAbsoluteBounds", this.id, bounds, "=-=-");
     this.absoluteBounds = { ...bounds };
     this._needsCoordinateUpdate = false;
     this.markDirty();
   }
 
   setRelativeBounds(bounds: Rect): void {
+    //console.log("-=-= setRelativeBounds", this.id, bounds, "=-=-");
     this.relativeBounds = { ...bounds };
     this._needsCoordinateUpdate = true;
     this.markDirty();
@@ -266,6 +276,7 @@ export class BoundingBoxOverlay
   }
 
   setPosition(position: Point): void {
+    //console.log("-=-= setPosition", this.id, position, "=-=-");
     this.absoluteBounds = {
       ...this.absoluteBounds,
       x: position.x,
@@ -388,17 +399,18 @@ export class BoundingBoxOverlay
     scale: number
   ): boolean {
     const resizeRegion = this.getResizeRegion(worldPoint, scale);
-    this.moveState = !this.hasValidBounds()
+    const cursorState = !this.hasValidBounds()
       ? "SETTING"
       : resizeRegion || "DRAGGING";
 
-    if (this.moveState === "DRAGGING" && !this.isDraggable) return false;
-    if (this.moveState.startsWith("RESIZE_") && !this.isResizeable)
-      return false;
+    if (cursorState === "DRAGGING" && !this.isDraggable) return false;
+    if (cursorState.startsWith("RESIZE_") && !this.isResizeable) return false;
 
-    if (this.moveState === "SETTING") {
+    if (cursorState === "SETTING") {
+      this.moveState = cursorState;
       this.settingBounds = true;
       this.setPosition(worldPoint);
+      //console.log("-=-= setting", this.id, "=-=-");
       this.absoluteBounds = {
         ...worldPoint,
         height: 0,
@@ -443,6 +455,7 @@ export class BoundingBoxOverlay
     };
 
     // Update absolute bounds
+    //console.log("-=-= onMove", this.id, "=-=-");
     this.absoluteBounds = {
       x: this.moveStartBounds.x + delta.x,
       y: this.moveStartBounds.y + delta.y,
@@ -554,6 +567,7 @@ export class BoundingBoxOverlay
     }
 
     // Update absolute bounds
+    //console.log("-=-= onResize", this.id, "=-=-");
     this.absoluteBounds = {
       x,
       y,
@@ -617,6 +631,7 @@ export class BoundingBoxOverlay
    * @param bounds - The new bounds.
    */
   setBounds(bounds: Rect): void {
+    //console.log("-=-= setBounds", this.id, bounds, "=-=-");
     this.absoluteBounds = { ...bounds };
     this.markForCoordinateUpdate();
   }
@@ -760,8 +775,11 @@ export class BoundingBoxOverlay
 
   setSelected(selected: boolean): void {
     if (this.isSelectedState !== selected) {
+      //console.log("-=-=", this.id, selected, this.absoluteBounds, "=-=-");
       this.isSelectedState = selected;
       this.markDirty();
+    } else {
+      //console.log("-=-= don't bother =-=-");
     }
   }
 

@@ -3,6 +3,7 @@
  */
 
 import { Command } from "../commands/Command";
+import { InteractiveDetectionHandler } from "../interaction/InteractiveDetectionHandler";
 import { BaseOverlay } from "../overlay/BaseOverlay";
 import type { BoundingBoxPersistence, Point, Rect } from "../types";
 
@@ -46,8 +47,11 @@ export const LIGHTER_EVENTS = {
   // ============================================================================
   // USER INTERACTION EVENTS
   // ============================================================================
-  /** Emitted when an overlay starts being dragged */
+  /** Emitted when an overlay starts being established */
+  OVERLAY_CREATE: "overlay-create",
+  /** Emitted when an overlay finishes being established */
   OVERLAY_ESTABLISH: "overlay-establish",
+  /** Emitted when an overlay starts being dragged */
   OVERLAY_DRAG_START: "overlay-drag-start",
   /** Emitted when an overlay is being dragged */
   OVERLAY_DRAG_MOVE: "overlay-drag-move",
@@ -159,12 +163,22 @@ export type ResourceEvent =
  */
 export type InteractionEvent =
   | {
+      type: typeof LIGHTER_EVENTS.OVERLAY_CREATE;
+      detail: {
+        id: string;
+        overlay: InteractiveDetectionHandler;
+        startPosition: Point;
+        absoluteBounds: Rect;
+        relativeBounds: Rect;
+      };
+    }
+  | {
       type: typeof LIGHTER_EVENTS.OVERLAY_ESTABLISH;
       detail: {
         id: string;
-        startPosition: Point;
-        endPosition: Point;
+        overlay: InteractiveDetectionHandler;
         startBounds: Rect;
+        startPosition: Point;
         absoluteBounds: Rect;
         relativeBounds: Rect;
       };
