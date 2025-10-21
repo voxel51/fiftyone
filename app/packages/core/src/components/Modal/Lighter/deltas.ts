@@ -146,10 +146,10 @@ export const buildDetectionMutationDeltas = (
       // todo this shouldn't be needed,
       //  but bounding_box in label.data doesn't get updated
       bounding_box: [
-        newBounds.x,
-        newBounds.y,
-        newBounds.width,
-        newBounds.height,
+        newBounds.x || 0,
+        newBounds.y || 0,
+        newBounds.width || 0,
+        newBounds.height || 0,
       ],
     },
     (det) => det._id === label.data._id

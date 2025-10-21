@@ -61,7 +61,7 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
     if (!bounds) return false;
 
     return ["x", "y", "width", "height"].every(
-      (prop) => typeof bounds[prop] === "number" && bounds[prop] >= 0
+      (prop) => !Number.isNaN(bounds[prop])
     );
   }
 

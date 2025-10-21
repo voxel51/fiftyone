@@ -1511,9 +1511,11 @@ export class Scene2D {
     overlay: BaseOverlay & Spatial
   ): void {
     const relativeBounds = overlay.getRelativeBounds();
-    const absoluteBounds =
-      this.coordinateSystem.relativeToAbsolute(relativeBounds);
-    overlay.setAbsoluteBounds(absoluteBounds);
+    if (BaseOverlay.validBounds(relativeBounds)) {
+      const absoluteBounds =
+        this.coordinateSystem.relativeToAbsolute(relativeBounds);
+      overlay.setAbsoluteBounds(absoluteBounds);
+    }
   }
 
   /**
@@ -1555,15 +1557,22 @@ export class Scene2D {
     for (const overlay of this.overlays.values()) {
       if (TypeGuards.isSpatial(overlay) && overlay.needsCoordinateUpdate()) {
         this.updateSpatialOverlayRelativeBounds(overlay);
+        const absoluteBounds = overlay.getAbsoluteBounds();
+        const relativeBounds = overlay.getRelativeBounds();
 
-        this.dispatch({
-          type: LIGHTER_EVENTS.OVERLAY_BOUNDS_CHANGED,
-          detail: {
-            id: overlay.id,
-            absoluteBounds: overlay.getAbsoluteBounds(),
-            relativeBounds: overlay.getRelativeBounds(),
-          },
-        });
+        if (
+          BaseOverlay.validBounds(absoluteBounds) &&
+          BaseOverlay.validBounds(relativeBounds)
+        ) {
+          this.dispatch({
+            type: LIGHTER_EVENTS.OVERLAY_BOUNDS_CHANGED,
+            detail: {
+              id: overlay.id,
+              absoluteBounds,
+              relativeBounds,
+            },
+          });
+        }
       }
     }
 

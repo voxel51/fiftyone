@@ -79,9 +79,8 @@ export class BoundingBoxOverlay
   private moveStartPosition?: Point;
   private moveStartBounds?: Rect;
   private isSelectedState = false;
-  private relativeBounds?: Rect;
+  private relativeBounds: Rect;
   private absoluteBounds: Rect;
-  private settingBounds = false;
 
   private _needsCoordinateUpdate = false;
   private textBounds?: Rect;
@@ -94,7 +93,7 @@ export class BoundingBoxOverlay
     this.isDraggable = options.draggable !== false;
     this.isResizeable = options.resizeable !== false;
 
-    this.relativeBounds = options.relativeBounds;
+    this.relativeBounds = options.relativeBounds || NO_BOUNDS;
     this.absoluteBounds = NO_BOUNDS; // Will be set by scene
     this._needsCoordinateUpdate = true;
   }
@@ -112,7 +111,6 @@ export class BoundingBoxOverlay
 
   // Spatial interface implementation
   getRelativeBounds(): Rect {
-    if (!this.relativeBounds) return { x: 0, y: 0, width: 0, height: 0 };
     return { ...this.relativeBounds };
   }
 
@@ -311,7 +309,7 @@ export class BoundingBoxOverlay
 
     if (distance > this.CLICK_THRESHOLD) {
       const resizeRegion = this.getResizeRegion(worldPoint, scale);
-      this.moveState = this.settingBounds
+      this.moveState = !this.hasValidBounds()
         ? "SETTING"
         : resizeRegion || "DRAGGING";
     }
@@ -412,7 +410,6 @@ export class BoundingBoxOverlay
 
     if (cursorState === "SETTING") {
       this.moveState = cursorState;
-      this.settingBounds = true;
       this.setPosition(worldPoint);
       this.absoluteBounds = {
         ...worldPoint,
@@ -590,7 +587,6 @@ export class BoundingBoxOverlay
     this.moveStartPoint = undefined;
     this.moveStartPosition = undefined;
     this.moveStartBounds = undefined;
-    this.settingBounds = false;
 
     return true;
   }
