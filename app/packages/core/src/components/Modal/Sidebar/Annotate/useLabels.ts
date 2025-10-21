@@ -120,7 +120,7 @@ export default function useLabels() {
   const schemaMap = useAtomValue(schemas);
   const addLabel = useAddAnnotationLabel();
   const { scene } = useLighter();
-  const sceneId = scene.getSceneId();
+  const sceneId = scene?.getSceneId();
 
   const getFieldType = useRecoilCallback(
     ({ snapshot }) =>
