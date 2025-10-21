@@ -9,7 +9,8 @@ FiftyOne Server sample endpoints.
 import base64
 import datetime
 import logging
-from typing import Any, List, Union
+import re
+from typing import Any, Union, Dict, Optional, List
 
 from starlette.endpoints import HTTPEndpoint
 from starlette.exceptions import HTTPException
@@ -135,6 +136,128 @@ def generate_sample_etag(sample: fo.Sample) -> str:
     return utils.http.ETag.create(value)
 
 
+def get_closest_ancestor_path(sample: fo.Sample, field: str) -> str:
+    """Get the path to the closest existing ancestor to the specified field.
+
+    Args:
+        sample: The sample
+        field: Dot-delimited field
+    Returns:
+        The closest ancestor field which is subscriptable.
+    """
+    field_parts = field.split(".")
+
+    if len(field_parts) == 1:
+        return field
+
+    for offset in range(-1, -len(field_parts), -1):
+        sub_path = ".".join(field_parts[:offset])
+        try:
+            sample.get_field(sub_path)
+            return sub_path
+        except Exception:
+            continue
+
+    return sub_path
+
+
+def get_field_type(schema: Dict[str, fo.Field], field: str) -> type:
+    """
+    Gets the type of the specified field.
+
+    Args:
+        schema: Dataset schema
+        field: Dot-delimited field
+
+    Returns:
+        Type of field
+    """
+    field_parts = field.split(".")
+    if field_parts[0] not in schema:
+        raise ValueError(f"No schema available for field '{field}")
+
+    field_schema = schema[field_parts[0]]
+
+    for part in field_parts[1:]:
+        if not field_schema.has_field(part):
+            raise ValueError(f"No schema available for field '{field}'")
+        field_schema = field_schema.get_field(part)
+
+    if isinstance(field_schema, fo.EmbeddedDocumentField):
+        return field_schema.document_type_obj
+    else:
+        return field_schema
+
+
+def get_sample_element(sample: fo.Sample, field: str) -> Optional[Any]:
+    """Get an element of a sample.
+
+    This method is similar to `fo.Sample::get_field`, but is able to traverse
+    arrays in addition to documents.
+
+    For example, this method will resolve 'path.to.list.0.attribute'.
+
+    Args:
+        sample: The sample
+        field: Dot-delimited field
+
+    Returns:
+        The element referenced by the field
+    """
+    field_parts = field.split(".")
+    current_data = sample
+    for part in field_parts:
+        # see if it looks like a numeric index
+        try:
+            key = int(part)
+        except Exception:
+            # otherwise assume it's a string path
+            key = part
+
+        try:
+            current_data = current_data[key]
+        except Exception:
+            return None
+
+    return current_data
+
+
+def ensure_sample_field(sample: fo.Sample, field: str):
+    """Ensures that the specified field exists in the provided sample.
+
+    If the field does not exist, it will be created with a field type inferred
+    from the dataset schema.
+
+    Args:
+        sample: The sample
+        field: Dot-delimited field
+    Returns:
+        None
+    """
+    if field.endswith(".-") or re.match(r".*\.[0-9]+$", field):
+        # Special cases for JSON-patch;
+        # '-' is interpreted as "append to the array".
+        # A numeric last part is indexing into an array.
+        # In either case, we want to ensure that the parent field (the list) exists.
+        field = field[: field.rindex(".")]
+
+    element = get_sample_element(sample, field)
+    if element is not None:
+        # already initialized
+        return
+
+    logger.info("Missing sample field %s, attempting to initialize", field)
+
+    schema = sample.dataset.get_field_schema()
+
+    ancestor_path = get_closest_ancestor_path(sample, field)
+    field_type = get_field_type(schema, ancestor_path)
+
+    logger.info("Initializing %s field at %s", field_type, ancestor_path)
+
+    sample.set_field(ancestor_path, field_type())
+
+
 def save_sample(
     sample: fo.Sample, if_last_modified_at: Union[datetime.datetime, None]
 ) -> str:
@@ -178,6 +301,25 @@ def save_sample(
         ...
 
     return generate_sample_etag(sample)
+
+
+def _handle_top_level_patch(
+    target: fo.Sample, patch_list: List[dict]
+) -> fo.Sample:
+    """Applies a list of JSON patch operations to a `fo.Sample` object."""
+    add_paths = set(
+        # convert '/path/to/field' to 'path.to.field'
+        op.get("path")[1:].replace("/", ".")
+        for op in patch_list
+        if op.get("path") is not None and op.get("op") == "add"
+    )
+
+    # Initialize any missing fields;
+    # otherwise the json patch operations will fail for new fields.
+    for field_path in add_paths:
+        ensure_sample_field(target, field_path)
+
+    return handle_json_patch(target, patch_list)
 
 
 def handle_json_patch(target: Any, patch_list: List[dict]) -> Any:
@@ -247,7 +389,7 @@ class Sample(HTTPEndpoint):
         if ctype == "application/json":
             self._handle_patch(sample, data)
         elif ctype == "application/json-patch+json":
-            handle_json_patch(sample, data)
+            _handle_top_level_patch(sample, data)
         else:
             raise HTTPException(
                 status_code=415, detail=f"Unsupported Content-Type '{ctype}'"
