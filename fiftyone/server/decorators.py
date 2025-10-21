@@ -10,29 +10,13 @@ import traceback
 import typing as t
 import logging
 
-<<<<<<< HEAD
-=======
-from bson import json_util
->>>>>>> main
 from starlette.endpoints import HTTPEndpoint
 from starlette.exceptions import HTTPException
 from starlette.responses import JSONResponse, Response
 from starlette.requests import Request
 
-<<<<<<< HEAD
-from fiftyone.core.utils import run_sync_task
-from fiftyone.server import utils
-
-
-async def create_response(response: dict):
-    """Creates a JSON response from the given dictionary."""
-    return Response(
-        await run_sync_task(lambda: utils.json.dumps(response)),
-        headers={"Content-Type": "application/json"},
-    )
-=======
 from fiftyone.core.utils import create_response
->>>>>>> main
+from fiftyone.server import utils
 
 
 def route(func):
