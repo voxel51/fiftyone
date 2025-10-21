@@ -90,7 +90,7 @@ export const PointCloudMesh = ({
       return null;
     }
 
-    if (minZ) {
+    if (minZ !== null && minZ !== undefined) {
       return minZ;
     }
 

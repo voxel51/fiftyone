@@ -20,6 +20,7 @@ import { schemas } from "./state";
 import { useAddAnnotationLabel } from "./useAddAnnotationLabel";
 import useFocus from "./useFocus";
 import useHover from "./useHover";
+import { useLighter } from "@fiftyone/lighter";
 
 const handleSample = async ({
   addLabel,
@@ -119,6 +120,9 @@ export default function useLabels() {
   const setLoading = useSetAtom(loading);
   const schemaMap = useAtomValue(schemas);
   const addLabel = useAddAnnotationLabel();
+  const { scene } = useLighter();
+  const sceneId = scene?.getSceneId();
+
   const getFieldType = useRecoilCallback(
     ({ snapshot }) =>
       async (path: string) => {
@@ -137,7 +141,7 @@ export default function useLabels() {
     []
   );
 
-  const handleSampleData = useEffect(() => {
+  useEffect(() => {
     if (modalSampleData.state !== "loading" && schemaMap) {
       handleSample({
         addLabel,
@@ -153,21 +157,8 @@ export default function useLabels() {
     } else {
       setLoading(true);
     }
-  }, [
-    addLabel,
-    filter,
-    getFieldType,
-    modalSampleData,
-    paths,
-    schemaMap,
-    setLabels,
-    setLoading,
-  ]);
+  }, [modalSampleData, sceneId, schemaMap]);
 
   useHover();
   useFocus();
-
-  return {
-    handleSampleData,
-  };
 }

@@ -11,8 +11,8 @@ export default function useSave() {
   return useCallback(() => {
     scene?.dispatchSafely({
       type: LIGHTER_EVENTS.DO_PERSIST_OVERLAY,
-      detail: { ...label },
+      detail: { label },
     });
     setter();
-  }, [label, scene]);
+  }, [label, scene, setter]);
 }

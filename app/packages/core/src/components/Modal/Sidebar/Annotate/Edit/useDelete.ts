@@ -12,9 +12,13 @@ export default function useDelete() {
   return useCallback(() => {
     scene?.dispatchSafely({
       type: LIGHTER_EVENTS.DO_REMOVE_OVERLAY,
-      detail: { ...label },
+      detail: {
+        label,
+        onSuccess: () => {
+          setter();
+          exit();
+        },
+      },
     });
-    setter();
-    exit();
-  }, [exit, label, scene]);
+  }, [exit, label, scene, setter]);
 }

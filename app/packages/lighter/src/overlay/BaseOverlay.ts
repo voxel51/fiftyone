@@ -5,17 +5,18 @@
 import { CONTAINS } from "../core/Scene2D";
 import type { EventBus } from "../event/EventBus";
 import { LIGHTER_EVENTS } from "../event/EventBus";
-import type { InteractionHandler } from "../interaction/InteractionManager";
+import { InteractionHandler } from "../interaction/InteractionManager";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { ResourceLoader } from "../resource/ResourceLoader";
-import type { DrawStyle, Point, Rect } from "../types";
+import type { DrawStyle, Point, RawLookerLabel, Rect } from "../types";
 
 /**
  * Base abstract class for all overlays.
  */
-export abstract class BaseOverlay implements InteractionHandler {
+export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
+  implements InteractionHandler
+{
   readonly id: string;
-  readonly field: string;
   readonly cursor?: string;
 
   protected isHoveredState = false;
@@ -30,20 +31,36 @@ export abstract class BaseOverlay implements InteractionHandler {
   protected eventBus?: EventBus;
   protected resourceLoader?: ResourceLoader;
   protected currentStyle?: DrawStyle;
-  protected field: string;
-  protected label: RawLookerLabel;
+
+  constructor(id: string, field: string, label: Label) {
+    this.id = id;
+    this._field = field;
+    this._label = label;
+    this.cursor = "default";
+  }
+
+  private _field: string;
+  private _label: Label;
+
+  public get field(): string {
+    return this._field;
+  }
+  public set field(value: string) {
+    this._field = value;
+    this.markDirty();
+  }
+  public get label(): Label {
+    return this._label;
+  }
+  public set label(value: Label) {
+    this._label = value;
+    this.markDirty();
+  }
 
   static validBounds(bounds: Rect): boolean {
     return ["x", "y", "width", "height"].every(
       (prop) => typeof bounds[prop] === "number" && bounds[prop] >= 0
     );
-  }
-
-  constructor(id: string, field: string, label: RawLookerLabel) {
-    this.id = id;
-    this.field = field;
-    this.label = label;
-    this.cursor = "default";
   }
 
   /**
@@ -116,14 +133,6 @@ export abstract class BaseOverlay implements InteractionHandler {
    */
   getIsDirty(): boolean {
     return this.isDirty;
-  }
-
-  /**
-   * Gets the overlay label.
-   * @returns The overlay's raw label.
-   */
-  getLabel() {
-    return this.label;
   }
 
   /**
@@ -229,6 +238,22 @@ export abstract class BaseOverlay implements InteractionHandler {
   }
 
   /**
+   * Forces the overlay to be in hovered state.
+   */
+  forceHoverEnter(): void {
+    this.isHoveredState = true;
+    this.markDirty();
+  }
+
+  /**
+   * Forces the overlay to be in unhovered state.
+   */
+  forceHoverLeave(): void {
+    this.isHoveredState = false;
+    this.markDirty();
+  }
+
+  /**
    * Handle hover enter event.
    * Override in subclasses to implement custom behavior.
    * @param point - The point where the event occurred.
@@ -324,13 +349,19 @@ export abstract class BaseOverlay implements InteractionHandler {
    */
   onDoubleClick?(point: Point, event: PointerEvent): boolean;
 
+  /**
+   * Updates the field for this overlay.
+   * @param field - The new field.
+   */
   updateField(field: string) {
     this.field = field;
-    this.markDirty();
   }
 
-  updateLabel(label: RawLookerLabel) {
+  /**
+   * Updates the label for this overlay.
+   * @param label - The new label.
+   */
+  updateLabel(label: Label) {
     this.label = label;
-    this.markDirty();
   }
 }

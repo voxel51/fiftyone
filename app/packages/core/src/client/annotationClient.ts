@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2025, Voxel51, Inc.
+ */
+
 import { Sample } from "@fiftyone/looker";
 import {
   FetchFunctionConfig,

@@ -15,7 +15,6 @@ const SaveFooter = () => {
   const onExit = useExit();
   const onSave = useSave();
   const showCancel = useAtomValue(isNew);
-
   const hasChanges = useHasChanges();
 
   return (
