@@ -14,12 +14,12 @@ const Header = () => {
   const type = useAtomValue(currentType);
   const Icon = ICONS[type];
   const color = useColor(useAtomValue(currentOverlay) ?? undefined);
-  const { exit } = useContext(ConfirmationContext);
+  const { onExit } = useContext(ConfirmationContext);
 
   return (
     <Row>
       <ItemLeft style={{ columnGap: "0.5rem" }}>
-        <Round onClick={exit}>
+        <Round onClick={onExit}>
           <Back />
         </Round>
         <Icon fill={color} />

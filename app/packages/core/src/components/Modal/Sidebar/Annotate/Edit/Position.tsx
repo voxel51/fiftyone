@@ -3,10 +3,12 @@ import {
   LIGHTER_EVENTS,
   useLighter,
 } from "@fiftyone/lighter";
-import { useAtomValue } from "jotai";
-import React, { useEffect, useState } from "react";
+import { TransformOverlayCommand } from "@fiftyone/lighter/src/commands/TransformOverlayCommand";
+import { useAtomValue, useSetAtom } from "jotai";
+import React, { useEffect, useMemo, useState } from "react";
+import uuid from "react-uuid";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
-import { currentOverlay } from "./state";
+import { currentData, currentOverlay } from "./state";
 
 const createInput = (name: string) => {
   return {
@@ -43,8 +45,14 @@ export default function Position() {
     dimensions: {},
   });
   const overlay = useAtomValue(currentOverlay);
+  const setData = useSetAtom(currentData);
 
   const { scene } = useLighter();
+
+  const key = useMemo(() => {
+    state;
+    return uuid();
+  }, [state]);
 
   useEffect(() => {
     if (!(overlay instanceof BoundingBoxOverlay)) {
@@ -64,23 +72,32 @@ export default function Position() {
         return;
       }
       const rect = overlay.getAbsoluteBounds();
+
       setState({
         position: { x: rect.x, y: rect.y },
         dimensions: { width: rect.width, height: rect.height },
       });
+
+      const relative = overlay.getRelativeBounds();
+      setData({
+        bounding_box: [relative.x, relative.y, relative.width, relative.height],
+      });
     };
+    scene?.on(LIGHTER_EVENTS.OVERLAY_BOUNDS_CHANGED, handler);
     scene?.on(LIGHTER_EVENTS.OVERLAY_DRAG_MOVE, handler);
     scene?.on(LIGHTER_EVENTS.OVERLAY_RESIZE_MOVE, handler);
 
     return () => {
+      scene?.on(LIGHTER_EVENTS.OVERLAY_BOUNDS_CHANGED, handler);
       scene?.off(LIGHTER_EVENTS.OVERLAY_DRAG_MOVE, handler);
       scene?.off(LIGHTER_EVENTS.OVERLAY_RESIZE_MOVE, handler);
     };
-  }, [overlay, scene]);
+  }, [overlay, scene, setData]);
 
   return (
     <div style={{ width: "100%" }}>
       <SchemaIOComponent
+        key={key}
         schema={{
           type: "object",
           view: {
@@ -112,11 +129,18 @@ export default function Position() {
           }
 
           const rect = overlay.getAbsoluteBounds();
-          overlay.setAbsoluteBounds({
-            ...rect,
-            ...data.dimensions,
-            ...data.position,
-          });
+          scene?.executeCommand(
+            new TransformOverlayCommand(
+              overlay,
+              overlay.id,
+              overlay.getAbsoluteBounds(),
+              {
+                ...rect,
+                ...data.dimensions,
+                ...data.position,
+              }
+            )
+          );
         }}
       />
     </div>

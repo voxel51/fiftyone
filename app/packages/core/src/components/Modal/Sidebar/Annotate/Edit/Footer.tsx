@@ -1,26 +1,25 @@
 import { Button, MuiButton } from "@fiftyone/components";
 import { DeleteOutline } from "@mui/icons-material";
 import { useAtomValue } from "jotai";
-import React, { default as React, default as React, useContext } from "react";
+import React, { useContext } from "react";
 import { RoundButton } from "../Actions";
 import { ConfirmationContext } from "../Confirmation";
 import { Row } from "./Components";
-import { currentField, isNew } from "./state";
+import { currentField, hasChanges, isNew } from "./state";
 import useExit from "./useExit";
-import useHasChanges from "./useHasChanges";
 import useSave from "./useSave";
 
 const SaveFooter = () => {
-  const { onDelete } = useContext(ConfirmationContext);
+  const { onDelete, onExit: onExitConfirm } = useContext(ConfirmationContext);
   const onExit = useExit();
   const onSave = useSave();
   const showCancel = useAtomValue(isNew);
-  const hasChanges = useHasChanges();
+  const changes = useAtomValue(hasChanges);
 
   return (
     <>
       <MuiButton
-        disabled={!hasChanges}
+        disabled={!changes}
         onClick={() => {
           onSave();
           onExit();
@@ -30,7 +29,7 @@ const SaveFooter = () => {
       >
         Save
       </MuiButton>
-      <RoundButton onClick={onDelete}>
+      <RoundButton onClick={showCancel ? onExitConfirm : onDelete}>
         {showCancel ? (
           "Cancel"
         ) : (
@@ -45,9 +44,9 @@ const SaveFooter = () => {
 };
 
 const CancelFooter = () => {
-  const { onDelete } = useContext(ConfirmationContext);
+  const onExit = useExit();
 
-  return <Button onClick={onDelete}>Cancel</Button>;
+  return <Button onClick={onExit}>Cancel</Button>;
 };
 
 export default function Footer() {

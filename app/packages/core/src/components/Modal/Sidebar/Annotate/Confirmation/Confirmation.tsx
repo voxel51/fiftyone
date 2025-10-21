@@ -1,5 +1,8 @@
 import type { PropsWithChildren } from "react";
-import React, { createContext } from "react";
+import React, { createContext, useCallback } from "react";
+import useDelete from "../Edit/useDelete";
+import useExit from "../Edit/useExit";
+import useSave from "../Edit/useSave";
 import { useConfirmDelete } from "./useConfirmDelete";
 import useConfirmExit from "./useConfirmExit";
 
@@ -8,22 +11,19 @@ export const ConfirmationContext = createContext({
   onExit: () => {},
 });
 
-export default function Confirmation({
-  children,
-  onDelete,
-  onExit,
-  onSave,
-}: PropsWithChildren<{
-  onDelete: () => void;
-  onExit: () => void;
-  onSave: () => void;
-}>) {
-  const { confirmDelete, DeleteModal } = useConfirmDelete(onDelete);
-  const { confirmExit, ExitChangesModal } = useConfirmExit(onExit, onSave);
+export default function Confirmation({ children }: PropsWithChildren<{}>) {
+  const { confirmDelete, DeleteModal } = useConfirmDelete(useDelete());
+  const { confirmExit, ExitChangesModal } = useConfirmExit(
+    useExit(),
+    useSave()
+  );
 
   return (
     <ConfirmationContext.Provider
-      value={{ onDelete: confirmDelete, onExit: confirmExit }}
+      value={{
+        onDelete: confirmDelete,
+        onExit: useCallback(() => confirmExit(() => null), [confirmExit]),
+      }}
     >
       {children}
       <DeleteModal />

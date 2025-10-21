@@ -1,17 +1,18 @@
 import { LIGHTER_EVENTS, useLighter } from "@fiftyone/lighter";
+import { useClearModal } from "@fiftyone/state";
 import { DETECTION } from "@fiftyone/utilities";
-import { useAtomValue } from "jotai";
+import { getDefaultStore, useAtomValue } from "jotai";
 import React, { useContext, useEffect } from "react";
 import styled from "styled-components";
 import Confirmation, { ConfirmationContext } from "../Confirmation";
+import useConfirmExit from "../Confirmation/useConfirmExit";
 import AnnotationSchema from "./AnnotationSchema";
 import Field from "./Field";
 import Footer from "./Footer";
 import Header from "./Header";
 import Id from "./Id";
 import Position from "./Position";
-import { currentField, currentOverlay, currentType } from "./state";
-import useDelete from "./useDelete";
+import { currentField, currentOverlay, currentType, hasChanges } from "./state";
 import useExit from "./useExit";
 import useSave from "./useSave";
 
@@ -37,15 +38,21 @@ const Content = styled.div`
 
 const LighterEvents = () => {
   const { scene } = useLighter();
-  const { exit } = useContext(ConfirmationContext);
+  const overlay = useAtomValue(currentOverlay);
+  const { onExit } = useContext(ConfirmationContext);
   useEffect(() => {
-    return;
-    scene?.on(LIGHTER_EVENTS.OVERLAY_DESELECT, exit);
+    const handler = () => {
+      if (getDefaultStore().get(hasChanges)) {
+        overlay?.setSelected(true);
+        onExit();
+      }
+    };
+    scene?.on(LIGHTER_EVENTS.OVERLAY_DESELECT, handler);
 
     return () => {
-      scene?.off(LIGHTER_EVENTS.OVERLAY_DESELECT, exit);
+      scene?.off(LIGHTER_EVENTS.OVERLAY_DESELECT, handler);
     };
-  }, [exit, scene]);
+  }, [onExit, overlay, scene]);
 
   return null;
 };
@@ -55,8 +62,33 @@ export default function Edit() {
   const overlay = useAtomValue(currentOverlay);
   const type = useAtomValue(currentType);
 
+  const clear = useClearModal();
+  const exit = useExit();
+
+  const { confirmExit } = useConfirmExit(() => {
+    clear();
+    exit();
+  }, useSave());
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      if (event.target === el) {
+        event.stopImmediatePropagation();
+        confirmExit(clear);
+      }
+    };
+
+    const el = document.getElementById("modal")?.children[0];
+
+    el?.addEventListener("click", handler, true);
+
+    return () => {
+      el?.removeEventListener("click", handler);
+    };
+  }, [confirmExit, clear]);
+
   return (
-    <Confirmation onDelete={useDelete()} onExit={useExit()} onSave={useSave()}>
+    <Confirmation>
       <LighterEvents />
       <ContentContainer>
         <Header />

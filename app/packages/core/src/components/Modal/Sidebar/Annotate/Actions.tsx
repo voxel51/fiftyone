@@ -5,7 +5,6 @@ import { PolylineOutlined } from "@mui/icons-material";
 import React from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
-import { ItemLeft, ItemRight } from "./Components";
 import useCreate from "./Edit/useCreate";
 import useCanManageSchema from "./useCanManageSchema";
 import useShowModal from "./useShowModal";
@@ -17,6 +16,7 @@ const ActionsDiv = styled.div`
   justify-content: space-between;
   padding: 0.25rem 1rem;
   width: 100%;
+  max-width: 100%;
 `;
 
 const Line = styled.div`
@@ -38,12 +38,16 @@ const Container = styled.div`
   opacity: 1;
   color: ${({ theme }) => theme.text.secondary};
 
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
   &.disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
 
   &:not(.disabled):hover {
+    color: ${({ theme }) => theme.text.primary};
     background: ${({ theme }) => theme.background.level1};
   }
 
@@ -75,7 +79,9 @@ export const RoundButtonWhite = styled(RoundButton)`
 `;
 
 const Square = styled(Container)`
+  flex-direction: row;
   border-radius: 0.25rem;
+  width: auto;
 `;
 
 const Arrow = () => {
@@ -146,6 +152,7 @@ const Classification = () => {
           fill="#999999"
         />
       </svg>
+      <span>New Classification</span>
     </Square>
   );
 };
@@ -167,6 +174,7 @@ const Detection = () => {
           fill="#999999"
         />
       </svg>
+      <span>New Detection</span>
     </Square>
   );
 };
@@ -175,6 +183,7 @@ const Polyline = () => {
   const create = useCreate(POLYLINE);
   return (
     <Square onClick={create}>
+      New Polyline
       <PolylineOutlined />
     </Square>
   );
@@ -236,19 +245,17 @@ const Actions = () => {
   return (
     <>
       <ActionsDiv>
-        <ItemLeft style={{ flex: 1, justifyContent: "space-between" }}>
-          <Arrow />
-          <Move />
-          <Classification />
-          {is3D ? <Polyline /> : <Detection />}
-        </ItemLeft>
+        <Classification />
+        {is3D ? <Polyline /> : <Detection />}
 
+        {/*
         <ItemRight>
           <Line />
 
           <Undo />
           <Redo />
         </ItemRight>
+        */}
       </ActionsDiv>
       <ActionsDiv style={{ margin: "0 0.25rem", paddingBottom: "0.5rem" }}>
         <div>Click labels to edit</div>

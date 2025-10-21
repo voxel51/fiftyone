@@ -1,11 +1,12 @@
 import { MuiButton } from "@fiftyone/components";
 import { Typography } from "@mui/material";
-import { atom, useAtom, useSetAtom } from "jotai";
+import { atom, getDefaultStore, useAtom, useSetAtom } from "jotai";
 import React, { useCallback } from "react";
 import styled from "styled-components";
+import { hasChanges } from "../Edit/state";
 import Modal from "./Modal";
 
-const showUnsavedChangesConfirmation = atom(false);
+const showUnsavedChangesConfirmation = atom<(() => void) | false>(false);
 
 const Row = styled.div`
   padding-top: 1rem;
@@ -22,8 +23,10 @@ function ExitChangesModal({
 }) {
   const [shown, show] = useAtom(showUnsavedChangesConfirmation);
 
+  const close = useCallback(() => show(false), [show]);
+
   return shown ? (
-    <Modal close={() => show(false)} title={"You have unsaved changes"}>
+    <Modal close={close} title={"You have unsaved changes"}>
       <Typography color="secondary" padding="1rem 0">
         You edited annotations for this label but haven’t saved them yet.
         Unsaved changes will be lost if you discard them.
@@ -40,6 +43,7 @@ function ExitChangesModal({
             onClick={() => {
               exit();
               close();
+              shown();
             }}
             variant="contained"
           >
@@ -49,8 +53,9 @@ function ExitChangesModal({
             color="success"
             onClick={() => {
               save();
-              exit();
               close();
+              exit();
+              shown();
             }}
             variant="contained"
           >
@@ -66,17 +71,20 @@ export default function useConfirmExit(
   exit: () => void,
   saveAnnotation: () => void
 ) {
-  const hasChanges = true;
   const showConfirmation = useSetAtom(showUnsavedChangesConfirmation);
   return {
-    confirmExit: useCallback(() => {
-      if (hasChanges) {
-        showConfirmation(true);
-        return;
-      }
+    confirmExit: useCallback(
+      (callback) => {
+        if (getDefaultStore().get(hasChanges)) {
+          showConfirmation(() => callback);
+          return;
+        }
 
-      exit();
-    }, [exit, showConfirmation, hasChanges]),
+        exit();
+        callback();
+      },
+      [exit, showConfirmation]
+    ),
     ExitChangesModal: () => (
       <ExitChangesModal exit={exit} save={saveAnnotation} />
     ),

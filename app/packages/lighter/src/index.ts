@@ -53,6 +53,7 @@ export type { SelectionOptions } from "./selection/SelectionManager";
 export type { Command } from "./commands/Command";
 export { MoveOverlayCommand } from "./commands/MoveOverlayCommand";
 export type { Movable } from "./commands/MoveOverlayCommand";
+export { TransformOverlayCommand } from "./commands/TransformOverlayCommand";
 export { UndoRedoManager } from "./commands/UndoRedoManager";
 export { UpdateLabelCommand } from "./commands/UpdateLabelCommand";
 

@@ -23,10 +23,14 @@ export class UpdateLabelCommand implements Command {
   }
 
   execute(): void {
-    this.overlay.updateLabel(this.nextLabel);
+    update(this.overlay, this.nextLabel);
   }
 
   undo(): void {
-    this.overlay.updateLabel(this.currentLabel);
+    update(this.overlay, this.currentLabel);
   }
 }
+
+const update = (overlay: BaseOverlay, label: RawLookerLabel) => {
+  overlay.updateLabel(label);
+};
