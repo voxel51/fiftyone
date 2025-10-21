@@ -289,13 +289,11 @@ export class BoundingBoxOverlay
   }
 
   getMoveStartPosition(): Point | undefined {
-    return this.moveState === "SETTING"
-      ? { x: NaN, y: NaN }
-      : this.moveStartPosition;
+    return this.moveStartPosition;
   }
 
   getMoveStartBounds(): Rect | undefined {
-    return this.moveState === "SETTING" ? NO_BOUNDS : this.moveStartBounds;
+    return this.moveStartBounds;
   }
 
   private calculateMoving(point: Point, worldPoint: Point, scale: number) {
