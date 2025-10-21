@@ -625,8 +625,6 @@ export class InteractionManager {
     // If we are hovering on a new overlay, hover the new one
     if (handler && this.hoveredHandler !== handler && !movingHandler) {
       handler.onHoverEnter?.(point, event);
-      this.canvas.style.cursor =
-        handler.getCursor?.(worldPoint, scale) || this.canvas.style.cursor;
 
       this.eventBus?.emit({
         type: LIGHTER_EVENTS.OVERLAY_HOVER,
@@ -636,16 +634,14 @@ export class InteractionManager {
 
     // If we are hovering on the same overlay, move the hover
     if (this.hoveredHandler === handler) {
-      this.canvas.style.cursor =
-        handler.getCursor?.(worldPoint, scale) || this.canvas.style.cursor;
-
       this.eventBus.emit({
         type: LIGHTER_EVENTS.OVERLAY_HOVER_MOVE,
         detail: { id: handler.id, point },
       });
     }
 
-    this.canvas.style.cursor = this.canvas.style.cursor;
+    this.canvas.style.cursor =
+      handler.getCursor?.(worldPoint, scale) || this.canvas.style.cursor;
 
     // Update the hovered handler
     this.hoveredHandler = handler;

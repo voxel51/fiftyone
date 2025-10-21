@@ -40,6 +40,10 @@ export class InteractiveDetectionHandler implements InteractionHandler {
     this.overlay.unsetBounds();
   }
 
+  markDirty(): void {
+    this.overlay.markDirty();
+  }
+
   onPointerDown(point: Point, _, event: PointerEvent): boolean {
     this.startPoint = point;
     this.isDragging = true;
