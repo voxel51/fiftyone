@@ -1,11 +1,19 @@
 import { LoadingDots } from "@fiftyone/components";
+import { useOverlayPersistence } from "@fiftyone/core/src/components/Modal/Lighter/useOverlayPersistence";
+import {
+  EventBus,
+  lighterSceneAtom,
+  MockRenderer2D,
+  MockResourceLoader,
+  Scene2D,
+} from "@fiftyone/lighter";
 import { usePluginSettings } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { isInMultiPanelViewAtom, useBrowserStorage } from "@fiftyone/state";
 import { CameraControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import CameraControlsImpl from "camera-controls";
-import { useAtomValue } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import {
   useCallback,
   useEffect,
@@ -155,6 +163,36 @@ export const MediaTypeFo3dComponent = () => {
     if (!foScene) return 0;
     return foScene.children?.length ?? 0;
   }, [foScene]);
+
+  const [scene, setScene] = useAtom(lighterSceneAtom);
+
+  // Setup a ghost lighter for human annotation needs
+  useEffect(() => {
+    if (mode !== "annotate" || !!scene) return;
+
+    const mockRenderer = new MockRenderer2D();
+    const eventBus = new EventBus();
+    const mockResourceLoader = new MockResourceLoader();
+
+    const newScene = new Scene2D({
+      renderer: mockRenderer,
+      eventBus,
+      canvas: document.createElement("canvas"),
+      resourceLoader: mockResourceLoader,
+      options: {
+        activePaths: [],
+      },
+    });
+
+    setScene(newScene);
+
+    return () => {
+      newScene.destroy();
+      setScene(null);
+    };
+  }, [mode]);
+
+  useOverlayPersistence(scene);
 
   useHotkey(
     "KeyB",

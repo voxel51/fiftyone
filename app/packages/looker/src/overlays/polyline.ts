@@ -54,7 +54,7 @@ export default class PolylineOverlay<
         dashLength: state.dashLength,
       });
 
-    for (const path of this.label.points) {
+    for (const path of this.label.points || []) {
       if (path.length < 2) {
         continue;
       }

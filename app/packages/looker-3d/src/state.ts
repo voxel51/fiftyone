@@ -447,3 +447,13 @@ export const isPolylineAnnotateActiveAtom = atom<boolean>({
     }),
   ],
 });
+
+export const currentActiveAnnotationField3dAtom = atom<string | null>({
+  key: "fo3d-currentActiveAnnotationField3d",
+  default: null,
+  effects: [
+    getBrowserStorageEffectForKey("fo3d-currentActiveAnnotationField3d", {
+      prependDatasetNameInKey: true,
+    }),
+  ],
+});

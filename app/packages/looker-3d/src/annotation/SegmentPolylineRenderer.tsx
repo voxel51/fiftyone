@@ -21,6 +21,7 @@ import {
 import { getPlaneFromPositionAndQuaternion } from "../utils";
 import { PolylinePointMarker } from "./PolylinePointMarker";
 import type { PolylinePointTransform, TempPolyline } from "./types";
+import { useSyncPolylinesWithSidebar } from "./useSyncPolylinesWithSidebar";
 import { shouldClosePolylineLoop } from "./utils/polyline-utils";
 
 interface SegmentPolylineRendererProps {
@@ -38,6 +39,8 @@ export const SegmentPolylineRenderer = ({
   rubberBandColor = "#ff0000",
   rubberBandLineWidth = 2,
 }: SegmentPolylineRendererProps) => {
+  useSyncPolylinesWithSidebar();
+
   const [segmentState, setSegmentState] = useRecoilState(
     segmentPolylineStateAtom
   );
