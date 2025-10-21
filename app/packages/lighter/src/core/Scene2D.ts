@@ -1719,4 +1719,12 @@ export class Scene2D {
 
     return this.interactiveMode;
   }
+
+  /**
+   * Gets the scene ID for this instance.
+   * @returns Scene ID.
+   */
+  public getSceneId(): string | undefined {
+    return this.sceneId;
+  }
 }
