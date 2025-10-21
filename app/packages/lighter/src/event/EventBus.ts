@@ -321,7 +321,11 @@ export type DoLighterEvent =
     }
   | {
       type: typeof LIGHTER_EVENTS.DO_REMOVE_OVERLAY;
-      detail: AnnotationLabel;
+      detail: {
+        onSuccess?: () => void;
+        onError?: (error?: Error | string) => void;
+        label: AnnotationLabel;
+      };
     };
 
 /**
