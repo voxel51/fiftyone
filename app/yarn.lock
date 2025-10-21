@@ -2419,6 +2419,7 @@ __metadata:
     classnames: "npm:^2.2.6"
     color: "npm:^4.2.3"
     color-string: "npm:^1.9.1"
+    fast-json-patch: "npm:^3.1.1"
     framer-motion: "npm:^6.2.8"
     history: "npm:^5.3.0"
     json-edit-react: "npm:^1.28.2"
@@ -2559,13 +2560,15 @@ __metadata:
     "@biomejs/biome": "npm:^1.8.3"
     "@emotion/react": "npm:^11.14.0"
     "@emotion/styled": "npm:^11.14.0"
-    "@react-three/drei": "npm:^10.6.0"
+    "@react-three/drei": "npm:^10.7.6"
     "@react-three/fiber": "npm:^8.18.0"
+    "@types/chroma-js": "npm:^3.1.1"
     "@types/node": "npm:^20.11.10"
     "@types/react": "npm:^18.2.48"
     "@types/react-dom": "npm:^18.2.18"
     "@types/three": "npm:^0.176.0"
     "@vitejs/plugin-react": "npm:^1.3.0"
+    chroma-js: "npm:^3.1.2"
     leva: "npm:^0.9.36"
     lodash: "npm:^4.17.21"
     nodemon: "npm:^3.0.3"
@@ -4434,9 +4437,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-three/drei@npm:^10.6.0":
-  version: 10.6.0
-  resolution: "@react-three/drei@npm:10.6.0"
+"@react-three/drei@npm:^10.7.6":
+  version: 10.7.6
+  resolution: "@react-three/drei@npm:10.7.6"
   dependencies:
     "@babel/runtime": "npm:^7.26.0"
     "@mediapipe/tasks-vision": "npm:0.10.17"
@@ -4467,7 +4470,7 @@ __metadata:
   peerDependenciesMeta:
     react-dom:
       optional: true
-  checksum: 10/df42d7e515bde84f1e546e1757c8fdc115d13ee9e6f79e308edc0ecd411c5cfe570c31ebe50b3715e4902432544d9eba204acf760faefca613b31e857ce4fd99
+  checksum: 10/fd6efdb687cfa0bdceeaf4183dfad99e7a2dc1b153f803d24de861fea8d5c924d2b01f5a659a4942f051f56842f6ac193f62cc4d1e3d0032f0b847a4c6177ddf
   languageName: node
   linkType: hard
 
@@ -5374,6 +5377,13 @@ __metadata:
   dependencies:
     "@babel/types": "npm:^7.20.7"
   checksum: 10/f0352d537448e1e37f27e6bb8c962d7893720a92fde9d8601a68a93dbc14e15c088b4c0c8f71021d0966d09fba802ef3de11fdb6766c33993f8cf24f1277c6a9
+  languageName: node
+  linkType: hard
+
+"@types/chroma-js@npm:^3.1.1":
+  version: 3.1.1
+  resolution: "@types/chroma-js@npm:3.1.1"
+  checksum: 10/24770bd645425a1d90e3651dbb18bc5977290a2d2fc6e9f32d3892d4c43c1e9f554fb324cd0f4e20a23b734ee652278330a0d331973a7da824e0c15192ba129b
   languageName: node
   linkType: hard
 
@@ -7837,6 +7847,13 @@ __metadata:
   version: 2.0.0
   resolution: "chownr@npm:2.0.0"
   checksum: 10/c57cf9dd0791e2f18a5ee9c1a299ae6e801ff58fee96dc8bfd0dcb4738a6ce58dd252a3605b1c93c6418fe4f9d5093b28ffbf4d66648cb2a9c67eaef9679be2f
+  languageName: node
+  linkType: hard
+
+"chroma-js@npm:^3.1.2":
+  version: 3.1.2
+  resolution: "chroma-js@npm:3.1.2"
+  checksum: 10/ea09b27d04b477a8fdc3314bfa6dc8de05feab47999ff1acdeba6cf3c32c76338baa5b4562d949d33d8adeca57754e5ea591c15b9985d65583c8771e7e07c2ef
   languageName: node
   linkType: hard
 
@@ -10355,6 +10372,13 @@ __metadata:
   dependencies:
     is-string-blank: "npm:^1.0.1"
   checksum: 10/88d2d32d98eb24d23caddf8946a3c22f4517a982b5810fe3d2b9556b8f16bc8c5e328545e708a41b2845fb5c8bc3e26e4c92119f720ec658381e803be5402179
+  languageName: node
+  linkType: hard
+
+"fast-json-patch@npm:^3.1.1":
+  version: 3.1.1
+  resolution: "fast-json-patch@npm:3.1.1"
+  checksum: 10/3e56304e1c95ad1862a50e5b3f557a74c65c0ff2ba5b15caab983b43e70e86ddbc5bc887e9f7064f0aacfd0f0435a29ab2f000fe463379e72b906486345e6671
   languageName: node
   linkType: hard
 

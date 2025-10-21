@@ -16,8 +16,9 @@
     "dependencies": {
         "@emotion/react": "^11.14.0",
         "@emotion/styled": "^11.14.0",
-        "@react-three/drei": "^10.6.0",
+        "@react-three/drei": "^10.7.6",
         "@react-three/fiber": "^8.18.0",
+        "chroma-js": "^3.1.2",
         "leva": "^0.9.36",
         "lodash": "^4.17.21",
         "r3f-perf": "^7.2.3",
@@ -28,6 +29,7 @@
     },
     "devDependencies": {
         "@biomejs/biome": "^1.8.3",
+        "@types/chroma-js": "^3.1.1",
         "@types/node": "^20.11.10",
         "@types/react": "^18.2.48",
         "@types/react-dom": "^18.2.18",

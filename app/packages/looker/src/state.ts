@@ -93,6 +93,7 @@ export type Sample = {
   tags: string[];
   _label_tags: string[];
   _media_type: "image" | "video" | "point-cloud" | "3d";
+  last_modified_at?: { datetime: number };
 } & GenericLabel;
 
 export interface LabelData {

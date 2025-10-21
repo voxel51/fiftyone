@@ -15,7 +15,14 @@ import {
 import { CONTAINS } from "../core/Scene2D";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { Selectable } from "../selection/Selectable";
-import type { BoundedOverlay, Hoverable, Point, Rect, Spatial } from "../types";
+import type {
+  BoundedOverlay,
+  Hoverable,
+  Point,
+  RawLookerLabel,
+  Rect,
+  Spatial,
+} from "../types";
 import { parseColorWithAlpha } from "../utils/color";
 import {
   getInstanceStrokeStyles,
@@ -62,7 +69,7 @@ export const NO_BOUNDS = { x: NaN, y: NaN, width: NaN, height: NaN };
  * Bounding box overlay implementation with drag support, selection, and spatial coordinates.
  */
 export class BoundingBoxOverlay
-  extends BaseOverlay
+  extends BaseOverlay<BoundingBoxLabel>
   implements Movable, Selectable, BoundedOverlay, Spatial, Hoverable
 {
   private isDraggable: boolean;
@@ -105,6 +112,7 @@ export class BoundingBoxOverlay
 
   // Spatial interface implementation
   getRelativeBounds(): Rect {
+    if (!this.relativeBounds) return { x: 0, y: 0, width: 0, height: 0 };
     return { ...this.relativeBounds };
   }
 
@@ -801,7 +809,7 @@ export class BoundingBoxOverlay
     type: string;
   } | null {
     return {
-      color: "#ff6b6b", // This should come from the overlay's style (owned by Scene2D)
+      color: this.currentStyle?.strokeStyle ?? "#ffffff",
       field: this.field || "unknown",
       label: this.label,
       type: "Detection",
