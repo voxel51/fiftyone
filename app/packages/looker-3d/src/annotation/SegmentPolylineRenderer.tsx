@@ -205,6 +205,8 @@ export const SegmentPolylineRenderer = ({
   // Handle mouse move for rubber band effect
   const handleMouseMove = useCallback(
     (worldPos: THREE.Vector3, worldPosPerpendicular: THREE.Vector3 | null) => {
+      if (!worldPos) return;
+
       const segmentPos = worldPos.clone();
       setSegmentState((prev) => ({
         ...prev,
