@@ -50,7 +50,7 @@ export const useOverlayPersistence = (scene: Scene2D | null) => {
   }, [currentSample?.last_modified_at]);
 
   const handlePatchSample = useCallback(
-    async (sampleDeltas: JSONDeltas) => {
+    async (sampleDeltas: JSONDeltas): Promise<boolean> => {
       if (sampleDeltas.length > 0) {
         try {
           const response = await patchSample({
@@ -75,8 +75,11 @@ export const useOverlayPersistence = (scene: Scene2D | null) => {
         } catch (error) {
           console.error("error patching sample", error);
           setSnackbarErrors([error.message ?? error]);
+          return false;
         }
       }
+
+      return true;
     },
     [
       currentSample,
@@ -90,15 +93,18 @@ export const useOverlayPersistence = (scene: Scene2D | null) => {
 
   // callback which handles both mutation (upsert) and deletion
   const handlePersistenceEvent = useCallback(
-    async (annotationLabel: AnnotationLabel, opType: OpType) => {
+    async (
+      annotationLabel: AnnotationLabel,
+      opType: OpType
+    ): Promise<boolean> => {
       if (!currentSample) {
         console.error("missing sample data!");
-        return;
+        return false;
       }
 
       if (!annotationLabel) {
         console.error("missing annotation label!");
-        return;
+        return false;
       }
 
       // calculate label deltas between current sample data and new label data
@@ -112,7 +118,7 @@ export const useOverlayPersistence = (scene: Scene2D | null) => {
         path: buildJsonPath(annotationLabel.path, delta.path),
       }));
 
-      await handlePatchSample(sampleDeltas);
+      return await handlePatchSample(sampleDeltas);
     },
     [currentSample, handlePatchSample]
   );
@@ -134,7 +140,16 @@ export const useOverlayPersistence = (scene: Scene2D | null) => {
         OverlayEventDetail<typeof LIGHTER_EVENTS.DO_REMOVE_OVERLAY>
       >
     ) => {
-      await handlePersistenceEvent(event.detail, "delete");
+      const success = await handlePersistenceEvent(
+        event.detail.label,
+        "delete"
+      );
+
+      if (success) {
+        event.detail.onSuccess?.();
+      } else {
+        event.detail.onError?.();
+      }
     },
     [handlePersistenceEvent]
   );
