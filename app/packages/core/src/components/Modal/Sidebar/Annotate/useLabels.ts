@@ -20,6 +20,7 @@ import { schemas } from "./state";
 import { useAddAnnotationLabel } from "./useAddAnnotationLabel";
 import useFocus from "./useFocus";
 import useHover from "./useHover";
+import { useLighter } from "@fiftyone/lighter";
 
 const handleSample = async ({
   addLabel,
@@ -118,24 +119,28 @@ export default function useLabels() {
   const setLoading = useSetAtom(loading);
   const schemaMap = useAtomValue(schemas);
   const addLabel = useAddAnnotationLabel();
+  const { scene } = useLighter();
+  const sceneId = scene.getSceneId();
+
   const getFieldType = useRecoilCallback(
-    ({ snapshot }) => async (path: string) => {
-      const loadable = await snapshot.getLoadable(field(path));
-      const type = loadable
-        .getValue()
-        ?.embeddedDocType?.split(".")
-        .slice(-1)[0];
+    ({ snapshot }) =>
+      async (path: string) => {
+        const loadable = await snapshot.getLoadable(field(path));
+        const type = loadable
+          .getValue()
+          ?.embeddedDocType?.split(".")
+          .slice(-1)[0];
 
-      if (!type) {
-        throw new Error("no type");
-      }
+        if (!type) {
+          throw new Error("no type");
+        }
 
-      return type as LabelType;
-    },
+        return type as LabelType;
+      },
     []
   );
 
-  const handleSampleData = useEffect(() => {
+  useEffect(() => {
     if (modalSampleData.state !== "loading" && schemaMap) {
       handleSample({
         addLabel,
@@ -151,21 +156,8 @@ export default function useLabels() {
     } else {
       setLoading(true);
     }
-  }, [
-    addLabel,
-    filter,
-    getFieldType,
-    modalSampleData,
-    paths,
-    schemaMap,
-    setLabels,
-    setLoading,
-  ]);
+  }, [modalSampleData, sceneId, schemaMap]);
 
   useHover();
   useFocus();
-
-  return {
-    handleSampleData,
-  };
 }
