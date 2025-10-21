@@ -17,47 +17,39 @@ export class AddOverlayCommand implements Command {
 
   constructor(
     private scene: Scene2D,
-    private overlay: InteractiveDetectionHandler,
+    private overlay: BaseOverlay | InteractiveDetectionHandler,
     private absoluteBounds: Rect,
     private relativeBounds: Rect
   ) {
     this.id = `add-overlay-${overlay.id}-${Date.now()}`;
     this.description = `Add overlay ${overlay.id}`;
-    console.log("[AddOverlayCommand][create]", this.overlay);
   }
 
   execute(): void {
-    // console.log("[AddOverlayCommand][execute]", this.overlay);
-    // //this.overlay.setBounds(this.endBounds);
-    // this.scene.enterInteractiveMode(this.overlay);
+    if (this.overlay instanceof InteractiveDetectionHandler) {
+      const handler = this.overlay.getOverlay();
+      const interactionManager = this.scene.getInteractionManager();
 
-    console.log("[EstablishOverlayCommand][execute]", this.overlay);
-    const handler = this.overlay.getOverlay();
-    const interactionManager = this.scene.getInteractionManager();
-
-    handler.setAbsoluteBounds(this.absoluteBounds);
-    handler.setRelativeBounds(this.relativeBounds);
-    interactionManager.removeHandler(this.overlay);
-    interactionManager.addHandler(handler);
+      handler.setAbsoluteBounds(this.absoluteBounds);
+      handler.setRelativeBounds(this.relativeBounds);
+      interactionManager.removeHandler(this.overlay);
+      interactionManager.addHandler(handler);
+    } else {
+      this.scene.addOverlay(this.overlay, false);
+    }
   }
 
   undo(): void {
-    const handler = this.overlay.getOverlay();
-    const interactionManager = this.scene.getInteractionManager();
+    if (this.overlay instanceof InteractiveDetectionHandler) {
+      const handler = this.overlay.getOverlay();
+      const interactionManager = this.scene.getInteractionManager();
 
-    handler.unsetBounds();
-    interactionManager.removeHandler(handler);
-    interactionManager.addHandler(this.overlay);
-    this.scene.setCursor(this.overlay.cursor);
-
-    // if (this.overlay instanceof InteractiveDetectionHandler) {
-    //   console.log("[AddOverlayCommand][undo]", this.overlay);
-    //   this.overlay.resetOverlay();
-    //   this.scene.setCursor(this.overlay.cursor);
-    //   //this.scene.exitInteractiveMode();
-    // } else {
-    //   console.log("]AddOverlayCommand[]undo[", this.overlay);
-    //   this.scene.removeOverlay(this.overlay.id, false);
-    // }
+      handler.unsetBounds();
+      interactionManager.removeHandler(handler);
+      interactionManager.addHandler(this.overlay);
+      this.scene.setCursor(this.overlay.cursor);
+    } else {
+      this.scene.removeOverlay(this.overlay.id, false);
+    }
   }
 }

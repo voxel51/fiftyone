@@ -249,7 +249,7 @@ export class InteractionManager {
     const interactiveHandler = this.getInteractiveHandler();
 
     if (interactiveHandler) {
-      handler = interactiveHandler.overlay || interactiveHandler;
+      handler = interactiveHandler.getOverlay();
       this.selectionManager.select(handler.id);
     } else {
       handler = this.findHandlerAtPoint(point);
@@ -261,12 +261,6 @@ export class InteractionManager {
 
       // If this is a movable overlay, track move state
       if (TypeGuards.isMovable(handler) && TypeGuards.isSpatial(handler)) {
-        // const type = handler.isSetting?.()
-        //   ? LIGHTER_EVENTS.OVERLAY_CREATE
-        //   : handler.isDragging?.()
-        //   ? LIGHTER_EVENTS.OVERLAY_DRAG_START
-        //   : LIGHTER_EVENTS.OVERLAY_RESIZE_START;
-
         const type = handler.isDragging?.()
           ? LIGHTER_EVENTS.OVERLAY_DRAG_START
           : LIGHTER_EVENTS.OVERLAY_RESIZE_START;
@@ -313,7 +307,7 @@ export class InteractionManager {
           this.maintainAspectRatio
         );
       } else {
-        handler = interactiveHandler.overlay || interactiveHandler;
+        handler = interactiveHandler.getOverlay();
 
         handler.onMove?.(
           point,

@@ -210,30 +210,6 @@ export class Scene2D {
       this.abortController
     );
 
-    // Listen for OVERLAY_CREATE events to trigger removal of overlays that were just added
-    config.eventBus.on(
-      LIGHTER_EVENTS.OVERLAY_CREATE,
-      (event) => {
-        const {
-          overlay,
-          startBounds,
-          absoluteBounds: endBounds,
-        } = event.detail;
-
-        if (overlay) {
-          const addCommand = new AddOverlayCommand(
-            this,
-            overlay,
-            startBounds,
-            endBounds
-          );
-
-          this.undoRedo.push(addCommand);
-        }
-      },
-      this.abortController
-    );
-
     // Listen for OVERLAY_ESTABLISH events to unset bounds of new overlay
     config.eventBus.on(
       LIGHTER_EVENTS.OVERLAY_ESTABLISH,

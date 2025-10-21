@@ -47,8 +47,6 @@ export const LIGHTER_EVENTS = {
   // ============================================================================
   // USER INTERACTION EVENTS
   // ============================================================================
-  /** Emitted when an overlay starts being established */
-  OVERLAY_CREATE: "overlay-create",
   /** Emitted when an overlay finishes being established */
   OVERLAY_ESTABLISH: "overlay-establish",
   /** Emitted when an overlay starts being dragged */
@@ -162,16 +160,6 @@ export type ResourceEvent =
  * User interaction events with overlays.
  */
 export type InteractionEvent =
-  | {
-      type: typeof LIGHTER_EVENTS.OVERLAY_CREATE;
-      detail: {
-        id: string;
-        overlay: InteractiveDetectionHandler;
-        startPosition: Point;
-        absoluteBounds: Rect;
-        relativeBounds: Rect;
-      };
-    }
   | {
       type: typeof LIGHTER_EVENTS.OVERLAY_ESTABLISH;
       detail: {
