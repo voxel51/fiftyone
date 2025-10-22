@@ -138,13 +138,10 @@ export const SegmentPolylineRenderer = ({
             isClosed: false,
           });
         } else {
-          // End the segment at the current position without closing
+          // Commit the last vertex
           const tempPolyline: TempPolyline = {
             id: `temp-polyline-${Date.now()}`,
-            vertices: [
-              ...verticesWithoutDuplicate,
-              [finalPos.x, finalPos.y, finalPos.z],
-            ],
+            vertices: verticesWithoutDuplicate,
             isClosed: false,
             color,
             lineWidth,
