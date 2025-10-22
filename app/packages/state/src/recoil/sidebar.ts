@@ -130,8 +130,12 @@ export interface DetectionAnnotationLabel extends Label {
 
 export interface PolylineAnnotationLabel extends Label {
   data: PolylineLabel;
-  // Todo: It's not a lighter overlay type, so not typed just yet
-  overlay: unknown;
+  overlay: {
+    id: string;
+    updateField: (field: string) => void;
+    getLabel: () => PolylineLabel;
+    updateLabel: (label: PolylineLabel) => void;
+  };
   type: "Polyline";
 }
 

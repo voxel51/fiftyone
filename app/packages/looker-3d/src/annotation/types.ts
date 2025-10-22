@@ -90,6 +90,12 @@ export interface PolylinePointTransform {
   position: [number, number, number];
 }
 
+export interface PolylinePointTransformData {
+  points: PolylinePointTransform[];
+  path: string;
+  sampleId: string;
+}
+
 export interface SegmentPolylineState {
   isActive: boolean;
   vertices: [number, number, number][];

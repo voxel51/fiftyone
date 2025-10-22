@@ -1,3 +1,4 @@
+import * as fos from "@fiftyone/state";
 import { objectId } from "@fiftyone/utilities";
 import { Line as LineDrei } from "@react-three/drei";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -8,8 +9,8 @@ import { useFo3dContext } from "../fo3d/context";
 import { useEmptyCanvasInteraction } from "../hooks/use-empty-canvas-interaction";
 import {
   annotationPlaneAtom,
+  currentActiveAnnotationField3dAtom,
   isSegmentingPointerDownAtom,
-  isSnapToAnnotationPlaneAtom,
   polylineEffectivePointsAtom,
   polylinePointTransformsAtom,
   segmentPolylineStateAtom,
@@ -20,8 +21,12 @@ import {
 } from "../state";
 import { getPlaneFromPositionAndQuaternion } from "../utils";
 import { PolylinePointMarker } from "./PolylinePointMarker";
-import type { PolylinePointTransform, TempPolyline } from "./types";
-import { useSyncPolylinesWithSidebar } from "./useSyncPolylinesWithSidebar";
+import type {
+  PolylinePointTransform,
+  PolylinePointTransformData,
+  TempPolyline,
+} from "./types";
+import { useSetEditingToNewPolyline } from "./useSetEditingToNewPolyline";
 import { shouldClosePolylineLoop } from "./utils/polyline-utils";
 
 interface SegmentPolylineRendererProps {
@@ -39,8 +44,11 @@ export const SegmentPolylineRenderer = ({
   rubberBandColor = "#ff0000",
   rubberBandLineWidth = 2,
 }: SegmentPolylineRendererProps) => {
-  useSyncPolylinesWithSidebar();
-
+  const currentSampleId = useRecoilValue(fos.currentSampleId);
+  const currentActiveField = useRecoilValue(currentActiveAnnotationField3dAtom);
+  const selectedLabelForAnnotation = useRecoilValue(
+    selectedLabelForAnnotationAtom
+  );
   const [segmentState, setSegmentState] = useRecoilState(
     segmentPolylineStateAtom
   );
@@ -48,10 +56,7 @@ export const SegmentPolylineRenderer = ({
   const setPolylinePointTransforms = useSetRecoilState(
     polylinePointTransformsAtom
   );
-  const selectedLabelForAnnotation = useRecoilValue(
-    selectedLabelForAnnotationAtom
-  );
-
+  const setEditingToNewPolyline = useSetEditingToNewPolyline();
   const [tempLabelId, setTempLabelId] = useState<string | null>(objectId());
 
   useEffect(() => {
@@ -69,7 +74,6 @@ export const SegmentPolylineRenderer = ({
   );
   const setSharedCursorPosition = useSetRecoilState(sharedCursorPositionAtom);
   const annotationPlane = useRecoilValue(annotationPlaneAtom);
-  const isSnapToAnnotationPlane = useRecoilValue(isSnapToAnnotationPlaneAtom);
   const snapCloseAutomatically = useRecoilValue(snapCloseAutomaticallyAtom);
   const { upVector, sceneBoundingBox } = useFo3dContext();
 
@@ -217,37 +221,28 @@ export const SegmentPolylineRenderer = ({
       }));
 
       const cursorPos =
-        !annotationPlane.enabled &&
-        !isSnapToAnnotationPlane &&
-        worldPosPerpendicular
+        !annotationPlane.enabled && worldPosPerpendicular
           ? worldPosPerpendicular.clone()
           : worldPos.clone();
 
       setSharedCursorPosition([cursorPos.x, cursorPos.y, cursorPos.z]);
     },
-    [sceneBoundingBox, annotationPlane.enabled, isSnapToAnnotationPlane]
+    [sceneBoundingBox, annotationPlane.enabled]
   );
 
   // Calculate the annotation plane for raycasting
   const raycastPlane = useMemo(() => {
-    if (annotationPlane.enabled || isSnapToAnnotationPlane) {
-      const plane = getPlaneFromPositionAndQuaternion(
-        annotationPlane.position,
-        annotationPlane.quaternion
-      );
-
-      return {
-        ...plane,
-        // Negative constant for raycasting
-        constant: -plane.constant,
-      } as THREE.Plane;
-    }
+    const plane = getPlaneFromPositionAndQuaternion(
+      annotationPlane.position,
+      annotationPlane.quaternion
+    );
 
     return {
-      normal: upVector || new THREE.Vector3(0, 0, 1),
-      constant: 0,
-    };
-  }, [annotationPlane, isSnapToAnnotationPlane, upVector]);
+      ...plane,
+      // Negative constant for raycasting
+      constant: -plane.constant,
+    } as THREE.Plane;
+  }, [annotationPlane, upVector]);
 
   useEmptyCanvasInteraction({
     onPointerUp: segmentState.isActive ? handleClick : undefined,
@@ -467,7 +462,7 @@ export const SegmentPolylineRenderer = ({
     return markers.length > 0 ? markers : null;
   }, [segmentState.vertices, tempPolylines, color, setTempPolylines]);
 
-  // Sync with polylinePointTransformsAtom
+  // Sync temporary polylines with polylinePointTransformsAtom
   useEffect(() => {
     if (ignoreEffects) return;
 
@@ -522,23 +517,20 @@ export const SegmentPolylineRenderer = ({
       }
     }
 
+    const newTransformData: PolylinePointTransformData = {
+      points: newPolyline,
+      path: currentActiveField || "",
+      sampleId: currentSampleId,
+    };
+
     setPolylinePointTransforms((prev) => {
-      const newTransforms = [...(prev[labelId] || []), ...newPolyline];
-
-      // Remove duplicates
-      const uniqueTransforms = newTransforms.filter(
-        (transform, index, self) =>
-          index ===
-          self.findIndex(
-            (t) =>
-              t.segmentIndex === transform.segmentIndex &&
-              t.pointIndex === transform.pointIndex
-          )
-      );
-
       return {
         ...prev,
-        [labelId]: uniqueTransforms,
+        [labelId]: {
+          points: newTransformData.points,
+          path: newTransformData.path,
+          sampleId: newTransformData.sampleId,
+        },
       };
     });
 
@@ -553,7 +545,15 @@ export const SegmentPolylineRenderer = ({
     setIsActivelySegmenting(false);
 
     setTempPolylines([]);
-  }, [tempPolylines, polylineEffectivePoints, tempLabelId]);
+
+    setEditingToNewPolyline(labelId, newTransformData);
+  }, [
+    tempPolylines,
+    polylineEffectivePoints,
+    tempLabelId,
+    currentSampleId,
+    currentActiveField,
+  ]);
 
   if (
     !segmentState.isActive &&
