@@ -10,9 +10,8 @@ import {
 } from "../../state";
 import { eulerToQuaternion, quaternionToEuler } from "../../utils";
 import {
-  applyTransformsToPolyline,
   getVertexPosition,
-  updateDuplicateVertices,
+  updateVertexPosition,
 } from "../utils/polyline-utils";
 
 interface CoordinateInputsProps {
@@ -235,13 +234,13 @@ export const VertexCoordinateInputs = ({
     if (!selectedPoint || !selectedLabel) return null;
 
     const polylineLabel = selectedLabel as unknown as PolyLineProps;
-    const transforms =
-      polylinePointTransforms[selectedPoint.labelId]?.points || [];
+    const segments =
+      polylinePointTransforms[selectedPoint.labelId]?.segments || [];
 
     return getVertexPosition(
       selectedPoint,
       polylineLabel.points3d || [],
-      transforms
+      segments
     );
   }, [selectedPoint, selectedLabel, polylinePointTransforms]);
   const [x, setX] = useState<string>("0");
@@ -272,62 +271,34 @@ export const VertexCoordinateInputs = ({
         const { segmentIndex, pointIndex, labelId } = selectedPoint;
 
         setPolylinePointTransforms((prev) => {
-          const currentTransforms = prev[labelId]?.points || [];
+          const currentSegments = prev[labelId]?.segments || [];
           const polylineLabel = selectedLabel as unknown as PolyLineProps;
-          const originalPoints = polylineLabel.points3d || [];
+          const points3d = polylineLabel.points3d || [];
 
-          // Get current position (either from existing transform or original point)
-          let currentPosition: [number, number, number];
-          const existingTransformIndex = currentTransforms.findIndex(
-            (transform) =>
-              transform.segmentIndex === segmentIndex &&
-              transform.pointIndex === pointIndex
-          );
+          if (!selectedPointPosition) return prev;
 
-          if (existingTransformIndex >= 0) {
-            currentPosition =
-              currentTransforms[existingTransformIndex].position;
-          } else if (selectedPointPosition) {
-            currentPosition = selectedPointPosition;
-          } else {
-            // Fallback to original position from label
-            if (
-              segmentIndex < originalPoints.length &&
-              pointIndex < originalPoints[segmentIndex].length
-            ) {
-              currentPosition = originalPoints[segmentIndex][pointIndex] as [
-                number,
-                number,
-                number
-              ];
-            } else {
-              currentPosition = [0, 0, 0];
-            }
-          }
-
-          const newPosition: [number, number, number] = [...currentPosition];
+          const newPosition: [number, number, number] = [
+            ...selectedPointPosition,
+          ];
           if (axis === "x") newPosition[0] = numValue;
           else if (axis === "y") newPosition[1] = numValue;
           else if (axis === "z") newPosition[2] = numValue;
 
-          // Compute current effective points to find all shared vertices
-          const effectivePoints3d = applyTransformsToPolyline(
-            originalPoints,
-            currentTransforms
-          );
-
-          // Use updateDuplicateVertices to handle shared vertices
-          const newTransforms = updateDuplicateVertices(
-            currentPosition,
+          // Update this vertex position and all shared vertices
+          const newSegments = updateVertexPosition(
+            points3d,
+            currentSegments,
+            segmentIndex,
+            pointIndex,
             newPosition,
-            effectivePoints3d,
-            currentTransforms
+            // Update shared vertices
+            true
           );
 
           return {
             ...prev,
             [labelId]: {
-              points: newTransforms,
+              segments: newSegments,
               path: prev[labelId].path,
               sampleId: prev[labelId].sampleId,
             },

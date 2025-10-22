@@ -83,32 +83,25 @@ export interface TransformedLabelData {
   worldRotation: [number, number, number];
 }
 
-// Polyline point transformations - stores modified points for each label
-export interface PolylinePointTransform {
-  segmentIndex: number;
-  pointIndex: number;
-  position: [number, number, number];
+// Polyline segment transformations - stores modified segments for each label
+// Each segment is a list of connected vertices
+// Segments are stored in an array where the index IS the segmentIndex
+export interface PolylineSegmentTransform {
+  // All vertices in this segment (connected)
+  points: [number, number, number][];
 }
 
 export interface PolylinePointTransformData {
-  points: PolylinePointTransform[];
+  segments: PolylineSegmentTransform[];
   path: string;
   sampleId: string;
 }
 
-export interface SegmentPolylineState {
+export interface SegmentState {
   isActive: boolean;
-  vertices: [number, number, number][];
+  isClosed: boolean;
   currentMousePosition: [number, number, number] | null;
-  isClosed: boolean;
-}
-
-export interface TempPolyline {
-  id: string;
   vertices: [number, number, number][];
-  isClosed: boolean;
-  color: string;
-  lineWidth: number;
 }
 
 export interface AnnotationPlaneState {

@@ -11,9 +11,8 @@ import type {
   AnnotationPlaneState,
   HoveredPolylineInfo,
   PolylinePointTransformData,
-  SegmentPolylineState,
+  SegmentState,
   SelectedPoint,
-  TempPolyline,
   TransformedLabelData,
   TransformMode,
   TransformSpace,
@@ -289,15 +288,8 @@ export const polylinePointTransformsAtom = atom<
   default: {},
 });
 
-export const polylineEffectivePointsAtom = atomFamily<Vector3Tuple[][], string>(
-  {
-    key: "fo3d-polylineEffectivePoints",
-    default: [],
-  }
-);
-
-export const segmentPolylineStateAtom = atom<SegmentPolylineState>({
-  key: "fo3d-segmentPolylineState",
+export const segmentStateAtom = atom<SegmentState>({
+  key: "fo3d-segmentState",
   default: {
     isActive: false,
     vertices: [],
@@ -309,18 +301,13 @@ export const segmentPolylineStateAtom = atom<SegmentPolylineState>({
 export const isActivelySegmentingSelector = selector<boolean>({
   key: "fo3d-isActivelySegmentingSelector",
   get: ({ get }) => {
-    return get(segmentPolylineStateAtom).isActive;
+    return get(segmentStateAtom).isActive;
   },
 });
 
 export const isSegmentingPointerDownAtom = atom<boolean>({
   key: "fo3d-isSegmentingPointerDownAtom",
   default: false,
-});
-
-export const tempPolylinesAtom = atom<TempPolyline[]>({
-  key: "fo3d-tempPolylines",
-  default: [],
 });
 
 export const snapCloseAutomaticallyAtom = atom<boolean>({
@@ -433,14 +420,13 @@ export const clearTransformStateSelector = selector({
     set(currentArchetypeSelectedForTransformAtom, null);
     set(isCurrentlyTransformingAtom, false);
     // Note: We don't clear polylinePointTransforms here as it should persist
-    set(segmentPolylineStateAtom, {
+    set(segmentStateAtom, {
       isActive: false,
       vertices: [],
       currentMousePosition: null,
       isClosed: false,
     });
     set(sharedCursorPositionAtom, null);
-    set(tempPolylinesAtom, []);
     set(cameraViewStatusAtom, {
       viewName: null,
       timestamp: null,

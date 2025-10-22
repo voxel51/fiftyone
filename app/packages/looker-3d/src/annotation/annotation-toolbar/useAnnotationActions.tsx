@@ -17,11 +17,10 @@ import {
   currentArchetypeSelectedForTransformAtom,
   editSegmentsModeAtom,
   polylinePointTransformsAtom,
-  segmentPolylineStateAtom,
+  segmentStateAtom,
   selectedLabelForAnnotationAtom,
   selectedPolylineVertexAtom,
   snapCloseAutomaticallyAtom,
-  tempPolylinesAtom,
   transformModeAtom,
   transformSpaceAtom,
 } from "../../state";
@@ -31,7 +30,6 @@ import type {
   TransformMode,
   TransformSpace,
 } from "../types";
-import { deletePolylinePoint } from "../utils/polyline-delete";
 import {
   PlaneCoordinateInputs,
   VertexCoordinateInputs,
@@ -53,16 +51,13 @@ export const useAnnotationActions = () => {
   const [selectedPoint, setSelectedPoint] = useRecoilState(
     selectedPolylineVertexAtom
   );
-  const [segmentPolylineState, setSegmentPolylineState] = useRecoilState(
-    segmentPolylineStateAtom
-  );
+  const [segmentState, setSegmentState] = useRecoilState(segmentStateAtom);
   const [snapCloseAutomatically, setSnapCloseAutomatically] = useRecoilState(
     snapCloseAutomaticallyAtom
   );
   const [editing, setEditing] = useAtom(editingAtom);
   const [editSegmentsMode, setEditSegmentsMode] =
     useRecoilState(editSegmentsModeAtom);
-  const [tempPolylines, setTempPolylines] = useRecoilState(tempPolylinesAtom);
   const setPolylinePointTransforms = useSetRecoilState(
     polylinePointTransformsAtom
   );
@@ -85,26 +80,22 @@ export const useAnnotationActions = () => {
   );
 
   const handleStartSegmentPolyline = useCallback(() => {
-    setSegmentPolylineState({
+    setSegmentState({
       isActive: true,
       vertices: [],
       currentMousePosition: null,
       isClosed: false,
     });
-  }, [setSegmentPolylineState]);
+  }, [setSegmentState]);
 
   const handleCancelSegmentPolyline = useCallback(() => {
-    setSegmentPolylineState({
+    setSegmentState({
       isActive: false,
       vertices: [],
       currentMousePosition: null,
       isClosed: false,
     });
-  }, [setSegmentPolylineState]);
-
-  const handleClearTempPolylines = useCallback(() => {
-    setTempPolylines([]);
-  }, [setTempPolylines]);
+  }, [setSegmentState]);
 
   const handleDeleteSelectedPoint = useCallback(() => {
     if (!selectedPoint) return;
@@ -112,19 +103,42 @@ export const useAnnotationActions = () => {
     const { labelId, segmentIndex, pointIndex } = selectedPoint;
 
     setPolylinePointTransforms((prev) => {
-      const currentTransforms = prev[labelId]?.points || [];
-      const result = deletePolylinePoint(
-        currentTransforms,
-        segmentIndex,
-        pointIndex
+      const currentData = prev[labelId];
+      if (!currentData) return prev;
+
+      const currentSegments = currentData.segments || [];
+
+      // If the segment doesn't exist or the point doesn't exist, return unchanged
+      if (
+        segmentIndex >= currentSegments.length ||
+        pointIndex >= currentSegments[segmentIndex]?.points.length
+      ) {
+        return prev;
+      }
+
+      // Create new segments array with the point removed
+      const newSegments = currentSegments.map((segment, segIdx) => {
+        if (segIdx === segmentIndex) {
+          // Remove the point from this segment
+          const newPoints = segment.points.filter(
+            (_, ptIdx) => ptIdx !== pointIndex
+          );
+          return { points: newPoints };
+        }
+        return segment;
+      });
+
+      // Remove empty segments
+      const filteredSegments = newSegments.filter(
+        (segment) => segment.points.length > 0
       );
 
       return {
         ...prev,
         [labelId]: {
-          points: result.newTransforms,
-          path: prev[labelId]?.path || currentActiveField || "",
-          sampleId: currentSampleId,
+          segments: filteredSegments,
+          path: currentData.path,
+          sampleId: currentData.sampleId,
         },
       };
     });
@@ -246,9 +260,9 @@ export const useAnnotationActions = () => {
     setEditSegmentsMode(!editSegmentsMode);
     // Deactivate other modes when entering edit segments mode
     if (!editSegmentsMode) {
-      setSegmentPolylineState((prev) => ({ ...prev, isActive: false }));
+      setSegmentState((prev) => ({ ...prev, isActive: false }));
     }
-  }, [editSegmentsMode, setEditSegmentsMode, setSegmentPolylineState]);
+  }, [editSegmentsMode, setEditSegmentsMode, setSegmentState]);
 
   const handleDeselectLabel = useCallback(() => {
     setSelectedLabelForAnnotation(null);
@@ -297,8 +311,8 @@ export const useAnnotationActions = () => {
             tooltip: selectedLabelForAnnotation
               ? "Add new polyline segment to current polyline"
               : "Create new polyline",
-            isActive: segmentPolylineState.isActive,
-            onClick: segmentPolylineState.isActive
+            isActive: segmentState.isActive,
+            onClick: segmentState.isActive
               ? handleCancelSegmentPolyline
               : handleStartSegmentPolyline,
           },
@@ -453,7 +467,7 @@ export const useAnnotationActions = () => {
     handleTransformSpaceChange,
     selectedLabelForAnnotation,
     selectedPoint,
-    segmentPolylineState,
+    segmentState,
     annotationPlane,
     handleStartSegmentPolyline,
     handleCancelSegmentPolyline,

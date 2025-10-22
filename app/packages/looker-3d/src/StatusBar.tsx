@@ -29,7 +29,7 @@ import {
   activeNodeAtom,
   cameraViewStatusAtom,
   isStatusBarOnAtom,
-  segmentPolylineStateAtom,
+  segmentStateAtom,
 } from "./state";
 
 const PerfContainer = styled.div`
@@ -398,7 +398,7 @@ export const StatusBar = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [showPerfStatus, setShowPerfStatus] = useRecoilState(isStatusBarOnAtom);
   const setActiveNode = useSetRecoilState(activeNodeAtom);
-  const segmentPolylineState = useRecoilState(segmentPolylineStateAtom)[0];
+  const segmentState = useRecoilValue(segmentStateAtom);
   const cameraViewStatus = useRecoilValue(cameraViewStatusAtom);
   const isMultiviewOn = useRecoilValue(isInMultiPanelViewAtom);
 
@@ -433,7 +433,7 @@ export const StatusBar = ({
         </ViewStatusMessage>
       )}
 
-      {segmentPolylineState.isActive && (
+      {segmentState.isActive && (
         <SegmentHint $border={theme.primary.main} $text={"#e0e0e0"}>
           <SegmentHintRow>
             <InfoOutlinedIcon
