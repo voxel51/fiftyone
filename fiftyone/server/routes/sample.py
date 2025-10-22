@@ -161,9 +161,11 @@ def get_closest_ancestor_path(sample: fo.Sample, field: str) -> str:
     return sub_path
 
 
-def get_field_type(schema: Dict[str, fo.Field], field: str) -> type:
+def get_embedded_field_type(
+    schema: Dict[str, fo.Field], field: str
+) -> Optional[type]:
     """
-    Gets the type of the specified field.
+    Gets the type of the specified field, or None if the field is a scalar.
 
     Args:
         schema: Dataset schema
@@ -179,14 +181,28 @@ def get_field_type(schema: Dict[str, fo.Field], field: str) -> type:
     field_schema = schema[field_parts[0]]
 
     for part in field_parts[1:]:
-        if not field_schema.has_field(part):
-            raise ValueError(f"No schema available for field '{field}'")
-        field_schema = field_schema.get_field(part)
+        if isinstance(field_schema, fo.EmbeddedDocumentListField) and re.match(
+            r"^\d+$", part
+        ):
+            raise ValueError(
+                "Unsupported schema for field '{field}'; "
+                "cannot determine types for lists of embedded documents"
+            )
+
+        elif isinstance(field_schema, fo.EmbeddedDocumentField):
+            if not field_schema.has_field(part):
+                raise ValueError(f"No schema available for field '{field}'")
+            # recurse into nested document
+            field_schema = field_schema.get_field(part)
+
+        else:
+            raise ValueError(f"Unsupported schema for field '{field}'")
 
     if isinstance(field_schema, fo.EmbeddedDocumentField):
         return field_schema.document_type_obj
-    else:
-        return field_schema
+
+    # scalar value; type can be inferred
+    return None
 
 
 def get_sample_element(sample: fo.Sample, field: str) -> Optional[Any]:
@@ -234,7 +250,7 @@ def ensure_sample_field(sample: fo.Sample, field: str):
     Returns:
         None
     """
-    if field.endswith(".-") or re.match(r".*\.[0-9]+$", field):
+    if field.endswith(".-") or re.match(r".*\.\d+$", field):
         # Special cases for JSON-patch;
         # '-' is interpreted as "append to the array".
         # A numeric last part is indexing into an array.
@@ -251,11 +267,11 @@ def ensure_sample_field(sample: fo.Sample, field: str):
     schema = sample.dataset.get_field_schema()
 
     ancestor_path = get_closest_ancestor_path(sample, field)
-    field_type = get_field_type(schema, ancestor_path)
+    field_type = get_embedded_field_type(schema, ancestor_path)
 
-    logger.info("Initializing %s field at %s", field_type, ancestor_path)
-
-    sample.set_field(ancestor_path, field_type())
+    if field_type is not None:
+        logger.info("Initializing %s field at %s", field_type, ancestor_path)
+        sample.set_field(ancestor_path, field_type())
 
 
 def save_sample(
