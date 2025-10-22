@@ -141,7 +141,13 @@ class HFDatasetDocGenerator:
                         filename="README.md",
                         repo_type="dataset",
                     )
-                    response = requests.get(readme_url, timeout=10)
+                    response = requests.get(
+                        readme_url,
+                        timeout=10,
+                        headers={
+                            "User-Agent": "Voxel51-FiftyOne-Docs/1.0 (+https://voxel51.com)"
+                        },
+                    )
                     card_data = (
                         response.text if response.status_code == 200 else None
                     )
@@ -155,12 +161,15 @@ class HFDatasetDocGenerator:
                         card_data=card_data,
                     )
                     datasets.append(dataset)
-                except Exception as e:
-                    logger.warning(f"Error processing {dataset_info.id}: {e}")
+                except requests.RequestException as e:
+                    logger.warning(f"Network error for {dataset_info.id}: {e}")
+                    continue
+                except (ValueError, AttributeError) as e:
+                    logger.warning(f"Data error for {dataset_info.id}: {e}")
                     continue
 
         except Exception as e:
-            logger.error(f"Error fetching datasets: {e}")
+            logger.exception("Error fetching datasets")
             return []
 
         return datasets
