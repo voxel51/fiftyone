@@ -21,6 +21,10 @@ import fiftyone.core.labels as fol
 import fiftyone.server.routes.sample as fors
 
 
+def _create_dummy_instance(cls_type: type) -> dict:
+    return json.loads(cls_type().to_json())
+
+
 @pytest.fixture(name="dataset")
 def fixture_dataset():
     """Creates a persistent dataset for testing."""
@@ -91,6 +95,21 @@ class TestSampleRoutes:
         sample["primitive_field"] = "initial_value"
 
         dataset.add_sample(sample)
+
+        # uninitialized fields that the dataset is aware of
+        dataset.add_sample_field(
+            "empty_classification",
+            fo.EmbeddedDocumentField,
+            fol.Classification,
+        )
+        dataset.add_sample_field(
+            "empty_detections", fo.EmbeddedDocumentField, fol.Detections
+        )
+        dataset.add_sample_field(
+            "empty_polylines", fo.EmbeddedDocumentField, fol.Polylines
+        )
+
+        dataset.save()
 
         return sample
 
@@ -374,6 +393,53 @@ class TestSampleRoutes:
         assert len(sample.ground_truth.detections) == 1
         assert sample.ground_truth.detections[0].id == str(
             self.INITIAL_DETECTION_ID
+        )
+
+    @pytest.mark.asyncio
+    async def test_patch_init_fields(self, mutator, mock_request, sample):
+        new_classification = _create_dummy_instance(fol.Classification)
+        new_detection = _create_dummy_instance(fol.Detection)
+        new_polylines = _create_dummy_instance(fol.Polyline)
+
+        patch_payload = [
+            {
+                "op": "add",
+                "path": "/empty_classification/_id",
+                "value": new_classification["_id"],
+            },
+            {
+                "op": "add",
+                "path": "/empty_detections/detections/0",
+                "value": new_detection,
+            },
+            {
+                "op": "add",
+                "path": "/empty_polylines/polylines/0",
+                "value": new_polylines,
+            },
+        ]
+        mock_request.body.return_value = json_payload(patch_payload)
+        mock_request.headers["Content-Type"] = "application/json-patch+json"
+
+        #####
+        response = await mutator.patch(mock_request)
+        #####
+
+        assert response.status_code == 200
+
+        sample.reload()
+
+        assert response.headers.get("ETag") == fors.generate_sample_etag(
+            sample
+        )
+        response_dict = json.loads(response.body)
+
+        assert response_dict["empty_classification"] == new_classification
+        assert (
+            response_dict["empty_detections"]["detections"][0] == new_detection
+        )
+        assert (
+            response_dict["empty_polylines"]["polylines"][0] == new_polylines
         )
 
     @pytest.mark.asyncio
