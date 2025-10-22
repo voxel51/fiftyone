@@ -9,7 +9,6 @@ import {
   snapCloseAutomaticallyAtom,
 } from "../state";
 import { PolylinePointTransformData } from "./types";
-import { applyTransformsToPolyline } from "./utils/polyline-utils";
 
 /**
  *
@@ -29,15 +28,15 @@ export const useSetEditingToNewPolyline = () => {
 
   return useCallback(
     (labelId: string, transformData: PolylinePointTransformData) => {
-      if (transformData.points.length === 0) return;
+      if (!transformData.segments || transformData.segments.length === 0)
+        return;
 
       // Only process transforms for the current sample
       if (transformData.sampleId !== currentSampleId) return;
 
-      const effectivePoints = applyTransformsToPolyline(
-        [],
-        transformData.points
-      );
+      // Array index IS the segmentIndex
+      const effectivePoints: [number, number, number][][] =
+        transformData.segments.map((segment) => segment.points);
 
       const polylineLabelData = {
         _id: labelId,

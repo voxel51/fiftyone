@@ -2,14 +2,14 @@ import { useCursor } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
-import { Mesh, Vector3, Matrix4 } from "three";
+import { Matrix4, Mesh, Vector3 } from "three";
 import { LABEL_3D_ANNOTATION_POINT_SELECTED_FOR_TRANSFORMATION_COLOR } from "../constants";
 import { Transformable } from "../labels/shared/TransformControls";
 import {
   currentArchetypeSelectedForTransformAtom,
   editSegmentsModeAtom,
   hoveredPolylineInfoAtom,
-  segmentPolylineStateAtom,
+  segmentStateAtom,
   selectedPolylineVertexAtom,
   tempVertexTransformsAtom,
   transformModeAtom,
@@ -55,7 +55,7 @@ export const PolylinePointMarker = ({
     currentArchetypeSelectedForTransformAtom
   );
 
-  const setSegmentPolylineState = useSetRecoilState(segmentPolylineStateAtom);
+  const setSegmentState = useSetRecoilState(segmentStateAtom);
   const setEditSegmentsMode = useSetRecoilState(editSegmentsModeAtom);
 
   const isSelected =
@@ -82,7 +82,7 @@ export const PolylinePointMarker = ({
       setTransformMode("translate");
 
       // Deactivate other modes when selecting a point
-      setSegmentPolylineState((prev) => ({
+      setSegmentState((prev) => ({
         ...prev,
         isActive: false,
       }));
@@ -96,7 +96,7 @@ export const PolylinePointMarker = ({
       setSelectedPoint,
       setCurrentArchetypeSelectedForTransform,
       setTransformMode,
-      setSegmentPolylineState,
+      setSegmentState,
       setEditSegmentsMode,
     ]
   );

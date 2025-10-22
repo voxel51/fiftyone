@@ -55,7 +55,6 @@ export const Polyline = ({
   );
 
   const {
-    effectivePoints3d,
     centroid,
     transformControlsRef,
     contentRef,
@@ -76,13 +75,12 @@ export const Polyline = ({
     isSelectedForAnnotation,
   });
 
-  const lines = useMemo(
-    () =>
-      effectivePoints3d.map((pts, i) => (
+  const lines = useMemo(() => {
+    return points3d.map((pts, i) => {
+      return (
         <LineDrei
           key={`polyline-${label._id}-${i}`}
           lineWidth={lineWidth}
-          segments
           points={pts}
           color={strokeAndFillColor}
           rotation={rotation}
@@ -92,18 +90,18 @@ export const Polyline = ({
           onPointerOut={handleSegmentPointerOut}
           onClick={handleSegmentClick}
         />
-      )),
-    [
-      effectivePoints3d,
-      strokeAndFillColor,
-      lineWidth,
-      rotation,
-      label._id,
-      handleSegmentPointerOver,
-      handleSegmentPointerOut,
-      handleSegmentClick,
-    ]
-  );
+      );
+    });
+  }, [
+    points3d,
+    strokeAndFillColor,
+    lineWidth,
+    rotation,
+    label._id,
+    handleSegmentPointerOver,
+    handleSegmentPointerOut,
+    handleSegmentClick,
+  ]);
 
   const material = useMemo(() => {
     if (!filled) return null;
@@ -125,7 +123,7 @@ export const Polyline = ({
       if (mesh.geometry) mesh.geometry.dispose();
     });
 
-    const meshes = createFilledPolygonMeshes(effectivePoints3d, material);
+    const meshes = createFilledPolygonMeshes(points3d, material);
     meshesRef.current = meshes || [];
 
     if (!meshes) return null;
@@ -137,7 +135,7 @@ export const Polyline = ({
         rotation={rotation as unknown as THREE.Euler}
       />
     ));
-  }, [filled, effectivePoints3d, rotation, material, label._id]);
+  }, [filled, points3d, rotation, material, label._id]);
 
   useEffect(() => {
     return () => {

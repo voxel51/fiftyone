@@ -20,7 +20,6 @@ import { get as _get } from "lodash";
 import { useCallback, useEffect, useMemo } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
-import type { PolylinePointTransform } from "../annotation/types";
 import { PANEL_ORDER_LABELS } from "../constants";
 import { usePathFilter } from "../hooks";
 import { type Looker3dSettings, defaultPluginSettings } from "../settings";
@@ -30,7 +29,7 @@ import {
   editSegmentsModeAtom,
   polylineLabelLineWidthAtom,
   polylinePointTransformsAtom,
-  segmentPolylineStateAtom,
+  segmentStateAtom,
   selectedLabelForAnnotationAtom,
   transformModeAtom,
 } from "../state";
@@ -54,7 +53,7 @@ export const ThreeDLabels = ({
   const annotationSchemas = useAtomValue(activeSchemas);
   const { coloring, selectedLabelTags, customizeColorSetting, labelTagColors } =
     useRecoilValue(fos.lookerOptions({ withFilter: true, modal: true }));
-  const isSegmenting = useRecoilValue(segmentPolylineStateAtom).isActive;
+  const isSegmenting = useRecoilValue(segmentStateAtom).isActive;
 
   const settings = fop.usePluginSettings<Looker3dSettings>(
     "3d",
@@ -268,6 +267,11 @@ export const ThreeDLabels = ({
         overlay._cls === "Polyline" &&
         (overlay as PolyLineProps).points3d
       ) {
+        const transformData = polylinePointTransforms[overlay._id];
+        const finalPoints3d = transformData?.segments
+          ? transformData.segments.map((seg) => seg.points)
+          : (overlay as PolyLineProps).points3d;
+
         newPolylineOverlays.push(
           <Polyline
             key={`polyline-${overlay._id ?? overlay.id}-${overlay.sampleId}`}
@@ -275,6 +279,7 @@ export const ThreeDLabels = ({
             opacity={labelAlpha}
             lineWidth={polylineWidth}
             {...(overlay as PolyLineProps)}
+            points3d={finalPoints3d}
             label={overlay}
             onClick={(e) => handleSelect(overlay, "polyline", e)}
             tooltip={tooltip}
@@ -294,7 +299,8 @@ export const ThreeDLabels = ({
     for (const [labelId, transformData] of Object.entries(
       polylinePointTransforms
     )) {
-      if (transformData.points.length === 0) continue;
+      if (!transformData.segments || transformData.segments.length === 0)
+        continue;
 
       // Only process transforms for the current sample
       if (transformData.sampleId !== currentSampleId) {
@@ -305,35 +311,9 @@ export const ThreeDLabels = ({
         continue;
       }
 
-      // Convert PolylinePointTransform[] to points3d format
-      const points3d: THREE.Vector3Tuple[][] = [];
-
-      // Group transforms by segmentIndex
-      const segmentsMap = new Map<number, PolylinePointTransform[]>();
-      transformData.points.forEach((transform) => {
-        const { segmentIndex } = transform;
-        if (!segmentsMap.has(segmentIndex)) {
-          segmentsMap.set(segmentIndex, []);
-        }
-        segmentsMap.get(segmentIndex)!.push(transform);
-      });
-
-      // Create segments from grouped transforms
-      segmentsMap.forEach((segmentTransforms) => {
-        // Sort by pointIndex to maintain order
-        segmentTransforms.sort((a, b) => a.pointIndex - b.pointIndex);
-
-        // Create segment points
-        const segmentPoints: THREE.Vector3Tuple[] = [];
-        segmentTransforms.forEach((transform) => {
-          segmentPoints[transform.pointIndex] = transform.position;
-        });
-
-        // Only add segment if it has at least 2 points
-        if (segmentPoints.length >= 2) {
-          points3d.push(segmentPoints);
-        }
-      });
+      const points3d: THREE.Vector3Tuple[][] = transformData.segments.map(
+        (segment) => segment.points
+      );
 
       // Only create overlay if we have valid segments
       if (points3d.length > 0) {
