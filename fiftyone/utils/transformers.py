@@ -1151,7 +1151,6 @@ class PoseEstimationGetItem(fout.GetItem):
             {
                 "images": img,
                 "boxes": [img_boxes],
-                "fo_image_size": [(height, width)],
             }
         )
 
@@ -1232,7 +1231,6 @@ class FiftyOneTransformerForPoseEstimation(
             args = {
                 "images": args,
                 "boxes": images_boxes,
-                "fo_image_size": images_hw,
             }
             args = self.collate_fn(self.transforms(args))
 
@@ -1400,8 +1398,6 @@ class _HFTransformsHandler:
         if isinstance(args, dict):
             # multiple inputs
             if self.return_image_sizes:
-                if args.get("fo_image_size"):
-                    image_size = args.pop("fo_image_size")
                 if not image_size and args.get("images", None) is not None:
                     image_size = (
                         [_get_image_size(img) for img in args["images"]]
