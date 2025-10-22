@@ -1,7 +1,7 @@
 import { West as BackIcon, Close as CloseIcon } from "@mui/icons-material";
 import { Typography } from "@mui/material";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import styled from "styled-components";
 import { ItemLeft } from "../Components";
@@ -133,6 +133,14 @@ const Modal = () => {
     return el;
   }, []);
   const show = useSetAtom(showModal);
+
+  useEffect(() => {
+    element.style.display = "block";
+
+    return () => {
+      element.style.display = "none";
+    };
+  }, [element]);
 
   return createPortal(
     <Background onClick={() => show(false)}>
