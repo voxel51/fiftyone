@@ -8,7 +8,7 @@ import {
   POLYLINES,
 } from "@fiftyone/utilities";
 import type { PrimitiveAtom } from "jotai";
-import { atom } from "jotai";
+import { atom, getDefaultStore } from "jotai";
 import { atomFamily } from "jotai/utils";
 import { activeSchemas, fieldType, schemaConfig } from "../state";
 import { addLabel, labels, labelsByPath } from "../useLabels";
@@ -16,7 +16,21 @@ import { addLabel, labels, labelsByPath } from "../useLabels";
 export const editing = atom<PrimitiveAtom<AnnotationLabel> | LabelType | null>(
   null
 );
+export const savedLabel = atom<AnnotationLabel["data"] | null>(null);
 
+const store = getDefaultStore();
+store.sub(editing, () => {
+  store.set(savedLabel, store.get(currentData));
+});
+
+export const hasChanges = atom((get) => {
+  const label = get(currentData);
+  const saved = get(savedLabel);
+
+  return saved === null
+    ? false
+    : JSON.stringify(label) !== JSON.stringify(saved);
+});
 const IS_CLASSIFICIATION = new Set([CLASSIFICATION, CLASSIFICATIONS]);
 const IS_DETECTION = new Set([DETECTION, DETECTIONS]);
 const IS_POLYLINE = new Set([POLYLINE, POLYLINES]);
@@ -170,48 +184,29 @@ export const defaultField = atomFamily((type: LabelType) =>
   })
 );
 
-export const saveValue = atom(
-  undefined,
-  (
-    get,
-    set,
-    { datasetId, sampleId }: { datasetId: string; sampleId: string }
-  ) => {
-    const data = get(current);
+export const addValue = atom(undefined, (get, set) => {
+  const data = get(current);
 
-    if (!data) {
-      throw new Error("no current label");
-    }
-
-    const { isNew, ...value } = data;
-
-    if (isNew) {
-      set(addLabel, value);
-    }
-
-    set(editing, null);
+  if (!data) {
+    throw new Error("no current label");
   }
-);
 
-export const deleteValue = atom(
-  null,
-  (
-    get,
-    set,
-    { datasetId, sampleId }: { datasetId: string; sampleId: string }
-  ) => {
-    const data = get(current);
+  const { isNew, ...value } = data;
 
-    if (!data) {
-      throw new Error("no current label");
-    }
-
-    // patchSample({ datasetId, sampleId, delta });
-    set(
-      labels,
-      get(labels).filter((label) => label.data._id !== data.data._id)
-    );
-
-    set(editing, null);
+  if (isNew) {
+    set(addLabel, value);
   }
-);
+});
+
+export const deleteValue = atom(null, (get, set) => {
+  const data = get(current);
+
+  if (!data) {
+    throw new Error("no current label");
+  }
+
+  set(
+    labels,
+    get(labels).filter((label) => label.data._id !== data.data._id)
+  );
+});

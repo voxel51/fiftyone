@@ -1,7 +1,5 @@
-import { JSONDeltas } from "../../../client";
-import { DetectionLabel } from "@fiftyone/looker/src/overlays/detection";
-import { extractNestedField, generateJsonPatch } from "../../../utils/json";
 import { ClassificationLabel } from "@fiftyone/looker/src/overlays/classifications";
+import { DetectionLabel } from "@fiftyone/looker/src/overlays/detection";
 import { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
 import {
   AnnotationLabel,
@@ -10,6 +8,8 @@ import {
   PolylineAnnotationLabel,
   Sample,
 } from "@fiftyone/state";
+import { JSONDeltas } from "../../../client";
+import { extractNestedField, generateJsonPatch } from "../../../utils/json";
 
 type PolylinesParent = {
   polylines: PolylineLabel[];

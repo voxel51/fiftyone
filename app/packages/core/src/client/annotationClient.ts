@@ -2,7 +2,6 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import { encodeURIPath, parseETag } from "./util";
 import { Sample } from "@fiftyone/looker";
 import {
   FetchFunctionConfig,
@@ -12,6 +11,7 @@ import {
   NotFoundError,
 } from "@fiftyone/utilities";
 import * as jsonpatch from "fast-json-patch";
+import { encodeURIPath, parseETag } from "./util";
 
 /**
  * List of JSON-patch operation deltas between two versions of a json object.

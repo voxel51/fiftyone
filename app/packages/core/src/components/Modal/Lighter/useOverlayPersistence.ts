@@ -4,9 +4,8 @@
 
 import type { OverlayEventDetail, Scene2D } from "@fiftyone/lighter";
 import { LIGHTER_EVENTS } from "@fiftyone/lighter";
-import { useCallback, useEffect, useMemo } from "react";
-import { JSONDeltas, patchSample } from "../../../client";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { Sample } from "@fiftyone/looker";
+import { isSampleIsh } from "@fiftyone/looker/src/util";
 import {
   AnnotationLabel,
   datasetId as fosDatasetId,
@@ -15,11 +14,12 @@ import {
   snackbarMessage,
   useRefreshSample,
 } from "@fiftyone/state";
+import { useCallback, useEffect, useMemo } from "react";
+import { useRecoilValue, useSetRecoilState } from "recoil";
+import { JSONDeltas, patchSample } from "../../../client";
+import { transformSampleData } from "../../../client/transformer";
 import { parseTimestamp } from "../../../client/util";
 import { buildJsonPath, buildLabelDeltas, OpType } from "./deltas";
-import { transformSampleData } from "../../../client/transformer";
-import { Sample } from "@fiftyone/looker";
-import { isSampleIsh } from "@fiftyone/looker/src/util";
 
 /**
  * Hook that handles overlay persistence events.

@@ -44,6 +44,7 @@ const handleSample = async ({
     if (!schemas[path]?.active) {
       continue;
     }
+
     const type = await getFieldType(paths[path]);
     const result = get(data, paths[path]);
 

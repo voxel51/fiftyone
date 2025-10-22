@@ -1,51 +1,35 @@
-import { Button } from "@fiftyone/components";
+import { Button, MuiButton } from "@fiftyone/components";
 import { DeleteOutline } from "@mui/icons-material";
-import { useAtomValue, useSetAtom } from "jotai";
-import React, { useCallback } from "react";
+import { useAtomValue } from "jotai";
+import React, { useContext } from "react";
 import { RoundButton } from "../Actions";
+import { ConfirmationContext } from "../Confirmation";
 import { Row } from "./Components";
-import {
-  current as currentLabelAtom,
-  currentField,
-  editing,
-  isNew,
-} from "./state";
-import { LIGHTER_EVENTS, useLighter } from "@fiftyone/lighter";
+import { currentField, hasChanges, isNew } from "./state";
+import useExit from "./useExit";
+import useSave from "./useSave";
 
 const SaveFooter = () => {
-  const { scene } = useLighter();
-  const annotationLabel = useAtomValue(currentLabelAtom);
-  const setEditing = useSetAtom(editing);
+  const { onDelete, onExit: onExitConfirm } = useContext(ConfirmationContext);
+  const onExit = useExit();
+  const onSave = useSave();
   const showCancel = useAtomValue(isNew);
-
-  const onSave = useCallback(() => {
-    if (scene) {
-      scene.dispatchSafely({
-        type: LIGHTER_EVENTS.DO_PERSIST_OVERLAY,
-        detail: { ...annotationLabel },
-      });
-    }
-  }, [annotationLabel, scene]);
-
-  const onDelete = useCallback(() => {
-    if (scene) {
-      scene.dispatchSafely({
-        type: LIGHTER_EVENTS.DO_REMOVE_OVERLAY,
-        detail: {
-          label: { ...annotationLabel },
-          onSuccess: () => {
-            scene.exitInteractiveMode();
-            setEditing(null);
-          },
-        },
-      });
-    }
-  }, [annotationLabel, scene, setEditing]);
+  const changes = useAtomValue(hasChanges);
 
   return (
     <>
-      <Button onClick={onSave}>Save</Button>
-      <RoundButton onClick={onDelete}>
+      <MuiButton
+        disabled={!changes}
+        onClick={() => {
+          onSave();
+          onExit();
+        }}
+        variant="contained"
+        color="primary"
+      >
+        Save
+      </MuiButton>
+      <RoundButton onClick={showCancel ? onExitConfirm : onDelete}>
         {showCancel ? (
           "Cancel"
         ) : (
@@ -60,8 +44,9 @@ const SaveFooter = () => {
 };
 
 const CancelFooter = () => {
-  const setEditingAtom = useSetAtom(editing);
-  return <Button onClick={() => setEditingAtom(null)}>Cancel</Button>;
+  const onExit = useExit();
+
+  return <Button onClick={onExit}>Cancel</Button>;
 };
 
 export default function Footer() {

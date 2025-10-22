@@ -4,9 +4,15 @@ import {
   useLighter,
 } from "@fiftyone/lighter";
 import { expandPath, field } from "@fiftyone/state";
-import { FLOAT_FIELD, INT_FIELD } from "@fiftyone/utilities";
+import {
+  BOOLEAN_FIELD,
+  FLOAT_FIELD,
+  INT_FIELD,
+  STRING_FIELD,
+} from "@fiftyone/utilities";
 import { useAtom, useAtomValue } from "jotai";
 import React, { useEffect, useMemo } from "react";
+import uuid from "react-uuid";
 import { useRecoilCallback } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import {
@@ -28,9 +34,14 @@ const getLabel = (value) => {
   return value;
 };
 
-const createInput = (name: string) => {
+const createInput = (name: string, ftype: string) => {
   return {
-    type: "string",
+    type:
+      ftype === STRING_FIELD
+        ? "string"
+        : ftype === BOOLEAN_FIELD
+        ? "boolean"
+        : "number",
     view: {
       name: "PrimitiveView",
       label: name,
@@ -162,15 +173,24 @@ const AnnotationSchema = () => {
 
   useEffect(() => {
     const handler = () => {
-      const label = overlay?.getLabel();
+      const label = overlay?.label;
       label && save(label);
     };
 
     lighter.scene?.on(LIGHTER_EVENTS.COMMAND_EXECUTED, handler);
+    lighter.scene?.on(LIGHTER_EVENTS.REDO, handler);
+    lighter.scene?.on(LIGHTER_EVENTS.UNDO, handler);
     return () => {
       lighter.scene?.off(LIGHTER_EVENTS.COMMAND_EXECUTED, handler);
+      lighter.scene?.off(LIGHTER_EVENTS.REDO, handler);
+      lighter.scene?.off(LIGHTER_EVENTS.UNDO, handler);
     };
   }, [lighter.scene, overlay, save]);
+
+  const key = useMemo(() => {
+    data;
+    return uuid();
+  }, [data]);
 
   if (!field) {
     throw new Error("no field");
@@ -183,6 +203,7 @@ const AnnotationSchema = () => {
   return (
     <div>
       <SchemaIOComponent
+        key={key}
         schema={schema}
         data={data}
         onChange={async (changes) => {
@@ -193,7 +214,7 @@ const AnnotationSchema = () => {
           const value = { ...data, ...result };
 
           lighter.scene?.executeCommand(
-            new UpdateLabelCommand(overlay, overlay.getLabel(), value)
+            new UpdateLabelCommand(overlay, overlay.label, value)
           );
         }}
       />
