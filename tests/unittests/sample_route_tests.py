@@ -543,30 +543,28 @@ class TestSampleRoutes:
             == new_detection
         )
 
-        @pytest.mark.asyncio
-        async def test_patch_init_nested_fields_failure(
-            self, mutator, mock_request
-        ):
-            new_detection = _create_dummy_instance(fol.Detection)
+    @pytest.mark.asyncio
+    async def test_patch_init_nested_fields_failure(
+        self, mutator, mock_request
+    ):
+        new_detection = _create_dummy_instance(fol.Detection)
 
-            patch_payload = [
-                {
-                    "op": "add",
-                    "path": "/nested_doc/custom_documents/1/detections/detections/0",
-                    "value": new_detection,
-                },
-            ]
-            mock_request.body.return_value = json_payload(patch_payload)
-            mock_request.headers[
-                "Content-Type"
-            ] = "application/json-patch+json"
+        patch_payload = [
+            {
+                "op": "add",
+                "path": "/nested_doc/custom_documents/1/detections/detections/0",
+                "value": new_detection,
+            },
+        ]
+        mock_request.body.return_value = json_payload(patch_payload)
+        mock_request.headers["Content-Type"] = "application/json-patch+json"
 
-            #####
-            response = await mutator.patch(mock_request)
-            #####
+        #####
+        response = await mutator.patch(mock_request)
+        #####
 
-            # auto-initialization not supported for lists of embedded documents
-            assert response.status_code == 500
+        # auto-initialization not supported for lists of embedded documents
+        assert response.status_code == 500
 
     @pytest.mark.asyncio
     async def test_patch_rplc_primitive(self, mutator, mock_request, sample):
