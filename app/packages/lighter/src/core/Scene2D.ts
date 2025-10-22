@@ -46,6 +46,7 @@ import {
   RenderingStateManager,
 } from "./RenderingStateManager";
 import type { Scene2DConfig, SceneOptions } from "./SceneConfig";
+import { InteractiveDetectionHandler } from "../interaction/InteractiveDetectionHandler";
 
 export const TypeGuards = {
   isSelectable: (
@@ -206,6 +207,26 @@ export class Scene2D {
           if (overlay) {
             overlay.markDirty();
           }
+        }
+      },
+      this.abortController
+    );
+
+    // Listen for OVERLAY_ESTABLISH events to unset bounds of new overlay
+    config.eventBus.on(
+      LIGHTER_EVENTS.OVERLAY_ESTABLISH,
+      (event) => {
+        const { overlay, absoluteBounds, relativeBounds } = event.detail;
+
+        if (overlay) {
+          const addCommand = new AddOverlayCommand(
+            this,
+            overlay,
+            absoluteBounds,
+            relativeBounds
+          );
+
+          this.undoRedo.push(addCommand);
         }
       },
       this.abortController
@@ -1490,9 +1511,11 @@ export class Scene2D {
     overlay: BaseOverlay & Spatial
   ): void {
     const relativeBounds = overlay.getRelativeBounds();
-    const absoluteBounds =
-      this.coordinateSystem.relativeToAbsolute(relativeBounds);
-    overlay.setAbsoluteBounds(absoluteBounds);
+    if (BaseOverlay.validBounds(relativeBounds)) {
+      const absoluteBounds =
+        this.coordinateSystem.relativeToAbsolute(relativeBounds);
+      overlay.setAbsoluteBounds(absoluteBounds);
+    }
   }
 
   /**
@@ -1534,15 +1557,22 @@ export class Scene2D {
     for (const overlay of this.overlays.values()) {
       if (TypeGuards.isSpatial(overlay) && overlay.needsCoordinateUpdate()) {
         this.updateSpatialOverlayRelativeBounds(overlay);
+        const absoluteBounds = overlay.getAbsoluteBounds();
+        const relativeBounds = overlay.getRelativeBounds();
 
-        this.dispatch({
-          type: LIGHTER_EVENTS.OVERLAY_BOUNDS_CHANGED,
-          detail: {
-            id: overlay.id,
-            absoluteBounds: overlay.getAbsoluteBounds(),
-            relativeBounds: overlay.getRelativeBounds(),
-          },
-        });
+        if (
+          BaseOverlay.validBounds(absoluteBounds) &&
+          BaseOverlay.validBounds(relativeBounds)
+        ) {
+          this.dispatch({
+            type: LIGHTER_EVENTS.OVERLAY_BOUNDS_CHANGED,
+            detail: {
+              id: overlay.id,
+              absoluteBounds,
+              relativeBounds,
+            },
+          });
+        }
       }
     }
 
@@ -1664,7 +1694,9 @@ export class Scene2D {
    * Enters interactive mode with the provided interaction handler.
    * @param handler - The interaction handler to use for interactive mode.
    */
-  public enterInteractiveMode(handler: InteractionHandler): void {
+  public enterInteractiveMode(
+    handler: InteractionHandler | InteractiveDetectionHandler
+  ): void {
     if (this.interactiveMode) {
       return;
     }
