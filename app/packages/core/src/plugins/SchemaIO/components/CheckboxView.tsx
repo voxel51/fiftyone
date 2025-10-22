@@ -5,7 +5,6 @@ import autoFocus from "../utils/auto-focus";
 import HeaderView from "./HeaderView";
 
 export default function CheckboxView(props) {
-  console.log(props);
   const { onChange, path, schema, data } = props;
   const [key, setUserChanged] = useKey(path, schema, data, true);
 

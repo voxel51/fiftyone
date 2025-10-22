@@ -152,6 +152,11 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
     [confirmExit, nextNavigator]
   );
 
+  const previous = useCallback(
+    () => confirmExit(previousNavigator.navigate),
+    [confirmExit, previousNavigator]
+  );
+
   if (!modal) {
     return null;
   }
@@ -162,7 +167,7 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
         <Arrow
           $isSidebarVisible={isSidebarVisible}
           $sidebarWidth={sidebarwidth}
-          onClick={next}
+          onClick={previous}
         >
           <LookerArrowLeftIcon data-cy="nav-left-button" />
         </Arrow>
