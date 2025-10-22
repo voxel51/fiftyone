@@ -6,6 +6,7 @@ import { CLASSIFICATION, DETECTION, POLYLINE } from "@fiftyone/utilities";
 import { PolylineOutlined } from "@mui/icons-material";
 import ThreeDIcon from "@mui/icons-material/ViewInAr";
 import { IconButton, Typography } from "@mui/material";
+import React from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ItemLeft } from "./Components";
@@ -181,6 +182,7 @@ export const ThreeDPolylines = () => {
     isPolylineAnnotateActive,
     setIsPolylineAnnotateActive,
   ] = useRecoilState(isPolylineAnnotateActiveAtom);
+
   const theme = useTheme() as any;
 
   return (
@@ -189,9 +191,7 @@ export const ThreeDPolylines = () => {
         setIsPolylineAnnotateActive(!isPolylineAnnotateActive);
       }}
       sx={{
-        backgroundColor: isPolylineAnnotateActive
-          ? theme.background.level1
-          : "transparent",
+        backgroundColor: theme.background.level1,
         color: isPolylineAnnotateActive
           ? theme.primary.plainColor
           : theme.text.secondary,

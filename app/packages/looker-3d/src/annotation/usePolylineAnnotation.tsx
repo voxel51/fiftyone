@@ -1,3 +1,4 @@
+import * as fos from "@fiftyone/state";
 import { ThreeEvent } from "@react-three/fiber";
 import chroma from "chroma-js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -5,6 +6,7 @@ import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import type { Vector3Tuple } from "three";
 import * as THREE from "three";
 import {
+  currentActiveAnnotationField3dAtom,
   editSegmentsModeAtom,
   hoveredLabelAtom,
   hoveredPolylineInfoAtom,
@@ -36,6 +38,8 @@ export const usePolylineAnnotation = ({
   isAnnotateMode,
   isSelectedForAnnotation,
 }: UsePolylineAnnotationProps) => {
+  const currentSampleId = useRecoilValue(fos.currentSampleId);
+  const currentActiveField = useRecoilValue(currentActiveAnnotationField3dAtom);
   const [polylinePointTransforms, setPolylinePointTransforms] = useRecoilState(
     polylinePointTransformsAtom
   );
@@ -59,7 +63,8 @@ export const usePolylineAnnotation = ({
 
   const updateEffectivePoints = useCallback(() => {
     const labelId = label._id;
-    const transforms = polylinePointTransforms[labelId] || [];
+
+    const transforms = polylinePointTransforms[labelId]?.points || [];
     const result = applyTransformsToPolyline(points3d, transforms);
     setPolylineEffectivePoints(result);
   }, [
@@ -132,7 +137,7 @@ export const usePolylineAnnotation = ({
             onPointMove={(newPosition) => {
               setPolylinePointTransforms((prev) => {
                 const labelId = label._id;
-                const currentTransforms = prev[labelId] || [];
+                const currentTransforms = prev[labelId]?.points || [];
 
                 const newTransforms = updateDuplicateVertices(
                   point,
@@ -143,7 +148,11 @@ export const usePolylineAnnotation = ({
 
                 return {
                   ...prev,
-                  [labelId]: newTransforms,
+                  [labelId]: {
+                    points: newTransforms,
+                    path: prev[labelId].path,
+                    sampleId: prev[labelId].sampleId,
+                  },
                 };
               });
             }}
@@ -244,7 +253,7 @@ export const usePolylineAnnotation = ({
 
     setPolylinePointTransforms((prev) => {
       const labelId = label._id;
-      const currentTransforms = prev[labelId] || [];
+      const currentTransforms = prev[labelId]?.points || [];
 
       const newTransforms = applyDeltaToAllPoints(
         effectivePoints3d,
@@ -253,7 +262,14 @@ export const usePolylineAnnotation = ({
         [worldDelta.x, worldDelta.y, worldDelta.z]
       );
 
-      return { ...prev, [labelId]: newTransforms };
+      return {
+        ...prev,
+        [labelId]: {
+          points: newTransforms,
+          path: currentActiveField || "",
+          sampleId: currentSampleId,
+        },
+      };
     });
 
     // Reset group position to prevent double-application
@@ -265,6 +281,7 @@ export const usePolylineAnnotation = ({
 
     setStartMatrix(null);
   }, [
+    currentSampleId,
     label._id,
     points3d,
     effectivePoints3d,
@@ -340,7 +357,7 @@ export const usePolylineAnnotation = ({
         // Insert the new vertex into the segment
         setPolylinePointTransforms((prev) => {
           const labelId = label._id;
-          const currentTransforms = prev[labelId] || [];
+          const currentTransforms = prev[labelId]?.points || [];
 
           const newTransforms = insertVertexInSegment(
             points3d,
@@ -357,7 +374,11 @@ export const usePolylineAnnotation = ({
 
           return {
             ...prev,
-            [labelId]: newTransforms,
+            [labelId]: {
+              points: newTransforms,
+              path: prev[labelId].path,
+              sampleId: prev[labelId].sampleId,
+            },
           };
         });
       }

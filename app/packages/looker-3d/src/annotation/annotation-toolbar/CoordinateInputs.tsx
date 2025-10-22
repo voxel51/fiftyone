@@ -1,5 +1,5 @@
 import { Box, TextField } from "@mui/material";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { forwardRef, useCallback, useEffect, useMemo, useState } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import type { PolyLineProps } from "../../labels/polyline";
 import {
@@ -29,34 +29,31 @@ interface CoordinateFieldProps {
   onBlur: () => void;
 }
 
-const CoordinateField = ({
-  label,
-  value,
-  onChange,
-  onFocus,
-  onBlur,
-}: CoordinateFieldProps) => {
-  return (
-    <TextField
-      size="small"
-      label={label}
-      value={value}
-      onFocus={onFocus}
-      onBlur={onBlur}
-      onChange={(e) => onChange(e.target.value)}
-      type="number"
-      inputProps={{
-        step: "0.1",
-        style: { fontSize: "11px", padding: "4px 6px" },
-      }}
-      sx={{
-        "& .MuiInputLabel-root": { fontSize: "10px" },
-        "& .MuiOutlinedInput-root": { height: "24px" },
-        "& .MuiOutlinedInput-input": { padding: "4px 6px" },
-      }}
-    />
-  );
-};
+const CoordinateField = forwardRef<HTMLInputElement, CoordinateFieldProps>(
+  ({ label, value, onChange, onFocus, onBlur }, ref) => {
+    return (
+      <TextField
+        ref={ref}
+        size="small"
+        label={label}
+        value={value}
+        onFocus={onFocus}
+        onBlur={onBlur}
+        onChange={(e) => onChange(e.target.value)}
+        type="number"
+        inputProps={{
+          step: "0.1",
+          style: { fontSize: "11px", padding: "4px 6px" },
+        }}
+        sx={{
+          "& .MuiInputLabel-root": { fontSize: "10px" },
+          "& .MuiOutlinedInput-root": { height: "24px" },
+          "& .MuiOutlinedInput-input": { padding: "4px 6px" },
+        }}
+      />
+    );
+  }
+);
 
 export const PlaneCoordinateInputs = ({
   className,
@@ -238,7 +235,8 @@ export const VertexCoordinateInputs = ({
     if (!selectedPoint || !selectedLabel) return null;
 
     const polylineLabel = selectedLabel as unknown as PolyLineProps;
-    const transforms = polylinePointTransforms[selectedPoint.labelId] || [];
+    const transforms =
+      polylinePointTransforms[selectedPoint.labelId]?.points || [];
 
     return getVertexPosition(
       selectedPoint,
@@ -274,7 +272,7 @@ export const VertexCoordinateInputs = ({
         const { segmentIndex, pointIndex, labelId } = selectedPoint;
 
         setPolylinePointTransforms((prev) => {
-          const currentTransforms = prev[labelId] || [];
+          const currentTransforms = prev[labelId]?.points || [];
           const polylineLabel = selectedLabel as unknown as PolyLineProps;
           const originalPoints = polylineLabel.points3d || [];
 
@@ -326,16 +324,15 @@ export const VertexCoordinateInputs = ({
             currentTransforms
           );
 
-          return { ...prev, [labelId]: newTransforms };
+          return {
+            ...prev,
+            [labelId]: {
+              points: newTransforms,
+              path: prev[labelId].path,
+              sampleId: prev[labelId].sampleId,
+            },
+          };
         });
-
-        // Note: this is a hack because transform controls
-        // is updating in a buggy way when the point is moved
-        const prevSelectedPoint = selectedPoint;
-        setSelectedPoint(null);
-        setTimeout(() => {
-          setSelectedPoint(prevSelectedPoint);
-        }, 0);
       }
     },
     [

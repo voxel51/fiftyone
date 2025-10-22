@@ -10,7 +10,7 @@ import { Vector3, Vector3Tuple } from "three";
 import type {
   AnnotationPlaneState,
   HoveredPolylineInfo,
-  PolylinePointTransform,
+  PolylinePointTransformData,
   SegmentPolylineState,
   SelectedPoint,
   TempPolyline,
@@ -283,7 +283,7 @@ export const selectedPolylineVertexAtom = atom<SelectedPoint | null>({
 });
 
 export const polylinePointTransformsAtom = atom<
-  Record<string, PolylinePointTransform[]>
+  Record<string, PolylinePointTransformData>
 >({
   key: "fo3d-polylinePointTransforms",
   default: {},
@@ -379,16 +379,6 @@ export const annotationPlaneAtom = atom<AnnotationPlaneState>({
   ],
 });
 
-export const isSnapToAnnotationPlaneAtom = atom<boolean>({
-  key: "fo3d-isSnapToAnnotationPlane",
-  default: true,
-  effects: [
-    getBrowserStorageEffectForKey("fo3d-isSnapToAnnotationPlane", {
-      valueClass: "boolean",
-    }),
-  ],
-});
-
 export const avoidZFightingAtom = atom<boolean>({
   key: "fo3d-avoidZFighting",
   default: true,
@@ -407,32 +397,6 @@ export const cameraViewStatusAtom = atom<{
   default: {
     viewName: null,
     timestamp: null,
-  },
-});
-
-// Selector to clear all transform state
-export const clearTransformStateSelector = selector({
-  key: "fo3d-clearTransformState",
-  get: () => null,
-  set: ({ set }) => {
-    set(transformModeAtom, "translate");
-    set(transformSpaceAtom, "world");
-    set(selectedPolylineVertexAtom, null);
-    set(currentArchetypeSelectedForTransformAtom, null);
-    set(isCurrentlyTransformingAtom, false);
-    // Note: We don't clear polylinePointTransforms here as it should persist
-    set(segmentPolylineStateAtom, {
-      isActive: false,
-      vertices: [],
-      currentMousePosition: null,
-      isClosed: false,
-    });
-    set(sharedCursorPositionAtom, null);
-    set(tempPolylinesAtom, []);
-    set(cameraViewStatusAtom, {
-      viewName: null,
-      timestamp: null,
-    });
   },
 });
 
@@ -456,4 +420,30 @@ export const currentActiveAnnotationField3dAtom = atom<string | null>({
       prependDatasetNameInKey: true,
     }),
   ],
+});
+
+// Selector to clear all annotation relates state
+export const clearTransformStateSelector = selector({
+  key: "fo3d-clearTransformState",
+  get: () => null,
+  set: ({ set }) => {
+    set(transformModeAtom, "translate");
+    set(transformSpaceAtom, "world");
+    set(selectedPolylineVertexAtom, null);
+    set(currentArchetypeSelectedForTransformAtom, null);
+    set(isCurrentlyTransformingAtom, false);
+    // Note: We don't clear polylinePointTransforms here as it should persist
+    set(segmentPolylineStateAtom, {
+      isActive: false,
+      vertices: [],
+      currentMousePosition: null,
+      isClosed: false,
+    });
+    set(sharedCursorPositionAtom, null);
+    set(tempPolylinesAtom, []);
+    set(cameraViewStatusAtom, {
+      viewName: null,
+      timestamp: null,
+    });
+  },
 });

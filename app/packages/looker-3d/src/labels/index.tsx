@@ -291,10 +291,17 @@ export const ThreeDLabels = ({
         .map((overlay) => overlay._id)
     );
 
-    for (const [labelId, transforms] of Object.entries(
+    for (const [labelId, transformData] of Object.entries(
       polylinePointTransforms
     )) {
-      if (transforms.length === 0 || existingPolylineIds.has(labelId)) {
+      if (transformData.points.length === 0) continue;
+
+      // Only process transforms for the current sample
+      if (transformData.sampleId !== currentSampleId) {
+        continue;
+      }
+
+      if (existingPolylineIds.has(labelId)) {
         continue;
       }
 
@@ -303,7 +310,7 @@ export const ThreeDLabels = ({
 
       // Group transforms by segmentIndex
       const segmentsMap = new Map<number, PolylinePointTransform[]>();
-      transforms.forEach((transform) => {
+      transformData.points.forEach((transform) => {
         const { segmentIndex } = transform;
         if (!segmentsMap.has(segmentIndex)) {
           segmentsMap.set(segmentIndex, []);
@@ -334,8 +341,7 @@ export const ThreeDLabels = ({
           _id: labelId,
           _cls: "Polyline",
           type: "Polyline",
-          // todo: THIS HAS TO CHANGE TO A REAL PATH
-          path: `polyline-${labelId.substring(0, 5)}`,
+          path: transformData.path,
           selected: false,
           sampleId: currentSampleId,
           tags: [],
