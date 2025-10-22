@@ -33,7 +33,10 @@ const SaveFooter = () => {
         type: LIGHTER_EVENTS.DO_REMOVE_OVERLAY,
         detail: {
           label: { ...annotationLabel },
-          onSuccess: () => setEditing(null),
+          onSuccess: () => {
+            scene.exitInteractiveMode();
+            setEditing(null);
+          },
         },
       });
     }
