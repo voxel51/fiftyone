@@ -25,6 +25,18 @@ def _create_dummy_instance(cls_type: type) -> dict:
     return json.loads(cls_type().to_json())
 
 
+class CustomEmbeddedDoc(fo.EmbeddedDocument):
+    classification = fo.EmbeddedDocumentField(document_type=fo.Classification)
+    detections = fo.EmbeddedDocumentField(document_type=fo.Detections)
+    polylines = fo.EmbeddedDocumentField(document_type=fo.Polylines)
+
+
+class CustomNestedDoc(fo.EmbeddedDocument):
+    custom_documents = fo.EmbeddedDocumentListField(
+        document_type=CustomEmbeddedDoc
+    )
+
+
 @pytest.fixture(name="dataset")
 def fixture_dataset():
     """Creates a persistent dataset for testing."""
@@ -109,7 +121,24 @@ class TestSampleRoutes:
             "empty_polylines", fo.EmbeddedDocumentField, fol.Polylines
         )
 
-        dataset.save()
+        # custom embedded documents
+        dataset.add_sample_field(
+            "nested_doc",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=CustomNestedDoc,
+        )
+
+        sample["nested_doc"] = CustomNestedDoc(
+            custom_documents=[
+                CustomEmbeddedDoc(
+                    classification=fol.Classification(),
+                    detections=fol.Detections(),
+                    polylines=fol.Polylines(),
+                ),
+                # empty doc we want the route to initialize
+                CustomEmbeddedDoc(),
+            ]
+        )
 
         return sample
 
@@ -440,6 +469,40 @@ class TestSampleRoutes:
         )
         assert (
             response_dict["empty_polylines"]["polylines"][0] == new_polylines
+        )
+
+    @pytest.mark.asyncio
+    async def test_patch_nested_fields(self, mutator, mock_request, sample):
+        new_detection = _create_dummy_instance(fol.Detection)
+
+        patch_payload = [
+            {
+                "op": "add",
+                "path": "/nested_doc/custom_documents/0/detections/detections/0",
+                "value": new_detection,
+            },
+        ]
+        mock_request.body.return_value = json_payload(patch_payload)
+        mock_request.headers["Content-Type"] = "application/json-patch+json"
+
+        #####
+        response = await mutator.patch(mock_request)
+        #####
+
+        assert response.status_code == 200
+
+        sample.reload()
+
+        assert response.headers.get("ETag") == fors.generate_sample_etag(
+            sample
+        )
+        response_dict = json.loads(response.body)
+
+        assert (
+            response_dict["nested_doc"]["custom_documents"][0]["detections"][
+                "detections"
+            ][0]
+            == new_detection
         )
 
     @pytest.mark.asyncio
