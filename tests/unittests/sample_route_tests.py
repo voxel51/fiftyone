@@ -121,6 +121,11 @@ class TestSampleRoutes:
             "empty_polylines", fo.EmbeddedDocumentField, fol.Polylines
         )
 
+        dataset.add_sample_field(
+            "empty_primitive",
+            fo.StringField,
+        )
+
         # custom embedded documents
         dataset.add_sample_field(
             "nested_doc",
@@ -448,7 +453,7 @@ class TestSampleRoutes:
             },
             {
                 "op": "add",
-                "path": "/primitive_field",
+                "path": "/empty_primitive",
                 "value": "new primitive",
             },
         ]
@@ -475,7 +480,7 @@ class TestSampleRoutes:
         assert (
             response_dict["empty_polylines"]["polylines"][0] == new_polylines
         )
-        assert response_dict["primitive_field"] == "new primitive"
+        assert response_dict["empty_primitive"] == "new primitive"
 
     @pytest.mark.asyncio
     async def test_patch_nested_fields(self, mutator, mock_request, sample):
