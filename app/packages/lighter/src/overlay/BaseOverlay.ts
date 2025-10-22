@@ -57,9 +57,11 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
     this.markDirty();
   }
 
-  static validBounds(bounds: Rect): boolean {
+  static validBounds(bounds: Rect | undefined): boolean {
+    if (!bounds) return false;
+
     return ["x", "y", "width", "height"].every(
-      (prop) => typeof bounds[prop] === "number" && bounds[prop] >= 0
+      (prop) => !Number.isNaN(bounds[prop])
     );
   }
 

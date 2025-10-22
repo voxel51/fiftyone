@@ -7,13 +7,14 @@ import {
 import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { editing } from ".";
-import { currentOverlay, savedLabel } from "./state";
+import { current, currentOverlay, savedLabel } from "./state";
 
 export default function useExit() {
   const setEditing = useSetAtom(editing);
   const setSaved = useSetAtom(savedLabel);
   const { scene } = useLighter();
   const overlay = useAtomValue(currentOverlay);
+  const e = useAtomValue(current);
 
   return useCallback(() => {
     const store = getDefaultStore();
@@ -21,6 +22,12 @@ export default function useExit() {
     const label = store.get(savedLabel);
     setEditing(null);
     setSaved(null);
+
+    if (e?.isNew) {
+      scene?.exitInteractiveMode();
+      return;
+    }
+
     overlay &&
       scene?.executeCommand(
         new UpdateLabelCommand(overlay, overlay.label, label)
@@ -44,5 +51,5 @@ export default function useExit() {
         )
       );
     }
-  }, [scene, setEditing, setSaved, overlay]);
+  }, [scene, setEditing, setSaved, overlay, e]);
 }

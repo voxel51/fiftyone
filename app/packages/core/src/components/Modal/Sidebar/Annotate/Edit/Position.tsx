@@ -55,7 +55,7 @@ export default function Position() {
   }, [state]);
 
   useEffect(() => {
-    if (!(overlay instanceof BoundingBoxOverlay)) {
+    if (!(overlay instanceof BoundingBoxOverlay) || !overlay.hasValidBounds()) {
       return;
     }
 
@@ -68,7 +68,10 @@ export default function Position() {
 
   useEffect(() => {
     const handler = () => {
-      if (!(overlay instanceof BoundingBoxOverlay)) {
+      if (
+        !(overlay instanceof BoundingBoxOverlay) ||
+        !overlay.hasValidBounds()
+      ) {
         return;
       }
       const rect = overlay.getAbsoluteBounds();
@@ -124,7 +127,10 @@ export default function Position() {
         }}
         data={state}
         onChange={(data: Coordinates) => {
-          if (!(overlay instanceof BoundingBoxOverlay)) {
+          if (
+            !(overlay instanceof BoundingBoxOverlay) ||
+            !overlay.hasValidBounds()
+          ) {
             return;
           }
 

@@ -63,6 +63,8 @@ export type ResizeRegion =
 
 export type MoveState = ResizeRegion | "NONE" | "DRAGGING" | "SETTING";
 
+export const NO_BOUNDS = { x: NaN, y: NaN, width: NaN, height: NaN };
+
 /**
  * Bounding box overlay implementation with drag support, selection, and spatial coordinates.
  */
@@ -77,9 +79,8 @@ export class BoundingBoxOverlay
   private moveStartPosition?: Point;
   private moveStartBounds?: Rect;
   private isSelectedState = false;
-  private relativeBounds?: Rect;
+  private relativeBounds: Rect;
   private absoluteBounds: Rect;
-  private settingBounds = false;
 
   private _needsCoordinateUpdate = false;
   private textBounds?: Rect;
@@ -92,8 +93,8 @@ export class BoundingBoxOverlay
     this.isDraggable = options.draggable !== false;
     this.isResizeable = options.resizeable !== false;
 
-    this.relativeBounds = options.relativeBounds;
-    this.absoluteBounds = { x: NaN, y: NaN, width: NaN, height: NaN }; // Will be set by scene
+    this.relativeBounds = options.relativeBounds || NO_BOUNDS;
+    this.absoluteBounds = NO_BOUNDS; // Will be set by scene
     this._needsCoordinateUpdate = true;
   }
 
@@ -101,26 +102,28 @@ export class BoundingBoxOverlay
     return "BoundingBoxOverlay";
   }
 
+  unsetBounds(): void {
+    this.absoluteBounds = NO_BOUNDS;
+    this.relativeBounds = NO_BOUNDS;
+    this._needsCoordinateUpdate = false;
+    this.markDirty();
+  }
+
   // Spatial interface implementation
   getRelativeBounds(): Rect {
-    if (!this.relativeBounds) return { x: 0, y: 0, width: 0, height: 0 };
     return { ...this.relativeBounds };
   }
 
   setAbsoluteBounds(bounds: Rect): void {
-    if (BaseOverlay.validBounds(bounds)) {
-      this.absoluteBounds = { ...bounds };
-      this._needsCoordinateUpdate = false;
-      this.markDirty();
-    }
+    this.absoluteBounds = { ...bounds };
+    this._needsCoordinateUpdate = false;
+    this.markDirty();
   }
 
   setRelativeBounds(bounds: Rect): void {
-    if (BaseOverlay.validBounds(bounds)) {
-      this.relativeBounds = { ...bounds };
-      this._needsCoordinateUpdate = true;
-      this.markDirty();
-    }
+    this.relativeBounds = { ...bounds };
+    this._needsCoordinateUpdate = true;
+    this.markDirty();
   }
 
   getAbsoluteBounds(): Rect {
@@ -304,10 +307,14 @@ export class BoundingBoxOverlay
 
     if (distance > this.CLICK_THRESHOLD) {
       const resizeRegion = this.getResizeRegion(worldPoint, scale);
-      this.moveState = this.settingBounds
+      this.moveState = !this.hasValidBounds()
         ? "SETTING"
         : resizeRegion || "DRAGGING";
     }
+  }
+
+  getMoveState() {
+    return this.moveState;
   }
 
   isMoving() {
@@ -320,6 +327,10 @@ export class BoundingBoxOverlay
 
   isResizing() {
     return this.moveState.startsWith("RESIZE_");
+  }
+
+  isSetting() {
+    return this.moveState === "SETTING";
   }
 
   private getResizeRegion(
@@ -388,15 +399,15 @@ export class BoundingBoxOverlay
     scale: number
   ): boolean {
     const resizeRegion = this.getResizeRegion(worldPoint, scale);
-    const cursorRegion = !this.hasValidBounds()
+    const cursorState = !this.hasValidBounds()
       ? "SETTING"
       : resizeRegion || "DRAGGING";
 
-    if (cursorRegion === "DRAGGING" && !this.isDraggable) return false;
-    if (cursorRegion.startsWith("RESIZE_") && !this.isResizeable) return false;
+    if (cursorState === "DRAGGING" && !this.isDraggable) return false;
+    if (cursorState.startsWith("RESIZE_") && !this.isResizeable) return false;
 
-    if (cursorRegion === "SETTING") {
-      this.settingBounds = true;
+    if (cursorState === "SETTING") {
+      this.moveState = cursorState;
       this.setPosition(worldPoint);
       this.absoluteBounds = {
         ...worldPoint,
@@ -574,7 +585,6 @@ export class BoundingBoxOverlay
     this.moveStartPoint = undefined;
     this.moveStartPosition = undefined;
     this.moveStartBounds = undefined;
-    this.settingBounds = false;
 
     return true;
   }

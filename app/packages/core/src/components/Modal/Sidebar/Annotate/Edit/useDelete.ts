@@ -15,6 +15,7 @@ export default function useDelete() {
       detail: {
         label,
         onSuccess: () => {
+          scene.exitInteractiveMode();
           setter();
           exit();
         },
