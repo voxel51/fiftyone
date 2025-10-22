@@ -136,31 +136,6 @@ def generate_sample_etag(sample: fo.Sample) -> str:
     return utils.http.ETag.create(value)
 
 
-def get_closest_ancestor_path(sample: fo.Sample, field: str) -> str:
-    """Get the path to the closest existing ancestor to the specified field.
-
-    Args:
-        sample: The sample
-        field: Dot-delimited field
-    Returns:
-        The closest ancestor field which is subscriptable.
-    """
-    field_parts = field.split(".")
-
-    if len(field_parts) == 1:
-        return field
-
-    for offset in range(-1, -len(field_parts), -1):
-        sub_path = ".".join(field_parts[:offset])
-        try:
-            sample.get_field(sub_path)
-            return sub_path
-        except Exception:
-            continue
-
-    return sub_path
-
-
 def get_embedded_field_type(
     schema: Dict[str, fo.Field], field: str
 ) -> Optional[type]:
@@ -266,12 +241,41 @@ def ensure_sample_field(sample: fo.Sample, field: str):
 
     schema = sample.dataset.get_field_schema()
 
-    ancestor_path = get_closest_ancestor_path(sample, field)
-    field_type = get_embedded_field_type(schema, ancestor_path)
+    # track our current place in the hierarchy
+    current = sample
+    field_parts = field.split(".")
+    for idx, part in enumerate(field_parts):
+        field_path = ".".join(field_parts[: idx + 1])
+        try:
+            sample.get_field(field_path)
+        except Exception:
+            # no information available to create the fields
+            break
 
-    if field_type is not None:
-        logger.info("Initializing %s field at %s", field_type, ancestor_path)
-        sample.set_field(ancestor_path, field_type())
+        try:
+            current_part = current[part]
+        except KeyError:
+            current_part = None
+
+        if current_part is None:
+            # attempt to create the child field
+            try:
+                field_type = get_embedded_field_type(schema, field_path)
+            except Exception:
+                # no schema available for this type
+                break
+
+            if field_type is None:
+                # primitive value; type can be coerced
+                break
+            else:
+                logger.info(
+                    "Initializing %s field at %s", field_type, field_path
+                )
+                sample.set_field(field_path, field_type())
+
+        # recurse
+        current = current[part]
 
 
 def save_sample(

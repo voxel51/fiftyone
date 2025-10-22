@@ -126,6 +126,12 @@ class TestSampleRoutes:
             fo.StringField,
         )
 
+        dataset.add_sample_field(
+            "empty_custom_doc",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=CustomEmbeddedDoc,
+        )
+
         # custom embedded documents
         dataset.add_sample_field(
             "nested_doc",
@@ -140,10 +146,13 @@ class TestSampleRoutes:
                     detections=fol.Detections(),
                     polylines=fol.Polylines(),
                 ),
-                # empty doc we want the route to initialize
+                # empty doc which will (expectedly) fail initialization
                 CustomEmbeddedDoc(),
             ]
         )
+
+        # embedded doc containing uninitialized fields will be auto-initialized
+        sample["custom_doc"] = CustomEmbeddedDoc()
 
         return sample
 
@@ -456,6 +465,16 @@ class TestSampleRoutes:
                 "path": "/empty_primitive",
                 "value": "new primitive",
             },
+            {
+                "op": "add",
+                "path": "/custom_doc/detections/detections/0",
+                "value": new_detection,
+            },
+            {
+                "op": "add",
+                "path": "/empty_custom_doc/detections/detections/0",
+                "value": new_detection,
+            },
         ]
         mock_request.body.return_value = json_payload(patch_payload)
         mock_request.headers["Content-Type"] = "application/json-patch+json"
@@ -481,6 +500,14 @@ class TestSampleRoutes:
             response_dict["empty_polylines"]["polylines"][0] == new_polylines
         )
         assert response_dict["empty_primitive"] == "new primitive"
+        assert (
+            response_dict["custom_doc"]["detections"]["detections"][0]
+            == new_detection
+        )
+        assert (
+            response_dict["empty_custom_doc"]["detections"]["detections"][0]
+            == new_detection
+        )
 
     @pytest.mark.asyncio
     async def test_patch_nested_fields(self, mutator, mock_request, sample):
