@@ -14,6 +14,21 @@ With your dataset and DO(s) ready, it's time to configure your Verified Auto-Lab
 Open the Auto Labeling Panel
 -----------------------------
 
+1. Click into your FiftyOne dataset. Above the sample grid, select **New panel > Auto Labeling**. 
+
+.. tip::
+  Click the "Split horizontally" button (looks like two vertical bars) in the toolar to put the auto labeling configuration side by side with your dataset.
+
+2. In the Auto Labeling panel, click **Auto Label**. This enters you into the main configuration pane to where you can select your target sample set, foundation model used for labeling, classes to label, and minimum confidence threshold.
+
+3. Expand the **Target** dropdown. We are going to assign labels to every sample in the dataset, so select the **All samples** radio button.
+
+4. Expand the **Detection** dropdown. Select the **Detection** tile to perform object detection.
+
+5. Under model type, choose **Zero-shot**. We also have the option of choosing a fixed vocabulary model with predefined classes.
+
+6. Open the zero-shot model dropdown, and select **YOLO World** as the chosen detection model.
+
 Start a New VAL Run
 -------------------
 

@@ -45,8 +45,6 @@ In this guide, we will choose **object detection**.
 
 You will also want an idea of the **classes**, or object categories, you will be annotating in the dataset. Based on the annotation task chosen, FiftyOne will let you choose from a list of model that can be used for labeling. Some model are **zero-shot** and support arbitrary, plain-language class descriptions. Others are **fixed-vocabulary** and requires choosing from a fixed list of classes that model was trained on.
 
-
-
 Next Steps
 ----------
 
