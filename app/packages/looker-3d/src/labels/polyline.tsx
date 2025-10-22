@@ -179,8 +179,8 @@ export const Polyline = ({
     >
       <group
         ref={contentRef}
-        position={tempTransforms?.position}
-        quaternion={tempTransforms?.quaternion}
+        position={tempTransforms?.position ?? [0, 0, 0]}
+        quaternion={tempTransforms?.quaternion ?? [0, 0, 0, 1]}
       >
         {markers}
         <group

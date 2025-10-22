@@ -219,8 +219,8 @@ export const PolylinePointMarker = ({
     >
       <group
         ref={groupRef}
-        position={tempVertexTransforms?.position}
-        quaternion={tempVertexTransforms?.quaternion}
+        position={tempVertexTransforms?.position ?? [0, 0, 0]}
+        quaternion={tempVertexTransforms?.quaternion ?? [0, 0, 0, 1]}
       >
         <mesh
           ref={meshRef}
