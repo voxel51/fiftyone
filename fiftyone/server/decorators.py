@@ -6,40 +6,17 @@ FiftyOne Server decorators
 |
 """
 
-from json import JSONEncoder
 import traceback
 import typing as t
 import logging
 
-from bson import json_util
-import numpy as np
 from starlette.endpoints import HTTPEndpoint
 from starlette.exceptions import HTTPException
 from starlette.responses import JSONResponse, Response
 from starlette.requests import Request
 
-from fiftyone.core.utils import run_sync_task
-
-
-class Encoder(JSONEncoder):
-    """Custom JSON encoder that handles numpy types."""
-
-    def default(self, o):
-        if isinstance(o, np.floating):
-            return float(o)
-
-        if isinstance(o, np.integer):
-            return int(o)
-
-        return JSONEncoder.default(self, o)
-
-
-async def create_response(response: dict):
-    """Creates a JSON response from the given dictionary."""
-    return Response(
-        await run_sync_task(lambda: json_util.dumps(response, cls=Encoder)),
-        headers={"Content-Type": "application/json"},
-    )
+from fiftyone.core.utils import create_response
+from fiftyone.server import utils
 
 
 def route(func):
@@ -52,7 +29,7 @@ def route(func):
         try:
             body = await request.body()
             payload = body.decode("utf-8")
-            data = json_util.loads(payload) if payload else {}
+            data = utils.json.loads(payload)
             response = await func(endpoint, request, data, *args)
             if isinstance(response, Response):
                 return response

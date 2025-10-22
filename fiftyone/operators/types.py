@@ -6,5 +6,5 @@ FiftyOne operator types.
 |
 """
 
-from ._types.pipeline import Pipeline, PipelineStage
+from ._types.pipeline import Pipeline, PipelineRunInfo, PipelineStage
 from ._types.types import *

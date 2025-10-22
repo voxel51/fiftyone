@@ -6,7 +6,6 @@ FiftyOne delegated operation repository document.
 |
 """
 import copy
-import dataclasses
 import logging
 from datetime import datetime
 
@@ -16,7 +15,7 @@ from fiftyone.operators.executor import (
     ExecutionRunState,
     ExecutionProgress,
 )
-from fiftyone.operators.types import Pipeline
+from fiftyone.operators.types import Pipeline, PipelineRunInfo
 
 logger = logging.getLogger(__name__)
 
@@ -64,8 +63,8 @@ class DelegatedOperationDocument(object):
 
         # distributed task fields
         self.parent_id = None  # Only on children
-        self.pipeline_index = 0
         self.pipeline = None  # Only on pipeline parent
+        self.pipeline_run_info = None  # Only on pipeline parent
 
     @property
     def num_distributed_tasks(self):
@@ -131,20 +130,39 @@ class DelegatedOperationDocument(object):
             if "updated_at" in doc["status"]:
                 self.status.updated_at = doc["status"]["updated_at"]
 
-        if "pipeline" in doc and doc["pipeline"] is not None:
-            self.pipeline = Pipeline.from_json(doc["pipeline"])
+        self.pipeline = Pipeline.from_json(doc.get("pipeline"))
+        self.pipeline_run_info = PipelineRunInfo.from_json(
+            doc.get("pipeline_run_info")
+        )
 
         return self
 
     def to_pymongo(self) -> dict:
-        d = copy.deepcopy(self.__dict__)
+        # We make a copy of self.__dict__ so that changes we make below do not
+        # affect the actual object. We exclude certain keys that we don't want
+        # to serialize directly. "context" is particularly important we do not
+        # try to copy because it may contain big, complicated, non-serializable
+        # objects that may cause issues with copying.
+
+        ignore_keys = {
+            "_doc",
+            "id",
+            "context",
+            "pipeline",
+            "pipeline_run_info",
+        }
+        d = {
+            k: copy.deepcopy(v)
+            for k, v in self.__dict__.items()
+            if k not in ignore_keys
+        }
         if self.context:
             d["context"] = {
                 "request_params": self.context._get_serialized_request_params()
             }
         if self.pipeline:
             d["pipeline"] = self.pipeline.to_json()
+        if self.pipeline_run_info:
+            d["pipeline_run_info"] = self.pipeline_run_info.to_json()
 
-        d.pop("_doc", None)
-        d.pop("id", None)
         return d

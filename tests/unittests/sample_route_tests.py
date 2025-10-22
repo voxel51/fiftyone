@@ -5,39 +5,81 @@ FiftyOne Server mutation endpoint unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 # pylint: disable=no-value-for-parameter
-import unittest
 from unittest.mock import MagicMock, AsyncMock
 import json
 
-import fiftyone as fo
-import fiftyone.core.labels as fol
 from bson import ObjectId, json_util
+import pytest
 from starlette.exceptions import HTTPException
 from starlette.responses import Response
 
+
+import fiftyone as fo
+import fiftyone.core.labels as fol
 import fiftyone.server.routes.sample as fors
 
 
-class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
-    def setUp(self):
-        """Sets up a persistent dataset with a sample for each test."""
-        self.mutator = fors.Sample(
-            scope={"type": "http"},
-            receive=AsyncMock(),
-            send=AsyncMock(),
-        )
-        self.dataset = fo.Dataset()
-        self.dataset.persistent = True
-        self.dataset_id = self.dataset._doc.id
+@pytest.fixture(name="dataset")
+def fixture_dataset():
+    """Creates a persistent dataset for testing."""
+    dataset = fo.Dataset()
+    dataset.persistent = True
 
+    try:
+        yield dataset
+    finally:
+        if fo.dataset_exists(dataset.name):
+            fo.delete_dataset(dataset.name)
+
+
+@pytest.fixture(name="dataset_id")
+def fixture_dataset_id(dataset):
+    """Returns the ID of the dataset."""
+    # pylint: disable-next=protected-access
+    return dataset._doc.id
+
+
+@pytest.fixture(name="if_match", params=[None, "etag", "isodate", "timestamp"])
+def fixture_if_match(request, sample):
+    """Provides different database connections."""
+    if_match_type = request.param
+
+    if if_match_type is None:
+        return None
+
+    if if_match_type == "etag":
+        return fors.generate_sample_etag(sample)
+
+    if if_match_type == "isodate":
+        return sample.last_modified_at.isoformat()
+
+    if if_match_type == "timestamp":
+        return str(sample.last_modified_at.timestamp())
+
+    raise ValueError(f"Unknown connection type: {if_match_type}")
+
+
+def json_payload(payload: dict) -> bytes:
+    """Converts a dictionary to a JSON payload."""
+    return json_util.dumps(payload).encode("utf-8")
+
+
+class TestSampleRoutes:
+    """Tests for sample routes"""
+
+    INITIAL_DETECTION_ID = ObjectId()
+
+    @pytest.fixture(name="sample")
+    def fixture_sample(self, dataset):
+        """Creates a persistent dataset for testing."""
         sample = fo.Sample(filepath="/tmp/test_sample.jpg", tags=["initial"])
 
-        self.initial_detection_id = ObjectId()
         sample["ground_truth"] = fol.Detections(
             detections=[
                 fol.Detection(
-                    id=self.initial_detection_id,
+                    id=self.INITIAL_DETECTION_ID,
                     label="cat",
                     bounding_box=[0.1, 0.1, 0.2, 0.2],
                 )
@@ -45,15 +87,37 @@ class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
         )
         sample["primitive_field"] = "initial_value"
 
-        self.dataset.add_sample(sample)
-        self.sample = sample
+        dataset.add_sample(sample)
 
-    def tearDown(self):
-        """Deletes the dataset after each test."""
-        if self.dataset and fo.dataset_exists(self.dataset.name):
-            fo.delete_dataset(self.dataset.name)
+        return sample
 
-    async def test_update_detection(self):
+    @pytest.fixture(name="mutator")
+    def test_mutator(self):
+        """Returns the Sample route mutator."""
+        return fors.Sample(
+            scope={"type": "http"}, receive=AsyncMock(), send=AsyncMock()
+        )
+
+    @pytest.fixture(name="mock_request")
+    def fixture_mock_request(self, dataset_id, sample, if_match):
+        """Helper to create a mock request object."""
+        mock_request = MagicMock()
+        mock_request.path_params = {
+            "dataset_id": dataset_id,
+            "sample_id": str(sample.id),
+        }
+
+        mock_request.headers = {"Content-Type": "application/json"}
+
+        if if_match is not None:
+            mock_request.headers["If-Match"] = if_match
+
+        mock_request.body = AsyncMock(return_value=json_payload({}))
+
+        return mock_request
+
+    @pytest.mark.asyncio
+    async def test_update_detection(self, mutator, mock_request, sample):
         """
         Tests updating an existing detection
         """
@@ -66,7 +130,7 @@ class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
                 "detections": [
                     {
                         "_cls": "Detection",
-                        "id": str(self.initial_detection_id),
+                        "id": str(self.INITIAL_DETECTION_ID),
                         "label": label,
                         "bounding_box": bounding_box,  # updated
                         "confidence": confidence,
@@ -77,46 +141,49 @@ class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
             "tags": None,
         }
 
-        mock_request = MagicMock()
-        mock_request.path_params = {
-            "dataset_id": self.dataset_id,
-            "sample_id": str(self.sample.id),
-        }
-        mock_request.body = AsyncMock(
-            return_value=json_util.dumps(patch_payload).encode("utf-8")
-        )
-        response = await self.mutator.patch(mock_request)
-        response_dict = json.loads(response.body)
-        self.assertIsInstance(response, Response)
-        self.assertEqual(response.status_code, 200)
-        # Assertions on the response
-        self.assertIsInstance(response_dict, dict)
-        sample = fo.Sample.from_dict(response_dict)
-        self.assertEqual(
-            sample.ground_truth.detections[0].id,
-            str(self.initial_detection_id),
-        )
-        self.assertEqual(
-            sample.ground_truth.detections[0].bounding_box, bounding_box
-        )
-        self.assertEqual(sample.ground_truth.detections[0].label, label)
+        mock_request.body.return_value = json_payload(patch_payload)
 
-        # Verify changes in the dataset by reloading the sample
-        self.sample.reload()
+        #####
+        response = await mutator.patch(mock_request)
+        #####
+
+        sample.reload()
+        assert response.headers.get("ETag") == fors.generate_sample_etag(
+            sample
+        )
+
+        response_dict = json.loads(response.body)
+
+        assert isinstance(response, Response)
+        assert response.status_code == 200
+
+        # Assertions on the response
+        assert isinstance(response_dict, dict)
+        updated_sample = fo.Sample.from_dict(response_dict)
+        assert updated_sample.ground_truth.detections[0].id == str(
+            self.INITIAL_DETECTION_ID
+        )
+
+        assert (
+            updated_sample.ground_truth.detections[0].bounding_box
+            == bounding_box
+        )
+        assert updated_sample.ground_truth.detections[0].label == label
 
         # Verify UPDATE
-        updated_detection = self.sample.ground_truth.detections[0]
-        self.assertEqual(updated_detection.id, str(self.initial_detection_id))
-        self.assertEqual(updated_detection.bounding_box[0], 0.15)
-        self.assertEqual(updated_detection.confidence, 0.99)
+        updated_detection = sample.ground_truth.detections[0]
+        assert updated_detection.id == str(self.INITIAL_DETECTION_ID)
+        assert updated_detection.bounding_box[0] == 0.15
+        assert updated_detection.confidence == 0.99
 
         # Verify CREATE (Primitive)
-        self.assertEqual(self.sample.reviewer, "John Doe")
+        assert sample.reviewer == "John Doe"
 
         # Verify DELETE
-        self.assertEqual(self.sample.tags, [])
+        assert sample.tags == []
 
-    async def test_add_detection(self):
+    @pytest.mark.asyncio
+    async def test_add_detection(self, mutator, mock_request, sample):
         """
         Tests adding a new detection
         """
@@ -135,23 +202,26 @@ class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
                 ],
             },
         }
+        mock_request.body.return_value = json_payload(patch_payload)
 
-        mock_request = MagicMock()
-        mock_request.path_params = {
-            "dataset_id": self.dataset_id,
-            "sample_id": str(self.sample.id),
-        }
-        mock_request.body = AsyncMock(
-            return_value=json_util.dumps(patch_payload).encode("utf-8")
+        #####
+        response = await mutator.patch(mock_request)
+        #####
+
+        sample.reload()
+        assert response.headers.get("ETag") == fors.generate_sample_etag(
+            sample
         )
-        response = await self.mutator.patch(mock_request)
-        response_dict = json.loads(response.body)
-        self.assertIsInstance(response_dict, dict)
-        updated_detection = self.sample.ground_truth_2.detections[0]
-        self.assertEqual(updated_detection.bounding_box, bounding_box)
-        self.assertEqual(updated_detection.confidence, confidence)
 
-    async def test_add_classification(self):
+        response_dict = json.loads(response.body)
+        assert isinstance(response_dict, dict)
+
+        updated_detection = sample.ground_truth_2.detections[0]
+        assert updated_detection.bounding_box == bounding_box
+        assert updated_detection.confidence == confidence
+
+    @pytest.mark.asyncio
+    async def test_add_classification(self, mutator, mock_request, sample):
         """
         Tests adding a new classification
         """
@@ -164,63 +234,85 @@ class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
                 "confidence": confidence,
             },
         }
+        mock_request.body.return_value = json_payload(patch_payload)
 
-        mock_request = MagicMock()
-        mock_request.path_params = {
-            "dataset_id": self.dataset_id,
-            "sample_id": str(self.sample.id),
-        }
-        mock_request.body = AsyncMock(
-            return_value=json_util.dumps(patch_payload).encode("utf-8")
+        #####
+        response = await mutator.patch(mock_request)
+        #####
+
+        sample.reload()
+        assert response.headers.get("ETag") == fors.generate_sample_etag(
+            sample
         )
-        response = await self.mutator.patch(mock_request)
+
         response_dict = json.loads(response.body)
-        self.assertIsInstance(response_dict, dict)
-        updated_detection = self.sample.weather
-        self.assertEqual(updated_detection.label, label)
-        self.assertEqual(updated_detection.confidence, confidence)
+        assert isinstance(response_dict, dict)
+        updated_detection = sample.weather
+        assert updated_detection.label == label
+        assert updated_detection.confidence == confidence
 
-    async def test_dataset_not_found(self):
-        """Tests that a 404 HTTPException is raised for a non-existent dataset."""
-        mock_request = MagicMock()
-        mock_request.path_params = {
-            "dataset_id": "non-existent-dataset",
-            "sample_id": str(self.sample.id),
-        }
+    @pytest.mark.asyncio
+    async def test_dataset_not_found(self, mutator, mock_request):
+        """Tests that a 404 HTTPException is raised for a non-existent
+        dataset."""
 
-        mock_request.body = AsyncMock(
-            return_value=json_util.dumps({}).encode("utf-8")
-        )
-        with self.assertRaises(HTTPException) as cm:
-            await self.mutator.patch(mock_request)
+        mock_request.path_params["dataset_id"] = "non-existent-dataset"
 
-        self.assertEqual(cm.exception.status_code, 404)
-        self.assertEqual(
-            cm.exception.detail, "Dataset 'non-existent-dataset' not found"
+        with pytest.raises(HTTPException) as exc_info:
+            #####
+            await mutator.patch(mock_request)
+            #####
+
+        assert exc_info.value.status_code == 404
+        assert (
+            exc_info.value.detail == "Dataset 'non-existent-dataset' not found"
         )
 
-    async def test_sample_not_found(self):
-        """Tests that a 404 HTTPException is raised for a non-existent sample."""
+    @pytest.mark.asyncio
+    async def test_sample_not_found(self, mutator, mock_request, dataset_id):
+        """Tests that a 404 HTTPException is raised for a non-existent
+        sample."""
         bad_id = str(ObjectId())
-        mock_request = MagicMock()
-        mock_request.path_params = {
-            "dataset_id": self.dataset_id,
-            "sample_id": bad_id,
-        }
 
-        mock_request.body = AsyncMock(
-            return_value=json_util.dumps({}).encode("utf-8")
-        )
-        with self.assertRaises(HTTPException) as cm:
-            await self.mutator.patch(mock_request)
+        mock_request.path_params["sample_id"] = bad_id
 
-        self.assertEqual(cm.exception.status_code, 404)
-        self.assertEqual(
-            cm.exception.detail,
-            f"Sample '{bad_id}' not found in dataset '{self.dataset_id}'",
+        with pytest.raises(HTTPException) as exc_info:
+            #####
+            await mutator.patch(mock_request)
+            #####
+
+        assert exc_info.value.status_code == 404
+        assert (
+            exc_info.value.detail
+            == f"Sample '{bad_id}' not found in dataset '{dataset_id}'"
         )
 
-    async def test_unsupported_label_class(self):
+    @pytest.mark.asyncio
+    async def test_if_match_header_failure(
+        self, mutator, mock_request, sample, if_match
+    ):
+        """Tests that a 412 HTTPException is raised for an invalid If-Match."""
+        if if_match is None:
+            pytest.skip("Fixture returned None, skipping this test.")
+
+        sample["primitive_field"] = "new_value"
+        sample.save()
+
+        mock_request.body.return_value = json_payload(
+            {"primitive_field": "newer_value"}
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            #####
+            await mutator.patch(mock_request)
+            #####
+
+            assert exc_info.value.status_code == 412
+
+    @pytest.mark.asyncio
+    async def test_unsupported_label_class(
+        self, mutator, mock_request, sample
+    ):
         """Tests that an HTTPException is raised for an unknown _cls value."""
         patch_payload = {
             "bad_label": {
@@ -228,29 +320,25 @@ class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
                 "label": "invalid",
             }
         }
-        mock_request = MagicMock()
-        mock_request.path_params = {
-            "dataset_id": self.dataset_id,
-            "sample_id": str(self.sample.id),
-        }
 
-        mock_request.body = AsyncMock(
-            return_value=json_util.dumps(patch_payload).encode("utf-8")
-        )
-        with self.assertRaises(HTTPException) as cm:
-            await self.mutator.patch(mock_request)
+        mock_request.body.return_value = json_payload(patch_payload)
 
-        self.assertEqual(cm.exception.status_code, 400)
-        self.assertEqual(
-            cm.exception.detail["bad_label"],
-            "Unsupported label class 'NonExistentLabelType'",
+        with pytest.raises(HTTPException) as exc_info:
+            #####
+            await mutator.patch(mock_request)
+            #####
+
+        assert exc_info.value.status_code == 400
+        assert exc_info.value.detail["bad_label"] == (
+            "No deserializer registered for class 'NonExistentLabelType'"
         )
 
         # Verify the sample was not modified
-        self.sample.reload()
-        self.assertFalse(self.sample.has_field("bad_label"))
+        sample.reload()
+        assert sample.has_field("bad_label") is False
 
-    async def test_malformed_label_data(self):
+    @pytest.mark.asyncio
+    async def test_malformed_label_data(self, mutator, mock_request, sample):
         """
         Tests that an HTTPException is raised when label data is malformed and
         cannot be deserialized by from_dict.
@@ -263,34 +351,420 @@ class SampleRouteTests(unittest.IsolatedAsyncioTestCase):
             }
         }
 
-        mock_request = MagicMock()
-        mock_request.path_params = {
-            "dataset_id": self.dataset_id,
-            "sample_id": str(self.sample.id),
-        }
+        mock_request.body.return_value = json_payload(patch_payload)
 
-        mock_request.body = AsyncMock(
-            return_value=json_util.dumps(patch_payload).encode("utf-8")
-        )
-        with self.assertRaises(HTTPException) as cm:
-            await self.mutator.patch(mock_request)
+        with pytest.raises(HTTPException) as exc_info:
+            #####
+            await mutator.patch(mock_request)
+            #####
 
-        self.assertEqual(cm.exception.status_code, 400)
-        response_dict = cm.exception.detail
+        assert exc_info.value.status_code == 400
+        response_dict = exc_info.value.detail
 
-        self.assertIn(
-            "Invalid data to create a `Detections` instance.",
-            response_dict["ground_truth"],
+        assert (
+            "Invalid data to create a `Detections` instance."
+            in response_dict["ground_truth"]
         )
 
         # Verify the original field was not overwritten
-        self.sample.reload()
-        self.assertEqual(len(self.sample.ground_truth.detections), 1)
-        self.assertEqual(
-            self.sample.ground_truth.detections[0].id,
-            str(self.initial_detection_id),
+        sample.reload()
+        assert len(sample.ground_truth.detections) == 1
+        assert sample.ground_truth.detections[0].id == str(
+            self.INITIAL_DETECTION_ID
         )
 
+    @pytest.mark.asyncio
+    async def test_patch_rplc_primitive(self, mutator, mock_request, sample):
+        """Tests 'replace' on a primitive field with json-patch."""
+        new_value = "updated_value"
+        patch_payload = [
+            {"op": "replace", "path": "/primitive_field", "value": new_value}
+        ]
 
-if __name__ == "__main__":
-    unittest.main(verbosity=2)
+        mock_request.body.return_value = json_payload(patch_payload)
+        mock_request.headers["Content-Type"] = "application/json-patch+json"
+
+        #####
+        response = await mutator.patch(mock_request)
+        #####
+        sample.reload()
+
+        assert response.headers.get("ETag") == fors.generate_sample_etag(
+            sample
+        )
+        response_dict = json.loads(response.body)
+        assert response_dict["primitive_field"] == new_value
+
+        assert sample.primitive_field == new_value
+
+    @pytest.mark.asyncio
+    async def test_patch_rplc_nest_label_attr(
+        self, mutator, mock_request, sample
+    ):
+        """Tests 'replace' on a nested attribute of a label with json-patch."""
+        new_label = "dog"
+        patch_payload = [
+            {
+                "op": "replace",
+                "path": "/ground_truth/detections/0/label",
+                "value": new_label,
+            }
+        ]
+        mock_request.body.return_value = json_payload(patch_payload)
+        mock_request.headers["Content-Type"] = "application/json-patch+json"
+
+        #####
+        response = await mutator.patch(mock_request)
+        #####
+
+        sample.reload()
+
+        assert response.headers.get("ETag") == fors.generate_sample_etag(
+            sample
+        )
+
+        assert sample.ground_truth.detections[0].label == new_label
+
+    @pytest.mark.asyncio
+    async def test_patch_add_detect_to_list(
+        self, mutator, mock_request, sample
+    ):
+        """Tests 'add' to a list of labels, testing the transform function."""
+        new_detection = {
+            "_cls": "Detection",
+            "label": "dog",
+            "bounding_box": [0.5, 0.5, 0.2, 0.2],
+        }
+        patch_payload = [
+            {
+                "op": "add",
+                "path": "/ground_truth/detections/-",  # Path to the list
+                "value": new_detection,
+            }
+        ]
+        mock_request.body.return_value = json_payload(patch_payload)
+        mock_request.headers["Content-Type"] = "application/json-patch+json"
+
+        #####
+        response = await mutator.patch(mock_request)
+        #####
+
+        sample.reload()
+
+        assert response.headers.get("ETag") == fors.generate_sample_etag(
+            sample
+        )
+
+        assert len(sample.ground_truth.detections) == 2
+        assert isinstance(sample.ground_truth.detections[1], fol.Detection)
+        assert sample.ground_truth.detections[1].label == "dog"
+
+    @pytest.mark.asyncio
+    async def test_patch_rmv_detect_list(self, mutator, mock_request, sample):
+        """Tests 'remove' from a list of labels."""
+        assert len(sample.ground_truth.detections) == 1
+
+        patch_payload = [
+            {"op": "remove", "path": "/ground_truth/detections/0"}
+        ]
+
+        mock_request.body.return_value = json_payload(patch_payload)
+        mock_request.headers["Content-Type"] = "application/json-patch+json"
+
+        #####
+        response = await mutator.patch(mock_request)
+        #####
+
+        sample.reload()
+
+        assert response.headers.get("ETag") == fors.generate_sample_etag(
+            sample
+        )
+
+        assert len(sample.ground_truth.detections) == 0
+
+    @pytest.mark.asyncio
+    async def test_patch_multiple_operations(
+        self, mutator, mock_request, sample
+    ):
+        """Tests a patch request with multiple operations."""
+        patch_payload = [
+            {"op": "replace", "path": "/primitive_field", "value": "multi-op"},
+            {"op": "remove", "path": "/ground_truth/detections/0"},
+        ]
+        mock_request.body.return_value = json_payload(patch_payload)
+        mock_request.headers["Content-Type"] = "application/json-patch+json"
+
+        #####
+        response = await mutator.patch(mock_request)
+        #####
+
+        sample.reload()
+
+        assert response.headers.get("ETag") == fors.generate_sample_etag(
+            sample
+        )
+
+        assert sample.primitive_field == "multi-op"
+        assert len(sample.ground_truth.detections) == 0
+
+    @pytest.mark.asyncio
+    async def test_patch_invalid_path(self, mutator, mock_request):
+        """Tests that a 400 is raised for an invalid path."""
+        patch_payload = [
+            {"op": "replace", "path": "/non_existent_field", "value": "test"}
+        ]
+        mock_request.body.return_value = json_payload(patch_payload)
+        mock_request.headers["Content-Type"] = "application/json-patch+json"
+
+        with pytest.raises(HTTPException) as exc_info:
+            ######
+            await mutator.patch(mock_request)
+            ######
+
+        assert exc_info.value.status_code == 400
+        assert str(patch_payload[0]) in exc_info.value.detail
+
+    @pytest.mark.asyncio
+    async def test_patch_invalid_format(self, mutator, mock_request):
+        """Tests that a 400 is raised for a malformed patch operation."""
+        patch_payload = [
+            {"path": "/primitive_field", "value": "test"}
+        ]  # missing 'op'
+
+        mock_request.body.return_value = json_payload(patch_payload)
+        mock_request.headers["Content-Type"] = "application/json-patch+json"
+
+        with pytest.raises(HTTPException) as exc_info:
+            ######
+            await mutator.patch(mock_request)
+            ######
+
+        assert exc_info.value.status_code == 400
+        assert "Failed to parse patches due to" in exc_info.value.detail
+
+
+class TestSampleFieldRoute:
+    """Tests for sample field routes"""
+
+    DETECTION_ID_1 = ObjectId()
+    DETECTION_ID_2 = ObjectId()
+
+    @pytest.fixture(name="sample")
+    def fixture_sample(self, dataset):
+        """Creates a persistent dataset for testing."""
+        sample = fo.Sample(filepath="/tmp/test_sample_field.jpg")
+
+        sample["ground_truth"] = fol.Detections(
+            detections=[
+                fol.Detection(
+                    id=self.DETECTION_ID_1,
+                    label="cat",
+                    bounding_box=[0.1, 0.1, 0.2, 0.2],
+                    confidence=0.9,
+                ),
+                fol.Detection(
+                    id=self.DETECTION_ID_2,
+                    label="dog",
+                    bounding_box=[0.4, 0.4, 0.3, 0.3],
+                    confidence=0.8,
+                ),
+            ]
+        )
+        sample["scalar_field"] = "not a list"
+
+        dataset.add_sample(sample)
+
+        return sample
+
+    @pytest.fixture(name="mutator")
+    def test_mutator(self):
+        """Returns the Sample fields route mutator."""
+        return fors.SampleField(
+            scope={"type": "http"},
+            receive=AsyncMock(),
+            send=AsyncMock(),
+        )
+
+    @pytest.fixture(name="mock_request")
+    def fixture_mock_request(self, dataset_id, sample, if_match):
+        """Helper to create a mock request object."""
+        mock_request = MagicMock()
+        mock_request = MagicMock()
+        mock_request.path_params = {
+            "dataset_id": dataset_id,
+            "sample_id": str(sample.id),
+            "field_path": "ground_truth.detections",
+            "field_id": str(self.DETECTION_ID_1),
+        }
+        mock_request.headers = {"Content-Type": "application/json"}
+
+        if if_match is not None:
+            mock_request.headers["If-Match"] = if_match
+
+        mock_request.body = AsyncMock(return_value=json_payload({}))
+
+        return mock_request
+
+    @pytest.mark.asyncio
+    async def test_update_label_in_list(self, mutator, mock_request, sample):
+        """Tests updating a label within a list field."""
+        new_label = "person"
+        patch_payload = [
+            {"op": "replace", "path": "/label", "value": new_label}
+        ]
+
+        mock_request.body.return_value = json_payload(patch_payload)
+
+        #####
+        response = await mutator.patch(mock_request)
+        #####
+        sample.reload()
+
+        response_dict = json.loads(response.body)
+
+        assert isinstance(response, Response)
+        assert response.status_code == 200
+        assert response.headers.get("ETag") == fors.generate_sample_etag(
+            sample
+        )
+
+        # check response body
+        assert response_dict["label"] == new_label
+        assert response_dict["_id"]["$oid"] == str(self.DETECTION_ID_1)
+
+        # check database state
+        detection1 = sample.ground_truth.detections[0]
+        detection2 = sample.ground_truth.detections[1]
+
+        assert detection1.id == str(self.DETECTION_ID_1)
+        assert detection1.label == new_label
+        # ensure other item is not modified
+        assert detection2.id == str(self.DETECTION_ID_2)
+        assert detection2.label == "dog"
+
+    @pytest.mark.asyncio
+    async def test_dataset_not_found(self, mutator, mock_request):
+        """Tests that a 404 is raised for a non-existent dataset."""
+
+        mock_request.path_params["dataset_id"] = "non-existent-dataset"
+
+        with pytest.raises(HTTPException) as exc_info:
+            #####
+            await mutator.patch(mock_request)
+            #####
+
+        assert exc_info.value.status_code == 404
+        assert (
+            exc_info.value.detail == "Dataset 'non-existent-dataset' not found"
+        )
+
+    @pytest.mark.asyncio
+    async def test_sample_not_found(self, mutator, mock_request, dataset_id):
+        """Tests that a 404 is raised for a non-existent sample."""
+        bad_id = str(ObjectId())
+        mock_request.path_params["sample_id"] = bad_id
+
+        with pytest.raises(HTTPException) as exc_info:
+            #####
+            await mutator.patch(mock_request)
+            #####
+
+        assert exc_info.value.status_code == 404
+        assert (
+            exc_info.value.detail
+            == f"Sample '{bad_id}' not found in dataset '{dataset_id}'"
+        )
+
+    @pytest.mark.asyncio
+    async def test_if_match_header_failure(
+        self, mutator, mock_request, sample, if_match
+    ):
+        """Tests that a 412 HTTPException is raised for an invalid If-Match."""
+        if if_match is None:
+            pytest.skip("Fixture returned None, skipping this test.")
+
+        # Update the sample to change its last_modified_at
+        sample["primitive_field"] = "new_value"
+        sample.save()
+
+        patch_payload = [{"op": "replace", "path": "/label", "value": "fish"}]
+
+        mock_request.body.return_value = json_payload(patch_payload)
+
+        with pytest.raises(HTTPException) as exc_info:
+            #####
+            await mutator.patch(mock_request)
+            #####
+
+        assert exc_info.value.status_code == 412
+
+    @pytest.mark.asyncio
+    async def test_field_path_not_found(self, mutator, mock_request, sample):
+        """Tests that a 404 is raised for a non-existent field path."""
+        bad_path = "non_existent.path"
+        mock_request.path_params["field_path"] = bad_path
+
+        with pytest.raises(HTTPException) as exc_info:
+            #####
+            await mutator.patch(mock_request)
+            #####
+
+        assert exc_info.value.status_code == 404
+        assert (
+            exc_info.value.detail
+            == f"Field '{bad_path}' not found in sample '{sample.id}'"
+        )
+
+    @pytest.mark.asyncio
+    async def test_field_is_not_a_list(self, mutator, mock_request):
+        """Tests that a 400 is raised if the field path does not point to a
+        list."""
+        field_path = "scalar_field"
+
+        mock_request.path_params["field_path"] = field_path
+
+        with pytest.raises(HTTPException) as exc_info:
+            #####
+            await mutator.patch(mock_request)
+            #####
+
+        assert exc_info.value.status_code == 400
+        assert exc_info.value.detail == f"Field '{field_path}' is not a list"
+
+    @pytest.mark.asyncio
+    async def test_field_id_not_found_in_list(self, mutator, mock_request):
+        """Tests that a 404 is raised if the field ID is not in the list."""
+        bad_id = str(ObjectId())
+        mock_request.path_params["field_id"] = bad_id
+
+        with pytest.raises(HTTPException) as exc_info:
+            #####
+            await mutator.patch(mock_request)
+            #####
+
+        assert exc_info.value.status_code == 404
+        assert exc_info.value.detail == (
+            f"Field with id '{bad_id}' not found in field "
+            f"'{mock_request.path_params['field_path']}'"
+        )
+
+    @pytest.mark.asyncio
+    async def test_invalid_patch_operation(self, mutator, mock_request):
+        """Tests that a 400 is raised for an invalid patch operation."""
+        patch_payload = [
+            {"op": "replace", "path": "/non_existent_attr", "value": "test"}
+        ]
+        mock_request.body.return_value = json_payload(patch_payload)
+        mock_request.headers["Content-Type"] = "application/json-patch+json"
+
+        with pytest.raises(HTTPException) as exc_info:
+            ###
+            await mutator.patch(mock_request)
+            ###
+
+        assert exc_info.value.status_code == 400
+        assert str(patch_payload[0]) in exc_info.value.detail
+        assert (
+            "non_existent_attr" in exc_info.value.detail[str(patch_payload[0])]
+        )
