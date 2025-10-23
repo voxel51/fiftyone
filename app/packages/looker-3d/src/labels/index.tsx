@@ -29,6 +29,7 @@ import {
   currentArchetypeSelectedForTransformAtom,
   editSegmentsModeAtom,
   isActivelySegmentingSelector,
+  isPolylineAnnotateActiveAtom,
   polylineLabelLineWidthAtom,
   polylinePointTransformsAtom,
   selectedLabelForAnnotationAtom,
@@ -55,6 +56,9 @@ export const ThreeDLabels = ({
   const { coloring, selectedLabelTags, customizeColorSetting, labelTagColors } =
     useRecoilValue(fos.lookerOptions({ withFilter: true, modal: true }));
   const isSegmenting = useRecoilValue(isActivelySegmentingSelector);
+  const setIsPolylineAnnotateActive = useSetRecoilState(
+    isPolylineAnnotateActiveAtom
+  );
 
   const settings = fop.usePluginSettings<Looker3dSettings>(
     "3d",
@@ -153,6 +157,7 @@ export const ThreeDLabels = ({
           setCurrentArchetypeSelectedForTransform(archetype);
 
           setEditingToExistingPolyline(label);
+          setIsPolylineAnnotateActive(true);
         }
 
         return;
