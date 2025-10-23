@@ -372,6 +372,7 @@ async def prepare_operator_executor(
     request_params,
     set_progress=None,
     delegated_operation_id=None,
+    pipeline_ctx=None,
 ):
     registry = OperatorRegistry()
     if registry.operator_exists(operator_uri) is False:
@@ -386,6 +387,7 @@ async def prepare_operator_executor(
         delegated_operation_id=delegated_operation_id,
         operator_uri=operator_uri,
         required_secrets=operator._plugin_secrets,
+        pipeline=pipeline_ctx,
     )
 
     await ctx.resolve_secret_values(operator._plugin_secrets)
@@ -521,7 +523,7 @@ class ExecutionContext(object):
     selected samples, as well as to trigger other operators.
 
     Args:
-        request_params (None): a optional dictionary of request parameters
+        request_params (None): an optional dictionary of request parameters
         executor (None): an optional :class:`Executor` instance
         set_progress (None): an optional function to set the progress of the
             current operation
@@ -530,6 +532,9 @@ class ExecutionContext(object):
         operator_uri (None): the unique id of the operator
         required_secrets (None): the list of required secrets from the
             plugin's definition
+        pipeline (None): an optional :class:`PipelineExecutionContext` with
+            information about the current pipeline execution, if this operator
+            is being executed as part of a pipeline
     """
 
     def __init__(
@@ -540,6 +545,7 @@ class ExecutionContext(object):
         delegated_operation_id=None,
         operator_uri=None,
         required_secrets=None,
+        pipeline=None,
     ):
         if request_params is None:
             request_params = {}
@@ -547,6 +553,7 @@ class ExecutionContext(object):
         self.params = self.request_params.get("params", {})
         self.executor = executor
         self.user = None
+        self.pipeline = pipeline
 
         self._dataset = None
         self._view = None
@@ -1095,6 +1102,41 @@ class ExecutionResult(object):
             ),
             "outputs_schema": self.outputs_schema,
         }
+
+
+class PipelineExecutionContext(object):
+    """Represents the execution context of a pipeline.
+
+    Operators can use the pipeline execution context to access information
+    about the current pipeline execution, if they are a child operation in a
+    pipeline.
+
+    Args:
+        active: whether the pipeline is currently active, i.e., having no
+            failures in prior stages
+        curr_stage_index: the current stage index of the pipeline
+        total_stages: the total number of stages in the pipeline
+        error: an error message, if any. Applicable only if the pipeline is not
+            active
+        num_distributed_tasks (0): the number of distributed tasks in the
+            current stage
+    """
+
+    def __init__(
+        self,
+        active,
+        curr_stage_index,
+        total_stages,
+        error=None,
+        num_distributed_tasks=0,
+        **_,
+    ):
+        self.active = active
+        self.curr_stage_index = curr_stage_index
+        self.total_stages = total_stages
+
+        self.error = error
+        self.num_distributed_tasks = num_distributed_tasks
 
 
 class ExecutionError(Exception):
