@@ -60,6 +60,7 @@ export interface PolylinePointTransformData {
   path: string;
   sampleId: string;
   label?: string;
+  misc?: Record<string, unknown>;
 }
 
 export interface SegmentState {

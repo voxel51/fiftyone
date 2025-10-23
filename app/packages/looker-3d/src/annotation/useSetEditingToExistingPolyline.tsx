@@ -7,27 +7,23 @@ import { useRecoilState, useRecoilValue } from "recoil";
 import {
   currentActiveAnnotationField3dAtom,
   polylinePointTransformsAtom,
-  snapCloseAutomaticallyAtom,
 } from "../state";
-import { PolylinePointTransformData } from "./types";
 import { sanitizeSchemaIoLabelAttributes } from "./utils/polyline-utils";
 
-const currentEditingPolylineAtom = atomWithReset<fos.AnnotationLabel | null>(
-  null
-);
+const currentEditingExistingPolylineAtom =
+  atomWithReset<fos.AnnotationLabel | null>(null);
 
 /**
- *
+ * Hook to set editing atom for existing polylines when clicked
  */
-export const useSetEditingToNewPolyline = () => {
+export const useSetEditingToExistingPolyline = () => {
   const setEditing = useSetAtom(editingAtom);
   const resetEditing = useResetAtom(editingAtom);
-  const resetCurrentEditing = useResetAtom(currentEditingPolylineAtom);
+  const resetCurrentEditing = useResetAtom(currentEditingExistingPolylineAtom);
   const currentActiveField = useRecoilValue(currentActiveAnnotationField3dAtom);
   const currentSampleId = useRecoilValue(fos.currentSampleId);
-  const shouldDefaultToClosed = useRecoilValue(snapCloseAutomaticallyAtom);
   const [currentEditing, setCurrentEditing] = useAtom(
-    currentEditingPolylineAtom
+    currentEditingExistingPolylineAtom
   );
   const [polylinePointTransforms, setPolylinePointTransforms] = useRecoilState(
     polylinePointTransformsAtom
@@ -40,9 +36,10 @@ export const useSetEditingToNewPolyline = () => {
     };
   }, [resetCurrentEditing, resetEditing]);
 
-  const syncWithSidebar = useCallback(
+  const syncToSidebar = useCallback(
     (label: fos.PolylineAnnotationLabel["data"]) => {
       const { points3d: _points3d, _id, ...rest } = label;
+
       setPolylinePointTransforms((prev) => {
         return {
           ...prev,
@@ -60,47 +57,32 @@ export const useSetEditingToNewPolyline = () => {
   );
 
   return useCallback(
-    (labelId: string, transformData: PolylinePointTransformData) => {
-      if (!transformData.segments || transformData.segments.length === 0)
-        return;
-
-      // Only process transforms for the current sample
-      if (transformData.sampleId !== currentSampleId) return;
-
-      // Array index IS the segmentIndex
-      const effectivePoints: [number, number, number][][] =
-        transformData.segments.map((segment) => segment.points);
-
+    (label: fos.PolylineAnnotationLabel["data"] & { path: string }) => {
       const polylineLabelData = {
-        _id: labelId,
+        _id: label._id,
         points: [],
-        points3d: effectivePoints,
-        filled: false,
-        closed: shouldDefaultToClosed,
-        label: transformData.label,
+        points3d: label.points3d || [],
+        filled: label.filled,
+        closed: label.closed,
+        label: label.label || "",
       };
 
       setCurrentEditing({
-        isNew: true,
+        isNew: false,
         data: polylineLabelData,
-        path: transformData.path || currentActiveField,
+        path: label.path,
         type: "Polyline" as const,
         overlay: {
-          id: labelId,
-          updateLabel: syncWithSidebar,
+          id: label._id,
+          updateLabel: syncToSidebar,
           getLabel: () => {
             return polylineLabelData;
           },
         },
       });
 
-      setEditing(currentEditingPolylineAtom);
+      setEditing(currentEditingExistingPolylineAtom);
     },
-    [
-      currentSampleId,
-      currentActiveField,
-      shouldDefaultToClosed,
-      syncWithSidebar,
-    ]
+    [syncToSidebar]
   );
 };

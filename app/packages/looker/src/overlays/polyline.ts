@@ -11,6 +11,7 @@ import { getInstanceStrokeStyles, t } from "./util";
 
 export interface PolylineLabel extends RegularLabel {
   points?: Coordinates[][];
+  points3d?: Coordinates[][];
   closed?: boolean;
   filled?: boolean;
 }
