@@ -300,9 +300,9 @@ async def execute_or_delegate_operator(
                 ctx.num_distributed_tasks
                 or "num_distributed_tasks" in ctx.request_params
             ):
-                raise ValueError(
-                    "Distributed execution is only supported in FiftyOne Enterprise"
-                )
+                # Distributed execution is only supported in FiftyOne Enterprise
+                ctx.request_params.pop("num_distributed_tasks", None)
+
             if isinstance(operator, PipelineOperator):
                 raise ValueError(
                     "Pipeline operators require a distributed executor, "

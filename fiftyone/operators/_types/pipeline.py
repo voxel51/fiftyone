@@ -18,8 +18,7 @@ class PipelineStage:
         name: the name of the stage
         num_distributed_tasks: the number of distributed tasks to use
             for the stage, optional
-        params: optional parameters to pass to the operator, overwriting
-            any existing parameters
+        params: optional parameters to pass to the operator
     """
 
     # Required
@@ -62,7 +61,7 @@ class PipelineStage:
             self.num_distributed_tasks is not None
             and self.num_distributed_tasks < 1
         ):
-            raise ValueError("num_distributed_tasks must be >= 1")
+            self.num_distributed_tasks = None
 
     def to_json(self):
         """Converts the object definition to JSON / python dict.
@@ -111,8 +110,7 @@ class Pipeline:
             name: the name of the stage
             num_distributed_tasks: the number of distributed tasks to use
                 for the stage, optional
-            params: optional parameters to pass to the operator, overwriting
-                any existing parameters
+            params: optional parameters to pass to the operator
             **kwargs: reserved for future use
 
         Returns:
