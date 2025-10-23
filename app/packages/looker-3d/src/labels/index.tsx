@@ -27,9 +27,9 @@ import {
   cuboidLabelLineWidthAtom,
   currentArchetypeSelectedForTransformAtom,
   editSegmentsModeAtom,
+  isActivelySegmentingSelector,
   polylineLabelLineWidthAtom,
   polylinePointTransformsAtom,
-  segmentStateAtom,
   selectedLabelForAnnotationAtom,
   transformModeAtom,
 } from "../state";
@@ -53,7 +53,7 @@ export const ThreeDLabels = ({
   const annotationSchemas = useAtomValue(activeSchemas);
   const { coloring, selectedLabelTags, customizeColorSetting, labelTagColors } =
     useRecoilValue(fos.lookerOptions({ withFilter: true, modal: true }));
-  const isSegmenting = useRecoilValue(segmentStateAtom).isActive;
+  const isSegmenting = useRecoilValue(isActivelySegmentingSelector);
 
   const settings = fop.usePluginSettings<Looker3dSettings>(
     "3d",
