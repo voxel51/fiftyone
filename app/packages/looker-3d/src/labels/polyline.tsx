@@ -19,7 +19,6 @@ export interface PolyLineProps extends OverlayProps {
   points3d: THREE.Vector3Tuple[][];
   filled: boolean;
   lineWidth?: number;
-  // We ignore closed for now
   closed?: boolean;
 }
 
@@ -31,6 +30,7 @@ export const Polyline = ({
   color,
   selected,
   lineWidth,
+  closed,
   onClick,
   tooltip,
   label,
@@ -76,7 +76,7 @@ export const Polyline = ({
   });
 
   const lines = useMemo(() => {
-    return points3d.map((pts, i) => {
+    const lineElements = points3d.map((pts, i) => {
       return (
         <LineDrei
           key={`polyline-${label._id}-${i}`}
@@ -92,8 +92,38 @@ export const Polyline = ({
         />
       );
     });
+
+    // If closed, add line from last vertex to first for EACH segment
+    if (closed) {
+      const closingLines = points3d
+        .map((pts, i) => {
+          if (pts.length >= 2) {
+            return (
+              <LineDrei
+                key={`polyline-closing-${label._id}-${i}`}
+                lineWidth={lineWidth}
+                points={[pts[pts.length - 1], pts[0]]}
+                color={strokeAndFillColor}
+                rotation={rotation}
+                transparent={opacity < 0.2}
+                opacity={opacity}
+                onPointerOver={() => handleSegmentPointerOver(i)}
+                onPointerOut={handleSegmentPointerOut}
+                onClick={handleSegmentClick}
+              />
+            );
+          }
+          return null;
+        })
+        .filter(Boolean);
+
+      return [...lineElements, ...closingLines];
+    }
+
+    return lineElements;
   }, [
     points3d,
+    closed,
     strokeAndFillColor,
     lineWidth,
     rotation,
