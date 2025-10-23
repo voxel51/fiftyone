@@ -1,6 +1,6 @@
 import { Close as CloseIcon } from "@mui/icons-material";
 import type { PropsWithChildren } from "react";
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import styled from "styled-components";
 
@@ -61,6 +61,14 @@ const Modal = ({
     }
     return el;
   }, []);
+
+  useEffect(() => {
+    element.style.display = "block";
+
+    return () => {
+      element.style.display = "none";
+    };
+  }, [element]);
 
   return createPortal(
     <Background onClick={close}>
