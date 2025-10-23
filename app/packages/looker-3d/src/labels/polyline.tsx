@@ -97,6 +97,7 @@ export const Polyline = ({
     strokeAndFillColor,
     lineWidth,
     rotation,
+    opacity,
     label._id,
     handleSegmentPointerOver,
     handleSegmentPointerOut,
@@ -118,13 +119,7 @@ export const Polyline = ({
   const filledMeshes = useMemo(() => {
     if (!filled || !material) return null;
 
-    // Dispose previous meshes
-    meshesRef.current.forEach((mesh) => {
-      if (mesh.geometry) mesh.geometry.dispose();
-    });
-
     const meshes = createFilledPolygonMeshes(points3d, material);
-    meshesRef.current = meshes || [];
 
     if (!meshes) return null;
 
@@ -138,15 +133,26 @@ export const Polyline = ({
   }, [filled, points3d, rotation, material, label._id]);
 
   useEffect(() => {
+    const currentMeshes = meshesRef.current;
+
+    if (filled && material) {
+      const meshes = createFilledPolygonMeshes(points3d, material);
+      meshesRef.current = meshes || [];
+    } else {
+      meshesRef.current = [];
+    }
+
+    // Cleanup old meshes (only geometries, NOT materials, those are cleaned up separately)
     return () => {
-      meshesRef.current.forEach((mesh) => {
+      currentMeshes.forEach((mesh) => {
         if (mesh.geometry) {
           mesh.geometry.dispose();
         }
       });
     };
-  }, []);
+  }, [filled, points3d, material]);
 
+  // Cleanup material when it changes or component unmounts
   useEffect(() => {
     return () => {
       if (material) {

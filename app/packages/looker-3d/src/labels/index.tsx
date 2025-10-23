@@ -20,6 +20,7 @@ import { get as _get } from "lodash";
 import { useCallback, useEffect, useMemo } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
+import { useSetEditingToExistingPolyline } from "../annotation/useSetEditingToExistingPolyline";
 import { PANEL_ORDER_LABELS } from "../constants";
 import { usePathFilter } from "../hooks";
 import { type Looker3dSettings, defaultPluginSettings } from "../settings";
@@ -81,6 +82,8 @@ export const ThreeDLabels = ({
   const setCurrentArchetypeSelectedForTransform = useSetRecoilState(
     currentArchetypeSelectedForTransformAtom
   );
+
+  const setEditingToExistingPolyline = useSetEditingToExistingPolyline();
 
   const labelLevaControls = {
     cuboidLineWidget: {
@@ -145,8 +148,12 @@ export const ThreeDLabels = ({
           return;
         }
 
-        selectLabelForAnnotation(label);
-        setCurrentArchetypeSelectedForTransform(archetype);
+        if (archetype === "polyline") {
+          selectLabelForAnnotation(label);
+          setCurrentArchetypeSelectedForTransform(archetype);
+
+          setEditingToExistingPolyline(label);
+        }
 
         return;
       }
@@ -161,7 +168,14 @@ export const ThreeDLabels = ({
         },
       });
     },
-    [onSelectLabel, mode, selectLabelForAnnotation, isSegmenting]
+    [
+      onSelectLabel,
+      mode,
+      selectLabelForAnnotation,
+      isSegmenting,
+      setEditingToExistingPolyline,
+      setCurrentArchetypeSelectedForTransform,
+    ]
   );
 
   useEffect(() => {
@@ -239,6 +253,7 @@ export const ThreeDLabels = ({
       annotationSchemas,
     ]
   );
+
   const [cuboidOverlays, polylineOverlays] = useMemo(() => {
     const newCuboidOverlays = [];
     const newPolylineOverlays = [];
@@ -279,6 +294,7 @@ export const ThreeDLabels = ({
             opacity={labelAlpha}
             lineWidth={polylineWidth}
             {...(overlay as PolyLineProps)}
+            {...(transformData?.misc ?? {})}
             points3d={finalPoints3d}
             label={overlay}
             onClick={(e) => handleSelect(overlay, "polyline", e)}
@@ -327,17 +343,15 @@ export const ThreeDLabels = ({
           sampleId: currentSampleId,
           tags: [],
           points3d,
+          ...(transformData.misc ?? {}),
         };
 
         newPolylineOverlays.push(
           <Polyline
-            key={`polyline-${labelId}`}
+            key={`polyline-${labelId}-${transformData.sampleId}`}
             rotation={overlayRotation}
             opacity={labelAlpha}
             lineWidth={polylineWidth}
-            points3d={points3d}
-            filled={false}
-            selected={false}
             {...(overlayLabel as unknown as PolyLineProps)}
             label={overlayLabel}
             onClick={(e) => handleSelect(overlayLabel, "polyline", e)}
