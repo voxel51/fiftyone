@@ -3077,7 +3077,7 @@ class ResponseStream(object):
 
 _SAFE_CHARS = set(string.ascii_letters) | set(string.digits)
 _HYPHEN_CHARS = set(string.whitespace) | set("+_.-")
-_NAME_LENGTH_RANGE = (1, 100)
+_NAME_LENGTH_RANGE = (1, 1551)
 
 
 def _sanitize_char(c):
@@ -3100,7 +3100,7 @@ def to_slug(name):
         -   All other characters are omitted
         -   All consecutive ``-`` characters are reduced to a single ``-``
         -   All leading and trailing ``-`` are stripped
-        -   Both the input name and the resulting string must be ``[1, 100]``
+        -   Both the input name and the resulting string must be ``[1, 1551]``
             characters in length
 
     Examples::

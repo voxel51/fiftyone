@@ -492,7 +492,7 @@ class CoreUtilsTests(unittest.TestCase):
             fou.to_slug("------")  # too short
 
         with self.assertRaises(ValueError):
-            fou.to_slug("a" * 101)  # too long
+            fou.to_slug("a" * 1552)  # too long
 
     def test_get_module_name(self):
         if sys.platform.startswith("win"):
