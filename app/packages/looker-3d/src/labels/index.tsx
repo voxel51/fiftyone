@@ -322,6 +322,7 @@ export const ThreeDLabels = ({
           _cls: "Polyline",
           type: "Polyline",
           path: transformData.path,
+          label: transformData.label,
           selected: false,
           sampleId: currentSampleId,
           tags: [],
@@ -341,6 +342,15 @@ export const ThreeDLabels = ({
             label={overlayLabel}
             onClick={(e) => handleSelect(overlayLabel, "polyline", e)}
             tooltip={tooltip}
+            color={getLabelColor({
+              coloring,
+              path: transformData.path,
+              isTagged: false,
+              labelTagColors,
+              customizeColorSetting,
+              label: overlayLabel,
+              embeddedDocType: overlayLabel._cls,
+            })}
           />
         );
       }

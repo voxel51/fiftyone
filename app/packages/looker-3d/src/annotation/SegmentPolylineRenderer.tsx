@@ -70,16 +70,13 @@ export const SegmentPolylineRenderer = ({
   const DOUBLE_CLICK_THRESHOLD_MS = 200;
   const lastAddedVertexRef = useRef<[number, number, number] | null>(null);
 
-  // Helper to commit completed segment immediately to transforms
   const commitSegment = useCallback(
     (vertices: [number, number, number][], isClosed: boolean) => {
       const labelId = selectedLabelForAnnotation?._id || tempLabelId;
 
-      // Get existing segments from transforms
       const currentData = polylinePointTransforms[labelId];
       const existingSegments = currentData?.segments || [];
 
-      // Create new segment
       const newSegment: { points: [number, number, number][] } = {
         points:
           isClosed && vertices.length > 2
@@ -87,7 +84,6 @@ export const SegmentPolylineRenderer = ({
             : vertices,
       };
 
-      // Add to existing segments
       const newSegments = [...existingSegments, newSegment];
 
       const transformData: PolylinePointTransformData = {
@@ -103,7 +99,6 @@ export const SegmentPolylineRenderer = ({
 
       setEditingToNewPolyline(labelId, transformData);
 
-      // Reset segment state
       setSegmentState({
         isActive: false,
         vertices: [],
