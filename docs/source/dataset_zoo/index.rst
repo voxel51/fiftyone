@@ -59,6 +59,8 @@ vision datasets for your research and development.
 
 .. include:: datasets/dataset_cards.rst
 
+.. include:: datasets_hf/dataset_cards.rst
+
 .. End of dataset cards
 
 .. raw:: html
@@ -82,3 +84,4 @@ vision datasets for your research and development.
    Remote datasets <remote>
    API reference <api>
    datasets/*
+   datasets_hf/*
