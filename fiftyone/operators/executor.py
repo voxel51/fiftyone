@@ -22,6 +22,7 @@ from fiftyone.operators import constants
 from fiftyone.operators.decorators import coroutine_timeout
 from fiftyone.operators.message import GeneratedMessage, MessageType
 from fiftyone.operators.operations import Operations
+from fiftyone.operators.operator import PipelineOperator
 from fiftyone.operators.panel import PanelRef
 from fiftyone.operators.registry import OperatorRegistry
 from fiftyone.operators.store import ExecutionStore
@@ -237,8 +238,7 @@ async def execute_or_delegate_operator(
     prepared = await prepare_operator_executor(operator_uri, request_params)
     if isinstance(prepared, ExecutionResult):
         raise prepared.to_exception()
-    else:
-        operator, executor, ctx, inputs = prepared
+    operator, executor, ctx, inputs = prepared
 
     execution_options = operator.resolve_execution_options(ctx)
     if (
@@ -267,6 +267,28 @@ async def execute_or_delegate_operator(
             )
             should_delegate = True
 
+    # Validate PipelineOperators
+    pipeline = None
+    if isinstance(operator, PipelineOperator):
+        try:
+            pipeline = operator.resolve_pipeline(ctx)
+            if not pipeline or not isinstance(pipeline, types.Pipeline):
+                raise TypeError(
+                    "Pipeline must be a fiftyone.operators.types.Pipeline"
+                )
+            if not all(
+                isinstance(s, types.PipelineStage) for s in pipeline.stages
+            ):
+                raise TypeError(
+                    "Pipeline stages must be of type PipelineStage"
+                )
+        except Exception as e:
+            return ExecutionResult(
+                executor=executor,
+                error=traceback.format_exc(),
+                error_message=f"Failed to resolve pipeline: {str(e)}",
+            )
+
     if should_delegate:
         try:
             from .delegated import DelegatedOperationService
@@ -276,10 +298,14 @@ async def execute_or_delegate_operator(
                 ctx.num_distributed_tasks
                 or "num_distributed_tasks" in ctx.request_params
             ):
-                logger.warning(
-                    "Distributed execution only supported in FiftyOne Enterprise"
+                raise ValueError(
+                    "Distributed execution is only supported in FiftyOne Enterprise"
                 )
-                ctx.request_params.pop("num_distributed_tasks", None)
+            if isinstance(operator, PipelineOperator):
+                raise ValueError(
+                    "Pipeline operators require a distributed executor, "
+                    "available only in FiftyOne Enterprise"
+                )
 
             ctx.request_params["delegated"] = True
             metadata = {"inputs_schema": None, "outputs_schema": None}
@@ -298,6 +324,7 @@ async def execute_or_delegate_operator(
                 delegation_target=ctx.delegation_target,
                 label=operator.resolve_run_name(ctx),
                 metadata=metadata,
+                pipeline=None,  # pipelines not supported in this repo
             )
 
             execution = ExecutionResult(
@@ -308,6 +335,11 @@ async def execute_or_delegate_operator(
                 if execution.result["context"]
                 else None
             )
+            execution.result["pipeline"] = (
+                execution.result["pipeline"].to_json()
+                if execution.result["pipeline"]
+                else None
+            )
             return execution
         except Exception as error:
             return ExecutionResult(
@@ -316,8 +348,13 @@ async def execute_or_delegate_operator(
                 error_message=str(error),
             )
     else:
+        if isinstance(operator, PipelineOperator):
+            raise NotImplementedError(
+                "Immediate execution of pipeline operators is not supported"
+            )
         # Not delegated, force distributed execution off
         ctx.request_params.pop("num_distributed_tasks", None)
+
         try:
             result = await do_execute_operator(operator, ctx, exhaust=exhaust)
         except Exception as error:
@@ -602,12 +639,8 @@ class ExecutionContext(object):
 
         return self._view
 
-    def target_view(
-        self,
-        param_name="view_target",
-    ):
-        """The target :class:`fiftyone.core.view.DatasetView` for the operator
-        being executed.
+    def target_view(self, param_name="view_target"):
+        """The target view for the operator being executed.
 
         Args:
             param_name ("view_target"): the name of the enum parameter defining
@@ -617,17 +650,6 @@ class ExecutionContext(object):
             a :class:`fiftyone.core.collections.SampleCollection`
         """
         target = self.params.get(param_name)
-
-        # If no target is specified, default to the base view if the
-        #   current view is generated, otherwise default to the entire dataset
-        if not target:
-            target = (
-                constants.ViewTarget.BASE_VIEW
-                if (
-                    self.view and self.view._is_generated
-                )  # pylint: disable=protected-access
-                else constants.ViewTarget.DATASET
-            )
 
         if target == constants.ViewTarget.CURRENT_VIEW:
             return self.view
@@ -642,7 +664,7 @@ class ExecutionContext(object):
         if target == constants.ViewTarget.DATASET_VIEW:
             return self.dataset.view()
 
-        return self.dataset
+        return self.view if self.has_custom_view else self.dataset
 
     # Alias for common word reversal
     view_target = target_view

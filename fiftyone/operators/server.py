@@ -22,7 +22,7 @@ from .executor import (
 )
 from .message import GeneratedMessage
 from .permissions import PermissionedOperatorRegistry
-from .utils import is_method_overridden
+from .utils import is_method_overridden, create_operator_response
 from .operator import Operator
 
 
@@ -107,7 +107,7 @@ class ExecuteOperator(HTTPEndpoint):
             raise HTTPException(status_code=404, detail=error_detail)
 
         result = await execute_or_delegate_operator(operator_uri, data)
-        return result.to_json()
+        return await create_operator_response(result)
 
 
 def create_response_generator(generator):

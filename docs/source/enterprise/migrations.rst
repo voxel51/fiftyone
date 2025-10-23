@@ -5,21 +5,21 @@ Migrations
 
 .. default-role:: code
 
-This page describes how to migrate between FiftyOne Enterprise versions, both for
-:ref:`admins <enterprise-upgrading>` migrating the core Enterprise App infrastructure and
-:ref:`individual users <enterprise-upgrade-python-sdk>` who need to install a new
-version of the Enterprise Python SDK.
+This page describes how to migrate between FiftyOne Enterprise versions, both
+for :ref:`admins <enterprise-upgrading>` migrating the core FiftyOne Enterprise
+infrastructure and :ref:`individual users <enterprise-upgrade-python-sdk>` who
+need to install a new version of the FiftyOne Enterprise Python SDK.
 
-Refer to :ref:`this section <enterprise-migrating-datasets>` to see how to migrate
-existing datasets from open source to Enterprise.
+Refer to :ref:`this section <enterprise-migrating-datasets>` to see how to
+migrate existing datasets from FiftyOne Open Source to FiftyOne Enterprise.
 
 .. _enterprise-upgrade-python-sdk:
 
 Upgrading your Python SDK
 _________________________
 
-Users can upgrade their FiftyOne Enterprise Python client to the latest version as
-follows:
+Users can upgrade their FiftyOne Enterprise Python client to the latest version
+as follows:
 
 .. code-block:: shell
 
@@ -34,7 +34,8 @@ A specific FiftyOne Enterprise client version can be installed like so:
 .. note::
 
     You can find your `TOKEN` by logging into the FiftyOne Enterprise App and
-    clicking on the :ref:`account icon <enterprise-python-sdk>` in the upper right.
+    clicking on the :ref:`account icon <enterprise-python-sdk>` in the upper
+    right.
 
 .. _enterprise-upgrading:
 
@@ -44,9 +45,10 @@ _________________________
 The basic **admin workflow** for upgrading a FiftyOne Enterprise deployment is:
 
 -   :ref:`Upgrade <enterprise-upgrade-python-sdk>` all automated services and
-    individual user workflows that use the Enterprise Python SDK to an appropriate
-    SDK version
--   Upgrade your core Enterprise App infrastructure (via Kubernetes, Docker, etc)
+    individual user workflows that use the FiftyOne Enterprise Python SDK to an
+    appropriate SDK version
+-   Upgrade your core FiftyOne Enterprise infrastructure (via Kubernetes,
+    Docker, etc)
 -   Upgrade your database's version, as described below
 
 .. note::
@@ -76,11 +78,12 @@ below:
     first time they are loaded under a new database version. Often there is no
     migration required, but there could be.
 
-`Unlike open source FiftyOne <https://voxel51.com/docs/fiftyone/user_guide/config.html#database-migrations>`_,
-a Enterprise database is not automatically upgraded when a user connects to the
-database with a newer Python client version. Instead, an admin must manually
-upgrade your Enterprise database by installing the newest version of the Enterprise SDK
-locally, assuming admin privileges, and running the command shown below:
+`Unlike FiftyOne Open Source  <https://voxel51.com/docs/fiftyone/user_guide/config.html#database-migrations>`_,
+a FiftyOne Enterprise database is not automatically upgraded when a user
+connects to the database with a newer Python client version. Instead, an admin
+must manually upgrade your database by installing the newest version of the
+FiftyOne Enterprise SDK locally, assuming admin privileges, and running the
+following command:
 
 .. code-block:: shell
 
@@ -103,16 +106,16 @@ locally, assuming admin privileges, and running the command shown below:
 Downgrading your deployment
 ___________________________
 
-Admins can also downgrade their FiftyOne Enterprise deployment to an older version
-if necessary.
+Admins can also downgrade their FiftyOne Enterprise deployment to an older
+version if necessary.
 
-The steps are the same as :ref:`when upgrading <enterprise-upgrading>`, except that
-you’ll need to know the appropriate database version to migrate down to. Each
-version of Enterprise corresponds to a version of open source FiftyOne called its
-"open source compatibility version", and this versioning system is used to set
-the database version.
+The steps are the same as :ref:`when upgrading <enterprise-upgrading>`, except
+that you’ll need to know the appropriate database version to migrate down to.
+Each version of FiftyOne Enterprise corresponds to a version of FiftyOne Open
+Source  called its "open source compatibility version", and this versioning
+system is used to set the database version.
 
-For example, you can downgrade to Enterprise v0.10 like so:
+For example, you can downgrade to FiftyOne Enterprise v0.10 like so:
 
 .. code-block:: shell
 
@@ -127,17 +130,17 @@ For example, you can downgrade to Enterprise v0.10 like so:
 
 .. note::
 
-    Contact your Voxel51 CS engineer if you need to know the open source
-    compatibility version for a particular Enterprise version that you wish to
-    downgrade to.
+    Contact your Voxel51 support team if you need to know the open source
+    compatibility version for a particular FiftyOne Enterprise version that
+    you wish to downgrade to.
 
 .. _enterprise-migrating-datasets:
 
 Migrating datasets to Enterprise
 ________________________________
 
-Any datasets that you have created via open source FiftyOne can be migrated to
-your Enterprise deployment by exporting them in
+Any datasets that you have created via FiftyOne Open Source can be migrated to
+your FiftyOne Enterprise deployment by exporting them in
 :ref:`FiftyOneDataset <FiftyOneDataset-export>` format:
 
 .. code-block:: python
@@ -154,8 +157,8 @@ your Enterprise deployment by exporting them in
         export_media=False,
     )
 
-and then re-importing them with the Enterprise SDK connected to your Enterprise
-deployment:
+and then re-importing them with the FiftyOne Enterprise SDK connected to your
+Enterprise deployment:
 
 .. code-block:: python
     :linenos:
@@ -170,10 +173,10 @@ deployment:
     )
 
 Note that you'll need to update any local filepaths to cloud paths in order to
-use the dataset in Enterprise.
+use the dataset in FiftyOne Enterprise.
 
-If you need to upload the local media to the cloud, the Enterprise SDK provides a
-builtin utility for this:
+If you need to upload the local media to the cloud, the FiftyOne Enterprise SDK
+provides a builtin utility for this:
 
 .. code-block:: python
     :linenos:

@@ -6,18 +6,14 @@ FiftyOne delegated operator related unit tests.
 |
 """
 import copy
-import signal
-import threading
 import time
 import unittest
 from unittest import mock
 from unittest.mock import patch
 
 import bson
-import psutil
 import pytest
 
-import fiftyone
 from bson import ObjectId
 
 from fiftyone import Dataset
@@ -32,6 +28,7 @@ from fiftyone.operators.executor import (
     ExecutionResult,
     ExecutionRunState,
 )
+from fiftyone.operators.types import Pipeline, PipelineStage
 from fiftyone.factory.repos import (
     DelegatedOperationDocument,
     delegated_operation,
@@ -204,6 +201,20 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         dataset_name = f"test_dataset_{dataset_id}"
         mock_load_dataset.return_value.name = dataset_name
         mock_load_dataset.return_value._doc.id = dataset_id
+
+        pipeline = Pipeline(
+            [
+                PipelineStage(
+                    name="one",
+                    operator_uri="@test/op1",
+                    num_distributed_tasks=5,
+                    params={"foo": "bar"},
+                ),
+                PipelineStage(
+                    name="two", operator_uri="@test/op2", always_run=True
+                ),
+            ]
+        )
         doc = self.svc.queue_operation(
             operator=f"{TEST_DO_PREFIX}/operator/foo",
             label=mock_get_operator.return_value.config.label,
@@ -211,12 +222,14 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             context=ExecutionContext(
                 request_params={"foo": "bar", "dataset_name": dataset_name},
             ),
+            pipeline=pipeline,
         )
         self.docs_to_delete.append(doc)
         self.assertIsNotNone(doc.queued_at)
         self.assertEqual(doc.label, "Mock Operator")
         self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
         self.assertEqual(doc.metadata, {})
+        self.assertEqual(doc.pipeline, pipeline)
 
         doc2_metadata = {"inputs_schema": {}}
         doc2 = self.svc.queue_operation(
@@ -1633,3 +1646,34 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         #####
         self.assertRaises(PermissionError, dos.set_queued, op_id)
         #####
+
+    def test_queue_panel_delegated_op(self, mock_get_operator):
+        """Queue DO that comes from a panel"""
+        self.mock_is_remote_service.return_value = True
+        db = delegated_operation.MongoDelegatedOperationRepo()
+        dos = DelegatedOperationService(repo=db)
+        ctx = ExecutionContext(
+            request_params={
+                "params": {
+                    "panel_id": bson.ObjectId(),
+                    "panel_state": {"foo2": "bar2"},
+                }
+            }
+        )
+        ctx.request_params = {"foo": "bar"}
+        ctx.params = {
+            "panel_id": bson.ObjectId(),
+            "panel_state": {"foo2": "bar2"},
+        }
+
+        #####
+        doc = dos.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/operator/foo",
+            label=mock_get_operator.return_value.name,
+            delegation_target="test_target",
+            context=ctx,
+        )
+        #####
+
+        self.docs_to_delete.append(doc)
+        self.assertEqual(doc.run_state, ExecutionRunState.SCHEDULED)

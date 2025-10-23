@@ -39,5 +39,6 @@ operators:
   - delete_workspace
   - sync_last_modified_at
   - list_files
+  - download_file
   - model_evaluation_configure_scenario
   - load_group_by

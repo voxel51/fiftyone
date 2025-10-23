@@ -186,18 +186,23 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                 )
             )
 
-        if "dataset_id_1" not in index_names:
-            indices_to_create.append(
-                IndexModel(
-                    [("dataset_id", pymongo.ASCENDING)], name="dataset_id_1"
-                )
-            )
-
         if "parent_id_1" not in index_names:
             indices_to_create.append(
                 IndexModel(
                     [("parent_id", pymongo.ASCENDING)],
                     name="parent_id_1",
+                )
+            )
+
+        if "dataset_id_1_parent_id_1_scheduled_at_1" not in index_names:
+            indices_to_create.append(
+                IndexModel(
+                    [
+                        ("dataset_id", pymongo.ASCENDING),
+                        ("parent_id", pymongo.ASCENDING),
+                        ("scheduled_at", pymongo.DESCENDING),
+                    ],
+                    name="dataset_id_1_parent_id_1_scheduled_at_1",
                 )
             )
 
@@ -213,6 +218,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
 
         op.delegation_target = kwargs.get("delegation_target", None)
         op.metadata = kwargs.get("metadata") or {}
+        op.pipeline = kwargs.get("pipeline")
 
         context = None
         if isinstance(op.context, dict):
@@ -239,7 +245,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         op.context = context
         doc = self._collection.insert_one(op.to_pymongo())
         op.id = doc.inserted_id
-        return DelegatedOperationDocument().from_pymongo(op.__dict__)
+        return op
 
     def set_pinned(
         self, _id: ObjectId, pinned: bool = True
