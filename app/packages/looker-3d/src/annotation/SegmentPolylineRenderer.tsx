@@ -8,11 +8,11 @@ import { SNAP_TOLERANCE } from "../constants";
 import { useFo3dContext } from "../fo3d/context";
 import { useEmptyCanvasInteraction } from "../hooks/use-empty-canvas-interaction";
 import {
+  activeSegmentationStateAtom,
   annotationPlaneAtom,
   currentActiveAnnotationField3dAtom,
   isSegmentingPointerDownAtom,
   polylinePointTransformsAtom,
-  activeSegmentationStateAtom,
   selectedLabelForAnnotationAtom,
   sharedCursorPositionAtom,
   snapCloseAutomaticallyAtom,
@@ -79,11 +79,14 @@ export const SegmentPolylineRenderer = ({
       const currentData = polylinePointTransforms[labelId];
       const existingSegments = currentData?.segments || [];
 
-      const newSegment: { points: [number, number, number][] } = {
-        points:
-          isClosed && vertices.length > 2
-            ? [...vertices, vertices[0]] // Close the loop
-            : vertices,
+      const newSegment = {
+        points: (isClosed && vertices.length > 2
+          ? [...vertices, vertices[0]]
+          : vertices
+        ).map(
+          (pt) =>
+            pt.map((p) => Number(p.toFixed(7))) as [number, number, number]
+        ),
       };
 
       const newSegments = [...existingSegments, newSegment];
