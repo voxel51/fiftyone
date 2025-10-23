@@ -79,7 +79,7 @@ view_stage = _make_registrar()
 aggregation = _make_registrar()
 
 
-class DummyFuture:
+class _DummyFuture:
     def __init__(self, *, value=None, exception=None):
         self.value = value
         self.exception = exception
@@ -90,7 +90,7 @@ class DummyFuture:
         return self.value
 
 
-class DummyExecutor:
+class _DummyExecutor:
     def __enter__(self):
         return self
 
@@ -100,9 +100,9 @@ class DummyExecutor:
     def submit(self, fn, *args, **kwargs):
         try:
             result = fn(*args, **kwargs)
-            return DummyFuture(value=result)
+            return _DummyFuture(value=result)
         except Exception as e:
-            return DummyFuture(exception=e)
+            return _DummyFuture(exception=e)
 
 
 class SaveContext(object):
@@ -169,7 +169,7 @@ class SaveContext(object):
         self.executor = (
             ThreadPoolExecutor(max_workers=1)
             if async_writes
-            else DummyExecutor()
+            else _DummyExecutor()
         )
         self.futures = []
 
