@@ -11,7 +11,7 @@ With your dataset and DO(s) ready, it's time to configure your Verified Auto-Lab
    :local:
    :depth: 2
 
-Open the Auto Labeling Panel
+Open and configure Auto Labeling
 -----------------------------
 
 1. Click into your FiftyOne dataset. Above the sample grid, select **New panel > Auto Labeling**. 
@@ -29,13 +29,31 @@ Open the Auto Labeling Panel
 
 6. Open the zero-shot model dropdown, and select **YOLO World** as the chosen detection model.
 
+7. Expand the **Define zero-shot classes** dropdown.
+
+8. Enter the following comma-separated classes:
+    - car
+    - bus
+    - person
+    - bicycle
+    - traffic sign
+
+9. Expand the **Settings** dropdown.
+
+10. For **Label field**, type **yolow-detections**.
+
+11. For **Minimum confidence in results**, type **0.3**. 
+
+.. tip::
+  For auto labeling, a low-medium confidence threshold often maxmizes downstream model accuracy due to increased recall. See this `article <https://voxel51.com/blog/zero-shot-auto-labeling-rivals-human-performance>` for more details. 
+
+12. For **Run name**, type **yolow-detections-run**.
+
+13. Click **Auto Label**, then click **Schedule** for one of your delegated operators.
+
 Start a New VAL Run
 -------------------
 
-Click the **Auto Label** button (gradient orange/purple button) to begin configuration.
-
-.. note::
-   If you don't see the Auto Label button, verify you have edit permissions on the dataset.
 
 Configuration Panel
 --------------------
