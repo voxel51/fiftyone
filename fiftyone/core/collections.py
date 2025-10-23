@@ -129,6 +129,8 @@ class SaveContext(object):
             -   ``"latency"``: a target latency, in seconds, between saves
 
             By default, ``fo.config.default_batcher`` is used
+        async_writes (False): whether to perform batch writes asynchronously in
+            a background thread
     """
 
     def __init__(
