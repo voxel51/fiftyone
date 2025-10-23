@@ -16,7 +16,7 @@ from starlette.exceptions import HTTPException
 from starlette.requests import Request
 
 import fiftyone as fo
-import fiftyone.core.odm.utils as fou
+import fiftyone.core.odm as foo
 
 from fiftyone.server import decorators, utils
 
@@ -95,7 +95,7 @@ def get_sample(
     """
 
     try:
-        dataset = fou.load_dataset(id=dataset_id)
+        dataset = foo.load_dataset(id=dataset_id)
     except ValueError as err:
         raise HTTPException(
             status_code=404,
