@@ -7,7 +7,7 @@ import {
 import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { editing } from ".";
-import { current, currentOverlay, savedLabel } from "./state";
+import { current, currentData, currentOverlay, savedLabel } from "./state";
 
 export default function useExit() {
   const setEditing = useSetAtom(editing);
@@ -20,6 +20,7 @@ export default function useExit() {
     const store = getDefaultStore();
     store.get(currentOverlay)?.setSelected(false);
     const label = store.get(savedLabel);
+    label && store.set(currentData, label);
     setEditing(null);
     setSaved(null);
 
