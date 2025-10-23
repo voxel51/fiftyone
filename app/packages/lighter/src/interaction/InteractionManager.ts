@@ -6,16 +6,14 @@ import { UndoRedoManager } from "../commands/UndoRedoManager";
 import { TypeGuards } from "../core/Scene2D";
 import type { EventBus, LighterEventDetail } from "../event/EventBus";
 import { LIGHTER_EVENTS } from "../event/EventBus";
-import { BoundingBoxOverlay } from "../overlay/BoundingBoxOverlay";
-import type { Renderer2D } from "../renderer/Renderer2D";
-import type { SelectionManager } from "../selection/SelectionManager";
-import type { Point, Rect } from "../types";
-import { InteractiveDetectionHandler } from "./InteractiveDetectionHandler";
 import {
   BoundingBoxOverlay,
   type MoveState,
 } from "../overlay/BoundingBoxOverlay";
-import { BaseOverlay } from "../overlay/BaseOverlay";
+import type { Renderer2D } from "../renderer/Renderer2D";
+import type { SelectionManager } from "../selection/SelectionManager";
+import type { Point, Rect } from "../types";
+import { InteractiveDetectionHandler } from "./InteractiveDetectionHandler";
 
 /**
  * Interface for objects that can handle interaction events.
