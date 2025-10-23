@@ -264,6 +264,7 @@ export default function ViewDialog(props: Props) {
               items={COLOR_OPTIONS}
               hideActions
               readonly
+              insideModal
             />
           </InputContainer>
         </DialogContent>

@@ -30,6 +30,7 @@ type SelectionProps = {
   onEdit?: (item: DatasetViewOption) => void;
   onClear?: () => void;
   noBorder?: boolean;
+  insideModal?: boolean; // elevate z-index when inside a modal/dialog
 };
 
 export default function Selection(props: SelectionProps) {
@@ -46,6 +47,7 @@ export default function Selection(props: SelectionProps) {
     onEdit,
     onClear,
     noBorder,
+    insideModal = false,
   } = props;
 
   const theme = useTheme();
@@ -77,8 +79,14 @@ export default function Selection(props: SelectionProps) {
     <div style={{ width: "100%" }} data-cy={`${id}-selection-container`}>
       <Select
         MenuProps={{
+          sx: {
+            // default dialog z-index is 1300
+            zIndex: insideModal ? 2400 : undefined,
+          },
           MenuListProps: {
-            sx: { paddingY: 0, zIndex: 999 },
+            sx: {
+              paddingY: 0,
+            },
           },
         }}
         IconComponent={
