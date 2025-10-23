@@ -16,14 +16,16 @@ const Container = styled.div`
   position: relative;
 `;
 
-const ImportSchema = () => {
+const ImportSchema = (
+  { disabled }: { disabled: boolean } = { disabled: false }
+) => {
   const canManage = useCanManageSchema();
   const showModal = useShowModal();
   return (
     <Container>
       <MuiIconFont
         sx={{
-          fontSize: 64,
+          fontSize: 48,
           color: "#FF9950",
           marginBottom: 2,
         }}
@@ -39,7 +41,7 @@ const ImportSchema = () => {
       <MuiButton
         variant="contained"
         color="primary"
-        disabled={!canManage}
+        disabled={disabled || !canManage}
         onClick={showModal}
       >
         Add schema
@@ -58,6 +60,23 @@ const ImportSchema = () => {
         >
           <Typography color="secondary" fontSize={12}>
             Dataset managers can add schemas
+          </Typography>
+        </Alert>
+      )}
+      {disabled && (
+        <Alert
+          icon={<InfoOutlined fontSize="inherit" color="secondary" />}
+          severity="info"
+          sx={{
+            position: "absolute",
+            bottom: 2,
+            margin: 2,
+            background: "#333",
+            boxShadow: "0px 1px 2px 0px rgba(16, 24, 40, 0.05)",
+          }}
+        >
+          <Typography color="secondary" fontSize={12}>
+            Annotation is not yet supported for this type of media or view.
           </Typography>
         </Alert>
       )}

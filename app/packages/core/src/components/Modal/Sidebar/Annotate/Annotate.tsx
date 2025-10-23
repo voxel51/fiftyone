@@ -87,8 +87,9 @@ const Annotate = () => {
   const scene = useAtomValue(lighterSceneAtom);
 
   const mediaType = useRecoilValue(fos.mediaType);
+  const unsupported = !mediaType || ["video", "group"].includes(mediaType);
 
-  if (loading || (!scene && mediaType !== "3d")) {
+  if ((loading || (!scene && mediaType !== "3d")) && !unsupported) {
     return <Loading />;
   }
 
@@ -96,7 +97,7 @@ const Annotate = () => {
     <>
       {editing && <Edit key="edit" />}
       {showImport ? (
-        <ImportSchema key="import" />
+        <ImportSchema key="import" disabled={unsupported} />
       ) : (
         <AnnotateSidebar key="annotate" />
       )}
