@@ -6,14 +6,13 @@ import {
   nullableModalSampleId,
 } from "@fiftyone/state";
 import { atom, atomFamily, selector } from "recoil";
-import { Vector3, Vector3Tuple } from "three";
+import { Vector3 } from "three";
 import type {
   AnnotationPlaneState,
   HoveredPolylineInfo,
   PolylinePointTransformData,
   SegmentState,
   SelectedPoint,
-  TransformedLabelData,
   TransformMode,
   TransformSpace,
 } from "./annotation/types";
@@ -267,14 +266,6 @@ export const isCurrentlyTransformingAtom = atom<boolean>({
   key: "fo3d-isCurrentlyTransformingAtom",
   default: false,
 });
-
-// todo: we sync this with backend
-export const transformedLabelsAtom = atom<Record<string, TransformedLabelData>>(
-  {
-    key: "fo3d-transformedLabels",
-    default: {},
-  }
-);
 
 export const selectedPolylineVertexAtom = atom<SelectedPoint | null>({
   key: "fo3d-selectedPolylineVertexAtom",

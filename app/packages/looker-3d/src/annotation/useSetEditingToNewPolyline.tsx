@@ -1,14 +1,19 @@
 import { editing as editingAtom } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit";
 import * as fos from "@fiftyone/state";
-import { atom, useSetAtom } from "jotai";
-import { useResetAtom } from "jotai/utils";
+import { useAtom, useSetAtom } from "jotai";
+import { atomWithReset, useResetAtom } from "jotai/utils";
 import { useCallback, useEffect } from "react";
-import { useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import {
   currentActiveAnnotationField3dAtom,
+  polylinePointTransformsAtom,
   snapCloseAutomaticallyAtom,
 } from "../state";
 import { PolylinePointTransformData } from "./types";
+
+const currentEditingPolylineAtom = atomWithReset<fos.AnnotationLabel | null>(
+  null
+);
 
 /**
  *
@@ -16,14 +21,35 @@ import { PolylinePointTransformData } from "./types";
 export const useSetEditingToNewPolyline = () => {
   const setEditing = useSetAtom(editingAtom);
   const resetEditing = useResetAtom(editingAtom);
+  const resetCurrentEditing = useResetAtom(currentEditingPolylineAtom);
   const currentActiveField = useRecoilValue(currentActiveAnnotationField3dAtom);
   const currentSampleId = useRecoilValue(fos.currentSampleId);
   const shouldDefaultToClosed = useRecoilValue(snapCloseAutomaticallyAtom);
+  const [currentEditing, setCurrentEditing] = useAtom(
+    currentEditingPolylineAtom
+  );
+  const [polylinePointTransforms, setPolylinePointTransforms] = useRecoilState(
+    polylinePointTransformsAtom
+  );
 
   useEffect(() => {
     return () => {
+      resetCurrentEditing();
       resetEditing();
     };
+  }, []);
+
+  const syncToSidebar = useCallback((label: fos.AnnotationLabel["data"]) => {
+    // Note: we only sync label: string for now
+    setPolylinePointTransforms((prev) => {
+      return {
+        ...prev,
+        [label._id]: {
+          ...prev[label._id],
+          label: label.label,
+        },
+      };
+    });
   }, []);
 
   return useCallback(
@@ -44,19 +70,25 @@ export const useSetEditingToNewPolyline = () => {
         points3d: effectivePoints,
         filled: false,
         closed: shouldDefaultToClosed,
-        label: "",
+        label: transformData.label,
       };
 
-      setEditing(
-        atom({
-          isNew: true,
-          data: polylineLabelData,
-          path: transformData.path || currentActiveField,
-          type: "Polyline" as const,
-          overlay: { id: labelId },
-        })
-      );
+      setCurrentEditing({
+        isNew: true,
+        data: polylineLabelData,
+        path: transformData.path || currentActiveField,
+        type: "Polyline" as const,
+        overlay: {
+          id: labelId,
+          updateLabel: syncToSidebar,
+          getLabel: () => {
+            return polylineLabelData;
+          },
+        },
+      });
+
+      setEditing(currentEditingPolylineAtom);
     },
-    [currentSampleId, currentActiveField, shouldDefaultToClosed, setEditing]
+    [currentSampleId, currentActiveField, shouldDefaultToClosed]
   );
 };

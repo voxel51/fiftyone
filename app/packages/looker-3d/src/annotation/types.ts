@@ -47,42 +47,6 @@ export interface SelectedPoint {
   pointIndex: number;
 }
 
-// Transform data for HUD display
-export interface TransformData {
-  // Delta X
-  dx?: number;
-  // Delta Y
-  dy?: number;
-  // Delta Z
-  dz?: number;
-  // Absolute world position X
-  x?: number;
-  // Absolute world position Y
-  y?: number;
-  // Absolute world position Z
-  z?: number;
-  // Dimensions X
-  dimensionX?: number;
-  // Dimensions Y
-  dimensionY?: number;
-  // Dimensions Z
-  dimensionZ?: number;
-  // Local rotation X (in degrees)
-  rotationX?: number;
-  // Local rotation Y (in degrees)
-  rotationY?: number;
-  // Local rotation Z (in degrees)
-  rotationZ?: number;
-}
-
-// Transformed label data storage
-export interface TransformedLabelData {
-  worldPosition: [number, number, number];
-  dimensions: [number, number, number];
-  localRotation: [number, number, number];
-  worldRotation: [number, number, number];
-}
-
 // Polyline segment transformations - stores modified segments for each label
 // Each segment is a list of connected vertices
 // Segments are stored in an array where the index IS the segmentIndex
@@ -95,6 +59,7 @@ export interface PolylinePointTransformData {
   segments: PolylineSegmentTransform[];
   path: string;
   sampleId: string;
+  label?: string;
 }
 
 export interface SegmentState {
