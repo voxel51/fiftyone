@@ -17,7 +17,7 @@ import {
   currentArchetypeSelectedForTransformAtom,
   editSegmentsModeAtom,
   polylinePointTransformsAtom,
-  segmentStateAtom,
+  activeSegmentationStateAtom,
   selectedLabelForAnnotationAtom,
   selectedPolylineVertexAtom,
   snapCloseAutomaticallyAtom,
@@ -51,7 +51,9 @@ export const useAnnotationActions = () => {
   const [selectedPoint, setSelectedPoint] = useRecoilState(
     selectedPolylineVertexAtom
   );
-  const [segmentState, setSegmentState] = useRecoilState(segmentStateAtom);
+  const [segmentState, setSegmentState] = useRecoilState(
+    activeSegmentationStateAtom
+  );
   const [snapCloseAutomatically, setSnapCloseAutomatically] = useRecoilState(
     snapCloseAutomaticallyAtom
   );

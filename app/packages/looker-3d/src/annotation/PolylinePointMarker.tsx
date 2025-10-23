@@ -8,8 +8,7 @@ import { Transformable } from "../labels/shared/TransformControls";
 import {
   currentArchetypeSelectedForTransformAtom,
   editSegmentsModeAtom,
-  hoveredPolylineInfoAtom,
-  segmentStateAtom,
+  activeSegmentationStateAtom,
   selectedPolylineVertexAtom,
   tempVertexTransformsAtom,
   transformModeAtom,
@@ -45,7 +44,6 @@ export const PolylinePointMarker = ({
 
   const [isHovered, setIsHovered] = useState(false);
 
-  const setHoveredPolylineInfo = useSetRecoilState(hoveredPolylineInfoAtom);
   const setTransformMode = useSetRecoilState(transformModeAtom);
 
   const [selectedPoint, setSelectedPoint] = useRecoilState(
@@ -55,7 +53,7 @@ export const PolylinePointMarker = ({
     currentArchetypeSelectedForTransformAtom
   );
 
-  const setSegmentState = useSetRecoilState(segmentStateAtom);
+  const setSegmentState = useSetRecoilState(activeSegmentationStateAtom);
   const setEditSegmentsMode = useSetRecoilState(editSegmentsModeAtom);
 
   const isSelected =
@@ -227,15 +225,9 @@ export const PolylinePointMarker = ({
           position={position}
           onPointerOver={() => {
             setIsHovered(true);
-            setHoveredPolylineInfo({
-              labelId,
-              segmentIndex,
-              pointIndex,
-            });
           }}
           onPointerOut={() => {
             setIsHovered(false);
-            setHoveredPolylineInfo(null);
           }}
           onClick={handlePointClick}
         >

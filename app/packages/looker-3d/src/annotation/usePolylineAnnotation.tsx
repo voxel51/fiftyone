@@ -9,7 +9,6 @@ import {
   currentActiveAnnotationField3dAtom,
   editSegmentsModeAtom,
   hoveredLabelAtom,
-  hoveredPolylineInfoAtom,
   polylinePointTransformsAtom,
   tempLabelTransformsAtom,
 } from "../state";
@@ -45,7 +44,6 @@ export const usePolylineAnnotation = ({
   const editSegmentsMode = useRecoilValue(editSegmentsModeAtom);
 
   const setHoveredLabel = useSetRecoilState(hoveredLabelAtom);
-  const setHoveredPolylineInfo = useSetRecoilState(hoveredPolylineInfoAtom);
 
   const setTempPolylineTransforms = useSetRecoilState(
     tempLabelTransformsAtom(label._id)
@@ -283,29 +281,19 @@ export const usePolylineAnnotation = ({
   const handleSegmentPointerOver = useCallback(
     (segmentIndex: number) => {
       if (isAnnotateMode) {
-        setHoveredPolylineInfo({
-          labelId: label._id,
-          segmentIndex,
-          // pointIndex is undefined when hovering over the segment
-        });
-
         if (editSegmentsMode) {
           document.body.style.cursor = "crosshair";
         }
       }
     },
-    [isAnnotateMode, setHoveredPolylineInfo, label._id, editSegmentsMode]
+    [isAnnotateMode, label._id, editSegmentsMode]
   );
 
   const handleSegmentPointerOut = useCallback(() => {
-    if (isAnnotateMode) {
-      setHoveredPolylineInfo(null);
-    }
-
     if (!editSegmentsMode) {
       document.body.style.cursor = "default";
     }
-  }, [isAnnotateMode, setHoveredPolylineInfo, editSegmentsMode]);
+  }, [isAnnotateMode, editSegmentsMode]);
 
   const handleSegmentClick = useCallback(
     (event: ThreeEvent<MouseEvent>) => {

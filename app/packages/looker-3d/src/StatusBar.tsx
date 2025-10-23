@@ -29,7 +29,7 @@ import {
   activeNodeAtom,
   cameraViewStatusAtom,
   isStatusBarOnAtom,
-  segmentStateAtom,
+  activeSegmentationStateAtom,
 } from "./state";
 
 const PerfContainer = styled.div`
@@ -398,7 +398,7 @@ export const StatusBar = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [showPerfStatus, setShowPerfStatus] = useRecoilState(isStatusBarOnAtom);
   const setActiveNode = useSetRecoilState(activeNodeAtom);
-  const segmentState = useRecoilValue(segmentStateAtom);
+  const segmentState = useRecoilValue(activeSegmentationStateAtom);
   const cameraViewStatus = useRecoilValue(cameraViewStatusAtom);
   const isMultiviewOn = useRecoilValue(isInMultiPanelViewAtom);
 

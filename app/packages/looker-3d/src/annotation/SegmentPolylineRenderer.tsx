@@ -12,7 +12,7 @@ import {
   currentActiveAnnotationField3dAtom,
   isSegmentingPointerDownAtom,
   polylinePointTransformsAtom,
-  segmentStateAtom,
+  activeSegmentationStateAtom,
   selectedLabelForAnnotationAtom,
   sharedCursorPositionAtom,
   snapCloseAutomaticallyAtom,
@@ -43,7 +43,9 @@ export const SegmentPolylineRenderer = ({
   const selectedLabelForAnnotation = useRecoilValue(
     selectedLabelForAnnotationAtom
   );
-  const [segmentState, setSegmentState] = useRecoilState(segmentStateAtom);
+  const [segmentState, setSegmentState] = useRecoilState(
+    activeSegmentationStateAtom
+  );
   const [polylinePointTransforms, setPolylinePointTransforms] = useRecoilState(
     polylinePointTransformsAtom
   );

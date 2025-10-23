@@ -8,7 +8,7 @@ import { Transformable } from "../labels/shared/TransformControls";
 import {
   annotationPlaneAtom,
   currentArchetypeSelectedForTransformAtom,
-  segmentStateAtom,
+  isActivelySegmentingSelector,
   transformModeAtom,
 } from "../state";
 
@@ -26,7 +26,7 @@ export const AnnotationPlane = ({
   const [annotationPlane, setAnnotationPlane] =
     useRecoilState(annotationPlaneAtom);
 
-  const isSegmenting = useRecoilValue(segmentStateAtom).isActive;
+  const isSegmenting = useRecoilValue(isActivelySegmentingSelector);
   const transformMode = useRecoilValue(transformModeAtom);
 
   const [
