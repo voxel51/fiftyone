@@ -87,17 +87,19 @@ class TestPipelineType(unittest.TestCase):
         with self.assertRaises(ValueError):
             types.PipelineStage(operator_uri=None)
 
-        with self.assertRaises(ValueError):
-            types.PipelineStage(operator_uri="my/uri", num_distributed_tasks=0)
+        pipe = types.PipelineStage(
+            operator_uri="my/uri", num_distributed_tasks=0
+        )
+        self.assertIsNone(pipe.num_distributed_tasks)
 
-        with self.assertRaises(ValueError):
-            types.PipelineStage(
-                operator_uri="my/uri", num_distributed_tasks=-5
-            )
+        pipe = types.PipelineStage(
+            operator_uri="my/uri", num_distributed_tasks=-5
+        )
+        self.assertIsNone(pipe.num_distributed_tasks)
 
         pipe = types.Pipeline()
-        with self.assertRaises(ValueError):
-            pipe.stage("my/uri", num_distributed_tasks=-5)
+        pipe.stage("my/uri", num_distributed_tasks=-5)
+        self.assertIsNone(pipe.stages[0].num_distributed_tasks)
 
     def test_none(self):
         self.assertIsNone(types.Pipeline.from_json(None))
