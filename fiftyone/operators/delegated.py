@@ -819,16 +819,20 @@ class DelegatedOperationService(object):
                 if parent_doc.pipeline and parent_doc.pipeline_run_info:
                     stage_index = parent_doc.pipeline_run_info.stage_index
                     pipeline_ctx = PipelineExecutionContext(
-                        parent_doc.pipeline_run_info.active,
-                        stage_index,
-                        len(parent_doc.pipeline.stages),
-                        num_distributed_tasks=parent_doc.pipeline.stages[
-                            stage_index
-                        ].get("num_distributed_tasks")
-                        or 0,
+                        active=parent_doc.pipeline_run_info.active,
+                        curr_stage_index=stage_index,
+                        total_stages=len(parent_doc.pipeline.stages),
+                        num_distributed_tasks=(
+                            parent_doc.pipeline.stages[
+                                stage_index
+                            ].num_distributed_tasks
+                            or 0
+                        ),
                     )
-        except:
-            pass
+        except Exception:
+            logger.debug(
+                "Failed to build PipelineExecutionContext", exc_info=True
+            )
 
         prepared = await prepare_operator_executor(
             operator_uri=operator_uri,

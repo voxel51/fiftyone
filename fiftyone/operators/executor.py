@@ -8,9 +8,11 @@ FiftyOne operator execution.
 
 import asyncio
 import collections
+import dataclasses
 import inspect
 import logging
 import traceback
+from typing import Optional
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
@@ -1104,6 +1106,7 @@ class ExecutionResult(object):
         }
 
 
+@dataclasses.dataclass
 class PipelineExecutionContext(object):
     """Represents the execution context of a pipeline.
 
@@ -1122,6 +1125,13 @@ class PipelineExecutionContext(object):
             current stage
     """
 
+    active: bool
+    curr_stage_index: int
+    total_stages: int
+    num_distributed_tasks: int = 0
+    error: Optional[str] = None
+
+    # Overriding default init so we swallow extra kwargs
     def __init__(
         self,
         active,
@@ -1134,7 +1144,6 @@ class PipelineExecutionContext(object):
         self.active = active
         self.curr_stage_index = curr_stage_index
         self.total_stages = total_stages
-
         self.error = error
         self.num_distributed_tasks = num_distributed_tasks
 
