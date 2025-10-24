@@ -126,7 +126,8 @@ export function usePanels(
   const schema = useRecoilValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
   );
-  const ctx = useMemo(() => ({ schema }), [schema]);
+  const dataset = useRecoilValue(fos.dataset);
+  const ctx = useMemo(() => ({ schema, dataset }), [schema, dataset]);
   const plots = useActivePlugins(PluginComponentType.Plot, ctx);
   const panels = useActivePlugins(PluginComponentType.Panel, ctx);
 
