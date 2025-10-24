@@ -5769,7 +5769,7 @@ In turn, each |SampleView| represents a view into the content of the underlying
 |Sample| in the dataset. For example, a |SampleView| may represent the contents
 of a sample with |Detections| below a specified threshold filtered out.
 
-.. custombutton::
+.. customanimatedcta::
     :button_text: Learn more about DatasetViews
     :button_link: using_views.html
 

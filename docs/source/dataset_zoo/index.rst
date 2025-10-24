@@ -1,115 +1,84 @@
 .. _dataset-zoo:
 
-FiftyOne Dataset Zoo
-====================
+Dataset Zoo
+===========
 
 .. default-role:: code
 
-The FiftyOne Dataset Zoo provides a powerful interface for downloading datasets
-and loading them into FiftyOne.
+Welcome to the FiftyOne Dataset Zoo! 🚀
 
-It provides native access to dozens of popular benchmark datasets, and it also
-supports downloading arbitrary public or private datasets whose
-download/preparation methods are provided via GitHub repositories or URLs.
+Here you'll discover dozens of popular benchmark datasets, ready to download
+and load into FiftyOne with a single command.
 
-Built-in datasets
------------------
+The FiftyOne Dataset Zoo provides access to a curated collection of datasets
+from various sources, enabling you to quickly work with standard computer
+vision datasets for your research and development.
 
-The Dataset Zoo provides built-in access to dozens of datasets that you can
-load into FiftyOne with a single command.
+.. raw:: html
 
-.. custombutton::
-    :button_text: Explore the datasets in the zoo
-    :button_link: datasets.html
+    <div class="plugins-search-container">
+        <div class="plugins-search-box">
+            <input type="text" id="dataset-search" placeholder="Search datasets by name, description, or tags...">
+            <div class="plugins-search-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                </svg>
+            </div>
+        </div>
+    </div>
 
-Remotely-sourced datasets
--------------------------
+.. customanimatedcta::
+    :button_text: Learn more about the Dataset Zoo
+    :button_link: overview.html
+    :align: right
+    
+.. Dataset cards section -----------------------------------------------------
 
-The Dataset Zoo also supports loading datasets whose download/preparation
-methods are provided via GitHub repositories or URLs.
+.. raw:: html
 
-.. custombutton::
-    :button_text: Learn how to download remote datasets
-    :button_link: remote.html
+    <div id="tutorial-cards-container">
 
-API reference
--------------
+    <nav class="navbar navbar-expand-lg navbar-light tutorials-nav col-12">
+        <div class="tutorial-tags-container">
+            <div id="dropdown-filter-tags">
+                <div class="tutorial-filter-menu">
+                    <div class="tutorial-filter filter-btn all-tag-selected" data-tag="all">All</div>
+                </div>
+            </div>
+        </nav>
+        
+    <hr class="tutorials-hr">
 
-The Dataset Zoo can be accessed via the Python library and the CLI. Consult the
-API reference below to see how to download, load, and manage zoo datasets.
+    <div class="row">
 
-.. custombutton::
-    :button_text: Check out the API reference
-    :button_link: api.html
+    <div id="tutorial-cards">
+    <div class="list">
 
-.. _dataset-zoo-basic-recipe:
+.. Add dataset cards below
 
-Basic recipe
-------------
+.. include:: datasets/dataset_cards.rst
 
-Methods for working with the Dataset Zoo are conveniently exposed via the
-Python library and the CLI. The basic recipe for loading a zoo dataset and
-visualizing it in the App is shown below.
+.. End of dataset cards
 
-.. tabs::
+.. raw:: html
 
-  .. group-tab:: Python
+    </div>
 
-    Use :meth:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>` to
-    load a zoo dataset into a FiftyOne dataset.
+    <div class="pagination d-flex justify-content-center"></div>
 
-    For example, the code sample below loads the validation split of
-    :ref:`COCO-2017 <dataset-zoo-coco-2017>` from the zoo and visualizes it in
-    the FiftyOne App:
+    </div>
 
-    .. code-block:: python
-        :linenos:
+    </div>
 
-        import fiftyone as fo
-        import fiftyone.zoo as foz
-
-        # List available zoo datasets
-        print(foz.list_zoo_datasets())
-
-        # Download the COCO-2017 validation split and load it into FiftyOne
-        dataset = foz.load_zoo_dataset("coco-2017", split="validation")
-
-        # Give the dataset a new name, and make it persistent
-        dataset.name = "coco-2017-validation-example"
-        dataset.persistent = True
-
-        # Visualize it in the App
-        session = fo.launch_app(dataset)
-
-  .. group-tab:: CLI
-
-    Use :ref:`fiftyone zoo datasets load <cli-fiftyone-zoo-datasets-load>` to
-    load a zoo dataset into a FiftyOne dataset.
-
-    For example, the code sample below loads the validation split of
-    :ref:`COCO-2017 <dataset-zoo-coco-2017>` from the zoo and visualizes it in
-    the FiftyOne App:
-
-    .. code-block:: shell
-
-        # List available zoo datasets
-        fiftyone zoo datasets list
-
-        # Download the COCO-2017 validation split and load it into FiftyOne
-        fiftyone zoo datasets load coco-2017 --split validation \
-            --dataset-name coco-2017-validation-example
-
-        # Visualize it in the App
-        fiftyone app launch coco-2017-validation-example
-
-.. image:: /images/dataset_zoo_coco_2017.png
-   :alt: Dataset Zoo
-   :align: center
+.. End Dataset cards section -------------------------------------------------
 
 .. toctree::
    :maxdepth: 1
    :hidden:
+   :glob:
 
-   Built-in datasets <datasets>
+   Overview <overview>
    Remote datasets <remote>
    API reference <api>
+   datasets/*
