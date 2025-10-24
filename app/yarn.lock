@@ -2550,8 +2550,12 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/feature-flags@workspace:packages/feature-flags"
   dependencies:
+    "@fiftyone/analytics": "npm:*"
     "@testing-library/dom": "npm:^10.4.0"
     "@testing-library/react": "npm:^16.2.0"
+    "@typescript-eslint/eslint-plugin": "npm:^6.0.0"
+    "@typescript-eslint/parser": "npm:^6.0.0"
+    eslint: "npm:^8.0.0"
     jsdom: "npm:^26.0.0"
     typescript: "npm:^4.7.4"
     vite: "npm:^5.4.12"
