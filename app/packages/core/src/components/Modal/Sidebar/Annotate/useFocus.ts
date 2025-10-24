@@ -3,7 +3,7 @@ import { getDefaultStore } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 import useConfirmExit from "./Confirmation/useConfirmExit";
 import { editing } from "./Edit";
-import { currentOverlay, hasChanges, savedLabel } from "./Edit/state";
+import { current, currentOverlay, hasChanges, savedLabel } from "./Edit/state";
 import useExit from "./Edit/useExit";
 import useSave from "./Edit/useSave";
 import { labelMap } from "./useLabels";
@@ -71,6 +71,9 @@ export default function useFocus() {
       selectId.current = event.detail.id;
 
       if (STORE.get(editing)) {
+        // skip for new labels
+        if (STORE.get(current)?.isNew) return;
+
         // a label is already being edited, let the DESELECT event handle it
         scene?.deselectOverlay(event.detail.id, { isBridgeLogicHandled: true });
         return;
