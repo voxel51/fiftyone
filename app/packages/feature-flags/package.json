@@ -12,6 +12,9 @@
         "dist"
     ],
     "main": "src/index.ts",
+    "dependencies": {
+        "@fiftyone/analytics": "*"
+    },
     "devDependencies": {
         "@testing-library/dom": "^10.4.0",
         "@testing-library/react": "^16.2.0",

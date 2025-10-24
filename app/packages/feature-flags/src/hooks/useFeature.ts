@@ -1,13 +1,32 @@
 import { useFeatureCache } from "./useFeatureCache";
 import { FeatureFlag } from "../client";
+import { useTrackEvent } from "@fiftyone/analytics";
 
 /**
  * Hook which provides the status of a given feature.
  *
  * @param feature Feature identifier
+ * @param enableTracking If enabled, will emit tracking events
  * @returns true if the feature is enabled, else false
  */
-export const useFeature = ({ feature }: { feature: FeatureFlag }): boolean => {
+export const useFeature = ({
+  feature,
+  enableTracking = true,
+}: {
+  feature: FeatureFlag;
+  enableTracking: boolean;
+}): boolean => {
   const cache = useFeatureCache();
-  return cache.isFeatureEnabled(feature.toString());
+  const trackEvent = useTrackEvent();
+
+  const isEnabled = cache.isFeatureEnabled(feature.toString());
+
+  if (enableTracking) {
+    trackEvent("VFF:CHECK", {
+      feature,
+      isEnabled,
+    });
+  }
+
+  return isEnabled;
 };
