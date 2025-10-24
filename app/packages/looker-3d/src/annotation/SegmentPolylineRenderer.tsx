@@ -40,9 +40,8 @@ export const SegmentPolylineRenderer = ({
 }: SegmentPolylineRendererProps) => {
   const currentSampleId = useRecoilValue(fos.currentSampleId);
   const currentActiveField = useRecoilValue(currentActiveAnnotationField3dAtom);
-  const selectedLabelForAnnotation = useRecoilValue(
-    selectedLabelForAnnotationAtom
-  );
+  const [selectedLabelForAnnotation, setSelectedLabelForAnnotation] =
+    useRecoilState(selectedLabelForAnnotationAtom);
   const [segmentState, setSegmentState] = useRecoilState(
     activeSegmentationStateAtom
   );
@@ -74,16 +73,15 @@ export const SegmentPolylineRenderer = ({
 
   const commitSegment = useCallback(
     (vertices: [number, number, number][], isClosed: boolean) => {
+      if (vertices.length < 2) return;
+
       const labelId = selectedLabelForAnnotation?._id || tempLabelId;
 
       const currentData = polylinePointTransforms[labelId];
       const existingSegments = currentData?.segments || [];
 
       const newSegment = {
-        points: (isClosed && vertices.length > 2
-          ? [...vertices, vertices[0]]
-          : vertices
-        ).map(
+        points: vertices.map(
           (pt) =>
             pt.map((p) => Number(p.toFixed(7))) as [number, number, number]
         ),
@@ -95,6 +93,9 @@ export const SegmentPolylineRenderer = ({
         segments: newSegments,
         path: currentActiveField || "",
         sampleId: currentSampleId,
+        misc: {
+          closed: isClosed,
+        },
       };
 
       setPolylinePointTransforms((prev) => ({
@@ -103,6 +104,22 @@ export const SegmentPolylineRenderer = ({
       }));
 
       setEditingToNewPolyline(labelId, transformData);
+
+      if (selectedLabelForAnnotation) {
+        setSelectedLabelForAnnotation({
+          ...selectedLabelForAnnotation,
+          _id: labelId,
+        });
+      } else {
+        setSelectedLabelForAnnotation({
+          _id: labelId,
+          path: currentActiveField || "",
+          sampleId: currentSampleId,
+          _cls: "Polyline" as const,
+          selected: false,
+          label: "",
+        });
+      }
 
       setSegmentState({
         isActive: false,
@@ -117,9 +134,6 @@ export const SegmentPolylineRenderer = ({
       polylinePointTransforms,
       currentActiveField,
       currentSampleId,
-      setPolylinePointTransforms,
-      setEditingToNewPolyline,
-      setSegmentState,
     ]
   );
 
@@ -281,21 +295,6 @@ export const SegmentPolylineRenderer = ({
         <LineDrei
           key={`segment-${i}`}
           points={[segmentState.vertices[i], segmentState.vertices[i + 1]]}
-          color={color}
-          lineWidth={lineWidth}
-        />
-      );
-    }
-
-    // If closed, add line from last vertex to first
-    if (segmentState.isClosed && segmentState.vertices.length > 2) {
-      segments.push(
-        <LineDrei
-          key="closing-segment"
-          points={[
-            segmentState.vertices[segmentState.vertices.length - 1],
-            segmentState.vertices[0],
-          ]}
           color={color}
           lineWidth={lineWidth}
         />

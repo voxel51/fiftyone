@@ -21,6 +21,7 @@ import { useCallback, useEffect, useMemo } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
 import { useSetEditingToExistingPolyline } from "../annotation/useSetEditingToExistingPolyline";
+import { sanitizeSchemaIoLabelAttributes } from "../annotation/utils/polyline-utils";
 import { PANEL_ORDER_LABELS } from "../constants";
 import { usePathFilter } from "../hooks";
 import { type Looker3dSettings, defaultPluginSettings } from "../settings";
@@ -36,7 +37,7 @@ import {
   transformModeAtom,
 } from "../state";
 import { TransformArchetype } from "../types";
-import { toEulerFromDegreesArray } from "../utils";
+import { isValidPolylineSegment, toEulerFromDegreesArray } from "../utils";
 import { Cuboid, type CuboidProps } from "./cuboid";
 import { type OverlayLabel, load3dOverlays } from "./loader";
 import { type PolyLineProps, Polyline } from "./polyline";
@@ -288,24 +289,30 @@ export const ThreeDLabels = ({
         (overlay as PolyLineProps).points3d
       ) {
         const transformData = polylinePointTransforms[overlay._id];
-        const finalPoints3d = transformData?.segments
+        let finalPoints3d = transformData?.segments
           ? transformData.segments.map((seg) => seg.points)
           : (overlay as PolyLineProps).points3d;
 
-        newPolylineOverlays.push(
-          <Polyline
-            key={`polyline-${overlay._id ?? overlay.id}-${overlay.sampleId}`}
-            rotation={overlayRotation}
-            opacity={labelAlpha}
-            lineWidth={polylineWidth}
-            {...(overlay as PolyLineProps)}
-            {...(transformData?.misc ?? {})}
-            points3d={finalPoints3d}
-            label={overlay}
-            onClick={(e) => handleSelect(overlay, "polyline", e)}
-            tooltip={tooltip}
-          />
-        );
+        if (finalPoints3d) {
+          finalPoints3d = finalPoints3d.filter(isValidPolylineSegment);
+        }
+
+        if (finalPoints3d && finalPoints3d.length > 0) {
+          newPolylineOverlays.push(
+            <Polyline
+              key={`polyline-${overlay._id ?? overlay.id}-${overlay.sampleId}`}
+              rotation={overlayRotation}
+              opacity={labelAlpha}
+              lineWidth={polylineWidth}
+              {...(overlay as PolyLineProps)}
+              {...sanitizeSchemaIoLabelAttributes(transformData?.misc ?? {})}
+              points3d={finalPoints3d}
+              label={overlay}
+              onClick={(e) => handleSelect(overlay, "polyline", e)}
+              tooltip={tooltip}
+            />
+          );
+        }
       }
     }
 
@@ -336,7 +343,6 @@ export const ThreeDLabels = ({
         (segment) => segment.points
       );
 
-      // Only create overlay if we have valid segments
       if (points3d.length > 0) {
         const overlayLabel = {
           _id: labelId,
@@ -348,7 +354,7 @@ export const ThreeDLabels = ({
           sampleId: currentSampleId,
           tags: [],
           points3d,
-          ...(transformData.misc ?? {}),
+          ...sanitizeSchemaIoLabelAttributes(transformData.misc ?? {}),
         };
 
         newPolylineOverlays.push(

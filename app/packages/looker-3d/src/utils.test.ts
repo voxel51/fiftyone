@@ -18,9 +18,13 @@ import {
   getGridQuaternionFromUpVector,
   getPlaneFromPositionAndQuaternion,
   getPlaneIntersection,
+  isValidPoint3d,
+  isValidPolylineSegment,
   quaternionToEuler,
   toEulerFromDegreesArray,
   toNDC,
+  validatePoints3d,
+  validatePoints3dArray,
 } from "./utils";
 
 describe("deg2rad", () => {
@@ -621,5 +625,198 @@ describe("eulerToQuaternion and quaternionToEuler roundtrip", () => {
         quaternion[3] * quaternion[3]
     );
     expect(magnitude).toBeCloseTo(1, 5);
+  });
+});
+
+describe("isValidPoint3d", () => {
+  it("validates valid 3D points", () => {
+    expect(isValidPoint3d([0, 0, 0])).toBe(true);
+    expect(isValidPoint3d([1, 2, 3])).toBe(true);
+    expect(isValidPoint3d([-1.5, 2.7, -3.14])).toBe(true);
+    expect(isValidPoint3d([0, 0, 0])).toBe(true);
+  });
+
+  it("rejects invalid points", () => {
+    expect(isValidPoint3d(null)).toBe(false);
+    expect(isValidPoint3d(undefined)).toBe(false);
+    expect(isValidPoint3d("string")).toBe(false);
+    expect(isValidPoint3d(123)).toBe(false);
+    expect(isValidPoint3d({})).toBe(false);
+    expect(isValidPoint3d([])).toBe(false);
+    expect(isValidPoint3d([1, 2])).toBe(false);
+    expect(isValidPoint3d([1, 2, 3, 4])).toBe(false);
+    expect(isValidPoint3d([1, 2, "3"])).toBe(false);
+    expect(isValidPoint3d([1, 2, NaN])).toBe(false);
+    expect(isValidPoint3d([1, 2, Infinity])).toBe(false);
+    expect(isValidPoint3d([1, 2, -Infinity])).toBe(false);
+  });
+});
+
+describe("validatePoints3d", () => {
+  it("filters valid points from mixed array", () => {
+    const mixedPoints = [
+      [1, 2, 3],
+      [4, 5, 6],
+      null,
+      [7, 8, 9],
+      "invalid",
+      [10, 11, 12],
+      [13, 14, "15"],
+    ];
+
+    const result = validatePoints3d(mixedPoints);
+    expect(result).toEqual([
+      [1, 2, 3],
+      [4, 5, 6],
+      [7, 8, 9],
+      [10, 11, 12],
+    ]);
+  });
+
+  it("returns empty array for all invalid points", () => {
+    const invalidPoints = [null, undefined, "string", [1, 2], [1, 2, "3"]];
+    const result = validatePoints3d(invalidPoints);
+    expect(result).toEqual([]);
+  });
+
+  it("returns all points for valid input", () => {
+    const validPoints = [
+      [1, 2, 3],
+      [4, 5, 6],
+      [7, 8, 9],
+    ];
+    const result = validatePoints3d(validPoints);
+    expect(result).toEqual(validPoints);
+  });
+});
+
+describe("validatePoints3dArray", () => {
+  it("filters valid segments from mixed array", () => {
+    const mixedSegments: unknown[] = [
+      [
+        [1, 2, 3],
+        [4, 5, 6],
+        [7, 8, 9],
+      ], // valid
+      [[10, 11, 12]], // too short
+      [
+        [13, 14, 15],
+        [16, 17, 18],
+        [19, 20, 21],
+      ], // valid
+      null, // invalid
+      [
+        [22, 23, 24],
+        [25, 26, 27],
+        [28, 29, 30],
+      ], // valid
+    ];
+
+    const result = validatePoints3dArray(mixedSegments as any);
+    expect(result).toEqual([
+      [
+        [1, 2, 3],
+        [4, 5, 6],
+        [7, 8, 9],
+      ],
+      [
+        [13, 14, 15],
+        [16, 17, 18],
+        [19, 20, 21],
+      ],
+      [
+        [22, 23, 24],
+        [25, 26, 27],
+        [28, 29, 30],
+      ],
+    ]);
+  });
+
+  it("returns empty array for all invalid segments", () => {
+    const invalidSegments: unknown[] = [
+      null,
+      [[1, 2, 3]], // too short
+      [
+        [1, 2, 3],
+        [4, 5, "6"],
+      ], // invalid point
+    ];
+    const result = validatePoints3dArray(invalidSegments as any);
+    expect(result).toEqual([]);
+  });
+
+  it("returns all segments for valid input", () => {
+    const validSegments: [number, number, number][][] = [
+      [
+        [1, 2, 3],
+        [4, 5, 6],
+        [7, 8, 9],
+      ],
+      [
+        [10, 11, 12],
+        [13, 14, 15],
+        [16, 17, 18],
+      ],
+    ];
+    const result = validatePoints3dArray(validSegments);
+    expect(result).toEqual(validSegments);
+  });
+});
+
+describe("isValidPolylineSegment", () => {
+  it("validates valid polyline segments", () => {
+    expect(isValidPolylineSegment([[1, 2, 3]])).toBe(true);
+    expect(
+      isValidPolylineSegment([
+        [1, 2, 3],
+        [4, 5, 6],
+      ])
+    ).toBe(true);
+    expect(
+      isValidPolylineSegment([
+        [1, 2, 3],
+        [4, 5, 6],
+        [7, 8, 9],
+      ])
+    ).toBe(true);
+  });
+
+  it("rejects invalid segments", () => {
+    expect(isValidPolylineSegment(null)).toBe(false);
+    expect(isValidPolylineSegment(undefined)).toBe(false);
+    expect(isValidPolylineSegment("string")).toBe(false);
+    expect(isValidPolylineSegment(123)).toBe(false);
+    expect(isValidPolylineSegment({})).toBe(false);
+    expect(isValidPolylineSegment([])).toBe(false);
+    expect(
+      isValidPolylineSegment([
+        [1, 2, 3],
+        [4, 5, "6"],
+      ])
+    ).toBe(false);
+    expect(isValidPolylineSegment([[1, 2, 3], null])).toBe(false);
+    expect(
+      isValidPolylineSegment([
+        [1, 2, 3],
+        [4, 5],
+      ])
+    ).toBe(false);
+  });
+
+  it("handles edge cases", () => {
+    expect(isValidPolylineSegment([[NaN, 2, 3]])).toBe(false);
+    expect(
+      isValidPolylineSegment([
+        [1, 2, 3],
+        [Infinity, 5, 6],
+      ])
+    ).toBe(false);
+    expect(
+      isValidPolylineSegment([
+        [1, 2, 3],
+        [4, 5, 6],
+        [7, 8, 9],
+      ])
+    ).toBe(true);
   });
 });

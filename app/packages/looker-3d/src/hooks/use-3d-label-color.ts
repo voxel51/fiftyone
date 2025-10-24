@@ -3,7 +3,6 @@ import {
   LABEL_3D_HOVERED_AND_SELECTED_COLOR,
   LABEL_3D_HOVERED_COLOR,
   LABEL_3D_INSTANCE_HOVERED_COLOR,
-  LABEL_3D_SELECTED_FOR_ANNOTATION_COLOR,
   LABEL_3D_SIMILAR_SELECTED_COLOR,
 } from "../constants";
 
@@ -22,8 +21,6 @@ export const use3dLabelColor = ({
 }) => {
   return useMemo(() => {
     const isAnyHovered = isHovered || isSimilarLabelHovered;
-
-    if (isSelectedForAnnotation) return LABEL_3D_SELECTED_FOR_ANNOTATION_COLOR;
 
     if (isAnyHovered && isSelected) return LABEL_3D_HOVERED_AND_SELECTED_COLOR;
 

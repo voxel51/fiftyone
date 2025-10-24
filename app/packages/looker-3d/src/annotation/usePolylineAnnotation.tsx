@@ -109,6 +109,7 @@ export const usePolylineAnnotation = ({
             labelId={label._id}
             segmentIndex={segmentIndex}
             pointIndex={pointIndex}
+            tooltipDescriptor="Vertex"
             onPointMove={(newPosition) => {
               setPolylinePointTransforms((prev) => {
                 const labelId = label._id;
@@ -169,6 +170,7 @@ export const usePolylineAnnotation = ({
         labelId={label._id}
         segmentIndex={-1}
         pointIndex={-1}
+        tooltipDescriptor="Centroid"
       />
     );
   }, [

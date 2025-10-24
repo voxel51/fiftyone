@@ -24,7 +24,6 @@ export const useCameraViews = ({
     (direction: Vector3) => {
       if (
         !sceneBoundingBox ||
-        !upVector ||
         !cameraRef.current ||
         !cameraControlsRef.current
       ) {
@@ -73,7 +72,7 @@ export const useCameraViews = ({
         center: constrainedLookAt,
       };
     },
-    [cameraRef, cameraControlsRef]
+    [sceneBoundingBox, cameraRef, cameraControlsRef]
   );
 
   const setCameraView = useCallback(
