@@ -24,6 +24,7 @@ from .panel import Panel, PanelConfig
 from .store import ExecutionStore
 from .categories import Categories
 from .cache import execution_cache
+from .sse import SseOperator, SseOperatorConfig
 
 # This enables Sphinx refs to directly use paths imported here
 __all__ = [k for k, v in globals().items() if not k.startswith("_")]

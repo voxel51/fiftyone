@@ -5,11 +5,15 @@ FiftyOne Server app.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
+import asyncio
+import logging
 import os
 import pathlib
 import stat
 
 import eta.core.utils as etau
+import strawberry as gql
 from starlette.applications import Starlette
 from starlette.datastructures import Headers
 from starlette.middleware import Middleware
@@ -23,16 +27,22 @@ from starlette.responses import FileResponse, RedirectResponse, Response
 from starlette.routing import Mount, Route
 from starlette.staticfiles import NotModifiedResponse, PathLike, StaticFiles
 from starlette.types import Scope
-import strawberry as gql
 
 import fiftyone as fo
 import fiftyone.constants as foc
+from fiftyone.operators.store.notification_service import (
+    MongoChangeStreamNotificationServiceLifecycleManager,
+    default_notification_service,
+    is_notification_service_disabled,
+)
 from fiftyone.server.constants import SCALAR_OVERRIDES
 from fiftyone.server.context import GraphQL
 from fiftyone.server.extensions import EndSession
 from fiftyone.server.mutation import Mutation
 from fiftyone.server.query import Query
 from fiftyone.server.routes import routes
+
+logger = logging.getLogger(__name__)
 
 
 etau.ensure_dir(os.path.join(os.path.dirname(__file__), "static"))
@@ -144,3 +154,36 @@ app = Starlette(
         ),
     ],
 )
+
+
+@app.on_event("startup")
+async def startup_event():
+    if is_notification_service_disabled():
+        logger.info("Execution Store notification service is disabled")
+        return
+
+    app.state.lifecycle_manager = (
+        MongoChangeStreamNotificationServiceLifecycleManager(
+            default_notification_service
+        )
+    )
+    app.state.lifecycle_manager.start_in_dedicated_thread()
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    if hasattr(app.state, "lifecycle_manager") and app.state.lifecycle_manager:
+        logger.info("Shutting down notification service...")
+        try:
+            await asyncio.wait_for(
+                app.state.lifecycle_manager.stop(), timeout=5
+            )
+            logger.info("Notification service shutdown complete")
+        except asyncio.TimeoutError:
+            logger.warning(
+                "Notification service shutdown timed out after 5 seconds"
+            )
+        except Exception as e:
+            logger.exception(
+                f"Error during notification service shutdown: {e}"
+            )

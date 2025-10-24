@@ -7,9 +7,16 @@ Execution store service.
 """
 
 from bson import ObjectId
-from typing import Any, Optional
+from typing import Any, Callable, Optional, TYPE_CHECKING
 
 from fiftyone.operators.store.models import StoreDocument, KeyDocument
+from fiftyone.operators.store.notification_service import (
+    ChangeStreamNotificationService,
+)
+
+if TYPE_CHECKING:
+    # so that we can import type without circular imports
+    from fiftyone.factory.repos.execution_store import ExecutionStoreRepo
 
 
 class ExecutionStoreService(object):
@@ -35,6 +42,7 @@ class ExecutionStoreService(object):
         dataset_id (None): a dataset ID (ObjectId) to scope operations to
         collection_name (None): a collection name to use for the execution
             store. If `repo` is provided, this argument is ignored
+        notification_service (None): an optional notification service for the repository
     """
 
     def __init__(
@@ -42,6 +50,7 @@ class ExecutionStoreService(object):
         repo: Optional["ExecutionStoreRepo"] = None,
         dataset_id: Optional[ObjectId] = None,
         collection_name: str = None,
+        notification_service: Optional[ChangeStreamNotificationService] = None,
     ):
 
         from fiftyone.factory.repo_factory import (
@@ -53,6 +62,7 @@ class ExecutionStoreService(object):
             repo = RepositoryFactory.execution_store_repo(
                 dataset_id=dataset_id,
                 collection_name=collection_name,
+                notification_service=notification_service,
             )
         self._dataset_id = dataset_id
         self._repo: ExecutionStoreRepo = repo
@@ -254,7 +264,7 @@ class ExecutionStoreService(object):
         """Deletes all stores associated with the current context."""
         self._repo.cleanup()
 
-    def has_store_global(self, store_name) -> bool:
+    def has_store_global(self, store_name: str) -> bool:
         """Determines whether a store with the given name exists across all
         datasets and the global context.
 
@@ -282,7 +292,7 @@ class ExecutionStoreService(object):
         """
         return self._repo.count_stores_global()
 
-    def delete_store_global(self, store_name) -> int:
+    def delete_store_global(self, store_name: str) -> int:
         """Deletes the specified store across all datasets and the global
         context.
 
@@ -293,3 +303,28 @@ class ExecutionStoreService(object):
             the number of stores deleted
         """
         return self._repo.delete_store_global(store_name)
+
+    def subscribe(
+        self, store_name: str, callback: Callable[[str], None]
+    ) -> str:
+        """Subscribe to changes in a store.
+
+        Args:
+            store_name (str): the name of the store to subscribe to
+            callback (Callable[[str], None]): the callback to call when a change occurs
+
+        Returns:
+            str: the subscription ID
+        """
+        return self._repo.subscribe(store_name, callback)
+
+    def unsubscribe(self, subscription_id: str) -> bool:
+        """Unsubscribe from changes in a store.
+
+        Args:
+            subscription_id (str): the subscription ID to unsubscribe
+
+        Returns:
+            bool: True if the subscription was removed, False otherwise
+        """
+        return self._repo.unsubscribe(subscription_id)
