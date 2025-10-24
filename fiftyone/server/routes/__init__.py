@@ -12,6 +12,7 @@ from .aggregate import Aggregate
 from .embeddings import EmbeddingsRoutes
 from .event import Event
 from .events import Events
+from .features import Features
 from .fiftyone import FiftyOne
 from .frames import Frames
 from .geo import GeoPoints
@@ -34,6 +35,7 @@ routes = (
         ("/aggregate", Aggregate),
         ("/event", Event),
         ("/events", Events),
+        ("/features", Features),
         ("/fiftyone", FiftyOne),
         ("/frames", Frames),
         ("/geo", GeoPoints),
