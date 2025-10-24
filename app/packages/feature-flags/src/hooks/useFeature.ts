@@ -12,10 +12,10 @@ import { useEffect } from "react";
  */
 export const useFeature = ({
   feature,
-  enableTracking = true,
+  enableTracking,
 }: {
   feature: FeatureFlag;
-  enableTracking: boolean;
+  enableTracking?: boolean;
 }): boolean => {
   const cache = useFeatureCache();
   const trackEvent = useTrackEvent();
