@@ -12,7 +12,14 @@ export const ConfirmationContext = createContext({
 });
 
 export default function Confirmation({ children }: PropsWithChildren<{}>) {
-  const { confirmDelete, DeleteModal } = useConfirmDelete(useDelete());
+  const exit = useExit(false);
+  const runDelete = useDelete();
+  const fullDelete = useCallback(() => {
+    runDelete();
+    exit();
+  }, [runDelete, exit]);
+
+  const { confirmDelete, DeleteModal } = useConfirmDelete(fullDelete);
   const { confirmExit, ExitChangesModal } = useConfirmExit(
     useExit(),
     useSave()

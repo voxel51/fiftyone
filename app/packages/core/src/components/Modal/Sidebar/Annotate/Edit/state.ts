@@ -8,7 +8,7 @@ import {
   POLYLINES,
 } from "@fiftyone/utilities";
 import type { PrimitiveAtom } from "jotai";
-import { atom, getDefaultStore } from "jotai";
+import { atom } from "jotai";
 import { atomFamily } from "jotai/utils";
 import { activeSchemas, fieldType, schemaConfig } from "../state";
 import { addLabel, labels, labelsByPath } from "../useLabels";
@@ -17,11 +17,6 @@ export const editing = atom<PrimitiveAtom<AnnotationLabel> | LabelType | null>(
   null
 );
 export const savedLabel = atom<AnnotationLabel["data"] | null>(null);
-
-const store = getDefaultStore();
-store.sub(editing, () => {
-  store.set(savedLabel, store.get(currentData));
-});
 
 export const hasChanges = atom((get) => {
   const label = get(currentData);
@@ -92,7 +87,8 @@ export const currentField = atom(
       return;
     }
     label.overlay.updateField(path);
-    set(current, { ...label, path });
+    label.overlay.updateLabel({ _id: label.data._id });
+    set(current, { ...label, path, data: { _id: label.data._id } });
   }
 );
 

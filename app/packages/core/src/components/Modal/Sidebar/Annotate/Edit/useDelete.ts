@@ -2,24 +2,22 @@ import { LIGHTER_EVENTS, useLighter } from "@fiftyone/lighter";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { current, deleteValue } from "./state";
-import useExit from "./useExit";
 
 export default function useDelete() {
-  const { scene } = useLighter();
-  const exit = useExit();
+  const { scene, removeOverlay } = useLighter();
   const label = useAtomValue(current);
   const setter = useSetAtom(deleteValue);
   return useCallback(() => {
-    scene?.dispatchSafely({
-      type: LIGHTER_EVENTS.DO_REMOVE_OVERLAY,
-      detail: {
-        label,
-        onSuccess: () => {
-          scene.exitInteractiveMode();
-          setter();
-          exit();
+    setter();
+
+    scene?.exitInteractiveMode();
+    !label?.isNew &&
+      scene?.dispatchSafely({
+        type: LIGHTER_EVENTS.DO_REMOVE_OVERLAY,
+        detail: {
+          label,
         },
-      },
-    });
-  }, [exit, label, scene, setter]);
+      });
+    removeOverlay(label?.data._id);
+  }, [label, scene, setter, removeOverlay]);
 }
