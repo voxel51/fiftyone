@@ -22,6 +22,7 @@ from fiftyone.operators.executor import (
     ExecutionResult,
     ExecutionRunState,
     resolve_type_with_context,
+    PipelineExecutionContext,
 )
 
 
@@ -811,11 +812,34 @@ class DelegatedOperationService(object):
             # was initially queued. However, don't overwrite it if it exists.
             context.request_params["dataset_id"] = doc.dataset_id
 
+        pipeline_ctx = None
+        try:
+            if doc.parent_id:
+                parent_doc = self.get(doc.parent_id)
+                if parent_doc.pipeline and parent_doc.pipeline_run_info:
+                    stage_index = parent_doc.pipeline_run_info.stage_index
+                    pipeline_ctx = PipelineExecutionContext(
+                        active=parent_doc.pipeline_run_info.active,
+                        curr_stage_index=stage_index,
+                        total_stages=len(parent_doc.pipeline.stages),
+                        num_distributed_tasks=(
+                            parent_doc.pipeline.stages[
+                                stage_index
+                            ].num_distributed_tasks
+                            or 0
+                        ),
+                    )
+        except Exception:
+            logger.debug(
+                "Failed to build PipelineExecutionContext", exc_info=True
+            )
+
         prepared = await prepare_operator_executor(
             operator_uri=operator_uri,
             request_params=context.request_params,
             delegated_operation_id=doc.id,
             set_progress=self.set_progress,
+            pipeline_ctx=pipeline_ctx,
         )
 
         if isinstance(prepared, ExecutionResult):

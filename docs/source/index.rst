@@ -66,7 +66,7 @@ ______________
 
 Get up and running in a couple minutes by installing FiftyOne:
 
-.. custombutton::
+.. customanimatedcta::
     :button_text: Install FiftyOne
     :button_link: installation/index.html
 
@@ -113,7 +113,7 @@ None of those guides seem quite right? Here are some more options:
 
 **Want to evaluate model performance?** → :doc:`Follow the Model Evaluation Guide <getting_started/model_evaluation/index>`
 
-.. custombutton::
+.. customanimatedcta::
     :button_text: Explore all getting started guides
     :button_link: getting_started/index.html
 
@@ -205,7 +205,7 @@ FiftyOne's core library provides a structured yet dynamic representation to
 explore your datasets. You can efficiently query and manipulate your dataset by
 adding custom tags, model predictions and more.
 
-.. custombutton::
+.. customanimatedcta::
     :button_text: Explore the library
     :button_link: user_guide/basics.html
 
@@ -245,7 +245,7 @@ and rapidly gain intuition into your datasets. You can visualize labels like
 bounding boxes and segmentations overlaid on the samples; sort, query and
 slice your dataset into any subset of interest; and more.
 
-.. custombutton::
+.. customanimatedcta::
     :button_text: See more of the App
     :button_link: user_guide/app.html
 
@@ -261,7 +261,7 @@ capabilities that provide insights into your datasets and recommend ways to
 modify your datasets that will lead to measurably better performance of your
 models.
 
-.. custombutton::
+.. customanimatedcta::
     :button_text: Learn more about the Brain
     :button_link: brain.html
 
@@ -287,7 +287,7 @@ With :ref:`FiftyOne Enterprise <enterprise-delegated-operations>`, you can even 
 plugins that allow users to execute long-running tasks from within the App that
 run on a connected compute cluster.
 
-.. custombutton::
+.. customanimatedcta::
     :button_text: Install some plugins!
     :button_link: plugins/index.html
 
@@ -305,7 +305,7 @@ It provides native access to dozens of popular benchmark datasets, and it als
 supports downloading arbitrary public or private datasets whose
 download/preparation methods are provided via GitHub repositories or URLs.
 
-.. custombutton::
+.. customanimatedcta::
     :button_text: Check out the Dataset Zoo
     :button_link: dataset_zoo/index.html
 
@@ -333,7 +333,7 @@ It provides native access to hundreds of pre-trained models, and it also
 supports downloading arbitrary public or private models whose definitions are
 provided via GitHub repositories or URLs.
 
-.. custombutton::
+.. customanimatedcta::
     :button_text: Check out the Model Zoo
     :button_link: model_zoo/index.html
 

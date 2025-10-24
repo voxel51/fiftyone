@@ -55,7 +55,7 @@ Slicing and other batch operations on datasets are done through the use of
 |Dataset|, which can be filtered, sorted, sampled, etc. along various axes to
 obtain a desired subset of the samples.
 
-.. custombutton::
+.. customanimatedcta::
     :button_text: Learn more about using datasets
     :button_link: using_datasets.html#using-datasets
 
@@ -96,7 +96,7 @@ All |Sample| instances store the path to their source data on disk in their
 `filepath` field. Any number of fields can be dynamically added to samples to
 store additional custom information about the sample.
 
-.. custombutton::
+.. customanimatedcta::
     :button_text: Learn more about using samples
     :button_link: using_datasets.html#using-samples
 
@@ -209,7 +209,7 @@ schema and thus accessible on all other samples in the dataset.
         keypoints:        fiftyone.core.fields.ListField
         geo_json:         fiftyone.core.fields.DictField
 
-.. custombutton::
+.. customanimatedcta::
     :button_text: Learn more about sample fields
     :button_link: using_datasets.html#using-fields
 
@@ -222,7 +222,7 @@ the source media and exposed via the `media_type` attribute of the sample.
 An explicit `media_type` can also be provided during sample creation, which
 can be used to specify media types which are not natively supported.
 
-.. custombutton::
+.. customanimatedcta::
     :button_text: Learn more about media types
     :button_link: using_datasets.html#using-media-type
 
@@ -238,7 +238,7 @@ A typical use case is to tag the dataset split (`test`, `train`, `validation`)
 to which the |Sample| belongs. However, you are free to use tags however you
 like.
 
-.. custombutton::
+.. customanimatedcta::
     :button_text: See more information about using tags
     :button_link: using_datasets.html#using-tags
 
@@ -261,7 +261,7 @@ Metadata
 All |Sample| instances have a `metadata` attribute that stores type-specific
 metadata about the source media of the sample.
 
-.. custombutton::
+.. customanimatedcta::
     :button_text: Learn more about adding metadata to your samples
     :button_link: using_datasets.html#using-metadata
 
@@ -333,7 +333,7 @@ FiftyOne provides label classes for many common tasks:
 Using FiftyOne's |Label| types enables you to visualize your labels in the
 :ref:`the App <fiftyone-app>`.
 
-.. custombutton::
+.. customanimatedcta::
     :button_text: Learn more about storing labels in your samples
     :button_link: using_datasets.html#using-labels
 
@@ -390,7 +390,7 @@ Dataset views are a powerful tool for exploring your datasets. You can use
 |DatasetView| instances to search, filter, sort, and manipulate subsets of your
 datasets to perform the analysis that you need.
 
-.. custombutton::
+.. customanimatedcta::
     :button_text: Get a full walkthrough of dataset views
     :button_link: using_views.html
 
@@ -429,7 +429,7 @@ FiftyOne provides a powerful :ref:`aggregations framework <using-aggregations>`
 that provides a highly-efficient approach to computing statistics about your
 data.
 
-.. custombutton::
+.. customanimatedcta::
     :button_text: Learn more about using aggregations
     :button_link: using_aggregations.html
 
