@@ -3,21 +3,16 @@
  */
 
 import { isHoveringParticularLabelWithInstanceConfig } from "@fiftyone/state/src/jotai";
-import {
-  INFO_COLOR,
-  SELECTED_AND_HOVERED_COLOR,
-  TOLERANCE,
-} from "../constants";
+import { TOLERANCE } from "../constants";
 import { BaseState, Coordinates } from "../state";
 import { distanceFromLineSegment, getRenderedScale } from "../util";
 import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
-import { t } from "./util";
-import { getInstanceStrokeStyles } from "./util";
+import { getInstanceStrokeStyles, t } from "./util";
 
-interface PolylineLabel extends RegularLabel {
-  points: Coordinates[][];
-  closed: boolean;
-  filled: boolean;
+export interface PolylineLabel extends RegularLabel {
+  points?: Coordinates[][];
+  closed?: boolean;
+  filled?: boolean;
 }
 
 export default class PolylineOverlay<

@@ -10,14 +10,13 @@ import React, { useCallback, useMemo, useRef } from "react";
 import ReactDOM from "react-dom";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import styled from "styled-components";
-import Sidebar from "../Sidebar";
 import Actions from "./Actions";
 import ModalNavigation from "./ModalNavigation";
 import { ModalSpace } from "./ModalSpace";
+import { Sidebar } from "./Sidebar";
 import { TooltipInfo } from "./TooltipInfo";
 import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
 import { modalContext } from "./modal-context";
-import { useModalSidebarRenderEntry } from "./use-sidebar-render-entry";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -52,21 +51,6 @@ const SpacesContainer = styled.div`
   z-index: 1501;
 `;
 
-const SidebarPanelBlendInDiv = styled.div`
-  height: 2em;
-  background-color: #262626;
-  width: 100%;
-  margin-bottom: 1px;
-  flex-shrink: 0;
-`;
-
-const SidebarContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-`;
-
 const Modal = () => {
   const wrapperRef = useRef<HTMLDivElement>(null);
 
@@ -80,8 +64,6 @@ const Modal = () => {
     },
     [clearModal]
   );
-
-  const renderEntry = useModalSidebarRenderEntry();
 
   const { jsonPanel, helpPanel } = useLookerHelpers();
 
@@ -131,6 +113,10 @@ const Modal = () => {
           }
         }
 
+        if (e.repeat) {
+          return;
+        }
+
         if (e.altKey && e.code === "Space") {
           const hoveringSampleId = (
             await snapshot.getPromise(fos.hoveredSample)
@@ -163,7 +149,10 @@ const Modal = () => {
           });
         } else if (e.key === "Escape") {
           const mediaType = await snapshot.getPromise(fos.mediaType);
-          if (activeLookerRef.current || mediaType === "3d") {
+          const is3dVisible = await snapshot.getPromise(
+            fos.groupMediaIs3dVisible
+          );
+          if (activeLookerRef.current || mediaType === "3d" || is3dVisible) {
             // we handle close logic in modal + other places
             return;
           }
@@ -174,7 +163,7 @@ const Modal = () => {
     []
   );
 
-  fos.useEventHandler(document, "keyup", keysHandler);
+  fos.useEventHandler(document, "keydown", keysHandler);
 
   const isFullScreen = useRecoilValue(fos.fullscreen);
 
@@ -241,10 +230,7 @@ const Modal = () => {
           <SpacesContainer>
             <ModalSpace />
           </SpacesContainer>
-          <SidebarContainer>
-            <SidebarPanelBlendInDiv />
-            <Sidebar render={renderEntry} modal={true} />
-          </SidebarContainer>
+          <Sidebar />
           <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_RIGHT} />
 
           {jsonPanel.isOpen && (

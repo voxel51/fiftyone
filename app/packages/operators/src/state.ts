@@ -1021,9 +1021,9 @@ export function useOperatorBrowser() {
  * @param uri - The URI of the operator to execute.
  * @param handlers - The optional handlers for the operator.
  * @returns An object containing the state of the operator execution.
- * 
+ *
  * Example:
- * 
+ *
  * ```ts
  * const defaultParams = {
  *   // default parameters of the operator

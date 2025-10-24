@@ -40,7 +40,12 @@
                 }
             },
             "tags": ["segmentation", "cityscapes", "tf", "deeplabv3", "legacy"],
-            "training_data": [{"name": "Cityscapes", "url": "https://www.cityscapes-dataset.com/"}],
+            "training_data": [
+                {
+                    "name": "Cityscapes",
+                    "url": "https://www.cityscapes-dataset.com/"
+                }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -83,7 +88,12 @@
                 }
             },
             "tags": ["segmentation", "cityscapes", "tf", "deeplabv3", "legacy"],
-            "training_data": [{"name": "Cityscapes", "url": "https://www.cityscapes-dataset.com/"}],
+            "training_data": [
+                {
+                    "name": "Cityscapes",
+                    "url": "https://www.cityscapes-dataset.com/"
+                }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -125,7 +135,9 @@
                 }
             },
             "tags": ["detection", "coco", "tf1", "efficientdet", "legacy"],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -167,7 +179,9 @@
                 }
             },
             "tags": ["detection", "coco", "tf1", "efficientdet", "legacy"],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -209,7 +223,9 @@
                 }
             },
             "tags": ["detection", "coco", "tf1", "efficientdet", "legacy"],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -251,7 +267,9 @@
                 }
             },
             "tags": ["detection", "coco", "tf1", "efficientdet", "legacy"],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -293,7 +311,9 @@
                 }
             },
             "tags": ["detection", "coco", "tf1", "efficientdet", "legacy"],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -335,7 +355,9 @@
                 }
             },
             "tags": ["detection", "coco", "tf1", "efficientdet", "legacy"],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -377,7 +399,9 @@
                 }
             },
             "tags": ["detection", "coco", "tf1", "efficientdet", "legacy"],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -425,7 +449,9 @@
                 "inception",
                 "resnet"
             ],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -474,7 +500,9 @@
                 "resnet",
                 "legacy"
             ],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -515,7 +543,9 @@
                 }
             },
             "tags": ["detection", "coco", "tf", "faster-rcnn", "inception"],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -556,7 +586,9 @@
                 }
             },
             "tags": ["detection", "coco", "tf", "faster-rcnn"],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -597,7 +629,9 @@
                 }
             },
             "tags": ["detection", "coco", "tf", "faster-rcnn", "legacy"],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -637,8 +671,17 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf", "faster-rcnn", "resnet", "legacy"],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "tags": [
+                "detection",
+                "coco",
+                "tf",
+                "faster-rcnn",
+                "resnet",
+                "legacy"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -678,8 +721,17 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf", "faster-rcnn", "resnet", "legacy"],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "tags": [
+                "detection",
+                "coco",
+                "tf",
+                "faster-rcnn",
+                "resnet",
+                "legacy"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -720,7 +772,9 @@
                 }
             },
             "tags": ["detection", "coco", "tf", "faster-rcnn", "resnet"],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -760,8 +814,17 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf", "faster-rcnn", "resnet", "legacy"],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "tags": [
+                "detection",
+                "coco",
+                "tf",
+                "faster-rcnn",
+                "resnet",
+                "legacy"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -810,7 +873,12 @@
                 "inception",
                 "resnet"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -859,7 +927,12 @@
                 "inception",
                 "legacy"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -907,7 +980,9 @@
                 "inception",
                 "resnet"
             ],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -948,7 +1023,9 @@
                 }
             },
             "tags": ["instances", "coco", "tf", "mask-rcnn", "inception"],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -988,8 +1065,17 @@
                     ]
                 }
             },
-            "tags": ["instances", "coco", "tf", "mask-rcnn", "resnet", "legacy"],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "tags": [
+                "instances",
+                "coco",
+                "tf",
+                "mask-rcnn",
+                "resnet",
+                "legacy"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1029,8 +1115,17 @@
                     ]
                 }
             },
-            "tags": ["instances", "coco", "tf", "mask-rcnn", "resnet", "legacy"],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "tags": [
+                "instances",
+                "coco",
+                "tf",
+                "mask-rcnn",
+                "resnet",
+                "legacy"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1078,7 +1173,12 @@
                 "tf1",
                 "mobilenet"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1127,7 +1227,12 @@
                 "resnet",
                 "legacy"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1176,7 +1281,12 @@
                 "resnet",
                 "legacy"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1217,7 +1327,9 @@
                 }
             },
             "tags": ["detection", "coco", "tf", "rfcn", "resnet", "legacy"],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1258,7 +1370,9 @@
                 }
             },
             "tags": ["detection", "coco", "tf", "ssd", "inception"],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1299,7 +1413,9 @@
                 }
             },
             "tags": ["detection", "coco", "tf", "ssd", "mobilenet", "legacy"],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1340,7 +1456,9 @@
                 }
             },
             "tags": ["detection", "coco", "tf", "ssd", "mobilenet", "legacy"],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1381,7 +1499,9 @@
                 }
             },
             "tags": ["detection", "coco", "tf", "ssd", "resnet", "legacy"],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1429,7 +1549,12 @@
                 "vgg",
                 "legacy"
             ],
-            "training_data": [{"name": "ImageNet-1K", "url": "https://www.image-net.org/download.php"}],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1469,7 +1594,9 @@
                 }
             },
             "tags": ["detection", "coco", "tf1", "yolo", "legacy"],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1512,7 +1639,9 @@
                 }
             },
             "tags": ["detection", "coco", "tf2", "centernet"],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2021-01-6 11:01:34"
         },
         {
@@ -1555,7 +1684,9 @@
                 }
             },
             "tags": ["detection", "coco", "tf2", "centernet"],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2021-12-26 07:04:23"
         },
         {
@@ -1598,7 +1729,9 @@
                 }
             },
             "tags": ["detection", "coco", "tf2", "centernet", "resnet"],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2021-12-27 14:45:23"
         },
         {
@@ -1641,7 +1774,9 @@
                 }
             },
             "tags": ["detection", "coco", "tf2", "centernet", "resnet"],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2021-12-27 14:55:13"
         },
         {
@@ -1684,7 +1819,9 @@
                 }
             },
             "tags": ["detection", "coco", "tf2", "centernet", "resnet"],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2021-12-27 14:59:23"
         },
         {
@@ -1727,7 +1864,9 @@
                 }
             },
             "tags": ["detection", "coco", "tf2", "centernet", "mobilenet"],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2021-12-27 17:05:20"
         },
         {
@@ -1770,7 +1909,9 @@
                 }
             },
             "tags": ["detection", "coco", "tf2", "efficientdet"],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2021-12-27 18:25:10"
         },
         {
@@ -1813,7 +1954,9 @@
                 }
             },
             "tags": ["detection", "coco", "tf2", "efficientdet"],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2021-12-27 18:25:10"
         },
         {
@@ -1856,7 +1999,9 @@
                 }
             },
             "tags": ["detection", "coco", "tf2", "efficientdet"],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2021-12-27 18:40:20"
         },
         {
@@ -1899,7 +2044,9 @@
                 }
             },
             "tags": ["detection", "coco", "tf2", "efficientdet"],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2021-12-27 18:42:30"
         },
         {
@@ -1942,7 +2089,9 @@
                 }
             },
             "tags": ["detection", "coco", "tf2", "efficientdet"],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2021-12-27 18:42:30"
         },
         {
@@ -1985,7 +2134,9 @@
                 }
             },
             "tags": ["detection", "coco", "tf2", "efficientdet"],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2021-12-27 18:50:20"
         },
         {
@@ -2028,7 +2179,9 @@
                 }
             },
             "tags": ["detection", "coco", "tf2", "efficientdet"],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2021-12-27 19:00:20"
         },
         {
@@ -2071,7 +2224,9 @@
                 }
             },
             "tags": ["detection", "coco", "tf2", "efficientdet"],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2021-12-27 19:05:20"
         },
         {
@@ -2114,7 +2269,9 @@
                 }
             },
             "tags": ["detection", "coco", "tf2", "ssd", "mobilenet"],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2021-12-27 20:01:40"
         },
         {
@@ -2157,7 +2314,9 @@
                 }
             },
             "tags": ["detection", "coco", "tf2", "ssd", "mobilenet"],
-            "training_data": [{"name": "MS COCO 2017", "url": "https://cocodataset.org"}],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2021-12-27 20:05:20"
         }
     ]

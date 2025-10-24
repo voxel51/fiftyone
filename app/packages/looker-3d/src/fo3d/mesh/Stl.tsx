@@ -1,13 +1,13 @@
-import { getSampleSrc } from "@fiftyone/state";
-import { useLoader } from "@react-three/fiber";
+import { getSampleSrc, isInMultiPanelViewAtom } from "@fiftyone/state";
 import { useEffect, useMemo, useState } from "react";
+import { useRecoilValue } from "recoil";
 import { Mesh, type Quaternion, type Vector3 } from "three";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader";
 import type { StlAsset } from "../../hooks";
+import { useFoLoader } from "../../hooks/use-fo-loaders";
 import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";
 import { useFo3dContext } from "../context";
 import { getResolvedUrlForFo3dAsset } from "../utils";
-import { useFoLoader } from "../../hooks/use-fo-loaders";
 
 /**
  *  Renders a single STL mesh.
@@ -31,6 +31,7 @@ export const Stl = ({
   children?: React.ReactNode;
 }) => {
   const { fo3dRoot } = useFo3dContext();
+  const isInMultiPanelView = useRecoilValue(isInMultiPanelViewAtom);
 
   const stlUrl = useMemo(
     () =>
@@ -39,7 +40,16 @@ export const Stl = ({
     [stlPath, preTransformedStlPath, fo3dRoot]
   );
 
-  const points = useFoLoader(STLLoader, stlUrl);
+  const points_ = useFoLoader(STLLoader, stlUrl);
+
+  // Clone points when in multipanel view to avoid React Three Fiber caching issues
+  const points = useMemo(() => {
+    if (isInMultiPanelView && points_) {
+      return points_.clone();
+    }
+    return points_;
+  }, [points_, isInMultiPanelView]);
+
   const [mesh, setMesh] = useState(null);
 
   const { material } = useMeshMaterialControls(name, defaultMaterial);
