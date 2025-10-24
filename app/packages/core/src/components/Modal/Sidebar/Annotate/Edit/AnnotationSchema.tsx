@@ -172,7 +172,7 @@ const AnnotationSchema = () => {
   const field = useAtomValue(currentField);
 
   useEffect(() => {
-    const handler = () => {
+    const handler = (event) => {
       const label = overlay?.label;
       label && save(label);
     };
