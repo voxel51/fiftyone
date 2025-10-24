@@ -20,11 +20,14 @@ export const useFeatureCache = (): FeatureCache => {
 
   useEffect(() => {
     if (!isInitialized && !isFetching) {
+      setIsFetching(true);
+
       listEnabledFeatures()
         .then((res) => {
           cache.clear();
           res?.features?.forEach((feature) => cache.setFeature(feature, true));
         })
+        .catch((err) => console.warn("Failed to fetch features", err))
         .finally(() => {
           setIsFetching(false);
           setIsInitialized(true);

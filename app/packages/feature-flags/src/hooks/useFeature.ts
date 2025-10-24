@@ -1,6 +1,7 @@
 import { useFeatureCache } from "./useFeatureCache";
 import { FeatureFlag } from "../client";
 import { useTrackEvent } from "@fiftyone/analytics";
+import { useEffect } from "react";
 
 /**
  * Hook which provides the status of a given feature.
@@ -21,12 +22,14 @@ export const useFeature = ({
 
   const isEnabled = cache.isFeatureEnabled(feature.toString());
 
-  if (enableTracking) {
-    trackEvent("VFF:CHECK", {
-      feature,
-      isEnabled,
-    });
-  }
+  useEffect(() => {
+    if (enableTracking) {
+      trackEvent("VFF:CHECK", {
+        feature,
+        isEnabled,
+      });
+    }
+  }, [enableTracking, feature, isEnabled]);
 
   return isEnabled;
 };
