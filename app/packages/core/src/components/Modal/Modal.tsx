@@ -107,11 +107,16 @@ const Modal = () => {
     ({ snapshot, set }) =>
       async (e: KeyboardEvent) => {
         const active = document.activeElement;
-        if (active?.tagName === "INPUT" || active?.tagName === "TEXTAREA") {
-          if (
-            (active as HTMLInputElement).type === "text" ||
-            (active as HTMLInputElement).type === "textarea"
-          ) {
+        if (
+          active?.tagName === "TEXTAREA" ||
+          active instanceof HTMLTextAreaElement
+        ) {
+          return;
+        }
+
+        if (active?.tagName === "INPUT" || active instanceof HTMLInputElement) {
+          const inputElement = active as HTMLInputElement;
+          if (inputElement.type === "text") {
             return;
           }
         }

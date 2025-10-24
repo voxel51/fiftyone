@@ -31,7 +31,7 @@ const fo3dAssetsParseStatusLog = atomFamily<AssetLoadingLog[], string>({
 });
 
 export const fo3dAssetsParseStatusThisSample = selector<AssetLoadingLog[]>({
-  key: "fo3d-assetsParseStatusLogs",
+  key: "fo3d-assetsParseStatusLogsThisSampleSelector",
   get: ({ get }) => {
     const thisModalUniqueId = `${get(groupId) ?? ""}-${get(
       nullableModalSampleId
@@ -504,5 +504,6 @@ export const clearTransformStateSelector = selector({
       viewName: null,
       timestamp: null,
     });
+    set(editSegmentsModeAtom, false);
   },
 });

@@ -38,7 +38,7 @@ function DeleteModal({ deleteAnnotation }: { deleteAnnotation: () => void }) {
       <CheckboxView
         data={!askAgain}
         onChange={(_, checked) => setAskAgain(!checked)}
-        schema={{ view: { label: "Dont't ask me again" } }}
+        schema={{ view: { label: "Don't ask me again" } }}
       />
 
       <Row>

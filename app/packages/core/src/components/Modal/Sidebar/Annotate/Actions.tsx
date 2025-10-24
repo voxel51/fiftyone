@@ -1,9 +1,9 @@
-import { useTheme } from "@fiftyone/components";
 import { useLighter } from "@fiftyone/lighter";
 import { isPolylineAnnotateActiveAtom } from "@fiftyone/looker-3d/src/state";
 import { is3DDataset } from "@fiftyone/state";
 import { CLASSIFICATION, DETECTION } from "@fiftyone/utilities";
 import ThreeDIcon from "@mui/icons-material/ViewInAr";
+import React from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ItemLeft } from "./Components";
@@ -177,8 +177,6 @@ export const Redo = () => {
 export const ThreeDPolylines = () => {
   const [isPolylineAnnotateActive, setIsPolylineAnnotateActive] =
     useRecoilState(isPolylineAnnotateActiveAtom);
-
-  const theme = useTheme() as any;
 
   return (
     <Square

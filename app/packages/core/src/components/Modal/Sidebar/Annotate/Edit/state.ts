@@ -92,7 +92,7 @@ export const currentField = atom(
     if (!label) {
       return;
     }
-    label.overlay.updateField(path);
+    label.overlay.updateField?.(path);
     set(current, { ...label, path });
   }
 );
