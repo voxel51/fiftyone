@@ -8,5 +8,8 @@ FiftyOne feature flags.
 
 from typing import Literal
 
-FeatureFlag = Literal["placeholder"]
+FeatureFlag = Literal[
+    # experimental sample annotation features
+    "VFF_EXP_ANNOTATION",
+]
 """Enumeration of active feature flags."""
