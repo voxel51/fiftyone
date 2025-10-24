@@ -35,7 +35,7 @@ const ImportSchema = (
         Annotate faster than ever
       </Typography>
       <Typography color="secondary" textAlign="center" sx={{ marginBottom: 2 }}>
-        Add your annnotation schemas to access and edit labels, set up
+        Add your annotation schemas to access and edit labels, set up
         attributes, and start annotating right away.
       </Typography>
       <MuiButton

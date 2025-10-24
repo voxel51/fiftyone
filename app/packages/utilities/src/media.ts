@@ -1,4 +1,15 @@
 /**
+ * Returns true if annotation is supported for the provided media type.
+ *
+ * @param mediaType media type
+ */
+export const isAnnotationSupported = (
+  mediaType: string | null | undefined
+): boolean => {
+  return mediaType && !["video", "group"].includes(mediaType);
+};
+
+/**
  * Returns true if the provided media type is associated with FO3D.
  *
  * @param mediaType media type

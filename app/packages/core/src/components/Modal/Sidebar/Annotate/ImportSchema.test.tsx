@@ -54,7 +54,7 @@ describe("ImportSchema", () => {
 
     expect(screen.getByText(/annotate faster than ever/i)).toBeTruthy();
     expect(
-      screen.getByText(/add your annnotation schemas to access and edit labels/i)
+      screen.getByText(/add your annotation schemas to access and edit labels/i)
     ).toBeTruthy();
   });
 });
