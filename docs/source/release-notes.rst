@@ -3,6 +3,141 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.12.0
+--------------------------
+*Released October 20, 2025*
+
+Includes all updates from :ref:`FiftyOne 1.9.0 <release-notes-v1.9.0>`, plus:
+
+Plugins, Operators, and Orchestrators
+
+- Added ability to manually terminate an :ref:`Operator <using-operators>` 
+  while it's running in any supported
+  :ref:`orchestrator <enterprise-delegated-orchestrator>`: builtin,
+  Databricks, and Anyscale.
+- Updated expiration logic for Delegated :ref:`Operators <using-operators>`,
+  and introduced `FIFTYONE_DO_EXPIRATION_MINUTES`. Instead of considering an
+  Operator terminated one day after *starting*, we now only kill an Operator if
+  it hasn't *updated* in `FIFTYONE_DO_EXPIRATION_MINUTES` minutes. This enables
+  tighter control over execution, and allows for jobs to run for more than one
+  day.
+- Added connection retry logic to a number of
+  :ref:`orchestrators <enterprise-delegated-orchestrator>`-related requests in
+  order to improve resilience.
+- Improved logging and logging levels when plugin secrets are not provided.
+
+App
+
+- Added a plugin secret `FIFTYONE_ZOO_ALLOWED_MODEL_NAMES` that allows
+  Enterprise admins to configure which zoo models should be available to users
+  when using builtin App features, such as the
+  :ref:`Embeddings Panel <app-embeddings-panel>` and the
+  :ref:`Data Quality Panel <data-quality>`.
+- Ensure that user-provided brain/eval keys are valid in the
+  :ref:`Embeddings Panel <app-embeddings-panel>` and the
+  :ref:`Model Evaluation Panel <app-model-evaluation-panel>`
+  to prevent runtime errors.
+- Fixed a bug where, after a user first logged in, media in the Grid would fail
+  to load because the user's cloud credentials were delayed.
+
+Core
+
+- Reduced likelihood of timeouts when performing `delete_sample_fields`.
+- Improved performance of various operations on media files that can be
+  executed without downloading the full media file.
+- Added some additional logging in the API to aid in debugging and performance
+  monitoring.
+- Added "User-Agent" to a few requests that were missing it.
+
+Security
+
+- Updated a number of dependencies in order to resolve security
+  vulnerabilities: `axios`, `brace-expansion`, `next`, and `starlette`.
+
+
+
+.. _release-notes-v1.9.0:
+
+FiftyOne 1.9.0
+--------------
+*Released October 20, 2025*
+
+Plugins and Operators
+
+- Added `download_file` :ref:`Operator <using-operators>` to download files
+  in-browser. 
+  `#6369 <https://github.com/voxel51/fiftyone/pull/6369>`_
+- Added new hook for easily invoking :ref:`Python Panel <developing-panels>`
+  events from JS.
+  `#6179 <https://github.com/voxel51/fiftyone/pull/6179>`_
+- :ref:`Panel <developing-panels>` events now return their return-value as an
+  operator result. NOTE: operator results must be serializable. With this
+  change, non-serializable operator results will produce an error.
+  `#6179 <https://github.com/voxel51/fiftyone/pull/6179>`_
+- Improved reliability when queuing delegated
+  :ref:`Operators <using-operators>` by excluding
+  non-serializable fields during serialization. 
+  `#6406 <https://github.com/voxel51/fiftyone/pull/6406>`_
+- Improved :ref:`Operator <using-operators>` monitoring with periodic backend
+  pings and stronger handling of ping/get failures. 
+  `#6359 <https://github.com/voxel51/fiftyone/pull/6359>`_
+- Fixed: :ref:`Operators <using-operators>` now honor the active view when one
+  is set, instead of silently falling back to the full dataset. 
+  `#6375 <https://github.com/voxel51/fiftyone/pull/6375>`_
+
+Core
+
+- Optimizes and hardens the implementation of
+  :meth:`merge_samples() <fiftyone.core.dataset.Dataset.merge_samples>`
+  when applied to video collections.
+  `#6370 <https://github.com/voxel51/fiftyone/pull/6370>`_
+- Added support for updating existing indexes in-place (e.g. converting between
+  unique and non-unique). 
+  `#6365 <https://github.com/voxel51/fiftyone/pull/6365>`_
+- Allow
+  :meth:`compute_embeddings() <fiftyone.core.collections.SampleCollection.compute_embeddings>`
+  to write to embedded fields. 
+  `#6374 <https://github.com/voxel51/fiftyone/pull/6374>`_
+- Updated the :mod:`fiftyone.utils.labels` utilities with `overwrite=True`
+  options so that they now only overwrite the specific files being exported
+  (rather than deleting the entire directory). 
+  `#6364 <https://github.com/voxel51/fiftyone/pull/6364>`_
+- Optimization: Updated the default behavior of the
+  :meth:`sort_by() <fiftyone.core.collections.SampleCollection.sort_by>`,
+  :meth:`group_by() <fiftyone.core.collections.SampleCollection.group_by>`,
+  :meth:`geo_within() <fiftyone.core.collections.SampleCollection.geo_within>`,
+  and 
+  :meth:`geo_near() <fiftyone.core.collections.SampleCollection.geo_near>`
+  view stages to NOT automatically create an index when used. Indexing is
+  opt-in via `create_index=True`. 
+  `#6344 <https://github.com/voxel51/fiftyone/pull/6344>`_
+- Improved reliability of database connections by detecting closed synchronous
+  and asynchronous clients and automatically re-establishing connections to
+  avoid errors from stale or closed clients in long-running sessions. 
+  `#6354 <https://github.com/voxel51/fiftyone/pull/6354>`_
+- Fixed a bug where :mod:`fiftyone.utils.labels` utilities with
+  `overwrite=False` options would erroneously start overwriting existing files
+  if repeatedly executed more than 2 times. 
+  `#6364 <https://github.com/voxel51/fiftyone/pull/6364>`_
+- Fix for `#6069 <https://github.com/voxel51/fiftyone/pull/6069>`_ where
+  :ref:`YOLO classification models <ultralytics-image-classification>`
+  were failing for ultralytics>=8.3.158
+  `#6367 <https://github.com/voxel51/fiftyone/pull/6367>`_
+
+App
+
+- Fixed a bug in rare situations where an incorrect header was set that
+  resulted in a CORS error. 
+  `#6405 <https://github.com/voxel51/fiftyone/pull/6405>`_
+
+Security
+
+- Updated the `brace-expansion` dependency in order to resolve a security
+  vulnerability `#6413 <https://github.com/voxel51/fiftyone/pull/6413>`_
+
+
+
+
 FiftyOne Enterprise 2.11.2
 --------------------------
 *Released September 25, 2025*
@@ -107,59 +242,59 @@ Annotation
 Model Zoo
 
 - Added 6 SegFormer semantic segmentation models to the
-  :ref:`model zoo <model-zoo-models>` (b0-b5 variants)
+  :ref:`model zoo <model-zoo>` (b0-b5 variants)
   `#6217 <https://github.com/voxel51/fiftyone/pull/6217>`_
-- Added OWL-ViT large-patch14 to the :ref:`model zoo <model-zoo-models>` for
+- Added OWL-ViT large-patch14 to the :ref:`model zoo <model-zoo>` for
   zero-shot object detection
   `#6196 <https://github.com/voxel51/fiftyone/pull/6196>`_
 - Added 5 new D-FINE real-time object detection models to the
-  :ref:`model zoo <model-zoo-models>` (nano through xlarge)
+  :ref:`model zoo <model-zoo>` (nano through xlarge)
   `#6143 <https://github.com/voxel51/fiftyone/pull/6143>`_
 - Added 2 new RT-DETRv2 real-time object detection models to the
-  :ref:`model zoo <model-zoo-models>` (small and medium variants)
+  :ref:`model zoo <model-zoo>` (small and medium variants)
   `#6106 <https://github.com/voxel51/fiftyone/pull/6106>`_
-- Added OWL-ViT base-patch32 model to the :ref:`model zoo <model-zoo-models>`
+- Added OWL-ViT base-patch32 model to the :ref:`model zoo <model-zoo>`
   for zero-shot object detection
   `#6140 <https://github.com/voxel51/fiftyone/pull/6140>`_
 - Added 4 new Swin V2 hierarchical transformer models to the
-  :ref:`model zoo <model-zoo-models>` (tiny, small, base, large)
+  :ref:`model zoo <model-zoo>` (tiny, small, base, large)
   `#6100 <https://github.com/voxel51/fiftyone/pull/6100>`_
 - Added 13 new image classification models to the
-  :ref:`model zoo <model-zoo-models>`: ConvNeXt (tiny, small, base, large,
+  :ref:`model zoo <model-zoo>`: ConvNeXt (tiny, small, base, large,
   xlarge) and EfficientNet (b0-b7)
   `#6084 <https://github.com/voxel51/fiftyone/pull/6084>`_
 - Zero-shot HuggingFace models no longer require classes to be set by the user
   when using :meth:`load_zoo_model() <fiftyone.zoo.models.load_zoo_model>`
   `#6159 <https://github.com/voxel51/fiftyone/pull/6159>`_
 - All semantic segmentation torch models in the
-  :ref:`model zoo <model-zoo-models>` now support confidence thresholding and
+  :ref:`model zoo <model-zoo>` now support confidence thresholding and
   the class indices start at 1 for segmentation masks
   `#6231 <https://github.com/voxel51/fiftyone/pull/6231>`_
-- All models in the :ref:`model zoo <model-zoo-models>` now have clear,
+- All models in the :ref:`model zoo <model-zoo>` now have clear,
   user-friendly descriptions that explain what each model does and its intended
   use case, making it easier to find the right model for your task
   `#6184 <https://github.com/voxel51/fiftyone/pull/6184>`_
-- Official models in the :ref:`model zoo <model-zoo-models>` are now
+- Official models in the :ref:`model zoo <model-zoo>` are now
   consistently marked with the `official` tag to help users identify
   authoritative model implementations
   `#6192 <https://github.com/voxel51/fiftyone/pull/6192>`_
-- TensorFlow 1.x models in the :ref:`model zoo <model-zoo-models>` are now
+- TensorFlow 1.x models in the :ref:`model zoo <model-zoo>` are now
   tagged as `legacy` to indicate they are no longer actively maintained due to
   TF1's deprecation
   `#6187 <https://github.com/voxel51/fiftyone/pull/6187>`_
-- YOLO segmentation models in the :ref:`model zoo <model-zoo-models>` are now
+- YOLO segmentation models in the :ref:`model zoo <model-zoo>` are now
   tagged as `instances` rather than `segmentation` to reflect that they perform
   instance segmentation
   `#6219 <https://github.com/voxel51/fiftyone/pull/6219>`_
 - Fixed incorrect file size metadata for the ConvNeXt-XLarge model in the
-  :ref:`model zoo <model-zoo-models>`
+  :ref:`model zoo <model-zoo>`
   `#6195 <https://github.com/voxel51/fiftyone/pull/6195>`_
 - Fixed missing file sizes for ConvNeXt and EfficientNet models in the
-  :ref:`model zoo <model-zoo-models>`, enabling accurate download progress
+  :ref:`model zoo <model-zoo>`, enabling accurate download progress
   tracking and storage requirement validation
   `#6104 <https://github.com/voxel51/fiftyone/pull/6104>`_
 - Fixed missing model size information in the
-  :ref:`model zoo <model-zoo-models>` for vit-base-patch16-224-imagenet-torch,
+  :ref:`model zoo <model-zoo>` for vit-base-patch16-224-imagenet-torch,
   siglip-base-patch16-224-torch, and group-vit-segmentation-transformer-torch
   models
   `#6175 <https://github.com/voxel51/fiftyone/pull/6175>`_
@@ -1768,7 +1903,7 @@ Zoo
   :ref:`Model Zoo <model-zoo>`
   `#4899 <https://github.com/voxel51/fiftyone/pull/4899>`_
 - Added generic model architecture and backbone tags to all relevant models
-  :ref:`in the zoo <model-zoo-models>` for easier navigation
+  :ref:`in the zoo <model-zoo>` for easier navigation
   `#4899 <https://github.com/voxel51/fiftyone/pull/4899>`_
 
 Core
@@ -6992,9 +7127,9 @@ CLI
 
 Docs
 
-- Added a :ref:`Dataset Zoo listing <dataset-zoo-datasets>` that describes all
+- Added a :ref:`Dataset Zoo listing <dataset-zoo>` that describes all
   datasets in the zoo
-- Added a :ref:`Model Zoo listing <model-zoo-models>` that describes all models
+- Added a :ref:`Model Zoo listing <model-zoo>` that describes all models
   in the zoo
 
 .. _release-notes-v0.7.0:
