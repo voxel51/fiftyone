@@ -87,11 +87,8 @@ const getDatasetName = (): string => {
 
   try {
     const url = new URL(window.location.href);
-    const tokens = url.pathname.split("/datasets/");
-    let name = tokens.at(1);
-    name = name.split("/")[0];
-    name = name.split("?")[0];
-    return name || "";
+    const match = url.pathname.match(/\/datasets\/([^/?]+)/);
+    return match ? match[1] : "";
   } catch {
     return "";
   }

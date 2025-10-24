@@ -1,9 +1,11 @@
 import { Box, TextField } from "@mui/material";
 import { forwardRef, useCallback, useEffect, useMemo, useState } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
+import * as fos from "@fiftyone/state";
 import type { PolyLineProps } from "../../labels/polyline";
 import {
   annotationPlaneAtom,
+  currentActiveAnnotationField3dAtom,
   polylinePointTransformsAtom,
   selectedLabelForAnnotationAtom,
   selectedPolylineVertexAtom,
@@ -32,7 +34,7 @@ const CoordinateField = forwardRef<HTMLInputElement, CoordinateFieldProps>(
   ({ label, value, onChange, onFocus, onBlur }, ref) => {
     return (
       <TextField
-        ref={ref}
+        inputRef={ref}
         size="small"
         label={label}
         value={value}
@@ -230,6 +232,9 @@ export const VertexCoordinateInputs = ({
   const [polylinePointTransforms, setPolylinePointTransforms] = useRecoilState(
     polylinePointTransformsAtom
   );
+  const currentActiveField = useRecoilValue(currentActiveAnnotationField3dAtom);
+  const currentSampleId = useRecoilValue(fos.currentSampleId);
+
   const selectedPointPosition = useMemo(() => {
     if (!selectedPoint || !selectedLabel) return null;
 
@@ -295,12 +300,16 @@ export const VertexCoordinateInputs = ({
             true
           );
 
+          const existingLabelData = prev[labelId];
+          const path = existingLabelData?.path || currentActiveField || "";
+          const sampleId = existingLabelData?.sampleId || currentSampleId;
+
           return {
             ...prev,
             [labelId]: {
               segments: newSegments,
-              path: prev[labelId].path,
-              sampleId: prev[labelId].sampleId,
+              path,
+              sampleId,
             },
           };
         });
@@ -311,6 +320,8 @@ export const VertexCoordinateInputs = ({
       selectedLabel,
       selectedPointPosition,
       setPolylinePointTransforms,
+      currentActiveField,
+      currentSampleId,
     ]
   );
 

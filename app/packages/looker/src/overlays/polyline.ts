@@ -33,7 +33,7 @@ export default class PolylineOverlay<
 
     if (
       (this.label.closed || this.label.filled) &&
-      this.label.points.some((path) => this.isPointInPath(state, path))
+      (this.label.points || []).some((path) => this.isPointInPath(state, path))
     ) {
       return CONTAINS.CONTENT;
     }
@@ -79,7 +79,7 @@ export default class PolylineOverlay<
     const distances = [];
     const [w, h] = state.dimensions;
     const xy = state.pixelCoordinates;
-    for (const shape of this.label.points) {
+    for (const shape of this.label.points || []) {
       for (let i = 0; i < shape.length - 1; i++) {
         distances.push(
           distanceFromLineSegment(
@@ -175,7 +175,7 @@ export default class PolylineOverlay<
 export const getPolylinePoints = (labels: PolylineLabel[]): Coordinates[] => {
   let points = [];
   labels.forEach((label) => {
-    label.points.forEach((line) => {
+    (label.points || []).forEach((line) => {
       points = [...points, ...line];
     });
   });

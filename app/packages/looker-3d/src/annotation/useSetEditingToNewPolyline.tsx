@@ -47,7 +47,7 @@ export const useSetEditingToNewPolyline = () => {
         return {
           ...prev,
           [label._id]: {
-            ...prev[label._id],
+            ...(prev[label._id] ?? ({} as PolylinePointTransformData)),
             label: label.label,
             misc: {
               ...sanitizeSchemaIoLabelAttributes(rest ?? {}),

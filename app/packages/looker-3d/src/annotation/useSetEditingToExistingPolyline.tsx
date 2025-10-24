@@ -8,6 +8,7 @@ import {
   currentActiveAnnotationField3dAtom,
   polylinePointTransformsAtom,
 } from "../state";
+import { PolylinePointTransformData } from "./types";
 import { sanitizeSchemaIoLabelAttributes } from "./utils/polyline-utils";
 
 const currentEditingExistingPolylineAtom =
@@ -44,7 +45,7 @@ export const useSetEditingToExistingPolyline = () => {
         return {
           ...prev,
           [label._id]: {
-            ...prev[label._id],
+            ...(prev[label._id] ?? ({} as PolylinePointTransformData)),
             label: label.label,
             misc: {
               ...sanitizeSchemaIoLabelAttributes(rest ?? {}),

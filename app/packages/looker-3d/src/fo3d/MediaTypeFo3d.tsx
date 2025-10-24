@@ -168,7 +168,7 @@ export const MediaTypeFo3dComponent = () => {
 
   // Setup a ghost lighter for human annotation needs
   useEffect(() => {
-    if (mode !== "annotate" || !!scene) return;
+    if (mode !== "annotate") return;
 
     const mockRenderer = new MockRenderer2D();
     const eventBus = new EventBus();
@@ -190,7 +190,8 @@ export const MediaTypeFo3dComponent = () => {
       newScene.destroy();
       setScene(null);
     };
-  }, [mode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, fo3dRoot]);
 
   useOverlayPersistence(scene);
 

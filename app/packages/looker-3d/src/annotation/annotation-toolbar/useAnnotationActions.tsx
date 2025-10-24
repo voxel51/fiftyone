@@ -12,12 +12,12 @@ import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
 import { useFo3dContext } from "../../fo3d/context";
 import {
+  activeSegmentationStateAtom,
   annotationPlaneAtom,
   currentActiveAnnotationField3dAtom,
   currentArchetypeSelectedForTransformAtom,
   editSegmentsModeAtom,
   polylinePointTransformsAtom,
-  activeSegmentationStateAtom,
   selectedLabelForAnnotationAtom,
   selectedPolylineVertexAtom,
   snapCloseAutomaticallyAtom,
@@ -138,9 +138,8 @@ export const useAnnotationActions = () => {
       return {
         ...prev,
         [labelId]: {
+          ...currentData,
           segments: filteredSegments,
-          path: currentData.path,
-          sampleId: currentData.sampleId,
         },
       };
     });
@@ -269,7 +268,8 @@ export const useAnnotationActions = () => {
   const handleDeselectLabel = useCallback(() => {
     setSelectedLabelForAnnotation(null);
     setEditing(null);
-  }, [setSelectedLabelForAnnotation]);
+    setEditSegmentsMode(false);
+  }, []);
 
   const actions: AnnotationActionGroup[] = useMemo(() => {
     const baseActions: AnnotationActionGroup[] = [
@@ -307,7 +307,7 @@ export const useAnnotationActions = () => {
           {
             id: "new-segment",
             label: "New Segment",
-            icon: <PolylineIcon style={{ rotate: "90deg" }} />,
+            icon: <PolylineIcon sx={{ transform: "rotate(90deg)" }} />,
             // if label selected, add new segment to the label
             // if no label selected, create a new label
             tooltip: selectedLabelForAnnotation

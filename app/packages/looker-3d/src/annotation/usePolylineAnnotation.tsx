@@ -114,22 +114,22 @@ export const usePolylineAnnotation = ({
                 const labelId = label._id;
                 const currentSegments = prev[labelId]?.segments || [];
 
-                // Update this vertex position and all shared vertices at the same position
                 const newSegments = updateVertexPosition(
                   points3d,
                   currentSegments,
                   segmentIndex,
                   pointIndex,
                   [newPosition.x, newPosition.y, newPosition.z],
-                  true // Update shared vertices
+                  // Update shared vertices
+                  true
                 );
 
                 return {
                   ...prev,
                   [labelId]: {
                     segments: newSegments,
-                    path: prev[labelId].path,
-                    sampleId: prev[labelId].sampleId,
+                    path: prev[labelId]?.path ?? currentActiveField,
+                    sampleId: prev[labelId]?.sampleId ?? currentSampleId,
                   },
                 };
               });
@@ -145,7 +145,8 @@ export const usePolylineAnnotation = ({
     points3d,
     label._id,
     strokeAndFillColor,
-    setPolylinePointTransforms,
+    currentActiveField,
+    currentSampleId,
   ]);
 
   const centroidMarker = useMemo(() => {
@@ -344,8 +345,8 @@ export const usePolylineAnnotation = ({
             ...prev,
             [labelId]: {
               segments: newSegments,
-              path: prev[labelId].path,
-              sampleId: prev[labelId].sampleId,
+              path: prev[labelId].path ?? currentActiveField,
+              sampleId: prev[labelId].sampleId ?? currentSampleId,
             },
           };
         });
@@ -357,7 +358,8 @@ export const usePolylineAnnotation = ({
       isAnnotateMode,
       points3d,
       label._id,
-      setPolylinePointTransforms,
+      currentActiveField,
+      currentSampleId,
     ]
   );
 
