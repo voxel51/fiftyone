@@ -7,6 +7,7 @@ import { Command } from "../commands/Command";
 import { InteractiveDetectionHandler } from "../interaction/InteractiveDetectionHandler";
 import { BaseOverlay } from "../overlay/BaseOverlay";
 import type { Point, Rect } from "../types";
+import { Field } from "@fiftyone/utilities";
 
 /**
  * Event type constants for lighter events.
@@ -317,14 +318,20 @@ export type DoLighterEvent =
     }
   | {
       type: typeof LIGHTER_EVENTS.DO_PERSIST_OVERLAY;
-      detail: AnnotationLabel;
+      detail: {
+        label: AnnotationLabel;
+        schema: Field;
+        onSuccess?: () => void;
+        onError?: (error?: Error | string) => void;
+      };
     }
   | {
       type: typeof LIGHTER_EVENTS.DO_REMOVE_OVERLAY;
       detail: {
+        label: AnnotationLabel;
+        schema: Field;
         onSuccess?: () => void;
         onError?: (error?: Error | string) => void;
-        label: AnnotationLabel;
       };
     };
 
