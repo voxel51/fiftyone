@@ -2,6 +2,7 @@ import { LoadingSpinner } from "@fiftyone/components";
 import { lighterSceneAtom } from "@fiftyone/lighter";
 import * as fos from "@fiftyone/state";
 import { EntryKind } from "@fiftyone/state";
+import { isAnnotationSupported } from "@fiftyone/utilities";
 import { Typography } from "@mui/material";
 import { atom, useAtomValue } from "jotai";
 import { useRecoilValue } from "recoil";
@@ -87,8 +88,9 @@ const Annotate = () => {
   const scene = useAtomValue(lighterSceneAtom);
 
   const mediaType = useRecoilValue(fos.mediaType);
+  const annotationSupported = isAnnotationSupported(mediaType);
 
-  if (loading || (!scene && mediaType !== "3d")) {
+  if (annotationSupported && (loading || !scene)) {
     return <Loading />;
   }
 
@@ -96,7 +98,7 @@ const Annotate = () => {
     <>
       {editing && <Edit key="edit" />}
       {showImport ? (
-        <ImportSchema key="import" />
+        <ImportSchema key="import" disabled={!annotationSupported} />
       ) : (
         <AnnotateSidebar key="annotate" />
       )}
