@@ -15,6 +15,8 @@ from contextlib import contextmanager, suppress
 from copy import deepcopy
 from datetime import date, datetime
 from functools import partial
+from starlette.responses import Response
+from json import JSONEncoder
 import glob
 import hashlib
 import importlib
@@ -3075,7 +3077,7 @@ class ResponseStream(object):
 
 _SAFE_CHARS = set(string.ascii_letters) | set(string.digits)
 _HYPHEN_CHARS = set(string.whitespace) | set("+_.-")
-_NAME_LENGTH_RANGE = (1, 100)
+_NAME_LENGTH_RANGE = (1, 1551)
 
 
 def _sanitize_char(c):
@@ -3098,7 +3100,7 @@ def to_slug(name):
         -   All other characters are omitted
         -   All consecutive ``-`` characters are reduced to a single ``-``
         -   All leading and trailing ``-`` are stripped
-        -   Both the input name and the resulting string must be ``[1, 100]``
+        -   Both the input name and the resulting string must be ``[1, 1551]``
             characters in length
 
     Examples::
@@ -3190,6 +3192,27 @@ def validate_hex_color(value):
         raise ValueError(
             "%s is not a valid hex color string (eg: '#FF6D04')" % value
         )
+
+
+class Encoder(JSONEncoder):
+    """Custom JSON encoder that handles numpy types."""
+
+    def default(self, o):
+        if isinstance(o, np.floating):
+            return float(o)
+
+        if isinstance(o, np.integer):
+            return int(o)
+
+        return JSONEncoder.default(self, o)
+
+
+async def create_response(response: dict):
+    """Creates a JSON response from the given dictionary."""
+    return Response(
+        await run_sync_task(lambda: json_util.dumps(response, cls=Encoder)),
+        headers={"Content-Type": "application/json"},
+    )
 
 
 fos = lazy_import("fiftyone.core.storage")
