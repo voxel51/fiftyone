@@ -6,7 +6,7 @@
 export const isAnnotationSupported = (
   mediaType: string | null | undefined
 ): boolean => {
-  return mediaType && !["video", "group"].includes(mediaType);
+  return !!mediaType && !["video", "group"].includes(mediaType);
 };
 
 /**
