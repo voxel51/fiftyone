@@ -9,6 +9,11 @@ import {
   selectedLabelForAnnotationAtom,
   tempLabelTransformsAtom,
 } from "../state";
+import {
+  isValidPoint3d,
+  validatePoints3d,
+  validatePoints3dArray,
+} from "../utils";
 import { createFilledPolygonMeshes } from "./polygon-fill-utils";
 import type { OverlayProps } from "./shared";
 import { useEventHandlers, useHoverState, useLabelColor } from "./shared/hooks";
@@ -76,44 +81,66 @@ export const Polyline = ({
   });
 
   const lines = useMemo(() => {
-    const lineElements = points3d.map((pts, i) => {
-      return (
-        <LineDrei
-          key={`polyline-${label._id}-${i}`}
-          lineWidth={lineWidth}
-          points={pts}
-          color={strokeAndFillColor}
-          rotation={rotation}
-          transparent={opacity < 0.2}
-          opacity={opacity}
-          onPointerOver={() => handleSegmentPointerOver(i)}
-          onPointerOut={handleSegmentPointerOut}
-          onClick={handleSegmentClick}
-        />
-      );
-    });
+    const lineElements = points3d
+      .map((pts, i) => {
+        if (!pts || !Array.isArray(pts) || pts.length === 0) {
+          console.warn(`Invalid points array for polyline segment ${i}:`, pts);
+          return null;
+        }
 
-    // If closed, add line from last vertex to first for EACH segment
+        const validPts = validatePoints3d(pts);
+
+        if (validPts.length === 0) {
+          console.warn(`No valid points found for polyline segment ${i}`);
+          return null;
+        }
+
+        return (
+          <LineDrei
+            key={`polyline-${label._id}-${i}`}
+            lineWidth={lineWidth}
+            points={validPts}
+            color={strokeAndFillColor}
+            rotation={rotation}
+            transparent={opacity < 0.2}
+            opacity={opacity}
+            onPointerOver={() => handleSegmentPointerOver(i)}
+            onPointerOut={handleSegmentPointerOut}
+            onClick={handleSegmentClick}
+          />
+        );
+      })
+      .filter(Boolean);
+
+    // If closed, add exactly one closing line per segment
     if (closed) {
       const closingLines = points3d
         .map((pts, i) => {
-          if (pts.length >= 2) {
-            return (
-              <LineDrei
-                key={`polyline-closing-${label._id}-${i}`}
-                lineWidth={lineWidth}
-                points={[pts[pts.length - 1], pts[0]]}
-                color={strokeAndFillColor}
-                rotation={rotation}
-                transparent={opacity < 0.2}
-                opacity={opacity}
-                onPointerOver={() => handleSegmentPointerOver(i)}
-                onPointerOut={handleSegmentPointerOut}
-                onClick={handleSegmentClick}
-              />
-            );
+          if (!pts || !Array.isArray(pts) || pts.length < 2) {
+            return null;
           }
-          return null;
+
+          const firstPoint = pts[0];
+          const lastPoint = pts[pts.length - 1];
+
+          if (!isValidPoint3d(firstPoint) || !isValidPoint3d(lastPoint)) {
+            return null;
+          }
+
+          return (
+            <LineDrei
+              key={`polyline-closing-${label._id}-${i}`}
+              lineWidth={lineWidth}
+              points={[lastPoint, firstPoint]}
+              color={strokeAndFillColor}
+              rotation={rotation}
+              transparent={opacity < 0.2}
+              opacity={opacity}
+              onPointerOver={() => handleSegmentPointerOver(i)}
+              onPointerOut={handleSegmentPointerOut}
+              onClick={handleSegmentClick}
+            />
+          );
         })
         .filter(Boolean);
 
@@ -149,7 +176,14 @@ export const Polyline = ({
   const filledMeshes = useMemo(() => {
     if (!filled || !material) return null;
 
-    const meshes = createFilledPolygonMeshes(points3d, material);
+    const validPoints3d = validatePoints3dArray(points3d);
+
+    if (validPoints3d.length === 0) {
+      console.warn("No valid points found for filled polygon meshes");
+      return null;
+    }
+
+    const meshes = createFilledPolygonMeshes(validPoints3d, material);
 
     if (!meshes) return null;
 
@@ -166,7 +200,12 @@ export const Polyline = ({
     const currentMeshes = meshesRef.current;
 
     if (filled && material) {
-      const meshes = createFilledPolygonMeshes(points3d, material);
+      const validPoints3d = validatePoints3dArray(points3d);
+
+      const meshes =
+        validPoints3d.length > 0
+          ? createFilledPolygonMeshes(validPoints3d, material)
+          : null;
       meshesRef.current = meshes || [];
     } else {
       meshesRef.current = [];

@@ -421,6 +421,7 @@ export function sanitizeSchemaIoLabelAttributes(
     Object.entries(misc).filter(([key, value]) => {
       if (value === "false") return false;
       if (value === "true") return true;
+      return value;
     })
   );
 }

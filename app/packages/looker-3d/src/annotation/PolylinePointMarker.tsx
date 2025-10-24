@@ -6,13 +6,14 @@ import { Matrix4, Mesh, Vector3 } from "three";
 import { LABEL_3D_ANNOTATION_POINT_SELECTED_FOR_TRANSFORMATION_COLOR } from "../constants";
 import { Transformable } from "../labels/shared/TransformControls";
 import {
+  activeSegmentationStateAtom,
   currentArchetypeSelectedForTransformAtom,
   editSegmentsModeAtom,
-  activeSegmentationStateAtom,
   selectedPolylineVertexAtom,
   tempVertexTransformsAtom,
   transformModeAtom,
 } from "../state";
+import { VertexTooltip } from "./VertexTooltip";
 import type { SelectedPoint } from "./types";
 
 interface PolylinePointMarkerProps {
@@ -25,6 +26,7 @@ interface PolylinePointMarkerProps {
   segmentIndex: number;
   pointIndex: number;
   onPointMove?: (newPosition: Vector3) => void;
+  tooltipDescriptor?: string | null;
 }
 
 export const PolylinePointMarker = ({
@@ -37,6 +39,7 @@ export const PolylinePointMarker = ({
   segmentIndex,
   pointIndex,
   onPointMove,
+  tooltipDescriptor = null,
 }: PolylinePointMarkerProps) => {
   const meshRef = useRef<Mesh>(null);
   const transformControlsRef = useRef<any>(null);
@@ -246,6 +249,13 @@ export const PolylinePointMarker = ({
             emissiveIntensity={isSelected ? 1 : 0.3}
           />
         </mesh>
+        {tooltipDescriptor && (
+          <VertexTooltip
+            position={position.toArray() as [number, number, number]}
+            tooltipDescriptor={tooltipDescriptor}
+            isVisible={isHovered}
+          />
+        )}
       </group>
     </Transformable>
   );
