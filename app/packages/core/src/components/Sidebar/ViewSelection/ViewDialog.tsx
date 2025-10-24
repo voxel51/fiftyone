@@ -56,6 +56,20 @@ export const viewDialogContent = atom({
   },
 });
 
+/**
+ * Render the modal for creating or editing a saved view.
+ *
+ * Displays a dialog that lets the user set a view name, description, and color,
+ * and create, update, or delete a saved view. Synchronizes local form state
+ * with recoil atom `viewDialogContent` and calls provided callbacks on success.
+ *
+ * @param props.onEditSuccess - Called with the saved view and a boolean indicating whether the slug changed after a successful create or update.
+ * @param props.onDeleteSuccess - Called with the slug of the deleted view after a successful delete.
+ * @param props.savedViews - Existing saved views used to validate duplicate names.
+ * @param props.canEdit - Whether the current user can delete or edit existing views.
+ * @param props.id - Base id string used for data-cy attributes inside the dialog.
+ * @returns The dialog JSX when open, or `null` when closed.
+ */
 export default function ViewDialog(props: Props) {
   const {
     onEditSuccess,
