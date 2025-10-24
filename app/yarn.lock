@@ -2450,6 +2450,7 @@ __metadata:
   resolution: "@fiftyone/core@workspace:packages/core"
   dependencies:
     "@fiftyone/components": "npm:*"
+    "@fiftyone/feature-flags": "npm:*"
     "@fiftyone/flashlight": "npm:*"
     "@fiftyone/looker": "npm:*"
     "@fiftyone/map": "npm:*"
@@ -2546,7 +2547,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/feature-flags@workspace:packages/feature-flags":
+"@fiftyone/feature-flags@npm:*, @fiftyone/feature-flags@workspace:packages/feature-flags":
   version: 0.0.0-use.local
   resolution: "@fiftyone/feature-flags@workspace:packages/feature-flags"
   dependencies:

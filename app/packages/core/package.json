@@ -10,6 +10,7 @@
     },
     "dependencies": {
         "@fiftyone/components": "*",
+        "@fiftyone/feature-flags": "*",
         "@fiftyone/flashlight": "*",
         "@fiftyone/looker": "*",
         "@fiftyone/map": "*",
