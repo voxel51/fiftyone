@@ -4,11 +4,11 @@ FiftyOne
 .. raw:: html
 
   <div class="responsive-banner">
-    <a href="https://link.voxel51.com/oss-office-hours-docs" target="_blank">
-      <video class="banner-mobile" autoplay loop muted playsinline>
+    <a href="https://link.voxel51.com/oss-office-hours-docs" target="_blank" aria-label="Apply for free Office Hours with FiftyOne Customer Success team">
+      <video class="banner-mobile" autoplay loop muted playsinline aria-hidden="true">
         <source src="https://cdn.voxel51.com/banner/office_hours_1200x200.webm" type="video/webm">
       </video>
-      <video class="banner-desktop" autoplay loop muted playsinline>
+      <video class="banner-desktop" autoplay loop muted playsinline aria-hidden="true">
         <source src="https://cdn.voxel51.com/banner/office_hours_2400x400.webm" type="video/webm">
       </video>
     </a>
