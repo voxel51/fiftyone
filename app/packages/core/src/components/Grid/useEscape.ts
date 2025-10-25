@@ -24,9 +24,7 @@ const useEscape = () => {
           // TODO: modal is always `null` here right after a modal closes, so this isn't the condition we want
           if (modal === null && selectedSampleIds.size > 0) {
             if (
-              confirm(
-                "Are you sure you want to clear your current selection?"
-              )
+              confirm("Are you sure you want to clear your current selection?")
             ) {
               reset(fos.selectedSamples);
             }
