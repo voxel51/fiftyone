@@ -17,6 +17,7 @@ import {
   currentActiveAnnotationField3dAtom,
   currentArchetypeSelectedForTransformAtom,
   editSegmentsModeAtom,
+  isActivelySegmentingSelector,
   polylinePointTransformsAtom,
   selectedLabelForAnnotationAtom,
   selectedPolylineVertexAtom,
@@ -51,6 +52,7 @@ export const useAnnotationActions = () => {
   const [selectedPoint, setSelectedPoint] = useRecoilState(
     selectedPolylineVertexAtom
   );
+  const isActivelySegmenting = useRecoilValue(isActivelySegmentingSelector);
   const [segmentState, setSegmentState] = useRecoilState(
     activeSegmentationStateAtom
   );
@@ -213,7 +215,10 @@ export const useAnnotationActions = () => {
         return;
       }
 
-      if (event.key === "Delete" || event.key === "Backspace") {
+      if (
+        !isActivelySegmenting &&
+        (event.key === "Delete" || event.key === "Backspace")
+      ) {
         handleContextualDelete();
       }
     };
@@ -223,7 +228,7 @@ export const useAnnotationActions = () => {
     return () => {
       document.removeEventListener("keydown", handler);
     };
-  }, [handleContextualDelete]);
+  }, [handleContextualDelete, isActivelySegmenting]);
 
   const handleToggleAnnotationPlane = useCallback(() => {
     if (!annotationPlane.enabled) {

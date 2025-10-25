@@ -266,7 +266,10 @@ export const SegmentPolylineRenderer = ({
     if (ignoreEffects) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && segmentState.isActive) {
+      if (!segmentState.isActive) return;
+
+      // Handle Escape key - cancel segmentation
+      if (event.key === "Escape") {
         setSegmentState({
           isActive: false,
           vertices: [],
@@ -278,12 +281,35 @@ export const SegmentPolylineRenderer = ({
 
         event.stopImmediatePropagation();
         event.preventDefault();
+        return;
+      }
+
+      // Handle Delete/Backspace - remove last vertex
+      if (event.key === "Delete" || event.key === "Backspace") {
+        // Only handle if we have vertices to remove
+        if (segmentState.vertices.length > 0) {
+          setSegmentState((prev) => ({
+            ...prev,
+            vertices: prev.vertices.slice(0, -1),
+          }));
+
+          // Clear the last added vertex reference since we removed it
+          lastAddedVertexRef.current = null;
+
+          event.stopImmediatePropagation();
+          event.preventDefault();
+        }
       }
     };
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [segmentState.isActive, setSegmentState]);
+  }, [
+    segmentState.isActive,
+    segmentState.vertices,
+    setSegmentState,
+    setIsActivelySegmenting,
+  ]);
 
   // Render completed segments
   const completedSegments = useMemo(() => {
