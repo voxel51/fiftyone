@@ -55,7 +55,14 @@ export const useAddAnnotationLabel = () => {
       }
 
       if (type === POLYLINE) {
-        throw new Error("todo");
+        return {
+          data,
+          overlay: {
+            id: data._id,
+          },
+          path: field,
+          type,
+        };
       }
 
       throw new Error(`unable to create label of type '${type}'`);

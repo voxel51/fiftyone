@@ -1,9 +1,10 @@
 import { useLighter } from "@fiftyone/lighter";
+import { isPolylineAnnotateActiveAtom } from "@fiftyone/looker-3d/src/state";
 import { is3DDataset } from "@fiftyone/state";
-import { CLASSIFICATION, DETECTION, POLYLINE } from "@fiftyone/utilities";
-import { PolylineOutlined } from "@mui/icons-material";
+import { CLASSIFICATION, DETECTION } from "@fiftyone/utilities";
+import ThreeDIcon from "@mui/icons-material/ViewInAr";
 import React from "react";
-import { useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ItemLeft } from "./Components";
 import useCreate from "./Edit/useCreate";
@@ -20,7 +21,7 @@ const ActionsDiv = styled.div`
   max-width: 100%;
 `;
 
-const Container = styled.div`
+const Container = styled.div<{ $active?: boolean }>`
   align-items: center;
   display: flex;
   flex-direction: column;
@@ -35,6 +36,16 @@ const Container = styled.div`
 
   text-overflow: ellipsis;
   white-space: nowrap;
+
+  ${({ $active, theme }) =>
+    $active &&
+    `
+    color: ${theme.text.primary};
+    
+    path {
+      fill: ${theme.primary.plainColor};
+    }
+  `}
 
   &.disabled {
     opacity: 0.5;
@@ -73,7 +84,7 @@ export const RoundButtonWhite = styled(RoundButton)`
   }
 `;
 
-const Square = styled(Container)`
+const Square = styled(Container)<{ $active?: boolean }>`
   border-radius: 0.25rem;
 `;
 
@@ -115,16 +126,6 @@ const Detection = () => {
           fill="#999999"
         />
       </svg>
-    </Square>
-  );
-};
-
-const Polyline = () => {
-  const create = useCreate(POLYLINE);
-  return (
-    <Square onClick={create}>
-      New Polyline
-      <PolylineOutlined />
     </Square>
   );
 };
@@ -173,6 +174,22 @@ export const Redo = () => {
   );
 };
 
+export const ThreeDPolylines = () => {
+  const [isPolylineAnnotateActive, setIsPolylineAnnotateActive] =
+    useRecoilState(isPolylineAnnotateActiveAtom);
+
+  return (
+    <Square
+      $active={isPolylineAnnotateActive}
+      onClick={() => {
+        setIsPolylineAnnotateActive(!isPolylineAnnotateActive);
+      }}
+    >
+      <ThreeDIcon />
+    </Square>
+  );
+};
+
 const Schema = () => {
   const showModal = useShowModal();
 
@@ -182,11 +199,12 @@ const Schema = () => {
 const Actions = () => {
   const is3D = useRecoilValue(is3DDataset);
   const canManage = useCanManageSchema();
+
   return (
     <ActionsDiv style={{ margin: "0 0.25rem", paddingBottom: "0.5rem" }}>
       <ItemLeft style={{ columnGap: "0.5rem" }}>
         <Classification />
-        {is3D ? <Polyline /> : <Detection />}
+        {is3D ? <ThreeDPolylines /> : <Detection />}
       </ItemLeft>
 
       {canManage && <Schema />}

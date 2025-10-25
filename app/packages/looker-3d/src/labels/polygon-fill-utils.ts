@@ -20,165 +20,6 @@ import { Matrix4, Shape, ShapeGeometry, Vector3 } from "three";
 const EPS = 1e-6;
 
 /**
- * Creates a unique string key for a 3D point to use in graph operations.
- * This enables efficient vertex deduplication and adjacency tracking.
- */
-const keyFor = (p: THREE.Vector3Tuple): string =>
-  `${p[0].toFixed(6)},${p[1].toFixed(6)},${p[2].toFixed(6)}`;
-
-/**
- * Reconstructs closed loops from unordered line segments.
- *
- * Algorithm:
- * 1. Build adjacency sets and edge multiset from segments
- * 2. While unused edges remain:
- *    - Start at any vertex with degree > 0
- *    - Follow available edges to form a cycle
- *    - Consume edges as they're traversed
- *    - Validate cycle: ≥3 unique vertices and returns to start
- *
- * Edge cases handled:
- * - Duplicate segments (handled by edge multiset)
- * - Tiny back-and-forth edges
- * - Dangling edges (ignored when they cannot close)
- */
-export function buildClosedLoopsFromSegments(
-  segments: THREE.Vector3Tuple[][]
-): THREE.Vector3Tuple[][] {
-  // Undirected multigraph representation using endpoint keys
-  const neighbors = new Map<string, Set<string>>();
-  const pointByKey = new Map<string, THREE.Vector3Tuple>();
-  const edgeCount = new Map<string, number>();
-
-  /**
-   * Adds an undirected edge between two points to the graph.
-   * Handles duplicate edges by maintaining a count in edgeCount.
-   */
-  const addEdge = (a: THREE.Vector3Tuple, b: THREE.Vector3Tuple) => {
-    const ka = keyFor(a);
-    const kb = keyFor(b);
-
-    // Skip self-loops
-    if (ka === kb) return;
-
-    // Initialize adjacency sets if needed
-    if (!neighbors.has(ka)) neighbors.set(ka, new Set());
-    if (!neighbors.has(kb)) neighbors.set(kb, new Set());
-
-    // Add bidirectional edges
-    neighbors.get(ka)!.add(kb);
-    neighbors.get(kb)!.add(ka);
-
-    // Store point data for later reconstruction
-    pointByKey.set(ka, a);
-    pointByKey.set(kb, b);
-
-    // Track edge usage count (for multigraph support)
-    const e1 = `${ka}|${kb}`;
-    const e2 = `${kb}|${ka}`;
-    edgeCount.set(e1, (edgeCount.get(e1) || 0) + 1);
-    edgeCount.set(e2, (edgeCount.get(e2) || 0) + 1);
-  };
-
-  // Build graph from all segments
-  for (const seg of segments) {
-    // Skip invalid segments
-    if (seg.length < 2) continue;
-    addEdge(seg[0], seg[1]);
-  }
-
-  /**
-   * Consumes one usage of an edge and returns true if successful.
-   * Returns false if the edge has no remaining uses.
-   */
-  const useEdge = (ka: string, kb: string): boolean => {
-    const e1 = `${ka}|${kb}`;
-    const e2 = `${kb}|${ka}`;
-    const c1 = (edgeCount.get(e1) || 0) - 1;
-    const c2 = (edgeCount.get(e2) || 0) - 1;
-
-    if (c1 < 0 || c2 < 0) return false; // No more uses available
-
-    // Update or remove edge counts
-    if (c1 === 0) edgeCount.delete(e1);
-    else edgeCount.set(e1, c1);
-    if (c2 === 0) edgeCount.delete(e2);
-    else edgeCount.set(e2, c2);
-
-    return true;
-  };
-
-  const loops: THREE.Vector3Tuple[][] = [];
-
-  /**
-   * Finds any vertex that still has unused edges.
-   * Used to start new loop construction.
-   */
-  const pickAnyVertexWithEdges = (): string | null => {
-    for (const k of neighbors.keys()) {
-      for (const n of neighbors.get(k) || []) {
-        if (edgeCount.get(`${k}|${n}`)) return k;
-      }
-    }
-    return null;
-  };
-
-  // Main loop: extract cycles while edges remain
-  while (true) {
-    const start = pickAnyVertexWithEdges();
-    if (!start) break; // No more edges to process
-
-    const loopKeys: string[] = [];
-    let current = start;
-    let prev: string | null = null;
-
-    loopKeys.push(current);
-
-    // Walk along edges until we return to start or hit a dead-end
-    while (true) {
-      const nbrs = Array.from(neighbors.get(current) || []);
-
-      // Prefer neighbor that still has an unused edge and isn't the previous vertex
-      let next: string | null = null;
-      for (const n of nbrs) {
-        if (prev && n === prev) continue; // Avoid backtracking
-        if (edgeCount.get(`${current}|${n}`)) {
-          next = n;
-          break;
-        }
-      }
-
-      // Fallback to previous vertex if that's the only remaining option
-      if (!next && prev && edgeCount.get(`${current}|${prev}`)) next = prev;
-      if (!next) break; // No more edges from this vertex
-
-      // Consume the edge and move to next vertex
-      useEdge(current, next);
-      prev = current;
-      current = next;
-      loopKeys.push(current);
-
-      // Check if we've completed a cycle
-      if (current === start) break;
-    }
-
-    // Validate the extracted cycle
-    // Must have at least 4 points (including duplicate start/end) and be closed
-    if (loopKeys.length >= 4 && loopKeys[0] === loopKeys[loopKeys.length - 1]) {
-      // Convert keys back to 3D points, dropping the duplicate last point
-      const pts: THREE.Vector3Tuple[] = loopKeys
-        .slice(0, -1)
-        .map((k) => pointByKey.get(k)!);
-
-      // Ensure we have at least 3 unique points (minimum for a polygon)
-      if (pts.length >= 3) loops.push(pts);
-    }
-  }
-
-  return loops;
-}
-
-/**
  * Computes the unit normal vector for a polygon using Newell's method.
  *
  * Newell's method computes the normal as the
@@ -304,19 +145,20 @@ export function createFilledPolygonMeshes(
   points3d: THREE.Vector3Tuple[][],
   material: THREE.Material
 ): THREE.Mesh[] | null {
-  // Case 1: Single polyline with 3+ points (already a closed loop)
-  const candidateLoops: THREE.Vector3Tuple[][] =
-    points3d.length === 1 && points3d[0].length >= 3
-      ? [points3d[0]]
-      : buildClosedLoopsFromSegments(points3d);
+  if (points3d.length === 0) {
+    return null;
+  }
 
-  if (candidateLoops.length === 0) {
+  // Filter to only polylines with 3+ points (we don't fill disjoint segments)
+  const polylines = points3d.filter((segment) => segment.length >= 3);
+
+  if (polylines.length === 0) {
     return null;
   }
 
   const meshes: THREE.Mesh[] = [];
-  for (const loop of candidateLoops) {
-    const mesh = createFilledPolygonMesh(loop, material);
+  for (const polyline of polylines) {
+    const mesh = createFilledPolygonMesh(polyline, material);
     if (mesh) {
       meshes.push(mesh);
     }

@@ -2,18 +2,18 @@ import { useCursor } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
-import { Mesh, Vector3, Matrix4 } from "three";
+import { Matrix4, Mesh, Vector3 } from "three";
 import { LABEL_3D_ANNOTATION_POINT_SELECTED_FOR_TRANSFORMATION_COLOR } from "../constants";
 import { Transformable } from "../labels/shared/TransformControls";
 import {
+  activeSegmentationStateAtom,
   currentArchetypeSelectedForTransformAtom,
   editSegmentsModeAtom,
-  hoveredPolylineInfoAtom,
-  segmentPolylineStateAtom,
   selectedPolylineVertexAtom,
   tempVertexTransformsAtom,
   transformModeAtom,
 } from "../state";
+import { VertexTooltip } from "./VertexTooltip";
 import type { SelectedPoint } from "./types";
 
 interface PolylinePointMarkerProps {
@@ -26,6 +26,7 @@ interface PolylinePointMarkerProps {
   segmentIndex: number;
   pointIndex: number;
   onPointMove?: (newPosition: Vector3) => void;
+  tooltipDescriptor?: string | null;
 }
 
 export const PolylinePointMarker = ({
@@ -38,6 +39,7 @@ export const PolylinePointMarker = ({
   segmentIndex,
   pointIndex,
   onPointMove,
+  tooltipDescriptor = null,
 }: PolylinePointMarkerProps) => {
   const meshRef = useRef<Mesh>(null);
   const transformControlsRef = useRef<any>(null);
@@ -45,7 +47,6 @@ export const PolylinePointMarker = ({
 
   const [isHovered, setIsHovered] = useState(false);
 
-  const setHoveredPolylineInfo = useSetRecoilState(hoveredPolylineInfoAtom);
   const setTransformMode = useSetRecoilState(transformModeAtom);
 
   const [selectedPoint, setSelectedPoint] = useRecoilState(
@@ -55,7 +56,7 @@ export const PolylinePointMarker = ({
     currentArchetypeSelectedForTransformAtom
   );
 
-  const setSegmentPolylineState = useSetRecoilState(segmentPolylineStateAtom);
+  const setSegmentState = useSetRecoilState(activeSegmentationStateAtom);
   const setEditSegmentsMode = useSetRecoilState(editSegmentsModeAtom);
 
   const isSelected =
@@ -82,7 +83,7 @@ export const PolylinePointMarker = ({
       setTransformMode("translate");
 
       // Deactivate other modes when selecting a point
-      setSegmentPolylineState((prev) => ({
+      setSegmentState((prev) => ({
         ...prev,
         isActive: false,
       }));
@@ -96,7 +97,7 @@ export const PolylinePointMarker = ({
       setSelectedPoint,
       setCurrentArchetypeSelectedForTransform,
       setTransformMode,
-      setSegmentPolylineState,
+      setSegmentState,
       setEditSegmentsMode,
     ]
   );
@@ -219,23 +220,17 @@ export const PolylinePointMarker = ({
     >
       <group
         ref={groupRef}
-        position={tempVertexTransforms?.position}
-        quaternion={tempVertexTransforms?.quaternion}
+        position={tempVertexTransforms?.position ?? [0, 0, 0]}
+        quaternion={tempVertexTransforms?.quaternion ?? [0, 0, 0, 1]}
       >
         <mesh
           ref={meshRef}
           position={position}
           onPointerOver={() => {
             setIsHovered(true);
-            setHoveredPolylineInfo({
-              labelId,
-              segmentIndex,
-              pointIndex,
-            });
           }}
           onPointerOut={() => {
             setIsHovered(false);
-            setHoveredPolylineInfo(null);
           }}
           onClick={handlePointClick}
         >
@@ -254,6 +249,13 @@ export const PolylinePointMarker = ({
             emissiveIntensity={isSelected ? 1 : 0.3}
           />
         </mesh>
+        {tooltipDescriptor && (
+          <VertexTooltip
+            position={position.toArray() as [number, number, number]}
+            tooltipDescriptor={tooltipDescriptor}
+            isVisible={isHovered}
+          />
+        )}
       </group>
     </Transformable>
   );
