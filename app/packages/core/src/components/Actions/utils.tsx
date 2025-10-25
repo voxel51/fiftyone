@@ -3,7 +3,12 @@ import { animated, useSpring } from "@react-spring/web";
 import { useState } from "react";
 import styled from "styled-components";
 
-export const ActionDiv = styled.div`
+export const ActionDiv = styled.div.withConfig({
+  shouldForwardProp: (prop) => {
+    // Don't forward non-DOM props
+    return !['variant', 'closeOverflow', 'refresh'].includes(prop);
+  }
+})`
   position: relative;
 `;
 
