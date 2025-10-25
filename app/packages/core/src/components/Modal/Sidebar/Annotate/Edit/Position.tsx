@@ -5,8 +5,7 @@ import {
 } from "@fiftyone/lighter";
 import { TransformOverlayCommand } from "@fiftyone/lighter/src/commands/TransformOverlayCommand";
 import { useAtomValue, useSetAtom } from "jotai";
-import React, { useEffect, useMemo, useState } from "react";
-import uuid from "react-uuid";
+import { useEffect, useState } from "react";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import { currentData, currentOverlay } from "./state";
 
@@ -49,11 +48,6 @@ export default function Position() {
 
   const { scene } = useLighter();
 
-  const key = useMemo(() => {
-    state;
-    return uuid();
-  }, [state]);
-
   useEffect(() => {
     if (!(overlay instanceof BoundingBoxOverlay) || !overlay.hasValidBounds()) {
       return;
@@ -91,7 +85,7 @@ export default function Position() {
     scene?.on(LIGHTER_EVENTS.OVERLAY_RESIZE_MOVE, handler);
 
     return () => {
-      scene?.on(LIGHTER_EVENTS.OVERLAY_BOUNDS_CHANGED, handler);
+      scene?.off(LIGHTER_EVENTS.OVERLAY_BOUNDS_CHANGED, handler);
       scene?.off(LIGHTER_EVENTS.OVERLAY_DRAG_MOVE, handler);
       scene?.off(LIGHTER_EVENTS.OVERLAY_RESIZE_MOVE, handler);
     };
@@ -100,7 +94,6 @@ export default function Position() {
   return (
     <div style={{ width: "100%" }}>
       <SchemaIOComponent
-        key={key}
         schema={{
           type: "object",
           view: {
