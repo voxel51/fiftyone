@@ -1,5 +1,4 @@
 import { TextField } from "@mui/material";
-import React from "react";
 import { useKey } from "../hooks";
 import { getComponentProps, getFieldSx } from "../utils";
 import autoFocus from "../utils/auto-focus";

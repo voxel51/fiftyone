@@ -11,8 +11,7 @@ import {
   STRING_FIELD,
 } from "@fiftyone/utilities";
 import { useAtom, useAtomValue } from "jotai";
-import React, { useEffect, useMemo } from "react";
-import uuid from "react-uuid";
+import { useEffect, useMemo } from "react";
 import { useRecoilCallback } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import {
@@ -142,23 +141,22 @@ const useSchema = () => {
 
 const useHandleChanges = () => {
   return useRecoilCallback(
-    ({ snapshot }) =>
-      async (currentField: string, path: string, data) => {
-        const expanded = await snapshot.getPromise(expandPath(currentField));
-        const schema = await snapshot.getPromise(field(`${expanded}.${path}`));
+    ({ snapshot }) => async (currentField: string, path: string, data) => {
+      const expanded = await snapshot.getPromise(expandPath(currentField));
+      const schema = await snapshot.getPromise(field(`${expanded}.${path}`));
 
-        if (typeof data === "string") {
-          if (schema?.ftype === FLOAT_FIELD) {
-            return data.length ? Number.parseFloat(data) : null;
-          }
-
-          if (schema?.ftype === INT_FIELD) {
-            return data.length ? Number.parseInt(data) : null;
-          }
+      if (typeof data === "string") {
+        if (schema?.ftype === FLOAT_FIELD) {
+          return data.length ? Number.parseFloat(data) : null;
         }
 
-        return data;
-      },
+        if (schema?.ftype === INT_FIELD) {
+          return data.length ? Number.parseInt(data) : null;
+        }
+      }
+
+      return data;
+    },
     []
   );
 };
@@ -180,17 +178,13 @@ const AnnotationSchema = () => {
     lighter.scene?.on(LIGHTER_EVENTS.COMMAND_EXECUTED, handler);
     lighter.scene?.on(LIGHTER_EVENTS.REDO, handler);
     lighter.scene?.on(LIGHTER_EVENTS.UNDO, handler);
+
     return () => {
       lighter.scene?.off(LIGHTER_EVENTS.COMMAND_EXECUTED, handler);
       lighter.scene?.off(LIGHTER_EVENTS.REDO, handler);
       lighter.scene?.off(LIGHTER_EVENTS.UNDO, handler);
     };
   }, [lighter.scene, overlay, save]);
-
-  const key = useMemo(() => {
-    data;
-    return uuid();
-  }, [data]);
 
   if (!field) {
     throw new Error("no field");
@@ -203,7 +197,6 @@ const AnnotationSchema = () => {
   return (
     <div>
       <SchemaIOComponent
-        key={key}
         schema={schema}
         data={data}
         onChange={async (changes) => {
