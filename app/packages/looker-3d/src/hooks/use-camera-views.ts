@@ -49,13 +49,12 @@ export const useCameraViews = ({
       // Clamp the radius
       const radius = Math.max(minRadius, Math.min(maxRadius, currentRadius));
 
-      // Constrain lookAt to stay within 30% of scene bounding box center
-      const maxLookAtDistance = maxSize * 0.3;
+      // Constrain lookAt to stay within 130% of scene bounding box center
+      const maxLookAtDistance = maxSize * 1.3;
       const lookAtDistance = lookAt.distanceTo(center);
       let constrainedLookAt = lookAt;
 
       if (lookAtDistance > maxLookAtDistance) {
-        // Clamp lookAt to be within 30% of scene center
         const directionToLookAt = lookAt.clone().sub(center).normalize();
         constrainedLookAt = center
           .clone()
