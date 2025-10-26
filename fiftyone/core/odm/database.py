@@ -651,7 +651,7 @@ def drop_orphan_generated_datasets(dry_run=False):
     """Marks all orphan generated datasets as non-persistent so that they will
      be deleted the next time non-persistent dataset cleanup runs.
 
-    Orphan generated datsaets are datasets that were originally associated with
+    Orphan generated datasets are datasets that were originally associated with
     a saved generated view that no longer exists.
 
     Args:

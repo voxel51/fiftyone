@@ -2088,7 +2088,7 @@ class ReloadSavedView(foo.Operator):
                 types.Places.SAMPLES_GRID_ACTIONS,
                 types.Button(
                     label="Reload saved view",
-                    icon="/assets/autorenew.svg",
+                    icon="autorenew",
                     prompt=True,
                 ),
             )
