@@ -125,6 +125,13 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
   const keyboardHandler = useCallback(
     (e: KeyboardEvent) => {
       const active = document.activeElement;
+
+      // Prevent navigation when editing text in textarea (e.g., Monaco Editor)
+      if (active?.tagName === "TEXTAREA") {
+        return;
+      }
+
+      // Prevent navigation when editing text in input fields
       if (active?.tagName === "INPUT") {
         if ((active as HTMLInputElement).type === "text") {
           return;
@@ -147,15 +154,15 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
   fos.useEventHandler(document, "keyup", keyboardHandler);
   const { confirmExit } = useConfirmExit(useExit(), useSave());
 
-  const next = useCallback(
-    () => confirmExit(nextNavigator.navigate),
-    [confirmExit, nextNavigator]
-  );
+  const next = useCallback(() => confirmExit(nextNavigator.navigate), [
+    confirmExit,
+    nextNavigator,
+  ]);
 
-  const previous = useCallback(
-    () => confirmExit(previousNavigator.navigate),
-    [confirmExit, previousNavigator]
-  );
+  const previous = useCallback(() => confirmExit(previousNavigator.navigate), [
+    confirmExit,
+    previousNavigator,
+  ]);
 
   if (!modal) {
     return null;
