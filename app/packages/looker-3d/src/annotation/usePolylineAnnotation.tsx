@@ -244,6 +244,7 @@ export const usePolylineAnnotation = ({
       return {
         ...prev,
         [labelId]: {
+          ...(prev[labelId] ?? {}),
           segments: newSegments,
           path: currentActiveField || "",
           sampleId: currentSampleId,
