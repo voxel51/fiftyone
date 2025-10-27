@@ -141,22 +141,23 @@ const useSchema = () => {
 
 const useHandleChanges = () => {
   return useRecoilCallback(
-    ({ snapshot }) => async (currentField: string, path: string, data) => {
-      const expanded = await snapshot.getPromise(expandPath(currentField));
-      const schema = await snapshot.getPromise(field(`${expanded}.${path}`));
+    ({ snapshot }) =>
+      async (currentField: string, path: string, data) => {
+        const expanded = await snapshot.getPromise(expandPath(currentField));
+        const schema = await snapshot.getPromise(field(`${expanded}.${path}`));
 
-      if (typeof data === "string") {
-        if (schema?.ftype === FLOAT_FIELD) {
-          return data.length ? Number.parseFloat(data) : null;
+        if (typeof data === "string") {
+          if (schema?.ftype === FLOAT_FIELD) {
+            return data.length ? Number.parseFloat(data) : null;
+          }
+
+          if (schema?.ftype === INT_FIELD) {
+            return data.length ? Number.parseInt(data) : null;
+          }
         }
 
-        if (schema?.ftype === INT_FIELD) {
-          return data.length ? Number.parseInt(data) : null;
-        }
-      }
-
-      return data;
-    },
+        return data;
+      },
     []
   );
 };
@@ -170,7 +171,7 @@ const AnnotationSchema = () => {
   const field = useAtomValue(currentField);
 
   useEffect(() => {
-    const handler = () => {
+    const handler = (event) => {
       const label = overlay?.label;
       label && save(label);
     };
