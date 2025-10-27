@@ -9,20 +9,20 @@ import {
 } from "@fiftyone/utilities";
 import type { PrimitiveAtom } from "jotai";
 import { atom } from "jotai";
-import { atomFamily } from "jotai/utils";
+import { atomFamily, atomWithReset } from "jotai/utils";
 import { activeSchemas, fieldType, schemaConfig } from "../state";
 import { addLabel, labels, labelsByPath } from "../useLabels";
 
-export const editing = atom<PrimitiveAtom<AnnotationLabel> | LabelType | null>(
-  null
-);
 export const savedLabel = atom<AnnotationLabel["data"] | null>(null);
+
+export const editing = atomWithReset<
+  PrimitiveAtom<AnnotationLabel> | LabelType | null
+>(null);
 
 export const hasChanges = atom((get) => {
   const label = get(currentData);
   const saved = get(savedLabel);
 
-  console.log(saved, label);
   return saved === null
     ? false
     : JSON.stringify(label) !== JSON.stringify(saved);

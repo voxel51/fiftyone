@@ -20,7 +20,8 @@ import { get as _get } from "lodash";
 import { useCallback, useEffect, useMemo } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
-import type { PolylinePointTransform } from "../annotation/types";
+import { useSetEditingToExistingPolyline } from "../annotation/useSetEditingToExistingPolyline";
+import { sanitizeSchemaIoLabelAttributes } from "../annotation/utils/polyline-utils";
 import { PANEL_ORDER_LABELS } from "../constants";
 import { usePathFilter } from "../hooks";
 import { type Looker3dSettings, defaultPluginSettings } from "../settings";
@@ -28,14 +29,15 @@ import {
   cuboidLabelLineWidthAtom,
   currentArchetypeSelectedForTransformAtom,
   editSegmentsModeAtom,
+  isActivelySegmentingSelector,
+  isPolylineAnnotateActiveAtom,
   polylineLabelLineWidthAtom,
   polylinePointTransformsAtom,
-  segmentPolylineStateAtom,
   selectedLabelForAnnotationAtom,
   transformModeAtom,
 } from "../state";
 import { TransformArchetype } from "../types";
-import { toEulerFromDegreesArray } from "../utils";
+import { isValidPolylineSegment, toEulerFromDegreesArray } from "../utils";
 import { Cuboid, type CuboidProps } from "./cuboid";
 import { type OverlayLabel, load3dOverlays } from "./loader";
 import { type PolyLineProps, Polyline } from "./polyline";
@@ -54,7 +56,10 @@ export const ThreeDLabels = ({
   const annotationSchemas = useAtomValue(activeSchemas);
   const { coloring, selectedLabelTags, customizeColorSetting, labelTagColors } =
     useRecoilValue(fos.lookerOptions({ withFilter: true, modal: true }));
-  const isSegmenting = useRecoilValue(segmentPolylineStateAtom).isActive;
+  const isSegmenting = useRecoilValue(isActivelySegmentingSelector);
+  const setIsPolylineAnnotateActive = useSetRecoilState(
+    isPolylineAnnotateActiveAtom
+  );
 
   const settings = fop.usePluginSettings<Looker3dSettings>(
     "3d",
@@ -82,6 +87,8 @@ export const ThreeDLabels = ({
   const setCurrentArchetypeSelectedForTransform = useSetRecoilState(
     currentArchetypeSelectedForTransformAtom
   );
+
+  const setEditingToExistingPolyline = useSetEditingToExistingPolyline();
 
   const labelLevaControls = {
     cuboidLineWidget: {
@@ -146,8 +153,13 @@ export const ThreeDLabels = ({
           return;
         }
 
-        selectLabelForAnnotation(label);
-        setCurrentArchetypeSelectedForTransform(archetype);
+        if (archetype === "polyline") {
+          selectLabelForAnnotation(label);
+          setCurrentArchetypeSelectedForTransform(archetype);
+
+          setEditingToExistingPolyline(label);
+          setIsPolylineAnnotateActive(true);
+        }
 
         return;
       }
@@ -162,7 +174,14 @@ export const ThreeDLabels = ({
         },
       });
     },
-    [onSelectLabel, mode, selectLabelForAnnotation, isSegmenting]
+    [
+      onSelectLabel,
+      mode,
+      selectLabelForAnnotation,
+      isSegmenting,
+      setEditingToExistingPolyline,
+      setCurrentArchetypeSelectedForTransform,
+    ]
   );
 
   useEffect(() => {
@@ -240,6 +259,7 @@ export const ThreeDLabels = ({
       annotationSchemas,
     ]
   );
+
   const [cuboidOverlays, polylineOverlays] = useMemo(() => {
     const newCuboidOverlays = [];
     const newPolylineOverlays = [];
@@ -268,18 +288,31 @@ export const ThreeDLabels = ({
         overlay._cls === "Polyline" &&
         (overlay as PolyLineProps).points3d
       ) {
-        newPolylineOverlays.push(
-          <Polyline
-            key={`polyline-${overlay._id ?? overlay.id}-${overlay.sampleId}`}
-            rotation={overlayRotation}
-            opacity={labelAlpha}
-            lineWidth={polylineWidth}
-            {...(overlay as PolyLineProps)}
-            label={overlay}
-            onClick={(e) => handleSelect(overlay, "polyline", e)}
-            tooltip={tooltip}
-          />
-        );
+        const transformData = polylinePointTransforms[overlay._id];
+        let finalPoints3d = transformData?.segments
+          ? transformData.segments.map((seg) => seg.points)
+          : (overlay as PolyLineProps).points3d;
+
+        if (finalPoints3d) {
+          finalPoints3d = finalPoints3d.filter(isValidPolylineSegment);
+        }
+
+        if (finalPoints3d && finalPoints3d.length > 0) {
+          newPolylineOverlays.push(
+            <Polyline
+              key={`polyline-${overlay._id ?? overlay.id}-${overlay.sampleId}`}
+              rotation={overlayRotation}
+              opacity={labelAlpha}
+              lineWidth={polylineWidth}
+              {...(overlay as PolyLineProps)}
+              {...sanitizeSchemaIoLabelAttributes(transformData?.misc ?? {})}
+              points3d={finalPoints3d}
+              label={overlay}
+              onClick={(e) => handleSelect(overlay, "polyline", e)}
+              tooltip={tooltip}
+            />
+          );
+        }
       }
     }
 
@@ -291,70 +324,58 @@ export const ThreeDLabels = ({
         .map((overlay) => overlay._id)
     );
 
-    for (const [labelId, transforms] of Object.entries(
+    for (const [labelId, transformData] of Object.entries(
       polylinePointTransforms
     )) {
-      if (transforms.length === 0 || existingPolylineIds.has(labelId)) {
+      if (!transformData.segments || transformData.segments.length === 0)
+        continue;
+
+      // Only process transforms for the current sample
+      if (transformData.sampleId !== currentSampleId) {
         continue;
       }
 
-      // Convert PolylinePointTransform[] to points3d format
-      const points3d: THREE.Vector3Tuple[][] = [];
+      if (existingPolylineIds.has(labelId)) {
+        continue;
+      }
 
-      // Group transforms by segmentIndex
-      const segmentsMap = new Map<number, PolylinePointTransform[]>();
-      transforms.forEach((transform) => {
-        const { segmentIndex } = transform;
-        if (!segmentsMap.has(segmentIndex)) {
-          segmentsMap.set(segmentIndex, []);
-        }
-        segmentsMap.get(segmentIndex)!.push(transform);
-      });
+      const points3d: THREE.Vector3Tuple[][] = transformData.segments.map(
+        (segment) => segment.points
+      );
 
-      // Create segments from grouped transforms
-      segmentsMap.forEach((segmentTransforms) => {
-        // Sort by pointIndex to maintain order
-        segmentTransforms.sort((a, b) => a.pointIndex - b.pointIndex);
-
-        // Create segment points
-        const segmentPoints: THREE.Vector3Tuple[] = [];
-        segmentTransforms.forEach((transform) => {
-          segmentPoints[transform.pointIndex] = transform.position;
-        });
-
-        // Only add segment if it has at least 2 points
-        if (segmentPoints.length >= 2) {
-          points3d.push(segmentPoints);
-        }
-      });
-
-      // Only create overlay if we have valid segments
       if (points3d.length > 0) {
         const overlayLabel = {
           _id: labelId,
           _cls: "Polyline",
           type: "Polyline",
-          // todo: THIS HAS TO CHANGE TO A REAL PATH
-          path: `polyline-${labelId.substring(0, 5)}`,
+          path: transformData.path,
+          label: transformData.label,
           selected: false,
           sampleId: currentSampleId,
           tags: [],
           points3d,
+          ...sanitizeSchemaIoLabelAttributes(transformData.misc ?? {}),
         };
 
         newPolylineOverlays.push(
           <Polyline
-            key={`polyline-${labelId}`}
+            key={`polyline-${labelId}-${transformData.sampleId}`}
             rotation={overlayRotation}
             opacity={labelAlpha}
             lineWidth={polylineWidth}
-            points3d={points3d}
-            filled={false}
-            selected={false}
             {...(overlayLabel as unknown as PolyLineProps)}
             label={overlayLabel}
             onClick={(e) => handleSelect(overlayLabel, "polyline", e)}
             tooltip={tooltip}
+            color={getLabelColor({
+              coloring,
+              path: transformData.path,
+              isTagged: false,
+              labelTagColors,
+              customizeColorSetting,
+              label: overlayLabel,
+              embeddedDocType: overlayLabel._cls,
+            })}
           />
         );
       }

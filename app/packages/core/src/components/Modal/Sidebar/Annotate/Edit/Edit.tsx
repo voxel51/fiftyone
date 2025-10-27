@@ -1,5 +1,5 @@
 import { useClearModal } from "@fiftyone/state";
-import { DETECTION } from "@fiftyone/utilities";
+import { DETECTION, POLYLINE } from "@fiftyone/utilities";
 import { useAtomValue } from "jotai";
 import React, { useEffect } from "react";
 import styled from "styled-components";
@@ -10,6 +10,7 @@ import Field from "./Field";
 import Footer from "./Footer";
 import Header from "./Header";
 import Id from "./Id";
+import { PolylineDetails } from "./PolylineDetails";
 import Position from "./Position";
 import { currentField, currentOverlay, currentType } from "./state";
 import useExit from "./useExit";
@@ -73,6 +74,7 @@ export default function Edit() {
           <Id />
           <Field />
           {type === DETECTION && overlay && <Position />}
+          {type === POLYLINE && <PolylineDetails />}
           {field && <AnnotationSchema />}
         </Content>
         <Footer />

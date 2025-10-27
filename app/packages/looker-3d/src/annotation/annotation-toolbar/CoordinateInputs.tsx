@@ -1,18 +1,19 @@
 import { Box, TextField } from "@mui/material";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { forwardRef, useCallback, useEffect, useMemo, useState } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
+import * as fos from "@fiftyone/state";
 import type { PolyLineProps } from "../../labels/polyline";
 import {
   annotationPlaneAtom,
+  currentActiveAnnotationField3dAtom,
   polylinePointTransformsAtom,
   selectedLabelForAnnotationAtom,
   selectedPolylineVertexAtom,
 } from "../../state";
 import { eulerToQuaternion, quaternionToEuler } from "../../utils";
 import {
-  applyTransformsToPolyline,
   getVertexPosition,
-  updateDuplicateVertices,
+  updateVertexPosition,
 } from "../utils/polyline-utils";
 
 interface CoordinateInputsProps {
@@ -29,34 +30,31 @@ interface CoordinateFieldProps {
   onBlur: () => void;
 }
 
-const CoordinateField = ({
-  label,
-  value,
-  onChange,
-  onFocus,
-  onBlur,
-}: CoordinateFieldProps) => {
-  return (
-    <TextField
-      size="small"
-      label={label}
-      value={value}
-      onFocus={onFocus}
-      onBlur={onBlur}
-      onChange={(e) => onChange(e.target.value)}
-      type="number"
-      inputProps={{
-        step: "0.1",
-        style: { fontSize: "11px", padding: "4px 6px" },
-      }}
-      sx={{
-        "& .MuiInputLabel-root": { fontSize: "10px" },
-        "& .MuiOutlinedInput-root": { height: "24px" },
-        "& .MuiOutlinedInput-input": { padding: "4px 6px" },
-      }}
-    />
-  );
-};
+const CoordinateField = forwardRef<HTMLInputElement, CoordinateFieldProps>(
+  ({ label, value, onChange, onFocus, onBlur }, ref) => {
+    return (
+      <TextField
+        inputRef={ref}
+        size="small"
+        label={label}
+        value={value}
+        onFocus={onFocus}
+        onBlur={onBlur}
+        onChange={(e) => onChange(e.target.value)}
+        type="number"
+        inputProps={{
+          step: "0.1",
+          style: { fontSize: "11px", padding: "4px 6px" },
+        }}
+        sx={{
+          "& .MuiInputLabel-root": { fontSize: "10px" },
+          "& .MuiOutlinedInput-root": { height: "24px" },
+          "& .MuiOutlinedInput-input": { padding: "4px 6px" },
+        }}
+      />
+    );
+  }
+);
 
 export const PlaneCoordinateInputs = ({
   className,
@@ -234,16 +232,20 @@ export const VertexCoordinateInputs = ({
   const [polylinePointTransforms, setPolylinePointTransforms] = useRecoilState(
     polylinePointTransformsAtom
   );
+  const currentActiveField = useRecoilValue(currentActiveAnnotationField3dAtom);
+  const currentSampleId = useRecoilValue(fos.currentSampleId);
+
   const selectedPointPosition = useMemo(() => {
     if (!selectedPoint || !selectedLabel) return null;
 
     const polylineLabel = selectedLabel as unknown as PolyLineProps;
-    const transforms = polylinePointTransforms[selectedPoint.labelId] || [];
+    const segments =
+      polylinePointTransforms[selectedPoint.labelId]?.segments || [];
 
     return getVertexPosition(
       selectedPoint,
       polylineLabel.points3d || [],
-      transforms
+      segments
     );
   }, [selectedPoint, selectedLabel, polylinePointTransforms]);
   const [x, setX] = useState<string>("0");
@@ -274,68 +276,43 @@ export const VertexCoordinateInputs = ({
         const { segmentIndex, pointIndex, labelId } = selectedPoint;
 
         setPolylinePointTransforms((prev) => {
-          const currentTransforms = prev[labelId] || [];
+          const currentSegments = prev[labelId]?.segments || [];
           const polylineLabel = selectedLabel as unknown as PolyLineProps;
-          const originalPoints = polylineLabel.points3d || [];
+          const points3d = polylineLabel.points3d || [];
 
-          // Get current position (either from existing transform or original point)
-          let currentPosition: [number, number, number];
-          const existingTransformIndex = currentTransforms.findIndex(
-            (transform) =>
-              transform.segmentIndex === segmentIndex &&
-              transform.pointIndex === pointIndex
-          );
+          if (!selectedPointPosition) return prev;
 
-          if (existingTransformIndex >= 0) {
-            currentPosition =
-              currentTransforms[existingTransformIndex].position;
-          } else if (selectedPointPosition) {
-            currentPosition = selectedPointPosition;
-          } else {
-            // Fallback to original position from label
-            if (
-              segmentIndex < originalPoints.length &&
-              pointIndex < originalPoints[segmentIndex].length
-            ) {
-              currentPosition = originalPoints[segmentIndex][pointIndex] as [
-                number,
-                number,
-                number
-              ];
-            } else {
-              currentPosition = [0, 0, 0];
-            }
-          }
-
-          const newPosition: [number, number, number] = [...currentPosition];
+          const newPosition: [number, number, number] = [
+            ...selectedPointPosition,
+          ];
           if (axis === "x") newPosition[0] = numValue;
           else if (axis === "y") newPosition[1] = numValue;
           else if (axis === "z") newPosition[2] = numValue;
 
-          // Compute current effective points to find all shared vertices
-          const effectivePoints3d = applyTransformsToPolyline(
-            originalPoints,
-            currentTransforms
-          );
-
-          // Use updateDuplicateVertices to handle shared vertices
-          const newTransforms = updateDuplicateVertices(
-            currentPosition,
+          // Update this vertex position and all shared vertices
+          const newSegments = updateVertexPosition(
+            points3d,
+            currentSegments,
+            segmentIndex,
+            pointIndex,
             newPosition,
-            effectivePoints3d,
-            currentTransforms
+            // Update shared vertices
+            true
           );
 
-          return { ...prev, [labelId]: newTransforms };
-        });
+          const existingLabelData = prev[labelId];
+          const path = existingLabelData?.path || currentActiveField || "";
+          const sampleId = existingLabelData?.sampleId || currentSampleId;
 
-        // Note: this is a hack because transform controls
-        // is updating in a buggy way when the point is moved
-        const prevSelectedPoint = selectedPoint;
-        setSelectedPoint(null);
-        setTimeout(() => {
-          setSelectedPoint(prevSelectedPoint);
-        }, 0);
+          return {
+            ...prev,
+            [labelId]: {
+              segments: newSegments,
+              path,
+              sampleId,
+            },
+          };
+        });
       }
     },
     [
@@ -343,6 +320,8 @@ export const VertexCoordinateInputs = ({
       selectedLabel,
       selectedPointPosition,
       setPolylinePointTransforms,
+      currentActiveField,
+      currentSampleId,
     ]
   );
 

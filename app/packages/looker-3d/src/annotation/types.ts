@@ -47,62 +47,27 @@ export interface SelectedPoint {
   pointIndex: number;
 }
 
-// Transform data for HUD display
-export interface TransformData {
-  // Delta X
-  dx?: number;
-  // Delta Y
-  dy?: number;
-  // Delta Z
-  dz?: number;
-  // Absolute world position X
-  x?: number;
-  // Absolute world position Y
-  y?: number;
-  // Absolute world position Z
-  z?: number;
-  // Dimensions X
-  dimensionX?: number;
-  // Dimensions Y
-  dimensionY?: number;
-  // Dimensions Z
-  dimensionZ?: number;
-  // Local rotation X (in degrees)
-  rotationX?: number;
-  // Local rotation Y (in degrees)
-  rotationY?: number;
-  // Local rotation Z (in degrees)
-  rotationZ?: number;
+// Polyline segment transformations - stores modified segments for each label
+// Each segment is a list of connected vertices
+// Segments are stored in an array where the index IS the segmentIndex
+export interface PolylineSegmentTransform {
+  // All vertices in this segment (connected)
+  points: [number, number, number][];
 }
 
-// Transformed label data storage
-export interface TransformedLabelData {
-  worldPosition: [number, number, number];
-  dimensions: [number, number, number];
-  localRotation: [number, number, number];
-  worldRotation: [number, number, number];
+export interface PolylinePointTransformData {
+  segments: PolylineSegmentTransform[];
+  path: string;
+  sampleId: string;
+  label?: string;
+  misc?: Record<string, unknown>;
 }
 
-// Polyline point transformations - stores modified points for each label
-export interface PolylinePointTransform {
-  segmentIndex: number;
-  pointIndex: number;
-  position: [number, number, number];
-}
-
-export interface SegmentPolylineState {
+export interface SegmentState {
   isActive: boolean;
-  vertices: [number, number, number][];
+  isClosed: boolean;
   currentMousePosition: [number, number, number] | null;
-  isClosed: boolean;
-}
-
-export interface TempPolyline {
-  id: string;
   vertices: [number, number, number][];
-  isClosed: boolean;
-  color: string;
-  lineWidth: number;
 }
 
 export interface AnnotationPlaneState {

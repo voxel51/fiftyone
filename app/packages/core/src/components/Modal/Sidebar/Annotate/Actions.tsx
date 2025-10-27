@@ -1,10 +1,11 @@
 import { Tooltip } from "@fiftyone/components";
 import { useLighter } from "@fiftyone/lighter";
+import { isPolylineAnnotateActiveAtom } from "@fiftyone/looker-3d/src/state";
 import { is3DDataset } from "@fiftyone/state";
-import { CLASSIFICATION, DETECTION, POLYLINE } from "@fiftyone/utilities";
-import { PolylineOutlined } from "@mui/icons-material";
+import { CLASSIFICATION, DETECTION } from "@fiftyone/utilities";
+import ThreeDIcon from "@mui/icons-material/ViewInAr";
 import React from "react";
-import { useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ItemLeft } from "./Components";
 import useCreate from "./Edit/useCreate";
@@ -21,7 +22,7 @@ const ActionsDiv = styled.div`
   max-width: 100%;
 `;
 
-const Container = styled.div`
+const Container = styled.div<{ $active?: boolean }>`
   align-items: center;
   display: flex;
   flex-direction: column;
@@ -36,6 +37,16 @@ const Container = styled.div`
 
   text-overflow: ellipsis;
   white-space: nowrap;
+
+  ${({ $active, theme }) =>
+    $active &&
+    `
+    color: ${theme.text.primary};
+    
+    path {
+      fill: ${theme.primary.plainColor};
+    }
+  `}
 
   &.disabled {
     opacity: 0.5;
@@ -74,7 +85,7 @@ export const RoundButtonWhite = styled(RoundButton)`
   }
 `;
 
-const Square = styled(Container)`
+const Square = styled(Container)<{ $active?: boolean }>`
   border-radius: 0.25rem;
 `;
 
@@ -124,18 +135,6 @@ const Detection = () => {
   );
 };
 
-const Polyline = () => {
-  const create = useCreate(POLYLINE);
-  return (
-    <Tooltip placement="top-center" text="Create Polyline">
-      <Square onClick={create}>
-        New Polyline
-        <PolylineOutlined />
-      </Square>
-    </Tooltip>
-  );
-};
-
 export const Undo = () => {
   const { undo, canUndo: enabled } = useLighter();
 
@@ -162,21 +161,41 @@ export const Redo = () => {
   const { redo, canRedo: enabled } = useLighter();
 
   return (
-    <Round onClick={redo} className={enabled ? "" : "disabled"}>
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="13"
-        height="12"
-        viewBox="0 0 13 12"
-        fill="none"
+    <Tooltip pl>
+      <Round onClick={redo} className={enabled ? "" : "disabled"}>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="13"
+          height="12"
+          viewBox="0 0 13 12"
+          fill="none"
+        >
+          <title>Redo</title>
+          <path
+            d="M10.0161 12C10.2525 12 10.4508 11.9211 10.6108 11.7633C10.7707 11.6055 10.8507 11.4099 10.8507 11.1767C10.8507 10.9434 10.7707 10.7479 10.6108 10.5901C10.4508 10.4322 10.2525 10.3533 10.0161 10.3533H4.92456C4.04815 10.3533 3.28652 10.0789 2.63965 9.53002C1.99278 8.98113 1.66934 8.29503 1.66934 7.4717C1.66934 6.64837 1.99278 5.96226 2.63965 5.41338C3.28652 4.86449 4.04815 4.59005 4.92456 4.59005H10.183L8.59711 6.15437C8.44409 6.30532 8.36758 6.49743 8.36758 6.7307C8.36758 6.96398 8.44409 7.15609 8.59711 7.30703C8.75013 7.45798 8.94489 7.53345 9.18138 7.53345C9.41787 7.53345 9.61263 7.45798 9.76565 7.30703L12.7705 4.34305C12.8539 4.26072 12.9131 4.17153 12.9478 4.07547C12.9826 3.97942 13 3.8765 13 3.76672C13 3.65695 12.9826 3.55403 12.9478 3.45798C12.9131 3.36192 12.8539 3.27273 12.7705 3.19039L9.76565 0.226415C9.61263 0.0754717 9.41787 0 9.18138 0C8.94489 0 8.75013 0.0754717 8.59711 0.226415C8.44409 0.377358 8.36758 0.569468 8.36758 0.802744C8.36758 1.03602 8.44409 1.22813 8.59711 1.37907L10.183 2.9434H4.92456C3.57517 2.9434 2.41707 3.37564 1.45024 4.24014C0.483414 5.10463 0 6.18182 0 7.4717C0 8.76158 0.483414 9.83877 1.45024 10.7033C2.41707 11.5678 3.57517 12 4.92456 12H10.0161Z"
+            fill="#999999"
+          />
+        </svg>
+      </Round>
+    </Tooltip>
+  );
+};
+
+export const ThreeDPolylines = () => {
+  const [isPolylineAnnotateActive, setIsPolylineAnnotateActive] =
+    useRecoilState(isPolylineAnnotateActiveAtom);
+
+  return (
+    <Tooltip placement="top-center" text="Create Poyline">
+      <Square
+        $active={isPolylineAnnotateActive}
+        onClick={() => {
+          setIsPolylineAnnotateActive(!isPolylineAnnotateActive);
+        }}
       >
-        <title>Redo</title>
-        <path
-          d="M10.0161 12C10.2525 12 10.4508 11.9211 10.6108 11.7633C10.7707 11.6055 10.8507 11.4099 10.8507 11.1767C10.8507 10.9434 10.7707 10.7479 10.6108 10.5901C10.4508 10.4322 10.2525 10.3533 10.0161 10.3533H4.92456C4.04815 10.3533 3.28652 10.0789 2.63965 9.53002C1.99278 8.98113 1.66934 8.29503 1.66934 7.4717C1.66934 6.64837 1.99278 5.96226 2.63965 5.41338C3.28652 4.86449 4.04815 4.59005 4.92456 4.59005H10.183L8.59711 6.15437C8.44409 6.30532 8.36758 6.49743 8.36758 6.7307C8.36758 6.96398 8.44409 7.15609 8.59711 7.30703C8.75013 7.45798 8.94489 7.53345 9.18138 7.53345C9.41787 7.53345 9.61263 7.45798 9.76565 7.30703L12.7705 4.34305C12.8539 4.26072 12.9131 4.17153 12.9478 4.07547C12.9826 3.97942 13 3.8765 13 3.76672C13 3.65695 12.9826 3.55403 12.9478 3.45798C12.9131 3.36192 12.8539 3.27273 12.7705 3.19039L9.76565 0.226415C9.61263 0.0754717 9.41787 0 9.18138 0C8.94489 0 8.75013 0.0754717 8.59711 0.226415C8.44409 0.377358 8.36758 0.569468 8.36758 0.802744C8.36758 1.03602 8.44409 1.22813 8.59711 1.37907L10.183 2.9434H4.92456C3.57517 2.9434 2.41707 3.37564 1.45024 4.24014C0.483414 5.10463 0 6.18182 0 7.4717C0 8.76158 0.483414 9.83877 1.45024 10.7033C2.41707 11.5678 3.57517 12 4.92456 12H10.0161Z"
-          fill="#999999"
-        />
-      </svg>
-    </Round>
+        <ThreeDIcon />
+      </Square>
+    </Tooltip>
   );
 };
 
@@ -189,11 +208,12 @@ const Schema = () => {
 const Actions = () => {
   const is3D = useRecoilValue(is3DDataset);
   const canManage = useCanManageSchema();
+
   return (
     <ActionsDiv style={{ margin: "0 0.25rem", paddingBottom: "0.5rem" }}>
       <ItemLeft style={{ columnGap: "0.5rem" }}>
         <Classification />
-        {is3D ? <Polyline /> : <Detection />}
+        {is3D ? <ThreeDPolylines /> : <Detection />}
       </ItemLeft>
 
       {canManage && <Schema />}
