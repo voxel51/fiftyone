@@ -40,6 +40,7 @@ import {
 import { StatusBarRootContainer } from "../containers";
 import { useFo3d, useHotkey, useTrackStatus } from "../hooks";
 import { useFo3dBounds } from "../hooks/use-bounds";
+import { useLoadingStatus } from "../hooks/use-loading-status";
 import type { Looker3dSettings } from "../settings";
 import {
   activeNodeAtom,
@@ -337,11 +338,25 @@ export const MediaTypeFo3dComponent = () => {
 
   const assetsGroupRef = useRef<THREE.Group>();
 
+  const loadingStatus = useLoadingStatus();
+
+  const canComputeBounds = useCallback(() => {
+    return (
+      loadingStatus.isSuccess ||
+      loadingStatus.isFailed ||
+      loadingStatus.isAborted
+    );
+  }, [
+    loadingStatus.isSuccess,
+    loadingStatus.isFailed,
+    loadingStatus.isAborted,
+  ]);
+
   const {
     boundingBox: sceneBoundingBox,
     recomputeBounds,
     isComputing: isComputingSceneBoundingBox,
-  } = useFo3dBounds(assetsGroupRef);
+  } = useFo3dBounds(assetsGroupRef, canComputeBounds);
 
   const effectiveSceneBoundingBox = sceneBoundingBox || DEFAULT_BOUNDING_BOX;
 

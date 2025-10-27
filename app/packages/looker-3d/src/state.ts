@@ -17,8 +17,13 @@ import type {
 import { SHADE_BY_HEIGHT } from "./constants";
 import type { FoSceneNode } from "./hooks";
 import { OverlayLabel } from "./labels/loader";
-import type { Actions, AssetLoadingLog, ShadeBy } from "./types";
-import { TransformArchetype } from "./types";
+import type {
+  Actions,
+  AssetLoadingLog,
+  LoadingStatusWithContext,
+  ShadeBy,
+} from "./types";
+import { LoadingStatus, TransformArchetype } from "./types";
 
 // =============================================================================
 // GENERAL 3D
@@ -41,6 +46,32 @@ export const fo3dAssetsParseStatusThisSample = selector<AssetLoadingLog[]>({
   set: ({ get, set }, newValue) => {
     set(
       fo3dAssetsParseStatusLog(
+        `${get(groupId) ?? ""}-${get(nullableModalSampleId)}`
+      ),
+      newValue
+    );
+  },
+});
+
+const fo3dLoadingStatusLog = atomFamily<LoadingStatusWithContext, string>({
+  key: "fo3d-loadingStatus",
+  default: {
+    status: LoadingStatus.IDLE,
+    timestamp: Date.now(),
+  },
+});
+
+export const fo3dLoadingStatusThisSample = selector<LoadingStatusWithContext>({
+  key: "fo3d-loadingStatusThisSampleSelector",
+  get: ({ get }) => {
+    const thisModalUniqueId = `${get(groupId) ?? ""}-${get(
+      nullableModalSampleId
+    )}`;
+    return get(fo3dLoadingStatusLog(`${thisModalUniqueId}`));
+  },
+  set: ({ get, set }, newValue) => {
+    set(
+      fo3dLoadingStatusLog(
         `${get(groupId) ?? ""}-${get(nullableModalSampleId)}`
       ),
       newValue
