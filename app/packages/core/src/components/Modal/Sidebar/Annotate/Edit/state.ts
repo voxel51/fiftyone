@@ -205,4 +205,5 @@ export const deleteValue = atom(null, (get, set) => {
     labels,
     get(labels).filter((label) => label.data._id !== data.data._id)
   );
+  set(editing, null);
 });

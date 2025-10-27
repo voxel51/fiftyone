@@ -157,7 +157,7 @@ export default function useLabels() {
     } else {
       setLoading(true);
     }
-  }, [modalSampleData, sceneId, schemaMap]);
+  }, [modalSampleData, scene, schemaMap]);
 
   useHover();
   useFocus();

@@ -53,7 +53,10 @@ export default function useFocus() {
         scene?.deselectOverlay(current, {
           isBridgeLogicHandled: true,
         });
-        select();
+
+        if (current !== event.detail.id) {
+          select();
+        }
       });
     };
     scene?.on(LIGHTER_EVENTS.OVERLAY_DESELECT, handler);
