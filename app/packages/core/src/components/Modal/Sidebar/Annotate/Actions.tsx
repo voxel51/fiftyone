@@ -92,7 +92,7 @@ const Square = styled(Container)<{ $active?: boolean }>`
 const Classification = () => {
   const create = useCreate(CLASSIFICATION);
   return (
-    <Tooltip placement="top-center" text="Create Classification">
+    <Tooltip placement="top-center" text="Create new classification">
       <Square onClick={create}>
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -115,7 +115,7 @@ const Classification = () => {
 const Detection = () => {
   const create = useCreate(DETECTION);
   return (
-    <Tooltip placement="top-center" text="Create Detection">
+    <Tooltip placement="top-center" text="Create new detection">
       <Square onClick={create}>
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -186,7 +186,7 @@ export const ThreeDPolylines = () => {
     useRecoilState(isPolylineAnnotateActiveAtom);
 
   return (
-    <Tooltip placement="top-center" text="Create Poyline">
+    <Tooltip placement="top-center" text="Create new polyline">
       <Square
         $active={isPolylineAnnotateActive}
         onClick={() => {
