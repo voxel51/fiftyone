@@ -418,10 +418,10 @@ export function sanitizeSchemaIoLabelAttributes(
   misc: Record<string, unknown>
 ): Record<string, unknown> {
   return Object.fromEntries(
-    Object.entries(misc).filter(([key, value]) => {
-      if (value === "false") return false;
-      if (value === "true") return true;
-      return value;
+    Object.entries(misc).map(([key, value]) => {
+      if (value === "true") return [key, true];
+      if (value === "false") return [key, false];
+      return [key, value];
     })
   );
 }

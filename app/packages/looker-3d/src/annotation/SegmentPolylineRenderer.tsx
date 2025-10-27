@@ -77,9 +77,6 @@ export const SegmentPolylineRenderer = ({
 
       const labelId = selectedLabelForAnnotation?._id || tempLabelId;
 
-      const currentData = polylinePointTransforms[labelId];
-      const existingSegments = currentData?.segments || [];
-
       const newSegment = {
         points: vertices.map(
           (pt) =>
@@ -87,23 +84,21 @@ export const SegmentPolylineRenderer = ({
         ),
       };
 
-      const newSegments = [...existingSegments, newSegment];
-
-      const transformData: PolylinePointTransformData = {
-        segments: newSegments,
-        path: currentActiveField || "",
-        sampleId: currentSampleId,
-        misc: {
-          closed: isClosed,
-        },
-      };
-
-      setPolylinePointTransforms((prev) => ({
-        ...prev,
-        [labelId]: transformData,
-      }));
-
-      setEditingToNewPolyline(labelId, transformData);
+      setPolylinePointTransforms((prev) => {
+        const currentData = prev[labelId];
+        const existingSegments = currentData?.segments || [];
+        const newSegments = [...existingSegments, newSegment];
+        const transformData: PolylinePointTransformData = {
+          segments: newSegments,
+          path: currentActiveField || "",
+          sampleId: currentSampleId,
+          misc: {
+            closed: isClosed,
+          },
+        };
+        setEditingToNewPolyline(labelId, transformData);
+        return { ...prev, [labelId]: transformData };
+      });
 
       if (selectedLabelForAnnotation) {
         setSelectedLabelForAnnotation({
@@ -131,7 +126,6 @@ export const SegmentPolylineRenderer = ({
     [
       selectedLabelForAnnotation,
       tempLabelId,
-      polylinePointTransforms,
       currentActiveField,
       currentSampleId,
     ]
