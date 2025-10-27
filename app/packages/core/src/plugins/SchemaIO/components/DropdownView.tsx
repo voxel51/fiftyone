@@ -40,7 +40,6 @@ export default function DropdownView(props: ViewPropsType) {
   const [IconComponent, setIconComponent] =
     useState<React.ComponentType<any> | null>(null);
   const [key, setUserChanged] = useKey(path, schema, data, true);
-  const [selected, setSelected] = useState(false);
 
   const handleOnChange = useCallback(
     (value: any) => {
@@ -93,6 +92,12 @@ export default function DropdownView(props: ViewPropsType) {
       return labels;
     }, {});
   }, [choices]);
+
+  // Compute selected state from data instead of using useState to avoid setState during render
+  const selected = useMemo(() => {
+    const value = computedDefaultValue;
+    return value != null && value !== "" && !(Array.isArray(value) && value.length === 0);
+  }, [computedDefaultValue]);
 
   const getIconOnlyStyles = () => ({
     "&.MuiInputBase-root.MuiOutlinedInput-root.MuiInputBase-colorPrimary": {
@@ -188,7 +193,6 @@ export default function DropdownView(props: ViewPropsType) {
           return renderIcon();
         }
         const unselected = value?.length === 0;
-        setSelected(!unselected);
         if (unselected) {
           if (compact) {
             return placeholder || label;
