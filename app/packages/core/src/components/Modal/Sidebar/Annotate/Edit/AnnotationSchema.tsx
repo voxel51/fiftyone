@@ -173,7 +173,6 @@ const AnnotationSchema = () => {
   useEffect(() => {
     const handler = (event) => {
       const label = overlay?.label;
-      alert(label);
       label && save(label);
     };
 
