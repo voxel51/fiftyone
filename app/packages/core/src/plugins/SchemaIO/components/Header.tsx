@@ -61,6 +61,7 @@ export default function Header(props: HeaderProps) {
       <Box {...getComponentProps(viewProps, "headingsContainer")}>
         <Stack {...getComponentProps(viewProps, "labelContainer")}>
           <Typography
+            component="div"
             variant={labelVariantMap[variant]}
             color="text.primary"
             sx={{ display: "flex", alignItems: "center" }}
@@ -96,6 +97,7 @@ export default function Header(props: HeaderProps) {
         </Stack>
         {description && descriptionView === "inline" && (
           <Typography
+            component="div"
             variant="body2"
             color="text.secondary"
             {...getComponentProps(viewProps, "description")}
@@ -107,6 +109,7 @@ export default function Header(props: HeaderProps) {
         )}
         {caption && !omitCaption && (
           <Typography
+            component="div"
             variant="body2"
             color="text.tertiary"
             {...getComponentProps(viewProps, "caption")}
