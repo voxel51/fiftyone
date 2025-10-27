@@ -55,6 +55,7 @@ export default function useFocus() {
         });
 
         if (current !== event.detail.id) {
+          // we are selecting a different overlay
           select();
         }
       });

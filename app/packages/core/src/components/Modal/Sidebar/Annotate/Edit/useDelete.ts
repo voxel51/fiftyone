@@ -15,6 +15,9 @@ export default function useDelete() {
   );
 
   return useCallback(() => {
+    if (!label) {
+      return;
+    }
     setter();
 
     scene?.exitInteractiveMode();
@@ -23,7 +26,7 @@ export default function useDelete() {
         type: LIGHTER_EVENTS.DO_REMOVE_OVERLAY,
         detail: {
           label,
-          schema: getFieldSchema(schema, label?.path),
+          schema: getFieldSchema(schema, label?.path)!,
         },
       });
     removeOverlay(label?.data._id);

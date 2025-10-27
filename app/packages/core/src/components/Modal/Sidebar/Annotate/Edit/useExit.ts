@@ -23,6 +23,10 @@ export default function useExit(revertLabel = true) {
     const label = store.get(savedLabel);
     const unsaved = store.get(current);
 
+    if (!label) {
+      return;
+    }
+
     // label has not been persisted, so remove it
     if (unsaved?.isNew) {
       remove();
