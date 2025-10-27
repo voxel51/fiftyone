@@ -286,7 +286,8 @@ export const ThreeDLabels = ({
         );
       } else if (
         overlay._cls === "Polyline" &&
-        (overlay as PolyLineProps).points3d
+        (overlay as PolyLineProps).points3d &&
+        overlay._id in (polylinePointTransforms ?? {})
       ) {
         const transformData = polylinePointTransforms[overlay._id];
         let finalPoints3d = transformData?.segments
@@ -325,7 +326,7 @@ export const ThreeDLabels = ({
     );
 
     for (const [labelId, transformData] of Object.entries(
-      polylinePointTransforms
+      polylinePointTransforms ?? {}
     )) {
       if (!transformData.segments || transformData.segments.length === 0)
         continue;

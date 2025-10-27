@@ -19,7 +19,7 @@ import {
 } from "../state";
 import { getPlaneFromPositionAndQuaternion } from "../utils";
 import { PolylinePointMarker } from "./PolylinePointMarker";
-import type { PolylinePointTransformData } from "./types";
+import { PolylinePointTransformData } from "./types";
 import { useSetEditingToNewPolyline } from "./useSetEditingToNewPolyline";
 import { shouldClosePolylineLoop } from "./utils/polyline-utils";
 
@@ -85,17 +85,30 @@ export const SegmentPolylineRenderer = ({
       };
 
       setPolylinePointTransforms((prev) => {
-        const currentData = prev[labelId];
-        const existingSegments = currentData?.segments || [];
-        const newSegments = [...existingSegments, newSegment];
-        const transformData: PolylinePointTransformData = {
-          segments: newSegments,
-          path: currentActiveField || "",
-          sampleId: currentSampleId,
-          misc: {
-            closed: isClosed,
-          },
-        };
+        let transformData: PolylinePointTransformData;
+        if (!prev) {
+          transformData = {
+            segments: [newSegment],
+            path: currentActiveField,
+            sampleId: currentSampleId,
+            misc: {
+              closed: isClosed,
+            },
+          };
+        } else {
+          const currentData = prev[labelId];
+          const existingSegments = currentData?.segments || [];
+          const newSegments = [...existingSegments, newSegment];
+          transformData = {
+            segments: newSegments,
+            path: currentActiveField || "",
+            sampleId: currentSampleId,
+            misc: {
+              closed: isClosed,
+              ...currentData?.misc,
+            },
+          };
+        }
         setEditingToNewPolyline(labelId, transformData);
         return { ...prev, [labelId]: transformData };
       });

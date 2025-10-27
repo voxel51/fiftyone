@@ -137,6 +137,7 @@ export interface PolylineAnnotationLabel extends Label {
     getLabel?: () => PolylineLabel;
     updateField?: (field: string) => void;
     updateLabel?: (label: PolylineLabel) => void;
+    setSelected?: (selected: boolean) => void;
   };
   type: "Polyline";
 }
