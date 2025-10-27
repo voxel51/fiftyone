@@ -7,6 +7,7 @@ import { TransformOverlayCommand } from "@fiftyone/lighter/src/commands/Transfor
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useState } from "react";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
+import { setPathUserUnchanged } from "../../../../../plugins/SchemaIO/hooks";
 import { currentData, currentOverlay } from "./state";
 
 const createInput = (name: string) => {
@@ -68,18 +69,25 @@ export default function Position() {
       ) {
         return;
       }
-      const rect = overlay.getAbsoluteBounds();
+      const absolute = overlay.getAbsoluteBounds();
+      const relative = overlay.getRelativeBounds();
 
       setState({
-        position: { x: rect.x, y: rect.y },
-        dimensions: { width: rect.width, height: rect.height },
+        position: { x: absolute.x, y: absolute.y },
+        dimensions: { width: absolute.width, height: absolute.height },
       });
 
-      const relative = overlay.getRelativeBounds();
       setData({
         bounding_box: [relative.x, relative.y, relative.width, relative.height],
       });
+
+      // Clear user changed flags so inputs update from overlay changes
+      setPathUserUnchanged("position.x");
+      setPathUserUnchanged("position.y");
+      setPathUserUnchanged("dimensions.width");
+      setPathUserUnchanged("dimensions.height");
     };
+
     scene?.on(LIGHTER_EVENTS.OVERLAY_BOUNDS_CHANGED, handler);
     scene?.on(LIGHTER_EVENTS.OVERLAY_DRAG_MOVE, handler);
     scene?.on(LIGHTER_EVENTS.OVERLAY_RESIZE_MOVE, handler);
