@@ -286,12 +286,13 @@ export const ThreeDLabels = ({
         );
       } else if (
         overlay._cls === "Polyline" &&
-        (overlay as PolyLineProps).points3d &&
-        overlay._id in (polylinePointTransforms ?? {})
+        (overlay as PolyLineProps).points3d
       ) {
-        const transformData = polylinePointTransforms[overlay._id];
-        let finalPoints3d = transformData?.segments
-          ? transformData.segments.map((seg) => seg.points)
+        debugger;
+        const maybeExistingTransformData =
+          polylinePointTransforms?.[overlay._id];
+        let finalPoints3d = maybeExistingTransformData?.segments
+          ? maybeExistingTransformData.segments.map((seg) => seg.points)
           : (overlay as PolyLineProps).points3d;
 
         if (finalPoints3d) {
@@ -306,7 +307,9 @@ export const ThreeDLabels = ({
               opacity={labelAlpha}
               lineWidth={polylineWidth}
               {...(overlay as PolyLineProps)}
-              {...sanitizeSchemaIoLabelAttributes(transformData?.misc ?? {})}
+              {...sanitizeSchemaIoLabelAttributes(
+                maybeExistingTransformData?.misc ?? {}
+              )}
               points3d={finalPoints3d}
               label={overlay}
               onClick={(e) => handleSelect(overlay, "polyline", e)}

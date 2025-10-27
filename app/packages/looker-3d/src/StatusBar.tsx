@@ -27,9 +27,9 @@ import tunnel from "tunnel-rat";
 import { StatusBarContainer } from "./containers";
 import {
   activeNodeAtom,
+  activeSegmentationStateAtom,
   cameraViewStatusAtom,
   isStatusBarOnAtom,
-  activeSegmentationStateAtom,
 } from "./state";
 
 const PerfContainer = styled.div`
@@ -437,9 +437,9 @@ export const StatusBar = ({
         <SegmentHint $border={theme.primary.main} $text={"#e0e0e0"}>
           <SegmentHintRow>
             <InfoOutlinedIcon
-              style={{ fontSize: 14, color: theme.primary.main }}
+              style={{ fontSize: 12, color: theme.primary.main }}
             />
-            Snap to first vertex to close • Double click to finish • Escape to
+            Double click to finish • Del to undo last vertex • Escape to
             cancel
           </SegmentHintRow>
         </SegmentHint>

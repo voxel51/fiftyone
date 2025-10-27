@@ -172,8 +172,22 @@ const AnnotationSchema = () => {
 
   useEffect(() => {
     const handler = (event) => {
-      const label = overlay?.label;
-      label && save(label);
+      // Here, this would be true for `undo` or `redo`
+      if (event.detail?.command?.constructor?.name !== "UpdateLabelCommand") {
+        const label = overlay?.label;
+
+        if (label) {
+          save(label);
+        }
+
+        return;
+      }
+
+      const newLabel = event.detail.command.nextLabel;
+
+      if (newLabel) {
+        save(newLabel);
+      }
     };
 
     lighter.scene?.on(LIGHTER_EVENTS.COMMAND_EXECUTED, handler);
@@ -207,6 +221,7 @@ const AnnotationSchema = () => {
           }
           const value = { ...data, ...result };
 
+          debugger;
           lighter.scene?.executeCommand(
             new UpdateLabelCommand(overlay, overlay.label, value)
           );

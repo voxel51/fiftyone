@@ -1,8 +1,13 @@
 import * as fos from "@fiftyone/state";
 import { objectId } from "@fiftyone/utilities";
 import { Line as LineDrei } from "@react-three/drei";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import { useCallback, useEffect, useMemo, useRef } from "react";
+import {
+  useRecoilCallback,
+  useRecoilState,
+  useRecoilValue,
+  useSetRecoilState,
+} from "recoil";
 import * as THREE from "three";
 import { SNAP_TOLERANCE } from "../constants";
 import { useFo3dContext } from "../fo3d/context";
@@ -49,14 +54,6 @@ export const SegmentPolylineRenderer = ({
     polylinePointTransformsAtom
   );
   const setEditingToNewPolyline = useSetEditingToNewPolyline();
-  const [tempLabelId, setTempLabelId] = useState<string | null>(objectId());
-
-  useEffect(() => {
-    if (ignoreEffects) return;
-
-    const newObjectId = objectId();
-    setTempLabelId(newObjectId);
-  }, [segmentState.isActive]);
 
   const setIsActivelySegmenting = useSetRecoilState(
     isSegmentingPointerDownAtom
@@ -71,77 +68,80 @@ export const SegmentPolylineRenderer = ({
   const DOUBLE_CLICK_THRESHOLD_MS = 200;
   const lastAddedVertexRef = useRef<[number, number, number] | null>(null);
 
-  const commitSegment = useCallback(
-    (vertices: [number, number, number][], isClosed: boolean) => {
-      if (vertices.length < 2) return;
+  const commitSegment = useRecoilCallback(
+    ({ snapshot }) =>
+      (
+        vertices: [number, number, number][],
+        overrideShouldClose: boolean = false
+      ) => {
+        if (vertices.length < 2) return;
 
-      const labelId = selectedLabelForAnnotation?._id || tempLabelId;
+        const shouldClose =
+          overrideShouldClose ||
+          Boolean(snapshot.getLoadable(snapCloseAutomaticallyAtom).getValue());
 
-      const newSegment = {
-        points: vertices.map(
-          (pt) =>
-            pt.map((p) => Number(p.toFixed(7))) as [number, number, number]
-        ),
-      };
+        const labelId = selectedLabelForAnnotation?._id || objectId();
 
-      setPolylinePointTransforms((prev) => {
-        let transformData: PolylinePointTransformData;
-        if (!prev) {
-          transformData = {
-            segments: [newSegment],
-            path: currentActiveField,
-            sampleId: currentSampleId,
-            misc: {
-              closed: isClosed,
-            },
-          };
+        const newSegment = {
+          points: vertices.map(
+            (pt) =>
+              pt.map((p) => Number(p.toFixed(7))) as [number, number, number]
+          ),
+        };
+
+        setPolylinePointTransforms((prev) => {
+          let transformData: PolylinePointTransformData;
+          if (!prev) {
+            transformData = {
+              segments: [newSegment],
+              path: currentActiveField,
+              sampleId: currentSampleId,
+              misc: {
+                closed: shouldClose,
+              },
+            };
+          } else {
+            const currentData = prev[labelId];
+            const existingSegments = currentData?.segments || [];
+            const newSegments = [...existingSegments, newSegment];
+            transformData = {
+              segments: newSegments,
+              path: currentActiveField || "",
+              sampleId: currentSampleId,
+              misc: {
+                closed: shouldClose,
+                ...currentData?.misc,
+              },
+            };
+          }
+          setEditingToNewPolyline(labelId, transformData);
+          return { ...prev, [labelId]: transformData };
+        });
+
+        if (selectedLabelForAnnotation) {
+          setSelectedLabelForAnnotation({
+            ...selectedLabelForAnnotation,
+            _id: labelId,
+          });
         } else {
-          const currentData = prev[labelId];
-          const existingSegments = currentData?.segments || [];
-          const newSegments = [...existingSegments, newSegment];
-          transformData = {
-            segments: newSegments,
+          setSelectedLabelForAnnotation({
+            _id: labelId,
             path: currentActiveField || "",
             sampleId: currentSampleId,
-            misc: {
-              closed: isClosed,
-              ...currentData?.misc,
-            },
-          };
+            _cls: "Polyline" as const,
+            selected: false,
+            label: "",
+          });
         }
-        setEditingToNewPolyline(labelId, transformData);
-        return { ...prev, [labelId]: transformData };
-      });
 
-      if (selectedLabelForAnnotation) {
-        setSelectedLabelForAnnotation({
-          ...selectedLabelForAnnotation,
-          _id: labelId,
+        setSegmentState({
+          isActive: false,
+          vertices: [],
+          currentMousePosition: null,
+          isClosed: false,
         });
-      } else {
-        setSelectedLabelForAnnotation({
-          _id: labelId,
-          path: currentActiveField || "",
-          sampleId: currentSampleId,
-          _cls: "Polyline" as const,
-          selected: false,
-          label: "",
-        });
-      }
-
-      setSegmentState({
-        isActive: false,
-        vertices: [],
-        currentMousePosition: null,
-        isClosed: false,
-      });
-    },
-    [
-      selectedLabelForAnnotation,
-      tempLabelId,
-      currentActiveField,
-      currentSampleId,
-    ]
+      },
+    [selectedLabelForAnnotation, currentActiveField, currentSampleId]
   );
 
   // Check if current position is close to first vertex for closing
@@ -182,7 +182,7 @@ export const SegmentPolylineRenderer = ({
         const verticesWithoutDuplicate = segmentState.vertices.slice(0, -1);
 
         // Commit the segment immediately
-        commitSegment(verticesWithoutDuplicate, snapCloseAutomatically);
+        commitSegment(verticesWithoutDuplicate);
 
         lastAddedVertexRef.current = null;
         return;
@@ -190,7 +190,6 @@ export const SegmentPolylineRenderer = ({
 
       // Check if we should close the loop by clicking near the first vertex
       if (shouldCloseLoop(finalPos)) {
-        // Commit the closed segment immediately
         commitSegment(segmentState.vertices, true);
 
         lastAddedVertexRef.current = null;
@@ -210,7 +209,7 @@ export const SegmentPolylineRenderer = ({
 
       lastAddedVertexRef.current = newVertex;
     },
-    [segmentState, shouldCloseLoop, snapCloseAutomatically, commitSegment]
+    [segmentState, shouldCloseLoop, commitSegment]
   );
 
   // Handle mouse move for rubber band effect
