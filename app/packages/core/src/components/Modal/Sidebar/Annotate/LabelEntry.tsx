@@ -7,6 +7,7 @@ import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import { Column } from "./Components";
 import { editing } from "./Edit";
+import { savedLabel } from "./Edit/state";
 import { ICONS } from "./Icons";
 import { fieldType } from "./state";
 import useColor from "./useColor";
@@ -85,6 +86,7 @@ const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
         setEditing(atom);
         const store = getDefaultStore();
         store.get(atom).overlay.setSelected(true);
+        store.set(savedLabel, store.get(atom).data);
       }}
       className={isHovering ? "hovering" : ""}
       onMouseEnter={() => setIsHoveringThisRow(true)}
