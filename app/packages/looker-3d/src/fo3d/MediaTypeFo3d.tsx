@@ -1,5 +1,6 @@
 import { LoadingDots } from "@fiftyone/components";
 import { useOverlayPersistence } from "@fiftyone/core/src/components/Modal/Lighter/useOverlayPersistence";
+import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import {
   EventBus,
   lighterSceneAtom,
@@ -808,12 +809,23 @@ export const MediaTypeFo3dComponent = () => {
   const isAnnotationPlaneEnabled = useRecoilValue(annotationPlaneAtom).enabled;
   const isPolylineAnnotateActive = useRecoilValue(isPolylineAnnotateActiveAtom);
 
+  const isAnnotationFeatureEnabled = useFeature({
+    feature: FeatureFlag.EXPERIMENTAL_ANNOTATION,
+  });
+
   const shouldRenderMultiPanelView = useMemo(
     () =>
       mode === "annotate" &&
+      isAnnotationFeatureEnabled &&
       !(isGroup && is2DSampleViewerVisible) &&
       isSceneInitialized,
-    [mode, isGroup, is2DSampleViewerVisible, isSceneInitialized]
+    [
+      mode,
+      isGroup,
+      is2DSampleViewerVisible,
+      isSceneInitialized,
+      isAnnotationFeatureEnabled,
+    ]
   );
 
   useEffect(() => {
