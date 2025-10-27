@@ -1,3 +1,4 @@
+import { Tooltip } from "@fiftyone/components";
 import { useLighter } from "@fiftyone/lighter";
 import { is3DDataset } from "@fiftyone/state";
 import { CLASSIFICATION, DETECTION, POLYLINE } from "@fiftyone/utilities";
@@ -80,52 +81,58 @@ const Square = styled(Container)`
 const Classification = () => {
   const create = useCreate(CLASSIFICATION);
   return (
-    <Square onClick={create}>
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="19"
-        height="18"
-        viewBox="0 0 19 18"
-        fill="none"
-      >
-        <title>Classification</title>
-        <path
-          d="M3.5 14.9995C3.0875 14.9995 2.73438 14.8526 2.44063 14.5589C2.14687 14.2651 2 13.912 2 13.4995V4.49951C2 4.08701 2.14687 3.73389 2.44063 3.44014C2.73438 3.14639 3.0875 2.99951 3.5 2.99951H11.75C11.9875 2.99951 12.2125 3.05264 12.425 3.15889C12.6375 3.26514 12.8125 3.41201 12.95 3.59951L16.325 8.09951C16.525 8.36201 16.625 8.66201 16.625 8.99951C16.625 9.33701 16.525 9.63701 16.325 9.89951L12.95 14.3995C12.8125 14.587 12.6375 14.7339 12.425 14.8401C12.2125 14.9464 11.9875 14.9995 11.75 14.9995H3.5ZM3.5 13.4995H11.75L15.125 8.99951L11.75 4.49951H3.5V13.4995Z"
-          fill="#999999"
-        />
-      </svg>
-    </Square>
+    <Tooltip placement="top-center" text="Create Classification">
+      <Square onClick={create}>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="19"
+          height="18"
+          viewBox="0 0 19 18"
+          fill="none"
+        >
+          <title>Classification</title>
+          <path
+            d="M3.5 14.9995C3.0875 14.9995 2.73438 14.8526 2.44063 14.5589C2.14687 14.2651 2 13.912 2 13.4995V4.49951C2 4.08701 2.14687 3.73389 2.44063 3.44014C2.73438 3.14639 3.0875 2.99951 3.5 2.99951H11.75C11.9875 2.99951 12.2125 3.05264 12.425 3.15889C12.6375 3.26514 12.8125 3.41201 12.95 3.59951L16.325 8.09951C16.525 8.36201 16.625 8.66201 16.625 8.99951C16.625 9.33701 16.525 9.63701 16.325 9.89951L12.95 14.3995C12.8125 14.587 12.6375 14.7339 12.425 14.8401C12.2125 14.9464 11.9875 14.9995 11.75 14.9995H3.5ZM3.5 13.4995H11.75L15.125 8.99951L11.75 4.49951H3.5V13.4995Z"
+            fill="#999999"
+          />
+        </svg>
+      </Square>
+    </Tooltip>
   );
 };
 
 const Detection = () => {
   const create = useCreate(DETECTION);
   return (
-    <Square onClick={create}>
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="19"
-        height="18"
-        viewBox="0 0 19 18"
-        fill="none"
-      >
-        <title>Detection</title>
-        <path
-          d="M4.25 15.75C3.8375 15.75 3.48438 15.6031 3.19063 15.3094C2.89687 15.0156 2.75 14.6625 2.75 14.25V3.75C2.75 3.3375 2.89687 2.98438 3.19063 2.69063C3.48438 2.39687 3.8375 2.25 4.25 2.25H14.75C15.1625 2.25 15.5156 2.39687 15.8094 2.69063C16.1031 2.98438 16.25 3.3375 16.25 3.75V14.25C16.25 14.6625 16.1031 15.0156 15.8094 15.3094C15.5156 15.6031 15.1625 15.75 14.75 15.75H4.25ZM4.25 14.25H14.75V3.75H4.25V14.25Z"
-          fill="#999999"
-        />
-      </svg>
-    </Square>
+    <Tooltip placement="top-center" text="Create Detection">
+      <Square onClick={create}>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="19"
+          height="18"
+          viewBox="0 0 19 18"
+          fill="none"
+        >
+          <title>Detection</title>
+          <path
+            d="M4.25 15.75C3.8375 15.75 3.48438 15.6031 3.19063 15.3094C2.89687 15.0156 2.75 14.6625 2.75 14.25V3.75C2.75 3.3375 2.89687 2.98438 3.19063 2.69063C3.48438 2.39687 3.8375 2.25 4.25 2.25H14.75C15.1625 2.25 15.5156 2.39687 15.8094 2.69063C16.1031 2.98438 16.25 3.3375 16.25 3.75V14.25C16.25 14.6625 16.1031 15.0156 15.8094 15.3094C15.5156 15.6031 15.1625 15.75 14.75 15.75H4.25ZM4.25 14.25H14.75V3.75H4.25V14.25Z"
+            fill="#999999"
+          />
+        </svg>
+      </Square>
+    </Tooltip>
   );
 };
 
 const Polyline = () => {
   const create = useCreate(POLYLINE);
   return (
-    <Square onClick={create}>
-      New Polyline
-      <PolylineOutlined />
-    </Square>
+    <Tooltip placement="top-center" text="Create Polyline">
+      <Square onClick={create}>
+        New Polyline
+        <PolylineOutlined />
+      </Square>
+    </Tooltip>
   );
 };
 

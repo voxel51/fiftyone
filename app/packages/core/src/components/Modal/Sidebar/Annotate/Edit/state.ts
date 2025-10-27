@@ -22,6 +22,7 @@ export const hasChanges = atom((get) => {
   const label = get(currentData);
   const saved = get(savedLabel);
 
+  console.log(saved, label);
   return saved === null
     ? false
     : JSON.stringify(label) !== JSON.stringify(saved);

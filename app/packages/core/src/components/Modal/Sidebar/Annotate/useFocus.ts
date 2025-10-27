@@ -37,8 +37,6 @@ export default function useFocus() {
         return;
       }
 
-      selectId.current = event.detail.id;
-
       const current = STORE.get(currentOverlay)?.id;
 
       if (!current || !STORE.get(hasChanges)) {
@@ -54,10 +52,7 @@ export default function useFocus() {
           isBridgeLogicHandled: true,
         });
 
-        if (current !== event.detail.id) {
-          // we are selecting a different overlay
-          select();
-        }
+        select();
       });
     };
     scene?.on(LIGHTER_EVENTS.OVERLAY_DESELECT, handler);
@@ -65,7 +60,7 @@ export default function useFocus() {
     return () => {
       scene?.off(LIGHTER_EVENTS.OVERLAY_DESELECT, handler);
     };
-  }, [confirmExit, scene, onExit, select, selectId]);
+  }, [confirmExit, scene, onExit, select]);
 
   useEffect(() => {
     const handler = (event) => {
