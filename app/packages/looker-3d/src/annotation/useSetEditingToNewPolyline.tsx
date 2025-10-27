@@ -1,3 +1,4 @@
+import { coerceStringBooleans } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate";
 import { editing as editingAtom } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit";
 import { savedLabel } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/state";
 import * as fos from "@fiftyone/state";
@@ -12,11 +13,9 @@ import {
   snapCloseAutomaticallyAtom,
 } from "../state";
 import { PolylinePointTransformData } from "./types";
-import { sanitizeSchemaIoLabelAttributes } from "./utils/polyline-utils";
 
-const currentEditingPolylineAtom = atomWithReset<fos.AnnotationLabel | null>(
-  null
-);
+export const currentEditingPolylineAtom =
+  atomWithReset<fos.AnnotationLabel | null>(null);
 
 /**
  * Hook to set editing atom for new polylines
@@ -50,8 +49,6 @@ export const useSetEditingToNewPolyline = () => {
     (label: fos.PolylineAnnotationLabel["data"]) => {
       const { points3d: _points3d, _id, ...rest } = label;
 
-      jotaiStore.set(savedLabel, label);
-
       setPolylinePointTransforms((prev) => {
         return {
           ...prev,
@@ -59,7 +56,7 @@ export const useSetEditingToNewPolyline = () => {
             ...(prev[label._id] ?? ({} as PolylinePointTransformData)),
             label: label.label,
             misc: {
-              ...sanitizeSchemaIoLabelAttributes(rest ?? {}),
+              ...coerceStringBooleans(rest ?? {}),
             },
           },
         };
@@ -82,13 +79,15 @@ export const useSetEditingToNewPolyline = () => {
 
       const polylineLabelData = {
         _id: labelId,
+        _cls: "Polyline",
         points: [],
         points3d: effectivePoints,
         filled: false,
         closed: shouldDefaultToClosed,
         label: transformData.label,
-        path: currentActiveField,
-        sampleId: currentSampleId,
+        path: transformData.path,
+        sampleId: transformData.sampleId,
+        ...(transformData.misc ?? {}),
       };
 
       setCurrentEditing({
@@ -115,7 +114,7 @@ export const useSetEditingToNewPolyline = () => {
 
       setEditing(currentEditingPolylineAtom);
 
-      jotaiStore.set(savedLabel, polylineLabelData);
+      jotaiStore.set(savedLabel, {});
     },
     [
       currentSampleId,

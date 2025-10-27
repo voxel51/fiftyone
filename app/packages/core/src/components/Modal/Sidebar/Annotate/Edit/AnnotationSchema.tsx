@@ -14,6 +14,7 @@ import { useAtom, useAtomValue } from "jotai";
 import { useEffect, useMemo } from "react";
 import { useRecoilCallback } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
+import { coerceStringBooleans } from "../utils";
 import {
   currentData,
   currentField,
@@ -183,7 +184,7 @@ const AnnotationSchema = () => {
         return;
       }
 
-      const newLabel = event.detail.command.nextLabel;
+      const newLabel = coerceStringBooleans(event.detail.command.nextLabel);
 
       if (newLabel) {
         save(newLabel);
@@ -221,7 +222,6 @@ const AnnotationSchema = () => {
           }
           const value = { ...data, ...result };
 
-          debugger;
           lighter.scene?.executeCommand(
             new UpdateLabelCommand(overlay, overlay.label, value)
           );

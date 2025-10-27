@@ -439,8 +439,7 @@ export const StatusBar = ({
             <InfoOutlinedIcon
               style={{ fontSize: 12, color: theme.primary.main }}
             />
-            Double click to finish • Del to undo last vertex • Escape to
-            cancel
+            Double click to finish • Del to undo last vertex • Escape to cancel
           </SegmentHintRow>
         </SegmentHint>
       )}

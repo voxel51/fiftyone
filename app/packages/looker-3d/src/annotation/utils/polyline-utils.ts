@@ -407,21 +407,3 @@ export function updateVertexPosition(
 
   return newSegments;
 }
-
-/**
- * Sanitizes label attributes.
- *
- * @param misc - The misc attributes to sanitize
- * @returns The sanitized misc attributes
- */
-export function sanitizeSchemaIoLabelAttributes(
-  misc: Record<string, unknown>
-): Record<string, unknown> {
-  return Object.fromEntries(
-    Object.entries(misc).map(([key, value]) => {
-      if (value === "true") return [key, true];
-      if (value === "false") return [key, false];
-      return [key, value];
-    })
-  );
-}

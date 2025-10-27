@@ -1,3 +1,4 @@
+import { coerceStringBooleans } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate";
 import { activeSchemas } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/state";
 import {
   FO_LABEL_TOGGLED_EVENT,
@@ -21,7 +22,6 @@ import { useCallback, useEffect, useMemo } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
 import { useSetEditingToExistingPolyline } from "../annotation/useSetEditingToExistingPolyline";
-import { sanitizeSchemaIoLabelAttributes } from "../annotation/utils/polyline-utils";
 import { PANEL_ORDER_LABELS } from "../constants";
 import { usePathFilter } from "../hooks";
 import { type Looker3dSettings, defaultPluginSettings } from "../settings";
@@ -288,7 +288,6 @@ export const ThreeDLabels = ({
         overlay._cls === "Polyline" &&
         (overlay as PolyLineProps).points3d
       ) {
-        debugger;
         const maybeExistingTransformData =
           polylinePointTransforms?.[overlay._id];
         let finalPoints3d = maybeExistingTransformData?.segments
@@ -307,9 +306,7 @@ export const ThreeDLabels = ({
               opacity={labelAlpha}
               lineWidth={polylineWidth}
               {...(overlay as PolyLineProps)}
-              {...sanitizeSchemaIoLabelAttributes(
-                maybeExistingTransformData?.misc ?? {}
-              )}
+              {...coerceStringBooleans(maybeExistingTransformData?.misc ?? {})}
               points3d={finalPoints3d}
               label={overlay}
               onClick={(e) => handleSelect(overlay, "polyline", e)}
@@ -358,7 +355,7 @@ export const ThreeDLabels = ({
           sampleId: currentSampleId,
           tags: [],
           points3d,
-          ...sanitizeSchemaIoLabelAttributes(transformData.misc ?? {}),
+          ...coerceStringBooleans(transformData.misc ?? {}),
         };
 
         newPolylineOverlays.push(
