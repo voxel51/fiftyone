@@ -1,15 +1,13 @@
 import { LIGHTER_EVENTS, useLighter } from "@fiftyone/lighter";
+import * as fos from "@fiftyone/state";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
-import { current, deleteValue } from "./state";
-import useExit from "./useExit";
 import { useRecoilValue } from "recoil";
-import * as fos from "@fiftyone/state";
 import { getFieldSchema } from "../../../Lighter/deltas";
+import { current, deleteValue } from "./state";
 
 export default function useDelete() {
-  const { scene } = useLighter();
-  const exit = useExit();
+  const { scene, removeOverlay } = useLighter();
   const label = useAtomValue(current);
   const setter = useSetAtom(deleteValue);
   const schema = useRecoilValue(
@@ -17,17 +15,20 @@ export default function useDelete() {
   );
 
   return useCallback(() => {
-    scene?.dispatchSafely({
-      type: LIGHTER_EVENTS.DO_REMOVE_OVERLAY,
-      detail: {
-        label,
-        schema: getFieldSchema(schema, label.path),
-        onSuccess: () => {
-          scene.exitInteractiveMode();
-          setter();
-          exit();
+    if (!label) {
+      return;
+    }
+    setter();
+
+    scene?.exitInteractiveMode();
+    !label?.isNew &&
+      scene?.dispatchSafely({
+        type: LIGHTER_EVENTS.DO_REMOVE_OVERLAY,
+        detail: {
+          label,
+          schema: getFieldSchema(schema, label?.path)!,
         },
-      },
-    });
-  }, [exit, label, scene, schema, setter]);
+      });
+    removeOverlay(label?.data._id);
+  }, [label, scene, setter, removeOverlay, schema]);
 }
