@@ -2,7 +2,7 @@ import { LIGHTER_EVENTS, useLighter } from "@fiftyone/lighter";
 import { useClearModal } from "@fiftyone/state";
 import { DETECTION } from "@fiftyone/utilities";
 import { getDefaultStore, useAtomValue } from "jotai";
-import { useContext, useEffect } from "react";
+import React, { useContext, useEffect } from "react";
 import styled from "styled-components";
 import Confirmation, { ConfirmationContext } from "../Confirmation";
 import useConfirmExit from "../Confirmation/useConfirmExit";
