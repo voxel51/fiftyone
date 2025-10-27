@@ -1,6 +1,6 @@
 import { LoadingDots } from "@fiftyone/components";
 import { useOverlayPersistence } from "@fiftyone/core/src/components/Modal/Lighter/useOverlayPersistence";
-import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
+import useCanAnnotate from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useCanAnnotate";
 import {
   EventBus,
   lighterSceneAtom,
@@ -167,7 +167,8 @@ export const MediaTypeFo3dComponent = () => {
 
   const [scene, setScene] = useAtom(lighterSceneAtom);
 
-  // Setup a ghost lighter for human annotation needs
+  // Hack: Setup a ghost lighter for human annotation needs
+  // Todo: Remove this and abstract out event bus / annotaion system from Lighter
   useEffect(() => {
     if (mode !== "annotate") return;
 
@@ -809,23 +810,15 @@ export const MediaTypeFo3dComponent = () => {
   const isAnnotationPlaneEnabled = useRecoilValue(annotationPlaneAtom).enabled;
   const isPolylineAnnotateActive = useRecoilValue(isPolylineAnnotateActiveAtom);
 
-  const isAnnotationFeatureEnabled = useFeature({
-    feature: FeatureFlag.EXPERIMENTAL_ANNOTATION,
-  });
+  const canAnnotate = useCanAnnotate();
 
   const shouldRenderMultiPanelView = useMemo(
     () =>
       mode === "annotate" &&
-      isAnnotationFeatureEnabled &&
+      canAnnotate &&
       !(isGroup && is2DSampleViewerVisible) &&
       isSceneInitialized,
-    [
-      mode,
-      isGroup,
-      is2DSampleViewerVisible,
-      isSceneInitialized,
-      isAnnotationFeatureEnabled,
-    ]
+    [mode, isGroup, is2DSampleViewerVisible, isSceneInitialized, canAnnotate]
   );
 
   useEffect(() => {
