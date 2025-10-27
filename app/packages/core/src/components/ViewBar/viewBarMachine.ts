@@ -168,6 +168,7 @@ function setStages(ctx, stageInfo) {
 const viewBarMachine = createMachine(
   {
     id: "stages",
+    predictableActionArguments: true,
     context: {
       stages: [],
       stageInfo: undefined,

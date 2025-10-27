@@ -162,6 +162,7 @@ export const PARSER = {
 export default Machine(
   {
     id: "viewStageParameter",
+    predictableActionArguments: true,
     initial: "decide",
     context: {
       id: undefined,

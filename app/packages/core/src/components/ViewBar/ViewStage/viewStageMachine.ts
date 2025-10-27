@@ -52,6 +52,7 @@ const isValidStage = (stageInfo, stage) => {
 const viewStageMachine = createMachine(
   {
     id: "viewStage",
+    predictableActionArguments: true,
     context: {
       id: undefined,
       stage: undefined,
