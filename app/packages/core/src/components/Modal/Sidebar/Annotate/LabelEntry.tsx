@@ -57,7 +57,7 @@ const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
   const label = useAtomValue(atom);
   const type = useAtomValue(fieldType(label.path ?? ""));
   const setEditing = useSetAtom(editing);
-  const Icon = ICONS[type] ?? ICONS;
+  const Icon = ICONS[type] ?? "";
   const hoveringLabelIdsList = useAtomValue(hoveringLabelIds);
   const { scene } = useLighter();
 
