@@ -204,7 +204,7 @@ export interface BaseOptions {
 
 export type BoundingBox = [number, number, number, number];
 
-export type Coordinates = [number, number];
+export type Coordinates = [number, number] | [number, number, number];
 
 export type Dimensions = [number, number];
 

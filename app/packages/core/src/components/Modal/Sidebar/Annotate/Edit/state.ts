@@ -8,15 +8,21 @@ import {
   POLYLINES,
 } from "@fiftyone/utilities";
 import type { PrimitiveAtom } from "jotai";
-import { atom } from "jotai";
-import { atomFamily } from "jotai/utils";
+import { atom, getDefaultStore } from "jotai";
+import { atomFamily, atomWithReset } from "jotai/utils";
 import { activeSchemas, fieldType, schemaConfig } from "../state";
 import { addLabel, labels, labelsByPath } from "../useLabels";
 
-export const editing = atom<PrimitiveAtom<AnnotationLabel> | LabelType | null>(
-  null
-);
 export const savedLabel = atom<AnnotationLabel["data"] | null>(null);
+
+export const editing = atomWithReset<
+  PrimitiveAtom<AnnotationLabel> | LabelType | null
+>(null);
+
+const store = getDefaultStore();
+store.sub(editing, () => {
+  store.set(savedLabel, store.get(currentData));
+});
 
 export const hasChanges = atom((get) => {
   const label = get(currentData);
