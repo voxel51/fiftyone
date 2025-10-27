@@ -1,8 +1,5 @@
-import { render } from "@testing-library/react";
+import { LIGHTER_EVENTS, TransformOverlayCommand } from "@fiftyone/lighter";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { RecoilRoot } from "recoil";
-import { LIGHTER_EVENTS } from "@fiftyone/lighter";
-import { TransformOverlayCommand } from "@fiftyone/lighter/src/commands/TransformOverlayCommand";
 
 describe("AnnotationSchema", () => {
   let mockScene: any;
@@ -66,7 +63,9 @@ describe("AnnotationSchema", () => {
 
       // The handler should check for TransformOverlayCommand and skip saving
       // This is what prevents the label dropdown from remounting and stealing focus
-      if (event?.detail?.command?.constructor?.name === "TransformOverlayCommand") {
+      if (
+        event?.detail?.command?.constructor?.name === "TransformOverlayCommand"
+      ) {
         // Should return early and NOT call save
         expect(saveSpy).not.toHaveBeenCalled();
       } else {
@@ -94,7 +93,9 @@ describe("AnnotationSchema", () => {
       };
 
       // The handler should NOT filter this command
-      if (event?.detail?.command?.constructor?.name === "TransformOverlayCommand") {
+      if (
+        event?.detail?.command?.constructor?.name === "TransformOverlayCommand"
+      ) {
         // Should skip
       } else {
         // Should save for other commands
@@ -109,7 +110,9 @@ describe("AnnotationSchema", () => {
       // Test with undefined event
       const event = undefined;
 
-      if (event?.detail?.command?.constructor?.name === "TransformOverlayCommand") {
+      if (
+        event?.detail?.command?.constructor?.name === "TransformOverlayCommand"
+      ) {
         // Should not reach here
         expect(false).toBe(true);
       } else {
