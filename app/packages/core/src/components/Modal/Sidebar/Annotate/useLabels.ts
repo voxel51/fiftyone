@@ -1,3 +1,4 @@
+import { useLighter } from "@fiftyone/lighter";
 import type {
   AnnotationLabel,
   ModalSample,
@@ -20,7 +21,6 @@ import { schemas } from "./state";
 import { useAddAnnotationLabel } from "./useAddAnnotationLabel";
 import useFocus from "./useFocus";
 import useHover from "./useHover";
-import { useLighter } from "@fiftyone/lighter";
 
 const handleSample = async ({
   addLabel,
@@ -78,7 +78,7 @@ export const addLabel = atom(undefined, (get, set, label: AnnotationLabel) => {
 });
 
 export const labels = atom<Array<AnnotationLabel>>([]);
-export const labelAtoms = splitAtom(labels, ({ data: { _id } }) => _id);
+export const labelAtoms = splitAtom(labels, ({ overlay }) => overlay.id);
 export const labelsByPath = atom((get) => {
   const map = {};
   for (const label of get(labels)) {
@@ -98,7 +98,7 @@ export const labelsByPath = atom((get) => {
 
 export const labelMap = atom((get) => {
   const atoms = get(labelAtoms);
-  return Object.fromEntries(atoms.map((atom) => [get(atom).data._id, atom]));
+  return Object.fromEntries(atoms.map((atom) => [get(atom).overlay.id, atom]));
 });
 export const loading = atom(true);
 

@@ -1,10 +1,10 @@
 import { LIGHTER_EVENTS, useLighter } from "@fiftyone/lighter";
+import * as fos from "@fiftyone/state";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
-import { addValue, current, savedLabel } from "./state";
-import { getFieldSchema } from "../../../Lighter/deltas";
 import { useRecoilValue } from "recoil";
-import * as fos from "@fiftyone/state";
+import { getFieldSchema } from "../../../Lighter/deltas";
+import { addValue, current, savedLabel } from "./state";
 
 export default function useSave() {
   const { scene } = useLighter();
@@ -17,6 +17,9 @@ export default function useSave() {
 
   return useCallback(() => {
     if (scene) {
+      if (label?.data) {
+        saved(label.data);
+      }
       scene.dispatchSafely({
         type: LIGHTER_EVENTS.DO_PERSIST_OVERLAY,
         detail: {
@@ -24,9 +27,6 @@ export default function useSave() {
           schema: getFieldSchema(schema, label.path),
           onSuccess: () => {
             setter();
-            if (label?.data) {
-              saved(label.data);
-            }
           },
         },
       });

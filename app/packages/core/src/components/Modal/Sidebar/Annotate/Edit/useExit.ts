@@ -24,6 +24,7 @@ export default function useExit(revertLabel = true) {
     const unsaved = store.get(current);
 
     if (!label) {
+      setEditing(null);
       return;
     }
 
