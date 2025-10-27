@@ -39,7 +39,7 @@ export const useOverlayPersistence = (scene: Scene2D | null) => {
   // a version token.
   const versionToken = useMemo(() => {
     const isoTimestamp = parseTimestamp(
-      currentSample?.last_modified_at
+      (currentSample?.last_modified_at as unknown) as string
     )?.toISOString();
 
     // server doesn't like the iso timestamp ending in 'Z'

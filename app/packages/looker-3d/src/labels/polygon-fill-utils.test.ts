@@ -1,242 +1,12 @@
-import { describe, it, expect, vi } from "vitest";
 import * as THREE from "three";
+import { describe, expect, it, vi } from "vitest";
 import {
-  buildClosedLoopsFromSegments,
-  newellNormal,
   createFilledPolygonMesh,
   createFilledPolygonMeshes,
+  newellNormal,
 } from "./polygon-fill-utils";
 
 describe("polygon-fill-utils", () => {
-  describe("buildClosedLoopsFromSegments", () => {
-    it("should build a simple closed loop from segments", () => {
-      const segments: THREE.Vector3Tuple[][] = [
-        [
-          [0, 0, 0],
-          [1, 0, 0],
-        ],
-        [
-          [1, 0, 0],
-          [1, 1, 0],
-        ],
-        [
-          [1, 1, 0],
-          [0, 1, 0],
-        ],
-        [
-          [0, 1, 0],
-          [0, 0, 0],
-        ],
-      ];
-
-      const result = buildClosedLoopsFromSegments(segments);
-
-      expect(result).toHaveLength(1);
-      expect(result[0]).toHaveLength(4);
-      expect(result[0]).toEqual([
-        [0, 0, 0],
-        [1, 0, 0],
-        [1, 1, 0],
-        [0, 1, 0],
-      ]);
-    });
-
-    it("should handle duplicate segments", () => {
-      const segments: THREE.Vector3Tuple[][] = [
-        [
-          [0, 0, 0],
-          [1, 0, 0],
-        ],
-        [
-          [1, 0, 0],
-          [1, 1, 0],
-        ],
-        [
-          [1, 1, 0],
-          [0, 1, 0],
-        ],
-        [
-          [0, 1, 0],
-          [0, 0, 0],
-        ],
-        [
-          [0, 0, 0],
-          [1, 0, 0],
-        ], // duplicate
-        [
-          [1, 0, 0],
-          [1, 1, 0],
-        ], // duplicate
-      ];
-
-      const result = buildClosedLoopsFromSegments(segments);
-
-      expect(result).toHaveLength(1);
-      expect(result[0]).toHaveLength(4);
-    });
-
-    it("should handle multiple disconnected loops", () => {
-      const segments: THREE.Vector3Tuple[][] = [
-        // First square
-        [
-          [0, 0, 0],
-          [1, 0, 0],
-        ],
-        [
-          [1, 0, 0],
-          [1, 1, 0],
-        ],
-        [
-          [1, 1, 0],
-          [0, 1, 0],
-        ],
-        [
-          [0, 1, 0],
-          [0, 0, 0],
-        ],
-        // Second square (offset)
-        [
-          [2, 0, 0],
-          [3, 0, 0],
-        ],
-        [
-          [3, 0, 0],
-          [3, 1, 0],
-        ],
-        [
-          [3, 1, 0],
-          [2, 1, 0],
-        ],
-        [
-          [2, 1, 0],
-          [2, 0, 0],
-        ],
-      ];
-
-      const result = buildClosedLoopsFromSegments(segments);
-
-      expect(result).toHaveLength(2);
-      expect(result[0]).toHaveLength(4);
-      expect(result[1]).toHaveLength(4);
-    });
-
-    it("should ignore self-loops", () => {
-      const segments: THREE.Vector3Tuple[][] = [
-        [
-          [0, 0, 0],
-          [0, 0, 0],
-        ], // self-loop
-        [
-          [0, 0, 0],
-          [1, 0, 0],
-        ],
-        [
-          [1, 0, 0],
-          [1, 1, 0],
-        ],
-        [
-          [1, 1, 0],
-          [0, 1, 0],
-        ],
-        [
-          [0, 1, 0],
-          [0, 0, 0],
-        ],
-      ];
-
-      const result = buildClosedLoopsFromSegments(segments);
-
-      expect(result).toHaveLength(1);
-      expect(result[0]).toHaveLength(4);
-    });
-
-    it("should ignore invalid segments with less than 2 points", () => {
-      const segments: THREE.Vector3Tuple[][] = [
-        [[0, 0, 0]], // invalid - only 1 point
-        [
-          [0, 0, 0],
-          [1, 0, 0],
-        ],
-        [
-          [1, 0, 0],
-          [1, 1, 0],
-        ],
-        [
-          [1, 1, 0],
-          [0, 1, 0],
-        ],
-        [
-          [0, 1, 0],
-          [0, 0, 0],
-        ],
-      ];
-
-      const result = buildClosedLoopsFromSegments(segments);
-
-      expect(result).toHaveLength(1);
-      expect(result[0]).toHaveLength(4);
-    });
-
-    it("should return empty array for no valid loops", () => {
-      const segments: THREE.Vector3Tuple[][] = [
-        [
-          [0, 0, 0],
-          [1, 0, 0],
-        ], // dangling edge
-        [
-          [2, 0, 0],
-          [3, 0, 0],
-        ], // another dangling edge
-      ];
-
-      const result = buildClosedLoopsFromSegments(segments);
-
-      expect(result).toHaveLength(0);
-    });
-
-    it("should handle complex polygon with many vertices", () => {
-      const segments: THREE.Vector3Tuple[][] = [
-        [
-          [0, 0, 0],
-          [1, 0, 0],
-        ],
-        [
-          [1, 0, 0],
-          [2, 0, 0],
-        ],
-        [
-          [2, 0, 0],
-          [2, 1, 0],
-        ],
-        [
-          [2, 1, 0],
-          [2, 2, 0],
-        ],
-        [
-          [2, 2, 0],
-          [1, 2, 0],
-        ],
-        [
-          [1, 2, 0],
-          [0, 2, 0],
-        ],
-        [
-          [0, 2, 0],
-          [0, 1, 0],
-        ],
-        [
-          [0, 1, 0],
-          [0, 0, 0],
-        ],
-      ];
-
-      const result = buildClosedLoopsFromSegments(segments);
-
-      expect(result).toHaveLength(1);
-      expect(result[0]).toHaveLength(8);
-    });
-  });
-
   describe("newellNormal", () => {
     it("should compute normal for a simple square in XY plane", () => {
       const pts = [
@@ -419,7 +189,7 @@ describe("polygon-fill-utils", () => {
   });
 
   describe("createFilledPolygonMeshes", () => {
-    it("should create meshes from segments", () => {
+    it("should return null for disjoint segments (we don't fill disjoint segments)", () => {
       const points3d: THREE.Vector3Tuple[][] = [
         [
           [0, 0, 0],
@@ -442,9 +212,7 @@ describe("polygon-fill-utils", () => {
 
       const meshes = createFilledPolygonMeshes(points3d, material);
 
-      expect(meshes).not.toBeNull();
-      expect(meshes).toHaveLength(1);
-      expect(meshes![0]).toBeInstanceOf(THREE.Mesh);
+      expect(meshes).toBeNull();
     });
 
     it("should handle single polyline as closed loop", () => {
@@ -466,7 +234,7 @@ describe("polygon-fill-utils", () => {
       expect(meshes![0]).toBeInstanceOf(THREE.Mesh);
     });
 
-    it("should handle multiple disconnected loops", () => {
+    it("should return null for multiple disconnected segments (we don't fill disjoint segments)", () => {
       const points3d: THREE.Vector3Tuple[][] = [
         // First square
         [
@@ -507,10 +275,7 @@ describe("polygon-fill-utils", () => {
 
       const meshes = createFilledPolygonMeshes(points3d, material);
 
-      expect(meshes).not.toBeNull();
-      expect(meshes).toHaveLength(2);
-      expect(meshes![0]).toBeInstanceOf(THREE.Mesh);
-      expect(meshes![1]).toBeInstanceOf(THREE.Mesh);
+      expect(meshes).toBeNull();
     });
 
     it("should return null for no valid polygons", () => {

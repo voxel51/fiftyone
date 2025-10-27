@@ -1,11 +1,11 @@
 import {
   BoundingBoxOverlay,
   LIGHTER_EVENTS,
+  TransformOverlayCommand,
   useLighter,
 } from "@fiftyone/lighter";
-import { TransformOverlayCommand } from "@fiftyone/lighter/src/commands/TransformOverlayCommand";
-import { useAtomValue, useSetAtom } from "jotai";
-import { useEffect, useState } from "react";
+import { useAtom, useAtomValue } from "jotai";
+import React, { useEffect, useState } from "react";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import { setPathUserUnchanged } from "../../../../../plugins/SchemaIO/hooks";
 import { currentData, currentOverlay } from "./state";
@@ -45,7 +45,7 @@ export default function Position() {
     dimensions: {},
   });
   const overlay = useAtomValue(currentOverlay);
-  const setData = useSetAtom(currentData);
+  const [data, setData] = useAtom(currentData);
 
   const { scene } = useLighter();
 
@@ -62,10 +62,11 @@ export default function Position() {
   }, [overlay]);
 
   useEffect(() => {
-    const handler = () => {
+    const handler = (event) => {
       if (
         !(overlay instanceof BoundingBoxOverlay) ||
-        !overlay.hasValidBounds()
+        !overlay.hasValidBounds() ||
+        event.detail.id !== data?._id
       ) {
         return;
       }
@@ -97,7 +98,7 @@ export default function Position() {
       scene?.off(LIGHTER_EVENTS.OVERLAY_DRAG_MOVE, handler);
       scene?.off(LIGHTER_EVENTS.OVERLAY_RESIZE_MOVE, handler);
     };
-  }, [overlay, scene, setData]);
+  }, [data?._id, overlay, scene, setData]);
 
   return (
     <div style={{ width: "100%" }}>
