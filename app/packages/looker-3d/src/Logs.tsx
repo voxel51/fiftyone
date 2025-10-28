@@ -5,7 +5,11 @@ import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ALL_LOADING_COMPLETE } from "./hooks";
-import { fo3dAssetsParseStatusThisSample } from "./state";
+import {
+  fo3dAssetsParseStatusThisSample,
+  fo3dLoadingStatusThisSample,
+} from "./state";
+import { LoadingStatus } from "./types";
 
 const LogContainer = styled.div`
   width: 70%;
@@ -18,33 +22,29 @@ const LogContainer = styled.div`
 
 export const Logs = () => {
   const logs = useRecoilValue(fo3dAssetsParseStatusThisSample);
+  const loadingStatus = useRecoilValue(fo3dLoadingStatusThisSample);
 
   const errorLogs = useMemo(() => {
     return logs.filter((log) => log.status === "error");
   }, [logs]);
 
   const isStillLoading = useMemo(() => {
-    if (logs.length === 0) {
-      return false;
-    }
-
-    if (logs[logs.length - 1].status === "error") {
-      return false;
-    }
-
-    return logs[logs.length - 1].message !== ALL_LOADING_COMPLETE;
-  }, [logs]);
+    return (
+      loadingStatus.status === LoadingStatus.STARTED ||
+      loadingStatus.status === LoadingStatus.LOADING
+    );
+  }, [loadingStatus.status]);
 
   const isFinalStatusSuccess = useMemo(() => {
-    if (logs.some((log) => log.status === "error")) {
-      return false;
-    }
+    return loadingStatus.status === LoadingStatus.SUCCESS;
+  }, [loadingStatus.status]);
 
-    return true;
-  }, [logs]);
+  const hasError = useMemo(() => {
+    return loadingStatus.status === LoadingStatus.FAILED;
+  }, [loadingStatus.status]);
 
   const indicatorIcon = useMemo(() => {
-    if (logs.length === 0) {
+    if (loadingStatus.status === LoadingStatus.IDLE) {
       return null;
     }
 
@@ -56,10 +56,37 @@ export const Logs = () => {
       return <DoneIcon fontSize="small" style={{ color: "green" }} />;
     }
 
-    return <FeedbackIcon fontSize="small" style={{ color: "red" }} />;
-  }, [logs, isFinalStatusSuccess, isStillLoading]);
+    if (hasError) {
+      return <FeedbackIcon fontSize="small" style={{ color: "red" }} />;
+    }
 
-  if (logs.length === 0) {
+    return null;
+  }, [loadingStatus.status, isStillLoading, isFinalStatusSuccess, hasError]);
+
+  const statusMessage = useMemo(() => {
+    if (loadingStatus.status === LoadingStatus.IDLE) {
+      return null;
+    }
+
+    if (isStillLoading) {
+      if (loadingStatus.currentUrl) {
+        return `Loading: ${loadingStatus.currentUrl}`;
+      }
+      return "Loading assets...";
+    }
+
+    if (isFinalStatusSuccess) {
+      return "All assets loaded successfully!";
+    }
+
+    if (hasError) {
+      return loadingStatus.errorMessage || "Loading failed";
+    }
+
+    return null;
+  }, [loadingStatus, isStillLoading, isFinalStatusSuccess, hasError]);
+
+  if (loadingStatus.status === LoadingStatus.IDLE) {
     return null;
   }
 
@@ -72,11 +99,7 @@ export const Logs = () => {
         color={"GrayText"}
         style={{ marginLeft: "0.75em" }}
       >
-        {isStillLoading
-          ? logs[logs.length - 1].message
-          : isFinalStatusSuccess
-          ? "All assets loaded successfully!"
-          : errorLogs[errorLogs.length - 1].message}
+        {statusMessage}
       </Typography>
     </LogContainer>
   );

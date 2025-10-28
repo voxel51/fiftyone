@@ -3,7 +3,8 @@ import { Box3, type Group } from "three";
 
 const BOUNDING_BOX_POLLING_INTERVAL = 50;
 const UNCHANGED_COUNT_THRESHOLD = 6;
-const MAX_BOUNDING_BOX_RETRIES = 10;
+const MAX_BOUNDING_BOX_RETRIES = 20;
+const PREDICATE_TIMEOUT = 5000;
 
 /**
  * Checks if a bounding box has all finite values in its min and max components.
@@ -38,10 +39,11 @@ export const useFo3dBounds = (
   const unchangedCount = useRef(0);
   const previousBox = useRef<Box3>(null);
   const retryCount = useRef(0);
+  const predicateStartTime = useRef<number | null>(null);
 
   const timeOutIdRef = useRef<number | null>(null);
 
-  const recomputeBounds = useCallback(() => {
+  const computeBounds = useCallback(() => {
     setIsComputing(true);
 
     if (!objectRef.current) {
@@ -62,12 +64,37 @@ export const useFo3dBounds = (
     setIsComputing(false);
   }, [objectRef]);
 
-  useLayoutEffect(() => {
-    if (predicate && !predicate()) {
-      return;
-    }
+  const recomputeBounds = useCallback(() => {
+    const waitForPredicateThenCompute = () => {
+      if (predicate) {
+        if (predicateStartTime.current === null) {
+          predicateStartTime.current = Date.now();
+        }
 
-    // flag to prevent state updates on unmounted components
+        if (Date.now() - predicateStartTime.current > PREDICATE_TIMEOUT) {
+          predicateStartTime.current = null;
+          computeBounds();
+          return;
+        }
+
+        if (!predicate()) {
+          timeOutIdRef.current = window.setTimeout(
+            waitForPredicateThenCompute,
+            BOUNDING_BOX_POLLING_INTERVAL
+          );
+          return;
+        }
+
+        predicateStartTime.current = null;
+      }
+      computeBounds();
+    };
+
+    waitForPredicateThenCompute();
+  }, [predicate, computeBounds]);
+
+  useLayoutEffect(() => {
+    // Flag to prevent state updates on unmounted components
     let isMounted = true;
 
     const boxesAreEqual = (box1: Box3, box2: Box3) => {
@@ -90,7 +117,7 @@ export const useFo3dBounds = (
           return;
         }
         timeOutIdRef.current = window.setTimeout(
-          getBoundingBox,
+          waitForPredicateThenGetBounds,
           BOUNDING_BOX_POLLING_INTERVAL
         );
         return;
@@ -109,7 +136,7 @@ export const useFo3dBounds = (
           return;
         }
         timeOutIdRef.current = window.setTimeout(
-          getBoundingBox,
+          waitForPredicateThenGetBounds,
           BOUNDING_BOX_POLLING_INTERVAL
         );
         return;
@@ -129,23 +156,47 @@ export const useFo3dBounds = (
         setIsComputing(false);
       } else {
         timeOutIdRef.current = window.setTimeout(
-          getBoundingBox,
+          waitForPredicateThenGetBounds,
           BOUNDING_BOX_POLLING_INTERVAL
         );
       }
     };
 
-    // this is a hack, yet to find a better way than polling to know when the asset is done loading
-    // callbacks in loaders are not reliable
-    timeOutIdRef.current = window.setTimeout(
-      getBoundingBox,
-      BOUNDING_BOX_POLLING_INTERVAL
-    );
+    const waitForPredicateThenGetBounds = () => {
+      if (predicate) {
+        // Initialize start time on first call
+        if (predicateStartTime.current === null) {
+          predicateStartTime.current = Date.now();
+        }
 
-    // cleanup function to prevent memory leaks
+        if (Date.now() - predicateStartTime.current > PREDICATE_TIMEOUT) {
+          predicateStartTime.current = null;
+          getBoundingBox();
+          return;
+        }
+
+        if (!predicate()) {
+          timeOutIdRef.current = window.setTimeout(
+            waitForPredicateThenGetBounds,
+            BOUNDING_BOX_POLLING_INTERVAL
+          );
+          return;
+        }
+
+        predicateStartTime.current = null;
+      }
+      getBoundingBox();
+    };
+
+    // This is a hack, yet to find a better way than polling to know when the asset is done loading
+    // Callbacks in loaders are not reliable
+    // Start with predicate check
+    waitForPredicateThenGetBounds();
+
     return () => {
       isMounted = false;
       retryCount.current = 0;
+      predicateStartTime.current = null;
       setIsComputing(false);
 
       if (timeOutIdRef.current) {

@@ -57,8 +57,8 @@ export interface PolylineSegmentTransform {
 
 export interface PolylinePointTransformData {
   segments: PolylineSegmentTransform[];
-  path: string;
-  sampleId: string;
+  path?: string;
+  sampleId?: string;
   label?: string;
   misc?: Record<string, unknown>;
 }

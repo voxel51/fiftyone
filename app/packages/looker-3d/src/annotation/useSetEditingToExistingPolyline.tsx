@@ -1,18 +1,18 @@
+import { coerceStringBooleans } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate";
 import { editing as editingAtom } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit";
+import { savedLabel } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/state";
 import * as fos from "@fiftyone/state";
-import { useAtom, useSetAtom } from "jotai";
-import { atomWithReset, useResetAtom } from "jotai/utils";
+import { getDefaultStore, useSetAtom } from "jotai";
+import { useResetAtom } from "jotai/utils";
 import { useCallback, useEffect } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useSetRecoilState } from "recoil";
 import {
-  currentActiveAnnotationField3dAtom,
+  clearTransformStateSelector,
   polylinePointTransformsAtom,
 } from "../state";
 import { PolylinePointTransformData } from "./types";
-import { sanitizeSchemaIoLabelAttributes } from "./utils/polyline-utils";
-
-const currentEditingExistingPolylineAtom =
-  atomWithReset<fos.AnnotationLabel | null>(null);
+import { currentEditingPolylineAtom } from "./useSetEditingToNewPolyline";
+import { useSyncWithPolylinePointTransforms } from "./useSyncWithPolylinePointTransforms";
 
 /**
  * Hook to set editing atom for existing polylines when clicked
@@ -20,15 +20,12 @@ const currentEditingExistingPolylineAtom =
 export const useSetEditingToExistingPolyline = () => {
   const setEditing = useSetAtom(editingAtom);
   const resetEditing = useResetAtom(editingAtom);
-  const resetCurrentEditing = useResetAtom(currentEditingExistingPolylineAtom);
-  const currentActiveField = useRecoilValue(currentActiveAnnotationField3dAtom);
-  const currentSampleId = useRecoilValue(fos.currentSampleId);
-  const [currentEditing, setCurrentEditing] = useAtom(
-    currentEditingExistingPolylineAtom
-  );
-  const [polylinePointTransforms, setPolylinePointTransforms] = useRecoilState(
+  const resetCurrentEditing = useResetAtom(currentEditingPolylineAtom);
+  const setCurrentEditing = useSetAtom(currentEditingPolylineAtom);
+  const setPolylinePointTransforms = useSetRecoilState(
     polylinePointTransformsAtom
   );
+  const syncWithPolylinePointTransforms = useSyncWithPolylinePointTransforms();
 
   useEffect(() => {
     return () => {
@@ -37,53 +34,73 @@ export const useSetEditingToExistingPolyline = () => {
     };
   }, [resetCurrentEditing, resetEditing]);
 
-  const syncToSidebar = useCallback(
+  const clearTransformState = useSetRecoilState(clearTransformStateSelector);
+
+  const jotaiStore = getDefaultStore();
+
+  const syncWithSidebar = useCallback(
     (label: fos.PolylineAnnotationLabel["data"]) => {
-      const { points3d: _points3d, _id, ...rest } = label;
+      const { points3d: _points3d, _id, label: _label, ...rest } = label;
 
       setPolylinePointTransforms((prev) => {
         return {
           ...prev,
           [label._id]: {
             ...(prev[label._id] ?? ({} as PolylinePointTransformData)),
-            label: label.label,
+            label: _label,
             misc: {
-              ...sanitizeSchemaIoLabelAttributes(rest ?? {}),
+              ...coerceStringBooleans(rest ?? {}),
             },
           },
         };
       });
+
+      // const currentVal = jotaiStore.get(current);
+      // const sanitizedLabel = coerceStringBooleans(
+      //   label as unknown as Record<string, unknown>
+      // );
+      // jotaiStore.set(current, {
+      //   ...currentVal,
+      //   data: sanitizedLabel,
+      //   overlay: {
+      //     ...currentVal?.overlay,
+      //     label: sanitizedLabel,
+      //   },
+      // });
     },
     []
   );
 
   return useCallback(
     (label: fos.PolylineAnnotationLabel["data"] & { path: string }) => {
-      const polylineLabelData = {
-        _id: label._id,
-        points: [],
-        points3d: label.points3d || [],
-        filled: label.filled,
-        closed: label.closed,
-        label: label.label || "",
-      };
+      syncWithPolylinePointTransforms(label);
 
       setCurrentEditing({
         isNew: false,
-        data: polylineLabelData,
+        data: label,
         path: label.path,
         type: "Polyline" as const,
         overlay: {
           id: label._id,
-          updateLabel: syncToSidebar,
+          field: label.path,
+          label: label,
+          updateLabel: syncWithSidebar,
           getLabel: () => {
-            return polylineLabelData;
+            return { ...label };
+          },
+          setSelected: (selected: boolean) => {
+            if (!selected) {
+              clearTransformState({});
+              setPolylinePointTransforms(null);
+            }
           },
         },
       });
 
-      setEditing(currentEditingExistingPolylineAtom);
+      setEditing(currentEditingPolylineAtom);
+
+      jotaiStore.set(savedLabel, label);
     },
-    [syncToSidebar]
+    [syncWithSidebar, syncWithPolylinePointTransforms]
   );
 };

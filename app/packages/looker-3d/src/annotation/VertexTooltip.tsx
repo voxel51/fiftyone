@@ -22,7 +22,7 @@ const TooltipContent = styled.div`
   border: 1px solid rgba(255, 255, 255, 0.2);
 `;
 
-interface CentroidTooltipProps {
+interface VertexTooltipProps {
   position: [number, number, number];
   tooltipDescriptor: string | null;
   isVisible: boolean;
@@ -34,7 +34,7 @@ export const VertexTooltip = ({
   position,
   tooltipDescriptor,
   isVisible,
-}: CentroidTooltipProps) => {
+}: VertexTooltipProps) => {
   const { camera } = useThree();
 
   const scale = useMemo(() => {

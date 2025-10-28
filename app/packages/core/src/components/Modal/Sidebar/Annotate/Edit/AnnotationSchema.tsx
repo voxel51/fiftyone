@@ -14,6 +14,7 @@ import { useAtom, useAtomValue } from "jotai";
 import { useEffect, useMemo } from "react";
 import { useRecoilCallback } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
+import { coerceStringBooleans } from "../utils";
 import {
   currentData,
   currentField,
@@ -172,8 +173,22 @@ const AnnotationSchema = () => {
 
   useEffect(() => {
     const handler = (event) => {
-      const label = overlay?.label;
-      label && save(label);
+      // Here, this would be true for `undo` or `redo`
+      if (event.detail?.command?.constructor?.name !== "UpdateLabelCommand") {
+        const label = overlay?.label;
+
+        if (label) {
+          save(label);
+        }
+
+        return;
+      }
+
+      const newLabel = coerceStringBooleans(event.detail.command.nextLabel);
+
+      if (newLabel) {
+        save(newLabel);
+      }
     };
 
     lighter.scene?.on(LIGHTER_EVENTS.COMMAND_EXECUTED, handler);
