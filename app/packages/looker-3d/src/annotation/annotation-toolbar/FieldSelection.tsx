@@ -30,7 +30,16 @@ export const FieldSelection = () => {
     if (currentActiveField === null && schemaFields.length > 0) {
       setCurrentActiveField(schemaFields[0]);
     }
-  }, [currentActiveField, schemaFields, setCurrentActiveField]);
+
+    // Make sure active field is in the schema fields
+    if (
+      currentActiveField &&
+      schemaFields.length > 0 &&
+      !schemaFields.includes(currentActiveField)
+    ) {
+      setCurrentActiveField(schemaFields[0]);
+    }
+  }, [currentActiveField, schemaFields]);
 
   if (schemaFields.length === 0) {
     return null;
