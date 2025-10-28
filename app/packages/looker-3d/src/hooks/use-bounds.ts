@@ -1,209 +1,130 @@
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
-import { Box3, type Group } from "three";
+import { Box3, Group } from "three";
 
-const BOUNDING_BOX_POLLING_INTERVAL = 50;
-const UNCHANGED_COUNT_THRESHOLD = 6;
-const MAX_BOUNDING_BOX_RETRIES = 20;
-const PREDICATE_TIMEOUT = 5000;
-
-/**
- * Checks if a bounding box has all finite values in its min and max components.
- * Returns true if all components are finite, false otherwise.
- */
-const isFiniteBox = (box: Box3): boolean => {
-  return (
-    Number.isFinite(box.min.x) &&
-    Number.isFinite(box.min.y) &&
-    Number.isFinite(box.min.z) &&
-    Number.isFinite(box.max.x) &&
-    Number.isFinite(box.max.y) &&
-    Number.isFinite(box.max.z)
-  );
+type Options = {
+  // Consecutive identical reads required
+  stableSamples?: number;
+  // Equality tolerance
+  epsilon?: number;
+  // Give up after this long
+  hardTimeoutMs?: number;
 };
 
+const boxesWithinEpsilon = (a: Box3, b: Box3, eps: number) =>
+  Math.abs(a.min.x - b.min.x) <= eps &&
+  Math.abs(a.min.y - b.min.y) <= eps &&
+  Math.abs(a.min.z - b.min.z) <= eps &&
+  Math.abs(a.max.x - b.max.x) <= eps &&
+  Math.abs(a.max.y - b.max.y) <= eps &&
+  Math.abs(a.max.z - b.max.z) <= eps;
+
+const isFiniteBox = (b: Box3) =>
+  Number.isFinite(b.min.x) &&
+  Number.isFinite(b.min.y) &&
+  Number.isFinite(b.min.z) &&
+  Number.isFinite(b.max.x) &&
+  Number.isFinite(b.max.y) &&
+  Number.isFinite(b.max.z);
+
 /**
- * Calculates the bounding box of the object with the given ref.
- *
- * @param objectRef - Ref to the object
- * @param predicate - Optional predicate to check before calculating the bounding box.
- * IMPORTANT: Make sure this predicate is memoized using useCallback
- * @returns Object containing the bounding box, a function to recompute it, and a flag indicating if computation is in progress
+ * Compute a stable world-space bounding box for a Group.
+ * Polls via rAF until N consecutive identical boxes or hard timeout.
  */
-export const useFo3dBounds = (
+export function useFo3dBounds(
   objectRef: React.RefObject<Group>,
-  predicate?: () => boolean
-) => {
+  predicate?: () => boolean,
+  opts: Options = {}
+) {
+  const predicateRef = useRef(predicate);
+  predicateRef.current = predicate;
+
+  const { stableSamples = 3, epsilon = 1e-4, hardTimeoutMs = 3000 } = opts;
+
   const [boundingBox, setBoundingBox] = useState<Box3 | null>(null);
   const [isComputing, setIsComputing] = useState(false);
 
-  const unchangedCount = useRef(0);
-  const previousBox = useRef<Box3>(null);
-  const retryCount = useRef(0);
-  const predicateStartTime = useRef<number | null>(null);
+  const runToken = useRef(0); // increments to cancel in-flight loops
 
-  const timeOutIdRef = useRef<number | null>(null);
+  const computeOnce = useCallback(() => {
+    const obj = objectRef.current;
+    if (!obj) return null;
 
-  const computeBounds = useCallback(() => {
-    setIsComputing(true);
+    // ensure transforms are up to date before measuring
+    obj.updateWorldMatrix(true, true);
 
-    if (!objectRef.current) {
-      setBoundingBox(null);
-      setIsComputing(false);
-      return;
-    }
-
-    const box = new Box3().setFromObject(objectRef.current);
-
-    if (!isFiniteBox(box)) {
-      setBoundingBox(null);
-      setIsComputing(false);
-      return;
-    }
-
-    setBoundingBox(box);
-    setIsComputing(false);
+    const box = new Box3().setFromObject(obj);
+    return isFiniteBox(box) ? box : null;
   }, [objectRef]);
 
-  const recomputeBounds = useCallback(() => {
-    const waitForPredicateThenCompute = () => {
-      if (predicate) {
-        if (predicateStartTime.current === null) {
-          predicateStartTime.current = Date.now();
-        }
+  const startLoop = useCallback(() => {
+    const token = ++runToken.current;
+    setIsComputing(true);
 
-        if (Date.now() - predicateStartTime.current > PREDICATE_TIMEOUT) {
-          predicateStartTime.current = null;
-          computeBounds();
-          return;
-        }
+    const start = performance.now();
+    let prev: Box3 | null = null;
+    let stable = 0;
+    let rafId = 0;
 
-        if (!predicate()) {
-          timeOutIdRef.current = window.setTimeout(
-            waitForPredicateThenCompute,
-            BOUNDING_BOX_POLLING_INTERVAL
-          );
-          return;
-        }
-
-        predicateStartTime.current = null;
+    const tick = () => {
+      if (token !== runToken.current) return; // canceled
+      if (predicateRef.current && !predicateRef.current()) {
+        rafId = requestAnimationFrame(tick);
+        return;
       }
-      computeBounds();
+
+      const box = computeOnce();
+      if (!box) {
+        if (performance.now() - start > hardTimeoutMs) {
+          // give up cleanly
+          if (token === runToken.current) {
+            setBoundingBox(null);
+            setIsComputing(false);
+          }
+          return;
+        }
+        rafId = requestAnimationFrame(tick);
+        return;
+      }
+
+      if (prev && boxesWithinEpsilon(prev, box, epsilon)) {
+        stable += 1;
+      } else {
+        stable = 1;
+      }
+      prev = box;
+
+      if (
+        stable >= stableSamples ||
+        performance.now() - start > hardTimeoutMs
+      ) {
+        if (token === runToken.current) {
+          setBoundingBox(box);
+          setIsComputing(false);
+        }
+        return;
+      }
+
+      rafId = requestAnimationFrame(tick);
     };
 
-    waitForPredicateThenCompute();
-  }, [predicate, computeBounds]);
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [computeOnce, hardTimeoutMs, epsilon, stableSamples]);
+
+  const recomputeBounds = useCallback(() => {
+    // Invalidate current run; next startLoop will own a new token
+    runToken.current++;
+    startLoop();
+  }, [startLoop]);
 
   useLayoutEffect(() => {
-    // Flag to prevent state updates on unmounted components
-    let isMounted = true;
-
-    const boxesAreEqual = (box1: Box3, box2: Box3) => {
-      return box1.min.equals(box2.min) && box1.max.equals(box2.max);
-    };
-
-    const getBoundingBox = () => {
-      if (!isMounted) return;
-
-      setIsComputing(true);
-
-      if (!objectRef.current) {
-        retryCount.current += 1;
-        if (retryCount.current >= MAX_BOUNDING_BOX_RETRIES) {
-          retryCount.current = 0;
-          unchangedCount.current = 0;
-          previousBox.current = null;
-          setBoundingBox(null);
-          setIsComputing(false);
-          return;
-        }
-        timeOutIdRef.current = window.setTimeout(
-          waitForPredicateThenGetBounds,
-          BOUNDING_BOX_POLLING_INTERVAL
-        );
-        return;
-      }
-
-      const box = new Box3().setFromObject(objectRef.current);
-
-      if (!isFiniteBox(box)) {
-        retryCount.current += 1;
-        if (retryCount.current >= MAX_BOUNDING_BOX_RETRIES) {
-          retryCount.current = 0;
-          unchangedCount.current = 0;
-          previousBox.current = null;
-          setBoundingBox(null);
-          setIsComputing(false);
-          return;
-        }
-        timeOutIdRef.current = window.setTimeout(
-          waitForPredicateThenGetBounds,
-          BOUNDING_BOX_POLLING_INTERVAL
-        );
-        return;
-      }
-
-      if (previousBox.current && boxesAreEqual(box, previousBox.current)) {
-        unchangedCount.current += 1;
-      } else {
-        unchangedCount.current = 1;
-      }
-
-      previousBox.current = box;
-
-      if (unchangedCount.current >= UNCHANGED_COUNT_THRESHOLD) {
-        retryCount.current = 0;
-        setBoundingBox(box);
-        setIsComputing(false);
-      } else {
-        timeOutIdRef.current = window.setTimeout(
-          waitForPredicateThenGetBounds,
-          BOUNDING_BOX_POLLING_INTERVAL
-        );
-      }
-    };
-
-    const waitForPredicateThenGetBounds = () => {
-      if (predicate) {
-        // Initialize start time on first call
-        if (predicateStartTime.current === null) {
-          predicateStartTime.current = Date.now();
-        }
-
-        if (Date.now() - predicateStartTime.current > PREDICATE_TIMEOUT) {
-          predicateStartTime.current = null;
-          getBoundingBox();
-          return;
-        }
-
-        if (!predicate()) {
-          timeOutIdRef.current = window.setTimeout(
-            waitForPredicateThenGetBounds,
-            BOUNDING_BOX_POLLING_INTERVAL
-          );
-          return;
-        }
-
-        predicateStartTime.current = null;
-      }
-      getBoundingBox();
-    };
-
-    // This is a hack, yet to find a better way than polling to know when the asset is done loading
-    // Callbacks in loaders are not reliable
-    // Start with predicate check
-    waitForPredicateThenGetBounds();
-
+    const cancel = startLoop();
     return () => {
-      isMounted = false;
-      retryCount.current = 0;
-      predicateStartTime.current = null;
-      setIsComputing(false);
-
-      if (timeOutIdRef.current) {
-        window.clearTimeout(timeOutIdRef.current);
-      }
+      // Cancel any in-flight loop
+      runToken.current++;
+      cancel?.();
     };
-  }, [objectRef, predicate]);
+  }, [startLoop]);
 
   return { boundingBox, recomputeBounds, isComputing };
-};
+}

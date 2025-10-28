@@ -1,4 +1,5 @@
 import { LoadingDots } from "@fiftyone/components";
+import { returnFallbackIfPredicateFalseAfterTimeout } from "@fiftyone/core";
 import { useOverlayPersistence } from "@fiftyone/core/src/components/Modal/Lighter/useOverlayPersistence";
 import useCanAnnotate from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useCanAnnotate";
 import {
@@ -341,11 +342,18 @@ export const MediaTypeFo3dComponent = () => {
   const loadingStatus = useLoadingStatus();
 
   const canComputeBounds = useCallback(() => {
-    return (
+    const checkLoadingStatus = () =>
       loadingStatus.isSuccess ||
       loadingStatus.isFailed ||
-      loadingStatus.isAborted
+      loadingStatus.isAborted;
+
+    const predicateWithTimeout = returnFallbackIfPredicateFalseAfterTimeout(
+      checkLoadingStatus,
+      true,
+      2000
     );
+
+    return predicateWithTimeout();
   }, [
     loadingStatus.isSuccess,
     loadingStatus.isFailed,
