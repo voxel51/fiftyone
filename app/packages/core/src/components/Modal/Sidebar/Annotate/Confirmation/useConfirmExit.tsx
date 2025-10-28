@@ -41,8 +41,8 @@ function ExitChangesModal({
           <MuiButton
             color="error"
             onClick={() => {
-              exit();
               close();
+              exit();
               shown();
             }}
             variant="contained"

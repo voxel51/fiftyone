@@ -27,9 +27,9 @@ import tunnel from "tunnel-rat";
 import { StatusBarContainer } from "./containers";
 import {
   activeNodeAtom,
+  activeSegmentationStateAtom,
   cameraViewStatusAtom,
   isStatusBarOnAtom,
-  segmentPolylineStateAtom,
 } from "./state";
 
 const PerfContainer = styled.div`
@@ -398,7 +398,7 @@ export const StatusBar = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [showPerfStatus, setShowPerfStatus] = useRecoilState(isStatusBarOnAtom);
   const setActiveNode = useSetRecoilState(activeNodeAtom);
-  const segmentPolylineState = useRecoilState(segmentPolylineStateAtom)[0];
+  const segmentState = useRecoilValue(activeSegmentationStateAtom);
   const cameraViewStatus = useRecoilValue(cameraViewStatusAtom);
   const isMultiviewOn = useRecoilValue(isInMultiPanelViewAtom);
 
@@ -433,14 +433,13 @@ export const StatusBar = ({
         </ViewStatusMessage>
       )}
 
-      {segmentPolylineState.isActive && (
+      {segmentState.isActive && (
         <SegmentHint $border={theme.primary.main} $text={"#e0e0e0"}>
           <SegmentHintRow>
             <InfoOutlinedIcon
-              style={{ fontSize: 14, color: theme.primary.main }}
+              style={{ fontSize: 12, color: theme.primary.main }}
             />
-            Snap to first vertex to close • Double click to finish • Escape to
-            cancel
+            Double click to finish • Del to undo last vertex • Escape to cancel
           </SegmentHintRow>
         </SegmentHint>
       )}

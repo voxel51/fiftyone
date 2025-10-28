@@ -18,7 +18,7 @@ const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
         return {
           kind: EntryKind.LABEL,
           atom,
-          id: store.get(atom).data._id,
+          id: store.get(atom).overlay.id,
         };
       }),
     [atoms]

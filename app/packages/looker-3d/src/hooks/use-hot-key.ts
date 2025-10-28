@@ -47,6 +47,13 @@ export const useHotkey = (
         return;
       }
 
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      ) {
+        return;
+      }
+
       if (e.code === keyCode) {
         decoratedCb();
       }

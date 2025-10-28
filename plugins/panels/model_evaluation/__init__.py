@@ -1278,8 +1278,8 @@ def _init_segmentation_results(dataset, results, gt_field):
     for ytrue, ypred, ytrue_id, ypred_id in zip(
         results.ytrue, results.ypred, results.ytrue_ids, results.ypred_ids
     ):
-        i = classes_map[ytrue]
-        j = classes_map[ypred]
+        j = classes_map[ytrue]
+        i = classes_map[ypred]
         index = (i, j)
 
         if index not in ytrue_ids_dict:

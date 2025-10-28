@@ -1,38 +1,77 @@
-import { useCallback, useEffect } from "react";
+import { CameraControls } from "@react-three/drei";
+import React, { useCallback, useEffect } from "react";
 import { useSetRecoilState } from "recoil";
-import { Vector3 } from "three";
+import { PerspectiveCamera, Vector3 } from "three";
 import { useFo3dContext } from "../fo3d/context";
 import { cameraViewStatusAtom } from "../state";
 
 interface UseCameraViewsProps {
-  cameraControlsRef: React.RefObject<any>;
+  cameraRef: React.RefObject<PerspectiveCamera>;
+  cameraControlsRef: React.RefObject<CameraControls>;
 }
 
-export const useCameraViews = ({ cameraControlsRef }: UseCameraViewsProps) => {
+export const useCameraViews = ({
+  cameraRef,
+  cameraControlsRef,
+}: UseCameraViewsProps) => {
   const { sceneBoundingBox, upVector } = useFo3dContext();
   const setCameraViewStatus = useSetRecoilState(cameraViewStatusAtom);
 
+  // We use current camera position and look at point to calculate the camera position
+  // with some reasonable constraints.
+  // Alternative is to place camera outside bounding box, but that causes a "loss of information" type of UX.
   const calculateCameraPosition = useCallback(
     (direction: Vector3) => {
-      if (!sceneBoundingBox || !upVector) {
+      if (
+        !sceneBoundingBox ||
+        !cameraRef.current ||
+        !cameraControlsRef.current
+      ) {
         return null;
       }
 
+      const currentCameraPosition = cameraRef.current.position.clone();
+      const lookAt = new Vector3();
+      cameraControlsRef.current.getTarget(lookAt);
+
+      // Calculate radius based on the position of the camera and the look at point
+      const currentRadius = currentCameraPosition.distanceTo(lookAt);
+
+      // Get scene bounding box dimensions to bound the radius
       const center = sceneBoundingBox.getCenter(new Vector3());
       const size = sceneBoundingBox.getSize(new Vector3());
       const maxSize = Math.max(size.x, size.y, size.z);
-      const distance = maxSize * 2;
+      // Minimum radius is half the largest dimension
+      const minRadius = maxSize * 0.5;
+      // Maximum radius is 3x the largest dimension
+      const maxRadius = maxSize * 3;
 
-      const cameraPosition = center
+      // Clamp the radius
+      const radius = Math.max(minRadius, Math.min(maxRadius, currentRadius));
+
+      // Constrain lookAt to stay within 130% of scene bounding box center
+      const maxLookAtDistance = maxSize * 1.3;
+      const lookAtDistance = lookAt.distanceTo(center);
+      let constrainedLookAt = lookAt;
+
+      if (lookAtDistance > maxLookAtDistance) {
+        const directionToLookAt = lookAt.clone().sub(center).normalize();
+        constrainedLookAt = center
+          .clone()
+          .add(directionToLookAt.multiplyScalar(maxLookAtDistance));
+      }
+
+      // Position camera at constrained lookAt point + direction * radius
+      const cameraPosition = constrainedLookAt
         .clone()
-        .add(direction.clone().multiplyScalar(distance));
+        .add(direction.clone().multiplyScalar(radius));
 
       return {
         cameraPosition,
-        center,
+        center: constrainedLookAt,
       };
     },
-    [sceneBoundingBox, upVector]
+    [sceneBoundingBox, cameraRef, cameraControlsRef]
   );
 
   const setCameraView = useCallback(

@@ -1,18 +1,18 @@
-import { LIGHTER_EVENTS, useLighter } from "@fiftyone/lighter";
 import { useClearModal } from "@fiftyone/state";
-import { DETECTION } from "@fiftyone/utilities";
-import { getDefaultStore, useAtomValue } from "jotai";
-import React, { useContext, useEffect } from "react";
+import { DETECTION, POLYLINE } from "@fiftyone/utilities";
+import { useAtomValue } from "jotai";
+import React, { useEffect } from "react";
 import styled from "styled-components";
-import Confirmation, { ConfirmationContext } from "../Confirmation";
+import Confirmation from "../Confirmation";
 import useConfirmExit from "../Confirmation/useConfirmExit";
 import AnnotationSchema from "./AnnotationSchema";
 import Field from "./Field";
 import Footer from "./Footer";
 import Header from "./Header";
 import Id from "./Id";
+import { PolylineDetails } from "./PolylineDetails";
 import Position from "./Position";
-import { currentField, currentOverlay, currentType, hasChanges } from "./state";
+import { currentField, currentOverlay, currentType } from "./state";
 import useExit from "./useExit";
 import useSave from "./useSave";
 
@@ -35,27 +35,6 @@ const Content = styled.div`
   flex-direction: column;
   row-gap: 0.5rem;
 `;
-
-const LighterEvents = () => {
-  const { scene } = useLighter();
-  const overlay = useAtomValue(currentOverlay);
-  const { onExit } = useContext(ConfirmationContext);
-  useEffect(() => {
-    const handler = () => {
-      if (getDefaultStore().get(hasChanges)) {
-        overlay?.setSelected(true);
-        onExit();
-      }
-    };
-    scene?.on(LIGHTER_EVENTS.OVERLAY_DESELECT, handler);
-
-    return () => {
-      scene?.off(LIGHTER_EVENTS.OVERLAY_DESELECT, handler);
-    };
-  }, [onExit, overlay, scene]);
-
-  return null;
-};
 
 export default function Edit() {
   const field = useAtomValue(currentField);
@@ -89,13 +68,13 @@ export default function Edit() {
 
   return (
     <Confirmation>
-      <LighterEvents />
       <ContentContainer>
         <Header />
         <Content>
           <Id />
           <Field />
           {type === DETECTION && overlay && <Position />}
+          {type === POLYLINE && <PolylineDetails />}
           {field && <AnnotationSchema />}
         </Content>
         <Footer />

@@ -1,31 +1,27 @@
-import {
-  Add,
-  Close,
-  Delete,
-  Edit,
-  OpenWith,
-  RotateRight,
-  Straighten,
-} from "@mui/icons-material";
+import { editing as editingAtom } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit";
+import * as fos from "@fiftyone/state";
+import { Close, Delete, Edit, OpenWith, Straighten } from "@mui/icons-material";
 import RectangleIcon from "@mui/icons-material/Rectangle";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
+import ThreeSixtyIcon from "@mui/icons-material/ThreeSixty";
+import PolylineIcon from "@mui/icons-material/Timeline";
 import { Typography } from "@mui/material";
+import { useAtom } from "jotai";
 import { useCallback, useEffect, useMemo } from "react";
-import { useRecoilState, useSetRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
-import MagnetIcon from "../../assets/icons/magnet.svg?react";
 import { useFo3dContext } from "../../fo3d/context";
 import {
+  activeSegmentationStateAtom,
   annotationPlaneAtom,
+  currentActiveAnnotationField3dAtom,
   currentArchetypeSelectedForTransformAtom,
   editSegmentsModeAtom,
-  isSnapToAnnotationPlaneAtom,
+  isActivelySegmentingSelector,
   polylinePointTransformsAtom,
-  segmentPolylineStateAtom,
   selectedLabelForAnnotationAtom,
   selectedPolylineVertexAtom,
   snapCloseAutomaticallyAtom,
-  tempPolylinesAtom,
   transformModeAtom,
   transformSpaceAtom,
 } from "../../state";
@@ -35,13 +31,15 @@ import type {
   TransformMode,
   TransformSpace,
 } from "../types";
-import { deletePolylinePoint } from "../utils/polyline-delete";
 import {
   PlaneCoordinateInputs,
   VertexCoordinateInputs,
 } from "./CoordinateInputs";
+import { FieldSelection } from "./FieldSelection";
 
 export const useAnnotationActions = () => {
+  const currentSampleId = useRecoilValue(fos.currentSampleId);
+  const currentActiveField = useRecoilValue(currentActiveAnnotationField3dAtom);
   const [selectedLabelForAnnotation, setSelectedLabelForAnnotation] =
     useRecoilState(selectedLabelForAnnotationAtom);
   const [
@@ -54,18 +52,16 @@ export const useAnnotationActions = () => {
   const [selectedPoint, setSelectedPoint] = useRecoilState(
     selectedPolylineVertexAtom
   );
-  const [segmentPolylineState, setSegmentPolylineState] = useRecoilState(
-    segmentPolylineStateAtom
-  );
-  const [isSnapToAnnotationPlane, setIsSnapToAnnotationPlane] = useRecoilState(
-    isSnapToAnnotationPlaneAtom
+  const isActivelySegmenting = useRecoilValue(isActivelySegmentingSelector);
+  const [segmentState, setSegmentState] = useRecoilState(
+    activeSegmentationStateAtom
   );
   const [snapCloseAutomatically, setSnapCloseAutomatically] = useRecoilState(
     snapCloseAutomaticallyAtom
   );
+  const [editing, setEditing] = useAtom(editingAtom);
   const [editSegmentsMode, setEditSegmentsMode] =
     useRecoilState(editSegmentsModeAtom);
-  const [tempPolylines, setTempPolylines] = useRecoilState(tempPolylinesAtom);
   const setPolylinePointTransforms = useSetRecoilState(
     polylinePointTransformsAtom
   );
@@ -88,26 +84,22 @@ export const useAnnotationActions = () => {
   );
 
   const handleStartSegmentPolyline = useCallback(() => {
-    setSegmentPolylineState({
+    setSegmentState({
       isActive: true,
       vertices: [],
       currentMousePosition: null,
       isClosed: false,
     });
-  }, [setSegmentPolylineState]);
+  }, [setSegmentState]);
 
   const handleCancelSegmentPolyline = useCallback(() => {
-    setSegmentPolylineState({
+    setSegmentState({
       isActive: false,
       vertices: [],
       currentMousePosition: null,
       isClosed: false,
     });
-  }, [setSegmentPolylineState]);
-
-  const handleClearTempPolylines = useCallback(() => {
-    setTempPolylines([]);
-  }, [setTempPolylines]);
+  }, [setSegmentState]);
 
   const handleDeleteSelectedPoint = useCallback(() => {
     if (!selectedPoint) return;
@@ -115,22 +107,50 @@ export const useAnnotationActions = () => {
     const { labelId, segmentIndex, pointIndex } = selectedPoint;
 
     setPolylinePointTransforms((prev) => {
-      const currentTransforms = prev[labelId] || [];
-      const result = deletePolylinePoint(
-        currentTransforms,
-        segmentIndex,
-        pointIndex
+      const currentData = prev[labelId];
+      if (!currentData) return prev;
+
+      const currentSegments = currentData.segments || [];
+
+      // If the segment doesn't exist or the point doesn't exist, return unchanged
+      if (
+        segmentIndex >= currentSegments.length ||
+        pointIndex >= currentSegments[segmentIndex]?.points.length
+      ) {
+        return prev;
+      }
+
+      // Create new segments array with the point removed
+      const newSegments = currentSegments.map((segment, segIdx) => {
+        if (segIdx === segmentIndex) {
+          // Remove the point from this segment
+          const newPoints = segment.points.filter(
+            (_, ptIdx) => ptIdx !== pointIndex
+          );
+          return { points: newPoints };
+        }
+        return segment;
+      });
+
+      // Remove empty segments
+      const filteredSegments = newSegments.filter(
+        (segment) => segment.points.length > 0
       );
 
       return {
         ...prev,
-        [labelId]: result.newTransforms,
+        [labelId]: {
+          ...currentData,
+          segments: filteredSegments,
+        },
       };
     });
 
     setSelectedPoint(null);
     setCurrentArchetypeSelectedForTransform(null);
   }, [
+    currentSampleId,
+    currentActiveField,
     selectedPoint,
     setPolylinePointTransforms,
     setSelectedPoint,
@@ -195,7 +215,10 @@ export const useAnnotationActions = () => {
         return;
       }
 
-      if (event.key === "Delete" || event.key === "Backspace") {
+      if (
+        !isActivelySegmenting &&
+        (event.key === "Delete" || event.key === "Backspace")
+      ) {
         handleContextualDelete();
       }
     };
@@ -205,7 +228,7 @@ export const useAnnotationActions = () => {
     return () => {
       document.removeEventListener("keydown", handler);
     };
-  }, [handleContextualDelete]);
+  }, [handleContextualDelete, isActivelySegmenting]);
 
   const handleToggleAnnotationPlane = useCallback(() => {
     if (!annotationPlane.enabled) {
@@ -243,26 +266,42 @@ export const useAnnotationActions = () => {
     setEditSegmentsMode(!editSegmentsMode);
     // Deactivate other modes when entering edit segments mode
     if (!editSegmentsMode) {
-      setSegmentPolylineState((prev) => ({ ...prev, isActive: false }));
+      setSegmentState((prev) => ({ ...prev, isActive: false }));
     }
-  }, [editSegmentsMode, setEditSegmentsMode, setSegmentPolylineState]);
+  }, [editSegmentsMode, setEditSegmentsMode, setSegmentState]);
+
+  const handleDeselectLabel = useCallback(() => {
+    setSelectedLabelForAnnotation(null);
+    setEditing(null);
+    setEditSegmentsMode(false);
+  }, []);
 
   const actions: AnnotationActionGroup[] = useMemo(() => {
     const baseActions: AnnotationActionGroup[] = [
       {
         id: "edit-actions",
-        label: "Edit",
-        isHidden: selectedLabelForAnnotation === null,
+        label: "",
         actions: [
+          {
+            id: "field-selector",
+            label: "Active Field",
+            icon: <Typography variant="caption">F</Typography>,
+            tooltip: "Select active annotation field",
+            isActive: false,
+            isDisabled: false,
+            isVisible: true,
+            onClick: () => {},
+            customComponent: <FieldSelection />,
+          },
           {
             id: "exit-edit-mode",
             label: "Deselect",
             icon: <Close />,
             shortcut: "Esc",
-            tooltip: "Exit edit mode and deselect annotation",
+            tooltip: "Exit edit mode and deselect label",
             isActive: false,
-            isVisible: selectedLabelForAnnotation !== null,
-            onClick: () => setSelectedLabelForAnnotation(null),
+            isVisible: selectedLabelForAnnotation !== null || editing !== null,
+            onClick: handleDeselectLabel,
           },
         ],
       },
@@ -273,10 +312,14 @@ export const useAnnotationActions = () => {
           {
             id: "new-segment",
             label: "New Segment",
-            icon: <Add />,
-            tooltip: "Add new polyline segment",
-            isActive: segmentPolylineState.isActive,
-            onClick: segmentPolylineState.isActive
+            icon: <PolylineIcon sx={{ transform: "rotate(90deg)" }} />,
+            // if label selected, add new segment to the label
+            // if no label selected, create a new label
+            tooltip: selectedLabelForAnnotation
+              ? "Add new polyline segment to current polyline"
+              : "Create new polyline",
+            isActive: segmentState.isActive,
+            onClick: segmentState.isActive
               ? handleCancelSegmentPolyline
               : handleStartSegmentPolyline,
           },
@@ -304,33 +347,10 @@ export const useAnnotationActions = () => {
             onClick: handleContextualDelete,
           },
           {
-            id: "snap-to-annotation-plane",
-            label: "Snap to Annotation Plane",
-            icon: (
-              <MagnetIcon
-                width={"100%"}
-                height={"100%"}
-                fill={
-                  isSnapToAnnotationPlane || annotationPlane.enabled
-                    ? "#000"
-                    : "#fff"
-                }
-              />
-            ),
-            tooltip:
-              annotationPlane.enabled && !isSnapToAnnotationPlane
-                ? "Project new vertices to the annotation plane"
-                : "Project new vertices to the annotation plane whether or not it is enabled",
-            isActive: isSnapToAnnotationPlane || annotationPlane.enabled,
-            isDisabled: annotationPlane.enabled,
-            isVisible: true,
-            onClick: () => setIsSnapToAnnotationPlane(!isSnapToAnnotationPlane),
-          },
-          {
             id: "toggle-annotation-plane",
             label: "Annotation Plane",
             icon: <RectangleIcon />,
-            tooltip: "Toggle annotation plane for z-drift prevention",
+            tooltip: "Toggle annotation plane visibility",
             isActive: annotationPlane.enabled,
             onClick: handleToggleAnnotationPlane,
           },
@@ -364,7 +384,7 @@ export const useAnnotationActions = () => {
           {
             id: "rotate",
             label: "Rotate",
-            icon: <RotateRight />,
+            icon: <ThreeSixtyIcon />,
             tooltip: "Rotate object",
             isVisible:
               currentArchetypeSelectedForTransform === "annotation-plane" ||
@@ -454,15 +474,16 @@ export const useAnnotationActions = () => {
     handleTransformSpaceChange,
     selectedLabelForAnnotation,
     selectedPoint,
-    segmentPolylineState,
+    segmentState,
     annotationPlane,
     handleStartSegmentPolyline,
     handleCancelSegmentPolyline,
     handleToggleAnnotationPlane,
-    isSnapToAnnotationPlane,
     snapCloseAutomatically,
     editSegmentsMode,
     handleToggleEditSegmentsMode,
+    editing,
+    handleDeselectLabel,
   ]);
 
   return {

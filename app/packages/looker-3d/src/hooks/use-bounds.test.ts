@@ -107,19 +107,40 @@ describe("useFo3dBounds", () => {
     expect(result.current.boundingBox).toBeNull();
   });
 
-  it("does not proceed if predicate returns false", () => {
+  it("waits for predicate before computing bounds", () => {
     const objectRef = { current: {} } as React.RefObject<Group>;
-    const predicate = vi.fn(() => false);
+    let callCount = 0;
+    const predicate = vi.fn(() => {
+      callCount++;
+      // Return true after 3 calls to simulate a condition becoming ready
+      return callCount > 3;
+    });
+
+    // Mock Box3 to return a valid stable box
+    const MockBox3 = vi.fn().mockImplementation(() => {
+      return {
+        min: { x: 0, y: 0, z: 0, equals: vi.fn(() => true) },
+        max: { x: 1, y: 1, z: 1, equals: vi.fn(() => true) },
+        setFromObject: vi.fn().mockReturnThis(),
+      };
+    });
+
+    (Box3 as unknown as Mock).mockImplementation(MockBox3);
 
     const { result } = renderHook(() => useFo3dBounds(objectRef, predicate));
 
     expect(result.current.boundingBox).toBeNull();
     expect(predicate).toHaveBeenCalled();
 
+    // Advance time to allow predicate to return true
     act(() => {
-      vi.advanceTimersByTime(500);
+      for (let i = 0; i < 10; i++) {
+        vi.advanceTimersByTime(50);
+      }
     });
 
-    expect(result.current.boundingBox).toBeNull();
+    // After predicate returns true, bounding box should be computed
+    expect(callCount).toBeGreaterThan(3);
+    expect(result.current.boundingBox).not.toBeNull();
   });
 });

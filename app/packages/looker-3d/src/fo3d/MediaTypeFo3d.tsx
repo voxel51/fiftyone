@@ -1,11 +1,20 @@
 import { LoadingDots } from "@fiftyone/components";
+import { useOverlayPersistence } from "@fiftyone/core/src/components/Modal/Lighter/useOverlayPersistence";
+import useCanAnnotate from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useCanAnnotate";
+import {
+  EventBus,
+  lighterSceneAtom,
+  MockRenderer2D,
+  MockResourceLoader,
+  Scene2D,
+} from "@fiftyone/lighter";
 import { usePluginSettings } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { isInMultiPanelViewAtom, useBrowserStorage } from "@fiftyone/state";
 import { CameraControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import CameraControlsImpl from "camera-controls";
-import { useAtomValue } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import {
   useCallback,
   useEffect,
@@ -31,6 +40,7 @@ import {
 import { StatusBarRootContainer } from "../containers";
 import { useFo3d, useHotkey, useTrackStatus } from "../hooks";
 import { useFo3dBounds } from "../hooks/use-bounds";
+import { useLoadingStatus } from "../hooks/use-loading-status";
 import type { Looker3dSettings } from "../settings";
 import {
   activeNodeAtom,
@@ -41,6 +51,7 @@ import {
   isActivelySegmentingSelector,
   isCurrentlyTransformingAtom,
   isFo3dBackgroundOnAtom,
+  isPolylineAnnotateActiveAtom,
   isSegmentingPointerDownAtom,
   selectedPolylineVertexAtom,
 } from "../state";
@@ -154,6 +165,38 @@ export const MediaTypeFo3dComponent = () => {
     if (!foScene) return 0;
     return foScene.children?.length ?? 0;
   }, [foScene]);
+
+  const [scene, setScene] = useAtom(lighterSceneAtom);
+
+  // Hack: Setup a ghost lighter for human annotation needs
+  // Todo: Remove this and abstract out event bus / annotaion system from Lighter
+  useEffect(() => {
+    if (mode !== "annotate") return;
+
+    const mockRenderer = new MockRenderer2D();
+    const eventBus = new EventBus();
+    const mockResourceLoader = new MockResourceLoader();
+
+    const newScene = new Scene2D({
+      renderer: mockRenderer,
+      eventBus,
+      canvas: document.createElement("canvas"),
+      resourceLoader: mockResourceLoader,
+      options: {
+        activePaths: [],
+      },
+    });
+
+    setScene(newScene);
+
+    return () => {
+      newScene.destroy();
+      setScene(null);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, fo3dRoot]);
+
+  useOverlayPersistence(scene);
 
   useHotkey(
     "KeyB",
@@ -295,11 +338,25 @@ export const MediaTypeFo3dComponent = () => {
 
   const assetsGroupRef = useRef<THREE.Group>();
 
+  const loadingStatus = useLoadingStatus();
+
+  const canComputeBounds = useCallback(() => {
+    return (
+      loadingStatus.isSuccess ||
+      loadingStatus.isFailed ||
+      loadingStatus.isAborted
+    );
+  }, [
+    loadingStatus.isSuccess,
+    loadingStatus.isFailed,
+    loadingStatus.isAborted,
+  ]);
+
   const {
     boundingBox: sceneBoundingBox,
     recomputeBounds,
     isComputing: isComputingSceneBoundingBox,
-  } = useFo3dBounds(assetsGroupRef);
+  } = useFo3dBounds(assetsGroupRef, canComputeBounds);
 
   const effectiveSceneBoundingBox = sceneBoundingBox || DEFAULT_BOUNDING_BOX;
 
@@ -766,13 +823,17 @@ export const MediaTypeFo3dComponent = () => {
   );
 
   const isAnnotationPlaneEnabled = useRecoilValue(annotationPlaneAtom).enabled;
+  const isPolylineAnnotateActive = useRecoilValue(isPolylineAnnotateActiveAtom);
+
+  const canAnnotate = useCanAnnotate();
 
   const shouldRenderMultiPanelView = useMemo(
     () =>
       mode === "annotate" &&
+      canAnnotate &&
       !(isGroup && is2DSampleViewerVisible) &&
       isSceneInitialized,
-    [mode, isGroup, is2DSampleViewerVisible, isSceneInitialized]
+    [mode, isGroup, is2DSampleViewerVisible, isSceneInitialized, canAnnotate]
   );
 
   useEffect(() => {
@@ -853,7 +914,7 @@ export const MediaTypeFo3dComponent = () => {
           </StatusBarRootContainer>
         </MainContainer>
       )}
-      {mode === "annotate" && <AnnotationToolbar />}
+      {mode === "annotate" && isPolylineAnnotateActive && <AnnotationToolbar />}
     </Fo3dSceneContext.Provider>
   );
 };

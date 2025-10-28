@@ -1,13 +1,13 @@
 import {
   BoundingBoxOverlay,
   LIGHTER_EVENTS,
+  TransformOverlayCommand,
   useLighter,
 } from "@fiftyone/lighter";
-import { TransformOverlayCommand } from "@fiftyone/lighter/src/commands/TransformOverlayCommand";
-import { useAtomValue, useSetAtom } from "jotai";
-import React, { useEffect, useMemo, useState } from "react";
-import uuid from "react-uuid";
+import { useAtom, useAtomValue } from "jotai";
+import React, { useEffect, useState } from "react";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
+import { setPathUserUnchanged } from "../../../../../plugins/SchemaIO/hooks";
 import { currentData, currentOverlay } from "./state";
 
 const createInput = (name: string) => {
@@ -45,14 +45,9 @@ export default function Position() {
     dimensions: {},
   });
   const overlay = useAtomValue(currentOverlay);
-  const setData = useSetAtom(currentData);
+  const [data, setData] = useAtom(currentData);
 
   const { scene } = useLighter();
-
-  const key = useMemo(() => {
-    state;
-    return uuid();
-  }, [state]);
 
   useEffect(() => {
     if (!(overlay instanceof BoundingBoxOverlay) || !overlay.hasValidBounds()) {
@@ -67,40 +62,47 @@ export default function Position() {
   }, [overlay]);
 
   useEffect(() => {
-    const handler = () => {
+    const handler = (event) => {
       if (
         !(overlay instanceof BoundingBoxOverlay) ||
-        !overlay.hasValidBounds()
+        !overlay.hasValidBounds() ||
+        event.detail.id !== data?._id
       ) {
         return;
       }
-      const rect = overlay.getAbsoluteBounds();
+      const absolute = overlay.getAbsoluteBounds();
+      const relative = overlay.getRelativeBounds();
 
       setState({
-        position: { x: rect.x, y: rect.y },
-        dimensions: { width: rect.width, height: rect.height },
+        position: { x: absolute.x, y: absolute.y },
+        dimensions: { width: absolute.width, height: absolute.height },
       });
 
-      const relative = overlay.getRelativeBounds();
       setData({
         bounding_box: [relative.x, relative.y, relative.width, relative.height],
       });
+
+      // Clear user changed flags so inputs update from overlay changes
+      setPathUserUnchanged("position.x");
+      setPathUserUnchanged("position.y");
+      setPathUserUnchanged("dimensions.width");
+      setPathUserUnchanged("dimensions.height");
     };
+
     scene?.on(LIGHTER_EVENTS.OVERLAY_BOUNDS_CHANGED, handler);
     scene?.on(LIGHTER_EVENTS.OVERLAY_DRAG_MOVE, handler);
     scene?.on(LIGHTER_EVENTS.OVERLAY_RESIZE_MOVE, handler);
 
     return () => {
-      scene?.on(LIGHTER_EVENTS.OVERLAY_BOUNDS_CHANGED, handler);
+      scene?.off(LIGHTER_EVENTS.OVERLAY_BOUNDS_CHANGED, handler);
       scene?.off(LIGHTER_EVENTS.OVERLAY_DRAG_MOVE, handler);
       scene?.off(LIGHTER_EVENTS.OVERLAY_RESIZE_MOVE, handler);
     };
-  }, [overlay, scene, setData]);
+  }, [data?._id, overlay, scene, setData]);
 
   return (
     <div style={{ width: "100%" }}>
       <SchemaIOComponent
-        key={key}
         schema={{
           type: "object",
           view: {

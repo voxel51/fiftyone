@@ -1,6 +1,7 @@
+import useCanAnnotate from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useCanAnnotate";
 import { DragIndicator } from "@mui/icons-material";
 import { Box, IconButton, Tooltip, Typography, styled } from "@mui/material";
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useRecoilState } from "recoil";
 import { annotationToolbarPositionAtom } from "../../state";
 import type { AnnotationToolbarProps } from "../types";
@@ -133,6 +134,7 @@ export const AnnotationToolbar = ({ className }: AnnotationToolbarProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ y: 0, position: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
+  const canAnnotate = useCanAnnotate();
 
   const handleActionClick = useCallback((action: () => void) => {
     action();
@@ -173,7 +175,11 @@ export const AnnotationToolbar = ({ className }: AnnotationToolbarProps) => {
     setIsDragging(false);
   }, []);
 
-  React.useEffect(() => {
+  useEffect(() => {
+    if (!canAnnotate) {
+      return;
+    }
+
     if (isDragging) {
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
@@ -183,7 +189,11 @@ export const AnnotationToolbar = ({ className }: AnnotationToolbarProps) => {
         document.removeEventListener("mouseup", handleMouseUp);
       };
     }
-  }, [isDragging, handleMouseMove, handleMouseUp]);
+  }, [isDragging, handleMouseMove, handleMouseUp, canAnnotate]);
+
+  if (!canAnnotate) {
+    return null;
+  }
 
   return (
     <ToolbarContainer
