@@ -21,6 +21,14 @@ import useLabels from "./useLabels";
 
 const showImportPage = atom((get) => !get(activePaths).length);
 
+const GROUP_UNSUPPORTED = (
+  <p>
+    Annotation isn&rsquo;t supported for grouped datasets. Use{" "}
+    <code>SelectGroupSlices</code> to create a view of the image or 3D slices
+    you want to label.
+  </p>
+);
+
 const Container = styled.div`
   flex: 1;
   display: flex;
@@ -89,6 +97,10 @@ const Annotate = () => {
 
   const mediaType = useRecoilValue(fos.mediaType);
   const annotationSupported = isAnnotationSupported(mediaType);
+  const disabledMsg =
+    !annotationSupported && mediaType === "group"
+      ? GROUP_UNSUPPORTED
+      : undefined;
 
   if (annotationSupported && (loading || !scene)) {
     return <Loading />;
@@ -98,7 +110,11 @@ const Annotate = () => {
     <>
       {editing && <Edit key="edit" />}
       {showImport ? (
-        <ImportSchema key="import" disabled={!annotationSupported} />
+        <ImportSchema
+          key="import"
+          disabled={!annotationSupported}
+          disabledMsg={disabledMsg}
+        />
       ) : (
         <AnnotateSidebar key="annotate" />
       )}
