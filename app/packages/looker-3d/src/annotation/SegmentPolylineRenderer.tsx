@@ -94,7 +94,7 @@ export const SegmentPolylineRenderer = ({
 
         setPolylinePointTransforms((prev) => {
           let transformData: PolylinePointTransformData;
-          if (!prev) {
+          if (!prev || Object.keys(prev).length === 0 || !prev[labelId]) {
             transformData = {
               segments: [newSegment],
               path: currentActiveField,
@@ -112,13 +112,13 @@ export const SegmentPolylineRenderer = ({
               path: currentActiveField || "",
               sampleId: currentSampleId,
               misc: {
+                ...(currentData?.misc ?? {}),
                 closed: shouldClose,
-                ...currentData?.misc,
               },
             };
           }
           setEditingToNewPolyline(labelId, transformData);
-          return { ...prev, [labelId]: transformData };
+          return { ...(prev ?? {}), [labelId]: transformData };
         });
 
         if (selectedLabelForAnnotation) {
