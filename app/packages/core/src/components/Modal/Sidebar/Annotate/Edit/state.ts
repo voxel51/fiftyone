@@ -9,7 +9,7 @@ import {
 } from "@fiftyone/utilities";
 import type { PrimitiveAtom } from "jotai";
 import { atom } from "jotai";
-import { atomFamily, atomWithReset } from "jotai/utils";
+import { atomFamily, atomWithDefault, atomWithReset } from "jotai/utils";
 import { activeSchemas, fieldType, schemaConfig } from "../state";
 import { addLabel, labels, labelsByPath } from "../useLabels";
 
