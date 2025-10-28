@@ -1,9 +1,9 @@
 /**
  * Coerces string booleans to true booleans.
  * Note: this happens often in SchemaIO, and ideally would be fixed there.
- * Of course it means we do not accept string "true" or "false" as valid values,
- * which is why it's a temporary fix and we should address this in SchemaIO.
- * @todo
+ *
+ * @todo: Because it means we do not accept string "true" or "false" as valid values,
+ * it's a temporary fix and we should address this in SchemaIO.
  *
  * @param records - The records to sanitize
  * @returns The sanitized records
