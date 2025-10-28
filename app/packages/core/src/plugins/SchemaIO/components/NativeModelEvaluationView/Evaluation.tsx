@@ -182,9 +182,8 @@ export default function Evaluation(props: EvaluationProps) {
               sx={{ pl: 1 }}
             >
               <EvaluationSelect
-                key={compareKey}
                 ghost
-                defaultValue={compareKey}
+                value={compareKey || ""}
                 displayEmpty
                 placeholder="Select a comparison"
                 IconComponent={
