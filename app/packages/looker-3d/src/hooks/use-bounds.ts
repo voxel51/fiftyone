@@ -41,7 +41,7 @@ export const useFo3dBounds = (
 
   const timeOutIdRef = useRef<number | null>(null);
 
-  const recomputeBounds = useCallback(() => {
+  const computeBounds = useCallback(() => {
     setIsComputing(true);
 
     if (!objectRef.current) {
@@ -62,12 +62,26 @@ export const useFo3dBounds = (
     setIsComputing(false);
   }, [objectRef]);
 
-  useLayoutEffect(() => {
-    if (predicate && !predicate()) {
-      return;
-    }
+  const waitForPredicate = useCallback(
+    (callback: () => void) => {
+      if (predicate && !predicate()) {
+        timeOutIdRef.current = window.setTimeout(
+          () => waitForPredicate(callback),
+          BOUNDING_BOX_POLLING_INTERVAL
+        );
+        return;
+      }
+      callback();
+    },
+    [predicate]
+  );
 
-    // flag to prevent state updates on unmounted components
+  const recomputeBounds = useCallback(() => {
+    waitForPredicate(computeBounds);
+  }, [waitForPredicate, computeBounds]);
+
+  useLayoutEffect(() => {
+    // Flag to prevent state updates on unmounted components
     let isMounted = true;
 
     const boxesAreEqual = (box1: Box3, box2: Box3) => {
@@ -77,72 +91,75 @@ export const useFo3dBounds = (
     const getBoundingBox = () => {
       if (!isMounted) return;
 
-      setIsComputing(true);
+      const executeBoundingBoxLogic = () => {
+        setIsComputing(true);
 
-      if (!objectRef.current) {
-        retryCount.current += 1;
-        if (retryCount.current >= MAX_BOUNDING_BOX_RETRIES) {
-          retryCount.current = 0;
-          unchangedCount.current = 0;
-          previousBox.current = null;
-          setBoundingBox(null);
-          setIsComputing(false);
+        if (!objectRef.current) {
+          retryCount.current += 1;
+          if (retryCount.current >= MAX_BOUNDING_BOX_RETRIES) {
+            retryCount.current = 0;
+            unchangedCount.current = 0;
+            previousBox.current = null;
+            setBoundingBox(null);
+            setIsComputing(false);
+            return;
+          }
+          timeOutIdRef.current = window.setTimeout(
+            getBoundingBox,
+            BOUNDING_BOX_POLLING_INTERVAL
+          );
           return;
         }
-        timeOutIdRef.current = window.setTimeout(
-          getBoundingBox,
-          BOUNDING_BOX_POLLING_INTERVAL
-        );
-        return;
-      }
 
-      const box = new Box3().setFromObject(objectRef.current);
+        const box = new Box3().setFromObject(objectRef.current);
 
-      if (!isFiniteBox(box)) {
-        retryCount.current += 1;
-        if (retryCount.current >= MAX_BOUNDING_BOX_RETRIES) {
-          retryCount.current = 0;
-          unchangedCount.current = 0;
-          previousBox.current = null;
-          setBoundingBox(null);
-          setIsComputing(false);
+        if (!isFiniteBox(box)) {
+          retryCount.current += 1;
+          if (retryCount.current >= MAX_BOUNDING_BOX_RETRIES) {
+            retryCount.current = 0;
+            unchangedCount.current = 0;
+            previousBox.current = null;
+            setBoundingBox(null);
+            setIsComputing(false);
+            return;
+          }
+          timeOutIdRef.current = window.setTimeout(
+            getBoundingBox,
+            BOUNDING_BOX_POLLING_INTERVAL
+          );
           return;
         }
-        timeOutIdRef.current = window.setTimeout(
-          getBoundingBox,
-          BOUNDING_BOX_POLLING_INTERVAL
-        );
-        return;
-      }
 
-      if (previousBox.current && boxesAreEqual(box, previousBox.current)) {
-        unchangedCount.current += 1;
-      } else {
-        unchangedCount.current = 1;
-      }
+        if (previousBox.current && boxesAreEqual(box, previousBox.current)) {
+          unchangedCount.current += 1;
+        } else {
+          unchangedCount.current = 1;
+        }
 
-      previousBox.current = box;
+        previousBox.current = box;
 
-      if (unchangedCount.current >= UNCHANGED_COUNT_THRESHOLD) {
-        retryCount.current = 0;
-        setBoundingBox(box);
-        setIsComputing(false);
-      } else {
-        timeOutIdRef.current = window.setTimeout(
-          getBoundingBox,
-          BOUNDING_BOX_POLLING_INTERVAL
-        );
-      }
+        if (unchangedCount.current >= UNCHANGED_COUNT_THRESHOLD) {
+          retryCount.current = 0;
+          setBoundingBox(box);
+          setIsComputing(false);
+        } else {
+          timeOutIdRef.current = window.setTimeout(
+            getBoundingBox,
+            BOUNDING_BOX_POLLING_INTERVAL
+          );
+        }
+      };
+
+      waitForPredicate(executeBoundingBoxLogic);
     };
 
-    // this is a hack, yet to find a better way than polling to know when the asset is done loading
-    // callbacks in loaders are not reliable
+    // This is a hack, yet to find a better way than polling to know when the asset is done loading
+    // Callbacks in loaders are not reliable
     timeOutIdRef.current = window.setTimeout(
       getBoundingBox,
       BOUNDING_BOX_POLLING_INTERVAL
     );
 
-    // cleanup function to prevent memory leaks
     return () => {
       isMounted = false;
       retryCount.current = 0;
@@ -152,7 +169,7 @@ export const useFo3dBounds = (
         window.clearTimeout(timeOutIdRef.current);
       }
     };
-  }, [objectRef, predicate]);
+  }, [objectRef, predicate, waitForPredicate]);
 
   return { boundingBox, recomputeBounds, isComputing };
 };

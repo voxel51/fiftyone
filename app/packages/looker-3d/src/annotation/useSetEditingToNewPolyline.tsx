@@ -70,6 +70,9 @@ export const useSetEditingToNewPolyline = () => {
       if (!transformData.segments || transformData.segments.length === 0)
         return;
 
+      // Needs a reset...otherwise gets contaminated by the previous label
+      setEditing(null);
+
       // Only process transforms for the current sample
       if (transformData.sampleId !== currentSampleId) return;
 

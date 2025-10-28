@@ -1,9 +1,6 @@
 import { coerceStringBooleans } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate";
 import { editing as editingAtom } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit";
-import {
-  current,
-  savedLabel,
-} from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/state";
+import { savedLabel } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/state";
 import * as fos from "@fiftyone/state";
 import { getDefaultStore, useSetAtom } from "jotai";
 import { useResetAtom } from "jotai/utils";
@@ -15,6 +12,7 @@ import {
 } from "../state";
 import { PolylinePointTransformData } from "./types";
 import { currentEditingPolylineAtom } from "./useSetEditingToNewPolyline";
+import { useSyncWithPolylinePointTransforms } from "./useSyncWithPolylinePointTransforms";
 
 /**
  * Hook to set editing atom for existing polylines when clicked
@@ -27,6 +25,7 @@ export const useSetEditingToExistingPolyline = () => {
   const setPolylinePointTransforms = useSetRecoilState(
     polylinePointTransformsAtom
   );
+  const syncWithPolylinePointTransforms = useSyncWithPolylinePointTransforms();
 
   useEffect(() => {
     return () => {
@@ -56,50 +55,18 @@ export const useSetEditingToExistingPolyline = () => {
         };
       });
 
-      const currentVal = jotaiStore.get(current);
-      const sanitizedLabel = coerceStringBooleans(
-        label as unknown as Record<string, unknown>
-      );
-      jotaiStore.set(current, {
-        ...currentVal,
-        data: sanitizedLabel,
-      });
-    },
-    []
-  );
-
-  const syncWithPolylinePointTransforms = useCallback(
-    (label: fos.PolylineAnnotationLabel["data"]) => {
-      setPolylinePointTransforms((prev) => {
-        if (!prev) {
-          const { points3d: _points3d, _id, ...rest } = label;
-          return {
-            [label._id]: {
-              segments: _points3d.map((segment) => ({
-                points: segment.map((point) => [point[0], point[1], point[2]]),
-              })),
-              misc: {
-                ...coerceStringBooleans(rest ?? {}),
-              },
-            },
-          };
-        }
-
-        const { points3d: _points3d, _id, ...rest } = label;
-        return {
-          ...prev,
-          [label._id]: {
-            ...(prev[label._id] ?? ({} as PolylinePointTransformData)),
-            segments: label.points3d.map((segment) => ({
-              points: segment.map((point) => [point[0], point[1], point[2]]),
-            })),
-            label: label.label ?? "",
-            misc: {
-              ...coerceStringBooleans(rest ?? {}),
-            },
-          },
-        };
-      });
+      // const currentVal = jotaiStore.get(current);
+      // const sanitizedLabel = coerceStringBooleans(
+      //   label as unknown as Record<string, unknown>
+      // );
+      // jotaiStore.set(current, {
+      //   ...currentVal,
+      //   data: sanitizedLabel,
+      //   overlay: {
+      //     ...currentVal?.overlay,
+      //     label: sanitizedLabel,
+      //   },
+      // });
     },
     []
   );
@@ -107,7 +74,6 @@ export const useSetEditingToExistingPolyline = () => {
   return useCallback(
     (label: fos.PolylineAnnotationLabel["data"] & { path: string }) => {
       syncWithPolylinePointTransforms(label);
-      debugger;
 
       setCurrentEditing({
         isNew: false,

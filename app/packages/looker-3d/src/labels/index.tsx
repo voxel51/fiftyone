@@ -290,6 +290,8 @@ export const ThreeDLabels = ({
       ) {
         const maybeExistingTransformData =
           polylinePointTransforms?.[overlay._id];
+
+        // Overriden temp state takes precedence over the original points3d
         let finalPoints3d = maybeExistingTransformData?.segments
           ? maybeExistingTransformData.segments.map((seg) => seg.points)
           : (overlay as PolyLineProps).points3d;
@@ -298,6 +300,12 @@ export const ThreeDLabels = ({
           finalPoints3d = finalPoints3d.filter(isValidPolylineSegment);
         }
 
+        const overlayCombined = {
+          ...overlay,
+          ...coerceStringBooleans(maybeExistingTransformData?.misc ?? {}),
+          points3d: finalPoints3d,
+        };
+
         if (finalPoints3d && finalPoints3d.length > 0) {
           newPolylineOverlays.push(
             <Polyline
@@ -305,10 +313,8 @@ export const ThreeDLabels = ({
               rotation={overlayRotation}
               opacity={labelAlpha}
               lineWidth={polylineWidth}
-              {...(overlay as PolyLineProps)}
-              {...coerceStringBooleans(maybeExistingTransformData?.misc ?? {})}
-              points3d={finalPoints3d}
-              label={overlay}
+              {...(overlayCombined as PolyLineProps)}
+              label={overlayCombined}
               onClick={(e) => handleSelect(overlay, "polyline", e)}
               tooltip={tooltip}
             />

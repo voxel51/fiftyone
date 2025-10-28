@@ -25,6 +25,7 @@ import {
 import { getPlaneFromPositionAndQuaternion } from "../utils";
 import { PolylinePointMarker } from "./PolylinePointMarker";
 import { PolylinePointTransformData } from "./types";
+import { useReverseSyncPolylinePointTransforms } from "./useReverseSyncPolylinePointTransforms";
 import { useSetEditingToNewPolyline } from "./useSetEditingToNewPolyline";
 import { shouldClosePolylineLoop } from "./utils/polyline-utils";
 
@@ -53,11 +54,13 @@ export const SegmentPolylineRenderer = ({
   const [polylinePointTransforms, setPolylinePointTransforms] = useRecoilState(
     polylinePointTransformsAtom
   );
+
   const setEditingToNewPolyline = useSetEditingToNewPolyline();
 
   const setIsActivelySegmenting = useSetRecoilState(
     isSegmentingPointerDownAtom
   );
+  useReverseSyncPolylinePointTransforms();
   const setSharedCursorPosition = useSetRecoilState(sharedCursorPositionAtom);
   const annotationPlane = useRecoilValue(annotationPlaneAtom);
   const snapCloseAutomatically = useRecoilValue(snapCloseAutomaticallyAtom);
