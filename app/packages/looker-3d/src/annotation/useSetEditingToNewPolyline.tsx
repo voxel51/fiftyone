@@ -88,8 +88,8 @@ export const useSetEditingToNewPolyline = () => {
         filled: false,
         closed: shouldDefaultToClosed,
         label: transformData.label,
-        path: transformData.path,
-        sampleId: transformData.sampleId,
+        path: transformData.path ?? currentActiveField,
+        sampleId: transformData.sampleId ?? currentSampleId,
         ...(transformData.misc ?? {}),
       };
 
@@ -117,7 +117,7 @@ export const useSetEditingToNewPolyline = () => {
 
       setEditing(currentEditingPolylineAtom);
 
-      jotaiStore.set(savedLabel, {});
+      jotaiStore.set(savedLabel, null);
     },
     [
       currentSampleId,

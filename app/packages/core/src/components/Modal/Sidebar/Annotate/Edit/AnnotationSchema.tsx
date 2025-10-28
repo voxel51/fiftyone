@@ -173,8 +173,8 @@ const AnnotationSchema = () => {
 
   useEffect(() => {
     const handler = (event) => {
-      // Here, this would be true for `undo` or `redo`
-      if (event.detail?.command?.constructor?.name !== "UpdateLabelCommand") {
+      // Here, this would be trye for `undo` or `redo`
+      if (!(event.detail?.command instanceof UpdateLabelCommand)) {
         const label = overlay?.label;
 
         if (label) {

@@ -44,9 +44,9 @@ export const useSetEditingToExistingPolyline = () => {
 
       setPolylinePointTransforms((prev) => {
         return {
-          ...prev,
+          ...(prev ?? {}),
           [label._id]: {
-            ...(prev[label._id] ?? ({} as PolylinePointTransformData)),
+            ...((prev ?? {})[label._id] ?? ({} as PolylinePointTransformData)),
             label: _label,
             misc: {
               ...coerceStringBooleans(rest ?? {}),
@@ -54,19 +54,6 @@ export const useSetEditingToExistingPolyline = () => {
           },
         };
       });
-
-      // const currentVal = jotaiStore.get(current);
-      // const sanitizedLabel = coerceStringBooleans(
-      //   label as unknown as Record<string, unknown>
-      // );
-      // jotaiStore.set(current, {
-      //   ...currentVal,
-      //   data: sanitizedLabel,
-      //   overlay: {
-      //     ...currentVal?.overlay,
-      //     label: sanitizedLabel,
-      //   },
-      // });
     },
     []
   );
