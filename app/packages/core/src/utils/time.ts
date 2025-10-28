@@ -8,7 +8,7 @@
  * @returns A function that returns boolean, with timeout-based fallback logic
  *
  * @example
- * const canLoad = returnFallbackIfPredicateFalseAfterTimeout(
+ * const canLoad = predicateOrFallbackAfterTimeout(
  *   () => isReady,
  *   true,
  *   3000
