@@ -157,7 +157,23 @@ export default function useLabels() {
     } else {
       setLoading(true);
     }
-  }, [modalSampleData, scene, schemaMap]);
+    return () => {
+      // clear the scene on unmount
+      setLoading(true);
+      setLabels([]);
+      scene?.clear();
+    };
+  }, [
+    addLabel,
+    filter,
+    getFieldType,
+    modalSampleData,
+    paths,
+    schemaMap,
+    scene,
+    setLabels,
+    setLoading,
+  ]);
 
   useHover();
   useFocus();
