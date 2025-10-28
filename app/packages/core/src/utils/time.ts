@@ -16,7 +16,7 @@
  * // Will return true immediately if isReady is true
  * // Will return true after 3000ms if isReady never becomes true
  */
-export function returnFallbackIfPredicateFalseAfterTimeout(
+export function predicateOrFallbackAfterTimeout(
   predicate: () => boolean,
   fallbackReturnValue: boolean,
   timeoutMs: number
@@ -39,7 +39,6 @@ export function returnFallbackIfPredicateFalseAfterTimeout(
       startTime = Date.now();
     }
 
-    // Check if timeout has elapsed
     const elapsed = Date.now() - startTime;
     if (elapsed >= timeoutMs) {
       hasTimedOut = true;

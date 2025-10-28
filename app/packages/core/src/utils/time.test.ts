@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { returnFallbackIfPredicateFalseAfterTimeout } from "./time";
+import { predicateOrFallbackAfterTimeout } from "./time";
 
-describe("returnFallbackIfPredicateFalseAfterTimeout", () => {
+describe("predicateOrFallbackAfterTimeout", () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -12,11 +12,7 @@ describe("returnFallbackIfPredicateFalseAfterTimeout", () => {
 
   it("should return true immediately when predicate returns true", () => {
     const predicate = vi.fn(() => true);
-    const wrapper = returnFallbackIfPredicateFalseAfterTimeout(
-      predicate,
-      false,
-      1000
-    );
+    const wrapper = predicateOrFallbackAfterTimeout(predicate, false, 1000);
 
     const result = wrapper();
 
@@ -26,11 +22,7 @@ describe("returnFallbackIfPredicateFalseAfterTimeout", () => {
 
   it("should return false when predicate returns false and timeout has not elapsed", () => {
     const predicate = vi.fn(() => false);
-    const wrapper = returnFallbackIfPredicateFalseAfterTimeout(
-      predicate,
-      true,
-      1000
-    );
+    const wrapper = predicateOrFallbackAfterTimeout(predicate, true, 1000);
 
     const result = wrapper();
 
@@ -40,11 +32,7 @@ describe("returnFallbackIfPredicateFalseAfterTimeout", () => {
 
   it("should return fallback value when predicate is false after timeout elapses", () => {
     const predicate = vi.fn(() => false);
-    const wrapper = returnFallbackIfPredicateFalseAfterTimeout(
-      predicate,
-      true,
-      1000
-    );
+    const wrapper = predicateOrFallbackAfterTimeout(predicate, true, 1000);
 
     // First call - should return false, starts timer
     const call1 = wrapper();
@@ -69,11 +57,7 @@ describe("returnFallbackIfPredicateFalseAfterTimeout", () => {
       .mockReturnValueOnce(true)
       .mockReturnValueOnce(false);
 
-    const wrapper = returnFallbackIfPredicateFalseAfterTimeout(
-      predicate,
-      true,
-      1000
-    );
+    const wrapper = predicateOrFallbackAfterTimeout(predicate, true, 1000);
 
     // Call 1: predicate returns false, start timer
     expect(wrapper()).toBe(false);
@@ -107,11 +91,7 @@ describe("returnFallbackIfPredicateFalseAfterTimeout", () => {
     const predicate = vi.fn(() => false);
 
     // Test with false as fallback
-    const wrapper1 = returnFallbackIfPredicateFalseAfterTimeout(
-      predicate,
-      false,
-      100
-    );
+    const wrapper1 = predicateOrFallbackAfterTimeout(predicate, false, 100);
 
     wrapper1();
     vi.advanceTimersByTime(100);
@@ -119,11 +99,7 @@ describe("returnFallbackIfPredicateFalseAfterTimeout", () => {
 
     // Test with true as fallback
     const predicate2 = vi.fn(() => false);
-    const wrapper2 = returnFallbackIfPredicateFalseAfterTimeout(
-      predicate2,
-      true,
-      100
-    );
+    const wrapper2 = predicateOrFallbackAfterTimeout(predicate2, true, 100);
 
     wrapper2();
     vi.advanceTimersByTime(100);
@@ -132,11 +108,7 @@ describe("returnFallbackIfPredicateFalseAfterTimeout", () => {
 
   it("should handle rapid successive calls before timeout", () => {
     const predicate = vi.fn(() => false);
-    const wrapper = returnFallbackIfPredicateFalseAfterTimeout(
-      predicate,
-      true,
-      1000
-    );
+    const wrapper = predicateOrFallbackAfterTimeout(predicate, true, 1000);
 
     // Rapid calls should all return false
     expect(wrapper()).toBe(false);
@@ -149,11 +121,7 @@ describe("returnFallbackIfPredicateFalseAfterTimeout", () => {
 
   it("should respect different timeout values", () => {
     const predicate = vi.fn(() => false);
-    const wrapper = returnFallbackIfPredicateFalseAfterTimeout(
-      predicate,
-      true,
-      500
-    );
+    const wrapper = predicateOrFallbackAfterTimeout(predicate, true, 500);
 
     wrapper();
     vi.advanceTimersByTime(499);
@@ -170,11 +138,7 @@ describe("returnFallbackIfPredicateFalseAfterTimeout", () => {
       return callCount % 2 === 0; // returns false, true, false, true, etc.
     });
 
-    const wrapper = returnFallbackIfPredicateFalseAfterTimeout(
-      predicate,
-      true,
-      1000
-    );
+    const wrapper = predicateOrFallbackAfterTimeout(predicate, true, 1000);
 
     // Call 1: returns false
     expect(wrapper()).toBe(false);
@@ -193,11 +157,7 @@ describe("returnFallbackIfPredicateFalseAfterTimeout", () => {
 
   it("should not return fallback until timeout actually elapses", () => {
     const predicate = vi.fn(() => false);
-    const wrapper = returnFallbackIfPredicateFalseAfterTimeout(
-      predicate,
-      true,
-      1000
-    );
+    const wrapper = predicateOrFallbackAfterTimeout(predicate, true, 1000);
 
     wrapper();
 
@@ -228,11 +188,7 @@ describe("returnFallbackIfPredicateFalseAfterTimeout", () => {
 
   it("should work with very short timeouts", () => {
     const predicate = vi.fn(() => false);
-    const wrapper = returnFallbackIfPredicateFalseAfterTimeout(
-      predicate,
-      true,
-      1
-    );
+    const wrapper = predicateOrFallbackAfterTimeout(predicate, true, 1);
 
     wrapper();
     vi.advanceTimersByTime(1);
@@ -241,11 +197,7 @@ describe("returnFallbackIfPredicateFalseAfterTimeout", () => {
 
   it("should call predicate each time wrapper is called", () => {
     const predicate = vi.fn(() => true);
-    const wrapper = returnFallbackIfPredicateFalseAfterTimeout(
-      predicate,
-      false,
-      1000
-    );
+    const wrapper = predicateOrFallbackAfterTimeout(predicate, false, 1000);
 
     wrapper();
     wrapper();

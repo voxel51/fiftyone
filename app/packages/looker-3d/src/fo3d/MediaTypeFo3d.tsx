@@ -1,5 +1,5 @@
 import { LoadingDots } from "@fiftyone/components";
-import { returnFallbackIfPredicateFalseAfterTimeout } from "@fiftyone/core";
+import { predicateOrFallbackAfterTimeout } from "@fiftyone/core";
 import { useOverlayPersistence } from "@fiftyone/core/src/components/Modal/Lighter/useOverlayPersistence";
 import useCanAnnotate from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useCanAnnotate";
 import {
@@ -68,6 +68,7 @@ import {
 } from "./utils";
 
 const CANVAS_WRAPPER_ID = "sample3d-canvas-wrapper";
+const BOUNDS_COMPUTE_TIMEOUT_MS = 4000;
 
 const MainContainer = styled.main`
   display: flex;
@@ -341,24 +342,36 @@ export const MediaTypeFo3dComponent = () => {
 
   const loadingStatus = useLoadingStatus();
 
-  const canComputeBounds = useCallback(() => {
-    const checkLoadingStatus = () =>
-      loadingStatus.isSuccess ||
-      loadingStatus.isFailed ||
-      loadingStatus.isAborted;
+  const isLoadingStatusFinal =
+    loadingStatus.isSuccess ||
+    loadingStatus.isFailed ||
+    loadingStatus.isAborted;
 
-    const predicateWithTimeout = returnFallbackIfPredicateFalseAfterTimeout(
-      checkLoadingStatus,
+  // keep the current value in a ref so the predicate always sees fresh state
+  const isFinalRef = useRef(isLoadingStatusFinal);
+  isFinalRef.current = isLoadingStatusFinal;
+
+  const canComputeBoundsPredicateRef = useRef(
+    predicateOrFallbackAfterTimeout(
+      () => isFinalRef.current,
       true,
-      2000
-    );
+      BOUNDS_COMPUTE_TIMEOUT_MS
+    )
+  );
 
-    return predicateWithTimeout();
-  }, [
-    loadingStatus.isSuccess,
-    loadingStatus.isFailed,
-    loadingStatus.isAborted,
-  ]);
+  useEffect(() => {
+    canComputeBoundsPredicateRef.current = predicateOrFallbackAfterTimeout(
+      () => isFinalRef.current,
+      true,
+      BOUNDS_COMPUTE_TIMEOUT_MS
+    );
+    // here, fo3dRoot plays the role of the key that indicates a fresh load
+  }, [fo3dRoot]);
+
+  const canComputeBounds = useCallback(
+    () => canComputeBoundsPredicateRef.current(),
+    []
+  );
 
   const {
     boundingBox: sceneBoundingBox,
