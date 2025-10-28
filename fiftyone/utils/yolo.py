@@ -11,13 +11,16 @@ import logging
 import os
 import warnings
 
+from bson import ObjectId
 import numpy as np
 import yaml
 
 import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
+import fiftyone.core.metadata as fom
 import fiftyone.core.storage as fos
+import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
 
@@ -30,6 +33,7 @@ def add_yolo_labels(
     labels_path,
     classes,
     label_type="detections",
+    mask_size=None,
     include_missing=False,
 ):
     """Adds the given YOLO-formatted labels to the collection.
@@ -66,17 +70,41 @@ def add_yolo_labels(
                 ``sample_collection``, in any order
         classes: the list of class label strings
         label_type ("detections"): the label format to load. The supported
-            values are ``("detections", "polylines")``
+            values are ``("detections", "instances", "polylines")``
+        mask_size (None): an optional ``(width, height)`` at which to render
+            each instance mask. Only used when ``label_type="instances"``
         include_missing (False): whether to insert empty labels for any samples
             in the input collection whose ``label_field`` is ``None`` after
             import
     """
+    need_frame_size = label_type == "instances" and mask_size is None
+
     if isinstance(labels_path, (list, tuple)):
         # Explicit list of labels files
-        labels = [
-            load_yolo_annotations(p, classes, label_type=label_type)
-            for p in labels_path
-        ]
+
+        if need_frame_size:
+            sample_collection.compute_metadata()
+            metadatas = sample_collection.values("metadata")
+        else:
+            metadatas = itertools.repeat(None)
+
+        labels = []
+        for path, metadata in zip(labels_path, metadatas):
+            if metadata is not None:
+                frame_size = (metadata.width, metadata.height)
+            else:
+                frame_size = None
+
+            labels.append(
+                load_yolo_annotations(
+                    path,
+                    classes,
+                    label_type=label_type,
+                    mask_size=mask_size,
+                    frame_size=frame_size,
+                )
+            )
+
         sample_collection.set_values(label_field, labels)
         return
 
@@ -140,19 +168,40 @@ def add_yolo_labels(
             mtype,
         )
 
-    view = sample_collection.select(matched_ids, ordered=True)
-    labels = [
-        load_yolo_annotations(p, classes, label_type=label_type)
-        for p in matched_paths
-    ]
-    view.set_values(label_field, labels)
+    if need_frame_size:
+        metadata_map = {}
+        batch_size = fou.recommend_batch_size_for_value(
+            ObjectId(), max_size=100000
+        )
+        for _ids in fou.iter_batches(matched_ids, batch_size):
+            view = sample_collection.select(_ids)
+            view.compute_metadata()
+            for id, metadata in zip(*view.values(["id", "metadata"])):
+                metadata_map[id] = metadata
+
+    labels = {}
+    for id, path in zip(matched_ids, matched_paths):
+        if need_frame_size:
+            metadata = metadata_map[id]
+            frame_size = (metadata.width, metadata.height)
+        else:
+            frame_size = None
+
+        labels[id] = load_yolo_annotations(
+            path,
+            classes,
+            label_type=label_type,
+            mask_size=mask_size,
+            frame_size=frame_size,
+        )
+
+    sample_collection.set_values(label_field, labels, key_field="id")
 
     if include_missing:
         label_cls = sample_collection.get_field(label_field).document_type
-        missing_labels = sample_collection.exists(label_field, False)
-        missing_labels.set_values(
-            label_field, [label_cls()] * len(missing_labels)
-        )
+        missing_view = sample_collection.exists(label_field, False)
+        labels = {id: label_cls() for id in missing_view.values("id")}
+        sample_collection.set_values(label_field, labels, key_field="id")
 
 
 class YOLOv4DatasetImporter(
@@ -209,7 +258,9 @@ class YOLOv4DatasetImporter(
         classes (None): the list of possible class labels. This does not need
             to be provided if ``objects_path`` contains the class labels
         label_type ("detections"): the label format to load. The supported
-            values are ``("detections", "polylines")``
+            values are ``("detections", "instances", "polylines")``
+        mask_size (None): an optional ``(width, height)`` at which to render
+            each instance mask. Only used when ``label_type="instances"``
         include_all_data (False): whether to generate samples for all images in
             the data directory (True) rather than only creating samples for
             images with labels (False)
@@ -229,6 +280,7 @@ class YOLOv4DatasetImporter(
         objects_path=None,
         classes=None,
         label_type="detections",
+        mask_size=None,
         include_all_data=False,
         shuffle=False,
         seed=None,
@@ -273,7 +325,9 @@ class YOLOv4DatasetImporter(
         self.objects_path = objects_path
         self.classes = classes
         self.label_type = label_type
+        self.mask_size = mask_size
         self.include_all_data = include_all_data
+        self.needs_frame_size = label_type == "instances" and mask_size is None
 
         self._info = None
         self._classes = None
@@ -292,17 +346,32 @@ class YOLOv4DatasetImporter(
     def __next__(self):
         filepath = next(self._iter_filepaths)
 
+        if self.needs_frame_size:
+            metadata = fom.ImageMetadata.build_for(filepath)
+        else:
+            metadata = None
+
         labels_path = self._labels_paths_map.get(filepath, None)
         if labels_path:
             # Labeled image
+
+            if self.needs_frame_size:
+                frame_size = (metadata.width, metadata.height)
+            else:
+                frame_size = None
+
             label = load_yolo_annotations(
-                labels_path, self._classes, label_type=self.label_type
+                labels_path,
+                self._classes,
+                label_type=self.label_type,
+                mask_size=self.mask_size,
+                frame_size=frame_size,
             )
         else:
             # Unlabeled image
             label = None
 
-        return filepath, None, label
+        return filepath, metadata, label
 
     @property
     def has_dataset_info(self):
@@ -310,7 +379,7 @@ class YOLOv4DatasetImporter(
 
     @property
     def has_image_metadata(self):
-        return False
+        return self.needs_frame_size
 
     @property
     def label_cls(self):
@@ -411,7 +480,9 @@ class YOLOv5DatasetImporter(
         split ("val"): the split to load. Typical values are
             ``("train", "val")``
         label_type ("detections"): the label format to load. The supported
-            values are ``("detections", "polylines")``
+            values are ``("detections", "instances", "polylines")``
+        mask_size (None): an optional ``(width, height)`` at which to render
+            each instance mask. Only used when ``label_type="instances"``
         include_all_data (False): whether to generate samples for all images in
             the data directory (True) rather than only creating samples for
             images with labels (False)
@@ -428,6 +499,7 @@ class YOLOv5DatasetImporter(
         yaml_path=None,
         split="val",
         label_type="detections",
+        mask_size=None,
         include_all_data=False,
         shuffle=False,
         seed=None,
@@ -454,6 +526,8 @@ class YOLOv5DatasetImporter(
         self.yaml_path = yaml_path
         self.split = split
         self.label_type = label_type
+        self.mask_size = mask_size
+        self.needs_frame_size = label_type == "instances" and mask_size is None
         self.include_all_data = include_all_data
 
         self._info = None
@@ -473,17 +547,32 @@ class YOLOv5DatasetImporter(
     def __next__(self):
         filepath = next(self._iter_filepaths)
 
+        if self.needs_frame_size:
+            metadata = fom.ImageMetadata.build_for(filepath)
+        else:
+            metadata = None
+
         labels_path = self._labels_paths_map.get(filepath, None)
         if labels_path:
             # Labeled image
+
+            if self.needs_frame_size:
+                frame_size = (metadata.width, metadata.height)
+            else:
+                frame_size = None
+
             label = load_yolo_annotations(
-                labels_path, self._classes, label_type=self.label_type
+                labels_path,
+                self._classes,
+                label_type=self.label_type,
+                mask_size=self.mask_size,
+                frame_size=frame_size,
             )
         else:
             # Unlabeled image
             label = None
 
-        return filepath, None, label
+        return filepath, metadata, label
 
     @property
     def has_dataset_info(self):
@@ -491,7 +580,7 @@ class YOLOv5DatasetImporter(
 
     @property
     def has_image_metadata(self):
-        return False
+        return self.needs_frame_size
 
     @property
     def label_cls(self):
@@ -642,6 +731,10 @@ class YOLOv4DatasetExporter(
         classes (None): the list of possible class labels
         include_confidence (False): whether to include detection confidences in
             the export, if they exist
+        use_masks (False): whether to export detections based on their
+            instance masks rather than their bounding boxes
+        tolerance (2): a tolerance, in pixels, when generating approximate
+            polylines for the instance masks. Typical values are 1-3 pixels
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
@@ -658,6 +751,8 @@ class YOLOv4DatasetExporter(
         rel_dir=None,
         classes=None,
         include_confidence=False,
+        use_masks=False,
+        tolerance=2,
         image_format=None,
     ):
         data_path, export_media = self._parse_data_path(
@@ -693,6 +788,8 @@ class YOLOv4DatasetExporter(
         self.rel_dir = rel_dir
         self.classes = classes
         self.include_confidence = include_confidence
+        self.use_masks = use_masks
+        self.tolerance = tolerance
         self.image_format = image_format
 
         self._classes = None
@@ -748,6 +845,8 @@ class YOLOv4DatasetExporter(
             self._labels_map_rev,
             dynamic_classes=self._dynamic_classes,
             include_confidence=self.include_confidence,
+            use_masks=self.use_masks,
+            tolerance=self.tolerance,
         )
 
     def close(self, *args):
@@ -841,6 +940,10 @@ class YOLOv5DatasetExporter(
         classes (None): the list of possible class labels
         include_confidence (False): whether to include detection confidences in
             the export, if they exist
+        use_masks (False): whether to export detections based on their
+            instance masks rather than their bounding boxes
+        tolerance (2): a tolerance, in pixels, when generating approximate
+            polylines for the instance masks. Typical values are 1-3 pixels
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
@@ -859,6 +962,8 @@ class YOLOv5DatasetExporter(
         rel_dir=None,
         classes=None,
         include_confidence=False,
+        use_masks=False,
+        tolerance=2,
         image_format=None,
         include_path=True,
     ):
@@ -891,6 +996,8 @@ class YOLOv5DatasetExporter(
         self.rel_dir = rel_dir
         self.classes = classes
         self.include_confidence = include_confidence
+        self.use_masks = use_masks
+        self.tolerance = tolerance
         self.image_format = image_format
         self.include_path = include_path
 
@@ -942,6 +1049,8 @@ class YOLOv5DatasetExporter(
             self._labels_map_rev,
             dynamic_classes=self._dynamic_classes,
             include_confidence=self.include_confidence,
+            use_masks=self.use_masks,
+            tolerance=self.tolerance,
         )
 
     def close(self, *args):
@@ -994,6 +1103,8 @@ class YOLOAnnotationWriter(object):
         labels_map_rev,
         dynamic_classes=False,
         include_confidence=False,
+        use_masks=False,
+        tolerance=2,
     ):
         """Writes the labels to disk.
 
@@ -1007,7 +1118,14 @@ class YOLOAnnotationWriter(object):
                 ``labels_map_rev``
             include_confidence (False): whether to include confidences in the
                 export, if they exist
+            use_masks (False): whether to export detections based on their
+                instance masks rather than their bounding boxes
+            tolerance (2): a tolerance, in pixels, when generating approximate
+                polylines for the instance masks. Typical values are 1-3 pixels
         """
+        if use_masks and isinstance(label, fol.Detections):
+            label = label.to_polylines(tolerance=tolerance)
+
         if isinstance(label, fol.Polylines):
             labels = label.polylines
         elif isinstance(label, fol.Detections):
@@ -1043,7 +1161,13 @@ class YOLOAnnotationWriter(object):
         _write_file_lines(rows, txt_path)
 
 
-def load_yolo_annotations(txt_path, classes, label_type="detections"):
+def load_yolo_annotations(
+    txt_path,
+    classes,
+    label_type="detections",
+    mask_size=None,
+    frame_size=None,
+):
     """Loads the YOLO-style annotations from the given TXT file.
 
     The txt file should be a space-delimited file where each row corresponds
@@ -1064,7 +1188,12 @@ def load_yolo_annotations(txt_path, classes, label_type="detections"):
         txt_path: the path to the annotations TXT file
         classes: the list of class label strings
         label_type ("detections"): the label format to load. The supported
-            values are ``("detections", "polylines")``
+            values are ``("detections", "instances", "polylines")``
+        mask_size (None): an optional ``(width, height)`` at which to render
+            each instance mask. Only used when ``label_type="instances"``
+        frame_size (None): the ``(width, height)`` of the frame containing the
+            annotations. Only used when ``label_type="instances"`` and no
+            ``mask_size`` is provided
 
     Returns:
         a :class:`fiftyone.core.labels.Detections` or
@@ -1072,10 +1201,16 @@ def load_yolo_annotations(txt_path, classes, label_type="detections"):
     """
     labels = []
     for row in _read_file_lines(txt_path):
-        label = _parse_yolo_row(row, classes, label_type)
+        label = _parse_yolo_row(
+            row,
+            classes,
+            label_type,
+            mask_size=mask_size,
+            frame_size=frame_size,
+        )
         labels.append(label)
 
-    if label_type == "detections":
+    if label_type in ("detections", "instances"):
         return fol.Detections(detections=labels)
 
     if label_type == "polylines":
@@ -1083,7 +1218,7 @@ def load_yolo_annotations(txt_path, classes, label_type="detections"):
 
     raise ValueError(
         "Unsupported label_type='%s'. The supported values are %s"
-        % (label_type, ("detections", "polylines"))
+        % (label_type, ("detections", "instances", "polylines"))
     )
 
 
@@ -1131,7 +1266,7 @@ def _get_yolo_v5_labels_path(image_path):
     return root + ext
 
 
-def _parse_yolo_row(row, classes, label_type):
+def _parse_yolo_row(row, classes, label_type, mask_size=None, frame_size=None):
     row_vals = row.split()
 
     target = row_vals[0]
@@ -1142,6 +1277,7 @@ def _parse_yolo_row(row, classes, label_type):
 
     points = None
     bounding_box = None
+    mask = None
     confidence = None
 
     if len(row_vals) >= 7:
@@ -1149,6 +1285,14 @@ def _parse_yolo_row(row, classes, label_type):
         points = np.reshape(points, (-1, 2))
         if label_type == "polylines":
             points = points.tolist()
+        elif label_type == "instances":
+            detection = fol.Polyline(
+                points=[points.tolist()],
+                closed=True,
+                filled=True,
+            ).to_detection(mask_size=mask_size, frame_size=frame_size)
+            bounding_box = detection.bounding_box
+            mask = detection.get_mask()
         else:
             xmin, ymin = points.min(axis=0)
             xmax, ymax = points.max(axis=0)
@@ -1179,7 +1323,10 @@ def _parse_yolo_row(row, classes, label_type):
         )
 
     return fol.Detection(
-        label=label, bounding_box=bounding_box, confidence=confidence
+        label=label,
+        bounding_box=bounding_box,
+        mask=mask,
+        confidence=confidence,
     )
 
 
