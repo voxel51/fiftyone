@@ -702,6 +702,7 @@ class TorchImageModel(
         self._skeleton = self._parse_skeleton(config)
 
         # Build output processor
+        self._filter_classes = None
         self._output_processor = self._build_output_processor(config)
 
         fom.LogitsMixin.__init__(self)
@@ -834,6 +835,27 @@ class TorchImageModel(
         return None
 
     @property
+    def can_filter_classes(self):
+        """Whether this model allows users to provide a list of allowed
+        classes to filter the predictions it makes.
+        """
+        return self.classes is not None
+
+    @property
+    def filter_classes(self):
+        """The list of classes that the model is currently restricted to when
+        generating predictions, if any.
+        """
+        return self._filter_classes
+
+    @filter_classes.setter
+    def filter_classes(self, value):
+        if value == self.classes:
+            value = None
+
+        self._filter_classes = value
+
+    @property
     def mask_targets(self):
         """The mask targets for the model, if any."""
         return self._mask_targets
@@ -932,6 +954,7 @@ class TorchImageModel(
             output,
             (width, height),
             confidence_thresh=self.config.confidence_thresh,
+            classes=self._filter_classes,
         )
 
     def _forward_pass(self, imgs):
@@ -973,8 +996,7 @@ class TorchImageModel(
                     idx + 1: val for idx, val in enumerate(self.classes)
                 }
             else:
-                # Class at index 0 is treated as background class.
-                # This class is neither visualized in the app nor used in evaluate_segmentations.
+                # Class at index 0 is treated as background class
                 mask_targets = {
                     idx: val for idx, val in enumerate(self.classes)
                 }
@@ -1274,7 +1296,14 @@ class OutputProcessor(object):
     def __init__(self, classes=None, **kwargs):
         pass
 
-    def __call__(self, output, frame_size, confidence_thresh=None):
+    def __call__(
+        self,
+        output,
+        frame_size,
+        confidence_thresh=None,
+        classes=None,
+        **kwargs,
+    ):
         """Parses the model output.
 
         Args:
@@ -1282,6 +1311,9 @@ class OutputProcessor(object):
             frame_size: the ``(width, height)`` of the frames in the batch
             confidence_thresh (None): an optional confidence threshold to use
                 to filter any applicable predictions
+            classes (None): an optional iterable of classes to use to filter
+                any applicable predictions
+            **kwargs: unused kwargs
 
         Returns:
             a list of :class:`fiftyone.core.labels.Label` instances
@@ -1307,7 +1339,14 @@ class ClassifierOutputProcessor(OutputProcessor):
         self.store_logits = store_logits
         self.logits_key = logits_key
 
-    def __call__(self, output, _, confidence_thresh=None):
+    def __call__(
+        self,
+        output,
+        _,
+        confidence_thresh=None,
+        classes=None,
+        **kwargs,
+    ):
         """Parses the model output.
 
         Args:
@@ -1317,6 +1356,9 @@ class ClassifierOutputProcessor(OutputProcessor):
             _: unused argument
             confidence_thresh (None): an optional confidence threshold to use
                 to filter any applicable predictions
+            classes (None): an optional iterable of classes to use to filter
+                any applicable predictions
+            **kwargs: unused kwargs
 
         Returns:
             a list of :class:`fiftyone.core.labels.Classification` instances
@@ -1336,11 +1378,14 @@ class ClassifierOutputProcessor(OutputProcessor):
 
         preds = []
         for prediction, score, _logits in zip(predictions, scores, logits):
+            label = self.classes[prediction]
             if confidence_thresh is not None and score < confidence_thresh:
+                classification = fol.Classification()
+            elif classes is not None and label not in classes:
                 classification = fol.Classification()
             else:
                 classification = fol.Classification(
-                    label=self.classes[prediction],
+                    label=label,
                     confidence=score,
                 )
                 if self.store_logits:
@@ -1366,7 +1411,14 @@ class DetectorOutputProcessor(OutputProcessor):
 
         self.classes = classes
 
-    def __call__(self, output, frame_size, confidence_thresh=None):
+    def __call__(
+        self,
+        output,
+        frame_size,
+        confidence_thresh=None,
+        classes=None,
+        **kwargs,
+    ):
         """Parses the model output.
 
         Args:
@@ -1381,16 +1433,19 @@ class DetectorOutputProcessor(OutputProcessor):
             frame_size: the ``(width, height)`` of the frames in the batch
             confidence_thresh (None): an optional confidence threshold to use
                 to filter any applicable predictions
+            classes (None): an optional iterable of classes to use to filter
+                any applicable predictions
+            **kwargs: unused kwargs
 
         Returns:
             a list of :class:`fiftyone.core.labels.Detections` instances
         """
         return [
-            self._parse_output(o, frame_size, confidence_thresh)
+            self._parse_output(o, frame_size, confidence_thresh, classes)
             for o in output
         ]
 
-    def _parse_output(self, output, frame_size, confidence_thresh):
+    def _parse_output(self, output, frame_size, confidence_thresh, classes):
         width, height = frame_size
 
         boxes = output["boxes"].detach().cpu().numpy()
@@ -1398,8 +1453,13 @@ class DetectorOutputProcessor(OutputProcessor):
         scores = output["scores"].detach().cpu().numpy()
 
         detections = []
-        for box, label, score in zip(boxes, labels, scores):
+        for box, lbl, score in zip(boxes, labels, scores):
+            label = self.classes[lbl]
+
             if confidence_thresh is not None and score < confidence_thresh:
+                continue
+
+            if classes is not None and label not in classes:
                 continue
 
             x1, y1, x2, y2 = box
@@ -1412,7 +1472,7 @@ class DetectorOutputProcessor(OutputProcessor):
 
             detections.append(
                 fol.Detection(
-                    label=self.classes[label],
+                    label=label,
                     bounding_box=bounding_box,
                     confidence=score,
                 )
@@ -1439,7 +1499,14 @@ class InstanceSegmenterOutputProcessor(OutputProcessor):
         self.classes = classes
         self.mask_thresh = mask_thresh
 
-    def __call__(self, output, frame_size, confidence_thresh=None):
+    def __call__(
+        self,
+        output,
+        frame_size,
+        confidence_thresh=None,
+        classes=None,
+        **kwargs,
+    ):
         """Parses the model output.
 
         Args:
@@ -1456,16 +1523,19 @@ class InstanceSegmenterOutputProcessor(OutputProcessor):
             frame_size: the ``(width, height)`` of the frames in the batch
             confidence_thresh (None): an optional confidence threshold to use
                 to filter any applicable predictions
+            classes (None): an optional iterable of classes to use to filter
+                any applicable predictions
+            **kwargs: unused kwargs
 
         Returns:
             a list of :class:`fiftyone.core.labels.Detections` instances
         """
         return [
-            self._parse_output(o, frame_size, confidence_thresh)
+            self._parse_output(o, frame_size, confidence_thresh, classes)
             for o in output
         ]
 
-    def _parse_output(self, output, frame_size, confidence_thresh):
+    def _parse_output(self, output, frame_size, confidence_thresh, classes):
         width, height = frame_size
 
         boxes = output["boxes"].detach().cpu().numpy()
@@ -1477,12 +1547,17 @@ class InstanceSegmenterOutputProcessor(OutputProcessor):
             scores = itertools.repeat(None)
 
         detections = []
-        for box, label, mask, score in zip(boxes, labels, masks, scores):
+        for box, lbl, mask, score in zip(boxes, labels, masks, scores):
+            label = self.classes[lbl]
+
             if (
                 confidence_thresh is not None
                 and score is not None
                 and score < confidence_thresh
             ):
+                continue
+
+            if classes is not None and label not in classes:
                 continue
 
             x1, y1, x2, y2 = box
@@ -1503,7 +1578,7 @@ class InstanceSegmenterOutputProcessor(OutputProcessor):
 
             detections.append(
                 fol.Detection(
-                    label=self.classes[label],
+                    label=label,
                     bounding_box=bounding_box,
                     mask=mask,
                     confidence=score,
@@ -1584,7 +1659,14 @@ class KeypointDetectorOutputProcessor(OutputProcessor):
 
         self.classes = classes
 
-    def __call__(self, output, frame_size, confidence_thresh=None):
+    def __call__(
+        self,
+        output,
+        frame_size,
+        confidence_thresh=None,
+        classes=None,
+        **kwargs,
+    ):
         """Parses the model output.
 
         Args:
@@ -1601,16 +1683,19 @@ class KeypointDetectorOutputProcessor(OutputProcessor):
             frame_size: the ``(width, height)`` of the frames in the batch
             confidence_thresh (None): an optional confidence threshold to use
                 to filter any applicable predictions
+            classes (None): an optional iterable of classes to use to filter
+                any applicable predictions
+            **kwargs: unused kwargs
 
         Returns:
             a list of :class:`fiftyone.core.labels.Label` dicts
         """
         return [
-            self._parse_output(o, frame_size, confidence_thresh)
+            self._parse_output(o, frame_size, confidence_thresh, classes)
             for o in output
         ]
 
-    def _parse_output(self, output, frame_size, confidence_thresh):
+    def _parse_output(self, output, frame_size, confidence_thresh, classes):
         width, height = frame_size
 
         boxes = output["boxes"].detach().cpu().numpy()
@@ -1623,10 +1708,15 @@ class KeypointDetectorOutputProcessor(OutputProcessor):
 
         _detections = []
         _keypoints = []
-        for box, label, score, kpts, kpt_scores in zip(
+        for box, lbl, score, kpts, kpt_scores in zip(
             boxes, labels, scores, keypoints, keypoints_scores
         ):
+            label = self.classes[lbl]
+
             if confidence_thresh is not None and score < confidence_thresh:
+                continue
+
+            if classes is not None and label not in classes:
                 continue
 
             x1, y1, x2, y2 = box
@@ -1650,7 +1740,7 @@ class KeypointDetectorOutputProcessor(OutputProcessor):
 
             _detections.append(
                 fol.Detection(
-                    label=self.classes[label],
+                    label=label,
                     bounding_box=bounding_box,
                     confidence=score,
                 )
@@ -1658,7 +1748,7 @@ class KeypointDetectorOutputProcessor(OutputProcessor):
 
             _keypoints.append(
                 fol.Keypoint(
-                    label=self.classes[label],
+                    label=label,
                     points=points,
                     confidence=kpt_scores.tolist(),
                 )
@@ -1676,12 +1766,17 @@ class SemanticSegmenterOutputProcessor(OutputProcessor):
     Args:
         classes (None): the list of class labels for the model. This parameter
             is not used
-        no_background_cls (False): if true, class indices are incremented by 1 in the mask
-        has_softmax_out (True): if false, softmax is applied to output predictions.
+        no_background_cls (False): if true, class indices are incremented by 1
+            in the mask
+        has_softmax_out (True): if false, softmax is applied to output
+            predictions
     """
 
     def __init__(
-        self, classes=None, no_background_cls=False, has_softmax_out=True
+        self,
+        classes=None,
+        no_background_cls=False,
+        has_softmax_out=True,
     ):
         self.classes = classes
         self.no_background_cls = no_background_cls
@@ -1709,7 +1804,6 @@ class SemanticSegmenterOutputProcessor(OutputProcessor):
 
         masks = probs.argmax(axis=1)
         if self.no_background_cls:
-            # Increment class index by 1 since 0 is reserved for background in the app.
             masks += 1
 
         confidence_thresh = kwargs.pop("confidence_thresh", None)
