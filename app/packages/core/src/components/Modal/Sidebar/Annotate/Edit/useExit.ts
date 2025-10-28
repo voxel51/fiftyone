@@ -23,7 +23,7 @@ export default function useExit(revertLabel = true) {
   const remove = useDelete();
 
   /**
-   * 3D SPECIFIC LOGIC
+   * 3D SPECIFIC IMPORTS
    * : TODO: CLEAN THIS UP. THIS FUNCTION SHOULDN'T BE
    * COUPLED TO LIGHTER OR LOOKER-3D.
    */
@@ -35,7 +35,7 @@ export default function useExit(revertLabel = true) {
     selectedLabelForAnnotationAtom
   );
   /**
-   * 3D SPECIFIC LOGIC ENDS HERE.
+   * 3D SPECIFIC IMPORTS ENDS HERE.
    */
 
   return useCallback(() => {
