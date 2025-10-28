@@ -1115,12 +1115,72 @@ the property will automatically be marked as `invalid=True`. The operator's
     As the example above shows, you can manually set a property to invalid by
     setting its `invalid` property.
 
+.. _operator-caching-expensive-inputs:
+
+Caching expensive inputs
+------------------------
+
+Some operators may need to perform expensive computations in
+:meth:`resolve_input() <fiftyone.operators.operator.Operator.resolve_input>`
+to collect user inputs. In such cases, the
+:func:`execution_cache <fiftyone.operators.cache.execution_cache>` decorator
+can be used to optimize the operator's runtime by caching these expensive
+computations so that they are not re-computed unnecessarily. Input caching can
+be particularly important for operators that declare `dynamic=True`, as their
+:meth:`resolve_input() <fiftyone.operators.operator.Operator.resolve_input>`
+is called after each user interaction in the prompt modal.
+
+To use the
+:func:`execution_cache <fiftyone.operators.cache.execution_cache>` decorator,
+simply isolate any expensive computations in a dedicated method and configure
+the caching strategy according to your needs:
+
+.. code-block:: python
+    :linenos:
+
+    from operator import itemgetter
+    import fiftyone.operators as foo
+
+    class ExpensiveInputsOperator(foo.Operator):
+        @property
+        def config(self):
+            return foo.OperatorConfig(
+                name="expensive_inputs_operator",
+                label="Example view operator",
+                dynamic=True,
+            )
+
+        def resolve_input(self, ctx):
+            inputs = types.Object()
+
+            inputs.str("path", ...)
+            path = ctx.params["path"]
+
+            # An expensive computation that we don't want to repeat unnecessarily
+            counts = count_values(ctx, path)
+
+            choices = types.DropdownView()
+            for value, count in sorted(counts.items(), key=itemgetter(1), reverse=True):
+                choices.add_choice(value, label=f"{value} ({count})")
+
+            ...
+
+    # Option 1
+    # Cache for all dataset users for 90 seconds
+    @execution_cache(ttl=90)
+    def count_values(ctx, path):
+        return ctx.dataset.count_values(path)
+
+    # Option 2
+    # Cache in-memory and only for the life of the current prompt modal
+    @execution_cache(prompt_scoped=True, residency="ephemeral")
+    def count_values(ctx, path):
+        return ctx.dataset.count_values(path)
+
 .. note::
 
-    Avoid expensive computations in
-    :meth:`resolve_input() <fiftyone.operators.operator.Operator.resolve_input>`
-    or else the form may take too long to render, especially for dynamic inputs
-    where the method is called after every user input.
+    Refer to :ref:`this section <panel-execution-cache>` for more information
+    about using the execution cache.
 
 .. _operator-target-view:
 
@@ -1148,6 +1208,7 @@ Here's a simple example of an operator that uses the target view pattern to
 give the user the choice of target view to process:
 
 .. code-block:: python
+    :linenos:
 
     import fiftyone.operators as foo
 
@@ -2705,30 +2766,37 @@ for avoiding repeated computations in dynamic operators or persisting
 long-lived values across panel instances and App sessions.
 
 Cached entries are stored in a dataset-scoped or global
-:class:`ExecutionStore <fiftyone.operators.store.ExecutionStore>`, and can be
-customized with TTLs, user scoping, operator scoping, and more.
+:class:`ExecutionStore <fiftyone.operators.store.ExecutionStore>` and can be
+customized with TTLs, user scoping, operator prompt modal scoping, and more.
 
-To cache a function's result scoped to the current ``ctx.dataset``, use the
-:func:`execution_cache <fiftyone.operators.cache.execution_cache>` decorator:
+Use the :func:`execution_cache <fiftyone.operators.cache.execution_cache>`
+decorator to cache a function's result:
 
 .. code-block:: python
     :linenos:
 
-    from fiftyone.operators.cache import execution_cache
+    from fiftyone.operators import execution_cache
 
-    # Default usage: cache is scoped to the dataset
+    # Default behavior: cache for the life of a dataset
     @execution_cache
     def expensive_query(ctx, path):
         return ctx.dataset.count_values(path)
 
-    # Method with custom TTL and store name
+    # Cache in-memory, and only while the current operator prompt modal is open
+    @execution_cache(prompt_scoped=True, residency="ephemeral")
+    def expensive_query(ctx, path):
+        return ctx.dataset.count_values(path)
+
+    # Cache with a custom TTL and store name
     class Processor:
         @execution_cache(ttl=60, store_name="processor_cache")
         def expensive_query(self, ctx, path):
             return ctx.dataset.count_values(path)
 
-    # Using a custom key function with user-level scoping
-    # NOTE: must return a tuple or list
+    #
+    # Cache at the user-level
+    #
+
     def custom_key_fn(ctx, path):
         return path, ctx.user_id
 
@@ -2736,10 +2804,9 @@ To cache a function's result scoped to the current ``ctx.dataset``, use the
     def user_specific_query(ctx, path):
         return ctx.dataset.match(F("creator_id") == ctx.user_id).count_values(path)
 
-    @execution_cache(residency="ephemeral")
-    def example_custom_residency(ctx, path):
-        # this value will only be cached in memory
-        return ctx.dataset.count_values(path)
+    #
+    # You can manually bypass/modify the cache if necessary
+    #
 
     # Bypass the cache
     result = expensive_query.uncached(ctx, path)
@@ -2752,37 +2819,34 @@ To cache a function's result scoped to the current ``ctx.dataset``, use the
 
     # Clear all cache entries for the function
     expensive_query.clear_all_caches()
-
-    # NOTE: dataset_id is required if link_to_dataset=True
     expensive_query.clear_all_caches(dataset_id=dataset._doc.id)
 
 .. note::
 
-    When ``link_to_dataset=True`` (the default), cached entries are associated
-    with the current dataset and will be automatically deleted when the dataset
-    is deleted.
+    See the :func:`execution_cache <fiftyone.operators.cache.execution_cache>`
+    documentation for more information about customizing the caching behavior.
+
+The function being cached must:
+
+-   accept a :class:`ctx <fiftyone.operators.executor.ExecutionContext>` as the
+    first parameter
+-   be idempotent, i.e., same inputs produce the same outputs
+-   have serializable function arguments and return values
+-   have no side effects
+
+By default, cached entries are assocaited with the current dataset and will be
+automatically deleted when the dataset is deleted, but you can customize this
+behavior, including setting an explicit time-to-live in seconds for cached
+entries, by passing optional keyword arguments like ``ttl`` to
+:func:`execution_cache <fiftyone.operators.cache.execution_cache>`.
 
 .. warning::
 
-    Cached values must be JSON-serializable. Use the ``serialize`` and
-    ``deserialize`` arguments to handle custom types like NumPy arrays or
-    FiftyOne Samples.
-
-Advanced options for scoping and serialization are supported through arguments
-to the decorator:
-
-- ``ttl``: time-to-live (in seconds) for the cached entry
-- ``key_fn``: custom function to generate the cache key
-- ``link_to_dataset``: when ``True``, the cache is dropped when the dataset is
-  deleted (default is ``True``)
-- ``store_name``: custom store name (default is based on function name)
-- ``version``: optional version tag to isolate changes in function behavior
-- ``operator_scoped``: cache is tied to the current operator URI
-- ``user_scoped``: cache is tied to the current user
-- ``prompt_scoped``: cache is tied to the current prompt ID
-- ``jwt_scoped``: cache is tied to the current user's JWT
-- ``serialize`` / ``deserialize``: custom (de)serialization functions
-- ``residency``: cache residency policy (default is ``hybrid``)
+    When ``residency != "ephemeral"``, cached values must be coerced to
+    JSON safe types in order to be stored. By default, a default JSON
+    converter is used that can handle many common types, but you can
+    override this behavior if necessary by providing custom ``serialize``
+    and ``deserialize`` functions.
 
 Here's an example of caching a sample using custom serialization:
 
@@ -2790,6 +2854,7 @@ Here's an example of caching a sample using custom serialization:
     :linenos:
 
     import fiftyone as fo
+    from fiftyone.operators import execution_cache
 
     def serialize_sample(sample):
         return sample.to_dict()
@@ -2804,11 +2869,6 @@ Here's an example of caching a sample using custom serialization:
     )
     def get_first_sample(ctx):
         return ctx.dataset.first()
-
-.. note::
-
-    See the :func:`execution_cache <fiftyone.operators.cache.execution_cache>`
-    documentation for more details.
 
 .. _panel-saved-workspaces:
 

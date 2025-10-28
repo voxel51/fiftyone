@@ -39,8 +39,8 @@ def execution_cache(
     _func=None,
     *,
     residency="hybrid",
-    max_size=None,
     ttl=None,
+    max_size=None,
     link_to_dataset=True,
     key_fn=None,
     store_name=None,
@@ -53,86 +53,59 @@ def execution_cache(
     serialize=None,
     deserialize=None,
 ):
-    """
-    Decorator for caching function results in an ``ExecutionStore``.
+    """Decorator for caching function results in an
+    :class:`ExecutionStore <fiftyone.operators.store.ExecutionStore>`.
 
-    The function must:
-        - accept a `ctx` argument as the first parameter
-        - return a serializable value
-        - should produce the same output for the same input
-        - should have no side effects
-        - have serializable parameters and return values
+    The function being cached must:
 
-    Args:
-        ttl (None): Time-to-live for the cached value in seconds.
-        link_to_dataset (True): Whether to tie the cache entry to the dataset
-        key_fn (None): A custom function to generate cache keys.
-            If not provided, the function arguments are used as the key by serializing them as JSON.
-        store_name (None): Custom name for the execution store.
-            Defaults to the function name.
-        version (None): Set a version number to prevent cache collisions
-            when the function implementation changes.
-        operator_scoped (False): Whether to tie the cache entry to the current operator
-        user_scoped (False): Whether to tie the cache entry to the current user
-        prompt_scoped (False): Whether to tie the cache entry to
-            the current operator prompt
-        jwt_scoped (False): Whether to tie the cache entry to the current user's JWT
-        collection_name (None): Override the default collection name for the execution store
-            used by the execution_cache. The default collection name is "execution_store".
-        serialize (None): Custom serialization function given the original value that returns
-            a JSON-serializable value.
-        deserialize (None): Custom deserialization given a JSON-serializable value and returns
-            the original value.
-        residency ("hybrid"): The residency of the cache. Can be one of:
-            - "transient": Cache is stored in the execution store with policy="evict".
-            - "ephemeral": Cache is stored in memory and is cleared when the process ends.
-            - "hybrid": (default) Combination of transient and ephemeral. Cache is stored in memory
-                and in the execution store. The memory cache is used first, and if
-                the value is not found, it falls back to the execution store.
-        max_size (None): Maximum size of the memory cache. Only applicable for
-            "ephemeral" and "hybrid" residency modes. If not provided, the default
-            size is 1024. The cache will evict the least recently used items when
-            the size exceeds this limit.
+        -   accept a :class:`ctx <fiftyone.operators.executor.ExecutionContext>`
+            as the first parameter
+        -   be idempotent, i.e., same inputs produce the same outputs
+        -   have serializable function arguments and return values
+        -   have no side effects
 
     .. note::
 
-        When using ``link_to_dataset=True``:
-            - the associated store is deleted the dataset is deleted
-            - the cache entry is namespaced to the dataset
-
-    .. note::
-
-        Return values will be coerced from JSON unsafe types to safe types.
-        This may yield unexpected return values if the cached function returns
-        non-serializable types (e.g., NumPy arrays), since they are converted
-        to a JSON-compatible format.
-
-        This behavior can be overridden by providing custom ``serialize`` and/or
-        ``deserialize`` functions.
+        When ``residency != "ephemeral"``, cached values must be coerced to
+        JSON safe types in order to be stored. By default, a default JSON
+        converter is used that can handle many common types, but you can
+        override this behavior if necessary by providing custom ``serialize``
+        and ``deserialize`` functions.
 
     Examples::
 
-        # Standalone function with default caching
+        from fiftyone.operators import execution_cache
+
+        # Default behavior: cache for the life of a dataset
         @execution_cache
         def expensive_query(ctx, path):
             return ctx.dataset.count_values(path)
 
-        # Instance method with dataset-scoped caching
+        # Cache in-memory, and only while the current operator prompt modal is open
+        @execution_cache(prompt_scoped=True, residency="ephemeral")
+        def expensive_query(ctx, path):
+            return ctx.dataset.count_values(path)
+
+        # Cache with a custom TTL and store name
         class Processor:
             @execution_cache(ttl=60, store_name="processor_cache")
             def expensive_query(self, ctx, path):
                 return ctx.dataset.count_values(path)
 
-        # Using a custom key function
-        def custom_key_fn(ctx, path):
-            return [path, get_day_of_week()]
+        #
+        # Cache at the user-level
+        #
 
-        # Combines the custom key function with user-scoped caching
+        def custom_key_fn(ctx, path):
+            return path, ctx.user_id
+
         @execution_cache(ttl=90, key_fn=custom_key_fn, jwt_scoped=True)
         def user_specific_query(ctx, path):
-            return ctx.dataset.match(
-                F("creator_id") == ctx.user_id
-            ).count_values(path)
+            return ctx.dataset.match(F("creator_id") == ctx.user_id).count_values(path)
+
+        #
+        # You can manually bypass/modify the cache if necessary
+        #
 
         # Bypass the cache
         result = expensive_query.uncached(ctx, path)
@@ -140,18 +113,61 @@ def execution_cache(
         # Set the cache for the given arguments
         expensive_query.set_cache(ctx, path, value_to_cache)
 
-        # Clear the cache for the given arguments
+        # Clear the cache for a specific input
         expensive_query.clear_cache(ctx, path)
-
-        # Remove all cache entries for the function
-        expensive_query.clear_all_caches()
 
         # Clear all cache entries for the function
         expensive_query.clear_all_caches()
-
-        # NOTE: dataset_id is required if link_to_dataset=True
         expensive_query.clear_all_caches(dataset_id=dataset._doc.id)
+
+    Args:
+        residency ("hybrid"): the residency of the cache. Can be one of:
+
+            -   ``"transient"``: the cache is stored in the execution store
+                with ``policy="evict"``
+            -   ``"ephemeral"``: the cache is stored in memory and is cleared
+                when the process ends
+            -   ``"hybrid"`` (default): a combination of transient and
+                ephemeral. The cache is stored in memory and in the execution
+                store. The memory cache is used first, and if the value is not
+                found, it falls back to the execution store
+        ttl (None): a time-to-live for cached values, in seconds
+        max_size (None): a maximum size for ephemeral caches. The default size
+            is 1024. The cache will evict the least recently used items when
+            the size exceeds this limit
+        link_to_dataset (True): whether to namespace cache entries to the
+            current dataset. If True, any cached values are automatically
+            deleted when the dataset is deleted
+        key_fn (None): a custom function to generate cache keys. By default,
+            the function arguments are used as the key by serializing them as
+            JSON
+        store_name (None): a custom name for the execution store backing the
+            cache. Defaults to the function name
+        version (None): a version number to prevent cache collisions when the
+            function implementation changes
+        operator_scoped (False): whether to tie the cache entry to the current
+            operator
+        user_scoped (False): whether to tie the cache entry to the current user
+        prompt_scoped (False): whether to tie the cache entry to the current
+            operator prompt
+        jwt_scoped (False): whether to tie the cache entry to the current
+            user's JWT
+        collection_name (None): override the default collection name for the
+            execution store used by the cache. The default is
+            ``"execution_store"``
+        serialize (None): a custom serialization function to use when caching
+            values and function arguments
+        deserialize (None): a custom deserialization function when retrieving
+            cached values
     """
+    if serialize is None:
+        if residency == "ephemeral":
+            serialize = lambda v: v
+        else:
+            serialize = auto_serialize
+
+    if deserialize is None:
+        deserialize = auto_deserialize
 
     def decorator(func):
         for attr in _FUNC_ATTRIBUTES:
@@ -168,7 +184,7 @@ def execution_cache(
             )
 
         # max_size is only applicable for ephemeral and hybrid residency
-        if max_size is not None and residency not in ["ephemeral", "hybrid"]:
+        if max_size is not None and residency not in ("ephemeral", "hybrid"):
             raise ValueError(
                 "max_size is only valid for ephemeral and hybrid residency."
             )
@@ -200,12 +216,7 @@ def execution_cache(
 
             # Hybrid or Ephemeral
             if memory_cache is not None and cache_key in memory_cache:
-                cached_value = memory_cache[cache_key]
-                return (
-                    deserialize(cached_value)
-                    if deserialize
-                    else auto_deserialize(cached_value)
-                )
+                return deserialize(memory_cache[cache_key])
 
             # Transient or Hybrid
             cached_value = None
@@ -213,27 +224,17 @@ def execution_cache(
                 cached_value = store.get(cache_key)
 
             if cached_value is not None:
-                result = (
-                    deserialize(cached_value)
-                    if deserialize
-                    else auto_deserialize(cached_value)
-                )
+                result = deserialize(cached_value)
 
-                # Hybrid: Warm memory cache
+                # Hybrid: warm memory cache
                 if memory_cache is not None:
-                    memory_cache[cache_key] = (
-                        serialize(result)
-                        if serialize
-                        else auto_serialize(result)
-                    )
+                    memory_cache[cache_key] = serialize(result)
 
                 return result
 
             # Cache miss
             result = func(*args, **kwargs)
-            value_to_cache = (
-                serialize(result) if serialize else auto_serialize(result)
-            )
+            value_to_cache = serialize(result)
 
             if store is not None:
                 store.set_cache(cache_key, value_to_cache, ttl=ttl)
@@ -264,7 +265,7 @@ def execution_cache(
                 jwt_scoped=jwt_scoped,
                 collection_name=collection_name,
             )
-            if store:
+            if store is not None:
                 store.delete(cache_key)
             if memory_cache is not None and cache_key in memory_cache:
                 del memory_cache[cache_key]
@@ -289,13 +290,11 @@ def execution_cache(
                 jwt_scoped=jwt_scoped,
                 collection_name=collection_name,
             )
-            value_to_cache = (
-                serialize(arg_to_cache)
-                if serialize
-                else auto_serialize(arg_to_cache)
-            )
-            if store:
+            value_to_cache = serialize(arg_to_cache)
+
+            if store is not None:
                 store.set_cache(cache_key, value_to_cache, ttl=ttl)
+
             if memory_cache is not None:
                 memory_cache[cache_key] = value_to_cache
 
