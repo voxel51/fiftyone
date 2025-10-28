@@ -25,11 +25,11 @@ export const currentEditingPolylineAtom =
  */
 export const useSetEditingToNewPolyline = () => {
   const setEditing = useSetAtom(editingAtom);
-  const resetEditing = useResetAtom(editingAtom);
   const resetCurrentEditing = useResetAtom(currentEditingPolylineAtom);
   const currentActiveField = useRecoilValue(currentActiveAnnotationField3dAtom);
   const currentSampleId = useRecoilValue(fos.currentSampleId);
   const shouldDefaultToClosed = useRecoilValue(snapCloseAutomaticallyAtom);
+
   const setCurrentEditing = useSetAtom(currentEditingPolylineAtom);
   const currentAnnotationSidebar = useAtomValue(current);
   const setPolylinePointTransforms = useSetRecoilState(
@@ -41,9 +41,9 @@ export const useSetEditingToNewPolyline = () => {
   useEffect(() => {
     return () => {
       resetCurrentEditing();
-      resetEditing();
+      setEditing(null);
     };
-  }, [resetCurrentEditing, resetEditing]);
+  }, [resetCurrentEditing]);
 
   const jotaiStore = getDefaultStore();
 
@@ -78,7 +78,7 @@ export const useSetEditingToNewPolyline = () => {
         return;
       }
 
-      // Needs a reset...otherwise gets contaminated by the previous label
+      // Needs a reset...otherwise sometimes gets contaminated by the previous label
       setEditing(null);
 
       // Only process transforms for the current sample
@@ -125,7 +125,7 @@ export const useSetEditingToNewPolyline = () => {
 
       setEditing(currentEditingPolylineAtom);
 
-      jotaiStore.set(savedLabel, null);
+      jotaiStore.set(savedLabel, polylineLabelData);
     },
     [
       currentSampleId,
