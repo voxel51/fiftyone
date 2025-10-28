@@ -7,6 +7,8 @@ describe("predicateOrFallbackAfterTimeout", () => {
   });
 
   afterEach(() => {
+    vi.runOnlyPendingTimers();
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
