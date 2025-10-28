@@ -1,11 +1,14 @@
 import { coerceStringBooleans } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate";
 import { editing as editingAtom } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit";
-import { savedLabel } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/state";
+import {
+  current,
+  savedLabel,
+} from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/state";
 import * as fos from "@fiftyone/state";
-import { getDefaultStore, useAtom, useSetAtom } from "jotai";
+import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import { atomWithReset, useResetAtom } from "jotai/utils";
 import { useCallback, useEffect } from "react";
-import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import {
   clearTransformStateSelector,
   currentActiveAnnotationField3dAtom,
@@ -27,10 +30,9 @@ export const useSetEditingToNewPolyline = () => {
   const currentActiveField = useRecoilValue(currentActiveAnnotationField3dAtom);
   const currentSampleId = useRecoilValue(fos.currentSampleId);
   const shouldDefaultToClosed = useRecoilValue(snapCloseAutomaticallyAtom);
-  const [currentEditing, setCurrentEditing] = useAtom(
-    currentEditingPolylineAtom
-  );
-  const [polylinePointTransforms, setPolylinePointTransforms] = useRecoilState(
+  const setCurrentEditing = useSetAtom(currentEditingPolylineAtom);
+  const currentAnnotationSidebar = useAtomValue(current);
+  const setPolylinePointTransforms = useSetRecoilState(
     polylinePointTransformsAtom
   );
 
@@ -69,6 +71,12 @@ export const useSetEditingToNewPolyline = () => {
     (labelId: string, transformData: PolylinePointTransformData) => {
       if (!transformData.segments || transformData.segments.length === 0)
         return;
+
+      // If what we already have in sidebar is same as the new label, don't do anything
+      // Because it'll be handled by reverse sync and useSetEditingToExistingPolyline
+      if (currentAnnotationSidebar?.data._id === labelId) {
+        return;
+      }
 
       // Needs a reset...otherwise gets contaminated by the previous label
       setEditing(null);
@@ -124,6 +132,7 @@ export const useSetEditingToNewPolyline = () => {
       currentActiveField,
       shouldDefaultToClosed,
       syncWithSidebar,
+      currentAnnotationSidebar,
     ]
   );
 };
