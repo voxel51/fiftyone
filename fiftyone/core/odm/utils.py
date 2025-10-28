@@ -696,3 +696,11 @@ class DocumentRegistryError(Exception):
 
 
 _document_registry = DocumentRegistry()
+
+
+# for backwards compatibility
+# @todo remove at next major release
+def load_dataset(*args, **kwargs):
+    from fiftyone.core.odm.database import load_dataset
+
+    return load_dataset(*args, **kwargs)
