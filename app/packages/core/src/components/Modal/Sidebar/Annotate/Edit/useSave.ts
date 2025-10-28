@@ -18,6 +18,7 @@ export default function useSave() {
   return useCallback(() => {
     if (scene) {
       if (label?.data) {
+        setter();
         saved(label.data);
       }
       scene.dispatchSafely({
@@ -25,9 +26,7 @@ export default function useSave() {
         detail: {
           label: { ...label },
           schema: getFieldSchema(schema, label.path),
-          onSuccess: () => {
-            setter();
-          },
+          onSuccess: () => {},
         },
       });
     }

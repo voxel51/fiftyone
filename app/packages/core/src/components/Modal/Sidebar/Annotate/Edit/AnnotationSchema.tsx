@@ -11,7 +11,7 @@ import {
   STRING_FIELD,
 } from "@fiftyone/utilities";
 import { useAtom, useAtomValue } from "jotai";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRecoilCallback } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import { coerceStringBooleans } from "../utils";
@@ -169,15 +169,20 @@ const AnnotationSchema = () => {
   const overlay = useAtomValue(currentOverlay);
   const lighter = useLighter();
   const handleChanges = useHandleChanges();
+  const [key, setKey] = useState(0);
   const field = useAtomValue(currentField);
 
   useEffect(() => {
     const handler = (event) => {
       // Here, this would be true for `undo` or `redo`
+
       if (event.detail?.command?.constructor?.name !== "UpdateLabelCommand") {
         const label = overlay?.label;
 
         if (label) {
+          // we are changing the form data externally, force a new SchemaIO
+          // render with a new key
+          setKey((cur) => cur + 1);
           save(label);
         }
 
@@ -213,6 +218,7 @@ const AnnotationSchema = () => {
   return (
     <div>
       <SchemaIOComponent
+        key={key.toString()}
         schema={schema}
         data={data}
         onChange={async (changes) => {
@@ -221,6 +227,10 @@ const AnnotationSchema = () => {
             result[key] = await handleChanges(field, key, changes[key]);
           }
           const value = { ...data, ...result };
+
+          if (JSON.stringify(value) === JSON.stringify(overlay.label)) {
+            return;
+          }
 
           lighter.scene?.executeCommand(
             new UpdateLabelCommand(overlay, overlay.label, value)
