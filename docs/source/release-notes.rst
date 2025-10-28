@@ -44,16 +44,26 @@ FiftyOne 1.10.0
 Model Zoo
 
 - Added `FiftyOneTransformerForPoseEstimation` to support transformer-based
-  keypoint prediction models (`ViTPose
-  <https://huggingface.co/docs/transformers/model_doc/vitpose#vitpose>`_) to
-  the fiftyone model zoo.
+  keypoint prediction models (
+  `ViTPose <https://huggingface.co/docs/transformers/model_doc/vitpose#vitpose>`_
+  ) to the fiftyone model zoo.
   `#6371 <https://github.com/voxel51/fiftyone/pull/6371>`_
 
 Core
 
+- :meth:`add_samples() <fiftyone.core.dataset.Dataset.add_samples>` now
+  includes a kwarg for a batcher, which can be a
+  :meth:`fiftyone.core.utils.Batcher <fiftyone.core.utils.Batcher>`, `None` to
+  use the default defined in the config, or `False` to disable batching for the
+  request. `#6400 <https://github.com/voxel51/fiftyone/pull/6400>`_
 - Increased maximum resource (dataset, view, snapshot) name size from 100 to
   1551. `#6458 <https://github.com/voxel51/fiftyone/pull/6458>`_
 
+App
+
+- Fixed a bug: cannot save colorscheme to dataset.app_config.colorscheme in the
+  APP due to a missing import. 
+  `#6437 <https://github.com/voxel51/fiftyone/pull/6437>`_
 
 
 FiftyOne Enterprise 2.12.0
