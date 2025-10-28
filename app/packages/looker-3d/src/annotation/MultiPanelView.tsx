@@ -41,6 +41,7 @@ import {
 import { StatusBar } from "../StatusBar";
 import { AnnotationPlane } from "./AnnotationPlane";
 import { Crosshair3D } from "./Crosshair3D";
+import { AnnotationMultiViewGizmoOverlayWrapper } from "./CustomAnnotationGizmo";
 import { SegmentPolylineRenderer } from "./SegmentPolylineRenderer";
 
 const CANVAS_WRAPPER_ID = "sample3d-canvas-wrapper";
@@ -358,6 +359,10 @@ const MainPanel = ({
           cameraRef={cameraRef}
         />
       </View>
+      <AnnotationMultiViewGizmoOverlayWrapper
+        mainCamera={cameraRef}
+        cameraControlsRef={cameraControlsRef}
+      />
     </MainPanelContainer>
   );
 };

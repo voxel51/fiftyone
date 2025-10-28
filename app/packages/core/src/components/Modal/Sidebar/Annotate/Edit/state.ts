@@ -13,7 +13,7 @@ import { atomFamily, atomWithDefault, atomWithReset } from "jotai/utils";
 import { activeSchemas, fieldType, schemaConfig } from "../state";
 import { addLabel, labels, labelsByPath } from "../useLabels";
 
-export const savedLabel = atomWithDefault<AnnotationLabel["data"] | null>(null);
+export const savedLabel = atom<AnnotationLabel["data"] | null>(null);
 
 export const editing = atomWithReset<
   PrimitiveAtom<AnnotationLabel> | LabelType | null
