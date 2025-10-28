@@ -649,7 +649,7 @@ class Detections(_HasLabelList, Label):
 
         Args:
             tolerance (2): a tolerance, in pixels, when generating approximate
-                polylines for the instance masks
+                polylines for the instance masks. Typical values are 1-3 pixels
             filled (True): whether the polylines should be filled
 
         Returns:
