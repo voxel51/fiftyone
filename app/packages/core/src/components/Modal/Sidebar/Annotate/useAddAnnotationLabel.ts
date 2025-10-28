@@ -5,6 +5,7 @@ import type {
   ClassificationOverlay,
 } from "@fiftyone/lighter";
 import { useLighter } from "@fiftyone/lighter";
+import { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
 import type { AnnotationLabel } from "@fiftyone/state";
 import { CLASSIFICATION, DETECTION, POLYLINE } from "@fiftyone/utilities";
 import { useCallback } from "react";
@@ -59,6 +60,8 @@ export const useAddAnnotationLabel = () => {
           data,
           overlay: {
             id: data._id,
+            field,
+            label: data as PolylineLabel,
           },
           path: field,
           type,

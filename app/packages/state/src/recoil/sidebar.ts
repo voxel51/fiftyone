@@ -132,9 +132,12 @@ export interface PolylineAnnotationLabel extends Label {
   data: PolylineLabel;
   overlay: {
     id: string;
+    field: string;
+    label: PolylineLabel;
     getLabel?: () => PolylineLabel;
     updateField?: (field: string) => void;
     updateLabel?: (label: PolylineLabel) => void;
+    setSelected?: (selected: boolean) => void;
   };
   type: "Polyline";
 }

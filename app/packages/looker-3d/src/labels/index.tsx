@@ -1,3 +1,4 @@
+import { coerceStringBooleans } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate";
 import { activeSchemas } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/state";
 import {
   FO_LABEL_TOGGLED_EVENT,
@@ -21,7 +22,6 @@ import { useCallback, useEffect, useMemo } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
 import { useSetEditingToExistingPolyline } from "../annotation/useSetEditingToExistingPolyline";
-import { sanitizeSchemaIoLabelAttributes } from "../annotation/utils/polyline-utils";
 import { PANEL_ORDER_LABELS } from "../constants";
 import { usePathFilter } from "../hooks";
 import { type Looker3dSettings, defaultPluginSettings } from "../settings";
@@ -288,14 +288,23 @@ export const ThreeDLabels = ({
         overlay._cls === "Polyline" &&
         (overlay as PolyLineProps).points3d
       ) {
-        const transformData = polylinePointTransforms[overlay._id];
-        let finalPoints3d = transformData?.segments
-          ? transformData.segments.map((seg) => seg.points)
+        const maybeExistingTransformData =
+          polylinePointTransforms?.[overlay._id];
+
+        // Overriden temp state takes precedence over the original points3d
+        let finalPoints3d = maybeExistingTransformData?.segments
+          ? maybeExistingTransformData.segments.map((seg) => seg.points)
           : (overlay as PolyLineProps).points3d;
 
         if (finalPoints3d) {
           finalPoints3d = finalPoints3d.filter(isValidPolylineSegment);
         }
+
+        const overlayCombined = {
+          ...overlay,
+          ...coerceStringBooleans(maybeExistingTransformData?.misc ?? {}),
+          points3d: finalPoints3d,
+        };
 
         if (finalPoints3d && finalPoints3d.length > 0) {
           newPolylineOverlays.push(
@@ -304,10 +313,8 @@ export const ThreeDLabels = ({
               rotation={overlayRotation}
               opacity={labelAlpha}
               lineWidth={polylineWidth}
-              {...(overlay as PolyLineProps)}
-              {...sanitizeSchemaIoLabelAttributes(transformData?.misc ?? {})}
-              points3d={finalPoints3d}
-              label={overlay}
+              {...(overlayCombined as PolyLineProps)}
+              label={overlayCombined}
               onClick={(e) => handleSelect(overlay, "polyline", e)}
               tooltip={tooltip}
             />
@@ -325,7 +332,7 @@ export const ThreeDLabels = ({
     );
 
     for (const [labelId, transformData] of Object.entries(
-      polylinePointTransforms
+      polylinePointTransforms ?? {}
     )) {
       if (!transformData.segments || transformData.segments.length === 0)
         continue;
@@ -354,7 +361,7 @@ export const ThreeDLabels = ({
           sampleId: currentSampleId,
           tags: [],
           points3d,
-          ...sanitizeSchemaIoLabelAttributes(transformData.misc ?? {}),
+          ...coerceStringBooleans(transformData.misc ?? {}),
         };
 
         newPolylineOverlays.push(
