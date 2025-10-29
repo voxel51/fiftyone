@@ -2,8 +2,9 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
+import { getLabelColor } from "@fiftyone/looker/src/overlays/util";
 import type { ColorSchemeInput } from "@fiftyone/relay";
-import { getColor } from "@fiftyone/utilities";
+import { COLOR_BY, getColor } from "@fiftyone/utilities";
 import { SELECTED_DASH_LENGTH } from "../constants";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
 
@@ -25,87 +26,85 @@ export interface StrokeStyles {
 }
 
 /**
- * Maps overlay information to a color using FiftyOne's color scheme system.
- * This replicates the logic from looker's getLabelColor function.
+ * Maps Lighter / Annotation overlay information to a color using FiftyOne's color scheme system.
+ *
+ * This is a lightweight adapter around Looker's getLabelColor function, while making some key assumptions:
+ * 1. Label tags are not accounted for.
  */
 export function getOverlayColor(
   overlay: BaseOverlay,
   context: ColorMappingContext
 ): string {
-  const { colorScheme, seed } = context;
-  const { colorPool, colorBy, fields, labelTags } = colorScheme;
+  // Convert ColorSchemeInput to Coloring interface
+  const coloring = {
+    by:
+      (context.colorScheme.colorBy?.toLocaleLowerCase() as
+        | COLOR_BY.FIELD
+        | COLOR_BY.INSTANCE
+        | COLOR_BY.VALUE) || COLOR_BY.FIELD,
+    pool: context.colorScheme.colorPool,
+    scale: [],
+    seed: context.seed,
+    defaultMaskTargets: undefined,
+    defaultMaskTargetsColors: [
+      ...(context.colorScheme.defaultMaskTargetsColors || []),
+    ],
+    maskTargets: {},
+    points: context.colorScheme.multicolorKeypoints || false,
+    targets: [],
+  };
 
-  const path = overlay.field || "";
-  const label = overlay.label;
-  const isTagged = label?.tags && label.tags.length > 0;
+  // Map overlay properties to getLabelColor parameters
+  const path = overlay.field;
+  const label = overlay.label as any;
 
-  if (colorBy === "instance") {
-    // Color by instance - use the overlay ID or label ID
-    const identifier = label?.id || overlay.id;
-    return getColor(colorPool, seed, identifier);
+  // Handle case when overlay.label is null or undefined
+  if (!label) {
+    // Return a default color when no label is available
+    return getColor(context.colorScheme.colorPool, context.seed, path);
   }
 
-  if (colorBy === "field") {
-    if (isTagged) {
-      // If tagged, use label tags color rules
-      if (labelTags?.fieldColor) {
-        return labelTags.fieldColor;
-      }
-      return getColor(colorPool, seed, "_label_tags");
-    } else {
-      // Use field-specific color if available
-      const field = fields?.find((f) => f.path === path);
-      if (field?.fieldColor) {
-        return field.fieldColor;
-      }
-      return getColor(colorPool, seed, path);
-    }
-  }
+  // Sensible defaults for missing parameters (lean towards false or undefined)
+  const isTagged = false;
+  const labelTagColors = {
+    fieldColor: context.colorScheme.labelTags?.fieldColor || undefined,
+    valueColors: [...(context.colorScheme.labelTags?.valueColors || [])],
+  };
+  const customizeColorSetting = (context.colorScheme.fields || []).map(
+    (field) => ({
+      ...field,
+      colorByAttribute: field.colorByAttribute || undefined,
+      fieldColor: field.fieldColor || undefined,
+      maskTargetsColors: field.maskTargetsColors
+        ? [...field.maskTargetsColors]
+        : undefined,
+      valueColors: field.valueColors ? [...field.valueColors] : undefined,
+    })
+  );
+  const embeddedDocType = label["_cls"];
+  const isPolyline3D =
+    "points3d" in label &&
+    Array.isArray(label["points3d"]) &&
+    label["points3d"].length > 0;
+  const isDetection3D =
+    "location" in label &&
+    Array.isArray(label["location"]) &&
+    label["location"].length > 0 &&
+    "dimensions" in label &&
+    Array.isArray(label["dimensions"]) &&
+    label["dimensions"].length > 0;
+  const is3D = isPolyline3D || isDetection3D;
 
-  if (colorBy === "value") {
-    // Color by value
-    if (isTagged) {
-      // If tagged, use tag-specific colors
-      const tagColor = labelTags?.valueColors?.find((pair) =>
-        label.tags.includes(pair.value)
-      )?.color;
-
-      if (tagColor) {
-        return tagColor;
-      }
-
-      // Fallback to field color or default
-      if (labelTags?.fieldColor) {
-        return labelTags.fieldColor;
-      }
-      return getColor(colorPool, seed, "_label_tags");
-    } else {
-      // Use value-specific colors if available
-      const field = fields?.find((f) => f.path === path);
-
-      if (field?.valueColors && label) {
-        const valueColor = field.valueColors.find((vc) => {
-          const labelValue = label["label"];
-          return vc.value === labelValue?.toString();
-        })?.color;
-
-        if (valueColor) {
-          return valueColor;
-        }
-      }
-
-      // Fallback to field color or default
-      if (field?.fieldColor) {
-        return field.fieldColor;
-      }
-
-      const identifier = label?.["label"] || path;
-      return getColor(colorPool, seed, identifier);
-    }
-  }
-
-  // Default fallback
-  return getColor(colorPool, seed, path);
+  return getLabelColor({
+    coloring,
+    path,
+    label,
+    isTagged,
+    labelTagColors,
+    customizeColorSetting,
+    is3D,
+    embeddedDocType,
+  });
 }
 
 /**
