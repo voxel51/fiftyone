@@ -20,6 +20,7 @@ import { JSONDeltas, patchSample } from "../../../client";
 import { transformSampleData } from "../../../client/transformer";
 import { parseTimestamp } from "../../../client/util";
 import { buildJsonPath, buildLabelDeltas, OpType } from "./deltas";
+import { Field } from "@fiftyone/utilities";
 
 /**
  * Hook that handles overlay persistence events.
@@ -38,7 +39,7 @@ export const useOverlayPersistence = (scene: Scene2D | null) => {
   // a version token.
   const versionToken = useMemo(() => {
     const isoTimestamp = parseTimestamp(
-      currentSample?.last_modified_at
+      (currentSample?.last_modified_at as unknown) as string
     )?.toISOString();
 
     // server doesn't like the iso timestamp ending in 'Z'
@@ -50,6 +51,11 @@ export const useOverlayPersistence = (scene: Scene2D | null) => {
   }, [currentSample?.last_modified_at]);
 
   const handlePatchSample = useCallback(
+    /**
+     * Returns true if a patch was applied successfully
+     *
+     * @param sampleDeltas Deltas to apply
+     */
     async (sampleDeltas: JSONDeltas): Promise<boolean> => {
       if (sampleDeltas.length > 0) {
         try {
@@ -95,6 +101,7 @@ export const useOverlayPersistence = (scene: Scene2D | null) => {
   const handlePersistenceEvent = useCallback(
     async (
       annotationLabel: AnnotationLabel,
+      schema: Field,
       opType: OpType
     ): Promise<boolean> => {
       if (!currentSample) {
@@ -111,6 +118,7 @@ export const useOverlayPersistence = (scene: Scene2D | null) => {
       const sampleDeltas = buildLabelDeltas(
         currentSample,
         annotationLabel,
+        schema,
         opType
       ).map((delta) => ({
         ...delta,
@@ -129,7 +137,17 @@ export const useOverlayPersistence = (scene: Scene2D | null) => {
         OverlayEventDetail<typeof LIGHTER_EVENTS.DO_PERSIST_OVERLAY>
       >
     ) => {
-      await handlePersistenceEvent(event.detail, "mutate");
+      const success = await handlePersistenceEvent(
+        event.detail.label,
+        event.detail.schema,
+        "mutate"
+      );
+
+      if (success) {
+        event.detail.onSuccess?.();
+      } else {
+        event.detail.onError?.();
+      }
     },
     [handlePersistenceEvent]
   );
@@ -142,6 +160,7 @@ export const useOverlayPersistence = (scene: Scene2D | null) => {
     ) => {
       const success = await handlePersistenceEvent(
         event.detail.label,
+        event.detail.schema,
         "delete"
       );
 

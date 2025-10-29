@@ -1,7 +1,7 @@
 import { MuiButton } from "@fiftyone/components";
 import { Typography } from "@mui/material";
 import { atom, getDefaultStore, useAtom, useSetAtom } from "jotai";
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import styled from "styled-components";
 import { hasChanges } from "../Edit/state";
 import Modal from "./Modal";
@@ -41,8 +41,8 @@ function ExitChangesModal({
           <MuiButton
             color="error"
             onClick={() => {
-              exit();
               close();
+              exit();
               shown();
             }}
             variant="contained"
@@ -69,7 +69,7 @@ function ExitChangesModal({
 
 export default function useConfirmExit(
   exit: () => void,
-  saveAnnotation: () => void
+  saveAnnotation?: () => void
 ) {
   const showConfirmation = useSetAtom(showUnsavedChangesConfirmation);
   return {
@@ -86,7 +86,7 @@ export default function useConfirmExit(
       [exit, showConfirmation]
     ),
     ExitChangesModal: () => (
-      <ExitChangesModal exit={exit} save={saveAnnotation} />
+      <ExitChangesModal exit={exit} save={saveAnnotation ?? (() => {})} />
     ),
   };
 }

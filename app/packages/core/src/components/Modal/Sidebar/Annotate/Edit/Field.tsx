@@ -10,6 +10,8 @@ import {
   editing,
   isNew,
 } from "./state";
+import { useRecoilValue } from "recoil";
+import { polylinePointTransformsAtom } from "@fiftyone/looker-3d/src/state";
 
 const createSchema = (choices: string[], disabled: Set<string>) => ({
   type: "object",
@@ -47,7 +49,15 @@ const Field = () => {
   const state = useAtomValue(editing);
   const isCreating = useAtomValue(isNew);
 
+  const polylinePointTransforms =
+    useRecoilValue(polylinePointTransformsAtom) ?? {};
+
   if (!isCreating) {
+    return null;
+  }
+
+  // todo: temp: skip for 3d
+  if (Object.keys(polylinePointTransforms).length > 0) {
     return null;
   }
 
