@@ -5,39 +5,28 @@ import {
   useLighter,
 } from "@fiftyone/lighter";
 import { useAtom, useAtomValue } from "jotai";
-import React, { useEffect, useState } from "react";
-import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
-import { setPathUserUnchanged } from "../../../../../plugins/SchemaIO/hooks";
+import { useEffect, useState } from "react";
 import { currentData, currentOverlay } from "./state";
-
-const createInput = (name: string) => {
-  return {
-    [name]: {
-      type: "number",
-      view: {
-        name: "View",
-        label: name,
-        component: "FieldView",
-      },
-      multipleOf: 0.01,
-    },
-  };
-};
-const createStack = () => {
-  return {
-    name: "HStackView",
-    component: "GridView",
-    orientation: "horizontal",
-    gap: 1,
-    align_x: "left",
-    align_y: "top",
-  };
-};
+import { Box, Stack, TextField } from "@mui/material";
+import { LabeledField } from "@fiftyone/components";
 
 interface Coordinates {
   position: { x?: number; y?: number };
   dimensions: { width?: number; height?: number };
 }
+
+const hasValidBounds = (coordinates: Coordinates): boolean => {
+  return (
+    [
+      coordinates.position.x,
+      coordinates.position.y,
+      coordinates.dimensions.width,
+      coordinates.dimensions.height,
+    ].every((num) => Number.isFinite(num)) &&
+    coordinates.dimensions.width > 0 &&
+    coordinates.dimensions.height > 0
+  );
+};
 
 export default function Position() {
   const [state, setState] = useState<Coordinates>({
@@ -81,12 +70,6 @@ export default function Position() {
       setData({
         bounding_box: [relative.x, relative.y, relative.width, relative.height],
       });
-
-      // Clear user changed flags so inputs update from overlay changes
-      setPathUserUnchanged("position.x");
-      setPathUserUnchanged("position.y");
-      setPathUserUnchanged("dimensions.width");
-      setPathUserUnchanged("dimensions.height");
     };
 
     scene?.on(LIGHTER_EVENTS.OVERLAY_BOUNDS_CHANGED, handler);
@@ -100,57 +83,120 @@ export default function Position() {
     };
   }, [data?._id, overlay, scene, setData]);
 
-  return (
-    <div style={{ width: "100%" }}>
-      <SchemaIOComponent
-        schema={{
-          type: "object",
-          view: {
-            component: "ObjectView",
-          },
-          properties: {
-            position: {
-              type: "object",
-              view: createStack(),
-              properties: {
-                ...createInput("x"),
-                ...createInput("y"),
-              },
-            },
-            dimensions: {
-              type: "object",
-              view: createStack(),
-              properties: {
-                ...createInput("width"),
-                ...createInput("height"),
-              },
-            },
-          },
-        }}
-        data={state}
-        onChange={(data: Coordinates) => {
-          if (
-            !(overlay instanceof BoundingBoxOverlay) ||
-            !overlay.hasValidBounds()
-          ) {
-            return;
-          }
+  const handleUserInputChange = (coordinateDelta: Partial<Coordinates>) => {
+    // synchronize internal state
+    const newState = {
+      position: {
+        ...state.position,
+        ...coordinateDelta.position,
+      },
+      dimensions: {
+        ...state.dimensions,
+        ...coordinateDelta.dimensions,
+      },
+    };
+    setState(newState);
 
-          const rect = overlay.getAbsoluteBounds();
-          scene?.executeCommand(
-            new TransformOverlayCommand(
-              overlay,
-              overlay.id,
-              overlay.getAbsoluteBounds(),
-              {
-                ...rect,
-                ...data.dimensions,
-                ...data.position,
-              }
-            )
-          );
-        }}
-      />
-    </div>
+    if (
+      !(overlay instanceof BoundingBoxOverlay) ||
+      !overlay.hasValidBounds() ||
+      !hasValidBounds(newState)
+    ) {
+      return;
+    }
+
+    // update overlay
+    const currentBounds = overlay.getAbsoluteBounds();
+    scene?.executeCommand(
+      new TransformOverlayCommand(overlay, overlay.id, currentBounds, {
+        ...currentBounds,
+        ...coordinateDelta?.position,
+        ...coordinateDelta?.dimensions,
+      })
+    );
+  };
+
+  return (
+    <Box sx={{ width: "100%" }}>
+      <Stack
+        direction="row"
+        alignItems="center"
+        justifyContent="space-between"
+        spacing={2}
+        sx={{ pl: 1, pt: 1, mb: 1 }}
+      >
+        <LabeledField
+          label="x"
+          formControl={
+            <TextField
+              type="number"
+              value={state.position.x ?? ""}
+              onChange={(e) => {
+                handleUserInputChange({
+                  position: { x: parseFloat(e.target.value) },
+                });
+              }}
+              size="small"
+            />
+          }
+        />
+
+        <LabeledField
+          label="y"
+          formControl={
+            <TextField
+              type="number"
+              value={state.position.y ?? ""}
+              onChange={(e) => {
+                handleUserInputChange({
+                  position: { y: parseFloat(e.target.value) },
+                });
+              }}
+              size="small"
+            />
+          }
+        />
+      </Stack>
+
+      <Stack
+        direction="row"
+        alignItems="center"
+        justifyContent="space-between"
+        spacing={2}
+        sx={{ pl: 1, pt: 1, mb: 1 }}
+      >
+        <LabeledField
+          label="width"
+          formControl={
+            <TextField
+              type="number"
+              value={state.dimensions.width ?? ""}
+              onChange={(e) => {
+                handleUserInputChange({
+                  dimensions: { width: parseFloat(e.target.value) },
+                });
+              }}
+              size="small"
+            />
+          }
+        />
+
+        <LabeledField
+          label="height"
+          formControl={
+            <TextField
+              type="number"
+              value={state.dimensions.height ?? ""}
+              onChange={(e) => {
+                handleUserInputChange({
+                  dimensions: { height: parseFloat(e.target.value) },
+                });
+              }}
+              size="small"
+            />
+          }
+        />
+      </Stack>
+    </Box>
   );
 }
