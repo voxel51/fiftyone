@@ -218,7 +218,7 @@ export const SegmentPolylineRenderer = ({
   // Handle mouse move for rubber band effect
   const handleMouseMove = useCallback(
     (worldPos: THREE.Vector3, worldPosPerpendicular: THREE.Vector3 | null) => {
-      if (!worldPos || ignoreEffects) return;
+      if (!worldPos) return;
 
       const segmentPos = worldPos.clone();
       setSegmentState((prev) => ({
@@ -233,7 +233,7 @@ export const SegmentPolylineRenderer = ({
 
       setSharedCursorPosition([cursorPos.x, cursorPos.y, cursorPos.z]);
     },
-    [sceneBoundingBox, annotationPlane.enabled, ignoreEffects]
+    [sceneBoundingBox, annotationPlane.enabled]
   );
 
   // Calculate the annotation plane for raycasting
@@ -258,7 +258,7 @@ export const SegmentPolylineRenderer = ({
     onPointerMove: handleMouseMove,
     planeNormal: raycastPlane.normal,
     planeConstant: raycastPlane.constant,
-    doubleRaycast: !ignoreEffects,
+    doubleRaycast: true,
   });
 
   useEffect(() => {
