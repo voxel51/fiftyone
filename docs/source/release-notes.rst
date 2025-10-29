@@ -11,13 +11,16 @@ Includes all updates from :ref:`FiftyOne 1.10.0 <release-notes-v1.10.0>`, plus:
 
 Plugins
 
-- Introduced `PipelineOperator`, allowing a single Delegated Operator to
-  kickoff execution of a sequence of Operators. Plugin authors define a
-  Pipeline consisting of PipelineStages, and each stage will be executed in
-  sequence. This enables quite complex operations to be defined, including
-  distributed execution in any state, and finalization stages.
-- Fixed a bug when `target_view` is set to "entire dataset" and filters are
-  set, preventing unnecessary application of filters.
+- Introduced :class:`PipelineOperator <fiftyone.operators.PipelineOperator>`,
+  allowing a single Operator to kickoff execution of a sequence of Operators.
+  Plugin authors define a :class:`Pipeline <fiftyone.operators.types.Pipeline>`
+  consisting of :class:`PipelineStages <fiftyone.operators.types.PipelineStage>`,
+  and each stage will be executed in sequence. This enables quite complex
+  operations to be defined, including distributed execution in any stage,
+  and finalization stages. See :ref:`documentation <writing-operator-pipelines>`
+  for more.
+- Fixed a bug in distributed operations when `target_view` is set to "entire
+  dataset" and filters are set, preventing incorrect application of filters.
 
 App
 
