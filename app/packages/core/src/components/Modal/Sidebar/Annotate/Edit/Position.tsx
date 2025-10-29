@@ -1,7 +1,6 @@
 import {
   BoundingBoxOverlay,
   LIGHTER_EVENTS,
-  Rect,
   TransformOverlayCommand,
   useLighter,
 } from "@fiftyone/lighter";
@@ -17,12 +16,16 @@ interface Coordinates {
 }
 
 const hasValidBounds = (coordinates: Coordinates): boolean => {
-  return [
-    coordinates.position.x,
-    coordinates.position.y,
-    coordinates.dimensions.width,
-    coordinates.dimensions.height,
-  ].reduce((prev, current) => prev && !Number.isNaN(current), true);
+  return (
+    [
+      coordinates.position.x,
+      coordinates.position.y,
+      coordinates.dimensions.width,
+      coordinates.dimensions.height,
+    ].every((num) => Number.isFinite(num)) &&
+    coordinates.dimensions.width > 0 &&
+    coordinates.dimensions.height > 0
+  );
 };
 
 export default function Position() {
@@ -103,18 +106,13 @@ export default function Position() {
     }
 
     // update overlay
+    const currentBounds = overlay.getAbsoluteBounds();
     scene?.executeCommand(
-      new TransformOverlayCommand(
-        overlay,
-        overlay.id,
-        overlay.getAbsoluteBounds(),
-        {
-          ...state.position,
-          ...state.dimensions,
-          ...coordinateDelta?.position,
-          ...coordinateDelta?.dimensions,
-        } as Rect
-      )
+      new TransformOverlayCommand(overlay, overlay.id, currentBounds, {
+        ...currentBounds,
+        ...coordinateDelta?.position,
+        ...coordinateDelta?.dimensions,
+      })
     );
   };
 
@@ -132,7 +130,7 @@ export default function Position() {
           formControl={
             <TextField
               type="number"
-              value={state.position.x}
+              value={state.position.x ?? ""}
               onChange={(e) => {
                 handleUserInputChange({
                   position: { x: parseFloat(e.target.value) },
@@ -148,7 +146,7 @@ export default function Position() {
           formControl={
             <TextField
               type="number"
-              value={state.position.y}
+              value={state.position.y ?? ""}
               onChange={(e) => {
                 handleUserInputChange({
                   position: { y: parseFloat(e.target.value) },
@@ -172,7 +170,7 @@ export default function Position() {
           formControl={
             <TextField
               type="number"
-              value={state.dimensions.width}
+              value={state.dimensions.width ?? ""}
               onChange={(e) => {
                 handleUserInputChange({
                   dimensions: { width: parseFloat(e.target.value) },
@@ -188,7 +186,7 @@ export default function Position() {
           formControl={
             <TextField
               type="number"
-              value={state.dimensions.height}
+              value={state.dimensions.height ?? ""}
               onChange={(e) => {
                 handleUserInputChange({
                   dimensions: { height: parseFloat(e.target.value) },
