@@ -3,6 +3,7 @@ import {
   LabelUnhoveredEvent,
   selectiveRenderingEventBus,
 } from "@fiftyone/looker";
+import { activeSegmentationStateAtom } from "@fiftyone/looker-3d/src/state";
 import * as fos from "@fiftyone/state";
 import { useCallback } from "react";
 import { useRecoilCallback, useRecoilState, useSetRecoilState } from "recoil";
@@ -27,7 +28,12 @@ export default function useTooltip() {
           onPointerOver: () => {
             setTooltipDetail(getDetailsFromLabel(label));
 
-            if (!label.instance) {
+            const isCurrentlySegmenting = Boolean(
+              snapshot.getLoadable(activeSegmentationStateAtom).getValue()
+                ?.isActive
+            );
+
+            if (!label.instance || isCurrentlySegmenting) {
               return;
             }
 
@@ -64,6 +70,15 @@ export default function useTooltip() {
           },
           onPointerMove: (e: MouseEvent) => {
             if (isTooltipLocked) {
+              return;
+            }
+
+            const isCurrentlySegmenting = Boolean(
+              snapshot.getLoadable(activeSegmentationStateAtom).getValue()
+                ?.isActive
+            );
+
+            if (isCurrentlySegmenting) {
               return;
             }
 

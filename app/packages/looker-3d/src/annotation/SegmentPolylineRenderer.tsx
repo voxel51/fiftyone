@@ -51,6 +51,7 @@ export const SegmentPolylineRenderer = ({
   const [segmentState, setSegmentState] = useRecoilState(
     activeSegmentationStateAtom
   );
+  const setTooltipDetail = useSetRecoilState(fos.tooltipDetail);
   const setPolylinePointTransforms = useSetRecoilState(
     polylinePointTransformsAtom
   );
@@ -262,7 +263,9 @@ export const SegmentPolylineRenderer = ({
 
   useEffect(() => {
     if (ignoreEffects) return;
+
     if (segmentState.isActive) {
+      setTooltipDetail(null);
       document.body.style.cursor = "crosshair";
       return () => {
         document.body.style.cursor = "default";
