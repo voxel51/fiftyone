@@ -411,9 +411,10 @@ export const selectedPolylineVertexAtom = atom<SelectedPoint | null>({
 /**
  * Transform data for temporary polyline segments.
  */
-export const polylinePointTransformsAtom = atom<
-  Record<string, PolylinePointTransformData>
->({
+export const polylinePointTransformsAtom = atom<Record<
+  string,
+  PolylinePointTransformData
+> | null>({
   key: "fo3d-polylinePointTransforms",
   default: {},
 });

@@ -4,11 +4,7 @@ import { CircularProgress, Typography } from "@mui/material";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
-import { ALL_LOADING_COMPLETE } from "./hooks";
-import {
-  fo3dAssetsParseStatusThisSample,
-  fo3dLoadingStatusThisSample,
-} from "./state";
+import { fo3dLoadingStatusThisSample } from "./state";
 import { LoadingStatus } from "./types";
 
 const LogContainer = styled.div`
@@ -21,12 +17,7 @@ const LogContainer = styled.div`
 `;
 
 export const Logs = () => {
-  const logs = useRecoilValue(fo3dAssetsParseStatusThisSample);
   const loadingStatus = useRecoilValue(fo3dLoadingStatusThisSample);
-
-  const errorLogs = useMemo(() => {
-    return logs.filter((log) => log.status === "error");
-  }, [logs]);
 
   const isStillLoading = useMemo(() => {
     return (

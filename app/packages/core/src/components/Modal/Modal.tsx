@@ -218,6 +218,8 @@ const Modal = () => {
     [onLookerSet]
   );
 
+  const isSidebarVisible = useRecoilValue(fos.sidebarVisible(true));
+
   return ReactDOM.createPortal(
     <modalContext.Provider
       value={{
@@ -238,7 +240,7 @@ const Modal = () => {
           <SpacesContainer>
             <ModalSpace />
           </SpacesContainer>
-          <Sidebar />
+          {isSidebarVisible && <Sidebar />}
           <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_RIGHT} />
 
           {jsonPanel.isOpen && (

@@ -24,6 +24,7 @@ import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import type { OrthographicCamera, PerspectiveCamera, Vector3 } from "three";
 import tunnel from "tunnel-rat";
+import { AnnotationTips } from "./AnnotationTips";
 import { StatusBarContainer } from "./containers";
 import {
   activeNodeAtom,
@@ -442,6 +443,10 @@ export const StatusBar = ({
             Double click to finish • Del to undo last vertex • Escape to cancel
           </SegmentHintRow>
         </SegmentHint>
+      )}
+
+      {!segmentState.isActive && (
+        <AnnotationTips isMultiviewOn={isMultiviewOn} />
       )}
 
       {showPerfStatus && (

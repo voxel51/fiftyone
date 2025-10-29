@@ -1,3 +1,4 @@
+import useConfirmExit from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Confirmation/useConfirmExit";
 import { editing as editingAtom } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit";
 import * as fos from "@fiftyone/state";
 import { Close, Delete, Edit, OpenWith, Straighten } from "@mui/icons-material";
@@ -31,6 +32,7 @@ import type {
   TransformMode,
   TransformSpace,
 } from "../types";
+import { AnnotationPlaneTooltip } from "./AnnotationPlaneTooltip";
 import {
   PlaneCoordinateInputs,
   VertexCoordinateInputs,
@@ -270,11 +272,22 @@ export const useAnnotationActions = () => {
     }
   }, [editSegmentsMode, setEditSegmentsMode, setSegmentState]);
 
-  const handleDeselectLabel = useCallback(() => {
+  // Custom exit function that also clears polyline transforms
+  const customExit = useCallback(() => {
+    setPolylinePointTransforms(null);
     setSelectedLabelForAnnotation(null);
     setEditing(null);
     setEditSegmentsMode(false);
   }, []);
+
+  // Use confirm exit hook with custom exit function
+  const { confirmExit } = useConfirmExit(customExit);
+
+  const handleDeselectLabel = useCallback(() => {
+    confirmExit(() => {
+      // Callback after exit is confirmed, no-op for now
+    });
+  }, [confirmExit]);
 
   const actions: AnnotationActionGroup[] = useMemo(() => {
     const baseActions: AnnotationActionGroup[] = [
@@ -350,7 +363,7 @@ export const useAnnotationActions = () => {
             id: "toggle-annotation-plane",
             label: "Annotation Plane",
             icon: <RectangleIcon />,
-            tooltip: "Toggle annotation plane visibility",
+            tooltip: <AnnotationPlaneTooltip />,
             isActive: annotationPlane.enabled,
             onClick: handleToggleAnnotationPlane,
           },
@@ -359,7 +372,7 @@ export const useAnnotationActions = () => {
             label: "Snap Close Automatically",
             icon: <RestartAltIcon />,
             tooltip:
-              "When enabled, double-click closes polylines. When disabled, double-click ends segment at click location.",
+              "When enabled, double-clicking closes the polyline. When disabled, double-clicking ends the annotation and commits the last placed vertex.",
             isActive: snapCloseAutomatically,
             onClick: () => setSnapCloseAutomatically(!snapCloseAutomatically),
           },
