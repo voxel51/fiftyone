@@ -11,6 +11,7 @@ import {
   STRING_FIELD,
 } from "@fiftyone/utilities";
 import { useAtom, useAtomValue } from "jotai";
+import { isEqual } from "lodash";
 import { useEffect, useMemo, useState } from "react";
 import { useRecoilCallback } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
@@ -227,7 +228,7 @@ const AnnotationSchema = () => {
           }
           const value = { ...data, ...result };
 
-          if (JSON.stringify(value) === JSON.stringify(overlay.label)) {
+          if (isEqual(value, overlay.label)) {
             return;
           }
 
