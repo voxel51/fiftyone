@@ -58,11 +58,11 @@ def execution_cache(
 
     The function being cached must:
 
-        -   accept a :class:`ctx <fiftyone.operators.executor.ExecutionContext>`
-            as the first parameter
-        -   be idempotent, i.e., same inputs produce the same outputs
-        -   have serializable function arguments and return values
-        -   have no side effects
+    -   accept a :class:`ctx <fiftyone.operators.executor.ExecutionContext>`
+        as the first parameter
+    -   be idempotent, i.e., same inputs produce the same outputs
+    -   have serializable function arguments and return values
+    -   have no side effects
 
     .. note::
 

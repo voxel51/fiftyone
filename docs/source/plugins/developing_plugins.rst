@@ -2834,7 +2834,7 @@ The function being cached must:
 -   have serializable function arguments and return values
 -   have no side effects
 
-By default, cached entries are assocaited with the current dataset and will be
+By default, cached entries are associated with the current dataset and will be
 automatically deleted when the dataset is deleted, but you can customize this
 behavior, including setting an explicit time-to-live in seconds for cached
 entries, by passing optional keyword arguments like ``ttl`` to
