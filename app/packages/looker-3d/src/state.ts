@@ -1,10 +1,11 @@
 import { ColorscaleInput } from "@fiftyone/looker/src/state";
+import * as fos from "@fiftyone/state";
 import {
   getBrowserStorageEffectForKey,
   groupId,
   nullableModalSampleId,
 } from "@fiftyone/state";
-import { atom, atomFamily, selector } from "recoil";
+import { atom, atomFamily, DefaultValue, selector } from "recoil";
 import { Vector3 } from "three";
 import type {
   AnnotationPlaneState,
@@ -488,11 +489,9 @@ export const tempVertexTransformsAtom = atomFamily<
 });
 
 /**
- * State for the annotation plane used for 3D annotation.
- * Controls the position, orientation, and visibility of the annotation plane.
- * Persisted in session storage.
+ * Internal implementation for the annotation plane state facade.
  */
-export const annotationPlaneAtom = atom<AnnotationPlaneState>({
+const annotationPlaneAtomImpl = atomFamily<AnnotationPlaneState, string>({
   key: "fo3d-annotationPlane",
   default: {
     enabled: false,
@@ -502,13 +501,37 @@ export const annotationPlaneAtom = atom<AnnotationPlaneState>({
     showY: true,
     showZ: true,
   },
-  effects: [
-    getBrowserStorageEffectForKey("fo3d-annotationPlane", {
-      useJsonSerialization: true,
-      sessionStorage: true,
-      prependDatasetNameInKey: true,
-    }),
+  effects: (datasetName) => [
+    getBrowserStorageEffectForKey(
+      `fo3d-segmentationAnnotationPlane_${datasetName}`,
+      {
+        useJsonSerialization: true,
+      }
+    ),
   ],
+});
+
+// Public facade for annotation plane state, keyed by the current fos.datasetName
+
+/**
+ * State for the annotation plane used for 3D annotation.
+ * Controls the position, orientation, and visibility of the annotation plane.
+ * Persisted in session storage.
+ */
+export const annotationPlaneAtom = selector<AnnotationPlaneState>({
+  key: "fo3d-annotationPlaneFacade",
+  get: ({ get }) => {
+    const name = get(fos.datasetName) ?? "__no_dataset__";
+    return get(annotationPlaneAtomImpl(name));
+  },
+  set: ({ get, set, reset }, newValue) => {
+    const name = get(fos.datasetName) ?? "__no_dataset__";
+    if (newValue instanceof DefaultValue) {
+      reset(annotationPlaneAtomImpl(name));
+    } else {
+      set(annotationPlaneAtomImpl(name), newValue as AnnotationPlaneState);
+    }
+  },
 });
 
 /**
