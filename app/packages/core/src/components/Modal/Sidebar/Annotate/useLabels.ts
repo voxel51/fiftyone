@@ -5,7 +5,7 @@ import type {
   PathFilterSelector,
 } from "@fiftyone/state";
 import { activeFields, field, modalSample, pathFilter } from "@fiftyone/state";
-import { atom, useAtomValue, useSetAtom } from "jotai";
+import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { splitAtom } from "jotai/utils";
 import { get } from "lodash";
 import { useEffect } from "react";
@@ -100,7 +100,13 @@ export const labelMap = atom((get) => {
   const atoms = get(labelAtoms);
   return Object.fromEntries(atoms.map((atom) => [get(atom).overlay.id, atom]));
 });
-export const loading = atom(true);
+
+export enum LabelsState {
+  UNSET = "unset",
+  LOADING = "loading",
+  COMPLETE = "complete",
+}
+export const labelsState = atom<LabelsState>(LabelsState.UNSET);
 
 const pathMap = selector<{ [key: string]: string }>({
   key: "annotationPathMap",
@@ -117,11 +123,10 @@ export default function useLabels() {
   const filter = useRecoilValue(pathFilter(true));
   const modalSampleData = useRecoilValueLoadable(modalSample);
   const setLabels = useSetAtom(labels);
-  const setLoading = useSetAtom(loading);
+  const [loadingState, setLoading] = useAtom(labelsState);
   const schemaMap = useAtomValue(schemas);
   const addLabel = useAddAnnotationLabel();
   const { scene } = useLighter();
-  const sceneId = scene?.getSceneId();
 
   const getFieldType = useRecoilCallback(
     ({ snapshot }) =>
@@ -142,7 +147,12 @@ export default function useLabels() {
   );
 
   useEffect(() => {
-    if (modalSampleData.state !== "loading" && schemaMap) {
+    if (
+      modalSampleData.state !== "loading" &&
+      schemaMap &&
+      loadingState === LabelsState.UNSET
+    ) {
+      setLoading(LabelsState.LOADING);
       handleSample({
         addLabel,
         paths,
@@ -151,29 +161,32 @@ export default function useLabels() {
         getFieldType,
         schemas: schemaMap,
       }).then((result) => {
-        setLoading(false);
+        setLoading(LabelsState.COMPLETE);
         setLabels(result);
       });
-    } else {
-      setLoading(true);
     }
-    return () => {
-      // clear the scene on unmount
-      setLoading(true);
-      setLabels([]);
-      scene?.clear();
-    };
   }, [
     addLabel,
     filter,
     getFieldType,
+    loadingState,
     modalSampleData,
+
     paths,
     schemaMap,
-    scene,
+
     setLabels,
     setLoading,
   ]);
+
+  useEffect(() => {
+    scene;
+
+    return () => {
+      setLabels([]);
+      setLoading(LabelsState.UNSET);
+    };
+  }, [scene, setLabels, setLoading]);
 
   useHover();
   useFocus();

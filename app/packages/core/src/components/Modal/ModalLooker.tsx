@@ -1,4 +1,4 @@
-import { LoadingDots, useTheme } from "@fiftyone/components";
+import { useTheme } from "@fiftyone/components";
 import type { ImageLooker } from "@fiftyone/looker";
 import { isNativeMediaType } from "@fiftyone/looker/src/util";
 import * as fos from "@fiftyone/state";
@@ -8,7 +8,6 @@ import { useRecoilCallback, useRecoilValue } from "recoil";
 import { ImaVidLookerReact } from "./ImaVidLooker";
 import { LighterSampleRenderer } from "./Lighter/LighterSampleRenderer";
 import { MetadataLooker } from "./MetadataLooker";
-import { loading } from "./Sidebar/Annotate/useLabels";
 import { VideoLookerReact } from "./VideoLooker";
 import useLooker from "./use-looker";
 import { useImageModalSelectiveRendering } from "./use-modal-selective-rendering";
@@ -37,16 +36,6 @@ interface LookerProps {
   // `ghost` means looker will render but with width and height set to 0
   ghost?: boolean;
 }
-
-const Load = ({ children }) => {
-  const isLoading = useAtomValue(loading);
-  const mode = useAtomValue(fos.modalMode);
-  if (mode === "annotate" && isLoading) {
-    return <LoadingDots />;
-  }
-
-  return <>{children}</>;
-};
 
 const ModalLookerNoTimeline = React.memo((props: LookerProps) => {
   const { id, ref, looker } = useLooker<ImageLooker>(props);
