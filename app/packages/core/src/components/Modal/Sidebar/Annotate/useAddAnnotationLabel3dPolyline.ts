@@ -58,6 +58,6 @@ export const useAddAnnotationLabel3dPolyline = () => {
         type,
       };
     },
-    [setPolylinePointTransforms, setSelectedLabelForAnnotation]
+    [syncWithPolylinePointTransforms]
   );
 };
