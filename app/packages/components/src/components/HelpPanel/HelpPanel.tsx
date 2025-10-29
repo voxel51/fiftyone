@@ -16,51 +16,55 @@ import {
   lookerSectionHeaderFirst,
 } from "./panel.module.css";
 import { Close as CloseIcon } from "@fiftyone/components";
-import React, { Fragment } from "react";
+import React, { Fragment, useMemo } from "react";
 
 export default function HelpPanel({ containerRef, onClose, items }) {
-  // Group items by key if keys exist
-  const hasKeys = items.some((item) => item.key);
+  const groupedItems = useMemo(() => {
+    // Group items by key if keys exist
+    const hasKeys = items.some((item) => item.key);
 
-  // Check if all items have the same key (or no key)
-  let allSameKey = true;
-  let firstKey = null;
-  if (hasKeys) {
-    for (const item of items) {
-      if (item.key) {
-        if (firstKey === null) {
-          firstKey = item.key;
-        } else if (item.key !== firstKey) {
-          allSameKey = false;
-          break;
+    // Check if all items have the same key (or no key)
+    let allSameKey = true;
+    let firstKey = null;
+    if (hasKeys) {
+      for (const item of items) {
+        if (item.key) {
+          if (firstKey === null) {
+            firstKey = item.key;
+          } else if (item.key !== firstKey) {
+            allSameKey = false;
+            break;
+          }
         }
       }
     }
-  }
 
-  let groupedItems = [];
-  if (hasKeys && !allSameKey) {
-    // Group by key
-    const groups = {};
-    items.forEach((item) => {
-      const key = item.key || "general";
-      if (!groups[key]) {
-        groups[key] = [];
-      }
-      groups[key].push(item);
-    });
+    let result = [];
+    if (hasKeys && !allSameKey) {
+      // Group by key
+      const groups = {};
+      items.forEach((item) => {
+        const key = item.key || "general";
+        if (!groups[key]) {
+          groups[key] = [];
+        }
+        groups[key].push(item);
+      });
 
-    // Convert to flat array with section headers
-    Object.entries(groups).forEach(([key, groupItems]) => {
-      // Add section header
-      groupedItems.push({ isSectionHeader: true, sectionKey: key });
-      // Add items in this group
-      groupedItems.push(...groupItems);
-    });
-  } else {
-    // All items have same key or no keys - render normally
-    groupedItems = items;
-  }
+      // Convert to flat array with section headers
+      Object.entries(groups).forEach(([key, groupItems]) => {
+        // Add section header
+        result.push({ isSectionHeader: true, sectionKey: key });
+        // Add items in this group
+        result.push(...groupItems);
+      });
+    } else {
+      // All items have same key or no keys - render normally
+      result = items;
+    }
+
+    return result;
+  }, [items]);
 
   return (
     <div
