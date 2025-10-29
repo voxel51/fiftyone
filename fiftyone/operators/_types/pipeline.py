@@ -11,24 +11,26 @@ from typing import Any, List, Mapping, Optional
 
 @dataclasses.dataclass
 class PipelineStage:
-    """A stage in a FiftyOne pipeline.
-
-    Args:
-        operator_uri: the URI of the operator to use for the stage
-        name: the name of the stage
-        num_distributed_tasks: the number of distributed tasks to use
-            for the stage, optional
-        params: optional parameters to pass to the operator
-    """
+    """Dataclass representing a stage in a FiftyOne plugin operator pipeline"""
 
     # Required
     operator_uri: str
+    """The URI of the operator to use for the stage"""
 
     # Optional
     always_run: bool = False
+    """Whether the stage should always run regardless of failures in
+        previous stages of the pipeline
+    """
+
     name: Optional[str] = None
+    """The optional name of the stage"""
+
     num_distributed_tasks: Optional[int] = None
+    """The number of distributed tasks to split the stage into"""
+
     params: Optional[Mapping[str, Any]] = None
+    """Optional dict of parameters to pass to the operator"""
 
     # ADD A CUSTOM __init__ METHOD TO ACCEPT AND DISCARD UNUSED KWARGS
     def __init__(
@@ -74,15 +76,13 @@ class PipelineStage:
 
 @dataclasses.dataclass
 class Pipeline:
-    """A FiftyOne operator pipeline.
+    """Dataclass representing a FiftyOne operator pipeline.
 
     A pipeline consists of one or more stages, each of which is an operator.
-
-    Args:
-        stages: a list of :class:`PipelineStage` instances
     """
 
     stages: list[PipelineStage] = dataclasses.field(default_factory=list)
+    """A list of :class:`PipelineStage` instances"""
 
     # ADD A CUSTOM __init__ METHOD TO ACCEPT AND DISCARD UNUSED KWARGS
     def __init__(self, stages: Optional[list[PipelineStage]] = None, **kwargs):
@@ -131,12 +131,14 @@ class Pipeline:
     def from_json(cls, json_dict):
         """Loads the pipeline from a JSON/python dict.
 
-        Ex., {
-            "stages": [
-                {"operator_uri": "@voxel51/test/blah", "name": "my_stage"},
-                ...,
-            ]
-        }
+        Examples::
+
+            {
+                "stages": [
+                    {"operator_uri": "@voxel51/test/blah", "name": "my_stage"},
+                    ...,
+                ]
+            }
 
         Args:
             json_dict: a JSON / python dict representation of the pipeline
@@ -154,12 +156,14 @@ class Pipeline:
     def to_json(self):
         """Converts this pipeline to JSON/python dict representation
 
-        Ex., {
-            "stages": [
-                {"operator_uri": "@voxel51/test/blah", "name": "my_stage"},
-                ...,
-            ]
-        }
+        Examples::
+
+            {
+                "stages": [
+                    {"operator_uri": "@voxel51/test/blah", "name": "my_stage"},
+                    ...,
+                ]
+            }
 
         Returns:
             JSON / python dict representation of the pipeline
@@ -169,14 +173,23 @@ class Pipeline:
 
 @dataclasses.dataclass
 class PipelineRunInfo:
-    """Information about a pipeline run.
+    """Dataclass with information about a pipeline run.
 
-    Unlike the pipeline definition, this class is considered mutable.
+    Unlike the pipeline definition, the information in this class is dynamic
+    as it changes over time as the pipeline is executed. An instance of this
+    class represents a snapshot of the state of execution.
     """
 
     active: bool = True
+    """Whether the pipeline is currently active, i.e., having no failures in
+    prior stages
+    """
+
     expected_children: Optional[List[int]] = None
+    """List of the number of expected child operations per stage"""
+
     stage_index: int = 0
+    """Index of the pipeline's current execution stage"""
 
     @classmethod
     def from_json(cls, doc: dict):

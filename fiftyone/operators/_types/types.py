@@ -589,7 +589,6 @@ class Object(BaseType):
             name: the name of the property
             types: list of types that are instances of :class:`BaseType`
 
-
         Returns:
             a :class:`OneOf`
         """
@@ -615,6 +614,7 @@ class Object(BaseType):
 
     def tree(self, name, **kwargs):
         """Defines a tree property on the object.
+
         Args:
             name: the name of the property
 
@@ -1032,13 +1032,14 @@ class Tuple(BaseType):
 
 class Tree(BaseType):
     """Represents a tree selection type.
+
     Examples::
 
         import fiftyone.operators.types as types
         inputs = types.Object()
 
     Args:
-    *items: the tree structure of items
+        *items: the tree structure of items
     """
 
     def __init__(self, *items):
@@ -2569,7 +2570,8 @@ class ViewTargetOptions(object):
         selected_labels_description=None,
         **_,
     ):
-        """
+        """Initializes instance
+
         Args:
             action_description (Process): a short description of the action
                 being performed, used to generate default descriptions for the

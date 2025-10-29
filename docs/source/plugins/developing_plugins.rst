@@ -1001,6 +1001,8 @@ contains the following properties:
     instance that you can use to read and write the :ref:`state <panel-state>`
     and :ref:`data <panel-data>` of the current panel, if the operator was
     invoked from a panel
+-   `ctx.pipeline` - information about execution state of the pipeline, if
+    applicable. See :ref:`this section <execution-context-for-stages>`
 -   `ctx.delegated` - whether the operation was delegated
 -   `ctx.requesting_delegated_execution` - whether delegated execution was
     requested for the operation
@@ -1626,7 +1628,7 @@ as `label` values using the pattern shown below:
 
 .. _writing-distributed-operators:
 
-Distributed execution __SUB_NEW__
+Distributed execution
 ---------------------------------
 
 .. versionadded:: 1.8.0
@@ -1689,9 +1691,8 @@ Any necessary batching is automatically handled by FiftyOne's scheduling engine.
 
     Since distributed operators are executed multiple times, each on a subset
     of the data, in any order, the operator cannot perform any pre or post
-    processing outside of the current batch. That is, the operator must
-    represent an
-    `embarrassingly parallel task <https://en.wikipedia.org/wiki/Embarrassingly_parallel>`_.
+    processing outside of the current batch. To do this you must use an
+    :ref:`operator pipeline<writing-operator-pipelines>`.
 
 Supporting target views
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -1718,6 +1719,247 @@ the current batch. However, if the user opts for non-distributed execution,
 then :meth:`ctx.target_view() <fiftyone.operators.ExecutionContext.target_view>`
 must be used as the user may have chosen a target view other than the current
 ``ctx.view``.
+
+.. _writing-operator-pipelines:
+
+Operator Pipelines __SUB_NEW__
+------------------------------
+
+.. versionadded:: 1.10.0
+
+In addition to developing individual operators, FiftyOne Enterprise allows
+you to define a linear composition of regular operators into a single
+**operator pipeline**. An operator pipeline acts as a single, higher-level
+operation composed of multiple discrete **stages**, where each stage is a
+call to another operator.
+
+.. note::
+
+    Currently, **Operator Pipelines** are only supported for **delegated**
+    **execution** within FiftyOne Enterprise. Immediate execution or use
+    in FiftyOne Open Source is not supported for this feature.
+
+.. _pipeline-operator-interface:
+
+Defining a Pipeline Operator
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To define an operator that executes a pipeline, you must subclass
+:class:`PipelineOperator <fiftyone.operators.PipelineOperator>` instead of the
+typical base :class:`Operator <fiftyone.operators.Operator>`.
+
+A `PipelineOperator` is structured similarly to a regular operator, but
+replaces the standard :meth:`execute() <fiftyone.operators.Operator.execute>`
+method with a required method in which you define the pipeline's stages:
+:meth:`resolve_pipeline() <fiftyone.operators.PipelineOperator.resolve_pipeline>`.
+
+:meth:`resolve_input() <fiftyone.operators.Operator.resolve_input>` can also be
+implemented to define user inputs for the pipeline operator. In this case, any
+inputs defined will be available to the `resolve_pipeline()` method via
+`ctx.params`, for configuring the pipeline's stages.
+
+Additionally, any stage can be a
+:ref:`distributed operator <writing-distributed-operators>` to provide fan-out
+capability to the pipeline.
+
+This diagram shows an example of an operator pipeline with three stages:
+
+1. Initialization
+2. Distributed processing of data
+3. Finalization/cleanup
+
+Note that if Stage 1 or Stage 2 fails, Stage 3 will still run because it is
+marked with `always_run=True`.
+
+.. image:: /images/plugins/operators/pipeline-operator.png
+    :align: center
+
+.. _pipeline-components:
+
+Pipeline Components
+~~~~~~~~~~~~~~~~~~~
+
+The pipeline is constructed using core classes from
+:mod:`fiftyone.operators.types`.
+
+:class:`fiftyone.operators.types.Pipeline`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The top-level container for the stages, which `resolve_pipeline()` must return.
+The two ways to create a pipeline are:
+
+1. Instantiate an empty pipeline and add stages via
+   :meth:`stage() <fiftyone.operators.types.Pipeline.stage>`
+2. Instantiate a pipeline with an initial list of stages via the
+   :class:`Pipeline <fiftyone.operators.types.Pipeline>` constructor
+
+
+:class:`fiftyone.operators.types.PipelineStage`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Represents a single step in the pipeline, which is an invocation of a regular
+operator.
+
+.. _pipeline-operator-examples:
+
+Example Pipeline Operators
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This example code shows how to define the pipeline operator
+:ref:`shown and described above.<pipeline-operator-interface>`
+
+.. code-block:: python
+
+    import fiftyone.operators as foo
+    import fiftyone.operators.types as types
+
+    class PipelineOp(foo.PipelineOperator):
+        @property
+        def config(self):
+            return foo.OperatorConfig(
+                name="my_pipeline_op",
+                label="My Example Pipeline",
+                # Must allow delegation, immediate is not supported for pipelines
+                allow_delegated_execution=True,
+                allow_immediate_execution=False,
+                allow_distributed_execution=True,
+            )
+
+        def resolve_input(self, ctx):
+            # Define inputs for the top-level pipeline operator
+            inputs = types.Object()
+            inputs.view_target(ctx)
+            inputs.str(name="a_str", label="A string input", default="default")
+            return types.Property(inputs)
+
+        def resolve_pipeline(self, ctx):
+            """
+            Required method that defines the pipeline's stages.
+            Returns:
+                a `types.Pipeline` instance.
+            """
+            pipeline = types.Pipeline([
+                # Stage 1: Initialization
+                types.PipelineStage(
+                    operator_uri="@my-plugin/my_stage1",
+                    name="Initialization",
+                    params=ctx.params,  # pass top-level inputs straight through
+                )
+
+                # Stage 2: Distributed work, leveraging ctx.num_distributed_tasks
+                types.PipelineStage(
+                    operator_uri="@my-plugin/my_stage2_distr",
+                    name="Process Data",
+                    num_distributed_tasks=ctx.num_distributed_tasks,
+                    params={"some_param": "some_value"}, # custom params for stage 2
+                )
+
+                # Stage 3: Finalization/Cleanup
+                types.PipelineStage(
+                    operator_uri="@my-plugin/my_stage3_cleanup",
+                    name="Finalization",
+                    always_run=True, # Runs even if Stage 1 or 2 fails
+                    # no params passed
+                )
+            ])
+
+            return pipeline
+
+We can even dynamically configure the pipeline's stages based on user inputs
+or other aspects of the execution context. For example, this is a pipeline
+approximating the functionality of
+:meth:`compute_visualization() <fiftyone.brain.compute_visualization>`. It
+also showcases the alternative pipeline creation syntax.
+
+.. code-block:: python
+
+    import fiftyone.operators as foo
+    import fiftyone.operators.types as types
+
+    class ComputeVisualizationPipeline(foo.PipelineOperator):
+        @property
+        def config(self):
+            return foo.OperatorConfig(
+                name="compute_viz_pipeline",
+                label="Compute Visualization Pipeline",
+                allow_delegated_execution=True,
+                allow_immediate_execution=False,
+                allow_distributed_execution=True,
+            )
+
+        def resolve_input(self, ctx):
+            # Define inputs for the top-level pipeline operator
+            inputs = types.Object()
+            inputs.view_target(ctx)
+            inputs.bool(
+                name="force_compute_embeddings",
+                label="Force compute embeddings?",
+                default=False
+            )
+
+            ... # other inputs
+
+            return types.Property(inputs)
+
+        def resolve_pipeline(self, ctx):
+            pipeline = types.Pipeline()
+            view = ctx.target_view()
+
+            # Compute embeddings first if the view doesn't have them or
+            #   user told us to force it
+            if ctx.params.get(
+                "force_compute_embeddings", False
+            ) or not has_embeddings(view):
+                pipeline.stage(
+                    operator_uri="@my-plugin/compute_embeddings",
+                    name="Compute Embeddings",
+                    num_distributed_tasks=ctx.num_distributed_tasks,
+                    params=_get_compute_embeddings_params(ctx.params),
+                )
+
+            # Perform dimensionality reduction on embeddings
+            pipeline.stage(
+                operator_uri="@my-plugin/dimensionality_reduction",
+                name="Reduce to 2 Dimensions",
+                num_distributed_tasks=ctx.num_distributed_tasks,
+                params=_get_dimensionality_reduction_params(ctx.params),
+            )
+
+            # Create a plot from the viz field and upload to a cloud bucket
+            pipeline.stage(
+                operator_uri="@my-plugin/generate_plot",
+                name="Generate Plot and Upload",
+                params={
+                    "visualization_field": ctx.params.get("visualization_field"),
+                    "cloud_path": ctx.params.get("cloud_path"),
+                },
+            )
+
+            return pipeline
+
+Execution Context for Stages
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When a standard operator is executed as a stage within a pipeline, its
+:ref:`execution context <operator-execution-context>` is augmented with the
+**`ctx.pipeline`** property.
+
+This field is an instance of
+:class:`PipelineExecutionContext <fiftyone.operators.executor.PipelineExecutionContext>`
+which provides information about the overall pipeline execution to the current
+stage operator.
+
+The stage operator can use this context for conditional logic, such as
+performing a cleanup action:
+
+.. code-block:: python
+
+    def execute(self, ctx):
+        if not ctx.pipeline.active:
+            # This stage is running because an earlier stage failed
+            print(f"Running cleanup after failure: {ctx.pipeline.error or 'unknown error'}")
+
+        # ... normal stage logic
 
 .. _operator-secrets:
 
