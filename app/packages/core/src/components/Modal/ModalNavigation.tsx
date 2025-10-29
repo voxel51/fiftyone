@@ -29,7 +29,7 @@ const Arrow = styled.span<{
         : "0.75rem"
       : "initial"};
   left: ${(props) => (props.$isRight ? "initial" : "0.75rem")};
-  z-index: 99999;
+  z-index: 10000;
   padding: 0.75rem;
   top: 50%;
   width: 3rem;
@@ -154,15 +154,15 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
   fos.useEventHandler(document, "keyup", keyboardHandler);
   const { confirmExit } = useConfirmExit(useExit(), useSave());
 
-  const next = useCallback(() => confirmExit(nextNavigator.navigate), [
-    confirmExit,
-    nextNavigator,
-  ]);
+  const next = useCallback(
+    () => confirmExit(nextNavigator.navigate),
+    [confirmExit, nextNavigator]
+  );
 
-  const previous = useCallback(() => confirmExit(previousNavigator.navigate), [
-    confirmExit,
-    previousNavigator,
-  ]);
+  const previous = useCallback(
+    () => confirmExit(previousNavigator.navigate),
+    [confirmExit, previousNavigator]
+  );
 
   if (!modal) {
     return null;

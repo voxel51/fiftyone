@@ -51,6 +51,8 @@ const GizmoCanvas = styled.div`
   margin-top: 8px;
   margin-left: 10px;
   width: 130px;
+  aspect-ratio: 1/1;
+  height: auto;
   pointer-events: auto;
   opacity: 0.6;
 

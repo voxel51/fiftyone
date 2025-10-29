@@ -1,8 +1,11 @@
 import { useTheme } from "@fiftyone/components";
-import { activeSchemas } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/state";
+import {
+  activeSchemas,
+  fieldTypes,
+} from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/state";
 import { currentActiveAnnotationField3dAtom } from "@fiftyone/looker-3d/src/state";
 import { useAtomValue } from "jotai";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useRecoilState } from "recoil";
 
 export const FieldSelection = () => {
@@ -10,7 +13,16 @@ export const FieldSelection = () => {
     currentActiveAnnotationField3dAtom
   );
   const activeSchema = useAtomValue(activeSchemas);
-  const schemaFields = Object.keys(activeSchema ?? {});
+  const fieldTypesVal = useAtomValue(fieldTypes);
+
+  const schemaFields = useMemo(
+    () =>
+      Object.keys(activeSchema ?? {}).filter((field) => {
+        const thisFieldType = fieldTypesVal[field].toLocaleLowerCase();
+        return thisFieldType === "polyline" || thisFieldType === "polylines";
+      }),
+    [activeSchema, fieldTypesVal]
+  );
 
   const theme = useTheme() as any;
 
@@ -18,7 +30,16 @@ export const FieldSelection = () => {
     if (currentActiveField === null && schemaFields.length > 0) {
       setCurrentActiveField(schemaFields[0]);
     }
-  }, [currentActiveField, schemaFields, setCurrentActiveField]);
+
+    // Make sure active field is in the schema fields
+    if (
+      currentActiveField &&
+      schemaFields.length > 0 &&
+      !schemaFields.includes(currentActiveField)
+    ) {
+      setCurrentActiveField(schemaFields[0]);
+    }
+  }, [currentActiveField, schemaFields]);
 
   if (schemaFields.length === 0) {
     return null;
