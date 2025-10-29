@@ -1676,8 +1676,8 @@ class ContentSizeBatcher(Batcher):
         self.target_size = target_size
         self.max_batch_size = max_batch_size
         self.size_calc_fn = size_calc_fn
-        self._sentinal = object()  # used to terminate iteration
-        self._next_element = self._sentinal
+        self._sentinel = object()  # used to terminate iteration
+        self._next_element = self._sentinel
         self._last_batch_content_size = None
         self._encoding_ratio = 1.0
 
@@ -1688,14 +1688,14 @@ class ContentSizeBatcher(Batcher):
         except StopIteration:
             # If iterable is empty, we want to throw StopIteration at the first
             #   call to next(), not here.
-            self._next_element = self._sentinal
+            self._next_element = self._sentinel
         return self
 
     def __next__(self):
         if self._render_progress and self._last_batch_size:
             self._pb.update(count=self._last_batch_size)
 
-        if self._next_element is self._sentinal:
+        if self._next_element is self._sentinel:
             raise StopIteration
 
         # Must have at least 1 element in a batch
@@ -1727,7 +1727,7 @@ class ContentSizeBatcher(Batcher):
                 # If we get StopIteration, it just means we are done and can
                 #   end this batch. On the following call to __next__(), we'll
                 #   raise our StopIteration
-                self._next_element = self._sentinal
+                self._next_element = self._sentinel
                 break
 
         self._last_batch_size = len(curr_batch)
