@@ -5,7 +5,8 @@ import {
   useLighter,
 } from "@fiftyone/lighter";
 import { useAtom, useAtomValue } from "jotai";
-import React, { useEffect, useState } from "react";
+import { debounce } from "lodash";
+import React, { useEffect, useMemo, useState } from "react";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import { setPathUserUnchanged } from "../../../../../plugins/SchemaIO/hooks";
 import { currentData, currentOverlay } from "./state";
@@ -100,6 +101,54 @@ export default function Position() {
     };
   }, [data?._id, overlay, scene, setData]);
 
+  const debouncedEvent = useMemo(
+    () =>
+      debounce((data: Coordinates) => {
+        if (
+          !(overlay instanceof BoundingBoxOverlay) ||
+          !overlay.hasValidBounds() ||
+          !scene
+        ) {
+          return;
+        }
+
+        // Check if data actually differs from current overlay bounds
+        const currentBounds = overlay.getAbsoluteBounds();
+        const hasChanged =
+          data.position.x !== currentBounds.x ||
+          data.position.y !== currentBounds.y ||
+          data.dimensions.width !== currentBounds.width ||
+          data.dimensions.height !== currentBounds.height;
+
+        if (!hasChanged) {
+          return;
+        }
+
+        // if debounced and `hasChanged` we can trust that we're dealing with user input
+        const rect = overlay.getAbsoluteBounds();
+        scene.executeCommand(
+          new TransformOverlayCommand(
+            overlay,
+            overlay.id,
+            overlay.getAbsoluteBounds(),
+            {
+              ...rect,
+              ...data.position,
+              ...data.dimensions,
+            }
+          )
+        );
+      }, 300),
+    [overlay, scene]
+  );
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      debouncedEvent.cancel();
+    };
+  }, [debouncedEvent]);
+
   return (
     <div style={{ width: "100%" }}>
       <SchemaIOComponent
@@ -128,28 +177,7 @@ export default function Position() {
           },
         }}
         data={state}
-        onChange={(data: Coordinates) => {
-          if (
-            !(overlay instanceof BoundingBoxOverlay) ||
-            !overlay.hasValidBounds()
-          ) {
-            return;
-          }
-
-          const rect = overlay.getAbsoluteBounds();
-          scene?.executeCommand(
-            new TransformOverlayCommand(
-              overlay,
-              overlay.id,
-              overlay.getAbsoluteBounds(),
-              {
-                ...rect,
-                ...data.dimensions,
-                ...data.position,
-              }
-            )
-          );
-        }}
+        onChange={debouncedEvent}
       />
     </div>
   );
