@@ -3,8 +3,7 @@ import { useLighter } from "@fiftyone/lighter";
 import { isPolylineAnnotateActiveAtom } from "@fiftyone/looker-3d/src/state";
 import { is3DDataset } from "@fiftyone/state";
 import { CLASSIFICATION, DETECTION } from "@fiftyone/utilities";
-import ThreeDIcon from "@mui/icons-material/ViewInAr";
-import React from "react";
+import PolylineIcon from "@mui/icons-material/Timeline";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ItemLeft } from "./Components";
@@ -190,14 +189,21 @@ export const ThreeDPolylines = () => {
     useRecoilState(isPolylineAnnotateActiveAtom);
 
   return (
-    <Tooltip placement="top-center" text="Create new polyline">
+    <Tooltip
+      placement="top-center"
+      text={
+        isPolylineAnnotateActive
+          ? "Exit polyline annotation mode"
+          : "Enter polyline annotation mode"
+      }
+    >
       <Square
         $active={isPolylineAnnotateActive}
         onClick={() => {
           setIsPolylineAnnotateActive(!isPolylineAnnotateActive);
         }}
       >
-        <ThreeDIcon />
+        <PolylineIcon sx={{ transform: "rotate(90deg)" }} />
       </Square>
     </Tooltip>
   );

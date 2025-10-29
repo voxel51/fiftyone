@@ -5,7 +5,7 @@ export interface AnnotationAction {
   label: string;
   icon: ReactNode;
   shortcut?: string;
-  tooltip?: string;
+  tooltip?: string | ReactNode;
   isActive?: boolean;
   isDisabled?: boolean;
   isVisible?: boolean;

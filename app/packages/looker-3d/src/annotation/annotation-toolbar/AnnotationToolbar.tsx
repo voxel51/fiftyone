@@ -117,17 +117,33 @@ const ActionButton = styled(IconButton)<{
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
+    transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+    transform: "scale(1)",
     "&:hover": {
       backgroundColor: isActiveBool
         ? theme.palette.primary.dark
         : theme.palette.action.hover,
+      transform: "scale(1.1)",
+      boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)",
+    },
+    "&:active": {
+      transform: "scale(0.95)",
     },
     "&:disabled": {
       color: theme.palette.text.disabled,
       backgroundColor: "transparent",
+      transform: "scale(1)",
+      "&:hover": {
+        transform: "scale(1)",
+        boxShadow: "none",
+      },
     },
     "& .MuiSvgIcon-root": {
       fontSize: "18px",
+      transition: "transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+    },
+    "&:hover .MuiSvgIcon-root": {
+      transform: "scale(1.05)",
     },
   };
 });
@@ -252,9 +268,13 @@ export const AnnotationToolbar = ({ className }: AnnotationToolbarProps) => {
                       key={action.id}
                       title={
                         <Box>
-                          <Typography variant="body2">
-                            {action.tooltip || action.label}
-                          </Typography>
+                          {typeof action.tooltip === "string" ? (
+                            <Typography variant="body2">
+                              {action.tooltip}
+                            </Typography>
+                          ) : (
+                            action.tooltip
+                          )}
                           {action.shortcut && (
                             <Typography variant="caption" sx={{ opacity: 0.7 }}>
                               {action.shortcut}
