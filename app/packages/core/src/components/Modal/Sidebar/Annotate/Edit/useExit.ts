@@ -4,8 +4,13 @@ import {
   UpdateLabelCommand,
   useLighter,
 } from "@fiftyone/lighter";
+import {
+  polylinePointTransformsAtom,
+  selectedLabelForAnnotationAtom,
+} from "@fiftyone/looker-3d/src/state";
 import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
+import { useSetRecoilState } from "recoil";
 import { editing } from ".";
 import { current, currentData, currentOverlay, savedLabel } from "./state";
 import useDelete from "./useDelete";
@@ -17,11 +22,39 @@ export default function useExit(revertLabel = true) {
   const overlay = useAtomValue(currentOverlay);
   const remove = useDelete();
 
+  /**
+   * 3D SPECIFIC IMPORTS
+   * : TODO: CLEAN THIS UP. THIS FUNCTION SHOULDN'T BE
+   * COUPLED TO LIGHTER OR LOOKER-3D.
+   */
+
+  const setPolylinePointTransforms = useSetRecoilState(
+    polylinePointTransformsAtom
+  );
+  const setSelectedLabelForAnnotation = useSetRecoilState(
+    selectedLabelForAnnotationAtom
+  );
+  /**
+   * 3D SPECIFIC IMPORTS ENDS HERE.
+   */
+
   return useCallback(() => {
     const store = getDefaultStore();
     store.get(currentOverlay)?.setSelected(false);
     const label = store.get(savedLabel);
     const unsaved = store.get(current);
+
+    /**
+     * 3D SPECIFIC LOGIC
+     * : TODO: CLEAN THIS UP. THIS FUNCTION SHOULDN'T BE
+     * COUPLED TO LIGHTER OR LOOKER-3D.
+     */
+
+    setPolylinePointTransforms(null);
+    setSelectedLabelForAnnotation(null);
+    /**
+     * 3D SPECIFIC LOGIC ENDS HERE.
+     */
 
     if (!label) {
       setEditing(null);

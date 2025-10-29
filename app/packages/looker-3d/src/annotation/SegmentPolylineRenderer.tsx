@@ -51,7 +51,7 @@ export const SegmentPolylineRenderer = ({
   const [segmentState, setSegmentState] = useRecoilState(
     activeSegmentationStateAtom
   );
-  const [polylinePointTransforms, setPolylinePointTransforms] = useRecoilState(
+  const setPolylinePointTransforms = useSetRecoilState(
     polylinePointTransformsAtom
   );
 
@@ -63,7 +63,6 @@ export const SegmentPolylineRenderer = ({
   useReverseSyncPolylinePointTransforms();
   const setSharedCursorPosition = useSetRecoilState(sharedCursorPositionAtom);
   const annotationPlane = useRecoilValue(annotationPlaneAtom);
-  const snapCloseAutomatically = useRecoilValue(snapCloseAutomaticallyAtom);
   const { upVector, sceneBoundingBox } = useFo3dContext();
 
   // Track last click time for double-click detection
