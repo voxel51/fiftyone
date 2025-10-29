@@ -410,6 +410,19 @@ export const selectedPolylineVertexAtom = atom<SelectedPoint | null>({
 });
 
 /**
+ * The currently hovered polyline vertex.
+ * Tracks the specific label, segment and point indices, or null if no vertex is hovered.
+ */
+export const hoveredVertexAtom = atom<{
+  labelId: string;
+  segmentIndex: number;
+  pointIndex: number;
+} | null>({
+  key: "fo3d-hoveredVertex",
+  default: null,
+});
+
+/**
  * Transform data for temporary polyline segments.
  */
 export const polylinePointTransformsAtom = atom<Record<

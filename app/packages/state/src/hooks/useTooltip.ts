@@ -3,7 +3,10 @@ import {
   LabelUnhoveredEvent,
   selectiveRenderingEventBus,
 } from "@fiftyone/looker";
-import { activeSegmentationStateAtom } from "@fiftyone/looker-3d/src/state";
+import {
+  activeSegmentationStateAtom,
+  hoveredVertexAtom,
+} from "@fiftyone/looker-3d/src/state";
 import * as fos from "@fiftyone/state";
 import { useCallback } from "react";
 import { useRecoilCallback, useRecoilState, useSetRecoilState } from "recoil";
@@ -33,7 +36,16 @@ export default function useTooltip() {
                 ?.isActive
             );
 
-            if (!label.instance || isCurrentlySegmenting) {
+            const hoveredVertex = snapshot
+              .getLoadable(hoveredVertexAtom)
+              .getValue();
+            const isAnyVertexHovered = hoveredVertex !== null;
+
+            if (
+              !label.instance ||
+              isCurrentlySegmenting ||
+              isAnyVertexHovered
+            ) {
               return;
             }
 
@@ -78,7 +90,12 @@ export default function useTooltip() {
                 ?.isActive
             );
 
-            if (isCurrentlySegmenting) {
+            const hoveredVertex = snapshot
+              .getLoadable(hoveredVertexAtom)
+              .getValue();
+            const isAnyVertexHovered = hoveredVertex !== null;
+
+            if (isCurrentlySegmenting || isAnyVertexHovered) {
               return;
             }
 
