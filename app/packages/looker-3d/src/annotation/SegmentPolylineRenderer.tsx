@@ -51,7 +51,7 @@ export const SegmentPolylineRenderer = ({
   const [segmentState, setSegmentState] = useRecoilState(
     activeSegmentationStateAtom
   );
-  const [polylinePointTransforms, setPolylinePointTransforms] = useRecoilState(
+  const setPolylinePointTransforms = useSetRecoilState(
     polylinePointTransformsAtom
   );
 
@@ -63,7 +63,6 @@ export const SegmentPolylineRenderer = ({
   useReverseSyncPolylinePointTransforms();
   const setSharedCursorPosition = useSetRecoilState(sharedCursorPositionAtom);
   const annotationPlane = useRecoilValue(annotationPlaneAtom);
-  const snapCloseAutomatically = useRecoilValue(snapCloseAutomaticallyAtom);
   const { upVector, sceneBoundingBox } = useFo3dContext();
 
   // Track last click time for double-click detection
@@ -94,7 +93,7 @@ export const SegmentPolylineRenderer = ({
 
         setPolylinePointTransforms((prev) => {
           let transformData: PolylinePointTransformData;
-          if (!prev) {
+          if (!prev || Object.keys(prev).length === 0 || !prev[labelId]) {
             transformData = {
               segments: [newSegment],
               path: currentActiveField,
@@ -112,13 +111,13 @@ export const SegmentPolylineRenderer = ({
               path: currentActiveField || "",
               sampleId: currentSampleId,
               misc: {
+                ...(currentData?.misc ?? {}),
                 closed: shouldClose,
-                ...currentData?.misc,
               },
             };
           }
           setEditingToNewPolyline(labelId, transformData);
-          return { ...prev, [labelId]: transformData };
+          return { ...(prev ?? {}), [labelId]: transformData };
         });
 
         if (selectedLabelForAnnotation) {

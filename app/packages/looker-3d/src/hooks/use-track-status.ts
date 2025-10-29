@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { useRecoilState } from "recoil";
 import * as THREE from "three";
 import {
@@ -14,9 +15,13 @@ export const useTrackStatus = () => {
     fo3dLoadingStatusThisSample
   );
 
+  // Keep a ref to the latest loadingStatus to avoid stale closures
+  const loadingStatusRef = useRef(loadingStatus);
+  loadingStatusRef.current = loadingStatus;
+
   THREE.DefaultLoadingManager.onStart = (url, itemsLoaded, itemsTotal) => {
     const log = "Started loading file: " + url;
-    setLogs([...logs, { message: log, status: "info" }]);
+    setLogs((prevLogs) => [...prevLogs, { message: log, status: "info" }]);
 
     setLoadingStatus({
       status: LoadingStatus.STARTED,
@@ -30,20 +35,21 @@ export const useTrackStatus = () => {
 
   THREE.DefaultLoadingManager.onLoad = () => {
     const log = ALL_LOADING_COMPLETE;
-    setLogs([...logs, { message: log, status: "success" }]);
+    setLogs((prevLogs) => [...prevLogs, { message: log, status: "success" }]);
 
+    const latestItemsTotal = loadingStatusRef.current.itemsTotal || 0;
     setLoadingStatus({
       status: LoadingStatus.SUCCESS,
       progress: 100,
-      itemsLoaded: loadingStatus.itemsTotal || 0,
-      itemsTotal: loadingStatus.itemsTotal || 0,
+      itemsLoaded: latestItemsTotal,
+      itemsTotal: latestItemsTotal,
       timestamp: Date.now(),
     });
   };
 
   THREE.DefaultLoadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
     const log = `Loading file: ${url}. Loaded ${itemsLoaded} of ${itemsTotal} files.`;
-    setLogs([...logs, { message: log, status: "info" }]);
+    setLogs((prevLogs) => [...prevLogs, { message: log, status: "info" }]);
 
     setLoadingStatus({
       status: LoadingStatus.LOADING,
@@ -57,7 +63,7 @@ export const useTrackStatus = () => {
 
   THREE.DefaultLoadingManager.onError = (url) => {
     const log = "There was an error loading " + url;
-    setLogs([...logs, { message: log, status: "error" }]);
+    setLogs((prevLogs) => [...prevLogs, { message: log, status: "error" }]);
 
     setLoadingStatus({
       status: LoadingStatus.FAILED,

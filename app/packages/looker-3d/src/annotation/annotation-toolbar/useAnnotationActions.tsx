@@ -1,3 +1,4 @@
+import useConfirmExit from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Confirmation/useConfirmExit";
 import { editing as editingAtom } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit";
 import * as fos from "@fiftyone/state";
 import { Close, Delete, Edit, OpenWith, Straighten } from "@mui/icons-material";
@@ -270,11 +271,22 @@ export const useAnnotationActions = () => {
     }
   }, [editSegmentsMode, setEditSegmentsMode, setSegmentState]);
 
-  const handleDeselectLabel = useCallback(() => {
+  // Custom exit function that also clears polyline transforms
+  const customExit = useCallback(() => {
+    setPolylinePointTransforms(null);
     setSelectedLabelForAnnotation(null);
     setEditing(null);
     setEditSegmentsMode(false);
   }, []);
+
+  // Use confirm exit hook with custom exit function
+  const { confirmExit } = useConfirmExit(customExit);
+
+  const handleDeselectLabel = useCallback(() => {
+    confirmExit(() => {
+      // Callback after exit is confirmed, no-op for now
+    });
+  }, [confirmExit]);
 
   const actions: AnnotationActionGroup[] = useMemo(() => {
     const baseActions: AnnotationActionGroup[] = [
