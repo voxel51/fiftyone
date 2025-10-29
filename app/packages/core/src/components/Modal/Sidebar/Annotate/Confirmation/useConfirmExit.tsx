@@ -54,7 +54,6 @@ function ExitChangesModal({
             onClick={() => {
               save();
               close();
-              exit();
               shown();
             }}
             variant="contained"
@@ -80,8 +79,8 @@ export default function useConfirmExit(
           return;
         }
 
-        exit();
         callback();
+        exit();
       },
       [exit, showConfirmation]
     ),

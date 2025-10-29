@@ -14,13 +14,13 @@ import {
   snackbarMessage,
   useRefreshSample,
 } from "@fiftyone/state";
+import { Field } from "@fiftyone/utilities";
 import { useCallback, useEffect, useMemo } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { JSONDeltas, patchSample } from "../../../client";
 import { transformSampleData } from "../../../client/transformer";
 import { parseTimestamp } from "../../../client/util";
-import { buildJsonPath, buildLabelDeltas, OpType } from "./deltas";
-import { Field } from "@fiftyone/utilities";
+import { OpType, buildJsonPath, buildLabelDeltas } from "./deltas";
 
 /**
  * Hook that handles overlay persistence events.
@@ -39,7 +39,7 @@ export const useOverlayPersistence = (scene: Scene2D | null) => {
   // a version token.
   const versionToken = useMemo(() => {
     const isoTimestamp = parseTimestamp(
-      (currentSample?.last_modified_at as unknown) as string
+      currentSample?.last_modified_at as unknown as string
     )?.toISOString();
 
     // server doesn't like the iso timestamp ending in 'Z'
