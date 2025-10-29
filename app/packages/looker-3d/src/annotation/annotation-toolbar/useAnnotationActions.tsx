@@ -32,6 +32,7 @@ import type {
   TransformMode,
   TransformSpace,
 } from "../types";
+import { AnnotationPlaneTooltip } from "./AnnotationPlaneTooltip";
 import {
   PlaneCoordinateInputs,
   VertexCoordinateInputs,
@@ -362,7 +363,7 @@ export const useAnnotationActions = () => {
             id: "toggle-annotation-plane",
             label: "Annotation Plane",
             icon: <RectangleIcon />,
-            tooltip: "Toggle annotation plane visibility",
+            tooltip: <AnnotationPlaneTooltip />,
             isActive: annotationPlane.enabled,
             onClick: handleToggleAnnotationPlane,
           },
@@ -371,7 +372,7 @@ export const useAnnotationActions = () => {
             label: "Snap Close Automatically",
             icon: <RestartAltIcon />,
             tooltip:
-              "When enabled, double-click closes polylines. When disabled, double-click ends segment at click location.",
+              "When enabled, double-clicking closes the polyline. When disabled, double-clicking ends the annotation and commits the last placed vertex.",
             isActive: snapCloseAutomatically,
             onClick: () => setSnapCloseAutomatically(!snapCloseAutomatically),
           },
