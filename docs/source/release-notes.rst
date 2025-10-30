@@ -26,12 +26,12 @@ App
 
 - Increased maximum length for the name of a dataset or view to over 1000
   characters.
-- Fixed a bug where the UI would allow exporting media greater than 100MB, even
+- Fixed a bug where the UI would allow exporting media greater than 100 MB, even
   though that is not supported, resulting in the download hanging.
 
 Core
-- Optimized
-  :func:`instances_to_polylines() <fiftyone.utils.labels.instances_to_polylines>`
+
+- Optimized :func:`instances_to_polylines() <fiftyone.utils.labels.instances_to_polylines>`
   conversion of instance segmentations whose masks are stored in the cloud.
 
 Compliance
@@ -39,7 +39,7 @@ Compliance
 - Fixed a bug where a license compliance error could be raised even after the
   compliance issue had been resolved.
 - Modified our builds to remove lock files that were causing some scanners
-  (e.g. AWS inspector) to eroneously report vulnerabilities for dependencies
+  (e.g. AWS Inspector) to erroneously report vulnerabilities for dependencies
   not included in our build.
 
 
