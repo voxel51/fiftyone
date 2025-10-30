@@ -134,14 +134,34 @@ convert_and_normalize = transforms.Compose(
 )
 
 
-def mnist_get_item(sample):
-    sample_id = sample["id"]
-    image = convert_and_normalize(
-        Image.open(sample["filepath"]).convert("RGB")
-    )
-    # labels are in the format "<number> - <number name english>"
-    label = int(sample["ground_truth.label"][0])
-    return {"image": image, "label": label, "id": sample_id}
+class MnistGetItem(GetItem):
+    """GetItem for MNIST dataset."""
+
+    def __init__(self):
+        super().__init__(
+            field_mapping={
+                "id": "id",
+                "filepath": "filepath",
+                "label": "ground_truth.label",
+            }
+        )
+
+    @property
+    def required_keys(self):
+        return ["id", "filepath", "label"]
+
+    def __call__(self, sample):
+        sample_id = sample["id"]
+        image = convert_and_normalize(
+            Image.open(sample["filepath"]).convert("RGB")
+        )
+        # labels are in the format "<number> - <number name english>"
+        label = int(sample["label"][0])
+        return {"image": image, "label": label, "id": sample_id}
+
+
+# Create instance for use
+mnist_get_item = MnistGetItem()
 
 
 def create_dataloaders(
@@ -150,11 +170,27 @@ def create_dataloaders(
     local_process_group=None,
     **kwargs,
 ):
+    """Create dataloaders for train/validation/test splits.
+
+    Args:
+        dataset: FiftyOne dataset with train/validation/test tags
+        get_item: A GetItem object
+        local_process_group: Process group for distributed training
+        **kwargs: Additional arguments for DataLoader
+
+    Returns:
+        Dict of dataloaders for each split
+    """
     split_tags = ["train", "validation", "test"]
     dataloaders = {}
+
+    # Use vectorize only for SimpleGetItem (cached fields)
+    use_vectorize = isinstance(get_item, SimpleGetItem)
+
     for split_tag in split_tags:
         split = dataset.match_tags(split_tag).to_torch(
             get_item,
+            vectorize=use_vectorize,
             local_process_group=local_process_group,
         )
         shuffle = True if split_tag == "train" else False
@@ -198,11 +234,27 @@ def create_dataloaders_ddp(
     local_process_group=None,
     **kwargs,
 ):
+    """Create dataloaders for distributed training.
+
+    Args:
+        dataset: FiftyOne dataset with train/validation/test tags
+        get_item: A GetItem object
+        local_process_group: Process group for distributed training
+        **kwargs: Additional arguments for DataLoader
+
+    Returns:
+        Dict of dataloaders for each split with DistributedSampler
+    """
     split_tags = ["train", "validation", "test"]
     dataloaders = {}
+
+    # Use vectorize only for SimpleGetItem (cached fields)
+    use_vectorize = isinstance(get_item, SimpleGetItem)
+
     for split_tag in split_tags:
         split = dataset.match_tags(split_tag).to_torch(
             get_item,
+            vectorize=use_vectorize,
             local_process_group=local_process_group,
         )
         shuffle = True if split_tag == "train" else False
