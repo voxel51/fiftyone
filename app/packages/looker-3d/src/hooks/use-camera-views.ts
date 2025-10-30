@@ -1,4 +1,7 @@
+import useCanAnnotate from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useCanAnnotate";
+import * as fos from "@fiftyone/state";
 import { CameraControls } from "@react-three/drei";
+import { useAtomValue } from "jotai";
 import React, { useCallback, useEffect } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { PerspectiveCamera, Quaternion, Vector3 } from "three";
@@ -17,6 +20,9 @@ export const useCameraViews = ({
   const { sceneBoundingBox, upVector } = useFo3dContext();
   const setCameraViewStatus = useSetRecoilState(cameraViewStatusAtom);
   const annotationPlane = useRecoilValue(annotationPlaneAtom);
+  const canAnnotate = useCanAnnotate();
+  const mode = useAtomValue(fos.modalMode);
+  const enableAnnotationPlaneCameraView = canAnnotate && mode === "annotate";
 
   // We use current camera position and look at point to calculate the camera position
   // with some reasonable constraints.
@@ -128,7 +134,7 @@ export const useCameraViews = ({
         numPressed === "1" ||
         numPressed === "2" ||
         numPressed === "3" ||
-        numPressed === "4"
+        (numPressed === "4" && enableAnnotationPlaneCameraView)
       ) {
         event.preventDefault();
       }
@@ -216,7 +222,7 @@ export const useCameraViews = ({
             direction = new Vector3(0, -1, 0);
           }
         }
-      } else if (numPressed === "4") {
+      } else if (numPressed === "4" && enableAnnotationPlaneCameraView) {
         if (
           !cameraRef.current ||
           !cameraControlsRef.current ||
@@ -272,7 +278,7 @@ export const useCameraViews = ({
       cameraRef,
       cameraControlsRef,
       sceneBoundingBox,
-      setCameraViewStatus,
+      enableAnnotationPlaneCameraView,
     ]
   );
 
