@@ -267,6 +267,7 @@ export const Polyline = ({
       >
         {markers}
         <group
+          {...restEventHandlers}
           onPointerOver={() => {
             setIsHovered(true);
             handleAnnotationPointerOver();
@@ -278,7 +279,6 @@ export const Polyline = ({
             onPointerOut();
           }}
           onClick={onClick}
-          {...restEventHandlers}
         >
           {content}
         </group>
