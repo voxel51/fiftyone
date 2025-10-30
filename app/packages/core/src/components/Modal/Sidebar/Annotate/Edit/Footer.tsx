@@ -8,26 +8,39 @@ import { Row } from "./Components";
 import { currentField, hasChanges, isNew } from "./state";
 import useExit from "./useExit";
 import useSave, { isSaving } from "./useSave";
+import { Stack } from "@mui/material";
 
 const SaveFooter = () => {
   const { onDelete, onExit: onExitConfirm } = useContext(ConfirmationContext);
   const onSave = useSave();
+  const onDiscard = useExit();
   const showCancel = useAtomValue(isNew);
   const changes = useAtomValue(hasChanges);
   const saving = useAtomValue(isSaving);
 
   return (
     <>
-      <MuiButton
-        disabled={!changes || saving}
-        onClick={() => {
-          onSave();
-        }}
-        variant="contained"
-        color="primary"
-      >
-        {saving ? <LoadingDots text={"Saving"} /> : "Save"}
-      </MuiButton>
+      <Stack direction="row" spacing={1}>
+        <MuiButton
+          disabled={!changes || saving}
+          onClick={onDiscard}
+          variant="outlined"
+        >
+          Discard
+        </MuiButton>
+
+        <MuiButton
+          disabled={!changes || saving}
+          onClick={() => {
+            onSave();
+          }}
+          variant="contained"
+          color="primary"
+        >
+          {saving ? <LoadingDots text={"Saving"} /> : "Save"}
+        </MuiButton>
+      </Stack>
+
       <RoundButton
         className={saving ? "disabled" : ""}
         onClick={saving ? undefined : showCancel ? onExitConfirm : onDelete}
