@@ -61,7 +61,11 @@ export class SelectionManager {
    * @param options - Optional selection options.
    */
   select(id: string, options: SelectionOptions = {}): void {
-    const { event, isBridgeLogicHandled = false } = options;
+    const {
+      event,
+      isBridgeLogicHandled = false,
+      ignoreSideEffects = false,
+    } = options;
     const overlay = this.selectableOverlays.get(id);
     if (!overlay) return;
 
@@ -86,6 +90,7 @@ export class SelectionManager {
         id,
         // point not relevant yet
         point: { x: 0, y: 0 },
+        ignoreSideEffects,
         isShiftPressed: event?.shiftKey || false,
         isBridgeLogicHandled,
       },
@@ -100,7 +105,7 @@ export class SelectionManager {
    * @param options - Optional selection options.
    */
   deselect(id: string, options: SelectionOptions = {}): void {
-    const { isBridgeLogicHandled = false } = options;
+    const { isBridgeLogicHandled = false, ignoreSideEffects = false } = options;
     const overlay = this.selectableOverlays.get(id);
     if (!overlay) return;
 
@@ -112,7 +117,7 @@ export class SelectionManager {
 
     this.eventBus.emit({
       type: LIGHTER_EVENTS.OVERLAY_DESELECT,
-      detail: { id, isBridgeLogicHandled },
+      detail: { id, ignoreSideEffects, isBridgeLogicHandled },
     });
 
     this.emitSelectionChanged([], [id]);

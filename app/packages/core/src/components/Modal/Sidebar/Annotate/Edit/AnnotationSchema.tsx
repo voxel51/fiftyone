@@ -176,9 +176,11 @@ const AnnotationSchema = () => {
   useEffect(() => {
     const handler = (event) => {
       // Here, this would be true for `undo` or `redo`
+
       if (!(event.detail?.command instanceof UpdateLabelCommand)) {
         const label = overlay?.label;
 
+        console.log(overlay?.label);
         if (label) {
           // we are changing the form data externally, force a new SchemaIO
           // render with a new key
