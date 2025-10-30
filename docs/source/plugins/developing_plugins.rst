@@ -1722,16 +1722,16 @@ must be used as the user may have chosen a target view other than the current
 
 .. _writing-operator-pipelines:
 
-Operator Pipelines __SUB_NEW__
+Operator pipelines __SUB_NEW__
 ------------------------------
 
 .. versionadded:: 1.10.0
 
-In addition to developing individual operators, FiftyOne Enterprise allows
-you to define a linear composition of regular operators into a single
-**operator pipeline**. An operator pipeline acts as a single, higher-level
-operation composed of multiple discrete **stages**, where each stage is a
-call to another operator.
+In addition to developing individual operators,
+:ref:`FiftyOne Enterprise <fiftyone-enterprise>` allows you to define a linear
+composition of regular operators into a single **operator pipeline**. An
+operator pipeline acts as a single, higher-level operation composed of
+multiple discrete **stages**, where each stage is a call to another operator.
 
 .. note::
 
@@ -1741,7 +1741,7 @@ call to another operator.
 
 .. _pipeline-operator-interface:
 
-Defining a Pipeline Operator
+Defining a pipeline operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To define an operator that executes a pipeline, you must subclass
@@ -1776,7 +1776,7 @@ marked with `always_run=True`.
 
 .. _pipeline-components:
 
-Pipeline Components
+Pipeline components
 ~~~~~~~~~~~~~~~~~~~
 
 The pipeline is constructed using core classes from
@@ -1802,7 +1802,7 @@ operator.
 
 .. _pipeline-operator-examples:
 
-Example Pipeline Operators
+Example pipeline operators
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This example code shows how to define the pipeline operator
@@ -1939,7 +1939,7 @@ also showcases the alternative pipeline creation syntax.
 
 .. _execution-context-for-stages:
 
-Execution Context for Stages
+Execution context for stages
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 When a standard operator is executed as a stage within a pipeline, its
