@@ -28,6 +28,7 @@ export const useAddAnnotationLabel = () => {
         >("classification", {
           field,
           id: data._id,
+          label: data,
         });
         addOverlay(overlay);
         return { data, overlay, path: field, type };

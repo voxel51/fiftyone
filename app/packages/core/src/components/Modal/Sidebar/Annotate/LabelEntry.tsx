@@ -3,7 +3,7 @@ import type { AnnotationLabel } from "@fiftyone/state";
 import { animated } from "@react-spring/web";
 import type { PrimitiveAtom } from "jotai";
 import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import styled from "styled-components";
 import { Column } from "./Components";
 import { editing } from "./Edit";
@@ -83,9 +83,10 @@ const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
   return (
     <Container
       onClick={() => {
-        setEditing(atom);
         const store = getDefaultStore();
-        store.get(atom).overlay.setSelected(true);
+        scene?.selectOverlay(store.get(atom).overlay.id);
+        setEditing(atom);
+
         store.set(savedLabel, store.get(atom).data);
       }}
       className={isHovering ? "hovering" : ""}

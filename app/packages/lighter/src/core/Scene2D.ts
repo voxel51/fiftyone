@@ -1291,6 +1291,13 @@ export class Scene2D {
   }
 
   /**
+   * Clears the undo/redo stack
+   */
+  clearUndoRedoStack() {
+    this.undoRedo.clear();
+  }
+
+  /**
    * Clears all render callbacks.
    */
   clearRenderCallbacks(): void {
