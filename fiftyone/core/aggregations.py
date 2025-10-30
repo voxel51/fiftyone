@@ -2923,12 +2923,22 @@ class Values(Aggregation):
             context=context,
         )
 
-        self._field = self._manual_field or field
-        self._big_field = big_field
-        self._num_list_fields = len(list_fields)
+        # Optimization: call str() in memory rather than $toString in database
+        if id_to_str and not self._raw:
+            field = fof.ObjectIdField()
+            id_to_str = False
 
-        pipeline.extend(
-            _make_extract_values_pipeline(
+        #
+        # Optimization: use field inclusion syntax when possible
+        #
+        # Note that this is only allowed because these fields are *required*
+        # _make_extract_values_pipeline is required when fields may be missing
+        #
+        if self._expr is None and path in ("_id", "filepath"):
+            big_field = path
+            _pipeline = [{"$project": {big_field: 1}}]
+        else:
+            _pipeline = _make_extract_values_pipeline(
                 path,
                 list_fields,
                 id_to_str,
@@ -2936,7 +2946,12 @@ class Values(Aggregation):
                 self._big_result,
                 big_field,
             )
-        )
+
+        self._field = self._manual_field or field
+        self._big_field = big_field
+        self._num_list_fields = len(list_fields)
+
+        pipeline.extend(_pipeline)
 
         return pipeline
 
@@ -3006,7 +3021,11 @@ def _make_extract_values_pipeline(
             expr = _extract_list_values(inner_list_field, expr)
 
     if big_result:
-        return [{"$project": {big_field: expr.to_mongo(prefix="$" + root)}}]
+        project = {big_field: expr.to_mongo(prefix="$" + root)}
+        if big_field != "_id":
+            project["_id"] = False
+
+        return [{"$project": project}]
 
     return [
         {"$project": {"value": expr.to_mongo(prefix="$" + root)}},
