@@ -30,8 +30,28 @@ type SelectionProps = {
   onEdit?: (item: DatasetViewOption) => void;
   onClear?: () => void;
   noBorder?: boolean;
+  insideModal?: boolean; // elevate z-index when inside a modal/dialog
 };
 
+/**
+ * Renders a selectable dropdown for dataset views with optional search, edit, and clear actions.
+ *
+ * Displays the currently selected view with its color dot and label, presents a list of provided
+ * items to choose from, and optionally shows a search box, header area, and a fixed action at the
+ * bottom. If `selected` is null the component returns null.
+ *
+ * @param props - Component props controlling items, selection, appearance, and behavior. Notable props:
+ *   - `items`: list of view options shown in the dropdown.
+ *   - `selected` / `setSelected`: current selection and updater invoked when an item is chosen.
+ *   - `search`: when provided, renders a search box and calls `search.onSearch` with a debounced,
+ *     lowercased term.
+ *   - `hideActions`: hides edit/clear actions in list items when true.
+ *   - `readonly` / `onEdit` / `onClear`: control edit and clear actions exposed in the UI.
+ *   - `lastFixedOption`: node rendered persistently at the bottom of the menu.
+ *   - `insideModal`: when true, raises the dropdown's z-index so it overlays modal/dialog layers.
+ *
+ * @returns The JSX element for the selection dropdown, or `null` if `selected` is not provided.
+ */
 export default function Selection(props: SelectionProps) {
   const {
     id,
@@ -46,6 +66,7 @@ export default function Selection(props: SelectionProps) {
     onEdit,
     onClear,
     noBorder,
+    insideModal = false,
   } = props;
 
   const theme = useTheme();
@@ -77,8 +98,14 @@ export default function Selection(props: SelectionProps) {
     <div style={{ width: "100%" }} data-cy={`${id}-selection-container`}>
       <Select
         MenuProps={{
+          sx: {
+            // default dialog z-index is 1300
+            zIndex: insideModal ? 2400 : undefined,
+          },
           MenuListProps: {
-            sx: { paddingY: 0, zIndex: 999 },
+            sx: {
+              paddingY: 0,
+            },
           },
         }}
         IconComponent={

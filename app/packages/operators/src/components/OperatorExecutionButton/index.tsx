@@ -16,6 +16,9 @@ import { OperatorExecutionOption } from "../../state";
  * @param executionParams Parameters to provide to the operator's execute call
  * @param onOptionSelected Callback for execution option selection
  * @param disabled If true, disables the button and context menu
+ * @param insideModal If true, elevate menu z-index to appear above modals
+ * @param menuAnchorOrigin Controls where the menu attaches to the button
+ * @param menuTransformOrigin Controls which point of the menu aligns with button
  */
 export const OperatorExecutionButton = ({
   operatorUri,
@@ -25,6 +28,9 @@ export const OperatorExecutionButton = ({
   executionParams,
   onOptionSelected,
   disabled,
+  insideModal,
+  menuAnchorOrigin,
+  menuTransformOrigin,
   children,
   ...props
 }: {
@@ -35,6 +41,15 @@ export const OperatorExecutionButton = ({
   executionParams?: object;
   onOptionSelected?: (option: OperatorExecutionOption) => void;
   disabled?: boolean;
+  insideModal?: boolean;
+  menuAnchorOrigin?: {
+    vertical: "top" | "bottom" | "center";
+    horizontal: "left" | "right" | "center";
+  };
+  menuTransformOrigin?: {
+    vertical: "top" | "bottom" | "center";
+    horizontal: "left" | "right" | "center";
+  };
   children: React.ReactNode;
 }) => {
   return (
@@ -46,6 +61,9 @@ export const OperatorExecutionButton = ({
       executionParams={executionParams}
       onOptionSelected={onOptionSelected}
       disabled={disabled}
+      insideModal={insideModal}
+      menuAnchorOrigin={menuAnchorOrigin}
+      menuTransformOrigin={menuTransformOrigin}
     >
       <Button disabled={disabled} {...props}>
         {children}
