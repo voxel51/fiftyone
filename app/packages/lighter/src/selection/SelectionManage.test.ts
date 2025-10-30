@@ -5,7 +5,7 @@ import { SelectionManager } from "./SelectionManager";
 class Selectable {
   public id = "id";
   private selected = false;
-  constructor() {}
+
   getSelectionPriority = () => 0;
   isSelected = () => {
     return this.selected;
