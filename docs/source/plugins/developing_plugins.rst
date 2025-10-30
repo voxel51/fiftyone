@@ -1628,7 +1628,7 @@ as `label` values using the pattern shown below:
 
 .. _writing-distributed-operators:
 
-Distributed execution
+Distributed execution __SUB_NEW__
 ---------------------------------
 
 .. versionadded:: 1.8.0
@@ -1936,6 +1936,8 @@ also showcases the alternative pipeline creation syntax.
             )
 
             return pipeline
+
+.. _execution-context-for-stages:
 
 Execution Context for Stages
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
