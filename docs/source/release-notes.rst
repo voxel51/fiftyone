@@ -29,6 +29,11 @@ App
 - Fixed a bug where the UI would allow exporting media greater than 100MB, even
   though that is not supported, resulting in the download hanging.
 
+Core
+- Optimized
+  :func:`instances_to_polylines() <fiftyone.utils.labels.instances_to_polylines>`
+  conversion of instance segmentations whose masks are stored in the cloud.
+
 Compliance
 
 - Fixed a bug where a license compliance error could be raised even after the
@@ -64,8 +69,11 @@ Core
 
 App
 
-- Fixed a bug: cannot save colorscheme to dataset.app_config.colorscheme in the
-  APP due to a missing import. 
+- Fixed a bug in :ref:`Model Evaluation Panel's <app-model-evaluation-panel>`
+  confusion matrix, where it was possible for the x,y values to get inverted.
+  `#6471 <https://github.com/voxel51/fiftyone/pull/6471>`_
+- Fixed a bug where the user could not save a
+  :ref:`custom color scheme <dataset-app-config-color-scheme>`.
   `#6437 <https://github.com/voxel51/fiftyone/pull/6437>`_
 
 
