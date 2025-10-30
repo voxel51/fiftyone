@@ -1037,6 +1037,10 @@ class FiftyOneZeroShotTransformerForSemanticSegmentation(
             config.output_processor_cls = "fiftyone.utils.transformers.TransformersSemanticSegmentatorOutputProcessor"
         super().__init__(config)
 
+    @property
+    def can_filter_classes(self):
+        return False
+
 
 class FiftyOneTransformerForSemanticSegmentationConfig(
     FiftyOneTransformerConfig
@@ -1082,6 +1086,10 @@ class FiftyOneTransformerForSemanticSegmentation(FiftyOneTransformer):
         self._output_processor.processor = self.transforms.processor
         # ew
         self.transforms.return_image_sizes = True
+
+    @property
+    def can_filter_classes(self):
+        return False
 
 
 class FiftyOneTransformerForPoseEstimationConfig(FiftyOneTransformerConfig):
@@ -1154,6 +1162,10 @@ class PoseEstimationGetItem(fout.GetItem):
     @property
     def required_keys(self):
         return ["filepath", "prompt_field"]
+
+    @property
+    def can_filter_classes(self):
+        return False
 
 
 class FiftyOneTransformerForPoseEstimation(
@@ -1307,6 +1319,10 @@ class FiftyOneTransformerForDepthEstimation(FiftyOneTransformer):
         self._output_processor.processor = self.transforms.processor
         # ew
         self.transforms.return_image_sizes = True
+
+    @property
+    def can_filter_classes(self):
+        return False
 
 
 def _has_text_and_image_features(model):
