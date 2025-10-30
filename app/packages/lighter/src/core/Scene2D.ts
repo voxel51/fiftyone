@@ -787,8 +787,6 @@ export class Scene2D {
   private recalculateOverlayOrderForInteractiveOrdering(): {
     containedIds: string[];
   } {
-    const { activePaths } = this.sceneOptions || {};
-
     const point = this.interactionManager.getPixelCoordinates();
 
     if (!point) {
