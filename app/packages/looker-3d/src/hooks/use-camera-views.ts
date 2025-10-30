@@ -244,10 +244,24 @@ export const useCameraViews = ({
         // Use annotation plane position as look-at point
         const planePosition = new Vector3(...annotationPlane.position);
 
-        // Position camera at plane position + normal * radius
-        const cameraPosition = planePosition
-          .clone()
-          .add(normal.clone().multiplyScalar(currentRadius));
+        let cameraPosition: Vector3;
+        let viewName: string;
+
+        if (isCtrlPressed) {
+          // Opposite view: look at plane from opposite side (negative normal)
+          // Position camera at plane position + (-normal) * radius
+          cameraPosition = planePosition
+            .clone()
+            .add(normal.clone().negate().multiplyScalar(currentRadius));
+
+          viewName = "Annotation plane view 2";
+        } else {
+          cameraPosition = planePosition
+            .clone()
+            .add(normal.clone().multiplyScalar(currentRadius));
+
+          viewName = "Annotation plane view 1";
+        }
 
         cameraControlsRef.current.setLookAt(
           cameraPosition.x,
@@ -260,7 +274,7 @@ export const useCameraViews = ({
         );
 
         setCameraViewStatus({
-          viewName: "Annotation plane view",
+          viewName,
           timestamp: Date.now(),
         });
 

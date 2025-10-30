@@ -44,8 +44,14 @@ export const LOOKER3D_HELP_ITEMS = [
   {
     key: "views",
     shortcut: "4",
-    title: "Annotation plane view",
-    detail: "Switch to annotation plane view (orthogonal to plane)",
+    title: "Annotation plane view 1",
+    detail: "Switch to annotation plane view 1 (orthogonal to plane)",
+  },
+  {
+    key: "views",
+    shortcut: "⌘ + 4",
+    title: "Annotation plane view 2",
+    detail: "Switch to annotation plane view 2 (orthogonal to plane)",
   },
   {
     key: "views",
