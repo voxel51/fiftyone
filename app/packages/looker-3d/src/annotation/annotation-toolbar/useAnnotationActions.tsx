@@ -192,14 +192,10 @@ export const useAnnotationActions = () => {
       selectedLabelForAnnotation &&
       selectedLabelForAnnotation._cls === "Polyline"
     ) {
-      handleDeleteEntireTransform();
+      // Note: we're disabling this for now until auto-save
+      // handleDeleteEntireTransform();
     }
-  }, [
-    selectedPoint,
-    handleDeleteSelectedPoint,
-    selectedLabelForAnnotation,
-    handleDeleteEntireTransform,
-  ]);
+  }, [selectedPoint, handleDeleteSelectedPoint, selectedLabelForAnnotation]);
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
@@ -356,13 +352,11 @@ export const useAnnotationActions = () => {
             label: "Delete",
             icon: <Delete />,
             shortcut: "Delete",
-            tooltip: selectedPoint
-              ? "Delete selected polyline point"
-              : "Delete polyline",
+            tooltip: "Delete selected polyline point",
             isActive: false,
             isVisible:
-              selectedLabelForAnnotation !== null &&
-              selectedLabelForAnnotation._cls === "Polyline",
+              currentArchetypeSelectedForTransform === "point" &&
+              selectedPoint !== null,
             onClick: handleContextualDelete,
           },
           {
