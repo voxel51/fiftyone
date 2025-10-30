@@ -9,6 +9,7 @@ import { atom, atomFamily, DefaultValue, selector } from "recoil";
 import { Vector3 } from "three";
 import type {
   AnnotationPlaneState,
+  CanvasInteractionSubscriptionPayload,
   PolylinePointTransformData,
   SegmentState,
   SelectedPoint,
@@ -545,6 +546,18 @@ export const annotationPlaneAtom = selector<AnnotationPlaneState>({
       set(annotationPlaneAtomImpl(name), newValue as AnnotationPlaneState);
     }
   },
+});
+
+/**
+ * Stores active subscriptions for empty canvas interactions.
+ * Multiple components can register callbacks for plane intersections,
+ * all handled by a single event listener system.
+ */
+export const emptyCanvasInteractionSubscriptionsAtom = atom<
+  Map<string, CanvasInteractionSubscriptionPayload>
+>({
+  key: "fo3d-emptyCanvasInteractionSubscriptions",
+  default: new Map(),
 });
 
 /**
