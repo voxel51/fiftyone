@@ -157,9 +157,9 @@ workflows.
    :maxdepth: 1
    :hidden:
 
-   Data Loading with Torch Datasets __SUB_NEW__ <fiftyone_torch_dataloader.ipynb>
-   Training on MNIST with Torch __SUB_NEW__ <torch-dataset-examples/simple_training_example.ipynb>
-   Speeding up with cached fields __SUB_NEW__ <torch-dataset-examples/the_cache_field_names_argument.ipynb>
+   Data Loading with Torch Datasets <fiftyone_torch_dataloader.ipynb>
+   Training on MNIST with Torch <torch-dataset-examples/simple_training_example.ipynb>
+   Speeding up with cached fields <torch-dataset-examples/the_cache_field_names_argument.ipynb>
    Creating views <creating_views.ipynb>
    Removing duplicate images <image_deduplication.ipynb>
    Removing duplicate objects <remove_duplicate_annos.ipynb>
