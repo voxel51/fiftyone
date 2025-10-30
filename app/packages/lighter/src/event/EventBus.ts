@@ -257,7 +257,6 @@ export type SelectionEvent =
         point: Point;
         ignoreSideEffects?: boolean;
         isShiftPressed?: boolean;
-        isBridgeLogicHandled?: boolean;
       };
     }
   | {
@@ -265,7 +264,6 @@ export type SelectionEvent =
       detail: {
         id: string;
         ignoreSideEffects?: boolean;
-        isBridgeLogicHandled?: boolean;
       };
     }
   | {
@@ -275,8 +273,8 @@ export type SelectionEvent =
   | {
       type: typeof LIGHTER_EVENTS.SELECTION_CLEARED;
       detail: {
+        ignoreSideEffects?: boolean;
         previouslySelectedIds: string[];
-        isBridgeLogicHandled?: boolean;
       };
     };
 

@@ -35,7 +35,6 @@ describe("SelectionManager", () => {
       point: { x: 0, y: 0 },
       ignoreSideEffects: true,
       isShiftPressed: false,
-      isBridgeLogicHandled: false,
     });
 
     const deselectDetail = await new Promise((resolve) => {
@@ -46,7 +45,6 @@ describe("SelectionManager", () => {
     expect(deselectDetail).toStrictEqual({
       id: "id",
       ignoreSideEffects: true,
-      isBridgeLogicHandled: false,
     });
   });
 });
