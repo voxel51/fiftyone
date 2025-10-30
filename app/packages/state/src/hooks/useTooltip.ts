@@ -3,10 +3,6 @@ import {
   LabelUnhoveredEvent,
   selectiveRenderingEventBus,
 } from "@fiftyone/looker";
-import {
-  activeSegmentationStateAtom,
-  hoveredVertexAtom,
-} from "@fiftyone/looker-3d/src/state";
 import * as fos from "@fiftyone/state";
 import { useCallback } from "react";
 import { useRecoilCallback, useRecoilState, useSetRecoilState } from "recoil";
@@ -28,7 +24,11 @@ export default function useTooltip() {
     ({ snapshot }) =>
       (label) => {
         return {
-          onPointerOver: () => {
+          onPointerOver: async () => {
+            // Todo: investigate why importing it at module level is causing problems with tests (no runtime error though)
+            const { activeSegmentationStateAtom, hoveredVertexAtom } =
+              await import("@fiftyone/looker-3d");
+
             setTooltipDetail(getDetailsFromLabel(label));
 
             const isCurrentlySegmenting = Boolean(
@@ -80,7 +80,11 @@ export default function useTooltip() {
               setIsTooltipLocked(false);
             }
           },
-          onPointerMove: (e: MouseEvent) => {
+          onPointerMove: async (e: MouseEvent) => {
+            // Todo: investigate why importing it at module level is causing problems with tests (no runtime error though)
+            const { activeSegmentationStateAtom, hoveredVertexAtom } =
+              await import("@fiftyone/looker-3d");
+
             if (isTooltipLocked) {
               return;
             }
