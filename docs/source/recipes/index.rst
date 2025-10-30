@@ -37,7 +37,7 @@ workflows.
 
 .. customcarditem::
     :header: Data Loading with Torch Datasets
-    :description: Directly access a single sample in a FiftyOne dataset using its unique sample ID (sid).
+    :description: Learn how to efficiently load and work with FiftyOne datasets in PyTorch using FiftyOneTorchDataset.
     :link: fiftyone_torch_dataloader.html
     :image: https://cdn.voxel51.com/recipes_sid_get_item/notebook1/sid_get_item.webp
     :tags: Basics,Dataset-Curation
@@ -51,7 +51,7 @@ workflows.
 
 .. customcarditem::
     :header: Speeding up with cached fields
-    :description: Improve training performance by preloading specific fields into memory using the `cache_field_names` argument with `FiftyOneTorchDataset`.
+    :description: Improve training performance by preloading specific fields into memory using the `SimpleGetItem` wrapper class with `vectorize=True` in `FiftyOneTorchDataset`.
     :link: torch-dataset-examples/the_cache_field_names_argument.html
     :image: https://cdn.voxel51.com/recipes_fiftyone_torch_cache_fields/notebook_cache_field_names/fiftyone_torch_cache_fields.webp
     :tags: Torch,Performance,Data-Loading
