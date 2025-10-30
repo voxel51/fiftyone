@@ -64,12 +64,13 @@ def _extract_track_ids(result):
     )
 
 
-def to_detections(results, confidence_thresh=None):
+def to_detections(results, confidence_thresh=None, classes=None):
     """Converts ``ultralytics.YOLO`` boxes to FiftyOne format.
 
     Args:
         results: a single or list of ``ultralytics.engine.results.Results``
         confidence_thresh (None): a confidence threshold to filter boxes
+        classes (None): an iterable of classes to filter boxes
 
     Returns:
         a single or list of :class:`fiftyone.core.labels.Detections`
@@ -79,7 +80,12 @@ def to_detections(results, confidence_thresh=None):
         results = [results]
 
     batch = [
-        _to_detections(r, confidence_thresh=confidence_thresh) for r in results
+        _to_detections(
+            r,
+            confidence_thresh=confidence_thresh,
+            classes=classes,
+        )
+        for r in results
     ]
 
     if single:
@@ -88,21 +94,25 @@ def to_detections(results, confidence_thresh=None):
     return batch
 
 
-def _to_detections(result, confidence_thresh=None):
+def _to_detections(result, confidence_thresh=None, classes=None):
     if result.boxes is None:
         return fol.Detections()
 
-    classes = np.rint(result.boxes.cls.detach().cpu().numpy()).astype(int)
+    clss = np.rint(result.boxes.cls.detach().cpu().numpy()).astype(int)
     boxes = result.boxes.xywhn.detach().cpu().numpy().astype(float)
     confs = result.boxes.conf.detach().cpu().numpy().astype(float)
     track_ids = _extract_track_ids(result)
 
     detections = []
-    for cls, box, conf, idx in zip(classes, boxes, confs, track_ids):
+    for cls, box, conf, idx in zip(clss, boxes, confs, track_ids):
+        label = result.names[cls]
+
         if confidence_thresh is not None and conf < confidence_thresh:
             continue
 
-        label = result.names[cls]
+        if classes is not None and label not in classes:
+            continue
+
         xc, yc, w, h = box
 
         detection = fol.Detection(
@@ -116,12 +126,13 @@ def _to_detections(result, confidence_thresh=None):
     return fol.Detections(detections=detections)
 
 
-def to_instances(results, confidence_thresh=None):
+def to_instances(results, confidence_thresh=None, classes=None):
     """Converts ``ultralytics.YOLO`` instance segmentations to FiftyOne format.
 
     Args:
         results: a single or list of ``ultralytics.engine.results.Results``
         confidence_thresh (None): a confidence threshold to filter boxes
+        classes (None): an iterable of classes to filter boxes
 
     Returns:
         a single or list of :class:`fiftyone.core.labels.Detections`
@@ -131,7 +142,12 @@ def to_instances(results, confidence_thresh=None):
         results = [results]
 
     batch = [
-        _to_instances(r, confidence_thresh=confidence_thresh) for r in results
+        _to_instances(
+            r,
+            confidence_thresh=confidence_thresh,
+            classes=classes,
+        )
+        for r in results
     ]
 
     if single:
@@ -140,11 +156,11 @@ def to_instances(results, confidence_thresh=None):
     return batch
 
 
-def _to_instances(result, confidence_thresh=None):
+def _to_instances(result, confidence_thresh=None, classes=None):
     if result.masks is None:
         return fol.Detections()
 
-    classes = np.rint(result.boxes.cls.detach().cpu().numpy()).astype(int)
+    clss = np.rint(result.boxes.cls.detach().cpu().numpy()).astype(int)
     boxes = result.boxes.xywhn.detach().cpu().numpy().astype(float)
     masks = result.masks.data.detach().cpu().numpy() > 0.5
     confs = result.boxes.conf.detach().cpu().numpy().astype(float)
@@ -155,13 +171,15 @@ def _to_instances(result, confidence_thresh=None):
     boxes[:, 1] -= boxes[:, 3] / 2.0
 
     detections = []
-    for cls, box, mask, conf, idx in zip(
-        classes, boxes, masks, confs, track_ids
-    ):
+    for cls, box, mask, conf, idx in zip(clss, boxes, masks, confs, track_ids):
+        label = result.names[cls]
+
         if confidence_thresh is not None and conf < confidence_thresh:
             continue
 
-        label = result.names[cls]
+        if classes is not None and label not in classes:
+            continue
+
         w, h = mask.shape
         tmp = np.copy(box)
         tmp[2] += tmp[0]
@@ -186,12 +204,20 @@ def _to_instances(result, confidence_thresh=None):
     return fol.Detections(detections=detections)
 
 
-def to_classifications(results, confidence_thresh=None, store_logits=False):
+def to_classifications(
+    results,
+    confidence_thresh=None,
+    classes=None,
+    store_logits=False,
+):
     """Converts ``ultralytics.YOLO`` classifications to FiftyOne format.
 
     Args:
         results: a single or list of ``ultralytics.engine.results.Results``
-        confidence_thresh (None): a confidence threshold to filter classifications
+        confidence_thresh (None): a confidence threshold to filter
+            classifications
+        classes (None): an iterable of classes to filter classifications
+        store_logits (False): whether to store logits on the classifications
 
     Returns:
         a single or list of :class:`fiftyone.core.labels.Classification`
@@ -202,7 +228,10 @@ def to_classifications(results, confidence_thresh=None, store_logits=False):
 
     batch = [
         _to_classifications(
-            r, confidence_thresh=confidence_thresh, store_logits=store_logits
+            r,
+            confidence_thresh=confidence_thresh,
+            classes=classes,
+            store_logits=store_logits,
         )
         for r in results
     ]
@@ -213,12 +242,19 @@ def to_classifications(results, confidence_thresh=None, store_logits=False):
     return batch
 
 
-def _to_classifications(result, confidence_thresh=None, store_logits=False):
+def _to_classifications(
+    result,
+    confidence_thresh=None,
+    classes=None,
+    store_logits=False,
+):
     logits = result.probs.data.detach().cpu().numpy()
     score = result.probs.top1conf.detach().cpu().numpy()
     label = result.names[result.probs.top1]
 
     if confidence_thresh is not None and score < confidence_thresh:
+        classification = None
+    elif classes is not None and label not in classes:
         classification = None
     else:
         classification = fol.Classification(
@@ -231,12 +267,18 @@ def _to_classifications(result, confidence_thresh=None, store_logits=False):
     return classification
 
 
-def obb_to_polylines(results, confidence_thresh=None, filled=False):
+def obb_to_polylines(
+    results,
+    confidence_thresh=None,
+    classes=None,
+    filled=False,
+):
     """Converts ``ultralytics.YOLO`` instance segmentations to FiftyOne format.
 
     Args:
         results: a single or list of ``ultralytics.engine.results.Results``
         confidence_thresh (None): a confidence threshold to filter boxes
+        classes (None): an iterable of classes to filter boxes
         filled (False): whether the polyline should be filled
 
     Returns:
@@ -248,7 +290,12 @@ def obb_to_polylines(results, confidence_thresh=None, filled=False):
         results = [results]
 
     batch = [
-        _obb_to_polylines(r, filled, confidence_thresh=confidence_thresh)
+        _obb_to_polylines(
+            r,
+            filled,
+            confidence_thresh=confidence_thresh,
+            classes=classes,
+        )
         for r in results
     ]
 
@@ -258,21 +305,24 @@ def obb_to_polylines(results, confidence_thresh=None, filled=False):
     return batch
 
 
-def _obb_to_polylines(result, filled, confidence_thresh=None):
+def _obb_to_polylines(result, filled, confidence_thresh=None, classes=None):
     if result.obb is None:
         return fol.Polylines()
 
-    classes = np.rint(result.obb.cls.detach().cpu().numpy()).astype(int)
+    clss = np.rint(result.obb.cls.detach().cpu().numpy()).astype(int)
     confs = result.obb.conf.detach().cpu().numpy().astype(float)
     points = result.obb.xyxyxyxyn.detach().cpu().numpy()
     polylines = []
-    for cls, _points, conf in zip(classes, points, confs):
+    for cls, _points, conf in zip(clss, points, confs):
+        label = result.names[cls]
+
         if confidence_thresh is not None and conf < confidence_thresh:
             continue
 
-        _points = [_points.astype(float)]
+        if classes is not None and label not in classes:
+            continue
 
-        label = result.names[cls]
+        _points = [_points.astype(float)]
 
         polyline = fol.Polyline(
             label=label,
@@ -286,12 +336,19 @@ def _obb_to_polylines(result, filled, confidence_thresh=None):
     return fol.Polylines(polylines=polylines)
 
 
-def to_polylines(results, confidence_thresh=None, tolerance=2, filled=True):
+def to_polylines(
+    results,
+    confidence_thresh=None,
+    classes=None,
+    tolerance=2,
+    filled=True,
+):
     """Converts ``ultralytics.YOLO`` instance segmentations to FiftyOne format.
 
     Args:
         results: a single or list of ``ultralytics.engine.results.Results``
         confidence_thresh (None): a confidence threshold to filter boxes
+        classes (None): an iterable of classes to filter boxes
         tolerance (2): a tolerance, in pixels, when generating approximate
             polylines for instance masks. Typical values are 1-3 pixels
         filled (True): whether the polyline should be filled
@@ -305,7 +362,11 @@ def to_polylines(results, confidence_thresh=None, tolerance=2, filled=True):
 
     batch = [
         _to_polylines(
-            r, tolerance, filled, confidence_thresh=confidence_thresh
+            r,
+            tolerance,
+            filled,
+            confidence_thresh=confidence_thresh,
+            classes=classes,
         )
         for r in results
     ]
@@ -316,11 +377,17 @@ def to_polylines(results, confidence_thresh=None, tolerance=2, filled=True):
     return batch
 
 
-def _to_polylines(result, tolerance, filled, confidence_thresh=None):
+def _to_polylines(
+    result,
+    tolerance,
+    filled,
+    confidence_thresh=None,
+    classes=None,
+):
     if result.masks is None:
         return fol.Polylines()
 
-    classes = np.rint(result.boxes.cls.detach().cpu().numpy()).astype(int)
+    clss = np.rint(result.boxes.cls.detach().cpu().numpy()).astype(int)
     confs = result.boxes.conf.detach().cpu().numpy().astype(float)
     track_ids = _extract_track_ids(result)
 
@@ -333,17 +400,20 @@ def _to_polylines(result, tolerance, filled, confidence_thresh=None):
 
     polylines = []
     for cls, mask, _points, conf, idx in zip(
-        classes, masks, points, confs, track_ids
+        clss, masks, points, confs, track_ids
     ):
+        label = result.names[cls]
+
         if confidence_thresh is not None and conf < confidence_thresh:
+            continue
+
+        if classes is not None and label not in classes:
             continue
 
         if _points is None:
             _points = fol._get_polygons(mask, tolerance)
         else:
             _points = [_points.astype(float)]
-
-        label = result.names[cls]
 
         polyline = fol.Polyline(
             label=label,
@@ -358,12 +428,13 @@ def _to_polylines(result, tolerance, filled, confidence_thresh=None):
     return fol.Polylines(polylines=polylines)
 
 
-def to_keypoints(results, confidence_thresh=None):
+def to_keypoints(results, confidence_thresh=None, classes=None):
     """Converts ``ultralytics.YOLO`` keypoints to FiftyOne format.
 
     Args:
         results: a single or list of ``ultralytics.engine.results.Results``
         confidence_thresh (None): a confidence threshold to filter keypoints
+        classes (None): an iterable of classes to filter keypoints
 
     Returns:
         a single or list of :class:`fiftyone.core.labels.Keypoints`
@@ -373,7 +444,12 @@ def to_keypoints(results, confidence_thresh=None):
         results = [results]
 
     batch = [
-        _to_keypoints(r, confidence_thresh=confidence_thresh) for r in results
+        _to_keypoints(
+            r,
+            confidence_thresh=confidence_thresh,
+            classes=classes,
+        )
+        for r in results
     ]
 
     if single:
@@ -382,11 +458,11 @@ def to_keypoints(results, confidence_thresh=None):
     return batch
 
 
-def _to_keypoints(result, confidence_thresh=None):
+def _to_keypoints(result, confidence_thresh=None, classes=None):
     if result.keypoints is None:
         return fol.Keypoints()
 
-    classes = np.rint(result.boxes.cls.detach().cpu().numpy()).astype(int)
+    clss = np.rint(result.boxes.cls.detach().cpu().numpy()).astype(int)
     points = result.keypoints.xyn.detach().cpu().numpy().astype(float)
     if result.keypoints.conf is not None:
         confs = result.keypoints.conf.detach().cpu().numpy().astype(float)
@@ -395,11 +471,15 @@ def _to_keypoints(result, confidence_thresh=None):
     track_ids = _extract_track_ids(result)
 
     keypoints = []
-    for cls, _points, _confs, idx in zip(classes, points, confs, track_ids):
+    for cls, _points, _confs, idx in zip(clss, points, confs, track_ids):
+        label = result.names[cls]
+
         if confidence_thresh is not None:
             _points[_confs < confidence_thresh] = np.nan
 
-        label = result.names[cls]
+        if classes is not None and label not in classes:
+            continue
+
         _confidence = _confs.tolist() if _confs is not None else None
 
         keypoint = fol.Keypoint(
@@ -618,6 +698,7 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
             output,
             width_height,
             confidence_thresh=self.config.confidence_thresh,
+            classes=self._filter_classes,
         )
 
 
@@ -747,11 +828,20 @@ def _convert_yolo_pose_model(model):
 class UltralyticsOutputProcessor(fout.OutputProcessor):
     """Converts Ultralytics PyTorch Hub model outputs to FiftyOne format."""
 
-    def __call__(self, result, frame_size, confidence_thresh=None):
+    def __call__(
+        self,
+        result,
+        frame_size,
+        confidence_thresh=None,
+        classes=None,
+    ):
         batch = []
         for df in result.pandas().xywhn:
             if confidence_thresh is not None:
                 df = df[df["confidence"] >= confidence_thresh]
+
+            if classes is not None:
+                df = df[df["row.name"].isin(classes)]
 
             batch.append(self._to_detections(df))
 
@@ -811,10 +901,13 @@ class UltralyticsClassificationOutputProcessor(
         super().__init__(classes=classes, store_logits=store_logits)
         self.post_processor = post_processor
 
-    def __call__(self, output, _, confidence_thresh=None):
+    def __call__(self, output, _, confidence_thresh=None, classes=None):
         results = self.post_process(output)
         return to_classifications(
-            results, confidence_thresh, self.store_logits
+            results,
+            confidence_thresh=confidence_thresh,
+            classes=classes,
+            store_logits=self.store_logits,
         )
 
 
@@ -831,11 +924,18 @@ class UltralyticsDetectionOutputProcessor(
         super().__init__(classes)
         self.post_processor = post_processor
 
-    def __call__(self, output, frame_size, confidence_thresh=None):
+    def __call__(
+        self,
+        output,
+        frame_size,
+        confidence_thresh=None,
+        classes=None,
+        **kwargs,
+    ):
         results = self.post_process(output)
         preds = self._to_dict(results)
         return [
-            self._parse_output(o, wh, confidence_thresh)
+            self._parse_output(o, wh, confidence_thresh, classes)
             for o, wh in zip(preds, frame_size)
         ]
 
@@ -854,12 +954,12 @@ class UltralyticsDetectionOutputProcessor(
                 batch.append(pred)
         return batch
 
-    def _parse_output(self, output, frame_size, confidence_thresh):
+    def _parse_output(self, output, frame_size, confidence_thresh, classes):
         if not output:
             return fol.Detections()
 
         detections = super()._parse_output(
-            output, frame_size, confidence_thresh
+            output, frame_size, confidence_thresh, classes
         )
         track_ids = output["track_ids"]
         for det, track_id in zip(detections["detections"], track_ids):
@@ -881,12 +981,26 @@ class UltralyticsSegmentationOutputProcessor(
         super().__init__(classes)
         self.post_processor = post_processor
 
-    def __call__(self, output, frame_size, confidence_thresh=None):
+    def __call__(
+        self,
+        output,
+        frame_size,
+        confidence_thresh=None,
+        classes=None,
+        **kwargs,
+    ):
         results = self.post_process(output)
-        return super().__call__(results, frame_size, confidence_thresh)
+        return super().__call__(
+            results,
+            frame_size,
+            confidence_thresh=confidence_thresh,
+            classes=classes,
+        )
 
-    def _parse_output(self, results, _, confidence_thresh):
-        return to_instances(results, confidence_thresh)
+    def _parse_output(self, results, _, confidence_thresh, classes):
+        return to_instances(
+            results, confidence_thresh=confidence_thresh, classes=classes
+        )
 
 
 class UltralyticsPoseOutputProcessor(
@@ -902,9 +1016,11 @@ class UltralyticsPoseOutputProcessor(
         super().__init__(classes)
         self.post_processor = post_processor
 
-    def __call__(self, output, _, confidence_thresh=None):
+    def __call__(self, output, _, confidence_thresh=None, classes=None):
         preds = self.post_process(output)
-        return to_keypoints(preds, confidence_thresh=confidence_thresh)
+        return to_keypoints(
+            preds, confidence_thresh=confidence_thresh, classes=classes
+        )
 
 
 class UltralyticsOBBOutputProcessor(
@@ -920,6 +1036,8 @@ class UltralyticsOBBOutputProcessor(
         super().__init__(classes)
         self.post_processor = post_processor
 
-    def __call__(self, output, _, confidence_thresh=None):
+    def __call__(self, output, _, confidence_thresh=None, classes=None):
         preds = self.post_process(output)
-        return obb_to_polylines(preds, confidence_thresh=confidence_thresh)
+        return obb_to_polylines(
+            preds, confidence_thresh=confidence_thresh, classes=classes
+        )
