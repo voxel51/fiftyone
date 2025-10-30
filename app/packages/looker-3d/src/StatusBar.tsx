@@ -24,12 +24,13 @@ import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import type { OrthographicCamera, PerspectiveCamera, Vector3 } from "three";
 import tunnel from "tunnel-rat";
+import { AnnotationTips } from "./AnnotationTips";
 import { StatusBarContainer } from "./containers";
 import {
   activeNodeAtom,
+  activeSegmentationStateAtom,
   cameraViewStatusAtom,
   isStatusBarOnAtom,
-  activeSegmentationStateAtom,
 } from "./state";
 
 const PerfContainer = styled.div`
@@ -437,12 +438,15 @@ export const StatusBar = ({
         <SegmentHint $border={theme.primary.main} $text={"#e0e0e0"}>
           <SegmentHintRow>
             <InfoOutlinedIcon
-              style={{ fontSize: 14, color: theme.primary.main }}
+              style={{ fontSize: 12, color: theme.primary.main }}
             />
-            Snap to first vertex to close • Double click to finish • Escape to
-            cancel
+            Double click to finish • Del to undo last vertex • Escape to cancel
           </SegmentHintRow>
         </SegmentHint>
+      )}
+
+      {!segmentState.isActive && (
+        <AnnotationTips isMultiviewOn={isMultiviewOn} />
       )}
 
       {showPerfStatus && (

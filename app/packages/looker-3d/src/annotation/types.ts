@@ -5,7 +5,7 @@ export interface AnnotationAction {
   label: string;
   icon: ReactNode;
   shortcut?: string;
-  tooltip?: string;
+  tooltip?: string | ReactNode;
   isActive?: boolean;
   isDisabled?: boolean;
   isVisible?: boolean;
@@ -57,8 +57,8 @@ export interface PolylineSegmentTransform {
 
 export interface PolylinePointTransformData {
   segments: PolylineSegmentTransform[];
-  path: string;
-  sampleId: string;
+  path?: string;
+  sampleId?: string;
   label?: string;
   misc?: Record<string, unknown>;
 }

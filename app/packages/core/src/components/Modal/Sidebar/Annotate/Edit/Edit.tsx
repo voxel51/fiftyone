@@ -1,7 +1,7 @@
 import { useClearModal } from "@fiftyone/state";
 import { DETECTION, POLYLINE } from "@fiftyone/utilities";
 import { useAtomValue } from "jotai";
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import styled from "styled-components";
 import Confirmation from "../Confirmation";
 import useConfirmExit from "../Confirmation/useConfirmExit";

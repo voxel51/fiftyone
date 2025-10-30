@@ -1,7 +1,7 @@
+import * as fos from "@fiftyone/state";
 import { Box, TextField } from "@mui/material";
 import { forwardRef, useCallback, useEffect, useMemo, useState } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
-import * as fos from "@fiftyone/state";
 import type { PolyLineProps } from "../../labels/polyline";
 import {
   annotationPlaneAtom,
@@ -307,6 +307,7 @@ export const VertexCoordinateInputs = ({
           return {
             ...prev,
             [labelId]: {
+              ...(existingLabelData ?? {}),
               segments: newSegments,
               path,
               sampleId,

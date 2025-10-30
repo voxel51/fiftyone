@@ -11,7 +11,6 @@ import { ItemLeft, ItemRight } from "../Components";
 import { activePaths, removeFromActiveSchemas } from "../state";
 import { Container } from "./Components";
 import FieldRow from "./FieldRow";
-import Footer from "./Footer";
 import { Header } from "./Modal";
 import NoActiveSchema from "./NoActiveSchema";
 
@@ -104,24 +103,10 @@ const FallbackItem = () => {
 };
 
 const ActiveSchema = () => {
-  const [selected, setSelected] = useAtom(selectedFields);
-  const deactivate = useDeactivate();
   return (
     <>
       <Rows />
       <FallbackItem />
-      {!!selected.size && (
-        <Footer
-          primaryButton={{
-            onClick: deactivate,
-            text: "Deactivate fields",
-          }}
-          secondaryButton={{
-            onClick: () => setSelected(new Set()),
-            text: "Cancel",
-          }}
-        />
-      )}
     </>
   );
 };

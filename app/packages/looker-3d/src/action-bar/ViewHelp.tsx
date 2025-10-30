@@ -4,37 +4,141 @@ import { ACTION_VIEW_HELP } from "../constants";
 import { ActionItem } from "../containers";
 
 export const LOOKER3D_HELP_ITEMS = [
-  { shortcut: "Left drag", title: "Rotate", detail: "Rotate the camera" },
-  { shortcut: "T", title: "Top-down", detail: "Reset camera to top-down view" },
+  // Camera Views Section
   {
+    key: "views",
+    shortcut: "1",
+    title: "Top view",
+    detail: "Switch to top view",
+  },
+  {
+    key: "views",
+    shortcut: "⌘ + 1",
+    title: "Bottom view",
+    detail: "Switch to bottom view",
+  },
+  {
+    key: "views",
+    shortcut: "2",
+    title: "Right view",
+    detail: "Switch to right view",
+  },
+  {
+    key: "views",
+    shortcut: "⌘ + 2",
+    title: "Left view",
+    detail: "Switch to left view",
+  },
+  {
+    key: "views",
+    shortcut: "3",
+    title: "Front view",
+    detail: "Switch to front view",
+  },
+  {
+    key: "views",
+    shortcut: "⌘ + 3",
+    title: "Back view",
+    detail: "Switch to back view",
+  },
+  {
+    key: "views",
+    shortcut: "4",
+    title: "Annotation plane view",
+    detail: "Switch to annotation plane view (orthogonal to plane)",
+  },
+  {
+    key: "views",
+    shortcut: "T",
+    title: "Top-down",
+    detail: "Reset camera to top-down view",
+  },
+  {
+    key: "views",
+    shortcut: "E",
+    title: "Ego-view",
+    detail: "Reset the camera to ego view",
+  },
+  // Camera Controls (General section)
+  {
+    key: "general",
+    shortcut: "Left drag",
+    title: "Rotate",
+    detail: "Rotate the camera",
+  },
+  {
+    key: "general",
     shortcut: "Ctrl + left drag / Wheel",
     title: "Zoom",
     detail: "Zoom in and out",
   },
-  { shortcut: "E", title: "Ego-view", detail: "Reset the camera to ego view" },
   {
+    key: "general",
     shortcut: "Shift + left drag / Right drag",
     title: "Translate",
     detail: "Translate the camera",
   },
-  { shortcut: "B", title: "Background", detail: "Toggle background" },
-  { shortcut: "C", title: "Controls", detail: "Toggle controls" },
-  { shortcut: "G", title: "Grid", detail: "Toggle grid" },
+  // General Shortcuts
   {
+    key: "general",
+    shortcut: "B",
+    title: "Background",
+    detail: "Toggle background",
+  },
+  {
+    key: "general",
+    shortcut: "C",
+    title: "Controls",
+    detail: "Toggle controls",
+  },
+  {
+    key: "general",
+    shortcut: "G",
+    title: "Grid",
+    detail: "Toggle grid",
+  },
+  {
+    key: "general",
     shortcut: "Z",
     title: "Crop",
     detail: "Crop and set camera look-at on visible labels",
   },
-  { shortcut: "F", title: "Full-screen", detail: "Toggle full-screen" },
-  { shortcut: "J", title: "Json ", detail: "Toggle JSON view" },
-  { shortcut: "I", title: "FO3D ", detail: "Toggle FO3D JSON view" },
   {
+    key: "general",
+    shortcut: "F",
+    title: "Full-screen",
+    detail: "Toggle full-screen",
+  },
+  {
+    key: "general",
+    shortcut: "J",
+    title: "Json ",
+    detail: "Toggle JSON view",
+  },
+  {
+    key: "general",
+    shortcut: "I",
+    title: "FO3D ",
+    detail: "Toggle FO3D JSON view",
+  },
+  {
+    key: "general",
     shortcut: "R",
     title: "Render Preferences",
     detail: "Toggle render preferences",
   },
-  { shortcut: "?", title: "Display help", detail: "Display this help window" },
-  { shortcut: "ESC", title: "Escape ", detail: "Escape the current context" },
+  {
+    key: "general",
+    shortcut: "?",
+    title: "Display help",
+    detail: "Display this help window",
+  },
+  {
+    key: "general",
+    shortcut: "ESC",
+    title: "Escape ",
+    detail: "Escape the current context",
+  },
 ];
 
 export const ViewHelp = (props: {

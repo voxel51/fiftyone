@@ -1,5 +1,5 @@
 import { useOperatorExecutor } from "@fiftyone/operators";
-import { State, fieldSchema, mediaType } from "@fiftyone/state";
+import { State, activeFields, fieldSchema, mediaType } from "@fiftyone/state";
 import {
   CLASSIFICATIONS_FIELD,
   CLASSIFICATION_FIELD,
@@ -35,10 +35,22 @@ export default function useLoadSchemas() {
   const setTypes = useSetAtom(fieldTypes);
   const get = useOperatorExecutor("get_annotation_schemas");
   const type = useRecoilValue(mediaType);
+  const paths = useRecoilValue(activeFields({ modal: true }));
 
   useEffect(() => {
-    get.result && setSchema(get.result.schemas);
-  }, [get.result, setSchema]);
+    if (!get.result) {
+      return;
+    }
+
+    const schemas = {};
+    for (const path in get.result.schemas) {
+      if (!paths.includes(path)) continue;
+
+      schemas[path] = get.result.schemas[path];
+    }
+
+    setSchema(schemas);
+  }, [get.result, paths, setSchema]);
 
   return useRecoilCallback(
     ({ snapshot }) =>

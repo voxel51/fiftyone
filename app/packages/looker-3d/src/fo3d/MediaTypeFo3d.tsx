@@ -1,6 +1,7 @@
 import { LoadingDots } from "@fiftyone/components";
+import { predicateOrFallbackAfterTimeout } from "@fiftyone/core";
 import { useOverlayPersistence } from "@fiftyone/core/src/components/Modal/Lighter/useOverlayPersistence";
-import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
+import useCanAnnotate from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useCanAnnotate";
 import {
   EventBus,
   lighterSceneAtom,
@@ -40,6 +41,7 @@ import {
 import { StatusBarRootContainer } from "../containers";
 import { useFo3d, useHotkey, useTrackStatus } from "../hooks";
 import { useFo3dBounds } from "../hooks/use-bounds";
+import { useLoadingStatus } from "../hooks/use-loading-status";
 import type { Looker3dSettings } from "../settings";
 import {
   activeNodeAtom,
@@ -66,6 +68,7 @@ import {
 } from "./utils";
 
 const CANVAS_WRAPPER_ID = "sample3d-canvas-wrapper";
+const BOUNDS_COMPUTE_TIMEOUT_MS = 4000;
 
 const MainContainer = styled.main`
   display: flex;
@@ -167,7 +170,8 @@ export const MediaTypeFo3dComponent = () => {
 
   const [scene, setScene] = useAtom(lighterSceneAtom);
 
-  // Setup a ghost lighter for human annotation needs
+  // Hack: Setup a ghost lighter for human annotation needs
+  // Todo: Remove this and abstract out event bus / annotaion system from Lighter
   useEffect(() => {
     if (mode !== "annotate") return;
 
@@ -336,11 +340,44 @@ export const MediaTypeFo3dComponent = () => {
 
   const assetsGroupRef = useRef<THREE.Group>();
 
+  const loadingStatus = useLoadingStatus();
+
+  const isLoadingStatusFinal =
+    loadingStatus.isSuccess ||
+    loadingStatus.isFailed ||
+    loadingStatus.isAborted;
+
+  // keep the current value in a ref so the predicate always sees fresh state
+  const isFinalRef = useRef(isLoadingStatusFinal);
+  isFinalRef.current = isLoadingStatusFinal;
+
+  const canComputeBoundsPredicateRef = useRef(
+    predicateOrFallbackAfterTimeout(
+      () => isFinalRef.current,
+      true,
+      BOUNDS_COMPUTE_TIMEOUT_MS
+    )
+  );
+
+  useEffect(() => {
+    canComputeBoundsPredicateRef.current = predicateOrFallbackAfterTimeout(
+      () => isFinalRef.current,
+      true,
+      BOUNDS_COMPUTE_TIMEOUT_MS
+    );
+    // here, fo3dRoot plays the role of the key that indicates a fresh load
+  }, [fo3dRoot]);
+
+  const canComputeBounds = useCallback(
+    () => canComputeBoundsPredicateRef.current(),
+    []
+  );
+
   const {
     boundingBox: sceneBoundingBox,
     recomputeBounds,
     isComputing: isComputingSceneBoundingBox,
-  } = useFo3dBounds(assetsGroupRef);
+  } = useFo3dBounds(assetsGroupRef, canComputeBounds);
 
   const effectiveSceneBoundingBox = sceneBoundingBox || DEFAULT_BOUNDING_BOX;
 
@@ -809,23 +846,15 @@ export const MediaTypeFo3dComponent = () => {
   const isAnnotationPlaneEnabled = useRecoilValue(annotationPlaneAtom).enabled;
   const isPolylineAnnotateActive = useRecoilValue(isPolylineAnnotateActiveAtom);
 
-  const isAnnotationFeatureEnabled = useFeature({
-    feature: FeatureFlag.EXPERIMENTAL_ANNOTATION,
-  });
+  const canAnnotate = useCanAnnotate();
 
   const shouldRenderMultiPanelView = useMemo(
     () =>
       mode === "annotate" &&
-      isAnnotationFeatureEnabled &&
+      canAnnotate &&
       !(isGroup && is2DSampleViewerVisible) &&
       isSceneInitialized,
-    [
-      mode,
-      isGroup,
-      is2DSampleViewerVisible,
-      isSceneInitialized,
-      isAnnotationFeatureEnabled,
-    ]
+    [mode, isGroup, is2DSampleViewerVisible, isSceneInitialized, canAnnotate]
   );
 
   useEffect(() => {

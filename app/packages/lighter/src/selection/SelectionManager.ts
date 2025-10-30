@@ -20,6 +20,11 @@ export interface SelectionOptions {
    * by lighter's bridge.
    */
   isBridgeLogicHandled?: boolean;
+
+  /**
+   * Flag for ignoring side effects
+   */
+  ignoreSideEffects?: boolean;
 }
 
 /**

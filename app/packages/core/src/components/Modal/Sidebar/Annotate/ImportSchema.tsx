@@ -6,6 +6,9 @@ import styled from "styled-components";
 import useCanManageSchema from "./useCanManageSchema";
 import useShowModal from "./useShowModal";
 
+const DISABLED_DEFAULT =
+  "Annotation is not yet supported for this type of media or view.";
+
 const Container = styled.div`
   flex: 1;
   display: flex;
@@ -16,8 +19,15 @@ const Container = styled.div`
   position: relative;
 `;
 
+export interface ImportSchemaProps {
+  disabled?: boolean;
+  disabledMsg?: React.ReactNode;
+}
+
 const ImportSchema = (
-  { disabled }: { disabled: boolean } = { disabled: false }
+  { disabled, disabledMsg }: ImportSchemaProps = {
+    disabled: false,
+  }
 ) => {
   const canManage = useCanManageSchema();
   const showModal = useShowModal();
@@ -73,10 +83,11 @@ const ImportSchema = (
             margin: 2,
             background: "#333",
             boxShadow: "0px 1px 2px 0px rgba(16, 24, 40, 0.05)",
+            alignItems: "center",
           }}
         >
           <Typography color="secondary" fontSize={12}>
-            Annotation is not yet supported for this type of media or view.
+            {disabledMsg || DISABLED_DEFAULT}
           </Typography>
         </Alert>
       )}

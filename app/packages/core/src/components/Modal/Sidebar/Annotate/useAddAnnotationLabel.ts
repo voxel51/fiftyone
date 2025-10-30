@@ -9,9 +9,12 @@ import type { AnnotationLabel } from "@fiftyone/state";
 import { CLASSIFICATION, DETECTION, POLYLINE } from "@fiftyone/utilities";
 import { useCallback } from "react";
 import type { LabelType } from "./Edit/state";
+import { useAddAnnotationLabel3dPolyline } from "./useAddAnnotationLabel3dPolyline";
 
 export const useAddAnnotationLabel = () => {
   const { addOverlay, overlayFactory } = useLighter();
+  const addAnnotationLabel3dPolyline = useAddAnnotationLabel3dPolyline();
+
   return useCallback(
     (
       field: string,
@@ -55,18 +58,14 @@ export const useAddAnnotationLabel = () => {
       }
 
       if (type === POLYLINE) {
-        return {
-          data,
-          overlay: {
-            id: data._id,
-          },
-          path: field,
-          type,
-        };
+        const result = addAnnotationLabel3dPolyline(field, type, data);
+        if (result) {
+          return result;
+        }
       }
 
       throw new Error(`unable to create label of type '${type}'`);
     },
-    [addOverlay, overlayFactory]
+    [addOverlay, overlayFactory, addAnnotationLabel3dPolyline]
   );
 };

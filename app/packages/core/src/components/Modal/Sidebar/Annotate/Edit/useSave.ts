@@ -1,35 +1,49 @@
 import { LIGHTER_EVENTS, useLighter } from "@fiftyone/lighter";
-import { useAtomValue, useSetAtom } from "jotai";
-import { useCallback } from "react";
-import { addValue, current, savedLabel } from "./state";
-import { getFieldSchema } from "../../../Lighter/deltas";
-import { useRecoilValue } from "recoil";
 import * as fos from "@fiftyone/state";
+import { atom, useAtomValue, useSetAtom } from "jotai";
+import { useCallback } from "react";
+import { useRecoilValue } from "recoil";
+import { getFieldSchema } from "../../../Lighter/deltas";
+import { addValue, current, savedLabel } from "./state";
+import useExit from "./useExit";
+
+export const isSaving = atom(false);
 
 export default function useSave() {
-  const { scene } = useLighter();
+  const { scene, addOverlay } = useLighter();
   const label = useAtomValue(current);
   const setter = useSetAtom(addValue);
   const saved = useSetAtom(savedLabel);
   const schema = useRecoilValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
   );
+  const setSaving = useSetAtom(isSaving);
+  const exit = useExit(false);
 
   return useCallback(() => {
-    if (scene) {
-      scene.dispatchSafely({
-        type: LIGHTER_EVENTS.DO_PERSIST_OVERLAY,
-        detail: {
-          label: { ...label },
-          schema: getFieldSchema(schema, label.path),
-          onSuccess: () => {
-            setter();
-            if (label?.data) {
-              saved(label.data);
-            }
-          },
-        },
-      });
+    if (!scene || !label) {
+      return;
     }
-  }, [label, saved, scene, schema, setter]);
+
+    setSaving(true);
+
+    scene.dispatchSafely({
+      type: LIGHTER_EVENTS.DO_PERSIST_OVERLAY,
+      detail: {
+        label: { ...label },
+        schema: getFieldSchema(schema, label.path),
+        onSuccess: () => {
+          setter();
+          scene.exitInteractiveMode();
+          addOverlay(label.overlay);
+          saved(label.data);
+          setSaving(false);
+          exit();
+        },
+        onError: () => {
+          setSaving(false);
+        },
+      },
+    });
+  }, [addOverlay, exit, label, saved, scene, schema, setter, setSaving]);
 }

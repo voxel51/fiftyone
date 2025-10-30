@@ -33,31 +33,27 @@ export default function useFocus() {
 
   useEffect(() => {
     const handler = (event) => {
-      if (event.detail.isBridgeLogicHandled) {
+      if (event.detail.ignoreSideEffects) {
         return;
       }
-
-      selectId.current = event.detail.id;
 
       const current = STORE.get(currentOverlay)?.id;
 
       if (!current || !STORE.get(hasChanges)) {
         // no unsaved changes, allow the exit
         onExit();
+
         return;
       }
 
       // there are unsaved changes, ask for confirmation
-      scene?.selectOverlay(event.detail.id, { isBridgeLogicHandled: true });
+      scene?.selectOverlay(event.detail.id, { ignoreSideEffects: true });
       confirmExit(() => {
         scene?.deselectOverlay(current, {
           isBridgeLogicHandled: true,
         });
 
-        if (current !== event.detail.id) {
-          // we are selecting a different overlay
-          select();
-        }
+        select();
       });
     };
     scene?.on(LIGHTER_EVENTS.OVERLAY_DESELECT, handler);
@@ -65,11 +61,11 @@ export default function useFocus() {
     return () => {
       scene?.off(LIGHTER_EVENTS.OVERLAY_DESELECT, handler);
     };
-  }, [confirmExit, scene, onExit, select, selectId]);
+  }, [confirmExit, scene, onExit, select]);
 
   useEffect(() => {
     const handler = (event) => {
-      if (event.detail.isBridgeLogicHandled) {
+      if (event.detail.ignoreSideEffects) {
         return;
       }
       selectId.current = event.detail.id;
@@ -79,7 +75,7 @@ export default function useFocus() {
         if (STORE.get(current)?.isNew) return;
 
         // a label is already being edited, let the DESELECT event handle it
-        scene?.deselectOverlay(event.detail.id, { isBridgeLogicHandled: true });
+        scene?.deselectOverlay(event.detail.id, { ignoreSideEffects: true });
         return;
       }
 

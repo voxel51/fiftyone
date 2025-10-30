@@ -1,8 +1,13 @@
 import * as fos from "@fiftyone/state";
 import { objectId } from "@fiftyone/utilities";
 import { Line as LineDrei } from "@react-three/drei";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import { useCallback, useEffect, useMemo, useRef } from "react";
+import {
+  useRecoilCallback,
+  useRecoilState,
+  useRecoilValue,
+  useSetRecoilState,
+} from "recoil";
 import * as THREE from "three";
 import { SNAP_TOLERANCE } from "../constants";
 import { useFo3dContext } from "../fo3d/context";
@@ -19,7 +24,8 @@ import {
 } from "../state";
 import { getPlaneFromPositionAndQuaternion } from "../utils";
 import { PolylinePointMarker } from "./PolylinePointMarker";
-import type { PolylinePointTransformData } from "./types";
+import { PolylinePointTransformData } from "./types";
+import { useReverseSyncPolylinePointTransforms } from "./useReverseSyncPolylinePointTransforms";
 import { useSetEditingToNewPolyline } from "./useSetEditingToNewPolyline";
 import { shouldClosePolylineLoop } from "./utils/polyline-utils";
 
@@ -45,25 +51,19 @@ export const SegmentPolylineRenderer = ({
   const [segmentState, setSegmentState] = useRecoilState(
     activeSegmentationStateAtom
   );
-  const [polylinePointTransforms, setPolylinePointTransforms] = useRecoilState(
+  const setTooltipDetail = useSetRecoilState(fos.tooltipDetail);
+  const setPolylinePointTransforms = useSetRecoilState(
     polylinePointTransformsAtom
   );
+
   const setEditingToNewPolyline = useSetEditingToNewPolyline();
-  const [tempLabelId, setTempLabelId] = useState<string | null>(objectId());
-
-  useEffect(() => {
-    if (ignoreEffects) return;
-
-    const newObjectId = objectId();
-    setTempLabelId(newObjectId);
-  }, [segmentState.isActive]);
 
   const setIsActivelySegmenting = useSetRecoilState(
     isSegmentingPointerDownAtom
   );
+  useReverseSyncPolylinePointTransforms();
   const setSharedCursorPosition = useSetRecoilState(sharedCursorPositionAtom);
   const annotationPlane = useRecoilValue(annotationPlaneAtom);
-  const snapCloseAutomatically = useRecoilValue(snapCloseAutomaticallyAtom);
   const { upVector, sceneBoundingBox } = useFo3dContext();
 
   // Track last click time for double-click detection
@@ -71,70 +71,80 @@ export const SegmentPolylineRenderer = ({
   const DOUBLE_CLICK_THRESHOLD_MS = 200;
   const lastAddedVertexRef = useRef<[number, number, number] | null>(null);
 
-  const commitSegment = useCallback(
-    (vertices: [number, number, number][], isClosed: boolean) => {
-      if (vertices.length < 2) return;
+  const commitSegment = useRecoilCallback(
+    ({ snapshot }) =>
+      (
+        vertices: [number, number, number][],
+        overrideShouldClose: boolean = false
+      ) => {
+        if (vertices.length < 2) return;
 
-      const labelId = selectedLabelForAnnotation?._id || tempLabelId;
+        const shouldClose =
+          overrideShouldClose ||
+          Boolean(snapshot.getLoadable(snapCloseAutomaticallyAtom).getValue());
 
-      const currentData = polylinePointTransforms[labelId];
-      const existingSegments = currentData?.segments || [];
+        const labelId = selectedLabelForAnnotation?._id || objectId();
 
-      const newSegment = {
-        points: vertices.map(
-          (pt) =>
-            pt.map((p) => Number(p.toFixed(7))) as [number, number, number]
-        ),
-      };
+        const newSegment = {
+          points: vertices.map(
+            (pt) =>
+              pt.map((p) => Number(p.toFixed(7))) as [number, number, number]
+          ),
+        };
 
-      const newSegments = [...existingSegments, newSegment];
-
-      const transformData: PolylinePointTransformData = {
-        segments: newSegments,
-        path: currentActiveField || "",
-        sampleId: currentSampleId,
-        misc: {
-          closed: isClosed,
-        },
-      };
-
-      setPolylinePointTransforms((prev) => ({
-        ...prev,
-        [labelId]: transformData,
-      }));
-
-      setEditingToNewPolyline(labelId, transformData);
-
-      if (selectedLabelForAnnotation) {
-        setSelectedLabelForAnnotation({
-          ...selectedLabelForAnnotation,
-          _id: labelId,
+        setPolylinePointTransforms((prev) => {
+          let transformData: PolylinePointTransformData;
+          if (!prev || Object.keys(prev).length === 0 || !prev[labelId]) {
+            transformData = {
+              segments: [newSegment],
+              path: currentActiveField,
+              sampleId: currentSampleId,
+              misc: {
+                closed: shouldClose,
+              },
+            };
+          } else {
+            const currentData = prev[labelId];
+            const existingSegments = currentData?.segments || [];
+            const newSegments = [...existingSegments, newSegment];
+            transformData = {
+              segments: newSegments,
+              path: currentActiveField || "",
+              sampleId: currentSampleId,
+              misc: {
+                ...(currentData?.misc ?? {}),
+                closed: shouldClose,
+              },
+            };
+          }
+          setEditingToNewPolyline(labelId, transformData);
+          return { ...(prev ?? {}), [labelId]: transformData };
         });
-      } else {
-        setSelectedLabelForAnnotation({
-          _id: labelId,
-          path: currentActiveField || "",
-          sampleId: currentSampleId,
-          _cls: "Polyline" as const,
-          selected: false,
-          label: "",
-        });
-      }
 
-      setSegmentState({
-        isActive: false,
-        vertices: [],
-        currentMousePosition: null,
-        isClosed: false,
-      });
-    },
-    [
-      selectedLabelForAnnotation,
-      tempLabelId,
-      polylinePointTransforms,
-      currentActiveField,
-      currentSampleId,
-    ]
+        if (selectedLabelForAnnotation) {
+          setSelectedLabelForAnnotation({
+            ...selectedLabelForAnnotation,
+            _id: labelId,
+          });
+        } else {
+          setSelectedLabelForAnnotation({
+            _id: labelId,
+            path: currentActiveField || "",
+            sampleId: currentSampleId,
+            _cls: "Polyline" as const,
+            selected: false,
+            label: "",
+          });
+        }
+
+        setSegmentState({
+          isActive: false,
+          vertices: [],
+          currentMousePosition: null,
+          isClosed: false,
+        });
+      },
+    [selectedLabelForAnnotation, currentActiveField, currentSampleId]
   );
 
   // Check if current position is close to first vertex for closing
@@ -175,7 +185,7 @@ export const SegmentPolylineRenderer = ({
         const verticesWithoutDuplicate = segmentState.vertices.slice(0, -1);
 
         // Commit the segment immediately
-        commitSegment(verticesWithoutDuplicate, snapCloseAutomatically);
+        commitSegment(verticesWithoutDuplicate);
 
         lastAddedVertexRef.current = null;
         return;
@@ -183,7 +193,6 @@ export const SegmentPolylineRenderer = ({
 
       // Check if we should close the loop by clicking near the first vertex
       if (shouldCloseLoop(finalPos)) {
-        // Commit the closed segment immediately
         commitSegment(segmentState.vertices, true);
 
         lastAddedVertexRef.current = null;
@@ -203,7 +212,7 @@ export const SegmentPolylineRenderer = ({
 
       lastAddedVertexRef.current = newVertex;
     },
-    [segmentState, shouldCloseLoop, snapCloseAutomatically, commitSegment]
+    [segmentState, shouldCloseLoop, commitSegment]
   );
 
   // Handle mouse move for rubber band effect
@@ -249,12 +258,14 @@ export const SegmentPolylineRenderer = ({
     onPointerMove: handleMouseMove,
     planeNormal: raycastPlane.normal,
     planeConstant: raycastPlane.constant,
-    doubleRaycast: !ignoreEffects,
+    doubleRaycast: true,
   });
 
   useEffect(() => {
     if (ignoreEffects) return;
+
     if (segmentState.isActive) {
+      setTooltipDetail(null);
       document.body.style.cursor = "crosshair";
       return () => {
         document.body.style.cursor = "default";

@@ -9,13 +9,13 @@ import {
   activeSegmentationStateAtom,
   currentArchetypeSelectedForTransformAtom,
   editSegmentsModeAtom,
+  hoveredVertexAtom,
   selectedPolylineVertexAtom,
   tempVertexTransformsAtom,
   transformModeAtom,
 } from "../state";
 import { VertexTooltip } from "./VertexTooltip";
 import type { SelectedPoint } from "./types";
-
 interface PolylinePointMarkerProps {
   position: Vector3;
   color?: string;
@@ -45,7 +45,7 @@ export const PolylinePointMarker = ({
   const transformControlsRef = useRef<any>(null);
   const [startMatrix, setStartMatrix] = useState<Matrix4 | null>(null);
 
-  const [isHovered, setIsHovered] = useState(false);
+  const [hoveredVertex, setHoveredVertex] = useRecoilState(hoveredVertexAtom);
 
   const setTransformMode = useSetRecoilState(transformModeAtom);
 
@@ -64,7 +64,12 @@ export const PolylinePointMarker = ({
     selectedPoint?.segmentIndex === segmentIndex &&
     selectedPoint?.pointIndex === pointIndex;
 
-  useCursor(isHovered && isDraggable, "grab", "auto");
+  const isThisVertexHovered =
+    hoveredVertex?.labelId === labelId &&
+    hoveredVertex?.segmentIndex === segmentIndex &&
+    hoveredVertex?.pointIndex === pointIndex;
+
+  useCursor(isThisVertexHovered && isDraggable, "grab", "auto");
 
   const handlePointClick = useCallback(
     (event: any) => {
@@ -227,10 +232,10 @@ export const PolylinePointMarker = ({
           ref={meshRef}
           position={position}
           onPointerOver={() => {
-            setIsHovered(true);
+            setHoveredVertex({ labelId, segmentIndex, pointIndex });
           }}
           onPointerOut={() => {
-            setIsHovered(false);
+            setHoveredVertex(null);
           }}
           onClick={handlePointClick}
         >
@@ -251,9 +256,15 @@ export const PolylinePointMarker = ({
         </mesh>
         {tooltipDescriptor && (
           <VertexTooltip
-            position={position.toArray() as [number, number, number]}
+            position={
+              (tempVertexTransforms?.position ?? position.toArray()) as [
+                number,
+                number,
+                number
+              ]
+            }
             tooltipDescriptor={tooltipDescriptor}
-            isVisible={isHovered}
+            isVisible={isThisVertexHovered}
           />
         )}
       </group>
