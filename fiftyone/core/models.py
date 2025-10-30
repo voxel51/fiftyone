@@ -157,7 +157,7 @@ def apply_model(
         )
 
     if classes is not None:
-        classes = set(classes)
+        classes = list(set(classes))
 
     supports_get_item = isinstance(model, SupportsGetItem)
     needs_samples = isinstance(model, SamplesMixin)

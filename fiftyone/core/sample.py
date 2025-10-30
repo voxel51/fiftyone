@@ -5,6 +5,7 @@ Dataset samples.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import os
 
 from bson import ObjectId
@@ -225,11 +226,7 @@ class _SampleMixin(object):
         else:
             label_key = lambda k: k
 
-        if confidence_thresh is not None:
-            labels = _apply_confidence_thresh(labels, confidence_thresh)
-
-        if classes is not None:
-            labels = _apply_classes(labels, classes)
+        labels = _apply_label_filters(labels, confidence_thresh, classes)
 
         if _is_frames_dict(labels):
             if self.media_type != fomm.VIDEO:
@@ -768,55 +765,53 @@ class SampleView(_SampleMixin, DocumentView):
         return sample_ops, frame_ops
 
 
-def _apply_confidence_thresh(label, confidence_thresh):
+def _apply_label_filters(label, confidence_thresh, classes):
+    if confidence_thresh is None and classes is None:
+        return label
+
     if _is_frames_dict(label):
         label = {
-            frame_number: _apply_confidence_thresh(
-                frame_dict, confidence_thresh
+            frame_number: _apply_label_filters(
+                frame_dict, confidence_thresh, classes
             )
             for frame_number, frame_dict in label.items()
         }
     elif isinstance(label, dict):
         label = {
-            k: _apply_confidence_thresh(v, confidence_thresh)
+            k: _apply_label_filters(v, confidence_thresh, classes)
             for k, v in label.items()
         }
+    elif isinstance(label, fol._HasLabelList):
+        labels = getattr(label, label._LABEL_LIST_FIELD)
+        if confidence_thresh is not None:
+            labels = [
+                l
+                for l in labels
+                if l.confidence is not None
+                and l.confidence >= confidence_thresh
+            ]
+        if classes is not None:
+            labels = [l for l in labels if l.label in classes]
+        setattr(label, label._LABEL_LIST_FIELD, labels)
     elif isinstance(label, fol.Keypoints):
         for keypoint in label.keypoints:
             keypoint.apply_confidence_threshold(confidence_thresh)
-    elif isinstance(label, fol._HasLabelList):
-        labels = [
-            l
-            for l in getattr(label, label._LABEL_LIST_FIELD)
-            if l.confidence is not None and l.confidence >= confidence_thresh
-        ]
-        setattr(label, label._LABEL_LIST_FIELD, labels)
     elif isinstance(label, fol.Keypoint):
         label.apply_confidence_threshold(confidence_thresh)
-    elif hasattr(label, "confidence"):
-        if label.confidence is None or label.confidence < confidence_thresh:
-            label = label.__class__()
-
-    return label
-
-
-def _apply_classes(label, classes):
-    if _is_frames_dict(label):
-        label = {
-            frame_number: _apply_classes(frame_dict, classes)
-            for frame_number, frame_dict in label.items()
-        }
-    elif isinstance(label, dict):
-        label = {k: _apply_classes(v, classes) for k, v in label.items()}
-    elif isinstance(label, fol._HasLabelList):
-        labels = [
-            l
-            for l in getattr(label, label._LABEL_LIST_FIELD)
-            if l.label in classes
-        ]
-        setattr(label, label._LABEL_LIST_FIELD, labels)
     else:
-        if label.label not in classes:
+        remove_label = False
+        if confidence_thresh is not None and hasattr(label, "confidence"):
+            if (
+                label.confidence is None
+                or label.confidence < confidence_thresh
+            ):
+                remove_label = True
+
+        if classes is not None and hasattr(label, "label"):
+            if label.label not in classes:
+                remove_label = True
+
+        if remove_label:
             label = label.__class__()
 
     return label
