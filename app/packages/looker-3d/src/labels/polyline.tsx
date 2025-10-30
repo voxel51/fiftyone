@@ -74,6 +74,7 @@ export const Polyline = ({
     transformControlsRef,
     contentRef,
     markers,
+    previewLines,
     handleTransformStart,
     handleTransformChange,
     handleTransformEnd,
@@ -266,6 +267,7 @@ export const Polyline = ({
         quaternion={tempTransforms?.quaternion ?? [0, 0, 0, 1]}
       >
         {markers}
+        {previewLines}
         <group
           {...restEventHandlers}
           onPointerOver={() => {
