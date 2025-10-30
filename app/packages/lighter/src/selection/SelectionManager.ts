@@ -55,21 +55,20 @@ export class SelectionManager {
    * @param options - Optional selection options.
    */
   select(id: string, options: SelectionOptions = {}): void {
-    const {
-      event,
-
-      ignoreSideEffects = false,
-    } = options;
+    const { event, ignoreSideEffects = false } = options;
     const overlay = this.selectableOverlays.get(id);
+
     if (!overlay) return;
 
     const wasSelected = this.selectedOverlays.has(id);
+
     if (wasSelected) return;
 
     if (!this.multipleSelection && this.selectedOverlays.size > 0) {
       const existingSelectedOverlayId = this.selectedOverlays
         .values()
         .next().value;
+
       if (existingSelectedOverlayId) {
         this.deselect(existingSelectedOverlayId);
       }
