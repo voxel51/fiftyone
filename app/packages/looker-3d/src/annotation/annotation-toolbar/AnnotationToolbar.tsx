@@ -9,6 +9,8 @@ import { annotationToolbarPositionAtom } from "../../state";
 import type { AnnotationToolbarProps } from "../types";
 import { useAnnotationActions } from "./useAnnotationActions";
 
+const Z_INDEX_MAX_ARBITRARY = 10005;
+
 const ToolbarContainer = styled(Box)<{
   topposition: number;
   isdragging?: string;
@@ -30,7 +32,7 @@ const ToolbarContainer = styled(Box)<{
       ? "0 4px 16px rgba(0, 0, 0, 0.2)"
       : "0 2px 8px rgba(0, 0, 0, 0.12)",
     border: `1px solid ${theme.palette.divider}`,
-    zIndex: 10002,
+    zIndex: Z_INDEX_MAX_ARBITRARY - 1,
     minWidth: "36px",
     opacity: isDraggingBool ? 0.95 : 0.75,
     userSelect: "none",
@@ -266,8 +268,11 @@ export const AnnotationToolbar = ({ className }: AnnotationToolbarProps) => {
                   return (
                     <Tooltip
                       key={action.id}
+                      sx={{
+                        zIndex: Z_INDEX_MAX_ARBITRARY,
+                      }}
                       title={
-                        <Box>
+                        <Box sx={{ zIndex: Z_INDEX_MAX_ARBITRARY + 1 }}>
                           {typeof action.tooltip === "string" ? (
                             <Typography variant="body2">
                               {action.tooltip}

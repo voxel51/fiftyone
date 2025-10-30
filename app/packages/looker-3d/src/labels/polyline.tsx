@@ -2,10 +2,11 @@ import * as fos from "@fiftyone/state";
 import { Line as LineDrei } from "@react-three/drei";
 import { useAtomValue } from "jotai";
 import { useEffect, useMemo, useRef } from "react";
-import { useRecoilValue } from "recoil";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
 import { usePolylineAnnotation } from "../annotation/usePolylineAnnotation";
 import {
+  isPolylineAnnotateActiveAtom,
   selectedLabelForAnnotationAtom,
   tempLabelTransformsAtom,
 } from "../state";
@@ -51,6 +52,15 @@ export const Polyline = ({
   const isAnnotateMode = useAtomValue(fos.modalMode) === "annotate";
   const isSelectedForAnnotation =
     useRecoilValue(selectedLabelForAnnotationAtom)?._id === label._id;
+  const setIsPolylineAnnotateActive = useSetRecoilState(
+    isPolylineAnnotateActiveAtom
+  );
+
+  useEffect(() => {
+    if (isSelectedForAnnotation) {
+      setIsPolylineAnnotateActive(true);
+    }
+  }, [isSelectedForAnnotation]);
 
   const { strokeAndFillColor } = useLabelColor(
     { selected, color },

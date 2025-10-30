@@ -20,7 +20,7 @@ const TipsContainer = styled.div<{
   font-weight: 400;
   z-index: 1000;
   border: 1px solid ${(p) => p.$border};
-  max-width: 400px;
+  max-width: 500px;
   user-select: none;
   background: rgba(0, 0, 0, 0.7);
   backdrop-filter: blur(4px);
@@ -109,12 +109,14 @@ const annotationTips = [
   {
     text: (
       <>
-        You can use <KeyboardShortcut>⌘ + 1, 2, 3</KeyboardShortcut> to switch
-        views at any time. For example, press{" "}
+        You can use <KeyboardShortcut>⌘ + 1, 2, 3, 4</KeyboardShortcut> to
+        switch views at any time. For example, press{" "}
         <KeyboardShortcut>1</KeyboardShortcut> for{" "}
-        <HighlightText>top view</HighlightText> and
+        <HighlightText>top view</HighlightText>,{" "}
         <KeyboardShortcut>⌘ + 1</KeyboardShortcut> for{" "}
-        <HighlightText>bottom view</HighlightText>.
+        <HighlightText>bottom view</HighlightText>, or{" "}
+        <KeyboardShortcut>4</KeyboardShortcut> for{" "}
+        <HighlightText>annotation plane view</HighlightText>.
       </>
     ),
   },

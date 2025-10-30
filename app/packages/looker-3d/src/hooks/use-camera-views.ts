@@ -1,9 +1,9 @@
 import { CameraControls } from "@react-three/drei";
 import React, { useCallback, useEffect } from "react";
-import { useSetRecoilState } from "recoil";
-import { PerspectiveCamera, Vector3 } from "three";
+import { useRecoilValue, useSetRecoilState } from "recoil";
+import { PerspectiveCamera, Quaternion, Vector3 } from "three";
 import { useFo3dContext } from "../fo3d/context";
-import { cameraViewStatusAtom } from "../state";
+import { annotationPlaneAtom, cameraViewStatusAtom } from "../state";
 
 interface UseCameraViewsProps {
   cameraRef: React.RefObject<PerspectiveCamera>;
@@ -16,6 +16,7 @@ export const useCameraViews = ({
 }: UseCameraViewsProps) => {
   const { sceneBoundingBox, upVector } = useFo3dContext();
   const setCameraViewStatus = useSetRecoilState(cameraViewStatusAtom);
+  const annotationPlane = useRecoilValue(annotationPlaneAtom);
 
   // We use current camera position and look at point to calculate the camera position
   // with some reasonable constraints.
@@ -123,7 +124,12 @@ export const useCameraViews = ({
         ? event.code.replace("Numpad", "")
         : event.code.replace("Digit", "");
 
-      if (numPressed === "1" || numPressed === "2" || numPressed === "3") {
+      if (
+        numPressed === "1" ||
+        numPressed === "2" ||
+        numPressed === "3" ||
+        numPressed === "4"
+      ) {
         event.preventDefault();
       }
 
@@ -210,13 +216,64 @@ export const useCameraViews = ({
             direction = new Vector3(0, -1, 0);
           }
         }
+      } else if (numPressed === "4") {
+        if (
+          !cameraRef.current ||
+          !cameraControlsRef.current ||
+          !sceneBoundingBox
+        ) {
+          return;
+        }
+
+        // Get current radius
+        const currentCameraPosition = cameraRef.current.position.clone();
+        const currentLookAt = new Vector3();
+        cameraControlsRef.current.getTarget(currentLookAt);
+        const currentRadius = currentCameraPosition.distanceTo(currentLookAt);
+
+        // Extract normal from annotation plane quaternion
+        const quat = new Quaternion(...annotationPlane.quaternion);
+        const normal = new Vector3(0, 0, 1).applyQuaternion(quat).normalize();
+
+        // Use annotation plane position as look-at point
+        const planePosition = new Vector3(...annotationPlane.position);
+
+        // Position camera at plane position + normal * radius
+        const cameraPosition = planePosition
+          .clone()
+          .add(normal.clone().multiplyScalar(currentRadius));
+
+        cameraControlsRef.current.setLookAt(
+          cameraPosition.x,
+          cameraPosition.y,
+          cameraPosition.z,
+          planePosition.x,
+          planePosition.y,
+          planePosition.z,
+          true
+        );
+
+        setCameraViewStatus({
+          viewName: "Annotation plane view",
+          timestamp: Date.now(),
+        });
+
+        return;
       } else {
         return;
       }
 
       setCameraView(direction, viewName);
     },
-    [upVector, setCameraView]
+    [
+      upVector,
+      setCameraView,
+      annotationPlane,
+      cameraRef,
+      cameraControlsRef,
+      sceneBoundingBox,
+      setCameraViewStatus,
+    ]
   );
 
   useEffect(() => {

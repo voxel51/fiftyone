@@ -262,7 +262,13 @@ export const useAnnotationActions = () => {
       setAnnotationPlane((prev) => ({ ...prev, enabled: false }));
       setCurrentArchetypeSelectedForTransform(null);
     }
-  }, [annotationPlane.enabled, sceneBoundingBox, upVector]);
+  }, [
+    annotationPlane.enabled,
+    annotationPlane.position,
+    annotationPlane.quaternion,
+    sceneBoundingBox,
+    upVector,
+  ]);
 
   const handleToggleEditSegmentsMode = useCallback(() => {
     setEditSegmentsMode(!editSegmentsMode);
