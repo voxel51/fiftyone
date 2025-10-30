@@ -12,7 +12,7 @@ Includes all updates from :ref:`FiftyOne 1.10.0 <release-notes-v1.10.0>`, plus:
 Plugins
 
 - Introduced :class:`PipelineOperator <fiftyone.operators.PipelineOperator>`,
-  allowing a single Operator to kickoff execution of a sequence of Operators.
+  allowing a single Operator to kick off execution of a sequence of Operators.
   Plugin authors define a :class:`Pipeline <fiftyone.operators.types.Pipeline>`
   consisting of :class:`PipelineStages <fiftyone.operators.types.PipelineStage>`,
   and each stage will be executed in sequence. This enables quite complex
