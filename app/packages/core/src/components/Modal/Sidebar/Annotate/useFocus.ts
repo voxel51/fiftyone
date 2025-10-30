@@ -26,7 +26,7 @@ export default function useFocus() {
     if (id && label) {
       STORE.set(savedLabel, STORE.get(label)?.data);
       STORE.set(editing, label);
-      scene?.selectOverlay(id, { isBridgeLogicHandled: true });
+      scene?.selectOverlay(id, { ignoreSideEffects: true });
     }
     selectId.current = null;
   }, [scene]);
@@ -50,7 +50,7 @@ export default function useFocus() {
       scene?.selectOverlay(event.detail.id, { ignoreSideEffects: true });
       confirmExit(() => {
         scene?.deselectOverlay(current, {
-          isBridgeLogicHandled: true,
+          ignoreSideEffects: true,
         });
 
         select();
