@@ -11,10 +11,11 @@ import {
   STRING_FIELD,
 } from "@fiftyone/utilities";
 import { useAtom, useAtomValue } from "jotai";
-import React, { useEffect, useMemo } from "react";
-import uuid from "react-uuid";
+import { isEqual } from "lodash";
+import { useEffect, useMemo, useState } from "react";
 import { useRecoilCallback } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
+import { coerceStringBooleans } from "../utils";
 import {
   currentData,
   currentField,
@@ -169,28 +170,42 @@ const AnnotationSchema = () => {
   const overlay = useAtomValue(currentOverlay);
   const lighter = useLighter();
   const handleChanges = useHandleChanges();
+  const [key, setKey] = useState(0);
   const field = useAtomValue(currentField);
 
   useEffect(() => {
-    const handler = () => {
-      const label = overlay?.label;
-      label && save(label);
+    const handler = (event) => {
+      // Here, this would be true for `undo` or `redo`
+      if (!(event.detail?.command instanceof UpdateLabelCommand)) {
+        const label = overlay?.label;
+
+        if (label) {
+          // we are changing the form data externally, force a new SchemaIO
+          // render with a new key
+          setKey((cur) => cur + 1);
+          save(label);
+        }
+
+        return;
+      }
+
+      const newLabel = coerceStringBooleans(event.detail.command.nextLabel);
+
+      if (newLabel) {
+        save(newLabel);
+      }
     };
 
     lighter.scene?.on(LIGHTER_EVENTS.COMMAND_EXECUTED, handler);
     lighter.scene?.on(LIGHTER_EVENTS.REDO, handler);
     lighter.scene?.on(LIGHTER_EVENTS.UNDO, handler);
+
     return () => {
       lighter.scene?.off(LIGHTER_EVENTS.COMMAND_EXECUTED, handler);
       lighter.scene?.off(LIGHTER_EVENTS.REDO, handler);
       lighter.scene?.off(LIGHTER_EVENTS.UNDO, handler);
     };
   }, [lighter.scene, overlay, save]);
-
-  const key = useMemo(() => {
-    data;
-    return uuid();
-  }, [data]);
 
   if (!field) {
     throw new Error("no field");
@@ -203,7 +218,7 @@ const AnnotationSchema = () => {
   return (
     <div>
       <SchemaIOComponent
-        key={key}
+        key={key.toString()}
         schema={schema}
         data={data}
         onChange={async (changes) => {
@@ -212,6 +227,10 @@ const AnnotationSchema = () => {
             result[key] = await handleChanges(field, key, changes[key]);
           }
           const value = { ...data, ...result };
+
+          if (isEqual(value, overlay.label)) {
+            return;
+          }
 
           lighter.scene?.executeCommand(
             new UpdateLabelCommand(overlay, overlay.label, value)

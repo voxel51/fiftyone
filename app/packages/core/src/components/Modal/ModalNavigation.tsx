@@ -29,7 +29,7 @@ const Arrow = styled.span<{
         : "0.75rem"
       : "initial"};
   left: ${(props) => (props.$isRight ? "initial" : "0.75rem")};
-  z-index: 99999;
+  z-index: 10000;
   padding: 0.75rem;
   top: 50%;
   width: 3rem;
@@ -125,6 +125,13 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
   const keyboardHandler = useCallback(
     (e: KeyboardEvent) => {
       const active = document.activeElement;
+
+      // Prevent navigation when editing text in textarea (e.g., Monaco Editor)
+      if (active?.tagName === "TEXTAREA") {
+        return;
+      }
+
+      // Prevent navigation when editing text in input fields
       if (active?.tagName === "INPUT") {
         if ((active as HTMLInputElement).type === "text") {
           return;

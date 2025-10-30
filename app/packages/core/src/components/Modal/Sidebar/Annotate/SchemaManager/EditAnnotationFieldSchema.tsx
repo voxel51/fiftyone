@@ -1,14 +1,17 @@
 import { LoadingSpinner } from "@fiftyone/components";
 import { useOperatorExecutor } from "@fiftyone/operators";
+import { snackbarMessage } from "@fiftyone/state";
 import { Sync } from "@mui/icons-material";
 import { Link, Typography } from "@mui/material";
-import { useAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import React, { useEffect, useState } from "react";
+import { useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import { CodeView } from "../../../../../plugins/SchemaIO/components";
 import { RoundButtonWhite } from "../Actions";
 import { schemaConfig } from "../state";
 import Footer from "./Footer";
+import { currentField } from "./state";
 
 const Container = styled.div`
   flex: 1;
@@ -83,6 +86,7 @@ const useAnnotationSchema = (path: string) => {
       setConfig(localConfig);
     },
     saving: save.isExecuting,
+    savingComplete: save.hasExecuted,
     schema: localConfig,
     setSchema: setLocalConfig,
 
@@ -92,6 +96,15 @@ const useAnnotationSchema = (path: string) => {
 
 const EditAnnotationSchema = ({ path }: { path: string }) => {
   const data = useAnnotationSchema(path);
+  const setCurrentField = useSetAtom(currentField);
+  const setToast = useSetRecoilState(snackbarMessage);
+
+  useEffect(() => {
+    if (data.savingComplete) {
+      setCurrentField(null);
+      setToast("Schema changes saved");
+    }
+  }, [data.savingComplete, setCurrentField, setToast]);
   return (
     <>
       <Typography color="secondary" padding="1rem 0">
@@ -151,7 +164,7 @@ const EditAnnotationSchema = ({ path }: { path: string }) => {
           onClick: () => {
             data.save();
           },
-          disabled: !data.hasChanges,
+          disabled: !data.hasChanges || data.saving,
           text: data.saving ? "Saving..." : "Save schema",
         }}
       />

@@ -3,7 +3,7 @@ import { EntryKind } from "@fiftyone/state";
 import { getDefaultStore, useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { labelsExpanded } from "./GroupEntry";
-import { labelAtoms, loading } from "./useLabels";
+import { LabelsState, labelAtoms, labelsState } from "./useLabels";
 
 const store = getDefaultStore();
 
@@ -11,14 +11,14 @@ const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
   const showLabels = useAtomValue(labelsExpanded);
   const atoms = useAtomValue(labelAtoms);
 
-  const loadingValue = useAtomValue(loading);
+  const state = useAtomValue(labelsState);
   const labelEntries = useMemo(
     () =>
       atoms.map((atom) => {
         return {
           kind: EntryKind.LABEL,
           atom,
-          id: store.get(atom).data._id,
+          id: store.get(atom).overlay.id,
         };
       }),
     [atoms]
@@ -28,7 +28,7 @@ const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
     [
       { kind: EntryKind.GROUP, name: "Labels" },
       ...(showLabels
-        ? loadingValue
+        ? state !== LabelsState.COMPLETE
           ? [{ kind: EntryKind.LOADING }]
           : labelEntries
         : []),

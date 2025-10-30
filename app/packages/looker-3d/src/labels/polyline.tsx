@@ -9,6 +9,11 @@ import {
   selectedLabelForAnnotationAtom,
   tempLabelTransformsAtom,
 } from "../state";
+import {
+  isValidPoint3d,
+  validatePoints3d,
+  validatePoints3dArray,
+} from "../utils";
 import { createFilledPolygonMeshes } from "./polygon-fill-utils";
 import type { OverlayProps } from "./shared";
 import { useEventHandlers, useHoverState, useLabelColor } from "./shared/hooks";
@@ -19,7 +24,6 @@ export interface PolyLineProps extends OverlayProps {
   points3d: THREE.Vector3Tuple[][];
   filled: boolean;
   lineWidth?: number;
-  // We ignore closed for now
   closed?: boolean;
 }
 
@@ -31,6 +35,7 @@ export const Polyline = ({
   color,
   selected,
   lineWidth,
+  closed,
   onClick,
   tooltip,
   label,
@@ -55,7 +60,6 @@ export const Polyline = ({
   );
 
   const {
-    effectivePoints3d,
     centroid,
     transformControlsRef,
     contentRef,
@@ -76,34 +80,86 @@ export const Polyline = ({
     isSelectedForAnnotation,
   });
 
-  const lines = useMemo(
-    () =>
-      effectivePoints3d.map((pts, i) => (
-        <LineDrei
-          key={`polyline-${label._id}-${i}`}
-          lineWidth={lineWidth}
-          segments
-          points={pts}
-          color={strokeAndFillColor}
-          rotation={rotation}
-          transparent={opacity < 0.2}
-          opacity={opacity}
-          onPointerOver={() => handleSegmentPointerOver(i)}
-          onPointerOut={handleSegmentPointerOut}
-          onClick={handleSegmentClick}
-        />
-      )),
-    [
-      effectivePoints3d,
-      strokeAndFillColor,
-      lineWidth,
-      rotation,
-      label._id,
-      handleSegmentPointerOver,
-      handleSegmentPointerOut,
-      handleSegmentClick,
-    ]
-  );
+  const lines = useMemo(() => {
+    const lineElements = points3d
+      .map((pts, i) => {
+        if (!pts || !Array.isArray(pts) || pts.length === 0) {
+          console.warn(`Invalid points array for polyline segment ${i}:`, pts);
+          return null;
+        }
+
+        const validPts = validatePoints3d(pts);
+
+        if (validPts.length === 0) {
+          console.warn(`No valid points found for polyline segment ${i}`);
+          return null;
+        }
+
+        return (
+          <LineDrei
+            key={`polyline-${label._id}-${i}`}
+            lineWidth={lineWidth}
+            points={validPts}
+            color={strokeAndFillColor}
+            rotation={rotation}
+            transparent={opacity < 0.2}
+            opacity={opacity}
+            onPointerOver={() => handleSegmentPointerOver(i)}
+            onPointerOut={handleSegmentPointerOut}
+            onClick={handleSegmentClick}
+          />
+        );
+      })
+      .filter(Boolean);
+
+    // If closed, add exactly one closing line per segment
+    if (closed) {
+      const closingLines = points3d
+        .map((pts, i) => {
+          if (!pts || !Array.isArray(pts) || pts.length < 2) {
+            return null;
+          }
+
+          const firstPoint = pts[0];
+          const lastPoint = pts[pts.length - 1];
+
+          if (!isValidPoint3d(firstPoint) || !isValidPoint3d(lastPoint)) {
+            return null;
+          }
+
+          return (
+            <LineDrei
+              key={`polyline-closing-${label._id}-${i}`}
+              lineWidth={lineWidth}
+              points={[lastPoint, firstPoint]}
+              color={strokeAndFillColor}
+              rotation={rotation}
+              transparent={opacity < 0.2}
+              opacity={opacity}
+              onPointerOver={() => handleSegmentPointerOver(i)}
+              onPointerOut={handleSegmentPointerOut}
+              onClick={handleSegmentClick}
+            />
+          );
+        })
+        .filter(Boolean);
+
+      return [...lineElements, ...closingLines];
+    }
+
+    return lineElements;
+  }, [
+    points3d,
+    closed,
+    strokeAndFillColor,
+    lineWidth,
+    rotation,
+    opacity,
+    label._id,
+    handleSegmentPointerOver,
+    handleSegmentPointerOut,
+    handleSegmentClick,
+  ]);
 
   const material = useMemo(() => {
     if (!filled) return null;
@@ -120,13 +176,14 @@ export const Polyline = ({
   const filledMeshes = useMemo(() => {
     if (!filled || !material) return null;
 
-    // Dispose previous meshes
-    meshesRef.current.forEach((mesh) => {
-      if (mesh.geometry) mesh.geometry.dispose();
-    });
+    const validPoints3d = validatePoints3dArray(points3d);
 
-    const meshes = createFilledPolygonMeshes(effectivePoints3d, material);
-    meshesRef.current = meshes || [];
+    if (validPoints3d.length === 0) {
+      console.warn("No valid points found for filled polygon meshes");
+      return null;
+    }
+
+    const meshes = createFilledPolygonMeshes(validPoints3d, material);
 
     if (!meshes) return null;
 
@@ -137,18 +194,34 @@ export const Polyline = ({
         rotation={rotation as unknown as THREE.Euler}
       />
     ));
-  }, [filled, effectivePoints3d, rotation, material, label._id]);
+  }, [filled, points3d, rotation, material, label._id]);
 
   useEffect(() => {
+    const currentMeshes = meshesRef.current;
+
+    if (filled && material) {
+      const validPoints3d = validatePoints3dArray(points3d);
+
+      const meshes =
+        validPoints3d.length > 0
+          ? createFilledPolygonMeshes(validPoints3d, material)
+          : null;
+      meshesRef.current = meshes || [];
+    } else {
+      meshesRef.current = [];
+    }
+
+    // Cleanup old meshes (only geometries, NOT materials, those are cleaned up separately)
     return () => {
-      meshesRef.current.forEach((mesh) => {
+      currentMeshes.forEach((mesh) => {
         if (mesh.geometry) {
           mesh.geometry.dispose();
         }
       });
     };
-  }, []);
+  }, [filled, points3d, material]);
 
+  // Cleanup material when it changes or component unmounts
   useEffect(() => {
     return () => {
       if (material) {
@@ -179,8 +252,8 @@ export const Polyline = ({
     >
       <group
         ref={contentRef}
-        position={tempTransforms?.position}
-        quaternion={tempTransforms?.quaternion}
+        position={tempTransforms?.position ?? [0, 0, 0]}
+        quaternion={tempTransforms?.quaternion ?? [0, 0, 0, 1]}
       >
         {markers}
         <group
