@@ -36,6 +36,7 @@ const useCreateAnnotationLabel = () => {
         >("classification", {
           field,
           id,
+          label: data,
         });
         addOverlay(overlay);
         store.set(savedLabel, data);
