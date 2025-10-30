@@ -18,6 +18,10 @@ operators:
   - delete_selected_labels
   - delete_sample_field
   - delete_frame_field
+  - add_dynamic_sample_fields
+  - add_dynamic_frame_fields
+  - remove_dynamic_sample_fields
+  - remove_dynamic_frame_fields
   - create_index
   - drop_index
   - create_summary_field
