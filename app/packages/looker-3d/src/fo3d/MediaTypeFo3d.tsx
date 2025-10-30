@@ -68,7 +68,7 @@ import {
 } from "./utils";
 
 const CANVAS_WRAPPER_ID = "sample3d-canvas-wrapper";
-const BOUNDS_COMPUTE_TIMEOUT_MS = 4000;
+const SCENE_BOUNDS_COMPUTE_TIMEOUT_MS = 15000;
 
 const MainContainer = styled.main`
   display: flex;
@@ -355,7 +355,7 @@ export const MediaTypeFo3dComponent = () => {
     predicateOrFallbackAfterTimeout(
       () => isFinalRef.current,
       true,
-      BOUNDS_COMPUTE_TIMEOUT_MS
+      SCENE_BOUNDS_COMPUTE_TIMEOUT_MS
     )
   );
 
@@ -363,7 +363,7 @@ export const MediaTypeFo3dComponent = () => {
     canComputeBoundsPredicateRef.current = predicateOrFallbackAfterTimeout(
       () => isFinalRef.current,
       true,
-      BOUNDS_COMPUTE_TIMEOUT_MS
+      SCENE_BOUNDS_COMPUTE_TIMEOUT_MS
     );
     // here, fo3dRoot plays the role of the key that indicates a fresh load
   }, [fo3dRoot]);
@@ -377,7 +377,9 @@ export const MediaTypeFo3dComponent = () => {
     boundingBox: sceneBoundingBox,
     recomputeBounds,
     isComputing: isComputingSceneBoundingBox,
-  } = useFo3dBounds(assetsGroupRef, canComputeBounds);
+  } = useFo3dBounds(assetsGroupRef, canComputeBounds, {
+    hardTimeoutMs: SCENE_BOUNDS_COMPUTE_TIMEOUT_MS,
+  });
 
   const effectiveSceneBoundingBox = sceneBoundingBox || DEFAULT_BOUNDING_BOX;
 
