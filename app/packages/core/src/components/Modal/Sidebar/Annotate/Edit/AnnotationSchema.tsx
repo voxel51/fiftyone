@@ -180,7 +180,6 @@ const AnnotationSchema = () => {
       if (!(event.detail?.command instanceof UpdateLabelCommand)) {
         const label = overlay?.label;
 
-        console.log(overlay?.label);
         if (label) {
           // we are changing the form data externally, force a new SchemaIO
           // render with a new key
