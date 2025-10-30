@@ -850,8 +850,9 @@ class TorchImageModel(
 
     @filter_classes.setter
     def filter_classes(self, value):
-        if value == self.classes:
-            value = None
+        if value and self.can_filter_classes:
+            if set(value) == set(self.classes):
+                value = None
 
         self._filter_classes = value
 
@@ -1594,7 +1595,7 @@ class KeypointOutputProcessor(OutputProcessor):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def __call__(self, output, frame_size, confidence_thresh=None):
+    def __call__(self, output, frame_size, confidence_thresh=None, **kwargs):
         """Parses the model output.
 
         Args:
@@ -1608,6 +1609,7 @@ class KeypointOutputProcessor(OutputProcessor):
             frame_size: the ``(width, height)`` of the frames in the batch
             confidence_thresh (None): an optional confidence threshold to use
                 to filter any applicable predictions
+            **kwargs: unused kwargs
 
         Returns:
             a list of :class:`fiftyone.core.labels.Label` dicts

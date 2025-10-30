@@ -165,5 +165,5 @@ class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
             output,
             frame_size,
             confidence_thresh=self.config.confidence_thresh,
-            self._filter_classes,
+            classes=self._filter_classes,
         )
