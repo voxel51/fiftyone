@@ -1,4 +1,7 @@
+import useCanAnnotate from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useCanAnnotate";
+import * as fos from "@fiftyone/state";
 import { CameraControls } from "@react-three/drei";
+import { useAtomValue } from "jotai";
 import React, { useCallback, useEffect } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { PerspectiveCamera, Quaternion, Vector3 } from "three";
@@ -17,6 +20,9 @@ export const useCameraViews = ({
   const { sceneBoundingBox, upVector } = useFo3dContext();
   const setCameraViewStatus = useSetRecoilState(cameraViewStatusAtom);
   const annotationPlane = useRecoilValue(annotationPlaneAtom);
+  const canAnnotate = useCanAnnotate();
+  const mode = useAtomValue(fos.modalMode);
+  const enableAnnotationPlaneCameraView = canAnnotate && mode === "annotate";
 
   // We use current camera position and look at point to calculate the camera position
   // with some reasonable constraints.
@@ -128,7 +134,7 @@ export const useCameraViews = ({
         numPressed === "1" ||
         numPressed === "2" ||
         numPressed === "3" ||
-        numPressed === "4"
+        (numPressed === "4" && enableAnnotationPlaneCameraView)
       ) {
         event.preventDefault();
       }
@@ -216,7 +222,7 @@ export const useCameraViews = ({
             direction = new Vector3(0, -1, 0);
           }
         }
-      } else if (numPressed === "4") {
+      } else if (numPressed === "4" && enableAnnotationPlaneCameraView) {
         if (
           !cameraRef.current ||
           !cameraControlsRef.current ||
@@ -238,10 +244,24 @@ export const useCameraViews = ({
         // Use annotation plane position as look-at point
         const planePosition = new Vector3(...annotationPlane.position);
 
-        // Position camera at plane position + normal * radius
-        const cameraPosition = planePosition
-          .clone()
-          .add(normal.clone().multiplyScalar(currentRadius));
+        let cameraPosition: Vector3;
+        let viewName: string;
+
+        if (isCtrlPressed) {
+          // Opposite view: look at plane from opposite side (negative normal)
+          // Position camera at plane position + (-normal) * radius
+          cameraPosition = planePosition
+            .clone()
+            .add(normal.clone().negate().multiplyScalar(currentRadius));
+
+          viewName = "Annotation plane view 2";
+        } else {
+          cameraPosition = planePosition
+            .clone()
+            .add(normal.clone().multiplyScalar(currentRadius));
+
+          viewName = "Annotation plane view 1";
+        }
 
         cameraControlsRef.current.setLookAt(
           cameraPosition.x,
@@ -254,7 +274,7 @@ export const useCameraViews = ({
         );
 
         setCameraViewStatus({
-          viewName: "Annotation plane view",
+          viewName,
           timestamp: Date.now(),
         });
 
@@ -272,7 +292,7 @@ export const useCameraViews = ({
       cameraRef,
       cameraControlsRef,
       sceneBoundingBox,
-      setCameraViewStatus,
+      enableAnnotationPlaneCameraView,
     ]
   );
 

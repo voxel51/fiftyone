@@ -24,28 +24,10 @@ export default function useTooltip() {
     ({ snapshot }) =>
       (label) => {
         return {
-          onPointerOver: async () => {
-            // Todo: investigate why importing it at module level is causing problems with tests (no runtime error though)
-            const { activeSegmentationStateAtom, hoveredVertexAtom } =
-              await import("@fiftyone/looker-3d");
-
+          onPointerOver: () => {
             setTooltipDetail(getDetailsFromLabel(label));
 
-            const isCurrentlySegmenting = Boolean(
-              snapshot.getLoadable(activeSegmentationStateAtom).getValue()
-                ?.isActive
-            );
-
-            const hoveredVertex = snapshot
-              .getLoadable(hoveredVertexAtom)
-              .getValue();
-            const isAnyVertexHovered = hoveredVertex !== null;
-
-            if (
-              !label.instance ||
-              isCurrentlySegmenting ||
-              isAnyVertexHovered
-            ) {
+            if (!label.instance) {
               return;
             }
 
@@ -80,26 +62,8 @@ export default function useTooltip() {
               setIsTooltipLocked(false);
             }
           },
-          onPointerMove: async (e: MouseEvent) => {
-            // Todo: investigate why importing it at module level is causing problems with tests (no runtime error though)
-            const { activeSegmentationStateAtom, hoveredVertexAtom } =
-              await import("@fiftyone/looker-3d");
-
+          onPointerMove: (e: MouseEvent) => {
             if (isTooltipLocked) {
-              return;
-            }
-
-            const isCurrentlySegmenting = Boolean(
-              snapshot.getLoadable(activeSegmentationStateAtom).getValue()
-                ?.isActive
-            );
-
-            const hoveredVertex = snapshot
-              .getLoadable(hoveredVertexAtom)
-              .getValue();
-            const isAnyVertexHovered = hoveredVertex !== null;
-
-            if (isCurrentlySegmenting || isAnyVertexHovered) {
               return;
             }
 

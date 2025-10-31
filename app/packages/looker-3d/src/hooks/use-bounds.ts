@@ -1,6 +1,10 @@
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { Box3, Group } from "three";
 
+const DEFAULT_STABLE_SAMPLES = 3;
+const DEFAULT_EPSILON = 1e-4;
+const DEFAULT_HARD_TIMEOUT_MS = 5000;
+
 type Options = {
   // Consecutive identical reads required
   stableSamples?: number;
@@ -38,7 +42,11 @@ export function useFo3dBounds(
   const predicateRef = useRef(predicate);
   predicateRef.current = predicate;
 
-  const { stableSamples = 3, epsilon = 1e-4, hardTimeoutMs = 3000 } = opts;
+  const {
+    stableSamples = DEFAULT_STABLE_SAMPLES,
+    epsilon = DEFAULT_EPSILON,
+    hardTimeoutMs = DEFAULT_HARD_TIMEOUT_MS,
+  } = opts;
 
   const [boundingBox, setBoundingBox] = useState<Box3 | null>(null);
   const [isComputing, setIsComputing] = useState(false);
