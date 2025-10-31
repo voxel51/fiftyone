@@ -4,6 +4,7 @@ import { useAtom, useAtomValue } from "jotai";
 import React from "react";
 import styled from "styled-components";
 import { isEditing } from "./Annotate/Edit";
+import useConfigureColoring from "./Annotate/useConfigureColoring";
 
 const Container = styled.div`
   padding: 0.5rem 1rem;
@@ -30,6 +31,8 @@ const Mode = () => {
   const background = { background: theme.background.level1 };
   const text = { color: theme.text.secondary };
   const editing = useAtomValue(isEditing);
+
+  useConfigureColoring(mode);
 
   if (editing) {
     return null;
