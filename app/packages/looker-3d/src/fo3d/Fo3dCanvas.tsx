@@ -8,8 +8,6 @@ import {
   PerspectiveCamera as PerspectiveCameraDrei,
 } from "@react-three/drei";
 import { useAtomValue } from "jotai";
-import { useEffect } from "react";
-import { useResetRecoilState } from "recoil";
 import * as THREE from "three";
 import { Vector3 } from "three";
 import { SpinningCube } from "../SpinningCube";
@@ -17,12 +15,9 @@ import { StatusTunnel } from "../StatusBar";
 import { AnnotationPlane } from "../annotation/AnnotationPlane";
 import { SegmentPolylineRenderer } from "../annotation/SegmentPolylineRenderer";
 import { useCameraViews } from "../hooks/use-camera-views";
-import { useEmptyCanvasInteractionListener } from "../hooks/use-empty-canvas-interaction";
 import { ThreeDLabels } from "../labels";
-import { emptyCanvasInteractionSubscriptionsAtom } from "../state";
 import { FoSceneComponent } from "./FoScene";
 import { Gizmos } from "./Gizmos";
-import { useFo3dContext } from "./context";
 import { SceneControls } from "./scene-controls/SceneControls";
 
 interface Fo3dSceneContentProps {
@@ -169,20 +164,6 @@ export const Fo3dSceneContent = ({
 };
 
 const AnnotationControls = () => {
-  const { fo3dRoot } = useFo3dContext();
-
-  const resetEmptyCanvasInteractionSubscriptions = useResetRecoilState(
-    emptyCanvasInteractionSubscriptionsAtom
-  );
-
-  useEmptyCanvasInteractionListener();
-
-  useEffect(() => {
-    return () => {
-      resetEmptyCanvasInteractionSubscriptions();
-    };
-  }, [fo3dRoot]);
-
   return (
     <>
       <AnnotationPlane panelType="main" viewType="top" />
