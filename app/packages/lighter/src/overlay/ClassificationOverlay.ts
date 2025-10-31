@@ -8,6 +8,8 @@ import {
   SELECTED_DASH_LENGTH,
 } from "../constants";
 import type { Renderer2D } from "../renderer/Renderer2D";
+import { Selectable } from "../selection/Selectable";
+import { RawLookerLabel } from "../types";
 import { BaseOverlay } from "./BaseOverlay";
 
 /**
@@ -16,14 +18,17 @@ import { BaseOverlay } from "./BaseOverlay";
 export interface ClassificationOptions {
   id: string;
   field: string;
+  label: RawLookerLabel;
 }
 
 /**
  * Classification overlay implementation with selection support.
  */
-export class ClassificationOverlay extends BaseOverlay {
+export class ClassificationOverlay extends BaseOverlay implements Selectable {
+  private isSelectedState = false;
+
   constructor(options: ClassificationOptions) {
-    super(options.id, options.field);
+    super(options.id, options.field, options.label);
   }
 
   getOverlayType(): string {

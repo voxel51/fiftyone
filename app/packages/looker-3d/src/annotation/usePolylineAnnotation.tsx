@@ -1,4 +1,5 @@
 import * as fos from "@fiftyone/state";
+import { Line as LineDrei } from "@react-three/drei";
 import { ThreeEvent } from "@react-three/fiber";
 import chroma from "chroma-js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -10,7 +11,9 @@ import {
   editSegmentsModeAtom,
   hoveredLabelAtom,
   polylinePointTransformsAtom,
+  selectedPolylineVertexAtom,
   tempLabelTransformsAtom,
+  tempVertexTransformsAtom,
 } from "../state";
 import { PolylinePointMarker } from "./PolylinePointMarker";
 import {
@@ -40,6 +43,8 @@ export const usePolylineAnnotation = ({
   const [polylinePointTransforms, setPolylinePointTransforms] = useRecoilState(
     polylinePointTransformsAtom
   );
+
+  const selectedPoint = useRecoilValue(selectedPolylineVertexAtom);
 
   const editSegmentsMode = useRecoilValue(editSegmentsModeAtom);
 
@@ -366,6 +371,98 @@ export const usePolylineAnnotation = ({
     ]
   );
 
+  // Get temp transforms for the selected vertex if it belongs to this label
+  // Always call the hook, but use a dummy key if no vertex is selected
+  const vertexKey =
+    selectedPoint && selectedPoint.labelId === label._id
+      ? `${label._id}-${selectedPoint.segmentIndex}-${selectedPoint.pointIndex}`
+      : // Dummy key that won't match any real vertex
+        `${label._id}--1--1`;
+
+  const tempTransforms = useRecoilValue(tempVertexTransformsAtom(vertexKey));
+
+  // Only use temp transforms if they actually belong to the selected vertex
+  const relevantTempTransforms =
+    selectedPoint && selectedPoint.labelId === label._id && tempTransforms
+      ? tempTransforms
+      : null;
+
+  // Render preview lines when a vertex is being transformed
+  const previewLines = useMemo(() => {
+    if (!isAnnotateMode || !isSelectedForAnnotation) return null;
+    if (!selectedPoint || selectedPoint.labelId !== label._id) return null;
+    if (!relevantTempTransforms?.position) return null;
+
+    const { segmentIndex, pointIndex } = selectedPoint;
+
+    const currentSegments = polylinePointTransforms?.[label._id]?.segments;
+    const segmentData =
+      currentSegments?.[segmentIndex] || points3d[segmentIndex];
+
+    if (!segmentData) return null;
+
+    const segmentPoints = Array.isArray(segmentData)
+      ? segmentData
+      : segmentData.points;
+
+    if (!segmentPoints || segmentPoints.length === 0) return null;
+
+    // tempVertexTransforms.position is an offset from the original position
+    // We need to add it to the original position to get the actual world position
+    const originalPosition = points3d[segmentIndex][pointIndex];
+    const tempOffset = relevantTempTransforms.position;
+    const tempPosition: Vector3Tuple = [
+      originalPosition[0] + tempOffset[0],
+      originalPosition[1] + tempOffset[1],
+      originalPosition[2] + tempOffset[2],
+    ];
+
+    const previewLinesArray = [];
+
+    // Line from previous vertex (old vertex) to temp position (currently-being-transformed vertex)
+    if (pointIndex > 0) {
+      const prevPoint = segmentPoints[pointIndex - 1];
+      previewLinesArray.push(
+        <LineDrei
+          key={`preview-prev-${vertexKey}`}
+          points={[prevPoint, tempPosition]}
+          color="#ff0000"
+          lineWidth={2}
+          dashed
+          dashSize={0.1}
+          gapSize={0.1}
+        />
+      );
+    }
+
+    // Line from temp position (currently-being-transformed vertex) to next vertex
+    if (pointIndex < segmentPoints.length - 1) {
+      const nextPoint = segmentPoints[pointIndex + 1];
+      previewLinesArray.push(
+        <LineDrei
+          key={`preview-next-${vertexKey}`}
+          points={[tempPosition, nextPoint]}
+          color="#ff0000"
+          lineWidth={2}
+          dashed
+          dashSize={0.1}
+          gapSize={0.1}
+        />
+      );
+    }
+
+    return previewLinesArray.length > 0 ? previewLinesArray : null;
+  }, [
+    isAnnotateMode,
+    isSelectedForAnnotation,
+    selectedPoint,
+    label._id,
+    points3d,
+    polylinePointTransforms,
+    relevantTempTransforms,
+    vertexKey,
+  ]);
+
   const markers = useMemo(() => {
     if (!isAnnotateMode || !isSelectedForAnnotation) return null;
 
@@ -389,6 +486,9 @@ export const usePolylineAnnotation = ({
 
     // Markers
     markers,
+
+    // Preview lines
+    previewLines,
 
     // Handlers
     handleTransformStart,

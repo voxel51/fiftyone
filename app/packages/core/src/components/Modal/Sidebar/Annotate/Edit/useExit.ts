@@ -53,9 +53,11 @@ export default function useExit(revertLabel = true) {
      * 3D SPECIFIC LOGIC ENDS HERE.
      */
 
+    // We are leaving editing mode, clear the stack
+    scene?.clearUndoRedoStack();
+
     if (!label || !revertLabel) {
       setSaved(null);
-
       setEditing(null);
       return;
     }

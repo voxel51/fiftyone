@@ -787,8 +787,6 @@ export class Scene2D {
   private recalculateOverlayOrderForInteractiveOrdering(): {
     containedIds: string[];
   } {
-    const { activePaths } = this.sceneOptions || {};
-
     const point = this.interactionManager.getPixelCoordinates();
 
     if (!point) {
@@ -1290,6 +1288,13 @@ export class Scene2D {
       type: LIGHTER_EVENTS.SELECTION_CLEARED,
       detail: { previouslySelectedIds: [] },
     });
+  }
+
+  /**
+   * Clears the undo/redo stack
+   */
+  clearUndoRedoStack() {
+    this.undoRedo.clear();
   }
 
   /**

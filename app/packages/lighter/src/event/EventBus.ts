@@ -3,11 +3,11 @@
  */
 
 import { AnnotationLabel } from "@fiftyone/state";
+import { Field } from "@fiftyone/utilities";
 import { Command } from "../commands/Command";
 import { InteractiveDetectionHandler } from "../interaction/InteractiveDetectionHandler";
 import { BaseOverlay } from "../overlay/BaseOverlay";
 import type { Point, Rect } from "../types";
-import { Field } from "@fiftyone/utilities";
 
 /**
  * Event type constants for lighter events.
@@ -255,13 +255,16 @@ export type SelectionEvent =
       detail: {
         id: string;
         point: Point;
+        ignoreSideEffects?: boolean;
         isShiftPressed?: boolean;
-        isBridgeLogicHandled?: boolean;
       };
     }
   | {
       type: typeof LIGHTER_EVENTS.OVERLAY_DESELECT;
-      detail: { id: string; isBridgeLogicHandled?: boolean };
+      detail: {
+        id: string;
+        ignoreSideEffects?: boolean;
+      };
     }
   | {
       type: typeof LIGHTER_EVENTS.SELECTION_CHANGED;
@@ -270,8 +273,8 @@ export type SelectionEvent =
   | {
       type: typeof LIGHTER_EVENTS.SELECTION_CLEARED;
       detail: {
+        ignoreSideEffects?: boolean;
         previouslySelectedIds: string[];
-        isBridgeLogicHandled?: boolean;
       };
     };
 
