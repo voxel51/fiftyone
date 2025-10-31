@@ -69,7 +69,12 @@ type PillButtonProps = {
   title: string;
 };
 
-const PillButtonDiv = animated(styled.div`
+const PillButtonDiv = animated(styled.div.withConfig({
+  shouldForwardProp: (prop) => {
+    // Don't forward non-DOM props
+    return !['variant', 'color', 'size'].includes(prop);
+  }
+})`
   display: flex;
   align-items: center;
   line-height: 1.5rem;

@@ -1,21 +1,28 @@
+import useCanAnnotate from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useCanAnnotate";
+import * as fos from "@fiftyone/state";
 import { DragIndicator } from "@mui/icons-material";
 import { Box, IconButton, Tooltip, Typography, styled } from "@mui/material";
-import React, { useCallback, useRef, useState } from "react";
-import { useRecoilState } from "recoil";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import ReactDOM from "react-dom";
+import { useRecoilState, useRecoilValue } from "recoil";
 import { annotationToolbarPositionAtom } from "../../state";
 import type { AnnotationToolbarProps } from "../types";
 import { useAnnotationActions } from "./useAnnotationActions";
 
+const Z_INDEX_MAX_ARBITRARY = 10005;
+
 const ToolbarContainer = styled(Box)<{
   topposition: number;
   isdragging?: string;
-}>(({ theme, topposition, isdragging }) => {
+  isfullscreen?: string;
+}>(({ theme, topposition, isdragging, isfullscreen }) => {
   const isDraggingBool = isdragging === "true";
+  const isFullscreenBool = isfullscreen === "true";
 
   return {
     position: "absolute",
     top: `${topposition}%`,
-    left: "8px",
+    left: isFullscreenBool ? "8px" : "50px",
     transform: "translateY(-50%)",
     display: "flex",
     flexDirection: "column",
@@ -25,7 +32,7 @@ const ToolbarContainer = styled(Box)<{
       ? "0 4px 16px rgba(0, 0, 0, 0.2)"
       : "0 2px 8px rgba(0, 0, 0, 0.12)",
     border: `1px solid ${theme.palette.divider}`,
-    zIndex: 1000,
+    zIndex: Z_INDEX_MAX_ARBITRARY - 1,
     minWidth: "36px",
     opacity: isDraggingBool ? 0.95 : 0.75,
     userSelect: "none",
@@ -112,17 +119,33 @@ const ActionButton = styled(IconButton)<{
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
+    transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+    transform: "scale(1)",
     "&:hover": {
       backgroundColor: isActiveBool
         ? theme.palette.primary.dark
         : theme.palette.action.hover,
+      transform: "scale(1.1)",
+      boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)",
+    },
+    "&:active": {
+      transform: "scale(0.95)",
     },
     "&:disabled": {
       color: theme.palette.text.disabled,
       backgroundColor: "transparent",
+      transform: "scale(1)",
+      "&:hover": {
+        transform: "scale(1)",
+        boxShadow: "none",
+      },
     },
     "& .MuiSvgIcon-root": {
       fontSize: "18px",
+      transition: "transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+    },
+    "&:hover .MuiSvgIcon-root": {
+      transform: "scale(1.05)",
     },
   };
 });
@@ -133,6 +156,11 @@ export const AnnotationToolbar = ({ className }: AnnotationToolbarProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ y: 0, position: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
+  const canAnnotate = useCanAnnotate();
+  const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(
+    null
+  );
+  const isFullscreen = useRecoilValue(fos.fullscreen);
 
   const handleActionClick = useCallback((action: () => void) => {
     action();
@@ -173,7 +201,11 @@ export const AnnotationToolbar = ({ className }: AnnotationToolbarProps) => {
     setIsDragging(false);
   }, []);
 
-  React.useEffect(() => {
+  useEffect(() => {
+    if (!canAnnotate) {
+      return;
+    }
+
     if (isDragging) {
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
@@ -183,14 +215,34 @@ export const AnnotationToolbar = ({ className }: AnnotationToolbarProps) => {
         document.removeEventListener("mouseup", handleMouseUp);
       };
     }
-  }, [isDragging, handleMouseMove, handleMouseUp]);
+  }, [isDragging, handleMouseMove, handleMouseUp, canAnnotate]);
 
-  return (
+  // Find the modal container to render the toolbar in the same stacking context as navigation arrows
+  useEffect(() => {
+    if (!canAnnotate) {
+      setPortalContainer(null);
+      return;
+    }
+
+    const modalElement = document.getElementById("modal");
+    if (modalElement) {
+      setPortalContainer(modalElement);
+    } else {
+      setPortalContainer(document.body);
+    }
+  }, [canAnnotate]);
+
+  if (!canAnnotate || !portalContainer) {
+    return null;
+  }
+
+  const toolbarContent = (
     <ToolbarContainer
       ref={containerRef}
       className={className}
       topposition={position}
       isdragging={String(isDragging)}
+      isfullscreen={String(isFullscreen)}
     >
       <DraggableHeader
         isdragging={String(isDragging)}
@@ -216,11 +268,18 @@ export const AnnotationToolbar = ({ className }: AnnotationToolbarProps) => {
                   return (
                     <Tooltip
                       key={action.id}
+                      sx={{
+                        zIndex: Z_INDEX_MAX_ARBITRARY,
+                      }}
                       title={
-                        <Box>
-                          <Typography variant="body2">
-                            {action.tooltip || action.label}
-                          </Typography>
+                        <Box sx={{ zIndex: Z_INDEX_MAX_ARBITRARY + 1 }}>
+                          {typeof action.tooltip === "string" ? (
+                            <Typography variant="body2">
+                              {action.tooltip}
+                            </Typography>
+                          ) : (
+                            action.tooltip
+                          )}
                           {action.shortcut && (
                             <Typography variant="caption" sx={{ opacity: 0.7 }}>
                               {action.shortcut}
@@ -251,4 +310,7 @@ export const AnnotationToolbar = ({ className }: AnnotationToolbarProps) => {
       </ToolbarContent>
     </ToolbarContainer>
   );
+
+  // Render the toolbar in a portal to ensure it's in the same stacking context as navigation arrows
+  return ReactDOM.createPortal(toolbarContent, portalContainer);
 };

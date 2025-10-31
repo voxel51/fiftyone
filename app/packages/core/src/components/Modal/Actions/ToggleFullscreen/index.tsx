@@ -11,7 +11,7 @@ const ToggleFullscreen = () => {
     <PillButton
       icon={fullScreen ? <FullscreenExit /> : <Fullscreen />}
       open={fullScreen}
-      highlight={fullScreen}
+      highlight={false}
       onClick={() => setFullScreen(!fullScreen)}
       tooltipPlacement="bottom"
       title={fullScreen ? "Exit fullscreen (f)" : "Enter fullscreen (f)"}

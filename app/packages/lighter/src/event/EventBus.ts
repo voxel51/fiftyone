@@ -3,6 +3,7 @@
  */
 
 import { AnnotationLabel } from "@fiftyone/state";
+import { Field } from "@fiftyone/utilities";
 import { Command } from "../commands/Command";
 import { InteractiveDetectionHandler } from "../interaction/InteractiveDetectionHandler";
 import { BaseOverlay } from "../overlay/BaseOverlay";
@@ -254,13 +255,16 @@ export type SelectionEvent =
       detail: {
         id: string;
         point: Point;
+        ignoreSideEffects?: boolean;
         isShiftPressed?: boolean;
-        isBridgeLogicHandled?: boolean;
       };
     }
   | {
       type: typeof LIGHTER_EVENTS.OVERLAY_DESELECT;
-      detail: { id: string; isBridgeLogicHandled?: boolean };
+      detail: {
+        id: string;
+        ignoreSideEffects?: boolean;
+      };
     }
   | {
       type: typeof LIGHTER_EVENTS.SELECTION_CHANGED;
@@ -269,8 +273,8 @@ export type SelectionEvent =
   | {
       type: typeof LIGHTER_EVENTS.SELECTION_CLEARED;
       detail: {
+        ignoreSideEffects?: boolean;
         previouslySelectedIds: string[];
-        isBridgeLogicHandled?: boolean;
       };
     };
 
@@ -317,14 +321,20 @@ export type DoLighterEvent =
     }
   | {
       type: typeof LIGHTER_EVENTS.DO_PERSIST_OVERLAY;
-      detail: AnnotationLabel;
+      detail: {
+        label: AnnotationLabel;
+        schema: Field;
+        onSuccess?: () => void;
+        onError?: (error?: Error | string) => void;
+      };
     }
   | {
       type: typeof LIGHTER_EVENTS.DO_REMOVE_OVERLAY;
       detail: {
+        label: AnnotationLabel;
+        schema: Field;
         onSuccess?: () => void;
         onError?: (error?: Error | string) => void;
-        label: AnnotationLabel;
       };
     };
 

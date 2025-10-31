@@ -140,7 +140,7 @@ def compute_annotation_schema(collection, field_name, scan_samples=True):
         return {
             "default": None,
             "type": "radio",
-            "values": [True, False, None],
+            "values": [True, False],
         }
 
     if isinstance(

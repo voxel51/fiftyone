@@ -1,4 +1,4 @@
-import { Button, MuiButton } from "@fiftyone/components";
+import { Button, LoadingDots, MuiButton } from "@fiftyone/components";
 import { DeleteOutline } from "@mui/icons-material";
 import { useAtomValue } from "jotai";
 import React, { useContext } from "react";
@@ -7,29 +7,44 @@ import { ConfirmationContext } from "../Confirmation";
 import { Row } from "./Components";
 import { currentField, hasChanges, isNew } from "./state";
 import useExit from "./useExit";
-import useSave from "./useSave";
+import useSave, { isSaving } from "./useSave";
+import { Stack } from "@mui/material";
 
 const SaveFooter = () => {
   const { onDelete, onExit: onExitConfirm } = useContext(ConfirmationContext);
-  const onExit = useExit();
   const onSave = useSave();
+  const onDiscard = useExit();
   const showCancel = useAtomValue(isNew);
   const changes = useAtomValue(hasChanges);
+  const saving = useAtomValue(isSaving);
 
   return (
     <>
-      <MuiButton
-        disabled={!changes}
-        onClick={() => {
-          onSave();
-          onExit();
-        }}
-        variant="contained"
-        color="primary"
+      <Stack direction="row" spacing={1}>
+        <MuiButton
+          disabled={!changes || saving}
+          onClick={onDiscard}
+          variant="outlined"
+        >
+          Discard
+        </MuiButton>
+
+        <MuiButton
+          disabled={!changes || saving}
+          onClick={() => {
+            onSave();
+          }}
+          variant="contained"
+          color="primary"
+        >
+          {saving ? <LoadingDots text={"Saving"} /> : "Save"}
+        </MuiButton>
+      </Stack>
+
+      <RoundButton
+        className={saving ? "disabled" : ""}
+        onClick={saving ? undefined : showCancel ? onExitConfirm : onDelete}
       >
-        Save
-      </MuiButton>
-      <RoundButton onClick={showCancel ? onExitConfirm : onDelete}>
         {showCancel ? (
           "Cancel"
         ) : (

@@ -3,7 +3,8 @@ import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { Color, type Mesh } from "three";
-import { fo3dAssetsParseStatusThisSample } from "./state";
+import { fo3dLoadingStatusThisSample } from "./state";
+import { LoadingStatus } from "./types";
 
 /**
  * This spinning cube is to be used as a loading indicator.
@@ -11,15 +12,21 @@ import { fo3dAssetsParseStatusThisSample } from "./state";
 export const SpinningCube = () => {
   const meshRef = useRef<Mesh>();
 
-  const logs = useRecoilValue(fo3dAssetsParseStatusThisSample);
+  const loadingStatus = useRecoilValue(fo3dLoadingStatusThisSample);
 
-  const errorsExist = useMemo(
-    () => logs.some((log) => log.status === "error"),
-    [logs]
-  );
+  const shouldShow = useMemo(() => {
+    return (
+      loadingStatus.status === LoadingStatus.STARTED ||
+      loadingStatus.status === LoadingStatus.LOADING
+    );
+  }, [loadingStatus.status]);
+
+  const hasError = useMemo(() => {
+    return loadingStatus.status === LoadingStatus.FAILED;
+  }, [loadingStatus.status]);
 
   useFrame(() => {
-    if (errorsExist) {
+    if (hasError || !shouldShow) {
       return;
     }
 
@@ -29,7 +36,7 @@ export const SpinningCube = () => {
     meshRef.current.rotation.y = meshRef.current.rotation.y += 0.007;
   });
 
-  if (errorsExist) {
+  if (hasError || !shouldShow) {
     return null;
   }
 

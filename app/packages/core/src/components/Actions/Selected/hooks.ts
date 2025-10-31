@@ -15,7 +15,7 @@ export const useClearSelectedLabels = (close) => {
     ({ set }) =>
       async () => {
         if (scene) {
-          scene.clearSelection({ isBridgeLogicHandled: true });
+          scene.clearSelection({ ignoreSideEffects: true });
         }
 
         set(fos.selectedLabels, []);
@@ -76,10 +76,10 @@ export const useSelectVisible = (
           scene.getVisibleSelectableOverlayIds();
 
         if (visibleSelectableOverlayIds.length > 0) {
-          scene.clearSelection({ isBridgeLogicHandled: true });
+          scene.clearSelection({ ignoreSideEffects: true });
 
           visibleSelectableOverlayIds.forEach((overlayId) => {
-            scene.selectOverlay(overlayId, { isBridgeLogicHandled: true });
+            scene.selectOverlay(overlayId, { ignoreSideEffects: true });
           });
         }
       } catch (error) {
@@ -121,7 +121,7 @@ export const useUnselectVisible = (
 
   return useRecoilCallback(({ snapshot, set }) => async () => {
     if (scene) {
-      scene.clearSelection({ isBridgeLogicHandled: true });
+      scene.clearSelection({ ignoreSideEffects: true });
     }
 
     const selected = await snapshot.getPromise(fos.selectedLabels);

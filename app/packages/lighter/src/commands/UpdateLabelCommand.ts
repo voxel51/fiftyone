@@ -32,5 +32,5 @@ export class UpdateLabelCommand implements Command {
 }
 
 const update = (overlay: BaseOverlay, label: RawLookerLabel) => {
-  overlay.updateLabel(label);
+  overlay.updateLabel?.(label);
 };

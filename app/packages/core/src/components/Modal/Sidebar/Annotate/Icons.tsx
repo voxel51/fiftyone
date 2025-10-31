@@ -2,7 +2,7 @@ import { useTheme } from "@fiftyone/components";
 import {
   LockOpenOutlined,
   LockOutlined,
-  PolylineOutlined,
+  TimelineOutlined as PolylineOutlined,
   VisibilityOffOutlined,
   VisibilityOutlined,
 } from "@mui/icons-material";
@@ -59,7 +59,7 @@ export const Detection = ({ fill }: { fill: string }) => {
 export const Polyline = ({ fill }: { fill: string }) => {
   return (
     <Container>
-      <PolylineOutlined style={{ color: fill }} />
+      <PolylineOutlined sx={{ transform: "rotate(90deg)", color: fill }} />
     </Container>
   );
 };

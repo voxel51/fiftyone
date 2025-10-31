@@ -28,6 +28,9 @@ export default function OperatorExecutionButtonView(props: ViewPropsType) {
     on_error,
     on_success,
     on_option_selected,
+    inside_modal = false,
+    menu_anchor_origin,
+    menu_transform_origin,
   } = view;
   const panelId = usePanelId();
   const variant = getVariant(props);
@@ -95,6 +98,9 @@ export default function OperatorExecutionButtonView(props: ViewPropsType) {
           executionParams={computedParams}
           variant={variant}
           disabled={disabled}
+          insideModal={inside_modal}
+          menuAnchorOrigin={menu_anchor_origin}
+          menuTransformOrigin={menu_transform_origin}
           startIcon={icon_position === "left" ? Icon : undefined}
           endIcon={icon_position === "right" ? Icon : undefined}
           title={description}

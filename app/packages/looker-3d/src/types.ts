@@ -47,6 +47,45 @@ export type AssetLoadingLog = {
   status: "info" | "success" | "error";
 };
 
+/**
+ * Comprehensive loading status enum based on Three.js LoadingManager events
+ * Covers all possible states during asset loading lifecycle
+ */
+export enum LoadingStatus {
+  /** Initial state - no loading has started */
+  IDLE = "idle",
+  /** Loading has been initiated (onStart event) */
+  STARTED = "started",
+  /** Currently loading assets (onProgress event) */
+  LOADING = "loading",
+  /** All loading completed successfully (onLoad event) */
+  SUCCESS = "success",
+  /** Loading failed with error (onError event) */
+  FAILED = "failed",
+  /** Loading was aborted/cancelled */
+  ABORTED = "aborted",
+}
+
+/**
+ * Extended loading status with additional context information
+ * Provides more detailed state for UI components
+ */
+export type LoadingStatusWithContext = {
+  status: LoadingStatus;
+  /** Current progress percentage (0-100) */
+  progress?: number;
+  /** Number of items loaded */
+  itemsLoaded?: number;
+  /** Total number of items to load */
+  itemsTotal?: number;
+  /** Current URL being loaded */
+  currentUrl?: string;
+  /** Error message if status is FAILED */
+  errorMessage?: string;
+  /** Timestamp when status was last updated */
+  timestamp?: number;
+};
+
 export interface BaseOverlayProps {
   opacity: number;
   rotation: THREE.Vector3Tuple;

@@ -107,8 +107,16 @@ const Modal = () => {
     ({ snapshot, set }) =>
       async (e: KeyboardEvent) => {
         const active = document.activeElement;
-        if (active?.tagName === "INPUT") {
-          if ((active as HTMLInputElement).type === "text") {
+        if (
+          active?.tagName === "TEXTAREA" ||
+          active instanceof HTMLTextAreaElement
+        ) {
+          return;
+        }
+
+        if (active?.tagName === "INPUT" || active instanceof HTMLInputElement) {
+          const inputElement = active as HTMLInputElement;
+          if (inputElement.type === "text") {
             return;
           }
         }
@@ -210,6 +218,8 @@ const Modal = () => {
     [onLookerSet]
   );
 
+  const isSidebarVisible = useRecoilValue(fos.sidebarVisible(true));
+
   return ReactDOM.createPortal(
     <modalContext.Provider
       value={{
@@ -230,7 +240,7 @@ const Modal = () => {
           <SpacesContainer>
             <ModalSpace />
           </SpacesContainer>
-          <Sidebar />
+          {isSidebarVisible && <Sidebar />}
           <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_RIGHT} />
 
           {jsonPanel.isOpen && (

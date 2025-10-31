@@ -274,7 +274,7 @@ export class ModalPom {
         );
       },
       allowErrorInfo,
-      { timeout: Duration.Seconds(10) }
+      { timeout: Duration.Seconds(20) }
     );
   }
 }

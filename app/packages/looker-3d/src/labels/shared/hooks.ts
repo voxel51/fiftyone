@@ -3,14 +3,17 @@ import { useMemo, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { use3dLabelColor } from "../../hooks/use-3d-label-color";
 import { useSimilarLabels3d } from "../../hooks/use-similar-labels-3d";
-import { editSegmentsModeAtom, segmentPolylineStateAtom } from "../../state";
+import {
+  editSegmentsModeAtom,
+  isActivelySegmentingSelector,
+} from "../../state";
 import type { BaseOverlayProps, EventHandlers, HoverState } from "../../types";
 
 /**
  * Custom hook for managing hover state and cursor behavior
  */
 export const useHoverState = (): HoverState => {
-  const isSegmenting = useRecoilValue(segmentPolylineStateAtom).isActive;
+  const isSegmenting = useRecoilValue(isActivelySegmentingSelector);
   const [isHovered, setIsHovered] = useState(false);
   const isEditSegmentsMode = useRecoilValue(editSegmentsModeAtom);
 

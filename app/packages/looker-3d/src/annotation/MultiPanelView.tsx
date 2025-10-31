@@ -41,6 +41,7 @@ import {
 import { StatusBar } from "../StatusBar";
 import { AnnotationPlane } from "./AnnotationPlane";
 import { Crosshair3D } from "./Crosshair3D";
+import { AnnotationMultiViewGizmoOverlayWrapper } from "./CustomAnnotationGizmo";
 import { SegmentPolylineRenderer } from "./SegmentPolylineRenderer";
 
 const CANVAS_WRAPPER_ID = "sample3d-canvas-wrapper";
@@ -163,6 +164,154 @@ const calculateCameraPositionForSidePanel = (
   }
 
   return center.clone().add(direction.multiplyScalar(distance));
+};
+
+/**
+ * Calculate camera "up" vector for different side panel views to ensure proper axis alignment
+ */
+const calculateCameraUpForSidePanel = (
+  viewType: ViewType,
+  upVector: Vector3,
+  lookAt: Vector3
+): Vector3 => {
+  const upDir = upVector.clone().normalize();
+
+  switch (viewType) {
+    case "Top": {
+      // For Top view, camera is looking down along upDir
+      // Camera's "up" must be perpendicular to the viewing direction
+      // Find a horizontal vector perpendicular to upDir
+      // Match the convention used by Front/Back views for consistency
+
+      let candidate: Vector3;
+
+      // If upDir is mostly aligned with Y axis (Y-up scene)
+      // Front view looks along +Z, so camera up should be along +Z
+      if (Math.abs(upDir.y) > 0.9) {
+        candidate = new Vector3(0, 0, 1);
+      }
+      // If upDir is mostly aligned with Z axis (Z-up scene)
+      // Camera up should be along +Y
+      else if (Math.abs(upDir.z) > 0.9) {
+        candidate = new Vector3(0, 1, 0);
+      }
+      // If upDir is mostly aligned with X axis (X-up scene)
+      // Use Y axis as candidate
+      else if (Math.abs(upDir.x) > 0.9) {
+        candidate = new Vector3(0, 1, 0);
+      }
+      // General case: use a vector perpendicular to upDir
+      else {
+        // Find a vector perpendicular to upDir using cross product
+        const temp = new Vector3(0, 1, 0);
+        if (Math.abs(upDir.dot(temp)) > 0.9) {
+          temp.set(1, 0, 0);
+        }
+        candidate = new Vector3().crossVectors(temp, upDir).normalize();
+      }
+
+      // Project candidate onto plane perpendicular to upDir
+      // This gives us a vector perpendicular to upDir
+      const projection = candidate
+        .clone()
+        .sub(upDir.clone().multiplyScalar(candidate.dot(upDir)))
+        .normalize();
+
+      // If projection is too small (nearly parallel), try another axis
+      if (projection.length() < 0.1) {
+        // Try different axes as fallback
+        const fallback =
+          Math.abs(upDir.y) > 0.9
+            ? new Vector3(1, 0, 0) // For Y-up, try X
+            : new Vector3(0, 0, 1); // Otherwise try Z
+        const fallbackProjection = fallback
+          .clone()
+          .sub(upDir.clone().multiplyScalar(fallback.dot(upDir)))
+          .normalize();
+        return fallbackProjection.length() > 0.1
+          ? fallbackProjection
+          : new Vector3(0, 0, 1);
+      }
+
+      return projection;
+    }
+    case "Bottom": {
+      // For Bottom view, camera is looking up along -upDir
+      // Camera's "up" must be perpendicular to the viewing direction
+      // Use similar logic to Top but apply cross product to maintain correct orientation
+
+      let candidate: Vector3;
+
+      // Match Top view logic for candidate selection
+      // If upDir is mostly aligned with Y axis (Y-up scene)
+      // Front view looks along +Z, so camera up should be along +Z
+      if (Math.abs(upDir.y) > 0.9) {
+        candidate = new Vector3(0, 0, 1);
+      }
+      // If upDir is mostly aligned with Z axis (Z-up scene)
+      // Camera up should be along +Y
+      else if (Math.abs(upDir.z) > 0.9) {
+        candidate = new Vector3(0, 1, 0);
+      }
+      // If upDir is mostly aligned with X axis (X-up scene)
+      // Use Y axis as candidate
+      else if (Math.abs(upDir.x) > 0.9) {
+        candidate = new Vector3(0, 1, 0);
+      }
+      // General case: use a vector perpendicular to upDir
+      else {
+        const temp = new Vector3(0, 1, 0);
+        if (Math.abs(upDir.dot(temp)) > 0.9) {
+          temp.set(1, 0, 0);
+        }
+        candidate = new Vector3().crossVectors(temp, upDir).normalize();
+      }
+
+      const projection = candidate
+        .clone()
+        .sub(upDir.clone().multiplyScalar(candidate.dot(upDir)))
+        .normalize();
+
+      if (projection.length() < 0.1) {
+        const fallback =
+          Math.abs(upDir.y) > 0.9 ? new Vector3(1, 0, 0) : new Vector3(0, 0, 1);
+        const fallbackProjection = fallback
+          .clone()
+          .sub(upDir.clone().multiplyScalar(fallback.dot(upDir)))
+          .normalize();
+        if (fallbackProjection.length() > 0.1) {
+          // Apply cross product for Bottom view orientation
+          const right = new Vector3()
+            .crossVectors(fallbackProjection, upDir)
+            .normalize();
+          const bottomUp = new Vector3()
+            .crossVectors(right, upDir.clone().negate())
+            .normalize();
+          return bottomUp.length() > 0.1 ? bottomUp : fallbackProjection;
+        }
+        return new Vector3(0, 0, 1);
+      }
+
+      // For Bottom view, use cross product to get correct orientation
+      // Cross product with upDir to get a right vector, then use that to determine orientation
+      const right = new Vector3().crossVectors(projection, upDir).normalize();
+      // Use the right vector crossed with the viewing direction (-upDir) to get the proper up
+      const bottomUp = new Vector3()
+        .crossVectors(right, upDir.clone().negate())
+        .normalize();
+
+      return bottomUp.length() > 0.1 ? bottomUp : projection;
+    }
+    case "Left":
+    case "Right":
+    case "Front":
+    case "Back":
+      // For these views, camera is looking perpendicular to upDir
+      // Camera's "up" should be along upDir (or its appropriate orientation)
+      return upDir.clone();
+    default:
+      return upDir.clone();
+  }
 };
 
 type ViewType = "Top" | "Bottom" | "Left" | "Right" | "Front" | "Back";
@@ -358,6 +507,10 @@ const MainPanel = ({
           cameraRef={cameraRef}
         />
       </View>
+      <AnnotationMultiViewGizmoOverlayWrapper
+        mainCamera={cameraRef}
+        cameraControlsRef={cameraControlsRef}
+      />
     </MainPanelContainer>
   );
 };
@@ -396,6 +549,14 @@ const SidePanel = ({
     [view, upVector, lookAt, sceneBoundingBox]
   );
 
+  const cameraUp = useMemo(
+    () =>
+      upVector && lookAt
+        ? calculateCameraUpForSidePanel(view, upVector, lookAt)
+        : new Vector3(0, 1, 0),
+    [view, upVector, lookAt]
+  );
+
   const theme = useTheme();
 
   const cameraRef = useRef<THREE.OrthographicCamera>();
@@ -408,6 +569,16 @@ const SidePanel = ({
     const timer = setTimeout(() => setObserve(false), 1000);
     return () => clearTimeout(timer);
   }, []);
+
+  // Update camera to look at the scene center and use correct up vector
+  useEffect(() => {
+    if (cameraRef.current && lookAt && upVector) {
+      cameraRef.current.position.copy(position);
+      cameraRef.current.up.copy(cameraUp);
+      cameraRef.current.lookAt(lookAt);
+      cameraRef.current.updateProjectionMatrix();
+    }
+  }, [position, cameraUp, lookAt, upVector]);
 
   return (
     <SidePanelContainer id={`${which}-panel`} $area={which}>
@@ -424,7 +595,7 @@ const SidePanel = ({
           makeDefault
           ref={cameraRef}
           position={position}
-          up={upVector ?? [0, 1, 0]}
+          up={cameraUp.toArray() as [number, number, number]}
         />
         <MapControls makeDefault screenSpacePanning enableRotate={false} />
         <Bounds fit clip observe={observe} margin={1.25}>
@@ -474,6 +645,8 @@ const SidePanel = ({
             },
           }}
         >
+          <MenuItem value="Top">Top</MenuItem>
+          <MenuItem value="Bottom">Bottom</MenuItem>
           <MenuItem value="Left">Left</MenuItem>
           <MenuItem value="Right">Right</MenuItem>
           <MenuItem value="Front">Front</MenuItem>

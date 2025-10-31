@@ -88,7 +88,7 @@ export const useOutsideClick = (
   useEventHandler(document, eventName, handleOutsideClick, true);
 };
 
-export const useFollow = (leaderRef, followerRef, set) => {
+export const useFollow = (leaderRef, followerRef, api) => {
   const follow = () => {
     if (
       !leaderRef ||
@@ -102,7 +102,7 @@ export const useFollow = (leaderRef, followerRef, set) => {
     const { x: leaderX, width: leaderWidth } =
       leaderRef.current.getBoundingClientRect();
 
-    set({
+    api.start({
       left: x,
       top: y,
       opacity: x - leaderX < 0 || x > leaderX + leaderWidth ? 0 : 1,
