@@ -441,3 +441,139 @@ export const isValidPolylineSegment = (
     segment.every(isValidPoint3d)
   );
 };
+
+/**
+ * Computes an axis-aligned bounding box for a flat array of 3D points.
+ * Returns the center location and dimensions.
+ */
+export const getAxisAlignedBoundingBoxForPoints3d = (
+  points3d: Vector3Tuple[]
+): { location: Vector3Tuple; dimensions: Vector3Tuple } => {
+  if (!points3d || points3d.length === 0) {
+    return {
+      location: [0, 0, 0],
+      dimensions: [0, 0, 0],
+    };
+  }
+
+  const validPoints = points3d.filter(
+    (pt) =>
+      pt &&
+      Array.isArray(pt) &&
+      pt.length === 3 &&
+      pt.every((v) => typeof v === "number" && isFinite(v))
+  );
+
+  if (validPoints.length === 0) {
+    return {
+      location: [0, 0, 0],
+      dimensions: [0, 0, 0],
+    };
+  }
+
+  let minX = Infinity,
+    minY = Infinity,
+    minZ = Infinity;
+  let maxX = -Infinity,
+    maxY = -Infinity,
+    maxZ = -Infinity;
+
+  for (const [x, y, z] of validPoints) {
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    minZ = Math.min(minZ, z);
+    maxX = Math.max(maxX, x);
+    maxY = Math.max(maxY, y);
+    maxZ = Math.max(maxZ, z);
+  }
+
+  const centerX = (minX + maxX) / 2;
+  const centerY = (minY + maxY) / 2;
+  const centerZ = (minZ + maxZ) / 2;
+
+  const width = maxX - minX;
+  const height = maxY - minY;
+  const depth = maxZ - minZ;
+
+  return {
+    location: [centerX, centerY, centerZ],
+    dimensions: [width, height, depth],
+  };
+};
+
+/**
+ * Calculates an optimal camera position for viewing a 3D scene based on an up vector.
+ *
+ * The function positions a camera to view a bounding box (defined by center and size)
+ * from a perspective that respects the specified up vector direction. It supports two
+ * view types: "top" for a directly overhead view, and "pov" for a perspective view
+ * at a slight angle (specifically optimized for automotive/ego-centric scenes).
+ *
+ * @param center - The center point of the bounding box to frame
+ * @param size - The dimensions (width, height, depth) of the bounding box
+ * @param upVector - The desired up direction for the camera (will be normalized)
+ * @param distanceMultiplier - Multiplier for the base distance (default: 2.5).
+ *                              Distance is calculated as max(size.x, size.y, size.z) * multiplier
+ * @param viewType - Type of view: "top" for overhead view along up vector,
+ *                   or "pov" for perspective view at ~5-degree angle (default: "pov")
+ *
+ * @returns A Vector3 representing the calculated camera position
+ * ```
+ */
+export const calculateCameraPositionForUpVector = (
+  center: Vector3,
+  size: Vector3,
+  upVector: Vector3,
+  distanceMultiplier: number = 2.5,
+  viewType: "top" | "pov" = "pov"
+): Vector3 => {
+  const maxSize = Math.max(size.x, size.y, size.z);
+  const distance = maxSize * distanceMultiplier;
+
+  const upDir = upVector.clone().normalize();
+
+  if (viewType === "top") {
+    // camera positioned directly above/below along the up vector
+    return center.clone().add(upDir.multiplyScalar(distance));
+  }
+
+  // pov view - camera positioned at a ~5-degree angle for more natural perspective
+  const angle = Math.PI / 32;
+
+  // division by arbitrary numbers to make the camera position more natural for "automotive-centered" ego view
+  // note: this is not a perfect solution as it doesn't account for non-automotive scenes
+  // but "ego" view is a special case more natural to automotive scenes
+  // ideally we want three views, ego, top, and pov...
+  // for now we have only ego/pov + top
+  const verticalDist = Math.abs(Math.sin(angle) * distance) / 6;
+  const horizontalDist = Math.abs(Math.cos(angle) * distance) / 15;
+
+  // 1. choose a world-forward direction (Y up ideally, else X)
+  let worldForward = new Vector3(0, 1, 0);
+  if (Math.abs(upDir.dot(worldForward)) > 0.999) {
+    worldForward.set(1, 0, 0);
+  }
+  // If Z is up, use -Y as world forward to ensure +X is on the right
+  if (upDir.equals(new Vector3(0, 0, 1))) {
+    worldForward.set(0, -1, 0);
+  }
+  // If Y is up, use Z as world forward to ensure +X is on the right
+  else if (upDir.equals(new Vector3(0, 1, 0))) {
+    worldForward.set(0, 0, 1);
+  }
+  // If X is up, use Y as world forward to ensure +Z is on the right (this is arbitrary)
+  else if (upDir.equals(new Vector3(1, 0, 0))) {
+    worldForward.set(0, 1, 0);
+  }
+
+  // 2. project that forward into the horizontal plane (perp. to upDir)
+  const proj = worldForward
+    .clone()
+    .sub(upDir.clone().multiplyScalar(worldForward.dot(upDir)))
+    .normalize();
+
+  // 3. build camera position: center + up‐offset + horizontal‐offset
+  return new Vector3(0, 0, 0)
+    .add(upDir.multiplyScalar(verticalDist))
+    .add(proj.multiplyScalar(horizontalDist));
+};
