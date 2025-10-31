@@ -1,3 +1,5 @@
+import * as fos from "@fiftyone/state";
+import { Line as LineDrei } from "@react-three/drei";
 import { ThreeEvent } from "@react-three/fiber";
 import chroma from "chroma-js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -5,20 +7,20 @@ import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import type { Vector3Tuple } from "three";
 import * as THREE from "three";
 import {
+  currentActiveAnnotationField3dAtom,
   editSegmentsModeAtom,
   hoveredLabelAtom,
-  hoveredPolylineInfoAtom,
-  polylineEffectivePointsAtom,
   polylinePointTransformsAtom,
+  selectedPolylineVertexAtom,
   tempLabelTransformsAtom,
+  tempVertexTransformsAtom,
 } from "../state";
 import { PolylinePointMarker } from "./PolylinePointMarker";
 import {
   applyDeltaToAllPoints,
-  applyTransformsToPolyline,
   findClickedSegment,
   insertVertexInSegment,
-  updateDuplicateVertices,
+  updateVertexPosition,
 } from "./utils/polyline-utils";
 
 interface UsePolylineAnnotationProps {
@@ -36,18 +38,17 @@ export const usePolylineAnnotation = ({
   isAnnotateMode,
   isSelectedForAnnotation,
 }: UsePolylineAnnotationProps) => {
+  const currentSampleId = useRecoilValue(fos.currentSampleId);
+  const currentActiveField = useRecoilValue(currentActiveAnnotationField3dAtom);
   const [polylinePointTransforms, setPolylinePointTransforms] = useRecoilState(
     polylinePointTransformsAtom
   );
 
+  const selectedPoint = useRecoilValue(selectedPolylineVertexAtom);
+
   const editSegmentsMode = useRecoilValue(editSegmentsModeAtom);
 
   const setHoveredLabel = useSetRecoilState(hoveredLabelAtom);
-  const setHoveredPolylineInfo = useSetRecoilState(hoveredPolylineInfoAtom);
-
-  const [effectivePoints3d, setPolylineEffectivePoints] = useRecoilState(
-    polylineEffectivePointsAtom(label._id)
-  );
 
   const setTempPolylineTransforms = useSetRecoilState(
     tempLabelTransformsAtom(label._id)
@@ -57,26 +58,10 @@ export const usePolylineAnnotation = ({
   const contentRef = useRef<THREE.Group>(null);
   const [startMatrix, setStartMatrix] = useState<THREE.Matrix4 | null>(null);
 
-  const updateEffectivePoints = useCallback(() => {
-    const labelId = label._id;
-    const transforms = polylinePointTransforms[labelId] || [];
-    const result = applyTransformsToPolyline(points3d, transforms);
-    setPolylineEffectivePoints(result);
-  }, [
-    polylinePointTransforms,
-    label._id,
-    points3d,
-    setPolylineEffectivePoints,
-  ]);
-
-  useEffect(() => {
-    updateEffectivePoints();
-  }, [updateEffectivePoints]);
-
   const centroid = useMemo(() => {
-    if (effectivePoints3d.length === 0) return [0, 0, 0];
+    if (points3d.length === 0) return [0, 0, 0];
 
-    const allPoints = effectivePoints3d.flat();
+    const allPoints = points3d.flat();
     if (allPoints.length === 0) return [0, 0, 0];
 
     const sum = allPoints.reduce(
@@ -89,7 +74,7 @@ export const usePolylineAnnotation = ({
       sum[1] / allPoints.length,
       sum[2] / allPoints.length,
     ] as [number, number, number];
-  }, [effectivePoints3d]);
+  }, [points3d]);
 
   const pointMarkers = useMemo(() => {
     if (!isAnnotateMode || !isSelectedForAnnotation) return null;
@@ -106,7 +91,7 @@ export const usePolylineAnnotation = ({
     // This ensures that shared vertices between segments only get one draggable marker
     const visitedPoints = new Set<string>();
 
-    return effectivePoints3d.flatMap((segment, segmentIndex) => {
+    return points3d.flatMap((segment, segmentIndex) => {
       return segment.map((point, pointIndex) => {
         // Note: important to use a key based only on coordinates (not segment/point indices)
         // This allows proper deduplication of vertices that appear in multiple segments
@@ -129,21 +114,29 @@ export const usePolylineAnnotation = ({
             labelId={label._id}
             segmentIndex={segmentIndex}
             pointIndex={pointIndex}
+            tooltipDescriptor="Vertex"
             onPointMove={(newPosition) => {
               setPolylinePointTransforms((prev) => {
                 const labelId = label._id;
-                const currentTransforms = prev[labelId] || [];
+                const currentSegments = prev[labelId]?.segments || [];
 
-                const newTransforms = updateDuplicateVertices(
-                  point,
+                const newSegments = updateVertexPosition(
+                  points3d,
+                  currentSegments,
+                  segmentIndex,
+                  pointIndex,
                   [newPosition.x, newPosition.y, newPosition.z],
-                  effectivePoints3d,
-                  currentTransforms
+                  // Update shared vertices
+                  true
                 );
 
                 return {
                   ...prev,
-                  [labelId]: newTransforms,
+                  [labelId]: {
+                    segments: newSegments,
+                    path: prev[labelId]?.path ?? currentActiveField,
+                    sampleId: prev[labelId]?.sampleId ?? currentSampleId,
+                  },
                 };
               });
             }}
@@ -155,10 +148,11 @@ export const usePolylineAnnotation = ({
   }, [
     isAnnotateMode,
     isSelectedForAnnotation,
-    effectivePoints3d,
+    points3d,
     label._id,
     strokeAndFillColor,
-    setPolylinePointTransforms,
+    currentActiveField,
+    currentSampleId,
   ]);
 
   const centroidMarker = useMemo(() => {
@@ -181,6 +175,7 @@ export const usePolylineAnnotation = ({
         labelId={label._id}
         segmentIndex={-1}
         pointIndex={-1}
+        tooltipDescriptor="Centroid"
       />
     );
   }, [
@@ -244,16 +239,22 @@ export const usePolylineAnnotation = ({
 
     setPolylinePointTransforms((prev) => {
       const labelId = label._id;
-      const currentTransforms = prev[labelId] || [];
 
-      const newTransforms = applyDeltaToAllPoints(
-        effectivePoints3d,
-        points3d,
-        currentTransforms,
-        [worldDelta.x, worldDelta.y, worldDelta.z]
-      );
+      const newSegments = applyDeltaToAllPoints(points3d, [
+        worldDelta.x,
+        worldDelta.y,
+        worldDelta.z,
+      ]);
 
-      return { ...prev, [labelId]: newTransforms };
+      return {
+        ...prev,
+        [labelId]: {
+          ...(prev[labelId] ?? {}),
+          segments: newSegments,
+          path: currentActiveField || "",
+          sampleId: currentSampleId,
+        },
+      };
     });
 
     // Reset group position to prevent double-application
@@ -265,11 +266,13 @@ export const usePolylineAnnotation = ({
 
     setStartMatrix(null);
   }, [
+    currentSampleId,
+    currentActiveField,
     label._id,
     points3d,
-    effectivePoints3d,
     setPolylinePointTransforms,
     startMatrix,
+    setTempPolylineTransforms,
   ]);
 
   const handlePointerOver = useCallback(() => {
@@ -287,29 +290,19 @@ export const usePolylineAnnotation = ({
   const handleSegmentPointerOver = useCallback(
     (segmentIndex: number) => {
       if (isAnnotateMode) {
-        setHoveredPolylineInfo({
-          labelId: label._id,
-          segmentIndex,
-          // pointIndex is undefined when hovering over the segment
-        });
-
         if (editSegmentsMode) {
           document.body.style.cursor = "crosshair";
         }
       }
     },
-    [isAnnotateMode, setHoveredPolylineInfo, label._id, editSegmentsMode]
+    [isAnnotateMode, label._id, editSegmentsMode]
   );
 
   const handleSegmentPointerOut = useCallback(() => {
-    if (isAnnotateMode) {
-      setHoveredPolylineInfo(null);
-    }
-
     if (!editSegmentsMode) {
       document.body.style.cursor = "default";
     }
-  }, [isAnnotateMode, setHoveredPolylineInfo, editSegmentsMode]);
+  }, [isAnnotateMode, editSegmentsMode]);
 
   const handleSegmentClick = useCallback(
     (event: ThreeEvent<MouseEvent>) => {
@@ -328,7 +321,7 @@ export const usePolylineAnnotation = ({
 
       // Find which segment was clicked
       const clickResult = findClickedSegment(
-        effectivePoints3d,
+        points3d,
         clickPosition,
         // Distance threshold
         0.2
@@ -340,24 +333,29 @@ export const usePolylineAnnotation = ({
         // Insert the new vertex into the segment
         setPolylinePointTransforms((prev) => {
           const labelId = label._id;
-          const currentTransforms = prev[labelId] || [];
+          const currentSegments = prev[labelId]?.segments || [];
 
-          const newTransforms = insertVertexInSegment(
+          const newSegments = insertVertexInSegment(
             points3d,
-            currentTransforms,
+            currentSegments,
             segmentIndex,
-            newVertexPosition
+            newVertexPosition,
+            clickPosition
           );
 
-          // If newTransforms is null, it means the new vertex was too close to an existing vertex
+          // If newSegments is null, it means the new vertex was too close to an existing vertex
           // In that case, we don't update the transforms
-          if (newTransforms === null) {
+          if (newSegments === null) {
             return prev;
           }
 
           return {
             ...prev,
-            [labelId]: newTransforms,
+            [labelId]: {
+              segments: newSegments,
+              path: prev[labelId].path ?? currentActiveField,
+              sampleId: prev[labelId].sampleId ?? currentSampleId,
+            },
           };
         });
       }
@@ -366,12 +364,104 @@ export const usePolylineAnnotation = ({
       editSegmentsMode,
       isSelectedForAnnotation,
       isAnnotateMode,
-      effectivePoints3d,
       points3d,
       label._id,
-      setPolylinePointTransforms,
+      currentActiveField,
+      currentSampleId,
     ]
   );
+
+  // Get temp transforms for the selected vertex if it belongs to this label
+  // Always call the hook, but use a dummy key if no vertex is selected
+  const vertexKey =
+    selectedPoint && selectedPoint.labelId === label._id
+      ? `${label._id}-${selectedPoint.segmentIndex}-${selectedPoint.pointIndex}`
+      : // Dummy key that won't match any real vertex
+        `${label._id}--1--1`;
+
+  const tempTransforms = useRecoilValue(tempVertexTransformsAtom(vertexKey));
+
+  // Only use temp transforms if they actually belong to the selected vertex
+  const relevantTempTransforms =
+    selectedPoint && selectedPoint.labelId === label._id && tempTransforms
+      ? tempTransforms
+      : null;
+
+  // Render preview lines when a vertex is being transformed
+  const previewLines = useMemo(() => {
+    if (!isAnnotateMode || !isSelectedForAnnotation) return null;
+    if (!selectedPoint || selectedPoint.labelId !== label._id) return null;
+    if (!relevantTempTransforms?.position) return null;
+
+    const { segmentIndex, pointIndex } = selectedPoint;
+
+    const currentSegments = polylinePointTransforms?.[label._id]?.segments;
+    const segmentData =
+      currentSegments?.[segmentIndex] || points3d[segmentIndex];
+
+    if (!segmentData) return null;
+
+    const segmentPoints = Array.isArray(segmentData)
+      ? segmentData
+      : segmentData.points;
+
+    if (!segmentPoints || segmentPoints.length === 0) return null;
+
+    // tempVertexTransforms.position is an offset from the original position
+    // We need to add it to the original position to get the actual world position
+    const originalPosition = points3d[segmentIndex][pointIndex];
+    const tempOffset = relevantTempTransforms.position;
+    const tempPosition: Vector3Tuple = [
+      originalPosition[0] + tempOffset[0],
+      originalPosition[1] + tempOffset[1],
+      originalPosition[2] + tempOffset[2],
+    ];
+
+    const previewLinesArray = [];
+
+    // Line from previous vertex (old vertex) to temp position (currently-being-transformed vertex)
+    if (pointIndex > 0) {
+      const prevPoint = segmentPoints[pointIndex - 1];
+      previewLinesArray.push(
+        <LineDrei
+          key={`preview-prev-${vertexKey}`}
+          points={[prevPoint, tempPosition]}
+          color="#ff0000"
+          lineWidth={2}
+          dashed
+          dashSize={0.1}
+          gapSize={0.1}
+        />
+      );
+    }
+
+    // Line from temp position (currently-being-transformed vertex) to next vertex
+    if (pointIndex < segmentPoints.length - 1) {
+      const nextPoint = segmentPoints[pointIndex + 1];
+      previewLinesArray.push(
+        <LineDrei
+          key={`preview-next-${vertexKey}`}
+          points={[tempPosition, nextPoint]}
+          color="#ff0000"
+          lineWidth={2}
+          dashed
+          dashSize={0.1}
+          gapSize={0.1}
+        />
+      );
+    }
+
+    return previewLinesArray.length > 0 ? previewLinesArray : null;
+  }, [
+    isAnnotateMode,
+    isSelectedForAnnotation,
+    selectedPoint,
+    label._id,
+    points3d,
+    polylinePointTransforms,
+    relevantTempTransforms,
+    vertexKey,
+  ]);
 
   const markers = useMemo(() => {
     if (!isAnnotateMode || !isSelectedForAnnotation) return null;
@@ -386,7 +476,6 @@ export const usePolylineAnnotation = ({
 
   return {
     // State
-    effectivePoints3d,
     centroid,
     isAnnotateMode,
     isSelectedForAnnotation,
@@ -397,6 +486,9 @@ export const usePolylineAnnotation = ({
 
     // Markers
     markers,
+
+    // Preview lines
+    previewLines,
 
     // Handlers
     handleTransformStart,

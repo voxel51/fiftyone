@@ -36,6 +36,9 @@ import {
  * @param executorOptions Operator executor options
  * @param onOptionSelected Callback for execution option selection
  * @param disabled If true, context menu will never open
+ * @param insideModal If true, elevate menu z-index to appear above modals
+ * @param menuAnchorOrigin Controls where the menu attaches to the anchor
+ * @param menuTransformOrigin Controls which point of the menu aligns with anchor
  */
 export const OperatorExecutionTrigger = ({
   operatorUri,
@@ -46,6 +49,9 @@ export const OperatorExecutionTrigger = ({
   executorOptions,
   onOptionSelected,
   disabled,
+  insideModal,
+  menuAnchorOrigin,
+  menuTransformOrigin,
   children,
   ...props
 }: {
@@ -58,6 +64,15 @@ export const OperatorExecutionTrigger = ({
   executorOptions?: OperatorExecutorOptions;
   onOptionSelected?: (option: OperatorExecutionOption) => void;
   disabled?: boolean;
+  insideModal?: boolean;
+  menuAnchorOrigin?: {
+    vertical: "top" | "bottom" | "center";
+    horizontal: "left" | "right" | "center";
+  };
+  menuTransformOrigin?: {
+    vertical: "top" | "bottom" | "center";
+    horizontal: "left" | "right" | "center";
+  };
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   // Anchor to use for context menu
@@ -110,6 +125,9 @@ export const OperatorExecutionTrigger = ({
         onClose={() => setIsMenuOpen(false)}
         onOptionClick={onOptionSelected}
         executionOptions={executionOptions}
+        insideModal={insideModal}
+        anchorOrigin={menuAnchorOrigin}
+        transformOrigin={menuTransformOrigin}
       />
     </>
   );

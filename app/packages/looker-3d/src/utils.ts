@@ -2,9 +2,9 @@ import {
   Box3,
   type BufferAttribute,
   type Camera,
-  type InterleavedBufferAttribute,
   Euler,
   type EulerOrder,
+  type InterleavedBufferAttribute,
   Plane,
   Quaternion,
   type Raycaster,
@@ -391,3 +391,53 @@ export function quaternionToEuler(
     (euler.z * 180) / Math.PI,
   ];
 }
+
+/**
+ * Validates a single 3D point to ensure it's a valid array of 3 numbers
+ */
+export const isValidPoint3d = (point: unknown): point is Vector3Tuple => {
+  return (
+    point !== null &&
+    point !== undefined &&
+    Array.isArray(point) &&
+    point.length === 3 &&
+    point.every(
+      (coord) => typeof coord === "number" && !isNaN(coord) && isFinite(coord)
+    )
+  );
+};
+
+/**
+ * Validates an array of 3D points and filters out invalid ones
+ */
+export const validatePoints3d = (points: unknown[]): Vector3Tuple[] => {
+  return points.filter(isValidPoint3d);
+};
+
+/**
+ * Validates a points3d array (array of point arrays) and filters out invalid segments
+ */
+export const validatePoints3dArray = (
+  points3d: Vector3Tuple[][]
+): Vector3Tuple[][] => {
+  return points3d.filter(
+    (pts) =>
+      pts && Array.isArray(pts) && pts.length >= 3 && pts.every(isValidPoint3d)
+  );
+};
+
+/**
+ * Validates a single segment (array of points) for polyline rendering
+ * This is used in index.tsx for filtering segments
+ */
+export const isValidPolylineSegment = (
+  segment: unknown
+): segment is Vector3Tuple[] => {
+  return (
+    segment !== null &&
+    segment !== undefined &&
+    Array.isArray(segment) &&
+    segment.length > 0 &&
+    segment.every(isValidPoint3d)
+  );
+};

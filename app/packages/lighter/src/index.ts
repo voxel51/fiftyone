@@ -10,6 +10,7 @@ export { Scene2D } from "./core/Scene2D";
 export type { Scene2DConfig } from "./core/SceneConfig";
 
 // Renderer exports
+export { MockRenderer2D } from "./renderer/MockRenderer2D";
 export { PixiRenderer2D } from "./renderer/PixiRenderer2D";
 export type { Renderer2D } from "./renderer/Renderer2D";
 
@@ -29,6 +30,7 @@ export const overlayFactory = OverlayFactory.createWithBuiltIns();
 
 // Resource exports
 export { globalPixiResourceLoader } from "./resource/GlobalPixiResourceLoader";
+export { MockResourceLoader } from "./resource/MockResourceLoader";
 export { PixiResourceLoader } from "./resource/PixiResourceLoader";
 export type { ResourceLoader } from "./resource/ResourceLoader";
 

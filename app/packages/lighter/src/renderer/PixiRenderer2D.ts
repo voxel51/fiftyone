@@ -185,7 +185,7 @@ export class PixiRenderer2D implements Renderer2D {
     color: number | string,
     containerId: string
   ): void {
-    width *= HANDLE_FACTOR;
+    width *= HANDLE_FACTOR / this.getScale();
     const graphics = new PIXI.Graphics();
     const outline = (2 * HANDLE_OUTLINE) / this.getScale();
 
@@ -196,6 +196,7 @@ export class PixiRenderer2D implements Renderer2D {
   }
 
   drawScrim(bounds: Rect, borderWidth: number, containerId: string): void {
+    borderWidth /= this.getScale();
     const sceneDimensions = this.getContainerDimensions();
     const mask = new PIXI.Graphics();
 

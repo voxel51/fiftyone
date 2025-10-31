@@ -27,7 +27,12 @@ def _create_dummy_instance(cls_type: type) -> dict:
 
 class CustomEmbeddedDoc(fo.EmbeddedDocument):
     classification = fo.EmbeddedDocumentField(document_type=fo.Classification)
+    classifications = fo.EmbeddedDocumentField(
+        document_type=fo.Classifications
+    )
+    detection = fo.EmbeddedDocumentField(document_type=fo.Detection)
     detections = fo.EmbeddedDocumentField(document_type=fo.Detections)
+    polyline = fo.EmbeddedDocumentField(document_type=fo.Polyline)
     polylines = fo.EmbeddedDocumentField(document_type=fo.Polylines)
 
 
@@ -115,7 +120,18 @@ class TestSampleRoutes:
             fol.Classification,
         )
         dataset.add_sample_field(
+            "empty_classifications",
+            fo.EmbeddedDocumentField,
+            fol.Classifications,
+        )
+        dataset.add_sample_field(
+            "empty_detection", fo.EmbeddedDocumentField, fol.Detection
+        )
+        dataset.add_sample_field(
             "empty_detections", fo.EmbeddedDocumentField, fol.Detections
+        )
+        dataset.add_sample_field(
+            "empty_polyline", fo.EmbeddedDocumentField, fol.Polyline
         )
         dataset.add_sample_field(
             "empty_polylines", fo.EmbeddedDocumentField, fol.Polylines
@@ -442,13 +458,18 @@ class TestSampleRoutes:
     async def test_patch_init_fields(self, mutator, mock_request, sample):
         new_classification = _create_dummy_instance(fol.Classification)
         new_detection = _create_dummy_instance(fol.Detection)
-        new_polylines = _create_dummy_instance(fol.Polyline)
+        new_polyline = _create_dummy_instance(fol.Polyline)
 
         patch_payload = [
             {
                 "op": "add",
-                "path": "/empty_classification/_id",
-                "value": new_classification["_id"],
+                "path": "/empty_classification",
+                "value": new_classification,
+            },
+            {
+                "op": "add",
+                "path": "/empty_classifications/classifications/0",
+                "value": new_classification,
             },
             {
                 "op": "add",
@@ -457,8 +478,18 @@ class TestSampleRoutes:
             },
             {
                 "op": "add",
+                "path": "/empty_detection",
+                "value": new_detection,
+            },
+            {
+                "op": "add",
                 "path": "/empty_polylines/polylines/0",
-                "value": new_polylines,
+                "value": new_polyline,
+            },
+            {
+                "op": "add",
+                "path": "/empty_polyline",
+                "value": new_polyline,
             },
             {
                 "op": "add",
@@ -494,11 +525,15 @@ class TestSampleRoutes:
 
         assert response_dict["empty_classification"] == new_classification
         assert (
+            response_dict["empty_classifications"]["classifications"][0]
+            == new_classification
+        )
+        assert response_dict["empty_detection"] == new_detection
+        assert (
             response_dict["empty_detections"]["detections"][0] == new_detection
         )
-        assert (
-            response_dict["empty_polylines"]["polylines"][0] == new_polylines
-        )
+        assert response_dict["empty_polyline"] == new_polyline
+        assert response_dict["empty_polylines"]["polylines"][0] == new_polyline
         assert response_dict["empty_primitive"] == "new primitive"
         assert (
             response_dict["custom_doc"]["detections"]["detections"][0]

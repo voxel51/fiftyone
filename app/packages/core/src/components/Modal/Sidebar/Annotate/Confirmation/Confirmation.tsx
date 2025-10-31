@@ -11,8 +11,10 @@ export const ConfirmationContext = createContext({
   onExit: () => {},
 });
 
-export default function Confirmation({ children }: PropsWithChildren<{}>) {
-  const { confirmDelete, DeleteModal } = useConfirmDelete(useDelete());
+export default function Confirmation({ children }: PropsWithChildren) {
+  const onDelete = useDelete();
+
+  const { confirmDelete, DeleteModal } = useConfirmDelete(onDelete);
   const { confirmExit, ExitChangesModal } = useConfirmExit(
     useExit(),
     useSave()

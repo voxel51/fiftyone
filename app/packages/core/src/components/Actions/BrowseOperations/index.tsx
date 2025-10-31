@@ -14,7 +14,7 @@ export default ({
     <ActionDiv {...(getStringAndNumberProps(adaptiveMenuItemProps) || {})}>
       <PillButton
         open={false}
-        highlight={true}
+        highlight={browser.isVisible}
         icon={<List />}
         onClick={() => {
           browser.toggle();

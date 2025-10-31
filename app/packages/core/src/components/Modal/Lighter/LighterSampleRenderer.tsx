@@ -45,12 +45,18 @@ export const LighterSampleRenderer = ({
   // Get access to the lighter instance
   const { scene, isReady, addOverlay } = useLighter();
 
+  // use a ref for the sample data, effects do not run solely because the
+  // sample changed
+  const sampleRef = useRef(sample);
+  sampleRef.current = sample;
+
   /**
    * This effect is responsible for loading the sample and adding the overlays to the scene.
    */
   useEffect(() => {
     if (!isReady || !scene) return;
 
+    const sample = sampleRef.current;
     const mediaUrl =
       sample.urls.length > 0 && sample.urls[0].url
         ? getSampleSrc(sample.urls[0].url)
@@ -69,14 +75,15 @@ export const LighterSampleRenderer = ({
       // Set the image overlay as canonical media for coordinate transformations
       scene.setCanonicalMedia(mediaOverlay);
     }
-  }, [isReady, addOverlay, sample, scene]);
+  }, [isReady, addOverlay, scene]);
 
   useEffect(() => {
     // sceneId should be deterministic, but unique for a given sample snapshot
+    const sample = sampleRef.current;
     setSceneId(
       `${sample?.sample?._id}-${sample?.sample?.last_modified_at?.datetime}`
     );
-  }, [sample]);
+  }, []);
 
   return (
     <div
@@ -91,7 +98,7 @@ export const LighterSampleRenderer = ({
         flexDirection: "column",
       }}
     >
-      {containerRef.current && (
+      {containerRef.current && sceneId && (
         <LighterSetupImpl containerRef={containerRef} sceneId={sceneId} />
       )}
     </div>
