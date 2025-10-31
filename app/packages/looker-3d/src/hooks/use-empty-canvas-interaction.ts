@@ -1,6 +1,8 @@
 import { useThree } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
-import * as THREE from "three";
+import { useCallback, useEffect, useRef } from "react";
+import { useRecoilValue, useSetRecoilState } from "recoil";
+import { CanvasInteractionSubscriptionPayload } from "../annotation/types";
+import { emptyCanvasInteractionSubscriptionsAtom } from "../state";
 import {
   createPlane,
   getPlaneIntersection,
@@ -8,95 +10,135 @@ import {
   toNDC,
 } from "../utils";
 
-type Options = {
-  onPointerUp?: (pt: THREE.Vector3, ev: PointerEvent) => void;
-  onPointerDown?: () => void;
-  onPointerMove?: (
-    pt: THREE.Vector3,
-    ptPerpendicular: THREE.Vector3 | null,
-    ev: PointerEvent
-  ) => void;
-  planeNormal?: THREE.Vector3;
-  planeConstant?: number;
-  button?: number;
-  doubleRaycast?: boolean;
-};
-
-export function useEmptyCanvasInteraction({
-  onPointerUp,
-  onPointerDown,
-  onPointerMove,
-  planeNormal = new THREE.Vector3(0, 1, 0),
-  planeConstant = 0,
-  button = 0,
-  doubleRaycast = false,
-}: Options = {}) {
-  // Refs to avoid re-rendering
-  const onPointerUpRef = useRef(onPointerUp);
-  const onPointerDownRef = useRef(onPointerDown);
-  const onPointerMoveRef = useRef(onPointerMove);
-
-  onPointerUpRef.current = onPointerUp;
-  onPointerDownRef.current = onPointerDown;
-  onPointerMoveRef.current = onPointerMove;
-
-  const { gl, camera, scene, raycaster, events } = useThree();
-
-  const plane = useMemo(
-    () => createPlane(planeNormal, planeConstant),
-    [planeNormal, planeConstant]
-  );
-
-  // Create perpendicular plane for cursor position
-  const perpendicularPlane = useMemo(() => {
-    const normalizedNormal = planeNormal.clone().normalize();
-
-    // If z-axis is the plane normal, use y-axis for perpendicular plane
-    if (Math.abs(normalizedNormal.z) > 0.9) {
-      return createPlane(new THREE.Vector3(0, 1, 0), planeConstant);
-    }
-    // If y-axis is the plane normal, use z-axis for perpendicular plane
-    if (Math.abs(normalizedNormal.y) > 0.9) {
-      return createPlane(new THREE.Vector3(0, 0, 1), planeConstant);
-    }
-
-    // Default fallback - use z-axis
-    return createPlane(new THREE.Vector3(0, 0, 1), planeConstant);
-  }, [planeNormal, planeConstant]);
+/**
+ * Sets up event listeners for empty canvas interactions.
+ * This hook should be called once in the Canvas tree (e.g., in AnnotationControls).
+ * It reads subscriptions from Recoil state and invokes callbacks for each subscription.
+ */
+export function useEmptyCanvasInteractionListener() {
+  const { gl, camera, raycaster, events } = useThree();
+  const subscriptions = useRecoilValue(emptyCanvasInteractionSubscriptionsAtom);
 
   useEffect(() => {
     const el = (events.connected ?? gl.domElement) as HTMLCanvasElement;
 
     const handlePointerMove = (ev: PointerEvent) => {
-      if (!onPointerMoveRef.current) return;
       const ndc = toNDC(ev, el);
-      const pt = getPlaneIntersection(raycaster, camera, ndc, plane);
-      const ptPerpendicular = doubleRaycast
-        ? getPlaneIntersection(raycaster, camera, ndc, perpendicularPlane)
-        : null;
-      onPointerMoveRef.current?.(pt, ptPerpendicular, ev);
+      subscriptions.forEach((subscription) => {
+        if (!subscription.onPointerMove) return;
+        const plane = createPlane(
+          subscription.planeNormal,
+          subscription.planeConstant
+        );
+        const pt = getPlaneIntersection(raycaster, camera, ndc, plane);
+        if (pt) {
+          subscription.onPointerMove(pt, ev);
+        }
+      });
     };
 
-    const handleDown = (ev: PointerEvent) => {
-      if (!isButtonMatch(ev, button)) return;
-      onPointerDownRef.current?.();
+    const handlePointerDown = (ev: PointerEvent) => {
+      subscriptions.forEach((subscription) => {
+        if (!subscription.onPointerDown) return;
+        if (!isButtonMatch(ev, subscription.button)) return;
+        subscription.onPointerDown();
+      });
     };
 
-    const handleUp = (ev: PointerEvent) => {
-      if (!isButtonMatch(ev, button)) return;
+    const handlePointerUp = (ev: PointerEvent) => {
       const ndc = toNDC(ev, el);
-      const pt = getPlaneIntersection(raycaster, camera, ndc, plane);
-      if (pt) onPointerUpRef.current?.(pt, ev);
+      subscriptions.forEach((subscription) => {
+        if (!subscription.onPointerUp) return;
+        if (!isButtonMatch(ev, subscription.button)) return;
+        const plane = createPlane(
+          subscription.planeNormal,
+          subscription.planeConstant
+        );
+        const pt = getPlaneIntersection(raycaster, camera, ndc, plane);
+        if (pt) {
+          subscription.onPointerUp(pt, ev);
+        }
+      });
     };
 
     el.addEventListener("pointermove", handlePointerMove, { passive: true });
-    el.addEventListener("pointerdown", handleDown, { passive: true });
-    el.addEventListener("pointerup", handleUp, { passive: true });
+    el.addEventListener("pointerdown", handlePointerDown, { passive: true });
+    el.addEventListener("pointerup", handlePointerUp, { passive: true });
 
     return () => {
       el.removeEventListener("pointermove", handlePointerMove);
-      el.removeEventListener("pointerdown", handleDown);
-      el.removeEventListener("pointerup", handleUp);
+      el.removeEventListener("pointerdown", handlePointerDown);
+      el.removeEventListener("pointerup", handlePointerUp);
     };
-  }, [gl, camera, scene, raycaster, events, plane, perpendicularPlane, button]);
+  }, [gl, camera, raycaster, events, subscriptions]);
+}
+
+/**
+ * Registers a subscription for empty canvas interactions.
+ * Returns an unsubscribe function to remove the subscription.
+ *
+ * @param payload - Subscription payload with plane parameters and callbacks
+ * @returns Unsubscribe function
+ */
+export function useEmptyCanvasInteraction(
+  payload: CanvasInteractionSubscriptionPayload
+) {
+  const setSubscriptions = useSetRecoilState(
+    emptyCanvasInteractionSubscriptionsAtom
+  );
+
+  // Refs to avoid re-registering on callback changes
+  const onPointerUpRef = useRef(payload.onPointerUp);
+  const onPointerDownRef = useRef(payload.onPointerDown);
+  const onPointerMoveRef = useRef(payload.onPointerMove);
+
+  onPointerUpRef.current = payload.onPointerUp;
+  onPointerDownRef.current = payload.onPointerDown;
+  onPointerMoveRef.current = payload.onPointerMove;
+
+  const planeNormalX = payload.planeNormal.x;
+  const planeNormalY = payload.planeNormal.y;
+  const planeNormalZ = payload.planeNormal.z;
+
+  useEffect(() => {
+    const subscription: CanvasInteractionSubscriptionPayload = {
+      id: payload.id,
+      planeNormal: payload.planeNormal.clone(),
+      planeConstant: payload.planeConstant,
+      button: payload.button ?? 0,
+      onPointerUp: (pt, ev) => onPointerUpRef.current?.(pt, ev),
+      onPointerDown: () => onPointerDownRef.current?.(),
+      onPointerMove: (pt, ev) => onPointerMoveRef.current?.(pt, ev),
+    };
+
+    setSubscriptions((prev) => {
+      const next = new Map(prev);
+      next.set(payload.id, subscription);
+      return next;
+    });
+
+    return () => {
+      setSubscriptions((prev) => {
+        const next = new Map(prev);
+        next.delete(payload.id);
+        return next;
+      });
+    };
+  }, [
+    payload.id,
+    planeNormalX,
+    planeNormalY,
+    planeNormalZ,
+    payload.planeConstant,
+    payload.button,
+    setSubscriptions,
+  ]);
+
+  return useCallback(() => {
+    setSubscriptions((prev) => {
+      const next = new Map(prev);
+      next.delete(payload.id);
+      return next;
+    });
+  }, [payload.id, setSubscriptions]);
 }

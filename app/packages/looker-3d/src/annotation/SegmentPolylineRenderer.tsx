@@ -1,7 +1,7 @@
 import * as fos from "@fiftyone/state";
 import { objectId } from "@fiftyone/utilities";
 import { Line as LineDrei } from "@react-three/drei";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef } from "react";
 import {
   useRecoilCallback,
   useRecoilState,
@@ -19,7 +19,6 @@ import {
   isSegmentingPointerDownAtom,
   polylinePointTransformsAtom,
   selectedLabelForAnnotationAtom,
-  sharedCursorPositionAtom,
   snapCloseAutomaticallyAtom,
 } from "../state";
 import { getPlaneFromPositionAndQuaternion } from "../utils";
@@ -62,9 +61,8 @@ export const SegmentPolylineRenderer = ({
     isSegmentingPointerDownAtom
   );
   useReverseSyncPolylinePointTransforms();
-  const setSharedCursorPosition = useSetRecoilState(sharedCursorPositionAtom);
   const annotationPlane = useRecoilValue(annotationPlaneAtom);
-  const { upVector, sceneBoundingBox } = useFo3dContext();
+  const { upVector } = useFo3dContext();
 
   // Track last click time for double-click detection
   const lastClickTimeRef = useRef<number>(0);
@@ -217,7 +215,7 @@ export const SegmentPolylineRenderer = ({
 
   // Handle mouse move for rubber band effect
   const handleMouseMove = useCallback(
-    (worldPos: THREE.Vector3, worldPosPerpendicular: THREE.Vector3 | null) => {
+    (worldPos: THREE.Vector3, _ev: PointerEvent) => {
       if (!worldPos) return;
 
       const segmentPos = worldPos.clone();
@@ -225,15 +223,8 @@ export const SegmentPolylineRenderer = ({
         ...prev,
         currentMousePosition: [segmentPos.x, segmentPos.y, segmentPos.z],
       }));
-
-      const cursorPos =
-        !annotationPlane.enabled && worldPosPerpendicular
-          ? worldPosPerpendicular.clone()
-          : worldPos.clone();
-
-      setSharedCursorPosition([cursorPos.x, cursorPos.y, cursorPos.z]);
     },
-    [sceneBoundingBox, annotationPlane.enabled]
+    []
   );
 
   // Calculate the annotation plane for raycasting
@@ -250,7 +241,9 @@ export const SegmentPolylineRenderer = ({
     } as THREE.Plane;
   }, [annotationPlane, upVector]);
 
-  useEmptyCanvasInteraction({
+  const subscriptionId = useId();
+  const unsubscribe = useEmptyCanvasInteraction({
+    id: subscriptionId,
     onPointerUp: segmentState.isActive ? handleClick : undefined,
     onPointerDown: segmentState.isActive
       ? () => setIsActivelySegmenting(true)
@@ -258,8 +251,11 @@ export const SegmentPolylineRenderer = ({
     onPointerMove: handleMouseMove,
     planeNormal: raycastPlane.normal,
     planeConstant: raycastPlane.constant,
-    doubleRaycast: true,
   });
+
+  useEffect(() => {
+    return unsubscribe;
+  }, [unsubscribe]);
 
   useEffect(() => {
     if (ignoreEffects) return;
