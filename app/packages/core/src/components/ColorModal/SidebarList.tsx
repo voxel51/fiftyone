@@ -10,7 +10,7 @@ import { Resizable } from "re-resizable";
 import React, { useState } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import styles from "../../../../../packages/components/src/scrollable.module.css";
-import { resizeHandle } from "./../Sidebar/Sidebar.module.css";
+import { resizeHandle } from "./../Sidebar/InteractiveSidebar/style.module.css";
 import { activeColorEntry } from "./state";
 import { ACTIVE_FIELD, getDisplayName } from "./utils";
 

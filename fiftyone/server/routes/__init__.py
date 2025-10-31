@@ -12,12 +12,13 @@ from .aggregate import Aggregate
 from .embeddings import EmbeddingsRoutes
 from .event import Event
 from .events import Events
+from .features import Features
 from .fiftyone import FiftyOne
 from .frames import Frames
 from .geo import GeoPoints
 from .get_similar_labels_frames import GetSimilarLabelsFrameCollection
 from .media import Media
-from .sample import Sample
+from .sample import SampleRoutes
 from .plugins import Plugins
 from .screenshot import Screenshot
 from .sort import Sort
@@ -29,16 +30,17 @@ from .values import Values
 routes = (
     EmbeddingsRoutes
     + OperatorRoutes
+    + SampleRoutes
     + [
         ("/aggregate", Aggregate),
         ("/event", Event),
         ("/events", Events),
+        ("/features", Features),
         ("/fiftyone", FiftyOne),
         ("/frames", Frames),
         ("/geo", GeoPoints),
         ("/media", Media),
         ("/plugins", Plugins),
-        ("/dataset/{dataset_id}/sample/{sample_id}", Sample),
         ("/sort", Sort),
         ("/screenshot/{img:str}", Screenshot),
         ("/tag", Tag),

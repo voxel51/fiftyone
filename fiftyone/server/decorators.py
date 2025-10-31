@@ -10,13 +10,13 @@ import traceback
 import typing as t
 import logging
 
-from bson import json_util
 from starlette.endpoints import HTTPEndpoint
 from starlette.exceptions import HTTPException
 from starlette.responses import JSONResponse, Response
 from starlette.requests import Request
 
 from fiftyone.core.utils import create_response
+from fiftyone.server import utils
 
 
 def route(func):
@@ -29,7 +29,7 @@ def route(func):
         try:
             body = await request.body()
             payload = body.decode("utf-8")
-            data = json_util.loads(payload) if payload else {}
+            data = utils.json.loads(payload)
             response = await func(endpoint, request, data, *args)
             if isinstance(response, Response):
                 return response

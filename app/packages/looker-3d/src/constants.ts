@@ -1,5 +1,5 @@
 import { ColorscaleInput } from "@fiftyone/looker/src/state";
-import { Vector3 } from "three";
+import { Box3, Vector3 } from "three";
 import type { ShadeBy } from "./types";
 
 export const ACTION_GRID = "grid";
@@ -22,6 +22,14 @@ export const SHADE_BY_CUSTOM = "custom";
 export const SHADE_BY_NONE = "none";
 
 export const DEFAULT_CAMERA_POSITION = () => new Vector3(0, 5, -5);
+
+// Default bounding box when scene bounds cannot be determined
+export const DEFAULT_BOUNDING_BOX = new Box3(
+  // min
+  new Vector3(-5, -5, -5),
+  // max
+  new Vector3(5, 5, 5)
+);
 
 export const ACTIONS = [
   { label: "Color By", value: ACTION_SHADE_BY },
@@ -82,6 +90,9 @@ export const LABEL_3D_HOVERED_AND_SELECTED_COLOR = "#de7e5d";
 export const LABEL_3D_HOVERED_COLOR = "#f2f0ef";
 export const LABEL_3D_INSTANCE_HOVERED_COLOR = "#ffffff";
 export const LABEL_3D_SIMILAR_SELECTED_COLOR = "#ffa500";
+export const LABEL_3D_SELECTED_FOR_ANNOTATION_COLOR = "orangered";
+export const LABEL_3D_ANNOTATION_POINT_SELECTED_FOR_TRANSFORMATION_COLOR =
+  "#ff0000";
 
 // ray casting for points
 export const RAY_CASTING_SENSITIVITY = {
@@ -97,3 +108,7 @@ export const RAY_CASTING_SENSITIVITY = {
   // Useful for sparse clouds, large points, or user-friendly selection modes.
   low: 0.25,
 };
+
+export const SNAP_TOLERANCE = 0.5;
+
+export const SCENE_BOUNDS_EXPANSION_FACTOR = 5;

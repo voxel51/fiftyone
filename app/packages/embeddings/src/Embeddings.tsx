@@ -1,4 +1,4 @@
-import { MuiButton, Selector, useTheme } from "@fiftyone/components";
+import { Selector, useTheme } from "@fiftyone/components";
 import { OperatorPlacements, types } from "@fiftyone/operators";
 import { usePanelStatePartial, useSetPanelCloseEffect } from "@fiftyone/spaces";
 import { constants, useExternalLink } from "@fiftyone/utilities";
@@ -14,6 +14,7 @@ import {
 import { Fragment, useEffect, useRef, useState } from "react";
 import EmbeddingsCTA from "./EmbeddingsCTA";
 import { EmbeddingsPlot } from "./EmbeddingsPlot";
+import EmbeddingsPlotError from "./EmbeddingsPlotError";
 import {
   EmbeddingsContainer,
   PlotOption,
@@ -26,7 +27,6 @@ import { usePlotSelection } from "./usePlotSelection";
 import { useResetPlotZoom } from "./useResetPlotZoom";
 import { useWarnings } from "./useWarnings";
 import { Warnings } from "./Warnings";
-import EmbeddingsPlotError from "./EmbeddingsPlotError";
 
 const Value: React.FC<{ value: string; className: string }> = ({ value }) => {
   return <>{value}</>;
@@ -85,7 +85,7 @@ export default function Embeddings({ containerHeight, dimensions }) {
           bounds={dimensions.bounds}
           labelField={labelSelector.label}
         />
-      )
+      );
     }
 
     return (
@@ -101,17 +101,19 @@ export default function Embeddings({ containerHeight, dimensions }) {
               resultsPlacement="bottom-start"
               containerStyle={selectorStyle}
             />
-            {brainResultSelector.hasSelection && !brainResultSelector.hasLoadingError && !labelSelector.isLoading && (
-              <Selector
-                cy="embeddings-colorby"
-                {...labelSelector.handlers}
-                placeholder={"Color by"}
-                overflow={true}
-                component={Value}
-                resultsPlacement="bottom-start"
-                containerStyle={selectorStyle}
-              />
-            )}
+            {brainResultSelector.hasSelection &&
+              !brainResultSelector.hasLoadingError &&
+              !labelSelector.isLoading && (
+                <Selector
+                  cy="embeddings-colorby"
+                  {...labelSelector.handlers}
+                  placeholder={"Color by"}
+                  overflow={true}
+                  component={Value}
+                  resultsPlacement="bottom-start"
+                  containerStyle={selectorStyle}
+                />
+              )}
             <PlotOption
               to={() => {
                 if (constants.IS_APP_MODE_FIFTYONE) {

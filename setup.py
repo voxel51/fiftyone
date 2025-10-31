@@ -13,7 +13,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "1.9.0"
+VERSION = "1.10.0"
 
 
 def get_version():
@@ -44,6 +44,7 @@ INSTALL_REQUIRES = [
     "humanize",
     "hypercorn>=0.13.2",
     "Jinja2>=3",
+    "jsonpatch",
     "matplotlib",
     "mongoengine~=0.29.1",
     "motor~=3.6.0",

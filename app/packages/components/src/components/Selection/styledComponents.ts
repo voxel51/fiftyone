@@ -106,7 +106,6 @@ export const LastOption = styled(MuiBox)<{ disabled: boolean }>`
   width: 100%;
   background: ${({ disabled, theme }) =>
     disabled ? theme.background.body : theme.background.level1} !important;
-  z-index: 999;
   display: flex;
 
   &:hover {

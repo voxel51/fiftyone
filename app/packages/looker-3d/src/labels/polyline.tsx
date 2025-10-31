@@ -1,16 +1,30 @@
-import { useCursor } from "@react-three/drei";
-import { useMemo, useState } from "react";
+import * as fos from "@fiftyone/state";
+import { Line as LineDrei } from "@react-three/drei";
+import { useAtomValue } from "jotai";
+import { useEffect, useMemo, useRef } from "react";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
-import { use3dLabelColor } from "../hooks/use-3d-label-color";
-import { useSimilarLabels3d } from "../hooks/use-similar-labels-3d";
-import { Line } from "./line";
+import { usePolylineAnnotation } from "../annotation/usePolylineAnnotation";
+import {
+  isPolylineAnnotateActiveAtom,
+  selectedLabelForAnnotationAtom,
+  tempLabelTransformsAtom,
+} from "../state";
+import {
+  isValidPoint3d,
+  validatePoints3d,
+  validatePoints3dArray,
+} from "../utils";
 import { createFilledPolygonMeshes } from "./polygon-fill-utils";
 import type { OverlayProps } from "./shared";
+import { useEventHandlers, useHoverState, useLabelColor } from "./shared/hooks";
+import { Transformable } from "./shared/TransformControls";
 
 export interface PolyLineProps extends OverlayProps {
+  // Array of line segments, where each segment is an array of 3D points
   points3d: THREE.Vector3Tuple[][];
   filled: boolean;
-  // we ignore closed for now
+  lineWidth?: number;
   closed?: boolean;
 }
 
@@ -21,52 +35,166 @@ export const Polyline = ({
   points3d,
   color,
   selected,
+  lineWidth,
+  closed,
   onClick,
   tooltip,
   label,
 }: PolyLineProps) => {
-  const { onPointerOver, onPointerOut, ...restEventHandlers } = useMemo(() => {
-    return { ...tooltip.getMeshProps(label) };
-  }, [tooltip, label]);
+  const meshesRef = useRef<THREE.Mesh[]>([]);
 
-  const [isPolylineHovered, setIsPolylineHovered] = useState(false);
-  const isSimilarLabelHovered = useSimilarLabels3d(label);
-  useCursor(isPolylineHovered);
-
-  const strokeAndFillColor = use3dLabelColor({
-    isSelected: selected,
-    isHovered: isPolylineHovered,
-    isSimilarLabelHovered,
-    defaultColor: color,
-  });
-
-  const lines = useMemo(
-    () =>
-      points3d.map((pts, i) => (
-        <Line
-          key={`polyline-${label._id}-${i}`}
-          rotation={rotation}
-          points={pts}
-          opacity={opacity}
-          color={strokeAndFillColor}
-          label={label}
-        />
-      )),
-    [points3d, rotation, opacity, strokeAndFillColor, label]
+  const { isHovered, setIsHovered } = useHoverState();
+  const { onPointerOver, onPointerOut, restEventHandlers } = useEventHandlers(
+    tooltip,
+    label
   );
 
-  const filledMeshes = useMemo(() => {
+  const isAnnotateMode = useAtomValue(fos.modalMode) === "annotate";
+  const isSelectedForAnnotation =
+    useRecoilValue(selectedLabelForAnnotationAtom)?._id === label._id;
+  const setIsPolylineAnnotateActive = useSetRecoilState(
+    isPolylineAnnotateActiveAtom
+  );
+
+  useEffect(() => {
+    if (isSelectedForAnnotation) {
+      setIsPolylineAnnotateActive(true);
+    }
+  }, [isSelectedForAnnotation]);
+
+  const { strokeAndFillColor } = useLabelColor(
+    { selected, color },
+    isHovered,
+    label,
+    isSelectedForAnnotation
+  );
+
+  const {
+    centroid,
+    transformControlsRef,
+    contentRef,
+    markers,
+    previewLines,
+    handleTransformStart,
+    handleTransformChange,
+    handleTransformEnd,
+    handlePointerOver: handleAnnotationPointerOver,
+    handlePointerOut: handleAnnotationPointerOut,
+    handleSegmentPointerOver,
+    handleSegmentPointerOut,
+    handleSegmentClick,
+  } = usePolylineAnnotation({
+    label,
+    points3d,
+    strokeAndFillColor,
+    isAnnotateMode,
+    isSelectedForAnnotation,
+  });
+
+  const lines = useMemo(() => {
+    const lineElements = points3d
+      .map((pts, i) => {
+        if (!pts || !Array.isArray(pts) || pts.length === 0) {
+          console.warn(`Invalid points array for polyline segment ${i}:`, pts);
+          return null;
+        }
+
+        const validPts = validatePoints3d(pts);
+
+        if (validPts.length === 0) {
+          console.warn(`No valid points found for polyline segment ${i}`);
+          return null;
+        }
+
+        return (
+          <LineDrei
+            key={`polyline-${label._id}-${i}`}
+            lineWidth={lineWidth}
+            points={validPts}
+            color={strokeAndFillColor}
+            rotation={rotation}
+            transparent={opacity < 0.2}
+            opacity={opacity}
+            onPointerOver={() => handleSegmentPointerOver(i)}
+            onPointerOut={handleSegmentPointerOut}
+            onClick={handleSegmentClick}
+          />
+        );
+      })
+      .filter(Boolean);
+
+    // If closed, add exactly one closing line per segment
+    if (closed) {
+      const closingLines = points3d
+        .map((pts, i) => {
+          if (!pts || !Array.isArray(pts) || pts.length < 2) {
+            return null;
+          }
+
+          const firstPoint = pts[0];
+          const lastPoint = pts[pts.length - 1];
+
+          if (!isValidPoint3d(firstPoint) || !isValidPoint3d(lastPoint)) {
+            return null;
+          }
+
+          return (
+            <LineDrei
+              key={`polyline-closing-${label._id}-${i}`}
+              lineWidth={lineWidth}
+              points={[lastPoint, firstPoint]}
+              color={strokeAndFillColor}
+              rotation={rotation}
+              transparent={opacity < 0.2}
+              opacity={opacity}
+              onPointerOver={() => handleSegmentPointerOver(i)}
+              onPointerOut={handleSegmentPointerOut}
+              onClick={handleSegmentClick}
+            />
+          );
+        })
+        .filter(Boolean);
+
+      return [...lineElements, ...closingLines];
+    }
+
+    return lineElements;
+  }, [
+    points3d,
+    closed,
+    strokeAndFillColor,
+    lineWidth,
+    rotation,
+    opacity,
+    label._id,
+    handleSegmentPointerOver,
+    handleSegmentPointerOut,
+    handleSegmentClick,
+  ]);
+
+  const material = useMemo(() => {
     if (!filled) return null;
 
-    const material = new THREE.MeshBasicMaterial({
+    return new THREE.MeshBasicMaterial({
       color: strokeAndFillColor,
       opacity,
       transparent: true,
       side: THREE.DoubleSide,
       depthWrite: false,
     });
+  }, [filled, strokeAndFillColor, opacity]);
 
-    const meshes = createFilledPolygonMeshes(points3d, material);
+  const filledMeshes = useMemo(() => {
+    if (!filled || !material) return null;
+
+    const validPoints3d = validatePoints3dArray(points3d);
+
+    if (validPoints3d.length === 0) {
+      console.warn("No valid points found for filled polygon meshes");
+      return null;
+    }
+
+    const meshes = createFilledPolygonMeshes(validPoints3d, material);
 
     if (!meshes) return null;
 
@@ -77,42 +205,86 @@ export const Polyline = ({
         rotation={rotation as unknown as THREE.Euler}
       />
     ));
-  }, [filled, points3d, rotation, strokeAndFillColor, opacity, label._id]);
+  }, [filled, points3d, rotation, material, label._id]);
 
-  if (filled && filledMeshes) {
-    return (
-      <group
-        onPointerOver={() => {
-          setIsPolylineHovered(true);
-          onPointerOver();
-        }}
-        onPointerOut={() => {
-          setIsPolylineHovered(false);
-          onPointerOut();
-        }}
-        onClick={onClick}
-        {...restEventHandlers}
-      >
-        {filledMeshes}
-        {lines}
-      </group>
-    );
-  }
+  useEffect(() => {
+    const currentMeshes = meshesRef.current;
+
+    if (filled && material) {
+      const validPoints3d = validatePoints3dArray(points3d);
+
+      const meshes =
+        validPoints3d.length > 0
+          ? createFilledPolygonMeshes(validPoints3d, material)
+          : null;
+      meshesRef.current = meshes || [];
+    } else {
+      meshesRef.current = [];
+    }
+
+    // Cleanup old meshes (only geometries, NOT materials, those are cleaned up separately)
+    return () => {
+      currentMeshes.forEach((mesh) => {
+        if (mesh.geometry) {
+          mesh.geometry.dispose();
+        }
+      });
+    };
+  }, [filled, points3d, material]);
+
+  // Cleanup material when it changes or component unmounts
+  useEffect(() => {
+    return () => {
+      if (material) {
+        material.dispose();
+      }
+    };
+  }, [material]);
+
+  const tempTransforms = useRecoilValue(tempLabelTransformsAtom(label._id));
+
+  const content = (
+    <>
+      {filled && filledMeshes}
+      {lines}
+    </>
+  );
 
   return (
-    <group
-      onPointerOver={() => {
-        setIsPolylineHovered(true);
-        onPointerOver();
-      }}
-      onPointerOut={() => {
-        setIsPolylineHovered(false);
-        onPointerOut();
-      }}
-      onClick={onClick}
-      {...restEventHandlers}
+    <Transformable
+      archetype="polyline"
+      isSelectedForTransform={isSelectedForAnnotation}
+      transformControlsPosition={centroid as THREE.Vector3Tuple}
+      transformControlsRef={transformControlsRef}
+      onTransformStart={handleTransformStart}
+      onTransformEnd={handleTransformEnd}
+      onTransformChange={handleTransformChange}
+      explicitObjectRef={contentRef}
     >
-      {lines}
-    </group>
+      <group
+        ref={contentRef}
+        position={tempTransforms?.position ?? [0, 0, 0]}
+        quaternion={tempTransforms?.quaternion ?? [0, 0, 0, 1]}
+      >
+        {markers}
+        {previewLines}
+        <group
+          {...restEventHandlers}
+          onPointerOver={() => {
+            setIsHovered(true);
+            handleAnnotationPointerOver();
+            onPointerOver();
+          }}
+          onPointerOut={() => {
+            setIsHovered(false);
+            handleAnnotationPointerOut();
+            onPointerOut();
+          }}
+          onClick={onClick}
+        >
+          {content}
+        </group>
+      </group>
+    </Transformable>
   );
 };

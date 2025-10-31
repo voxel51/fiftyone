@@ -560,19 +560,31 @@ export const _activeFields = (() => {
   );
 })();
 
-export const activeFields = selectorFamily<string[], { modal: boolean }>({
+export const activeFields = selectorFamily<
+  string[],
+  { expanded?: boolean; modal: boolean }
+>({
   key: "activeFields",
   get:
-    ({ modal }) =>
+    ({ expanded, modal }) =>
     ({ get }) => {
-      return filterPaths(
+      const paths = filterPaths(
         get(_activeFields({ modal })) || get(defaultActiveFields),
         buildSchema(get(atoms.sampleFields), get(atoms.frameFields))
       );
+
+      if (expanded) {
+        return paths.map((path) => get(expandPath(path)));
+      }
+
+      return paths;
     },
   set:
-    ({ modal }) =>
+    ({ expanded, modal }) =>
     ({ set }, value) => {
+      if (expanded) {
+        throw new Error("expanded is not supported");
+      }
       set(_activeFields({ modal }), value);
     },
 });
