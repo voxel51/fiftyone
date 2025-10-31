@@ -9637,7 +9637,6 @@ class SampleCollection(object):
         _field=None,
         _enforce_natural_order=True,
     ):
-
         if (
             field := self._field_for_covered_index_query_or_none(
                 field_or_expr,
@@ -9690,7 +9689,6 @@ class SampleCollection(object):
     def _field_for_covered_index_query_or_none(
         self, field_or_expr, expr=None, _enforce_natural_order=True
     ):
-
         if expr is not None or _enforce_natural_order:
             return None
 
@@ -11098,7 +11096,6 @@ class SampleCollection(object):
 
         # Parse facet-able results
         for idx, aggregation in compiled_facet_aggs.items():
-
             result = list(_results[idx_map[idx]])
             data = self._parse_faceted_result(aggregation, result)
             if (
@@ -11112,7 +11109,6 @@ class SampleCollection(object):
         return results[0] if scalar_result else results
 
     def _iter_and_parse_agg_results(self, parsed_aggs, cursor):
-
         result_fields = [agg._big_field for agg in parsed_aggs.values()]
 
         # Non-batchable big aggregations will result a cursor per aggregation

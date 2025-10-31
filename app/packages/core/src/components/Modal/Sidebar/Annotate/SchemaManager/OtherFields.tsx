@@ -15,7 +15,6 @@ import {
 } from "../state";
 import { Container, MutedItem } from "./Components";
 import FieldRow from "./FieldRow";
-import Footer from "./Footer";
 import { Header } from "./Modal";
 
 const useActivate = () => {
@@ -161,9 +160,6 @@ const FallbackItem = () => {
 };
 
 const OtherFields = () => {
-  const activate = useActivate();
-  const [selected, setSelected] = useAtom(selectedFields);
-
   return (
     <>
       <Container>
@@ -171,18 +167,6 @@ const OtherFields = () => {
         <OtherFieldsWithoutSchema />
         <FallbackItem />
       </Container>
-      {!!selected.size && (
-        <Footer
-          primaryButton={{
-            onClick: activate,
-            text: "Activate fields",
-          }}
-          secondaryButton={{
-            onClick: () => setSelected(new Set()),
-            text: "Cancel",
-          }}
-        />
-      )}
     </>
   );
 };

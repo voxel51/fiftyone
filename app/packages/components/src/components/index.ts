@@ -19,6 +19,7 @@ export { default as IconButton } from "./IconButton";
 export * from "./Icons";
 export { default as JSONPanel } from "./JSONPanel";
 export { default as JSONViewer } from "./JSONViewer";
+export * from "./LabeledField";
 export { default as Link } from "./Link";
 export { default as Loading, LoadingDots, LoadingSpinner } from "./Loading";
 export { default as Markdown } from "./Markdown";

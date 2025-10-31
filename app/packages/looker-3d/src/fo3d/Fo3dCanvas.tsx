@@ -108,6 +108,7 @@ export const Fo3dSceneContent = ({
   const mode = useAtomValue(fos.modalMode);
 
   useCameraViews({
+    cameraRef,
     cameraControlsRef,
   });
 

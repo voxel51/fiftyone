@@ -19,11 +19,11 @@ import ToggleFullscreen from "./ToggleFullscreen";
 
 const MODAL_ACTION_BAR_HANDLE_CLASS = "fo-modal-action-bar-handle";
 
-const Container = styled.div`
+const Container = styled.div<{ $isFullScreen: boolean }>`
   z-index: 100001;
   position: fixed;
   right: 3em;
-  top: 0.16em;
+  top: ${({ $isFullScreen }) => ($isFullScreen ? "0.06em" : "0.5em")};
   display: flex;
   row-gap: 0.5rem;
   column-gap: 0.5rem;
@@ -42,6 +42,8 @@ const Container = styled.div`
 
   > div {
     max-height: 24px;
+    transform: ${({ $isFullScreen }) =>
+      $isFullScreen ? "scale(0.9)" : "scale(1)"};
 
     > div:first-child {
       max-height: 24px;
@@ -73,6 +75,7 @@ export default () => {
 
   const isActualGroup = useRecoilValue(fos.isGroup);
   const isDynamicGroup = useRecoilValue(fos.isDynamicGroup);
+  const isFullScreen = useRecoilValue(fos.fullscreen);
 
   const isGroup = useMemo(
     () => isActualGroup || isDynamicGroup,
@@ -94,7 +97,7 @@ export default () => {
         setDefaultXCoord(x);
       }}
     >
-      <Container>
+      <Container $isFullScreen={isFullScreen}>
         <DragActionsRow />
         <HiddenLabels modal />
         <Selected modal lookerRef={activeLookerRef} />

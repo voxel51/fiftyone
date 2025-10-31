@@ -24,7 +24,7 @@ const Background = styled.div`
   background: rgba(0, 0, 0, 0.8);
   top: 0;
   left: 0;
-  z-index: 1001;
+  z-index: 1000001;
   display: flex;
   justify-content: center;
   align-items: center;

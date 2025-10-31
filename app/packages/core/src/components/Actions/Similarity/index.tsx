@@ -37,7 +37,7 @@ const Similarity = ({
         open={open}
         tooltipPlacement={modal ? "bottom" : "top"}
         onClick={toggleSimilarity}
-        highlight={true}
+        highlight={open}
         title={`Sort by ${
           showImageSimilarityIcon ? "image" : "text"
         } similarity`}

@@ -20,6 +20,35 @@ export const getValue = (atom) => {
     }
   }
 
+  // Sometimes, code will use the original version of selectorFamily instead of the mock
+  // When that happens, there is no `params`. Instead, the `key` is a string of the form:
+  // <key>__selectorFamily/<params as json>/#
+  if (atom.key.includes("__selectorFamily")) {
+    const [key, rest] = atom.key.split("__selectorFamily");
+    if (mockValues[key]) {
+      const [_, params, _number] = rest.split("/");
+      if (params) {
+        if (mockValues[key] instanceof Function) {
+          let realParams = params;
+          try {
+            realParams = JSON.parse(params);
+          } catch {
+            // must not be json
+          }
+          return mockValues[key](realParams);
+        } else {
+          return mockValues[key][params];
+        }
+      } else {
+        if (mockValues[key] instanceof Function) {
+          return mockValues[key]();
+        } else {
+          return mockValues[key];
+        }
+      }
+    }
+  }
+
   if (atom.params !== undefined) {
     return mockValues[atom.key](atom.params);
   }

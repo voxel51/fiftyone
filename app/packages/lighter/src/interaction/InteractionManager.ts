@@ -672,6 +672,29 @@ export class InteractionManager {
     return this.handlers.find((h) => h instanceof InteractiveDetectionHandler);
   }
 
+  /**
+   * Finds the handler at the given point using a priority-based selection algorithm.
+   *
+   * This method determines which interaction handler should handle events at a specific point
+   * by considering multiple factors in the following priority order:
+   *
+   * 1. **Selected handlers** (highest priority): If any handler at the point is currently
+   *    selected, it takes precedence over all others. This ensures selected overlays always
+   *    receive interaction events, even when overlapping with other handlers.
+   *
+   * 2. **Selectable handlers with selection priority**: If no selected handler is found, the
+   *    method prefers selectable handlers with higher selection priority values. This allows
+   *    certain overlay types to be prioritized for interaction (e.g., bounding boxes over
+   *    classifications).
+   *
+   * 3. **Topmost handler** (fallback): If no special priorities apply, the handler that appears
+   *    topmost in the rendering order (last in the handlers array) is returned.
+   *
+   * @param point - The point to check for handler intersection.
+   * @param skipCanonicalMedia - If true, the canonical media handler is excluded from consideration.
+   * @returns The handler that should handle events at the point, or undefined if no handler
+   *          contains the point.
+   */
   private findHandlerAtPoint(
     point: Point,
     skipCanonicalMedia: boolean = false
@@ -687,12 +710,24 @@ export class InteractionManager {
       }
 
       if (handler.containsPoint(point)) {
-        candidates.push(handler);
+        candidates.push(handler as InteractionHandler);
       }
     }
 
     if (candidates.length === 0) return undefined;
     if (candidates.length === 1) return candidates[0];
+
+    // First, check if any candidates are selected - selected overlays override everything
+    const selectedCandidates = candidates.filter((handler) => {
+      if (TypeGuards.isSelectable(handler)) {
+        return this.selectionManager.isSelected(handler.id);
+      }
+      return false;
+    });
+
+    if (selectedCandidates.length > 0) {
+      return selectedCandidates[0];
+    }
 
     // If multiple handlers found, prefer selectable ones with higher priority
     const selectableCandidates = candidates.filter((handler) =>
