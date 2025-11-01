@@ -107,18 +107,14 @@ const Modal = () => {
     ({ snapshot, set }) =>
       async (e: KeyboardEvent) => {
         const active = document.activeElement;
+
+        // Prevent shortcuts when interacting with any form field
         if (
+          active?.tagName === "INPUT" ||
           active?.tagName === "TEXTAREA" ||
-          active instanceof HTMLTextAreaElement
+          active?.tagName === "SELECT"
         ) {
           return;
-        }
-
-        if (active?.tagName === "INPUT" || active instanceof HTMLInputElement) {
-          const inputElement = active as HTMLInputElement;
-          if (inputElement.type === "text") {
-            return;
-          }
         }
 
         if (e.repeat) {
