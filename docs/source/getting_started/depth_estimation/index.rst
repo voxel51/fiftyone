@@ -25,7 +25,7 @@ Guide Overview
 
 This guide is broken down into the following sequential steps:
 
-1. **Loading Depth Data** - Learn how to load depth estimation datasets in FiftyOne, working with both NumPy-based depth maps (DICOM dataset) and image-based depth maps (NYU Depth V2), understanding depth validity masks, and creating structured datasets for analysis
+1. **Loading Depth Data** - Learn how to load depth estimation datasets in FiftyOne, working with both NumPy-based depth maps (DIODE dataset) and image-based depth maps (NYU Depth V2), understanding depth validity masks, and creating structured datasets for analysis
 
 2. **Using Depth Estimation Models** - Explore multiple approaches to running depth estimation models including FiftyOne's Model Zoo integration, Hugging Face Transformers, community plugins, and the Diffusers library for zero-shot depth prediction
 
