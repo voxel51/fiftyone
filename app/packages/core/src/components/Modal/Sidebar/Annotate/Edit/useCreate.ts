@@ -15,7 +15,7 @@ import {
 import { atom, getDefaultStore, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import type { LabelType } from "./state";
-import { defaultField, editing } from "./state";
+import { defaultField, editing, savedLabel } from "./state";
 
 const useCreateAnnotationLabel = () => {
   const { scene, addOverlay, overlayFactory } = useLighter();
@@ -36,8 +36,10 @@ const useCreateAnnotationLabel = () => {
         >("classification", {
           field,
           id,
+          label: data,
         });
         addOverlay(overlay);
+        store.set(savedLabel, data);
         return { data, overlay, path: field, type };
       }
 
@@ -53,6 +55,7 @@ const useCreateAnnotationLabel = () => {
         addOverlay(overlay);
         const handler = new InteractiveDetectionHandler(overlay);
         scene?.enterInteractiveMode(handler);
+        store.set(savedLabel, data);
         return { data, overlay, path: field, type };
       }
 

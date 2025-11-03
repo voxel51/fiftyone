@@ -6,6 +6,9 @@ import styled from "styled-components";
 import useCanManageSchema from "./useCanManageSchema";
 import useShowModal from "./useShowModal";
 
+const DISABLED_DEFAULT =
+  "Annotation is not yet supported for this type of media or view.";
+
 const Container = styled.div`
   flex: 1;
   display: flex;
@@ -16,14 +19,23 @@ const Container = styled.div`
   position: relative;
 `;
 
-const ImportSchema = () => {
+export interface ImportSchemaProps {
+  disabled?: boolean;
+  disabledMsg?: React.ReactNode;
+}
+
+const ImportSchema = (
+  { disabled, disabledMsg }: ImportSchemaProps = {
+    disabled: false,
+  }
+) => {
   const canManage = useCanManageSchema();
   const showModal = useShowModal();
   return (
     <Container>
       <MuiIconFont
         sx={{
-          fontSize: 64,
+          fontSize: 48,
           color: "#FF9950",
           marginBottom: 2,
         }}
@@ -33,13 +45,13 @@ const ImportSchema = () => {
         Annotate faster than ever
       </Typography>
       <Typography color="secondary" textAlign="center" sx={{ marginBottom: 2 }}>
-        Add your annnotation schemas to access and edit labels, set up
+        Add your annotation schemas to access and edit labels, set up
         attributes, and start annotating right away.
       </Typography>
       <MuiButton
         variant="contained"
         color="primary"
-        disabled={!canManage}
+        disabled={disabled || !canManage}
         onClick={showModal}
       >
         Add schema
@@ -58,6 +70,24 @@ const ImportSchema = () => {
         >
           <Typography color="secondary" fontSize={12}>
             Dataset managers can add schemas
+          </Typography>
+        </Alert>
+      )}
+      {disabled && (
+        <Alert
+          icon={<InfoOutlined fontSize="inherit" color="secondary" />}
+          severity="info"
+          sx={{
+            position: "absolute",
+            bottom: 2,
+            margin: 2,
+            background: "#333",
+            boxShadow: "0px 1px 2px 0px rgba(16, 24, 40, 0.05)",
+            alignItems: "center",
+          }}
+        >
+          <Typography color="secondary" fontSize={12}>
+            {disabledMsg || DISABLED_DEFAULT}
           </Typography>
         </Alert>
       )}

@@ -16,10 +16,9 @@ export interface SelectionOptions {
   event?: PointerEvent;
 
   /**
-   * When true, any logic associated with this event will not be handled
-   * by lighter's bridge.
+   * Flag for ignoring side effects
    */
-  isBridgeLogicHandled?: boolean;
+  ignoreSideEffects?: boolean;
 }
 
 /**
@@ -56,17 +55,20 @@ export class SelectionManager {
    * @param options - Optional selection options.
    */
   select(id: string, options: SelectionOptions = {}): void {
-    const { event, isBridgeLogicHandled = false } = options;
+    const { event, ignoreSideEffects = false } = options;
     const overlay = this.selectableOverlays.get(id);
+
     if (!overlay) return;
 
     const wasSelected = this.selectedOverlays.has(id);
+
     if (wasSelected) return;
 
     if (!this.multipleSelection && this.selectedOverlays.size > 0) {
       const existingSelectedOverlayId = this.selectedOverlays
         .values()
         .next().value;
+
       if (existingSelectedOverlayId) {
         this.deselect(existingSelectedOverlayId);
       }
@@ -81,8 +83,8 @@ export class SelectionManager {
         id,
         // point not relevant yet
         point: { x: 0, y: 0 },
+        ignoreSideEffects,
         isShiftPressed: event?.shiftKey || false,
-        isBridgeLogicHandled,
       },
     });
 
@@ -95,7 +97,7 @@ export class SelectionManager {
    * @param options - Optional selection options.
    */
   deselect(id: string, options: SelectionOptions = {}): void {
-    const { isBridgeLogicHandled = false } = options;
+    const { ignoreSideEffects = false } = options;
     const overlay = this.selectableOverlays.get(id);
     if (!overlay) return;
 
@@ -107,7 +109,7 @@ export class SelectionManager {
 
     this.eventBus.emit({
       type: LIGHTER_EVENTS.OVERLAY_DESELECT,
-      detail: { id, isBridgeLogicHandled },
+      detail: { id, ignoreSideEffects },
     });
 
     this.emitSelectionChanged([], [id]);
@@ -135,7 +137,7 @@ export class SelectionManager {
    * @param options - Optional selection options.
    */
   clearSelection(options: SelectionOptions = {}): void {
-    const { isBridgeLogicHandled = false } = options;
+    const { ignoreSideEffects = false } = options;
     const previouslySelected = Array.from(this.selectedOverlays);
     if (previouslySelected.length === 0) return;
 
@@ -152,8 +154,8 @@ export class SelectionManager {
     this.eventBus.emit({
       type: LIGHTER_EVENTS.SELECTION_CLEARED,
       detail: {
+        ignoreSideEffects,
         previouslySelectedIds: previouslySelected,
-        isBridgeLogicHandled,
       },
     });
 

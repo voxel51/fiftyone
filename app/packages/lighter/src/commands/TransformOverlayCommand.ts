@@ -2,7 +2,6 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import { BoundingBoxOverlay } from "../overlay/BoundingBoxOverlay";
 import type { Rect } from "../types";
 import type { Command } from "./Command";
 import { Movable } from "./MoveOverlayCommand";
@@ -28,21 +27,14 @@ export class TransformOverlayCommand implements Command {
     private overlay: Movable,
     overlayId: string,
     private oldBounds: Rect,
-    private newBounds: Rect,
-    private relative?: boolean
+    private newBounds: Rect
   ) {
     this.id = `transform-${overlayId}-${Date.now()}`;
     this.description = `Transform overlay ${overlayId}`;
   }
 
   execute(): void {
-    if (this.relative && this.overlay instanceof BoundingBoxOverlay) {
-      this.overlay.setRelativeBounds(this.newBounds);
-    } else {
-      this.overlay.setBounds(this.newBounds);
-    }
-
-    this.overlay.markDirty();
+    this.overlay.setBounds(this.newBounds);
   }
 
   undo(): void {

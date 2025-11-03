@@ -1,38 +1,84 @@
-import { useCallback, useEffect } from "react";
-import { useSetRecoilState } from "recoil";
-import { Vector3 } from "three";
+import useCanAnnotate from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useCanAnnotate";
+import * as fos from "@fiftyone/state";
+import { CameraControls } from "@react-three/drei";
+import { useAtomValue } from "jotai";
+import React, { useCallback, useEffect } from "react";
+import { useRecoilValue, useSetRecoilState } from "recoil";
+import { PerspectiveCamera, Quaternion, Vector3 } from "three";
 import { useFo3dContext } from "../fo3d/context";
-import { cameraViewStatusAtom } from "../state";
+import { annotationPlaneAtom, cameraViewStatusAtom } from "../state";
 
 interface UseCameraViewsProps {
-  cameraControlsRef: React.RefObject<any>;
+  cameraRef: React.RefObject<PerspectiveCamera>;
+  cameraControlsRef: React.RefObject<CameraControls>;
 }
 
-export const useCameraViews = ({ cameraControlsRef }: UseCameraViewsProps) => {
+export const useCameraViews = ({
+  cameraRef,
+  cameraControlsRef,
+}: UseCameraViewsProps) => {
   const { sceneBoundingBox, upVector } = useFo3dContext();
   const setCameraViewStatus = useSetRecoilState(cameraViewStatusAtom);
+  const annotationPlane = useRecoilValue(annotationPlaneAtom);
+  const canAnnotate = useCanAnnotate();
+  const mode = useAtomValue(fos.modalMode);
+  const enableAnnotationPlaneCameraView = canAnnotate && mode === "annotate";
 
+  // We use current camera position and look at point to calculate the camera position
+  // with some reasonable constraints.
+  // Alternative is to place camera outside bounding box, but that causes a "loss of information" type of UX.
   const calculateCameraPosition = useCallback(
     (direction: Vector3) => {
-      if (!sceneBoundingBox || !upVector) {
+      if (
+        !sceneBoundingBox ||
+        !cameraRef.current ||
+        !cameraControlsRef.current
+      ) {
         return null;
       }
 
+      const currentCameraPosition = cameraRef.current.position.clone();
+      const lookAt = new Vector3();
+      cameraControlsRef.current.getTarget(lookAt);
+
+      // Calculate radius based on the position of the camera and the look at point
+      const currentRadius = currentCameraPosition.distanceTo(lookAt);
+
+      // Get scene bounding box dimensions to bound the radius
       const center = sceneBoundingBox.getCenter(new Vector3());
       const size = sceneBoundingBox.getSize(new Vector3());
       const maxSize = Math.max(size.x, size.y, size.z);
-      const distance = maxSize * 2;
+      // Minimum radius is half the largest dimension
+      const minRadius = maxSize * 0.5;
+      // Maximum radius is 3x the largest dimension
+      const maxRadius = maxSize * 3;
 
-      const cameraPosition = center
+      // Clamp the radius
+      const radius = Math.max(minRadius, Math.min(maxRadius, currentRadius));
+
+      // Constrain lookAt to stay within 130% of scene bounding box center
+      const maxLookAtDistance = maxSize * 1.3;
+      const lookAtDistance = lookAt.distanceTo(center);
+      let constrainedLookAt = lookAt;
+
+      if (lookAtDistance > maxLookAtDistance) {
+        const directionToLookAt = lookAt.clone().sub(center).normalize();
+        constrainedLookAt = center
+          .clone()
+          .add(directionToLookAt.multiplyScalar(maxLookAtDistance));
+      }
+
+      // Position camera at constrained lookAt point + direction * radius
+      const cameraPosition = constrainedLookAt
         .clone()
-        .add(direction.clone().multiplyScalar(distance));
+        .add(direction.clone().multiplyScalar(radius));
 
       return {
         cameraPosition,
-        center,
+        center: constrainedLookAt,
       };
     },
-    [sceneBoundingBox, upVector]
+    [sceneBoundingBox, cameraRef, cameraControlsRef]
   );
 
   const setCameraView = useCallback(
@@ -84,7 +130,12 @@ export const useCameraViews = ({ cameraControlsRef }: UseCameraViewsProps) => {
         ? event.code.replace("Numpad", "")
         : event.code.replace("Digit", "");
 
-      if (numPressed === "1" || numPressed === "2" || numPressed === "3") {
+      if (
+        numPressed === "1" ||
+        numPressed === "2" ||
+        numPressed === "3" ||
+        (numPressed === "4" && enableAnnotationPlaneCameraView)
+      ) {
         event.preventDefault();
       }
 
@@ -171,13 +222,78 @@ export const useCameraViews = ({ cameraControlsRef }: UseCameraViewsProps) => {
             direction = new Vector3(0, -1, 0);
           }
         }
+      } else if (numPressed === "4" && enableAnnotationPlaneCameraView) {
+        if (
+          !cameraRef.current ||
+          !cameraControlsRef.current ||
+          !sceneBoundingBox
+        ) {
+          return;
+        }
+
+        // Get current radius
+        const currentCameraPosition = cameraRef.current.position.clone();
+        const currentLookAt = new Vector3();
+        cameraControlsRef.current.getTarget(currentLookAt);
+        const currentRadius = currentCameraPosition.distanceTo(currentLookAt);
+
+        // Extract normal from annotation plane quaternion
+        const quat = new Quaternion(...annotationPlane.quaternion);
+        const normal = new Vector3(0, 0, 1).applyQuaternion(quat).normalize();
+
+        // Use annotation plane position as look-at point
+        const planePosition = new Vector3(...annotationPlane.position);
+
+        let cameraPosition: Vector3;
+        let viewName: string;
+
+        if (isCtrlPressed) {
+          // Opposite view: look at plane from opposite side (negative normal)
+          // Position camera at plane position + (-normal) * radius
+          cameraPosition = planePosition
+            .clone()
+            .add(normal.clone().negate().multiplyScalar(currentRadius));
+
+          viewName = "Annotation plane view 2";
+        } else {
+          cameraPosition = planePosition
+            .clone()
+            .add(normal.clone().multiplyScalar(currentRadius));
+
+          viewName = "Annotation plane view 1";
+        }
+
+        cameraControlsRef.current.setLookAt(
+          cameraPosition.x,
+          cameraPosition.y,
+          cameraPosition.z,
+          planePosition.x,
+          planePosition.y,
+          planePosition.z,
+          true
+        );
+
+        setCameraViewStatus({
+          viewName,
+          timestamp: Date.now(),
+        });
+
+        return;
       } else {
         return;
       }
 
       setCameraView(direction, viewName);
     },
-    [upVector, setCameraView]
+    [
+      upVector,
+      setCameraView,
+      annotationPlane,
+      cameraRef,
+      cameraControlsRef,
+      sceneBoundingBox,
+      enableAnnotationPlaneCameraView,
+    ]
   );
 
   useEffect(() => {

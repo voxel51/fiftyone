@@ -23,6 +23,7 @@ import {
 } from "../event/EventBus";
 import type { InteractionHandler } from "../interaction/InteractionManager";
 import { InteractionManager } from "../interaction/InteractionManager";
+import { InteractiveDetectionHandler } from "../interaction/InteractiveDetectionHandler";
 import { BaseOverlay } from "../overlay/BaseOverlay";
 import type { Selectable } from "../selection/Selectable";
 import type { SelectionOptions } from "../selection/SelectionManager";
@@ -46,7 +47,6 @@ import {
   RenderingStateManager,
 } from "./RenderingStateManager";
 import type { Scene2DConfig, SceneOptions } from "./SceneConfig";
-import { InteractiveDetectionHandler } from "../interaction/InteractiveDetectionHandler";
 
 export const TypeGuards = {
   isSelectable: (
@@ -787,8 +787,6 @@ export class Scene2D {
   private recalculateOverlayOrderForInteractiveOrdering(): {
     containedIds: string[];
   } {
-    const { activePaths } = this.sceneOptions || {};
-
     const point = this.interactionManager.getPixelCoordinates();
 
     if (!point) {
@@ -1290,6 +1288,13 @@ export class Scene2D {
       type: LIGHTER_EVENTS.SELECTION_CLEARED,
       detail: { previouslySelectedIds: [] },
     });
+  }
+
+  /**
+   * Clears the undo/redo stack
+   */
+  clearUndoRedoStack() {
+    this.undoRedo.clear();
   }
 
   /**
