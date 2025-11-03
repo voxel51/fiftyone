@@ -4,7 +4,8 @@ import { snackbarMessage } from "@fiftyone/state";
 import { Sync } from "@mui/icons-material";
 import { Link, Typography } from "@mui/material";
 import { useAtom, useSetAtom } from "jotai";
-import React, { useEffect, useState } from "react";
+import { isEqual } from "lodash";
+import React, { useEffect, useMemo, useState } from "react";
 import { useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import { CodeView } from "../../../../../plugins/SchemaIO/components";
@@ -41,14 +42,19 @@ const Loading = ({ scanning }: { scanning?: boolean }) => {
   );
 };
 
+const toStr = (config) => JSON.stringify(config, undefined, 2);
+const parse = (config: string) => JSON.parse(config);
+
 const useAnnotationSchema = (path: string) => {
   const [loading, setLoading] = useState<"loading" | "scanning" | false>(false);
   const [config, setConfig] = useAtom(schemaConfig(path));
 
-  const [localConfig, setLocalConfig] = useState(config);
+  const [localConfig, setLocalConfig] = useState(toStr(config));
 
   const compute = useOperatorExecutor("compute_annotation_schema");
   const save = useOperatorExecutor("save_annotation_schema");
+
+  const setMessage = useSetRecoilState(snackbarMessage);
 
   useEffect(() => {
     if (!compute.result) {
@@ -56,7 +62,7 @@ const useAnnotationSchema = (path: string) => {
     }
 
     setLoading(false);
-    setLocalConfig(compute.result.config);
+    setLocalConfig(toStr(compute.result.config));
   }, [compute.result]);
 
   useEffect(() => {
@@ -64,6 +70,14 @@ const useAnnotationSchema = (path: string) => {
       setConfig(save.result.config);
     }
   }, [save.result, setConfig]);
+
+  const hasChanges = useMemo(() => {
+    try {
+      return !isEqual(config, parse(localConfig));
+    } catch {
+      return true;
+    }
+  }, [config, localConfig]);
 
   return {
     compute: (scan = true) => {
@@ -75,22 +89,27 @@ const useAnnotationSchema = (path: string) => {
     loading: loading,
 
     scanning: loading === "scanning",
-    reset: () => setLocalConfig(config),
+    reset: () => setLocalConfig(toStr(config)),
 
     save: () => {
       if (!localConfig) {
         throw new Error("undefined schema");
       }
 
-      save.execute({ path, config: localConfig });
-      setConfig(localConfig);
+      try {
+        const config = parse(localConfig);
+        save.execute({ path, config });
+        setConfig(parse(localConfig));
+      } catch {
+        setMessage("Unable to parse config");
+      }
     },
     saving: save.isExecuting,
     savingComplete: save.hasExecuted,
     schema: localConfig,
     setSchema: setLocalConfig,
 
-    hasChanges: JSON.stringify(config) !== JSON.stringify(localConfig),
+    hasChanges,
   };
 };
 
@@ -133,9 +152,9 @@ const EditAnnotationSchema = ({ path }: { path: string }) => {
         )}
         {data.schema && !data.loading && (
           <CodeView
-            data={JSON.stringify(data.schema, undefined, 2)}
+            data={data.schema}
             onChange={(_, value) => {
-              data.setSchema(JSON.parse(value));
+              data.setSchema(value);
             }}
             path={path}
             schema={{
