@@ -573,7 +573,8 @@ export const calculateCameraPositionForUpVector = (
     .normalize();
 
   // 3. build camera position: center + up‐offset + horizontal‐offset
-  return new Vector3(0, 0, 0)
+  return center
+    .clone()
     .add(upDir.multiplyScalar(verticalDist))
     .add(proj.multiplyScalar(horizontalDist));
 };
