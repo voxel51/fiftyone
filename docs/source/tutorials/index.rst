@@ -34,6 +34,13 @@ your datasets and turn your good models into *great models*.
 .. Add tutorial cards below
 
 .. customcarditem::
+    :header: Kaputt Dataset Tutorial
+    :description: Learn how to work with the Kaputt dataset in FiftyOne.
+    :link: kaputt_dataset.html
+    :image: https://cdn.voxel51.com/kaputt_overview.webp
+    :tags: Dataset-Evaluation
+
+.. customcarditem::
     :header: pandas-style queries in FiftyOne
     :description: Translate your pandas knowledge to FiftyOne. This tutorial gives a side-by-side comparison of performing common operations in pandas and FiftyOne.
     :link: pandas_comparison.html
@@ -204,6 +211,7 @@ your datasets and turn your good models into *great models*.
    :maxdepth: 1
    :hidden:
 
+   Exploring Kaputt Dataset __SUB_NEW__ <kaputt_dataset.ipynb>
    pandas and FiftyOne <pandas_comparison.ipynb>
    Evaluating object detections <evaluate_detections.ipynb>
    Evaluating a classifier <evaluate_classifications.ipynb>
