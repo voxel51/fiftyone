@@ -34,7 +34,7 @@ your datasets and turn your good models into *great models*.
 .. Add tutorial cards below
 
 .. customcarditem::
-    :header: Kaputt Dataset Tutorial
+    :header: Exploring Kaputt Dataset
     :description: Learn how to work with the Kaputt dataset in FiftyOne.
     :link: kaputt_dataset.html
     :image: https://cdn.voxel51.com/kaputt_overview.webp
@@ -46,7 +46,7 @@ your datasets and turn your good models into *great models*.
     :link: dinov3.html
     :image: https://cdn.voxel51.com/tutorial_dinov3/dinov3.png
     :tags: Embeddings,Brain,Model-Evaluation,Visualization
-    
+
 .. customcarditem::
     :header: pandas-style queries in FiftyOne
     :description: Translate your pandas knowledge to FiftyOne. This tutorial gives a side-by-side comparison of performing common operations in pandas and FiftyOne.
