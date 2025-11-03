@@ -114,7 +114,10 @@ const OtherFieldsWithSchema = () => {
           key={path}
           path={path}
           isSelected={isSelected(path)}
-          onDelete={() => deleteSchema(path)}
+          onDelete={{
+            callback: () => deleteSchema(path),
+            tooltip: "Delete annotation schema",
+          }}
         />
       ))}
     </>
