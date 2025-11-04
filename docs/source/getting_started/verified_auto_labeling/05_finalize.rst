@@ -66,7 +66,7 @@ Now your approved **yolow_detections** labels have been added as a permanent fie
    :align: center
    :width: 90%
 
-You did it!
+You Did It!
 -----------
 
 **Congratulations!**

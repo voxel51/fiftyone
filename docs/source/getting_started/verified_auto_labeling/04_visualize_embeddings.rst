@@ -11,7 +11,7 @@ The sample grid is useful for visually identifying true and false positives. How
    :local:
    :depth: 2
 
-Compute patch embeddings
+Compute Patch Embeddings
 -------------------------
 
 In the previous step, you generated patch views that showed one detection label per image. You can similarly compute and visualize patch embeddings directly within the FiftyOne App.
@@ -45,7 +45,7 @@ Once the task changes to **Completed** status, navigate back to the sample grid,
    :width: 30%
 
 
-Analyze patch embeddings
+Analyze Patch Embeddings
 ------------------------
 
 You should now see the embeddings space visualized within the Embeddings panel. This next part of the guide offers a bit of a choose your own adventure opportunity. The goal is to identify clusters of samples (or individual samples within clusters) that are mislabeled. 
@@ -76,7 +76,7 @@ After tagging at least a few incorrect samples, a good next step is to mark them
    :align: center
    :width: 50%
 
-Next steps
+Next Steps
 ----------
 
 This tends to be an iterative process. Feel free to continue analyzing parts of the embeddings space, finding and tag samples as needed. You can also use this opportunity to return to the Auto Labeling panel and batch additional true positives for approval.

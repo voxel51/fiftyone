@@ -11,7 +11,7 @@ With your dataset and DO(s) ready, it's time to configure your Verified Auto-Lab
    :local:
    :depth: 2
 
-Open and configure Auto Labeling
+Open and Configure Auto Labeling
 -----------------------------
 
 Start by clicking into your FiftyOne dataset. Above the sample grid, select **New panel > Auto Labeling**. 

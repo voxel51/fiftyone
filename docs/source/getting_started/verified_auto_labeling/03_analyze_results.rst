@@ -11,7 +11,7 @@ Your VAL run has completed, and label predictions are ready for review. You will
    :local:
    :depth: 2
 
-Review interface
+Review Interface
 ----------------
 
 When your run status changes to **In Review**, the Auto Labeling panel displays an interface with two tabs: **Review** and **Approval**. Here you can batch select labels for approval.
@@ -30,7 +30,7 @@ Note the confidence slider and the label table in the Auto Labeling panel. The c
 
 Also notice that the default view shows each sample once with all predicted detections on the sample. When evaluating object detections, it can be more useful to analyze and approve each label as individual samples. This can be done through patches views, described below.
 
-Compute and view patches
+Compute and View Patches
 ------------------------
 
 The FiftyOne App provides a patches view button that allows you to take any Detections field in your dataset and visualize each object as an individual patch in the image grid.
@@ -42,7 +42,7 @@ In the toolbar above the sample grid, select **Patches > Labels > yolow_detectio
    :align: center
    :width: 100%
 
-Batch high-confidence samples for approval
+Batch High-Confidence Samples For Approval
 ------------------------------------------
 
 From here we can then try to find high-confidence true positives. Adjust the slider so the minimum confidence threshold is **70%**. 
