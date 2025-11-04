@@ -684,7 +684,7 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
                 output,
                 image_sizes,
                 confidence_thresh=self.config.confidence_thresh,
-                classes=self._filter_classes,
+                classes=self.config.filter_classes,
             )
         else:
             return output
@@ -1488,8 +1488,8 @@ class TransformersDetectorOutputProcessor(fout.DetectorOutputProcessor):
                 self._parse_output(
                     o,
                     (img_sz[1], img_sz[0]),
-                    confidence_thresh=confidence_thresh,
-                    classes=classes,
+                    confidence_thresh,
+                    classes,
                 )
             )
 
@@ -1587,7 +1587,12 @@ class TransformersPoseEstimationOutputProcessor(fout.KeypointOutputProcessor):
                 )
 
     def __call__(
-        self, output, image_sizes, confidence_thresh=None, box_prompts=None
+        self,
+        output,
+        image_sizes,
+        confidence_thresh=None,
+        box_prompts=None,
+        **kwargs,
     ):
         """Process pose estimation outputs to FiftyOne format."""
         output.heatmaps = output.heatmaps.detach()

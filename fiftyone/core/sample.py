@@ -815,7 +815,7 @@ def _apply_classes(label, classes):
             if l.label in classes
         ]
         setattr(label, label._LABEL_LIST_FIELD, labels)
-    else:
+    elif hasattr(label, "label"):
         if label.label not in classes:
             label = label.__class__()
 

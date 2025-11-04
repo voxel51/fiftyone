@@ -209,10 +209,10 @@ def apply_model(
             )
             confidence_thresh = None
 
-        if classes is not None and model.can_filter_classes:
+        if classes is not None and hasattr(model.config, "filter_classes"):
             # Model directly supports class filtering, so defer to it
             context.enter_context(
-                fou.SetAttributes(model, filter_classes=classes)
+                fou.SetAttributes(model.config, filter_classes=classes)
             )
             classes = None
 
@@ -2202,31 +2202,6 @@ class Model(etal.Model):
     @preprocess.setter
     def preprocess(self, value):
         raise NotImplementedError("subclasses must implement preprocess")
-
-    @property
-    def can_filter_classes(self):
-        """Whether this model allows users to provide a list of allowed
-        classes to filter the predictions it makes.
-
-        This method returns ``False`` by default. Models that support class
-        filtering should override this by implementing :meth:`filter_classes`.
-        """
-        return False
-
-    @property
-    def filter_classes(self):
-        """The list of classes that the model is currently restricted to when
-        generating predictions, if any.
-        """
-        raise NotImplementedError(
-            "This model does not support class filtering"
-        )
-
-    @filter_classes.setter
-    def filter_classes(self, value):
-        raise NotImplementedError(
-            "This model does not support class filtering"
-        )
 
     def predict(self, arg):
         """Performs prediction on the given data.

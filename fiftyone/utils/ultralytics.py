@@ -698,7 +698,7 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
             output,
             width_height,
             confidence_thresh=self.config.confidence_thresh,
-            classes=self._filter_classes,
+            classes=self.config.filter_classes,
         )
 
 
@@ -834,6 +834,7 @@ class UltralyticsOutputProcessor(fout.OutputProcessor):
         frame_size,
         confidence_thresh=None,
         classes=None,
+        **kwargs,
     ):
         batch = []
         for df in result.pandas().xywhn:
@@ -901,7 +902,14 @@ class UltralyticsClassificationOutputProcessor(
         super().__init__(classes=classes, store_logits=store_logits)
         self.post_processor = post_processor
 
-    def __call__(self, output, _, confidence_thresh=None, classes=None):
+    def __call__(
+        self,
+        output,
+        _,
+        confidence_thresh=None,
+        classes=None,
+        **kwargs,
+    ):
         results = self.post_process(output)
         return to_classifications(
             results,
@@ -973,11 +981,7 @@ class UltralyticsSegmentationOutputProcessor(
 ):
     """Converts Ultralytics Segmentation model outputs to FiftyOne format."""
 
-    def __init__(
-        self,
-        classes=None,
-        post_processor=None,
-    ):
+    def __init__(self, classes=None, post_processor=None):
         super().__init__(classes)
         self.post_processor = post_processor
 
@@ -999,7 +1003,9 @@ class UltralyticsSegmentationOutputProcessor(
 
     def _parse_output(self, results, _, confidence_thresh, classes):
         return to_instances(
-            results, confidence_thresh=confidence_thresh, classes=classes
+            results,
+            confidence_thresh=confidence_thresh,
+            classes=classes,
         )
 
 
@@ -1008,15 +1014,18 @@ class UltralyticsPoseOutputProcessor(
 ):
     """Converts Ultralytics Pose model outputs to FiftyOne format."""
 
-    def __init__(
-        self,
-        classes=None,
-        post_processor=None,
-    ):
+    def __init__(self, classes=None, post_processor=None):
         super().__init__(classes)
         self.post_processor = post_processor
 
-    def __call__(self, output, _, confidence_thresh=None, classes=None):
+    def __call__(
+        self,
+        output,
+        _,
+        confidence_thresh=None,
+        classes=None,
+        **kwargs,
+    ):
         preds = self.post_process(output)
         return to_keypoints(
             preds, confidence_thresh=confidence_thresh, classes=classes
@@ -1026,17 +1035,22 @@ class UltralyticsPoseOutputProcessor(
 class UltralyticsOBBOutputProcessor(
     fout.OutputProcessor, UltralyticsPostProcessor
 ):
-    """Converts Ultralytics Oriented Bounding Box model outputs to FiftyOne format."""
+    """Converts Ultralytics Oriented Bounding Box model outputs to FiftyOne
+    format.
+    """
 
-    def __init__(
-        self,
-        classes=None,
-        post_processor=None,
-    ):
+    def __init__(self, classes=None, post_processor=None):
         super().__init__(classes)
         self.post_processor = post_processor
 
-    def __call__(self, output, _, confidence_thresh=None, classes=None):
+    def __call__(
+        self,
+        output,
+        _,
+        confidence_thresh=None,
+        classes=None,
+        **kwargs,
+    ):
         preds = self.post_process(output)
         return obb_to_polylines(
             preds, confidence_thresh=confidence_thresh, classes=classes
