@@ -236,11 +236,10 @@ export default function Selection(props: SelectionProps) {
             disableSticky
             sx={{ padding: 0, background: "transparent" }}
           >
-            <LastOption>{lastFixedOption}</LastOption>
+            <LastOption disabled={false}>{lastFixedOption}</LastOption>
           </ListSubheader>
         )}
       </Select>
     </div>
   );
 }
-
