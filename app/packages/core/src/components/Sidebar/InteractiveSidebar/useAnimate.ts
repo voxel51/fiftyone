@@ -4,7 +4,7 @@ import type { MutableRefObject } from "react";
 import { useCallback } from "react";
 import type { InteractiveItems } from "./types";
 import type useGetNewOrder from "./useGetNewOrder";
-import { Direction, MARGIN, fn } from "./utils";
+import { Direction, MARGIN, calculateItemLayout } from "./utils";
 
 export default function useAnimate({
   down,
@@ -45,7 +45,7 @@ export default function useAnimate({
         return;
       const realDelta = y - (start.current ?? 0);
       const newOrder = getNewOrder(lastDirection.current);
-      const { results, minHeight } = fn(
+      const { results, minHeight } = calculateItemLayout(
         items.current,
         order.current,
         newOrder,
