@@ -1,3 +1,4 @@
+import { Tooltip } from "@fiftyone/components";
 import { DeleteOutlined, EditOutlined } from "@mui/icons-material";
 import { Checkbox, Typography } from "@mui/material";
 import type { WritableAtom } from "jotai";
@@ -30,7 +31,10 @@ const FieldRow = ({
 }: {
   isSelected?: SelectedAtom;
   path: string;
-  onDelete?: () => void;
+  onDelete?: {
+    tooltip: string;
+    callback: () => void;
+  };
 }) => {
   const setField = useSetAtom(currentField);
   const fType = useAtomValue(fieldType(path));
@@ -45,19 +49,23 @@ const FieldRow = ({
 
       <ItemRight>
         {onDelete && (
+          <Tooltip placement="top-center" text={onDelete.tooltip}>
+            <RoundButtonWhite
+              style={{ padding: 4, height: 29, width: 29 }}
+              onClick={onDelete.callback}
+            >
+              <DeleteOutlined />
+            </RoundButtonWhite>
+          </Tooltip>
+        )}
+        <Tooltip placement="top-center" text="Configure annotation schema">
           <RoundButtonWhite
             style={{ padding: 4, height: 29, width: 29 }}
-            onClick={onDelete}
+            onClick={() => setField(path)}
           >
-            <DeleteOutlined />
+            <EditOutlined />
           </RoundButtonWhite>
-        )}
-        <RoundButtonWhite
-          style={{ padding: 4, height: 29, width: 29 }}
-          onClick={() => setField(path)}
-        >
-          <EditOutlined />
-        </RoundButtonWhite>
+        </Tooltip>
       </ItemRight>
     </Item>
   );

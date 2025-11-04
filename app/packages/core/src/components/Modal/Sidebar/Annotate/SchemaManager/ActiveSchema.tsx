@@ -85,7 +85,10 @@ const Rows = () => {
             key={path}
             path={path}
             isSelected={isSelected(path)}
-            onDelete={() => deactivate(path)}
+            onDelete={{
+              callback: () => deactivate(path),
+              tooltip: "Deactivate annotation schema",
+            }}
           />
         ))}
       </Container>
