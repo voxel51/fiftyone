@@ -230,16 +230,14 @@ export default function Selection(props: SelectionProps) {
           );
         })}
         {lastFixedOption && (
-          <MenuItem
+          <ListSubheader
             key="create-view-option"
-            value="create-view-option"
-            sx={{ padding: 0 }}
-            onClick={(e) => {
-              e.preventDefault();
-            }}
+            component="div"
+            disableSticky
+            sx={{ padding: 0, background: "transparent" }}
           >
             <LastOption>{lastFixedOption}</LastOption>
-          </MenuItem>
+          </ListSubheader>
         )}
       </Select>
     </div>
