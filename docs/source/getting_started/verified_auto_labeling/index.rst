@@ -72,7 +72,6 @@ This guide is designed for machine learning practitioners and data scientists wh
    Prepare Your Dataset and Delegated Operators <01_preparation>
    Configure VAL Run <02_configure_run>
    Analyze Predictions <03_analyze_results>
-   Batch Approve Labels <04_batch_approve>
-   Tag Problem Cases <05_tag_problems>
-   Finalize Workflow <06_finalize>
+   Visualize Embeddings <04_visualize_embeddings>
+   Finalize Approvals <05_finalize>
    Guide Summary <summary>

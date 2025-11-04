@@ -35,7 +35,7 @@ To create a dataset in FiftyOne Enterprise and load in samples, see :ref:`creati
 Identify Labeling Task and Classes
 ----------------------------------
 
-Verified auto-labeling currently supports the following 3 annotation tasks.
+Verified Auto-Labeling currently supports the following 3 annotation tasks.
 
 - **Classification:** Label applied to the entire image (e.g., `cloudy`)
 - **Object detection:** Bounding box labels drawn around objects of interest (e.g., `dog`, `cat`, `bigfoot`)
