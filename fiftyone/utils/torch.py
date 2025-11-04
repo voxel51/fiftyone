@@ -1874,6 +1874,10 @@ class FiftyOneTorchDataset(Dataset):
 
         torch_dataset = torch.utils.data.get_worker_info().dataset
 
+        if torch_dataset.vectorize:
+            # no need to establish new connections or load samples
+            return
+
         if torch_dataset._samples is not None:
             raise ValueError(
                 "worker_init() called after samples have been loaded. This "
