@@ -277,7 +277,7 @@ const measureEntries = (
     if (key === activeKey) activeHeight = height;
 
     const currentScale = items[key].controller.springs.scale.get();
-    height = currentScale ? height / currentScale : currentScale;
+    height = currentScale ? height / currentScale : height;
 
     const top = previous.top + previous.height + MARGIN;
     data.push({ key, height, top });
