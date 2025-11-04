@@ -24,14 +24,14 @@ Preparation for auto-labeling involves:
 Setting Up Delegated Operators
 ------------------------------
 
-Delegated operators (DOs) are GPU-enabled compute resources that execute model inference and other computationally intensive operations in FiftyOne Enterprise. For Verified Auto-Labeling to work, you need at least one active delegated operator with GPU support. See the :ref:`delegated operations documentation <teams-delegated-operations>` for more details.
+Delegated operators (DOs) are GPU-enabled compute resources that execute model inference and other computationally intensive operations in FiftyOne Enterprise. For Verified Auto-Labeling to work, you need at least one active delegated operator with GPU support. See the :ref:`delegated operations documentation <enterprise-delegated-operations>` for more details.
 
 Dataset Preparation
 -------------------
 
 This guide presumes you have an unlabeled image dataset loaded into your FiftyOne Enterprise instance. This dataset should contain objects of interest as we will be performing object detection for our auto-labeling task.
 
-To create a dataset in FiftyOne Enterprise and load in samples, see :ref:`creating datasets <enterprise-creating-datasets>`. In order to include specific examples in this guide we will be using an unlabeled version of the :ref:`BDD100K image dataset <dataset-zoo-bdd100k>` available in the :doc:`FiftyOne dataset zoo </dataset_zoo/datasets>`.
+To create a dataset in FiftyOne Enterprise and load in samples, see :ref:`creating datasets <enterprise-creating-datasets>`. In order to include specific examples in this guide we will be using an unlabeled version of the :ref:`BDD100K image dataset <dataset-zoo-bdd100k>` available in the :doc:`FiftyOne dataset zoo </dataset_zoo/index>`.
 
 
 Identify Labeling Task and Classes

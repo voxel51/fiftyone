@@ -1,3 +1,5 @@
+.. _val_guide_summary:
+
 Summary: What You've Learned
 ============================
 
