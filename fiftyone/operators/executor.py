@@ -1113,23 +1113,24 @@ class PipelineExecutionContext(object):
     Operators can use the pipeline execution context to access information
     about the current pipeline execution, if they are a child operation in a
     pipeline.
-
-    Args:
-        active: whether the pipeline is currently active, i.e., having no
-            failures in prior stages
-        curr_stage_index: the current stage index of the pipeline
-        total_stages: the total number of stages in the pipeline
-        error: an error message, if any. Applicable only if the pipeline is not
-            active
-        num_distributed_tasks (0): the number of distributed tasks in the
-            current stage
     """
 
     active: bool
+    """Whether the pipeline is currently active, i.e., having no failures in
+    prior stages
+    """
+
     curr_stage_index: int
+    """Index of the pipeline's current execution stage"""
+
     total_stages: int
+    """The total number of stages in the pipeline"""
+
     num_distributed_tasks: int = 0
+    """The number of distributed tasks in the current stage"""
+
     error: Optional[str] = None
+    """Error message, if any. Applicable only if the pipeline is not active"""
 
     # Overriding default init so we swallow extra kwargs
     def __init__(
