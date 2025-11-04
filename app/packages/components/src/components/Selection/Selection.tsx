@@ -207,10 +207,6 @@ export default function Selection(props: SelectionProps) {
               <SelectionOption
                 dataCy={`${selectionId}-${slug || "new"}-selection-option`}
                 item={itemProps}
-                onClick={(e) => {
-                  // Let the MenuItem handle the main click
-                  e.stopPropagation();
-                }}
                 isSelected={id === selectedId}
                 preDecorator={
                   <CustomBox
