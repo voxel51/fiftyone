@@ -1,215 +1,98 @@
-.. _val_guide_summary:
-
-Verified Auto-Labeling Guide Summary
-=====================================
+Summary: What You've Learned
+============================
 
 .. default-role:: code
 
-Congratulations on completing the Verified Auto-Labeling Guide! You've learned how to leverage FiftyOne's VAL workflow to dramatically accelerate dataset labeling while maintaining high quality standards through systematic human review.
+Congratulations! You've completed the Verified Auto-Labeling Guide. Let's recap what you've accomplished and explore where you can go next.
 
-What You've Learned
--------------------
+.. _summary-step-recap:
 
-Throughout this guide, you've mastered:
+Step-by-Step Recap
+------------------
 
-**Infrastructure Setup**
-- Configuring GPU-enabled delegated orchestrators for efficient model inference
-- Setting up resources and monitoring orchestrator health
-- Understanding the delegated operations architecture
+**Step 1: Prepare Your Dataset and Delegated Operators**
 
-**Auto-Labeling Workflow**
-- Selecting appropriate models from FiftyOne's Model Zoo
-- Configuring VAL runs with target samples, classes, and confidence thresholds
-- Launching and monitoring model inference operations
-- Viewing logs and troubleshooting run issues
+You learned how to set up the foundation for Verified Auto-Labeling by preparing your dataset in FiftyOne Enterprise and configuring GPU-enabled delegated operators. This included understanding the infrastructure requirements and ensuring your environment is ready for auto labeling orkflows.
 
-**Systematic Review Process**
-- Using confidence sliders to filter predictions dynamically
-- Navigating the three-stage review workflow (Analyze → Approval → Approved)
-- Leveraging advanced exploration tools (patches view, embeddings panel)
-- Understanding the label table and instance counts
+**Step 2: Configure Your VAL Run**
 
-**Quality Assurance**
-- Batch approving high-confidence correct predictions efficiently
-- Tagging samples with problematic labels for manual correction
-- Creating meaningful tag taxonomies for different error types
-- Iterating through confidence ranges strategically
+You mastered the configuration process for a VAL run, including sample selection, model selection, class configuration, target label fields, and confidence thresholds. This step showed you how to customize the auto-labeling process to match your specific annotation needs.
 
-**Finalization**
-- Completing the VAL workflow to integrate approved labels
-- Understanding what happens to unapproved predictions
-- Verifying finalized labels in your dataset
-- Preparing labeled data for downstream tasks
+**Step 3: Analyze and Approve Predictions**
 
-Key Takeaways
--------------
+You explored FiftyOne's review interface for systematically assessing auto-generated labels. This included using the Review and Approval tabs to batch select correct predictions and mark them for approval.
 
-**VAL is Iterative**
+**Step 4: Assess Labels with Embeddings**
 
-The most successful VAL workflows involve multiple passes rather than attempting perfection in a single run. Start conservatively, approve obvious cases, tag edge cases, and refine over time.
+You used FiftyOne's patch embeddings visualization to identify outliers, false positives, and false negatives that are difficult to spot through manual review. You then tagged problematic predictions for relabeling or removal.
 
-**Confidence Thresholds Matter**
+**Step 5: Finalize Your VAL Workflow**
 
-Understanding and strategically using confidence thresholds is crucial:
-- High confidence (0.7-1.0): Batch approve quickly
-- Medium confidence (0.4-0.7): Review carefully, selective approval
-- Low confidence (<0.4): Expect more false positives, use for recall
+You learned how to complete the VAL workflow by integrating approved labels into your dataset, discarding the rest.
 
-**Human Oversight is Essential**
+.. _summary-exercises:
 
-VAL's power comes from combining automated predictions with systematic human review. The approval workflow ensures quality while dramatically reducing manual annotation time.
+Suggested Exercises
+------------------
 
-**Exploration Tools Amplify Efficiency**
+1. **Custom Confidence Thresholds**: Experiment with different confidence thresholds for different classes. Which threshold values optimize the balance between automation and accuracy for your use case?
 
-Patches view and embeddings visualization aren't just nice-to-have features—they're essential for quickly identifying systematic errors and understanding model behavior at scale.
+2. **Iterative Refinement**: Run multiple VAL cycles on the same dataset, using insights from embeddings to improve each iteration. Track how prediction quality improves over successive runs.
 
-**Tagging Enables Organization**
+3. **Team Collaboration**: Set up a workflow where different team members review and approve labels for different object classes. How does VAL facilitate distributed annotation workflows?
 
-Creating a consistent tagging taxonomy for different error types transforms chaotic review into organized, batch-processable workflows.
+4. **Integration with Training Pipelines**: Use approved VAL labels to train or fine-tune your models. Measure the impact of high-quality auto-labeled data on model performance.
 
-Performance Benefits
---------------------
+.. _summary-resources:
 
-Teams using VAL typically experience:
+Resources and Further Reading
+----------------------------
 
-- **5-10x faster annotation** compared to pure manual labeling
-- **Higher consistency** through systematic review processes
-- **Better dataset quality** through multiple review passes
-- **Reduced annotator fatigue** by focusing human effort on edge cases
-- **Faster iteration cycles** enabling rapid dataset improvement
+* `FiftyOne Teams Documentation <https://docs.voxel51.com/teams/>`_
 
-Best Practices Recap
---------------------
+* `Delegated Operations Guide <https://docs.voxel51.com/teams/delegated_operations.html>`_
 
-**Start High, Work Down**
+* `FiftyOne Embeddings Tutorial <../../tutorials/image_embeddings.html>`_
 
-Begin reviewing at high confidence thresholds and progressively work through lower ranges. This maximizes efficiency by quickly approving obvious cases first.
+* `Model Evaluation Guide <../model_evaluation/index.html>`_
 
-**Use Multiple Models**
+* `FiftyOne Dataset Zoo <../../user_guide/dataset_zoo/index.html>`_
 
-Different models have different strengths. Run VAL with multiple models and compare results to find the best fit for your data.
+* `FiftyOne Annotation Integration <../../integrations/annotation.html>`_
 
-**Save Your Views**
+* `Active Learning Workflows <../../tutorials/active_learning.html>`_
 
-After tagging problematic samples, save filtered views to easily return for focused correction efforts.
 
-**Monitor Resource Usage**
+.. _summary-next-steps:
 
-Keep an eye on orchestrator resource utilization. Adjust allocations based on model requirements and dataset size.
+What to Do Next
+---------------
 
-**Document Your Process**
+Now that you've mastered Verified Auto-Labeling with FiftyOne, here are some suggested next steps:
 
-Maintain notes on confidence thresholds, common error patterns, and tagging conventions to ensure consistency across team members and runs.
+* **Explore Segmentation VAL** - Apply VAL workflows to instance and semantic segmentation tasks
 
-Common Pitfalls to Avoid
-------------------------
+* **Build Custom Models** - Integrate your own detection or classification models into the VAL pipeline
 
-**Trying to Perfect Everything at Once**
+* **Scale Your Annotation** - Use VAL to accelerate annotation on large-scale datasets with thousands of images
 
-Don't attempt to address every issue in a single VAL run. Accept that multiple passes are normal and often more efficient.
+* **Join the Community** - Connect with other FiftyOne Teams users to share VAL best practices and advanced techniques
 
-**Ignoring Low-Confidence Predictions**
+* **Apply to Production** - Implement VAL in your production annotation pipelines to reduce manual labeling costs and improve data quality
 
-While high-confidence predictions are priority, don't completely discard low-confidence ranges—they may contain rare but important instances.
 
-**Inconsistent Tagging**
+.. _summary-feedback:
 
-Ad-hoc tagging makes batch processing difficult. Establish clear tagging conventions early.
+We'd Love Your Feedback
+-----------------------
 
-**Not Saving Work**
+Your feedback helps us improve FiftyOne and create better learning experiences. Please let us know:
 
-Save views and tag consistently. Losing track of which samples need attention wastes time.
+* What aspects of this VAL guide were most helpful?
+* What could be improved or clarified?
+* What VAL-specific topics would you like to see covered in future guides?
+* Any issues or bugs you encountered?
 
-**Skipping Verification**
+You can reach us at `support@voxel51.com` or join our `Discord community <https://community.voxel51.com>`_.
 
-Always spot-check approved labels before finalizing. A quick verification pass prevents systematic errors from becoming permanent.
-
-Next Steps
-----------
-
-Now that you've mastered VAL fundamentals, consider these advanced workflows:
-
-**1. Address Tagged Samples**
-
-Return to samples you tagged during review:
-- Filter by specific tags
-- Make manual corrections
-- Re-run VAL on corrected samples
-- Update or remove tags as issues are resolved
-
-**2. Evaluate Model Performance**
-
-If you have ground truth annotations:
-- Run evaluation on approved labels
-- Compare VAL results against ground truth
-- Identify systematic model errors
-- Use insights to improve future VAL runs
-
-**3. Iterative Refinement**
-
-Use VAL results to guide next steps:
-- Run VAL again with different models
-- Adjust confidence thresholds based on results
-- Apply VAL to remaining unlabeled data
-- Use active learning to prioritize uncertain samples
-
-**4. Train Custom Models**
-
-Leverage your approved labels:
-- Export dataset in your preferred format (COCO, YOLO, etc.)
-- Train or fine-tune models on approved labels
-- Evaluate custom model performance
-- Use custom models for subsequent VAL runs
-
-**5. Scale Your Workflow**
-
-Apply VAL systematically:
-- Process large datasets in batches
-- Parallelize across multiple orchestrators
-- Integrate VAL into MLOps pipelines
-- Monitor quality metrics over time
-
-**6. Team Collaboration**
-
-Expand VAL across your organization:
-- Establish team tagging conventions
-- Share orchestrator resources
-- Review and approve in parallel
-- Aggregate results across team members
-
-Additional Resources
---------------------
-
-**Documentation**
-
-- :ref:`FiftyOne Teams Overview <teams-overview>` - Learn about Teams features
-- :ref:`Delegated Operations <delegated-operations>` - Deep dive on orchestration
-- :ref:`Model Zoo <model-zoo>` - Explore available models
-- :ref:`Dataset Evaluation <evaluating-models>` - Evaluate your results
-
-**Community**
-
-- `Slack Community <https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg>`_ - Connect with other users
-- `GitHub Discussions <https://github.com/voxel51/fiftyone/discussions>`_ - Ask questions and share workflows
-- `GitHub Issues <https://github.com/voxel51/fiftyone/issues>`_ - Report bugs or request features
-
-**Tutorials and Examples**
-
-- :ref:`tutorials` - Browse additional tutorials
-- :ref:`recipes` - Explore code recipes
-- `Example Notebooks <https://github.com/voxel51/fiftyone-examples>`_ - Hands-on examples
-
-Thank You
----------
-
-Thank you for completing the Verified Auto-Labeling Guide! You now have the knowledge and skills to leverage automated model predictions while maintaining rigorous quality standards through systematic human review.
-
-VAL represents a powerful paradigm shift in dataset development—moving beyond pure manual annotation or blind automation to a hybrid approach that amplifies human expertise with machine efficiency.
-
-We're excited to see what you build with FiftyOne's Verified Auto-Labeling workflow. Happy labeling!
-
-.. note::
-   **Found this guide helpful?** Share your feedback and experiences with the FiftyOne community on Slack or GitHub Discussions. Your insights help us improve the documentation and feature set.
-
-.. tip::
-   **Building something cool with VAL?** We'd love to hear about it! Reach out to the team or share your use case in the community forums.
+Thank you for completing the Verified Auto-Labeling Guide! We hope you're excited to apply these skills to accelerate your annotation workflows and improve your dataset quality.

@@ -24,6 +24,8 @@ Preparation for auto-labeling involves:
 Setting Up Delegated Operators
 ------------------------------
 
+Delegated operators (DOs) are GPU-enabled compute resources that execute model inference and other computationally intensive operations in FiftyOne Enterprise. For Verified Auto-Labeling to work, you need at least one active delegated operator with GPU support. See the :ref:`delegated operations documentation <teams-delegated-operations>` for more details.
+
 Dataset Preparation
 -------------------
 

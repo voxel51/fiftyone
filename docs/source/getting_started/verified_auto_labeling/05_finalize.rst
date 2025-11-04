@@ -23,15 +23,15 @@ Before finalizing, verify:
    * - Item
      - Status
    * - Reviewed approval queue for correctness
-     - ☐
+     - ✅
    * - Tagged all problematic samples
-     - ☐
+     - ✅
    * - Spot-checked random approved samples
-     - ☐
+     - ✅
    * - Documented confidence thresholds used
-     - ☐
+     - ✅
    * - Noted any systematic model issues (or hypothesized issues) you may have observed
-     - ☐
+     - ✅
 
 Final Review of Approval Queue
 ------------------------------
