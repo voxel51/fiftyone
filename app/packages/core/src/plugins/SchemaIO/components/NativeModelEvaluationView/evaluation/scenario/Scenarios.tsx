@@ -1063,7 +1063,6 @@ const MODEL_PERFORMANCE_METRICS = [
   { label: "Precision", key: "precision" },
   { label: "Recall", key: "recall" },
   { label: "IoU", key: "iou" },
-  { label: "mAP", key: "mAP" },
 ];
 
 function PredictionStatisticsChart(props) {

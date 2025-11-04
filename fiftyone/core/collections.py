@@ -1465,7 +1465,7 @@ class SampleCollection(object):
             if last_key and not leaf:
                 continue
 
-            while isinstance(field, fof.ListField):
+            while isinstance(field, (fof.ListField, fof.DictField)):
                 field = field.field
 
             if isinstance(field, fof.EmbeddedDocumentField) and not last_key:
@@ -1642,7 +1642,11 @@ class SampleCollection(object):
 
         unwind_cache = []
         dynamic_schema = self._do_get_dynamic_field_schema(
-            schema, unwind_cache, frames=frames, fields=fields
+            schema,
+            unwind_cache,
+            frames=frames,
+            fields=fields,
+            recursive=recursive,
         )
 
         # Recurse into new dynamic fields
@@ -1650,7 +1654,11 @@ class SampleCollection(object):
             s = dynamic_schema
             while True:
                 s = self._do_get_dynamic_field_schema(
-                    s, unwind_cache, frames=frames, new=True
+                    s,
+                    unwind_cache,
+                    frames=frames,
+                    recursive=recursive,
+                    new=True,
                 )
                 if s:
                     dynamic_schema.update(s)
@@ -1684,7 +1692,13 @@ class SampleCollection(object):
         return dynamic_schema
 
     def _do_get_dynamic_field_schema(
-        self, schema, unwind_cache, frames=False, fields=None, new=False
+        self,
+        schema,
+        unwind_cache,
+        frames=False,
+        fields=None,
+        recursive=True,
+        new=False,
     ):
         if frames:
             prefix = self._FRAMES_PREFIX
@@ -1697,7 +1711,10 @@ class SampleCollection(object):
             schema = {
                 k: v
                 for k, v in schema.items()
-                if any(f == k or f.startswith(k + ".") for f in fields)
+                if any(
+                    f == k or recursive and k.startswith(f + ".")
+                    for f in fields
+                )
             }
 
         aggs = []
@@ -9620,7 +9637,6 @@ class SampleCollection(object):
         _field=None,
         _enforce_natural_order=True,
     ):
-
         if (
             field := self._field_for_covered_index_query_or_none(
                 field_or_expr,
@@ -9673,7 +9689,6 @@ class SampleCollection(object):
     def _field_for_covered_index_query_or_none(
         self, field_or_expr, expr=None, _enforce_natural_order=True
     ):
-
         if expr is not None or _enforce_natural_order:
             return None
 
@@ -11081,7 +11096,6 @@ class SampleCollection(object):
 
         # Parse facet-able results
         for idx, aggregation in compiled_facet_aggs.items():
-
             result = list(_results[idx_map[idx]])
             data = self._parse_faceted_result(aggregation, result)
             if (
@@ -11095,7 +11109,6 @@ class SampleCollection(object):
         return results[0] if scalar_result else results
 
     def _iter_and_parse_agg_results(self, parsed_aggs, cursor):
-
         result_fields = [agg._big_field for agg in parsed_aggs.values()]
 
         # Non-batchable big aggregations will result a cursor per aggregation

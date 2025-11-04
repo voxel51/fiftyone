@@ -346,6 +346,16 @@ class Operator(object):
 
 
 class PipelineOperator(Operator):
+    """A FiftyOne pipeline operator.
+
+    A pipeline operator represents a linear composition of other operators,
+    containing the details of how to create and execute the
+    :class:`fiftyone.operators.types.Pipeline`
+
+    FiftyOne pipeline operators contain enough information for a user interface
+    to render a form or button allowing a user to execute the operation.
+    """
+
     def resolve_pipeline(self, ctx):
         """Returns the resolved pipeline of the operator.
 
