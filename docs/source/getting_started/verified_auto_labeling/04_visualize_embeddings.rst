@@ -1,11 +1,15 @@
 .. _val_visualize_embeddings:
 
 Step 4: Assess Labels with Embeddings
-=============================
+====================================
 
 .. default-role:: code
 
 The sample grid is useful for visually identifying true and false positives. However, identifying false positives in bulk and false negatives at all can be difficult. Using FiftyOne's patch embeddings can assist in identifying collections of outlying samples that can be tagged for relabeling, or removed from consideration altogether.  
+
+.. contents:: In this section
+   :local:
+   :depth: 2
 
 Compute patch embeddings
 -------------------------
@@ -22,7 +26,7 @@ Leave all other settings as they are. You can refer to the `image embeddings doc
 .. image:: https://cdn.voxel51.com/getting_started_val/notebook4/compute_visualization_config.webp
    :alt: VAL review interface
    :align: center
-   :width: 100%
+   :width: 90%
 
 To run the embeddings computation, you can delegate as a background orchestration similar to the auto labeling run. Click the dropdown arrow next to **Execute** and select one of your delegated operators. Then click **Schedule**.
 
@@ -38,7 +42,7 @@ Once the task changes to **Completed** status, navigate back to the sample grid,
 .. image:: https://cdn.voxel51.com/getting_started_val/notebook4/embeddings_open_panel.webp
    :alt: VAL review interface
    :align: center
-   :width: 100%
+   :width: 30%
 
 
 Analyze patch embeddings
@@ -70,6 +74,13 @@ After tagging at least a few incorrect samples, a good next step is to mark them
 .. image:: https://cdn.voxel51.com/getting_started_val/notebook4/tag_samples.webp
    :alt: VAL review interface
    :align: center
-   :width: 100%
+   :width: 50%
 
-**Next**: :ref:`Step 5: Tag Problem Cases <val_tag_problems>`
+Next steps
+----------
+
+This tends to be an iterative process. Feel free to continue analyzing parts of the embeddings space, finding and tag samples as needed. You can also use this opportunity to return to the Auto Labeling panel and batch additional true positives for approval.
+
+In the next and final step, you will finalize your predictions and approve your new ground truth labels.
+
+**Next**: :ref:`Step 5: Finalize Approvals <val_finalize>`

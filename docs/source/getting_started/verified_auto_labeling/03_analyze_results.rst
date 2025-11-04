@@ -78,4 +78,4 @@ Next Steps
 
 You've now explored your auto labeled samples and marked some for approval. In the next section, you will compute and visualize patch embeddings to root out false negatives and mark samples in need of human correction.
 
-Click **Next** to proceed to :ref:`Step 4: Visualize embeddings <visualize_embeddings>`.
+Click **Next** to proceed to :ref:`Step 4: Visualize embeddings <val_visualize_embeddings>`.
