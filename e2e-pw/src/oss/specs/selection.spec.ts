@@ -71,7 +71,7 @@ test.describe.serial("selection", () => {
       // verify selection clears on escape
       await grid.toggleSelectFirstSample();
       await grid.assert.isSelectionCountEqualTo(1);
-      page.on("dialog", (dialog) => dialog.accept());
+      page.once("dialog", (dialog) => dialog.accept());
       await page.press("body", "Escape");
       await grid.assert.isSelectionCountEqualTo(0);
 
