@@ -21,20 +21,20 @@ from wheel.bdist_wheel import bdist_wheel
 
 DARWIN = "Darwin"
 DARWIN_DOWNLOADS = {
-    "arm64": "https://fastdl.mongodb.org/osx/mongodb-macos-arm64-6.0.24.tgz",
-    "x86_64": "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-6.0.24.tgz",
+    "arm64": "https://fastdl.mongodb.org/osx/mongodb-macos-arm64-7.0.25.tgz",
+    "x86_64": "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-7.0.25.tgz",
 }
 
 LINUX = "Linux"
 LINUX_DOWNLOADS = {
     "amzn": {
         "2": {
-            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-amazon2-7.0.2.tgz",
-            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-amazon2-7.0.2.tgz",
+            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-amazon2-7.0.25.tgz",
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-amazon2-7.0.25.tgz",
         },
         "2023": {
-            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-amazon2023-7.0.2.tgz",
-            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-amazon2023-7.0.2.tgz",
+            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-amazon2023-7.0.25.tgz",
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-amazon2023-7.0.25.tgz",
         },
     },
     "centos": {
@@ -42,18 +42,18 @@ LINUX_DOWNLOADS = {
             # Supported by Mongo, EOL in
             # [June 2024](https://www.redhat.com/en/topics/linux/centos-linux-eol)
             # Consider removing.
-            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel70-6.0.24.tgz",
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel70-7.0.25.tgz",
         },
         "8": {
             # Supported by Mongo, EOL in
             # [December 2021](https://www.redhat.com/en/topics/linux/centos-linux-eol)
             # Consider removing.
-            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-rhel8-6.0.24.tgz",
-            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel8-6.0.24.tgz",
+            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-rhel8-7.0.25.tgz",
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel8-7.0.25.tgz",
         },
         "9": {
-            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-rhel90-7.0.2.tgz",
-            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel90-7.0.2.tgz",
+            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-rhel90-7.0.25.tgz",
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel90-7.0.25.tgz",
         },
     },
     "debian": {
@@ -64,17 +64,17 @@ LINUX_DOWNLOADS = {
             "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian10-6.0.24.tgz"
         },
         "11": {
-            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian11-6.0.24.tgz"
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian11-7.0.25.tgz"
         },
         "12": {
-            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu2204-6.0.5.tgz",
-            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-6.0.5.tgz",
+            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu2204-7.0.25.tgz",
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian12-7.0.25.tgz",
         },
     },
     "fedora": {
         "4": {
-            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-rhel90-7.0.2.tgz",
-            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel90-7.0.2.tgz",
+            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-rhel90-7.0.25.tgz",
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel90-7.0.25.tgz",
         },
     },
     "pop": {
@@ -86,16 +86,16 @@ LINUX_DOWNLOADS = {
             "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-6.0.24.tgz",
         },
         "20": {
-            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu2004-6.0.24.tgz",
-            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2004-6.0.24.tgz",
+            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu2004-7.0.25.tgz",
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2004-7.0.25.tgz",
         },
         "22": {
-            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu2204-6.0.5.tgz",
-            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-6.0.5.tgz",
+            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu2204-7.0.25.tgz",
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-7.0.25.tgz",
         },
         "23": {
-            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu2204-7.0.4.tgz",
-            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-7.0.4.tgz",
+            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu2204-7.0.25.tgz",
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-7.0.25.tgz",
         },
         "24": {
             "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu2204-7.0.4.tgz",
@@ -107,15 +107,15 @@ LINUX_DOWNLOADS = {
             # Supported by Mongo, EOL in
             # [June 2024](https://www.redhat.com/en/topics/linux/centos-linux-eol)
             # Consider removing.
-            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel70-6.0.24.tgz",
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel70-7.0.25.tgz",
         },
         "8": {
-            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-rhel8-6.0.24.tgz",
-            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel8-6.0.24.tgz",
+            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-rhel8-7.0.25.tgz",
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel8-7.0.25.tgz",
         },
         "9": {
-            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-rhel90-7.0.2.tgz",
-            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel90-7.0.2.tgz",
+            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-rhel90-7.0.25.tgz",
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel90-7.0.25.tgz",
         },
     },
     "ubuntu": {
@@ -127,16 +127,16 @@ LINUX_DOWNLOADS = {
             "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-6.0.24.tgz",
         },
         "20": {
-            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu2004-6.0.24.tgz",
-            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2004-6.0.24.tgz",
+            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu2004-7.0.25.tgz",
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2004-7.0.25.tgz",
         },
         "22": {
-            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu2204-6.0.5.tgz",
-            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-6.0.5.tgz",
+            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu2204-7.0.25.tgz",
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-7.0.25.tgz",
         },
         "23": {
-            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu2204-7.0.4.tgz",
-            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-7.0.4.tgz",
+            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu2204-7.0.25.tgz",
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-7.0.25.tgz",
         },
         "24": {
             "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu2404-8.0.4.tgz",
@@ -147,8 +147,8 @@ LINUX_DOWNLOADS = {
 
 WINDOWS = "Windows"
 WINDOWS_DOWNLOADS = {
-    "x86_64": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-6.0.24.zip",
-    "amd64": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-6.0.24.zip",
+    "x86_64": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-7.0.25.zip",
+    "amd64": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-7.0.25.zip",
 }
 
 
