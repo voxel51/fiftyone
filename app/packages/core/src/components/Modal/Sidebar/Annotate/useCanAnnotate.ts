@@ -4,7 +4,7 @@ import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 
 export default function useCanAnnotate() {
   const isReadOnly = useRecoilValue(readOnly);
-  const isAnnotationEnabled = useFeature({
+  const { isEnabled: isAnnotationEnabled } = useFeature({
     feature: FeatureFlag.EXPERIMENTAL_ANNOTATION,
   });
   return !isReadOnly && isAnnotationEnabled;
