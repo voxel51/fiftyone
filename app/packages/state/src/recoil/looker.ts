@@ -23,11 +23,11 @@ type Lookers = FrameLooker | ImageLooker | VideoLooker;
 
 export const lookerOptions = selectorFamily<
   Partial<Omit<ReturnType<Lookers["getDefaultOptions"]>, "selected">>,
-  { withFilter: boolean; modal: boolean }
+  { withFilter: boolean; modal: boolean; ghost?: boolean }
 >({
   key: "gridLookerOptions",
   get:
-    ({ modal, withFilter }) =>
+    ({ modal, withFilter, ghost }) =>
     ({ get }) => {
       const globalMediaFallback = Boolean(
         get(selectors.appConfigOption({ modal: true, key: "mediaFallback" }))
@@ -69,7 +69,7 @@ export const lookerOptions = selectorFamily<
           showConfidence: get(
             selectors.appConfigOption({ modal: true, key: "showConfidence" })
           ),
-          showControls: true,
+          showControls: !ghost,
           showTooltip: get(
             selectors.appConfigOption({ modal: true, key: "showTooltip" })
           ),
@@ -121,13 +121,14 @@ export const lookerOptions = selectorFamily<
 });
 
 export const useLookerOptions = (
-  modal: boolean
+  modal: boolean,
+  ghost?: boolean
 ): Partial<Omit<FrameOptions | ImageOptions | VideoOptions, "selected">> => {
   const loaded = useRecoilValueLoadable(
-    lookerOptions({ modal, withFilter: true })
+    lookerOptions({ modal, withFilter: true, ghost })
   );
 
-  const loading = useRecoilValue(lookerOptions({ modal, withFilter: false }));
+  const loading = useRecoilValue(lookerOptions({ modal, withFilter: false, ghost }));
 
   return loaded.contents instanceof Promise ? loading : loaded.contents;
 };
