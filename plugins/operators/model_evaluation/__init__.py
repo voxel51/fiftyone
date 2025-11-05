@@ -304,7 +304,7 @@ class ConfigureScenario(foo.Operator):
         return True
 
     def render_empty_sample_distribution(
-        self, ctx, inputs, params, description=None
+        self, ctx, inputs, params, description=None, is_invalid=True
     ):
         self.render_plot_preview_toggle(ctx, inputs)
 
@@ -336,8 +336,8 @@ class ConfigureScenario(foo.Operator):
                     },
                 },
             ),
-            invalid=True,
-            error_message="No values selected",
+            invalid=is_invalid,
+            error_message="No values selected" if is_invalid else None,
         )
 
     def get_label_attribute_path(self, params):
@@ -392,6 +392,7 @@ class ConfigureScenario(foo.Operator):
                     inputs,
                     ctx.params,
                     description="You can toggle the 'View sample distribution' to see the preview.",
+                    is_invalid=False,
                 )
             else:
                 # NOTE: values for custom_code is the parsed custom code expression
@@ -423,6 +424,7 @@ class ConfigureScenario(foo.Operator):
                 ctx.params,
                 description="Distribution preview is not enabled. Turn on distribution preview"
                 + " to visualize the subset breakdown.",
+                is_invalid=False,
             )
 
         plot_data, error = self.get_sample_distribution(
