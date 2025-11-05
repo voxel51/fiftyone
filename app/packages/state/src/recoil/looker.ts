@@ -69,7 +69,6 @@ export const lookerOptions = selectorFamily<
           showConfidence: get(
             selectors.appConfigOption({ modal: true, key: "showConfidence" })
           ),
-          showControls: !ghost,
           showTooltip: get(
             selectors.appConfigOption({ modal: true, key: "showTooltip" })
           ),
@@ -85,6 +84,9 @@ export const lookerOptions = selectorFamily<
             selectors.appConfigOption({ modal: true, key: "useFrameNumber" })
           ),
           ...get(atoms.savedLookerOptions),
+          // These must come after savedLookerOptions to ensure they're not overridden
+          showControls: !ghost,
+          disableControls: !!ghost,
         };
       }
 

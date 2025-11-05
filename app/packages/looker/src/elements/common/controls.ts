@@ -53,8 +53,8 @@ export class ControlsElement<
     return element;
   }
 
-  isShown({ thumbnail }: Readonly<State["config"]>) {
-    return !thumbnail;
+  isShown({ thumbnail, disableControls }: Readonly<State["config"]>) {
+    return !thumbnail && !disableControls;
   }
 
   renderSelf({

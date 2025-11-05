@@ -159,6 +159,7 @@ export default <T extends AbstractLooker<BaseState>>(
           thumbnail,
           view,
           shouldHandleKeyEvents: isModal,
+          disableControls: options.disableControls || false,
         };
 
         let sampleMediaFilePath = urls[mediaField];
@@ -253,11 +254,12 @@ export default <T extends AbstractLooker<BaseState>>(
           } as ImaVidConfig;
         }
 
+        const { disableControls: _, ...optionsWithoutDisableControls } = options;
         const looker = new create(
           sample,
           { ...config, symbol },
           {
-            ...options,
+            ...optionsWithoutDisableControls,
             ...extra,
             selected: selected.has(sample._id),
             highlight: highlight?.(sample),
