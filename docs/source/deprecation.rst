@@ -17,9 +17,8 @@ Python 3.9
 *Support ending June 1, 2026*
 
 `Python 3.9 <https://devguide.python.org/versions/>`_
-transitions to `end-of-life` effective October of 2025. FiftyOne releases after
-September June, 2026 might no longer be compatible with Python 3.9.
-
+transitioned to `end-of-life` effective October of 2025. FiftyOne releases after
+June 1, 2026 might no longer be compatible with Python 3.9.
 
 .. _deprecation-mongodb-6.0:
 
