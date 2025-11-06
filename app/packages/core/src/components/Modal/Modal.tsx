@@ -53,14 +53,26 @@ const SpacesContainer = styled.div`
 
 const Modal = () => {
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const pointerDownTargetRef = useRef<EventTarget | null>(null);
 
   const clearModal = fos.useClearModal();
 
+  const onPointerDownModalWrapper = useCallback((e: React.PointerEvent) => {
+    // Track where the pointer down started
+    pointerDownTargetRef.current = e.target;
+  }, []);
+
   const onClickModalWrapper = useCallback(
     (e: React.MouseEvent) => {
-      if (e.target === wrapperRef.current) {
+      // Only close if both pointer down and pointer up happened on the wrapper
+      if (
+        e.target === wrapperRef.current &&
+        pointerDownTargetRef.current === wrapperRef.current
+      ) {
         clearModal();
       }
+      // Reset the tracked target
+      pointerDownTargetRef.current = null;
     },
     [clearModal]
   );
@@ -229,6 +241,7 @@ const Modal = () => {
     >
       <ModalWrapper
         ref={wrapperRef}
+        onPointerDown={onPointerDownModalWrapper}
         onClick={onClickModalWrapper}
         data-cy="modal"
       >
