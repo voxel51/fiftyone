@@ -15,6 +15,7 @@ from starlette.requests import Request
 
 import fiftyone as fo
 import fiftyone.core.media as fom
+import fiftyone.core.odm.utils as fou
 from fiftyone.server import utils
 
 logger = logging.getLogger(__name__)
@@ -188,7 +189,7 @@ def get_group(
         A dictionary mapping slice names to Sample objects
     """
     try:
-        dataset = fo.load_dataset(dataset_id)
+        dataset = fou.load_dataset(id=dataset_id)
     except ValueError as err:
         raise HTTPException(
             status_code=404,
