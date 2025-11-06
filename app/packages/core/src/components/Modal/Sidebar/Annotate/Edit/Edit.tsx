@@ -50,19 +50,28 @@ export default function Edit() {
   }, useSave());
 
   useEffect(() => {
-    const handler = (event: Event) => {
-      if (event.target === el) {
+    const pointerDownHandler = (event: Event) => {
+      pointerDownTarget = event.target;
+    };
+
+    const clickHandler = (event: Event) => {
+      if (event.target === el && pointerDownTarget === el) {
         event.stopImmediatePropagation();
         confirmExit(clear);
       }
+
+      pointerDownTarget = null;
     };
 
     const el = document.getElementById("modal")?.children[0];
+    let pointerDownTarget: EventTarget | null = null;
 
-    el?.addEventListener("click", handler, true);
+    el?.addEventListener("pointerdown", pointerDownHandler, true);
+    el?.addEventListener("click", clickHandler, true);
 
     return () => {
-      el?.removeEventListener("click", handler);
+      el?.removeEventListener("pointerdown", pointerDownHandler, true);
+      el?.removeEventListener("click", clickHandler);
     };
   }, [confirmExit, clear]);
 
