@@ -242,7 +242,7 @@ class Groups(HTTPEndpoint):
         group_id = request.path_params["group_id"]
         slice_name = request.path_params.get("slice")
 
-        logger.info(
+        logger.debug(
             "Received GET request for group %s in dataset %s%s",
             group_id,
             dataset_id,
