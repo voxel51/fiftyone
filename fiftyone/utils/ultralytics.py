@@ -8,6 +8,7 @@ Utilities for working with
 """
 
 import itertools
+from packaging import version
 
 import numpy as np
 from PIL import Image
@@ -505,13 +506,23 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
             model = model.half()
 
         if config.classes:
+            build_text_model = _get_build_text_model()
             if hasattr(ultralytics, "YOLOE") and isinstance(
                 model, ultralytics.YOLOE
             ):
-                model.set_classes(
-                    config.classes, model.get_text_pe(config.classes)
+                if build_text_model:
+                    model.model.clip_model = build_text_model(
+                        "mobileclip:blt", device=self._device
+                    )
+                embeddings = model.model.get_text_pe(
+                    config.classes, cache_clip_model=True
                 )
+                model.set_classes(config.classes, embeddings)
             else:
+                if build_text_model:
+                    model.model.clip_model = build_text_model(
+                        "clip:ViT-B/32", device=self._device
+                    )
                 model.set_classes(config.classes)
 
         if not model.predictor:
@@ -923,3 +934,16 @@ class UltralyticsOBBOutputProcessor(
     def __call__(self, output, _, confidence_thresh=None):
         preds = self.post_process(output)
         return obb_to_polylines(preds, confidence_thresh=confidence_thresh)
+
+
+def _get_build_text_model():
+    """For ultralytics version >= 8.3.99, returns ``ultralytics_internal.build_text_model`` so that
+    models are downloaded to ``fo.config.model_zoo_dir``. For other versions, returns None.
+    """
+    if version.parse(ultralytics.__version__) >= version.parse("8.3.99"):
+        from fiftyone.utils import ultralytics_internal
+
+        return ultralytics_internal.build_text_model
+    else:
+        # For ultralytics version < 8.3.99, ultralytics.nn.text_model doesn't exist.
+        return None
