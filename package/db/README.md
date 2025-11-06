@@ -12,7 +12,7 @@ The PyPI uploads will be triggered when a release tag is pushed to the
 repository:
 
 1. Navigate to the
-   [releases page](hhttps://github.com/voxel51/fiftyone/releases).
+   [releases page](https://github.com/voxel51/fiftyone/releases).
 
 1. Select `Draft a new release`.
 
