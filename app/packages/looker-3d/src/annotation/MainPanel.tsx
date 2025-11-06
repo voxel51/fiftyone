@@ -1,8 +1,11 @@
+import { ModalSample } from "@fiftyone/state";
 import { CameraControls, View } from "@react-three/drei";
 import styled from "styled-components";
 import * as THREE from "three";
 import { Vector3 } from "three";
+import { Fo3dPointCloudSettings } from "../fo3d/context";
 import { Fo3dSceneContent } from "../fo3d/Fo3dCanvas";
+import { FoScene } from "../hooks";
 import { AnnotationMultiViewGizmoOverlayWrapper } from "./CustomAnnotationGizmo";
 
 const MainPanelContainer = styled.div`
@@ -16,11 +19,11 @@ export interface MainPanelProps {
   cameraControlsRef: React.RefObject<CameraControls>;
   defaultCameraPosition: THREE.Vector3;
   autoRotate: boolean;
-  foScene: any;
+  foScene: FoScene;
   upVector: Vector3 | null;
   isSceneInitialized: boolean;
-  sample: any;
-  pointCloudSettings: any;
+  sample: ModalSample;
+  pointCloudSettings: Fo3dPointCloudSettings;
   assetsGroupRef: React.RefObject<THREE.Group>;
 }
 

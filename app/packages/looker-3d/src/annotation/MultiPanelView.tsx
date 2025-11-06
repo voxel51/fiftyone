@@ -1,4 +1,4 @@
-import { useBrowserStorage } from "@fiftyone/state";
+import { ModalSample, useBrowserStorage } from "@fiftyone/state";
 import { View } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import CameraControlsImpl from "camera-controls";
@@ -50,7 +50,7 @@ interface MultiPanelViewProps {
   cameraRef: React.MutableRefObject<THREE.PerspectiveCamera>;
   defaultCameraPosition: Vector3;
   foScene: FoScene;
-  sample: any;
+  sample: ModalSample;
 }
 
 export const MultiPanelView = ({
