@@ -322,8 +322,8 @@ class Groups(HTTPEndpoint):
 
         # If filepath wasn't explicitly requested, remove it from the response
         if fields and "filepath" not in fields:
-            for slice_name_key, sample_data in serialized_group.items():
-                del sample_data["filepath"]
+            for sample_data in serialized_group.values():
+                sample_data.pop("filepath", None)
 
         return utils.json.JSONResponse(response_data)
 
