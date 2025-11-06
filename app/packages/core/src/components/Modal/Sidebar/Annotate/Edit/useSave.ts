@@ -54,5 +54,15 @@ export default function useSave() {
         },
       },
     });
-  }, [addOverlay, exit, label, saved, scene, schema, setter, setSaving]);
+  }, [
+    addOverlay,
+    exit,
+    label,
+    saved,
+    scene,
+    schema,
+    setter,
+    setNotification,
+    setSaving,
+  ]);
 }
