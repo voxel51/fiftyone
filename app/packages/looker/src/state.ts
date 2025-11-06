@@ -223,6 +223,7 @@ export interface BaseConfig {
     id: string;
     name: string;
   };
+  isModal?: boolean;
 }
 
 export interface FrameConfig extends BaseConfig {
