@@ -204,8 +204,7 @@ export default function DropdownView(props: ViewPropsType) {
         return choiceLabels[value] || value;
       }}
       onChange={(e) => {
-        const value = e.target.value;
-        handleOnChange(value);
+        handleOnChange(e.target.value);
       }}
       multiple={multiple}
       {...selectProps}
@@ -223,7 +222,9 @@ export default function DropdownView(props: ViewPropsType) {
           key={value}
           value={value}
           onClick={() => {
-            if (addOnClickToMenuItems) {
+            // Only trigger onClick when re-selecting the current value,
+            // since MUI's onChange doesn't fire in that case
+            if (addOnClickToMenuItems && value === computedDefaultValue) {
               handleOnChange(value);
             }
           }}
