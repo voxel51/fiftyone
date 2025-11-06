@@ -71,7 +71,7 @@ export default function Edit() {
 
     return () => {
       el?.removeEventListener("pointerdown", pointerDownHandler, true);
-      el?.removeEventListener("click", clickHandler);
+      el?.removeEventListener("click", clickHandler, true);
     };
   }, [confirmExit, clear]);
 
