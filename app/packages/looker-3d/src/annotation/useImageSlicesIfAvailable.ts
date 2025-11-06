@@ -44,6 +44,8 @@ export const useImageSlicesIfAvailable = (
       return;
     }
 
+    let cancelled = false;
+
     const fetchImageSlices = async () => {
       try {
         setIsLoadingImageSlices(true);
@@ -51,11 +53,16 @@ export const useImageSlicesIfAvailable = (
         const path = `/dataset/${dataset}/groups/${groupId}?fields=filepath&resolve_urls=true&media_type=image`;
 
         const response = await fetchFunction("GET", path);
+
+        if (cancelled) return;
+
         const data = response as GroupResponse;
 
         if (!data.group) {
-          setImageSlices([]);
-          setSliceUrls({});
+          if (!cancelled) {
+            setImageSlices([]);
+            setSliceUrls({});
+          }
           return;
         }
 
@@ -77,18 +84,29 @@ export const useImageSlicesIfAvailable = (
             urls[sliceName] = resolveUrl(filepath);
           }
         }
-        setImageSlices(imageSliceNames);
-        setSliceUrls(urls);
+
+        if (!cancelled) {
+          setImageSlices(imageSliceNames);
+          setSliceUrls(urls);
+        }
       } catch (error) {
-        console.error("Failed to fetch image slices:", error);
-        setImageSlices([]);
-        setSliceUrls({});
+        if (!cancelled) {
+          console.error("Failed to fetch image slices:", error);
+          setImageSlices([]);
+          setSliceUrls({});
+        }
       } finally {
-        setIsLoadingImageSlices(false);
+        if (!cancelled) {
+          setIsLoadingImageSlices(false);
+        }
       }
     };
 
     fetchImageSlices();
+
+    return () => {
+      cancelled = true;
+    };
   }, [hasGroup, groupId, dataset]);
 
   const resolveUrlForImageSlice = useCallback(
