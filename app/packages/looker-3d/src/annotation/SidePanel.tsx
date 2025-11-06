@@ -94,7 +94,8 @@ const calculateCameraPositionForSidePanel = (
       Back: [0, 0, -10] as [number, number, number],
       Front: [0, 0, 10] as [number, number, number],
     };
-    return new Vector3(...defaultPositions[viewType]);
+    const position = defaultPositions[viewType];
+    return position ? new Vector3(...position) : new Vector3(0, 10, 0);
   }
 
   const size = new Vector3();
