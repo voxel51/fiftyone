@@ -30,6 +30,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
             SHORTCUTS,
             error,
             options: { shouldHandleKeyEvents },
+            config: { isModal },
           } = state;
           if (!error && e.key in SHORTCUTS) {
             const matchedControl = SHORTCUTS[e.key] as Control;
@@ -37,6 +38,10 @@ export class LookerElement<State extends BaseState> extends BaseElement<
               shouldHandleKeyEvents || matchedControl.alwaysHandle;
             if (enabled) {
               matchedControl.action(update, dispatchEvent, e.key, e.shiftKey);
+
+              if (e.key === "Escape" && isModal) {
+                e.stopPropagation();
+              }
             }
           }
 
