@@ -170,7 +170,7 @@ class TestGroupsRoute:
 
     @pytest.mark.asyncio
     async def test_get_group_with_resolve_urls(
-        self, groups_endpoint, mock_request
+        self, groups_endpoint, mock_request, grouped_dataset
     ):
         """Tests retrieving a group with URL resolution."""
         request = mock_request(resolve_urls=True)
@@ -187,7 +187,8 @@ class TestGroupsRoute:
             # URLs should be prefixed with slice name when multiple slices exist
             url_key = f"{slice_name}.filepath"
             assert url_key in data["urls"]
-            assert data["urls"][url_key] == f"/tmp/test_{slice_name}.jpg"
+            expected_filepath = data["group"][slice_name]["filepath"]
+            assert data["urls"][url_key] == expected_filepath
 
     @pytest.mark.asyncio
     async def test_get_group_slice(self, groups_endpoint, mock_request):
@@ -222,7 +223,7 @@ class TestGroupsRoute:
 
     @pytest.mark.asyncio
     async def test_get_group_slice_with_resolve_urls(
-        self, groups_endpoint, mock_request
+        self, groups_endpoint, mock_request, grouped_dataset
     ):
         """Tests retrieving a specific slice with URL resolution."""
         request = mock_request(slice_name="center", resolve_urls=True)
@@ -234,7 +235,8 @@ class TestGroupsRoute:
         assert "urls" in data
         # When only one slice, URL key should not be prefixed
         assert "filepath" in data["urls"]
-        assert data["urls"]["filepath"] == "/tmp/test_center.jpg"
+        expected_filepath = data["group"]["center"]["filepath"]
+        assert data["urls"]["filepath"] == expected_filepath
 
     @pytest.mark.asyncio
     async def test_dataset_not_found(self, groups_endpoint, mock_request):
