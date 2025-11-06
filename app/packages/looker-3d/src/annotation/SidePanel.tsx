@@ -1,4 +1,6 @@
 import { useTheme } from "@fiftyone/components";
+import { LighterSampleRenderer } from "@fiftyone/core/src/components/Modal/Lighter/LighterSampleRenderer";
+import { ModalSample } from "@fiftyone/state";
 import { MenuItem, Select } from "@mui/material";
 import {
   Bounds,
@@ -18,8 +20,16 @@ import { ThreeDLabels } from "../labels";
 import { AnnotationPlane } from "./AnnotationPlane";
 import { Crosshair3D } from "./Crosshair3D";
 import { SegmentPolylineRenderer } from "./SegmentPolylineRenderer";
+import { useImageSlicesIfAvailable } from "./useImageSlicesIfAvailable";
 
-export type ViewType = "Top" | "Bottom" | "Left" | "Right" | "Front" | "Back";
+export type ViewType =
+  | "Top"
+  | "Bottom"
+  | "Left"
+  | "Right"
+  | "Front"
+  | "Back"
+  | string;
 
 const SidePanelContainer = styled.div<{ $area: string }>`
   grid-area: ${(p) => p.$area};
@@ -33,6 +43,32 @@ const ViewSelectorWrapper = styled.div`
   left: 10px;
   z-index: 1000;
 `;
+
+const ImageSliceContainer = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #000;
+`;
+
+/**
+ * Check if a view is a cardinal view (Top, Bottom, Front, Back, Left, Right)
+ */
+const isCardinalView = (view: ViewType): boolean => {
+  return (
+    view === "Top" ||
+    view === "Bottom" ||
+    view === "Front" ||
+    view === "Back" ||
+    view === "Left" ||
+    view === "Right"
+  );
+};
 
 /**
  * Calculate camera position for different side panel views based on upVector and lookAt point
@@ -274,7 +310,7 @@ export interface SidePanelProps {
   lookAt: Vector3 | null;
   sceneBoundingBox: Box3 | null;
   isSceneInitialized: boolean;
-  sample: any;
+  sample: ModalSample;
 }
 
 export const SidePanel = ({
@@ -288,6 +324,20 @@ export const SidePanel = ({
   isSceneInitialized,
   sample,
 }: SidePanelProps) => {
+  const { imageSlices, resolveUrlForImageSlice, isLoadingImageSlices } =
+    useImageSlicesIfAvailable(sample);
+
+  /**
+   * This effect restores the view to a cardinal view if no image slices are available
+   */
+  useEffect(() => {
+    if (isLoadingImageSlices) return;
+
+    if (imageSlices.length === 0 && !isCardinalView(view)) {
+      setView("Left");
+    }
+  }, [isLoadingImageSlices, imageSlices, view, setView]);
+
   const position = useMemo(
     () =>
       upVector && lookAt
@@ -334,51 +384,67 @@ export const SidePanel = ({
 
   return (
     <SidePanelContainer id={`${which}-panel`} $area={which}>
-      <View
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
-        }}
-      >
-        <OrthographicCamera
-          makeDefault
-          ref={cameraRef}
-          position={position}
-          up={cameraUp.toArray() as [number, number, number]}
-        />
-        <MapControls makeDefault screenSpacePanning enableRotate={false} />
-        <Bounds fit clip observe={observe} margin={1.25}>
-          <Gizmos isGridVisible={false} isGizmoHelperVisible={false} />
-          <group visible={isSceneInitialized}>
-            <FoSceneComponent scene={foScene} />
-          </group>
-          {isSceneInitialized && (
-            <ThreeDLabels
-              sampleMap={{ fo3d: sample as any }}
-              globalOpacity={0.15}
-            />
-          )}
-          <AnnotationPlane
-            showTransformControls={false}
-            panelType="side"
-            viewType={
-              view.toLowerCase() as
-                | "top"
-                | "bottom"
-                | "right"
-                | "left"
-                | "front"
-                | "back"
-            }
+      {imageSlices && imageSlices.includes(view) ? (
+        <ImageSliceContainer>
+          <LighterSampleRenderer
+            key={view}
+            sample={{
+              ...sample,
+              urls: [
+                {
+                  url: resolveUrlForImageSlice(view),
+                },
+              ],
+            }}
           />
-          <SegmentPolylineRenderer ignoreEffects />
-          <Crosshair3D />
-        </Bounds>
-        <Lights lights={foScene?.lights} />
-      </View>
+        </ImageSliceContainer>
+      ) : (
+        <View
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+          }}
+        >
+          <OrthographicCamera
+            makeDefault
+            ref={cameraRef}
+            position={position}
+            up={cameraUp.toArray() as [number, number, number]}
+          />
+          <MapControls makeDefault screenSpacePanning enableRotate={false} />
+          <Bounds fit clip observe={observe} margin={1.25}>
+            <Gizmos isGridVisible={false} isGizmoHelperVisible={false} />
+            <group visible={isSceneInitialized}>
+              <FoSceneComponent scene={foScene} />
+            </group>
+            {isSceneInitialized && (
+              <ThreeDLabels
+                sampleMap={{ fo3d: sample as any }}
+                globalOpacity={0.15}
+              />
+            )}
+            <AnnotationPlane
+              showTransformControls={false}
+              panelType="side"
+              viewType={
+                view.toLowerCase() as
+                  | "top"
+                  | "bottom"
+                  | "right"
+                  | "left"
+                  | "front"
+                  | "back"
+              }
+            />
+            <SegmentPolylineRenderer ignoreEffects />
+            <Crosshair3D />
+          </Bounds>
+          <Lights lights={foScene?.lights} />
+        </View>
+      )}
       <ViewSelectorWrapper>
         <Select
           value={view}
@@ -403,6 +469,12 @@ export const SidePanel = ({
           <MenuItem value="Right">Right</MenuItem>
           <MenuItem value="Front">Front</MenuItem>
           <MenuItem value="Back">Back</MenuItem>
+          {imageSlices &&
+            imageSlices.map((slice) => (
+              <MenuItem key={slice} value={slice}>
+                Image Slice: {slice}
+              </MenuItem>
+            ))}
         </Select>
       </ViewSelectorWrapper>
     </SidePanelContainer>
