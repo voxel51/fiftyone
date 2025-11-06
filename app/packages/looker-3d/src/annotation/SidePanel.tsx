@@ -1,5 +1,4 @@
 import { useTheme } from "@fiftyone/components";
-import { LighterSampleRenderer } from "@fiftyone/core/src/components/Modal/Lighter/LighterSampleRenderer";
 import { ModalSample } from "@fiftyone/state";
 import { MenuItem, Select } from "@mui/material";
 import {
@@ -54,6 +53,12 @@ const ImageSliceContainer = styled.div`
   align-items: center;
   justify-content: center;
   background-color: #000;
+`;
+
+const ImageSliceImg = styled.img`
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
 `;
 
 /**
@@ -386,6 +391,8 @@ export const SidePanel = ({
     <SidePanelContainer id={`${which}-panel`} $area={which}>
       {imageSlices && imageSlices.includes(view) ? (
         <ImageSliceContainer>
+          <ImageSliceImg src={resolveUrlForImageSlice(view)} />
+          {/* todo: replace with Lighter once we can have muliples scenes at once
           <LighterSampleRenderer
             key={view}
             sample={{
@@ -396,7 +403,7 @@ export const SidePanel = ({
                 },
               ],
             }}
-          />
+          /> */}
         </ImageSliceContainer>
       ) : (
         <View
