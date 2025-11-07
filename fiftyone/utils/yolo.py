@@ -45,7 +45,7 @@ def add_yolo_labels(
         <target> <x-center> <y-center> <width> <height>
         <target> <x-center> <y-center> <width> <height> <confidence>
 
-        # Polylines
+        # Instance segmentations or polygons
         <target> <x1> <y1> <x2> <y2> <x3> <y3> ...
 
     where ``target`` is the zero-based integer index of the object class label
@@ -72,7 +72,9 @@ def add_yolo_labels(
         label_type ("detections"): the label format to load. The supported
             values are ``("detections", "instances", "polylines")``
         mask_size (None): an optional ``(width, height)`` at which to render
-            each instance mask. Only used when ``label_type="instances"``
+            each instance mask. Only used when ``label_type="instances"``. If
+            no mask size is provided then instance masks are rendered
+            proportionally to each image's dimensions
         include_missing (False): whether to insert empty labels for any samples
             in the input collection whose ``label_field`` is ``None`` after
             import
@@ -260,7 +262,9 @@ class YOLOv4DatasetImporter(
         label_type ("detections"): the label format to load. The supported
             values are ``("detections", "instances", "polylines")``
         mask_size (None): an optional ``(width, height)`` at which to render
-            each instance mask. Only used when ``label_type="instances"``
+            each instance mask. Only used when ``label_type="instances"``. If
+            no mask size is provided then instance masks are rendered
+            proportionally to each image's dimensions
         include_all_data (False): whether to generate samples for all images in
             the data directory (True) rather than only creating samples for
             images with labels (False)
@@ -482,7 +486,9 @@ class YOLOv5DatasetImporter(
         label_type ("detections"): the label format to load. The supported
             values are ``("detections", "instances", "polylines")``
         mask_size (None): an optional ``(width, height)`` at which to render
-            each instance mask. Only used when ``label_type="instances"``
+            each instance mask. Only used when ``label_type="instances"``. If
+            no mask size is provided then instance masks are rendered
+            proportionally to each image's dimensions
         include_all_data (False): whether to generate samples for all images in
             the data directory (True) rather than only creating samples for
             images with labels (False)
@@ -1177,7 +1183,7 @@ def load_yolo_annotations(
         <target> <x-center> <y-center> <width> <height>
         <target> <x-center> <y-center> <width> <height> <confidence>
 
-        # Polylines
+        # Instance segmentations or polygons
         <target> <x1> <y1> <x2> <y2> <x3> <y3> ...
 
     where ``target`` is the zero-based integer index of the object class label
@@ -1199,6 +1205,20 @@ def load_yolo_annotations(
         a :class:`fiftyone.core.labels.Detections` or
         :class:`fiftyone.core.labels.Polylines`
     """
+    supported_label_types = ("detections", "instances", "polylines")
+    if label_type not in supported_label_types:
+        raise ValueError(
+            "Unsupported label_type='%s'. The supported values are %s"
+            % (label_type, supported_label_types)
+        )
+
+    if label_type == "instances" and mask_size is None and frame_size is None:
+        logger.warning(
+            "Defaulting to label_type='detections'. You must provide a "
+            "'mask_size' or 'frame_size' to import instance masks"
+        )
+        label_type = "detections"
+
     labels = []
     for row in _read_file_lines(txt_path):
         label = _parse_yolo_row(
@@ -1210,16 +1230,10 @@ def load_yolo_annotations(
         )
         labels.append(label)
 
-    if label_type in ("detections", "instances"):
-        return fol.Detections(detections=labels)
-
     if label_type == "polylines":
         return fol.Polylines(polylines=labels)
-
-    raise ValueError(
-        "Unsupported label_type='%s'. The supported values are %s"
-        % (label_type, ("detections", "instances", "polylines"))
-    )
+    else:
+        return fol.Detections(detections=labels)
 
 
 def _parse_yolo_v5_path(filepath, yaml_path):
