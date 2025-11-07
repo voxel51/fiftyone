@@ -6,7 +6,6 @@ import { Link, Typography } from "@mui/material";
 import { useAtom, useSetAtom } from "jotai";
 import { isEqual } from "lodash";
 import { default as React, useEffect, useMemo, useState } from "react";
-import { useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import { CodeView } from "../../../../../plugins/SchemaIO/components";
 import { RoundButtonWhite } from "../Actions";
@@ -54,7 +53,7 @@ const useAnnotationSchema = (path: string) => {
   const compute = useOperatorExecutor("compute_annotation_schema");
   const save = useOperatorExecutor("save_annotation_schema");
 
-  const setMessage = useSetRecoilState(snackbarMessage);
+  const setNotification = useNotification();
 
   useEffect(() => {
     if (!compute.result) {
@@ -101,7 +100,7 @@ const useAnnotationSchema = (path: string) => {
         save.execute({ path, config });
         setConfig(parse(localConfig));
       } catch {
-        setMessage("Unable to parse config");
+        setNotification({ msg: "Unable to parse config", variant: "error" });
       }
     },
     saving: save.isExecuting,
@@ -116,14 +115,14 @@ const useAnnotationSchema = (path: string) => {
 const EditAnnotationSchema = ({ path }: { path: string }) => {
   const data = useAnnotationSchema(path);
   const setCurrentField = useSetAtom(currentField);
-  const setMessage = useNotification();
+  const setNotification = useNotification();
 
   useEffect(() => {
     if (data.savingComplete) {
       setCurrentField(null);
-      setMessage({ msg: "Schema changes saved", variant: "success" });
+      setNotification({ msg: "Schema changes saved", variant: "success" });
     }
-  }, [data.savingComplete, setCurrentField, setMessage]);
+  }, [data.savingComplete, setCurrentField, setNotification]);
   return (
     <>
       <Typography color="secondary" padding="1rem 0">
