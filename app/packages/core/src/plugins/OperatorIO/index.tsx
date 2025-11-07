@@ -1,5 +1,4 @@
 import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
-import React from "react";
 import { SchemaIOComponent } from "../SchemaIO";
 import { getErrorsByPath, operatorToIOSchema } from "./utils";
 
@@ -15,6 +14,7 @@ function OperatorIOComponent(props) {
     initialData,
     id,
     shouldClearUseKeyStores,
+    onValidationErrors,
     ...otherProps
   } = props;
   const ioSchema = operatorToIOSchema(schema, { isOutput: type === "output" });
@@ -30,6 +30,7 @@ function OperatorIOComponent(props) {
       errors={getErrorsByPath(errors)}
       initialData={initialData}
       layout={layout}
+      onValidationErrors={onValidationErrors}
       otherProps={otherProps}
     />
   );

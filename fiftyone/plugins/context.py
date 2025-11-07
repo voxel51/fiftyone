@@ -126,7 +126,8 @@ class PluginContext(object):
 
         try:
             module_dir = self.plugin_definition.directory
-            module_path = os.path.join(module_dir, INIT_FILENAME)
+            entrypoint = self.plugin_definition.py_entry
+            module_path = os.path.join(module_dir, entrypoint)
             if not os.path.isfile(module_path):
                 return
 
