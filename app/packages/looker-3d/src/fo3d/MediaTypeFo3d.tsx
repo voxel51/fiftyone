@@ -333,16 +333,16 @@ export const MediaTypeFo3dComponent = () => {
   const effectiveSceneBoundingBox = sceneBoundingBox || DEFAULT_BOUNDING_BOX;
 
   useEffect(() => {
-    if (sceneBoundingBox && !lookAt) {
+    if (effectiveSceneBoundingBox && !lookAt) {
       const center = effectiveSceneBoundingBox.getCenter(new Vector3());
       setLookAt(center);
     }
-  }, [sceneBoundingBox, lookAt, effectiveSceneBoundingBox]);
+  }, [lookAt, effectiveSceneBoundingBox]);
 
   const topCameraPosition = useMemo(() => {
     if (
-      !sceneBoundingBox ||
-      Math.abs(effectiveSceneBoundingBox.max.x) === Number.POSITIVE_INFINITY
+      Math.abs(effectiveSceneBoundingBox.max.x) === Number.POSITIVE_INFINITY ||
+      !upVector
     ) {
       return DEFAULT_CAMERA_POSITION();
     }
@@ -357,7 +357,7 @@ export const MediaTypeFo3dComponent = () => {
       2.5,
       "top"
     );
-  }, [sceneBoundingBox, upVector, effectiveSceneBoundingBox]);
+  }, [upVector, effectiveSceneBoundingBox]);
 
   const overriddenCameraPosition = useRecoilValue(cameraPositionAtom);
 
@@ -424,8 +424,9 @@ export const MediaTypeFo3dComponent = () => {
       }
 
       if (
-        sceneBoundingBox &&
-        Math.abs(effectiveSceneBoundingBox.max.x) !== Number.POSITIVE_INFINITY
+        Math.abs(effectiveSceneBoundingBox.max.x) !==
+          Number.POSITIVE_INFINITY &&
+        upVector
       ) {
         const size = effectiveSceneBoundingBox.getSize(new Vector3());
 
@@ -445,7 +446,6 @@ export const MediaTypeFo3dComponent = () => {
       overriddenCameraPosition,
       isParsingFo3d,
       foScene,
-      sceneBoundingBox,
       effectiveSceneBoundingBox,
       upVector,
       lastSavedCameraPosition,
@@ -504,11 +504,7 @@ export const MediaTypeFo3dComponent = () => {
         isFirstTime?: boolean;
       } = {}
     ) => {
-      if (
-        !sceneBoundingBox ||
-        !cameraRef.current ||
-        !cameraControlsRef.current
-      ) {
+      if (!cameraRef.current || !cameraControlsRef.current) {
         return;
       }
 
@@ -551,7 +547,6 @@ export const MediaTypeFo3dComponent = () => {
       }
     },
     [
-      sceneBoundingBox,
       effectiveSceneBoundingBox,
       topCameraPosition,
       getDefaultCameraPosition,
@@ -560,17 +555,39 @@ export const MediaTypeFo3dComponent = () => {
   );
 
   fos.useEventHandler(window, SET_TOP_VIEW_EVENT, () => {
-    onChangeView("top", {
-      useAnimation: true,
-      ignoreLastSavedCameraPosition: true,
-    });
+    const execute = () => {
+      onChangeView("top", {
+        useAnimation: true,
+        ignoreLastSavedCameraPosition: true,
+      });
+    };
+
+    // Sometimes the bbox isn't computed yet, especially on scene load or error
+    // for big assets, or because of timeout, or three.js loading manager issues,
+    // so we lazily recompute it and try again shortly after.
+    if (!sceneBoundingBox) {
+      recomputeBounds();
+      setTimeout(execute, 50);
+    } else {
+      execute();
+    }
   });
 
   fos.useEventHandler(window, SET_EGO_VIEW_EVENT, () => {
-    onChangeView("pov", {
-      useAnimation: true,
-      ignoreLastSavedCameraPosition: true,
-    });
+    const execute = () => {
+      onChangeView("pov", {
+        useAnimation: true,
+        ignoreLastSavedCameraPosition: true,
+      });
+    };
+
+    // Same lazy pattern is used here as above
+    if (!sceneBoundingBox) {
+      recomputeBounds();
+      setTimeout(execute, 50);
+    } else {
+      execute();
+    }
   });
 
   // Zoom to selected labels and use them as the new lookAt
