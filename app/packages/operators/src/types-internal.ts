@@ -19,3 +19,16 @@ export type OperatorExecutorOptions = {
 };
 
 export type ParamsType = Record<string, any>;
+
+export type ResolvablePropertyOptions = {
+  resolver: string;
+  debounce?: boolean;
+  throttle?: boolean;
+  wait?: number;
+  auto_update?: boolean;
+  dependencies?: string[];
+  params?: ParamsType;
+  validate?: boolean;
+  leading?: boolean;
+  trailing?: boolean;
+};
