@@ -1155,8 +1155,8 @@ class YOLOAnnotationWriter(object):
             else:
                 confidence = None
 
-            row = _make_yolo_row(label, target, confidence=confidence)
-            rows.append(row)
+            _rows = _make_yolo_rows(label, target, confidence=confidence)
+            rows.extend(_rows)
 
         _write_file_lines(rows, txt_path)
 
@@ -1330,21 +1330,23 @@ def _parse_yolo_row(row, classes, label_type, mask_size=None, frame_size=None):
     )
 
 
-def _make_yolo_row(label, target, confidence=None):
-    if isinstance(label, fol.Polyline):
-        points = itertools.chain.from_iterable(label.points)
-        row = "%d " % target
-        return row + " ".join("%f %f" % tuple(p) for p in points)
+def _make_yolo_rows(label, target, confidence=None):
+    if isinstance(label, fol.Detection):
+        xtl, ytl, w, h = label.bounding_box
+        xc = xtl + 0.5 * w
+        yc = ytl + 0.5 * h
+        row = "%d %f %f %f %f" % (target, xc, yc, w, h)
 
-    xtl, ytl, w, h = label.bounding_box
-    xc = xtl + 0.5 * w
-    yc = ytl + 0.5 * h
-    row = "%d %f %f %f %f" % (target, xc, yc, w, h)
+        if confidence is not None:
+            row += " %f" % confidence
 
-    if confidence is not None:
-        row += " %f" % confidence
-
-    return row
+        yield row
+    elif isinstance(label, fol.Polyline):
+        for points in label.points:
+            row = "%d " % target
+            yield row + " ".join("%f %f" % tuple(p) for p in points)
+    else:
+        raise ValueError("Unsupported label type: %s" % type(label))
 
 
 def _parse_yolo_classes(classes):
