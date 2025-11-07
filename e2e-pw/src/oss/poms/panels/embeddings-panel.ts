@@ -26,6 +26,8 @@ export class EmbeddingsPom {
   }
 
   async selectAll() {
+    await this.plotContainer.waitFor({ state: "visible", timeout: 2000 });
+
     const { x, y, width, height } = await this.plotContainer.boundingBox();
 
     const [x1, y1] = [x, y + 100];
