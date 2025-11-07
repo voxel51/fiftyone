@@ -1,4 +1,4 @@
-import { useEventBus } from "./hooks";
+import { useEventBus, useEventHandler } from "./hooks";
 import { Fragment, useEffect, useState } from "react";
 import { EventHandler } from "./types";
 
@@ -10,16 +10,26 @@ export type DemoEventFamily = {
   "demo:eventB": {
     value: number;
   };
+  "demo:eventC": {
+    foo: string[];
+  };
 };
 
 const Source = () => {
   const [count, setCount] = useState(0);
   const eventBus = useEventBus<DemoEventFamily>({ channelId: "default" });
 
+  // compile-time error; "foo" is not a key of DemoEventFamily
+  // eventBus.dispatch("foo", {bar: "baz"});
+
+  // compile-time error; event payload mismatch
+  // eventBus.dispatch("demo:eventA", {foo: "bar"});
+
   return (
     <>
       <button
         onClick={() => {
+          // type-safe event names and payloads
           eventBus.dispatch("demo:eventA", {
             id: "some-id",
             name: "some-name",
@@ -31,6 +41,7 @@ const Source = () => {
 
       <button
         onClick={() => {
+          // type-safe event names and payloads
           eventBus.dispatch("demo:eventB", { value: count });
           setCount((prev) => prev + 1);
         }}
@@ -47,10 +58,12 @@ const Sink = () => {
   useEffect(() => {
     const eventAHandler: EventHandler<DemoEventFamily["demo:eventA"]> = (
       data
+      // type-safe payload access
     ) => console.log(data.id, data.name);
 
     const eventBHandler: EventHandler<DemoEventFamily["demo:eventB"]> = (
       data
+      // type-safe payload access
     ) => console.log(data.value);
 
     eventBus.on("demo:eventA", eventAHandler);
@@ -61,6 +74,17 @@ const Sink = () => {
       eventBus.off("demo:eventB", eventBHandler);
     };
   }, [eventBus]);
+
+  // OR if you don't want to deal with on/off --
+  // annoying that you need to specify the event twice, but not terrible
+  useEventHandler<DemoEventFamily, "demo:eventC">("demo:eventC", (data) =>
+    // still type-safe payload access
+    console.log(data.foo)
+  );
+
+  // could probably refactor the hook to create a closure around the first type,
+  // but ugly syntax either way
+  // useEventHandler<DemoEventFamily>()("demo:eventC", ...);
 
   return <Fragment />;
 };
