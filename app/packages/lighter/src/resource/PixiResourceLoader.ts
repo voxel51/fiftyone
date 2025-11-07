@@ -62,8 +62,8 @@ export class PixiResourceLoader implements ResourceLoader {
 
     await Assets.init({
       preferences: {
-        preferCreateImageBitmap: true,
-        preferWorkers: true,
+        preferCreateImageBitmap: false,
+        preferWorkers: false,
       },
       texturePreference: {
         resolution,
