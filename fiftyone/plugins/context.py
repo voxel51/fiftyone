@@ -5,6 +5,7 @@ FiftyOne plugin context.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import importlib
 import logging
 import os
@@ -126,7 +127,17 @@ class PluginContext(object):
 
         try:
             module_dir = self.plugin_definition.directory
-            module_path = os.path.join(module_dir, INIT_FILENAME)
+            entrypoint = self.plugin_definition.py_entry
+            module_path = os.path.join(module_dir, entrypoint)
+
+            # Verify the resolved path is within the plugin directory
+            if not os.path.realpath(module_path).startswith(
+                os.path.realpath(module_dir)
+            ):
+                raise ValueError(
+                    "Plugin entrypoint must be located within the plugin directory"
+                )
+
             if not os.path.isfile(module_path):
                 return
 

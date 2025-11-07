@@ -63,14 +63,19 @@ export type ViewPropsType<Schema extends SchemaType = SchemaType> = {
     ROWS: number;
   };
   autoFocused?: React.MutableRefObject<boolean>;
-  otherProps: { [key: string]: any };
+  otherProps: Record<string, unknown>;
   /**
    * Custom. Available only when explicitly passed to the view.
    */
   onClick?: (
     e: React.MouseEvent,
-    params: { [key: string]: any },
+    params: Record<string, unknown>,
     props: ViewPropsType
+  ) => void;
+  fullBody?: Record<string, unknown>;
+  onValidationErrors?: (
+    basePath: string,
+    errors: ValidationErrorType[]
   ) => void;
 };
 
@@ -80,4 +85,9 @@ export type CustomComponentsType = {
 
 export type AncestorsType = {
   [path: string]: SchemaType;
+};
+
+export type ValidationErrorType = {
+  path: string;
+  reason: string;
 };

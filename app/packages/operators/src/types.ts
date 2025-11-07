@@ -1,5 +1,6 @@
 import { ExecutionContext } from "./operators";
 import { useOperatorPrompt } from "./state";
+import { ParamsType, ResolvablePropertyOptions } from "./types-internal";
 
 export class BaseType {}
 
@@ -254,6 +255,64 @@ export class Property {
       errorMessage: this.errorMessage,
       onChange: this.onChange,
     };
+  }
+}
+
+export class ResolvableProperty extends BaseType {
+  resolver: string;
+  debounce?: boolean;
+  throttle?: boolean;
+  wait?: number;
+  auto_update?: boolean;
+  dependencies?: string[];
+  params?: ParamsType;
+  validate?: boolean;
+  leading?: boolean;
+  trailing?: boolean;
+
+  /**
+   * Construct operator type for resolvable property
+   * @param options options for defining constraints on a string value
+   * @param options.resolver operator to resolve the schema for this property
+   * @param options.debounce whether to debounce the resolution
+   * @param options.throttle whether to throttle the resolution
+   * @param options.wait time to wait before re-resolving
+   * @param options.auto_update whether to automatically update the property
+   * @param options.dependencies list of dependencies for the property
+   * @param options.params additional parameters to pass to the resolver
+   * @param options.validate whether the property should be validated. If True,
+   * the operator will not be allowed to execute until this property is resolved
+   * and validated.
+   * @param options.leading whether to invoke the resolver on the leading edge
+   * @param options.trailing whether to invoke the resolver on the trailing edge
+   */
+  constructor(options: ResolvablePropertyOptions) {
+    super();
+    this.resolver = options.resolver;
+    this.debounce = options.debounce;
+    this.throttle = options.throttle;
+    this.wait = options.wait;
+    this.auto_update = options.auto_update ?? true;
+    this.dependencies = options.dependencies;
+    this.params = options.params;
+    this.validate = options.validate;
+    this.leading = options.leading ?? false;
+    this.trailing = options.trailing ?? true;
+  }
+
+  static fromJSON(json: any) {
+    return new ResolvableProperty({
+      resolver: json.resolver,
+      debounce: json.debounce,
+      throttle: json.throttle,
+      wait: json.wait,
+      auto_update: json.auto_update,
+      dependencies: json.dependencies,
+      params: json.params,
+      validate: json.validate,
+      leading: json.leading,
+      trailing: json.trailing,
+    });
   }
 }
 
@@ -1283,6 +1342,7 @@ const TYPES = {
   Map: OperatorMap,
   File,
   UploadedFile,
+  ResolvableProperty,
 };
 
 // NOTE: this should always match fiftyone/operators/types.py
