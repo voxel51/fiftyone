@@ -125,9 +125,6 @@ const EditAnnotationSchema = ({ path }: { path: string }) => {
   }, [data.savingComplete, setCurrentField, setNotification]);
   return (
     <>
-      <Typography color="secondary" padding="1rem 0">
-        Copy goes here
-      </Typography>
       <Container>
         {data.loading && <Loading scanning={data.scanning} />}
         {!data.schema && !data.loading && (
