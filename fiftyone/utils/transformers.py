@@ -684,8 +684,8 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
                 output,
                 image_sizes,
                 confidence_thresh=self.config.confidence_thresh,
+                classes=self.config.filter_classes,
             )
-
         else:
             return output
 
@@ -787,11 +787,8 @@ class FiftyOneZeroShotTransformer(
         return self._text_prompts
 
     def _get_text_prompts(self):
-        if self.classes is None and self.config.classes is None:
-            return None
-
         if self.classes is None:
-            self.classes = self.config.classes
+            return None
 
         text_prompt = (
             self.config.text_prompt if self.config.text_prompt else None
@@ -1474,7 +1471,14 @@ class TransformersDetectorOutputProcessor(fout.DetectorOutputProcessor):
                     "or post_process_grounded_object_detection method."
                 )
 
-    def __call__(self, output, image_sizes, confidence_thresh=None):
+    def __call__(
+        self,
+        output,
+        image_sizes,
+        confidence_thresh=None,
+        classes=None,
+        **kwargs,
+    ):
         output = self._objection_detection_processor(
             output, target_sizes=image_sizes, threshold=confidence_thresh or 0
         )
@@ -1484,9 +1488,11 @@ class TransformersDetectorOutputProcessor(fout.DetectorOutputProcessor):
                 self._parse_output(
                     o,
                     (img_sz[1], img_sz[0]),
-                    confidence_thresh=confidence_thresh,
+                    confidence_thresh,
+                    classes,
                 )
             )
+
         return res
 
 
@@ -1497,13 +1503,21 @@ class TransformersSemanticSegmentatorOutputProcessor(
         self.logits_key = kwargs.pop("logits_key", "logits")
         super().__init__(*args, **kwargs)
 
-    def __call__(self, output, image_sizes, confidence_thresh=None):
+    def __call__(
+        self,
+        output,
+        image_sizes,
+        confidence_thresh=None,
+        classes=None,
+        **kwargs,
+    ):
         return super().__call__(
             {
                 "out": output[self.logits_key]
             },  # to be compatible with the base class
             image_sizes,
             confidence_thresh=confidence_thresh,
+            classes=classes,
         )
 
 
@@ -1534,7 +1548,7 @@ class TransformersDepthEstimatorOutputProcessor(fout.OutputProcessor):
                     "Processor does not have a post_process_depth_estimation."
                 )
 
-    def __call__(self, output, image_sizes, confidence_thresh=None):
+    def __call__(self, output, image_sizes, **kwargs):
         output = self._depth_estimation_post_processor(output)
         output = np.array(
             [o["predicted_depth"].detach().cpu().numpy() for o in output]
@@ -1573,7 +1587,12 @@ class TransformersPoseEstimationOutputProcessor(fout.KeypointOutputProcessor):
                 )
 
     def __call__(
-        self, output, image_sizes, confidence_thresh=None, box_prompts=None
+        self,
+        output,
+        image_sizes,
+        confidence_thresh=None,
+        box_prompts=None,
+        **kwargs,
     ):
         """Process pose estimation outputs to FiftyOne format."""
         output.heatmaps = output.heatmaps.detach()
