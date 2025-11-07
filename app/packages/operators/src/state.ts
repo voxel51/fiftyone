@@ -462,9 +462,12 @@ export const useOperatorPrompt = () => {
   const hooks = operator.useHooks(ctx);
   const executor = useOperatorExecutor(promptingOperator.operatorName);
   const [inputFields, setInputFields] = useState();
+  const [outputFields, setOutputFields] = useState();
   const [preparing, setPreparing] = useState(false);
   const [resolvedParams, setResolvedParams] = useState(null);
   const [resolvedIO, setResolvedIO] = useState({ input: null, output: null });
+  const [validationErrors, setValidationErrors] = useState([]);
+  const [customValidationErrors, setCustomValidationErrors] = useState([]);
   const notify = fos.useNotification();
   const isDynamic = useMemo(() => Boolean(operator.config.dynamic), [operator]);
   const cachedResolvedInput = useMemo(() => {
@@ -481,6 +484,7 @@ export const useOperatorPrompt = () => {
     return JSON.stringify(resolvedParams);
   }, [resolvedParams]);
   const liteValuesRef = useRef({});
+  const promptId = promptingOperator.id;
 
   const resolveInput = useCallback(
     debounce(
@@ -548,9 +552,6 @@ export const useOperatorPrompt = () => {
     if (executor.isExecuting || executor.hasExecuted) return;
     resolveInputFields();
   }, [serializedParams, executor.isExecuting]);
-  const [validationErrors, setValidationErrors] = useState([]);
-
-  const [outputFields, setOutputFields] = useState();
   const resolveOutputFields = useCallback(async () => {
     ctx.hooks = hooks;
     const result = new OperatorResult(operator, executor.result, null, null);
@@ -666,6 +667,10 @@ export const useOperatorPrompt = () => {
     [submitOptions?.handleSubmit]
   );
 
+  const computedValidationErrors = useMemo(() => {
+    return [...validationErrors, ...customValidationErrors];
+  }, [validationErrors, customValidationErrors]);
+
   if (!promptingOperator) return null;
 
   return {
@@ -683,7 +688,7 @@ export const useOperatorPrompt = () => {
     hasResultOrError,
     close,
     cancel: close,
-    validationErrors,
+    validationErrors: computedValidationErrors,
     validate,
     validateThrottled,
     executorError,
@@ -694,6 +699,8 @@ export const useOperatorPrompt = () => {
     promptView,
     resolvedIO,
     setLiteValues,
+    id: promptId,
+    setCustomValidationErrors,
   };
 };
 
