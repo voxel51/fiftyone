@@ -341,7 +341,8 @@ export const MediaTypeFo3dComponent = () => {
 
   const topCameraPosition = useMemo(() => {
     if (
-      Math.abs(effectiveSceneBoundingBox.max.x) === Number.POSITIVE_INFINITY
+      Math.abs(effectiveSceneBoundingBox.max.x) === Number.POSITIVE_INFINITY ||
+      !upVector
     ) {
       return DEFAULT_CAMERA_POSITION();
     }
@@ -423,7 +424,9 @@ export const MediaTypeFo3dComponent = () => {
       }
 
       if (
-        Math.abs(effectiveSceneBoundingBox.max.x) !== Number.POSITIVE_INFINITY
+        Math.abs(effectiveSceneBoundingBox.max.x) !==
+          Number.POSITIVE_INFINITY &&
+        upVector
       ) {
         const size = effectiveSceneBoundingBox.getSize(new Vector3());
 
