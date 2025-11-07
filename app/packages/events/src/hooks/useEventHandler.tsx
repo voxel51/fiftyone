@@ -1,17 +1,18 @@
-import { EventFamily, EventHandler } from "../types";
 import { useEffect } from "react";
+import { EventFamily, EventHandler } from "../types";
 import { useEventBus } from "./useEventBus";
 
-export const useEventHandler = <T extends EventFamily, E extends keyof T>(
-  event: E,
-  handler: EventHandler<T[E]>,
-  channelId: string = "default"
-) => {
-  const eventBus = useEventBus<T>({ channelId });
-
-  useEffect(() => {
-    eventBus.on(event, handler);
-
-    return () => eventBus.off(event, handler);
-  }, [event, eventBus, handler]);
-};
+export function createUseEventHandler<T extends EventFamily>(
+  channelId = "default"
+) {
+  const bus = useEventBus<T>({ channelId });
+  return function useEventHandler<K extends keyof T>(
+    event: K,
+    handler: EventHandler<T[K]>
+  ) {
+    useEffect(() => {
+      bus.on(event, handler);
+      return () => bus.off(event, handler);
+    }, [bus, event, handler]);
+  };
+}
