@@ -64,6 +64,7 @@ export class PixiResourceLoader implements ResourceLoader {
       preferences: {
         preferCreateImageBitmap: true,
         preferWorkers: true,
+        crossOrigin: "anonymous",
       },
       texturePreference: {
         resolution,
