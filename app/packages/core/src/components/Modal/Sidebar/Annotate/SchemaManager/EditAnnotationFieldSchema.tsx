@@ -1,11 +1,11 @@
 import { LoadingSpinner } from "@fiftyone/components";
 import { useOperatorExecutor } from "@fiftyone/operators";
-import { snackbarMessage } from "@fiftyone/state";
+import { useNotification } from "@fiftyone/state";
 import { Sync } from "@mui/icons-material";
 import { Link, Typography } from "@mui/material";
 import { useAtom, useSetAtom } from "jotai";
 import { isEqual } from "lodash";
-import React, { useEffect, useMemo, useState } from "react";
+import { default as React, useEffect, useMemo, useState } from "react";
 import { useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import { CodeView } from "../../../../../plugins/SchemaIO/components";
@@ -116,14 +116,14 @@ const useAnnotationSchema = (path: string) => {
 const EditAnnotationSchema = ({ path }: { path: string }) => {
   const data = useAnnotationSchema(path);
   const setCurrentField = useSetAtom(currentField);
-  const setToast = useSetRecoilState(snackbarMessage);
+  const setMessage = useNotification();
 
   useEffect(() => {
     if (data.savingComplete) {
       setCurrentField(null);
-      setToast("Schema changes saved");
+      setMessage({ msg: "Schema changes saved", variant: "success" });
     }
-  }, [data.savingComplete, setCurrentField, setToast]);
+  }, [data.savingComplete, setCurrentField, setMessage]);
   return (
     <>
       <Typography color="secondary" padding="1rem 0">

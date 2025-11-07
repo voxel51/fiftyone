@@ -19,6 +19,7 @@ export default function useSave() {
   );
   const setSaving = useSetAtom(isSaving);
   const exit = useExit(false);
+  const setNotification = fos.useNotification();
 
   return useCallback(() => {
     if (!scene || !label) {
@@ -39,11 +40,29 @@ export default function useSave() {
           saved(label.data);
           setSaving(false);
           exit();
+          setNotification({
+            msg: `Label "${label.data.label}" saved successfully.`,
+            variant: "success",
+          });
         },
         onError: () => {
           setSaving(false);
+          setNotification({
+            msg: `Label "${label.data.label}" not saved successfully. Try again.`,
+            variant: "error",
+          });
         },
       },
     });
-  }, [addOverlay, exit, label, saved, scene, schema, setter, setSaving]);
+  }, [
+    addOverlay,
+    exit,
+    label,
+    saved,
+    scene,
+    schema,
+    setter,
+    setNotification,
+    setSaving,
+  ]);
 }
