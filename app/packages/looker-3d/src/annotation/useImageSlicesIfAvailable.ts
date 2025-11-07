@@ -59,10 +59,8 @@ export const useImageSlicesIfAvailable = (
         const data = response as GroupResponse;
 
         if (!data.group) {
-          if (!cancelled) {
-            setImageSlices([]);
-            setSliceUrls({});
-          }
+          setImageSlices([]);
+          setSliceUrls({});
           return;
         }
 
@@ -85,10 +83,8 @@ export const useImageSlicesIfAvailable = (
           }
         }
 
-        if (!cancelled) {
-          setImageSlices(imageSliceNames);
-          setSliceUrls(urls);
-        }
+        setImageSlices(imageSliceNames);
+        setSliceUrls(urls);
       } catch (error) {
         if (!cancelled) {
           console.error("Failed to fetch image slices:", error);
