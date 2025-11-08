@@ -70,7 +70,7 @@ Finally, expand the **Settings** dropdown.
    :width: 75%
 
 .. tip::
-  For auto labeling, a low-medium confidence threshold often maxmizes downstream model accuracy due to increased recall. See this `article <https://voxel51.com/blog/zero-shot-auto-labeling-rivals-human-performance>`_ for more details. 
+  For auto labeling, a low-medium confidence threshold often maximizes downstream model accuracy due to increased recall. See this `article <https://voxel51.com/blog/zero-shot-auto-labeling-rivals-human-performance>`_ for more details. 
 
 
 Now click **Auto Label**, then click **Schedule** for one of your delegated operators. Your auto labeling job will then kick off in the background.

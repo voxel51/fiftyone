@@ -57,10 +57,10 @@ You should now see the embeddings space visualized within the Embeddings panel. 
 
 One option is to select **Color by > yolow_detections.detections.confidence**. You can then lasso low confidence clusters and identify if any are false positives.
 
-Another option is to color by label prediction (**Color by > yolow_detections.detections.label**). Look for an area that that suggests class confusion, e.g., one or two green dots in a sea of red. Click and drag to lasso that area and verify in the samply grid if any objects are mislabeled (e.g., a car to a truck, or a person to a bicycle). 
+Another option is to color by label prediction (**Color by > yolow_detections.detections.label**). Look for an area that suggests class confusion, e.g., one or two green dots in a sea of red. Click and drag to lasso that area and verify in the sample grid if any objects are mislabeled (e.g., a car to a truck, or a person to a bicycle). 
 
 .. tip::
-        You can easily combine class and confidence filtering by visualizing the embeddings by label and then setting a minimum and maximum confidence filter for the **yolow_detections** field in the left sidebat.
+        You can easily combine class and confidence filtering by visualizing the embeddings by label and then setting a minimum and maximum confidence filter for the **yolow_detections** field in the left sidebar.
 
 Below we see an example of a false positive, insofar as the model incorrectly labeled a gas station logo as a traffic sign.
 
@@ -79,7 +79,7 @@ After tagging at least a few incorrect samples, a good next step is to mark them
 Next Steps
 ----------
 
-This tends to be an iterative process. Feel free to continue analyzing parts of the embeddings space, finding and tag samples as needed. You can also use this opportunity to return to the Auto Labeling panel and batch additional true positives for approval.
+This tends to be an iterative process. Feel free to continue analyzing parts of the embeddings space, finding and tagging samples as needed. You can also use this opportunity to return to the Auto Labeling panel and batch additional true positives for approval.
 
 In the next and final step, you will finalize your predictions and approve your new ground truth labels.
 
