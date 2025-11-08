@@ -1,7 +1,7 @@
 import { EventDispatcher } from "./dispatch";
 import { EventHandler } from "./types";
 
-export type DemoEventFamily = {
+export type DemoEventGroup = {
   "demo:eventA": {
     id: string;
     name: string;
@@ -20,9 +20,9 @@ export type DemoEventFamily = {
  * JavaScript-only demo of the event system.
  */
 export function runDemo() {
-  const eventBus = new EventDispatcher<DemoEventFamily>();
+  const eventBus = new EventDispatcher<DemoEventGroup>();
 
-  // compile-time error; "foo" is not a key of DemoEventFamily
+  // compile-time error; "foo" is not a key of DemoEventGroup
   // eventBus.dispatch("foo", {bar: "baz"});
 
   // compile-time error; event payload mismatch
@@ -31,26 +31,22 @@ export function runDemo() {
   // compile-time error; event payload muse be undefined
   // eventBus.dispatch("demo:eventD", {foo: "bar"});
 
-  const eventAHandler: EventHandler<DemoEventFamily["demo:eventA"]> = (
+  const eventAHandler: EventHandler<DemoEventGroup["demo:eventA"]> = (
     data
     // type-safe payload access
   ) => {
     console.log("Event A received:", data.id, data.name);
   };
 
-  const eventBHandler: EventHandler<DemoEventFamily["demo:eventB"]> = (
-    data
-  ) => {
+  const eventBHandler: EventHandler<DemoEventGroup["demo:eventB"]> = (data) => {
     console.log("Event B received:", data.value);
   };
 
-  const eventCHandler: EventHandler<DemoEventFamily["demo:eventC"]> = (
-    data
-  ) => {
+  const eventCHandler: EventHandler<DemoEventGroup["demo:eventC"]> = (data) => {
     console.log("Event C received:", data.foo);
   };
 
-  const eventDHandler: EventHandler<DemoEventFamily["demo:eventD"]> = () => {
+  const eventDHandler: EventHandler<DemoEventGroup["demo:eventD"]> = () => {
     console.log("Event D received (no payload)");
   };
 
