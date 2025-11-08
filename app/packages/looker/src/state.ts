@@ -93,6 +93,7 @@ export type Sample = {
   tags: string[];
   _label_tags: string[];
   _media_type: "image" | "video" | "point-cloud" | "3d";
+  last_modified_at?: { datetime: number };
 } & GenericLabel;
 
 export interface LabelData {
@@ -203,7 +204,7 @@ export interface BaseOptions {
 
 export type BoundingBox = [number, number, number, number];
 
-export type Coordinates = [number, number];
+export type Coordinates = [number, number] | [number, number, number];
 
 export type Dimensions = [number, number];
 

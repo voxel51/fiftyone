@@ -5,6 +5,7 @@ FiftyOne delegated operator related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import asyncio
 import copy
 import time
 import unittest
@@ -22,11 +23,14 @@ from fiftyone.factory import (
     SortDirection,
     SortByField,
 )
+from fiftyone.operators.types import PipelineRunInfo
+from fiftyone.operators import delegated
 from fiftyone.operators.delegated import DelegatedOperationService
 from fiftyone.operators.executor import (
     ExecutionContext,
     ExecutionResult,
     ExecutionRunState,
+    PipelineExecutionContext,
 )
 from fiftyone.operators.types import Pipeline, PipelineStage
 from fiftyone.factory.repos import (
@@ -206,8 +210,15 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         pipeline = Pipeline(
             [
-                PipelineStage(name="one", operator_uri="@test/op1"),
-                PipelineStage(name="two", operator_uri="@test/op2"),
+                PipelineStage(
+                    name="one",
+                    operator_uri="@test/op1",
+                    num_distributed_tasks=5,
+                    params={"foo": "bar"},
+                ),
+                PipelineStage(
+                    name="two", operator_uri="@test/op2", always_run=True
+                ),
             ]
         )
         doc = self.svc.queue_operation(
@@ -1215,6 +1226,73 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             )
         finally:
             dataset.delete()
+
+    @patch.object(delegated, "do_execute_operator")
+    @patch.object(delegated, "prepare_operator_executor")
+    def test_execute_with_pipeline_context(
+        self, prepare_operator_mock, do_execute_mock, mock_get_operator
+    ):
+        with patch.object(self.svc, "get") as do_get_mock:
+            parent_run_info = PipelineRunInfo(
+                active=False, expected_children=[1, 1, 5], stage_index=2
+            )
+            parent_id = ObjectId()
+            pipeline = Pipeline(
+                [
+                    PipelineStage(operator_uri="@test/op1", name="one"),
+                    PipelineStage(name="two", operator_uri="@test/op2"),
+                    PipelineStage(
+                        name="three",
+                        operator_uri="@test/op3",
+                        num_distributed_tasks=5,
+                    ),
+                ]
+            )
+
+            parent_do = DelegatedOperationDocument()
+            parent_do.id = parent_id
+            parent_do.pipeline = pipeline
+            parent_do.pipeline_run_info = parent_run_info
+            do_get_mock.return_value = parent_do
+
+            child_do = DelegatedOperationDocument()
+            child_do.id = bson.ObjectId()
+            child_do.operator = "@test/op3"
+            child_do.parent_id = parent_id
+            ctx = ExecutionContext(
+                request_params={"foo": "bar", "dataset_name": "dataset"},
+            )
+            child_do.context = ctx
+            prepare_operator_mock.return_value = (
+                mock_get_operator.return_value,
+                None,
+                ctx,
+                None,
+            )
+
+            #####
+            asyncio.run(self.svc._execute_operator(child_do))
+            #####
+
+            do_get_mock.assert_called_once_with(parent_id)
+            pipeline_ctx = PipelineExecutionContext(
+                parent_run_info.active,
+                parent_run_info.stage_index,
+                total_stages=len(pipeline.stages),
+                num_distributed_tasks=pipeline.stages[
+                    parent_run_info.stage_index
+                ].num_distributed_tasks,
+            )
+            prepare_operator_mock.assert_called_once_with(
+                operator_uri=child_do.operator,
+                request_params=ctx.request_params,
+                delegated_operation_id=child_do.id,
+                set_progress=mock.ANY,
+                pipeline_ctx=pipeline_ctx,
+            )
+            do_execute_mock.assert_called_once_with(
+                mock_get_operator.return_value, ctx, exhaust=True
+            )
 
     def test_paging_sorting(self, mock_get_operator):
         dataset_name = f"test_dataset_{ObjectId()}"

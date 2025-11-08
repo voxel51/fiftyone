@@ -2,15 +2,21 @@ import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
 import { cloneDeep, get, set } from "lodash";
 import { useCallback, useEffect, useRef } from "react";
 import DynamicIO from "./components/DynamicIO";
-import { clearUseKeyStores, SchemaIOContext } from "./hooks";
+import { SchemaIOContext, clearUseKeyStores } from "./hooks";
 import { coerceValue, getLiteValue } from "./utils";
 
 export function SchemaIOComponent(props) {
-  const { onChange, onPathChange, id, shouldClearUseKeyStores } = props;
+  const { onChange, onPathChange, id, shouldClearUseKeyStores, data } = props;
   const stateRef = useRef({});
   const autoFocused = useRef(false);
   const schemaIOContext = { id };
   const storeRef = useRef({ liteValues: {} });
+
+  useEffect(() => {
+    if (data) {
+      stateRef.current = { ...data };
+    }
+  }, [data]);
 
   useEffect(() => {
     return () => {
@@ -65,6 +71,7 @@ export function SchemaIOComponent(props) {
     <SchemaIOContext.Provider value={schemaIOContext}>
       <DynamicIO
         {...props}
+        data={data}
         root_id={id}
         onChange={onIOChange}
         path=""

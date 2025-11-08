@@ -192,6 +192,7 @@ remove_from_toctrees = [
     "plugins/plugins_ecosystem/*",
     "model_zoo/models/*",
     "dataset_zoo/datasets/*",
+    "dataset_zoo/datasets_hf/*",
 ]
 
 html_favicon = "_static/favicon/favicon.ico"

@@ -211,6 +211,12 @@ _MODEL_TEMPLATE = """
     dataset.apply_model(model, label_field="predictions")
 
     session = fo.launch_app(dataset)
+{% elif 'pose-estimation' in tags and 'transformers' in tags %}
+    model = foz.load_zoo_model("{{ name }}")
+
+    dataset.apply_model(model, prompt_field="ground_truth", label_field="predictions")
+
+    session = fo.launch_app(dataset)
 {% elif 'transformers' in tags and 'zero-shot' in tags %}
 
     classes = ["person", "dog", "cat", "bird", "car", "tree", "chair"]

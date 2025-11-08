@@ -3,6 +3,80 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.13.0
+--------------------------
+*Released October 31, 2025*
+
+Includes all updates from :ref:`FiftyOne 1.10.0 <release-notes-v1.10.0>`, plus:
+
+Plugins
+
+- Introduced :class:`PipelineOperator <fiftyone.operators.PipelineOperator>`,
+  allowing a single Operator to kick off execution of a sequence of Operators.
+  Plugin authors define a :class:`Pipeline <fiftyone.operators.types.Pipeline>`
+  consisting of :class:`PipelineStages <fiftyone.operators.types.PipelineStage>`,
+  and each stage will be executed in sequence. This enables quite complex
+  operations to be defined, including distributed execution in any stage,
+  and finalization stages. See :ref:`documentation <writing-operator-pipelines>`
+  for more.
+- Fixed a bug in distributed operations when `target_view` is set to "entire
+  dataset" and filters are set, preventing incorrect application of filters.
+
+App
+
+- Increased maximum length for the name of a dataset or view to over 1000
+  characters.
+- Fixed a bug where the UI would allow exporting media greater than 100 MB, even
+  though that is not supported, resulting in the download hanging.
+
+Core
+
+- Optimized :func:`instances_to_polylines() <fiftyone.utils.labels.instances_to_polylines>`
+  conversion of instance segmentations whose masks are stored in the cloud.
+
+Compliance
+
+- Fixed a bug where a license compliance error could be raised even after the
+  compliance issue had been resolved.
+- Modified our builds to remove lock files that were causing some scanners
+  (e.g. AWS Inspector) to erroneously report vulnerabilities for dependencies
+  not included in our build.
+
+
+.. _release-notes-v1.10.0:
+
+FiftyOne 1.10.0
+--------------
+*Released October 31, 2025*
+
+Model Zoo
+
+- Added `FiftyOneTransformerForPoseEstimation` to support transformer-based
+  keypoint prediction models (
+  `ViTPose <https://huggingface.co/docs/transformers/model_doc/vitpose#vitpose>`_
+  ) to the fiftyone model zoo.
+  `#6371 <https://github.com/voxel51/fiftyone/pull/6371>`_
+
+Core
+
+- :meth:`add_samples() <fiftyone.core.dataset.Dataset.add_samples>` now
+  includes a kwarg for a batcher, which can be a
+  :meth:`fiftyone.core.utils.Batcher <fiftyone.core.utils.Batcher>`, `None` to
+  use the default defined in the config, or `False` to disable batching for the
+  request. `#6400 <https://github.com/voxel51/fiftyone/pull/6400>`_
+- Increased maximum resource (dataset, view, snapshot) name size from 100 to
+  1551. `#6458 <https://github.com/voxel51/fiftyone/pull/6458>`_
+
+App
+
+- Fixed a bug in :ref:`Model Evaluation Panel's <app-model-evaluation-panel>`
+  confusion matrix, where it was possible for the x,y values to get inverted.
+  `#6471 <https://github.com/voxel51/fiftyone/pull/6471>`_
+- Fixed a bug where the user could not save a
+  :ref:`custom color scheme <dataset-app-config-color-scheme>`.
+  `#6437 <https://github.com/voxel51/fiftyone/pull/6437>`_
+
+
 FiftyOne Enterprise 2.12.0
 --------------------------
 *Released October 20, 2025*

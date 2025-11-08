@@ -18,8 +18,6 @@ export async function fetchColorByChoices(params) {
   );
 }
 
-import { NetworkError, ServerError } from "@fiftyone/utilities";
-
 export async function fetchPlot({
   datasetName,
   brainKey,
@@ -44,18 +42,5 @@ function handleErrors(res) {
     throw new Error(
       res?.error || "Unknown error fetching embeddings plot data."
     );
-  }
-}
-
-type EmbeddingsServerError = {
-  error?: string;
-  details?: string;
-  stack?: string;
-}
-
-function convertNetworkErrorIntoEmbeddingsServerError(error: NetworkError | ServerError): EmbeddingsServerError {
-  return {
-    error: error.message || "Unknown error occurred.",
-    stack: error.stack,
   }
 }

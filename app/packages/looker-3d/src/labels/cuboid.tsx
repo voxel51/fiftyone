@@ -1,21 +1,19 @@
-import { useCursor } from "@react-three/drei";
 import { extend } from "@react-three/fiber";
-import { useMemo, useState } from "react";
-import { useRecoilValue } from "recoil";
+import { useEffect, useMemo } from "react";
 import * as THREE from "three";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry";
-import { use3dLabelColor } from "../hooks/use-3d-label-color";
-import { useSimilarLabels3d } from "../hooks/use-similar-labels-3d";
-import { cuboidLabelLineWidthAtom } from "../state";
 import type { OverlayProps } from "./shared";
+import { useEventHandlers, useHoverState, useLabelColor } from "./shared/hooks";
+
 extend({ LineSegments2, LineMaterial, LineSegmentsGeometry });
 
 export interface CuboidProps extends OverlayProps {
   location: THREE.Vector3Tuple;
   dimensions: THREE.Vector3Tuple;
   itemRotation: THREE.Vector3Tuple;
+  lineWidth?: number;
 }
 
 export const Cuboid = ({
@@ -24,6 +22,7 @@ export const Cuboid = ({
   opacity,
   rotation,
   location,
+  lineWidth,
   selected,
   onClick,
   tooltip,
@@ -31,7 +30,6 @@ export const Cuboid = ({
   color,
   useLegacyCoordinates,
 }: CuboidProps) => {
-  const lineWidth = useRecoilValue(cuboidLabelLineWidthAtom);
   const geo = useMemo(
     () => dimensions && new THREE.BoxGeometry(...dimensions),
     [dimensions]
@@ -58,8 +56,18 @@ export const Cuboid = ({
     [resolvedRotation, itemRotationVec]
   );
 
-  const [isCuboidHovered, setIsCuboidHovered] = useState(false);
-  useCursor(isCuboidHovered);
+  const { isHovered, setIsHovered } = useHoverState();
+  const { onPointerOver, onPointerOut, restEventHandlers } = useEventHandlers(
+    tooltip,
+    label
+  );
+
+  const { strokeAndFillColor, isSimilarLabelHovered } = useLabelColor(
+    { selected, color },
+    isHovered,
+    label,
+    false
+  );
 
   const edgesGeo = useMemo(() => new THREE.EdgesGeometry(geo), [geo]);
   const geometry = useMemo(
@@ -70,20 +78,11 @@ export const Cuboid = ({
     [edgesGeo]
   );
 
-  const isSimilarLabelHovered = useSimilarLabels3d(label);
-
-  const strokeAndFillColor = use3dLabelColor({
-    isSelected: selected,
-    isHovered: isCuboidHovered,
-    isSimilarLabelHovered,
-    defaultColor: color,
-  });
-
   const material = useMemo(
     () =>
       new LineMaterial({
         opacity: opacity,
-        transparent: false,
+        transparent: opacity < 0.2,
         color: strokeAndFillColor,
         linewidth: lineWidth,
       }),
@@ -91,17 +90,21 @@ export const Cuboid = ({
       selected,
       lineWidth,
       opacity,
-      isCuboidHovered,
+      isHovered,
       isSimilarLabelHovered,
       strokeAndFillColor,
     ]
   );
 
-  const { onPointerOver, onPointerOut, ...restEventHandlers } = useMemo(() => {
-    return {
-      ...tooltip.getMeshProps(label),
+  // Cleanup
+  useEffect(() => {
+    return () => {
+      geo.dispose();
+      edgesGeo.dispose();
+      geometry.dispose();
+      material.dispose();
     };
-  }, [tooltip, label]);
+  }, [geo, edgesGeo, geometry, material]);
 
   if (!location || !dimensions) return null;
 
@@ -114,20 +117,27 @@ export const Cuboid = ({
    */
 
   return (
-    <group>
-      <mesh position={loc} rotation={actualRotation}>
-        <lineSegments2 geometry={geometry} material={material} />
-      </mesh>
+    <>
+      {/* Outline */}
+      {/* @ts-ignore */}
+      <lineSegments2
+        position={[loc.x, loc.y, loc.z]}
+        rotation={actualRotation}
+        geometry={geometry}
+        material={material}
+      />
+
+      {/* Clickable volume */}
       <mesh
-        position={loc}
+        position={[loc.x, loc.y, loc.z]}
         rotation={actualRotation}
         onClick={onClick}
         onPointerOver={() => {
-          setIsCuboidHovered(true);
+          setIsHovered(true);
           onPointerOver();
         }}
         onPointerOut={() => {
-          setIsCuboidHovered(false);
+          setIsHovered(false);
           onPointerOut();
         }}
         {...restEventHandlers}
@@ -139,6 +149,6 @@ export const Cuboid = ({
           color={strokeAndFillColor}
         />
       </mesh>
-    </group>
+    </>
   );
 };
