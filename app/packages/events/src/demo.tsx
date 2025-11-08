@@ -19,7 +19,7 @@ const Source = () => {
   const [count, setCount] = useState(0);
   const eventBus = useEventBus<DemoEventGroup>({ channelId: "default" });
 
-  // compile-time error; "foo" is not a key of DemoEventFamily
+  // compile-time error; "foo" is not a key of DemoEventGroup
   // eventBus.dispatch("foo", {bar: "baz"});
 
   // compile-time error; event payload mismatch
@@ -84,7 +84,7 @@ const Sink = () => {
 
   // could probably refactor the hook to create a closure around the first type,
   // but ugly syntax either way
-  // useEventHandler<DemoEventFamily>()("demo:eventC", ...);
+  // useEventHandler<DemoEventGroup>()("demo:eventC", ...);
 
   return <Fragment />;
 };
