@@ -1,17 +1,17 @@
 /**
- * A type representing a family of events, where each key is an event type name
+ * A type representing a group of events, where each key is an event type name
  * and each value is the payload type for that event. If the payload is `undefined` or `null`,
  * the event is considered to have no payload.
  *
  * @example
  * ```typescript
- * type DomainEventFamily = {
+ * type DomainEventGroup = {
  *   "domainFoo:login": { id: string; timestamp: number };
  *   "domainFoo:logout": undefined;
  * };
  * ```
  */
-export type EventFamily = Record<string, unknown>;
+export type EventGroup = Record<string, unknown>;
 
 /**
  * A handler function for a specific event type.
@@ -22,12 +22,12 @@ export type EventFamily = Record<string, unknown>;
  * @example
  * ```typescript
  * // Required payload
- * const handler: EventHandler<DomainEventFamily["domainFoo:login"]> = (data) => {
+ * const handler: EventHandler<DomainEventGroup["domainFoo:login"]> = (data) => {
  *   console.log(data.id, data.timestamp);
  * };
  *
  * // Optional payload (when event type is undefined/null)
- * const noPayloadHandler: EventHandler<DomainEventFamily["domainFoo:logout"]> = () => {
+ * const noPayloadHandler: EventHandler<DomainEventGroup["domainFoo:logout"]> = () => {
  *   console.log("User logged out");
  * };
  * ```

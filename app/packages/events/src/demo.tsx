@@ -2,7 +2,7 @@ import React, { Fragment, useEffect, useState } from "react";
 import { createUseEventHandler, useEventBus } from "./hooks";
 import { EventHandler } from "./types";
 
-export type DemoEventFamily = {
+export type DemoEventGroup = {
   "demo:eventA": {
     id: string;
     name: string;
@@ -17,13 +17,13 @@ export type DemoEventFamily = {
   "demo:eventD": undefined;
 };
 
-const useDemoEventHandler = createUseEventHandler<DemoEventFamily>();
+const useDemoEventHandler = createUseEventHandler<DemoEventGroup>();
 
 const Source = () => {
   const [count, setCount] = useState(0);
-  const eventBus = useEventBus<DemoEventFamily>({ channelId: "default" });
+  const eventBus = useEventBus<DemoEventGroup>({ channelId: "default" });
 
-  // compile-time error; "foo" is not a key of DemoEventFamily
+  // compile-time error; "foo" is not a key of DemoEventGroup
   // eventBus.dispatch("foo", {bar: "baz"});
 
   // compile-time error; event payload mismatch
@@ -69,15 +69,15 @@ const Source = () => {
 };
 
 const Sink = () => {
-  const eventBus = useEventBus<DemoEventFamily>({ channelId: "default" });
+  const eventBus = useEventBus<DemoEventGroup>({ channelId: "default" });
 
   useEffect(() => {
-    const eventAHandler: EventHandler<DemoEventFamily["demo:eventA"]> = (
+    const eventAHandler: EventHandler<DemoEventGroup["demo:eventA"]> = (
       data
       // type-safe payload access
     ) => console.log(data.id, data.name);
 
-    const eventBHandler: EventHandler<DemoEventFamily["demo:eventB"]> = (
+    const eventBHandler: EventHandler<DemoEventGroup["demo:eventB"]> = (
       data
       // type-safe payload access
     ) => console.log(data.value);

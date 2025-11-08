@@ -1,8 +1,8 @@
 import { useEffect } from "react";
-import { EventFamily, EventHandler } from "../types";
+import { EventGroup, EventHandler } from "../types";
 import { useEventBus } from "./useEventBus";
 
-export function createUseEventHandler<T extends EventFamily>(
+export function createUseEventHandler<T extends EventGroup>(
   channelId = "default"
 ) {
   const bus = useEventBus<T>({ channelId });

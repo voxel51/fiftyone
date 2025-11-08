@@ -2,14 +2,13 @@ import { atom, useAtomValue } from "jotai";
 import { atomFamily } from "jotai/utils";
 import { useMemo } from "react";
 import { EventDispatcher } from "../dispatch";
-import { EventFamily } from "../types";
+import { EventGroup } from "../types";
 
-const dispatcherFamily = atomFamily(
-  <T extends EventFamily>(channelId: string) =>
-    atom(() => new EventDispatcher<T>())
+const dispatcherFamily = atomFamily(<T extends EventGroup>(channelId: string) =>
+  atom(() => new EventDispatcher<T>())
 );
 
-export const useEventBus = <T extends EventFamily>({
+export const useEventBus = <T extends EventGroup>({
   channelId = "default",
 }: {
   channelId: string;

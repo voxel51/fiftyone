@@ -1,8 +1,8 @@
-import { EventFamily, EventHandler } from "../types";
+import { EventGroup, EventHandler } from "../types";
 
 type DispatchData<T> = T extends undefined | null ? [data?: T] : [data: T];
 
-export class EventDispatcher<T extends EventFamily> {
+export class EventDispatcher<T extends EventGroup> {
   private readonly handlers: Map<keyof T, Set<EventHandler<T[keyof T]>>> =
     new Map();
 
