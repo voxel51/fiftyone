@@ -1,2 +1,2 @@
 export * from "./useEventBus";
-export * from "./useEventHandler";
+export * from "./createUseEventHandler";
