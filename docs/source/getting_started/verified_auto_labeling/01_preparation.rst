@@ -5,7 +5,7 @@ Step 1: Prepare Your Dataset and Delegated Operators
 
 .. default-role:: code
 
-Before using Verified Auto-Labeling, you need to prepare two key components: your dataset and at least one GPU-enabled delegated operator,
+Before using Verified Auto-Labeling, you need to prepare two key components: your dataset and at least one GPU-enabled delegated operator.
 
 .. contents:: In this section
    :local:
@@ -45,7 +45,7 @@ Verified Auto-Labeling currently supports the following 3 annotation tasks.
 
 In this guide, we will choose **object detection**. 
 
-You will also want an idea of the **classes**, or object categories, you will be annotating in the dataset. Based on the annotation task chosen, FiftyOne will let you choose from a list of model that can be used for labeling. Some model are **zero-shot** and support arbitrary, plain-language class descriptions. Others are **fixed-vocabulary** and requires choosing from a fixed list of classes that model was trained on.
+You will also want an idea of the **classes**, or object categories, you will be annotating in the dataset. Based on the annotation task chosen, FiftyOne will let you choose from a list of models that can be used for labeling. Some models are **zero-shot** and support arbitrary, plain-language class descriptions. Others are **fixed-vocabulary** and requires choosing from a fixed list of classes that model was trained on.
 
 Next Steps
 ----------

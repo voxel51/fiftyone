@@ -21,7 +21,7 @@ When your run status changes to **In Review**, the Auto Labeling panel displays 
    :align: center
    :width: 100%
 
-Note the confidence slider and the label table in the Auto Labeling panel. The confidence slider lets you show only samples containing labels within the minimum and maximum thresholds specified. The lable table shows you the count for each predicted class across you samples, along with the average confidence for that class. Selecting an entry in the table only shows samples with that predicted class.
+Note the confidence slider and the label table in the Auto Labeling panel. The confidence slider lets you show only samples containing labels within the minimum and maximum thresholds specified. The label table shows you the count for each predicted class across your samples, along with the average confidence for that class. Selecting an entry in the table only shows samples with that predicted class.
 
 .. image:: https://cdn.voxel51.com/getting_started_val/notebook3/val_review_class_filter.webp
    :alt: VAL review panel class filtering
@@ -66,7 +66,7 @@ Finally, in the Auto Labeling panel, click **Add 10 labels for approval**.
    :align: center
    :width: 100%
 
-Those 10 labels are now available in the **Approval** tab. You (or a team member) can later approve this labels. Leave them as marked for approval for now (don't give the final approval yet).
+Those 10 labels are now available in the **Approval** tab. You (or a team member) can later approve the labels. Leave them as marked for approval for now (don't give the final approval yet).
 
 .. image:: https://cdn.voxel51.com/getting_started_val/notebook3/val_labels_ready_approval.webp
    :alt: Review labels marked for approval

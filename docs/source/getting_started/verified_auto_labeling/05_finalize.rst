@@ -71,7 +71,7 @@ You Did It!
 
 **Congratulations!**
 
-You've completed your first Verified Auto-Labeling workflow, transforming raw predictions into high-quality, verified dataset labels..
+You've completed your first Verified Auto-Labeling workflow, transforming raw predictions into high-quality, verified dataset labels.
 
 **Next**: Review the :ref:`Guide Summary <val_guide_summary>` for key takeaways and next steps.
 

@@ -25,7 +25,7 @@ Guide Overview
 Verified Auto-Labeling combines model inference with human verification to dramatically accelerate dataset labeling. The workflow consists of the following steps:
 
 1. **Gather Your Data and Infrastructure** - Prepare your dataset in FiftyOne and configure GPU orchestration
-2. **Configure VAL Run** - Configure and launch an auto labeling task and track progerss
+2. **Configure VAL Run** - Configure and launch an auto labeling task and track progress
 3. **Analyze Results** - Review predictions and select samples for approval
 4. **Visualize Embeddings** - Generate patch embeddings and use it to analyze clusters of samples
 5. **Finalize Workflow** - Accept approved labels and discard problematic predictions

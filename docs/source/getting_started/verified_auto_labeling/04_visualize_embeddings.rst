@@ -16,7 +16,7 @@ Compute Patch Embeddings
 
 In the previous step, you generated patch views that showed one detection label per image. You can similarly compute and visualize patch embeddings directly within the FiftyOne App.
 
-In the toolbar about the same grid, select **Browse operations > Compute visualization**.
+In the toolbar above the sample grid, select **Browse operations > Compute visualization**.
 
 - For the brain key, type `yolow_patches`
 - For the patches field, select **yolow_detections**

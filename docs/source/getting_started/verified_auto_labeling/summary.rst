@@ -14,7 +14,7 @@ Step-by-Step Recap
 
 **Step 1: Prepare Your Dataset and Delegated Operators**
 
-You learned how to set up the foundation for Verified Auto-Labeling by preparing your dataset in FiftyOne Enterprise and configuring GPU-enabled delegated operators. This included understanding the infrastructure requirements and ensuring your environment is ready for auto labeling orkflows.
+You learned how to set up the foundation for Verified Auto-Labeling by preparing your dataset in FiftyOne Enterprise and configuring GPU-enabled delegated operators. This included understanding the infrastructure requirements and ensuring your environment is ready for auto labeling workflows.
 
 **Step 2: Configure Your VAL Run**
 
