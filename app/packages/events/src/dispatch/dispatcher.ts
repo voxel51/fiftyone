@@ -1,10 +1,10 @@
-import { EventFamily, EventHandler } from "../types";
+import { EventGroup, EventHandler } from "../types";
 
-type HandlerMap<T extends EventFamily> = {
+type HandlerMap<T extends EventGroup> = {
   [E in keyof T]?: EventHandler<T[E]>[];
 };
 
-export class EventDispatcher<T extends EventFamily> {
+export class EventDispatcher<T extends EventGroup> {
   private readonly handlers: HandlerMap<T> = {};
 
   public on<E extends keyof T>(event: E, handler: EventHandler<T[E]>): void {

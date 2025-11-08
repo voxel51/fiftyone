@@ -2,7 +2,7 @@ import { useEventBus, useEventHandler } from "./hooks";
 import { Fragment, useEffect, useState } from "react";
 import { EventHandler } from "./types";
 
-export type DemoEventFamily = {
+export type DemoEventGroup = {
   "demo:eventA": {
     id: string;
     name: string;
@@ -17,7 +17,7 @@ export type DemoEventFamily = {
 
 const Source = () => {
   const [count, setCount] = useState(0);
-  const eventBus = useEventBus<DemoEventFamily>({ channelId: "default" });
+  const eventBus = useEventBus<DemoEventGroup>({ channelId: "default" });
 
   // compile-time error; "foo" is not a key of DemoEventFamily
   // eventBus.dispatch("foo", {bar: "baz"});
@@ -53,15 +53,15 @@ const Source = () => {
 };
 
 const Sink = () => {
-  const eventBus = useEventBus<DemoEventFamily>({ channelId: "default" });
+  const eventBus = useEventBus<DemoEventGroup>({ channelId: "default" });
 
   useEffect(() => {
-    const eventAHandler: EventHandler<DemoEventFamily["demo:eventA"]> = (
+    const eventAHandler: EventHandler<DemoEventGroup["demo:eventA"]> = (
       data
       // type-safe payload access
     ) => console.log(data.id, data.name);
 
-    const eventBHandler: EventHandler<DemoEventFamily["demo:eventB"]> = (
+    const eventBHandler: EventHandler<DemoEventGroup["demo:eventB"]> = (
       data
       // type-safe payload access
     ) => console.log(data.value);
@@ -77,7 +77,7 @@ const Sink = () => {
 
   // OR if you don't want to deal with on/off --
   // annoying that you need to specify the event twice, but not terrible
-  useEventHandler<DemoEventFamily, "demo:eventC">("demo:eventC", (data) =>
+  useEventHandler<DemoEventGroup, "demo:eventC">("demo:eventC", (data) =>
     // still type-safe payload access
     console.log(data.foo)
   );
