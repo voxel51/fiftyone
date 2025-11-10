@@ -1,5 +1,5 @@
-import { useEventBus, useEventHandler } from "./hooks";
-import { Fragment, useEffect, useState } from "react";
+import React, { Fragment, useEffect, useState } from "react";
+import { createUseEventHandler, useEventBus } from "./hooks";
 import { EventHandler } from "./types";
 
 export type DemoEventGroup = {
@@ -13,7 +13,11 @@ export type DemoEventGroup = {
   "demo:eventC": {
     foo: string[];
   };
+  // Event with no payload
+  "demo:eventD": undefined;
 };
+
+const useDemoEventHandler = createUseEventHandler<DemoEventGroup>();
 
 const Source = () => {
   const [count, setCount] = useState(0);
@@ -24,6 +28,9 @@ const Source = () => {
 
   // compile-time error; event payload mismatch
   // eventBus.dispatch("demo:eventA", {foo: "bar"});
+
+  // compile-time error; event payload muse be undefined
+  // eventBus.dispatch("demo:eventD", {foo: "bar"});
 
   return (
     <>
@@ -48,6 +55,15 @@ const Source = () => {
       >
         event B
       </button>
+
+      <button
+        onClick={() => {
+          // Optional payload - can dispatch without data
+          eventBus.dispatch("demo:eventD");
+        }}
+      >
+        event D (no payload)
+      </button>
     </>
   );
 };
@@ -66,25 +82,27 @@ const Sink = () => {
       // type-safe payload access
     ) => console.log(data.value);
 
+    const eventDHandler: EventHandler = () =>
+      console.log("Event D received (no payload)");
+
     eventBus.on("demo:eventA", eventAHandler);
     eventBus.on("demo:eventB", eventBHandler);
+    eventBus.on("demo:eventD", eventDHandler);
 
     return () => {
       eventBus.off("demo:eventA", eventAHandler);
       eventBus.off("demo:eventB", eventBHandler);
+      eventBus.off("demo:eventD", eventDHandler);
     };
   }, [eventBus]);
 
   // OR if you don't want to deal with on/off --
-  // annoying that you need to specify the event twice, but not terrible
-  useEventHandler<DemoEventGroup, "demo:eventC">("demo:eventC", (data) =>
-    // still type-safe payload access
-    console.log(data.foo)
-  );
+  useDemoEventHandler("demo:eventC", (data) => console.log(data.foo));
 
-  // could probably refactor the hook to create a closure around the first type,
-  // but ugly syntax either way
-  // useEventHandler<DemoEventGroup>()("demo:eventC", ...);
+  // Optional payload handler
+  useDemoEventHandler("demo:eventD", () => {
+    console.log("Event D received (no payload)");
+  });
 
   return <Fragment />;
 };
