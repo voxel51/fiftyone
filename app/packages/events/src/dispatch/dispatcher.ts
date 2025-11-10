@@ -2,6 +2,10 @@ import { EventGroup, EventHandler } from "../types";
 
 type DispatchData<T> = T extends undefined | null ? [data?: T] : [data: T];
 
+/**
+ * Map from event types to their registered handlers.
+ * Note: Set maintains insertion order (ES2015+).
+ */
 type HandlerMap<T extends EventGroup> = Map<
   keyof T,
   Set<EventHandler<T[keyof T]>>
@@ -99,6 +103,8 @@ export class EventDispatcher<T extends EventGroup> {
     const data = args[0] as T[E];
     const typeHandlers = this.handlers.get(event);
     if (typeHandlers) {
+      // Array.from() preserves Set's insertion order, ensuring handlers
+      // are invoked in registration order
       const handlersArray = Array.from(typeHandlers);
       handlersArray.forEach((handler) => {
         try {
