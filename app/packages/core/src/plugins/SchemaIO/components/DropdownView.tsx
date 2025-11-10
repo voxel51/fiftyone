@@ -93,6 +93,7 @@ export default function DropdownView(props: ViewPropsType) {
     }, {});
   }, [choices]);
 
+  // Compute selected state from data instead of using useState to avoid setState during render
   const selected = useMemo(() => {
     const value = computedDefaultValue;
     return value != null && value !== "" && !(Array.isArray(value) && value.length === 0);
