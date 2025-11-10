@@ -4,34 +4,41 @@ type DispatchData<T> = T extends undefined | null ? [data?: T] : [data: T];
 
 /**
  * Map from event types to their registered handlers.
- * Note: Set maintains insertion order (ES2015+).
  */
-type HandlerMap<T extends EventGroup> = Map<
-  keyof T,
-  Set<EventHandler<T[keyof T]>>
->;
+type HandlerMap<T extends EventGroup> = {
+  [E in keyof T]?: EventHandler<T[E]>[];
+};
 
 /**
  * Type-safe event dispatcher.
+ *
+ * **⚠️ In most cases, you should not instantiate this class directly.**
+ * - For **JavaScript/TypeScript** code (non-React): use {@link getEventBus} to get a shared event bus instance
+ * - For **React components**: use the {@link useEventBus} hook instead
+ *
+ * This class is exported primarily for advanced use cases where you need a completely isolated
+ * event dispatcher instance, or for internal use within the event system.
  *
  * @template T - EventGroup type defining event types and payloads
  *
  * @example
  * ```typescript
- * type DemoEventGroup = {
- *   "demo:eventA": { id: string; name: string };
- *   "demo:eventD": undefined;
- * };
+ * // ✅ Recommended: Use getEventBus for JavaScript/TypeScript
+ * import { getEventBus } from "./hooks";
+ * const eventBus = getEventBus<DemoEventGroup>();
  *
+ * // ✅ Recommended: Use useEventBus for React components
+ * import { useEventBus } from "./hooks";
+ * function MyComponent() {
+ *   const eventBus = useEventBus<DemoEventGroup>();
+ * }
+ *
+ * // ⚠️ Advanced: Direct instantiation (rarely needed)
  * const eventBus = new EventDispatcher<DemoEventGroup>();
- * const handler = (data: DemoEventGroup["demo:eventA"]) => console.log(data.id);
- * eventBus.on("demo:eventA", handler);
- * eventBus.dispatch("demo:eventA", { id: "some-id", name: "some-name" });
- * eventBus.off("demo:eventA", handler);
  * ```
  */
 export class EventDispatcher<T extends EventGroup> {
-  private readonly handlers: HandlerMap<T> = new Map();
+  private readonly handlers: HandlerMap<T> = {};
 
   /**
    * Registers an event handler.
@@ -48,38 +55,54 @@ export class EventDispatcher<T extends EventGroup> {
    * ```
    */
   public on<E extends keyof T>(event: E, handler: EventHandler<T[E]>): void {
-    const handlers = this.handlers.get(event);
+    const handlers = this.handlers[event];
+
     if (handlers) {
-      handlers.add(handler);
+      if (!handlers.includes(handler)) {
+        handlers.push(handler);
+      }
     } else {
-      this.handlers.set(event, new Set([handler]));
+      this.handlers[event] = [handler];
     }
   }
 
   /**
-   * Unregisters an event handler. If no handler provided, removes all handlers for the event.
+   * Unregisters an event handler.
    *
    * @template E - Event type key
    * @param event - Event type name
-   * @param handler - Optional handler to remove
+   * @param handler - Handler to remove
    *
    * @example
    * ```typescript
    * eventBus.off("demo:eventA", handler); // Remove specific handler
-   * eventBus.off("demo:eventB"); // Remove all handlers
    * ```
    */
-  public off<E extends keyof T>(event: E, handler?: EventHandler<T[E]>): void {
-    const handlers = this.handlers.get(event);
+  public off<E extends keyof T>(event: E, handler: EventHandler<T[E]>): void {
+    const handlers = this.handlers[event];
 
     if (handlers) {
-      if (handler) {
-        handlers.delete(handler);
-      } else {
-        // Remove all handlers for this event type
-        this.handlers.set(event, new Set());
+      const index = handlers.indexOf(handler);
+      if (index !== -1) {
+        handlers.splice(index, 1);
       }
     }
+  }
+
+  /**
+   * Removes all handlers for an event type.
+   *
+   * @template E - Event type key
+   * @param event - Event type name
+   *
+   * @example
+   * ```typescript
+    // Remove all handlers
+   * eventBus.clear("demo:eventB");
+   * ```
+   */
+  public clear<E extends keyof T>(event: E): void {
+    this.handlers[event] = [];
   }
 
   /**
@@ -93,7 +116,8 @@ export class EventDispatcher<T extends EventGroup> {
    * ```typescript
    * eventBus.dispatch("demo:eventA", { id: "some-id", name: "some-name" });
    * eventBus.dispatch("demo:eventB", { value: 42 });
-   * eventBus.dispatch("demo:eventD"); // No payload
+    // No payload
+   * eventBus.dispatch("demo:eventD");
    * ```
    */
   public dispatch<E extends keyof T>(
@@ -101,12 +125,9 @@ export class EventDispatcher<T extends EventGroup> {
     ...args: DispatchData<T[E]>
   ): void {
     const data = args[0] as T[E];
-    const typeHandlers = this.handlers.get(event);
+    const typeHandlers = this.handlers[event];
     if (typeHandlers) {
-      // Array.from() preserves Set's insertion order, ensuring handlers
-      // are invoked in registration order
-      const handlersArray = Array.from(typeHandlers);
-      handlersArray.forEach((handler) => {
+      typeHandlers.forEach((handler) => {
         try {
           handler(data);
         } catch (error) {

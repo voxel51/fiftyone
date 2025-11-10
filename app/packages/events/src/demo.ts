@@ -1,4 +1,4 @@
-import { EventDispatcher } from "./dispatch";
+import { getEventBus } from "./hooks";
 import { EventHandler } from "./types";
 
 export type DemoEventGroup = {
@@ -20,7 +20,7 @@ export type DemoEventGroup = {
  * JavaScript-only demo of the event system.
  */
 export function runDemo() {
-  const eventBus = new EventDispatcher<DemoEventGroup>();
+  const eventBus = getEventBus<DemoEventGroup>();
 
   // compile-time error; "foo" is not a key of DemoEventGroup
   // eventBus.dispatch("foo", {bar: "baz"});
