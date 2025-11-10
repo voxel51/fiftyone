@@ -8,11 +8,9 @@ const dispatcherFamily = atomFamily(<T extends EventGroup>(channelId: string) =>
   atom(() => new EventDispatcher<T>())
 );
 
-export const useEventBus = <T extends EventGroup>({
-  channelId = "default",
-}: {
-  channelId: string;
-}) => {
+export const useEventBus = <T extends EventGroup>(
+  { channelId } = { channelId: "default" }
+) => {
   const dispatcher = useAtomValue(
     dispatcherFamily(channelId)
   ) as EventDispatcher<T>;
