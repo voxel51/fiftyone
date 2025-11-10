@@ -49,3 +49,10 @@ export function getEventBus<T extends EventGroup>(
 ): EventDispatcher<T> {
   return getDispatcher<T>(channelId);
 }
+
+/**
+ * Exports the registry for testing purposes.
+ */
+export const __test__ = {
+  registry: dispatcherRegistry,
+};

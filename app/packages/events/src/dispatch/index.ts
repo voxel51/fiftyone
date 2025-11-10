@@ -1,2 +1,2 @@
 export * from "./dispatcher";
-export * from "./registry";
+export { getEventBus } from "./registry";
