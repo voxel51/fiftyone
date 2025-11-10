@@ -108,11 +108,13 @@ sphinx-apidoc --force --no-toc --separate --follow-links \
         fiftyone/server \
         fiftyone/service \
         fiftyone/management \
-        fiftyone/api
+        fiftyone/api &
 
 sphinx-apidoc --force --no-toc --separate --follow-links \
     --templatedir=docs/templates/apidoc \
-    -o docs/source/plugins/api plugins
+    -o docs/source/plugins/api plugins &
+
+wait
 
 # Remove symlink
 unlink fiftyone/brain
@@ -121,23 +123,25 @@ cd docs
 
 if [[ ${FAST_BUILD} = false ]]; then
     echo "Generating model zoo listing page"
-    python scripts/make_model_zoo_docs.py
+    python scripts/make_model_zoo_docs.py &
 
     echo "Generating Hugging Face dataset documentation"
-    python scripts/make_hf_dataset_docs.py
+    python scripts/make_hf_dataset_docs.py &
 
     echo "Generating plugin documentation"
-    python scripts/generate_plugin_docs.py
+    python scripts/generate_plugin_docs.py &
 
     echo "Generating TypeScript API docs"
     cd ../app
     yarn doc
     cd ../docs
+
+    wait
 fi
 
 echo "Building docs"
 # sphinx-build [OPTIONS] SOURCEDIR OUTPUTDIR [FILENAMES...]
-sphinx-build -M html source build $SPHINXOPTS
+sphinx-build -M html source build --jobs auto $SPHINXOPTS
 
 # Remove symlink to fiftyone-teams
 if [[ -n "${PATH_TO_TEAMS}" ]]; then
