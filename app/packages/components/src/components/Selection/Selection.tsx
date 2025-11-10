@@ -107,13 +107,14 @@ export default function Selection(props: SelectionProps) {
             zIndex: insideModal ? 2400 : undefined,
           },
           MenuListProps: {
+            "data-cy": `${id}-selection-view`,
             sx: {
               paddingY: 0,
               zIndex: 999,
               maxHeight: "400px",
               width: hideActions ? "100%" : "270px",
               overflowY: "auto",
-              background: (theme) => theme.background.level2,
+              background: theme.background.level2,
             },
           },
         }}
