@@ -44,6 +44,7 @@ operators:
   - list_files
   - download_file
   - model_evaluation_configure_scenario
+  - mes_plot_resolver
   - activate_annotation_schemas
   - compute_annotation_schema
   - deactivate_annotation_schemas
