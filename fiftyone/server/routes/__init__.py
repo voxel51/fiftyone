@@ -17,9 +17,10 @@ from .fiftyone import FiftyOne
 from .frames import Frames
 from .geo import GeoPoints
 from .get_similar_labels_frames import GetSimilarLabelsFrameCollection
+from .groups import GroupsRoutes
 from .media import Media
-from .sample import SampleRoutes
 from .plugins import Plugins
+from .sample import SampleRoutes
 from .screenshot import Screenshot
 from .sort import Sort
 from .tag import Tag
@@ -29,6 +30,7 @@ from .values import Values
 # Starlette routes should not be created here. Please leave as tuple definitions
 routes = (
     EmbeddingsRoutes
+    + GroupsRoutes
     + OperatorRoutes
     + SampleRoutes
     + [
