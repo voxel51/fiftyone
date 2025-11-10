@@ -18,8 +18,9 @@ export type DemoEventGroup = {
 
 /**
  * JavaScript-only demo of the event system.
+ * Demonstrates both synchronous and asynchronous handlers.
  */
-export function runDemo() {
+export async function runDemo() {
   const eventBus = getEventBus<DemoEventGroup>();
 
   // compile-time error; "foo" is not a key of DemoEventGroup
@@ -50,7 +51,25 @@ export function runDemo() {
     console.log("Event D received (no payload)");
   };
 
+  const asyncEventAHandler: EventHandler<
+    DemoEventGroup["demo:eventA"]
+  > = async (data) => {
+    // Simulate async work
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    console.log("Async Event A handler completed:", data.id, data.name);
+  };
+
+  // Another async handler for the same event - runs in parallel
+  const asyncEventAHandler2: EventHandler<
+    DemoEventGroup["demo:eventA"]
+  > = async (data) => {
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    console.log("Async Event A handler 2 completed:", data.id);
+  };
+
   eventBus.on("demo:eventA", eventAHandler);
+  eventBus.on("demo:eventA", asyncEventAHandler);
+  eventBus.on("demo:eventA", asyncEventAHandler2);
   eventBus.on("demo:eventB", eventBHandler);
   eventBus.on("demo:eventC", eventCHandler);
   eventBus.on("demo:eventD", eventDHandler);
@@ -75,9 +94,24 @@ export function runDemo() {
   // Optional payload - can dispatch without data
   eventBus.dispatch("demo:eventD");
 
+  // Demonstrate async handlers - dispatch doesn't wait for async handlers to complete
+  console.log("\n--- Dispatching event with async handlers ---");
+  eventBus.dispatch("demo:eventA", {
+    id: "async-demo",
+    name: "async-name",
+  });
+  console.log(
+    "Dispatch returned immediately (async handlers run in background)"
+  );
+
+  // Wait a bit to see async handlers complete
+  await new Promise((resolve) => setTimeout(resolve, 200));
+
   // Unregister handlers
   console.log("\n--- Unregistering handlers ---");
   eventBus.off("demo:eventA", eventAHandler);
+  eventBus.off("demo:eventA", asyncEventAHandler);
+  eventBus.off("demo:eventA", asyncEventAHandler2);
   eventBus.off("demo:eventB", eventBHandler);
   eventBus.off("demo:eventC", eventCHandler);
   eventBus.off("demo:eventD", eventDHandler);
