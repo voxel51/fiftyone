@@ -122,7 +122,7 @@ Each guide is designed as a sequential learning experience with navigation betwe
    :maxdepth: 1
    :hidden:
 
-   Verified Auto-Labeling Guide <verified_auto_labeling/index>
+   Verified Auto-Labeling Guide __SUB_NEW__ <verified_auto_labeling/index>
    Object Detection Guide <object_detection/index>
    Medical Imaging Guide <medical_imaging/index>
    Self-Driving Guide <self_driving/index>

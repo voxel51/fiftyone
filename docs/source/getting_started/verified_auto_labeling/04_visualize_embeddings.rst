@@ -7,10 +7,6 @@ Step 4: Assess Labels with Embeddings
 
 The sample grid is useful for visually identifying true and false positives. However, identifying false positives in bulk and false negatives at all can be difficult. Using FiftyOne's patch embeddings can assist in identifying collections of outlying samples that can be tagged for relabeling, or removed from consideration altogether.  
 
-.. contents:: In this section
-   :local:
-   :depth: 2
-
 Compute Patch Embeddings
 -------------------------
 
@@ -21,7 +17,7 @@ In the toolbar above the sample grid, select **Browse operations > Compute visua
 - For the brain key, type `yolow_patches`
 - For the patches field, select **yolow_detections**
 
-Leave all other settings as they are. You can refer to the `image embeddings documentation </tutorials/image_embeddings.html#Visualization-parameters>`_ for more details on supported visualization parameters.
+Leave all other settings as they are. You can refer to the `image embeddings documentation <../../tutorials/image_embeddings.html#Visualization-parameters>`_ for more details on supported visualization parameters.
 
 .. image:: https://cdn.voxel51.com/getting_started_val/notebook4/compute_visualization_config.webp
    :alt: VAL review interface

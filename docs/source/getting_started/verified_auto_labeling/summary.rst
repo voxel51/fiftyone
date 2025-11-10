@@ -52,7 +52,7 @@ Resources and Further Reading
 
 * `FiftyOne Teams Documentation <https://docs.voxel51.com/teams/>`_
 
-* `Delegated Operations Guide <https://docs.voxel51.com/teams/delegated_operations.html>`_
+* `Delegated Operations Guide <https://docs.voxel51.com/enterprise/plugins.html#enterprise-delegated-operations>`_
 
 * `FiftyOne Embeddings Tutorial <../../tutorials/image_embeddings.html>`_
 
@@ -63,7 +63,6 @@ Resources and Further Reading
 * `FiftyOne Annotation Integration <../../integrations/annotation.html>`_
 
 * `Active Learning Workflows <../../tutorials/active_learning.html>`_
-
 
 .. _summary-next-steps:
 

@@ -7,10 +7,6 @@ Step 3: Analyze and Approve Predictions
 
 Your VAL run has completed, and label predictions are ready for review. You will now systematically assess auto-generated labels using FiftyOne's exploration tools.
 
-.. contents:: In this section
-   :local:
-   :depth: 2
-
 Review Interface
 ----------------
 

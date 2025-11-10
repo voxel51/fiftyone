@@ -7,10 +7,6 @@ Step 1: Prepare Your Dataset and Delegated Operators
 
 Before using Verified Auto-Labeling, you need to prepare two key components: your dataset and at least one GPU-enabled delegated operator.
 
-.. contents:: In this section
-   :local:
-   :depth: 2
-
 Overview
 --------
 

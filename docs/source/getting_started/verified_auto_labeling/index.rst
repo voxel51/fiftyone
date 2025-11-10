@@ -35,14 +35,15 @@ Verified Auto-Labeling combines model inference with human verification to drama
 Prerequisites
 -------------
 
-**Who Is This Guide For**
-
 .. note::
       Verified Auto Labeling is available in
       :ref:`FiftyOne Enterprise <fiftyone-enterprise>`.
       If you are using open source FiftyOne and are
       interested in this feature, please reach out to
       `Voxel51 sales <https://voxel51.com/sales>`_.
+
+
+**Who Is This Guide For**
 
 This guide is designed for machine learning practitioners and data scientists who need to efficiently label large datasets. Whether you're bootstrapping a new project or improving existing annotations, VAL provides a systematic approach to leveraging model predictions while maintaining human oversight.
 
@@ -59,6 +60,11 @@ This guide is designed for machine learning practitioners and data scientists wh
 - **Storage:** Sufficient object storage space for dataset media and label fields
 
 .. _val-models-section:
+
+Ready to Begin?
+---------------
+
+Click **Next** to start with the first step: Prepare Your Dataset and Delegated Operators.
 
 .. toctree::
    :maxdepth: 1

@@ -7,10 +7,6 @@ Step 2: Configure Your VAL Run
 
 With your dataset and DO(s) ready, it's time to configure your Verified Auto-Labeling run. This step guides you through sample and model selection, class configuration, target label fields, and setting a minimum confidence threshold.
 
-.. contents:: In this section
-   :local:
-   :depth: 2
-
 Open and Configure Auto Labeling
 -----------------------------
 

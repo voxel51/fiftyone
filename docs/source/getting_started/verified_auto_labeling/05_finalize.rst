@@ -7,10 +7,6 @@ Step 5: Finalize Your VAL Workflow
 
 You've analyzed, approved, and tagged predictions. Now it's time to finalize the workflow, integrating approved labels into your dataset while discarding problematic predictions.
 
-.. contents:: In this section
-   :local:
-   :depth: 2
-
 Pre-Finalization Checklist
 ---------------------------
 
