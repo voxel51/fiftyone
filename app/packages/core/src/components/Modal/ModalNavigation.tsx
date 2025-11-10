@@ -126,16 +126,13 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
     (e: KeyboardEvent) => {
       const active = document.activeElement;
 
-      // Prevent navigation when editing text in textarea (e.g., Monaco Editor)
-      if (active?.tagName === "TEXTAREA") {
+      // Prevent navigation when interacting with any form field
+      if (
+        active?.tagName === "INPUT" ||
+        active?.tagName === "TEXTAREA" ||
+        active?.tagName === "SELECT"
+      ) {
         return;
-      }
-
-      // Prevent navigation when editing text in input fields
-      if (active?.tagName === "INPUT") {
-        if ((active as HTMLInputElement).type === "text") {
-          return;
-        }
       }
 
       if (e.altKey || e.ctrlKey || e.metaKey) {

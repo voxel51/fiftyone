@@ -143,23 +143,22 @@ const useSchema = () => {
 
 const useHandleChanges = () => {
   return useRecoilCallback(
-    ({ snapshot }) =>
-      async (currentField: string, path: string, data) => {
-        const expanded = await snapshot.getPromise(expandPath(currentField));
-        const schema = await snapshot.getPromise(field(`${expanded}.${path}`));
+    ({ snapshot }) => async (currentField: string, path: string, data) => {
+      const expanded = await snapshot.getPromise(expandPath(currentField));
+      const schema = await snapshot.getPromise(field(`${expanded}.${path}`));
 
-        if (typeof data === "string") {
-          if (schema?.ftype === FLOAT_FIELD) {
-            return data.length ? Number.parseFloat(data) : null;
-          }
-
-          if (schema?.ftype === INT_FIELD) {
-            return data.length ? Number.parseInt(data) : null;
-          }
+      if (typeof data === "string") {
+        if (schema?.ftype === FLOAT_FIELD) {
+          return data.length ? Number.parseFloat(data) : null;
         }
 
-        return data;
-      },
+        if (schema?.ftype === INT_FIELD) {
+          return data.length ? Number.parseInt(data) : null;
+        }
+      }
+
+      return data;
+    },
     []
   );
 };
@@ -170,8 +169,9 @@ const AnnotationSchema = () => {
   const overlay = useAtomValue(currentOverlay);
   const lighter = useLighter();
   const handleChanges = useHandleChanges();
-  const [key, setKey] = useState(0);
   const field = useAtomValue(currentField);
+
+  const schemaKeys = Object.keys(schema.properties);
 
   useEffect(() => {
     const handler = (event) => {
@@ -181,9 +181,6 @@ const AnnotationSchema = () => {
         const label = overlay?.label;
 
         if (label) {
-          // we are changing the form data externally, force a new SchemaIO
-          // render with a new key
-          setKey((cur) => cur + 1);
           save(label);
         }
 
@@ -219,14 +216,20 @@ const AnnotationSchema = () => {
   return (
     <div>
       <SchemaIOComponent
-        key={key.toString()}
         schema={schema}
         data={data}
         onChange={async (changes) => {
-          const result = {};
-          for (const key in changes) {
-            result[key] = await handleChanges(field, key, changes[key]);
-          }
+          const result = Object.fromEntries(
+            await Promise.all(
+              Object.entries(changes)
+                .filter(([key]) => schemaKeys.includes(key))
+                .map(async ([key, value]) => [
+                  key,
+                  await handleChanges(field, key, value),
+                ])
+            )
+          );
+
           const value = { ...data, ...result };
 
           if (isEqual(value, overlay.label)) {
