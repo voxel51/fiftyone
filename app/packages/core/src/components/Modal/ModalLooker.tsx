@@ -29,12 +29,6 @@ export const useClearSelectedLabels = () => {
 
 interface LookerProps {
   sample: fos.ModalSample;
-
-  // note: this is a hack we're using while migrating to lighter
-  // a lot of components depend on lighterRef being defined (see `useVisibleSampleLabels` for example)
-  // we'll remove this once we've migrated to lighter
-  // `ghost` means looker will render but with width and height set to 0
-  ghost?: boolean;
 }
 
 const ModalLookerNoTimeline = React.memo((props: LookerProps) => {
@@ -49,8 +43,8 @@ const ModalLookerNoTimeline = React.memo((props: LookerProps) => {
       id={id}
       data-cy="modal-looker-container"
       style={{
-        width: props.ghost ? 0 : "100%",
-        height: props.ghost ? 0 : "100%",
+        width: "100%",
+        height: "100%",
         background: theme.background.level2,
         position: "relative",
       }}
@@ -91,11 +85,10 @@ export const ModalLooker = React.memo(
     if (
       isNativeMediaType(sample.sample.media_type ?? sample.sample._media_type)
     ) {
-      return (
-        <>
-          {mode === "annotate" && <LighterSampleRenderer sample={sample} />}
-          <ModalLookerNoTimeline sample={sample} ghost={mode === "annotate"} />
-        </>
+      return mode === "annotate" ? (
+        <LighterSampleRenderer sample={sample} />
+      ) : (
+        <ModalLookerNoTimeline sample={sample} />
       );
     }
 

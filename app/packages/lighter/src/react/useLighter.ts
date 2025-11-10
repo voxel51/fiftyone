@@ -6,17 +6,19 @@ import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { TransformOptions } from "../commands/TransformOverlayCommand";
 import type { RenderCallback } from "../core/Scene2D";
-import { lighterSceneAtom, overlayFactory } from "../index";
-import { BaseOverlay } from "../overlay/BaseOverlay";
+import { defaultLighterSceneAtom, overlayFactory } from "../index";
+import type { BaseOverlay } from "../overlay/BaseOverlay";
 
 /**
  * Hook for accessing the current lighter instance without side effects.
  * This hook provides access to the lighter scene and its methods from anywhere in the app.
  *
  * It's very important to minimize side effects in this hook.
+ *
+ * @param atom - The atom in which the scene is stored.
  */
-export const useLighter = () => {
-  const scene = useAtomValue(lighterSceneAtom);
+export const useLighter = (atom = defaultLighterSceneAtom) => {
+  const scene = useAtomValue(atom);
   const isReady = !!scene;
   const registeredCallbacks = useRef<Set<() => void>>(new Set());
   const [canUndo, setCanUndo] = useState(false);
@@ -24,10 +26,18 @@ export const useLighter = () => {
 
   // Cleanup registered callbacks when scene changes or component unmounts
   useEffect(() => {
+    if (!scene) {
+      return;
+    }
+
+    const callbacks = registeredCallbacks.current;
+
     return () => {
       // Unregister all callbacks when component unmounts or scene changes
-      registeredCallbacks.current.forEach((unregister) => unregister());
-      registeredCallbacks.current.clear();
+      for (const unregister of callbacks) {
+        unregister();
+      }
+      callbacks.clear();
     };
   }, [scene]);
 
@@ -42,6 +52,30 @@ export const useLighter = () => {
     }
   }, [scene]);
 
+  /**
+   * Registers a render callback that will be automatically cleaned up when the component unmounts.
+   * @param callback - The callback configuration.
+   * @returns A function to manually unregister the callback.
+   */
+  const registerRenderCallback = useCallback(
+    (callback: Omit<RenderCallback, "id"> & { id?: string }) => {
+      if (!scene) {
+        console.warn("Cannot register render callback: scene not ready");
+        return () => {}; // Return no-op function
+      }
+
+      const unregister = scene.registerRenderCallback(callback);
+      registeredCallbacks.current.add(unregister);
+
+      // Return a function that removes from our tracking and unregisters
+      return () => {
+        registeredCallbacks.current.delete(unregister);
+        unregister();
+      };
+    },
+    [scene]
+  );
+
   // Register render callback to update undo/redo state
   useEffect(() => {
     if (!scene) return;
@@ -53,10 +87,10 @@ export const useLighter = () => {
       },
       phase: "after",
     });
-  }, [scene]);
+  }, [registerRenderCallback, scene]);
 
   const addOverlay = useCallback(
-    (overlay: BaseOverlay, withUndo: boolean = false) => {
+    (overlay: BaseOverlay, withUndo = false) => {
       if (scene) {
         scene.addOverlay(overlay, withUndo);
       }
@@ -65,7 +99,7 @@ export const useLighter = () => {
   );
 
   const removeOverlay = useCallback(
-    (id: string, withUndo: boolean = false) => {
+    (id: string, withUndo = false) => {
       if (scene) {
         scene.removeOverlay(id, withUndo);
       }
@@ -94,40 +128,16 @@ export const useLighter = () => {
   );
 
   const undo = useCallback(() => {
-    if (scene && scene.canUndo()) {
+    if (scene?.canUndo()) {
       scene.undo();
     }
   }, [scene]);
 
   const redo = useCallback(() => {
-    if (scene && scene.canRedo()) {
+    if (scene?.canRedo()) {
       scene.redo();
     }
   }, [scene]);
-
-  /**
-   * Registers a render callback that will be automatically cleaned up when the component unmounts.
-   * @param callback - The callback configuration.
-   * @returns A function to manually unregister the callback.
-   */
-  const registerRenderCallback = useCallback(
-    (callback: Omit<RenderCallback, "id"> & { id?: string }) => {
-      if (!scene) {
-        console.warn("Cannot register render callback: scene not ready");
-        return () => {}; // Return no-op function
-      }
-
-      const unregister = scene.registerRenderCallback(callback);
-      registeredCallbacks.current.add(unregister);
-
-      // Return a function that removes from our tracking and unregisters
-      return () => {
-        registeredCallbacks.current.delete(unregister);
-        unregister();
-      };
-    },
-    [scene]
-  );
 
   return {
     scene,

@@ -29,5 +29,4 @@ export interface Scene2DConfig {
   resourceLoader: ResourceLoader;
   eventBus: EventBus;
   options?: SceneOptions;
-  sceneId?: string;
 }

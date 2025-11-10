@@ -31,8 +31,6 @@ export const LighterSampleRenderer = ({
   sample,
 }: LighterSampleRendererProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  // unique scene id allows us to destroy/recreate scenes reliably
-  const [sceneId, setSceneId] = useState<string | null>(null);
 
   // we have this hack to force a re-render on layout effect, so that containerRef.current is defined
   // this is to allow stable singleton canvas to bind to new containers
@@ -77,14 +75,6 @@ export const LighterSampleRenderer = ({
     }
   }, [isReady, addOverlay, scene]);
 
-  useEffect(() => {
-    // sceneId should be deterministic, but unique for a given sample snapshot
-    const sample = sampleRef.current;
-    setSceneId(
-      `${sample?.sample?._id}-${sample?.sample?.last_modified_at?.datetime}`
-    );
-  }, []);
-
   return (
     <div
       ref={containerRef}
@@ -98,18 +88,15 @@ export const LighterSampleRenderer = ({
         flexDirection: "column",
       }}
     >
-      {containerRef.current && sceneId && (
-        <LighterSetupImpl containerRef={containerRef} sceneId={sceneId} />
-      )}
+      {containerRef.current && <LighterSetupImpl containerRef={containerRef} />}
     </div>
   );
 };
 
 const LighterSetupImpl = (props: {
   containerRef: React.RefObject<HTMLDivElement>;
-  sceneId: string;
 }) => {
-  const { containerRef, sceneId } = props;
+  const { containerRef } = props;
 
   const options = useRecoilValue(
     fos.lookerOptions({ modal: true, withFilter: false })
@@ -117,7 +104,7 @@ const LighterSetupImpl = (props: {
 
   const canvas = singletonCanvas.getCanvas(containerRef.current);
 
-  const { scene } = useLighterSetupWithPixi(canvas, options, sceneId);
+  const { scene } = useLighterSetupWithPixi(canvas, options);
 
   // This is the bridge between FiftyOne state management system and Lighter
   useBridge(scene);

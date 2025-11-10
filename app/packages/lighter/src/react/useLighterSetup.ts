@@ -10,8 +10,8 @@ import {
   LIGHTER_EVENTS,
   PixiRenderer2D,
   Scene2D,
+  defaultLighterSceneAtom,
   globalPixiResourceLoader,
-  lighterSceneAtom,
 } from "../index";
 
 // TODO: Ultimately, we'll want to remove dependency on "looker" and create our own options type
@@ -27,19 +27,20 @@ export type LighterOptions = Partial<ReturnType<typeof useLookerOptions>>;
  * @param stableCanvas - The canvas element to use for rendering. This should be a stable reference,
  * i.e., it should not change during the lifetime of the component.
  * @param options - The options for the scene.
+ * @param atom - The atom in which the scene is stored.
  */
 export const useLighterSetupWithPixi = (
   stableCanvas: HTMLCanvasElement,
   options: LighterOptions,
-  sceneId: string
+  atom = defaultLighterSceneAtom
 ) => {
-  const [scene, setScene] = useAtom(lighterSceneAtom);
+  const [scene, setScene] = useAtom(atom);
 
   const rendererRef = useRef<PixiRenderer2D | null>(null);
   const eventBusRef = useRef<EventBus | null>(null);
 
   useEffect(() => {
-    if (!stableCanvas || !sceneId) return;
+    if (!stableCanvas) return;
 
     const eventBus = new EventBus();
     eventBusRef.current = eventBus;
@@ -60,12 +61,11 @@ export const useLighterSetupWithPixi = (
       canvas: stableCanvas,
       resourceLoader: globalPixiResourceLoader,
       options: sceneOptions,
-      sceneId,
     });
     setScene(newScene);
 
     // note: do NOT add options as a dep here, we have another effect to sync scene with new options
-  }, [sceneId, stableCanvas]);
+  }, [stableCanvas]);
 
   useEffect(() => {
     if (!scene || scene.isDestroyed) return;

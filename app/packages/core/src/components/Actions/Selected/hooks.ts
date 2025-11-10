@@ -97,12 +97,12 @@ export const useSelectVisible = (
 };
 
 export const useVisibleSampleLabels = (
-  lookerRef: MutableRefObject<Lookers>
+  lookerRef?: MutableRefObject<Lookers | undefined>
 ) => {
   const isGroup = useRecoilValue(fos.isGroup);
   const activeLabels = useRecoilValue(fos.activeLabels({}));
 
-  const currentSampleLabels = lookerRef.current
+  const currentSampleLabels = lookerRef?.current
     ? lookerRef.current.getCurrentSampleLabels()
     : [];
 
